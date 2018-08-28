@@ -1,0 +1,104 @@
+package user
+
+import (
+	"errors"
+
+	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/record"
+)
+
+// Field implements the field method of the record.Record interface.
+func (u *User) Field(name string) (*field.Field, error) {
+	switch name {
+	case "A":
+		return &field.Field{
+			Name: "A",
+			Type: field.String,
+			Data: []byte(u.A),
+		}, nil
+	case "B":
+		return &field.Field{
+			Name: "B",
+			Type: field.Int64,
+			Data: field.EncodeInt64(u.B),
+		}, nil
+	case "C":
+		return &field.Field{
+			Name: "C",
+			Type: field.String,
+			Data: []byte(u.C),
+		}, nil
+	case "D":
+		return &field.Field{
+			Name: "D",
+			Type: field.String,
+			Data: []byte(u.D),
+		}, nil
+	case "E":
+		return &field.Field{
+			Name: "E",
+			Type: field.Int64,
+			Data: field.EncodeInt64(u.E),
+		}, nil
+	case "F":
+		return &field.Field{
+			Name: "F",
+			Type: field.Int64,
+			Data: field.EncodeInt64(u.F),
+		}, nil
+	case "G":
+		return &field.Field{
+			Name: "G",
+			Type: field.Int64,
+			Data: field.EncodeInt64(u.G),
+		}, nil
+	}
+
+	return nil, errors.New("unknown field")
+}
+
+func (u *User) Cursor() record.Cursor {
+	return &userCursor {
+		User: u,
+		i : -1,
+	}
+}
+
+type userCursor struct {
+	User *User
+	i int
+}
+
+func (c *userCursor) Next() bool {
+	if c.i + 2 > 7 {
+		return false
+	}
+
+	c.i++
+	return true
+}
+
+func (c *userCursor) Field() (*field.Field, error) {
+	switch c.i {
+	case 0:
+		return c.User.Field("A")
+	case 1:
+		return c.User.Field("B")
+	case 2:
+		return c.User.Field("C")
+	case 3:
+		return c.User.Field("D")
+	case 4:
+		return c.User.Field("E")
+	case 5:
+		return c.User.Field("F")
+	case 6:
+		return c.User.Field("G")
+	}
+
+	return nil, errors.New("cursor has no more fields")
+}
+
+func (c *userCursor) Err() error {
+	return nil
+}
