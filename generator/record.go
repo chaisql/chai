@@ -13,10 +13,10 @@ import (
 var t *template.Template
 
 func init() {
-	t = template.Must(template.New("").Parse(tmpl))
+	t = template.Must(template.New("").Parse(recordTmpl))
 }
 
-const tmpl = `
+const recordTmpl = `
 {{- $fl := .Struct.FirstLetter -}}
 {{- $structName := .Struct.Name -}}
 package {{.Package}}
@@ -91,7 +91,7 @@ func (c *{{$cursor}}) Err() error {
 }
 `
 
-type context struct {
+type recordContext struct {
 	Package string
 	Struct  struct {
 		Name        string
@@ -103,9 +103,9 @@ type context struct {
 	}
 }
 
-// Generate parses the given ast, looks for the target struct
+// GenerateRecord parses the given ast, looks for the target struct
 // and generates complementary code to the given writer.
-func Generate(f *ast.File, target string, w io.Writer) error {
+func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 	for _, n := range f.Decls {
 		gn, ok := ast.Node(n).(*ast.GenDecl)
 		if !ok || gn.Tok != token.TYPE || len(gn.Specs) == 0 {
@@ -126,7 +126,7 @@ func Generate(f *ast.File, target string, w io.Writer) error {
 			return errors.New("invalid object")
 		}
 
-		var ctx context
+		var ctx recordContext
 		ctx.Package = f.Name.Name
 		ctx.Struct.Name = target
 		ctx.Struct.FirstLetter = strings.ToLower(target[0:1])

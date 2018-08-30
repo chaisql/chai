@@ -8,50 +8,50 @@ import (
 )
 
 // Field implements the field method of the record.Record interface.
-func (s *StructTest) Field(name string) (*field.Field, error) {
+func (r *RecordTest) Field(name string) (*field.Field, error) {
 	switch name {
 	case "A":
 		return &field.Field{
 			Name: "A",
 			Type: field.String,
-			Data: []byte(s.A),
+			Data: []byte(r.A),
 		}, nil
 	case "B":
 		return &field.Field{
 			Name: "B",
 			Type: field.Int64,
-			Data: field.EncodeInt64(s.B),
+			Data: field.EncodeInt64(r.B),
 		}, nil
 	case "C":
 		return &field.Field{
 			Name: "C",
 			Type: field.Int64,
-			Data: field.EncodeInt64(s.C),
+			Data: field.EncodeInt64(r.C),
 		}, nil
 	case "D":
 		return &field.Field{
 			Name: "D",
 			Type: field.Int64,
-			Data: field.EncodeInt64(s.D),
+			Data: field.EncodeInt64(r.D),
 		}, nil
 	}
 
 	return nil, errors.New("unknown field")
 }
 
-func (s *StructTest) Cursor() record.Cursor {
-	return &structTestCursor{
-		StructTest: s,
+func (r *RecordTest) Cursor() record.Cursor {
+	return &recordTestCursor{
+		RecordTest: r,
 		i:          -1,
 	}
 }
 
-type structTestCursor struct {
-	StructTest *StructTest
+type recordTestCursor struct {
+	RecordTest *RecordTest
 	i          int
 }
 
-func (c *structTestCursor) Next() bool {
+func (c *recordTestCursor) Next() bool {
 	if c.i+2 > 4 {
 		return false
 	}
@@ -60,21 +60,21 @@ func (c *structTestCursor) Next() bool {
 	return true
 }
 
-func (c *structTestCursor) Field() (*field.Field, error) {
+func (c *recordTestCursor) Field() (*field.Field, error) {
 	switch c.i {
 	case 0:
-		return c.StructTest.Field("A")
+		return c.RecordTest.Field("A")
 	case 1:
-		return c.StructTest.Field("B")
+		return c.RecordTest.Field("B")
 	case 2:
-		return c.StructTest.Field("C")
+		return c.RecordTest.Field("C")
 	case 3:
-		return c.StructTest.Field("D")
+		return c.RecordTest.Field("D")
 	}
 
 	return nil, errors.New("cursor has no more fields")
 }
 
-func (c *structTestCursor) Err() error {
+func (c *recordTestCursor) Err() error {
 	return nil
 }

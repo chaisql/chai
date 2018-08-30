@@ -1,4 +1,4 @@
-//go:generate go run ../cmd/genji/main.go -f generator_test.go -t StructTest
+//go:generate go run ../cmd/genji/main.go record -f record_test.go -t RecordTest
 
 package generator
 
@@ -18,7 +18,7 @@ import (
 
 var update = flag.Bool("update", false, "update .golden files")
 
-func TestGenerator(t *testing.T) {
+func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		src := `
 			package user
@@ -44,7 +44,7 @@ func TestGenerator(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = Generate(f, "User", &buf)
+		err = GenerateRecord(f, "User", &buf)
 		require.NoError(t, err)
 
 		gp := "testdata/generated.golden"
@@ -86,7 +86,7 @@ func TestGenerator(t *testing.T) {
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = Generate(f, "User", &buf)
+				err = GenerateRecord(f, "User", &buf)
 				require.Error(t, err)
 			})
 		}
@@ -102,23 +102,23 @@ func TestGenerator(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = Generate(f, "User", &buf)
+		err = GenerateRecord(f, "User", &buf)
 		require.Error(t, err)
 	})
 }
 
-type StructTest struct {
+type RecordTest struct {
 	A    string
 	B    int64
 	C, D int64
 }
 
-func TestGenerated(t *testing.T) {
-	s := StructTest{
+func TestGeneratedRecord(t *testing.T) {
+	r := RecordTest{
 		A: "A", B: 10, C: 11, D: 12,
 	}
 
-	require.Implements(t, (*record.Record)(nil), &s)
+	require.Implements(t, (*record.Record)(nil), &r)
 
 	tests := []struct {
 		name string
@@ -126,14 +126,14 @@ func TestGenerated(t *testing.T) {
 		data []byte
 	}{
 		{"A", field.String, []byte("A")},
-		{"B", field.Int64, field.EncodeInt64(s.B)},
-		{"C", field.Int64, field.EncodeInt64(s.C)},
-		{"D", field.Int64, field.EncodeInt64(s.D)},
+		{"B", field.Int64, field.EncodeInt64(r.B)},
+		{"C", field.Int64, field.EncodeInt64(r.C)},
+		{"D", field.Int64, field.EncodeInt64(r.D)},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f, err := s.Field(test.name)
+			f, err := r.Field(test.name)
 			require.NoError(t, err)
 			require.Equal(t, test.name, f.Name)
 			require.Equal(t, test.typ, f.Type)
@@ -141,7 +141,7 @@ func TestGenerated(t *testing.T) {
 		})
 	}
 
-	c := s.Cursor()
+	c := r.Cursor()
 	for i := 0; i < 4; i++ {
 		t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
 			require.True(t, c.Next())

@@ -73,7 +73,7 @@ func recordCmd() {
 	}
 
 	var buf bytes.Buffer
-	err = generator.Generate(af, *t, &buf)
+	err = generator.GenerateRecord(af, *t, &buf)
 	if err != nil {
 		fail(err.Error())
 	}
