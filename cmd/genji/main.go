@@ -8,35 +8,74 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/asdine/genji/generator"
 )
 
+const usage = `Usage:
+	genji <command> [arguments]
+
+The commands are:
+
+	record		generate a record from a struct
+`
+
 func main() {
+	if len(os.Args) < 2 {
+		exitUsage()
+	}
+
+	switch os.Args[1] {
+	case "record":
+		recordCmd()
+	default:
+		exitUsage()
+	}
+}
+
+func fail(format string, a ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, a...)
+	os.Exit(2)
+}
+
+func exitUsage() {
+	fail(usage)
+}
+
+func exitRecordUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: genji record [options]\n\nOptions:\n")
+	flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func recordCmd() {
 	f := flag.String("f", "", "path of the file to parse")
 	t := flag.String("t", "", "name of the targeted type")
 
-	flag.Parse()
+	if len(os.Args) < 3 {
+		exitRecordUsage()
+	}
+
+	flag.CommandLine.Usage = exitRecordUsage
+	flag.CommandLine.Parse(os.Args[2:])
 
 	if *f == "" || *t == "" {
-		flag.Usage()
-		os.Exit(2)
+		exitRecordUsage()
 	}
 
 	fset := token.NewFileSet()
 	af, err := parser.ParseFile(fset, *f, nil, 0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open file: %v\n", err)
-		os.Exit(2)
+		fail("failed to open file: %v\n", err)
 	}
 
 	var buf bytes.Buffer
 	err = generator.Generate(af, *t, &buf)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		fail(err.Error())
 	}
 
 	suffix := filepath.Ext(*f)
@@ -49,7 +88,11 @@ func main() {
 
 	err = ioutil.WriteFile(genPath, buf.Bytes(), 0644)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to generate file at location %s: %v\n", genPath, err)
-		os.Exit(2)
+		fail("failed to generate file at location %s: %v\n", genPath, err)
+	}
+
+	err = exec.Command("gofmt", "-w", genPath).Run()
+	if err != nil {
+		fail("gofmt failed with the following error: %s\n", err)
 	}
 }
