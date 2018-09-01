@@ -4,7 +4,15 @@ import "github.com/asdine/genji/record"
 
 // A Table represents a group of records.
 type Table interface {
+	TableReader
+	TableWriter
+}
+
+type TableReader interface {
 	Cursor() Cursor
+}
+
+type TableWriter interface {
 	Insert(record.Record) (rowid []byte, err error)
 }
 
@@ -19,5 +27,5 @@ type Cursor interface {
 	Err() error
 
 	// Record returns the current record.
-	Record() (record.Record, error)
+	Record() record.Record
 }

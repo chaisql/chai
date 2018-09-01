@@ -37,8 +37,7 @@ func TestTableCursor(t *testing.T) {
 	c := table.Cursor()
 	i := 0
 	for c.Next() {
-		r, err := c.Record()
-		require.NoError(t, err)
+		r := c.Record()
 
 		rc := r.Cursor()
 		for rc.Next() {

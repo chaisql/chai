@@ -9,7 +9,7 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-	"github.com/coreos/bbolt"
+	bolt "github.com/etcd-io/bbolt"
 )
 
 type Table struct {
@@ -94,11 +94,11 @@ func (c *tableCursor) Err() error {
 	return nil
 }
 
-func (c *tableCursor) Record() (record.Record, error) {
+func (c *tableCursor) Record() record.Record {
 	return &rec{
 		b:     c.b,
 		rowID: c.curRowID,
-	}, nil
+	}
 }
 
 type rec struct {
