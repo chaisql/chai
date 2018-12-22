@@ -8,35 +8,35 @@ import (
 )
 
 // Field implements the field method of the record.Record interface.
-func (r *RecordTest) Field(name string) (*field.Field, error) {
+func (r *RecordTest) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
-		return &field.Field{
+		return field.Field{
 			Name: "A",
 			Type: field.String,
 			Data: []byte(r.A),
 		}, nil
 	case "B":
-		return &field.Field{
+		return field.Field{
 			Name: "B",
 			Type: field.Int64,
 			Data: field.EncodeInt64(r.B),
 		}, nil
 	case "C":
-		return &field.Field{
+		return field.Field{
 			Name: "C",
 			Type: field.Int64,
 			Data: field.EncodeInt64(r.C),
 		}, nil
 	case "D":
-		return &field.Field{
+		return field.Field{
 			Name: "D",
 			Type: field.Int64,
 			Data: field.EncodeInt64(r.D),
 		}, nil
 	}
 
-	return nil, errors.New("unknown field")
+	return field.Field{}, errors.New("unknown field")
 }
 
 func (r *RecordTest) Cursor() record.Cursor {
@@ -49,6 +49,7 @@ func (r *RecordTest) Cursor() record.Cursor {
 type recordTestCursor struct {
 	RecordTest *RecordTest
 	i          int
+	err        error
 }
 
 func (c *recordTestCursor) Next() bool {
@@ -60,21 +61,26 @@ func (c *recordTestCursor) Next() bool {
 	return true
 }
 
-func (c *recordTestCursor) Field() (*field.Field, error) {
+func (c *recordTestCursor) Field() field.Field {
 	switch c.i {
 	case 0:
-		return c.RecordTest.Field("A")
+		f, _ := c.RecordTest.Field("A")
+		return f
 	case 1:
-		return c.RecordTest.Field("B")
+		f, _ := c.RecordTest.Field("B")
+		return f
 	case 2:
-		return c.RecordTest.Field("C")
+		f, _ := c.RecordTest.Field("C")
+		return f
 	case 3:
-		return c.RecordTest.Field("D")
+		f, _ := c.RecordTest.Field("D")
+		return f
 	}
 
-	return nil, errors.New("cursor has no more fields")
+	c.err = errors.New("no more fields")
+	return field.Field{}
 }
 
 func (c *recordTestCursor) Err() error {
-	return nil
+	return c.err
 }

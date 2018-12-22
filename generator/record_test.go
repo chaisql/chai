@@ -145,8 +145,8 @@ func TestGeneratedRecord(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
 			require.True(t, c.Next())
-			f, err := c.Field()
-			require.NoError(t, err)
+			f := c.Field()
+			require.NotEmpty(t, f)
 			require.Equal(t, tests[i].name, f.Name)
 			require.Equal(t, tests[i].typ, f.Type)
 			require.Equal(t, tests[i].data, f.Data)

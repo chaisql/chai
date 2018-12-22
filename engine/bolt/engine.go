@@ -27,10 +27,11 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 
 	c := r.Cursor()
 	for c.Next() {
-		f, err := c.Field()
-		if err != nil {
-			return nil, err
+		if c.Err() != nil {
+			return nil, c.Err()
 		}
+
+		f := c.Field()
 
 		k := []byte(fmt.Sprintf("%s-%s-%d", rowid, f.Name, f.Type))
 
@@ -116,25 +117,19 @@ func (r *rec) get(name string) ([]byte, []byte, error) {
 	return k, v, nil
 }
 
-func (r *rec) Bytes(name string) ([]byte, error) {
-	_, v, err := r.get(name)
-
-	return v, err
-}
-
-func (r *rec) Field(name string) (*field.Field, error) {
+func (r *rec) Field(name string) (field.Field, error) {
 	k, v, err := r.get(name)
 	if err != nil {
-		return nil, err
+		return field.Field{}, err
 	}
 
 	rawType := k[bytes.LastIndexByte(r.rowID, '-'):]
 	typ, err := strconv.Atoi(string(rawType))
 	if err != nil {
-		return nil, err
+		return field.Field{}, err
 	}
 
-	return &field.Field{
+	return field.Field{
 		Name: name,
 		Type: field.Type(typ),
 		Data: v,
@@ -152,6 +147,7 @@ type recCursor struct {
 	c     *bolt.Cursor
 	rowID []byte
 	k, v  []byte
+	err   error
 }
 
 func (r *recCursor) Next() bool {
@@ -171,23 +167,24 @@ func (r *recCursor) Next() bool {
 }
 
 func (r *recCursor) Err() error {
-	return nil
+	return r.err
 }
 
-func (r *recCursor) Field() (*field.Field, error) {
+func (r *recCursor) Field() field.Field {
 	k := bytes.TrimPrefix(r.k, r.rowID)[1:]
 
 	rawType := k[bytes.LastIndexByte(k, '-'):]
 	typ, err := strconv.Atoi(string(rawType))
 	if err != nil {
-		return nil, err
+		r.err = err
+		return field.Field{}
 	}
 
 	idx := bytes.IndexByte(k, '-')
 
-	return &field.Field{
+	return field.Field{
 		Name: string(k[0:idx]),
 		Type: field.Type(typ),
 		Data: r.v,
-	}, nil
+	}
 }

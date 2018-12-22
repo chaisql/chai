@@ -8,7 +8,7 @@ import (
 
 // A Record holds a group of fields.
 type Record interface {
-	Field(string) (*field.Field, error)
+	Field(string) (field.Field, error)
 	Cursor() Cursor
 }
 
@@ -23,33 +23,49 @@ type Cursor interface {
 	Err() error
 
 	// Field returns the current field.
-	Field() (*field.Field, error)
+	Field() field.Field
 }
 
 // FieldBuffer contains a list of fields. It implements the Record interface.
-type FieldBuffer []*field.Field
+type FieldBuffer []field.Field
 
-func (fb *FieldBuffer) Add(f *field.Field) {
+func (fb *FieldBuffer) Add(f field.Field) {
 	*fb = append(*fb, f)
 }
 
-func (fb FieldBuffer) Bytes(name string) ([]byte, error) {
-	f, err := fb.Field(name)
-	if err != nil {
-		return nil, err
+func (fb *FieldBuffer) AddFrom(r Record) error {
+	c := r.Cursor()
+
+	for c.Next() {
+		if c.Err() != nil {
+			return c.Err()
+		}
+
+		*fb = append(*fb, c.Field())
 	}
 
-	return f.Data, nil
+	return nil
 }
 
-func (fb FieldBuffer) Field(name string) (*field.Field, error) {
+func (fb FieldBuffer) Field(name string) (field.Field, error) {
 	for _, f := range fb {
 		if f.Name == name {
 			return f, nil
 		}
 	}
 
-	return nil, errors.New("not found")
+	return field.Field{}, errors.New("not found")
+}
+
+func (fb FieldBuffer) Set(f field.Field) {
+	for i := range fb {
+		if fb[i].Name == f.Name {
+			fb[i] = f
+			return
+		}
+	}
+
+	fb.Add(f)
 }
 
 // Cursor creates a Cursor that iterate over the slice of fields.
@@ -71,8 +87,8 @@ func (c *fieldBufferCursor) Next() bool {
 	return true
 }
 
-func (c *fieldBufferCursor) Field() (*field.Field, error) {
-	return c.buf[c.i], nil
+func (c *fieldBufferCursor) Field() field.Field {
+	return c.buf[c.i]
 }
 
 func (c *fieldBufferCursor) Err() error {

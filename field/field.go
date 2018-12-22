@@ -21,16 +21,16 @@ type Field struct {
 	Data []byte
 }
 
-func NewString(name, value string) *Field {
-	return &Field{
+func NewString(name, value string) Field {
+	return Field{
 		Name: name,
 		Type: String,
 		Data: []byte(value),
 	}
 }
 
-func NewInt64(name string, value int64) *Field {
-	return &Field{
+func NewInt64(name string, value int64) Field {
+	return Field{
 		Name: name,
 		Type: Int64,
 		Data: EncodeInt64(value),

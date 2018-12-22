@@ -14,7 +14,7 @@ func TestTableInsert(t *testing.T) {
 	defer cleanup()
 
 	table := Table{bucket: b}
-	rowid, err := table.Insert(record.FieldBuffer([]*field.Field{
+	rowid, err := table.Insert(record.FieldBuffer([]field.Field{
 		field.NewInt64("a", 10),
 	}))
 	require.NoError(t, err)
@@ -27,7 +27,7 @@ func TestTableCursor(t *testing.T) {
 
 	table := Table{bucket: b}
 	for i := 0; i < 10; i++ {
-		_, err := table.Insert(record.FieldBuffer([]*field.Field{
+		_, err := table.Insert(record.FieldBuffer([]field.Field{
 			field.NewString("name", fmt.Sprintf("name-%d", i)),
 			field.NewInt64("age", int64(i)),
 		}))
@@ -41,8 +41,8 @@ func TestTableCursor(t *testing.T) {
 
 		rc := r.Cursor()
 		for rc.Next() {
-			f, err := rc.Field()
-			require.NoError(t, err)
+			require.NoError(t, rc.Err())
+			f := rc.Field()
 
 			switch f.Name {
 			case "name":

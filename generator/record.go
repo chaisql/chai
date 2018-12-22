@@ -29,18 +29,18 @@ import (
 )
 
 // Field implements the field method of the record.Record interface.
-func ({{$fl}} *{{$structName}}) Field(name string) (*field.Field, error) {
+func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	switch name {
 	{{- range .Struct.Fields }}
 	case "{{.Name}}":
 		{{- if eq .Type "string"}}
-		return &field.Field{
+		return field.Field{
 			Name: "{{.Name}}",
 			Type: field.String,
 			Data: []byte({{$fl}}.{{.Name}}),
 		}, nil
 		{{- else if eq .Type "int64"}}
-		return &field.Field{
+		return field.Field{
 			Name: "{{.Name}}",
 			Type: field.Int64,
 			Data: field.EncodeInt64({{$fl}}.{{.Name}}),
@@ -49,25 +49,26 @@ func ({{$fl}} *{{$structName}}) Field(name string) (*field.Field, error) {
 	{{- end}}
 	}
 
-	return nil, errors.New("unknown field")
+	return field.Field{}, errors.New("unknown field")
 }
 
 {{- $cursor := printf "%sCursor" .Struct.Unexported }}
 
 func ({{$fl}} *{{$structName}}) Cursor() record.Cursor {
-	return &{{$cursor}} {
+	return &{{$cursor}}{
 		{{$structName}}: {{$fl}},
-		i : -1,
+		i: -1,
 	}
 }
 
 type {{$cursor}} struct {
 	{{$structName}} *{{$structName}}
 	i int
+	err error
 }
 
 func (c *{{$cursor}}) Next() bool {
-	if c.i + 2 > {{len .Struct.Fields}} {
+	if c.i+2 > {{len .Struct.Fields}} {
 		return false
 	}
 
@@ -75,19 +76,21 @@ func (c *{{$cursor}}) Next() bool {
 	return true
 }
 
-func (c *{{$cursor}}) Field() (*field.Field, error) {
+func (c *{{$cursor}}) Field() field.Field {
 	switch c.i {
 	{{- range $i, $a := .Struct.Fields }}
 	case {{$i}}:
-		return c.{{$structName}}.Field("{{$a.Name}}")
+		f, _ := c.{{$structName}}.Field("{{$a.Name}}")
+		return f
 	{{- end}}
 	}
 
-	return nil, errors.New("cursor has no more fields")
+	c.err = errors.New("no more fields")
+	return field.Field{}
 }
 
 func (c *{{$cursor}}) Err() error {
-	return nil
+	return c.err
 }
 `
 

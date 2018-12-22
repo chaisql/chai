@@ -8,7 +8,7 @@ import (
 )
 
 func TestFieldBuffer(t *testing.T) {
-	f := FieldBuffer([]*field.Field{
+	f := FieldBuffer([]field.Field{
 		field.NewInt64("a", 10),
 		field.NewString("b", "hello"),
 	})
@@ -20,8 +20,8 @@ func TestFieldBuffer(t *testing.T) {
 
 	var i int
 	for c.Next() {
-		field, err := c.Field()
-		require.NoError(t, err)
+		field := c.Field()
+		require.NotEmpty(t, field)
 		require.Equal(t, field, f[i])
 		i++
 	}
