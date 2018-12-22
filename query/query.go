@@ -6,110 +6,115 @@ import (
 )
 
 type Query struct {
-	t   engine.TableReader
-	err error
+	t       engine.TableReader
+	actions []func([]engine.TableReader) ([]engine.TableReader, error)
+	err     error
 }
 
-func (q *Query) ForEach(fn func(record.Record) error) error {
-	if q.err != nil {
-		return q.err
-	}
+func (q *Query) Run() ([]engine.TableReader, error) {
+	var err error
+	g := []engine.TableReader{q.t}
 
-	c := q.t.Cursor()
-
-	for c.Next() {
-		if err := c.Err(); err != nil {
-			return err
-		}
-
-		r := c.Record()
-
-		err := fn(r)
+	for _, action := range q.actions {
+		g, err = action(g)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return g, nil
+}
+
+func (q *Query) ForEach(fn func(record.Record) error) *Query {
+	action := func(groups []engine.TableReader) ([]engine.TableReader, error) {
+		for _, t := range groups {
+			c := t.Cursor()
+
+			for c.Next() {
+				if err := c.Err(); err != nil {
+					return nil, err
+				}
+
+				r := c.Record()
+
+				err := fn(r)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		return groups, nil
+	}
+
+	q.actions = append(q.actions, action)
+	return q
 }
 
 func (q *Query) Filter(fn func(record.Record) (bool, error)) *Query {
-	var rb RecordBuffer
+	action := func(groups []engine.TableReader) ([]engine.TableReader, error) {
+		g := make([]engine.TableReader, len(groups))
 
-	err := q.ForEach(func(r record.Record) error {
-		ok, err := fn(r)
-		if err != nil {
-			return err
+		for i, t := range groups {
+			var rb RecordBuffer
+
+			c := t.Cursor()
+
+			for c.Next() {
+				if err := c.Err(); err != nil {
+					return nil, err
+				}
+
+				r := c.Record()
+
+				ok, err := fn(r)
+				if err != nil {
+					return nil, err
+				}
+
+				if ok {
+					rb.Add(r)
+				}
+			}
+
+			g[i] = rb
 		}
 
-		if ok {
-			rb.Add(r)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		q.err = err
-		return q
+		return groups, nil
 	}
 
-	return &Query{t: rb}
+	q.actions = append(q.actions, action)
+	return q
 }
 
 func (q *Query) Map(fn func(record.Record) (record.Record, error)) *Query {
-	var rb RecordBuffer
+	action := func(groups []engine.TableReader) ([]engine.TableReader, error) {
+		g := make([]engine.TableReader, len(groups))
 
-	err := q.ForEach(func(r record.Record) error {
-		r, err := fn(r)
-		if err != nil {
-			return err
+		for i, t := range groups {
+			var rb RecordBuffer
+
+			c := t.Cursor()
+
+			for c.Next() {
+				if err := c.Err(); err != nil {
+					return nil, err
+				}
+
+				r, err := fn(c.Record())
+				if err != nil {
+					return nil, err
+				}
+
+				rb.Add(r)
+			}
+
+			g[i] = rb
 		}
 
-		rb.Add(r)
-
-		return nil
-	})
-
-	if err != nil {
-		q.err = err
-		return q
+		return groups, nil
 	}
 
-	return &Query{t: rb}
-}
-
-// RecordBuffer contains a list of records. It implements the engine.TableReader interface.
-type RecordBuffer []record.Record
-
-// Add a record to the buffer.
-func (rb *RecordBuffer) Add(r record.Record) {
-	*rb = append(*rb, r)
-}
-
-// Cursor creates a Cursor that iterate over the slice of records.
-func (rb RecordBuffer) Cursor() engine.Cursor {
-	return &recordBufferCursor{buf: rb, i: -1}
-}
-
-type recordBufferCursor struct {
-	i   int
-	buf RecordBuffer
-}
-
-func (c *recordBufferCursor) Next() bool {
-	if c.i+1 >= len(c.buf) {
-		return false
-	}
-
-	c.i++
-	return true
-}
-
-func (c *recordBufferCursor) Record() record.Record {
-	return c.buf[c.i]
-}
-
-func (c *recordBufferCursor) Err() error {
-	return nil
+	q.actions = append(q.actions, action)
+	return q
 }

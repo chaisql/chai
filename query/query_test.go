@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/stretchr/testify/require"
 )
 
 func TestQuery(t *testing.T) {

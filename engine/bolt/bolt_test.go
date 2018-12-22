@@ -4,15 +4,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"testing"
 
 	bolt "github.com/etcd-io/bbolt"
 	"github.com/stretchr/testify/require"
 )
 
-func tempDir(t *testing.T) (string, func()) {
-	t.Helper()
-
+func tempDir(t require.TestingT) (string, func()) {
 	dir, err := ioutil.TempDir("", "genji")
 	require.NoError(t, err)
 
@@ -21,9 +18,7 @@ func tempDir(t *testing.T) (string, func()) {
 	}
 }
 
-func tempDB(t *testing.T) (*bolt.DB, func()) {
-	t.Helper()
-
+func tempDB(t require.TestingT) (*bolt.DB, func()) {
 	dir, cleanup := tempDir(t)
 	db, err := bolt.Open(path.Join(dir, "test.db"), 0660, nil)
 	if err != nil {
@@ -37,7 +32,7 @@ func tempDB(t *testing.T) (*bolt.DB, func()) {
 	}
 }
 
-func tempBucket(t *testing.T, writable bool) (*bolt.Bucket, func()) {
+func tempBucket(t require.TestingT, writable bool) (*bolt.Bucket, func()) {
 	db, cleanup := tempDB(t)
 
 	tx, err := db.Begin(writable)
