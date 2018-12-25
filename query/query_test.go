@@ -1,6 +1,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -10,54 +11,199 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestQuery(t *testing.T) {
+func TestTableReader(t *testing.T) {
+	t.Run("ForEach", func(t *testing.T) {
+		t.Run("Order", func(t *testing.T) {
+			tr := createTable(t, 10)
+
+			i := 0
+			tr = tr.ForEach(func(r record.Record) error {
+				f, err := r.Field("id")
+				require.NoError(t, err)
+				v, err := field.DecodeInt64(f.Data)
+				require.NoError(t, err)
+				require.EqualValues(t, i, v)
+
+				i++
+				return nil
+			})
+
+			require.NoError(t, tr.Err())
+		})
+
+		t.Run("Error", func(t *testing.T) {
+			tr1 := createTable(t, 10)
+
+			err := errors.New("some error")
+			tr2 := tr1.ForEach(func(r record.Record) error {
+				return err
+			})
+
+			// table readers are immutable, tr1 should not be changed
+			require.NoError(t, tr1.Err())
+			require.Equal(t, err, tr2.Err())
+		})
+	})
+
+	t.Run("Filter", func(t *testing.T) {
+		tr1 := createTable(t, 10)
+
+		// filter odd ids
+		tr2 := tr1.Filter(func(r record.Record) (bool, error) {
+			f, err := r.Field("id")
+			require.NoError(t, err)
+			v, err := field.DecodeInt64(f.Data)
+			require.NoError(t, err)
+			if v%2 == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+
+		require.NoError(t, tr2.Err())
+
+		t.Run("Immutable", func(t *testing.T) {
+			// table readers are immutable, tr1 should not be changed
+			count := 0
+			tr := tr1.ForEach(func(r record.Record) error {
+				count++
+				return nil
+			})
+			require.NoError(t, tr.Err())
+			require.Equal(t, 10, count)
+		})
+
+		t.Run("OK", func(t *testing.T) {
+			// tr2 should only contain even ids
+			count := 0
+			tr := tr2.ForEach(func(r record.Record) error {
+				f, err := r.Field("id")
+				require.NoError(t, err)
+				v, err := field.DecodeInt64(f.Data)
+				require.NoError(t, err)
+				require.True(t, v%2 == 0)
+				count++
+				return nil
+			})
+			require.NoError(t, tr.Err())
+			require.Equal(t, 5, count)
+		})
+
+		t.Run("Error", func(t *testing.T) {
+			err := errors.New("some error")
+			tr := tr1.Filter(func(r record.Record) (bool, error) {
+				return false, err
+			})
+			require.NoError(t, tr1.Err())
+			require.Equal(t, err, tr.Err())
+		})
+	})
+
+	t.Run("Map", func(t *testing.T) {
+		tr1 := createTable(t, 10)
+
+		// double the age
+		tr2 := tr1.Map(func(r record.Record) (record.Record, error) {
+			f, err := r.Field("age")
+			require.NoError(t, err)
+			age, err := field.DecodeInt64(f.Data)
+			require.NoError(t, err)
+
+			var fb record.FieldBuffer
+			fb.AddFrom(r)
+
+			fb.Set(field.NewInt64("age", age*2))
+
+			return &fb, nil
+		})
+
+		require.NoError(t, tr2.Err())
+
+		t.Run("Immutable", func(t *testing.T) {
+			// table readers are immutable, tr1 should not be changed
+			i := 0
+			tr := tr1.ForEach(func(r record.Record) error {
+				f, err := r.Field("age")
+				require.NoError(t, err)
+				age, err := field.DecodeInt64(f.Data)
+				require.NoError(t, err)
+
+				require.Equal(t, int64(i*10), age)
+				i++
+				return nil
+			})
+			require.NoError(t, tr.Err())
+		})
+
+		t.Run("OK", func(t *testing.T) {
+			// tr2 ages should be twice as big
+			i := 0
+			tr := tr2.ForEach(func(r record.Record) error {
+				f, err := r.Field("age")
+				require.NoError(t, err)
+				age, err := field.DecodeInt64(f.Data)
+				require.NoError(t, err)
+
+				require.Equal(t, int64(i*20), age)
+				i++
+				return nil
+			})
+			require.NoError(t, tr.Err())
+		})
+
+		t.Run("Error", func(t *testing.T) {
+			err := errors.New("some error")
+			tr := tr1.Map(func(r record.Record) (record.Record, error) {
+				return nil, err
+			})
+			require.NoError(t, tr1.Err())
+			require.Equal(t, err, tr.Err())
+		})
+	})
+}
+
+func benchmarkTableReaderMapFilter(b *testing.B, size int) {
+	tr := createTable(b, size)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tr.
+			Map(func(r record.Record) (record.Record, error) {
+				return r, nil
+			}).
+			Filter(func(r record.Record) (bool, error) {
+				return true, nil
+			})
+	}
+}
+
+func BenchmarkTableReaderMapFilter1(b *testing.B) {
+	benchmarkTableReaderMapFilter(b, 1)
+}
+
+func BenchmarkTableReaderMapFilter10(b *testing.B) {
+	benchmarkTableReaderMapFilter(b, 10)
+}
+
+func BenchmarkTableReaderMapFilter100(b *testing.B) {
+	benchmarkTableReaderMapFilter(b, 100)
+}
+
+func BenchmarkTableReaderMapFilter1000(b *testing.B) {
+	benchmarkTableReaderMapFilter(b, 1000)
+}
+
+func createTable(t require.TestingT, size int) TableReader {
 	var rb engine.RecordBuffer
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < size; i++ {
 		rb.Add(record.FieldBuffer{
+			field.NewInt64("id", int64(i)),
 			field.NewString("name", fmt.Sprintf("john-%d", i)),
 			field.NewInt64("age", int64(i*10)),
 		})
 	}
 
-	checkState := func(q Query) {
-		i := 0
-		q = q.ForEach(func(r record.Record) error {
-			f, err := r.Field("name")
-			require.NoError(t, err)
-			require.Equal(t, fmt.Sprintf("john-%d", i), string(f.Data))
-			f, err = r.Field("age")
-			require.NoError(t, err)
-			require.Equal(t, field.EncodeInt64(int64(i*10)), f.Data)
-
-			i++
-			return nil
-		})
-
-		tr, err := q.Run(&rb)
-		require.NoError(t, err)
-		require.NotEmpty(t, tr)
-	}
-
-	var q Query
-
-	checkState(q)
-
-	q2 := q.Map(func(r record.Record) (record.Record, error) {
-		var fb record.FieldBuffer
-		err := fb.AddFrom(r)
-		require.NoError(t, err)
-
-		pf, err := fb.Field("name")
-		require.NoError(t, err)
-
-		fb.Set(field.NewString("name", string(pf.Data)+"---"))
-
-		return &fb, nil
-	})
-	_, err := q2.Run(&rb)
-	require.NoError(t, err)
-
-	checkState(q)
-	// checkState(q2)
+	return NewTableReader(&rb)
 }
