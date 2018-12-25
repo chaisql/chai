@@ -27,10 +27,10 @@ func createTable(t require.TestingT, size int) Reader {
 }
 
 func TestReader(t *testing.T) {
+	tr := createTable(t, 10)
+
 	t.Run("ForEach", func(t *testing.T) {
 		t.Run("Order", func(t *testing.T) {
-			tr := createTable(t, 10)
-
 			i := 0
 			tr = tr.ForEach(func(r record.Record) error {
 				f, err := r.Field("id")
@@ -47,24 +47,20 @@ func TestReader(t *testing.T) {
 		})
 
 		t.Run("Error", func(t *testing.T) {
-			tr1 := createTable(t, 10)
-
 			err := errors.New("some error")
-			tr2 := tr1.ForEach(func(r record.Record) error {
+			tr2 := tr.ForEach(func(r record.Record) error {
 				return err
 			})
 
-			// table readers are immutable, tr1 should not be changed
-			require.NoError(t, tr1.Err())
+			// table readers are immutable, tr should not be changed
+			require.NoError(t, tr.Err())
 			require.Equal(t, err, tr2.Err())
 		})
 	})
 
 	t.Run("Filter", func(t *testing.T) {
-		tr1 := createTable(t, 10)
-
 		// filter odd ids
-		tr2 := tr1.Filter(func(r record.Record) (bool, error) {
+		tr2 := tr.Filter(func(r record.Record) (bool, error) {
 			f, err := r.Field("id")
 			require.NoError(t, err)
 			v, err := field.DecodeInt64(f.Data)
@@ -79,9 +75,9 @@ func TestReader(t *testing.T) {
 		require.NoError(t, tr2.Err())
 
 		t.Run("Immutable", func(t *testing.T) {
-			// table readers are immutable, tr1 should not be changed
+			// table readers are immutable, tr should not be changed
 			count := 0
-			tr := tr1.ForEach(func(r record.Record) error {
+			tr := tr.ForEach(func(r record.Record) error {
 				count++
 				return nil
 			})
@@ -107,19 +103,17 @@ func TestReader(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			err := errors.New("some error")
-			tr := tr1.Filter(func(r record.Record) (bool, error) {
+			tr2 := tr.Filter(func(r record.Record) (bool, error) {
 				return false, err
 			})
-			require.NoError(t, tr1.Err())
-			require.Equal(t, err, tr.Err())
+			require.NoError(t, tr.Err())
+			require.Equal(t, err, tr2.Err())
 		})
 	})
 
 	t.Run("Map", func(t *testing.T) {
-		tr1 := createTable(t, 10)
-
 		// double the age
-		tr2 := tr1.Map(func(r record.Record) (record.Record, error) {
+		tr2 := tr.Map(func(r record.Record) (record.Record, error) {
 			f, err := r.Field("age")
 			require.NoError(t, err)
 			age, err := field.DecodeInt64(f.Data)
@@ -136,9 +130,9 @@ func TestReader(t *testing.T) {
 		require.NoError(t, tr2.Err())
 
 		t.Run("Immutable", func(t *testing.T) {
-			// table readers are immutable, tr1 should not be changed
+			// table readers are immutable, tr should not be changed
 			i := 0
-			tr := tr1.ForEach(func(r record.Record) error {
+			tr := tr.ForEach(func(r record.Record) error {
 				f, err := r.Field("age")
 				require.NoError(t, err)
 				age, err := field.DecodeInt64(f.Data)
@@ -169,11 +163,40 @@ func TestReader(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			err := errors.New("some error")
-			tr := tr1.Map(func(r record.Record) (record.Record, error) {
+			tr2 := tr.Map(func(r record.Record) (record.Record, error) {
 				return nil, err
 			})
-			require.NoError(t, tr1.Err())
-			require.Equal(t, err, tr.Err())
+			require.NoError(t, tr.Err())
+			require.Equal(t, err, tr2.Err())
+		})
+	})
+
+	t.Run("Count", func(t *testing.T) {
+		t.Run("Ok", func(t *testing.T) {
+			total, err := tr.Count()
+			require.NoError(t, err)
+			require.Equal(t, 10, total)
+		})
+	})
+
+	t.Run("GroupBy", func(t *testing.T) {
+		t.Run("Ok", func(t *testing.T) {
+
+			g := tr.GroupBy("group")
+			for i, r := range g.Readers {
+				r.ForEach(func(r record.Record) error {
+					f, err := r.Field("group")
+					require.NoError(t, err)
+
+					j, err := field.DecodeInt64(f.Data)
+					require.NoError(t, err)
+
+					require.EqualValues(t, i, j)
+					return nil
+				})
+			}
+
+			require.NoError(t, g.Err())
 		})
 	})
 }

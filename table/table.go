@@ -1,6 +1,8 @@
 package table
 
 import (
+	"sort"
+
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
 )
@@ -87,7 +89,54 @@ func (t Reader) Map(fn func(record.Record) (record.Record, error)) Reader {
 	return t
 }
 
+func (t Reader) GroupBy(fieldName string) GroupReader {
+	var g GroupReader
+
+	if t.err != nil {
+		g.err = t.err
+		return g
+	}
+
+	m := make(map[string]*engine.RecordBuffer)
+	var values []string
+
+	tr := t.ForEach(func(r record.Record) error {
+		f, err := r.Field(fieldName)
+		if err != nil {
+			return err
+		}
+
+		k := string(f.Data)
+		tr, ok := m[k]
+		if !ok {
+			tr = new(engine.RecordBuffer)
+			m[k] = tr
+			values = append(values, k)
+		}
+
+		tr.Add(r)
+		return nil
+	})
+
+	if err := tr.Err(); err != nil {
+		g.err = err
+		return g
+	}
+
+	sort.Strings(values)
+
+	for _, v := range values {
+		g.Readers = append(g.Readers, NewReader(m[v]))
+	}
+
+	return g
+}
+
 func (t Reader) Count() (int, error) {
+	if t.err != nil {
+		return 0, t.err
+	}
+
 	counter := 0
 	t = t.ForEach(func(r record.Record) error {
 		counter++
@@ -97,4 +146,11 @@ func (t Reader) Count() (int, error) {
 	return counter, t.err
 }
 
-type GroupReader []Reader
+type GroupReader struct {
+	Readers []Reader
+	err     error
+}
+
+func (g GroupReader) Err() error {
+	return g.err
+}
