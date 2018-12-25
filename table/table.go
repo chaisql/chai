@@ -19,37 +19,37 @@ func NewReader(t engine.TableReader) Reader {
 	}
 }
 
-func (t Reader) Err() error {
-	return t.err
+func (r Reader) Err() error {
+	return r.err
 }
 
-func (t Reader) ForEach(fn func(record.Record) error) Reader {
-	if t.err != nil {
-		return t
+func (r Reader) ForEach(fn func(record.Record) error) Reader {
+	if r.err != nil {
+		return r
 	}
 
-	c := t.Cursor()
+	c := r.Cursor()
 
 	for c.Next() {
 		if err := c.Err(); err != nil {
-			t.err = err
-			return t
+			r.err = err
+			return r
 		}
 
 		err := fn(c.Record())
 		if err != nil {
-			t.err = err
-			return t
+			r.err = err
+			return r
 		}
 	}
 
-	return t
+	return r
 }
 
-func (t Reader) Filter(fn func(record.Record) (bool, error)) Reader {
+func (r Reader) Filter(fn func(record.Record) (bool, error)) Reader {
 	var rb engine.RecordBuffer
 
-	t = t.ForEach(func(r record.Record) error {
+	r = r.ForEach(func(r record.Record) error {
 		ok, err := fn(r)
 		if err != nil {
 			return err
@@ -62,17 +62,17 @@ func (t Reader) Filter(fn func(record.Record) (bool, error)) Reader {
 		return nil
 	})
 
-	if t.err == nil {
-		t.TableReader = &rb
+	if r.err == nil {
+		r.TableReader = &rb
 	}
 
-	return t
+	return r
 }
 
-func (t Reader) Map(fn func(record.Record) (record.Record, error)) Reader {
+func (r Reader) Map(fn func(record.Record) (record.Record, error)) Reader {
 	var rb engine.RecordBuffer
 
-	t = t.ForEach(func(r record.Record) error {
+	r = r.ForEach(func(r record.Record) error {
 		r, err := fn(r)
 		if err != nil {
 			return err
@@ -82,25 +82,25 @@ func (t Reader) Map(fn func(record.Record) (record.Record, error)) Reader {
 		return nil
 	})
 
-	if t.err == nil {
-		t.TableReader = rb
+	if r.err == nil {
+		r.TableReader = rb
 	}
 
-	return t
+	return r
 }
 
-func (t Reader) GroupBy(fieldName string) GroupReader {
+func (r Reader) GroupBy(fieldName string) GroupReader {
 	var g GroupReader
 
-	if t.err != nil {
-		g.err = t.err
+	if r.err != nil {
+		g.err = r.err
 		return g
 	}
 
 	m := make(map[string]*engine.RecordBuffer)
 	var values []string
 
-	tr := t.ForEach(func(r record.Record) error {
+	tr := r.ForEach(func(r record.Record) error {
 		f, err := r.Field(fieldName)
 		if err != nil {
 			return err
@@ -132,18 +132,18 @@ func (t Reader) GroupBy(fieldName string) GroupReader {
 	return g
 }
 
-func (t Reader) Count() (int, error) {
-	if t.err != nil {
-		return 0, t.err
+func (r Reader) Count() (int, error) {
+	if r.err != nil {
+		return 0, r.err
 	}
 
 	counter := 0
-	t = t.ForEach(func(r record.Record) error {
+	r = r.ForEach(func(r record.Record) error {
 		counter++
 		return nil
 	})
 
-	return counter, t.err
+	return counter, r.err
 }
 
 type GroupReader struct {
@@ -153,4 +153,26 @@ type GroupReader struct {
 
 func (g GroupReader) Err() error {
 	return g.err
+}
+
+func (g GroupReader) Concat() Reader {
+	var r Reader
+
+	if g.err != nil {
+		r.err = g.err
+		return r
+	}
+
+	var fb engine.RecordBuffer
+
+	for _, r := range g.Readers {
+		err := fb.AddFrom(r)
+		if err != nil {
+			r.err = err
+			return r
+		}
+	}
+
+	r.TableReader = &fb
+	return r
 }

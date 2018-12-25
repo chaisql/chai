@@ -199,4 +199,29 @@ func TestReader(t *testing.T) {
 			require.NoError(t, g.Err())
 		})
 	})
+
+	t.Run("Count", func(t *testing.T) {
+		t.Run("Ok", func(t *testing.T) {
+			total, err := tr.Count()
+			require.NoError(t, err)
+			require.Equal(t, 10, total)
+		})
+	})
+}
+
+func TestGroupReader(t *testing.T) {
+	g := GroupReader{
+		Readers: []Reader{
+			createTable(t, 2),
+			createTable(t, 3),
+		},
+	}
+
+	t.Run("Concat", func(t *testing.T) {
+		r := g.Concat()
+		require.NoError(t, r.Err())
+		c, err := r.Count()
+		require.NoError(t, err)
+		require.Equal(t, 5, c)
+	})
 }
