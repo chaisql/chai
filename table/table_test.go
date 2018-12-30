@@ -207,21 +207,28 @@ func TestReader(t *testing.T) {
 			require.Equal(t, 10, total)
 		})
 	})
+
+	t.Run("Chunk", func(t *testing.T) {
+		t.Run("Ok", func(t *testing.T) {
+			g := tr.Chunk(2)
+			require.NoError(t, g.Err())
+			for _, r := range g.Readers {
+				total, err := r.Count()
+				require.NoError(t, err)
+				require.Equal(t, 2, total)
+			}
+		})
+	})
 }
 
 func TestGroupReader(t *testing.T) {
-	g := GroupReader{
-		Readers: []Reader{
-			createTable(t, 2),
-			createTable(t, 3),
-		},
-	}
+	g := createTable(t, 10).Chunk(2)
 
 	t.Run("Concat", func(t *testing.T) {
 		r := g.Concat()
 		require.NoError(t, r.Err())
 		c, err := r.Count()
 		require.NoError(t, err)
-		require.Equal(t, 5, c)
+		require.Equal(t, 10, c)
 	})
 }

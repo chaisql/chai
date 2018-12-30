@@ -132,6 +132,29 @@ func (r Reader) GroupBy(fieldName string) GroupReader {
 	return g
 }
 
+func (r Reader) Chunk(n int) GroupReader {
+	var g GroupReader
+
+	i := 0
+	var fb engine.RecordBuffer
+	r = r.ForEach(func(r record.Record) error {
+		if i%n == 0 {
+			fb = engine.RecordBuffer{}
+			g.Readers = append(g.Readers, NewReader(&fb))
+		}
+
+		fb.Add(r)
+		i++
+		return nil
+	})
+
+	if r.err != nil {
+		g.err = r.err
+	}
+
+	return g
+}
+
 func (r Reader) Count() (int, error) {
 	if r.err != nil {
 		return 0, r.err
