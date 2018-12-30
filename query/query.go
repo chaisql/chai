@@ -1,88 +1,45 @@
 package query
 
 import (
-	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 )
 
-type TableReader struct {
-	engine.TableReader
-
-	err error
+type Query struct {
+	selectors []FieldSelector
 }
 
-func NewTableReader(t engine.TableReader) TableReader {
-	return TableReader{
-		TableReader: t,
-	}
+func Select(selectors ...FieldSelector) Query {
+	return Query{selectors: selectors}
 }
 
-func (t TableReader) Err() error {
-	return t.err
+type FieldSelector interface {
+	Name() string
 }
 
-func (t TableReader) ForEach(fn func(record.Record) error) TableReader {
-	if t.err != nil {
-		return t
-	}
+func (q Query) Run(t table.Reader) (table.Reader, error) {
+	var rb table.RecordBuffer
 
-	c := t.Cursor()
+	tb := table.NewBrowser(t)
+	tb = tb.ForEach(func(r record.Record) error {
+		var fb record.FieldBuffer
 
-	for c.Next() {
-		if err := c.Err(); err != nil {
-			t.err = err
-			return t
+		for _, s := range q.selectors {
+			f, err := r.Field(s.Name())
+			if err != nil {
+				return err
+			}
+
+			fb.Add(f)
 		}
 
-		err := fn(c.Record())
-		if err != nil {
-			t.err = err
-			return t
-		}
-	}
-
-	return t
-}
-
-func (t TableReader) Filter(fn func(record.Record) (bool, error)) TableReader {
-	var rb engine.RecordBuffer
-
-	t = t.ForEach(func(r record.Record) error {
-		ok, err := fn(r)
-		if err != nil {
-			return err
-		}
-
-		if ok {
-			rb.Add(r)
-		}
-
+		rb.Add(&fb)
 		return nil
 	})
 
-	if t.err == nil {
-		t.TableReader = &rb
+	if tb.Err() != nil {
+		return nil, tb.Err()
 	}
 
-	return t
-}
-
-func (t TableReader) Map(fn func(record.Record) (record.Record, error)) TableReader {
-	var rb engine.RecordBuffer
-
-	t = t.ForEach(func(r record.Record) error {
-		r, err := fn(r)
-		if err != nil {
-			return err
-		}
-
-		rb.Add(r)
-		return nil
-	})
-
-	if t.err == nil {
-		t.TableReader = rb
-	}
-
-	return t
+	return &rb, nil
 }
