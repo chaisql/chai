@@ -1,6 +1,10 @@
 package engine
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/asdine/genji/table"
+)
 
 // Errors.
 var (
@@ -15,5 +19,5 @@ type Engine interface {
 type Transaction interface {
 	Rollback() error
 	Commit() error
-	Table(name string) (Table, error)
+	Table(name string) (table.Table, error)
 }

@@ -1,201 +1,83 @@
 package table
 
 import (
-	"sort"
-
-	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
 )
 
-type Reader struct {
-	engine.TableReader
-
-	err error
+// A Table represents a group of records.
+type Table interface {
+	Reader
+	Writer
 }
 
-func NewReader(t engine.TableReader) Reader {
-	return Reader{
-		TableReader: t,
-	}
+type Reader interface {
+	Cursor() Cursor
 }
 
-func (r Reader) Err() error {
-	return r.err
+type Writer interface {
+	Insert(record.Record) (rowid []byte, err error)
 }
 
-func (r Reader) ForEach(fn func(record.Record) error) Reader {
-	if r.err != nil {
-		return r
-	}
+// A Cursor iterates over the fields of a record.
+type Cursor interface {
+	// Next advances the cursor to the next record which will then be available
+	// through the Record method. It returns false when the cursor stops.
+	// If an error occurs during iteration, the Err method will return it.
+	Next() bool
 
-	c := r.Cursor()
+	// Err returns the error, if any, that was encountered during iteration.
+	Err() error
+
+	// Record returns the current record.
+	Record() record.Record
+}
+
+// RecordBuffer contains a list of records. It implements the Reader interface.
+type RecordBuffer []record.Record
+
+// Add a record to the buffer.
+func (rb *RecordBuffer) Add(r record.Record) {
+	*rb = append(*rb, r)
+}
+
+// AddFrom copies all the records of t to the buffer.
+func (rb *RecordBuffer) AddFrom(t Reader) error {
+	c := t.Cursor()
 
 	for c.Next() {
-		if err := c.Err(); err != nil {
-			r.err = err
-			return r
+		if c.Err() != nil {
+			return c.Err()
 		}
 
-		err := fn(c.Record())
-		if err != nil {
-			r.err = err
-			return r
-		}
+		*rb = append(*rb, c.Record())
 	}
 
-	return r
+	return nil
 }
 
-func (r Reader) Filter(fn func(record.Record) (bool, error)) Reader {
-	var rb engine.RecordBuffer
-
-	r = r.ForEach(func(r record.Record) error {
-		ok, err := fn(r)
-		if err != nil {
-			return err
-		}
-
-		if ok {
-			rb.Add(r)
-		}
-
-		return nil
-	})
-
-	if r.err == nil {
-		r.TableReader = &rb
-	}
-
-	return r
+// Cursor creates a Cursor that iterates over the slice of records.
+func (rb RecordBuffer) Cursor() Cursor {
+	return &recordBufferCursor{buf: rb, i: -1}
 }
 
-func (r Reader) Map(fn func(record.Record) (record.Record, error)) Reader {
-	var rb engine.RecordBuffer
-
-	r = r.ForEach(func(r record.Record) error {
-		r, err := fn(r)
-		if err != nil {
-			return err
-		}
-
-		rb.Add(r)
-		return nil
-	})
-
-	if r.err == nil {
-		r.TableReader = rb
-	}
-
-	return r
+type recordBufferCursor struct {
+	i   int
+	buf RecordBuffer
 }
 
-func (r Reader) GroupBy(fieldName string) GroupReader {
-	var g GroupReader
-
-	if r.err != nil {
-		g.err = r.err
-		return g
+func (c *recordBufferCursor) Next() bool {
+	if c.i+1 >= len(c.buf) {
+		return false
 	}
 
-	m := make(map[string]*engine.RecordBuffer)
-	var values []string
-
-	tr := r.ForEach(func(r record.Record) error {
-		f, err := r.Field(fieldName)
-		if err != nil {
-			return err
-		}
-
-		k := string(f.Data)
-		tr, ok := m[k]
-		if !ok {
-			tr = new(engine.RecordBuffer)
-			m[k] = tr
-			values = append(values, k)
-		}
-
-		tr.Add(r)
-		return nil
-	})
-
-	if err := tr.Err(); err != nil {
-		g.err = err
-		return g
-	}
-
-	sort.Strings(values)
-
-	for _, v := range values {
-		g.Readers = append(g.Readers, NewReader(m[v]))
-	}
-
-	return g
+	c.i++
+	return true
 }
 
-func (r Reader) Chunk(n int) GroupReader {
-	var g GroupReader
-
-	i := 0
-	var fb engine.RecordBuffer
-	r = r.ForEach(func(r record.Record) error {
-		if i%n == 0 {
-			fb = engine.RecordBuffer{}
-			g.Readers = append(g.Readers, NewReader(&fb))
-		}
-
-		fb.Add(r)
-		i++
-		return nil
-	})
-
-	if r.err != nil {
-		g.err = r.err
-	}
-
-	return g
+func (c *recordBufferCursor) Record() record.Record {
+	return c.buf[c.i]
 }
 
-func (r Reader) Count() (int, error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-
-	counter := 0
-	r = r.ForEach(func(r record.Record) error {
-		counter++
-		return nil
-	})
-
-	return counter, r.err
-}
-
-type GroupReader struct {
-	Readers []Reader
-	err     error
-}
-
-func (g GroupReader) Err() error {
-	return g.err
-}
-
-func (g GroupReader) Concat() Reader {
-	var r Reader
-
-	if g.err != nil {
-		r.err = g.err
-		return r
-	}
-
-	var fb engine.RecordBuffer
-
-	for _, r := range g.Readers {
-		err := fb.AddFrom(r)
-		if err != nil {
-			r.err = err
-			return r
-		}
-	}
-
-	r.TableReader = &fb
-	return r
+func (c *recordBufferCursor) Err() error {
+	return nil
 }

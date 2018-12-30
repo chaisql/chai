@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
 
@@ -48,7 +48,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 	return rowid, nil
 }
 
-func (t *Table) Cursor() engine.Cursor {
+func (t *Table) Cursor() table.Cursor {
 	return &tableCursor{
 		b: t.bucket,
 	}
