@@ -7,6 +7,7 @@ import (
 
 type Query struct {
 	selectors []FieldSelector
+	matchers  []Matcher
 }
 
 func Select(selectors ...FieldSelector) Query {
@@ -20,8 +21,7 @@ type FieldSelector interface {
 func (q Query) Run(t table.Reader) (table.Reader, error) {
 	var rb table.RecordBuffer
 
-	tb := table.NewBrowser(t)
-	tb = tb.ForEach(func(r record.Record) error {
+	err := table.NewBrowser(t).ForEach(func(r record.Record) error {
 		var fb record.FieldBuffer
 
 		for _, s := range q.selectors {
@@ -35,11 +35,20 @@ func (q Query) Run(t table.Reader) (table.Reader, error) {
 
 		rb.Add(&fb)
 		return nil
-	})
+	}).Err()
 
-	if tb.Err() != nil {
-		return nil, tb.Err()
+	if err != nil {
+		return nil, err
 	}
 
 	return &rb, nil
+}
+
+type Matcher interface {
+	Match(record.Record) (bool, error)
+}
+
+func (q Query) Where(matchers ...Matcher) Query {
+	q.matchers = append(q.matchers, matchers...)
+	return q
 }
