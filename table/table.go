@@ -1,6 +1,9 @@
 package table
 
 import (
+	"errors"
+
+	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 )
 
@@ -12,6 +15,7 @@ type Table interface {
 
 type Reader interface {
 	Cursor() Cursor
+	Record(id []byte) (record.Record, error)
 }
 
 type Writer interface {
@@ -33,11 +37,22 @@ type Cursor interface {
 }
 
 // RecordBuffer contains a list of records. It implements the Reader interface.
-type RecordBuffer []record.Record
+type RecordBuffer struct {
+	records map[string]record.Record
+	ids     [][]byte
+	counter int64
+}
 
 // Add a record to the buffer.
 func (rb *RecordBuffer) Add(r record.Record) {
-	*rb = append(*rb, r)
+	rb.counter++
+	id := field.EncodeInt64(rb.counter)
+	rb.ids = append(rb.ids, id)
+	if rb.records == nil {
+		rb.records = make(map[string]record.Record)
+	}
+
+	rb.records[string(id)] = r
 }
 
 // AddFrom copies all the records of t to the buffer.
@@ -49,24 +64,33 @@ func (rb *RecordBuffer) AddFrom(t Reader) error {
 			return c.Err()
 		}
 
-		*rb = append(*rb, c.Record())
+		rb.Add(c.Record())
 	}
 
 	return nil
 }
 
+func (rb *RecordBuffer) Record(id []byte) (record.Record, error) {
+	rec, ok := rb.records[string(id)]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+
+	return rec, nil
+}
+
 // Cursor creates a Cursor that iterates over the slice of records.
-func (rb RecordBuffer) Cursor() Cursor {
+func (rb *RecordBuffer) Cursor() Cursor {
 	return &recordBufferCursor{buf: rb, i: -1}
 }
 
 type recordBufferCursor struct {
 	i   int
-	buf RecordBuffer
+	buf *RecordBuffer
 }
 
 func (c *recordBufferCursor) Next() bool {
-	if c.i+1 >= len(c.buf) {
+	if c.i+1 >= len(c.buf.records) {
 		return false
 	}
 
@@ -75,7 +99,7 @@ func (c *recordBufferCursor) Next() bool {
 }
 
 func (c *recordBufferCursor) Record() record.Record {
-	return c.buf[c.i]
+	return c.buf.records[string(c.buf.ids[c.i])]
 }
 
 func (c *recordBufferCursor) Err() error {

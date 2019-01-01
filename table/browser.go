@@ -82,7 +82,7 @@ func (b Browser) Map(fn func(record.Record) (record.Record, error)) Browser {
 	})
 
 	if b.err == nil {
-		b.Reader = rb
+		b.Reader = &rb
 	}
 
 	return b
