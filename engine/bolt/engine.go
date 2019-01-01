@@ -48,6 +48,19 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 	return rowid, nil
 }
 
+func (t *Table) Record(rowid []byte) (record.Record, error) {
+	prefix := append(rowid, '-')
+	k, _ := t.bucket.Cursor().Seek(prefix)
+	if k == nil {
+		return nil, errors.New("not found")
+	}
+
+	return &rec{
+		b:     t.bucket,
+		rowid: rowid,
+	}, nil
+}
+
 func (t *Table) Cursor() table.Cursor {
 	return &tableCursor{
 		b: t.bucket,
@@ -78,16 +91,16 @@ func (c *tableCursor) Next() bool {
 		return true
 	}
 
-	rowID := c.curRowID
-	for ; c.k != nil && bytes.Equal(rowID, c.curRowID); c.k, c.v = c.c.Next() {
-		rowID = c.k[0:bytes.IndexByte(c.k, '-')]
+	rowid := c.curRowID
+	for ; c.k != nil && bytes.Equal(rowid, c.curRowID); c.k, c.v = c.c.Next() {
+		rowid = c.k[0:bytes.IndexByte(c.k, '-')]
 	}
 
 	if c.k == nil {
 		return false
 	}
 
-	c.curRowID = rowID
+	c.curRowID = rowid
 	return true
 }
 
@@ -98,17 +111,17 @@ func (c *tableCursor) Err() error {
 func (c *tableCursor) Record() record.Record {
 	return &rec{
 		b:     c.b,
-		rowID: c.curRowID,
+		rowid: c.curRowID,
 	}
 }
 
 type rec struct {
 	b     *bolt.Bucket
-	rowID []byte
+	rowid []byte
 }
 
 func (r *rec) get(name string) ([]byte, []byte, error) {
-	prefix := []byte(fmt.Sprintf("%s-%s", r.rowID, name))
+	prefix := []byte(fmt.Sprintf("%s-%s", r.rowid, name))
 	k, v := r.b.Cursor().Seek(prefix)
 	if v == nil || k == nil || !bytes.HasPrefix(k, prefix) {
 		return nil, nil, errors.New("not found")
@@ -123,7 +136,7 @@ func (r *rec) Field(name string) (field.Field, error) {
 		return field.Field{}, err
 	}
 
-	rawType := k[bytes.LastIndexByte(r.rowID, '-'):]
+	rawType := k[bytes.LastIndexByte(r.rowid, '-'):]
 	typ, err := strconv.Atoi(string(rawType))
 	if err != nil {
 		return field.Field{}, err
@@ -139,20 +152,20 @@ func (r *rec) Field(name string) (field.Field, error) {
 func (r *rec) Cursor() record.Cursor {
 	return &recCursor{
 		c:     r.b.Cursor(),
-		rowID: r.rowID,
+		rowid: r.rowid,
 	}
 }
 
 type recCursor struct {
 	c     *bolt.Cursor
-	rowID []byte
+	rowid []byte
 	k, v  []byte
 	err   error
 }
 
 func (r *recCursor) Next() bool {
 	if r.k == nil {
-		r.k, r.v = r.c.Seek(r.rowID)
+		r.k, r.v = r.c.Seek(r.rowid)
 	} else {
 		r.k, r.v = r.c.Next()
 	}
@@ -163,7 +176,7 @@ func (r *recCursor) Next() bool {
 
 	curRowID := r.k[0:bytes.IndexByte(r.k, '-')]
 
-	return bytes.Equal(r.rowID, curRowID)
+	return bytes.Equal(r.rowid, curRowID)
 }
 
 func (r *recCursor) Err() error {
@@ -171,7 +184,7 @@ func (r *recCursor) Err() error {
 }
 
 func (r *recCursor) Field() field.Field {
-	k := bytes.TrimPrefix(r.k, r.rowID)[1:]
+	k := bytes.TrimPrefix(r.k, r.rowid)[1:]
 
 	rawType := k[bytes.LastIndexByte(k, '-'):]
 	typ, err := strconv.Atoi(string(rawType))
