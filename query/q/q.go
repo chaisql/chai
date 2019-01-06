@@ -53,49 +53,6 @@ func compareInts(f Field, i int, op func(a, b int) bool) func(r record.Record) (
 	}
 }
 
-func GteInt(f Field, i int) *Matcher {
-	return &Matcher{fn: compareInts(f, i, func(a, b int) bool {
-		return a >= b
-	})}
-}
-
-func LtInt(f Field, i int) *Matcher {
-	return &Matcher{fn: compareInts(f, i, func(a, b int) bool {
-		return a < b
-	})}
-}
-
-func LteInt(f Field, i int) *Matcher {
-	return &Matcher{fn: compareInts(f, i, func(a, b int) bool {
-		return a <= b
-	})}
-}
-
-func GtInt(f Field, i int) *IndexMatcher {
-	data := field.EncodeInt64(int64(i))
-
-	return &IndexMatcher{
-		Matcher: &Matcher{
-			fn: compareInts(f, i, func(a, b int) bool {
-				return a > b
-			}),
-		},
-
-		fn: func(im map[string]index.Index) ([][]byte, error) {
-			idx := im[f.Name()]
-			c := idx.Cursor()
-			rowid, _ := c.Seek(data)
-			var rowids [][]byte
-			for rowid != nil {
-				rowid, _ = c.Next()
-				rowids = append(rowids, rowid)
-			}
-
-			return rowids, nil
-		},
-	}
-}
-
 func EqInt(f Field, i int) *IndexMatcher {
 	data := field.EncodeInt64(int64(i))
 
@@ -114,6 +71,126 @@ func EqInt(f Field, i int) *IndexMatcher {
 			for rowid != nil && bytes.Equal(data, v) {
 				rowids = append(rowids, rowid)
 				rowid, v = c.Next()
+			}
+
+			return rowids, nil
+		},
+	}
+}
+
+func GtInt(f Field, i int) *IndexMatcher {
+	data := field.EncodeInt64(int64(i))
+
+	return &IndexMatcher{
+		Matcher: &Matcher{
+			fn: compareInts(f, i, func(a, b int) bool {
+				return a > b
+			}),
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			idx := im[f.Name()]
+			c := idx.Cursor()
+			rowid, v := c.Seek(data)
+			var rowids [][]byte
+			for rowid != nil {
+				if !bytes.Equal(data, v) {
+					rowids = append(rowids, rowid)
+				}
+
+				rowid, _ = c.Next()
+			}
+
+			return rowids, nil
+		},
+	}
+}
+
+func GteInt(f Field, i int) *IndexMatcher {
+	data := field.EncodeInt64(int64(i))
+
+	return &IndexMatcher{
+		Matcher: &Matcher{
+			fn: compareInts(f, i, func(a, b int) bool {
+				return a >= b
+			}),
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			idx := im[f.Name()]
+			c := idx.Cursor()
+			rowid, _ := c.Seek(data)
+			var rowids [][]byte
+			for rowid != nil {
+				rowids = append(rowids, rowid)
+				rowid, _ = c.Next()
+			}
+
+			return rowids, nil
+		},
+	}
+}
+
+func LtInt(f Field, i int) *IndexMatcher {
+	data := field.EncodeInt64(int64(i))
+
+	return &IndexMatcher{
+		Matcher: &Matcher{
+			fn: compareInts(f, i, func(a, b int) bool {
+				return a < b
+			}),
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			idx := im[f.Name()]
+			c := idx.Cursor()
+			rowid, v := c.Seek(data)
+			rowid, v = c.Prev()
+			var rowids [][]byte
+			for rowid != nil {
+				if !bytes.Equal(data, v) {
+					rowids = append(rowids, rowid)
+				}
+				rowid, v = c.Prev()
+			}
+
+			return rowids, nil
+		},
+	}
+}
+
+func LteInt(f Field, i int) *IndexMatcher {
+	data := field.EncodeInt64(int64(i))
+
+	return &IndexMatcher{
+		Matcher: &Matcher{
+			fn: compareInts(f, i, func(a, b int) bool {
+				return a <= b
+			}),
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			idx := im[f.Name()]
+			c := idx.Cursor()
+			rowid, v := c.Seek(data)
+			if rowid == nil {
+				rowid, v = c.Prev()
+			}
+
+			var pick bool
+			if bytes.Equal(data, v) {
+				pick = true
+			}
+
+			var rowids [][]byte
+			for rowid != nil {
+				if pick {
+					rowids = append(rowids, rowid)
+				} else if bytes.Compare(data, v) < 0 {
+					pick = true
+				}
+
+				rowid, v = c.Prev()
 			}
 
 			return rowids, nil
