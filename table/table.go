@@ -15,7 +15,7 @@ type Table interface {
 
 type Reader interface {
 	Cursor() Cursor
-	Record(id []byte) (record.Record, error)
+	Record(rowid []byte) (record.Record, error)
 }
 
 type Writer interface {

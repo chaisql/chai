@@ -1,9 +1,11 @@
 package q
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 )
 
@@ -19,6 +21,16 @@ type Matcher struct {
 
 func (m *Matcher) Match(r record.Record) (bool, error) {
 	return m.fn(r)
+}
+
+type IndexMatcher struct {
+	*Matcher
+
+	fn func(im map[string]index.Index) ([][]byte, error)
+}
+
+func (m *IndexMatcher) MatchIndex(im map[string]index.Index) ([][]byte, error) {
+	return m.fn(im)
 }
 
 func compareInts(f Field, i int, op func(a, b int) bool) func(r record.Record) (bool, error) {
@@ -41,12 +53,6 @@ func compareInts(f Field, i int, op func(a, b int) bool) func(r record.Record) (
 	}
 }
 
-func GtInt(f Field, i int) *Matcher {
-	return &Matcher{fn: compareInts(f, i, func(a, b int) bool {
-		return a > b
-	})}
-}
-
 func GteInt(f Field, i int) *Matcher {
 	return &Matcher{fn: compareInts(f, i, func(a, b int) bool {
 		return a >= b
@@ -65,8 +71,52 @@ func LteInt(f Field, i int) *Matcher {
 	})}
 }
 
-func EqInt(f Field, i int) *Matcher {
-	return &Matcher{fn: compareInts(f, i, func(a, b int) bool {
-		return a == b
-	})}
+func GtInt(f Field, i int) *IndexMatcher {
+	data := field.EncodeInt64(int64(i))
+
+	return &IndexMatcher{
+		Matcher: &Matcher{
+			fn: compareInts(f, i, func(a, b int) bool {
+				return a > b
+			}),
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			idx := im[f.Name()]
+			c := idx.Cursor()
+			rowid, _ := c.Seek(data)
+			var rowids [][]byte
+			for rowid != nil {
+				rowid, _ = c.Next()
+				rowids = append(rowids, rowid)
+			}
+
+			return rowids, nil
+		},
+	}
+}
+
+func EqInt(f Field, i int) *IndexMatcher {
+	data := field.EncodeInt64(int64(i))
+
+	return &IndexMatcher{
+		Matcher: &Matcher{
+			fn: compareInts(f, i, func(a, b int) bool {
+				return a == b
+			}),
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			idx := im[f.Name()]
+			c := idx.Cursor()
+			rowid, v := c.Seek(data)
+			var rowids [][]byte
+			for rowid != nil && bytes.Equal(data, v) {
+				rowids = append(rowids, rowid)
+				rowid, v = c.Next()
+			}
+
+			return rowids, nil
+		},
+	}
 }
