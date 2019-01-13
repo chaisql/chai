@@ -1,13 +1,14 @@
 package index
 
+import "github.com/asdine/genji/field"
+
 type Index interface {
 	Cursor() Cursor
+	Set(f field.Field) error
 }
 
 type Cursor interface {
-	First() (rowid []byte, value []byte)
-	Last() (rowid []byte, value []byte)
-	Next() (rowid []byte, value []byte)
-	Prev() (rowid []byte, value []byte)
-	Seek(seek []byte) (rowid []byte, value []byte)
+	Next() (value field.Field, rowid []byte)
+	Prev() (value field.Field, rowid []byte)
+	Seek(seek field.Field) (value field.Field, rowid []byte)
 }
