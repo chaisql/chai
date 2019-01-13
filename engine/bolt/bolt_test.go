@@ -52,3 +52,14 @@ func tempBucket(t require.TestingT, writable bool) (*bolt.Bucket, func()) {
 		cleanup()
 	}
 }
+
+func countItems(t require.TestingT, b *bolt.Bucket) int {
+	i := 0
+	err := b.ForEach(func(k, v []byte) error {
+		i++
+		return nil
+	})
+	require.NoError(t, err)
+
+	return i
+}
