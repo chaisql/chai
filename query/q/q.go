@@ -66,7 +66,7 @@ func EqInt(f Field, i int) *IndexMatcher {
 		fn: func(im map[string]index.Index) ([][]byte, error) {
 			idx := im[f.Name()]
 			c := idx.Cursor()
-			rowid, v := c.Seek(data)
+			v, rowid := c.Seek(data)
 			var rowids [][]byte
 			for rowid != nil && bytes.Equal(data, v) {
 				rowids = append(rowids, rowid)
@@ -91,7 +91,7 @@ func GtInt(f Field, i int) *IndexMatcher {
 		fn: func(im map[string]index.Index) ([][]byte, error) {
 			idx := im[f.Name()]
 			c := idx.Cursor()
-			rowid, v := c.Seek(data)
+			v, rowid := c.Seek(data)
 			var rowids [][]byte
 			for rowid != nil {
 				if !bytes.Equal(data, v) {
@@ -119,7 +119,7 @@ func GteInt(f Field, i int) *IndexMatcher {
 		fn: func(im map[string]index.Index) ([][]byte, error) {
 			idx := im[f.Name()]
 			c := idx.Cursor()
-			rowid, _ := c.Seek(data)
+			_, rowid := c.Seek(data)
 			var rowids [][]byte
 			for rowid != nil {
 				rowids = append(rowids, rowid)
@@ -144,7 +144,7 @@ func LtInt(f Field, i int) *IndexMatcher {
 		fn: func(im map[string]index.Index) ([][]byte, error) {
 			idx := im[f.Name()]
 			c := idx.Cursor()
-			rowid, v := c.Seek(data)
+			v, rowid := c.Seek(data)
 			rowid, v = c.Prev()
 			var rowids [][]byte
 			for rowid != nil {
@@ -172,7 +172,7 @@ func LteInt(f Field, i int) *IndexMatcher {
 		fn: func(im map[string]index.Index) ([][]byte, error) {
 			idx := im[f.Name()]
 			c := idx.Cursor()
-			rowid, v := c.Seek(data)
+			v, rowid := c.Seek(data)
 			if rowid == nil {
 				rowid, v = c.Prev()
 			}
