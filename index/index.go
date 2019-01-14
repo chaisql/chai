@@ -10,5 +10,5 @@ type Cursor interface {
 	Last() (value []byte, rowid []byte, err error)
 	Next() (value []byte, rowid []byte, err error)
 	Prev() (value []byte, rowid []byte, err error)
-	// Seek(seek []byte) (value []byte, rowid []byte, err error)
+	Seek(seek []byte) (value []byte, rowid []byte, err error)
 }

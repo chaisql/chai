@@ -127,3 +127,23 @@ func (c *Cursor) Prev() ([]byte, []byte, error) {
 
 	return val, rowid, nil
 }
+
+func (c *Cursor) Seek(seek []byte) (value []byte, rowid []byte, err error) {
+	val, _ := c.c.Seek(seek)
+	if val == nil {
+		return nil, nil, nil
+	}
+
+	c.val = val
+	b := c.b.Bucket(val)
+	if b == nil {
+		return nil, nil, fmt.Errorf("unknown bucket %s", val)
+	}
+	c.ic = b.Cursor()
+	rowid, _ = c.ic.First()
+	if rowid == nil {
+		return nil, nil, nil
+	}
+
+	return val, rowid, nil
+}

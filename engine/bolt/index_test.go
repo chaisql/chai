@@ -113,4 +113,14 @@ func TestIndexFirstLast(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, d2, val)
 	require.Equal(t, field.EncodeInt64(5), rowid)
+
+	val, rowid, err = c.Seek(d1)
+	require.NoError(t, err)
+	require.Equal(t, d1, val)
+	require.Equal(t, field.EncodeInt64(0), rowid)
+
+	val, rowid, err = c.Seek(d2)
+	require.NoError(t, err)
+	require.Equal(t, d2, val)
+	require.Equal(t, field.EncodeInt64(3), rowid)
 }
