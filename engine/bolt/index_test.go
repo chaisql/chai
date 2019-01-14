@@ -50,37 +50,31 @@ func TestIndexNextPrev(t *testing.T) {
 	}
 
 	c := idx.Cursor()
-	val, rowid, err := c.First()
-	require.NoError(t, err)
+	val, rowid := c.First()
 	require.Equal(t, d2, val)
 	require.Equal(t, field.EncodeInt64(0), rowid)
 
 	for i := 1; i < 10; i++ {
-		val, rowid, err := c.Next()
-		require.NoError(t, err)
+		val, rowid := c.Next()
 		require.Equal(t, d2, val)
 		require.Equal(t, field.EncodeInt64(int64(i)), rowid)
 	}
 
-	val, rowid, err = c.Next()
-	require.NoError(t, err)
+	val, rowid = c.Next()
 	require.Equal(t, d1, val)
 	require.Equal(t, field.EncodeInt64(20), rowid)
 
-	val, rowid, err = c.Next()
-	require.NoError(t, err)
+	val, rowid = c.Next()
 	require.Nil(t, val)
 	require.Nil(t, rowid)
 
 	for i := 9; i >= 0; i-- {
-		val, rowid, err := c.Prev()
-		require.NoError(t, err)
+		val, rowid := c.Prev()
 		require.Equal(t, d2, val)
 		require.Equal(t, field.EncodeInt64(int64(i)), rowid)
 	}
 
-	val, rowid, err = c.Prev()
-	require.NoError(t, err)
+	val, rowid = c.Prev()
 	require.Nil(t, val)
 	require.Nil(t, rowid)
 }
@@ -104,23 +98,19 @@ func TestIndexFirstLast(t *testing.T) {
 	}
 
 	c := idx.Cursor()
-	val, rowid, err := c.First()
-	require.NoError(t, err)
+	val, rowid := c.First()
 	require.Equal(t, d1, val)
 	require.Equal(t, field.EncodeInt64(0), rowid)
 
-	val, rowid, err = c.Last()
-	require.NoError(t, err)
+	val, rowid = c.Last()
 	require.Equal(t, d2, val)
 	require.Equal(t, field.EncodeInt64(5), rowid)
 
-	val, rowid, err = c.Seek(d1)
-	require.NoError(t, err)
+	val, rowid = c.Seek(d1)
 	require.Equal(t, d1, val)
 	require.Equal(t, field.EncodeInt64(0), rowid)
 
-	val, rowid, err = c.Seek(d2)
-	require.NoError(t, err)
+	val, rowid = c.Seek(d2)
 	require.Equal(t, d2, val)
 	require.Equal(t, field.EncodeInt64(3), rowid)
 }

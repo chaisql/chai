@@ -1,8 +1,6 @@
 package bolt
 
 import (
-	"fmt"
-
 	"github.com/asdine/genji/index"
 	bolt "github.com/etcd-io/bbolt"
 )
@@ -34,55 +32,55 @@ type Cursor struct {
 	val []byte
 }
 
-func (c *Cursor) First() ([]byte, []byte, error) {
+func (c *Cursor) First() ([]byte, []byte) {
 	c.ic = nil
 	val, _ := c.c.First()
 	if val == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	c.val = val
 	b := c.b.Bucket(val)
 	if b == nil {
-		return nil, nil, fmt.Errorf("unknown bucket %s", val)
+		return nil, nil
 	}
 
 	c.ic = b.Cursor()
 	rowid, _ := c.ic.First()
-	return val, rowid, nil
+	return val, rowid
 }
 
-func (c *Cursor) Last() ([]byte, []byte, error) {
+func (c *Cursor) Last() ([]byte, []byte) {
 	c.ic = nil
 	val, _ := c.c.Last()
 	if val == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	c.val = val
 	b := c.b.Bucket(val)
 	if b == nil {
-		return nil, nil, fmt.Errorf("unknown bucket %s", val)
+		return nil, nil
 	}
 
 	c.ic = b.Cursor()
 	rowid, _ := c.ic.Last()
-	return val, rowid, nil
+	return val, rowid
 }
 
-func (c *Cursor) Next() ([]byte, []byte, error) {
+func (c *Cursor) Next() ([]byte, []byte) {
 	var val, rowid []byte
 
 	if c.ic == nil {
 		val, _ = c.c.Next()
 		if val == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 
 		c.val = val
 		b := c.b.Bucket(val)
 		if b == nil {
-			return nil, nil, fmt.Errorf("unknown bucket %s", val)
+			return nil, nil
 		}
 		c.ic = b.Cursor()
 		rowid, _ = c.ic.First()
@@ -96,22 +94,22 @@ func (c *Cursor) Next() ([]byte, []byte, error) {
 		return c.Next()
 	}
 
-	return val, rowid, nil
+	return val, rowid
 }
 
-func (c *Cursor) Prev() ([]byte, []byte, error) {
+func (c *Cursor) Prev() ([]byte, []byte) {
 	var val, rowid []byte
 
 	if c.ic == nil {
 		val, _ = c.c.Prev()
 		if val == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 
 		c.val = val
 		b := c.b.Bucket(val)
 		if b == nil {
-			return nil, nil, fmt.Errorf("unknown bucket %s", val)
+			return nil, nil
 		}
 		c.ic = b.Cursor()
 		rowid, _ = c.ic.Last()
@@ -125,25 +123,25 @@ func (c *Cursor) Prev() ([]byte, []byte, error) {
 		return c.Prev()
 	}
 
-	return val, rowid, nil
+	return val, rowid
 }
 
-func (c *Cursor) Seek(seek []byte) (value []byte, rowid []byte, err error) {
+func (c *Cursor) Seek(seek []byte) ([]byte, []byte) {
 	val, _ := c.c.Seek(seek)
 	if val == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	c.val = val
 	b := c.b.Bucket(val)
 	if b == nil {
-		return nil, nil, fmt.Errorf("unknown bucket %s", val)
+		return nil, nil
 	}
 	c.ic = b.Cursor()
-	rowid, _ = c.ic.First()
+	rowid, _ := c.ic.First()
 	if rowid == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	return val, rowid, nil
+	return val, rowid
 }

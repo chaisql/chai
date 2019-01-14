@@ -6,9 +6,9 @@ type Index interface {
 }
 
 type Cursor interface {
-	First() (value []byte, rowid []byte, err error)
-	Last() (value []byte, rowid []byte, err error)
-	Next() (value []byte, rowid []byte, err error)
-	Prev() (value []byte, rowid []byte, err error)
-	Seek(seek []byte) (value []byte, rowid []byte, err error)
+	First() (value []byte, rowid []byte)
+	Last() (value []byte, rowid []byte)
+	Next() (value []byte, rowid []byte)
+	Prev() (value []byte, rowid []byte)
+	Seek(seek []byte) (value []byte, rowid []byte)
 }
