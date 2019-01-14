@@ -98,7 +98,7 @@ func GtInt(f Field, i int) *IndexMatcher {
 					rowids = append(rowids, rowid)
 				}
 
-				rowid, _ = c.Next()
+				v, rowid = c.Next()
 			}
 
 			return rowids, nil
@@ -123,7 +123,7 @@ func GteInt(f Field, i int) *IndexMatcher {
 			var rowids [][]byte
 			for rowid != nil {
 				rowids = append(rowids, rowid)
-				rowid, _ = c.Next()
+				_, rowid = c.Next()
 			}
 
 			return rowids, nil
@@ -145,13 +145,13 @@ func LtInt(f Field, i int) *IndexMatcher {
 			idx := im[f.Name()]
 			c := idx.Cursor()
 			v, rowid := c.Seek(data)
-			rowid, v = c.Prev()
+			v, rowid = c.Prev()
 			var rowids [][]byte
 			for rowid != nil {
 				if !bytes.Equal(data, v) {
-					rowids = append(rowids, rowid)
+					rowids = append([][]byte{rowid}, rowids...)
 				}
-				rowid, v = c.Prev()
+				v, rowid = c.Prev()
 			}
 
 			return rowids, nil
@@ -174,23 +174,16 @@ func LteInt(f Field, i int) *IndexMatcher {
 			c := idx.Cursor()
 			v, rowid := c.Seek(data)
 			if rowid == nil {
-				rowid, v = c.Prev()
-			}
-
-			var pick bool
-			if bytes.Equal(data, v) {
-				pick = true
+				v, rowid = c.Prev()
 			}
 
 			var rowids [][]byte
 			for rowid != nil {
-				if pick {
-					rowids = append(rowids, rowid)
-				} else if bytes.Compare(data, v) < 0 {
-					pick = true
+				if bytes.Compare(v, data) <= 0 {
+					rowids = append([][]byte{rowid}, rowids...)
 				}
 
-				rowid, v = c.Prev()
+				v, rowid = c.Prev()
 			}
 
 			return rowids, nil

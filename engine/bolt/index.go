@@ -9,8 +9,12 @@ type Index struct {
 	b *bolt.Bucket
 }
 
-func (i *Index) Set(d []byte, rowid []byte) error {
-	b, err := i.b.CreateBucketIfNotExists(d)
+func NewIndex(b *bolt.Bucket) *Index {
+	return &Index{b}
+}
+
+func (i *Index) Set(value []byte, rowid []byte) error {
+	b, err := i.b.CreateBucketIfNotExists(value)
 	if err != nil {
 		return err
 	}

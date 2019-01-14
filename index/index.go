@@ -2,7 +2,7 @@ package index
 
 type Index interface {
 	Cursor() Cursor
-	Set(d []byte) error
+	Set(value []byte, rowid []byte) error
 }
 
 type Cursor interface {
