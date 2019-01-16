@@ -22,15 +22,7 @@ func TestIndexSet(t *testing.T) {
 	err = idx.Set(d2, []byte("3"))
 	require.NoError(t, err)
 
-	require.Equal(t, 2, countItems(t, b))
-
-	bb := b.Bucket(d1)
-	require.NotNil(t, bb)
-	require.Equal(t, 2, countItems(t, bb))
-
-	bb = b.Bucket(d2)
-	require.NotNil(t, bb)
-	require.Equal(t, 1, countItems(t, bb))
+	require.Equal(t, 3, countItems(t, b))
 }
 
 func TestIndexNextPrev(t *testing.T) {

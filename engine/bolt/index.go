@@ -1,6 +1,9 @@
 package bolt
 
 import (
+	"bytes"
+
+	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	bolt "github.com/etcd-io/bbolt"
 )
@@ -14,12 +17,40 @@ func NewIndex(b *bolt.Bucket) *Index {
 }
 
 func (i *Index) Set(value []byte, rowid []byte) error {
-	b, err := i.b.CreateBucketIfNotExists(value)
+	var counter int64 = 1
+	var err error
+
+	c := i.b.Cursor()
+	v, _ := c.Seek(value)
+	if bytes.HasPrefix(v, value) {
+		for bytes.HasPrefix(v, value) {
+			v, _ = c.Next()
+		}
+		if v != nil && !bytes.HasPrefix(v, value) {
+			v, _ = c.Prev()
+		} else if v == nil {
+			v, _ = c.Last()
+		}
+
+		counter, err = field.DecodeInt64(v[bytes.LastIndexByte(v, '_')+1:])
+		if err != nil {
+			return err
+		}
+		counter++
+	}
+
+	buf := bytes.NewBuffer(value)
+	_, err = buf.WriteRune('_')
 	if err != nil {
 		return err
 	}
 
-	return b.Put(rowid, nil)
+	_, err = buf.Write(field.EncodeInt64(counter))
+	if err != nil {
+		return err
+	}
+
+	return i.b.Put(buf.Bytes(), rowid)
 }
 
 func (i *Index) Cursor() index.Cursor {
@@ -32,120 +63,50 @@ func (i *Index) Cursor() index.Cursor {
 type Cursor struct {
 	b   *bolt.Bucket
 	c   *bolt.Cursor
-	ic  *bolt.Cursor
 	val []byte
 }
 
 func (c *Cursor) First() ([]byte, []byte) {
-	c.ic = nil
-	val, _ := c.c.First()
-	if val == nil {
+	value, rowid := c.c.First()
+	if value == nil {
 		return nil, nil
 	}
 
-	c.val = val
-	b := c.b.Bucket(val)
-	if b == nil {
-		return nil, nil
-	}
-
-	c.ic = b.Cursor()
-	rowid, _ := c.ic.First()
-	return val, rowid
+	return value[:bytes.LastIndexByte(value, '_')], rowid
 }
 
 func (c *Cursor) Last() ([]byte, []byte) {
-	c.ic = nil
-	val, _ := c.c.Last()
-	if val == nil {
+	value, rowid := c.c.Last()
+	if value == nil {
 		return nil, nil
 	}
 
-	c.val = val
-	b := c.b.Bucket(val)
-	if b == nil {
-		return nil, nil
-	}
-
-	c.ic = b.Cursor()
-	rowid, _ := c.ic.Last()
-	return val, rowid
+	return value[:bytes.LastIndexByte(value, '_')], rowid
 }
 
 func (c *Cursor) Next() ([]byte, []byte) {
-	var val, rowid []byte
-
-	if c.ic == nil {
-		val, _ = c.c.Next()
-		if val == nil {
-			return nil, nil
-		}
-
-		c.val = val
-		b := c.b.Bucket(val)
-		if b == nil {
-			return nil, nil
-		}
-		c.ic = b.Cursor()
-		rowid, _ = c.ic.First()
-	} else {
-		rowid, _ = c.ic.Next()
-		val = c.val
+	value, rowid := c.c.Next()
+	if value == nil {
+		return nil, nil
 	}
 
-	if rowid == nil {
-		c.ic = nil
-		return c.Next()
-	}
-
-	return val, rowid
+	return value[:bytes.LastIndexByte(value, '_')], rowid
 }
 
 func (c *Cursor) Prev() ([]byte, []byte) {
-	var val, rowid []byte
-
-	if c.ic == nil {
-		val, _ = c.c.Prev()
-		if val == nil {
-			return nil, nil
-		}
-
-		c.val = val
-		b := c.b.Bucket(val)
-		if b == nil {
-			return nil, nil
-		}
-		c.ic = b.Cursor()
-		rowid, _ = c.ic.Last()
-	} else {
-		rowid, _ = c.ic.Prev()
-		val = c.val
+	value, rowid := c.c.Prev()
+	if value == nil {
+		return nil, nil
 	}
 
-	if rowid == nil {
-		c.ic = nil
-		return c.Prev()
-	}
-
-	return val, rowid
+	return value[:bytes.LastIndexByte(value, '_')], rowid
 }
 
 func (c *Cursor) Seek(seek []byte) ([]byte, []byte) {
-	val, _ := c.c.Seek(seek)
-	if val == nil {
+	value, rowid := c.c.Seek(seek)
+	if value == nil {
 		return nil, nil
 	}
 
-	c.val = val
-	b := c.b.Bucket(val)
-	if b == nil {
-		return nil, nil
-	}
-	c.ic = b.Cursor()
-	rowid, _ := c.ic.First()
-	if rowid == nil {
-		return nil, nil
-	}
-
-	return val, rowid
+	return value[:bytes.LastIndexByte(value, '_')], rowid
 }
