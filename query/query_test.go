@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
@@ -32,7 +31,7 @@ func TestQuery(t *testing.T) {
 		t.Run("Ok", func(t *testing.T) {
 			tb := createTable(t, 10)
 
-			tt, err := Select(q.Field("id"), q.Field("name")).Run(tb)
+			tt, err := Select(Field("id"), Field("name")).Run(tb)
 			require.NoError(t, err)
 
 			err = table.NewBrowser(tt).ForEach(func(r record.Record) error {

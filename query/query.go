@@ -44,10 +44,6 @@ func (q Query) Run(t table.Reader) (table.Reader, error) {
 	return &rb, nil
 }
 
-type Matcher interface {
-	Match(record.Record) (bool, error)
-}
-
 func (q Query) Where(matchers ...Matcher) Query {
 	q.matchers = append(q.matchers, matchers...)
 	return q

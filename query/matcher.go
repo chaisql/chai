@@ -1,4 +1,4 @@
-package q
+package query
 
 import (
 	"bytes"
@@ -15,16 +15,20 @@ func (f Field) Name() string {
 	return string(f)
 }
 
-type Matcher struct {
+type Matcher interface {
+	Match(record.Record) (bool, error)
+}
+
+type matcher struct {
 	fn func(record.Record) (bool, error)
 }
 
-func (m *Matcher) Match(r record.Record) (bool, error) {
+func (m *matcher) Match(r record.Record) (bool, error) {
 	return m.fn(r)
 }
 
 type IndexMatcher struct {
-	*Matcher
+	Matcher
 
 	fn func(im map[string]index.Index) ([][]byte, error)
 }
@@ -148,7 +152,7 @@ func lteIndexMatcher(data []byte, idx index.Index) ([][]byte, error) {
 func EqInt(f Field, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareInts(f, func(v int64) bool {
 				return v == base
 			}),
@@ -163,7 +167,7 @@ func EqInt(f Field, i int) *IndexMatcher {
 func GtInt(f Field, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareInts(f, func(v int64) bool {
 				return v > base
 			}),
@@ -178,7 +182,7 @@ func GtInt(f Field, i int) *IndexMatcher {
 func GteInt(f Field, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareInts(f, func(v int64) bool {
 				return v >= base
 			}),
@@ -193,7 +197,7 @@ func GteInt(f Field, i int) *IndexMatcher {
 func LtInt(f Field, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareInts(f, func(v int64) bool {
 				return v < base
 			}),
@@ -208,7 +212,7 @@ func LtInt(f Field, i int) *IndexMatcher {
 func LteInt(f Field, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareInts(f, func(v int64) bool {
 				return v <= base
 			}),
@@ -224,7 +228,7 @@ func EqStr(f Field, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareStrings(f, func(v []byte) bool {
 				return bytes.Equal(v, base)
 			}),
@@ -240,7 +244,7 @@ func GtStr(f Field, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareStrings(f, func(v []byte) bool {
 				return bytes.Compare(v, base) > 0
 			}),
@@ -256,7 +260,7 @@ func GteStr(f Field, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareStrings(f, func(v []byte) bool {
 				return bytes.Compare(v, base) >= 0
 			}),
@@ -272,7 +276,7 @@ func LtStr(f Field, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareStrings(f, func(v []byte) bool {
 				return bytes.Compare(v, base) < 0
 			}),
@@ -288,7 +292,7 @@ func LteStr(f Field, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &Matcher{
+		Matcher: &matcher{
 			fn: compareStrings(f, func(v []byte) bool {
 				return bytes.Compare(v, base) <= 0
 			}),
