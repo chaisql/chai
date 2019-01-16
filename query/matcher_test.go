@@ -194,4 +194,39 @@ func TestAndMatcher(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, ok)
 	})
+
+	t.Run("IndexMatcher", func(t *testing.T) {
+		im, cleanup := createIndexMap(t, []int{1, 2, 2, 3, 5, 10}, []string{"ACA", "LOSC", "OL", "OM", "OM", "PSG"})
+		defer cleanup()
+
+		tests := []struct {
+			name     string
+			matchers []query.Matcher
+			expected []int64
+		}{
+			{">2", []query.Matcher{query.GtInt(query.Field("age"), 2)}, []int64{3, 4, 5}},
+			{">2 && <10", []query.Matcher{query.GtInt(query.Field("age"), 2), query.LtInt(query.Field("age"), 10)}, []int64{3, 4}},
+			{">10 && <20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []int64{}},
+			{">8 && <3", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 3)}, []int64{}},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				m := query.And(test.matchers...)
+
+				rowids, err := m.MatchIndex(im)
+				require.NoError(t, err)
+
+				ids := make([]int64, len(rowids))
+				for i, rowid := range rowids {
+					id, err := field.DecodeInt64(rowid)
+					require.NoError(t, err)
+					ids[i] = id
+				}
+
+				require.Equal(t, test.expected, ids)
+			})
+		}
+
+	})
 }

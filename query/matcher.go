@@ -320,7 +320,46 @@ func And(matchers ...Matcher) *IndexMatcher {
 		},
 
 		fn: func(im map[string]index.Index) ([][]byte, error) {
-			return nil, nil
+			var set [][]byte
+
+			for _, m := range matchers {
+				if i, ok := m.(*IndexMatcher); ok {
+					rowids, err := i.MatchIndex(im)
+					if err != nil {
+						return nil, err
+					}
+
+					if len(rowids) == 0 {
+						return nil, nil
+					}
+
+					if set == nil {
+						set = rowids
+						continue
+					}
+
+					set = intersection(set, rowids)
+					if len(set) == 0 {
+						return nil, nil
+					}
+				}
+			}
+
+			return set, nil
 		},
 	}
+}
+
+func intersection(s1, s2 [][]byte) [][]byte {
+	var set [][]byte
+
+	for _, v1 := range s1 {
+		for _, v2 := range s2 {
+			if bytes.Equal(v1, v2) {
+				set = append(set, v1)
+			}
+		}
+	}
+
+	return set
 }
