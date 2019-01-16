@@ -238,6 +238,64 @@ func TestAndMatcher(t *testing.T) {
 	})
 }
 
+func TestOrMatcher(t *testing.T) {
+	t.Run("Matcher", func(t *testing.T) {
+		m := query.Or(
+			query.GtInt(query.Field("age"), 8),
+			query.LtInt(query.Field("age"), 2),
+		)
+
+		ok, err := m.Match(createRecord(1))
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		ok, err = m.Match(createRecord(9))
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		ok, err = m.Match(createRecord(5))
+		require.NoError(t, err)
+		require.False(t, ok)
+	})
+
+	t.Run("IndexMatcher", func(t *testing.T) {
+		im, cleanup := createIndexMap(t, []int{1, 2, 2, 3, 5, 10}, []string{"ACA", "LOSC", "OL", "OM", "OM", "PSG"})
+		defer cleanup()
+
+		tests := []struct {
+			name     string
+			matchers []query.Matcher
+			expected []int64
+		}{
+			{">2", []query.Matcher{query.GtInt(query.Field("age"), 2)}, []int64{3, 4, 5}},
+			{">8 || <2", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 2)}, []int64{5, 0}},
+			{">0 || <11", []query.Matcher{query.GtInt(query.Field("age"), 0), query.LtInt(query.Field("age"), 11)}, []int64{0, 1, 2, 3, 4, 5}},
+			{">10 || <20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []int64{0, 1, 2, 3, 4, 5}},
+			{">10 || >20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.GtInt(query.Field("age"), 20)}, []int64{}},
+			{">8 || non index matcher", []query.Matcher{query.GtInt(query.Field("age"), 8), new(simpleMatcher)}, []int64{}},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				m := query.Or(test.matchers...)
+
+				rowids, err := m.MatchIndex(im)
+				require.NoError(t, err)
+
+				ids := make([]int64, len(rowids))
+				for i, rowid := range rowids {
+					id, err := field.DecodeInt64(rowid)
+					require.NoError(t, err)
+					ids[i] = id
+				}
+
+				require.Equal(t, test.expected, ids)
+			})
+		}
+
+	})
+}
+
 func benchmarkMatcher(b *testing.B, size int) {
 	records := make([]record.Record, size)
 	for i := 0; i < size; i++ {

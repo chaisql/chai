@@ -352,6 +352,51 @@ func And(matchers ...Matcher) *IndexMatcher {
 	}
 }
 
+func Or(matchers ...Matcher) *IndexMatcher {
+	return &IndexMatcher{
+		Matcher: &matcher{
+			fn: func(r record.Record) (bool, error) {
+				for _, m := range matchers {
+					ok, err := m.Match(r)
+					if err != nil {
+						return false, err
+					}
+
+					if ok {
+						return true, nil
+					}
+				}
+
+				return false, nil
+			},
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			var set [][]byte
+
+			for _, m := range matchers {
+				if i, ok := m.(*IndexMatcher); ok {
+					rowids, err := i.MatchIndex(im)
+					if err != nil {
+						return nil, err
+					}
+
+					if set == nil {
+						set = rowids
+						continue
+					}
+
+					set = union(set, rowids)
+				} else {
+					return nil, nil
+				}
+			}
+
+			return set, nil
+		},
+	}
+}
+
 func intersection(s1, s2 [][]byte) [][]byte {
 	var set [][]byte
 
@@ -364,4 +409,24 @@ func intersection(s1, s2 [][]byte) [][]byte {
 	}
 
 	return set
+}
+
+func union(s1, s2 [][]byte) [][]byte {
+	for _, v2 := range s2 {
+		var found bool
+
+		for _, v1 := range s1 {
+			if bytes.Equal(v1, v2) {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			s1 = append(s1, v2)
+		}
+	}
+
+	return s1
 }
