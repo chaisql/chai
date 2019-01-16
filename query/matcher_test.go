@@ -58,7 +58,7 @@ func TestMatchers(t *testing.T) {
 	}
 }
 
-func createIndexMap(t *testing.T, ages []int, teams []string) (map[string]index.Index, func()) {
+func createIndexMap(t require.TestingT, ages []int, teams []string) (map[string]index.Index, func()) {
 	dir, err := ioutil.TempDir("", "genji")
 	require.NoError(t, err)
 
@@ -79,7 +79,7 @@ func createIndexMap(t *testing.T, ages []int, teams []string) (map[string]index.
 	}
 }
 
-func createIntIndex(t *testing.T, tx *bbolt.Tx, ages []int) index.Index {
+func createIntIndex(t require.TestingT, tx *bbolt.Tx, ages []int) index.Index {
 	b, err := tx.CreateBucket([]byte("age"))
 	require.NoError(t, err)
 
@@ -93,7 +93,7 @@ func createIntIndex(t *testing.T, tx *bbolt.Tx, ages []int) index.Index {
 	return idx
 }
 
-func createStrIndex(t *testing.T, tx *bbolt.Tx, teams []string) index.Index {
+func createStrIndex(t require.TestingT, tx *bbolt.Tx, teams []string) index.Index {
 	b, err := tx.CreateBucket([]byte("team"))
 	require.NoError(t, err)
 
@@ -179,6 +179,12 @@ func TestIndexMatchers(t *testing.T) {
 	}
 }
 
+type simpleMatcher struct{}
+
+func (s *simpleMatcher) Match(record.Record) (bool, error) {
+	return true, nil
+}
+
 func TestAndMatcher(t *testing.T) {
 	t.Run("Matcher", func(t *testing.T) {
 		m := query.And(
@@ -208,6 +214,7 @@ func TestAndMatcher(t *testing.T) {
 			{">2 && <10", []query.Matcher{query.GtInt(query.Field("age"), 2), query.LtInt(query.Field("age"), 10)}, []int64{3, 4}},
 			{">10 && <20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []int64{}},
 			{">8 && <3", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 3)}, []int64{}},
+			{">8 && non index matcher", []query.Matcher{query.GtInt(query.Field("age"), 8), new(simpleMatcher)}, []int64{}},
 		}
 
 		for _, test := range tests {
@@ -229,4 +236,95 @@ func TestAndMatcher(t *testing.T) {
 		}
 
 	})
+}
+
+func benchmarkMatcher(b *testing.B, size int) {
+	records := make([]record.Record, size)
+	for i := 0; i < size; i++ {
+		records[i] = createRecord(i)
+	}
+
+	matcher := query.And(
+		query.GtInt(
+			query.Field("age"),
+			2,
+		),
+		query.LtInt(
+			query.Field("age"),
+			10,
+		),
+	)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, r := range records {
+			matcher.Match(r)
+		}
+	}
+}
+
+func BenchmarkMatcher1(b *testing.B) {
+	benchmarkMatcher(b, 1)
+}
+
+func BenchmarkMatcher10(b *testing.B) {
+	benchmarkMatcher(b, 10)
+}
+
+func BenchmarkMatcher100(b *testing.B) {
+	benchmarkMatcher(b, 100)
+}
+
+func BenchmarkMatcher1000(b *testing.B) {
+	benchmarkMatcher(b, 1000)
+}
+
+func BenchmarkMatcher10000(b *testing.B) {
+	benchmarkMatcher(b, 10000)
+}
+
+func benchmarkIndexMatcher(b *testing.B, size int) {
+	ages := make([]int, size)
+	for i := 0; i < size; i++ {
+		ages[i] = i
+	}
+
+	im, cleanup := createIndexMap(b, ages, nil)
+	defer cleanup()
+
+	matcher := query.And(
+		query.GtInt(
+			query.Field("age"),
+			2,
+		),
+		query.LtInt(
+			query.Field("age"),
+			10,
+		),
+	)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		matcher.MatchIndex(im)
+	}
+	b.StopTimer()
+}
+
+func BenchmarkIndexMatcher1(b *testing.B) {
+	benchmarkIndexMatcher(b, 1)
+}
+func BenchmarkIndexMatcher10(b *testing.B) {
+	benchmarkIndexMatcher(b, 10)
+}
+
+func BenchmarkIndexMatcher100(b *testing.B) {
+	benchmarkIndexMatcher(b, 100)
+}
+
+func BenchmarkIndexMatcher1000(b *testing.B) {
+	benchmarkIndexMatcher(b, 1000)
+}
+
+func BenchmarkIndexMatcher10000(b *testing.B) {
+	benchmarkIndexMatcher(b, 10000)
 }

@@ -342,6 +342,8 @@ func And(matchers ...Matcher) *IndexMatcher {
 					if len(set) == 0 {
 						return nil, nil
 					}
+				} else {
+					return nil, nil
 				}
 			}
 
