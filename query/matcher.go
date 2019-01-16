@@ -303,3 +303,24 @@ func LteStr(f Field, s string) *IndexMatcher {
 		},
 	}
 }
+
+func And(matchers ...Matcher) *IndexMatcher {
+	return &IndexMatcher{
+		Matcher: &matcher{
+			fn: func(r record.Record) (bool, error) {
+				for _, m := range matchers {
+					ok, err := m.Match(r)
+					if !ok || err != nil {
+						return ok, err
+					}
+				}
+
+				return true, nil
+			},
+		},
+
+		fn: func(im map[string]index.Index) ([][]byte, error) {
+			return nil, nil
+		},
+	}
+}

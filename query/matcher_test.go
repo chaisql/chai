@@ -178,3 +178,20 @@ func TestIndexMatchers(t *testing.T) {
 		})
 	}
 }
+
+func TestAndMatcher(t *testing.T) {
+	t.Run("Matcher", func(t *testing.T) {
+		m := query.And(
+			query.GtInt(query.Field("age"), 2),
+			query.LtInt(query.Field("age"), 10),
+		)
+
+		ok, err := m.Match(createRecord(5))
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		ok, err = m.Match(createRecord(10))
+		require.NoError(t, err)
+		require.False(t, ok)
+	})
+}
