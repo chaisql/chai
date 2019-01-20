@@ -398,17 +398,38 @@ func Or(matchers ...Matcher) *IndexMatcher {
 }
 
 func intersection(s1, s2 [][]byte) [][]byte {
-	var set [][]byte
+	var lower, bigger [][]byte
+	if len(s1) < len(s2) {
+		lower, bigger = s1, s2
+	} else {
+		lower, bigger = s2, s1
+	}
 
-	for _, v1 := range s1 {
-		for _, v2 := range s2 {
-			if bytes.Equal(v1, v2) {
-				set = append(set, v1)
-			}
+	set := make([][]byte, 0, len(lower))
+
+	for _, v := range lower {
+		if inSet(bigger, v) {
+			set = append(set, v)
 		}
 	}
 
 	return set
+}
+
+func inSet(set [][]byte, v []byte) bool {
+	if len(set) == 0 {
+		return false
+	}
+
+	idx := len(set) / 2
+	comp := bytes.Compare(set[idx], v)
+	if comp < 0 {
+		return inSet(set[idx+1:], v)
+	} else if comp > 0 {
+		return inSet(set[0:idx], v)
+	}
+
+	return true
 }
 
 func union(s1, s2 [][]byte) [][]byte {
