@@ -408,7 +408,7 @@ func intersection(s1, s2 [][]byte) [][]byte {
 	set := make([][]byte, 0, len(lower))
 
 	for _, v := range lower {
-		if inSet(bigger, v) {
+		if binarySearch(bigger, v) {
 			set = append(set, v)
 		}
 	}
@@ -416,7 +416,7 @@ func intersection(s1, s2 [][]byte) [][]byte {
 	return set
 }
 
-func inSet(set [][]byte, v []byte) bool {
+func binarySearch(set [][]byte, v []byte) bool {
 	if len(set) == 0 {
 		return false
 	}
@@ -424,30 +424,42 @@ func inSet(set [][]byte, v []byte) bool {
 	idx := len(set) / 2
 	comp := bytes.Compare(set[idx], v)
 	if comp < 0 {
-		return inSet(set[idx+1:], v)
+		return binarySearch(set[idx+1:], v)
 	} else if comp > 0 {
-		return inSet(set[0:idx], v)
+		return binarySearch(set[0:idx], v)
 	}
 
 	return true
 }
 
 func union(s1, s2 [][]byte) [][]byte {
-	for _, v2 := range s2 {
-		var found bool
+	var lower, bigger [][]byte
+	if len(s1) < len(s2) {
+		lower, bigger = s1, s2
+	} else {
+		lower, bigger = s2, s1
+	}
 
-		for _, v1 := range s1 {
-			if bytes.Equal(v1, v2) {
-				found = true
+	set := make([][]byte, 0, len(s1)+len(s2))
 
+	for _, v := range lower {
+		for i := 0; i < len(bigger); i++ {
+			switch bytes.Compare(bigger[i], v) {
+			case -1:
+				set = append(set, bigger[i])
+			case 0:
+				bigger = bigger[i+1:]
+				break
+			case 1:
+				bigger = bigger[i:]
 				break
 			}
 		}
 
-		if !found {
-			s1 = append(s1, v2)
-		}
+		set = append(set, v)
 	}
 
-	return s1
+	set = append(set, bigger...)
+
+	return set
 }

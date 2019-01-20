@@ -268,7 +268,7 @@ func TestOrMatcher(t *testing.T) {
 			expected []int64
 		}{
 			{">2", []query.Matcher{query.GtInt(query.Field("age"), 2)}, []int64{3, 4, 5}},
-			{">8 || <2", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 2)}, []int64{5, 0}},
+			{">8 || <2", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 2)}, []int64{0, 5}},
 			{">0 || <11", []query.Matcher{query.GtInt(query.Field("age"), 0), query.LtInt(query.Field("age"), 11)}, []int64{0, 1, 2, 3, 4, 5}},
 			{">10 || <20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []int64{0, 1, 2, 3, 4, 5}},
 			{">10 || >20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.GtInt(query.Field("age"), 20)}, []int64{}},
