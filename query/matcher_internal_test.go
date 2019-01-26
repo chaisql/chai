@@ -40,14 +40,17 @@ func BenchmarkIntersection10000(b *testing.B) {
 }
 
 func benchmarkUnion(b *testing.B, size int) {
-	set := btree.New(3)
+	set1 := btree.New(3)
+	set2 := btree.New(3)
+
 	for i := 0; i < size; i++ {
-		set.ReplaceOrInsert(Item(field.EncodeInt64(int64(i))))
+		set1.ReplaceOrInsert(Item(field.EncodeInt64(int64(i))))
+		set2.ReplaceOrInsert(Item(field.EncodeInt64(int64(i))))
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		union(set, set)
+		union(set1, set2)
 	}
 }
 
