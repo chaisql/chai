@@ -3,6 +3,7 @@ module github.com/asdine/genji
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/etcd-io/bbolt v1.3.0
+	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
 	github.com/google/pprof v0.0.0-20181206194817-3ea8567a2e57 // indirect
 	github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
