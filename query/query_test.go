@@ -31,8 +31,13 @@ func TestQuery(t *testing.T) {
 		t.Run("Ok", func(t *testing.T) {
 			tb := createTable(t, 10)
 
-			tt, err := Select(Field("id"), Field("name")).Run(tb)
+			tt, err := Select(Field("id"), Field("name")).Where(GtInt(Field("age"), 20)).Run(tb)
 			require.NoError(t, err)
+
+			b := table.NewBrowser(tt)
+			count, err := b.Count()
+			require.NoError(t, err)
+			require.Equal(t, 7, count)
 
 			err = table.NewBrowser(tt).ForEach(func(r record.Record) error {
 				_, err := r.Field("id")
