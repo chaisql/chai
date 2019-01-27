@@ -55,3 +55,32 @@ func TestQuery(t *testing.T) {
 		})
 	})
 }
+
+func benchmarkQuery(b *testing.B, size int) {
+	tb := createTable(b, size)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Select(Field("id"), Field("name")).Where(GtInt(Field("age"), 20)).Run(tb)
+	}
+}
+
+func BenchmarkQuery1(b *testing.B) {
+	benchmarkQuery(b, 1)
+}
+
+func BenchmarkQuery10(b *testing.B) {
+	benchmarkQuery(b, 10)
+}
+
+func BenchmarkQuery100(b *testing.B) {
+	benchmarkQuery(b, 100)
+}
+
+func BenchmarkQuery1000(b *testing.B) {
+	benchmarkQuery(b, 1000)
+}
+
+func BenchmarkQuery10000(b *testing.B) {
+	benchmarkQuery(b, 10000)
+}

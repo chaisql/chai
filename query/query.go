@@ -19,44 +19,32 @@ type FieldSelector interface {
 }
 
 func (q Query) Run(t table.Reader) (table.Reader, error) {
-	var rb table.RecordBuffer
-
 	matcher := And(q.matchers...)
 
-	err := table.NewBrowser(t).
-		Map(func(r record.Record) (record.Record, error) {
-			ok, err := matcher.Match(r)
-			if err != nil {
-				return nil, err
-			}
-
-			if ok {
-				return r, nil
-			}
-
-			return nil, nil
+	b := table.NewBrowser(t).
+		Filter(func(r record.Record) (bool, error) {
+			return matcher.Match(r)
 		}).
-		ForEach(func(r record.Record) error {
+		Map(func(r record.Record) (record.Record, error) {
 			var fb record.FieldBuffer
 
 			for _, s := range q.selectors {
 				f, err := r.Field(s.Name())
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				fb.Add(f)
 			}
 
-			rb.Add(&fb)
-			return nil
-		}).Err()
+			return &fb, nil
+		})
 
-	if err != nil {
-		return nil, err
+	if b.Err() != nil {
+		return nil, b.Err()
 	}
 
-	return &rb, nil
+	return b.Reader, nil
 }
 
 func (q Query) Where(matchers ...Matcher) Query {
