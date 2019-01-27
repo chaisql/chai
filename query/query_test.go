@@ -61,7 +61,7 @@ func benchmarkQuery(b *testing.B, size int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		Select(Field("id"), Field("name")).Where(GtInt(Field("age"), 20)).Run(tb)
+		Select(Field("id"), Field("name"), Field("age"), Field("group")).Where(GtInt(Field("age"), -200)).Run(tb)
 	}
 }
 
