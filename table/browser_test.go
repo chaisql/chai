@@ -14,7 +14,7 @@ func createTable(t require.TestingT, size int) Browser {
 	var rb RecordBuffer
 
 	for i := 0; i < size; i++ {
-		rb.Add(record.FieldBuffer{
+		rb.Insert(record.FieldBuffer{
 			field.NewInt64("id", int64(i)),
 			field.NewString("name", fmt.Sprintf("john-%d", i)),
 			field.NewInt64("age", int64(i*10)),

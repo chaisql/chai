@@ -55,7 +55,7 @@ func (b Browser) Filter(fn func(record.Record) (bool, error)) Browser {
 		}
 
 		if ok {
-			rb.Add(r)
+			rb.Insert(r)
 		}
 
 		return nil
@@ -77,7 +77,7 @@ func (b Browser) Map(fn func(record.Record) (record.Record, error)) Browser {
 			return err
 		}
 
-		rb.Add(r)
+		rb.Insert(r)
 		return nil
 	})
 
@@ -113,7 +113,7 @@ func (b Browser) GroupBy(fieldName string) BrowserGroup {
 			values = append(values, k)
 		}
 
-		tr.Add(r)
+		tr.Insert(r)
 		return nil
 	})
 
@@ -142,7 +142,7 @@ func (b Browser) Chunk(n int) BrowserGroup {
 			g.Readers = append(g.Readers, NewBrowser(&fb))
 		}
 
-		fb.Add(r)
+		fb.Insert(r)
 		i++
 		return nil
 	})
@@ -188,7 +188,7 @@ func (g BrowserGroup) Concat() Browser {
 	var fb RecordBuffer
 
 	for _, r := range g.Readers {
-		err := fb.AddFrom(r)
+		err := fb.InsertFrom(r)
 		if err != nil {
 			b.err = err
 			return b
