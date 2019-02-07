@@ -16,6 +16,12 @@ func (f Field) Name() string {
 	return string(f)
 }
 
+type Table string
+
+func (t Table) Name() string {
+	return string(t)
+}
+
 type Matcher interface {
 	Match(record.Record) (bool, error)
 }

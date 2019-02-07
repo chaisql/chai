@@ -36,7 +36,7 @@ type Cursor interface {
 	Record() record.Record
 }
 
-// RecordBuffer contains a list of records. It implements the Reader interface.
+// RecordBuffer contains a list of records. It implements the Table interface.
 type RecordBuffer struct {
 	list    *list.List
 	counter int64
