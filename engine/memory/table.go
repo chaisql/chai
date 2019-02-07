@@ -7,11 +7,13 @@ import (
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-	tab "github.com/asdine/genji/table"
+	"github.com/asdine/genji/table"
 	"modernc.org/b"
 )
 
-type table struct {
+type tableTx struct {
+	table    string
+	tx       *transaction
 	writable bool
 	tree     *b.Tree
 	xid      uint64
@@ -19,12 +21,13 @@ type table struct {
 }
 
 type item struct {
-	record record.Record
-	rowid  []byte
-	xmin   uint64
+	rootTree *b.Tree
+	record   record.Record
+	rowid    []byte
+	xmin     uint64
 }
 
-func (t *table) Record(rowid []byte) (record.Record, error) {
+func (t *tableTx) Record(rowid []byte) (record.Record, error) {
 	v, ok := t.tree.Get(rowid)
 	if !ok {
 		return nil, errors.New("not found")
@@ -38,32 +41,34 @@ func (t *table) Record(rowid []byte) (record.Record, error) {
 	return it.record, nil
 }
 
-func (t *table) Insert(r record.Record) (rowid []byte, err error) {
+func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
 	if !t.writable {
 		return nil, errors.New("can't insert record in read-only transaction")
 	}
 
 	rid := field.EncodeInt64(int64(atomic.AddUint64(&t.counter, 1)))
 
-	t.tree.Set(rid, &item{
-		record: r,
-		xmin:   t.xid,
-		rowid:  rid,
-	})
+	it := item{
+		rootTree: t.tree,
+		record:   r,
+		xmin:     t.xid,
+		rowid:    rid,
+	}
+
+	t.tx.mutations = append(t.tx.mutations, &it)
+	t.tree.Set(rid, &it)
 
 	return rid, nil
 }
 
-func (t *table) Cursor() (tab.Cursor, error) {
+func (t *tableTx) Cursor() table.Cursor {
 	enum, err := t.tree.SeekFirst()
-	if err != nil {
-		return nil, err
-	}
 
 	return &cursor{
+		err:  err,
 		xid:  t.xid,
 		enum: enum,
-	}, nil
+	}
 }
 
 type cursor struct {
@@ -75,6 +80,10 @@ type cursor struct {
 }
 
 func (c *cursor) Next() bool {
+	if c.err != nil {
+		return false
+	}
+
 	for {
 		k, v, err := c.enum.Next()
 		if err == io.EOF {
