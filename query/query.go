@@ -6,16 +6,13 @@ import (
 )
 
 type Query struct {
-	selectors []FieldSelector
-	matchers  []Matcher
+	fieldSelectors []FieldSelector
+	tableSelector  TableSelector
+	matchers       []Matcher
 }
 
 func Select(selectors ...FieldSelector) Query {
-	return Query{selectors: selectors}
-}
-
-type FieldSelector interface {
-	Name() string
+	return Query{fieldSelectors: selectors}
 }
 
 func (q Query) Run(t table.Reader) (table.Reader, error) {
@@ -28,7 +25,7 @@ func (q Query) Run(t table.Reader) (table.Reader, error) {
 		Map(func(r record.Record) (record.Record, error) {
 			var fb record.FieldBuffer
 
-			for _, s := range q.selectors {
+			for _, s := range q.fieldSelectors {
 				f, err := r.Field(s.Name())
 				if err != nil {
 					return nil, err
@@ -49,5 +46,10 @@ func (q Query) Run(t table.Reader) (table.Reader, error) {
 
 func (q Query) Where(matchers ...Matcher) Query {
 	q.matchers = append(q.matchers, matchers...)
+	return q
+}
+
+func (q Query) From(selector TableSelector) Query {
+	q.tableSelector = selector
 	return q
 }

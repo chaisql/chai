@@ -10,6 +10,14 @@ import (
 	"github.com/google/btree"
 )
 
+type FieldSelector interface {
+	Name() string
+}
+
+type TableSelector interface {
+	Name() string
+}
+
 type Field string
 
 func (f Field) Name() string {
