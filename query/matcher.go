@@ -10,26 +10,6 @@ import (
 	"github.com/google/btree"
 )
 
-type FieldSelector interface {
-	Name() string
-}
-
-type TableSelector interface {
-	Name() string
-}
-
-type Field string
-
-func (f Field) Name() string {
-	return string(f)
-}
-
-type Table string
-
-func (t Table) Name() string {
-	return string(t)
-}
-
 type Matcher interface {
 	Match(record.Record) (bool, error)
 }

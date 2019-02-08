@@ -8,6 +8,14 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+type FieldSelector interface {
+	Name() string
+}
+
+type TableSelector interface {
+	Name() string
+}
+
 type Query struct {
 	fieldSelectors []FieldSelector
 	tableSelector  TableSelector
