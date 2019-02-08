@@ -3,7 +3,6 @@ package memory
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/table"
@@ -11,10 +10,9 @@ import (
 )
 
 type Engine struct {
-	mu        sync.RWMutex
-	closed    bool
-	tables    map[string]*b.Tree
-	txCounter uint64
+	mu     sync.RWMutex
+	closed bool
+	tables map[string]*b.Tree
 }
 
 func NewEngine() *Engine {
@@ -36,7 +34,7 @@ func (ng *Engine) Begin(writable bool) (engine.Transaction, error) {
 		return nil, errors.New("engine closed")
 	}
 
-	return &transaction{ng: ng, writable: writable, xid: atomic.AddUint64(&ng.txCounter, 1)}, nil
+	return &transaction{ng: ng, writable: writable}, nil
 }
 
 func (ng *Engine) Close() error {
@@ -51,10 +49,9 @@ func (ng *Engine) Close() error {
 }
 
 type transaction struct {
-	ng        *Engine
-	writable  bool
-	xid       uint64
-	mutations []*item
+	ng       *Engine
+	writable bool
+	undos    []func()
 }
 
 func (tx *transaction) Rollback() error {
@@ -62,18 +59,14 @@ func (tx *transaction) Rollback() error {
 		return nil
 	}
 
-	for _, it := range tx.mutations {
-		it.rootTree.Delete(it.rowid)
+	for _, undo := range tx.undos {
+		undo()
 	}
 
 	return nil
 }
 
 func (tx *transaction) Commit() error {
-	if !tx.writable {
-		return nil
-	}
-
 	return nil
 }
 

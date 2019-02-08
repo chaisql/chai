@@ -16,7 +16,6 @@ type tableTx struct {
 	tx       *transaction
 	writable bool
 	tree     *b.Tree
-	xid      uint64
 	counter  uint64
 }
 
@@ -24,7 +23,6 @@ type item struct {
 	rootTree *b.Tree
 	record   record.Record
 	rowid    []byte
-	xmin     uint64
 }
 
 func (t *tableTx) Record(rowid []byte) (record.Record, error) {
@@ -33,12 +31,7 @@ func (t *tableTx) Record(rowid []byte) (record.Record, error) {
 		return nil, errors.New("not found")
 	}
 
-	it := v.(*item)
-	if it.xmin > t.xid {
-		return nil, errors.New("not found")
-	}
-
-	return it.record, nil
+	return v.(*item).record, nil
 }
 
 func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
@@ -51,11 +44,13 @@ func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
 	it := item{
 		rootTree: t.tree,
 		record:   r,
-		xmin:     t.xid,
 		rowid:    rid,
 	}
 
-	t.tx.mutations = append(t.tx.mutations, &it)
+	t.tx.undos = append(t.tx.undos, func() {
+		t.tree.Delete(rid)
+	})
+
 	t.tree.Set(rid, &it)
 
 	return rid, nil
@@ -66,13 +61,11 @@ func (t *tableTx) Cursor() table.Cursor {
 
 	return &cursor{
 		err:  err,
-		xid:  t.xid,
 		enum: enum,
 	}
 }
 
 type cursor struct {
-	xid      uint64
 	enum     *b.Enumerator
 	curRowid []byte
 	curItem  *item
@@ -84,24 +77,19 @@ func (c *cursor) Next() bool {
 		return false
 	}
 
-	for {
-		k, v, err := c.enum.Next()
-		if err == io.EOF {
-			return false
-		}
-
-		if err != nil {
-			c.err = err
-			return false
-		}
-
-		it := v.(*item)
-		if it.xmin < c.xid {
-			c.curRowid = k.([]byte)
-			c.curItem = it
-			return true
-		}
+	k, v, err := c.enum.Next()
+	if err == io.EOF {
+		return false
 	}
+
+	if err != nil {
+		c.err = err
+		return false
+	}
+
+	c.curRowid = k.([]byte)
+	c.curItem = v.(*item)
+	return true
 }
 
 func (c *cursor) Err() error {
