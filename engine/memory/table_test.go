@@ -82,4 +82,16 @@ func TestTable(t *testing.T) {
 
 		verifyContentFn(tr)
 	})
+
+	t.Run("undo table creation", func(t *testing.T) {
+		tx, err := NewEngine().Begin(true)
+		require.NoError(t, err)
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+		err = tx.Rollback()
+		require.NoError(t, err)
+		_, err = tx.Table("test")
+		require.Error(t, err)
+	})
 }

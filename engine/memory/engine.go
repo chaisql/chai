@@ -116,5 +116,10 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 	})
 
 	tx.ng.tables[name] = tr
+
+	tx.undos = append(tx.undos, func() {
+		delete(tx.ng.tables, name)
+	})
+
 	return &tableTx{tx: tx, tree: tr}, nil
 }
