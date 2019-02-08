@@ -20,4 +20,5 @@ type Transaction interface {
 	Rollback() error
 	Commit() error
 	Table(name string) (table.Table, error)
+	CreateTable(name string) (table.Table, error)
 }
