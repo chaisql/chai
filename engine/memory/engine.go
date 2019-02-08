@@ -12,9 +12,10 @@ import (
 )
 
 type Engine struct {
-	mu     sync.RWMutex
 	closed bool
 	tables map[string]*b.Tree
+
+	mu sync.RWMutex
 }
 
 func NewEngine() *Engine {
@@ -26,10 +27,8 @@ func NewEngine() *Engine {
 func (ng *Engine) Begin(writable bool) (engine.Transaction, error) {
 	if writable {
 		ng.mu.Lock()
-		defer ng.mu.Unlock()
 	} else {
 		ng.mu.RLock()
-		defer ng.mu.RUnlock()
 	}
 
 	if ng.closed {
@@ -51,13 +50,14 @@ func (ng *Engine) Close() error {
 }
 
 type transaction struct {
-	ng       *Engine
-	writable bool
-	undos    []func()
+	ng         *Engine
+	writable   bool
+	undos      []func()
+	terminated bool
 }
 
 func (tx *transaction) Rollback() error {
-	if !tx.writable {
+	if tx.terminated {
 		return nil
 	}
 
@@ -65,10 +65,30 @@ func (tx *transaction) Rollback() error {
 		undo()
 	}
 
+	tx.terminated = true
+
+	if tx.writable {
+		tx.ng.mu.Unlock()
+	} else {
+		tx.ng.mu.RUnlock()
+	}
+
 	return nil
 }
 
 func (tx *transaction) Commit() error {
+	if tx.terminated {
+		return errors.New("transaction already terminated")
+	}
+
+	tx.terminated = true
+
+	if tx.writable {
+		tx.ng.mu.Unlock()
+	} else {
+		tx.ng.mu.RUnlock()
+	}
+
 	return nil
 }
 
@@ -82,6 +102,10 @@ func (tx *transaction) Table(name string) (table.Table, error) {
 }
 
 func (tx *transaction) CreateTable(name string) (table.Table, error) {
+	if !tx.writable {
+		return nil, errors.New("can't create table in read-only transaction")
+	}
+
 	_, err := tx.Table(name)
 	if err == nil {
 		return nil, fmt.Errorf("table '%s' already exists", name)
