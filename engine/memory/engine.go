@@ -1,7 +1,9 @@
 package memory
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/asdine/genji/engine"
@@ -76,5 +78,19 @@ func (tx *transaction) Table(name string) (table.Table, error) {
 		return nil, errors.New("table not found")
 	}
 
-	return &tableTx{writable: tx.writable, tree: tr}, nil
+	return &tableTx{tx: tx, tree: tr}, nil
+}
+
+func (tx *transaction) CreateTable(name string) (table.Table, error) {
+	_, err := tx.Table(name)
+	if err == nil {
+		return nil, fmt.Errorf("table '%s' already exists", name)
+	}
+
+	tr := b.TreeNew(func(a, b interface{}) int {
+		return bytes.Compare(a.([]byte), b.([]byte))
+	})
+
+	tx.ng.tables[name] = tr
+	return &tableTx{tx: tx, tree: tr}, nil
 }

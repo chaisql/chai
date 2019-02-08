@@ -12,17 +12,14 @@ import (
 )
 
 type tableTx struct {
-	table    string
-	tx       *transaction
-	writable bool
-	tree     *b.Tree
-	counter  uint64
+	tx      *transaction
+	tree    *b.Tree
+	counter uint64
 }
 
 type item struct {
-	rootTree *b.Tree
-	record   record.Record
-	rowid    []byte
+	record record.Record
+	rowid  []byte
 }
 
 func (t *tableTx) Record(rowid []byte) (record.Record, error) {
@@ -35,16 +32,15 @@ func (t *tableTx) Record(rowid []byte) (record.Record, error) {
 }
 
 func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
-	if !t.writable {
+	if !t.tx.writable {
 		return nil, errors.New("can't insert record in read-only transaction")
 	}
 
 	rid := field.EncodeInt64(int64(atomic.AddUint64(&t.counter, 1)))
 
 	it := item{
-		rootTree: t.tree,
-		record:   r,
-		rowid:    rid,
+		record: r,
+		rowid:  rid,
 	}
 
 	t.tx.undos = append(t.tx.undos, func() {
