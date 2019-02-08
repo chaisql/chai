@@ -1,6 +1,9 @@
 package query
 
 import (
+	"errors"
+
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
@@ -15,7 +18,16 @@ func Select(selectors ...FieldSelector) Query {
 	return Query{fieldSelectors: selectors}
 }
 
-func (q Query) Run(t table.Reader) (table.Reader, error) {
+func (q Query) Run(tx engine.Transaction) (table.Reader, error) {
+	if q.tableSelector == nil {
+		return nil, errors.New("missing table selector")
+	}
+
+	t, err := tx.Table(q.tableSelector.Name())
+	if err != nil {
+		return nil, err
+	}
+
 	matcher := And(q.matchers...)
 
 	b := table.NewBrowser(t).

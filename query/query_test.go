@@ -4,34 +4,43 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
 )
 
-func createTable(t require.TestingT, size int) table.Browser {
-	var rb table.RecordBuffer
+func createTable(t require.TestingT, size int) engine.Transaction {
+	ng := memory.NewEngine()
+
+	tx, err := ng.Begin(true)
+	require.NoError(t, err)
+
+	tb, err := tx.CreateTable("test")
+	require.NoError(t, err)
 
 	for i := 0; i < size; i++ {
-		rb.Insert(record.FieldBuffer{
+		_, err = tb.Insert(record.FieldBuffer{
 			field.NewInt64("id", int64(i)),
 			field.NewString("name", fmt.Sprintf("john-%d", i)),
 			field.NewInt64("age", int64(i*10)),
 			field.NewInt64("group", int64(i%3)),
 		})
+		require.NoError(t, err)
 	}
 
-	return table.NewBrowser(&rb)
+	return tx
 }
 
 func TestQuery(t *testing.T) {
-
 	t.Run("Select", func(t *testing.T) {
 		t.Run("Ok", func(t *testing.T) {
-			tb := createTable(t, 10)
+			tx := createTable(t, 10)
+			defer tx.Rollback()
 
-			tt, err := Select(Field("id"), Field("name")).Where(GtInt(Field("age"), 20)).Run(tb)
+			tt, err := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
 			require.NoError(t, err)
 
 			b := table.NewBrowser(tt)
@@ -57,11 +66,11 @@ func TestQuery(t *testing.T) {
 }
 
 func benchmarkQuery(b *testing.B, size int) {
-	tb := createTable(b, size)
+	tx := createTable(b, size)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		Select(Field("id"), Field("name"), Field("age"), Field("group")).Where(GtInt(Field("age"), -200)).Run(tb)
+		Select(Field("id"), Field("name"), Field("age"), Field("group")).Where(GtInt(Field("age"), -200)).Run(tx)
 	}
 }
 
