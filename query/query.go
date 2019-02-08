@@ -4,16 +4,18 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
 
 type FieldSelector interface {
+	SelectField(record.Record) (field.Field, error)
 	Name() string
 }
 
 type TableSelector interface {
-	Name() string
+	SelectTable(engine.Transaction) (table.Table, error)
 }
 
 type Query struct {
@@ -31,7 +33,7 @@ func (q Query) Run(tx engine.Transaction) (table.Reader, error) {
 		return nil, errors.New("missing table selector")
 	}
 
-	t, err := tx.Table(q.tableSelector.Name())
+	t, err := q.tableSelector.SelectTable(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +48,7 @@ func (q Query) Run(tx engine.Transaction) (table.Reader, error) {
 			var fb record.FieldBuffer
 
 			for _, s := range q.fieldSelectors {
-				f, err := r.Field(s.Name())
+				f, err := s.SelectField(r)
 				if err != nil {
 					return nil, err
 				}

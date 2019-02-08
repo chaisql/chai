@@ -38,9 +38,9 @@ func (i Item) Less(than btree.Item) bool {
 	return bytes.Compare(i, than.(Item)) < 0
 }
 
-func compareInts(f Field, op func(int64) bool) func(r record.Record) (bool, error) {
+func compareInts(f FieldSelector, op func(int64) bool) func(r record.Record) (bool, error) {
 	return func(r record.Record) (bool, error) {
-		rf, err := r.Field(f.Name())
+		rf, err := f.SelectField(r)
 		if err != nil {
 			return false, err
 		}
@@ -58,9 +58,9 @@ func compareInts(f Field, op func(int64) bool) func(r record.Record) (bool, erro
 	}
 }
 
-func compareStrings(f Field, op func([]byte) bool) func(r record.Record) (bool, error) {
+func compareStrings(f FieldSelector, op func([]byte) bool) func(r record.Record) (bool, error) {
 	return func(r record.Record) (bool, error) {
-		rf, err := r.Field(f.Name())
+		rf, err := f.SelectField(r)
 		if err != nil {
 			return false, err
 		}
@@ -155,7 +155,7 @@ func lteIndexMatcher(data []byte, idx index.Index) (*btree.BTree, error) {
 	return tree, nil
 }
 
-func EqInt(f Field, i int) *IndexMatcher {
+func EqInt(f FieldSelector, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
 		Matcher: &matcher{
@@ -170,7 +170,7 @@ func EqInt(f Field, i int) *IndexMatcher {
 	}
 }
 
-func GtInt(f Field, i int) *IndexMatcher {
+func GtInt(f FieldSelector, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
 		Matcher: &matcher{
@@ -185,7 +185,7 @@ func GtInt(f Field, i int) *IndexMatcher {
 	}
 }
 
-func GteInt(f Field, i int) *IndexMatcher {
+func GteInt(f FieldSelector, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
 		Matcher: &matcher{
@@ -200,7 +200,7 @@ func GteInt(f Field, i int) *IndexMatcher {
 	}
 }
 
-func LtInt(f Field, i int) *IndexMatcher {
+func LtInt(f FieldSelector, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
 		Matcher: &matcher{
@@ -215,7 +215,7 @@ func LtInt(f Field, i int) *IndexMatcher {
 	}
 }
 
-func LteInt(f Field, i int) *IndexMatcher {
+func LteInt(f FieldSelector, i int) *IndexMatcher {
 	base := int64(i)
 	return &IndexMatcher{
 		Matcher: &matcher{
@@ -230,7 +230,7 @@ func LteInt(f Field, i int) *IndexMatcher {
 	}
 }
 
-func EqStr(f Field, s string) *IndexMatcher {
+func EqStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
@@ -246,7 +246,7 @@ func EqStr(f Field, s string) *IndexMatcher {
 	}
 }
 
-func GtStr(f Field, s string) *IndexMatcher {
+func GtStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
@@ -262,7 +262,7 @@ func GtStr(f Field, s string) *IndexMatcher {
 	}
 }
 
-func GteStr(f Field, s string) *IndexMatcher {
+func GteStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
@@ -278,7 +278,7 @@ func GteStr(f Field, s string) *IndexMatcher {
 	}
 }
 
-func LtStr(f Field, s string) *IndexMatcher {
+func LtStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
@@ -294,7 +294,7 @@ func LtStr(f Field, s string) *IndexMatcher {
 	}
 }
 
-func LteStr(f Field, s string) *IndexMatcher {
+func LteStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
