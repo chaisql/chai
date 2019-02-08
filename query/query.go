@@ -4,19 +4,9 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
-
-type FieldSelector interface {
-	SelectField(record.Record) (field.Field, error)
-	Name() string
-}
-
-type TableSelector interface {
-	SelectTable(engine.Transaction) (table.Table, error)
-}
 
 type Query struct {
 	fieldSelectors []FieldSelector

@@ -1,9 +1,21 @@
 package query
 
 import (
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 )
+
+type FieldSelector interface {
+	SelectField(record.Record) (field.Field, error)
+	Name() string
+}
+
+type TableSelector interface {
+	SelectTable(engine.Transaction) (table.Table, error)
+	Name() string
+}
 
 type Field string
 
@@ -13,6 +25,10 @@ func (f Field) Name() string {
 
 func (f Field) SelectField(r record.Record) (field.Field, error) {
 	return r.Field(string(f))
+}
+
+func (f Field) As(alias string) FieldSelector {
+	return &Alias{FieldSelector: f, Alias: alias}
 }
 
 type Alias struct {
@@ -41,4 +57,8 @@ type Table string
 
 func (t Table) Name() string {
 	return string(t)
+}
+
+func (t Table) SelectTable(tx engine.Transaction) (table.Table, error) {
+	return tx.Table(string(t))
 }
