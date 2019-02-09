@@ -1,9 +1,14 @@
 package bolt
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
+	"testing"
+
+	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/record"
 
 	bolt "github.com/etcd-io/bbolt"
 	"github.com/stretchr/testify/require"
@@ -62,4 +67,51 @@ func countItems(t require.TestingT, b *bolt.Bucket) int {
 	require.NoError(t, err)
 
 	return i
+}
+
+func benchmarkTableInsert(b *testing.B, size int) {
+	db, cleanup := tempDB(b)
+	defer cleanup()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tx, err := db.Begin(true)
+		require.NoError(b, err)
+		bck, err := tx.CreateBucket([]byte("test"))
+		require.NoError(b, err)
+		tab := &Table{
+			bucket: bck,
+		}
+
+		b.StartTimer()
+		for j := 0; j < size; j++ {
+			tab.Insert(record.FieldBuffer([]field.Field{
+				field.NewString("name", fmt.Sprintf("name-%d", j)),
+				field.NewInt64("age", int64(j)),
+			}))
+		}
+		b.StopTimer()
+
+		tx.Rollback()
+	}
+}
+
+func BenchmarkTableInsert1(b *testing.B) {
+	benchmarkTableInsert(b, 1)
+}
+
+func BenchmarkTableInsert10(b *testing.B) {
+	benchmarkTableInsert(b, 10)
+}
+
+func BenchmarkTableInsert100(b *testing.B) {
+	benchmarkTableInsert(b, 100)
+}
+
+func BenchmarkTableInsert1000(b *testing.B) {
+	benchmarkTableInsert(b, 1000)
+}
+
+func BenchmarkTableInsert10000(b *testing.B) {
+	benchmarkTableInsert(b, 10000)
 }
