@@ -2,6 +2,7 @@ package bolt
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
@@ -16,6 +17,39 @@ type Table struct {
 	bucket *bolt.Bucket
 }
 
+type header struct {
+	NumberOfFields uint64
+	FieldHeaders   []fieldHeader
+}
+
+func newHeader(r record.Record) (*header, error) {
+	c := r.Cursor()
+
+	var h header
+
+	for c.Next() {
+		if c.Err() != nil {
+			return nil, c.Err()
+		}
+
+		f := c.Field()
+		h.NumberOfFields++
+		h.FieldHeaders = append(h.FieldHeaders, fieldHeader{
+			NameLength:  len(f.Name),
+			ValueLength: len(f.Data),
+			Field:       &f,
+		})
+	}
+
+	return &h, nil
+}
+
+type fieldHeader struct {
+	NameLength  int
+	ValueLength int
+	Field       *field.Field
+}
+
 func (t *Table) Insert(r record.Record) ([]byte, error) {
 	seq, err := t.bucket.NextSequence()
 	if err != nil {
@@ -24,6 +58,51 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 
 	// TODO(asdine): encode in uint64 if that makes sense.
 	rowid := field.EncodeInt64(int64(seq))
+
+	h, err := newHeader(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+
+	// number of fields
+	intBuf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(intBuf, h.NumberOfFields)
+
+	_, err = buf.Write(intBuf[:n])
+	if err != nil {
+		return nil, err
+	}
+
+	for _, fh := range h.FieldHeaders {
+		// field type
+		n = binary.PutUvarint(intBuf, uint64(fh.Field.Type))
+		_, err = buf.Write(intBuf[:n])
+		if err != nil {
+			return nil, err
+		}
+
+		// field name length
+		n = binary.PutUvarint(intBuf, uint64(fh.NameLength))
+		_, err = buf.Write(intBuf[:n])
+		if err != nil {
+			return nil, err
+		}
+
+		// field name
+		_, err = buf.WriteString(fh.Field.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		// field value length
+		n = binary.PutUvarint(intBuf, uint64(fh.ValueLength))
+		_, err = buf.Write(intBuf[:n])
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	c := r.Cursor()
 	for c.Next() {
