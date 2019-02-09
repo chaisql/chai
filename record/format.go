@@ -58,6 +58,13 @@ func (h *Header) WriteTo(w io.Writer) error {
 		if err != nil {
 			return err
 		}
+
+		// offset
+		n = binary.PutUvarint(intBuf, fh.Offset)
+		_, err = buf.Write(intBuf[:n])
+		if err != nil {
+			return err
+		}
 	}
 
 	// header size
@@ -79,11 +86,13 @@ type FieldHeader struct {
 	Name     string
 	Type     uint64
 	Size     uint64
+	Offset   uint64
 }
 
 func Encode(r Record) ([]byte, error) {
 	var format Format
 
+	var offset uint64
 	c := r.Cursor()
 	for c.Next() {
 		if err := c.Err(); err != nil {
@@ -96,7 +105,10 @@ func Encode(r Record) ([]byte, error) {
 			Name:     f.Name,
 			Type:     uint64(f.Type),
 			Size:     uint64(len(f.Data)),
+			Offset:   offset,
 		})
+
+		offset += uint64(len(f.Data))
 	}
 
 	var buf bytes.Buffer
@@ -156,6 +168,13 @@ func DecodeFormat(data []byte) (*Format, error) {
 
 		// size
 		fh.Size, n = binary.Uvarint(hdata)
+		if n <= 0 {
+			return nil, errors.New("can't decode data")
+		}
+		hdata = hdata[n:]
+
+		// offset
+		fh.Offset, n = binary.Uvarint(hdata)
 		if n <= 0 {
 			return nil, errors.New("can't decode data")
 		}
