@@ -3,6 +3,7 @@ package record
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"io"
 )
 
@@ -120,4 +121,49 @@ func Encode(r Record) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func DecodeFormat(data []byte) (*Format, error) {
+	var format Format
+	var n int
+
+	format.Header.Size, n = binary.Uvarint(data)
+	if n <= 0 {
+		return nil, errors.New("can't decode data")
+	}
+
+	hdata := data[n : n+int(format.Header.Size)]
+	for len(hdata) > 0 {
+		var fh FieldHeader
+
+		// name size
+		fh.NameSize, n = binary.Uvarint(hdata)
+		if n <= 0 {
+			return nil, errors.New("can't decode data")
+		}
+		hdata = hdata[n:]
+
+		// name
+		fh.Name = string(hdata[:fh.NameSize])
+		hdata = hdata[fh.NameSize:]
+
+		// type
+		fh.Type, n = binary.Uvarint(hdata)
+		if n <= 0 {
+			return nil, errors.New("can't decode data")
+		}
+		hdata = hdata[n:]
+
+		// size
+		fh.Size, n = binary.Uvarint(hdata)
+		if n <= 0 {
+			return nil, errors.New("can't decode data")
+		}
+		hdata = hdata[n:]
+
+		format.Header.FieldHeaders = append(format.Header.FieldHeaders, fh)
+	}
+
+	format.Body = data[n+int(format.Header.Size):]
+	return &format, nil
 }
