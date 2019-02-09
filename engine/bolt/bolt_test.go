@@ -115,3 +115,49 @@ func BenchmarkTableInsert1000(b *testing.B) {
 func BenchmarkTableInsert10000(b *testing.B) {
 	benchmarkTableInsert(b, 10000)
 }
+
+func benchmarkTableScan(b *testing.B, size int) {
+	bucket, cleanup := tempBucket(b, true)
+	defer cleanup()
+
+	tab := &Table{
+		bucket: bucket,
+	}
+
+	for i := 0; i < size; i++ {
+		_, err := tab.Insert(record.FieldBuffer([]field.Field{
+			field.NewString("name", fmt.Sprintf("name-%d", i)),
+			field.NewInt64("age", int64(i)),
+		}))
+		require.NoError(b, err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c := tab.Cursor()
+		for c.Next() {
+			c.Record()
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkTableScan1(b *testing.B) {
+	benchmarkTableScan(b, 1)
+}
+
+func BenchmarkTableScan10(b *testing.B) {
+	benchmarkTableScan(b, 10)
+}
+
+func BenchmarkTableScan100(b *testing.B) {
+	benchmarkTableScan(b, 100)
+}
+
+func BenchmarkTableScan1000(b *testing.B) {
+	benchmarkTableScan(b, 1000)
+}
+
+func BenchmarkTableScan10000(b *testing.B) {
+	benchmarkTableScan(b, 10000)
+}
