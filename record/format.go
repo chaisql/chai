@@ -26,6 +26,7 @@ func (f *Format) Decode(data []byte) error {
 
 type Header struct {
 	Size         uint64
+	FieldsCount  uint64
 	FieldHeaders []FieldHeader
 }
 
@@ -40,6 +41,13 @@ func (h *Header) Decode(data []byte) (int, error) {
 	hdata := data[n : n+int(h.Size)]
 	read := n + int(h.Size)
 
+	h.FieldsCount, n = binary.Uvarint(hdata)
+	if n <= 0 {
+		return 0, errors.New("can't decode data")
+	}
+	hdata = hdata[n:]
+
+	h.FieldHeaders = make([]FieldHeader, 0, int(h.FieldsCount))
 	for len(hdata) > 0 {
 		var fh FieldHeader
 		n, err := fh.Decode(hdata)
@@ -68,6 +76,14 @@ func (h *Header) WriteTo(w io.Writer) (int64, error) {
 	intBuf := make([]byte, binary.MaxVarintLen64)
 	var buf bytes.Buffer
 
+	// number of fields
+	h.FieldsCount = uint64(len(h.FieldHeaders))
+	n := binary.PutUvarint(intBuf, h.FieldsCount)
+	_, err := buf.Write(intBuf[:n])
+	if err != nil {
+		return 0, err
+	}
+
 	for _, fh := range h.FieldHeaders {
 		_, err := fh.WriteTo(&buf)
 		if err != nil {
@@ -77,9 +93,8 @@ func (h *Header) WriteTo(w io.Writer) (int64, error) {
 
 	// header size
 	h.Size = uint64(buf.Len())
-	n := binary.PutUvarint(intBuf, h.Size)
-
-	_, err := w.Write(intBuf[:n])
+	n = binary.PutUvarint(intBuf, h.Size)
+	_, err = w.Write(intBuf[:n])
 	if err != nil {
 		return 0, err
 	}
@@ -236,25 +251,32 @@ func Encode(r Record) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func DecodeField(data []byte, fieldName string) (*field.Field, error) {
+func DecodeField(data []byte, fieldName string) (field.Field, error) {
 	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
-		return nil, errors.New("can't decode data")
+		return field.Field{}, errors.New("can't decode data")
 	}
 
 	hdata := data[n : n+int(hsize)]
 	body := data[n+len(hdata):]
 
+	// skip number of fields
+	_, n = binary.Uvarint(hdata)
+	if n <= 0 {
+		return field.Field{}, errors.New("can't decode data")
+	}
+	hdata = hdata[n:]
+
 	var fh FieldHeader
 	for len(hdata) > 0 {
 		n, err := fh.Decode(hdata)
 		if err != nil {
-			return nil, err
+			return field.Field{}, err
 		}
 		hdata = hdata[n:]
 
 		if fieldName == string(fh.Name) {
-			return &field.Field{
+			return field.Field{
 				Name: fieldName,
 				Type: field.Type(fh.Type),
 				Data: body[fh.Offset : fh.Offset+fh.Size],
@@ -262,5 +284,5 @@ func DecodeField(data []byte, fieldName string) (*field.Field, error) {
 		}
 	}
 
-	return nil, errors.New("not found")
+	return field.Field{}, errors.New("not found")
 }

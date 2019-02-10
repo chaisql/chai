@@ -19,6 +19,7 @@ func TestFormat(t *testing.T) {
 	err = f.Decode(data)
 	require.NoError(t, err)
 	require.Equal(t, len(f.Body), f.Header.BodySize())
+	require.EqualValues(t, 2, f.Header.FieldsCount)
 	require.Len(t, f.Header.FieldHeaders, 2)
 
 	require.EqualValues(t, "age", f.Header.FieldHeaders[0].Name)
@@ -45,11 +46,11 @@ func TestDecodeField(t *testing.T) {
 
 	f, err := DecodeField(data, "age")
 	require.NoError(t, err)
-	require.Equal(t, rec[0], *f)
+	require.Equal(t, rec[0], f)
 
 	f, err = DecodeField(data, "name")
 	require.NoError(t, err)
-	require.Equal(t, rec[1], *f)
+	require.Equal(t, rec[1], f)
 }
 
 func BenchmarkDecodeField(b *testing.B) {
@@ -77,5 +78,22 @@ func BenchmarkEncode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Encode(FieldBuffer(fields))
+	}
+}
+
+func BenchmarkFormatDecode(b *testing.B) {
+	var fields []field.Field
+
+	for i := int64(0); i < 100; i++ {
+		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+	}
+
+	data, err := Encode(FieldBuffer(fields))
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var f Format
+		f.Decode(data)
 	}
 }
