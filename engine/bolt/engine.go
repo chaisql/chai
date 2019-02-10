@@ -10,11 +10,11 @@ import (
 )
 
 type Table struct {
-	bucket *bolt.Bucket
+	Bucket *bolt.Bucket
 }
 
 func (t *Table) Insert(r record.Record) ([]byte, error) {
-	seq, err := t.bucket.NextSequence()
+	seq, err := t.Bucket.NextSequence()
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 	// TODO(asdine): encode in uint64 if that makes sense.
 	rowid := field.EncodeInt64(int64(seq))
 
-	err = t.bucket.Put(rowid, data)
+	err = t.Bucket.Put(rowid, data)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 }
 
 func (t *Table) Record(rowid []byte) (record.Record, error) {
-	v := t.bucket.Get(rowid)
+	v := t.Bucket.Get(rowid)
 	if v == nil {
 		return nil, errors.New("not found")
 	}
@@ -46,7 +46,7 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 
 func (t *Table) Cursor() table.Cursor {
 	return &tableCursor{
-		b: t.bucket,
+		b: t.Bucket,
 	}
 }
 
