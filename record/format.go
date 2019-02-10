@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+
+	"github.com/asdine/genji/field"
 )
 
 type Format struct {
@@ -135,54 +137,56 @@ func Encode(r Record) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func DecodeFormat(data []byte) (*Format, error) {
-	var format Format
-	var n int
-
-	format.Header.Size, n = binary.Uvarint(data)
+func DecodeField(data []byte, fieldName string) (*field.Field, error) {
+	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
 		return nil, errors.New("can't decode data")
 	}
 
-	hdata := data[n : n+int(format.Header.Size)]
-	for len(hdata) > 0 {
-		var fh FieldHeader
+	hdata := data[n : n+int(hsize)]
+	body := data[n+len(hdata):]
 
+	for len(hdata) > 0 {
 		// name size
-		fh.NameSize, n = binary.Uvarint(hdata)
+		nameSize, n := binary.Uvarint(hdata)
 		if n <= 0 {
 			return nil, errors.New("can't decode data")
 		}
 		hdata = hdata[n:]
 
 		// name
-		fh.Name = string(hdata[:fh.NameSize])
-		hdata = hdata[fh.NameSize:]
+		name := hdata[:nameSize]
+		hdata = hdata[nameSize:]
 
 		// type
-		fh.Type, n = binary.Uvarint(hdata)
+		typ, n := binary.Uvarint(hdata)
 		if n <= 0 {
 			return nil, errors.New("can't decode data")
 		}
 		hdata = hdata[n:]
 
 		// size
-		fh.Size, n = binary.Uvarint(hdata)
+		size, n := binary.Uvarint(hdata)
 		if n <= 0 {
 			return nil, errors.New("can't decode data")
 		}
 		hdata = hdata[n:]
 
 		// offset
-		fh.Offset, n = binary.Uvarint(hdata)
+		offset, n := binary.Uvarint(hdata)
 		if n <= 0 {
 			return nil, errors.New("can't decode data")
 		}
 		hdata = hdata[n:]
 
-		format.Header.FieldHeaders = append(format.Header.FieldHeaders, fh)
+		if fieldName == string(name) {
+			return &field.Field{
+				Name: fieldName,
+				Type: field.Type(typ),
+				Data: body[offset : offset+size],
+			}, nil
+		}
 	}
 
-	format.Body = data[n+int(format.Header.Size):]
-	return &format, nil
+	return nil, errors.New("not found")
 }
