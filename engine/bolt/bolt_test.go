@@ -73,22 +73,28 @@ func benchmarkTableInsert(b *testing.B, size int) {
 	db, cleanup := tempDB(b)
 	defer cleanup()
 
+	var fields []field.Field
+
+	for i := int64(0); i < 10; i++ {
+		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+	}
+
+	rec := record.FieldBuffer(fields)
+
 	b.ResetTimer()
+	b.StopTimer()
 	for i := 0; i < b.N; i++ {
 		tx, err := db.Begin(true)
 		require.NoError(b, err)
 		bck, err := tx.CreateBucket([]byte("test"))
 		require.NoError(b, err)
 		tab := &Table{
-			bucket: bck,
+			Bucket: bck,
 		}
 
 		b.StartTimer()
 		for j := 0; j < size; j++ {
-			tab.Insert(record.FieldBuffer([]field.Field{
-				field.NewString("name", fmt.Sprintf("name-%d", j)),
-				field.NewInt64("age", int64(j)),
-			}))
+			tab.Insert(rec)
 		}
 		b.StopTimer()
 
@@ -121,14 +127,19 @@ func benchmarkTableScan(b *testing.B, size int) {
 	defer cleanup()
 
 	tab := &Table{
-		bucket: bucket,
+		Bucket: bucket,
 	}
 
+	var fields []field.Field
+
+	for i := int64(0); i < 10; i++ {
+		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+	}
+
+	rec := record.FieldBuffer(fields)
+
 	for i := 0; i < size; i++ {
-		_, err := tab.Insert(record.FieldBuffer([]field.Field{
-			field.NewString("name", fmt.Sprintf("name-%d", i)),
-			field.NewInt64("age", int64(i)),
-		}))
+		_, err := tab.Insert(rec)
 		require.NoError(b, err)
 	}
 

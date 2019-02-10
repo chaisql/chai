@@ -13,7 +13,7 @@ func TestTableInsert(t *testing.T) {
 	b, cleanup := tempBucket(t, true)
 	defer cleanup()
 
-	table := Table{bucket: b}
+	table := Table{Bucket: b}
 	rowid, err := table.Insert(record.FieldBuffer([]field.Field{
 		field.NewInt64("a", 10),
 	}))
@@ -25,7 +25,7 @@ func TestTableCursor(t *testing.T) {
 	b, cleanup := tempBucket(t, true)
 	defer cleanup()
 
-	table := Table{bucket: b}
+	table := Table{Bucket: b}
 	for i := 0; i < 10; i++ {
 		_, err := table.Insert(record.FieldBuffer([]field.Field{
 			field.NewString("name", fmt.Sprintf("name-%d", i)),
