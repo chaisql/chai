@@ -21,13 +21,12 @@ var update = flag.Bool("update", false, "update .golden files")
 func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		src := `
-			package user
+			package testdata
 		
 			type User struct {
 				A string
 				B int64
 				C, D string
-				E, F, G int64
 			}
 
 			func foo() {
@@ -47,7 +46,7 @@ func TestGenerateRecord(t *testing.T) {
 		err = GenerateRecord(f, "User", &buf)
 		require.NoError(t, err)
 
-		gp := "testdata/generated.golden"
+		gp := "testdata/generated.golden.go"
 		if *update {
 			t.Log("update golden file")
 			require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))

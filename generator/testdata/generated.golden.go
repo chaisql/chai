@@ -1,4 +1,4 @@
-package user
+package testdata
 
 import (
 	"errors"
@@ -34,44 +34,27 @@ func (u *User) Field(name string) (field.Field, error) {
 			Type: field.String,
 			Data: []byte(u.D),
 		}, nil
-	case "E":
-		return field.Field{
-			Name: "E",
-			Type: field.Int64,
-			Data: field.EncodeInt64(u.E),
-		}, nil
-	case "F":
-		return field.Field{
-			Name: "F",
-			Type: field.Int64,
-			Data: field.EncodeInt64(u.F),
-		}, nil
-	case "G":
-		return field.Field{
-			Name: "G",
-			Type: field.Int64,
-			Data: field.EncodeInt64(u.G),
-		}, nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
 }
 
+// Cursor creates a cursor for scanning records.
 func (u *User) Cursor() record.Cursor {
 	return &userCursor{
 		User: u,
-		i: -1,
+		i:    -1,
 	}
 }
 
 type userCursor struct {
 	User *User
-	i int
-	err error
+	i    int
+	err  error
 }
 
 func (c *userCursor) Next() bool {
-	if c.i+2 > 7 {
+	if c.i+2 > 4 {
 		return false
 	}
 
@@ -92,15 +75,6 @@ func (c *userCursor) Field() field.Field {
 		return f
 	case 3:
 		f, _ := c.User.Field("D")
-		return f
-	case 4:
-		f, _ := c.User.Field("E")
-		return f
-	case 5:
-		f, _ := c.User.Field("F")
-		return f
-	case 6:
-		f, _ := c.User.Field("G")
 		return f
 	}
 

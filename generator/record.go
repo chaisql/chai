@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -8,6 +9,8 @@ import (
 	"io"
 	"strings"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 var t *template.Template
@@ -20,13 +23,6 @@ const recordTmpl = `
 {{- $fl := .Struct.FirstLetter -}}
 {{- $structName := .Struct.Name -}}
 package {{.Package}}
-
-import (
-	"errors"
-
-	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/record"
-)
 
 // Field implements the field method of the record.Record interface.
 func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
@@ -53,7 +49,7 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 }
 
 {{- $cursor := printf "%sCursor" .Struct.Unexported }}
-
+// Cursor creates a cursor for scanning records.
 func ({{$fl}} *{{$structName}}) Cursor() record.Cursor {
 	return &{{$cursor}}{
 		{{$structName}}: {{$fl}},
@@ -158,7 +154,21 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 			}
 		}
 
-		return t.Execute(w, &ctx)
+		var buf bytes.Buffer
+
+		err := t.Execute(&buf, &ctx)
+		if err != nil {
+			return err
+		}
+
+		// format using goimports
+		output, err := imports.Process("", buf.Bytes(), nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = w.Write(output)
+		return err
 	}
 
 	return fmt.Errorf("struct %s not found", target)
