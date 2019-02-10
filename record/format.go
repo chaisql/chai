@@ -14,9 +14,44 @@ type Format struct {
 	Body   []byte
 }
 
+func (f *Format) Decode(data []byte) error {
+	n, err := f.Header.Decode(data)
+	if err != nil {
+		return err
+	}
+
+	f.Body = data[n:]
+	return nil
+}
+
 type Header struct {
 	Size         uint64
 	FieldHeaders []FieldHeader
+}
+
+func (h *Header) Decode(data []byte) (int, error) {
+	var n int
+
+	h.Size, n = binary.Uvarint(data)
+	if n <= 0 {
+		return 0, errors.New("can't decode data")
+	}
+
+	hdata := data[n : n+int(h.Size)]
+	read := n + int(h.Size)
+
+	for len(hdata) > 0 {
+		var fh FieldHeader
+		n, err := fh.Decode(hdata)
+		if err != nil {
+			return 0, err
+		}
+		hdata = hdata[n:]
+
+		h.FieldHeaders = append(h.FieldHeaders, fh)
+	}
+
+	return read, nil
 }
 
 func (h *Header) BodySize() int {
@@ -29,43 +64,14 @@ func (h *Header) BodySize() int {
 	return int(size)
 }
 
-func (h *Header) WriteTo(w io.Writer) error {
+func (h *Header) WriteTo(w io.Writer) (int64, error) {
 	intBuf := make([]byte, binary.MaxVarintLen64)
 	var buf bytes.Buffer
 
 	for _, fh := range h.FieldHeaders {
-		// name size
-		n := binary.PutUvarint(intBuf, fh.NameSize)
-		_, err := buf.Write(intBuf[:n])
+		_, err := fh.WriteTo(&buf)
 		if err != nil {
-			return err
-		}
-
-		// name
-		n, err = buf.WriteString(fh.Name)
-		if err != nil {
-			return err
-		}
-
-		// type
-		n = binary.PutUvarint(intBuf, fh.Type)
-		_, err = buf.Write(intBuf[:n])
-		if err != nil {
-			return err
-		}
-
-		// size
-		n = binary.PutUvarint(intBuf, fh.Size)
-		_, err = buf.Write(intBuf[:n])
-		if err != nil {
-			return err
-		}
-
-		// offset
-		n = binary.PutUvarint(intBuf, fh.Offset)
-		_, err = buf.Write(intBuf[:n])
-		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
@@ -75,20 +81,113 @@ func (h *Header) WriteTo(w io.Writer) error {
 
 	_, err := w.Write(intBuf[:n])
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = buf.WriteTo(w)
-
-	return err
+	return buf.WriteTo(w)
 }
 
 type FieldHeader struct {
 	NameSize uint64
-	Name     string
+	Name     []byte
 	Type     uint64
 	Size     uint64
 	Offset   uint64
+
+	nameString string // used for encoding
+	buf        [binary.MaxVarintLen64]byte
+}
+
+func (f *FieldHeader) Decode(data []byte) (int, error) {
+	var n, read int
+
+	// name size
+	f.NameSize, n = binary.Uvarint(data)
+	if n <= 0 {
+		return 0, errors.New("can't decode data")
+	}
+	data = data[n:]
+	read += n
+
+	// name
+	f.Name = data[:f.NameSize]
+	data = data[f.NameSize:]
+	read += int(f.NameSize)
+
+	// type
+	f.Type, n = binary.Uvarint(data)
+	if n <= 0 {
+		return 0, errors.New("can't decode data")
+	}
+	data = data[n:]
+	read += n
+
+	// size
+	f.Size, n = binary.Uvarint(data)
+	if n <= 0 {
+		return 0, errors.New("can't decode data")
+	}
+	data = data[n:]
+	read += n
+
+	// offset
+	f.Offset, n = binary.Uvarint(data)
+	if n <= 0 {
+		return 0, errors.New("can't decode data")
+	}
+	data = data[n:]
+	read += n
+
+	return read, nil
+}
+
+func (f *FieldHeader) WriteTo(w io.Writer) (int64, error) {
+	var written int
+
+	// name size
+	n := binary.PutUvarint(f.buf[:], f.NameSize)
+	_, err := w.Write(f.buf[:n])
+	if err != nil {
+		return 0, err
+	}
+	written += n
+
+	// name
+	if buf, ok := w.(*bytes.Buffer); ok && f.nameString != "" {
+		n, err = buf.WriteString(f.nameString)
+	} else {
+		n, err = w.Write(f.Name)
+	}
+	if err != nil {
+		return 0, err
+	}
+	written += n
+
+	// type
+	n = binary.PutUvarint(f.buf[:], f.Type)
+	_, err = w.Write(f.buf[:n])
+	if err != nil {
+		return 0, err
+	}
+	written += n
+
+	// size
+	n = binary.PutUvarint(f.buf[:], f.Size)
+	_, err = w.Write(f.buf[:n])
+	if err != nil {
+		return 0, err
+	}
+	written += n
+
+	// offset
+	n = binary.PutUvarint(f.buf[:], f.Offset)
+	_, err = w.Write(f.buf[:n])
+	if err != nil {
+		return 0, err
+	}
+	written += n
+
+	return int64(written), nil
 }
 
 func Encode(r Record) ([]byte, error) {
@@ -103,18 +202,18 @@ func Encode(r Record) ([]byte, error) {
 
 		f := c.Field()
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
-			NameSize: uint64(len(f.Name)),
-			Name:     f.Name,
-			Type:     uint64(f.Type),
-			Size:     uint64(len(f.Data)),
-			Offset:   offset,
+			NameSize:   uint64(len(f.Name)),
+			nameString: f.Name,
+			Type:       uint64(f.Type),
+			Size:       uint64(len(f.Data)),
+			Offset:     offset,
 		})
 
 		offset += uint64(len(f.Data))
 	}
 
 	var buf bytes.Buffer
-	err := format.Header.WriteTo(&buf)
+	_, err := format.Header.WriteTo(&buf)
 	if err != nil {
 		return nil, err
 	}
@@ -146,44 +245,19 @@ func DecodeField(data []byte, fieldName string) (*field.Field, error) {
 	hdata := data[n : n+int(hsize)]
 	body := data[n+len(hdata):]
 
+	var fh FieldHeader
 	for len(hdata) > 0 {
-		// name size
-		nameSize, n := binary.Uvarint(hdata)
-		if n <= 0 {
-			return nil, errors.New("can't decode data")
+		n, err := fh.Decode(hdata)
+		if err != nil {
+			return nil, err
 		}
 		hdata = hdata[n:]
 
-		// name
-		name := hdata[:nameSize]
-		hdata = hdata[nameSize:]
-
-		// type
-		typ, n := binary.Uvarint(hdata)
-		if n <= 0 {
-			return nil, errors.New("can't decode data")
-		}
-		hdata = hdata[n:]
-
-		// size
-		size, n := binary.Uvarint(hdata)
-		if n <= 0 {
-			return nil, errors.New("can't decode data")
-		}
-		hdata = hdata[n:]
-
-		// offset
-		offset, n := binary.Uvarint(hdata)
-		if n <= 0 {
-			return nil, errors.New("can't decode data")
-		}
-		hdata = hdata[n:]
-
-		if fieldName == string(name) {
+		if fieldName == string(fh.Name) {
 			return &field.Field{
 				Name: fieldName,
-				Type: field.Type(typ),
-				Data: body[offset : offset+size],
+				Type: field.Type(fh.Type),
+				Data: body[fh.Offset : fh.Offset+fh.Size],
 			}, nil
 		}
 	}

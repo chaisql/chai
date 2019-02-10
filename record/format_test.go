@@ -15,7 +15,8 @@ func TestFormat(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	f, err := DecodeFormat(data)
+	var f Format
+	err = f.Decode(data)
 	require.NoError(t, err)
 	require.Equal(t, len(f.Body), f.Header.BodySize())
 	require.Len(t, f.Header.FieldHeaders, 2)
