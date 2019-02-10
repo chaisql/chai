@@ -53,6 +53,29 @@ func TestDecodeField(t *testing.T) {
 	require.Equal(t, rec[1], f)
 }
 
+func TestEncodedRecord(t *testing.T) {
+	rec := FieldBuffer([]field.Field{
+		field.NewInt64("age", 10),
+		field.NewString("name", "john"),
+	})
+
+	data, err := Encode(rec)
+	require.NoError(t, err)
+
+	ec := EncodedRecord{Data: data}
+	f, err := ec.Field("age")
+	require.NoError(t, err)
+	require.Equal(t, rec[0], f)
+
+	c := ec.Cursor()
+	require.True(t, c.Next())
+	require.Equal(t, rec[0], c.Field())
+	require.True(t, c.Next())
+	require.Equal(t, rec[1], c.Field())
+	require.False(t, c.Next())
+	require.False(t, c.Next())
+}
+
 func BenchmarkDecodeField(b *testing.B) {
 	var fields []field.Field
 
@@ -95,5 +118,25 @@ func BenchmarkFormatDecode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var f Format
 		f.Decode(data)
+	}
+}
+
+func BenchmarkEncodedRecord(b *testing.B) {
+	var fields []field.Field
+
+	for i := int64(0); i < 100; i++ {
+		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+	}
+	data, err := Encode(FieldBuffer(fields))
+	require.NoError(b, err)
+
+	ec := EncodedRecord{Data: data}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c := ec.Cursor()
+		for c.Next() {
+			c.Field()
+		}
 	}
 }
