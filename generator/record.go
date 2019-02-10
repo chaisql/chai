@@ -88,6 +88,28 @@ func (c *{{$cursor}}) Field() field.Field {
 func (c *{{$cursor}}) Err() error {
 	return c.err
 }
+
+// {{$structName}}Selector provides helpers for selecting fields from the {{$structName}} structure.
+type {{$structName}}Selector struct{}
+
+// New{{$structName}}Selector creates a {{$structName}}Selector.
+func New{{$structName}}Selector() {{$structName}}Selector {
+	return {{$structName}}Selector{}
+}
+
+{{- range $i, $a := .Struct.Fields }}
+	{{- if eq .Type "string"}}
+		// {{$a.Name}} returns a string selector.
+		func ({{$structName}}Selector) {{$a.Name}}() query.StrField {
+			return query.NewStrField("{{$a.Name}}")
+		}
+	{{- else if eq .Type "int64"}}
+		// {{$a.Name}} returns an int64 selector.
+		func ({{$structName}}Selector) {{$a.Name}}() query.Int64Field {
+			return query.NewInt64Field("{{$a.Name}}")
+		}
+	{{- end}}
+{{- end}}
 `
 
 type recordContext struct {
