@@ -15,15 +15,20 @@ import (
 type Engine struct {
 	closed  bool
 	tables  map[string]*b.Tree
-	indexes map[string]*Index
+	indexes map[tableIndex]*Index
 
 	mu sync.RWMutex
+}
+
+type tableIndex struct {
+	table string
+	index string
 }
 
 func NewEngine() *Engine {
 	return &Engine{
 		tables:  make(map[string]*b.Tree),
-		indexes: make(map[string]*Index),
+		indexes: make(map[tableIndex]*Index),
 	}
 }
 
@@ -127,8 +132,8 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 	return &tableTx{tx: tx, tree: tr}, nil
 }
 
-func (tx *transaction) Index(name string) (index.Index, error) {
-	idx, ok := tx.ng.indexes[name]
+func (tx *transaction) Index(table, name string) (index.Index, error) {
+	idx, ok := tx.ng.indexes[tableIndex{table, name}]
 	if !ok {
 		return nil, errors.New("index not found")
 	}
@@ -136,21 +141,21 @@ func (tx *transaction) Index(name string) (index.Index, error) {
 	return idx, nil
 }
 
-func (tx *transaction) CreateIndex(name string) (index.Index, error) {
+func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
 	if !tx.writable {
 		return nil, errors.New("can't create index in read-only transaction")
 	}
 
-	_, err := tx.Index(name)
+	_, err := tx.Index(table, name)
 	if err == nil {
 		return nil, fmt.Errorf("index '%s' already exists", name)
 	}
 
-	tx.ng.indexes[name] = NewIndex()
+	tx.ng.indexes[tableIndex{table, name}] = NewIndex()
 
 	tx.undos = append(tx.undos, func() {
-		delete(tx.ng.indexes, name)
+		delete(tx.ng.indexes, tableIndex{table, name})
 	})
 
-	return tx.ng.indexes[name], nil
+	return tx.ng.indexes[tableIndex{table, name}], nil
 }

@@ -23,6 +23,6 @@ type Transaction interface {
 	Commit() error
 	Table(name string) (table.Table, error)
 	CreateTable(name string) (table.Table, error)
-	Index(name string) (index.Index, error)
-	CreateIndex(name string) (index.Index, error)
+	Index(table, name string) (index.Index, error)
+	CreateIndex(table, name string) (index.Index, error)
 }
