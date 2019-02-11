@@ -2,17 +2,13 @@ package query_test
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path"
 	"testing"
 
-	"github.com/asdine/genji/engine/bolt"
+	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
-	bbolt "github.com/etcd-io/bbolt"
 	"github.com/google/btree"
 	"github.com/stretchr/testify/require"
 )
@@ -60,32 +56,16 @@ func TestMatchers(t *testing.T) {
 	}
 }
 
-func createIndexMap(t require.TestingT, ages, teams []indexPair) (map[string]index.Index, func()) {
-	dir, err := ioutil.TempDir("", "genji")
-	require.NoError(t, err)
-
-	db, err := bbolt.Open(path.Join(dir, "test.db"), 0600, nil)
-	require.NoError(t, err)
-
-	tx, err := db.Begin(true)
-	require.NoError(t, err)
-
+func createIndexMap(t require.TestingT, ages, teams []indexPair) map[string]index.Index {
 	indexes := make(map[string]index.Index)
-	indexes["age"] = createIntIndex(t, tx, ages)
-	indexes["team"] = createStrIndex(t, tx, teams)
+	indexes["age"] = createIntIndex(t, ages)
+	indexes["team"] = createStrIndex(t, teams)
 
-	return indexes, func() {
-		tx.Rollback()
-		db.Close()
-		os.RemoveAll(dir)
-	}
+	return indexes
 }
 
-func createIntIndex(t require.TestingT, tx *bbolt.Tx, ages []indexPair) index.Index {
-	b, err := tx.CreateBucket([]byte("age"))
-	require.NoError(t, err)
-
-	idx := bolt.NewIndex(b)
+func createIntIndex(t require.TestingT, ages []indexPair) index.Index {
+	idx := memory.NewIndex()
 
 	for _, pair := range ages {
 		err := idx.Set(field.EncodeInt64(int64(pair.V.(int))), []byte(pair.R.(string)))
@@ -95,11 +75,8 @@ func createIntIndex(t require.TestingT, tx *bbolt.Tx, ages []indexPair) index.In
 	return idx
 }
 
-func createStrIndex(t require.TestingT, tx *bbolt.Tx, teams []indexPair) index.Index {
-	b, err := tx.CreateBucket([]byte("team"))
-	require.NoError(t, err)
-
-	idx := bolt.NewIndex(b)
+func createStrIndex(t require.TestingT, teams []indexPair) index.Index {
+	idx := memory.NewIndex()
 
 	for _, pair := range teams {
 		err := idx.Set([]byte(pair.V.(string)), []byte(pair.R.(string)))
@@ -118,8 +95,7 @@ func TestIndexMatchers(t *testing.T) {
 		MatchIndex(im map[string]index.Index) (*btree.BTree, error)
 	}
 
-	im, cleanup := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
-	defer cleanup()
+	im := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
 
 	tests := []struct {
 		name    string
@@ -208,8 +184,7 @@ func TestAndMatcher(t *testing.T) {
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
-		im, cleanup := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
-		defer cleanup()
+		im := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
 
 		tests := []struct {
 			name     string
@@ -268,8 +243,7 @@ func TestOrMatcher(t *testing.T) {
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
-		im, cleanup := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
-		defer cleanup()
+		im := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
 
 		tests := []struct {
 			name     string
@@ -359,8 +333,7 @@ func benchmarkIndexMatcher(b *testing.B, size int) {
 		ages[i] = indexPair{V: i, R: fmt.Sprintf("%d", i)}
 	}
 
-	im, cleanup := createIndexMap(b, ages, nil)
-	defer cleanup()
+	im := createIndexMap(b, ages, nil)
 
 	matcher := query.And(
 		query.GtInt(
