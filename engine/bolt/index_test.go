@@ -105,4 +105,54 @@ func TestIndexFirstLast(t *testing.T) {
 	val, rowid = c.Seek(d2)
 	require.Equal(t, d2, val)
 	require.Equal(t, field.EncodeInt64(3), rowid)
+
+	val, rowid = c.Seek([]byte("jac"))
+	require.Equal(t, d1, val)
+	require.Equal(t, field.EncodeInt64(0), rowid)
+
+	val, rowid = c.Seek([]byte("jackk"))
+	require.Equal(t, d2, val)
+	require.Equal(t, field.EncodeInt64(3), rowid)
+
+	val, rowid = c.Prev()
+	require.Equal(t, d1, val)
+	require.Equal(t, field.EncodeInt64(2), rowid)
+}
+
+func TestIndexSeek(t *testing.T) {
+	b, cleanup := tempBucket(t, true)
+	defer cleanup()
+
+	idx := Index{b: b}
+
+	d1 := []byte("jack")
+	d2 := []byte("john")
+
+	err := idx.Set(d1, field.EncodeInt64(int64(10)))
+	require.NoError(t, err)
+
+	err = idx.Set(d2, field.EncodeInt64(int64(20)))
+	require.NoError(t, err)
+
+	c := idx.Cursor()
+	val, rowid := c.Seek([]byte("jack"))
+	require.Equal(t, d1, val)
+	require.Equal(t, field.EncodeInt64(10), rowid)
+	val, rowid = c.Next()
+	require.Equal(t, d2, val)
+	require.Equal(t, field.EncodeInt64(20), rowid)
+
+	val, rowid = c.Prev()
+	require.Equal(t, d1, val)
+	require.Equal(t, field.EncodeInt64(10), rowid)
+	val, rowid = c.Prev()
+	require.Nil(t, val)
+	require.Nil(t, rowid)
+	val, rowid = c.Next()
+	require.Equal(t, d2, val)
+	require.Equal(t, field.EncodeInt64(20), rowid)
+
+	val, rowid = c.Seek([]byte("john"))
+	require.Equal(t, d2, val)
+	require.Equal(t, field.EncodeInt64(20), rowid)
 }

@@ -4,25 +4,16 @@ import (
 	"bytes"
 
 	"github.com/asdine/genji/index"
-	"modernc.org/b"
+	"github.com/google/btree"
 )
 
 type Index struct {
-	tree *b.Tree
+	tree *btree.BTree
 }
 
 func NewIndex() *Index {
 	return &Index{
-		tree: b.TreeNew(func(a, b interface{}) int {
-			ita, itb := a.(*indexedItem), b.(*indexedItem)
-
-			cmp := bytes.Compare(ita.value, itb.value)
-			if cmp != 0 {
-				return cmp
-			}
-
-			return bytes.Compare(ita.rowid, itb.rowid)
-		}),
+		tree: btree.New(3),
 	}
 }
 
@@ -30,8 +21,27 @@ type indexedItem struct {
 	value, rowid []byte
 }
 
+func (i *indexedItem) Less(than btree.Item) bool {
+	other := than.(*indexedItem)
+
+	cmp := bytes.Compare(i.value, other.value)
+	if cmp != 0 {
+		return cmp < 0
+	}
+
+	if len(i.rowid) == 0 {
+		return true
+	}
+
+	if len(other.rowid) == 0 {
+		return false
+	}
+
+	return bytes.Compare(i.rowid, other.rowid) < 0
+}
+
 func (i *Index) Set(value []byte, rowid []byte) error {
-	i.tree.Set(&indexedItem{value, rowid}, rowid)
+	i.tree.ReplaceOrInsert(&indexedItem{value, rowid})
 	return nil
 }
 
@@ -42,56 +52,80 @@ func (i *Index) Cursor() index.Cursor {
 }
 
 type indexCursor struct {
-	tree *b.Tree
-	enum *b.Enumerator
+	tree  *btree.BTree
+	pivot btree.Item
 }
 
 func (c *indexCursor) First() ([]byte, []byte) {
-	var err error
-	c.enum, err = c.tree.SeekFirst()
-
-	if err != nil {
+	c.pivot = c.tree.Min()
+	if c.pivot == nil {
 		return nil, nil
 	}
 
-	return c.Next()
+	it := c.pivot.(*indexedItem)
+	return it.value, it.rowid
 }
 
 func (c *indexCursor) Last() ([]byte, []byte) {
-	var err error
-	c.enum, err = c.tree.SeekLast()
-
-	if err != nil {
+	c.pivot = c.tree.Max()
+	if c.pivot == nil {
 		return nil, nil
 	}
 
-	return c.Prev()
+	it := c.pivot.(*indexedItem)
+	return it.value, it.rowid
 }
 
 func (c *indexCursor) Next() ([]byte, []byte) {
-	k, _, err := c.enum.Next()
-	if err != nil {
-		c.Last()
+	prev := c.pivot
+	c.tree.AscendGreaterOrEqual(c.pivot, func(i btree.Item) bool {
+		if c.pivot == i {
+			return true
+		}
+
+		c.pivot = i
+		return false
+	})
+
+	if c.pivot == prev {
 		return nil, nil
 	}
 
-	it := k.(*indexedItem)
+	it := c.pivot.(*indexedItem)
 	return it.value, it.rowid
 }
 
 func (c *indexCursor) Prev() ([]byte, []byte) {
-	k, _, err := c.enum.Prev()
-	if err != nil {
-		c.First()
+	prev := c.pivot
+	c.tree.DescendLessOrEqual(c.pivot, func(i btree.Item) bool {
+		if c.pivot == i {
+			return true
+		}
+
+		c.pivot = i
+		return false
+	})
+
+	if c.pivot == prev {
 		return nil, nil
 	}
 
-	it := k.(*indexedItem)
+	it := c.pivot.(*indexedItem)
 	return it.value, it.rowid
 }
 
 func (c *indexCursor) Seek(seek []byte) ([]byte, []byte) {
-	c.enum, _ = c.tree.Seek(&indexedItem{value: seek})
+	c.pivot = nil
 
-	return c.Next()
+	var k, v []byte
+
+	c.tree.AscendGreaterOrEqual(&indexedItem{value: seek}, func(i btree.Item) bool {
+		it := i.(*indexedItem)
+		k, v = it.value, it.rowid
+
+		c.pivot = i
+		return false
+	})
+
+	return k, v
 }

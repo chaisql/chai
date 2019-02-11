@@ -58,6 +58,7 @@ func (c *Cursor) Last() ([]byte, []byte) {
 func (c *Cursor) Next() ([]byte, []byte) {
 	value, rowid := c.c.Next()
 	if value == nil {
+		c.c.Last()
 		return nil, nil
 	}
 
@@ -67,6 +68,7 @@ func (c *Cursor) Next() ([]byte, []byte) {
 func (c *Cursor) Prev() ([]byte, []byte) {
 	value, rowid := c.c.Prev()
 	if value == nil {
+		c.c.First()
 		return nil, nil
 	}
 
