@@ -70,7 +70,7 @@ func createIndexes(t require.TestingT, ages, teams []indexPair) (engine.Transact
 }
 
 func createIntIndex(t require.TestingT, tx engine.Transaction, ages []indexPair) {
-	idx, err := tx.CreateIndex("age")
+	idx, err := tx.CreateIndex("test", "age")
 	require.NoError(t, err)
 
 	for _, pair := range ages {
@@ -80,7 +80,7 @@ func createIntIndex(t require.TestingT, tx engine.Transaction, ages []indexPair)
 }
 
 func createStrIndex(t require.TestingT, tx engine.Transaction, teams []indexPair) {
-	idx, err := tx.CreateIndex("team")
+	idx, err := tx.CreateIndex("test", "team")
 	require.NoError(t, err)
 
 	for _, pair := range teams {
@@ -95,7 +95,7 @@ type indexPair struct {
 
 func TestIndexMatchers(t *testing.T) {
 	type indexMatcher interface {
-		MatchIndex(tx engine.Transaction) (*btree.BTree, error)
+		MatchIndex(table string, tx engine.Transaction) (*btree.BTree, error)
 	}
 
 	tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
@@ -152,7 +152,7 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rowids, err := test.matcher.MatchIndex(tx)
+			rowids, err := test.matcher.MatchIndex("test", tx)
 			require.NoError(t, err)
 			var ids []string
 			rowids.Ascend(func(i btree.Item) bool {
@@ -207,7 +207,7 @@ func TestAndMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.And(test.matchers...)
 
-				rowids, err := m.MatchIndex(tx)
+				rowids, err := m.MatchIndex("test", tx)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -268,7 +268,7 @@ func TestOrMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.Or(test.matchers...)
 
-				rowids, err := m.MatchIndex(tx)
+				rowids, err := m.MatchIndex("test", tx)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -355,7 +355,7 @@ func benchmarkIndexMatcher(b *testing.B, size int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		matcher.MatchIndex(tx)
+		matcher.MatchIndex("test", tx)
 	}
 	b.StopTimer()
 }
