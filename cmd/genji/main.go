@@ -75,7 +75,7 @@ func recordCmd() {
 	var buf bytes.Buffer
 	err = generator.GenerateRecord(af, *t, &buf)
 	if err != nil {
-		fail(err.Error())
+		fail(err.Error() + "\n")
 	}
 
 	suffix := filepath.Ext(*f)
