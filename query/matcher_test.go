@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 	"github.com/google/btree"
@@ -56,34 +56,37 @@ func TestMatchers(t *testing.T) {
 	}
 }
 
-func createIndexMap(t require.TestingT, ages, teams []indexPair) map[string]index.Index {
-	indexes := make(map[string]index.Index)
-	indexes["age"] = createIntIndex(t, ages)
-	indexes["team"] = createStrIndex(t, teams)
+func createIndexes(t require.TestingT, ages, teams []indexPair) (engine.Transaction, func()) {
+	ng := memory.NewEngine()
+	tx, err := ng.Begin(true)
+	require.NoError(t, err)
 
-	return indexes
+	createIntIndex(t, tx, ages)
+	createStrIndex(t, tx, teams)
+
+	return tx, func() {
+		tx.Rollback()
+	}
 }
 
-func createIntIndex(t require.TestingT, ages []indexPair) index.Index {
-	idx := memory.NewIndex()
+func createIntIndex(t require.TestingT, tx engine.Transaction, ages []indexPair) {
+	idx, err := tx.CreateIndex("age")
+	require.NoError(t, err)
 
 	for _, pair := range ages {
 		err := idx.Set(field.EncodeInt64(int64(pair.V.(int))), []byte(pair.R.(string)))
 		require.NoError(t, err)
 	}
-
-	return idx
 }
 
-func createStrIndex(t require.TestingT, teams []indexPair) index.Index {
-	idx := memory.NewIndex()
+func createStrIndex(t require.TestingT, tx engine.Transaction, teams []indexPair) {
+	idx, err := tx.CreateIndex("team")
+	require.NoError(t, err)
 
 	for _, pair := range teams {
 		err := idx.Set([]byte(pair.V.(string)), []byte(pair.R.(string)))
 		require.NoError(t, err)
 	}
-
-	return idx
 }
 
 type indexPair struct {
@@ -92,10 +95,11 @@ type indexPair struct {
 
 func TestIndexMatchers(t *testing.T) {
 	type indexMatcher interface {
-		MatchIndex(im map[string]index.Index) (*btree.BTree, error)
+		MatchIndex(tx engine.Transaction) (*btree.BTree, error)
 	}
 
-	im := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
+	tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
+	defer cleanup()
 
 	tests := []struct {
 		name    string
@@ -148,7 +152,7 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rowids, err := test.matcher.MatchIndex(im)
+			rowids, err := test.matcher.MatchIndex(tx)
 			require.NoError(t, err)
 			var ids []string
 			rowids.Ascend(func(i btree.Item) bool {
@@ -184,7 +188,8 @@ func TestAndMatcher(t *testing.T) {
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
-		im := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
+		tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
+		defer cleanup()
 
 		tests := []struct {
 			name     string
@@ -202,7 +207,7 @@ func TestAndMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.And(test.matchers...)
 
-				rowids, err := m.MatchIndex(im)
+				rowids, err := m.MatchIndex(tx)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -243,7 +248,8 @@ func TestOrMatcher(t *testing.T) {
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
-		im := createIndexMap(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
+		tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
+		defer cleanup()
 
 		tests := []struct {
 			name     string
@@ -262,7 +268,7 @@ func TestOrMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.Or(test.matchers...)
 
-				rowids, err := m.MatchIndex(im)
+				rowids, err := m.MatchIndex(tx)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -333,7 +339,8 @@ func benchmarkIndexMatcher(b *testing.B, size int) {
 		ages[i] = indexPair{V: i, R: fmt.Sprintf("%d", i)}
 	}
 
-	im := createIndexMap(b, ages, nil)
+	tx, cleanup := createIndexes(b, ages, nil)
+	defer cleanup()
 
 	matcher := query.And(
 		query.GtInt(
@@ -348,7 +355,7 @@ func benchmarkIndexMatcher(b *testing.B, size int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		matcher.MatchIndex(im)
+		matcher.MatchIndex(tx)
 	}
 	b.StopTimer()
 }

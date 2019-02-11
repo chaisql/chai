@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
@@ -25,11 +26,11 @@ func (m *matcher) Match(r record.Record) (bool, error) {
 type IndexMatcher struct {
 	Matcher
 
-	fn func(im map[string]index.Index) (*btree.BTree, error)
+	fn func(tx engine.Transaction) (*btree.BTree, error)
 }
 
-func (m *IndexMatcher) MatchIndex(im map[string]index.Index) (*btree.BTree, error) {
-	return m.fn(im)
+func (m *IndexMatcher) MatchIndex(tx engine.Transaction) (*btree.BTree, error) {
+	return m.fn(tx)
 }
 
 type Item []byte
@@ -164,8 +165,12 @@ func EqInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return eqIndexMatcher(field.EncodeInt64(base), im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return eqIndexMatcher(field.EncodeInt64(base), idx)
 		},
 	}
 }
@@ -179,8 +184,12 @@ func GtInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return gtIndexMatcher(field.EncodeInt64(base), im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return gtIndexMatcher(field.EncodeInt64(base), idx)
 		},
 	}
 }
@@ -194,8 +203,12 @@ func GteInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return gteIndexMatcher(field.EncodeInt64(base), im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return gteIndexMatcher(field.EncodeInt64(base), idx)
 		},
 	}
 }
@@ -209,8 +222,12 @@ func LtInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return ltIndexMatcher(field.EncodeInt64(base), im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return ltIndexMatcher(field.EncodeInt64(base), idx)
 		},
 	}
 }
@@ -224,8 +241,12 @@ func LteInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return lteIndexMatcher(field.EncodeInt64(base), im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return lteIndexMatcher(field.EncodeInt64(base), idx)
 		},
 	}
 }
@@ -240,8 +261,13 @@ func EqStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return eqIndexMatcher(base, im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+
+			return eqIndexMatcher(base, idx)
 		},
 	}
 }
@@ -256,8 +282,12 @@ func GtStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return gtIndexMatcher(base, im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return gtIndexMatcher(base, idx)
 		},
 	}
 }
@@ -272,8 +302,12 @@ func GteStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return gteIndexMatcher(base, im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return gteIndexMatcher(base, idx)
 		},
 	}
 }
@@ -288,8 +322,12 @@ func LtStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return ltIndexMatcher(base, im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return ltIndexMatcher(base, idx)
 		},
 	}
 }
@@ -304,8 +342,12 @@ func LteStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
-			return lteIndexMatcher(base, im[f.Name()])
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
+			idx, err := tx.Index(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			return lteIndexMatcher(base, idx)
 		},
 	}
 }
@@ -325,12 +367,12 @@ func And(matchers ...Matcher) *IndexMatcher {
 			},
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
 			var set *btree.BTree
 
 			for _, m := range matchers {
 				if i, ok := m.(*IndexMatcher); ok {
-					rowids, err := i.MatchIndex(im)
+					rowids, err := i.MatchIndex(tx)
 					if err != nil {
 						return nil, err
 					}
@@ -377,12 +419,12 @@ func Or(matchers ...Matcher) *IndexMatcher {
 			},
 		},
 
-		fn: func(im map[string]index.Index) (*btree.BTree, error) {
+		fn: func(tx engine.Transaction) (*btree.BTree, error) {
 			var set *btree.BTree
 
 			for _, m := range matchers {
 				if i, ok := m.(*IndexMatcher); ok {
-					rowids, err := i.MatchIndex(im)
+					rowids, err := i.MatchIndex(tx)
 					if err != nil {
 						return nil, err
 					}
