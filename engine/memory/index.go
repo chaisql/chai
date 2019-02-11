@@ -14,7 +14,14 @@ type Index struct {
 func NewIndex() *Index {
 	return &Index{
 		tree: b.TreeNew(func(a, b interface{}) int {
-			return bytes.Compare(a.(*indexedItem).value, b.(*indexedItem).value)
+			ita, itb := a.(*indexedItem), b.(*indexedItem)
+
+			cmp := bytes.Compare(ita.value, itb.value)
+			if cmp != 0 {
+				return cmp
+			}
+
+			return bytes.Compare(ita.rowid, itb.rowid)
 		}),
 	}
 }
@@ -58,12 +65,13 @@ func (c *indexCursor) Last() ([]byte, []byte) {
 		return nil, nil
 	}
 
-	return c.Next()
+	return c.Prev()
 }
 
 func (c *indexCursor) Next() ([]byte, []byte) {
 	k, _, err := c.enum.Next()
 	if err != nil {
+		c.Last()
 		return nil, nil
 	}
 
@@ -74,6 +82,7 @@ func (c *indexCursor) Next() ([]byte, []byte) {
 func (c *indexCursor) Prev() ([]byte, []byte) {
 	k, _, err := c.enum.Prev()
 	if err != nil {
+		c.First()
 		return nil, nil
 	}
 
