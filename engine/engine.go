@@ -3,6 +3,8 @@ package engine
 import (
 	"errors"
 
+	"github.com/asdine/genji/index"
+
 	"github.com/asdine/genji/table"
 )
 
@@ -21,4 +23,6 @@ type Transaction interface {
 	Commit() error
 	Table(name string) (table.Table, error)
 	CreateTable(name string) (table.Table, error)
+	Index(name string) (index.Index, error)
+	CreateIndex(name string) (index.Index, error)
 }

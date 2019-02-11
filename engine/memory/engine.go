@@ -7,20 +7,23 @@ import (
 	"sync"
 
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/table"
 	"modernc.org/b"
 )
 
 type Engine struct {
-	closed bool
-	tables map[string]*b.Tree
+	closed  bool
+	tables  map[string]*b.Tree
+	indexes map[string]*Index
 
 	mu sync.RWMutex
 }
 
 func NewEngine() *Engine {
 	return &Engine{
-		tables: make(map[string]*b.Tree),
+		tables:  make(map[string]*b.Tree),
+		indexes: make(map[string]*Index),
 	}
 }
 
@@ -122,4 +125,32 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 	})
 
 	return &tableTx{tx: tx, tree: tr}, nil
+}
+
+func (tx *transaction) Index(name string) (index.Index, error) {
+	idx, ok := tx.ng.indexes[name]
+	if !ok {
+		return nil, errors.New("index not found")
+	}
+
+	return idx, nil
+}
+
+func (tx *transaction) CreateIndex(name string) (index.Index, error) {
+	if !tx.writable {
+		return nil, errors.New("can't create index in read-only transaction")
+	}
+
+	_, err := tx.Index(name)
+	if err == nil {
+		return nil, fmt.Errorf("index '%s' already exists", name)
+	}
+
+	tx.ng.indexes[name] = NewIndex()
+
+	tx.undos = append(tx.undos, func() {
+		delete(tx.ng.indexes, name)
+	})
+
+	return tx.ng.indexes[name], nil
 }
