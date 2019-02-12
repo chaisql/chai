@@ -8,6 +8,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 	"github.com/google/btree"
 )
 
@@ -466,4 +467,33 @@ func union(s1, s2 *btree.BTree) *btree.BTree {
 	})
 
 	return s1
+}
+
+type indexResultTable struct {
+	tree  *btree.BTree
+	table table.Table
+}
+
+func (i *indexResultTable) Record(rowid []byte) (record.Record, error) {
+	it := i.tree.Get(Item(rowid))
+	if it == nil {
+		return nil, engine.ErrNotFound
+	}
+
+	return i.table.Record(rowid)
+}
+
+func (i *indexResultTable) Iterate(fn func(record.Record) bool) error {
+	var err error
+
+	i.tree.Ascend(func(it btree.Item) bool {
+		r, er := i.table.Record([]byte(it.(Item)))
+		if err != nil {
+			err = er
+			return false
+		}
+
+		return fn(r)
+	})
+	return err
 }

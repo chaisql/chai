@@ -29,25 +29,39 @@ func (q Query) Run(tx engine.Transaction) (table.Reader, error) {
 	}
 
 	matcher := And(q.matchers...)
+	tree, err := matcher.MatchIndex(q.tableSelector.Name(), tx)
+	if err != nil && err != engine.ErrNotFound {
+		return nil, err
+	}
 
-	b := table.NewBrowser(t).
-		Filter(func(r record.Record) (bool, error) {
-			return matcher.Match(r)
-		}).
-		Map(func(r record.Record) (record.Record, error) {
-			var fb record.FieldBuffer
+	var b table.Browser
 
-			for _, s := range q.fieldSelectors {
-				f, err := s.SelectField(r)
-				if err != nil {
-					return nil, err
-				}
+	if err == nil && tree.Len() > 0 {
+		b.Reader = &indexResultTable{
+			tree:  tree,
+			table: t,
+		}
+	} else {
+		b = table.NewBrowser(t).
+			Filter(func(r record.Record) (bool, error) {
+				return matcher.Match(r)
+			})
+	}
 
-				fb.Add(f)
+	b = b.Map(func(r record.Record) (record.Record, error) {
+		var fb record.FieldBuffer
+
+		for _, s := range q.fieldSelectors {
+			f, err := s.SelectField(r)
+			if err != nil {
+				return nil, err
 			}
 
-			return &fb, nil
-		})
+			fb.Add(f)
+		}
+
+		return &fb, nil
+	})
 
 	if b.Err() != nil {
 		return nil, b.Err()
