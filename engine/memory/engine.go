@@ -1,7 +1,6 @@
 package memory
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -9,12 +8,12 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/table"
-	"modernc.org/b"
+	"github.com/google/btree"
 )
 
 type Engine struct {
 	closed  bool
-	tables  map[string]*b.Tree
+	tables  map[string]*btree.BTree
 	indexes map[tableIndex]*Index
 
 	mu sync.RWMutex
@@ -27,7 +26,7 @@ type tableIndex struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		tables:  make(map[string]*b.Tree),
+		tables:  make(map[string]*btree.BTree),
 		indexes: make(map[tableIndex]*Index),
 	}
 }
@@ -119,9 +118,7 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 		return nil, fmt.Errorf("table '%s' already exists", name)
 	}
 
-	tr := b.TreeNew(func(a, b interface{}) int {
-		return bytes.Compare(a.([]byte), b.([]byte))
-	})
+	tr := btree.New(3)
 
 	tx.ng.tables[name] = tr
 
@@ -135,7 +132,7 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 func (tx *transaction) Index(table, name string) (index.Index, error) {
 	idx, ok := tx.ng.indexes[tableIndex{table, name}]
 	if !ok {
-		return nil, errors.New("index not found")
+		return nil, engine.ErrNotFound
 	}
 
 	return idx, nil

@@ -1,19 +1,19 @@
 package memory
 
 import (
+	"bytes"
 	"errors"
-	"io"
 	"sync/atomic"
 
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
-	"modernc.org/b"
+	"github.com/google/btree"
 )
 
 type tableTx struct {
 	tx      *transaction
-	tree    *b.Tree
+	tree    *btree.BTree
 	counter uint64
 }
 
@@ -22,10 +22,14 @@ type item struct {
 	rowid  []byte
 }
 
+func (i *item) Less(than btree.Item) bool {
+	return bytes.Compare(i.rowid, than.(*item).rowid) < 0
+}
+
 func (t *tableTx) Record(rowid []byte) (record.Record, error) {
-	v, ok := t.tree.Get(rowid)
-	if !ok {
-		return nil, errors.New("not found")
+	v := t.tree.Get(&item{rowid: rowid})
+	if v == nil {
+		return nil, engine.ErrNotFound
 	}
 
 	return v.(*item).record, nil
@@ -44,54 +48,18 @@ func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
 	}
 
 	t.tx.undos = append(t.tx.undos, func() {
-		t.tree.Delete(rid)
+		t.tree.Delete(&it)
 	})
 
-	t.tree.Set(rid, &it)
+	t.tree.ReplaceOrInsert(&it)
 
 	return rid, nil
 }
 
-func (t *tableTx) Cursor() table.Cursor {
-	enum, err := t.tree.SeekFirst()
+func (t *tableTx) Iterate(fn func(record.Record) bool) error {
+	t.tree.Ascend(func(i btree.Item) bool {
+		return fn(i.(*item).record)
+	})
 
-	return &cursor{
-		err:  err,
-		enum: enum,
-	}
-}
-
-type cursor struct {
-	enum     *b.Enumerator
-	curRowid []byte
-	curItem  *item
-	err      error
-}
-
-func (c *cursor) Next() bool {
-	if c.err != nil {
-		return false
-	}
-
-	k, v, err := c.enum.Next()
-	if err == io.EOF {
-		return false
-	}
-
-	if err != nil {
-		c.err = err
-		return false
-	}
-
-	c.curRowid = k.([]byte)
-	c.curItem = v.(*item)
-	return true
-}
-
-func (c *cursor) Err() error {
-	return c.err
-}
-
-func (c *cursor) Record() record.Record {
-	return c.curItem.record
+	return nil
 }

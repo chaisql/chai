@@ -42,7 +42,7 @@ func TestTable(t *testing.T) {
 		require.NoError(t, ng.Close())
 	})
 
-	t.Run("cursor", func(t *testing.T) {
+	t.Run("iterate", func(t *testing.T) {
 		ng := NewEngine()
 
 		tx, err := ng.Begin(true)
@@ -61,17 +61,14 @@ func TestTable(t *testing.T) {
 
 		verifyContentFn := func(tab table.Table) {
 			var i int64
-			c := tab.Cursor()
-			for c.Next() {
-				require.NoError(t, c.Err())
-
-				rec := c.Record()
+			err := tab.Iterate(func(rec record.Record) bool {
 				age, err := rec.Field("age")
 				require.NoError(t, err)
 				require.Equal(t, field.EncodeInt64(i), age.Data)
 				i++
-			}
-
+				return true
+			})
+			require.NoError(t, err)
 			require.EqualValues(t, 3, i)
 		}
 
