@@ -14,26 +14,12 @@ type Table interface {
 }
 
 type Reader interface {
-	Cursor() Cursor
+	Iterate(func(record.Record) bool) error
 	Record(rowid []byte) (record.Record, error)
 }
 
 type Writer interface {
 	Insert(record.Record) (rowid []byte, err error)
-}
-
-// A Cursor iterates over the fields of a record.
-type Cursor interface {
-	// Next advances the cursor to the next record which will then be available
-	// through the Record method. It returns false when the cursor stops.
-	// If an error occurs during iteration, the Err method will return it.
-	Next() bool
-
-	// Err returns the error, if any, that was encountered during iteration.
-	Err() error
-
-	// Record returns the current record.
-	Record() record.Record
 }
 
 // RecordBuffer contains a list of records. It implements the Table interface.
@@ -62,52 +48,27 @@ func (rb *RecordBuffer) InsertFrom(t Reader) error {
 		return nil
 	}
 
-	c := t.Cursor()
-
-	for c.Next() {
-		if c.Err() != nil {
-			return c.Err()
-		}
-
-		rb.Insert(c.Record())
-	}
-
-	return nil
+	return t.Iterate(func(r record.Record) bool {
+		rb.Insert(r)
+		return true
+	})
 }
 
 func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
 	return nil, nil
 }
 
-// Cursor creates a Cursor that iterates over the slice of records.
-func (rb *RecordBuffer) Cursor() Cursor {
-	return &recordBufferCursor{buf: rb}
-}
-
-type recordBufferCursor struct {
-	buf *RecordBuffer
-	cur *list.Element
-}
-
-func (c *recordBufferCursor) Next() bool {
-	if c.cur == nil {
-		c.cur = c.buf.list.Front()
-		return c.cur != nil
+func (rb *RecordBuffer) Iterate(fn func(record.Record) bool) error {
+	elm := rb.list.Front()
+	if elm == nil {
+		return nil
 	}
 
-	next := c.cur.Next()
-	if next == nil {
-		return false
+	for elm := rb.list.Front(); elm != nil; elm = elm.Next() {
+		if !fn(elm.Value.(record.Record)) {
+			break
+		}
 	}
 
-	c.cur = next
-	return true
-}
-
-func (c *recordBufferCursor) Record() record.Record {
-	return c.cur.Value.(record.Record)
-}
-
-func (c *recordBufferCursor) Err() error {
 	return nil
 }

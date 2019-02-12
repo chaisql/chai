@@ -27,19 +27,18 @@ func (b Browser) ForEach(fn func(record.Record) error) Browser {
 		return b
 	}
 
-	c := b.Cursor()
-
-	for c.Next() {
-		if err := c.Err(); err != nil {
-			b.err = err
-			return b
-		}
-
-		err := fn(c.Record())
+	err := b.Iterate(func(r record.Record) bool {
+		err := fn(r)
 		if err != nil {
 			b.err = err
-			return b
+			return false
 		}
+
+		return true
+	})
+
+	if err != nil && b.err == nil {
+		b.err = err
 	}
 
 	return b
