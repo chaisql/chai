@@ -1,10 +1,10 @@
 package bolt
 
 import (
-	"errors"
 	"os"
 
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
@@ -54,7 +54,7 @@ func (t *Transaction) Commit() error {
 func (t *Transaction) Table(name string) (table.Table, error) {
 	b := t.tx.Bucket([]byte(name))
 	if b == nil {
-		return nil, errors.New("not found")
+		return nil, engine.ErrNotFound
 	}
 
 	return &Table{
@@ -70,5 +70,37 @@ func (t *Transaction) CreateTable(name string) (table.Table, error) {
 
 	return &Table{
 		Bucket: b,
+	}, nil
+}
+
+func (t *Transaction) CreateIndex(table, name string) (index.Index, error) {
+	b := t.tx.Bucket([]byte(name))
+	if b == nil {
+		return nil, engine.ErrNotFound
+	}
+
+	ib, err := b.CreateBucket([]byte(name))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Index{
+		b: ib,
+	}, nil
+}
+
+func (t *Transaction) Index(table, name string) (index.Index, error) {
+	b := t.tx.Bucket([]byte(name))
+	if b == nil {
+		return nil, engine.ErrNotFound
+	}
+
+	ib := b.Bucket([]byte(name))
+	if ib == nil {
+		return nil, engine.ErrNotFound
+	}
+
+	return &Index{
+		b: ib,
 	}, nil
 }

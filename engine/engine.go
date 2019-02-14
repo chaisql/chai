@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/index"
-
 	"github.com/asdine/genji/table"
 )
 

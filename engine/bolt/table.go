@@ -3,9 +3,10 @@ package bolt
 import (
 	"errors"
 
+	"github.com/asdine/genji/engine"
+
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
 
@@ -38,39 +39,23 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 func (t *Table) Record(rowid []byte) (record.Record, error) {
 	v := t.Bucket.Get(rowid)
 	if v == nil {
-		return nil, errors.New("not found")
+		return nil, engine.ErrNotFound
 	}
 
 	return &record.EncodedRecord{Data: v}, nil
 }
 
-func (t *Table) Cursor() table.Cursor {
-	return &tableCursor{
-		b: t.Bucket,
-	}
-}
+func (t *Table) Iterate(fn func(record.Record) bool) error {
+	return t.Bucket.ForEach(func(_, v []byte) error {
+		if v == nil {
+			return nil
+		}
 
-type tableCursor struct {
-	b           *bolt.Bucket
-	c           *bolt.Cursor
-	rowid, data []byte
-}
+		ok := fn(&record.EncodedRecord{Data: v})
+		if !ok {
+			return errors.New("iterate interruped")
+		}
 
-func (c *tableCursor) Next() bool {
-	if c.c == nil {
-		c.c = c.b.Cursor()
-		c.rowid, c.data = c.c.First()
-	} else {
-		c.rowid, c.data = c.c.Next()
-	}
-
-	return c.rowid != nil
-}
-
-func (c *tableCursor) Err() error {
-	return nil
-}
-
-func (c *tableCursor) Record() record.Record {
-	return &record.EncodedRecord{Data: c.data}
+		return nil
+	})
 }

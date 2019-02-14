@@ -21,7 +21,7 @@ func TestTableInsert(t *testing.T) {
 	require.NotEmpty(t, rowid)
 }
 
-func TestTableCursor(t *testing.T) {
+func TestTableIterate(t *testing.T) {
 	b, cleanup := tempBucket(t, true)
 	defer cleanup()
 
@@ -34,11 +34,8 @@ func TestTableCursor(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	c := table.Cursor()
 	i := 0
-	for c.Next() {
-		r := c.Record()
-
+	table.Iterate(func(r record.Record) bool {
 		rc := r.Cursor()
 		for rc.Next() {
 			require.NoError(t, rc.Err())
@@ -53,7 +50,7 @@ func TestTableCursor(t *testing.T) {
 				require.EqualValues(t, i, age)
 			}
 		}
-
 		i++
-	}
+		return true
+	})
 }
