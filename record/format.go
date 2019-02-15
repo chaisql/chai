@@ -287,17 +287,15 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 	return field.Field{}, errors.New("not found")
 }
 
-type EncodedRecord struct {
-	Data []byte
+type EncodedRecord []byte
+
+func (e EncodedRecord) Field(name string) (field.Field, error) {
+	return DecodeField(e, name)
 }
 
-func (e *EncodedRecord) Field(name string) (field.Field, error) {
-	return DecodeField(e.Data, name)
-}
-
-func (e *EncodedRecord) Cursor() Cursor {
+func (e EncodedRecord) Cursor() Cursor {
 	return &encodedRecordCursor{
-		data: e.Data,
+		data: e,
 	}
 }
 

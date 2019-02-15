@@ -42,7 +42,7 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 		return nil, engine.ErrNotFound
 	}
 
-	return &record.EncodedRecord{Data: v}, nil
+	return record.EncodedRecord(v), nil
 }
 
 func (t *Table) Iterate(fn func(record.Record) bool) error {
@@ -51,9 +51,9 @@ func (t *Table) Iterate(fn func(record.Record) bool) error {
 			return nil
 		}
 
-		ok := fn(&record.EncodedRecord{Data: v})
+		ok := fn(record.EncodedRecord(v))
 		if !ok {
-			return errors.New("iterate interruped")
+			return errors.New("iterate interrupted")
 		}
 
 		return nil

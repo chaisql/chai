@@ -62,7 +62,7 @@ func TestEncodedRecord(t *testing.T) {
 	data, err := Encode(rec)
 	require.NoError(t, err)
 
-	ec := EncodedRecord{Data: data}
+	ec := EncodedRecord(data)
 	f, err := ec.Field("age")
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
@@ -130,7 +130,7 @@ func BenchmarkEncodedRecord(b *testing.B) {
 	data, err := Encode(FieldBuffer(fields))
 	require.NoError(b, err)
 
-	ec := EncodedRecord{Data: data}
+	ec := EncodedRecord(data)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
