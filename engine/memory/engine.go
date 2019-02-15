@@ -138,6 +138,20 @@ func (tx *transaction) Index(table, name string) (index.Index, error) {
 	return idx, nil
 }
 
+func (tx *transaction) Indexes(table string) (map[string]index.Index, error) {
+	m := make(map[string]index.Index)
+
+	for ti, idx := range tx.ng.indexes {
+		if ti.table != table {
+			continue
+		}
+
+		m[ti.index] = idx
+	}
+
+	return m, nil
+}
+
 func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
 	if !tx.writable {
 		return nil, errors.New("can't create index in read-only transaction")
