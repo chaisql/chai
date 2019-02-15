@@ -8,50 +8,34 @@ import (
 )
 
 type DB struct {
-	ng engine.Engine
+	engine.Engine
 }
 
 func Open(ng engine.Engine) (*DB, error) {
-	return &DB{ng: ng}, nil
+	return &DB{Engine: ng}, nil
 }
 
 func (db DB) Begin(writable bool) (*Transaction, error) {
-	tx, err := db.ng.Begin(writable)
+	tx, err := db.Engine.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Transaction{
-		tx: tx,
+		Transaction: tx,
 	}, nil
 }
 
 type Transaction struct {
-	tx engine.Transaction
-}
-
-func (tx Transaction) Rollback() error {
-	return tx.tx.Rollback()
-}
-
-func (tx Transaction) Commit() error {
-	return tx.tx.Commit()
+	engine.Transaction
 }
 
 func (tx Transaction) Table(name string) (table.Table, error) {
-	return tx.tx.Table(name)
+	return tx.Transaction.Table(name)
 }
 
 func (tx Transaction) CreateTable(name string) (table.Table, error) {
-	return tx.tx.CreateTable(name)
-}
-
-func (tx Transaction) Index(table, name string) (index.Index, error) {
-	return tx.tx.Index(table, name)
-}
-
-func (tx Transaction) CreateIndex(table, name string) (index.Index, error) {
-	return tx.tx.CreateIndex(table, name)
+	return tx.Transaction.CreateTable(name)
 }
 
 type Table struct {
@@ -79,12 +63,4 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	}
 
 	return rowid, nil
-}
-
-func (t Table) Iterate(func(record.Record) bool) error {
-	return nil
-}
-
-func (t Table) Record(rowid []byte) (record.Record, error) {
-	return nil, nil
 }
