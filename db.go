@@ -55,11 +55,30 @@ func (tx Transaction) CreateIndex(table, name string) (index.Index, error) {
 }
 
 type Table struct {
-	table table.Table
+	table   table.Table
+	tx      engine.Transaction
+	indexes map[string]index.Index
 }
 
 func (t Table) Insert(r record.Record) ([]byte, error) {
-	return nil, nil
+	rowid, err := t.table.Insert(r)
+	if err != nil {
+		return nil, err
+	}
+
+	for fieldName, idx := range t.indexes {
+		f, err := r.Field(fieldName)
+		if err != nil {
+			return nil, err
+		}
+
+		err = idx.Set(f.Data, rowid)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return rowid, nil
 }
 
 func (t Table) Iterate(func(record.Record) bool) error {
