@@ -79,7 +79,12 @@ func (t *Transaction) CreateIndex(table, name string) (index.Index, error) {
 		return nil, engine.ErrNotFound
 	}
 
-	ib, err := b.CreateBucket([]byte(name))
+	bb, err := b.CreateBucketIfNotExists([]byte("__genji_indexes"))
+	if err != nil {
+		return nil, err
+	}
+
+	ib, err := bb.CreateBucket([]byte(name))
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +100,12 @@ func (t *Transaction) Index(table, name string) (index.Index, error) {
 		return nil, engine.ErrNotFound
 	}
 
-	ib := b.Bucket([]byte(name))
+	bb := b.Bucket([]byte("__genji_indexes"))
+	if bb == nil {
+		return nil, engine.ErrNotFound
+	}
+
+	ib := bb.Bucket([]byte(name))
 	if ib == nil {
 		return nil, engine.ErrNotFound
 	}
@@ -103,4 +113,28 @@ func (t *Transaction) Index(table, name string) (index.Index, error) {
 	return &Index{
 		b: ib,
 	}, nil
+}
+
+func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
+	m := make(map[string]index.Index)
+
+	b := t.tx.Bucket([]byte(table))
+	if b == nil {
+		return nil, engine.ErrNotFound
+	}
+
+	bb := b.Bucket([]byte("__genji_indexes"))
+	if bb == nil {
+		return nil, nil
+	}
+
+	err := bb.ForEach(func(k, _ []byte) error {
+		m[string(k)] = &Index{
+			b: bb.Bucket(k),
+		}
+
+		return nil
+	})
+
+	return m, err
 }
