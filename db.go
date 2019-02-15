@@ -31,7 +31,21 @@ type Transaction struct {
 }
 
 func (tx Transaction) Table(name string) (table.Table, error) {
-	return tx.Transaction.Table(name)
+	tb, err := tx.Transaction.Table(name)
+	if err != nil {
+		return nil, err
+	}
+
+	indexes, err := tx.Transaction.Indexes(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Table{
+		Table:   tb,
+		tx:      tx.Transaction,
+		indexes: indexes,
+	}, nil
 }
 
 func (tx Transaction) CreateTable(name string) (table.Table, error) {
@@ -39,13 +53,13 @@ func (tx Transaction) CreateTable(name string) (table.Table, error) {
 }
 
 type Table struct {
-	table   table.Table
+	table.Table
 	tx      engine.Transaction
 	indexes map[string]index.Index
 }
 
 func (t Table) Insert(r record.Record) ([]byte, error) {
-	rowid, err := t.table.Insert(r)
+	rowid, err := t.Table.Insert(r)
 	if err != nil {
 		return nil, err
 	}
