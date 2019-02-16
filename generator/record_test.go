@@ -30,7 +30,6 @@ func TestGenerateRecord(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-
 				fset := token.NewFileSet()
 				f, err := parser.ParseFile(fset, "testdata/"+test.name+".go", nil, 0)
 				require.NoError(t, err)
@@ -176,5 +175,9 @@ func TestGeneratedRecords(t *testing.T) {
 
 		require.Implements(t, (*record.Record)(nil), &r)
 		require.Implements(t, (*table.Pker)(nil), &r)
+
+		pk, err := r.Pk()
+		require.NoError(t, err)
+		require.Equal(t, field.EncodeInt64(10), pk)
 	})
 }

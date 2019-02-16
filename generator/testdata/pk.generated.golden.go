@@ -28,6 +28,11 @@ func (p *Pk) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
+// Pk returns the primary key. It implements the table.Pker interface.
+func (p *Pk) Pk() ([]byte, error) {
+	return field.EncodeInt64(p.B), nil
+}
+
 // Cursor creates a cursor for scanning records.
 func (p *Pk) Cursor() record.Cursor {
 	return &pkCursor{

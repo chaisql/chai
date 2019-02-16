@@ -7,10 +7,10 @@ import (
 	"go/ast"
 	"go/token"
 	"io"
+	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/fatih/structtag"
 	"golang.org/x/tools/imports"
 )
 
@@ -48,6 +48,17 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 
 	return field.Field{}, errors.New("unknown field")
 }
+
+{{- if ne .Struct.Pk.Name ""}}
+// Pk returns the primary key. It implements the table.Pker interface.
+func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
+	{{- if eq .Struct.Pk.Type "string"}}
+		return []byte({{$fl}}.{{.Struct.Pk.Name}}), nil
+	{{- else if eq .Struct.Pk.Type "int64"}}
+		return field.EncodeInt64({{$fl}}.{{.Struct.Pk.Name}}), nil
+	{{- end}}
+}
+{{- end}}
 
 {{- $cursor := printf "%sCursor" .Struct.Unexported }}
 // Cursor creates a cursor for scanning records.
@@ -208,17 +219,21 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 }
 
 func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
-	stags, err := structtag.Parse(fd.Tag.Value)
+	unquoted, err := strconv.Unquote(fd.Tag.Value)
 	if err != nil {
 		return err
 	}
 
-	tag, err := stags.Get("genji")
-	if err != nil {
+	if !strings.HasPrefix(unquoted, "genji:") {
 		return nil
 	}
 
-	gtags := strings.Split(tag.String(), ",")
+	rawOpts, err := strconv.Unquote(strings.TrimPrefix(unquoted, "genji:"))
+	if err != nil {
+		return err
+	}
+
+	gtags := strings.Split(rawOpts, ",")
 
 	for _, gtag := range gtags {
 		switch gtag {
