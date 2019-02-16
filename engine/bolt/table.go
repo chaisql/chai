@@ -3,10 +3,9 @@ package bolt
 import (
 	"errors"
 
-	"github.com/asdine/genji/engine"
-
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
 
@@ -39,7 +38,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 func (t *Table) Record(rowid []byte) (record.Record, error) {
 	v := t.Bucket.Get(rowid)
 	if v == nil {
-		return nil, engine.ErrNotFound
+		return nil, table.ErrRecordNotFound
 	}
 
 	return record.EncodedRecord(v), nil

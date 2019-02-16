@@ -101,7 +101,7 @@ func (tx *transaction) Commit() error {
 func (tx *transaction) Table(name string) (table.Table, error) {
 	rb, ok := tx.ng.tables[name]
 	if !ok {
-		return nil, errors.New("table not found")
+		return nil, engine.ErrTableNotFound
 	}
 
 	return &tableTx{tx: tx, RecordBuffer: rb}, nil
@@ -131,7 +131,7 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 func (tx *transaction) Index(table, name string) (index.Index, error) {
 	idx, ok := tx.ng.indexes[tableIndex{table, name}]
 	if !ok {
-		return nil, engine.ErrNotFound
+		return nil, engine.ErrIndexNotFound
 	}
 
 	return idx, nil
@@ -158,7 +158,7 @@ func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
 
 	_, err := tx.Index(table, name)
 	if err == nil {
-		return nil, fmt.Errorf("index '%s' already exists", name)
+		return nil, engine.ErrTableNotFound
 	}
 
 	tx.ng.indexes[tableIndex{table, name}] = NewIndex()
