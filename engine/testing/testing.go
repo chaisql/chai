@@ -23,11 +23,57 @@ func TestEngine(t *testing.T, ng engine.Engine) {
 
 // TestTransaction runs a list of tests against transactions created
 // thanks to the provided engine.
+// It tests the entire transaction, including table and index implementations.
 // It is called by TestEngine.
 func TestTransaction(t *testing.T, ng engine.Engine) {
+	t.Run("Commit after rollback should fail", func(t *testing.T) {
+		tx, err := ng.Begin(false)
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.Error(t, err)
+	})
+
+	t.Run("Rollback after commit should not fail", func(t *testing.T) {
+		tx, err := ng.Begin(false)
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+	})
+
+	t.Run("Commit after commit should fail", func(t *testing.T) {
+		tx, err := ng.Begin(false)
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.Error(t, err)
+	})
+
+	t.Run("Rollback after rollback should not fail", func(t *testing.T) {
+		tx, err := ng.Begin(false)
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+	})
+
 	t.Run("Read-Only", func(t *testing.T) {
 		tx, err := ng.Begin(false)
 		require.NoError(t, err)
+		defer tx.Rollback()
 
 		tests := []struct {
 			name string
