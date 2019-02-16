@@ -10,21 +10,14 @@ import (
 )
 
 // TestEngine runs a list of tests against the provided engine.
-// It tests the entire engine, including transactions.
 func TestEngine(t *testing.T, ng engine.Engine) {
 	t.Run("Close", func(t *testing.T) {
 		require.NoError(t, ng.Close())
-	})
-
-	t.Run("Transaction", func(t *testing.T) {
-		TestTransaction(t, ng)
 	})
 }
 
 // TestTransaction runs a list of tests against transactions created
 // thanks to the provided engine.
-// It tests the entire transaction, including table and index implementations.
-// It is called by TestEngine.
 func TestTransaction(t *testing.T, ng engine.Engine) {
 	t.Run("Commit after rollback should fail", func(t *testing.T) {
 		tx, err := ng.Begin(false)
@@ -136,6 +129,39 @@ func TestTransaction(t *testing.T, ng engine.Engine) {
 				require.NoError(t, err)
 
 				err = tx.Rollback()
+				require.NoError(t, err)
+
+				test.readFn(tx, &err)
+				require.NoError(t, err)
+			})
+		}
+	})
+
+	t.Run("Data should be visible within the same transaction", func(t *testing.T) {
+		tests := []struct {
+			name    string
+			writeFn func(engine.Transaction, *error)
+			readFn  func(engine.Transaction, *error)
+		}{
+			{
+				"CreateTable",
+				func(tx engine.Transaction, err *error) { _, *err = tx.CreateTable("test") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Table("test") },
+			},
+			{
+				"CreateIndex",
+				func(tx engine.Transaction, err *error) { _, *err = tx.CreateIndex("test", "idx") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Index("test", "idx") },
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				tx, err := ng.Begin(true)
+				require.NoError(t, err)
+				defer tx.Rollback()
+
+				test.writeFn(tx, &err)
 				require.NoError(t, err)
 
 				test.readFn(tx, &err)
