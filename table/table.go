@@ -2,9 +2,11 @@ package table
 
 import (
 	"bytes"
-	"container/list"
 	"errors"
+	"io"
+	"sync/atomic"
 
+	b "github.com/asdine/genji/bptree"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 )
@@ -26,71 +28,72 @@ type Writer interface {
 
 // RecordBuffer contains a list of records. It implements the Table interface.
 type RecordBuffer struct {
-	list    *list.List
-	counter int64
-}
-
-type item struct {
-	r     record.Record
-	rowid []byte
+	tree    *b.Tree
+	counter uint64
 }
 
 // Insert adds a record to the buffer.
 func (rb *RecordBuffer) Insert(r record.Record) ([]byte, error) {
-	if rb.list == nil {
-		rb.list = list.New()
+	if rb.tree == nil {
+		rb.tree = b.TreeNew(bytes.Compare)
 	}
 
-	rb.counter++
+	rowid := field.EncodeInt64(int64(atomic.AddUint64(&rb.counter, 1)))
 
-	rowid := field.EncodeInt64(rb.counter)
-	rb.list.PushBack(&item{r, rowid})
+	rb.tree.Set(rowid, r)
 
 	return rowid, nil
 }
 
 // InsertFrom copies all the records of t to the buffer.
 func (rb *RecordBuffer) InsertFrom(t Reader) error {
-	if rb.list == nil {
-		rb.list = list.New()
-	}
-
-	if buf, ok := t.(*RecordBuffer); ok {
-		rb.list.PushBackList(buf.list)
-		return nil
-	}
-
-	return t.Iterate(func(r record.Record) bool {
-		rb.Insert(r)
+	var er error
+	erit := t.Iterate(func(r record.Record) bool {
+		_, err := rb.Insert(r)
+		if err != nil {
+			er = err
+			return false
+		}
 		return true
 	})
+
+	if er != nil {
+		return er
+	}
+
+	return erit
 }
 
 func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
-	if rb.list == nil {
+	r, ok := rb.tree.Get(rowid)
+	if !ok {
 		return nil, errors.New("not found")
 	}
 
-	for elm := rb.list.Front(); elm != nil; elm = elm.Next() {
-		it := elm.Value.(*item)
-		if bytes.Equal(it.rowid, rowid) {
-			return it.r, nil
-		}
+	return r, nil
+}
+
+func (rb *RecordBuffer) Delete(rowid []byte) error {
+	ok := rb.tree.Delete(rowid)
+	if !ok {
+		return errors.New("not found")
 	}
-	return nil, errors.New("not found")
+
+	return nil
 }
 
 func (rb *RecordBuffer) Iterate(fn func(record.Record) bool) error {
-	if rb.list == nil {
+	e, err := rb.tree.SeekFirst()
+	if err == io.EOF {
 		return nil
 	}
 
-	for elm := rb.list.Front(); elm != nil; elm = elm.Next() {
-		it := elm.Value.(*item)
-		if !fn(it.r) {
-			break
+	for _, r, err := e.Next(); err != io.EOF; _, r, err = e.Next() {
+		if !fn(r) {
+			return nil
 		}
 	}
 
+	e.Close()
 	return nil
 }
