@@ -8,12 +8,11 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/table"
-	"github.com/google/btree"
 )
 
 type Engine struct {
 	closed  bool
-	tables  map[string]*btree.BTree
+	tables  map[string]*table.RecordBuffer
 	indexes map[tableIndex]*Index
 
 	mu sync.RWMutex
@@ -26,7 +25,7 @@ type tableIndex struct {
 
 func NewEngine() *Engine {
 	return &Engine{
-		tables:  make(map[string]*btree.BTree),
+		tables:  make(map[string]*table.RecordBuffer),
 		indexes: make(map[tableIndex]*Index),
 	}
 }
@@ -100,12 +99,12 @@ func (tx *transaction) Commit() error {
 }
 
 func (tx *transaction) Table(name string) (table.Table, error) {
-	tr, ok := tx.ng.tables[name]
+	rb, ok := tx.ng.tables[name]
 	if !ok {
 		return nil, errors.New("table not found")
 	}
 
-	return &tableTx{tx: tx, tree: tr}, nil
+	return &tableTx{tx: tx, RecordBuffer: rb}, nil
 }
 
 func (tx *transaction) CreateTable(name string) (table.Table, error) {
@@ -118,15 +117,15 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 		return nil, fmt.Errorf("table '%s' already exists", name)
 	}
 
-	tr := btree.New(3)
+	var rb table.RecordBuffer
 
-	tx.ng.tables[name] = tr
+	tx.ng.tables[name] = &rb
 
 	tx.undos = append(tx.undos, func() {
 		delete(tx.ng.tables, name)
 	})
 
-	return &tableTx{tx: tx, tree: tr}, nil
+	return &tableTx{tx: tx, RecordBuffer: &rb}, nil
 }
 
 func (tx *transaction) Index(table, name string) (index.Index, error) {

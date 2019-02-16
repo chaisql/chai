@@ -15,7 +15,7 @@ require (
 	golang.org/x/crypto v0.0.0-20190211182817-74369b46fc67 // indirect
 	golang.org/x/sys v0.0.0-20190105165716-badf5585203e // indirect
 	golang.org/x/tools v0.0.0-20190208222737-3744606dbb67
-	modernc.org/b v1.0.0 // indirect
+	modernc.org/b v1.0.0
 	modernc.org/mathutil v1.0.0 // indirect
 	modernc.org/strutil v1.0.0 // indirect
 )
