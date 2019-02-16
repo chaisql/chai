@@ -92,6 +92,55 @@ func TestTransaction(t *testing.T, ng engine.Engine) {
 				require.Equal(t, test.err, err)
 			})
 		}
-		require.NoError(t, ng.Close())
+	})
+
+	t.Run("Commit / Rollback data persistence", func(t *testing.T) {
+		// this test checks if rollback undoes data changes correctly and if commit keeps data correctly
+		tests := []struct {
+			name    string
+			writeFn func(engine.Transaction, *error)
+			readFn  func(engine.Transaction, *error)
+		}{
+			{
+				"CreateTable",
+				func(tx engine.Transaction, err *error) { _, *err = tx.CreateTable("test") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Table("test") },
+			},
+			{
+				"CreateIndex",
+				func(tx engine.Transaction, err *error) { _, *err = tx.CreateIndex("test", "idx") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Index("test", "idx") },
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name+"/commit", func(t *testing.T) {
+				tx, err := ng.Begin(true)
+				require.NoError(t, err)
+
+				test.writeFn(tx, &err)
+				require.NoError(t, err)
+
+				err = tx.Commit()
+				require.NoError(t, err)
+
+				test.readFn(tx, &err)
+				require.NoError(t, err)
+			})
+
+			t.Run(test.name+"/rollback", func(t *testing.T) {
+				tx, err := ng.Begin(true)
+				require.NoError(t, err)
+
+				test.writeFn(tx, &err)
+				require.NoError(t, err)
+
+				err = tx.Rollback()
+				require.NoError(t, err)
+
+				test.readFn(tx, &err)
+				require.NoError(t, err)
+			})
+		}
 	})
 }
