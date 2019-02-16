@@ -16,25 +16,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var update = flag.Bool("update", false, "update .golden files")
+var update = flag.String("update", "", "update .golden files by name")
 
 func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		src := `
 			package testdata
 		
-			type User struct {
+			type Basic struct {
 				A string
 				B int64
 				C, D string
-			}
-
-			func foo() {
-				var u User
-
-				type User struct {
-					X,Y,Z string
-				}
 			}
 		`
 
@@ -43,11 +35,11 @@ func TestGenerateRecord(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecord(f, "User", &buf)
+		err = GenerateRecord(f, "Basic", &buf)
 		require.NoError(t, err)
 
-		gp := "testdata/generated.golden.go"
-		if *update {
+		gp := "testdata/basic.generated.golden.go"
+		if *update == "basic" {
 			t.Log("update golden file")
 			require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
 		}
@@ -102,6 +94,30 @@ func TestGenerateRecord(t *testing.T) {
 
 		var buf bytes.Buffer
 		err = GenerateRecord(f, "User", &buf)
+		require.Error(t, err)
+	})
+
+	// this test ensures the generator only generates code for
+	// top level types.
+	t.Run("Top level only", func(t *testing.T) {
+		src := `
+			package s
+		
+			func foo() {
+				type S struct {
+					X,Y,Z string
+				}
+
+				var s S
+			}
+		`
+
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, "", src, 0)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		err = GenerateRecord(f, "S", &buf)
 		require.Error(t, err)
 	})
 }
