@@ -51,6 +51,15 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 	return record.EncodedRecord(v), nil
 }
 
+func (t *Table) Delete(rowid []byte) error {
+	v := t.Bucket.Get(rowid)
+	if v == nil {
+		return table.ErrRecordNotFound
+	}
+
+	return t.Bucket.Delete(rowid)
+}
+
 func (t *Table) Iterate(fn func(record.Record) bool) error {
 	return t.Bucket.ForEach(func(_, v []byte) error {
 		if v == nil {
