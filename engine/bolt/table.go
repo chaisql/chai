@@ -13,19 +13,26 @@ type Table struct {
 	Bucket *bolt.Bucket
 }
 
-func (t *Table) Insert(r record.Record) ([]byte, error) {
-	seq, err := t.Bucket.NextSequence()
-	if err != nil {
-		return nil, err
+func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
+	if pker, ok := r.(table.Pker); ok {
+		rowid, err = pker.Pk()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		seq, err := t.Bucket.NextSequence()
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO(asdine): encode in uint64 if that makes sense.
+		rowid = field.EncodeInt64(int64(seq))
 	}
 
 	data, err := record.Encode(r)
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO(asdine): encode in uint64 if that makes sense.
-	rowid := field.EncodeInt64(int64(seq))
 
 	err = t.Bucket.Put(rowid, data)
 	if err != nil {
