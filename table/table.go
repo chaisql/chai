@@ -31,19 +31,30 @@ type Writer interface {
 	Insert(record.Record) (rowid []byte, err error)
 }
 
+type Pker interface {
+	Pk() ([]byte, error)
+}
+
 // RecordBuffer contains a list of records. It implements the Table interface.
 type RecordBuffer struct {
 	tree    *b.Tree
-	counter uint64
+	counter int64
 }
 
 // Insert adds a record to the buffer.
-func (rb *RecordBuffer) Insert(r record.Record) ([]byte, error) {
+func (rb *RecordBuffer) Insert(r record.Record) (rowid []byte, err error) {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
 	}
 
-	rowid := field.EncodeInt64(int64(atomic.AddUint64(&rb.counter, 1)))
+	if pker, ok := r.(Pker); ok {
+		rowid, err = pker.Pk()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rowid = field.EncodeInt64(atomic.AddInt64(&rb.counter, 1))
+	}
 
 	rb.tree.Set(rowid, r)
 
