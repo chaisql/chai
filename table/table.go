@@ -1,7 +1,9 @@
 package table
 
 import (
+	"bytes"
 	"container/list"
+	"errors"
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -28,6 +30,11 @@ type RecordBuffer struct {
 	counter int64
 }
 
+type item struct {
+	r     record.Record
+	rowid []byte
+}
+
 // Insert adds a record to the buffer.
 func (rb *RecordBuffer) Insert(r record.Record) ([]byte, error) {
 	if rb.list == nil {
@@ -36,13 +43,18 @@ func (rb *RecordBuffer) Insert(r record.Record) ([]byte, error) {
 
 	rb.counter++
 
-	rb.list.PushBack(r)
+	rowid := field.EncodeInt64(rb.counter)
+	rb.list.PushBack(&item{r, rowid})
 
-	return field.EncodeInt64(rb.counter), nil
+	return rowid, nil
 }
 
 // InsertFrom copies all the records of t to the buffer.
 func (rb *RecordBuffer) InsertFrom(t Reader) error {
+	if rb.list == nil {
+		rb.list = list.New()
+	}
+
 	if buf, ok := t.(*RecordBuffer); ok {
 		rb.list.PushBackList(buf.list)
 		return nil
@@ -55,17 +67,27 @@ func (rb *RecordBuffer) InsertFrom(t Reader) error {
 }
 
 func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
-	return nil, nil
+	if rb.list == nil {
+		return nil, errors.New("not found")
+	}
+
+	for elm := rb.list.Front(); elm != nil; elm = elm.Next() {
+		it := elm.Value.(*item)
+		if bytes.Equal(it.rowid, rowid) {
+			return it.r, nil
+		}
+	}
+	return nil, errors.New("not found")
 }
 
 func (rb *RecordBuffer) Iterate(fn func(record.Record) bool) error {
-	elm := rb.list.Front()
-	if elm == nil {
+	if rb.list == nil {
 		return nil
 	}
 
 	for elm := rb.list.Front(); elm != nil; elm = elm.Next() {
-		if !fn(elm.Value.(record.Record)) {
+		it := elm.Value.(*item)
+		if !fn(it.r) {
 			break
 		}
 	}
