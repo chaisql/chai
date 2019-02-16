@@ -11,6 +11,11 @@ import (
 	"github.com/asdine/genji/record"
 )
 
+// Errors.
+var (
+	ErrRecordNotFound = errors.New("not found")
+)
+
 // A Table represents a group of records.
 type Table interface {
 	Reader
@@ -67,7 +72,7 @@ func (rb *RecordBuffer) InsertFrom(t Reader) error {
 func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
 	r, ok := rb.tree.Get(rowid)
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, ErrRecordNotFound
 	}
 
 	return r, nil
@@ -76,7 +81,7 @@ func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
 func (rb *RecordBuffer) Delete(rowid []byte) error {
 	ok := rb.tree.Delete(rowid)
 	if !ok {
-		return errors.New("not found")
+		return ErrRecordNotFound
 	}
 
 	return nil
