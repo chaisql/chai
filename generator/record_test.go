@@ -9,6 +9,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/asdine/genji/field"
@@ -21,24 +22,35 @@ var update = flag.String("update", "", "update .golden files by name")
 
 func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
-		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, "testdata/basic.go", nil, 0)
-		require.NoError(t, err)
-
-		var buf bytes.Buffer
-		err = GenerateRecord(f, "Basic", &buf)
-		require.NoError(t, err)
-
-		gp := "testdata/basic.generated.golden.go"
-		if *update == "basic" {
-			t.Logf("%s: golden file updated", gp)
-			require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
+		tests := []struct {
+			name string
+		}{
+			{"basic"},
 		}
 
-		g, err := ioutil.ReadFile(gp)
-		require.NoError(t, err)
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
 
-		require.Equal(t, string(g), buf.String())
+				fset := token.NewFileSet()
+				f, err := parser.ParseFile(fset, "testdata/"+test.name+".go", nil, 0)
+				require.NoError(t, err)
+
+				var buf bytes.Buffer
+				err = GenerateRecord(f, strings.Title(test.name), &buf)
+				require.NoError(t, err)
+
+				gp := "testdata/" + test.name + ".generated.golden.go"
+				if *update == "basic" {
+					t.Logf("%s: golden file updated", gp)
+					require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
+				}
+
+				g, err := ioutil.ReadFile(gp)
+				require.NoError(t, err)
+
+				require.Equal(t, string(g), buf.String())
+			})
+		}
 	})
 
 	t.Run("Unsupported fields", func(t *testing.T) {
