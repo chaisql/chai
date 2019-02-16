@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/generator/testdata"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -20,18 +21,8 @@ var update = flag.String("update", "", "update .golden files by name")
 
 func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
-		src := `
-			package testdata
-		
-			type Basic struct {
-				A string
-				B int64
-				C, D string
-			}
-		`
-
 		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, "", src, 0)
+		f, err := parser.ParseFile(fset, "testdata/basic.go", nil, 0)
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -40,7 +31,7 @@ func TestGenerateRecord(t *testing.T) {
 
 		gp := "testdata/basic.generated.golden.go"
 		if *update == "basic" {
-			t.Log("update golden file")
+			t.Logf("%s: golden file updated", gp)
 			require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
 		}
 
@@ -122,14 +113,8 @@ func TestGenerateRecord(t *testing.T) {
 	})
 }
 
-type RecordTest struct {
-	A    string
-	B    int64
-	C, D int64
-}
-
 func TestGeneratedRecord(t *testing.T) {
-	r := RecordTest{
+	r := testdata.Basic{
 		A: "A", B: 10, C: 11, D: 12,
 	}
 

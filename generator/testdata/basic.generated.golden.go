@@ -26,14 +26,14 @@ func (b *Basic) Field(name string) (field.Field, error) {
 	case "C":
 		return field.Field{
 			Name: "C",
-			Type: field.String,
-			Data: []byte(b.C),
+			Type: field.Int64,
+			Data: field.EncodeInt64(b.C),
 		}, nil
 	case "D":
 		return field.Field{
 			Name: "D",
-			Type: field.String,
-			Data: []byte(b.D),
+			Type: field.Int64,
+			Data: field.EncodeInt64(b.D),
 		}, nil
 	}
 
@@ -105,12 +105,12 @@ func (BasicSelector) B() query.Int64Field {
 	return query.NewInt64Field("B")
 }
 
-// C returns a string selector.
-func (BasicSelector) C() query.StrField {
-	return query.NewStrField("C")
+// C returns an int64 selector.
+func (BasicSelector) C() query.Int64Field {
+	return query.NewInt64Field("C")
 }
 
-// D returns a string selector.
-func (BasicSelector) D() query.StrField {
-	return query.NewStrField("D")
+// D returns an int64 selector.
+func (BasicSelector) D() query.Int64Field {
+	return query.NewInt64Field("D")
 }
