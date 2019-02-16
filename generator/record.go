@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/fatih/structtag"
 	"golang.org/x/tools/imports"
 )
 
@@ -121,6 +122,9 @@ type recordContext struct {
 		Fields      []struct {
 			Name, Type string
 		}
+		Pk struct {
+			Name, Type string
+		}
 	}
 }
 
@@ -174,6 +178,13 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 					name.String(), string(typ.Name),
 				})
 			}
+
+			if fd.Tag != nil {
+				err := handleGenjiTag(&ctx, fd)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		var buf bytes.Buffer
@@ -194,4 +205,34 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 	}
 
 	return fmt.Errorf("struct %s not found", target)
+}
+
+func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
+	stags, err := structtag.Parse(fd.Tag.Value)
+	if err != nil {
+		return err
+	}
+
+	tag, err := stags.Get("genji")
+	if err != nil {
+		return nil
+	}
+
+	gtags := strings.Split(tag.String(), ",")
+
+	for _, gtag := range gtags {
+		switch gtag {
+		case "pk":
+			if ctx.Struct.Pk.Name != "" {
+				return errors.New("only one pk field is allowed")
+			}
+
+			ctx.Struct.Pk.Name = fd.Names[0].Name
+			ctx.Struct.Pk.Type = fd.Type.(*ast.Ident).Name
+		default:
+			return fmt.Errorf("unsupported genji tag '%s'", gtag)
+		}
+	}
+
+	return nil
 }

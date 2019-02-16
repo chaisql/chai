@@ -1,5 +1,3 @@
-//go:generate go run ../cmd/genji/main.go record -f record_test.go -t RecordTest
-
 package generator
 
 import (
@@ -15,6 +13,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/generator/testdata"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,6 +25,7 @@ func TestGenerateRecord(t *testing.T) {
 			name string
 		}{
 			{"basic"},
+			{"pk"},
 		}
 
 		for _, test := range tests {
@@ -40,7 +40,7 @@ func TestGenerateRecord(t *testing.T) {
 				require.NoError(t, err)
 
 				gp := "testdata/" + test.name + ".generated.golden.go"
-				if *update == "basic" {
+				if *update == test.name {
 					t.Logf("%s: golden file updated", gp)
 					require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
 				}
@@ -125,45 +125,56 @@ func TestGenerateRecord(t *testing.T) {
 	})
 }
 
-func TestGeneratedRecord(t *testing.T) {
-	r := testdata.Basic{
-		A: "A", B: 10, C: 11, D: 12,
-	}
+func TestGeneratedRecords(t *testing.T) {
+	t.Run("Basic", func(t *testing.T) {
+		r := testdata.Basic{
+			A: "A", B: 10, C: 11, D: 12,
+		}
 
-	require.Implements(t, (*record.Record)(nil), &r)
+		require.Implements(t, (*record.Record)(nil), &r)
 
-	tests := []struct {
-		name string
-		typ  field.Type
-		data []byte
-	}{
-		{"A", field.String, []byte("A")},
-		{"B", field.Int64, field.EncodeInt64(r.B)},
-		{"C", field.Int64, field.EncodeInt64(r.C)},
-		{"D", field.Int64, field.EncodeInt64(r.D)},
-	}
+		tests := []struct {
+			name string
+			typ  field.Type
+			data []byte
+		}{
+			{"A", field.String, []byte("A")},
+			{"B", field.Int64, field.EncodeInt64(r.B)},
+			{"C", field.Int64, field.EncodeInt64(r.C)},
+			{"D", field.Int64, field.EncodeInt64(r.D)},
+		}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f, err := r.Field(test.name)
-			require.NoError(t, err)
-			require.Equal(t, test.name, f.Name)
-			require.Equal(t, test.typ, f.Type)
-			require.Equal(t, test.data, f.Data)
-		})
-	}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				f, err := r.Field(test.name)
+				require.NoError(t, err)
+				require.Equal(t, test.name, f.Name)
+				require.Equal(t, test.typ, f.Type)
+				require.Equal(t, test.data, f.Data)
+			})
+		}
 
-	c := r.Cursor()
-	for i := 0; i < 4; i++ {
-		t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
-			require.True(t, c.Next())
-			f := c.Field()
-			require.NotEmpty(t, f)
-			require.Equal(t, tests[i].name, f.Name)
-			require.Equal(t, tests[i].typ, f.Type)
-			require.Equal(t, tests[i].data, f.Data)
-		})
-	}
+		c := r.Cursor()
+		for i := 0; i < 4; i++ {
+			t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
+				require.True(t, c.Next())
+				f := c.Field()
+				require.NotEmpty(t, f)
+				require.Equal(t, tests[i].name, f.Name)
+				require.Equal(t, tests[i].typ, f.Type)
+				require.Equal(t, tests[i].data, f.Data)
+			})
+		}
 
-	require.False(t, c.Next())
+		require.False(t, c.Next())
+	})
+
+	t.Run("Pk", func(t *testing.T) {
+		r := testdata.Pk{
+			A: "A", B: 10,
+		}
+
+		require.Implements(t, (*record.Record)(nil), &r)
+		require.Implements(t, (*table.Pker)(nil), &r)
+	})
 }

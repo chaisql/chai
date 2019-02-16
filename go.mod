@@ -5,6 +5,7 @@ require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/etcd-io/bbolt v1.3.0
+	github.com/fatih/structtag v1.0.0
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
 	github.com/google/pprof v0.0.0-20190208070709-b421f19a5c07 // indirect
 	github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6 // indirect
