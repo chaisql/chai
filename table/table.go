@@ -29,6 +29,7 @@ type Reader interface {
 
 type Writer interface {
 	Insert(record.Record) (rowid []byte, err error)
+	Delete(rowid []byte) error
 }
 
 type Pker interface {
@@ -87,6 +88,15 @@ func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
 	}
 
 	return r, nil
+}
+
+func (rb *RecordBuffer) Set(rowid []byte, r record.Record) error {
+	if rb.tree == nil {
+		rb.tree = b.TreeNew(bytes.Compare)
+	}
+
+	rb.tree.Set(rowid, r)
+	return nil
 }
 
 func (rb *RecordBuffer) Delete(rowid []byte) error {

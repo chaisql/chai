@@ -29,3 +29,20 @@ func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
 
 	return rowid, nil
 }
+
+func (t *tableTx) Delete(rowid []byte) error {
+	if !t.tx.writable {
+		return errors.New("can't delete record in read-only transaction")
+	}
+
+	r, err := t.RecordBuffer.Record(rowid)
+	if err != nil {
+		return err
+	}
+
+	t.tx.undos = append(t.tx.undos, func() {
+		t.RecordBuffer.Set(rowid, r)
+	})
+
+	return t.RecordBuffer.Delete(rowid)
+}
