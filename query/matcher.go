@@ -477,7 +477,7 @@ type indexResultTable struct {
 func (i *indexResultTable) Record(rowid []byte) (record.Record, error) {
 	it := i.tree.Get(Item(rowid))
 	if it == nil {
-		return nil, engine.ErrNotFound
+		return nil, table.ErrRecordNotFound
 	}
 
 	return i.table.Record(rowid)

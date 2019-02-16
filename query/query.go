@@ -30,7 +30,7 @@ func (q Query) Run(tx engine.Transaction) (table.Reader, error) {
 
 	matcher := And(q.matchers...)
 	tree, err := matcher.MatchIndex(q.tableSelector.Name(), tx)
-	if err != nil && err != engine.ErrNotFound {
+	if err != nil && err != engine.ErrIndexNotFound {
 		return nil, err
 	}
 
