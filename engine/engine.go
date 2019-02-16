@@ -9,8 +9,9 @@ import (
 
 // Errors.
 var (
-	ErrTableNotFound = errors.New("table not found")
-	ErrIndexNotFound = errors.New("index not found")
+	ErrTableNotFound       = errors.New("table not found")
+	ErrIndexNotFound       = errors.New("index not found")
+	ErrTransactionReadOnly = errors.New("transaction is read-only")
 )
 
 type Engine interface {
