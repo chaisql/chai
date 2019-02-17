@@ -1,15 +1,14 @@
-// Package testing defines a list of tests that can be used to test
+// Package enginetest defines a list of tests that can be used to test
 // a complete or partial engine implementation.
-package testing
+package enginetest
 
 import (
 	"testing"
 
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
-
-	"github.com/asdine/genji/engine"
 	"github.com/stretchr/testify/require"
 )
 

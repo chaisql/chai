@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	genjitesting "github.com/asdine/genji/engine/testing"
+	"github.com/asdine/genji/engine/enginetest"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	bolt "github.com/etcd-io/bbolt"
@@ -60,7 +60,7 @@ func tempBucket(t require.TestingT, writable bool) (*bolt.Bucket, func()) {
 }
 
 func TestBoltEngine(t *testing.T) {
-	genjitesting.TestSuite(t, func() (engine.Engine, func()) {
+	enginetest.TestSuite(t, func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
 		ng, err := NewEngine(path.Join(dir, "test.db"), 0600, nil)
 		require.NoError(t, err)
