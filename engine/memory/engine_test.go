@@ -3,6 +3,7 @@ package memory
 import (
 	"testing"
 
+	"github.com/asdine/genji/engine"
 	genjitesting "github.com/asdine/genji/engine/testing"
 	"github.com/stretchr/testify/require"
 )
@@ -25,5 +26,8 @@ func TestTransaction(t *testing.T) {
 }
 
 func TestMemoryEngine(t *testing.T) {
-	genjitesting.TestSuite(t, NewEngine())
+	genjitesting.TestSuite(t, func() (engine.Engine, func()) {
+		ng := NewEngine()
+		return ng, func() { ng.Close() }
+	})
 }

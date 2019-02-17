@@ -9,28 +9,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Builder is a function that can create an engine on demand and that provides
+// a function to cleanup up and remove any created state.
+// Tests will use the builder like this:
+//     ng, cleanup := builder()
+//     defer cleanup()
+//     ...
+type Builder func() (engine.Engine, func())
+
 // TestSuite tests an entire engine, transaction and related types
 // needed to implement a Genji engine.
-func TestSuite(t *testing.T, ng engine.Engine) {
-	t.Run("Transaction", func(t *testing.T) {
-		TestTransaction(t, ng)
+func TestSuite(t *testing.T, builder Builder) {
+	t.Run("Transaction/Commit-Rollback", func(t *testing.T) {
+		TestTransactionCommitRollback(t, builder)
 	})
 
 	t.Run("Engine", func(t *testing.T) {
-		TestEngine(t, ng)
+		TestEngine(t, builder)
 	})
 }
 
 // TestEngine runs a list of tests against the provided engine.
-func TestEngine(t *testing.T, ng engine.Engine) {
+func TestEngine(t *testing.T, builder Builder) {
 	t.Run("Close", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
 		require.NoError(t, ng.Close())
 	})
 }
 
-// TestTransaction runs a list of tests against transactions created
-// thanks to the provided engine.
-func TestTransaction(t *testing.T, ng engine.Engine) {
+// TestTransactionCommitRollback runs a list of tests to verify Commit and Rollback
+// behaviour of transactions created from the given engine.
+func TestTransactionCommitRollback(t *testing.T, builder Builder) {
+	ng, cleanup := builder()
+	defer cleanup()
+
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
 		tx, err := ng.Begin(false)
 		require.NoError(t, err)
@@ -113,6 +127,7 @@ func TestTransaction(t *testing.T, ng engine.Engine) {
 	})
 
 	t.Run("Commit / Rollback data persistence", func(t *testing.T) {
+
 		// this test checks if rollback undoes data changes correctly and if commit keeps data correctly
 		tests := []struct {
 			name    string
@@ -121,26 +136,29 @@ func TestTransaction(t *testing.T, ng engine.Engine) {
 		}{
 			{
 				"CreateTable",
-				func(tx engine.Transaction, err *error) { _, *err = tx.CreateTable("test1") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Table("test1") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.CreateTable("test") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Table("test") },
 			},
 			{
 				"CreateIndex",
 				func(tx engine.Transaction, err *error) {
-					_, er := tx.CreateTable("test2")
+					_, er := tx.CreateTable("test")
 					if er != nil {
 						*err = er
 						return
 					}
 
-					_, *err = tx.CreateIndex("test2", "idx")
+					_, *err = tx.CreateIndex("test", "idx")
 				},
-				func(tx engine.Transaction, err *error) { _, *err = tx.Index("test2", "idx") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Index("test", "idx") },
 			},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name+"/rollback", func(t *testing.T) {
+				ng, cleanup := builder()
+				defer cleanup()
+
 				tx, err := ng.Begin(true)
 				require.NoError(t, err)
 				defer tx.Rollback()
@@ -161,6 +179,9 @@ func TestTransaction(t *testing.T, ng engine.Engine) {
 		}
 
 		for _, test := range tests {
+			ng, cleanup := builder()
+			defer cleanup()
+
 			t.Run(test.name+"/commit", func(t *testing.T) {
 				tx, err := ng.Begin(true)
 				require.NoError(t, err)
@@ -210,6 +231,9 @@ func TestTransaction(t *testing.T, ng engine.Engine) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
+				ng, cleanup := builder()
+				defer cleanup()
+
 				tx, err := ng.Begin(true)
 				require.NoError(t, err)
 				defer tx.Rollback()

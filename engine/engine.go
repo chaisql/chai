@@ -10,6 +10,7 @@ import (
 // Errors.
 var (
 	ErrTableNotFound       = errors.New("table not found")
+	ErrTableAlreadyExists  = errors.New("table already exists")
 	ErrIndexNotFound       = errors.New("index not found")
 	ErrTransactionReadOnly = errors.New("transaction is read-only")
 )
