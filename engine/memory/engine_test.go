@@ -3,6 +3,7 @@ package memory
 import (
 	"testing"
 
+	genjitesting "github.com/asdine/genji/engine/testing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,4 +22,8 @@ func TestTransaction(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, idx1, idx2)
 	})
+}
+
+func TestMemoryEngine(t *testing.T) {
+	genjitesting.TestSuite(t, NewEngine())
 }

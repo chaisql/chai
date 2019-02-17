@@ -10,7 +10,6 @@ import (
 	genjitesting "github.com/asdine/genji/engine/testing"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-
 	bolt "github.com/etcd-io/bbolt"
 	"github.com/stretchr/testify/require"
 )

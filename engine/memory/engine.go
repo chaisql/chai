@@ -87,6 +87,10 @@ func (tx *transaction) Commit() error {
 		return errors.New("transaction already terminated")
 	}
 
+	if !tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
 	tx.terminated = true
 
 	if tx.writable {
@@ -109,7 +113,7 @@ func (tx *transaction) Table(name string) (table.Table, error) {
 
 func (tx *transaction) CreateTable(name string) (table.Table, error) {
 	if !tx.writable {
-		return nil, errors.New("can't create table in read-only transaction")
+		return nil, engine.ErrTransactionReadOnly
 	}
 
 	_, err := tx.Table(name)
@@ -153,7 +157,7 @@ func (tx *transaction) Indexes(table string) (map[string]index.Index, error) {
 
 func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
 	if !tx.writable {
-		return nil, errors.New("can't create index in read-only transaction")
+		return nil, engine.ErrTransactionReadOnly
 	}
 
 	_, err := tx.Index(table, name)
