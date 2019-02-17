@@ -76,6 +76,10 @@ func (t *Transaction) CreateTable(name string) (table.Table, error) {
 
 	b, err := t.tx.CreateBucket([]byte(name))
 	if err != nil {
+		if err == bolt.ErrBucketExists {
+			return nil, engine.ErrTableAlreadyExists
+		}
+
 		return nil, err
 	}
 

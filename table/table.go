@@ -82,6 +82,10 @@ func (rb *RecordBuffer) InsertFrom(t Reader) error {
 }
 
 func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
+	if rb.tree == nil {
+		rb.tree = b.TreeNew(bytes.Compare)
+	}
+
 	r, ok := rb.tree.Get(rowid)
 	if !ok {
 		return nil, ErrRecordNotFound

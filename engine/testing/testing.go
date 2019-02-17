@@ -5,6 +5,10 @@ package testing
 import (
 	"testing"
 
+	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
+
 	"github.com/asdine/genji/engine"
 	"github.com/stretchr/testify/require"
 )
@@ -20,12 +24,20 @@ type Builder func() (engine.Engine, func())
 // TestSuite tests an entire engine, transaction and related types
 // needed to implement a Genji engine.
 func TestSuite(t *testing.T, builder Builder) {
+	t.Run("Engine", func(t *testing.T) {
+		TestEngine(t, builder)
+	})
+
 	t.Run("Transaction/Commit-Rollback", func(t *testing.T) {
 		TestTransactionCommitRollback(t, builder)
 	})
 
-	t.Run("Engine", func(t *testing.T) {
-		TestEngine(t, builder)
+	t.Run("Transaction/CreateTable", func(t *testing.T) {
+		TestTransactionCreateTable(t, builder)
+	})
+
+	t.Run("Transaction/Table", func(t *testing.T) {
+		TestTransactionTable(t, builder)
 	})
 }
 
@@ -245,5 +257,83 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				require.NoError(t, err)
 			})
 		}
+	})
+}
+
+// TestTransactionCreateTable verifies CreateTable behaviour.
+func TestTransactionCreateTable(t *testing.T, builder Builder) {
+	t.Run("Should create a table", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		tb, err := tx.CreateTable("test")
+		require.NoError(t, err)
+		require.NotNil(t, tb)
+	})
+
+	t.Run("Should fail if table already exists", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+		_, err = tx.CreateTable("test")
+		require.Equal(t, engine.ErrTableAlreadyExists, err)
+	})
+}
+
+// TestTransactionTable verifies Table behaviour.
+func TestTransactionTable(t *testing.T, builder Builder) {
+	t.Run("Should fail if table not found", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.Table("test")
+		require.Equal(t, engine.ErrTableNotFound, err)
+	})
+
+	t.Run("Should return the right table", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		// create two tables
+		ta, err := tx.CreateTable("testa")
+		require.NoError(t, err)
+		tb, err := tx.CreateTable("testb")
+		require.NoError(t, err)
+
+		// fetch first table
+		res, err := tx.Table("testa")
+		require.NoError(t, err)
+
+		// insert data in first table
+		rowid, err := res.Insert(record.FieldBuffer([]field.Field{field.NewInt64("a", 10)}))
+		require.NoError(t, err)
+
+		// use ta to fetch data and verify if it's present
+		r, err := ta.Record(rowid)
+		f, err := r.Field("a")
+		require.NoError(t, err)
+		require.Equal(t, f.Data, field.EncodeInt64(10))
+
+		// use tb to fetch data and verify it's not present
+		_, err = tb.Record(rowid)
+		require.Equal(t, table.ErrRecordNotFound, err)
 	})
 }

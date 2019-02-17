@@ -2,7 +2,6 @@ package memory
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/asdine/genji/engine"
@@ -118,7 +117,7 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 
 	_, err := tx.Table(name)
 	if err == nil {
-		return nil, fmt.Errorf("table '%s' already exists", name)
+		return nil, engine.ErrTableAlreadyExists
 	}
 
 	var rb table.RecordBuffer
