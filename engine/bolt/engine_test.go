@@ -7,6 +7,7 @@ import (
 	"path"
 	"testing"
 
+	genjitesting "github.com/asdine/genji/engine/testing"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 
@@ -56,6 +57,16 @@ func tempBucket(t require.TestingT, writable bool) (*bolt.Bucket, func()) {
 		tx.Rollback()
 		cleanup()
 	}
+}
+
+func TestBoltEngine(t *testing.T) {
+	dir, cleanup := tempDir(t)
+	defer cleanup()
+
+	ng, err := NewEngine(path.Join(dir, "test.db"), 0600, nil)
+	require.NoError(t, err)
+
+	genjitesting.TestSuite(t, ng)
 }
 
 func countItems(t require.TestingT, b *bolt.Bucket) int {

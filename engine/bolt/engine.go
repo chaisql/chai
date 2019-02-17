@@ -31,7 +31,8 @@ func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
 	}
 
 	return &Transaction{
-		tx: tx,
+		tx:       tx,
+		writable: writable,
 	}, nil
 }
 
@@ -40,11 +41,17 @@ func (e *Engine) Close() error {
 }
 
 type Transaction struct {
-	tx *bolt.Tx
+	tx       *bolt.Tx
+	writable bool
 }
 
 func (t *Transaction) Rollback() error {
-	return t.tx.Rollback()
+	err := t.tx.Rollback()
+	if err != nil && err != bolt.ErrTxClosed {
+		return err
+	}
+
+	return nil
 }
 
 func (t *Transaction) Commit() error {
@@ -63,6 +70,10 @@ func (t *Transaction) Table(name string) (table.Table, error) {
 }
 
 func (t *Transaction) CreateTable(name string) (table.Table, error) {
+	if !t.writable {
+		return nil, engine.ErrTransactionReadOnly
+	}
+
 	b, err := t.tx.CreateBucket([]byte(name))
 	if err != nil {
 		return nil, err
@@ -73,10 +84,14 @@ func (t *Transaction) CreateTable(name string) (table.Table, error) {
 	}, nil
 }
 
-func (t *Transaction) CreateIndex(table, name string) (index.Index, error) {
-	b := t.tx.Bucket([]byte(name))
+func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) {
+	if !t.writable {
+		return nil, engine.ErrTransactionReadOnly
+	}
+
+	b := t.tx.Bucket([]byte(table))
 	if b == nil {
-		return nil, engine.ErrIndexNotFound
+		return nil, engine.ErrTableNotFound
 	}
 
 	bb, err := b.CreateBucketIfNotExists([]byte("__genji_indexes"))
@@ -84,7 +99,7 @@ func (t *Transaction) CreateIndex(table, name string) (index.Index, error) {
 		return nil, err
 	}
 
-	ib, err := bb.CreateBucket([]byte(name))
+	ib, err := bb.CreateBucket([]byte(fieldName))
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +109,10 @@ func (t *Transaction) CreateIndex(table, name string) (index.Index, error) {
 	}, nil
 }
 
-func (t *Transaction) Index(table, name string) (index.Index, error) {
-	b := t.tx.Bucket([]byte(name))
+func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
+	b := t.tx.Bucket([]byte(table))
 	if b == nil {
-		return nil, engine.ErrIndexNotFound
+		return nil, engine.ErrTableNotFound
 	}
 
 	bb := b.Bucket([]byte("__genji_indexes"))
@@ -105,7 +120,7 @@ func (t *Transaction) Index(table, name string) (index.Index, error) {
 		return nil, engine.ErrIndexNotFound
 	}
 
-	ib := bb.Bucket([]byte(name))
+	ib := bb.Bucket([]byte(fieldName))
 	if ib == nil {
 		return nil, engine.ErrIndexNotFound
 	}

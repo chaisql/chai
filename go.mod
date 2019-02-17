@@ -7,6 +7,7 @@ require (
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.2.2
+	golang.org/x/arch v0.0.0-20181203225421-5a4828bb7045 // indirect
 	golang.org/x/sys v0.0.0-20190105165716-badf5585203e // indirect
 	golang.org/x/tools v0.0.0-20190208222737-3744606dbb67
 )
