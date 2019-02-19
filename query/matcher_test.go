@@ -61,6 +61,9 @@ func createIndexes(t require.TestingT, ages, teams []indexPair) (engine.Transact
 	tx, err := ng.Begin(true)
 	require.NoError(t, err)
 
+	_, err = tx.CreateTable("test")
+	require.NoError(t, err)
+
 	createIntIndex(t, tx, ages)
 	createStrIndex(t, tx, teams)
 
