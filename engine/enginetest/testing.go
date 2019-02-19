@@ -23,21 +23,22 @@ type Builder func() (engine.Engine, func())
 // TestSuite tests an entire engine, transaction and related types
 // needed to implement a Genji engine.
 func TestSuite(t *testing.T, builder Builder) {
-	t.Run("Engine", func(t *testing.T) {
-		TestEngine(t, builder)
-	})
+	tests := []struct {
+		name string
+		test func(*testing.T, Builder)
+	}{
+		{"Engine", TestEngine},
+		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
+		{"Transaction/CreateTable", TestTransactionCreateTable},
+		{"Transaction/Table", TestTransactionTable},
+		{"Transaction/CreateIndex", TestTransactionCreateIndex},
+	}
 
-	t.Run("Transaction/Commit-Rollback", func(t *testing.T) {
-		TestTransactionCommitRollback(t, builder)
-	})
-
-	t.Run("Transaction/CreateTable", func(t *testing.T) {
-		TestTransactionCreateTable(t, builder)
-	})
-
-	t.Run("Transaction/Table", func(t *testing.T) {
-		TestTransactionTable(t, builder)
-	})
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.test(t, builder)
+		})
+	}
 }
 
 // TestEngine runs a list of tests against the provided engine.
@@ -334,5 +335,54 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		// use tb to fetch data and verify it's not present
 		_, err = tb.Record(rowid)
 		require.Equal(t, table.ErrRecordNotFound, err)
+	})
+}
+
+// TestTransactionCreateIndex verifies CreateIndex behaviour.
+func TestTransactionCreateIndex(t *testing.T, builder Builder) {
+	t.Run("Should create an index", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		idx, err := tx.CreateIndex("test", "field")
+		require.NoError(t, err)
+		require.NotEmpty(t, idx)
+	})
+
+	t.Run("Should fail if index already exists", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("test", "field")
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("test", "field")
+		require.Equal(t, engine.ErrIndexAlreadyExists, err)
+	})
+
+	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.CreateIndex("test", "field")
+		require.Equal(t, engine.ErrTableNotFound, err)
 	})
 }

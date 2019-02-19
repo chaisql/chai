@@ -17,6 +17,8 @@ func TestTransaction(t *testing.T) {
 
 		_, err = tx.Index("table", "test")
 		require.Error(t, err)
+		_, err = tx.CreateTable("table")
+		require.NoError(t, err)
 		idx1, err := tx.CreateIndex("table", "test")
 		require.NoError(t, err)
 		idx2, err := tx.Index("table", "test")

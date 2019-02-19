@@ -105,6 +105,10 @@ func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) 
 
 	ib, err := bb.CreateBucket([]byte(fieldName))
 	if err != nil {
+		if err == bolt.ErrBucketExists {
+			return nil, engine.ErrIndexAlreadyExists
+		}
+
 		return nil, err
 	}
 

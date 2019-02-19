@@ -159,9 +159,14 @@ func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
 		return nil, engine.ErrTransactionReadOnly
 	}
 
-	_, err := tx.Index(table, name)
+	_, err := tx.Table(table)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Index(table, name)
 	if err == nil {
-		return nil, engine.ErrTableNotFound
+		return nil, engine.ErrIndexAlreadyExists
 	}
 
 	tx.ng.indexes[tableIndex{table, name}] = NewIndex()

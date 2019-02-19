@@ -12,6 +12,7 @@ var (
 	ErrTableNotFound       = errors.New("table not found")
 	ErrTableAlreadyExists  = errors.New("table already exists")
 	ErrIndexNotFound       = errors.New("index not found")
+	ErrIndexAlreadyExists  = errors.New("index already exists")
 	ErrTransactionReadOnly = errors.New("transaction is read-only")
 )
 
