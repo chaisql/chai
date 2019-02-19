@@ -132,6 +132,11 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 }
 
 func (tx *transaction) Index(table, name string) (index.Index, error) {
+	_, err := tx.Table(table)
+	if err != nil {
+		return nil, engine.ErrTableNotFound
+	}
+
 	idx, ok := tx.ng.indexes[tableIndex{table, name}]
 	if !ok {
 		return nil, engine.ErrIndexNotFound
