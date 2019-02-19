@@ -6,9 +6,9 @@ import (
 	"io"
 	"sync/atomic"
 
-	b "github.com/asdine/genji/bptree"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	b "github.com/asdine/genji/table/internal"
 )
 
 // Errors.
