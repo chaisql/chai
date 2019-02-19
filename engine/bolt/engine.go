@@ -139,12 +139,12 @@ func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
 }
 
 func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
-	m := make(map[string]index.Index)
-
 	b := t.tx.Bucket([]byte(table))
 	if b == nil {
 		return nil, engine.ErrTableNotFound
 	}
+
+	m := make(map[string]index.Index)
 
 	bb := b.Bucket([]byte("__genji_indexes"))
 	if bb == nil {

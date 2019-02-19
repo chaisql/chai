@@ -146,6 +146,10 @@ func (tx *transaction) Index(table, name string) (index.Index, error) {
 }
 
 func (tx *transaction) Indexes(table string) (map[string]index.Index, error) {
+	if _, err := tx.Table(table); err != nil {
+		return nil, err
+	}
+
 	m := make(map[string]index.Index)
 
 	for ti, idx := range tx.ng.indexes {

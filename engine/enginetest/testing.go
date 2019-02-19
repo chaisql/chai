@@ -33,6 +33,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Transaction/Table", TestTransactionTable},
 		{"Transaction/CreateIndex", TestTransactionCreateIndex},
 		{"Transaction/Index", TestTransactionIndex},
+		{"Transaction/Indexes", TestTransactionIndexes},
 	}
 
 	for _, test := range tests {
@@ -461,5 +462,59 @@ func TestTransactionIndex(t *testing.T, builder Builder) {
 		require.Nil(t, value)
 		value, _ = idxbb.Cursor().Seek([]byte("value"))
 		require.Nil(t, value)
+	})
+}
+
+// TestTransactionIndexes verifies Indexes behaviour.
+func TestTransactionIndexes(t *testing.T, builder Builder) {
+	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.Indexes("table")
+		require.Equal(t, engine.ErrTableNotFound, err)
+	})
+
+	t.Run("Should return an empty map if no indexes", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.CreateTable("table")
+		require.NoError(t, err)
+
+		m, err := tx.Indexes("table")
+		require.Empty(t, m)
+	})
+
+	t.Run("Should return the right indexes", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.CreateTable("table")
+		require.NoError(t, err)
+
+		// create two indexes for the same table
+		_, err = tx.CreateIndex("table", "idx1")
+		require.NoError(t, err)
+		_, err = tx.CreateIndex("table", "idx2")
+		require.NoError(t, err)
+
+		m, err := tx.Indexes("table")
+		require.NoError(t, err)
+		require.Len(t, m, 2)
+		require.Contains(t, m, "idx1")
+		require.Contains(t, m, "idx2")
 	})
 }
