@@ -26,6 +26,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		test func(*testing.T, Builder)
 	}{
 		{"TableReader/Iterate", TestTableReaderIterate},
+		{"TableReader/Record", TestTableReaderRecord},
 	}
 
 	for _, test := range tests {
@@ -35,7 +36,7 @@ func TestSuite(t *testing.T, builder Builder) {
 	}
 }
 
-func newRecord() record.Record {
+func newRecord() record.FieldBuffer {
 	return record.FieldBuffer([]field.Field{
 		field.NewString("fielda", "a"),
 		field.NewString("fieldb", "b"),
@@ -76,5 +77,39 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		for _, c := range m {
 			require.Equal(t, 1, c)
 		}
+	})
+}
+
+// TestTableReaderRecord verifies Record behaviour.
+func TestTableReaderRecord(t *testing.T, builder Builder) {
+	t.Run("Should fail if not found", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		r, err := tb.Record([]byte("id"))
+		require.Equal(t, table.ErrRecordNotFound, err)
+		require.Nil(t, r)
+	})
+
+	t.Run("Should return the right record", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		// create two records, one with an additional field
+		rec1 := newRecord()
+		rec1.Add(field.NewInt64("fieldc", 40))
+		rec2 := newRecord()
+
+		rowid1, err := tb.Insert(rec1)
+		require.NoError(t, err)
+		_, err = tb.Insert(rec2)
+		require.NoError(t, err)
+
+		// fetch rec1 and make sure it returns the right one
+		res, err := tb.Record(rowid1)
+		require.NoError(t, err)
+		fc, err := res.Field("fieldc")
+		require.NoError(t, err)
+		require.Equal(t, rec1[2], fc)
 	})
 }
