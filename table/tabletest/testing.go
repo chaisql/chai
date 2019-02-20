@@ -28,6 +28,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"TableReader/Iterate", TestTableReaderIterate},
 		{"TableReader/Record", TestTableReaderRecord},
 		{"TableWriter/Insert", TestTableWriterInsert},
+		{"TableWriter/Delete", TestTableWriterDelete},
 	}
 
 	for _, test := range tests {
@@ -181,4 +182,44 @@ type recordPker struct {
 
 func (r recordPker) Pk() ([]byte, error) {
 	return r.pkGenerator()
+}
+
+// TestTableWriterDelete verifies Delete behaviour.
+func TestTableWriterDelete(t *testing.T, builder Builder) {
+	t.Run("Should fail if not found", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		err := tb.Delete([]byte("id"))
+		require.Equal(t, table.ErrRecordNotFound, err)
+	})
+
+	t.Run("Should delete the right record", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		// create two records, one with an additional field
+		rec1 := newRecord()
+		rec1.Add(field.NewInt64("fieldc", 40))
+		rec2 := newRecord()
+
+		rowid1, err := tb.Insert(rec1)
+		require.NoError(t, err)
+		rowid2, err := tb.Insert(rec2)
+		require.NoError(t, err)
+
+		// delete the record
+		err = tb.Delete([]byte(rowid1))
+		require.NoError(t, err)
+
+		// try again, should fail
+		err = tb.Delete([]byte(rowid1))
+		require.Equal(t, table.ErrRecordNotFound, err)
+
+		// make sure it didn't also delete the other one
+		res, err := tb.Record(rowid2)
+		require.NoError(t, err)
+		_, err = res.Field("fieldc")
+		require.Error(t, err)
+	})
 }
