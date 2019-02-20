@@ -113,6 +113,10 @@ func (rb *RecordBuffer) Delete(rowid []byte) error {
 }
 
 func (rb *RecordBuffer) Iterate(fn func(record.Record) bool) error {
+	if rb.tree == nil {
+		rb.tree = b.TreeNew(bytes.Compare)
+	}
+
 	e, err := rb.tree.SeekFirst()
 	if err == io.EOF {
 		return nil

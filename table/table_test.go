@@ -1,12 +1,13 @@
-package table
+package table_test
 
 import (
 	"testing"
 
 	"github.com/asdine/genji/field"
-	"github.com/stretchr/testify/require"
-
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/table/tabletest"
+	"github.com/stretchr/testify/require"
 )
 
 type recordPker struct {
@@ -19,9 +20,16 @@ func (r recordPker) Pk() ([]byte, error) {
 }
 
 func TestRecordBuffer(t *testing.T) {
+	tabletest.TestSuite(t, func() (table.Table, func()) {
+		var rb table.RecordBuffer
+		return &rb, func() {}
+	})
+}
+
+func TestRecordBufferr(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 		t.Run("Default autoincrement counter", func(t *testing.T) {
-			var r RecordBuffer
+			var r table.RecordBuffer
 
 			rowid, err := r.Insert(new(record.FieldBuffer))
 			require.NoError(t, err)
@@ -42,7 +50,7 @@ func TestRecordBuffer(t *testing.T) {
 				},
 			}
 
-			var r RecordBuffer
+			var r table.RecordBuffer
 
 			rowid, err := r.Insert(rec)
 			require.NoError(t, err)
