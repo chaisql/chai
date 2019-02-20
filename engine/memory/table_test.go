@@ -77,7 +77,7 @@ func TestTable(t *testing.T) {
 
 		verifyContentFn := func(tab table.Table) {
 			var i int64
-			err := tab.Iterate(func(rec record.Record) bool {
+			err := tab.Iterate(func(rowid []byte, rec record.Record) bool {
 				age, err := rec.Field("age")
 				require.NoError(t, err)
 				require.Equal(t, field.EncodeInt64(i), age.Data)

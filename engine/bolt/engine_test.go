@@ -155,7 +155,7 @@ func benchmarkTableScan(b *testing.B, size int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tab.Iterate(func(record.Record) bool {
+		tab.Iterate(func([]byte, record.Record) bool {
 			return true
 		})
 	}

@@ -2,12 +2,35 @@ package bolt
 
 import (
 	"fmt"
+	"path"
 	"testing"
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/table/tabletest"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBoltEngineTable(t *testing.T) {
+	tabletest.TestSuite(t, func() (table.Table, func()) {
+		dir, cleanup := tempDir(t)
+		ng, err := NewEngine(path.Join(dir, "test.db"), 0600, nil)
+		require.NoError(t, err)
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+
+		tb, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
+		return tb, func() {
+			tx.Rollback()
+			ng.Close()
+			cleanup()
+		}
+	})
+}
 
 func TestTableInsert(t *testing.T) {
 	b, cleanup := tempBucket(t, true)
@@ -35,7 +58,7 @@ func TestTableIterate(t *testing.T) {
 	}
 
 	i := 0
-	table.Iterate(func(r record.Record) bool {
+	table.Iterate(func(rowid []byte, r record.Record) bool {
 		rc := r.Cursor()
 		for rc.Next() {
 			require.NoError(t, rc.Err())

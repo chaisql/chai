@@ -60,13 +60,13 @@ func (t *Table) Delete(rowid []byte) error {
 	return t.Bucket.Delete(rowid)
 }
 
-func (t *Table) Iterate(fn func(record.Record) bool) error {
-	return t.Bucket.ForEach(func(_, v []byte) error {
+func (t *Table) Iterate(fn func([]byte, record.Record) bool) error {
+	return t.Bucket.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
 		}
 
-		ok := fn(record.EncodedRecord(v))
+		ok := fn(k, record.EncodedRecord(v))
 		if !ok {
 			return errors.New("iterate interrupted")
 		}
