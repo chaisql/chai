@@ -104,6 +104,10 @@ func (rb *RecordBuffer) Set(rowid []byte, r record.Record) error {
 }
 
 func (rb *RecordBuffer) Delete(rowid []byte) error {
+	if rb.tree == nil {
+		rb.tree = b.TreeNew(bytes.Compare)
+	}
+
 	ok := rb.tree.Delete(rowid)
 	if !ok {
 		return ErrRecordNotFound
