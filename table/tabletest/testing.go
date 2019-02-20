@@ -27,6 +27,7 @@ func TestSuite(t *testing.T, builder Builder) {
 	}{
 		{"TableReader/Iterate", TestTableReaderIterate},
 		{"TableReader/Record", TestTableReaderRecord},
+		{"TableWriter/Insert", TestTableWriterInsert},
 	}
 
 	for _, test := range tests {
@@ -112,4 +113,54 @@ func TestTableReaderRecord(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		require.Equal(t, rec1[2], fc)
 	})
+}
+
+// TestTableWriterInsert verifies Insert behaviour.
+func TestTableWriterInsert(t *testing.T, builder Builder) {
+	t.Run("Should generate a rowid by default", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		rec := newRecord()
+		rowid, err := tb.Insert(rec)
+		require.NoError(t, err)
+		require.NotEmpty(t, rowid)
+	})
+
+	t.Run("Should support Pker interface", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		var counter int64
+
+		rec := recordPker{
+			pkGenerator: func() ([]byte, error) {
+				counter += 2
+				return field.EncodeInt64(counter), nil
+			},
+		}
+
+		// insert
+		rowid, err := tb.Insert(rec)
+		require.NoError(t, err)
+		require.Equal(t, field.EncodeInt64(2), rowid)
+
+		// make sure the record is fetchable using the returned rowid
+		_, err = tb.Record(rowid)
+		require.NoError(t, err)
+
+		// insert again
+		rowid, err = tb.Insert(rec)
+		require.NoError(t, err)
+		require.Equal(t, field.EncodeInt64(4), rowid)
+	})
+}
+
+type recordPker struct {
+	record.FieldBuffer
+	pkGenerator func() ([]byte, error)
+}
+
+func (r recordPker) Pk() ([]byte, error) {
+	return r.pkGenerator()
 }
