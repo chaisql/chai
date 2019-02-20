@@ -49,7 +49,7 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(record.Record) bool {
+		err := tb.Iterate(func(rowid []byte, r record.Record) bool {
 			i++
 			return true
 		})
@@ -66,14 +66,15 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 			require.NoError(t, err)
 		}
 
-		// TODO(asdine) change the iterate signature to pass the rowid
-		// and use a map to ensure all the rowids have been returned (not necessarily in order)
-		i := 0
-		err := tb.Iterate(func(record.Record) bool {
-			i++
+		m := make(map[string]int)
+		err := tb.Iterate(func(rowid []byte, _ record.Record) bool {
+			m[string(rowid)]++
 			return true
 		})
 		require.NoError(t, err)
-		require.Equal(t, 10, i)
+		require.Len(t, m, 10)
+		for _, c := range m {
+			require.Equal(t, 1, c)
+		}
 	})
 }

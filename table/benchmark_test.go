@@ -21,7 +21,7 @@ func benchmarkRecordBufferIterate(b *testing.B, prefill int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r.Iterate(func(record.Record) bool {
+		r.Iterate(func([]byte, record.Record) bool {
 			return true
 		})
 	}

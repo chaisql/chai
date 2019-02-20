@@ -23,7 +23,7 @@ type Table interface {
 }
 
 type Reader interface {
-	Iterate(func(record.Record) bool) error
+	Iterate(func(rowid []byte, r record.Record) bool) error
 	Record(rowid []byte) (record.Record, error)
 }
 
@@ -65,7 +65,7 @@ func (rb *RecordBuffer) Insert(r record.Record) (rowid []byte, err error) {
 // InsertFrom copies all the records of t to the buffer.
 func (rb *RecordBuffer) InsertFrom(t Reader) error {
 	var er error
-	erit := t.Iterate(func(r record.Record) bool {
+	erit := t.Iterate(func(rowid []byte, r record.Record) bool {
 		_, err := rb.Insert(r)
 		if err != nil {
 			er = err
@@ -112,7 +112,7 @@ func (rb *RecordBuffer) Delete(rowid []byte) error {
 	return nil
 }
 
-func (rb *RecordBuffer) Iterate(fn func(record.Record) bool) error {
+func (rb *RecordBuffer) Iterate(fn func(rowid []byte, r record.Record) bool) error {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
 	}
@@ -122,8 +122,8 @@ func (rb *RecordBuffer) Iterate(fn func(record.Record) bool) error {
 		return nil
 	}
 
-	for _, r, err := e.Next(); err != io.EOF; _, r, err = e.Next() {
-		if !fn(r) {
+	for k, r, err := e.Next(); err != io.EOF; k, r, err = e.Next() {
+		if !fn(k, r) {
 			return nil
 		}
 	}

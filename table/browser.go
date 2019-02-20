@@ -22,13 +22,13 @@ func (b Browser) Err() error {
 	return b.err
 }
 
-func (b Browser) ForEach(fn func(record.Record) error) Browser {
+func (b Browser) ForEach(fn func(rowid []byte, r record.Record) error) Browser {
 	if b.err != nil {
 		return b
 	}
 
-	err := b.Iterate(func(r record.Record) bool {
-		err := fn(r)
+	err := b.Iterate(func(rowid []byte, r record.Record) bool {
+		err := fn(rowid, r)
 		if err != nil {
 			b.err = err
 			return false
@@ -44,11 +44,11 @@ func (b Browser) ForEach(fn func(record.Record) error) Browser {
 	return b
 }
 
-func (b Browser) Filter(fn func(record.Record) (bool, error)) Browser {
+func (b Browser) Filter(fn func(rowid []byte, r record.Record) (bool, error)) Browser {
 	var rb RecordBuffer
 
-	b = b.ForEach(func(r record.Record) error {
-		ok, err := fn(r)
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
+		ok, err := fn(rowid, r)
 		if err != nil {
 			return err
 		}
@@ -67,11 +67,11 @@ func (b Browser) Filter(fn func(record.Record) (bool, error)) Browser {
 	return b
 }
 
-func (b Browser) Map(fn func(record.Record) (record.Record, error)) Browser {
+func (b Browser) Map(fn func(rowid []byte, r record.Record) (record.Record, error)) Browser {
 	var rb RecordBuffer
 
-	b = b.ForEach(func(r record.Record) error {
-		r, err := fn(r)
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
+		r, err := fn(rowid, r)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func (b Browser) GroupBy(fieldName string) BrowserGroup {
 	m := make(map[string]*RecordBuffer)
 	var values []string
 
-	tr := b.ForEach(func(r record.Record) error {
+	tr := b.ForEach(func(rowid []byte, r record.Record) error {
 		f, err := r.Field(fieldName)
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ func (b Browser) Chunk(n int) BrowserGroup {
 
 	i := 0
 	var fb RecordBuffer
-	b = b.ForEach(func(r record.Record) error {
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
 		if i%n == 0 {
 			fb = RecordBuffer{}
 			g.Readers = append(g.Readers, NewBrowser(&fb))
@@ -159,7 +159,7 @@ func (b Browser) Count() (int, error) {
 	}
 
 	counter := 0
-	b = b.ForEach(func(r record.Record) error {
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
 		counter++
 		return nil
 	})
