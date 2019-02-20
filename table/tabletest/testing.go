@@ -79,6 +79,24 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 			require.Equal(t, 1, c)
 		}
 	})
+
+	t.Run("Should stop if fn returns false", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		for i := 0; i < 10; i++ {
+			_, err := tb.Insert(newRecord())
+			require.NoError(t, err)
+		}
+
+		i := 0
+		err := tb.Iterate(func(rowid []byte, _ record.Record) bool {
+			i++
+			return i < 5
+		})
+		require.NoError(t, err)
+		require.Equal(t, 5, i)
+	})
 }
 
 // TestTableReaderRecord verifies Record behaviour.
