@@ -3,18 +3,14 @@ package memory
 import (
 	"bytes"
 
-	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/engine"
+	idx "github.com/asdine/genji/index"
 	"github.com/google/btree"
 )
 
-type Index struct {
+type index struct {
 	tree *btree.BTree
-}
-
-func NewIndex() *Index {
-	return &Index{
-		tree: btree.New(3),
-	}
+	tx   *transaction
 }
 
 type indexedItem struct {
@@ -40,12 +36,16 @@ func (i *indexedItem) Less(than btree.Item) bool {
 	return bytes.Compare(i.rowid, other.rowid) < 0
 }
 
-func (i *Index) Set(value []byte, rowid []byte) error {
+func (i *index) Set(value []byte, rowid []byte) error {
+	if !i.tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
 	i.tree.ReplaceOrInsert(&indexedItem{value, rowid})
 	return nil
 }
 
-func (i *Index) Cursor() index.Cursor {
+func (i *index) Cursor() idx.Cursor {
 	return &indexCursor{
 		tree: i.tree,
 	}

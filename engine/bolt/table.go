@@ -3,6 +3,8 @@ package bolt
 import (
 	"errors"
 
+	"github.com/asdine/genji/engine"
+
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
@@ -14,6 +16,10 @@ type Table struct {
 }
 
 func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
+	if !t.Bucket.Writable() {
+		return nil, engine.ErrTransactionReadOnly
+	}
+
 	if pker, ok := r.(table.Pker); ok {
 		rowid, err = pker.Pk()
 		if err != nil {
@@ -52,6 +58,10 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 }
 
 func (t *Table) Delete(rowid []byte) error {
+	if !t.Bucket.Writable() {
+		return engine.ErrTransactionReadOnly
+	}
+
 	v := t.Bucket.Get(rowid)
 	if v == nil {
 		return table.ErrRecordNotFound

@@ -5,14 +5,15 @@ import (
 	"sync"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/index"
+	idx "github.com/asdine/genji/index"
 	"github.com/asdine/genji/table"
+	"github.com/google/btree"
 )
 
 type Engine struct {
 	closed  bool
 	tables  map[string]*table.RecordBuffer
-	indexes map[tableIndex]*Index
+	indexes map[tableIndex]*btree.BTree
 
 	mu sync.RWMutex
 }
@@ -25,7 +26,7 @@ type tableIndex struct {
 func NewEngine() *Engine {
 	return &Engine{
 		tables:  make(map[string]*table.RecordBuffer),
-		indexes: make(map[tableIndex]*Index),
+		indexes: make(map[tableIndex]*btree.BTree),
 	}
 }
 
@@ -131,39 +132,39 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 	return &tableTx{tx: tx, RecordBuffer: &rb}, nil
 }
 
-func (tx *transaction) Index(table, name string) (index.Index, error) {
+func (tx *transaction) Index(table, name string) (idx.Index, error) {
 	_, err := tx.Table(table)
 	if err != nil {
 		return nil, engine.ErrTableNotFound
 	}
 
-	idx, ok := tx.ng.indexes[tableIndex{table, name}]
+	tree, ok := tx.ng.indexes[tableIndex{table, name}]
 	if !ok {
 		return nil, engine.ErrIndexNotFound
 	}
 
-	return idx, nil
+	return &index{tree: tree, tx: tx}, nil
 }
 
-func (tx *transaction) Indexes(table string) (map[string]index.Index, error) {
+func (tx *transaction) Indexes(table string) (map[string]idx.Index, error) {
 	if _, err := tx.Table(table); err != nil {
 		return nil, err
 	}
 
-	m := make(map[string]index.Index)
+	m := make(map[string]idx.Index)
 
-	for ti, idx := range tx.ng.indexes {
+	for ti, tree := range tx.ng.indexes {
 		if ti.table != table {
 			continue
 		}
 
-		m[ti.index] = idx
+		m[ti.index] = &index{tree: tree, tx: tx}
 	}
 
 	return m, nil
 }
 
-func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
+func (tx *transaction) CreateIndex(table, name string) (idx.Index, error) {
 	if !tx.writable {
 		return nil, engine.ErrTransactionReadOnly
 	}
@@ -178,11 +179,12 @@ func (tx *transaction) CreateIndex(table, name string) (index.Index, error) {
 		return nil, engine.ErrIndexAlreadyExists
 	}
 
-	tx.ng.indexes[tableIndex{table, name}] = NewIndex()
+	tree := btree.New(3)
+	tx.ng.indexes[tableIndex{table, name}] = tree
 
 	tx.undos = append(tx.undos, func() {
 		delete(tx.ng.indexes, tableIndex{table, name})
 	})
 
-	return tx.ng.indexes[tableIndex{table, name}], nil
+	return &index{tree: tree, tx: tx}, nil
 }

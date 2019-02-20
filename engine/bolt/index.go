@@ -3,6 +3,8 @@ package bolt
 import (
 	"bytes"
 
+	"github.com/asdine/genji/engine"
+
 	"github.com/asdine/genji/index"
 	bolt "github.com/etcd-io/bbolt"
 )
@@ -21,7 +23,12 @@ func (i *Index) Set(value []byte, rowid []byte) error {
 	buf = append(buf, '_')
 	buf = append(buf, rowid...)
 
-	return i.b.Put(buf, rowid)
+	err := i.b.Put(buf, rowid)
+	if err == bolt.ErrTxNotWritable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	return err
 }
 
 func (i *Index) Cursor() index.Cursor {

@@ -1,8 +1,7 @@
 package memory
 
 import (
-	"errors"
-
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
@@ -15,7 +14,7 @@ type tableTx struct {
 
 func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
 	if !t.tx.writable {
-		return nil, errors.New("can't insert record in read-only transaction")
+		return nil, engine.ErrTransactionReadOnly
 	}
 
 	rowid, err = t.RecordBuffer.Insert(r)
@@ -32,7 +31,7 @@ func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
 
 func (t *tableTx) Delete(rowid []byte) error {
 	if !t.tx.writable {
-		return errors.New("can't delete record in read-only transaction")
+		return engine.ErrTransactionReadOnly
 	}
 
 	r, err := t.RecordBuffer.Record(rowid)

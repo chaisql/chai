@@ -117,9 +117,30 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(true)
 		require.NoError(t, err)
+
+		// create table for testing table methods
+		_, err = tx.CreateTable("table1")
+		require.NoError(t, err)
+
+		// create index for testing index methods
+		_, err = tx.CreateIndex("table1", "idx")
+		require.NoError(t, err)
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		// create a new read-only transaction
+		tx, err = ng.Begin(false)
 		defer tx.Rollback()
+
+		// fetch the table and the index
+		tb, err := tx.Table("table1")
+		require.NoError(t, err)
+
+		// create index for testing index methods
+		idx, err := tx.Index("table1", "idx")
+		require.NoError(t, err)
 
 		tests := []struct {
 			name string
@@ -128,6 +149,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		}{
 			{"CreateTable", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tx.CreateTable("table") }},
 			{"CreateIndex", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tx.CreateIndex("table", "idx") }},
+			{"TableInsert", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tb.Insert(record.FieldBuffer{}) }},
+			{"TableDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Delete([]byte("id")) }},
+			{"IndexSet", engine.ErrTransactionReadOnly, func(err *error) { *err = idx.Set([]byte("value"), []byte("id")) }},
 		}
 
 		for _, test := range tests {
