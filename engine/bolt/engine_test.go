@@ -26,11 +26,11 @@ func TestBoltEngine(t *testing.T) {
 }
 
 func TestBoltEngineIndex(t *testing.T) {
-	indextest.TestSuite(t, func() (index.Index, func()) {
-		dir, cleanup := tempDir(t)
-		ng, err := bolt.NewEngine(path.Join(dir, "test.db"), 0600, nil)
-		require.NoError(t, err)
+	dir, cleanup := tempDir(t)
+	ng, err := bolt.NewEngine(path.Join(dir, "test.db"), 0600, nil)
+	require.NoError(t, err)
 
+	indextest.TestSuite(t, func() (index.Index, func()) {
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
 
@@ -42,42 +42,53 @@ func TestBoltEngineIndex(t *testing.T) {
 
 		return idx, func() {
 			tx.Rollback()
-			ng.Close()
-			cleanup()
 		}
 	})
+
+	ng.Close()
+	cleanup()
 }
 
 func TestBoltEngineTable(t *testing.T) {
-	tabletest.TestSuite(t, tableBuilder(t))
+	builder, cleanup := tableBuilder(t)
+	defer cleanup()
+
+	tabletest.TestSuite(t, builder)
 }
 
 func BenchmarkBoltEngineTableInsert(b *testing.B) {
-	tabletest.BenchmarkTableInsert(b, tableBuilder(b))
+	builder, cleanup := tableBuilder(b)
+	defer cleanup()
+
+	tabletest.BenchmarkTableInsert(b, builder)
 }
 
 func BenchmarkBoltEngineTableScan(b *testing.B) {
-	tabletest.BenchmarkTableScan(b, tableBuilder(b))
+	builder, cleanup := tableBuilder(b)
+	defer cleanup()
+
+	tabletest.BenchmarkTableScan(b, builder)
 }
 
-func tableBuilder(t require.TestingT) func() (table.Table, func()) {
+func tableBuilder(t require.TestingT) (func() (table.Table, func()), func()) {
+	dir, cleanup := tempDir(t)
+	ng, err := bolt.NewEngine(path.Join(dir, "test.db"), 0600, nil)
+	require.NoError(t, err)
+
 	return func() (table.Table, func()) {
-		dir, cleanup := tempDir(t)
-		ng, err := bolt.NewEngine(path.Join(dir, "test.db"), 0600, nil)
-		require.NoError(t, err)
+			tx, err := ng.Begin(true)
+			require.NoError(t, err)
 
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
+			tb, err := tx.CreateTable("test")
+			require.NoError(t, err)
 
-		tb, err := tx.CreateTable("test")
-		require.NoError(t, err)
-
-		return tb, func() {
-			tx.Rollback()
+			return tb, func() {
+				tx.Rollback()
+			}
+		}, func() {
 			ng.Close()
 			cleanup()
 		}
-	}
 }
 
 func tempDir(t require.TestingT) (string, func()) {
