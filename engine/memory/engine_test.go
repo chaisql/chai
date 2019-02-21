@@ -1,15 +1,56 @@
-package memory
+package memory_test
 
 import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/enginetest"
+	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/index/indextest"
+	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/table/tabletest"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMemoryEngine(t *testing.T) {
 	enginetest.TestSuite(t, func() (engine.Engine, func()) {
-		ng := NewEngine()
+		ng := memory.NewEngine()
 		return ng, func() { ng.Close() }
+	})
+}
+
+func TestMemoryEngineIndex(t *testing.T) {
+	indextest.TestSuite(t, func() (index.Index, func()) {
+		ng := memory.NewEngine()
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		idx, err := tx.CreateIndex("test", "idx")
+		require.NoError(t, err)
+
+		return idx, func() {
+			tx.Rollback()
+			ng.Close()
+		}
+	})
+}
+
+func TestMemoryEngineTable(t *testing.T) {
+	tabletest.TestSuite(t, func() (table.Table, func()) {
+		ng := memory.NewEngine()
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+
+		tb, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
+		return tb, func() {
+			tx.Rollback()
+			ng.Close()
+		}
 	})
 }
