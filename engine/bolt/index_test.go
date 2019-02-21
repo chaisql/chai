@@ -1,11 +1,37 @@
 package bolt
 
 import (
+	"path"
 	"testing"
 
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/index/indextest"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBoltEngineIndex(t *testing.T) {
+	indextest.TestSuite(t, func() (index.Index, func()) {
+		dir, cleanup := tempDir(t)
+		ng, err := NewEngine(path.Join(dir, "test.db"), 0600, nil)
+		require.NoError(t, err)
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		idx, err := tx.CreateIndex("test", "idx")
+		require.NoError(t, err)
+
+		return idx, func() {
+			tx.Rollback()
+			ng.Close()
+			cleanup()
+		}
+	})
+}
 
 func TestIndexSet(t *testing.T) {
 	b, cleanup := tempBucket(t, true)

@@ -14,7 +14,7 @@ import (
 // Builder is a function that can create a table on demand and that provides
 // a function to cleanup up and remove any created state.
 // Tests will use the builder like this:
-//     ng, cleanup := builder()
+//     tb, cleanup := builder()
 //     defer cleanup()
 //     ...
 type Builder func() (table.Table, func())

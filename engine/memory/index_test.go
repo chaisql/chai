@@ -1,5 +1,32 @@
 package memory
 
+import (
+	"testing"
+
+	idx "github.com/asdine/genji/index"
+	"github.com/asdine/genji/index/indextest"
+	"github.com/stretchr/testify/require"
+)
+
+func TestMemoryEngineIndex(t *testing.T) {
+	indextest.TestSuite(t, func() (idx.Index, func()) {
+		ng := NewEngine()
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		idx, err := tx.CreateIndex("test", "idx")
+		require.NoError(t, err)
+
+		return idx, func() {
+			tx.Rollback()
+			ng.Close()
+		}
+	})
+}
+
 // func TestIndexSet(t *testing.T) {
 // 	idx := newIndex()
 
