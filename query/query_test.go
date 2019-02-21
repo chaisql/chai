@@ -48,7 +48,7 @@ func TestQuery(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 7, count)
 
-			err = table.NewBrowser(tt).ForEach(func(r record.Record) error {
+			err = table.NewBrowser(tt).ForEach(func(rowid []byte, r record.Record) error {
 				_, err := r.Field("id")
 				require.NoError(t, err)
 				_, err = r.Field("name")

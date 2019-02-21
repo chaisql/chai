@@ -43,12 +43,12 @@ func (q Query) Run(tx engine.Transaction) (table.Reader, error) {
 		}
 	} else {
 		b = table.NewBrowser(t).
-			Filter(func(r record.Record) (bool, error) {
+			Filter(func(rowid []byte, r record.Record) (bool, error) {
 				return matcher.Match(r)
 			})
 	}
 
-	b = b.Map(func(r record.Record) (record.Record, error) {
+	b = b.Map(func(rowid []byte, r record.Record) (record.Record, error) {
 		var fb record.FieldBuffer
 
 		for _, s := range q.fieldSelectors {
