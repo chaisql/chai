@@ -17,3 +17,6 @@ test: gen
 
 testrace: gen
 	go test -v -race -cover -timeout=2m ./...
+
+bench:
+	go test -v -run=^\$$ -benchmem -bench=. ./...
