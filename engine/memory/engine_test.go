@@ -40,7 +40,19 @@ func TestMemoryEngineIndex(t *testing.T) {
 }
 
 func TestMemoryEngineTable(t *testing.T) {
-	tabletest.TestSuite(t, func() (table.Table, func()) {
+	tabletest.TestSuite(t, tableBuilder(t))
+}
+
+func BenchmarkMemoryEngineTableInsert(b *testing.B) {
+	tabletest.BenchmarkTableInsert(b, tableBuilder(b))
+}
+
+func BenchmarkMemoryEngineTableScan(b *testing.B) {
+	tabletest.BenchmarkTableScan(b, tableBuilder(b))
+}
+
+func tableBuilder(t require.TestingT) func() (table.Table, func()) {
+	return func() (table.Table, func()) {
 		ng := memory.NewEngine()
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
@@ -52,5 +64,5 @@ func TestMemoryEngineTable(t *testing.T) {
 			tx.Rollback()
 			ng.Close()
 		}
-	})
+	}
 }
