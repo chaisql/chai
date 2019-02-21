@@ -141,9 +141,15 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		rec := newRecord()
-		rowid, err := tb.Insert(rec)
+		rowid1, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.NotEmpty(t, rowid)
+		require.NotEmpty(t, rowid1)
+
+		rowid2, err := tb.Insert(rec)
+		require.NoError(t, err)
+		require.NotEmpty(t, rowid2)
+
+		require.NotEqual(t, rowid1, rowid2)
 	})
 
 	t.Run("Should support Pker interface", func(t *testing.T) {
