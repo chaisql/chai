@@ -2,7 +2,6 @@ package tabletest
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/asdine/genji/field"
@@ -13,7 +12,7 @@ import (
 // BenchmarkTableInsert benchmarks the Insert method with 1, 10, 1000 and 10000 successive insertions.
 func BenchmarkTableInsert(b *testing.B, builder Builder) {
 	for i := 1; i <= 10000; i *= 10 {
-		b.Run(strconv.Itoa(i), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%.05d", i), func(b *testing.B) {
 			benchmarkTableInsert(b, builder, i)
 		})
 	}
@@ -45,7 +44,7 @@ func benchmarkTableInsert(b *testing.B, builder Builder, size int) {
 // BenchmarkTableScan benchmarks the Scan method with 1, 10, 1000 and 10000 successive insertions.
 func BenchmarkTableScan(b *testing.B, builder Builder) {
 	for i := 1; i <= 10000; i *= 10 {
-		b.Run(strconv.Itoa(i), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%.05d", i), func(b *testing.B) {
 			benchmarkTableScan(b, builder, i)
 		})
 	}
