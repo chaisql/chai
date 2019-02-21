@@ -2,6 +2,7 @@ package memory
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/asdine/genji/engine"
 	idx "github.com/asdine/genji/index"
@@ -39,6 +40,10 @@ func (i *indexedItem) Less(than btree.Item) bool {
 func (i *index) Set(value []byte, rowid []byte) error {
 	if !i.tx.writable {
 		return engine.ErrTransactionReadOnly
+	}
+
+	if len(value) == 0 {
+		return errors.New("value cannot be nil")
 	}
 
 	i.tree.ReplaceOrInsert(&indexedItem{value, rowid})

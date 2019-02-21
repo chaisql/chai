@@ -2,9 +2,9 @@ package bolt
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/asdine/genji/engine"
-
 	"github.com/asdine/genji/index"
 	bolt "github.com/etcd-io/bbolt"
 )
@@ -18,6 +18,10 @@ func NewIndex(b *bolt.Bucket) *Index {
 }
 
 func (i *Index) Set(value []byte, rowid []byte) error {
+	if len(value) == 0 {
+		return errors.New("value cannot be nil")
+	}
+
 	buf := make([]byte, 0, len(value)+len(rowid)+1)
 	buf = append(buf, value...)
 	buf = append(buf, '_')

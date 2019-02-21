@@ -21,6 +21,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		name string
 		test func(*testing.T, Builder)
 	}{
+		{"Index/Set", TestIndexSet},
 		{"Index/Cursor", TestIndexCursor},
 	}
 
@@ -29,6 +30,25 @@ func TestSuite(t *testing.T, builder Builder) {
 			test.test(t, builder)
 		})
 	}
+}
+
+// TestIndexSet verifies Set behaviour.
+func TestIndexSet(t *testing.T, builder Builder) {
+	idx, cleanup := builder()
+	defer cleanup()
+
+	t.Run("Set nil value fails", func(t *testing.T) {
+		require.Error(t, idx.Set(nil, []byte("rid")))
+		require.Error(t, idx.Set([]byte{}, []byte("rid")))
+	})
+
+	t.Run("Set nil rowid succeeds", func(t *testing.T) {
+		require.NoError(t, idx.Set([]byte("value"), nil))
+	})
+
+	t.Run("Set value and rowid succeeds", func(t *testing.T) {
+		require.NoError(t, idx.Set([]byte("value"), []byte("rowid")))
+	})
 }
 
 // TestIndexCursor verifies Cursor behaviour.
@@ -191,6 +211,10 @@ func TestIndexCursor(t *testing.T, builder Builder) {
 		v, rid := c.Seek([]byte{'D'})
 		require.Equal(t, []byte{'E'}, v)
 		require.Equal(t, []byte{'e'}, rid)
+
+		v, rid = c.Seek([]byte{'M'})
+		require.Nil(t, v)
+		require.Nil(t, rid)
 	})
 
 	t.Run("Seek then Next", func(t *testing.T) {
