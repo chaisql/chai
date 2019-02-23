@@ -11,8 +11,7 @@ import (
 )
 
 func TestTable(t *testing.T) {
-	db, err := genji.New(memory.NewEngine())
-	require.NoError(t, err)
+	db := genji.New(memory.NewEngine())
 
 	t.Run("Table/Insert/NoIndex", func(t *testing.T) {
 		tx, err := db.Begin(true)

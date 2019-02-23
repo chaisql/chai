@@ -10,8 +10,8 @@ type DB struct {
 	engine.Engine
 }
 
-func New(ng engine.Engine) (*DB, error) {
-	return &DB{Engine: ng}, nil
+func New(ng engine.Engine) *DB {
+	return &DB{Engine: ng}
 }
 
 func (db DB) Begin(writable bool) (*Transaction, error) {
