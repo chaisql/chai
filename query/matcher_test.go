@@ -291,93 +291,44 @@ func TestOrMatcher(t *testing.T) {
 	})
 }
 
-func benchmarkMatcher(b *testing.B, size int) {
-	records := make([]record.Record, size)
-	for i := 0; i < size; i++ {
-		records[i] = createRecord(i)
-	}
+func BenchmarkMatcher(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
+			records := make([]record.Record, size)
+			for i := 0; i < size; i++ {
+				records[i] = createRecord(i)
+			}
 
-	matcher := query.And(
-		query.GtInt(
-			query.Field("age"),
-			2,
-		),
-		query.LtInt(
-			query.Field("age"),
-			10,
-		),
-	)
+			matcher := query.EqInt(query.Field("age"), size)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		for _, r := range records {
-			matcher.Match(r)
-		}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				for _, r := range records {
+					matcher.Match(r)
+				}
+			}
+		})
 	}
 }
 
-func BenchmarkMatcher1(b *testing.B) {
-	benchmarkMatcher(b, 1)
-}
+func BenchmarkIndexMatcher(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
+			ages := make([]indexPair, size)
+			for i := 0; i < size; i++ {
+				ages[i] = indexPair{V: i, R: fmt.Sprintf("%d", i)}
+			}
 
-func BenchmarkMatcher10(b *testing.B) {
-	benchmarkMatcher(b, 10)
-}
+			tx, cleanup := createIndexes(b, ages, nil)
+			defer cleanup()
 
-func BenchmarkMatcher100(b *testing.B) {
-	benchmarkMatcher(b, 100)
-}
+			matcher := query.EqInt(query.Field("age"), size)
 
-func BenchmarkMatcher1000(b *testing.B) {
-	benchmarkMatcher(b, 1000)
-}
-
-func BenchmarkMatcher10000(b *testing.B) {
-	benchmarkMatcher(b, 10000)
-}
-
-func benchmarkIndexMatcher(b *testing.B, size int) {
-	ages := make([]indexPair, size)
-	for i := 0; i < size; i++ {
-		ages[i] = indexPair{V: i, R: fmt.Sprintf("%d", i)}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				matcher.MatchIndex("test", tx)
+			}
+			b.StopTimer()
+		})
 	}
-
-	tx, cleanup := createIndexes(b, ages, nil)
-	defer cleanup()
-
-	matcher := query.And(
-		query.GtInt(
-			query.Field("age"),
-			2,
-		),
-		query.LtInt(
-			query.Field("age"),
-			10,
-		),
-	)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		matcher.MatchIndex("test", tx)
-	}
-	b.StopTimer()
-}
-
-func BenchmarkIndexMatcher1(b *testing.B) {
-	benchmarkIndexMatcher(b, 1)
-}
-func BenchmarkIndexMatcher10(b *testing.B) {
-	benchmarkIndexMatcher(b, 10)
-}
-
-func BenchmarkIndexMatcher100(b *testing.B) {
-	benchmarkIndexMatcher(b, 100)
-}
-
-func BenchmarkIndexMatcher1000(b *testing.B) {
-	benchmarkIndexMatcher(b, 1000)
-}
-
-func BenchmarkIndexMatcher10000(b *testing.B) {
-	benchmarkIndexMatcher(b, 10000)
 }
