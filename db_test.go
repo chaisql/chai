@@ -1,8 +1,9 @@
-package genji
+package genji_test
 
 import (
 	"testing"
 
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestTable(t *testing.T) {
-	db, err := Open(memory.NewEngine())
+	db, err := genji.New(memory.NewEngine())
 	require.NoError(t, err)
 
 	t.Run("Table/Insert/NoIndex", func(t *testing.T) {

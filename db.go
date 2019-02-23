@@ -10,7 +10,7 @@ type DB struct {
 	engine.Engine
 }
 
-func Open(ng engine.Engine) (*DB, error) {
+func New(ng engine.Engine) (*DB, error) {
 	return &DB{Engine: ng}, nil
 }
 
