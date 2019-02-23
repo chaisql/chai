@@ -61,6 +61,6 @@ func TestTable(t *testing.T) {
 		require.Equal(t, rowid, rid)
 	})
 
-	err = db.Close()
+	err := db.Close()
 	require.NoError(t, err)
 }

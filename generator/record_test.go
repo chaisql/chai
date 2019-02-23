@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/token"
 	"io/ioutil"
-	"strings"
 	"testing"
 
 	"github.com/asdine/genji/field"
@@ -22,24 +21,26 @@ var update = flag.String("update", "", "update .golden files by name")
 func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		tests := []struct {
-			name string
+			fname      string
+			structName string
 		}{
-			{"basic"},
-			{"pk"},
+			{"basic", "Basic"},
+			{"unexported_basic", "unexportedBasic"},
+			{"pk", "Pk"},
 		}
 
 		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
+			t.Run(test.fname, func(t *testing.T) {
 				fset := token.NewFileSet()
-				f, err := parser.ParseFile(fset, "testdata/"+test.name+".go", nil, 0)
+				f, err := parser.ParseFile(fset, "testdata/"+test.fname+".go", nil, 0)
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = GenerateRecord(f, strings.Title(test.name), &buf)
+				err = GenerateRecord(f, test.structName, &buf)
 				require.NoError(t, err)
 
-				gp := "testdata/" + test.name + ".generated.golden.go"
-				if *update == test.name {
+				gp := "testdata/" + test.fname + ".generated.golden.go"
+				if *update == test.fname {
 					t.Logf("%s: golden file updated", gp)
 					require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
 				}

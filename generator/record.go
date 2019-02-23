@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"golang.org/x/tools/imports"
 )
@@ -60,7 +61,7 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 }
 {{- end}}
 
-{{- $cursor := printf "%sCursor" .Struct.Unexported }}
+{{- $cursor := printf "%sCursor" .Struct.UnexportedName }}
 // Cursor creates a cursor for scanning records.
 func ({{$fl}} *{{$structName}}) Cursor() record.Cursor {
 	return &{{$cursor}}{
@@ -104,8 +105,13 @@ func (c *{{$cursor}}) Err() error {
 // {{$structName}}Selector provides helpers for selecting fields from the {{$structName}} structure.
 type {{$structName}}Selector struct{}
 
+{{- if .Struct.IsExported }}
 // New{{$structName}}Selector creates a {{$structName}}Selector.
 func New{{$structName}}Selector() {{$structName}}Selector {
+{{- else}}
+// new{{$structName}}Selector creates a {{$structName}}Selector.
+func new{{.Struct.ExportedName}}Selector() {{$structName}}Selector {
+{{- end}}
 	return {{$structName}}Selector{}
 }
 
@@ -126,17 +132,37 @@ func New{{$structName}}Selector() {{$structName}}Selector {
 
 type recordContext struct {
 	Package string
-	Struct  struct {
-		Name        string
-		Unexported  string
-		FirstLetter string
-		Fields      []struct {
-			Name, Type string
-		}
-		Pk struct {
-			Name, Type string
-		}
+	Struct  structContext
+}
+
+type structContext struct {
+	Name   string
+	Fields []struct {
+		Name, Type string
 	}
+	Pk struct {
+		Name, Type string
+	}
+}
+
+func (s *structContext) IsExported() bool {
+	return unicode.IsUpper(rune(s.Name[0]))
+}
+
+func (s *structContext) FirstLetter() string {
+	return strings.ToLower(s.Name[0:1])
+}
+
+func (s *structContext) UnexportedName() string {
+	name := []byte(s.Name)
+	name[0] = byte(unicode.ToLower(rune(s.Name[0])))
+	return string(name)
+}
+
+func (s *structContext) ExportedName() string {
+	name := []byte(s.Name)
+	name[0] = byte(unicode.ToUpper(rune(s.Name[0])))
+	return string(name)
 }
 
 // GenerateRecord parses the given ast, looks for the target struct
@@ -165,8 +191,6 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 		var ctx recordContext
 		ctx.Package = f.Name.Name
 		ctx.Struct.Name = target
-		ctx.Struct.FirstLetter = strings.ToLower(target[0:1])
-		ctx.Struct.Unexported = ctx.Struct.FirstLetter + target[1:]
 
 		for _, fd := range s.Fields.List {
 			typ, ok := fd.Type.(*ast.Ident)
