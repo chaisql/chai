@@ -80,13 +80,8 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 // {{$structName}}Selector provides helpers for selecting fields from the {{$structName}} structure.
 type {{$structName}}Selector struct{}
 
-{{- if .IsExported }}
-// New{{$structName}}Selector creates a {{$structName}}Selector.
-func New{{$structName}}Selector() {{$structName}}Selector {
-{{- else}}
-// new{{$structName}}Selector creates a {{$structName}}Selector.
-func new{{.ExportedName}}Selector() {{$structName}}Selector {
-{{- end}}
+// {{.NameWithPrefix "New"}}Selector creates a {{$structName}}Selector.
+func {{.NameWithPrefix "New"}}Selector() {{$structName}}Selector {
 	return {{$structName}}Selector{}
 }
 
@@ -103,12 +98,33 @@ func new{{.ExportedName}}Selector() {{$structName}}Selector {
 		}
 	{{- end}}
 {{- end}}
-`
 
-type fileContext struct {
-	Package string
-	Records []recordContext
+// {{$structName}}Table manages the table. It provides several typed helpers
+// that simplify common operations.
+type {{$structName}}Table struct {
+	tx *genji.Tx
+	t  table.Table
 }
+
+// {{.NameWithPrefix "New"}}Table creates a {{$structName}}Table valid for the lifetime of the given transaction.
+func {{.NameWithPrefix "New"}}Table(tx *genji.Tx) *{{$structName}}Table {
+	return &{{$structName}}Table{
+		tx: tx,
+	}
+}
+
+// Init makes sure the database exists. No error is returned if the database already exists.
+func ({{$fl}} *{{$structName}}Table) Init() error {
+	var err error
+
+	{{$fl}}.t, err = {{$fl}}.tx.CreateTable("{{$structName}}")
+	if err == engine.ErrTableAlreadyExists {
+		return nil
+	}
+
+	return err
+}
+`
 
 type recordContext struct {
 	Name   string
@@ -129,14 +145,39 @@ func (s *recordContext) FirstLetter() string {
 }
 
 func (s *recordContext) UnexportedName() string {
-	name := []byte(s.Name)
-	name[0] = byte(unicode.ToLower(rune(s.Name[0])))
-	return string(name)
+	if !s.IsExported() {
+		return s.Name
+	}
+
+	return s.Unexport(s.Name)
 }
 
 func (s *recordContext) ExportedName() string {
-	name := []byte(s.Name)
-	name[0] = byte(unicode.ToUpper(rune(s.Name[0])))
+	if s.IsExported() {
+		return s.Name
+	}
+
+	return s.Export(s.Name)
+}
+
+func (s *recordContext) NameWithPrefix(prefix string) string {
+	n := prefix + s.ExportedName()
+	if s.IsExported() {
+		return s.Export(n)
+	}
+
+	return s.Unexport(n)
+}
+
+func (s *recordContext) Export(n string) string {
+	name := []byte(n)
+	name[0] = byte(unicode.ToUpper(rune(n[0])))
+	return string(name)
+}
+
+func (s *recordContext) Unexport(n string) string {
+	name := []byte(n)
+	name[0] = byte(unicode.ToLower(rune(n[0])))
 	return string(name)
 }
 

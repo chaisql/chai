@@ -3,9 +3,8 @@ package testdata
 import (
 	"errors"
 
-	"github.com/asdine/genji/engine"
-
 	"github.com/asdine/genji"
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/table"
@@ -198,7 +197,7 @@ func (u *unexportedBasic) Iterate(fn func(field.Field) error) error {
 // unexportedBasicSelector provides helpers for selecting fields from the unexportedBasic structure.
 type unexportedBasicSelector struct{}
 
-// newunexportedBasicSelector creates a unexportedBasicSelector.
+// newUnexportedBasicSelector creates a unexportedBasicSelector.
 func newUnexportedBasicSelector() unexportedBasicSelector {
 	return unexportedBasicSelector{}
 }
@@ -221,6 +220,32 @@ func (unexportedBasicSelector) C() query.Int64Field {
 // D returns an int64 selector.
 func (unexportedBasicSelector) D() query.Int64Field {
 	return query.NewInt64Field("D")
+}
+
+// unexportedBasicTable manages the table. It provides several typed helpers
+// that simplify common operations.
+type unexportedBasicTable struct {
+	tx *genji.Tx
+	t  table.Table
+}
+
+// newUnexportedBasicTable creates a unexportedBasicTable valid for the lifetime of the given transaction.
+func newUnexportedBasicTable(tx *genji.Tx) *unexportedBasicTable {
+	return &unexportedBasicTable{
+		tx: tx,
+	}
+}
+
+// Init makes sure the database exists. No error is returned if the database already exists.
+func (u *unexportedBasicTable) Init() error {
+	var err error
+
+	u.t, err = u.tx.CreateTable("unexportedBasic")
+	if err == engine.ErrTableAlreadyExists {
+		return nil
+	}
+
+	return err
 }
 
 // Field implements the field method of the record.Record interface.
@@ -285,4 +310,30 @@ func (PkSelector) A() query.StrField {
 // B returns an int64 selector.
 func (PkSelector) B() query.Int64Field {
 	return query.NewInt64Field("B")
+}
+
+// PkTable manages the table. It provides several typed helpers
+// that simplify common operations.
+type PkTable struct {
+	tx *genji.Tx
+	t  table.Table
+}
+
+// NewPkTable creates a PkTable valid for the lifetime of the given transaction.
+func NewPkTable(tx *genji.Tx) *PkTable {
+	return &PkTable{
+		tx: tx,
+	}
+}
+
+// Init makes sure the database exists. No error is returned if the database already exists.
+func (p *PkTable) Init() error {
+	var err error
+
+	p.t, err = p.tx.CreateTable("Pk")
+	if err == engine.ErrTableAlreadyExists {
+		return nil
+	}
+
+	return err
 }
