@@ -113,6 +113,18 @@ func {{.NameWithPrefix "New"}}Table(tx *genji.Tx) *{{$structName}}Table {
 	}
 }
 
+func ({{$fl}} *{{$structName}}Table) ensureTable() error {
+	if {{$fl}}.t != nil {
+		return nil
+	}
+
+	var err error
+
+	{{$fl}}.t, err = {{$fl}}.tx.Table("{{$structName}}")
+
+	return err
+}
+
 // Init makes sure the database exists. No error is returned if the database already exists.
 func ({{$fl}} *{{$structName}}Table) Init() error {
 	var err error
@@ -123,6 +135,25 @@ func ({{$fl}} *{{$structName}}Table) Init() error {
 	}
 
 	return err
+}
+
+// Insert a record in the table and return the primary key.
+{{- if eq .Pk.Name ""}}
+func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (rowid []byte, err error) {
+{{- else }}
+func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (err error) {
+{{- end}}
+	err = {{$fl}}.ensureTable()
+	if err != nil {
+		return
+	}
+
+	{{- if eq .Pk.Name ""}}
+		return {{$fl}}.t.Insert(record)
+	{{- else}}
+		_, err = {{$fl}}.t.Insert(record)
+		return
+	{{- end}}
 }
 `
 

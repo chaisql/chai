@@ -219,5 +219,27 @@ func TestGeneratedRecords(t *testing.T) {
 		pk, err := r.Pk()
 		require.NoError(t, err)
 		require.Equal(t, field.EncodeInt64(10), pk)
+
+		t.Run("Insert", func(t *testing.T) {
+			ng := memory.NewEngine()
+			db := genji.New(ng)
+
+			err := db.Update(func(tx *genji.Tx) error {
+				tb := testdata.NewPkTable(tx)
+				require.NoError(t, err)
+
+				err = tb.Init()
+				require.NoError(t, err)
+
+				record := testdata.Pk{
+					A: "A",
+					B: 10,
+				}
+				err := tb.Insert(&record)
+				require.NoError(t, err)
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 }

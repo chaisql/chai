@@ -147,7 +147,6 @@ func (b *BasicTable) Insert(record *Basic) (rowid []byte, err error) {
 	if err != nil {
 		return
 	}
-
 	return b.t.Insert(record)
 }
 
@@ -258,6 +257,18 @@ func newUnexportedBasicTable(tx *genji.Tx) *unexportedBasicTable {
 	}
 }
 
+func (u *unexportedBasicTable) ensureTable() error {
+	if u.t != nil {
+		return nil
+	}
+
+	var err error
+
+	u.t, err = u.tx.Table("unexportedBasic")
+
+	return err
+}
+
 // Init makes sure the database exists. No error is returned if the database already exists.
 func (u *unexportedBasicTable) Init() error {
 	var err error
@@ -268,6 +279,15 @@ func (u *unexportedBasicTable) Init() error {
 	}
 
 	return err
+}
+
+// Insert a record in the table and return the primary key.
+func (u *unexportedBasicTable) Insert(record *unexportedBasic) (rowid []byte, err error) {
+	err = u.ensureTable()
+	if err != nil {
+		return
+	}
+	return u.t.Insert(record)
 }
 
 // Field implements the field method of the record.Record interface.
@@ -378,7 +398,6 @@ func (p *PkTable) Insert(record *Pk) (err error) {
 	if err != nil {
 		return
 	}
-
 	_, err = p.t.Insert(record)
 	return
 }
