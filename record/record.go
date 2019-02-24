@@ -9,7 +9,7 @@ import (
 // A Record holds a group of fields.
 type Record interface {
 	Field(string) (field.Field, error)
-	Iterate(func(field.Field) bool) error
+	Iterate(func(field.Field) error) error
 }
 
 // FieldBuffer contains a list of fields. It implements the Record interface.
@@ -20,9 +20,9 @@ func (fb *FieldBuffer) Add(f field.Field) {
 }
 
 func (fb *FieldBuffer) AddFrom(r Record) error {
-	return r.Iterate(func(f field.Field) bool {
+	return r.Iterate(func(f field.Field) error {
 		*fb = append(*fb, f)
-		return true
+		return nil
 	})
 }
 
@@ -47,11 +47,11 @@ func (fb FieldBuffer) Set(f field.Field) {
 	fb.Add(f)
 }
 
-func (fb FieldBuffer) Iterate(fn func(field.Field) bool) error {
+func (fb FieldBuffer) Iterate(fn func(field.Field) error) error {
 	for _, f := range fb {
-		ok := fn(f)
-		if !ok {
-			return nil
+		err := fn(f)
+		if err != nil {
+			return err
 		}
 	}
 

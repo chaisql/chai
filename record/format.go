@@ -209,13 +209,7 @@ func Encode(r Record) ([]byte, error) {
 	var format Format
 
 	var offset uint64
-	c := r.Cursor()
-	for c.Next() {
-		if err := c.Err(); err != nil {
-			return nil, err
-		}
-
-		f := c.Field()
+	err := r.Iterate(func(f field.Field) error {
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f.Name)),
 			nameString: f.Name,
@@ -225,27 +219,26 @@ func Encode(r Record) ([]byte, error) {
 		})
 
 		offset += uint64(len(f.Data))
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	var buf bytes.Buffer
-	_, err := format.Header.WriteTo(&buf)
+	_, err = format.Header.WriteTo(&buf)
 	if err != nil {
 		return nil, err
 	}
 
 	buf.Grow(format.Header.BodySize())
 
-	c = r.Cursor()
-	for c.Next() {
-		if err := c.Err(); err != nil {
-			return nil, err
-		}
-
-		f := c.Field()
+	err = r.Iterate(func(f field.Field) error {
 		_, err = buf.Write(f.Data)
-		if err != nil {
-			return nil, err
-		}
+		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return buf.Bytes(), nil
@@ -293,10 +286,25 @@ func (e EncodedRecord) Field(name string) (field.Field, error) {
 	return DecodeField(e, name)
 }
 
-func (e EncodedRecord) Cursor() Cursor {
-	return &encodedRecordCursor{
-		data: e,
+func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
+	var format Format
+	err := format.Decode(e)
+	if err != nil {
+		return err
 	}
+
+	for _, fh := range format.Header.FieldHeaders {
+		err = fn(field.Field{
+			Name: string(fh.Name),
+			Type: field.Type(fh.Type),
+			Data: format.Body[fh.Offset : fh.Offset+fh.Size],
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type encodedRecordCursor struct {

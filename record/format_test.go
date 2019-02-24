@@ -67,13 +67,14 @@ func TestEncodedRecord(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
 
-	c := ec.Cursor()
-	require.True(t, c.Next())
-	require.Equal(t, rec[0], c.Field())
-	require.True(t, c.Next())
-	require.Equal(t, rec[1], c.Field())
-	require.False(t, c.Next())
-	require.False(t, c.Next())
+	var i int
+	err = ec.Iterate(func(f field.Field) error {
+		require.Equal(t, rec[i], f)
+		i++
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, i)
 }
 
 func BenchmarkDecodeField(b *testing.B) {
@@ -134,9 +135,8 @@ func BenchmarkEncodedRecord(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c := ec.Cursor()
-		for c.Next() {
-			c.Field()
-		}
+		ec.Iterate(func(field.Field) error {
+			return nil
+		})
 	}
 }
