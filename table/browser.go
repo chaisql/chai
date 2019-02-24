@@ -27,14 +27,8 @@ func (b Browser) ForEach(fn func(rowid []byte, r record.Record) error) Browser {
 		return b
 	}
 
-	err := b.Iterate(func(rowid []byte, r record.Record) bool {
-		err := fn(rowid, r)
-		if err != nil {
-			b.err = err
-			return false
-		}
-
-		return true
+	err := b.Iterate(func(rowid []byte, r record.Record) error {
+		return fn(rowid, r)
 	})
 
 	if err != nil && b.err == nil {

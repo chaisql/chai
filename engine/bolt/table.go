@@ -1,8 +1,6 @@
 package bolt
 
 import (
-	"errors"
-
 	"github.com/asdine/genji/engine"
 
 	"github.com/asdine/genji/field"
@@ -70,25 +68,12 @@ func (t *Table) Delete(rowid []byte) error {
 	return t.Bucket.Delete(rowid)
 }
 
-func (t *Table) Iterate(fn func([]byte, record.Record) bool) error {
-	errInterrupt := errors.New("interrupted")
-
-	err := t.Bucket.ForEach(func(k, v []byte) error {
+func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
+	return t.Bucket.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
 		}
 
-		ok := fn(k, record.EncodedRecord(v))
-		if !ok {
-			return errInterrupt
-		}
-
-		return nil
+		return fn(k, record.EncodedRecord(v))
 	})
-
-	if err != nil && err != errInterrupt {
-		return err
-	}
-
-	return nil
 }

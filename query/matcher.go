@@ -483,18 +483,20 @@ func (i *indexResultTable) Record(rowid []byte) (record.Record, error) {
 	return i.table.Record(rowid)
 }
 
-func (i *indexResultTable) Iterate(fn func([]byte, record.Record) bool) error {
+func (i *indexResultTable) Iterate(fn func([]byte, record.Record) error) error {
 	var err error
 
 	i.tree.Ascend(func(it btree.Item) bool {
+		var rec record.Record
 		rowid := []byte(it.(Item))
-		r, er := i.table.Record(rowid)
+		rec, err = i.table.Record(rowid)
 		if err != nil {
-			err = er
 			return false
 		}
 
-		return fn(rowid, r)
+		err = fn(rowid, rec)
+		return err == nil
 	})
+
 	return err
 }

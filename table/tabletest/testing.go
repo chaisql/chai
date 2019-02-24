@@ -3,6 +3,7 @@
 package tabletest
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -53,9 +54,9 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(rowid []byte, r record.Record) bool {
+		err := tb.Iterate(func(rowid []byte, r record.Record) error {
 			i++
-			return true
+			return nil
 		})
 		require.NoError(t, err)
 		require.Zero(t, i)
@@ -71,9 +72,9 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(rowid []byte, _ record.Record) bool {
+		err := tb.Iterate(func(rowid []byte, _ record.Record) error {
 			m[string(rowid)]++
-			return true
+			return nil
 		})
 		require.NoError(t, err)
 		require.Len(t, m, 10)
@@ -82,7 +83,7 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 	})
 
-	t.Run("Should stop if fn returns false", func(t *testing.T) {
+	t.Run("Should stop if fn returns error", func(t *testing.T) {
 		tb, cleanup := builder()
 		defer cleanup()
 
@@ -92,11 +93,14 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(rowid []byte, _ record.Record) bool {
+		err := tb.Iterate(func(rowid []byte, _ record.Record) error {
 			i++
-			return i < 5
+			if i >= 5 {
+				return errors.New("some error")
+			}
+			return nil
 		})
-		require.NoError(t, err)
+		require.EqualError(t, err, "some error")
 		require.Equal(t, 5, i)
 	})
 }

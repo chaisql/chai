@@ -59,8 +59,8 @@ func BenchmarkTableScan(b *testing.B, builder Builder) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(func([]byte, record.Record) bool {
-					return true
+				tb.Iterate(func([]byte, record.Record) error {
+					return nil
 				})
 			}
 			b.StopTimer()
