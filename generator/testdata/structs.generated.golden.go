@@ -117,6 +117,18 @@ func NewBasicTable(tx *genji.Tx) *BasicTable {
 	}
 }
 
+func (b *BasicTable) ensureTable() error {
+	if b.t != nil {
+		return nil
+	}
+
+	var err error
+
+	b.t, err = b.tx.Table("Basic")
+
+	return err
+}
+
 // Init makes sure the database exists. No error is returned if the database already exists.
 func (b *BasicTable) Init() error {
 	var err error
@@ -127,6 +139,16 @@ func (b *BasicTable) Init() error {
 	}
 
 	return err
+}
+
+// Insert a record in the table and return the primary key.
+func (b *BasicTable) Insert(record *Basic) (rowid []byte, err error) {
+	err = b.ensureTable()
+	if err != nil {
+		return
+	}
+
+	return b.t.Insert(record)
 }
 
 // Field implements the field method of the record.Record interface.
@@ -326,6 +348,18 @@ func NewPkTable(tx *genji.Tx) *PkTable {
 	}
 }
 
+func (p *PkTable) ensureTable() error {
+	if p.t != nil {
+		return nil
+	}
+
+	var err error
+
+	p.t, err = p.tx.Table("Pk")
+
+	return err
+}
+
 // Init makes sure the database exists. No error is returned if the database already exists.
 func (p *PkTable) Init() error {
 	var err error
@@ -336,4 +370,15 @@ func (p *PkTable) Init() error {
 	}
 
 	return err
+}
+
+// Insert a record in the table and return the primary key.
+func (p *PkTable) Insert(record *Pk) (err error) {
+	err = p.ensureTable()
+	if err != nil {
+		return
+	}
+
+	_, err = p.t.Insert(record)
+	return
 }
