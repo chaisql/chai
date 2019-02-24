@@ -36,7 +36,7 @@ func TestGenerateRecord(t *testing.T) {
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = GenerateRecord(f, test.structName, &buf)
+				err = GenerateRecords(&buf, f, test.structName)
 				require.NoError(t, err)
 
 				gp := "testdata/" + test.fname + ".generated.golden.go"
@@ -80,7 +80,7 @@ func TestGenerateRecord(t *testing.T) {
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = GenerateRecord(f, "User", &buf)
+				err = GenerateRecords(&buf, f, "User")
 				require.Error(t, err)
 			})
 		}
@@ -96,7 +96,7 @@ func TestGenerateRecord(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecord(f, "User", &buf)
+		err = GenerateRecords(&buf, f, "User")
 		require.Error(t, err)
 	})
 
@@ -120,7 +120,7 @@ func TestGenerateRecord(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecord(f, "S", &buf)
+		err = GenerateRecords(&buf, f, "S")
 		require.Error(t, err)
 	})
 }

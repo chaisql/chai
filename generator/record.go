@@ -22,14 +22,12 @@ func init() {
 }
 
 const recordTmpl = `
-{{- $fl := .Struct.FirstLetter -}}
-{{- $structName := .Struct.Name -}}
-package {{.Package}}
-
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 // Field implements the field method of the record.Record interface.
 func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	switch name {
-	{{- range .Struct.Fields }}
+	{{- range .Fields }}
 	case "{{.Name}}":
 		{{- if eq .Type "string"}}
 		return field.Field{
@@ -50,18 +48,18 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
-{{- if ne .Struct.Pk.Name ""}}
+{{- if ne .Pk.Name ""}}
 // Pk returns the primary key. It implements the table.Pker interface.
 func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
-	{{- if eq .Struct.Pk.Type "string"}}
-		return []byte({{$fl}}.{{.Struct.Pk.Name}}), nil
-	{{- else if eq .Struct.Pk.Type "int64"}}
-		return field.EncodeInt64({{$fl}}.{{.Struct.Pk.Name}}), nil
+	{{- if eq .Pk.Type "string"}}
+		return []byte({{$fl}}.{{.Pk.Name}}), nil
+	{{- else if eq .Pk.Type "int64"}}
+		return field.EncodeInt64({{$fl}}.{{.Pk.Name}}), nil
 	{{- end}}
 }
 {{- end}}
 
-{{- $cursor := printf "%sCursor" .Struct.UnexportedName }}
+{{- $cursor := printf "%sCursor" .UnexportedName }}
 // Cursor creates a cursor for scanning records.
 func ({{$fl}} *{{$structName}}) Cursor() record.Cursor {
 	return &{{$cursor}}{
@@ -77,7 +75,7 @@ type {{$cursor}} struct {
 }
 
 func (c *{{$cursor}}) Next() bool {
-	if c.i+2 > {{len .Struct.Fields}} {
+	if c.i+2 > {{len .Fields}} {
 		return false
 	}
 
@@ -87,7 +85,7 @@ func (c *{{$cursor}}) Next() bool {
 
 func (c *{{$cursor}}) Field() field.Field {
 	switch c.i {
-	{{- range $i, $a := .Struct.Fields }}
+	{{- range $i, $a := .Fields }}
 	case {{$i}}:
 		f, _ := c.{{$structName}}.Field("{{$a.Name}}")
 		return f
@@ -105,17 +103,17 @@ func (c *{{$cursor}}) Err() error {
 // {{$structName}}Selector provides helpers for selecting fields from the {{$structName}} structure.
 type {{$structName}}Selector struct{}
 
-{{- if .Struct.IsExported }}
+{{- if .IsExported }}
 // New{{$structName}}Selector creates a {{$structName}}Selector.
 func New{{$structName}}Selector() {{$structName}}Selector {
 {{- else}}
 // new{{$structName}}Selector creates a {{$structName}}Selector.
-func new{{.Struct.ExportedName}}Selector() {{$structName}}Selector {
+func new{{.ExportedName}}Selector() {{$structName}}Selector {
 {{- end}}
 	return {{$structName}}Selector{}
 }
 
-{{- range $i, $a := .Struct.Fields }}
+{{- range $i, $a := .Fields }}
 	{{- if eq .Type "string"}}
 		// {{$a.Name}} returns a string selector.
 		func ({{$structName}}Selector) {{$a.Name}}() query.StrField {
@@ -130,12 +128,12 @@ func new{{.Struct.ExportedName}}Selector() {{$structName}}Selector {
 {{- end}}
 `
 
-type recordContext struct {
+type fileContext struct {
 	Package string
-	Struct  structContext
+	Records []recordContext
 }
 
-type structContext struct {
+type recordContext struct {
 	Name   string
 	Fields []struct {
 		Name, Type string
@@ -145,29 +143,58 @@ type structContext struct {
 	}
 }
 
-func (s *structContext) IsExported() bool {
+func (s *recordContext) IsExported() bool {
 	return unicode.IsUpper(rune(s.Name[0]))
 }
 
-func (s *structContext) FirstLetter() string {
+func (s *recordContext) FirstLetter() string {
 	return strings.ToLower(s.Name[0:1])
 }
 
-func (s *structContext) UnexportedName() string {
+func (s *recordContext) UnexportedName() string {
 	name := []byte(s.Name)
 	name[0] = byte(unicode.ToLower(rune(s.Name[0])))
 	return string(name)
 }
 
-func (s *structContext) ExportedName() string {
+func (s *recordContext) ExportedName() string {
 	name := []byte(s.Name)
 	name[0] = byte(unicode.ToUpper(rune(s.Name[0])))
 	return string(name)
 }
 
-// GenerateRecord parses the given ast, looks for the target struct
+// GenerateRecords parses the given ast, looks for the targets structs
 // and generates complementary code to the given writer.
-func GenerateRecord(f *ast.File, target string, w io.Writer) error {
+func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
+	var buf bytes.Buffer
+
+	fmt.Fprintf(&buf, "package %s\n", f.Name.Name)
+
+	for _, target := range targets {
+		ctx, err := lookupTarget(f, target)
+		if err != nil {
+			return err
+		}
+
+		err = t.Execute(&buf, &ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// format using goimports
+	output, err := imports.Process("", buf.Bytes(), nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(output)
+	return err
+}
+
+func lookupTarget(f *ast.File, target string) (*recordContext, error) {
+	var ctx recordContext
+
 	for _, n := range f.Decls {
 		gn, ok := ast.Node(n).(*ast.GenDecl)
 		if !ok || gn.Tok != token.TYPE || len(gn.Specs) == 0 {
@@ -185,29 +212,27 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 
 		s, ok := ts.Type.(*ast.StructType)
 		if !ok {
-			return errors.New("invalid object")
+			return nil, errors.New("invalid object")
 		}
 
-		var ctx recordContext
-		ctx.Package = f.Name.Name
-		ctx.Struct.Name = target
+		ctx.Name = target
 
 		for _, fd := range s.Fields.List {
 			typ, ok := fd.Type.(*ast.Ident)
 			if !ok {
-				return errors.New("struct must only contain supported fields")
+				return nil, errors.New("struct must only contain supported fields")
 			}
 
 			if len(fd.Names) == 0 {
-				return errors.New("embedded fields are not supported")
+				return nil, errors.New("embedded fields are not supported")
 			}
 
 			if typ.Name != "int64" && typ.Name != "string" {
-				return fmt.Errorf("unsupported type %s", typ.Name)
+				return nil, fmt.Errorf("unsupported type %s", typ.Name)
 			}
 
 			for _, name := range fd.Names {
-				ctx.Struct.Fields = append(ctx.Struct.Fields, struct {
+				ctx.Fields = append(ctx.Fields, struct {
 					Name, Type string
 				}{
 					name.String(), string(typ.Name),
@@ -217,29 +242,15 @@ func GenerateRecord(f *ast.File, target string, w io.Writer) error {
 			if fd.Tag != nil {
 				err := handleGenjiTag(&ctx, fd)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 
-		var buf bytes.Buffer
-
-		err := t.Execute(&buf, &ctx)
-		if err != nil {
-			return err
-		}
-
-		// format using goimports
-		output, err := imports.Process("", buf.Bytes(), nil)
-		if err != nil {
-			return err
-		}
-
-		_, err = w.Write(output)
-		return err
+		return &ctx, nil
 	}
 
-	return fmt.Errorf("struct %s not found", target)
+	return nil, fmt.Errorf("struct %s not found", target)
 }
 
 func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
@@ -262,12 +273,12 @@ func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
 	for _, gtag := range gtags {
 		switch gtag {
 		case "pk":
-			if ctx.Struct.Pk.Name != "" {
+			if ctx.Pk.Name != "" {
 				return errors.New("only one pk field is allowed")
 			}
 
-			ctx.Struct.Pk.Name = fd.Names[0].Name
-			ctx.Struct.Pk.Type = fd.Type.(*ast.Ident).Name
+			ctx.Pk.Name = fd.Names[0].Name
+			ctx.Pk.Type = fd.Type.(*ast.Ident).Name
 		default:
 			return fmt.Errorf("unsupported genji tag '%s'", gtag)
 		}
