@@ -171,7 +171,6 @@ func (b *BasicTable) Get(rowid []byte) (record *Basic, err error) {
 		return
 	}
 	record.A = string(f.Data)
-
 	f, err = rec.Field("B")
 	if err != nil {
 		return
@@ -333,6 +332,48 @@ func (b *basicTable) Insert(record *basic) (rowid []byte, err error) {
 	return b.t.Insert(record)
 }
 
+// Get a record using its primary key.
+func (b *basicTable) Get(rowid []byte) (record *basic, err error) {
+	err = b.ensureTable()
+	if err != nil {
+		return
+	}
+
+	rec, err := b.t.Record(rowid)
+	if err != nil {
+		return
+	}
+
+	record = new(basic)
+
+	var f field.Field
+
+	f, err = rec.Field("A")
+	if err != nil {
+		return
+	}
+	record.A = string(f.Data)
+	f, err = rec.Field("B")
+	if err != nil {
+		return
+	}
+	record.B, err = field.DecodeInt64(f.Data)
+
+	f, err = rec.Field("C")
+	if err != nil {
+		return
+	}
+	record.C, err = field.DecodeInt64(f.Data)
+
+	f, err = rec.Field("D")
+	if err != nil {
+		return
+	}
+	record.D, err = field.DecodeInt64(f.Data)
+
+	return
+}
+
 // Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
@@ -442,5 +483,36 @@ func (p *PkTable) Insert(record *Pk) (err error) {
 		return
 	}
 	_, err = p.t.Insert(record)
+	return
+}
+
+// Get a record using its primary key.
+func (p *PkTable) Get(pk int64) (record *Pk, err error) {
+	err = p.ensureTable()
+	if err != nil {
+		return
+	}
+	rowid := field.EncodeInt64(pk)
+
+	rec, err := p.t.Record(rowid)
+	if err != nil {
+		return
+	}
+
+	record = new(Pk)
+
+	var f field.Field
+
+	f, err = rec.Field("A")
+	if err != nil {
+		return
+	}
+	record.A = string(f.Data)
+	f, err = rec.Field("B")
+	if err != nil {
+		return
+	}
+	record.B, err = field.DecodeInt64(f.Data)
+
 	return
 }

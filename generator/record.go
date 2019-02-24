@@ -155,6 +155,54 @@ func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (err error)
 		return
 	{{- end}}
 }
+
+// Get a record using its primary key.
+{{- if eq .Pk.Name ""}}
+func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (record *{{$structName}}, err error) {
+{{- else}}
+	{{- if eq .Pk.Type "string"}}
+	func ({{$fl}} *{{$structName}}Table) Get(pk string) (record *{{$structName}}, err error) {
+	{{- else if eq .Pk.Type "int64"}}
+	func ({{$fl}} *{{$structName}}Table) Get(pk int64) (record *{{$structName}}, err error) {
+	{{- end}}
+{{- end}}
+	err = {{$fl}}.ensureTable()
+	if err != nil {
+		return
+	}
+
+	{{- if ne .Pk.Name ""}}
+		{{- if eq .Pk.Type "string"}}
+			rowid := []byte(pk)
+		{{- else if eq .Pk.Type "int64"}}
+			rowid := field.EncodeInt64(pk)
+		{{end}}
+	{{- end}}
+
+	rec, err := {{$fl}}.t.Record(rowid)
+	if err != nil {
+		return
+	}
+
+	record = new({{$structName}})
+
+	var f field.Field
+
+	{{range .Fields }}
+		f, err = rec.Field("{{.Name}}")
+		if err != nil {
+			return
+		}
+		{{- if eq .Type "string"}}
+			record.{{.Name}} = string(f.Data)
+		{{- else if eq .Type "int64"}}
+			record.{{.Name}}, err = field.DecodeInt64(f.Data)
+		{{end}}
+
+	{{- end}}
+
+	return
+}
 `
 
 type recordContext struct {
