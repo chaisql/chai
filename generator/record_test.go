@@ -16,41 +16,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var update = flag.String("update", "", "update .golden files by name")
+var update = flag.Bool("update", false, "update .golden file")
 
 func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
-		tests := []struct {
-			fname      string
-			structName string
-		}{
-			{"basic", "Basic"},
-			{"unexported_basic", "unexportedBasic"},
-			{"pk", "Pk"},
+		targets := []string{
+			"Basic",
+			"unexportedBasic",
+			"Pk",
 		}
 
-		for _, test := range tests {
-			t.Run(test.fname, func(t *testing.T) {
-				fset := token.NewFileSet()
-				f, err := parser.ParseFile(fset, "testdata/"+test.fname+".go", nil, 0)
-				require.NoError(t, err)
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, "testdata/structs.go", nil, 0)
+		require.NoError(t, err)
 
-				var buf bytes.Buffer
-				err = GenerateRecords(&buf, f, test.structName)
-				require.NoError(t, err)
+		var buf bytes.Buffer
+		err = GenerateRecords(&buf, f, targets...)
+		require.NoError(t, err)
 
-				gp := "testdata/" + test.fname + ".generated.golden.go"
-				if *update == test.fname {
-					t.Logf("%s: golden file updated", gp)
-					require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
-				}
-
-				g, err := ioutil.ReadFile(gp)
-				require.NoError(t, err)
-
-				require.Equal(t, string(g), buf.String())
-			})
+		gp := "testdata/structs.generated.golden.go"
+		if *update {
+			require.NoError(t, ioutil.WriteFile(gp, buf.Bytes(), 0644))
+			t.Logf("%s: golden file updated", gp)
 		}
+
+		g, err := ioutil.ReadFile(gp)
+		require.NoError(t, err)
+
+		require.Equal(t, string(g), buf.String())
 	})
 
 	t.Run("Unsupported fields", func(t *testing.T) {
