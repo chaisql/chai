@@ -3,8 +3,12 @@ package testdata
 import (
 	"errors"
 
+	"github.com/asdine/genji/engine"
+
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/table"
 )
 
 // Field implements the field method of the record.Record interface.
@@ -98,6 +102,32 @@ func (BasicSelector) C() query.Int64Field {
 // D returns an int64 selector.
 func (BasicSelector) D() query.Int64Field {
 	return query.NewInt64Field("D")
+}
+
+// BasicTable manages the table. It provides several typed helpers
+// that simplify common operations.
+type BasicTable struct {
+	tx *genji.Tx
+	t  table.Table
+}
+
+// NewBasicTable creates a BasicTable valid for the lifetime of the given transaction.
+func NewBasicTable(tx *genji.Tx) *BasicTable {
+	return &BasicTable{
+		tx: tx,
+	}
+}
+
+// Init makes sure the database exists. No error is returned if the database already exists.
+func (b *BasicTable) Init() error {
+	var err error
+
+	b.t, err = b.tx.CreateTable("Basic")
+	if err == engine.ErrTableAlreadyExists {
+		return nil
+	}
+
+	return err
 }
 
 // Field implements the field method of the record.Record interface.

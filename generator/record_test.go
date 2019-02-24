@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/asdine/genji"
+	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/generator/testdata"
 	"github.com/asdine/genji/record"
@@ -160,6 +162,28 @@ func TestGeneratedRecords(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 4, i)
+
+		t.Run("Init", func(t *testing.T) {
+			ng := memory.NewEngine()
+			db := genji.New(ng)
+
+			err := db.Update(func(tx *genji.Tx) error {
+				tb := testdata.NewBasicTable(tx)
+				require.NoError(t, err)
+
+				err = tb.Init()
+				require.NoError(t, err)
+
+				// verify table was created
+				tab, err := tx.Table("Basic")
+				require.NoError(t, err)
+				require.NotNil(t, tab)
+
+				// calling Init again should not fail
+				return tb.Init()
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("Pk", func(t *testing.T) {
