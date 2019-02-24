@@ -14,22 +14,22 @@ func New(ng engine.Engine) *DB {
 	return &DB{Engine: ng}
 }
 
-func (db DB) Begin(writable bool) (*Transaction, error) {
+func (db DB) Begin(writable bool) (*Tx, error) {
 	tx, err := db.Engine.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Transaction{
+	return &Tx{
 		Transaction: tx,
 	}, nil
 }
 
-type Transaction struct {
+type Tx struct {
 	engine.Transaction
 }
 
-func (tx Transaction) Table(name string) (table.Table, error) {
+func (tx Tx) Table(name string) (table.Table, error) {
 	tb, err := tx.Transaction.Table(name)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (tx Transaction) Table(name string) (table.Table, error) {
 	}, nil
 }
 
-func (tx Transaction) CreateTable(name string) (table.Table, error) {
+func (tx Tx) CreateTable(name string) (table.Table, error) {
 	tb, err := tx.Transaction.CreateTable(name)
 	if err != nil {
 		return nil, err
