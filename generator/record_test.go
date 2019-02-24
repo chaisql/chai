@@ -147,19 +147,19 @@ func TestGeneratedRecords(t *testing.T) {
 			})
 		}
 
-		c := r.Cursor()
-		for i := 0; i < 4; i++ {
+		var i int
+		err := r.Iterate(func(f field.Field) error {
 			t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
-				require.True(t, c.Next())
-				f := c.Field()
 				require.NotEmpty(t, f)
 				require.Equal(t, tests[i].name, f.Name)
 				require.Equal(t, tests[i].typ, f.Type)
 				require.Equal(t, tests[i].data, f.Data)
 			})
-		}
-
-		require.False(t, c.Next())
+			i++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 4, i)
 	})
 
 	t.Run("Pk", func(t *testing.T) {

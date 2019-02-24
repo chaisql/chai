@@ -24,6 +24,7 @@ func init() {
 const recordTmpl = `
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
+
 // Field implements the field method of the record.Record interface.
 func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	switch name {
@@ -48,6 +49,23 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
+
+	{{range .Fields }}
+	f, _ = {{$fl}}.Field("{{.Name}}")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+	{{end}}
+
+	return nil
+}
+
 {{- if ne .Pk.Name ""}}
 // Pk returns the primary key. It implements the table.Pker interface.
 func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
@@ -58,47 +76,6 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 	{{- end}}
 }
 {{- end}}
-
-{{- $cursor := printf "%sCursor" .UnexportedName }}
-// Cursor creates a cursor for scanning records.
-func ({{$fl}} *{{$structName}}) Cursor() record.Cursor {
-	return &{{$cursor}}{
-		{{$structName}}: {{$fl}},
-		i: -1,
-	}
-}
-
-type {{$cursor}} struct {
-	{{$structName}} *{{$structName}}
-	i int
-	err error
-}
-
-func (c *{{$cursor}}) Next() bool {
-	if c.i+2 > {{len .Fields}} {
-		return false
-	}
-
-	c.i++
-	return true
-}
-
-func (c *{{$cursor}}) Field() field.Field {
-	switch c.i {
-	{{- range $i, $a := .Fields }}
-	case {{$i}}:
-		f, _ := c.{{$structName}}.Field("{{$a.Name}}")
-		return f
-	{{- end}}
-	}
-
-	c.err = errors.New("no more fields")
-	return field.Field{}
-}
-
-func (c *{{$cursor}}) Err() error {
-	return c.err
-}
 
 // {{$structName}}Selector provides helpers for selecting fields from the {{$structName}} structure.
 type {{$structName}}Selector struct{}

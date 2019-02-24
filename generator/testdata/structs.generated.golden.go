@@ -5,7 +5,6 @@ import (
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/record"
 )
 
 // Field implements the field method of the record.Record interface.
@@ -40,51 +39,37 @@ func (b *Basic) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
-// Cursor creates a cursor for scanning records.
-func (b *Basic) Cursor() record.Cursor {
-	return &basicCursor{
-		Basic: b,
-		i:     -1,
-	}
-}
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (b *Basic) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
 
-type basicCursor struct {
-	Basic *Basic
-	i     int
-	err   error
-}
-
-func (c *basicCursor) Next() bool {
-	if c.i+2 > 4 {
-		return false
+	f, _ = b.Field("A")
+	err = fn(f)
+	if err != nil {
+		return err
 	}
 
-	c.i++
-	return true
-}
-
-func (c *basicCursor) Field() field.Field {
-	switch c.i {
-	case 0:
-		f, _ := c.Basic.Field("A")
-		return f
-	case 1:
-		f, _ := c.Basic.Field("B")
-		return f
-	case 2:
-		f, _ := c.Basic.Field("C")
-		return f
-	case 3:
-		f, _ := c.Basic.Field("D")
-		return f
+	f, _ = b.Field("B")
+	err = fn(f)
+	if err != nil {
+		return err
 	}
 
-	c.err = errors.New("no more fields")
-	return field.Field{}
-}
+	f, _ = b.Field("C")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
 
-func (c *basicCursor) Err() error {
-	return c.err
+	f, _ = b.Field("D")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // BasicSelector provides helpers for selecting fields from the Basic structure.
@@ -147,51 +132,37 @@ func (u *unexportedBasic) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
-// Cursor creates a cursor for scanning records.
-func (u *unexportedBasic) Cursor() record.Cursor {
-	return &unexportedBasicCursor{
-		unexportedBasic: u,
-		i:               -1,
-	}
-}
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (u *unexportedBasic) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
 
-type unexportedBasicCursor struct {
-	unexportedBasic *unexportedBasic
-	i               int
-	err             error
-}
-
-func (c *unexportedBasicCursor) Next() bool {
-	if c.i+2 > 4 {
-		return false
+	f, _ = u.Field("A")
+	err = fn(f)
+	if err != nil {
+		return err
 	}
 
-	c.i++
-	return true
-}
-
-func (c *unexportedBasicCursor) Field() field.Field {
-	switch c.i {
-	case 0:
-		f, _ := c.unexportedBasic.Field("A")
-		return f
-	case 1:
-		f, _ := c.unexportedBasic.Field("B")
-		return f
-	case 2:
-		f, _ := c.unexportedBasic.Field("C")
-		return f
-	case 3:
-		f, _ := c.unexportedBasic.Field("D")
-		return f
+	f, _ = u.Field("B")
+	err = fn(f)
+	if err != nil {
+		return err
 	}
 
-	c.err = errors.New("no more fields")
-	return field.Field{}
-}
+	f, _ = u.Field("C")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
 
-func (c *unexportedBasicCursor) Err() error {
-	return c.err
+	f, _ = u.Field("D")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // unexportedBasicSelector provides helpers for selecting fields from the unexportedBasic structure.
@@ -242,50 +213,30 @@ func (p *Pk) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (p *Pk) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
+
+	f, _ = p.Field("A")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = p.Field("B")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Pk returns the primary key. It implements the table.Pker interface.
 func (p *Pk) Pk() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
-}
-
-// Cursor creates a cursor for scanning records.
-func (p *Pk) Cursor() record.Cursor {
-	return &pkCursor{
-		Pk: p,
-		i:  -1,
-	}
-}
-
-type pkCursor struct {
-	Pk  *Pk
-	i   int
-	err error
-}
-
-func (c *pkCursor) Next() bool {
-	if c.i+2 > 2 {
-		return false
-	}
-
-	c.i++
-	return true
-}
-
-func (c *pkCursor) Field() field.Field {
-	switch c.i {
-	case 0:
-		f, _ := c.Pk.Field("A")
-		return f
-	case 1:
-		f, _ := c.Pk.Field("B")
-		return f
-	}
-
-	c.err = errors.New("no more fields")
-	return field.Field{}
-}
-
-func (c *pkCursor) Err() error {
-	return c.err
 }
 
 // PkSelector provides helpers for selecting fields from the Pk structure.
