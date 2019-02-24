@@ -53,6 +53,9 @@ func (rb *RecordBuffer) Insert(r record.Record) (rowid []byte, err error) {
 		if err != nil {
 			return nil, err
 		}
+		if len(rowid) == 0 {
+			return nil, errors.New("empty pk")
+		}
 	} else {
 		rowid = field.EncodeInt64(atomic.AddInt64(&rb.counter, 1))
 	}

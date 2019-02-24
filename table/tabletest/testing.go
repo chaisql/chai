@@ -3,6 +3,7 @@
 package tabletest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/asdine/genji/field"
@@ -178,6 +179,30 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 		rowid, err = tb.Insert(rec)
 		require.NoError(t, err)
 		require.Equal(t, field.EncodeInt64(4), rowid)
+	})
+
+	t.Run("Should fail if Pk returns empty rowid", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		tests := [][]byte{
+			nil,
+			[]byte{},
+			[]byte(nil),
+		}
+
+		for _, test := range tests {
+			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
+				rec := recordPker{
+					pkGenerator: func() ([]byte, error) {
+						return nil, nil
+					},
+				}
+
+				_, err := tb.Insert(rec)
+				require.Error(t, err)
+			})
+		}
 	})
 }
 
