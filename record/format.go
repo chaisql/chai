@@ -306,37 +306,3 @@ func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
 
 	return nil
 }
-
-type encodedRecordCursor struct {
-	data   []byte
-	err    error
-	format Format
-	i      int
-}
-
-func (e *encodedRecordCursor) Next() bool {
-	if e.format.Body == nil {
-		e.err = e.format.Decode(e.data)
-		if e.err != nil {
-			return false
-		}
-
-		e.i = -1
-	}
-
-	e.i++
-	return e.i < len(e.format.Header.FieldHeaders)
-}
-
-func (e *encodedRecordCursor) Err() error {
-	return e.err
-}
-
-func (e *encodedRecordCursor) Field() field.Field {
-	fh := e.format.Header.FieldHeaders[e.i]
-	return field.Field{
-		Name: string(fh.Name),
-		Type: field.Type(fh.Type),
-		Data: e.format.Body[fh.Offset : fh.Offset+fh.Size],
-	}
-}

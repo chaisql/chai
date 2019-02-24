@@ -77,21 +77,6 @@ func TestEncodedRecord(t *testing.T) {
 	require.Equal(t, 2, i)
 }
 
-func BenchmarkDecodeField(b *testing.B) {
-	var fields []field.Field
-
-	for i := int64(0); i < 100; i++ {
-		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
-	}
-	data, err := Encode(FieldBuffer(fields))
-	require.NoError(b, err)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		DecodeField(data, "name-99")
-	}
-}
-
 func BenchmarkEncode(b *testing.B) {
 	var fields []field.Field
 
@@ -119,6 +104,21 @@ func BenchmarkFormatDecode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var f Format
 		f.Decode(data)
+	}
+}
+
+func BenchmarkDecodeField(b *testing.B) {
+	var fields []field.Field
+
+	for i := int64(0); i < 100; i++ {
+		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+	}
+	data, err := Encode(FieldBuffer(fields))
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		DecodeField(data, "name-99")
 	}
 }
 

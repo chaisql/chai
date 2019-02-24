@@ -206,6 +206,34 @@ func TestGeneratedRecords(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
+
+		t.Run("Get", func(t *testing.T) {
+			ng := memory.NewEngine()
+			db := genji.New(ng)
+
+			err := db.Update(func(tx *genji.Tx) error {
+				tb := testdata.NewBasicTable(tx)
+				require.NoError(t, err)
+
+				err = tb.Init()
+				require.NoError(t, err)
+
+				record1 := testdata.Basic{
+					A: "A",
+					B: 1,
+					C: 2,
+					D: 3,
+				}
+				rowid, err := tb.Insert(&record1)
+				require.NoError(t, err)
+
+				record2, err := tb.Get(rowid)
+				require.NoError(t, err)
+				require.Equal(t, record1, *record2)
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("Pk", func(t *testing.T) {

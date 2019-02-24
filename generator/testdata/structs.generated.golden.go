@@ -150,6 +150,49 @@ func (b *BasicTable) Insert(record *Basic) (rowid []byte, err error) {
 	return b.t.Insert(record)
 }
 
+// Get a record using its primary key.
+func (b *BasicTable) Get(rowid []byte) (record *Basic, err error) {
+	err = b.ensureTable()
+	if err != nil {
+		return
+	}
+
+	rec, err := b.t.Record(rowid)
+	if err != nil {
+		return
+	}
+
+	record = new(Basic)
+
+	var f field.Field
+
+	f, err = rec.Field("A")
+	if err != nil {
+		return
+	}
+	record.A = string(f.Data)
+
+	f, err = rec.Field("B")
+	if err != nil {
+		return
+	}
+	record.B, err = field.DecodeInt64(f.Data)
+
+	f, err = rec.Field("C")
+	if err != nil {
+		return
+	}
+	record.C, err = field.DecodeInt64(f.Data)
+
+	f, err = rec.Field("D")
+	if err != nil {
+		return
+	}
+	record.D, err = field.DecodeInt64(f.Data)
+
+	return
+}
+
 // Field implements the field method of the record.Record interface.
 func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
