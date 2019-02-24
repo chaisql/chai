@@ -151,31 +151,31 @@ func (b *BasicTable) Insert(record *Basic) (rowid []byte, err error) {
 }
 
 // Field implements the field method of the record.Record interface.
-func (u *unexportedBasic) Field(name string) (field.Field, error) {
+func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
 		return field.Field{
 			Name: "A",
 			Type: field.String,
-			Data: []byte(u.A),
+			Data: []byte(b.A),
 		}, nil
 	case "B":
 		return field.Field{
 			Name: "B",
 			Type: field.Int64,
-			Data: field.EncodeInt64(u.B),
+			Data: field.EncodeInt64(b.B),
 		}, nil
 	case "C":
 		return field.Field{
 			Name: "C",
 			Type: field.Int64,
-			Data: field.EncodeInt64(u.C),
+			Data: field.EncodeInt64(b.C),
 		}, nil
 	case "D":
 		return field.Field{
 			Name: "D",
 			Type: field.Int64,
-			Data: field.EncodeInt64(u.D),
+			Data: field.EncodeInt64(b.D),
 		}, nil
 	}
 
@@ -184,29 +184,29 @@ func (u *unexportedBasic) Field(name string) (field.Field, error) {
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (u *unexportedBasic) Iterate(fn func(field.Field) error) error {
+func (b *basic) Iterate(fn func(field.Field) error) error {
 	var err error
 	var f field.Field
 
-	f, _ = u.Field("A")
+	f, _ = b.Field("A")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = u.Field("B")
+	f, _ = b.Field("B")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = u.Field("C")
+	f, _ = b.Field("C")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = u.Field("D")
+	f, _ = b.Field("D")
 	err = fn(f)
 	if err != nil {
 		return err
@@ -215,65 +215,65 @@ func (u *unexportedBasic) Iterate(fn func(field.Field) error) error {
 	return nil
 }
 
-// unexportedBasicSelector provides helpers for selecting fields from the unexportedBasic structure.
-type unexportedBasicSelector struct{}
+// basicSelector provides helpers for selecting fields from the basic structure.
+type basicSelector struct{}
 
-// newUnexportedBasicSelector creates a unexportedBasicSelector.
-func newUnexportedBasicSelector() unexportedBasicSelector {
-	return unexportedBasicSelector{}
+// newBasicSelector creates a basicSelector.
+func newBasicSelector() basicSelector {
+	return basicSelector{}
 }
 
 // A returns a string selector.
-func (unexportedBasicSelector) A() query.StrField {
+func (basicSelector) A() query.StrField {
 	return query.NewStrField("A")
 }
 
 // B returns an int64 selector.
-func (unexportedBasicSelector) B() query.Int64Field {
+func (basicSelector) B() query.Int64Field {
 	return query.NewInt64Field("B")
 }
 
 // C returns an int64 selector.
-func (unexportedBasicSelector) C() query.Int64Field {
+func (basicSelector) C() query.Int64Field {
 	return query.NewInt64Field("C")
 }
 
 // D returns an int64 selector.
-func (unexportedBasicSelector) D() query.Int64Field {
+func (basicSelector) D() query.Int64Field {
 	return query.NewInt64Field("D")
 }
 
-// unexportedBasicTable manages the table. It provides several typed helpers
+// basicTable manages the table. It provides several typed helpers
 // that simplify common operations.
-type unexportedBasicTable struct {
+type basicTable struct {
 	tx *genji.Tx
 	t  table.Table
 }
 
-// newUnexportedBasicTable creates a unexportedBasicTable valid for the lifetime of the given transaction.
-func newUnexportedBasicTable(tx *genji.Tx) *unexportedBasicTable {
-	return &unexportedBasicTable{
+// newBasicTable creates a basicTable valid for the lifetime of the given transaction.
+func newBasicTable(tx *genji.Tx) *basicTable {
+	return &basicTable{
 		tx: tx,
 	}
 }
 
-func (u *unexportedBasicTable) ensureTable() error {
-	if u.t != nil {
+func (b *basicTable) ensureTable() error {
+	if b.t != nil {
 		return nil
 	}
 
 	var err error
 
-	u.t, err = u.tx.Table("unexportedBasic")
+	b.t, err = b.tx.Table("basic")
 
 	return err
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
-func (u *unexportedBasicTable) Init() error {
+func (b *basicTable) Init() error {
 	var err error
 
-	u.t, err = u.tx.CreateTable("unexportedBasic")
+	b.t, err = b.tx.CreateTable("basic")
 	if err == engine.ErrTableAlreadyExists {
 		return nil
 	}
@@ -282,12 +282,12 @@ func (u *unexportedBasicTable) Init() error {
 }
 
 // Insert a record in the table and return the primary key.
-func (u *unexportedBasicTable) Insert(record *unexportedBasic) (rowid []byte, err error) {
-	err = u.ensureTable()
+func (b *basicTable) Insert(record *basic) (rowid []byte, err error) {
+	err = b.ensureTable()
 	if err != nil {
 		return
 	}
-	return u.t.Insert(record)
+	return b.t.Insert(record)
 }
 
 // Field implements the field method of the record.Record interface.

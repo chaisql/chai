@@ -24,7 +24,7 @@ func TestGenerateRecord(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		targets := []string{
 			"Basic",
-			"unexportedBasic",
+			"basic",
 			"Pk",
 		}
 

@@ -8,8 +8,8 @@ type Basic struct {
 	C, D int64
 }
 
-// unexportedBasic is like Basic except that it is unexported.
-type unexportedBasic struct {
+// basic is like Basic except that it is unexported.
+type basic struct {
 	A    string
 	B    int64
 	C, D int64
