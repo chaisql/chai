@@ -53,7 +53,7 @@ func exitRecordUsage() {
 
 func recordCmd() {
 	f := flag.String("f", "", "path of the file to parse")
-	t := flag.String("t", "", "name of the targeted type")
+	t := flag.String("t", "", "comma separated list of targeted struct names")
 
 	if len(os.Args) < 3 {
 		exitRecordUsage()
@@ -73,7 +73,7 @@ func recordCmd() {
 	}
 
 	var buf bytes.Buffer
-	err = generator.GenerateRecord(af, *t, &buf)
+	err = generator.GenerateRecords(&buf, af, strings.Split(*t, ",")...)
 	if err != nil {
 		fail(err.Error() + "\n")
 	}
