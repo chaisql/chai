@@ -25,6 +25,36 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 	}, nil
 }
 
+func (db DB) View(fn func(tx *Tx) error) error {
+	tx, err := db.Begin(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = fn(tx)
+	if err != nil {
+		return err
+	}
+
+	return tx.Rollback()
+}
+
+func (db DB) Update(fn func(tx *Tx) error) error {
+	tx, err := db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = fn(tx)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 type Tx struct {
 	engine.Transaction
 }
