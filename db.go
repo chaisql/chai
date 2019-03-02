@@ -117,3 +117,56 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 
 	return rowid, nil
 }
+
+type TxRunner interface {
+	View(func(*Tx) error) error
+	Update(func(*Tx) error) error
+}
+
+type TableTxRunner interface {
+	ViewTable(func(table.Table) error) error
+	UpdateTable(func(table.Table) error) error
+}
+
+type tableTxRunner struct {
+	txer      TxRunner
+	tableName string
+}
+
+func NewTableTxRunner(txer TxRunner, tableName string) TableTxRunner {
+	return &tableTxRunner{txer: txer, tableName: tableName}
+}
+
+func (t *tableTxRunner) ViewTable(fn func(table.Table) error) error {
+	return t.txer.View(func(tx *Tx) error {
+		tb, err := tx.Table(t.tableName)
+		if err != nil {
+			return err
+		}
+
+		return fn(tb)
+	})
+}
+
+func (t *tableTxRunner) UpdateTable(fn func(table.Table) error) error {
+	return t.txer.Update(func(tx *Tx) error {
+		tb, err := tx.Table(t.tableName)
+		if err != nil {
+			return err
+		}
+
+		return fn(tb)
+	})
+}
+
+type TxRunnerProxy struct {
+	Tx *Tx
+}
+
+func (t *TxRunnerProxy) View(fn func(*Tx) error) error {
+	return fn(t.Tx)
+}
+
+func (t *TxRunnerProxy) Update(fn func(*Tx) error) error {
+	return fn(t.Tx)
+}

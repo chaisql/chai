@@ -2,7 +2,6 @@ package bolt
 
 import (
 	"github.com/asdine/genji/engine"
-
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
