@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
 
@@ -75,6 +76,38 @@ func (b *Basic) Iterate(fn func(field.Field) error) error {
 	return nil
 }
 
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+func (b *Basic) ScanRecord(rec record.Record) error {
+	var f field.Field
+	var err error
+
+	f, err = rec.Field("A")
+	if err != nil {
+		return err
+	}
+	b.A = string(f.Data)
+
+	f, err = rec.Field("B")
+	if err != nil {
+		return err
+	}
+	b.B, err = field.DecodeInt64(f.Data)
+
+	f, err = rec.Field("C")
+	if err != nil {
+		return err
+	}
+	b.C, err = field.DecodeInt64(f.Data)
+
+	f, err = rec.Field("D")
+	if err != nil {
+		return err
+	}
+	b.D, err = field.DecodeInt64(f.Data)
+
+	return err
+}
+
 // BasicSelector provides helpers for selecting fields from the Basic structure.
 type BasicSelector struct{}
 
@@ -106,90 +139,64 @@ func (BasicSelector) D() query.Int64Field {
 // BasicTable manages the table. It provides several typed helpers
 // that simplify common operations.
 type BasicTable struct {
-	tx *genji.Tx
-	t  table.Table
+	genji.TxRunner
+	genji.TableTxRunner
 }
 
-// NewBasicTable creates a BasicTable valid for the lifetime of the given transaction.
-func NewBasicTable(tx *genji.Tx) *BasicTable {
+// NewBasicTable creates a BasicTable.
+func NewBasicTable(db *genji.DB) *BasicTable {
 	return &BasicTable{
-		tx: tx,
+		TxRunner:      db,
+		TableTxRunner: genji.NewTableTxRunner(db, "Basic"),
 	}
 }
 
-func (b *BasicTable) ensureTable() error {
-	if b.t != nil {
-		return nil
+// NewBasicTableWithTx creates a BasicTable valid for the lifetime of the given transaction.
+func NewBasicTableWithTx(tx *genji.Tx) *BasicTable {
+	txp := genji.TxRunnerProxy{Tx: tx}
+
+	return &BasicTable{
+		TxRunner:      &txp,
+		TableTxRunner: genji.NewTableTxRunner(&txp, "Basic"),
 	}
-
-	var err error
-
-	b.t, err = b.tx.Table("Basic")
-
-	return err
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
 func (b *BasicTable) Init() error {
-	var err error
+	return b.Update(func(tx *genji.Tx) error {
+		var err error
+		_, err = tx.CreateTable("Basic")
+		if err == engine.ErrTableAlreadyExists {
+			return nil
+		}
 
-	b.t, err = b.tx.CreateTable("Basic")
-	if err == engine.ErrTableAlreadyExists {
-		return nil
-	}
-
-	return err
+		return err
+	})
 }
 
 // Insert a record in the table and return the primary key.
 func (b *BasicTable) Insert(record *Basic) (rowid []byte, err error) {
-	err = b.ensureTable()
-	if err != nil {
-		return
-	}
-	return b.t.Insert(record)
+	err = b.UpdateTable(func(t table.Table) error {
+		rowid, err = t.Insert(record)
+		return err
+	})
+	return
 }
 
 // Get a record using its primary key.
-func (b *BasicTable) Get(rowid []byte) (record *Basic, err error) {
-	err = b.ensureTable()
-	if err != nil {
-		return
-	}
+func (b *BasicTable) Get(rowid []byte) (*Basic, error) {
+	var record Basic
 
-	rec, err := b.t.Record(rowid)
-	if err != nil {
-		return
-	}
+	err := b.ViewTable(func(t table.Table) error {
+		rec, err := t.Record(rowid)
+		if err != nil {
+			return err
+		}
 
-	record = new(Basic)
+		return record.ScanRecord(rec)
+	})
 
-	var f field.Field
-
-	f, err = rec.Field("A")
-	if err != nil {
-		return
-	}
-	record.A = string(f.Data)
-	f, err = rec.Field("B")
-	if err != nil {
-		return
-	}
-	record.B, err = field.DecodeInt64(f.Data)
-
-	f, err = rec.Field("C")
-	if err != nil {
-		return
-	}
-	record.C, err = field.DecodeInt64(f.Data)
-
-	f, err = rec.Field("D")
-	if err != nil {
-		return
-	}
-	record.D, err = field.DecodeInt64(f.Data)
-
-	return
+	return &record, err
 }
 
 // Field implements the field method of the record.Record interface.

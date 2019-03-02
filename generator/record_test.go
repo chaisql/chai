@@ -168,7 +168,7 @@ func TestGeneratedRecords(t *testing.T) {
 			db := genji.New(ng)
 
 			err := db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicTable(tx)
+				tb := testdata.NewBasicTableWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
@@ -190,7 +190,7 @@ func TestGeneratedRecords(t *testing.T) {
 			db := genji.New(ng)
 
 			err := db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicTable(tx)
+				tb := testdata.NewBasicTableWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
@@ -212,7 +212,7 @@ func TestGeneratedRecords(t *testing.T) {
 			db := genji.New(ng)
 
 			err := db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicTable(tx)
+				tb := testdata.NewBasicTableWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
