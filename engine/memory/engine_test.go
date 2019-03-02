@@ -21,22 +21,7 @@ func TestMemoryEngine(t *testing.T) {
 }
 
 func TestMemoryEngineIndex(t *testing.T) {
-	indextest.TestSuite(t, func() (index.Index, func()) {
-		ng := memory.NewEngine()
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-
-		_, err = tx.CreateTable("test")
-		require.NoError(t, err)
-
-		idx, err := tx.CreateIndex("test", "idx")
-		require.NoError(t, err)
-
-		return idx, func() {
-			tx.Rollback()
-			ng.Close()
-		}
-	})
+	indextest.TestSuite(t, indexBuilder(t))
 }
 
 func TestMemoryEngineTable(t *testing.T) {
@@ -51,6 +36,18 @@ func BenchmarkMemoryEngineTableScan(b *testing.B) {
 	tabletest.BenchmarkTableScan(b, tableBuilder(b))
 }
 
+func BenchmarkMemoryEngineIndexSet(b *testing.B) {
+	indextest.BenchmarkIndexSet(b, indexBuilder(b))
+}
+
+func BenchmarkMemoryEngineIndexIteration(b *testing.B) {
+	indextest.BenchmarkIndexIteration(b, indexBuilder(b))
+}
+
+func BenchmarkMemoryEngineIndexSeek(b *testing.B) {
+	indextest.BenchmarkIndexSeek(b, indexBuilder(b))
+}
+
 func tableBuilder(t require.TestingT) func() (table.Table, func()) {
 	return func() (table.Table, func()) {
 		ng := memory.NewEngine()
@@ -61,6 +58,25 @@ func tableBuilder(t require.TestingT) func() (table.Table, func()) {
 		require.NoError(t, err)
 
 		return tb, func() {
+			tx.Rollback()
+			ng.Close()
+		}
+	}
+}
+
+func indexBuilder(t require.TestingT) func() (index.Index, func()) {
+	return func() (index.Index, func()) {
+		ng := memory.NewEngine()
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+
+		_, err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		idx, err := tx.CreateIndex("test", "idx")
+		require.NoError(t, err)
+
+		return idx, func() {
 			tx.Rollback()
 			ng.Close()
 		}
