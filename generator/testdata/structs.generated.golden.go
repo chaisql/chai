@@ -92,18 +92,27 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 		return err
 	}
 	b.B, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
 
 	f, err = rec.Field("C")
 	if err != nil {
 		return err
 	}
 	b.C, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
 
 	f, err = rec.Field("D")
 	if err != nil {
 		return err
 	}
 	b.D, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
 
 	return err
 }
@@ -264,6 +273,47 @@ func (b *basic) Iterate(fn func(field.Field) error) error {
 	return nil
 }
 
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+func (b *basic) ScanRecord(rec record.Record) error {
+	var f field.Field
+	var err error
+
+	f, err = rec.Field("A")
+	if err != nil {
+		return err
+	}
+	b.A = string(f.Data)
+
+	f, err = rec.Field("B")
+	if err != nil {
+		return err
+	}
+	b.B, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
+
+	f, err = rec.Field("C")
+	if err != nil {
+		return err
+	}
+	b.C, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
+
+	f, err = rec.Field("D")
+	if err != nil {
+		return err
+	}
+	b.D, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
 // basicSelector provides helpers for selecting fields from the basic structure.
 type basicSelector struct{}
 
@@ -295,90 +345,64 @@ func (basicSelector) D() query.Int64Field {
 // basicTable manages the table. It provides several typed helpers
 // that simplify common operations.
 type basicTable struct {
-	tx *genji.Tx
-	t  table.Table
+	genji.TxRunner
+	genji.TableTxRunner
 }
 
-// newBasicTable creates a basicTable valid for the lifetime of the given transaction.
-func newBasicTable(tx *genji.Tx) *basicTable {
+// newBasicTable creates a basicTable.
+func newBasicTable(db *genji.DB) *basicTable {
 	return &basicTable{
-		tx: tx,
+		TxRunner:      db,
+		TableTxRunner: genji.NewTableTxRunner(db, "basic"),
 	}
 }
 
-func (b *basicTable) ensureTable() error {
-	if b.t != nil {
-		return nil
+// newBasicTableWithTx creates a basicTable valid for the lifetime of the given transaction.
+func newBasicTableWithTx(tx *genji.Tx) *basicTable {
+	txp := genji.TxRunnerProxy{Tx: tx}
+
+	return &basicTable{
+		TxRunner:      &txp,
+		TableTxRunner: genji.NewTableTxRunner(&txp, "basic"),
 	}
-
-	var err error
-
-	b.t, err = b.tx.Table("basic")
-
-	return err
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
 func (b *basicTable) Init() error {
-	var err error
+	return b.Update(func(tx *genji.Tx) error {
+		var err error
+		_, err = tx.CreateTable("basic")
+		if err == engine.ErrTableAlreadyExists {
+			return nil
+		}
 
-	b.t, err = b.tx.CreateTable("basic")
-	if err == engine.ErrTableAlreadyExists {
-		return nil
-	}
-
-	return err
+		return err
+	})
 }
 
 // Insert a record in the table and return the primary key.
 func (b *basicTable) Insert(record *basic) (rowid []byte, err error) {
-	err = b.ensureTable()
-	if err != nil {
-		return
-	}
-	return b.t.Insert(record)
+	err = b.UpdateTable(func(t table.Table) error {
+		rowid, err = t.Insert(record)
+		return err
+	})
+	return
 }
 
 // Get a record using its primary key.
-func (b *basicTable) Get(rowid []byte) (record *basic, err error) {
-	err = b.ensureTable()
-	if err != nil {
-		return
-	}
+func (b *basicTable) Get(rowid []byte) (*basic, error) {
+	var record basic
 
-	rec, err := b.t.Record(rowid)
-	if err != nil {
-		return
-	}
+	err := b.ViewTable(func(t table.Table) error {
+		rec, err := t.Record(rowid)
+		if err != nil {
+			return err
+		}
 
-	record = new(basic)
+		return record.ScanRecord(rec)
+	})
 
-	var f field.Field
-
-	f, err = rec.Field("A")
-	if err != nil {
-		return
-	}
-	record.A = string(f.Data)
-	f, err = rec.Field("B")
-	if err != nil {
-		return
-	}
-	record.B, err = field.DecodeInt64(f.Data)
-
-	f, err = rec.Field("C")
-	if err != nil {
-		return
-	}
-	record.C, err = field.DecodeInt64(f.Data)
-
-	f, err = rec.Field("D")
-	if err != nil {
-		return
-	}
-	record.D, err = field.DecodeInt64(f.Data)
-
-	return
+	return &record, err
 }
 
 // Field implements the field method of the record.Record interface.
@@ -422,6 +446,29 @@ func (p *Pk) Iterate(fn func(field.Field) error) error {
 	return nil
 }
 
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+func (p *Pk) ScanRecord(rec record.Record) error {
+	var f field.Field
+	var err error
+
+	f, err = rec.Field("A")
+	if err != nil {
+		return err
+	}
+	p.A = string(f.Data)
+
+	f, err = rec.Field("B")
+	if err != nil {
+		return err
+	}
+	p.B, err = field.DecodeInt64(f.Data)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
 // Pk returns the primary key. It implements the table.Pker interface.
 func (p *Pk) Pk() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
@@ -448,78 +495,62 @@ func (PkSelector) B() query.Int64Field {
 // PkTable manages the table. It provides several typed helpers
 // that simplify common operations.
 type PkTable struct {
-	tx *genji.Tx
-	t  table.Table
+	genji.TxRunner
+	genji.TableTxRunner
 }
 
-// NewPkTable creates a PkTable valid for the lifetime of the given transaction.
-func NewPkTable(tx *genji.Tx) *PkTable {
+// NewPkTable creates a PkTable.
+func NewPkTable(db *genji.DB) *PkTable {
 	return &PkTable{
-		tx: tx,
+		TxRunner:      db,
+		TableTxRunner: genji.NewTableTxRunner(db, "Pk"),
 	}
 }
 
-func (p *PkTable) ensureTable() error {
-	if p.t != nil {
-		return nil
+// NewPkTableWithTx creates a PkTable valid for the lifetime of the given transaction.
+func NewPkTableWithTx(tx *genji.Tx) *PkTable {
+	txp := genji.TxRunnerProxy{Tx: tx}
+
+	return &PkTable{
+		TxRunner:      &txp,
+		TableTxRunner: genji.NewTableTxRunner(&txp, "Pk"),
 	}
-
-	var err error
-
-	p.t, err = p.tx.Table("Pk")
-
-	return err
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
 func (p *PkTable) Init() error {
-	var err error
+	return p.Update(func(tx *genji.Tx) error {
+		var err error
+		_, err = tx.CreateTable("Pk")
+		if err == engine.ErrTableAlreadyExists {
+			return nil
+		}
 
-	p.t, err = p.tx.CreateTable("Pk")
-	if err == engine.ErrTableAlreadyExists {
-		return nil
-	}
-
-	return err
+		return err
+	})
 }
 
 // Insert a record in the table and return the primary key.
 func (p *PkTable) Insert(record *Pk) (err error) {
-	err = p.ensureTable()
-	if err != nil {
-		return
-	}
-	_, err = p.t.Insert(record)
-	return
+	return p.UpdateTable(func(t table.Table) error {
+		_, err = t.Insert(record)
+		return err
+	})
 }
 
 // Get a record using its primary key.
-func (p *PkTable) Get(pk int64) (record *Pk, err error) {
-	err = p.ensureTable()
-	if err != nil {
-		return
-	}
+func (p *PkTable) Get(pk int64) (*Pk, error) {
+	var record Pk
 	rowid := field.EncodeInt64(pk)
 
-	rec, err := p.t.Record(rowid)
-	if err != nil {
-		return
-	}
+	err := p.ViewTable(func(t table.Table) error {
+		rec, err := t.Record(rowid)
+		if err != nil {
+			return err
+		}
 
-	record = new(Pk)
+		return record.ScanRecord(rec)
+	})
 
-	var f field.Field
-
-	f, err = rec.Field("A")
-	if err != nil {
-		return
-	}
-	record.A = string(f.Data)
-	f, err = rec.Field("B")
-	if err != nil {
-		return
-	}
-	record.B, err = field.DecodeInt64(f.Data)
-
-	return
+	return &record, err
 }

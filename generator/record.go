@@ -79,7 +79,10 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		{{- if eq .Type "string"}}
 		{{$fl}}.{{.Name}} = string(f.Data)
 		{{- else if eq .Type "int64"}}
-		{{$fl}}.{{.Name}} = field.DecodeInt64(f.Data)
+		{{$fl}}.{{.Name}}, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 		{{- end}}
 	{{end}}
 
@@ -122,74 +125,70 @@ func {{.NameWithPrefix "New"}}Selector() {{$structName}}Selector {
 // {{$structName}}Table manages the table. It provides several typed helpers
 // that simplify common operations.
 type {{$structName}}Table struct {
-	tx *genji.Tx
-	t  table.Table
+	genji.TxRunner
+	genji.TableTxRunner
 }
 
-// {{.NameWithPrefix "New"}}Table creates a {{$structName}}Table valid for the lifetime of the given transaction.
-func {{.NameWithPrefix "New"}}Table(tx *genji.Tx) *{{$structName}}Table {
+// {{.NameWithPrefix "New"}}Table creates a {{$structName}}Table.
+func {{.NameWithPrefix "New"}}Table(db *genji.DB) *{{$structName}}Table {
 	return &{{$structName}}Table{
-		tx: tx,
+		TxRunner:      db,
+		TableTxRunner: genji.NewTableTxRunner(db, "{{$structName}}"),
 	}
 }
 
-func ({{$fl}} *{{$structName}}Table) ensureTable() error {
-	if {{$fl}}.t != nil {
-		return nil
+// {{.NameWithPrefix "New"}}TableWithTx creates a {{$structName}}Table valid for the lifetime of the given transaction.
+func {{.NameWithPrefix "New"}}TableWithTx(tx *genji.Tx) *{{$structName}}Table {
+	txp := genji.TxRunnerProxy{Tx: tx}
+
+	return &{{$structName}}Table{
+		TxRunner:      &txp,
+		TableTxRunner: genji.NewTableTxRunner(&txp, "{{$structName}}"),
 	}
-
-	var err error
-
-	{{$fl}}.t, err = {{$fl}}.tx.Table("{{$structName}}")
-
-	return err
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
 func ({{$fl}} *{{$structName}}Table) Init() error {
-	var err error
+	return {{$fl}}.Update(func(tx *genji.Tx) error {
+		var err error
+		_, err = tx.CreateTable("{{$structName}}")
+		if err == engine.ErrTableAlreadyExists {
+			return nil
+		}
 
-	{{$fl}}.t, err = {{$fl}}.tx.CreateTable("{{$structName}}")
-	if err == engine.ErrTableAlreadyExists {
-		return nil
-	}
-
-	return err
+		return err
+	})
 }
 
 // Insert a record in the table and return the primary key.
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (rowid []byte, err error) {
+	err = {{$fl}}.UpdateTable(func(t table.Table) error {
+		rowid, err = t.Insert(record)
+		return err
+	})
+	return
+}
 {{- else }}
 func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (err error) {
-{{- end}}
-	err = {{$fl}}.ensureTable()
-	if err != nil {
-		return
-	}
-
-	{{- if eq .Pk.Name ""}}
-		return {{$fl}}.t.Insert(record)
-	{{- else}}
-		_, err = {{$fl}}.t.Insert(record)
-		return
-	{{- end}}
+	return {{$fl}}.UpdateTable(func(t table.Table) error {
+		_, err = t.Insert(record)
+		return err
+	})
 }
+{{- end}}
 
 // Get a record using its primary key.
 {{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (record *{{$structName}}, err error) {
+func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (*{{$structName}}, error) {
 {{- else}}
 	{{- if eq .Pk.Type "string"}}
-	func ({{$fl}} *{{$structName}}Table) Get(pk string) (record *{{$structName}}, err error) {
+	func ({{$fl}} *{{$structName}}Table) Get(pk string) (*{{$structName}}, error) {
 	{{- else if eq .Pk.Type "int64"}}
-	func ({{$fl}} *{{$structName}}Table) Get(pk int64) (record *{{$structName}}, err error) {
+	func ({{$fl}} *{{$structName}}Table) Get(pk int64) (*{{$structName}}, error) {
 	{{- end}}
 {{- end}}
-	err = {{$fl}}.ensureTable()
-	if err != nil {
-		return
-	}
+	var record {{$structName}}
 
 	{{- if ne .Pk.Name ""}}
 		{{- if eq .Pk.Type "string"}}
@@ -199,29 +198,16 @@ func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (record *{{$structName}},
 		{{end}}
 	{{- end}}
 
-	rec, err := {{$fl}}.t.Record(rowid)
-	if err != nil {
-		return
-	}
-
-	record = new({{$structName}})
-
-	var f field.Field
-
-	{{range .Fields }}
-		f, err = rec.Field("{{.Name}}")
+	err := {{$fl}}.ViewTable(func(t table.Table) error {
+		rec, err := t.Record(rowid)
 		if err != nil {
-			return
+			return err
 		}
-		{{- if eq .Type "string"}}
-			record.{{.Name}} = string(f.Data)
-		{{- else if eq .Type "int64"}}
-			record.{{.Name}}, err = field.DecodeInt64(f.Data)
-		{{end}}
 
-	{{- end}}
+		return record.ScanRecord(rec)
+	})
 
-	return
+	return &record, err
 }
 `
 
