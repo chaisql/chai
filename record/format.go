@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/asdine/genji/field"
@@ -277,7 +278,7 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 		}
 	}
 
-	return field.Field{}, errors.New("not found")
+	return field.Field{}, fmt.Errorf("field %s not found", fieldName)
 }
 
 type EncodedRecord []byte
