@@ -82,36 +82,32 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 	var err error
 
 	f, err = rec.Field("A")
-	if err != nil {
-		return err
+	if err == nil {
+		b.A = string(f.Data)
 	}
-	b.A = string(f.Data)
 
 	f, err = rec.Field("B")
-	if err != nil {
-		return err
-	}
-	b.B, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		b.B, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	f, err = rec.Field("C")
-	if err != nil {
-		return err
-	}
-	b.C, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		b.C, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	f, err = rec.Field("D")
-	if err != nil {
-		return err
-	}
-	b.D, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		b.D, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -279,36 +275,32 @@ func (b *basic) ScanRecord(rec record.Record) error {
 	var err error
 
 	f, err = rec.Field("A")
-	if err != nil {
-		return err
+	if err == nil {
+		b.A = string(f.Data)
 	}
-	b.A = string(f.Data)
 
 	f, err = rec.Field("B")
-	if err != nil {
-		return err
-	}
-	b.B, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		b.B, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	f, err = rec.Field("C")
-	if err != nil {
-		return err
-	}
-	b.C, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		b.C, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	f, err = rec.Field("D")
-	if err != nil {
-		return err
-	}
-	b.D, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		b.D, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -452,18 +444,16 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 	var err error
 
 	f, err = rec.Field("A")
-	if err != nil {
-		return err
+	if err == nil {
+		p.A = string(f.Data)
 	}
-	p.A = string(f.Data)
 
 	f, err = rec.Field("B")
-	if err != nil {
-		return err
-	}
-	p.B, err = field.DecodeInt64(f.Data)
-	if err != nil {
-		return err
+	if err == nil {
+		p.B, err = field.DecodeInt64(f.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err

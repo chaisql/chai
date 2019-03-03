@@ -73,17 +73,16 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 
 	{{range .Fields}}
 		f, err = rec.Field("{{.Name}}")
-		if err != nil {
-			return err
+		if err == nil {
+			{{- if eq .Type "string"}}
+			{{$fl}}.{{.Name}} = string(f.Data)
+			{{- else if eq .Type "int64"}}
+			{{$fl}}.{{.Name}}, err = field.DecodeInt64(f.Data)
+			if err != nil {
+				return err
+			}
+			{{- end}}
 		}
-		{{- if eq .Type "string"}}
-		{{$fl}}.{{.Name}} = string(f.Data)
-		{{- else if eq .Type "int64"}}
-		{{$fl}}.{{.Name}}, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
-		}
-		{{- end}}
 	{{end}}
 
 	return err
