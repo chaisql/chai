@@ -6,12 +6,30 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+const (
+	schemaTableName = "__genji.schema"
+)
+
 type DB struct {
 	engine.Engine
 }
 
-func New(ng engine.Engine) *DB {
-	return &DB{Engine: ng}
+func New(ng engine.Engine) (*DB, error) {
+	db := DB{Engine: ng}
+
+	err := db.Update(func(tx *Tx) error {
+		_, err := tx.CreateTable(schemaTableName)
+		if err == nil || err == engine.ErrTableAlreadyExists {
+			return nil
+		}
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &db, nil
 }
 
 func (db DB) Begin(writable bool) (*Tx, error) {
