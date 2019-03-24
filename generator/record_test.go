@@ -165,9 +165,10 @@ func TestGeneratedRecords(t *testing.T) {
 
 		t.Run("Init", func(t *testing.T) {
 			ng := memory.NewEngine()
-			db := genji.New(ng)
+			db, err := genji.New(ng)
+			require.NoError(t, err)
 
-			err := db.Update(func(tx *genji.Tx) error {
+			err = db.Update(func(tx *genji.Tx) error {
 				tb := testdata.NewBasicTableWithTx(tx)
 				require.NoError(t, err)
 
@@ -187,9 +188,10 @@ func TestGeneratedRecords(t *testing.T) {
 
 		t.Run("Insert", func(t *testing.T) {
 			ng := memory.NewEngine()
-			db := genji.New(ng)
+			db, err := genji.New(ng)
+			require.NoError(t, err)
 
-			err := db.Update(func(tx *genji.Tx) error {
+			err = db.Update(func(tx *genji.Tx) error {
 				tb := testdata.NewBasicTableWithTx(tx)
 				require.NoError(t, err)
 
@@ -209,9 +211,10 @@ func TestGeneratedRecords(t *testing.T) {
 
 		t.Run("Get", func(t *testing.T) {
 			ng := memory.NewEngine()
-			db := genji.New(ng)
+			db, err := genji.New(ng)
+			require.NoError(t, err)
 
-			err := db.Update(func(tx *genji.Tx) error {
+			err = db.Update(func(tx *genji.Tx) error {
 				tb := testdata.NewBasicTableWithTx(tx)
 				require.NoError(t, err)
 
@@ -250,9 +253,10 @@ func TestGeneratedRecords(t *testing.T) {
 
 		t.Run("Insert", func(t *testing.T) {
 			ng := memory.NewEngine()
-			db := genji.New(ng)
+			db, err := genji.New(ng)
+			require.NoError(t, err)
 
-			err := db.Update(func(tx *genji.Tx) error {
+			err = db.Update(func(tx *genji.Tx) error {
 				tb := testdata.NewPkTableWithTx(tx)
 				require.NoError(t, err)
 
@@ -272,9 +276,10 @@ func TestGeneratedRecords(t *testing.T) {
 
 		t.Run("Get", func(t *testing.T) {
 			ng := memory.NewEngine()
-			db := genji.New(ng)
+			db, err := genji.New(ng)
+			require.NoError(t, err)
 
-			err := db.Update(func(tx *genji.Tx) error {
+			err = db.Update(func(tx *genji.Tx) error {
 				tb := testdata.NewPkTableWithTx(tx)
 				require.NoError(t, err)
 

@@ -85,7 +85,7 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		}
 	{{end}}
 
-	return err
+	return nil
 }
 
 {{- if ne .Pk.Name ""}}

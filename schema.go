@@ -6,6 +6,10 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+const (
+	schemaTableName = "__genji.schema"
+)
+
 // SchemaTable manages the schema table. It provides several typed helpers
 // that simplify common operations.
 type SchemaTable struct {
@@ -17,7 +21,7 @@ type SchemaTable struct {
 func NewSchemaTable(db *DB) *SchemaTable {
 	return &SchemaTable{
 		TxRunner:      db,
-		TableTxRunner: NewTableTxRunner(db, "Schema"),
+		TableTxRunner: NewTableTxRunner(db, schemaTableName),
 	}
 }
 
@@ -27,7 +31,7 @@ func NewSchemaTableWithTx(tx *Tx) *SchemaTable {
 
 	return &SchemaTable{
 		TxRunner:      &txp,
-		TableTxRunner: NewTableTxRunner(&txp, "Schema"),
+		TableTxRunner: NewTableTxRunner(&txp, schemaTableName),
 	}
 }
 
@@ -35,7 +39,7 @@ func NewSchemaTableWithTx(tx *Tx) *SchemaTable {
 func (b *SchemaTable) Init() error {
 	return b.Update(func(tx *Tx) error {
 		var err error
-		_, err = tx.CreateTable("Schema")
+		_, err = tx.CreateTable(schemaTableName)
 		if err == engine.ErrTableAlreadyExists {
 			return nil
 		}

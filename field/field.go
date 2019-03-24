@@ -6,15 +6,31 @@ import (
 )
 
 // Type represents a field type supported by the database.
-type Type int
+type Type uint8
 
 // List of supported field types.
 const (
 	String Type = iota + 1
+	Bytes
+	Uint
+	Uint8
+	Uint16
+	Uint32
+	Uint64
+	Int
+	Int8
+	Int16
+	Int32
 	Int64
+	Float32
+	Float64
+	Bool
+
+	Slice = iota + 100
+	Map
 )
 
-// A Field is a typed information store in the database.
+// A Field is a typed information stored in the database.
 type Field struct {
 	Name string
 	Type Type

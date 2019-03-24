@@ -6,25 +6,19 @@ import (
 	"github.com/asdine/genji/table"
 )
 
-const (
-	schemaTableName = "__genji.schema"
-)
-
 type DB struct {
 	engine.Engine
+
+	schemas *SchemaTable
 }
 
 func New(ng engine.Engine) (*DB, error) {
-	db := DB{Engine: ng}
+	db := DB{
+		Engine: ng,
+	}
 
-	err := db.Update(func(tx *Tx) error {
-		_, err := tx.CreateTable(schemaTableName)
-		if err == nil || err == engine.ErrTableAlreadyExists {
-			return nil
-		}
-		return err
-	})
-
+	db.schemas = NewSchemaTable(&db)
+	err := db.schemas.Init()
 	if err != nil {
 		return nil, err
 	}
@@ -40,6 +34,7 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 
 	return &Tx{
 		Transaction: tx,
+		schemas:     db.schemas,
 	}, nil
 }
 
@@ -75,6 +70,8 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 
 type Tx struct {
 	engine.Transaction
+
+	schemas *SchemaTable
 }
 
 func (tx Tx) Table(name string) (table.Table, error) {

@@ -12,9 +12,10 @@ import (
 
 func TestTable(t *testing.T) {
 	t.Run("Table/Insert/NoIndex", func(t *testing.T) {
-		db := genji.New(memory.NewEngine())
+		db, err := genji.New(memory.NewEngine())
+		require.NoError(t, err)
 
-		err := db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *genji.Tx) error {
 			tb, err := tx.CreateTable("test")
 			require.NoError(t, err)
 
@@ -35,10 +36,11 @@ func TestTable(t *testing.T) {
 	})
 
 	t.Run("Table/Insert/WithIndex", func(t *testing.T) {
-		db := genji.New(memory.NewEngine())
+		db, err := genji.New(memory.NewEngine())
+		require.NoError(t, err)
 		defer db.Close()
 
-		err := db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *genji.Tx) error {
 			tb, err := tx.CreateTable("test")
 			require.NoError(t, err)
 

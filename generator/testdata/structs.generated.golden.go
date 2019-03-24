@@ -11,6 +11,12 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+// SchemaDescriptor contains a checksum of the table schema.
+// It is used to ensure nothing has changed in the field definition.
+func (b *Basic) SchemaDescriptor() []byte {
+	return []byte{}
+}
+
 // Field implements the field method of the record.Record interface.
 func (b *Basic) Field(name string) (field.Field, error) {
 	switch name {
@@ -110,7 +116,7 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 // BasicSelector provides helpers for selecting fields from the Basic structure.
@@ -303,7 +309,7 @@ func (b *basic) ScanRecord(rec record.Record) error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 // basicSelector provides helpers for selecting fields from the basic structure.
@@ -456,7 +462,7 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 // Pk returns the primary key. It implements the table.Pker interface.
