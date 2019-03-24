@@ -16,6 +16,32 @@ type Schema struct {
 	Fields    string
 }
 
+// DecodeFields decodes the Fields field into a slice of field.Field structs.
+func (s *Schema) DecodeFields() ([]field.Field, error) {
+	rec := record.EncodedRecord([]byte(s.Fields))
+
+	var fields []field.Field
+	err := rec.Iterate(func(f field.Field) error {
+		fields = append(fields, f)
+		return nil
+	})
+
+	return fields, err
+}
+
+// EncodeFields takes a list of fields and encodes them in the schema.
+func (s *Schema) EncodeFields(fields []field.Field) error {
+	buf := record.FieldBuffer(fields)
+
+	data, err := record.Encode(buf)
+	if err != nil {
+		return err
+	}
+
+	s.Fields = string(data)
+	return nil
+}
+
 // Field implements the field method of the record.Record interface.
 func (s *Schema) Field(name string) (field.Field, error) {
 	switch name {
