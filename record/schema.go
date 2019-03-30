@@ -2,6 +2,7 @@ package record
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/asdine/genji/field"
 )
@@ -10,6 +11,11 @@ import (
 type Schema struct {
 	TableName string
 	Fields    []field.Field
+}
+
+// Pk returns the TableName as the primary key.
+func (s *Schema) Pk() ([]byte, error) {
+	return []byte(s.TableName), nil
 }
 
 // Field implements the field method of the Record interface.
@@ -87,4 +93,40 @@ func (s *Schema) ScanRecord(rec Record) error {
 		s.Fields = append(s.Fields, f)
 		return nil
 	})
+}
+
+type StructuredRecord struct {
+	Record
+	schema *Schema
+}
+
+func NewStructuredRecord(r Record, s *Schema) *StructuredRecord {
+	return &StructuredRecord{Record: r, schema: s}
+}
+
+func (s *StructuredRecord) Encode() ([]byte, error) {
+	var i int
+
+	err := s.Record.Iterate(func(f field.Field) error {
+		if i >= len(s.schema.Fields) {
+			return errors.New("record contains too many fields")
+		}
+
+		sf := s.schema.Fields[i]
+		if sf.Name != f.Name || sf.Type != f.Type {
+			return fmt.Errorf("field should be '%s' of type '%s', got '%s' of type '%s'", sf.Name, sf.Type, f.Name, f.Type)
+		}
+
+		i++
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if i < len(s.schema.Fields) {
+		return nil, errors.New("record contains too few fields")
+	}
+
+	return nil, nil
 }
