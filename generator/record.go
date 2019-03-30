@@ -67,6 +67,7 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
 }
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
 func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 	var f field.Field
 	var err error
@@ -99,81 +100,63 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 }
 {{- end}}
 
-// {{$structName}}Selector provides helpers for selecting fields from the {{$structName}} structure.
-type {{$structName}}Selector struct{}
-
-// {{.NameWithPrefix "New"}}Selector creates a {{$structName}}Selector.
-func {{.NameWithPrefix "New"}}Selector() {{$structName}}Selector {
-	return {{$structName}}Selector{}
-}
-
-{{- range $i, $a := .Fields }}
-	{{- if eq .Type "string"}}
-		// {{$a.Name}} returns a string selector.
-		func ({{$structName}}Selector) {{$a.Name}}() query.StrField {
-			return query.NewStrField("{{$a.Name}}")
-		}
-	{{- else if eq .Type "int64"}}
-		// {{$a.Name}} returns an int64 selector.
-		func ({{$structName}}Selector) {{$a.Name}}() query.Int64Field {
-			return query.NewInt64Field("{{$a.Name}}")
-		}
-	{{- end}}
-{{- end}}
-
-// {{$structName}}Table manages the table. It provides several typed helpers
+// {{$structName}}Store manages the table. It provides several typed helpers
 // that simplify common operations.
-type {{$structName}}Table struct {
+type {{$structName}}Store struct {
 	genji.TxRunner
 	genji.TableTxRunner
 }
 
-// {{.NameWithPrefix "New"}}Table creates a {{$structName}}Table.
-func {{.NameWithPrefix "New"}}Table(db *genji.DB) *{{$structName}}Table {
-	return &{{$structName}}Table{
-		TxRunner:      db,
-		TableTxRunner: genji.NewTableTxRunner(db, "{{$structName}}"),
+// {{.NameWithPrefix "New"}}Store creates a {{$structName}}Store.
+func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
+	schema := record.Schema{
+		TableName: "{{$structName}}",
+		Fields: []field.Field{
+		{{range .Fields}}
+			{{- if eq .Type "string"}}
+			{Name: "{{.Name}}", Type: field.String},
+			{{- else if eq .Type "int64"}}
+			{Name: "{{.Name}}", Type: field.Int64},
+			{{- end}}
+		{{-end}}
+		}
 	}
+
+	return &{{$structName}}Store{store: genji.NewStaticStore(db, "{{$structName}}", schema)}
 }
 
-// {{.NameWithPrefix "New"}}TableWithTx creates a {{$structName}}Table valid for the lifetime of the given transaction.
-func {{.NameWithPrefix "New"}}TableWithTx(tx *genji.Tx) *{{$structName}}Table {
-	txp := genji.TxRunnerProxy{Tx: tx}
-
-	return &{{$structName}}Table{
-		TxRunner:      &txp,
-		TableTxRunner: genji.NewTableTxRunner(&txp, "{{$structName}}"),
+// {{.NameWithPrefix "New"}}StoreWithTx creates a {{$structName}}Store valid for the lifetime of the given transaction.
+func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
+	schema := record.Schema{
+		TableName: "{{$structName}}",
+		Fields: []field.Field{
+		{{range .Fields}}
+			{{- if eq .Type "string"}}
+			{Name: "{{.Name}}", Type: field.String},
+			{{- else if eq .Type "int64"}}
+			{Name: "{{.Name}}", Type: field.Int64},
+			{{- end}}
+		{{-end}}
+		}
 	}
+
+	return &{{$structName}}StoreWithTx{store: genji.NewStaticStore(tx, "{{$structName}}", schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
 func ({{$fl}} *{{$structName}}Table) Init() error {
-	return {{$fl}}.Update(func(tx *genji.Tx) error {
-		var err error
-		_, err = tx.CreateTable("{{$structName}}")
-		if err == engine.ErrTableAlreadyExists {
-			return nil
-		}
-
-		return err
-	})
+	return {{$fl}}.store.Init()
 }
 
 // Insert a record in the table and return the primary key.
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (rowid []byte, err error) {
-	err = {{$fl}}.UpdateTable(func(t table.Table) error {
-		rowid, err = t.Insert(record)
-		return err
-	})
-	return
+	return {{$fl}}.store.Insert(record)
 }
 {{- else }}
 func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (err error) {
-	return {{$fl}}.UpdateTable(func(t table.Table) error {
-		_, err = t.Insert(record)
-		return err
-	})
+	_, err := {{$fl}}.store.Insert(record)
+	return err
 }
 {{- end}}
 
@@ -182,9 +165,9 @@ func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (err error)
 func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (*{{$structName}}, error) {
 {{- else}}
 	{{- if eq .Pk.Type "string"}}
-	func ({{$fl}} *{{$structName}}Table) Get(pk string) (*{{$structName}}, error) {
+func ({{$fl}} *{{$structName}}Table) Get(pk string) (*{{$structName}}, error) {
 	{{- else if eq .Pk.Type "int64"}}
-	func ({{$fl}} *{{$structName}}Table) Get(pk int64) (*{{$structName}}, error) {
+func ({{$fl}} *{{$structName}}Table) Get(pk int64) (*{{$structName}}, error) {
 	{{- end}}
 {{- end}}
 	var record {{$structName}}
@@ -197,16 +180,7 @@ func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (*{{$structName}}, error)
 		{{end}}
 	{{- end}}
 
-	err := {{$fl}}.ViewTable(func(t table.Table) error {
-		rec, err := t.Record(rowid)
-		if err != nil {
-			return err
-		}
-
-		return record.ScanRecord(rec)
-	})
-
-	return &record, err
+	return &record, b.store.Get(rowid, &record)
 }
 `
 
