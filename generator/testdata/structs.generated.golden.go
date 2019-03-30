@@ -147,67 +147,51 @@ func (BasicSelector) D() query.Int64Field {
 	return query.NewInt64Field("D")
 }
 
-// BasicTable manages the table. It provides several typed helpers
+// BasicStore manages the Basic table. It provides several typed helpers
 // that simplify common operations.
-type BasicTable struct {
-	genji.TxRunner
-	genji.TableTxRunner
+type BasicStore struct {
+	store *genji.StaticStore
 }
 
-// NewBasicTable creates a BasicTable.
-func NewBasicTable(db *genji.DB) *BasicTable {
-	return &BasicTable{
-		TxRunner:      db,
-		TableTxRunner: genji.NewTableTxRunner(db, "Basic"),
+// NewBasicStore creates a BasicStore.
+func NewBasicStore(db *genji.DB) *BasicStore {
+	schema := record.Schema{
+		TableName: "Basic",
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+		},
 	}
+
+	return &BasicStore{store: genji.NewStaticStore(db, "Basic", schema)}
 }
 
-// NewBasicTableWithTx creates a BasicTable valid for the lifetime of the given transaction.
-func NewBasicTableWithTx(tx *genji.Tx) *BasicTable {
-	txp := genji.TxRunnerProxy{Tx: tx}
-
-	return &BasicTable{
-		TxRunner:      &txp,
-		TableTxRunner: genji.NewTableTxRunner(&txp, "Basic"),
+// NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
+func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
+	schema := record.Schema{
+		TableName: "Basic",
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+		},
 	}
+
+	return &BasicStore{store: genji.NewStaticStoreWithTx(tx, "Basic", schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
-func (b *BasicTable) Init() error {
-	return b.Update(func(tx *genji.Tx) error {
-		var err error
-		_, err = tx.CreateTable("Basic")
-		if err == engine.ErrTableAlreadyExists {
-			return nil
-		}
-
-		return err
-	})
+func (b *BasicStore) Init() error {
+	return b.store.Init()
 }
 
 // Insert a record in the table and return the primary key.
-func (b *BasicTable) Insert(record *Basic) (rowid []byte, err error) {
-	err = b.UpdateTable(func(t table.Table) error {
-		rowid, err = t.Insert(record)
-		return err
-	})
-	return
+func (b *BasicStore) Insert(record *Basic) (rowid []byte, err error) {
+	return b.store.Insert(record)
 }
 
 // Get a record using its primary key.
-func (b *BasicTable) Get(rowid []byte) (*Basic, error) {
+func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 	var record Basic
 
-	err := b.ViewTable(func(t table.Table) error {
-		rec, err := t.Record(rowid)
-		if err != nil {
-			return err
-		}
-
-		return record.ScanRecord(rec)
-	})
-
-	return &record, err
+	return &record, b.store.Get(rowid, &record)
 }
 
 // Field implements the field method of the record.Record interface.

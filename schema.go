@@ -10,34 +10,34 @@ const (
 	schemaTableName = "__genji.schema"
 )
 
-// SchemaTable manages the schema table. It provides several typed helpers
+// SchemaStore manages the schema table. It provides several typed helpers
 // that simplify common operations.
-type SchemaTable struct {
+type SchemaStore struct {
 	TxRunner
 	TableTxRunner
 }
 
-// NewSchemaTable creates a SchemaTable.
-func NewSchemaTable(db *DB) *SchemaTable {
-	return &SchemaTable{
+// NewSchemaStore creates a SchemaStore.
+func NewSchemaStore(db *DB) *SchemaStore {
+	return &SchemaStore{
 		TxRunner:      db,
 		TableTxRunner: NewTableTxRunner(db, schemaTableName),
 	}
 }
 
-// NewSchemaTableWithTx creates a SchemaTable valid for the lifetime of the given transaction.
-func NewSchemaTableWithTx(tx *Tx) *SchemaTable {
+// NewSchemaStoreWithTx creates a SchemaStore valid for the lifetime of the given transaction.
+func NewSchemaStoreWithTx(tx *Tx) *SchemaStore {
 	txp := TxRunnerProxy{Tx: tx}
 
-	return &SchemaTable{
+	return &SchemaStore{
 		TxRunner:      &txp,
 		TableTxRunner: NewTableTxRunner(&txp, schemaTableName),
 	}
 }
 
-// Init makes sure the database exists. No error is returned if the database already exists.
-func (b *SchemaTable) Init() error {
-	return b.Update(func(tx *Tx) error {
+// Init makes sure the table exists. No error is returned if the table already exists.
+func (s *SchemaStore) Init() error {
+	return s.Update(func(tx *Tx) error {
 		var err error
 		_, err = tx.CreateTable(schemaTableName)
 		if err == engine.ErrTableAlreadyExists {
@@ -49,8 +49,8 @@ func (b *SchemaTable) Init() error {
 }
 
 // Insert a record in the table and return the primary key.
-func (b *SchemaTable) Insert(record *record.Schema) (rowid []byte, err error) {
-	err = b.UpdateTable(func(t table.Table) error {
+func (s *SchemaStore) Insert(record *record.Schema) (rowid []byte, err error) {
+	err = s.UpdateTable(func(t table.Table) error {
 		rowid, err = t.Insert(record)
 		return err
 	})
@@ -58,10 +58,10 @@ func (b *SchemaTable) Insert(record *record.Schema) (rowid []byte, err error) {
 }
 
 // Get a record using its primary key.
-func (b *SchemaTable) Get(rowid []byte) (*record.Schema, error) {
+func (s *SchemaStore) Get(rowid []byte) (*record.Schema, error) {
 	var record record.Schema
 
-	err := b.ViewTable(func(t table.Table) error {
+	err := s.ViewTable(func(t table.Table) error {
 		rec, err := t.Record(rowid)
 		if err != nil {
 			return err
@@ -71,4 +71,72 @@ func (b *SchemaTable) Get(rowid []byte) (*record.Schema, error) {
 	})
 
 	return &record, err
+}
+
+type StaticStore struct {
+	TxRunner
+	TableTxRunner
+
+	tableName string
+	schema    record.Schema
+}
+
+// NewStaticStore creates a StaticStore.
+func NewStaticStore(db *DB, tableName string, schema record.Schema) *StaticStore {
+	return &StaticStore{
+		TxRunner:      db,
+		TableTxRunner: NewTableTxRunner(db, tableName),
+		tableName:     tableName,
+		schema:        schema,
+	}
+}
+
+// NewStaticStoreWithTx creates a StaticStore valid for the lifetime of the given transaction.
+func NewStaticStoreWithTx(tx *Tx, tableName string, schema record.Schema) *StaticStore {
+	txp := TxRunnerProxy{Tx: tx}
+
+	return &StaticStore{
+		TxRunner:      &txp,
+		TableTxRunner: NewTableTxRunner(&txp, schemaTableName),
+	}
+}
+
+// Init makes sure the table exists. No error is returned if the table already exists.
+func (s *StaticStore) Init() error {
+	return s.Update(func(tx *Tx) error {
+		_, err := tx.CreateTable(s.tableName)
+		if err == engine.ErrTableAlreadyExists {
+			return nil
+		}
+
+		ss := NewSchemaStoreWithTx(tx)
+		err = ss.Init()
+		if err != nil {
+			return err
+		}
+
+		_, err = ss.Insert(&s.schema)
+		return err
+	})
+}
+
+// Insert a record in the table and return the primary key.
+func (s *StaticStore) Insert(r record.Record) (rowid []byte, err error) {
+	err = s.UpdateTable(func(t table.Table) error {
+		rowid, err = t.Insert(r)
+		return err
+	})
+	return
+}
+
+// Get a record using its primary key.
+func (s *StaticStore) Get(rowid []byte, scanner record.Scanner) error {
+	return s.ViewTable(func(t table.Table) error {
+		rec, err := t.Record(rowid)
+		if err != nil {
+			return err
+		}
+
+		return scanner.ScanRecord(rec)
+	})
 }
