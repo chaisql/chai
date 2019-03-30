@@ -10,7 +10,6 @@ import (
 type Record interface {
 	Field(string) (field.Field, error)
 	Iterate(func(field.Field) error) error
-	Encode() ([]byte, error)
 }
 
 // A Scanner can iterate over a record and scan all the fields.
@@ -62,8 +61,4 @@ func (fb FieldBuffer) Iterate(fn func(field.Field) error) error {
 	}
 
 	return nil
-}
-
-func (fb FieldBuffer) Encode() ([]byte, error) {
-	return Encode(fb)
 }

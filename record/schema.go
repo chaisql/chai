@@ -43,10 +43,6 @@ func (s *Schema) Field(name string) (field.Field, error) {
 	return field.Field{}, errors.New("unknown field")
 }
 
-func (s *Schema) Encode() ([]byte, error) {
-	return Encode(s)
-}
-
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
 func (s *Schema) Iterate(fn func(field.Field) error) error {
