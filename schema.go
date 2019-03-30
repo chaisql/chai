@@ -96,6 +96,8 @@ func NewStaticStoreWithTx(tx *Tx, tableName string, schema record.Schema) *Stati
 	txp := TxRunnerProxy{Tx: tx}
 
 	return &StaticStore{
+		tableName:     tableName,
+		schema:        schema,
 		TxRunner:      &txp,
 		TableTxRunner: NewTableTxRunner(&txp, schemaTableName),
 	}

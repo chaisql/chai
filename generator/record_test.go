@@ -169,7 +169,7 @@ func TestGeneratedRecords(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicTableWithTx(tx)
+				tb := testdata.NewBasicStoreWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
@@ -192,7 +192,7 @@ func TestGeneratedRecords(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicTableWithTx(tx)
+				tb := testdata.NewBasicStoreWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
@@ -215,7 +215,7 @@ func TestGeneratedRecords(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicTableWithTx(tx)
+				tb := testdata.NewBasicStoreWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
@@ -257,7 +257,7 @@ func TestGeneratedRecords(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewPkTableWithTx(tx)
+				tb := testdata.NewPkStoreWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()
@@ -280,7 +280,7 @@ func TestGeneratedRecords(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewPkTableWithTx(tx)
+				tb := testdata.NewPkStoreWithTx(tx)
 				require.NoError(t, err)
 
 				err = tb.Init()

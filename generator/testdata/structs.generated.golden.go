@@ -4,18 +4,9 @@ import (
 	"errors"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
-
-// SchemaDescriptor contains a checksum of the table schema.
-// It is used to ensure nothing has changed in the field definition.
-func (b *Basic) SchemaDescriptor() []byte {
-	return []byte{}
-}
 
 // Field implements the field method of the record.Record interface.
 func (b *Basic) Field(name string) (field.Field, error) {
@@ -83,6 +74,7 @@ func (b *Basic) Iterate(fn func(field.Field) error) error {
 }
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
 func (b *Basic) ScanRecord(rec record.Record) error {
 	var f field.Field
 	var err error
@@ -119,35 +111,7 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 	return nil
 }
 
-// BasicSelector provides helpers for selecting fields from the Basic structure.
-type BasicSelector struct{}
-
-// NewBasicSelector creates a BasicSelector.
-func NewBasicSelector() BasicSelector {
-	return BasicSelector{}
-}
-
-// A returns a string selector.
-func (BasicSelector) A() query.StrField {
-	return query.NewStrField("A")
-}
-
-// B returns an int64 selector.
-func (BasicSelector) B() query.Int64Field {
-	return query.NewInt64Field("B")
-}
-
-// C returns an int64 selector.
-func (BasicSelector) C() query.Int64Field {
-	return query.NewInt64Field("C")
-}
-
-// D returns an int64 selector.
-func (BasicSelector) D() query.Int64Field {
-	return query.NewInt64Field("D")
-}
-
-// BasicStore manages the Basic table. It provides several typed helpers
+// BasicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type BasicStore struct {
 	store *genji.StaticStore
@@ -159,6 +123,9 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 		TableName: "Basic",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+			{Name: "C", Type: field.Int64},
+			{Name: "D", Type: field.Int64},
 		},
 	}
 
@@ -171,6 +138,9 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 		TableName: "Basic",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+			{Name: "C", Type: field.Int64},
+			{Name: "D", Type: field.Int64},
 		},
 	}
 
@@ -260,6 +230,7 @@ func (b *basic) Iterate(fn func(field.Field) error) error {
 }
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
 func (b *basic) ScanRecord(rec record.Record) error {
 	var f field.Field
 	var err error
@@ -296,95 +267,57 @@ func (b *basic) ScanRecord(rec record.Record) error {
 	return nil
 }
 
-// basicSelector provides helpers for selecting fields from the basic structure.
-type basicSelector struct{}
-
-// newBasicSelector creates a basicSelector.
-func newBasicSelector() basicSelector {
-	return basicSelector{}
-}
-
-// A returns a string selector.
-func (basicSelector) A() query.StrField {
-	return query.NewStrField("A")
-}
-
-// B returns an int64 selector.
-func (basicSelector) B() query.Int64Field {
-	return query.NewInt64Field("B")
-}
-
-// C returns an int64 selector.
-func (basicSelector) C() query.Int64Field {
-	return query.NewInt64Field("C")
-}
-
-// D returns an int64 selector.
-func (basicSelector) D() query.Int64Field {
-	return query.NewInt64Field("D")
-}
-
-// basicTable manages the table. It provides several typed helpers
+// basicStore manages the table. It provides several typed helpers
 // that simplify common operations.
-type basicTable struct {
-	genji.TxRunner
-	genji.TableTxRunner
+type basicStore struct {
+	store *genji.StaticStore
 }
 
-// newBasicTable creates a basicTable.
-func newBasicTable(db *genji.DB) *basicTable {
-	return &basicTable{
-		TxRunner:      db,
-		TableTxRunner: genji.NewTableTxRunner(db, "basic"),
+// newBasicStore creates a basicStore.
+func newBasicStore(db *genji.DB) *basicStore {
+	schema := record.Schema{
+		TableName: "basic",
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+			{Name: "C", Type: field.Int64},
+			{Name: "D", Type: field.Int64},
+		},
 	}
+
+	return &basicStore{store: genji.NewStaticStore(db, "basic", schema)}
 }
 
-// newBasicTableWithTx creates a basicTable valid for the lifetime of the given transaction.
-func newBasicTableWithTx(tx *genji.Tx) *basicTable {
-	txp := genji.TxRunnerProxy{Tx: tx}
-
-	return &basicTable{
-		TxRunner:      &txp,
-		TableTxRunner: genji.NewTableTxRunner(&txp, "basic"),
+// newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
+func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
+	schema := record.Schema{
+		TableName: "basic",
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+			{Name: "C", Type: field.Int64},
+			{Name: "D", Type: field.Int64},
+		},
 	}
+
+	return &basicStore{store: genji.NewStaticStoreWithTx(tx, "basic", schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
-func (b *basicTable) Init() error {
-	return b.Update(func(tx *genji.Tx) error {
-		var err error
-		_, err = tx.CreateTable("basic")
-		if err == engine.ErrTableAlreadyExists {
-			return nil
-		}
-
-		return err
-	})
+func (b *basicStore) Init() error {
+	return b.store.Init()
 }
 
 // Insert a record in the table and return the primary key.
-func (b *basicTable) Insert(record *basic) (rowid []byte, err error) {
-	err = b.UpdateTable(func(t table.Table) error {
-		rowid, err = t.Insert(record)
-		return err
-	})
-	return
+func (b *basicStore) Insert(record *basic) (rowid []byte, err error) {
+	return b.store.Insert(record)
 }
 
 // Get a record using its primary key.
-func (b *basicTable) Get(rowid []byte) (*basic, error) {
+func (b *basicStore) Get(rowid []byte) (*basic, error) {
 	var record basic
 
-	err := b.ViewTable(func(t table.Table) error {
-		rec, err := t.Record(rowid)
-		if err != nil {
-			return err
-		}
-
-		return record.ScanRecord(rec)
-	})
-
-	return &record, err
+	return &record, b.store.Get(rowid, &record)
 }
 
 // Field implements the field method of the record.Record interface.
@@ -429,6 +362,7 @@ func (p *Pk) Iterate(fn func(field.Field) error) error {
 }
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
 func (p *Pk) ScanRecord(rec record.Record) error {
 	var f field.Field
 	var err error
@@ -454,83 +388,53 @@ func (p *Pk) Pk() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
 }
 
-// PkSelector provides helpers for selecting fields from the Pk structure.
-type PkSelector struct{}
-
-// NewPkSelector creates a PkSelector.
-func NewPkSelector() PkSelector {
-	return PkSelector{}
-}
-
-// A returns a string selector.
-func (PkSelector) A() query.StrField {
-	return query.NewStrField("A")
-}
-
-// B returns an int64 selector.
-func (PkSelector) B() query.Int64Field {
-	return query.NewInt64Field("B")
-}
-
-// PkTable manages the table. It provides several typed helpers
+// PkStore manages the table. It provides several typed helpers
 // that simplify common operations.
-type PkTable struct {
-	genji.TxRunner
-	genji.TableTxRunner
+type PkStore struct {
+	store *genji.StaticStore
 }
 
-// NewPkTable creates a PkTable.
-func NewPkTable(db *genji.DB) *PkTable {
-	return &PkTable{
-		TxRunner:      db,
-		TableTxRunner: genji.NewTableTxRunner(db, "Pk"),
+// NewPkStore creates a PkStore.
+func NewPkStore(db *genji.DB) *PkStore {
+	schema := record.Schema{
+		TableName: "Pk",
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+		},
 	}
+
+	return &PkStore{store: genji.NewStaticStore(db, "Pk", schema)}
 }
 
-// NewPkTableWithTx creates a PkTable valid for the lifetime of the given transaction.
-func NewPkTableWithTx(tx *genji.Tx) *PkTable {
-	txp := genji.TxRunnerProxy{Tx: tx}
-
-	return &PkTable{
-		TxRunner:      &txp,
-		TableTxRunner: genji.NewTableTxRunner(&txp, "Pk"),
+// NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
+func NewPkStoreWithTx(tx *genji.Tx) *PkStore {
+	schema := record.Schema{
+		TableName: "Pk",
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+		},
 	}
+
+	return &PkStore{store: genji.NewStaticStoreWithTx(tx, "Pk", schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
-func (p *PkTable) Init() error {
-	return p.Update(func(tx *genji.Tx) error {
-		var err error
-		_, err = tx.CreateTable("Pk")
-		if err == engine.ErrTableAlreadyExists {
-			return nil
-		}
-
-		return err
-	})
+func (p *PkStore) Init() error {
+	return p.store.Init()
 }
 
 // Insert a record in the table and return the primary key.
-func (p *PkTable) Insert(record *Pk) (err error) {
-	return p.UpdateTable(func(t table.Table) error {
-		_, err = t.Insert(record)
-		return err
-	})
+func (p *PkStore) Insert(record *Pk) (err error) {
+	_, err = p.store.Insert(record)
+	return err
 }
 
 // Get a record using its primary key.
-func (p *PkTable) Get(pk int64) (*Pk, error) {
+func (p *PkStore) Get(pk int64) (*Pk, error) {
 	var record Pk
 	rowid := field.EncodeInt64(pk)
 
-	err := p.ViewTable(func(t table.Table) error {
-		rec, err := t.Record(rowid)
-		if err != nil {
-			return err
-		}
-
-		return record.ScanRecord(rec)
-	})
-
-	return &record, err
+	return &record, p.store.Get(rowid, &record)
 }

@@ -103,8 +103,7 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 // {{$structName}}Store manages the table. It provides several typed helpers
 // that simplify common operations.
 type {{$structName}}Store struct {
-	genji.TxRunner
-	genji.TableTxRunner
+	store *genji.StaticStore
 }
 
 // {{.NameWithPrefix "New"}}Store creates a {{$structName}}Store.
@@ -112,14 +111,14 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 	schema := record.Schema{
 		TableName: "{{$structName}}",
 		Fields: []field.Field{
-		{{range .Fields}}
+		{{- range .Fields}}
 			{{- if eq .Type "string"}}
 			{Name: "{{.Name}}", Type: field.String},
 			{{- else if eq .Type "int64"}}
 			{Name: "{{.Name}}", Type: field.Int64},
 			{{- end}}
-		{{-end}}
-		}
+		{{- end}}
+		},
 	}
 
 	return &{{$structName}}Store{store: genji.NewStaticStore(db, "{{$structName}}", schema)}
@@ -130,44 +129,44 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 	schema := record.Schema{
 		TableName: "{{$structName}}",
 		Fields: []field.Field{
-		{{range .Fields}}
+		{{- range .Fields}}
 			{{- if eq .Type "string"}}
 			{Name: "{{.Name}}", Type: field.String},
 			{{- else if eq .Type "int64"}}
 			{Name: "{{.Name}}", Type: field.Int64},
 			{{- end}}
-		{{-end}}
-		}
+		{{- end}}
+		},
 	}
 
-	return &{{$structName}}StoreWithTx{store: genji.NewStaticStore(tx, "{{$structName}}", schema)}
+	return &{{$structName}}Store{store: genji.NewStaticStoreWithTx(tx, "{{$structName}}", schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
-func ({{$fl}} *{{$structName}}Table) Init() error {
+func ({{$fl}} *{{$structName}}Store) Init() error {
 	return {{$fl}}.store.Init()
 }
 
 // Insert a record in the table and return the primary key.
 {{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (rowid []byte, err error) {
+func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (rowid []byte, err error) {
 	return {{$fl}}.store.Insert(record)
 }
 {{- else }}
-func ({{$fl}} *{{$structName}}Table) Insert(record *{{$structName}}) (err error) {
-	_, err := {{$fl}}.store.Insert(record)
+func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (err error) {
+	_, err = {{$fl}}.store.Insert(record)
 	return err
 }
 {{- end}}
 
 // Get a record using its primary key.
 {{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Table) Get(rowid []byte) (*{{$structName}}, error) {
+func ({{$fl}} *{{$structName}}Store) Get(rowid []byte) (*{{$structName}}, error) {
 {{- else}}
 	{{- if eq .Pk.Type "string"}}
-func ({{$fl}} *{{$structName}}Table) Get(pk string) (*{{$structName}}, error) {
+func ({{$fl}} *{{$structName}}Store) Get(pk string) (*{{$structName}}, error) {
 	{{- else if eq .Pk.Type "int64"}}
-func ({{$fl}} *{{$structName}}Table) Get(pk int64) (*{{$structName}}, error) {
+func ({{$fl}} *{{$structName}}Store) Get(pk int64) (*{{$structName}}, error) {
 	{{- end}}
 {{- end}}
 	var record {{$structName}}
@@ -180,7 +179,7 @@ func ({{$fl}} *{{$structName}}Table) Get(pk int64) (*{{$structName}}, error) {
 		{{end}}
 	{{- end}}
 
-	return &record, b.store.Get(rowid, &record)
+	return &record, {{$fl}}.store.Get(rowid, &record)
 }
 `
 
