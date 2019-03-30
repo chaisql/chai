@@ -32,7 +32,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 		rowid = field.EncodeInt64(int64(seq))
 	}
 
-	data, err := record.Encode(r)
+	data, err := r.Encode()
 	if err != nil {
 		return nil, err
 	}

@@ -99,24 +99,15 @@ func (s *Schema) ScanRecord(rec Record) error {
 	})
 }
 
-type StructuredRecord struct {
-	Record
-	schema *Schema
-}
-
-func NewStructuredRecord(r Record, s *Schema) *StructuredRecord {
-	return &StructuredRecord{Record: r, schema: s}
-}
-
-func (s *StructuredRecord) Encode() ([]byte, error) {
+func (s *Schema) Validate(rec Record) error {
 	var i int
 
-	err := s.Record.Iterate(func(f field.Field) error {
-		if i >= len(s.schema.Fields) {
+	err := rec.Iterate(func(f field.Field) error {
+		if i >= len(s.Fields) {
 			return errors.New("record contains too many fields")
 		}
 
-		sf := s.schema.Fields[i]
+		sf := s.Fields[i]
 		if sf.Name != f.Name || sf.Type != f.Type {
 			return fmt.Errorf("field should be '%s' of type '%s', got '%s' of type '%s'", sf.Name, sf.Type, f.Name, f.Type)
 		}
@@ -125,12 +116,12 @@ func (s *StructuredRecord) Encode() ([]byte, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if i < len(s.schema.Fields) {
-		return nil, errors.New("record contains too few fields")
+	if i < len(s.Fields) {
+		return errors.New("record contains too few fields")
 	}
 
-	return nil, nil
+	return nil
 }

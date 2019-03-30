@@ -57,12 +57,12 @@ func (s *SchemaStore) Insert(record *record.Schema) (rowid []byte, err error) {
 	return
 }
 
-// Get a record using its primary key.
-func (s *SchemaStore) Get(rowid []byte) (*record.Schema, error) {
+// Get a schema using its table name.
+func (s *SchemaStore) Get(tableName string) (*record.Schema, error) {
 	var record record.Schema
 
 	err := s.ViewTable(func(t table.Table) error {
-		rec, err := t.Record(rowid)
+		rec, err := t.Record([]byte(tableName))
 		if err != nil {
 			return err
 		}

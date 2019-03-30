@@ -15,6 +15,11 @@ func New(ng engine.Engine) (*DB, error) {
 		Engine: ng,
 	}
 
+	err := NewSchemaStore(&db).Init()
+	if err != nil {
+		return nil, err
+	}
+
 	return &db, nil
 }
 
@@ -69,10 +74,20 @@ func (tx Tx) Table(name string) (table.Table, error) {
 		return nil, err
 	}
 
+	schema, err := NewSchemaStoreWithTx(&tx).Get(name)
+	if err != nil {
+		if err != table.ErrRecordNotFound {
+			return nil, err
+		}
+
+		schema = nil
+	}
+
 	return &Table{
-		Table: tb,
-		tx:    tx.Transaction,
-		name:  name,
+		Table:  tb,
+		tx:     tx.Transaction,
+		name:   name,
+		schema: schema,
 	}, nil
 }
 
@@ -92,11 +107,19 @@ func (tx Tx) CreateTable(name string) (table.Table, error) {
 type Table struct {
 	table.Table
 
-	tx   engine.Transaction
-	name string
+	tx     engine.Transaction
+	name   string
+	schema *record.Schema
 }
 
 func (t Table) Insert(r record.Record) ([]byte, error) {
+	if t.schema != nil {
+		err := t.schema.Validate(r)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	rowid, err := t.Table.Insert(r)
 	if err != nil {
 		return nil, err
