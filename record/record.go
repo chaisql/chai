@@ -12,6 +12,11 @@ type Record interface {
 	Iterate(func(field.Field) error) error
 }
 
+// A Scanner can iterate over a record and scan all the fields.
+type Scanner interface {
+	ScanRecord(Record) error
+}
+
 // FieldBuffer contains a list of fields. It implements the Record interface.
 type FieldBuffer []field.Field
 
@@ -19,7 +24,7 @@ func (fb *FieldBuffer) Add(f field.Field) {
 	*fb = append(*fb, f)
 }
 
-func (fb *FieldBuffer) AddFrom(r Record) error {
+func (fb *FieldBuffer) ScanRecord(r Record) error {
 	return r.Iterate(func(f field.Field) error {
 		*fb = append(*fb, f)
 		return nil
