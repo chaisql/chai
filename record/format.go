@@ -287,6 +287,10 @@ func (e EncodedRecord) Field(name string) (field.Field, error) {
 	return DecodeField(e, name)
 }
 
+func (e EncodedRecord) Encode() ([]byte, error) {
+	return e, nil
+}
+
 func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
 	var format Format
 	err := format.Decode(e)
