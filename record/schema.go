@@ -105,7 +105,7 @@ func (s *Schema) Validate(rec Record) error {
 
 		sf := s.Fields[i]
 		if sf.Name != f.Name || sf.Type != f.Type {
-			return fmt.Errorf("field should be '%s' of type '%s', got '%s' of type '%s'", sf.Name, sf.Type, f.Name, f.Type)
+			return fmt.Errorf("field should be '%s' of type '%d', got '%s' of type '%d'", sf.Name, sf.Type, f.Name, f.Type)
 		}
 
 		i++
