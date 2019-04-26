@@ -25,7 +25,7 @@ type Transaction interface {
 	Rollback() error
 	Commit() error
 	Table(name string) (table.Table, error)
-	CreateTable(name string) (table.Table, error)
+	CreateTable(name string) error
 	Index(table, name string) (index.Index, error)
 	Indexes(table string) (map[string]index.Index, error)
 	CreateIndex(table, field string) (index.Index, error)

@@ -119,7 +119,7 @@ func TestBrowser(t *testing.T) {
 			require.NoError(t, err)
 
 			var fb record.FieldBuffer
-			fb.AddFrom(r)
+			fb.ScanRecord(r)
 
 			fb.Set(field.NewInt64("age", age*2))
 

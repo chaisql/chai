@@ -69,23 +69,17 @@ func (t *Transaction) Table(name string) (table.Table, error) {
 	}, nil
 }
 
-func (t *Transaction) CreateTable(name string) (table.Table, error) {
+func (t *Transaction) CreateTable(name string) error {
 	if !t.writable {
-		return nil, engine.ErrTransactionReadOnly
+		return engine.ErrTransactionReadOnly
 	}
 
-	b, err := t.tx.CreateBucket([]byte(name))
-	if err != nil {
-		if err == bolt.ErrBucketExists {
-			return nil, engine.ErrTableAlreadyExists
-		}
-
-		return nil, err
+	_, err := t.tx.CreateBucket([]byte(name))
+	if err == bolt.ErrBucketExists {
+		return engine.ErrTableAlreadyExists
 	}
 
-	return &Table{
-		Bucket: b,
-	}, nil
+	return err
 }
 
 func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) {

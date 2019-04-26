@@ -111,14 +111,14 @@ func (tx *transaction) Table(name string) (table.Table, error) {
 	return &tableTx{tx: tx, RecordBuffer: rb}, nil
 }
 
-func (tx *transaction) CreateTable(name string) (table.Table, error) {
+func (tx *transaction) CreateTable(name string) error {
 	if !tx.writable {
-		return nil, engine.ErrTransactionReadOnly
+		return engine.ErrTransactionReadOnly
 	}
 
 	_, err := tx.Table(name)
 	if err == nil {
-		return nil, engine.ErrTableAlreadyExists
+		return engine.ErrTableAlreadyExists
 	}
 
 	var rb table.RecordBuffer
@@ -129,7 +129,7 @@ func (tx *transaction) CreateTable(name string) (table.Table, error) {
 		delete(tx.ng.tables, name)
 	})
 
-	return &tableTx{tx: tx, RecordBuffer: &rb}, nil
+	return nil
 }
 
 func (tx *transaction) Index(table, name string) (idx.Index, error) {

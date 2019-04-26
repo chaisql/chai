@@ -54,7 +54,10 @@ func tableBuilder(t require.TestingT) func() (table.Table, func()) {
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
 
-		tb, err := tx.CreateTable("test")
+		err = tx.CreateTable("test")
+		require.NoError(t, err)
+
+		tb, err := tx.Table("test")
 		require.NoError(t, err)
 
 		return tb, func() {
@@ -70,7 +73,7 @@ func indexBuilder(t require.TestingT) func() (index.Index, func()) {
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
 
-		_, err = tx.CreateTable("test")
+		err = tx.CreateTable("test")
 		require.NoError(t, err)
 
 		idx, err := tx.CreateIndex("test", "idx")
