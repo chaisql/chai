@@ -1,6 +1,7 @@
 package record
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/asdine/genji/field"
@@ -17,10 +18,27 @@ type Scanner interface {
 	ScanRecord(Record) error
 }
 
+// A Decoder decodes encoded records.
+type Decoder interface {
+	Decode([]byte) (Record, error)
+}
+
+// An Encoder encodes records.
+type Encoder interface {
+	Encode(Record) ([]byte, error)
+}
+
+// A Codec can encode and decode records.
+type Codec interface {
+	Encoder
+	Decoder
+}
+
 // FieldBuffer contains a list of fields. It implements the Record interface.
 type FieldBuffer []field.Field
 
 func (fb *FieldBuffer) Add(f field.Field) {
+	json.Decoder
 	*fb = append(*fb, f)
 }
 
