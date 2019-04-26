@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
 
@@ -24,7 +25,7 @@ type Engine interface {
 type Transaction interface {
 	Rollback() error
 	Commit() error
-	Table(name string) (table.Table, error)
+	Table(name string, codec record.Codec) (table.Table, error)
 	CreateTable(name string) error
 	Index(table, name string) (index.Index, error)
 	Indexes(table string) (map[string]index.Index, error)

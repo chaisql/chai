@@ -1,7 +1,6 @@
 package record
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/asdine/genji/field"
@@ -38,7 +37,6 @@ type Codec interface {
 type FieldBuffer []field.Field
 
 func (fb *FieldBuffer) Add(f field.Field) {
-	json.Decoder
 	*fb = append(*fb, f)
 }
 
