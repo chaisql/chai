@@ -5,6 +5,7 @@ import (
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
@@ -58,7 +59,7 @@ func (t *Transaction) Commit() error {
 	return t.tx.Commit()
 }
 
-func (t *Transaction) Table(name string) (table.Table, error) {
+func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error) {
 	b := t.tx.Bucket([]byte(name))
 	if b == nil {
 		return nil, engine.ErrTableNotFound
@@ -66,6 +67,7 @@ func (t *Transaction) Table(name string) (table.Table, error) {
 
 	return &Table{
 		Bucket: b,
+		codec:  codec,
 	}, nil
 }
 

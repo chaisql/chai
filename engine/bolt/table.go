@@ -10,6 +10,7 @@ import (
 
 type Table struct {
 	Bucket *bolt.Bucket
+	codec  record.Codec
 }
 
 func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
@@ -32,7 +33,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 		rowid = field.EncodeInt64(int64(seq))
 	}
 
-	data, err := record.Encode(r)
+	data, err := t.codec.Encode(r)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 		return nil, table.ErrRecordNotFound
 	}
 
-	return record.EncodedRecord(v), nil
+	return t.codec.Decode(v)
 }
 
 func (t *Table) Delete(rowid []byte) error {
