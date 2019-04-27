@@ -261,6 +261,48 @@ func TestGeneratedRecords(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
+
+		t.Run("List", func(t *testing.T) {
+			db, err := genji.New(memory.NewEngine())
+			require.NoError(t, err)
+
+			err = db.Update(func(tx *genji.Tx) error {
+				tb := testdata.NewBasicStoreWithTx(tx)
+				require.NoError(t, err)
+
+				err = tb.Init()
+				require.NoError(t, err)
+
+				for i := int64(0); i < 10; i++ {
+					_, err = tb.Insert(&testdata.Basic{
+						B: i,
+					})
+					require.NoError(t, err)
+				}
+
+				list, err := tb.List(0, 3)
+				require.NoError(t, err)
+				require.Len(t, list, 3)
+				require.EqualValues(t, 0, list[0].B)
+				require.EqualValues(t, 1, list[1].B)
+				require.EqualValues(t, 2, list[2].B)
+
+				list, err = tb.List(8, 5)
+				require.NoError(t, err)
+				require.Len(t, list, 2)
+				require.EqualValues(t, 8, list[0].B)
+				require.EqualValues(t, 9, list[1].B)
+
+				list, err = tb.List(7, -1)
+				require.NoError(t, err)
+				require.Len(t, list, 3)
+				require.EqualValues(t, 7, list[0].B)
+				require.EqualValues(t, 8, list[1].B)
+				require.EqualValues(t, 9, list[2].B)
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("Pk", func(t *testing.T) {

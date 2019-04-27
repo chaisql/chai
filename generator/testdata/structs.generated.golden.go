@@ -171,6 +171,29 @@ func (b *BasicStore) Delete(rowid []byte) error {
 	return b.store.Delete(rowid)
 }
 
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]Basic, 0, size)
+	err := b.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record Basic
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
 // Field implements the field method of the record.Record interface.
 func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
@@ -334,6 +357,29 @@ func (b *basicStore) Delete(rowid []byte) error {
 	return b.store.Delete(rowid)
 }
 
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func (b *basicStore) List(offset, limit int) ([]basic, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]basic, 0, size)
+	err := b.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record basic
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
 // Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
@@ -457,4 +503,27 @@ func (p *PkStore) Get(pk int64) (*Pk, error) {
 func (p *PkStore) Delete(pk int64) error {
 	rowid := field.EncodeInt64(pk)
 	return p.store.Delete(rowid)
+}
+
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func (p *PkStore) List(offset, limit int) ([]Pk, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]Pk, 0, size)
+	err := p.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record Pk
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
 }

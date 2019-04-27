@@ -195,6 +195,29 @@ func ({{$fl}} *{{$structName}}Store) Delete(pk int64) error {
 {{- end}}
 	return {{$fl}}.store.Delete(rowid)
 }
+
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}}, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]{{$structName}}, 0, size)
+	err := {{$fl}}.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record {{$structName}}
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
 `
 
 type recordContext struct {
