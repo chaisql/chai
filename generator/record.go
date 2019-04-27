@@ -187,7 +187,7 @@ func ({{$fl}} *{{$structName}}Store) Delete(rowid []byte) error {
 {{- else}}
 	{{- if eq .Pk.Type "string"}}
 func ({{$fl}} *{{$structName}}Store) Delete(pk string) error {
-	rowid := string(pk)
+	rowid := []byte(pk)
 	{{- else if eq .Pk.Type "int64"}}
 func ({{$fl}} *{{$structName}}Store) Delete(pk int64) error {
 	rowid := field.EncodeInt64(pk)
@@ -224,7 +224,7 @@ func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName
 {{- else}}
 	{{- if eq .Pk.Type "string"}}
 func ({{$fl}} *{{$structName}}Store) Replace(pk string, record *{{$structName}}) error {
-	rowid := string(pk)
+	rowid := []byte(pk)
 	{{- else if eq .Pk.Type "int64"}}
 func ({{$fl}} *{{$structName}}Store) Replace(pk int64, record *{{$structName}}) error {
 	rowid := field.EncodeInt64(pk)
