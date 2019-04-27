@@ -35,7 +35,7 @@ func (s *Store) Tx(writable bool, fn func(tx *Tx) error) error {
 	tx := s.tx
 	var err error
 
-	if tx != nil {
+	if tx == nil {
 		tx, err = s.db.Begin(writable)
 		if err != nil {
 			return err

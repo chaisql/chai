@@ -16,7 +16,10 @@ func TestTable(t *testing.T) {
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			tb, err := tx.CreateTable("test")
+			err := tx.CreateTable("test")
+			require.NoError(t, err)
+
+			tb, err := tx.Table("test", record.NewCodec())
 			require.NoError(t, err)
 
 			rowid, err := tb.Insert(record.FieldBuffer([]field.Field{
@@ -41,7 +44,10 @@ func TestTable(t *testing.T) {
 		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
-			tb, err := tx.CreateTable("test")
+			err := tx.CreateTable("test")
+			require.NoError(t, err)
+
+			tb, err := tx.Table("test", record.NewCodec())
 			require.NoError(t, err)
 
 			_, err = tx.CreateIndex("test", "name")

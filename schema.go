@@ -3,7 +3,6 @@ package genji
 import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 const (
@@ -44,7 +43,12 @@ func (s *SchemaStore) Init() error {
 
 // Insert a record in the table and return the primary key.
 func (s *SchemaStore) Insert(schema *record.Schema) (rowid []byte, err error) {
-	err = s.store.UpdateTable(func(t table.Table) error {
+	err = s.store.Update(func(tx *Tx) error {
+		t, err := tx.Transaction.Table(schemaTableName, record.NewCodec())
+		if err != nil {
+			return err
+		}
+
 		rowid, err = t.Insert(&record.SchemaRecord{Schema: schema, TableName: schemaTableName})
 		return err
 	})
@@ -57,7 +61,12 @@ func (s *SchemaStore) Get(tableName string) (*record.Schema, error) {
 		Schema: new(record.Schema),
 	}
 
-	err := s.store.ViewTable(func(t table.Table) error {
+	err := s.store.View(func(tx *Tx) error {
+		t, err := tx.Transaction.Table(schemaTableName, record.NewCodec())
+		if err != nil {
+			return err
+		}
+
 		rec, err := t.Record([]byte(tableName))
 		if err != nil {
 			return err
