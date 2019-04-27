@@ -50,7 +50,7 @@ func (s *Store) Tx(writable bool, fn func(tx *Tx) error) error {
 		return err
 	}
 
-	if s.tx == nil {
+	if s.tx == nil && writable {
 		return tx.Commit()
 	}
 
