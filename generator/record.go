@@ -225,9 +225,16 @@ func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName
 	{{- if eq .Pk.Type "string"}}
 func ({{$fl}} *{{$structName}}Store) Replace(pk string, record *{{$structName}}) error {
 	rowid := []byte(pk)
+	if record.{{ .Pk.Name }} == "" && record.{{ .Pk.Name }} != pk {
+		record.{{ .Pk.Name }} = pk
+	}
+
 	{{- else if eq .Pk.Type "int64"}}
 func ({{$fl}} *{{$structName}}Store) Replace(pk int64, record *{{$structName}}) error {
 	rowid := field.EncodeInt64(pk)
+	if record.{{ .Pk.Name }} == 0 && record.{{ .Pk.Name }} != pk {
+		record.{{ .Pk.Name }} = pk
+	}
 	{{- end}}
 {{- end}}
 	return {{$fl}}.store.Replace(rowid, record)

@@ -538,5 +538,8 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 
 func (p *PkStore) Replace(pk int64, record *Pk) error {
 	rowid := field.EncodeInt64(pk)
+	if record.B == 0 && record.B != pk {
+		record.B = pk
+	}
 	return p.store.Replace(rowid, record)
 }
