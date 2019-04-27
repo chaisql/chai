@@ -164,8 +164,7 @@ func TestGeneratedRecords(t *testing.T) {
 		require.Equal(t, 4, i)
 
 		t.Run("Init", func(t *testing.T) {
-			ng := memory.NewEngine()
-			db, err := genji.New(ng)
+			db, err := genji.New(memory.NewEngine())
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
@@ -187,8 +186,7 @@ func TestGeneratedRecords(t *testing.T) {
 		})
 
 		t.Run("Insert", func(t *testing.T) {
-			ng := memory.NewEngine()
-			db, err := genji.New(ng)
+			db, err := genji.New(memory.NewEngine())
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
@@ -210,8 +208,7 @@ func TestGeneratedRecords(t *testing.T) {
 		})
 
 		t.Run("Get", func(t *testing.T) {
-			ng := memory.NewEngine()
-			db, err := genji.New(ng)
+			db, err := genji.New(memory.NewEngine())
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
@@ -237,6 +234,33 @@ func TestGeneratedRecords(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
+
+		t.Run("Delete", func(t *testing.T) {
+			db, err := genji.New(memory.NewEngine())
+			require.NoError(t, err)
+
+			err = db.Update(func(tx *genji.Tx) error {
+				tb := testdata.NewBasicStoreWithTx(tx)
+				require.NoError(t, err)
+
+				err = tb.Init()
+				require.NoError(t, err)
+
+				record1 := testdata.Basic{
+					A: "A",
+					B: 1,
+					C: 2,
+					D: 3,
+				}
+				rowid, err := tb.Insert(&record1)
+				require.NoError(t, err)
+
+				err = tb.Delete(rowid)
+				require.NoError(t, err)
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("Pk", func(t *testing.T) {
@@ -252,8 +276,7 @@ func TestGeneratedRecords(t *testing.T) {
 		require.Equal(t, field.EncodeInt64(10), pk)
 
 		t.Run("Insert", func(t *testing.T) {
-			ng := memory.NewEngine()
-			db, err := genji.New(ng)
+			db, err := genji.New(memory.NewEngine())
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
@@ -275,8 +298,7 @@ func TestGeneratedRecords(t *testing.T) {
 		})
 
 		t.Run("Get", func(t *testing.T) {
-			ng := memory.NewEngine()
-			db, err := genji.New(ng)
+			db, err := genji.New(memory.NewEngine())
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
