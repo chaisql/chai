@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
@@ -56,12 +56,12 @@ func TestMatchers(t *testing.T) {
 	}
 }
 
-func createIndexes(t require.TestingT, ages, teams []indexPair) (engine.Transaction, func()) {
-	ng := memory.NewEngine()
-	tx, err := ng.Begin(true)
+func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func()) {
+	db, err := genji.New(memory.NewEngine())
+	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
-	_, err = tx.CreateTable("test")
+	err = tx.CreateTable("test")
 	require.NoError(t, err)
 
 	createIntIndex(t, tx, ages)
@@ -69,10 +69,11 @@ func createIndexes(t require.TestingT, ages, teams []indexPair) (engine.Transact
 
 	return tx, func() {
 		tx.Rollback()
+		db.Close()
 	}
 }
 
-func createIntIndex(t require.TestingT, tx engine.Transaction, ages []indexPair) {
+func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
 	idx, err := tx.CreateIndex("test", "age")
 	require.NoError(t, err)
 
@@ -82,7 +83,7 @@ func createIntIndex(t require.TestingT, tx engine.Transaction, ages []indexPair)
 	}
 }
 
-func createStrIndex(t require.TestingT, tx engine.Transaction, teams []indexPair) {
+func createStrIndex(t require.TestingT, tx *genji.Tx, teams []indexPair) {
 	idx, err := tx.CreateIndex("test", "team")
 	require.NoError(t, err)
 
@@ -98,7 +99,7 @@ type indexPair struct {
 
 func TestIndexMatchers(t *testing.T) {
 	type indexMatcher interface {
-		MatchIndex(table string, tx engine.Transaction) (*btree.BTree, error)
+		MatchIndex(table string, tx *genji.Tx) (*btree.BTree, error)
 	}
 
 	tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})

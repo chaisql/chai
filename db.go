@@ -77,8 +77,8 @@ func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
 	return err
 }
 
-func (tx Tx) Table(name string, codec record.Codec) (table.Table, error) {
-	tb, err := tx.Transaction.Table(name, codec)
+func (tx Tx) Table(name string) (table.Table, error) {
+	tb, err := tx.Transaction.Table(name, record.NewCodec())
 	if err != nil {
 		return nil, err
 	}

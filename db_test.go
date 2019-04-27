@@ -19,7 +19,7 @@ func TestTable(t *testing.T) {
 			err := tx.CreateTable("test")
 			require.NoError(t, err)
 
-			tb, err := tx.Table("test", record.NewCodec())
+			tb, err := tx.Table("test")
 			require.NoError(t, err)
 
 			rowid, err := tb.Insert(record.FieldBuffer([]field.Field{
@@ -47,7 +47,7 @@ func TestTable(t *testing.T) {
 			err := tx.CreateTable("test")
 			require.NoError(t, err)
 
-			tb, err := tx.Table("test", record.NewCodec())
+			tb, err := tx.Table("test")
 			require.NoError(t, err)
 
 			_, err = tx.CreateIndex("test", "name")

@@ -67,7 +67,7 @@ func (s *Store) Update(fn func(tx *Tx) error) error {
 
 func (s *Store) ViewTable(fn func(table.Table) error) error {
 	return s.View(func(tx *Tx) error {
-		tb, err := tx.Table(s.tableName, record.NewCodec())
+		tb, err := tx.Table(s.tableName)
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func (s *Store) ViewTable(fn func(table.Table) error) error {
 
 func (s *Store) UpdateTable(fn func(table.Table) error) error {
 	return s.Update(func(tx *Tx) error {
-		tb, err := tx.Table(s.tableName, record.NewCodec())
+		tb, err := tx.Table(s.tableName)
 		if err != nil {
 			return err
 		}

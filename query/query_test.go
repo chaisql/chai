@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -12,13 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTable(t require.TestingT, size int) engine.Transaction {
-	ng := memory.NewEngine()
+func createTable(t require.TestingT, size int) (*genji.Tx, func()) {
+	db, err := genji.New(memory.NewEngine())
 
-	tx, err := ng.Begin(true)
+	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
-	tb, err := tx.CreateTable("test")
+	err = tx.CreateTable("test")
+	require.NoError(t, err)
+
+	tb, err := tx.Table("test")
 	require.NoError(t, err)
 
 	for i := 0; i < size; i++ {
@@ -31,14 +34,17 @@ func createTable(t require.TestingT, size int) engine.Transaction {
 		require.NoError(t, err)
 	}
 
-	return tx
+	return tx, func() {
+		tx.Rollback()
+		db.Close()
+	}
 }
 
 func TestQuery(t *testing.T) {
 	t.Run("Select", func(t *testing.T) {
 		t.Run("Ok", func(t *testing.T) {
-			tx := createTable(t, 10)
-			defer tx.Rollback()
+			tx, cleanup := createTable(t, 10)
+			defer cleanup()
 
 			tt, err := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
 			require.NoError(t, err)
@@ -68,7 +74,8 @@ func TestQuery(t *testing.T) {
 func BenchmarkQuery(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
-			tx := createTable(b, size)
+			tx, cleanup := createTable(b, size)
+			defer cleanup()
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {

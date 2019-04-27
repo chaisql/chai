@@ -1,7 +1,7 @@
 package query
 
 import (
-	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
@@ -13,7 +13,7 @@ type FieldSelector interface {
 }
 
 type TableSelector interface {
-	SelectTable(engine.Transaction) (table.Table, error)
+	SelectTable(*genji.Tx) (table.Table, error)
 	Name() string
 }
 
@@ -115,6 +115,6 @@ func (t Table) Name() string {
 	return string(t)
 }
 
-func (t Table) SelectTable(tx engine.Transaction) (table.Table, error) {
+func (t Table) SelectTable(tx *genji.Tx) (table.Table, error) {
 	return tx.Table(string(t))
 }

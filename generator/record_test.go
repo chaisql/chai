@@ -176,7 +176,7 @@ func TestGeneratedRecords(t *testing.T) {
 				require.NoError(t, err)
 
 				// verify table was created
-				tab, err := tx.Table("Basic", record.NewCodec())
+				tab, err := tx.Table("Basic")
 				require.NoError(t, err)
 				require.NotNil(t, tab)
 

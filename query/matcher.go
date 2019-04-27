@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
@@ -27,10 +27,10 @@ func (m *matcher) Match(r record.Record) (bool, error) {
 type IndexMatcher struct {
 	Matcher
 
-	fn func(table string, tx engine.Transaction) (*btree.BTree, error)
+	fn func(table string, tx *genji.Tx) (*btree.BTree, error)
 }
 
-func (m *IndexMatcher) MatchIndex(table string, tx engine.Transaction) (*btree.BTree, error) {
+func (m *IndexMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, error) {
 	return m.fn(table, tx)
 }
 
@@ -166,7 +166,7 @@ func EqInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -185,7 +185,7 @@ func GtInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -204,7 +204,7 @@ func GteInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -223,7 +223,7 @@ func LtInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -242,7 +242,7 @@ func LteInt(f FieldSelector, i int) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -262,7 +262,7 @@ func EqStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -283,7 +283,7 @@ func GtStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -303,7 +303,7 @@ func GteStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -323,7 +323,7 @@ func LtStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -343,7 +343,7 @@ func LteStr(f FieldSelector, s string) *IndexMatcher {
 			}),
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			idx, err := tx.Index(table, f.Name())
 			if err != nil {
 				return nil, err
@@ -368,7 +368,7 @@ func And(matchers ...Matcher) *IndexMatcher {
 			},
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			var set *btree.BTree
 
 			for _, m := range matchers {
@@ -420,7 +420,7 @@ func Or(matchers ...Matcher) *IndexMatcher {
 			},
 		},
 
-		fn: func(table string, tx engine.Transaction) (*btree.BTree, error) {
+		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
 			var set *btree.BTree
 
 			for _, m := range matchers {
