@@ -5,14 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"io"
 	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
-
-	"golang.org/x/tools/imports"
 )
 
 var t *template.Template
@@ -303,6 +302,16 @@ func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
 
 	fmt.Fprintf(&buf, "package %s\n", f.Name.Name)
 
+	fmt.Fprintf(&buf, `
+	import (
+		"errors"
+
+		"github.com/asdine/genji"
+		"github.com/asdine/genji/field"
+		"github.com/asdine/genji/record"
+	)
+	`)
+
 	for _, target := range targets {
 		ctx, err := lookupTarget(f, target)
 		if err != nil {
@@ -316,7 +325,7 @@ func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
 	}
 
 	// format using goimports
-	output, err := imports.Process("", buf.Bytes(), nil)
+	output, err := format.Source(buf.Bytes())
 	if err != nil {
 		return err
 	}
