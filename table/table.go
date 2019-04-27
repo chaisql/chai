@@ -30,6 +30,7 @@ type Reader interface {
 type Writer interface {
 	Insert(record.Record) (rowid []byte, err error)
 	Delete(rowid []byte) error
+	Replace(rowid []byte, r record.Record) error
 }
 
 type Pker interface {
@@ -125,5 +126,19 @@ func (rb *RecordBuffer) Iterate(fn func(rowid []byte, r record.Record) error) er
 	}
 
 	e.Close()
+	return nil
+}
+
+func (rb *RecordBuffer) Replace(rowid []byte, r record.Record) error {
+	if rb.tree == nil {
+		rb.tree = b.TreeNew(bytes.Compare)
+	}
+
+	_, ok := rb.tree.Get(rowid)
+	if !ok {
+		return ErrRecordNotFound
+	}
+
+	rb.tree.Set(rowid, r)
 	return nil
 }

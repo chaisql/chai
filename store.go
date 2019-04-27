@@ -144,7 +144,7 @@ func (s *Store) Get(rowid []byte, scanner record.Scanner) error {
 
 // Delete a record using its primary key.
 func (s *Store) Delete(rowid []byte) error {
-	return s.ViewTable(func(t table.Table) error {
+	return s.UpdateTable(func(t table.Table) error {
 		return t.Delete(rowid)
 	})
 }

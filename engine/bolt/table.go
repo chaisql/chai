@@ -77,3 +77,21 @@ func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 		return fn(k, record.EncodedRecord(v))
 	})
 }
+
+func (t *Table) Replace(rowid []byte, r record.Record) error {
+	if !t.Bucket.Writable() {
+		return engine.ErrTransactionReadOnly
+	}
+
+	v := t.Bucket.Get(rowid)
+	if v == nil {
+		return table.ErrRecordNotFound
+	}
+
+	v, err := t.codec.Encode(r)
+	if err != nil {
+		return err
+	}
+
+	return t.Bucket.Put(rowid, v)
+}
