@@ -42,14 +42,14 @@ func (s *SchemaStore) Init() error {
 }
 
 // Insert a record in the table and return the primary key.
-func (s *SchemaStore) Insert(schema *record.Schema) (rowid []byte, err error) {
+func (s *SchemaStore) Insert(tableName string, schema *record.Schema) (rowid []byte, err error) {
 	err = s.store.Update(func(tx *Tx) error {
 		t, err := tx.Transaction.Table(schemaTableName, record.NewCodec())
 		if err != nil {
 			return err
 		}
 
-		rowid, err = t.Insert(&record.SchemaRecord{Schema: schema, TableName: schemaTableName})
+		rowid, err = t.Insert(&record.SchemaRecord{Schema: schema, TableName: tableName})
 		return err
 	})
 	return

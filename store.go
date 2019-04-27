@@ -100,17 +100,24 @@ func (s *Store) Init() error {
 			return nil
 		}
 
-		if s.schema != nil {
-			schema, err := tx.schemas.Get(s.tableName)
-			if err != nil {
-				return err
-			}
-
-			if !s.schema.Equal(schema) {
-				return errors.New("schema mismatch")
-			}
+		if err != nil {
+			return err
 		}
-		return err
+
+		if s.schema == nil {
+			return nil
+		}
+
+		schema, err := tx.schemas.Get(s.tableName)
+		if err != nil {
+			return err
+		}
+
+		if !s.schema.Equal(schema) {
+			return errors.New("schema mismatch")
+		}
+
+		return nil
 	})
 }
 

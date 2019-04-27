@@ -73,7 +73,7 @@ func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
 		return err
 	}
 
-	_, err = tx.schemas.Insert(schema)
+	_, err = tx.schemas.Insert(name, schema)
 	return err
 }
 
