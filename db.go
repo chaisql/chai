@@ -34,42 +34,12 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 	}, nil
 }
 
-func (db DB) View(fn func(tx *Tx) error) error {
-	tx, err := db.Begin(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	err = fn(tx)
-	if err != nil {
-		return err
-	}
-
-	return tx.Rollback()
-}
-
-func (db DB) Update(fn func(tx *Tx) error) error {
-	tx, err := db.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	err = fn(tx)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
 type Tx struct {
 	engine.Transaction
 }
 
-func (tx Tx) Table(name string) (table.Table, error) {
-	tb, err := tx.Transaction.Table(name)
+func (tx Tx) Table(name string, codec record.Codec) (table.Table, error) {
+	tb, err := tx.Transaction.Table(name, codec)
 	if err != nil {
 		return nil, err
 	}
@@ -88,19 +58,6 @@ func (tx Tx) Table(name string) (table.Table, error) {
 		tx:     tx.Transaction,
 		name:   name,
 		schema: schema,
-	}, nil
-}
-
-func (tx Tx) CreateTable(name string) (table.Table, error) {
-	tb, err := tx.Transaction.CreateTable(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Table{
-		Table: tb,
-		tx:    tx.Transaction,
-		name:  name,
 	}, nil
 }
 
@@ -143,57 +100,4 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	}
 
 	return rowid, nil
-}
-
-type TxRunner interface {
-	View(func(*Tx) error) error
-	Update(func(*Tx) error) error
-}
-
-type TableTxRunner interface {
-	ViewTable(func(table.Table) error) error
-	UpdateTable(func(table.Table) error) error
-}
-
-type tableTxRunner struct {
-	txer      TxRunner
-	tableName string
-}
-
-func NewTableTxRunner(txer TxRunner, tableName string) TableTxRunner {
-	return &tableTxRunner{txer: txer, tableName: tableName}
-}
-
-func (t *tableTxRunner) ViewTable(fn func(table.Table) error) error {
-	return t.txer.View(func(tx *Tx) error {
-		tb, err := tx.Table(t.tableName)
-		if err != nil {
-			return err
-		}
-
-		return fn(tb)
-	})
-}
-
-func (t *tableTxRunner) UpdateTable(fn func(table.Table) error) error {
-	return t.txer.Update(func(tx *Tx) error {
-		tb, err := tx.Table(t.tableName)
-		if err != nil {
-			return err
-		}
-
-		return fn(tb)
-	})
-}
-
-type TxRunnerProxy struct {
-	Tx *Tx
-}
-
-func (t *TxRunnerProxy) View(fn func(*Tx) error) error {
-	return fn(t.Tx)
-}
-
-func (t *TxRunnerProxy) Update(fn func(*Tx) error) error {
-	return fn(t.Tx)
 }
