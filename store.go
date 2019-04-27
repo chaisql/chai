@@ -88,7 +88,12 @@ func (s *Store) UpdateTable(fn func(table.Table) error) error {
 // Init makes sure the table exists. No error is returned if the table already exists.
 func (s *Store) Init() error {
 	return s.Update(func(tx *Tx) error {
-		err := tx.CreateTable(s.tableName)
+		var err error
+		if s.schema != nil {
+			err = tx.CreateTableWithSchema(s.tableName, s.schema)
+		} else {
+			err = tx.CreateTable(s.tableName)
+		}
 		if err == engine.ErrTableAlreadyExists {
 			return nil
 		}

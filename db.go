@@ -29,13 +29,27 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 		return nil, err
 	}
 
-	return &Tx{
+	gtx := Tx{
 		Transaction: tx,
-	}, nil
+	}
+	gtx.schemas = NewSchemaStoreWithTx(&gtx)
+	return &gtx, nil
 }
 
 type Tx struct {
 	engine.Transaction
+
+	schemas *SchemaStore
+}
+
+func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
+	err := tx.Transaction.CreateTable(name)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.schemas.Insert(schema)
+	return err
 }
 
 func (tx Tx) Table(name string, codec record.Codec) (table.Table, error) {
@@ -44,7 +58,7 @@ func (tx Tx) Table(name string, codec record.Codec) (table.Table, error) {
 		return nil, err
 	}
 
-	schema, err := NewSchemaStoreWithTx(&tx).Get(name)
+	schema, err := tx.schemas.Get(name)
 	if err != nil {
 		if err != table.ErrRecordNotFound {
 			return nil, err
