@@ -1,6 +1,8 @@
 package genji
 
 import (
+	"errors"
+
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
@@ -98,6 +100,16 @@ func (s *Store) Init() error {
 			return nil
 		}
 
+		if s.schema != nil {
+			schema, err := tx.schemas.Get(s.tableName)
+			if err != nil {
+				return err
+			}
+
+			if !s.schema.Equal(schema) {
+				return errors.New("schema mismatch")
+			}
+		}
 		return err
 	})
 }

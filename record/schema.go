@@ -49,6 +49,24 @@ func (s *Schema) Validate(rec Record) error {
 	return nil
 }
 
+func (s *Schema) Equal(other *Schema) bool {
+	if len(s.Fields) != len(other.Fields) {
+		return false
+	}
+
+	for i := range s.Fields {
+		if s.Fields[i].Name != other.Fields[i].Name {
+			return false
+		}
+
+		if s.Fields[i].Type != other.Fields[i].Type {
+			return false
+		}
+	}
+
+	return true
+}
+
 type SchemaRecord struct {
 	*Schema
 	TableName string
