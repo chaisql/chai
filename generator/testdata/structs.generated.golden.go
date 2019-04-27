@@ -118,13 +118,12 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 // BasicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type BasicStore struct {
-	store *genji.StaticStore
+	store *genji.Store
 }
 
 // NewBasicStore creates a BasicStore.
 func NewBasicStore(db *genji.DB) *BasicStore {
 	schema := record.Schema{
-		TableName: "Basic",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
@@ -133,13 +132,12 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 		},
 	}
 
-	return &BasicStore{store: genji.NewStaticStore(db, "Basic", schema)}
+	return &BasicStore{store: genji.NewStore(db, "Basic", &schema)}
 }
 
 // NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
 func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 	schema := record.Schema{
-		TableName: "Basic",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
@@ -148,7 +146,7 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 		},
 	}
 
-	return &BasicStore{store: genji.NewStaticStoreWithTx(tx, "Basic", schema)}
+	return &BasicStore{store: genji.NewStoreWithTx(tx, "Basic", &schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
@@ -278,13 +276,12 @@ func (b *basic) ScanRecord(rec record.Record) error {
 // basicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type basicStore struct {
-	store *genji.StaticStore
+	store *genji.Store
 }
 
 // newBasicStore creates a basicStore.
 func newBasicStore(db *genji.DB) *basicStore {
 	schema := record.Schema{
-		TableName: "basic",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
@@ -293,13 +290,12 @@ func newBasicStore(db *genji.DB) *basicStore {
 		},
 	}
 
-	return &basicStore{store: genji.NewStaticStore(db, "basic", schema)}
+	return &basicStore{store: genji.NewStore(db, "basic", &schema)}
 }
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
 func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 	schema := record.Schema{
-		TableName: "basic",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
@@ -308,7 +304,7 @@ func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 		},
 	}
 
-	return &basicStore{store: genji.NewStaticStoreWithTx(tx, "basic", schema)}
+	return &basicStore{store: genji.NewStoreWithTx(tx, "basic", &schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
@@ -401,33 +397,31 @@ func (p *Pk) Pk() ([]byte, error) {
 // PkStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type PkStore struct {
-	store *genji.StaticStore
+	store *genji.Store
 }
 
 // NewPkStore creates a PkStore.
 func NewPkStore(db *genji.DB) *PkStore {
 	schema := record.Schema{
-		TableName: "Pk",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
 		},
 	}
 
-	return &PkStore{store: genji.NewStaticStore(db, "Pk", schema)}
+	return &PkStore{store: genji.NewStore(db, "Pk", &schema)}
 }
 
 // NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
 func NewPkStoreWithTx(tx *genji.Tx) *PkStore {
 	schema := record.Schema{
-		TableName: "Pk",
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
 		},
 	}
 
-	return &PkStore{store: genji.NewStaticStoreWithTx(tx, "Pk", schema)}
+	return &PkStore{store: genji.NewStoreWithTx(tx, "Pk", &schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.

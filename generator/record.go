@@ -104,13 +104,12 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 // {{$structName}}Store manages the table. It provides several typed helpers
 // that simplify common operations.
 type {{$structName}}Store struct {
-	store *genji.StaticStore
+	store *genji.Store
 }
 
 // {{.NameWithPrefix "New"}}Store creates a {{$structName}}Store.
 func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 	schema := record.Schema{
-		TableName: "{{$structName}}",
 		Fields: []field.Field{
 		{{- range .Fields}}
 			{{- if eq .Type "string"}}
@@ -122,13 +121,12 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 		},
 	}
 
-	return &{{$structName}}Store{store: genji.NewStaticStore(db, "{{$structName}}", schema)}
+	return &{{$structName}}Store{store: genji.NewStore(db, "{{$structName}}", &schema)}
 }
 
 // {{.NameWithPrefix "New"}}StoreWithTx creates a {{$structName}}Store valid for the lifetime of the given transaction.
 func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 	schema := record.Schema{
-		TableName: "{{$structName}}",
 		Fields: []field.Field{
 		{{- range .Fields}}
 			{{- if eq .Type "string"}}
@@ -140,7 +138,7 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 		},
 	}
 
-	return &{{$structName}}Store{store: genji.NewStaticStoreWithTx(tx, "{{$structName}}", schema)}
+	return &{{$structName}}Store{store: genji.NewStoreWithTx(tx, "{{$structName}}", &schema)}
 }
 
 // Init makes sure the database exists. No error is returned if the database already exists.
