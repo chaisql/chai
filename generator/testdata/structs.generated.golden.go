@@ -166,6 +166,11 @@ func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 	return &record, b.store.Get(rowid, &record)
 }
 
+// Delete a record using its primary key.
+func (b *BasicStore) Delete(rowid []byte) error {
+	return b.store.Delete(rowid)
+}
+
 // Field implements the field method of the record.Record interface.
 func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
@@ -324,6 +329,11 @@ func (b *basicStore) Get(rowid []byte) (*basic, error) {
 	return &record, b.store.Get(rowid, &record)
 }
 
+// Delete a record using its primary key.
+func (b *basicStore) Delete(rowid []byte) error {
+	return b.store.Delete(rowid)
+}
+
 // Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
@@ -441,4 +451,10 @@ func (p *PkStore) Get(pk int64) (*Pk, error) {
 	rowid := field.EncodeInt64(pk)
 
 	return &record, p.store.Get(rowid, &record)
+}
+
+// Delete a record using its primary key.
+func (p *PkStore) Delete(pk int64) error {
+	rowid := field.EncodeInt64(pk)
+	return p.store.Delete(rowid)
 }

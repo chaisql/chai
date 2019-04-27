@@ -180,6 +180,21 @@ func ({{$fl}} *{{$structName}}Store) Get(pk int64) (*{{$structName}}, error) {
 
 	return &record, {{$fl}}.store.Get(rowid, &record)
 }
+
+// Delete a record using its primary key.
+{{- if eq .Pk.Name ""}}
+func ({{$fl}} *{{$structName}}Store) Delete(rowid []byte) error {
+{{- else}}
+	{{- if eq .Pk.Type "string"}}
+func ({{$fl}} *{{$structName}}Store) Delete(pk string) error {
+	rowid := string(pk)
+	{{- else if eq .Pk.Type "int64"}}
+func ({{$fl}} *{{$structName}}Store) Delete(pk int64) error {
+	rowid := field.EncodeInt64(pk)
+	{{- end}}
+{{- end}}
+	return {{$fl}}.store.Delete(rowid)
+}
 `
 
 type recordContext struct {
