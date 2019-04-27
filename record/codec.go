@@ -19,13 +19,13 @@ type Codec interface {
 type codec struct{}
 
 func NewCodec() Codec {
-	return new(codec)
+	return codec{}
 }
 
-func (c *codec) Decode(data []byte) (Record, error) {
+func (codec) Decode(data []byte) (Record, error) {
 	return EncodedRecord(data), nil
 }
 
-func (c *codec) Encode(r Record) ([]byte, error) {
+func (codec) Encode(r Record) ([]byte, error) {
 	return Encode(r)
 }

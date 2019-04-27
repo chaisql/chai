@@ -135,7 +135,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		defer tx.Rollback()
 
 		// fetch the table and the index
-		tb, err := tx.Table("table1")
+		tb, err := tx.Table("table1", nil)
 		require.NoError(t, err)
 
 		// create index for testing index methods
@@ -174,7 +174,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			{
 				"CreateTable",
 				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table", record.NewCodec()) },
 			},
 			{
 				"CreateIndex",
@@ -249,7 +249,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			{
 				"CreateTable",
 				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table", record.NewCodec()) },
 			},
 			{
 				"CreateIndex",
@@ -298,7 +298,7 @@ func TestTransactionCreateTable(t *testing.T, builder Builder) {
 		err = tx.CreateTable("table")
 		require.NoError(t, err)
 
-		tb, err := tx.Table("table")
+		tb, err := tx.Table("table", record.NewCodec())
 		require.NoError(t, err)
 		require.NotNil(t, tb)
 	})
@@ -328,7 +328,7 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		_, err = tx.Table("table")
+		_, err = tx.Table("table", record.NewCodec())
 		require.Equal(t, engine.ErrTableNotFound, err)
 	})
 
@@ -348,11 +348,11 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// fetch first table
-		ta, err := tx.Table("tablea")
+		ta, err := tx.Table("tablea", record.NewCodec())
 		require.NoError(t, err)
 
 		// fetch second table
-		tb, err := tx.Table("tableb")
+		tb, err := tx.Table("tableb", record.NewCodec())
 		require.NoError(t, err)
 
 		// insert data in first table

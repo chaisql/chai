@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/engine"
 	idx "github.com/asdine/genji/index"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/google/btree"
 )
@@ -102,7 +103,7 @@ func (tx *transaction) Commit() error {
 	return nil
 }
 
-func (tx *transaction) Table(name string) (table.Table, error) {
+func (tx *transaction) Table(name string, _ record.Codec) (table.Table, error) {
 	rb, ok := tx.ng.tables[name]
 	if !ok {
 		return nil, engine.ErrTableNotFound
@@ -116,7 +117,7 @@ func (tx *transaction) CreateTable(name string) error {
 		return engine.ErrTransactionReadOnly
 	}
 
-	_, err := tx.Table(name)
+	_, err := tx.Table(name, nil)
 	if err == nil {
 		return engine.ErrTableAlreadyExists
 	}
@@ -133,7 +134,7 @@ func (tx *transaction) CreateTable(name string) error {
 }
 
 func (tx *transaction) Index(table, name string) (idx.Index, error) {
-	_, err := tx.Table(table)
+	_, err := tx.Table(table, nil)
 	if err != nil {
 		return nil, engine.ErrTableNotFound
 	}
@@ -147,7 +148,7 @@ func (tx *transaction) Index(table, name string) (idx.Index, error) {
 }
 
 func (tx *transaction) Indexes(table string) (map[string]idx.Index, error) {
-	if _, err := tx.Table(table); err != nil {
+	if _, err := tx.Table(table, nil); err != nil {
 		return nil, err
 	}
 
@@ -169,7 +170,7 @@ func (tx *transaction) CreateIndex(table, name string) (idx.Index, error) {
 		return nil, engine.ErrTransactionReadOnly
 	}
 
-	_, err := tx.Table(table)
+	_, err := tx.Table(table, nil)
 	if err != nil {
 		return nil, err
 	}

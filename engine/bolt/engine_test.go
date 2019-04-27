@@ -11,6 +11,7 @@ import (
 	"github.com/asdine/genji/engine/enginetest"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/index/indextest"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/table/tabletest"
 	"github.com/stretchr/testify/require"
@@ -86,7 +87,7 @@ func tableBuilder(t require.TestingT) (func() (table.Table, func()), func()) {
 			err = tx.CreateTable("test")
 			require.NoError(t, err)
 
-			tb, err := tx.Table("test")
+			tb, err := tx.Table("test", record.NewCodec())
 			require.NoError(t, err)
 
 			return tb, func() {
