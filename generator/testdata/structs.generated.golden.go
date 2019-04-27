@@ -193,6 +193,9 @@ func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
 
 	return list, nil
 }
+func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
+	return b.store.Replace(rowid, record)
+}
 
 // Field implements the field method of the record.Record interface.
 func (b *basic) Field(name string) (field.Field, error) {
@@ -379,6 +382,9 @@ func (b *basicStore) List(offset, limit int) ([]basic, error) {
 
 	return list, nil
 }
+func (b *basicStore) Replace(rowid []byte, record *basic) error {
+	return b.store.Replace(rowid, record)
+}
 
 // Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
@@ -526,4 +532,8 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 	}
 
 	return list, nil
+}
+func (p *PkStore) Replace(pk int64, record *Pk) error {
+	rowid := field.EncodeInt64(pk)
+	return p.store.Replace(rowid, record)
 }

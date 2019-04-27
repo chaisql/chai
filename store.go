@@ -179,6 +179,6 @@ func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) e
 // Replace a record by another one.
 func (s *Store) Replace(rowid []byte, r record.Record) error {
 	return s.UpdateTable(func(t table.Table) error {
-		return t.Delete(rowid)
+		return t.Replace(rowid, r)
 	})
 }

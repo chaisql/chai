@@ -218,6 +218,20 @@ func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}},
 
 	return list, nil
 }
+
+{{- if eq .Pk.Name ""}}
+func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName}}) error {
+{{- else}}
+	{{- if eq .Pk.Type "string"}}
+func ({{$fl}} *{{$structName}}Store) Replace(pk string, record *{{$structName}}) error {
+	rowid := string(pk)
+	{{- else if eq .Pk.Type "int64"}}
+func ({{$fl}} *{{$structName}}Store) Replace(pk int64, record *{{$structName}}) error {
+	rowid := field.EncodeInt64(pk)
+	{{- end}}
+{{- end}}
+	return {{$fl}}.store.Replace(rowid, record)
+}
 `
 
 type recordContext struct {

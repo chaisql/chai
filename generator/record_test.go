@@ -303,6 +303,44 @@ func TestGeneratedRecords(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
+
+		t.Run("Replace", func(t *testing.T) {
+			db, err := genji.New(memory.NewEngine())
+			require.NoError(t, err)
+
+			err = db.Update(func(tx *genji.Tx) error {
+				tb := testdata.NewBasicStoreWithTx(tx)
+				require.NoError(t, err)
+
+				err = tb.Init()
+				require.NoError(t, err)
+
+				record1 := testdata.Basic{
+					A: "A",
+					B: 1,
+					C: 2,
+					D: 3,
+				}
+				rowid, err := tb.Insert(&record1)
+				require.NoError(t, err)
+
+				record2 := testdata.Basic{
+					A: "AA",
+					B: 11,
+					C: 22,
+					D: 33,
+				}
+
+				err = tb.Replace(rowid, &record2)
+				require.NoError(t, err)
+
+				rec, err := tb.Get(rowid)
+				require.Equal(t, record2, *rec)
+
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("Pk", func(t *testing.T) {
