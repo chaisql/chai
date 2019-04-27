@@ -219,7 +219,7 @@ func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}},
 	return list, nil
 }
 
-{{- if eq .Pk.Name ""}}
+{{ if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName}}) error {
 {{- else}}
 	{{- if eq .Pk.Type "string"}}
