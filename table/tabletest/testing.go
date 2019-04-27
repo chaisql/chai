@@ -31,6 +31,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"TableReader/Record", TestTableReaderRecord},
 		{"TableWriter/Insert", TestTableWriterInsert},
 		{"TableWriter/Delete", TestTableWriterDelete},
+		{"TableWriter/Replace", TestTableWriterReplace},
 	}
 
 	for _, test := range tests {
@@ -256,5 +257,57 @@ func TestTableWriterDelete(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		_, err = res.Field("fieldc")
 		require.Error(t, err)
+	})
+}
+
+// TestTableWriterReplace verifies Replace behaviour.
+func TestTableWriterReplace(t *testing.T, builder Builder) {
+	t.Run("Should fail if not found", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		err := tb.Replace([]byte("id"), newRecord())
+		require.Equal(t, table.ErrRecordNotFound, err)
+	})
+
+	t.Run("Should replace the right record", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		// create two different records
+		rec1 := newRecord()
+		rec2 := record.FieldBuffer([]field.Field{
+			field.NewString("fielda", "c"),
+			field.NewString("fieldb", "d"),
+		})
+
+		rowid1, err := tb.Insert(rec1)
+		require.NoError(t, err)
+		rowid2, err := tb.Insert(rec2)
+		require.NoError(t, err)
+
+		// create a third record
+		rec3 := record.FieldBuffer([]field.Field{
+			field.NewString("fielda", "e"),
+			field.NewString("fieldb", "f"),
+		})
+
+		// replace rec1 with rec3
+		err = tb.Replace(rowid1, rec3)
+		require.NoError(t, err)
+
+		// make sure it replaced it correctly
+		res, err := tb.Record(rowid1)
+		require.NoError(t, err)
+		f, err := res.Field("fielda")
+		require.NoError(t, err)
+		require.Equal(t, "e", string(f.Data))
+
+		// make sure it didn't also replace the other one
+		res, err = tb.Record(rowid2)
+		require.NoError(t, err)
+		f, err = res.Field("fielda")
+		require.NoError(t, err)
+		require.Equal(t, "c", string(f.Data))
 	})
 }

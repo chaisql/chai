@@ -45,3 +45,20 @@ func (t *tableTx) Delete(rowid []byte) error {
 
 	return t.RecordBuffer.Delete(rowid)
 }
+
+func (t *tableTx) Replace(rowid []byte, r record.Record) error {
+	if !t.tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	old, err := t.RecordBuffer.Record(rowid)
+	if err != nil {
+		return err
+	}
+
+	t.tx.undos = append(t.tx.undos, func() {
+		t.RecordBuffer.Set(rowid, old)
+	})
+
+	return t.RecordBuffer.Replace(rowid, r)
+}
