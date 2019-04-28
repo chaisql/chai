@@ -113,6 +113,7 @@ func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error
 		prefix:   pkey,
 		writable: t.writable,
 		seq:      seq,
+		codec:    codec,
 	}, nil
 }
 
