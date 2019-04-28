@@ -74,7 +74,12 @@ func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 			return nil
 		}
 
-		return fn(k, record.EncodedRecord(v))
+		r, err := t.codec.Decode(v)
+		if err != nil {
+			return err
+		}
+
+		return fn(k, r)
 	})
 }
 

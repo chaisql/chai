@@ -94,6 +94,30 @@ func (t *Table) Delete(rowid []byte) error {
 }
 
 func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchSize = 10
+	it := t.txn.NewIterator(opt)
+	defer it.Close()
+
+	for it.Rewind(); it.Valid(); it.Next() {
+		item := it.Item()
+
+		v, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+
+		r, err := t.codec.Decode(v)
+		if err != nil {
+			return err
+		}
+
+		err = fn(item.Key(), r)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
