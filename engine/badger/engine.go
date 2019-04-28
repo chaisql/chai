@@ -18,7 +18,8 @@ const (
 )
 
 type Engine struct {
-	DB *badger.DB
+	DB   *badger.DB
+	seqs []*badger.Sequence
 }
 
 func NewEngine(opts badger.Options) (*Engine, error) {
@@ -33,28 +34,37 @@ func NewEngine(opts badger.Options) (*Engine, error) {
 }
 
 func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
-	_ = e.DB.NewTransaction(writable)
+	txn := e.DB.NewTransaction(writable)
 
-	return nil, nil
+	return &Transaction{
+		ng:       e,
+		txn:      txn,
+		writable: writable,
+	}, nil
 }
 
 func (e *Engine) Close() error {
+	for _, seq := range e.seqs {
+		_ = seq.Release()
+	}
+
 	return e.DB.Close()
 }
 
 type Transaction struct {
-	tx       *badger.Txn
+	ng       *Engine
+	txn      *badger.Txn
 	writable bool
 }
 
 func (t *Transaction) Rollback() error {
-	t.tx.Discard()
+	t.txn.Discard()
 
 	return nil
 }
 
 func (t *Transaction) Commit() error {
-	return t.tx.Commit()
+	return t.txn.Commit()
 }
 
 func (t *Transaction) CreateTable(name string) error {
@@ -67,7 +77,7 @@ func (t *Transaction) CreateTable(name string) error {
 	}
 
 	key := createTableKey(name)
-	_, err := t.tx.Get(key)
+	_, err := t.txn.Get(key)
 	if err == nil {
 		return engine.ErrTableAlreadyExists
 	}
@@ -75,13 +85,13 @@ func (t *Transaction) CreateTable(name string) error {
 		return err
 	}
 
-	return t.tx.Set(key, nil)
+	return t.txn.Set(key, nil)
 }
 
 func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error) {
 	key := createTableKey(name)
 
-	_, err := t.tx.Get(key)
+	_, err := t.txn.Get(key)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return nil, engine.ErrTableNotFound
@@ -90,9 +100,19 @@ func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error
 		return nil, err
 	}
 
+	pkey := createPrefixKey(name)
+	seq, err := t.ng.DB.GetSequence(pkey, 512)
+	if err != nil {
+		return nil, err
+	}
+
+	t.ng.seqs = append(t.ng.seqs, seq)
+
 	return &Table{
-		tx:     t.tx,
-		prefix: createPrefixKey(name),
+		txn:      t.txn,
+		prefix:   pkey,
+		writable: t.writable,
+		seq:      seq,
 	}, nil
 }
 

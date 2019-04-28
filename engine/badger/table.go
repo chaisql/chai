@@ -1,16 +1,30 @@
 package badger
 
 import (
+	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/dgraph-io/badger"
 )
 
 type Table struct {
-	tx     *badger.Txn
-	prefix []byte
+	txn      *badger.Txn
+	prefix   []byte
+	writable bool
+	seq      *badger.Sequence
 }
 
 func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
+	if !t.writable {
+		return nil, engine.ErrTransactionReadOnly
+	}
+
+	seq, err := t.seq.Next()
+	if err != nil {
+		return nil, err
+	}
+	rowid := field.EncodeInt64(int64(seq))
+
 	return
 }
 
