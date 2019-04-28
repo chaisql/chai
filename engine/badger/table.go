@@ -122,5 +122,24 @@ func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 }
 
 func (t *Table) Replace(rowid []byte, r record.Record) error {
-	return nil
+	if !t.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	key := makeRecordKey(t.prefix, rowid)
+	_, err := t.txn.Get(key)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return table.ErrRecordNotFound
+		}
+
+		return err
+	}
+
+	v, err := t.codec.Encode(r)
+	if err != nil {
+		return err
+	}
+
+	return t.txn.Set(makeRecordKey(t.prefix, rowid), v)
 }
