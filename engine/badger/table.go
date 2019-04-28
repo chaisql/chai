@@ -41,12 +41,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 		return nil, err
 	}
 
-	key := make([]byte, 0, len(t.prefix)+1+len(rowid))
-	key = append(key, t.prefix...)
-	key = append(key, separator)
-	key = append(key, rowid...)
-
-	err = t.txn.Set(key, data)
+	err = t.txn.Set(makeRecordKey(t.prefix, rowid), data)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +49,48 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 	return rowid, nil
 }
 
+func makeRecordKey(prefix, rowid []byte) []byte {
+	key := make([]byte, 0, len(prefix)+1+len(rowid))
+	key = append(key, prefix...)
+	key = append(key, separator)
+	key = append(key, rowid...)
+	return key
+}
+
 func (t *Table) Record(rowid []byte) (record.Record, error) {
-	return nil, nil
+	it, err := t.txn.Get(makeRecordKey(t.prefix, rowid))
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, table.ErrRecordNotFound
+		}
+
+		return nil, err
+	}
+
+	v, err := it.ValueCopy(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return t.codec.Decode(v)
 }
 
 func (t *Table) Delete(rowid []byte) error {
-	return nil
+	if !t.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	key := makeRecordKey(t.prefix, rowid)
+	_, err := t.txn.Get(key)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return table.ErrRecordNotFound
+		}
+
+		return err
+	}
+
+	return t.txn.Delete(key)
 }
 
 func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
