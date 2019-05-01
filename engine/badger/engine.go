@@ -15,6 +15,9 @@ import (
 const (
 	separator     byte = 0x1F
 	tableListName      = "__genji.table"
+	tablePrefix        = 't'
+	indexListName      = "__genji.index"
+	indexPrefix        = 'i'
 )
 
 type Engine struct {
@@ -55,15 +58,27 @@ type Transaction struct {
 	ng       *Engine
 	txn      *badger.Txn
 	writable bool
+
+	discarded bool
 }
 
 func (t *Transaction) Rollback() error {
 	t.txn.Discard()
 
+	t.discarded = true
 	return nil
 }
 
 func (t *Transaction) Commit() error {
+	if t.discarded {
+		return badger.ErrDiscardedTxn
+	}
+
+	if !t.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	t.discarded = true
 	return t.txn.Commit()
 }
 
@@ -76,7 +91,7 @@ func (t *Transaction) CreateTable(name string) error {
 		return fmt.Errorf("table name contains forbidden character at pos %d", idx)
 	}
 
-	key := createTableKey(name)
+	key := makeTableKey(name)
 	_, err := t.txn.Get(key)
 	if err == nil {
 		return engine.ErrTableAlreadyExists
@@ -89,7 +104,7 @@ func (t *Transaction) CreateTable(name string) error {
 }
 
 func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error) {
-	key := createTableKey(name)
+	key := makeTableKey(name)
 
 	_, err := t.txn.Get(key)
 	if err != nil {
@@ -100,7 +115,7 @@ func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error
 		return nil, err
 	}
 
-	pkey := createPrefixKey(name)
+	pkey := makeTablePrefixKey(name)
 	seq, err := t.ng.DB.GetSequence(pkey, 512)
 	if err != nil {
 		return nil, err
@@ -117,7 +132,7 @@ func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error
 	}, nil
 }
 
-func createTableKey(name string) []byte {
+func makeTableKey(name string) []byte {
 	var buf bytes.Buffer
 	buf.Grow(len(tableListName) + 1 + len(name))
 	buf.WriteString(tableListName)
@@ -127,16 +142,81 @@ func createTableKey(name string) []byte {
 	return buf.Bytes()
 }
 
-func createPrefixKey(name string) []byte {
-	prefix := make([]byte, 0, len(name)+1)
+func makeIndexKey(table, field string) []byte {
+	var buf bytes.Buffer
+	buf.Grow(len(indexListName) + 1 + len(table) + 1 + len(field))
+	buf.WriteString(indexListName)
+	buf.WriteByte(separator)
+	buf.WriteString(table)
+	buf.WriteByte(separator)
+	buf.WriteString(field)
+
+	return buf.Bytes()
+}
+
+func makeTablePrefixKey(name string) []byte {
+	prefix := make([]byte, 0, len(name)+3)
+	prefix = append(prefix, tablePrefix)
+	prefix = append(prefix, separator)
 	prefix = append(prefix, name...)
 	prefix = append(prefix, separator)
 
 	return prefix
 }
 
+func makeIndexPrefixKey(table, field string) []byte {
+	prefix := make([]byte, 0, len(table)+len(field)+4)
+	prefix = append(prefix, indexPrefix)
+	prefix = append(prefix, separator)
+	prefix = append(prefix, table...)
+	prefix = append(prefix, separator)
+	prefix = append(prefix, field...)
+	prefix = append(prefix, separator)
+
+	return prefix
+}
+
 func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) {
-	return nil, nil
+	if !t.writable {
+		return nil, engine.ErrTransactionReadOnly
+	}
+
+	key := makeTableKey(table)
+
+	_, err := t.txn.Get(key)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return nil, engine.ErrTableNotFound
+		}
+
+		return nil, err
+	}
+
+	if idx := strings.IndexByte(fieldName, separator); idx != -1 {
+		return nil, fmt.Errorf("index name contains forbidden character at pos %d", idx)
+	}
+
+	key = makeIndexKey(table, fieldName)
+	_, err = t.txn.Get(key)
+	if err == nil {
+		return nil, engine.ErrIndexAlreadyExists
+	}
+	if err != badger.ErrKeyNotFound {
+		return nil, err
+	}
+
+	err = t.txn.Set(key, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pkey := makeIndexPrefixKey(table, fieldName)
+
+	return &Index{
+		txn:      t.txn,
+		prefix:   pkey,
+		writable: t.writable,
+	}, nil
 }
 
 func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
