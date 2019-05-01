@@ -210,13 +210,7 @@ func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) 
 		return nil, err
 	}
 
-	pkey := makeIndexPrefixKey(table, fieldName)
-
-	return &Index{
-		txn:      t.txn,
-		prefix:   pkey,
-		writable: t.writable,
-	}, nil
+	return nil, nil
 }
 
 func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
