@@ -213,6 +213,16 @@ func (*BasicQuerySelector) Table() query.TableSelector {
 	return query.Table("Basic")
 }
 
+// All returns a list of all selectors for Basic.
+func (s *BasicQuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		s.A,
+		s.B,
+		s.C,
+		s.D,
+	}
+}
+
 // BasicResult can be used to store the result of queries.
 // Selected fields must map the Basic fields.
 type BasicResult []Basic
@@ -434,6 +444,16 @@ func (*basicQuerySelector) Table() query.TableSelector {
 	return query.Table("basic")
 }
 
+// All returns a list of all selectors for basic.
+func (s *basicQuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		s.A,
+		s.B,
+		s.C,
+		s.D,
+	}
+}
+
 // basicResult can be used to store the result of queries.
 // Selected fields must map the basic fields.
 type basicResult []basic
@@ -620,6 +640,14 @@ func NewPkQuerySelector() PkQuerySelector {
 // Table returns a query.TableSelector for Pk.
 func (*PkQuerySelector) Table() query.TableSelector {
 	return query.Table("Pk")
+}
+
+// All returns a list of all selectors for Pk.
+func (s *PkQuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		s.A,
+		s.B,
+	}
 }
 
 // PkResult can be used to store the result of queries.

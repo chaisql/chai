@@ -266,6 +266,15 @@ func (*{{$structName}}QuerySelector) Table() query.TableSelector {
 	return query.Table("{{$structName}}")
 }
 
+// All returns a list of all selectors for {{$structName}}.
+func (s *{{$structName}}QuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		{{- range $i, $a := .Fields }}
+		s.{{$a.Name}},
+		{{- end}}
+	}
+}
+
 // {{$structName}}Result can be used to store the result of queries.
 // Selected fields must map the {{$structName}} fields.
 type {{$structName}}Result []{{$structName}}
