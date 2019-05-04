@@ -103,7 +103,7 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 // {{$structName}}Store manages the table. It provides several typed helpers
 // that simplify common operations.
 type {{$structName}}Store struct {
-	store *genji.Store
+	*genji.Store
 }
 
 // {{.NameWithPrefix "New"}}Store creates a {{$structName}}Store.
@@ -120,7 +120,7 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 		},
 	}
 
-	return &{{$structName}}Store{store: genji.NewStore(db, "{{$structName}}", &schema)}
+	return &{{$structName}}Store{Store: genji.NewStore(db, "{{$structName}}", &schema)}
 }
 
 // {{.NameWithPrefix "New"}}StoreWithTx creates a {{$structName}}Store valid for the lifetime of the given transaction.
@@ -137,22 +137,17 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 		},
 	}
 
-	return &{{$structName}}Store{store: genji.NewStoreWithTx(tx, "{{$structName}}", &schema)}
-}
-
-// Init makes sure the database exists. No error is returned if the database already exists.
-func ({{$fl}} *{{$structName}}Store) Init() error {
-	return {{$fl}}.store.Init()
+	return &{{$structName}}Store{Store: genji.NewStoreWithTx(tx, "{{$structName}}", &schema)}
 }
 
 // Insert a record in the table and return the primary key.
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (rowid []byte, err error) {
-	return {{$fl}}.store.Insert(record)
+	return {{$fl}}.Store.Insert(record)
 }
 {{- else }}
 func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (err error) {
-	_, err = {{$fl}}.store.Insert(record)
+	_, err = {{$fl}}.Store.Insert(record)
 	return err
 }
 {{- end}}
@@ -177,13 +172,11 @@ func ({{$fl}} *{{$structName}}Store) Get(pk int64) (*{{$structName}}, error) {
 		{{end}}
 	{{- end}}
 
-	return &record, {{$fl}}.store.Get(rowid, &record)
+	return &record, {{$fl}}.Store.Get(rowid, &record)
 }
 
+{{- if ne .Pk.Name ""}}
 // Delete a record using its primary key.
-{{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Store) Delete(rowid []byte) error {
-{{- else}}
 	{{- if eq .Pk.Type "string"}}
 func ({{$fl}} *{{$structName}}Store) Delete(pk string) error {
 	rowid := []byte(pk)
@@ -191,9 +184,9 @@ func ({{$fl}} *{{$structName}}Store) Delete(pk string) error {
 func ({{$fl}} *{{$structName}}Store) Delete(pk int64) error {
 	rowid := field.EncodeInt64(pk)
 	{{- end}}
-{{- end}}
-	return {{$fl}}.store.Delete(rowid)
+	return {{$fl}}.Store.Delete(rowid)
 }
+{{- end}}
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
 func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}}, error) {
@@ -202,7 +195,7 @@ func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}},
 		size = 0
 	}
 	list := make([]{{$structName}}, 0, size)
-	err := {{$fl}}.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := {{$fl}}.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
 		var record {{$structName}}
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -236,7 +229,7 @@ func ({{$fl}} *{{$structName}}Store) Replace(pk int64, record *{{$structName}}) 
 	}
 	{{- end}}
 {{- end}}
-	return {{$fl}}.store.Replace(rowid, record)
+	return {{$fl}}.Store.Replace(rowid, record)
 }
 
 // {{$structName}}QuerySelector provides helpers for selecting fields from the {{$structName}} structure.

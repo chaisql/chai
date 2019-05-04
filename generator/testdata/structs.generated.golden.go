@@ -120,7 +120,7 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 // BasicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type BasicStore struct {
-	store *genji.Store
+	*genji.Store
 }
 
 // NewBasicStore creates a BasicStore.
@@ -134,7 +134,7 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 		},
 	}
 
-	return &BasicStore{store: genji.NewStore(db, "Basic", &schema)}
+	return &BasicStore{Store: genji.NewStore(db, "Basic", &schema)}
 }
 
 // NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
@@ -148,29 +148,19 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 		},
 	}
 
-	return &BasicStore{store: genji.NewStoreWithTx(tx, "Basic", &schema)}
-}
-
-// Init makes sure the database exists. No error is returned if the database already exists.
-func (b *BasicStore) Init() error {
-	return b.store.Init()
+	return &BasicStore{Store: genji.NewStoreWithTx(tx, "Basic", &schema)}
 }
 
 // Insert a record in the table and return the primary key.
 func (b *BasicStore) Insert(record *Basic) (rowid []byte, err error) {
-	return b.store.Insert(record)
+	return b.Store.Insert(record)
 }
 
 // Get a record using its primary key.
 func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 	var record Basic
 
-	return &record, b.store.Get(rowid, &record)
-}
-
-// Delete a record using its primary key.
-func (b *BasicStore) Delete(rowid []byte) error {
-	return b.store.Delete(rowid)
+	return &record, b.Store.Get(rowid, &record)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -180,7 +170,7 @@ func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
 		size = 0
 	}
 	list := make([]Basic, 0, size)
-	err := b.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := b.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
 		var record Basic
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -197,7 +187,7 @@ func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
 }
 
 func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
-	return b.store.Replace(rowid, record)
+	return b.Store.Replace(rowid, record)
 }
 
 // BasicQuerySelector provides helpers for selecting fields from the Basic structure.
@@ -351,7 +341,7 @@ func (b *basic) ScanRecord(rec record.Record) error {
 // basicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type basicStore struct {
-	store *genji.Store
+	*genji.Store
 }
 
 // newBasicStore creates a basicStore.
@@ -365,7 +355,7 @@ func newBasicStore(db *genji.DB) *basicStore {
 		},
 	}
 
-	return &basicStore{store: genji.NewStore(db, "basic", &schema)}
+	return &basicStore{Store: genji.NewStore(db, "basic", &schema)}
 }
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
@@ -379,29 +369,19 @@ func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 		},
 	}
 
-	return &basicStore{store: genji.NewStoreWithTx(tx, "basic", &schema)}
-}
-
-// Init makes sure the database exists. No error is returned if the database already exists.
-func (b *basicStore) Init() error {
-	return b.store.Init()
+	return &basicStore{Store: genji.NewStoreWithTx(tx, "basic", &schema)}
 }
 
 // Insert a record in the table and return the primary key.
 func (b *basicStore) Insert(record *basic) (rowid []byte, err error) {
-	return b.store.Insert(record)
+	return b.Store.Insert(record)
 }
 
 // Get a record using its primary key.
 func (b *basicStore) Get(rowid []byte) (*basic, error) {
 	var record basic
 
-	return &record, b.store.Get(rowid, &record)
-}
-
-// Delete a record using its primary key.
-func (b *basicStore) Delete(rowid []byte) error {
-	return b.store.Delete(rowid)
+	return &record, b.Store.Get(rowid, &record)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -411,7 +391,7 @@ func (b *basicStore) List(offset, limit int) ([]basic, error) {
 		size = 0
 	}
 	list := make([]basic, 0, size)
-	err := b.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := b.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
 		var record basic
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -428,7 +408,7 @@ func (b *basicStore) List(offset, limit int) ([]basic, error) {
 }
 
 func (b *basicStore) Replace(rowid []byte, record *basic) error {
-	return b.store.Replace(rowid, record)
+	return b.Store.Replace(rowid, record)
 }
 
 // basicQuerySelector provides helpers for selecting fields from the basic structure.
@@ -545,7 +525,7 @@ func (p *Pk) Pk() ([]byte, error) {
 // PkStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type PkStore struct {
-	store *genji.Store
+	*genji.Store
 }
 
 // NewPkStore creates a PkStore.
@@ -557,7 +537,7 @@ func NewPkStore(db *genji.DB) *PkStore {
 		},
 	}
 
-	return &PkStore{store: genji.NewStore(db, "Pk", &schema)}
+	return &PkStore{Store: genji.NewStore(db, "Pk", &schema)}
 }
 
 // NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
@@ -569,17 +549,12 @@ func NewPkStoreWithTx(tx *genji.Tx) *PkStore {
 		},
 	}
 
-	return &PkStore{store: genji.NewStoreWithTx(tx, "Pk", &schema)}
-}
-
-// Init makes sure the database exists. No error is returned if the database already exists.
-func (p *PkStore) Init() error {
-	return p.store.Init()
+	return &PkStore{Store: genji.NewStoreWithTx(tx, "Pk", &schema)}
 }
 
 // Insert a record in the table and return the primary key.
 func (p *PkStore) Insert(record *Pk) (err error) {
-	_, err = p.store.Insert(record)
+	_, err = p.Store.Insert(record)
 	return err
 }
 
@@ -588,13 +563,13 @@ func (p *PkStore) Get(pk int64) (*Pk, error) {
 	var record Pk
 	rowid := field.EncodeInt64(pk)
 
-	return &record, p.store.Get(rowid, &record)
+	return &record, p.Store.Get(rowid, &record)
 }
 
 // Delete a record using its primary key.
 func (p *PkStore) Delete(pk int64) error {
 	rowid := field.EncodeInt64(pk)
-	return p.store.Delete(rowid)
+	return p.Store.Delete(rowid)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -604,7 +579,7 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 		size = 0
 	}
 	list := make([]Pk, 0, size)
-	err := p.store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := p.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
 		var record Pk
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -625,7 +600,7 @@ func (p *PkStore) Replace(pk int64, record *Pk) error {
 	if record.B == 0 && record.B != pk {
 		record.B = pk
 	}
-	return p.store.Replace(rowid, record)
+	return p.Store.Replace(rowid, record)
 }
 
 // PkQuerySelector provides helpers for selecting fields from the Pk structure.
