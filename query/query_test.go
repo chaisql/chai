@@ -46,15 +46,15 @@ func TestQuery(t *testing.T) {
 			tx, cleanup := createTable(t, 10)
 			defer cleanup()
 
-			tt, err := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
-			require.NoError(t, err)
+			res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
+			require.NoError(t, res.Err())
 
-			b := table.NewBrowser(tt)
+			b := table.NewBrowser(res.Table())
 			count, err := b.Count()
 			require.NoError(t, err)
 			require.Equal(t, 7, count)
 
-			err = table.NewBrowser(tt).ForEach(func(rowid []byte, r record.Record) error {
+			err = table.NewBrowser(res.Table()).ForEach(func(rowid []byte, r record.Record) error {
 				_, err := r.Field("id")
 				require.NoError(t, err)
 				_, err = r.Field("name")

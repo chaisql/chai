@@ -9,6 +9,27 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+type QueryResult struct {
+	t   table.Reader
+	err error
+}
+
+func (q QueryResult) Err() error {
+	return q.err
+}
+
+func (q QueryResult) Scan(s table.Scanner) error {
+	if q.err != nil {
+		return q.err
+	}
+
+	return s.ScanTable(q.t)
+}
+
+func (q QueryResult) Table() table.Reader {
+	return q.t
+}
+
 type Query struct {
 	fieldSelectors []FieldSelector
 	tableSelector  TableSelector
@@ -19,20 +40,20 @@ func Select(selectors ...FieldSelector) Query {
 	return Query{fieldSelectors: selectors}
 }
 
-func (q Query) Run(tx *genji.Tx) (table.Reader, error) {
+func (q Query) Run(tx *genji.Tx) QueryResult {
 	if q.tableSelector == nil {
-		return nil, errors.New("missing table selector")
+		return QueryResult{err: errors.New("missing table selector")}
 	}
 
 	t, err := q.tableSelector.SelectTable(tx)
 	if err != nil {
-		return nil, err
+		return QueryResult{err: err}
 	}
 
 	matcher := And(q.matchers...)
 	tree, err := matcher.MatchIndex(q.tableSelector.Name(), tx)
 	if err != nil && err != engine.ErrIndexNotFound {
-		return nil, err
+		return QueryResult{err: err}
 	}
 
 	var b table.Browser
@@ -65,10 +86,10 @@ func (q Query) Run(tx *genji.Tx) (table.Reader, error) {
 	})
 
 	if b.Err() != nil {
-		return nil, b.Err()
+		return QueryResult{err: b.Err()}
 	}
 
-	return b.Reader, nil
+	return QueryResult{t: b.Reader}
 }
 
 func (q Query) Where(matchers ...Matcher) Query {

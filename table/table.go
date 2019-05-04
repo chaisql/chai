@@ -37,6 +37,10 @@ type Pker interface {
 	Pk() ([]byte, error)
 }
 
+type Scanner interface {
+	ScanTable(Reader) error
+}
+
 // RecordBuffer contains a list of records. It implements the Table interface.
 type RecordBuffer struct {
 	tree    *b.Tree
