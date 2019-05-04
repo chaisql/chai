@@ -78,39 +78,21 @@ func (b *Basic) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (b *Basic) ScanRecord(rec record.Record) error {
-	var f field.Field
-	var err error
+	return rec.Iterate(func(f field.Field) error {
+		var err error
 
-	f, err = rec.Field("A")
-	if err == nil {
-		b.A = string(f.Data)
-	}
-
-	f, err = rec.Field("B")
-	if err == nil {
-		b.B, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
+		switch f.Name {
+		case "A":
+			b.A = string(f.Data)
+		case "B":
+			b.B, err = field.DecodeInt64(f.Data)
+		case "C":
+			b.C, err = field.DecodeInt64(f.Data)
+		case "D":
+			b.D, err = field.DecodeInt64(f.Data)
 		}
-	}
-
-	f, err = rec.Field("C")
-	if err == nil {
-		b.C, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
-		}
-	}
-
-	f, err = rec.Field("D")
-	if err == nil {
-		b.D, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return err
+	})
 }
 
 // BasicStore manages the table. It provides several typed helpers
@@ -305,39 +287,21 @@ func (b *basic) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (b *basic) ScanRecord(rec record.Record) error {
-	var f field.Field
-	var err error
+	return rec.Iterate(func(f field.Field) error {
+		var err error
 
-	f, err = rec.Field("A")
-	if err == nil {
-		b.A = string(f.Data)
-	}
-
-	f, err = rec.Field("B")
-	if err == nil {
-		b.B, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
+		switch f.Name {
+		case "A":
+			b.A = string(f.Data)
+		case "B":
+			b.B, err = field.DecodeInt64(f.Data)
+		case "C":
+			b.C, err = field.DecodeInt64(f.Data)
+		case "D":
+			b.D, err = field.DecodeInt64(f.Data)
 		}
-	}
-
-	f, err = rec.Field("C")
-	if err == nil {
-		b.C, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
-		}
-	}
-
-	f, err = rec.Field("D")
-	if err == nil {
-		b.D, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return err
+	})
 }
 
 // basicStore manages the table. It provides several typed helpers
@@ -508,23 +472,17 @@ func (p *Pk) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (p *Pk) ScanRecord(rec record.Record) error {
-	var f field.Field
-	var err error
+	return rec.Iterate(func(f field.Field) error {
+		var err error
 
-	f, err = rec.Field("A")
-	if err == nil {
-		p.A = string(f.Data)
-	}
-
-	f, err = rec.Field("B")
-	if err == nil {
-		p.B, err = field.DecodeInt64(f.Data)
-		if err != nil {
-			return err
+		switch f.Name {
+		case "A":
+			p.A = string(f.Data)
+		case "B":
+			p.B, err = field.DecodeInt64(f.Data)
 		}
-	}
-
-	return nil
+		return err
+	})
 }
 
 // Pk returns the primary key. It implements the table.Pker interface.

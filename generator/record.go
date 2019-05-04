@@ -68,24 +68,21 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
-	var f field.Field
-	var err error
+	return rec.Iterate(func(f field.Field) error {
+		var err error
 
-	{{range .Fields}}
-		f, err = rec.Field("{{.Name}}")
-		if err == nil {
+		switch f.Name {
+		{{- range .Fields}}
+		case "{{.Name}}":
 			{{- if eq .Type "string"}}
 			{{$fl}}.{{.Name}} = string(f.Data)
 			{{- else if eq .Type "int64"}}
 			{{$fl}}.{{.Name}}, err = field.DecodeInt64(f.Data)
-			if err != nil {
-				return err
-			}
 			{{- end}}
+		{{- end}}
 		}
-	{{end}}
-
-	return nil
+		return err
+	})
 }
 
 {{- if ne .Pk.Name ""}}
