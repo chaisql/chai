@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 )
 
 // Field implements the field method of the record.Record interface.
@@ -222,6 +223,24 @@ func (*BasicQuerySelector) Table() query.TableSelector {
 	return query.Table("Basic")
 }
 
+// BasicResult can be used to store the result of queries.
+// Selected fields must map the Basic fields.
+type BasicResult []Basic
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (b *BasicResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record Basic
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*b = append(*b, record)
+		return nil
+	})
+}
+
 // Field implements the field method of the record.Record interface.
 func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
@@ -435,6 +454,24 @@ func (*basicQuerySelector) Table() query.TableSelector {
 	return query.Table("basic")
 }
 
+// basicResult can be used to store the result of queries.
+// Selected fields must map the basic fields.
+type basicResult []basic
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (b *basicResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record basic
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*b = append(*b, record)
+		return nil
+	})
+}
+
 // Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
@@ -608,4 +645,22 @@ func NewPkQuerySelector() PkQuerySelector {
 // Table returns a query.TableSelector for Pk.
 func (*PkQuerySelector) Table() query.TableSelector {
 	return query.Table("Pk")
+}
+
+// PkResult can be used to store the result of queries.
+// Selected fields must map the Pk fields.
+type PkResult []Pk
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (p *PkResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record Pk
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*p = append(*p, record)
+		return nil
+	})
 }
