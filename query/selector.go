@@ -10,6 +10,7 @@ import (
 type FieldSelector interface {
 	SelectField(record.Record) (field.Field, error)
 	Name() string
+	As(string) FieldSelector
 }
 
 type TableSelector interface {

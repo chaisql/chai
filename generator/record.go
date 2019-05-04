@@ -238,6 +238,40 @@ func ({{$fl}} *{{$structName}}Store) Replace(pk int64, record *{{$structName}}) 
 {{- end}}
 	return {{$fl}}.store.Replace(rowid, record)
 }
+
+// {{$structName}}QuerySelector provides helpers for selecting fields from the {{$structName}} structure.
+type {{$structName}}QuerySelector struct{
+{{- range $i, $a := .Fields }}
+	{{- if eq .Type "string"}}
+		{{$a.Name}} query.StrField
+	{{- else if eq .Type "int64"}}
+		{{$a.Name}} query.Int64Field
+	{{- end}}
+{{- end}}
+}
+
+{{- if .IsExported }}
+// New{{$structName}}QuerySelector creates a {{$structName}}QuerySelector.
+func New{{$structName}}QuerySelector() {{$structName}}QuerySelector {
+{{- else}}
+// new{{$structName}}QuerySelector creates a {{$structName}}QuerySelector.
+func new{{.ExportedName}}QuerySelector() {{$structName}}QuerySelector {
+{{- end}}
+	return {{$structName}}QuerySelector{
+		{{- range $i, $a := .Fields }}
+			{{- if eq .Type "string"}}
+				{{$a.Name}}: query.NewStrField("{{$a.Name}}"),
+			{{- else if eq .Type "int64"}}
+				{{$a.Name}}: query.NewInt64Field("{{$a.Name}}"),
+			{{- end}}
+		{{- end}}
+	}
+}
+
+// Table returns a query.TableSelector for {{$structName}}.
+func (*{{$structName}}QuerySelector) Table() query.TableSelector {
+	return query.Table("{{$structName}}")
+}
 `
 
 type recordContext struct {
@@ -308,6 +342,7 @@ func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
 
 		"github.com/asdine/genji"
 		"github.com/asdine/genji/field"
+		"github.com/asdine/genji/query"
 		"github.com/asdine/genji/record"
 	)
 	`)

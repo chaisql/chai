@@ -5,6 +5,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 )
 
@@ -198,6 +199,29 @@ func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
 	return b.store.Replace(rowid, record)
 }
 
+// BasicQuerySelector provides helpers for selecting fields from the Basic structure.
+type BasicQuerySelector struct {
+	A query.StrField
+	B query.Int64Field
+	C query.Int64Field
+	D query.Int64Field
+}
+
+// NewBasicQuerySelector creates a BasicQuerySelector.
+func NewBasicQuerySelector() BasicQuerySelector {
+	return BasicQuerySelector{
+		A: query.NewStrField("A"),
+		B: query.NewInt64Field("B"),
+		C: query.NewInt64Field("C"),
+		D: query.NewInt64Field("D"),
+	}
+}
+
+// Table returns a query.TableSelector for Basic.
+func (*BasicQuerySelector) Table() query.TableSelector {
+	return query.Table("Basic")
+}
+
 // Field implements the field method of the record.Record interface.
 func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
@@ -388,6 +412,29 @@ func (b *basicStore) Replace(rowid []byte, record *basic) error {
 	return b.store.Replace(rowid, record)
 }
 
+// basicQuerySelector provides helpers for selecting fields from the basic structure.
+type basicQuerySelector struct {
+	A query.StrField
+	B query.Int64Field
+	C query.Int64Field
+	D query.Int64Field
+}
+
+// newbasicQuerySelector creates a basicQuerySelector.
+func newBasicQuerySelector() basicQuerySelector {
+	return basicQuerySelector{
+		A: query.NewStrField("A"),
+		B: query.NewInt64Field("B"),
+		C: query.NewInt64Field("C"),
+		D: query.NewInt64Field("D"),
+	}
+}
+
+// Table returns a query.TableSelector for basic.
+func (*basicQuerySelector) Table() query.TableSelector {
+	return query.Table("basic")
+}
+
 // Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
@@ -542,4 +589,23 @@ func (p *PkStore) Replace(pk int64, record *Pk) error {
 		record.B = pk
 	}
 	return p.store.Replace(rowid, record)
+}
+
+// PkQuerySelector provides helpers for selecting fields from the Pk structure.
+type PkQuerySelector struct {
+	A query.StrField
+	B query.Int64Field
+}
+
+// NewPkQuerySelector creates a PkQuerySelector.
+func NewPkQuerySelector() PkQuerySelector {
+	return PkQuerySelector{
+		A: query.NewStrField("A"),
+		B: query.NewInt64Field("B"),
+	}
+}
+
+// Table returns a query.TableSelector for Pk.
+func (*PkQuerySelector) Table() query.TableSelector {
+	return query.Table("Pk")
 }
