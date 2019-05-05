@@ -347,10 +347,14 @@ func (s *recordContext) Unexport(n string) string {
 
 // GenerateRecords parses the given ast, looks for the targets structs
 // and generates complementary code to the given writer.
-func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
+func GenerateRecords(w io.Writer, files []*ast.File, targets []string) error {
+	if !inSamePackage(files) {
+		return errors.New("input files must belong to the same package")
+	}
+
 	var buf bytes.Buffer
 
-	fmt.Fprintf(&buf, "package %s\n", f.Name.Name)
+	fmt.Fprintf(&buf, "package %s\n", files[0].Name.Name)
 
 	fmt.Fprintf(&buf, `
 	import (
@@ -365,7 +369,7 @@ func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
 	`)
 
 	for _, target := range targets {
-		ctx, err := lookupTarget(f, target)
+		ctx, err := lookupTarget(files, target)
 		if err != nil {
 			return err
 		}
@@ -386,62 +390,77 @@ func GenerateRecords(w io.Writer, f *ast.File, targets ...string) error {
 	return err
 }
 
-func lookupTarget(f *ast.File, target string) (*recordContext, error) {
+func inSamePackage(files []*ast.File) bool {
+	var pkg string
+
+	for _, f := range files {
+		if pkg != "" && pkg != f.Name.Name {
+			return false
+		}
+		pkg = f.Name.Name
+	}
+
+	return true
+}
+
+func lookupTarget(files []*ast.File, target string) (*recordContext, error) {
 	var ctx recordContext
 
-	for _, n := range f.Decls {
-		gn, ok := ast.Node(n).(*ast.GenDecl)
-		if !ok || gn.Tok != token.TYPE || len(gn.Specs) == 0 {
-			continue
-		}
+	for _, f := range files {
+		for _, n := range f.Decls {
+			gn, ok := ast.Node(n).(*ast.GenDecl)
+			if !ok || gn.Tok != token.TYPE || len(gn.Specs) == 0 {
+				continue
+			}
 
-		ts, ok := gn.Specs[0].(*ast.TypeSpec)
-		if !ok {
-			continue
-		}
-
-		if ts.Name.Name != target {
-			continue
-		}
-
-		s, ok := ts.Type.(*ast.StructType)
-		if !ok {
-			return nil, errors.New("invalid object")
-		}
-
-		ctx.Name = target
-
-		for _, fd := range s.Fields.List {
-			typ, ok := fd.Type.(*ast.Ident)
+			ts, ok := gn.Specs[0].(*ast.TypeSpec)
 			if !ok {
-				return nil, errors.New("struct must only contain supported fields")
+				continue
 			}
 
-			if len(fd.Names) == 0 {
-				return nil, errors.New("embedded fields are not supported")
+			if ts.Name.Name != target {
+				continue
 			}
 
-			if typ.Name != "int64" && typ.Name != "string" {
-				return nil, fmt.Errorf("unsupported type %s", typ.Name)
+			s, ok := ts.Type.(*ast.StructType)
+			if !ok {
+				return nil, errors.New("invalid object")
 			}
 
-			for _, name := range fd.Names {
-				ctx.Fields = append(ctx.Fields, struct {
-					Name, Type string
-				}{
-					name.String(), string(typ.Name),
-				})
-			}
+			ctx.Name = target
 
-			if fd.Tag != nil {
-				err := handleGenjiTag(&ctx, fd)
-				if err != nil {
-					return nil, err
+			for _, fd := range s.Fields.List {
+				typ, ok := fd.Type.(*ast.Ident)
+				if !ok {
+					return nil, errors.New("struct must only contain supported fields")
+				}
+
+				if len(fd.Names) == 0 {
+					return nil, errors.New("embedded fields are not supported")
+				}
+
+				if typ.Name != "int64" && typ.Name != "string" {
+					return nil, fmt.Errorf("unsupported type %s", typ.Name)
+				}
+
+				for _, name := range fd.Names {
+					ctx.Fields = append(ctx.Fields, struct {
+						Name, Type string
+					}{
+						name.String(), string(typ.Name),
+					})
+				}
+
+				if fd.Tag != nil {
+					err := handleGenjiTag(&ctx, fd)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
-		}
 
-		return &ctx, nil
+			return &ctx, nil
+		}
 	}
 
 	return nil, fmt.Errorf("struct %s not found", target)

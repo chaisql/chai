@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -33,7 +34,7 @@ func TestGenerateRecord(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecords(&buf, f, targets...)
+		err = GenerateRecords(&buf, []*ast.File{f}, targets)
 		require.NoError(t, err)
 
 		gp := "testdata/structs.generated.golden.go"
@@ -75,7 +76,7 @@ func TestGenerateRecord(t *testing.T) {
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = GenerateRecords(&buf, f, "User")
+				err = GenerateRecords(&buf, []*ast.File{f}, []string{"User"})
 				require.Error(t, err)
 			})
 		}
@@ -91,7 +92,7 @@ func TestGenerateRecord(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecords(&buf, f, "User")
+		err = GenerateRecords(&buf, []*ast.File{f}, []string{"User"})
 		require.Error(t, err)
 	})
 
@@ -115,7 +116,7 @@ func TestGenerateRecord(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecords(&buf, f, "S")
+		err = GenerateRecords(&buf, []*ast.File{f}, []string{"S"})
 		require.Error(t, err)
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -15,18 +16,31 @@ import (
 	"github.com/pkg/errors"
 )
 
+type stringFlags []string
+
+func (i *stringFlags) String() string {
+	return "list of strings"
+}
+
+func (i *stringFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 func main() {
-	f := flag.String("f", "", "path of the file to parse")
-	t := flag.String("t", "", "comma separated list of targeted struct names")
+	var files, records, results stringFlags
 
-	flag.CommandLine.Usage = exitRecordUsage
-	flag.CommandLine.Parse(os.Args[1:])
+	flag.Var(&files, "f", "path of the files to parse")
+	flag.Var(&records, "rec", "name of the record structure")
+	flag.Var(&results, "res", "name of the result structure, optional")
 
-	if *f == "" || *t == "" {
+	flag.Parse()
+
+	if len(files) == 0 || len(records) == 0 {
 		exitRecordUsage()
 	}
 
-	err := generate(*f, *t)
+	err := generate(files, records, results)
 	if err != nil {
 		fail("%v\n", err)
 	}
@@ -38,26 +52,34 @@ func fail(format string, a ...interface{}) {
 }
 
 func exitRecordUsage() {
-	fmt.Fprintf(os.Stderr, "Usage: genji [options]\n\nOptions:\n")
-	flag.PrintDefaults()
+	flag.Usage()
 	os.Exit(2)
 }
 
-func generate(f, t string) error {
-	fset := token.NewFileSet()
-	af, err := parser.ParseFile(fset, f, nil, 0)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse file")
+func generate(files []string, records []string, results []string) error {
+	if !areGoFiles(files) {
+		return errors.New("input files must be Go files")
+	}
+
+	pfiles := make([]*ast.File, len(files))
+
+	for i, f := range files {
+		fset := token.NewFileSet()
+		af, err := parser.ParseFile(fset, f, nil, 0)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse file")
+		}
+		pfiles[i] = af
 	}
 
 	var buf bytes.Buffer
-	err = generator.GenerateRecords(&buf, af, strings.Split(t, ",")...)
+	err := generator.GenerateRecords(&buf, pfiles, records)
 	if err != nil {
 		return err
 	}
 
-	suffix := filepath.Ext(f)
-	base := strings.TrimSuffix(f, suffix)
+	suffix := filepath.Ext(files[0])
+	base := strings.TrimSuffix(files[0], suffix)
 	if strings.HasSuffix(base, "_test") {
 		base = strings.TrimSuffix(base, "_test")
 		suffix = "_test" + suffix
@@ -70,4 +92,14 @@ func generate(f, t string) error {
 	}
 
 	return nil
+}
+
+func areGoFiles(files []string) bool {
+	for _, f := range files {
+		if filepath.Ext(f) != ".go" {
+			return false
+		}
+	}
+
+	return true
 }
