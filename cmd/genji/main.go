@@ -29,10 +29,12 @@ func (i *stringFlags) Set(value string) error {
 
 func main() {
 	var files, records, results stringFlags
+	var output string
 
 	flag.Var(&files, "f", "path of the files to parse")
 	flag.Var(&records, "rec", "name of the record structure")
 	flag.Var(&results, "res", "name of the result structure, optional")
+	flag.StringVar(&output, "o", "", "name of the generated file, optional")
 
 	flag.Parse()
 
@@ -40,7 +42,7 @@ func main() {
 		exitRecordUsage()
 	}
 
-	err := generate(files, records, results)
+	err := generate(files, records, results, output)
 	if err != nil {
 		fail("%v\n", err)
 	}
@@ -56,7 +58,7 @@ func exitRecordUsage() {
 	os.Exit(2)
 }
 
-func generate(files []string, records []string, results []string) error {
+func generate(files []string, records []string, results []string, output string) error {
 	if !areGoFiles(files) {
 		return errors.New("input files must be Go files")
 	}
@@ -78,17 +80,19 @@ func generate(files []string, records []string, results []string) error {
 		return err
 	}
 
-	suffix := filepath.Ext(files[0])
-	base := strings.TrimSuffix(files[0], suffix)
-	if strings.HasSuffix(base, "_test") {
-		base = strings.TrimSuffix(base, "_test")
-		suffix = "_test" + suffix
+	if output == "" {
+		suffix := filepath.Ext(files[0])
+		base := strings.TrimSuffix(files[0], suffix)
+		if strings.HasSuffix(base, "_test") {
+			base = strings.TrimSuffix(base, "_test")
+			suffix = "_test" + suffix
+		}
+		output = base + ".genji" + suffix
 	}
-	genPath := base + ".genji" + suffix
 
-	err = ioutil.WriteFile(genPath, buf.Bytes(), 0644)
+	err = ioutil.WriteFile(output, buf.Bytes(), 0644)
 	if err != nil {
-		return errors.Wrapf(err, "failed to generate file at location %s", genPath)
+		return errors.Wrapf(err, "failed to generate file at location %s", output)
 	}
 
 	return nil
