@@ -30,12 +30,14 @@ const recordTmpl = `
 {{ template "store" . }}
 {{ template "query-selector" . }}
 {{ template "result" . }}
-
 {{ end }}
 `
 
 const recordFieldTmpl = `
 {{ define "record-Field" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 // Field implements the field method of the record.Record interface.
 func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	switch name {
@@ -64,6 +66,9 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 
 const recordIterateTmpl = `
 {{ define "record-Iterate" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
 func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
@@ -85,6 +90,9 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
 
 const recordScanRecordTmpl = `
 {{ define "record-ScanRecord" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
@@ -109,6 +117,9 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 
 const recordPkTmpl = `
 {{ define "record-Pk" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 {{- if ne .Pk.Name ""}}
 // Pk returns the primary key. It implements the table.Pker interface.
 func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {

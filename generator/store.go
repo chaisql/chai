@@ -16,6 +16,9 @@ const storeTmpl = `
 
 const storeStructTmpl = `
 {{ define "store-Struct" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 // {{$structName}}Store manages the table. It provides several typed helpers
 // that simplify common operations.
 type {{$structName}}Store struct {
@@ -26,6 +29,9 @@ type {{$structName}}Store struct {
 
 const storeNewTmpl = `
 {{ define "store-New" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 // {{.NameWithPrefix "New"}}Store creates a {{$structName}}Store.
 func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 	schema := record.Schema{
@@ -47,6 +53,8 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 
 const storeNewWithTxTmpl = `
 {{ define "store-NewWithTx" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 // {{.NameWithPrefix "New"}}StoreWithTx creates a {{$structName}}Store valid for the lifetime of the given transaction.
 func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 	schema := record.Schema{
@@ -68,6 +76,8 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 
 const storeInsertTmpl = `
 {{ define "store-Insert" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 // Insert a record in the table and return the primary key.
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (rowid []byte, err error) {
@@ -84,6 +94,8 @@ func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (err error)
 
 const storeGetTmpl = `
 {{ define "store-Get" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 // Get a record using its primary key.
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Get(rowid []byte) (*{{$structName}}, error) {
@@ -111,6 +123,9 @@ func ({{$fl}} *{{$structName}}Store) Get(pk int64) (*{{$structName}}, error) {
 
 const storeDeleteTmpl = `
 {{ define "store-Delete" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
 {{- if ne .Pk.Name ""}}
 // Delete a record using its primary key.
 	{{- if eq .Pk.Type "string"}}
@@ -128,6 +143,8 @@ func ({{$fl}} *{{$structName}}Store) Delete(pk int64) error {
 
 const storeListTmpl = `
 {{ define "store-List" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
 func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}}, error) {
 	size := limit
@@ -155,6 +172,8 @@ func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}},
 
 const storeReplaceTmpl = `
 {{ define "store-Replace" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 {{ if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName}}) error {
 {{- else}}
