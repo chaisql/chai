@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"io"
@@ -13,6 +14,12 @@ import (
 const tmpl = `
 {{ define "base" }}
 package {{ .Pkg }}
+
+imports (
+	{{ range .Imports }}
+	"{{ . }}"
+	{{ end }}
+)
 
 {{ template "records" . }}
 {{ template "results" . }}
@@ -78,7 +85,22 @@ func Generate(w io.Writer, opts Options) error {
 
 	gctx.selectImports()
 
-	return nil
+	var buf bytes.Buffer
+
+	// generate code
+	err = t.Execute(&buf, &gctx)
+	if err != nil {
+		return err
+	}
+
+	// format using goimports
+	output, err := format.Source(buf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(output)
+	return err
 }
 
 func readSources(srcs []io.Reader) ([]*ast.File, error) {
