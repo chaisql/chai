@@ -7,6 +7,7 @@ import (
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
@@ -125,7 +126,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// create index for testing index methods
-		_, err = tx.CreateIndex("table1", "idx")
+		err = tx.CreateIndex("table1", "idx")
 		require.NoError(t, err)
 		err = tx.Commit()
 		require.NoError(t, err)
@@ -148,7 +149,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			fn   func(*error)
 		}{
 			{"CreateTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateTable("table") }},
-			{"CreateIndex", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tx.CreateIndex("table", "idx") }},
+			{"CreateIndex", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateIndex("table", "idx") }},
 			{"TableInsert", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tb.Insert(record.FieldBuffer{}) }},
 			{"TableDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Delete([]byte("id")) }},
 			{"TableReplace", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Replace([]byte("id"), record.FieldBuffer{}) }},
@@ -186,7 +187,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 						return
 					}
 
-					_, *err = tx.CreateIndex("table", "idx")
+					*err = tx.CreateIndex("table", "idx")
 				},
 				func(tx engine.Transaction, err *error) { _, *err = tx.Index("table", "idx") },
 			},
@@ -261,7 +262,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 						return
 					}
 
-					_, *err = tx.CreateIndex("table", "idx")
+					*err = tx.CreateIndex("table", "idx")
 				},
 				func(tx engine.Transaction, err *error) { _, *err = tx.Index("table", "idx") },
 			},
@@ -385,7 +386,10 @@ func TestTransactionCreateIndex(t *testing.T, builder Builder) {
 		err = tx.CreateTable("table")
 		require.NoError(t, err)
 
-		idx, err := tx.CreateIndex("table", "idx")
+		err = tx.CreateIndex("table", "idx")
+		require.NoError(t, err)
+
+		idx, err := tx.Index("table", "idx")
 		require.NoError(t, err)
 		require.NotEmpty(t, idx)
 	})
@@ -401,10 +405,10 @@ func TestTransactionCreateIndex(t *testing.T, builder Builder) {
 		err = tx.CreateTable("table")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("table", "idx")
+		err = tx.CreateIndex("table", "idx")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("table", "idx")
+		err = tx.CreateIndex("table", "idx")
 		require.Equal(t, engine.ErrIndexAlreadyExists, err)
 	})
 
@@ -416,7 +420,7 @@ func TestTransactionCreateIndex(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		_, err = tx.CreateIndex("table", "idx")
+		err = tx.CreateIndex("table", "idx")
 		require.Equal(t, engine.ErrTableNotFound, err)
 	})
 }
@@ -465,14 +469,17 @@ func TestTransactionIndex(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// create four indexes
-		idxaa, err := tx.CreateIndex("tablea", "idxa")
-		require.NoError(t, err)
-		idxab, err := tx.CreateIndex("tablea", "idxb")
-		require.NoError(t, err)
-		idxba, err := tx.CreateIndex("tableb", "idxa")
-		require.NoError(t, err)
-		idxbb, err := tx.CreateIndex("tableb", "idxb")
-		require.NoError(t, err)
+		createFn := func(table, field string) index.Index {
+			err = tx.CreateIndex(table, field)
+			require.NoError(t, err)
+			idx, err := tx.Index(table, field)
+			require.NoError(t, err)
+			return idx
+		}
+		idxaa := createFn("tablea", "idxa")
+		idxab := createFn("tablea", "idxb")
+		idxba := createFn("tableb", "idxa")
+		idxbb := createFn("tableb", "idxb")
 
 		// fetch first index
 		res, err := tx.Index("tablea", "idxa")
@@ -539,9 +546,9 @@ func TestTransactionIndexes(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// create two indexes for the same table
-		_, err = tx.CreateIndex("table", "idx1")
+		err = tx.CreateIndex("table", "idx1")
 		require.NoError(t, err)
-		_, err = tx.CreateIndex("table", "idx2")
+		err = tx.CreateIndex("table", "idx2")
 		require.NoError(t, err)
 
 		m, err := tx.Indexes("table")
