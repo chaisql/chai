@@ -74,7 +74,9 @@ func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func
 }
 
 func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
-	idx, err := tx.CreateIndex("test", "age")
+	err := tx.CreateIndex("test", "age")
+	require.NoError(t, err)
+	idx, err := tx.Index("test", "age")
 	require.NoError(t, err)
 
 	for _, pair := range ages {
@@ -84,7 +86,9 @@ func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
 }
 
 func createStrIndex(t require.TestingT, tx *genji.Tx, teams []indexPair) {
-	idx, err := tx.CreateIndex("test", "team")
+	err := tx.CreateIndex("test", "team")
+	require.NoError(t, err)
+	idx, err := tx.Index("test", "team")
 	require.NoError(t, err)
 
 	for _, pair := range teams {

@@ -120,7 +120,7 @@ func (s *Store) Init() error {
 
 		if s.indexes != nil {
 			for _, fname := range s.indexes {
-				_, err = tx.CreateIndex(s.tableName, fname)
+				err = tx.CreateIndex(s.tableName, fname)
 				if err != nil && err != engine.ErrIndexAlreadyExists {
 					return err
 				}

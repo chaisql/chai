@@ -50,7 +50,7 @@ func TestTable(t *testing.T) {
 			tb, err := tx.Table("test")
 			require.NoError(t, err)
 
-			_, err = tx.CreateIndex("test", "name")
+			err = tx.CreateIndex("test", "name")
 			require.NoError(t, err)
 
 			rowid, err := tb.Insert(record.FieldBuffer([]field.Field{
