@@ -13,6 +13,14 @@ import (
 	"unicode"
 )
 
+const recordsTmpl = `
+{{ define "records" }}
+  {{ range .Records }}
+    {{ template "record" . }}
+  {{ end }}
+{{ end }}
+`
+
 const recordTmpl = `
 {{ define "record" }}
 {{ template "record-Field" . }}

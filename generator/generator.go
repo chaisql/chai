@@ -24,6 +24,7 @@ var t *template.Template
 
 func init() {
 	templates := map[string]string{
+		"records":              recordsTmpl,
 		"record":               recordTmpl,
 		"record-Field":         recordFieldTmpl,
 		"record-Iterate":       recordIterateTmpl,
