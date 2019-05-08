@@ -1,13 +1,10 @@
 package generator
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/format"
 	"go/token"
-	"io"
 	"strconv"
 	"strings"
 	"unicode"
@@ -245,64 +242,6 @@ func (s *recordContext) Unexport(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToLower(rune(n[0])))
 	return string(name)
-}
-
-// GenerateRecords parses the given asts, looks for the targets structs
-// and generates complementary code to the given writer.
-func GenerateRecords(w io.Writer, files []*ast.File, targets []string) error {
-	if !inSamePackage(files) {
-		return errors.New("input files must belong to the same package")
-	}
-
-	var buf bytes.Buffer
-
-	fmt.Fprintf(&buf, "package %s\n", files[0].Name.Name)
-
-	fmt.Fprintf(&buf, `
-	import (
-		"errors"
-
-		"github.com/asdine/genji"
-		"github.com/asdine/genji/field"
-		"github.com/asdine/genji/query"
-		"github.com/asdine/genji/record"
-		"github.com/asdine/genji/table"
-	)
-	`)
-
-	for range targets {
-		// ctx, err := lookupRecord(files, target)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// err = t.Execute(&buf, &ctx)
-		// if err != nil {
-		// 	return err
-		// }
-	}
-
-	// format using goimports
-	output, err := format.Source(buf.Bytes())
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(output)
-	return err
-}
-
-func inSamePackage(files []*ast.File) bool {
-	var pkg string
-
-	for _, f := range files {
-		if pkg != "" && pkg != f.Name.Name {
-			return false
-		}
-		pkg = f.Name.Name
-	}
-
-	return true
 }
 
 func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {

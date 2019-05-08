@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
+	"io"
 	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/asdine/genji"
@@ -21,20 +21,22 @@ import (
 
 var update = flag.Bool("update", false, "update .golden file")
 
-func TestGenerateRecord(t *testing.T) {
+func TestGenerate(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
-		targets := []string{
+		records := []string{
 			"Basic",
 			"basic",
 			"Pk",
 		}
 
-		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, "testdata/structs.go", nil, 0)
+		f, err := os.Open("testdata/structs.go")
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = GenerateRecords(&buf, []*ast.File{f}, targets)
+		err = Generate(&buf, Options{
+			Sources: []io.Reader{f},
+			Records: records,
+		})
 		require.NoError(t, err)
 
 		gp := "testdata/structs.generated.golden.go"
@@ -71,12 +73,11 @@ func TestGenerateRecord(t *testing.T) {
 					}
 				`
 
-				fset := token.NewFileSet()
-				f, err := parser.ParseFile(fset, "", src, 0)
-				require.NoError(t, err)
-
 				var buf bytes.Buffer
-				err = GenerateRecords(&buf, []*ast.File{f}, []string{"User"})
+				err := Generate(&buf, Options{
+					Sources: []io.Reader{strings.NewReader(src)},
+					Records: []string{"User"},
+				})
 				require.Error(t, err)
 			})
 		}
@@ -87,12 +88,11 @@ func TestGenerateRecord(t *testing.T) {
 			package user
 		`
 
-		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, "", src, 0)
-		require.NoError(t, err)
-
 		var buf bytes.Buffer
-		err = GenerateRecords(&buf, []*ast.File{f}, []string{"User"})
+		err := Generate(&buf, Options{
+			Sources: []io.Reader{strings.NewReader(src)},
+			Records: []string{"User"},
+		})
 		require.Error(t, err)
 	})
 
@@ -110,13 +110,11 @@ func TestGenerateRecord(t *testing.T) {
 				var s S
 			}
 		`
-
-		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, "", src, 0)
-		require.NoError(t, err)
-
 		var buf bytes.Buffer
-		err = GenerateRecords(&buf, []*ast.File{f}, []string{"S"})
+		err := Generate(&buf, Options{
+			Sources: []io.Reader{strings.NewReader(src)},
+			Records: []string{"S"},
+		})
 		require.Error(t, err)
 	})
 }

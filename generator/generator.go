@@ -65,6 +65,8 @@ type Options struct {
 	Results []string
 }
 
+// Generate parses the given asts, looks for the targets structs
+// and generates complementary code to the given writer.
 func Generate(w io.Writer, opts Options) error {
 	var gctx genContext
 
