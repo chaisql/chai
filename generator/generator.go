@@ -23,6 +23,7 @@ import (
 )
 
 {{ template "records" . }}
+{{ template "results" . }}
 
 {{- end }}
 `
@@ -51,6 +52,7 @@ func init() {
 		"query-SelectorNew":    querySelectorNewTmpl,
 		"query-SelectorTable":  querySelectorTableTmpl,
 		"query-SelectorAll":    querySelectorAllTmpl,
+		"results":              resultsTmpl,
 		"result":               resultTmpl,
 	}
 
@@ -137,7 +139,7 @@ type genContext struct {
 	Pkg     string
 	Imports []string
 	Records []recordContext
-	Results []resultContext
+	Results []recordContext
 }
 
 func (g *genContext) readPackage(srcs []*ast.File) error {
@@ -159,6 +161,19 @@ func (g *genContext) readTargets(srcs []*ast.File, opts *Options) error {
 	for i := range opts.Records {
 		for _, src := range srcs {
 			ok, err := g.Records[i].lookupRecord(src, opts.Records[i])
+			if err != nil {
+				return err
+			}
+			if ok {
+				break
+			}
+		}
+	}
+
+	g.Results = make([]recordContext, len(opts.Results))
+	for i := range opts.Results {
+		for _, src := range srcs {
+			ok, err := g.Results[i].lookupRecord(src, opts.Results[i])
 			if err != nil {
 				return err
 			}

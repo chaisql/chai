@@ -5,10 +5,20 @@ import (
 	"io"
 )
 
+const resultsTmpl = `
+{{- define "results" }}
+  {{- range .Results }}
+	{{- template "record-ScanRecord" . }}
+    {{- template "result" . }}
+  {{- end }}
+{{- end }}
+`
+
 const resultTmpl = `
 {{ define "result" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
+
 // {{$structName}}Result can be used to store the result of queries.
 // Selected fields must map the {{$structName}} fields.
 type {{$structName}}Result []{{$structName}}
@@ -28,16 +38,6 @@ func ({{$fl}} *{{$structName}}Result) ScanTable(tr table.Reader) error {
 }
 {{ end }}
 `
-
-type resultContext struct {
-	Name   string
-	Fields []struct {
-		Name, Type string
-	}
-	Pk struct {
-		Name, Type string
-	}
-}
 
 // GenerateResults parses the given asts, looks for the targets structs
 // and generates complementary code to the given writer.

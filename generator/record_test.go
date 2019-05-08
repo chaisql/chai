@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -29,6 +30,10 @@ func TestGenerate(t *testing.T) {
 			"Pk",
 		}
 
+		results := []string{
+			"Sample",
+		}
+
 		f, err := os.Open("testdata/structs.go")
 		require.NoError(t, err)
 
@@ -36,6 +41,7 @@ func TestGenerate(t *testing.T) {
 		err = Generate(&buf, Options{
 			Sources: []io.Reader{f},
 			Records: records,
+			Results: results,
 		})
 		require.NoError(t, err)
 
@@ -402,5 +408,27 @@ func TestGeneratedRecords(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
+	})
+
+	t.Run("Result", func(t *testing.T) {
+		r := testdata.Sample{
+			A: "A", B: 10,
+		}
+
+		require.Implements(t, (*record.Scanner)(nil), &r)
+
+		var res testdata.SampleResult
+		var buf table.RecordBuffer
+		for i := 0; i < 5; i++ {
+			_, err := buf.Insert(record.FieldBuffer([]field.Field{
+				field.NewString("A", strconv.Itoa(i+1)),
+				field.NewInt64("B", int64(i+1)),
+			}))
+			require.NoError(t, err)
+		}
+
+		err := res.ScanTable(&buf)
+		require.NoError(t, err)
+		require.Len(t, res, 5)
 	})
 }

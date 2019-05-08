@@ -21,3 +21,9 @@ type Pk struct {
 	A string
 	B int64 `genji:"pk"`
 }
+
+// Sample will hold one row of the result of a query
+type Sample struct {
+	A string
+	B int64
+}

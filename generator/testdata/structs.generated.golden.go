@@ -615,3 +615,37 @@ func (p *PkResult) ScanTable(tr table.Reader) error {
 		return nil
 	})
 }
+
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
+func (s *Sample) ScanRecord(rec record.Record) error {
+	return rec.Iterate(func(f field.Field) error {
+		var err error
+
+		switch f.Name {
+		case "A":
+			s.A = string(f.Data)
+		case "B":
+			s.B, err = field.DecodeInt64(f.Data)
+		}
+		return err
+	})
+}
+
+// SampleResult can be used to store the result of queries.
+// Selected fields must map the Sample fields.
+type SampleResult []Sample
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (s *SampleResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record Sample
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*s = append(*s, record)
+		return nil
+	})
+}
