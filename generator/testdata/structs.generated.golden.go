@@ -112,7 +112,9 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 		},
 	}
 
-	return &BasicStore{Store: genji.NewStore(db, "Basic", &schema)}
+	var indexes []string
+
+	return &BasicStore{Store: genji.NewStore(db, "Basic", &schema, indexes)}
 }
 
 // NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
@@ -126,7 +128,9 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 		},
 	}
 
-	return &BasicStore{Store: genji.NewStoreWithTx(tx, "Basic", &schema)}
+	var indexes []string
+
+	return &BasicStore{Store: genji.NewStoreWithTx(tx, "Basic", &schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -322,7 +326,9 @@ func newBasicStore(db *genji.DB) *basicStore {
 		},
 	}
 
-	return &basicStore{Store: genji.NewStore(db, "basic", &schema)}
+	var indexes []string
+
+	return &basicStore{Store: genji.NewStore(db, "basic", &schema, indexes)}
 }
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
@@ -336,7 +342,9 @@ func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 		},
 	}
 
-	return &basicStore{Store: genji.NewStoreWithTx(tx, "basic", &schema)}
+	var indexes []string
+
+	return &basicStore{Store: genji.NewStoreWithTx(tx, "basic", &schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -507,7 +515,9 @@ func NewPkStore(db *genji.DB) *PkStore {
 		},
 	}
 
-	return &PkStore{Store: genji.NewStore(db, "Pk", &schema)}
+	var indexes []string
+
+	return &PkStore{Store: genji.NewStore(db, "Pk", &schema, indexes)}
 }
 
 // NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
@@ -519,7 +529,9 @@ func NewPkStoreWithTx(tx *genji.Tx) *PkStore {
 		},
 	}
 
-	return &PkStore{Store: genji.NewStoreWithTx(tx, "Pk", &schema)}
+	var indexes []string
+
+	return &PkStore{Store: genji.NewStoreWithTx(tx, "Pk", &schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -615,6 +627,185 @@ func (p *PkResult) ScanTable(tr table.Reader) error {
 		}
 
 		*p = append(*p, record)
+		return nil
+	})
+}
+
+// Field implements the field method of the record.Record interface.
+func (i *Indexed) Field(name string) (field.Field, error) {
+	switch name {
+	case "A":
+		return field.Field{
+			Name: "A",
+			Type: field.String,
+			Data: []byte(i.A),
+		}, nil
+	case "B":
+		return field.Field{
+			Name: "B",
+			Type: field.Int64,
+			Data: field.EncodeInt64(i.B),
+		}, nil
+	}
+
+	return field.Field{}, errors.New("unknown field")
+}
+
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (i *Indexed) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
+
+	f, _ = i.Field("A")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = i.Field("B")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
+func (i *Indexed) ScanRecord(rec record.Record) error {
+	return rec.Iterate(func(f field.Field) error {
+		var err error
+
+		switch f.Name {
+		case "A":
+			i.A = string(f.Data)
+		case "B":
+			i.B, err = field.DecodeInt64(f.Data)
+		}
+		return err
+	})
+}
+
+// IndexedStore manages the table. It provides several typed helpers
+// that simplify common operations.
+type IndexedStore struct {
+	*genji.Store
+}
+
+// NewIndexedStore creates a IndexedStore.
+func NewIndexedStore(db *genji.DB) *IndexedStore {
+	schema := record.Schema{
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+		},
+	}
+
+	var indexes []string
+	indexes = append(indexes, "A")
+
+	return &IndexedStore{Store: genji.NewStore(db, "Indexed", &schema, indexes)}
+}
+
+// NewIndexedStoreWithTx creates a IndexedStore valid for the lifetime of the given transaction.
+func NewIndexedStoreWithTx(tx *genji.Tx) *IndexedStore {
+	schema := record.Schema{
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int64},
+		},
+	}
+
+	var indexes []string
+
+	indexes = append(indexes, "A")
+
+	return &IndexedStore{Store: genji.NewStoreWithTx(tx, "Indexed", &schema, indexes)}
+}
+
+// Insert a record in the table and return the primary key.
+func (i *IndexedStore) Insert(record *Indexed) (rowid []byte, err error) {
+	return i.Store.Insert(record)
+}
+
+// Get a record using its primary key.
+func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
+	var record Indexed
+
+	return &record, i.Store.Get(rowid, &record)
+}
+
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func (i *IndexedStore) List(offset, limit int) ([]Indexed, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]Indexed, 0, size)
+	err := i.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record Indexed
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+// Replace the selected record by the given one.
+func (i *IndexedStore) Replace(rowid []byte, record *Indexed) error {
+	return i.Store.Replace(rowid, record)
+}
+
+// IndexedQuerySelector provides helpers for selecting fields from the Indexed structure.
+type IndexedQuerySelector struct {
+	A query.StrField
+	B query.Int64Field
+}
+
+// NewIndexedQuerySelector creates a IndexedQuerySelector.
+func NewIndexedQuerySelector() IndexedQuerySelector {
+	return IndexedQuerySelector{
+		A: query.NewStrField("A"),
+		B: query.NewInt64Field("B"),
+	}
+}
+
+// Table returns a query.TableSelector for Indexed.
+func (*IndexedQuerySelector) Table() query.TableSelector {
+	return query.Table("Indexed")
+}
+
+// All returns a list of all selectors for Indexed.
+func (s *IndexedQuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		s.A,
+		s.B,
+	}
+}
+
+// IndexedResult can be used to store the result of queries.
+// Selected fields must map the Indexed fields.
+type IndexedResult []Indexed
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (i *IndexedResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record Indexed
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*i = append(*i, record)
 		return nil
 	})
 }

@@ -46,7 +46,14 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 		},
 	}
 
-	return &{{$structName}}Store{Store: genji.NewStore(db, "{{$structName}}", &schema)}
+	var indexes []string
+	{{- if .HasIndexes }}
+		{{- range .Indexes }}
+		indexes = append(indexes, "{{.}}")
+		{{- end }}
+	{{- end }}
+
+	return &{{$structName}}Store{Store: genji.NewStore(db, "{{$structName}}", &schema, indexes)}
 }
 {{ end }}
 `
@@ -69,7 +76,14 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 		},
 	}
 
-	return &{{$structName}}Store{Store: genji.NewStoreWithTx(tx, "{{$structName}}", &schema)}
+	var indexes []string
+	{{- if .HasIndexes }}
+		{{ range .Indexes }}
+		indexes = append(indexes, "{{.}}")
+		{{- end }}
+	{{- end }}
+
+	return &{{$structName}}Store{Store: genji.NewStoreWithTx(tx, "{{$structName}}", &schema, indexes)}
 }
 {{ end }}
 `

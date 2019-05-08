@@ -13,23 +13,26 @@ type Store struct {
 	tx        *Tx
 	tableName string
 	schema    *record.Schema
+	indexes   []string
 }
 
 // NewStore creates a Store.
-func NewStore(db *DB, tableName string, schema *record.Schema) *Store {
+func NewStore(db *DB, tableName string, schema *record.Schema, indexes []string) *Store {
 	return &Store{
 		db:        db,
 		tableName: tableName,
 		schema:    schema,
+		indexes:   indexes,
 	}
 }
 
 // NewStoreWithTx creates a Store valid for the lifetime of the given transaction.
-func NewStoreWithTx(tx *Tx, tableName string, schema *record.Schema) *Store {
+func NewStoreWithTx(tx *Tx, tableName string, schema *record.Schema, indexes []string) *Store {
 	return &Store{
 		tx:        tx,
 		tableName: tableName,
 		schema:    schema,
+		indexes:   indexes,
 	}
 }
 
@@ -100,21 +103,28 @@ func (s *Store) Init() error {
 			return nil
 		}
 
-		if err != nil {
+		if err != nil && err != engine.ErrTableAlreadyExists {
 			return err
 		}
 
-		if s.schema == nil {
-			return nil
+		if s.schema != nil {
+			schema, err := tx.schemas.Get(s.tableName)
+			if err != nil {
+				return err
+			}
+
+			if !s.schema.Equal(schema) {
+				return errors.New("schema mismatch")
+			}
 		}
 
-		schema, err := tx.schemas.Get(s.tableName)
-		if err != nil {
-			return err
-		}
-
-		if !s.schema.Equal(schema) {
-			return errors.New("schema mismatch")
+		if s.indexes != nil {
+			for _, fname := range s.indexes {
+				_, err = tx.CreateIndex(s.tableName, fname)
+				if err != nil && err != engine.ErrIndexAlreadyExists {
+					return err
+				}
+			}
 		}
 
 		return nil

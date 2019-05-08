@@ -18,14 +18,14 @@ type SchemaStore struct {
 // NewSchemaStore creates a SchemaStore.
 func NewSchemaStore(db *DB) *SchemaStore {
 	return &SchemaStore{
-		store: NewStore(db, schemaTableName, nil),
+		store: NewStore(db, schemaTableName, nil, nil),
 	}
 }
 
 // NewSchemaStoreWithTx creates a SchemaStore valid for the lifetime of the given transaction.
 func NewSchemaStoreWithTx(tx *Tx) *SchemaStore {
 	return &SchemaStore{
-		store: NewStoreWithTx(tx, schemaTableName, nil),
+		store: NewStoreWithTx(tx, schemaTableName, nil, nil),
 	}
 }
 

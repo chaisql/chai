@@ -28,6 +28,7 @@ func TestGenerate(t *testing.T) {
 			"Basic",
 			"basic",
 			"Pk",
+			"Indexed",
 		}
 
 		results := []string{
