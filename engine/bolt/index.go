@@ -27,7 +27,7 @@ func (i *Index) Set(value []byte, rowid []byte) error {
 	buf = append(buf, '_')
 	buf = append(buf, rowid...)
 
-	err := i.b.Put(buf, rowid)
+	err := i.b.Put(buf, nil)
 	if err == bolt.ErrTxNotWritable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -49,48 +49,53 @@ type Cursor struct {
 }
 
 func (c *Cursor) First() ([]byte, []byte) {
-	value, rowid := c.c.First()
+	value, _ := c.c.First()
 	if value == nil {
 		return nil, nil
 	}
 
-	return value[:bytes.LastIndexByte(value, '_')], rowid
+	idx := bytes.LastIndexByte(value, '_')
+	return value[:idx], value[idx+1:]
 }
 
 func (c *Cursor) Last() ([]byte, []byte) {
-	value, rowid := c.c.Last()
+	value, _ := c.c.Last()
 	if value == nil {
 		return nil, nil
 	}
 
-	return value[:bytes.LastIndexByte(value, '_')], rowid
+	idx := bytes.LastIndexByte(value, '_')
+	return value[:idx], value[idx+1:]
 }
 
 func (c *Cursor) Next() ([]byte, []byte) {
-	value, rowid := c.c.Next()
+	value, _ := c.c.Next()
 	if value == nil {
 		c.c.Last()
 		return nil, nil
 	}
 
-	return value[:bytes.LastIndexByte(value, '_')], rowid
+	idx := bytes.LastIndexByte(value, '_')
+	return value[:idx], value[idx+1:]
 }
 
 func (c *Cursor) Prev() ([]byte, []byte) {
-	value, rowid := c.c.Prev()
+	value, _ := c.c.Prev()
 	if value == nil {
 		c.c.First()
 		return nil, nil
 	}
 
-	return value[:bytes.LastIndexByte(value, '_')], rowid
+	idx := bytes.LastIndexByte(value, '_')
+	return value[:idx], value[idx+1:]
 }
 
 func (c *Cursor) Seek(seek []byte) ([]byte, []byte) {
-	value, rowid := c.c.Seek(seek)
+	value, _ := c.c.Seek(seek)
 	if value == nil {
 		return nil, nil
 	}
 
-	return value[:bytes.LastIndexByte(value, '_')], rowid
+	idx := bytes.LastIndexByte(value, '_')
+	return value[:idx], value[idx+1:]
 }
