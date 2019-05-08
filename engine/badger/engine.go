@@ -176,9 +176,9 @@ func makeIndexPrefixKey(table, field string) []byte {
 	return prefix
 }
 
-func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) {
+func (t *Transaction) CreateIndex(table, fieldName string) error {
 	if !t.writable {
-		return nil, engine.ErrTransactionReadOnly
+		return engine.ErrTransactionReadOnly
 	}
 
 	key := makeTableKey(table)
@@ -186,31 +186,26 @@ func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) 
 	_, err := t.txn.Get(key)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return nil, engine.ErrTableNotFound
+			return engine.ErrTableNotFound
 		}
 
-		return nil, err
+		return err
 	}
 
 	if idx := strings.IndexByte(fieldName, separator); idx != -1 {
-		return nil, fmt.Errorf("index name contains forbidden character at pos %d", idx)
+		return fmt.Errorf("index name contains forbidden character at pos %d", idx)
 	}
 
 	key = makeIndexKey(table, fieldName)
 	_, err = t.txn.Get(key)
 	if err == nil {
-		return nil, engine.ErrIndexAlreadyExists
+		return engine.ErrIndexAlreadyExists
 	}
 	if err != badger.ErrKeyNotFound {
-		return nil, err
+		return err
 	}
 
-	err = t.txn.Set(key, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return t.txn.Set(key, nil)
 }
 
 func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
