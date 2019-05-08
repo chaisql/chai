@@ -7,6 +7,8 @@ import (
 
 const resultTmpl = `
 {{ define "result" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
 // {{$structName}}Result can be used to store the result of queries.
 // Selected fields must map the {{$structName}} fields.
 type {{$structName}}Result []{{$structName}}

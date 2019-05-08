@@ -15,16 +15,15 @@ const tmpl = `
 {{ define "base" }}
 package {{ .Pkg }}
 
-imports (
-	{{ range .Imports }}
+import (
+	{{- range .Imports }}
 	"{{ . }}"
-	{{ end }}
+	{{- end }}
 )
 
 {{ template "records" . }}
-{{ template "results" . }}
 
-{{ end }}
+{{- end }}
 `
 
 var t *template.Template
@@ -51,6 +50,7 @@ func init() {
 		"query-SelectorNew":    querySelectorNewTmpl,
 		"query-SelectorTable":  querySelectorTableTmpl,
 		"query-SelectorAll":    querySelectorAllTmpl,
+		"result":               resultTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))
@@ -90,7 +90,7 @@ func Generate(w io.Writer, opts Options) error {
 	var buf bytes.Buffer
 
 	// generate code
-	err = t.Execute(&buf, &gctx)
+	err = t.ExecuteTemplate(&buf, "base", &gctx)
 	if err != nil {
 		return err
 	}

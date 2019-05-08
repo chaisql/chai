@@ -11,23 +11,23 @@ import (
 )
 
 const recordsTmpl = `
-{{ define "records" }}
-  {{ range .Records }}
-    {{ template "record" . }}
-  {{ end }}
-{{ end }}
+{{- define "records" }}
+  {{- range .Records }}
+    {{- template "record" . }}
+  {{- end }}
+{{- end }}
 `
 
 const recordTmpl = `
-{{ define "record" }}
-{{ template "record-Field" . }}
-{{ template "record-Iterate" . }}
-{{ template "record-ScanRecord" . }}
-{{ template "record-Pk" . }}
-{{ template "store" . }}
-{{ template "query-selector" . }}
-{{ template "result" . }}
-{{ end }}
+{{- define "record" }}
+{{- template "record-Field" . }}
+{{- template "record-Iterate" . }}
+{{- template "record-ScanRecord" . }}
+{{- template "record-Pk" . }}
+{{- template "store" . }}
+{{- template "query-selector" . }}
+{{- template "result" . }}
+{{- end }}
 `
 
 const recordFieldTmpl = `
