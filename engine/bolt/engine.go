@@ -84,33 +84,27 @@ func (t *Transaction) CreateTable(name string) error {
 	return err
 }
 
-func (t *Transaction) CreateIndex(table, fieldName string) (index.Index, error) {
+func (t *Transaction) CreateIndex(table, fieldName string) error {
 	if !t.writable {
-		return nil, engine.ErrTransactionReadOnly
+		return engine.ErrTransactionReadOnly
 	}
 
 	b := t.tx.Bucket([]byte(table))
 	if b == nil {
-		return nil, engine.ErrTableNotFound
+		return engine.ErrTableNotFound
 	}
 
 	bb, err := b.CreateBucketIfNotExists([]byte("__genji_indexes"))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ib, err := bb.CreateBucket([]byte(fieldName))
-	if err != nil {
-		if err == bolt.ErrBucketExists {
-			return nil, engine.ErrIndexAlreadyExists
-		}
-
-		return nil, err
+	_, err = bb.CreateBucket([]byte(fieldName))
+	if err == bolt.ErrBucketExists {
+		return engine.ErrIndexAlreadyExists
 	}
 
-	return &Index{
-		b: ib,
-	}, nil
+	return err
 }
 
 func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
