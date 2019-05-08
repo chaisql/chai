@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -63,19 +61,23 @@ func generate(files []string, records []string, results []string, output string)
 		return errors.New("input files must be Go files")
 	}
 
-	pfiles := make([]*ast.File, len(files))
+	sources := make([]io.Reader, len(files))
 
-	for i, f := range files {
-		fset := token.NewFileSet()
-		af, err := parser.ParseFile(fset, f, nil, 0)
+	for i, fname := range files {
+		f, err := os.Open(fname)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse file")
+			return errors.Wrap(err, "failed to read file")
 		}
-		pfiles[i] = af
+
+		sources[i] = f
 	}
 
 	var buf bytes.Buffer
-	err := generator.GenerateRecords(&buf, pfiles, records)
+	err := generator.Generate(&buf, generator.Config{
+		Sources: sources,
+		Records: records,
+		Results: results,
+	})
 	if err != nil {
 		return err
 	}
