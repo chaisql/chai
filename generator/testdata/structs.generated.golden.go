@@ -2,6 +2,7 @@ package testdata
 
 import (
 	"errors"
+
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"go/ast"
-	"go/format"
 	"go/parser"
 	"go/token"
 	"io"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 const tmpl = `
@@ -96,7 +97,12 @@ func Generate(w io.Writer, opts Options) error {
 	}
 
 	// format using goimports
-	output, err := format.Source(buf.Bytes())
+	output, err := imports.Process("", buf.Bytes(), &imports.Options{
+		TabWidth:   8,
+		TabIndent:  true,
+		Comments:   true,
+		FormatOnly: true,
+	})
 	if err != nil {
 		return err
 	}
