@@ -164,6 +164,7 @@ func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
 	return list, nil
 }
 
+// Replace the selected record by the given one.
 func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
 	return b.Store.Replace(rowid, record)
 }
@@ -373,6 +374,7 @@ func (b *basicStore) List(offset, limit int) ([]basic, error) {
 	return list, nil
 }
 
+// Replace the selected record by the given one.
 func (b *basicStore) Replace(rowid []byte, record *basic) error {
 	return b.Store.Replace(rowid, record)
 }
@@ -563,6 +565,7 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 	return list, nil
 }
 
+// Replace the selected record by the given one.
 func (p *PkStore) Replace(pk int64, record *Pk) error {
 	rowid := field.EncodeInt64(pk)
 	if record.B == 0 && record.B != pk {

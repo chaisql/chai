@@ -174,7 +174,8 @@ const storeReplaceTmpl = `
 {{ define "store-Replace" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
-{{ if eq .Pk.Name ""}}
+// Replace the selected record by the given one.
+{{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName}}) error {
 {{- else}}
 	{{- if eq .Pk.Type "string"}}

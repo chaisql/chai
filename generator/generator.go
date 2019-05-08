@@ -62,18 +62,24 @@ func init() {
 	}
 }
 
-type Options struct {
+// Config provides information about the sources and the targets to generate.
+type Config struct {
+	// Sources lists the content to parse
 	Sources []io.Reader
+	// Names of the structures to analyse from the sources.
+	// Methods and other types will be generated from these.
 	Records []string
+	// Names of the structures to analyse from the sources.
+	// Methods and other types will be generated from these.
 	Results []string
 }
 
 // Generate parses the given asts, looks for the targets structs
 // and generates complementary code to the given writer.
-func Generate(w io.Writer, opts Options) error {
+func Generate(w io.Writer, cfg Config) error {
 	var gctx genContext
 
-	srcs, err := readSources(opts.Sources)
+	srcs, err := readSources(cfg.Sources)
 	if err != nil {
 		return err
 	}
@@ -83,7 +89,7 @@ func Generate(w io.Writer, opts Options) error {
 		return err
 	}
 
-	err = gctx.readTargets(srcs, &opts)
+	err = gctx.readTargets(srcs, &cfg)
 	if err != nil {
 		return err
 	}
@@ -156,11 +162,11 @@ func (g *genContext) readPackage(srcs []*ast.File) error {
 	return nil
 }
 
-func (g *genContext) readTargets(srcs []*ast.File, opts *Options) error {
-	g.Records = make([]recordContext, len(opts.Records))
-	for i := range opts.Records {
+func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
+	g.Records = make([]recordContext, len(cfg.Records))
+	for i := range cfg.Records {
 		for _, src := range srcs {
-			ok, err := g.Records[i].lookupRecord(src, opts.Records[i])
+			ok, err := g.Records[i].lookupRecord(src, cfg.Records[i])
 			if err != nil {
 				return err
 			}
@@ -170,10 +176,10 @@ func (g *genContext) readTargets(srcs []*ast.File, opts *Options) error {
 		}
 	}
 
-	g.Results = make([]recordContext, len(opts.Results))
-	for i := range opts.Results {
+	g.Results = make([]recordContext, len(cfg.Results))
+	for i := range cfg.Results {
 		for _, src := range srcs {
-			ok, err := g.Results[i].lookupRecord(src, opts.Results[i])
+			ok, err := g.Results[i].lookupRecord(src, cfg.Results[i])
 			if err != nil {
 				return err
 			}

@@ -38,7 +38,7 @@ func TestGenerate(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = Generate(&buf, Options{
+		err = Generate(&buf, Config{
 			Sources: []io.Reader{f},
 			Records: records,
 			Results: results,
@@ -80,7 +80,7 @@ func TestGenerate(t *testing.T) {
 				`
 
 				var buf bytes.Buffer
-				err := Generate(&buf, Options{
+				err := Generate(&buf, Config{
 					Sources: []io.Reader{strings.NewReader(src)},
 					Records: []string{"User"},
 				})
@@ -95,7 +95,7 @@ func TestGenerate(t *testing.T) {
 		`
 
 		var buf bytes.Buffer
-		err := Generate(&buf, Options{
+		err := Generate(&buf, Config{
 			Sources: []io.Reader{strings.NewReader(src)},
 			Records: []string{"User"},
 		})
@@ -117,7 +117,7 @@ func TestGenerate(t *testing.T) {
 			}
 		`
 		var buf bytes.Buffer
-		err := Generate(&buf, Options{
+		err := Generate(&buf, Config{
 			Sources: []io.Reader{strings.NewReader(src)},
 			Records: []string{"S"},
 		})

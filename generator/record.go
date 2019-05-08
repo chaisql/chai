@@ -199,46 +199,46 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 	return false, nil
 }
 
-func (s *recordContext) IsExported() bool {
-	return unicode.IsUpper(rune(s.Name[0]))
+func (rctx *recordContext) IsExported() bool {
+	return unicode.IsUpper(rune(rctx.Name[0]))
 }
 
-func (s *recordContext) FirstLetter() string {
-	return strings.ToLower(s.Name[0:1])
+func (rctx *recordContext) FirstLetter() string {
+	return strings.ToLower(rctx.Name[0:1])
 }
 
-func (s *recordContext) UnexportedName() string {
-	if !s.IsExported() {
-		return s.Name
+func (rctx *recordContext) UnexportedName() string {
+	if !rctx.IsExported() {
+		return rctx.Name
 	}
 
-	return s.Unexport(s.Name)
+	return rctx.Unexport(rctx.Name)
 }
 
-func (s *recordContext) ExportedName() string {
-	if s.IsExported() {
-		return s.Name
+func (rctx *recordContext) ExportedName() string {
+	if rctx.IsExported() {
+		return rctx.Name
 	}
 
-	return s.Export(s.Name)
+	return rctx.Export(rctx.Name)
 }
 
-func (s *recordContext) NameWithPrefix(prefix string) string {
-	n := prefix + s.ExportedName()
-	if s.IsExported() {
-		return s.Export(n)
+func (rctx *recordContext) NameWithPrefix(prefix string) string {
+	n := prefix + rctx.ExportedName()
+	if rctx.IsExported() {
+		return rctx.Export(n)
 	}
 
-	return s.Unexport(n)
+	return rctx.Unexport(n)
 }
 
-func (s *recordContext) Export(n string) string {
+func (rctx *recordContext) Export(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToUpper(rune(n[0])))
 	return string(name)
 }
 
-func (s *recordContext) Unexport(n string) string {
+func (rctx *recordContext) Unexport(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToLower(rune(n[0])))
 	return string(name)
