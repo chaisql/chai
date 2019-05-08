@@ -15,9 +15,6 @@ import (
 
 const recordTmpl = `
 {{ define "record" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-
 {{ template "record-Field" . }}
 {{ template "record-Iterate" . }}
 {{ template "record-ScanRecord" . }}

@@ -6,8 +6,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"html/template"
 	"io"
+	"text/template"
 )
 
 const tmpl = `
@@ -23,7 +23,32 @@ package {{ .Pkg }}
 var t *template.Template
 
 func init() {
-	t = template.Must(template.New("").Parse(recordTmpl))
+	templates := map[string]string{
+		"record":               recordTmpl,
+		"record-Field":         recordFieldTmpl,
+		"record-Iterate":       recordIterateTmpl,
+		"record-Pk":            recordPkTmpl,
+		"record-ScanRecord":    recordScanRecordTmpl,
+		"store":                storeTmpl,
+		"store-Struct":         storeStructTmpl,
+		"store-New":            storeNewTmpl,
+		"store-NewWithTx":      storeNewWithTxTmpl,
+		"store-Insert":         storeInsertTmpl,
+		"store-Get":            storeGetTmpl,
+		"store-Delete":         storeDeleteTmpl,
+		"store-List":           storeListTmpl,
+		"store-Replace":        storeReplaceTmpl,
+		"query-Selector":       querySelectorTmpl,
+		"query-SelectorStruct": querySelectorStructTmpl,
+		"query-SelectorNew":    querySelectorNewTmpl,
+		"query-SelectorTable":  querySelectorTableTmpl,
+		"query-SelectorAll":    querySelectorAllTmpl,
+	}
+
+	t = template.Must(template.New("main").Parse(tmpl))
+	for k, v := range templates {
+		t = template.Must(t.New(k).Parse(v))
+	}
 }
 
 type Options struct {
