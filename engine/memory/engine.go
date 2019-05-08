@@ -165,19 +165,19 @@ func (tx *transaction) Indexes(table string) (map[string]idx.Index, error) {
 	return m, nil
 }
 
-func (tx *transaction) CreateIndex(table, name string) (idx.Index, error) {
+func (tx *transaction) CreateIndex(table, name string) error {
 	if !tx.writable {
-		return nil, engine.ErrTransactionReadOnly
+		return engine.ErrTransactionReadOnly
 	}
 
 	_, err := tx.Table(table, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	_, err = tx.Index(table, name)
 	if err == nil {
-		return nil, engine.ErrIndexAlreadyExists
+		return engine.ErrIndexAlreadyExists
 	}
 
 	tree := btree.New(3)
@@ -187,5 +187,5 @@ func (tx *transaction) CreateIndex(table, name string) (idx.Index, error) {
 		delete(tx.ng.indexes, tableIndex{table, name})
 	})
 
-	return &index{tree: tree, tx: tx}, nil
+	return nil
 }

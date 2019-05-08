@@ -77,7 +77,10 @@ func indexBuilder(t require.TestingT) func() (index.Index, func()) {
 		err = tx.CreateTable("test")
 		require.NoError(t, err)
 
-		idx, err := tx.CreateIndex("test", "idx")
+		err = tx.CreateIndex("test", "idx")
+		require.NoError(t, err)
+
+		idx, err := tx.Index("test", "idx")
 		require.NoError(t, err)
 
 		return idx, func() {
