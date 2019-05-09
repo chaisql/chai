@@ -32,9 +32,9 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
 		{"Transaction/CreateTable", TestTransactionCreateTable},
 		{"Transaction/DropTable", TestTransactionDropTable},
-		{"Transaction/DropIndex", TestTransactionDropIndex},
 		{"Transaction/Table", TestTransactionTable},
 		{"Transaction/CreateIndex", TestTransactionCreateIndex},
+		{"Transaction/DropIndex", TestTransactionDropIndex},
 		{"Transaction/Index", TestTransactionIndex},
 		{"Transaction/Indexes", TestTransactionIndexes},
 	}
@@ -657,13 +657,13 @@ func TestTransactionDropIndex(t *testing.T, builder Builder) {
 		err = tx.CreateTable("table")
 		require.NoError(t, err)
 
-		err = tx.CreateIndex("table", "index")
+		err = tx.CreateIndex("table", "idx")
 		require.NoError(t, err)
 
-		err = tx.DropIndex("table", "index")
+		err = tx.DropIndex("table", "idx")
 		require.NoError(t, err)
 
-		_, err = tx.Index("table", "index")
+		_, err = tx.Index("table", "idx")
 		require.Equal(t, engine.ErrIndexNotFound, err)
 	})
 
@@ -675,10 +675,7 @@ func TestTransactionDropIndex(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		err = tx.DropIndex("table", "index")
+		err = tx.DropIndex("table", "idx")
 		require.Equal(t, engine.ErrTableNotFound, err)
 	})
 
@@ -693,7 +690,10 @@ func TestTransactionDropIndex(t *testing.T, builder Builder) {
 		err = tx.CreateTable("table")
 		require.NoError(t, err)
 
-		err = tx.DropIndex("table", "index")
+		err = tx.CreateIndex("table", "idx1")
+		require.NoError(t, err)
+
+		err = tx.DropIndex("table", "idx2")
 		require.Equal(t, engine.ErrIndexNotFound, err)
 	})
 }

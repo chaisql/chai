@@ -164,3 +164,26 @@ func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
 
 	return m, err
 }
+
+func (t *Transaction) DropIndex(table, fieldName string) error {
+	if !t.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	b := t.tx.Bucket([]byte(table))
+	if b == nil {
+		return engine.ErrTableNotFound
+	}
+
+	bb := b.Bucket([]byte("__genji_indexes"))
+	if bb == nil {
+		return engine.ErrIndexNotFound
+	}
+
+	err := bb.DeleteBucket([]byte(fieldName))
+	if err == bolt.ErrBucketNotFound {
+		return engine.ErrIndexNotFound
+	}
+
+	return err
+}
