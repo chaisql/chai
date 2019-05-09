@@ -140,3 +140,36 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 
 	return rowid, nil
 }
+
+func (t Table) Replace(rowid []byte, r record.Record) error {
+	if t.schema != nil {
+		err := t.schema.Validate(r)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := t.Table.Replace(rowid, r)
+	if err != nil {
+		return err
+	}
+
+	indexes, err := t.tx.Indexes(t.name)
+	if err != nil {
+		return err
+	}
+
+	for fieldName, idx := range indexes {
+		f, err := r.Field(fieldName)
+		if err != nil {
+			return err
+		}
+
+		err = idx.Set(f.Data, rowid)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
