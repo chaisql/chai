@@ -133,6 +133,25 @@ func (tx *transaction) CreateTable(name string) error {
 	return nil
 }
 
+func (tx *transaction) DropTable(name string) error {
+	if !tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	rb, ok := tx.ng.tables[name]
+	if !ok {
+		return engine.ErrTableNotFound
+	}
+
+	delete(tx.ng.tables, name)
+
+	tx.undos = append(tx.undos, func() {
+		tx.ng.tables[name] = rb
+	})
+
+	return nil
+}
+
 func (tx *transaction) Index(table, name string) (idx.Index, error) {
 	_, err := tx.Table(table, nil)
 	if err != nil {
