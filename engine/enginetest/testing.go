@@ -172,16 +172,25 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		// this test checks if rollback undoes data changes correctly and if commit keeps data correctly
 		tests := []struct {
 			name    string
+			initFn  func(engine.Transaction) error
 			writeFn func(engine.Transaction, *error)
 			readFn  func(engine.Transaction, *error)
 		}{
 			{
 				"CreateTable",
+				nil,
 				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
 				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table", record.NewCodec()) },
 			},
 			{
+				"DropTable",
+				func(tx engine.Transaction) error { return tx.CreateTable("table") },
+				func(tx engine.Transaction, err *error) { *err = tx.DropTable("table") },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
+			},
+			{
 				"CreateIndex",
+				nil,
 				func(tx engine.Transaction, err *error) {
 					er := tx.CreateTable("table")
 					if er != nil {
@@ -200,6 +209,19 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				ng, cleanup := builder()
 				defer cleanup()
 
+				if test.initFn != nil {
+					func() {
+						tx, err := ng.Begin(true)
+						require.NoError(t, err)
+						defer tx.Rollback()
+
+						err = test.initFn(tx)
+						require.NoError(t, err)
+						err = tx.Commit()
+						require.NoError(t, err)
+					}()
+				}
+
 				tx, err := ng.Begin(true)
 				require.NoError(t, err)
 				defer tx.Rollback()
@@ -210,7 +232,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				err = tx.Rollback()
 				require.NoError(t, err)
 
-				tx, err = ng.Begin(false)
+				tx, err = ng.Begin(true)
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -224,6 +246,19 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			defer cleanup()
 
 			t.Run(test.name+"/commit", func(t *testing.T) {
+				if test.initFn != nil {
+					func() {
+						tx, err := ng.Begin(true)
+						require.NoError(t, err)
+						defer tx.Rollback()
+
+						err = test.initFn(tx)
+						require.NoError(t, err)
+						err = tx.Commit()
+						require.NoError(t, err)
+					}()
+				}
+
 				tx, err := ng.Begin(true)
 				require.NoError(t, err)
 				defer tx.Rollback()
@@ -234,7 +269,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				err = tx.Commit()
 				require.NoError(t, err)
 
-				tx, err = ng.Begin(false)
+				tx, err = ng.Begin(true)
 				require.NoError(t, err)
 				defer tx.Rollback()
 
