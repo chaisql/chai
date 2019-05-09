@@ -84,6 +84,19 @@ func (t *Transaction) CreateTable(name string) error {
 	return err
 }
 
+func (t *Transaction) DropTable(name string) error {
+	if !t.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	err := t.tx.DeleteBucket([]byte(name))
+	if err == bolt.ErrBucketNotFound {
+		return engine.ErrTableNotFound
+	}
+
+	return err
+}
+
 func (t *Transaction) CreateIndex(table, fieldName string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
