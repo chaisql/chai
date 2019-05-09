@@ -208,3 +208,27 @@ func (tx *transaction) CreateIndex(table, name string) error {
 
 	return nil
 }
+
+func (tx *transaction) DropIndex(table, name string) error {
+	if !tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	_, err := tx.Table(table, nil)
+	if err != nil {
+		return err
+	}
+
+	tree, ok := tx.ng.indexes[tableIndex{table, name}]
+	if !ok {
+		return engine.ErrIndexNotFound
+	}
+
+	delete(tx.ng.indexes, tableIndex{table, name})
+
+	tx.undos = append(tx.undos, func() {
+		tx.ng.indexes[tableIndex{table, name}] = tree
+	})
+
+	return nil
+}
