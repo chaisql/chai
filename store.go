@@ -173,6 +173,41 @@ func (s *Store) DropIndex(fieldName string) error {
 	})
 }
 
+// ReIndex drops the selected index, creates a new one and runs over all the records
+// to fill the newly created index.
+func (s *Store) ReIndex(fieldName string) error {
+	return s.Update(func(tx *Tx) error {
+		err := tx.DropIndex(s.tableName, fieldName)
+		if err != nil {
+			return err
+		}
+
+		err = tx.CreateIndex(s.tableName, fieldName)
+		if err != nil {
+			return err
+		}
+
+		idx, err := tx.Index(s.tableName, fieldName)
+		if err != nil {
+			return err
+		}
+
+		t, err := tx.Table(s.tableName)
+		if err != nil {
+			return err
+		}
+
+		return t.Iterate(func(rowid []byte, r record.Record) error {
+			f, err := r.Field(fieldName)
+			if err != nil {
+				return err
+			}
+
+			return idx.Set(f.Data, rowid)
+		})
+	})
+}
+
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
 func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) error) error {
 	return s.ViewTable(func(t table.Table) error {
