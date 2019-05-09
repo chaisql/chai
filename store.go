@@ -166,6 +166,13 @@ func (s *Store) Drop() error {
 	})
 }
 
+// DropIndex removes an index from the table.
+func (s *Store) DropIndex(fieldName string) error {
+	return s.Update(func(tx *Tx) error {
+		return tx.DropIndex(s.tableName, fieldName)
+	})
+}
+
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
 func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) error) error {
 	return s.ViewTable(func(t table.Table) error {
