@@ -32,6 +32,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
 		{"Transaction/CreateTable", TestTransactionCreateTable},
 		{"Transaction/DropTable", TestTransactionDropTable},
+		{"Transaction/DropIndex", TestTransactionDropIndex},
 		{"Transaction/Table", TestTransactionTable},
 		{"Transaction/CreateIndex", TestTransactionCreateIndex},
 		{"Transaction/Index", TestTransactionIndex},
@@ -152,6 +153,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			{"CreateTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateTable("table") }},
 			{"DropTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropTable("table") }},
 			{"CreateIndex", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateIndex("table", "idx") }},
+			{"DropIndex", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropIndex("table", "idx") }},
 			{"TableInsert", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tb.Insert(record.FieldBuffer{}) }},
 			{"TableDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Delete([]byte("id")) }},
 			{"TableReplace", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Replace([]byte("id"), record.FieldBuffer{}) }},
@@ -201,6 +203,19 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					*err = tx.CreateIndex("table", "idx")
 				},
 				func(tx engine.Transaction, err *error) { _, *err = tx.Index("table", "idx") },
+			},
+			{
+				"DropIndex",
+				func(tx engine.Transaction) error {
+					err := tx.CreateTable("table")
+					if err != nil {
+						return err
+					}
+
+					return tx.CreateIndex("table", "idx")
+				},
+				func(tx engine.Transaction, err *error) { *err = tx.DropIndex("table", "idx") },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateIndex("table", "idx") },
 			},
 		}
 
@@ -626,5 +641,59 @@ func TestTransactionIndexes(t *testing.T, builder Builder) {
 		require.Len(t, m, 2)
 		require.Contains(t, m, "idx1")
 		require.Contains(t, m, "idx2")
+	})
+}
+
+// TestTransactionDropIndex verifies DropIndex behaviour.
+func TestTransactionDropIndex(t *testing.T, builder Builder) {
+	t.Run("Should drop an index", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.CreateTable("table")
+		require.NoError(t, err)
+
+		err = tx.CreateIndex("table", "index")
+		require.NoError(t, err)
+
+		err = tx.DropIndex("table", "index")
+		require.NoError(t, err)
+
+		_, err = tx.Index("table", "index")
+		require.Equal(t, engine.ErrIndexNotFound, err)
+	})
+
+	t.Run("Should fail if table not found", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.CreateTable("table")
+		require.NoError(t, err)
+
+		err = tx.DropIndex("table", "index")
+		require.Equal(t, engine.ErrTableNotFound, err)
+	})
+
+	t.Run("Should fail if index not found", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.CreateTable("table")
+		require.NoError(t, err)
+
+		err = tx.DropIndex("table", "index")
+		require.Equal(t, engine.ErrIndexNotFound, err)
 	})
 }

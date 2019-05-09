@@ -31,4 +31,5 @@ type Transaction interface {
 	Index(table, name string) (index.Index, error)
 	Indexes(table string) (map[string]index.Index, error)
 	CreateIndex(table, field string) error
+	DropIndex(table, field string) error
 }
