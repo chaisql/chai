@@ -27,6 +27,7 @@ type Transaction interface {
 	Commit() error
 	Table(name string, codec record.Codec) (table.Table, error)
 	CreateTable(name string) error
+	DropTable(name string) error
 	Index(table, name string) (index.Index, error)
 	Indexes(table string) (map[string]index.Index, error)
 	CreateIndex(table, field string) error

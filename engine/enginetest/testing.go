@@ -31,6 +31,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Engine", TestEngine},
 		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
 		{"Transaction/CreateTable", TestTransactionCreateTable},
+		{"Transaction/DropTable", TestTransactionDropTable},
 		{"Transaction/Table", TestTransactionTable},
 		{"Transaction/CreateIndex", TestTransactionCreateIndex},
 		{"Transaction/Index", TestTransactionIndex},
@@ -149,6 +150,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			fn   func(*error)
 		}{
 			{"CreateTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateTable("table") }},
+			{"DropTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropTable("table") }},
 			{"CreateIndex", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateIndex("table", "idx") }},
 			{"TableInsert", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tb.Insert(record.FieldBuffer{}) }},
 			{"TableDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Delete([]byte("id")) }},
@@ -370,6 +372,39 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		// use tb to fetch data and verify it's not present
 		_, err = tb.Record(rowid)
 		require.Equal(t, table.ErrRecordNotFound, err)
+	})
+}
+
+// TestTransactionDropTable verifies DropTable behaviour.
+func TestTransactionDropTable(t *testing.T, builder Builder) {
+	t.Run("Should drop a table", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.CreateTable("table")
+		require.NoError(t, err)
+
+		err = tx.DropTable("table")
+		require.NoError(t, err)
+
+		_, err = tx.Table("table", record.NewCodec())
+		require.Equal(t, engine.ErrTableNotFound, err)
+	})
+
+	t.Run("Should fail if table not found", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.DropTable("table")
+		require.Equal(t, engine.ErrTableNotFound, err)
 	})
 }
 
