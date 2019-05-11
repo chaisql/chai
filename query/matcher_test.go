@@ -331,7 +331,9 @@ func BenchmarkIndexMatcher(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				matcher.MatchIndex("test", tx)
+				tree, err := matcher.MatchIndex("test", tx)
+				fmt.Println(tree.Len())
+				require.NoError(b, err)
 			}
 			b.StopTimer()
 		})

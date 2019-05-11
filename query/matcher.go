@@ -2,7 +2,6 @@ package query
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
@@ -38,41 +37,6 @@ type Item []byte
 
 func (i Item) Less(than btree.Item) bool {
 	return bytes.Compare(i, than.(Item)) < 0
-}
-
-func compareInts(f FieldSelector, op func(int64) bool) func(r record.Record) (bool, error) {
-	return func(r record.Record) (bool, error) {
-		rf, err := f.SelectField(r)
-		if err != nil {
-			return false, err
-		}
-
-		if rf.Type != field.Int64 {
-			return false, errors.New("type mismatch")
-		}
-
-		v, err := field.DecodeInt64(rf.Data)
-		if err != nil {
-			return false, err
-		}
-
-		return op(v), nil
-	}
-}
-
-func compareStrings(f FieldSelector, op func([]byte) bool) func(r record.Record) (bool, error) {
-	return func(r record.Record) (bool, error) {
-		rf, err := f.SelectField(r)
-		if err != nil {
-			return false, err
-		}
-
-		if rf.Type != field.String {
-			return false, errors.New("type mismatch")
-		}
-
-		return op(rf.Data), nil
-	}
 }
 
 func eqIndexMatcher(data []byte, idx index.Index) (*btree.BTree, error) {
@@ -158,12 +122,13 @@ func lteIndexMatcher(data []byte, idx index.Index) (*btree.BTree, error) {
 }
 
 func EqInt(f FieldSelector, i int) *IndexMatcher {
-	base := int64(i)
+	base := field.EncodeInt64(int64(i))
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareInts(f, func(v int64) bool {
-				return v == base
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) == 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -171,18 +136,19 @@ func EqInt(f FieldSelector, i int) *IndexMatcher {
 			if err != nil {
 				return nil, err
 			}
-			return eqIndexMatcher(field.EncodeInt64(base), idx)
+			return eqIndexMatcher(base, idx)
 		},
 	}
 }
 
 func GtInt(f FieldSelector, i int) *IndexMatcher {
-	base := int64(i)
+	base := field.EncodeInt64(int64(i))
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareInts(f, func(v int64) bool {
-				return v > base
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) > 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -190,18 +156,19 @@ func GtInt(f FieldSelector, i int) *IndexMatcher {
 			if err != nil {
 				return nil, err
 			}
-			return gtIndexMatcher(field.EncodeInt64(base), idx)
+			return gtIndexMatcher(base, idx)
 		},
 	}
 }
 
 func GteInt(f FieldSelector, i int) *IndexMatcher {
-	base := int64(i)
+	base := field.EncodeInt64(int64(i))
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareInts(f, func(v int64) bool {
-				return v >= base
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) >= 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -209,18 +176,19 @@ func GteInt(f FieldSelector, i int) *IndexMatcher {
 			if err != nil {
 				return nil, err
 			}
-			return gteIndexMatcher(field.EncodeInt64(base), idx)
+			return gteIndexMatcher(base, idx)
 		},
 	}
 }
 
 func LtInt(f FieldSelector, i int) *IndexMatcher {
-	base := int64(i)
+	base := field.EncodeInt64(int64(i))
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareInts(f, func(v int64) bool {
-				return v < base
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) < 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -228,18 +196,19 @@ func LtInt(f FieldSelector, i int) *IndexMatcher {
 			if err != nil {
 				return nil, err
 			}
-			return ltIndexMatcher(field.EncodeInt64(base), idx)
+			return ltIndexMatcher(base, idx)
 		},
 	}
 }
 
 func LteInt(f FieldSelector, i int) *IndexMatcher {
-	base := int64(i)
+	base := field.EncodeInt64(int64(i))
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareInts(f, func(v int64) bool {
-				return v <= base
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) <= 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -247,19 +216,34 @@ func LteInt(f FieldSelector, i int) *IndexMatcher {
 			if err != nil {
 				return nil, err
 			}
-			return lteIndexMatcher(field.EncodeInt64(base), idx)
+			return lteIndexMatcher(base, idx)
 		},
 	}
+}
+
+type bytesMatcher struct {
+	cmpFn func([]byte) (bool, error)
+	f     FieldSelector
+}
+
+func (b *bytesMatcher) Match(r record.Record) (bool, error) {
+	rf, err := b.f.SelectField(r)
+	if err != nil {
+		return false, err
+	}
+
+	return b.cmpFn(rf.Data)
 }
 
 func EqStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareStrings(f, func(v []byte) bool {
-				return bytes.Equal(v, base)
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) == 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -277,10 +261,11 @@ func GtStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareStrings(f, func(v []byte) bool {
-				return bytes.Compare(v, base) > 0
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) > 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -297,10 +282,11 @@ func GteStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareStrings(f, func(v []byte) bool {
-				return bytes.Compare(v, base) >= 0
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) >= 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -317,10 +303,11 @@ func LtStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareStrings(f, func(v []byte) bool {
-				return bytes.Compare(v, base) < 0
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) < 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
@@ -337,10 +324,11 @@ func LteStr(f FieldSelector, s string) *IndexMatcher {
 	base := []byte(s)
 
 	return &IndexMatcher{
-		Matcher: &matcher{
-			fn: compareStrings(f, func(v []byte) bool {
-				return bytes.Compare(v, base) <= 0
-			}),
+		Matcher: &bytesMatcher{
+			f: f,
+			cmpFn: func(v []byte) (bool, error) {
+				return bytes.Compare(v, base) <= 0, nil
+			},
 		},
 
 		fn: func(table string, tx *genji.Tx) (*btree.BTree, error) {
