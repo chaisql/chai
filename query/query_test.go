@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTable(t require.TestingT, size int) (*genji.Tx, func()) {
+func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func()) {
 	db, err := genji.New(memory.NewEngine())
 
 	tx, err := db.Begin(true)
@@ -23,6 +23,11 @@ func createTable(t require.TestingT, size int) (*genji.Tx, func()) {
 
 	tb, err := tx.Table("test")
 	require.NoError(t, err)
+
+	if withIndex {
+		err = tx.CreateIndex("test", "name")
+		require.NoError(t, err)
+	}
 
 	for i := 0; i < size; i++ {
 		_, err = tb.Insert(record.FieldBuffer{
@@ -43,7 +48,7 @@ func createTable(t require.TestingT, size int) (*genji.Tx, func()) {
 func TestQuery(t *testing.T) {
 	t.Run("Select", func(t *testing.T) {
 		t.Run("Ok", func(t *testing.T) {
-			tx, cleanup := createTable(t, 10)
+			tx, cleanup := createTable(t, 10, false)
 			defer cleanup()
 
 			res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
@@ -71,10 +76,41 @@ func TestQuery(t *testing.T) {
 	})
 }
 
+func TestQueryWithIndex(t *testing.T) {
+	t.Run("Select", func(t *testing.T) {
+		t.Run("Ok", func(t *testing.T) {
+			tx, cleanup := createTable(t, 10, true)
+			defer cleanup()
+
+			res := Select(Field("id"), Field("name")).From(Table("test")).Where(EqStr(Field("name"), "john-9")).Run(tx)
+			require.NoError(t, res.Err())
+
+			b := table.NewBrowser(res.Table())
+			count, err := b.Count()
+			require.NoError(t, err)
+			require.Equal(t, 1, count)
+
+			err = table.NewBrowser(res.Table()).ForEach(func(rowid []byte, r record.Record) error {
+				_, err := r.Field("id")
+				require.NoError(t, err)
+				_, err = r.Field("name")
+				require.NoError(t, err)
+				_, err = r.Field("age")
+				require.Error(t, err)
+				_, err = r.Field("group")
+				require.Error(t, err)
+
+				return nil
+			}).Err()
+			require.NoError(t, err)
+		})
+	})
+}
+
 func BenchmarkQuery(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
-			tx, cleanup := createTable(b, size)
+			tx, cleanup := createTable(b, size, false)
 			defer cleanup()
 
 			b.ResetTimer()

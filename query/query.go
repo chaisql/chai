@@ -58,7 +58,7 @@ func (q Query) Run(tx *genji.Tx) Result {
 
 	var b table.Browser
 
-	if ok && err != nil {
+	if ok && err == nil {
 		b.Reader = &indexResultTable{
 			tree:  tree,
 			table: t,
