@@ -3,6 +3,7 @@
 package enginetest
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/asdine/genji/engine"
@@ -217,6 +218,37 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				},
 				func(tx engine.Transaction, err *error) { *err = tx.DropIndex("table", "idx") },
 				func(tx engine.Transaction, err *error) { *err = tx.CreateIndex("table", "idx") },
+			},
+			{
+				"IndexSet",
+				func(tx engine.Transaction) error {
+					err := tx.CreateTable("table")
+					if err != nil {
+						return err
+					}
+
+					return tx.CreateIndex("table", "idx")
+				},
+				func(tx engine.Transaction, err *error) {
+					idx, er := tx.Index("table", "idx")
+					if er != nil {
+						*err = er
+						return
+					}
+					*err = idx.Set([]byte("value"), []byte("id"))
+				},
+				func(tx engine.Transaction, err *error) {
+					idx, er := tx.Index("table", "idx")
+					if er != nil {
+						*err = er
+						return
+					}
+
+					v, _ := idx.Cursor().Seek([]byte("value"))
+					if v == nil {
+						*err = errors.New("not found")
+					}
+				},
 			},
 		}
 

@@ -46,7 +46,17 @@ func (i *index) Set(value []byte, rowid []byte) error {
 		return errors.New("value cannot be nil")
 	}
 
-	i.tree.ReplaceOrInsert(&indexedItem{value, rowid})
+	newItem := &indexedItem{value, rowid}
+	replacedItem := i.tree.ReplaceOrInsert(newItem)
+	i.tx.undos = append(i.tx.undos, func() {
+		if replacedItem != nil {
+			i.tree.ReplaceOrInsert(replacedItem)
+			return
+		}
+
+		i.tree.Delete(newItem)
+	})
+
 	return nil
 }
 
