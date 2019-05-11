@@ -65,14 +65,21 @@ func (i *index) Delete(rowid []byte) error {
 		return engine.ErrTransactionReadOnly
 	}
 
+	var deleted []btree.Item
+
 	i.tree.Ascend(func(bi btree.Item) bool {
 		it := bi.(*indexedItem)
 		if bytes.Equal(it.rowid, rowid) {
-			i.tree.Delete(bi)
+			deleted = append(deleted, i.tree.Delete(bi))
 		}
 		return true
 	})
 
+	i.tx.undos = append(i.tx.undos, func() {
+		for _, it := range deleted {
+			i.tree.ReplaceOrInsert(it)
+		}
+	})
 	return nil
 }
 

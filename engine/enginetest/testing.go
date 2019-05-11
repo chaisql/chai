@@ -250,6 +250,47 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					}
 				},
 			},
+			{
+				"IndexDelete",
+				func(tx engine.Transaction) error {
+					err := tx.CreateTable("table")
+					if err != nil {
+						return err
+					}
+
+					err = tx.CreateIndex("table", "idx")
+					if err != nil {
+						return err
+					}
+
+					idx, err := tx.Index("table", "idx")
+					if err != nil {
+						return err
+					}
+
+					return idx.Set([]byte("value"), []byte("id"))
+				},
+				func(tx engine.Transaction, err *error) {
+					idx, er := tx.Index("table", "idx")
+					if er != nil {
+						*err = er
+						return
+					}
+					*err = idx.Delete([]byte("id"))
+				},
+				func(tx engine.Transaction, err *error) {
+					idx, er := tx.Index("table", "idx")
+					if er != nil {
+						*err = er
+						return
+					}
+
+					v, _ := idx.Cursor().Seek([]byte("value"))
+					if v != nil {
+						*err = errors.New("not found")
+					}
+				},
+			},
 		}
 
 		for _, test := range tests {
