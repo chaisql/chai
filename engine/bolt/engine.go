@@ -10,6 +10,11 @@ import (
 	bolt "github.com/etcd-io/bbolt"
 )
 
+const (
+	separator       byte = 0x1F
+	indexBucketName      = "__genji.index"
+)
+
 type Engine struct {
 	DB *bolt.DB
 }
@@ -107,7 +112,7 @@ func (t *Transaction) CreateIndex(table, fieldName string) error {
 		return engine.ErrTableNotFound
 	}
 
-	bb, err := b.CreateBucketIfNotExists([]byte("__genji_indexes"))
+	bb, err := b.CreateBucketIfNotExists([]byte(indexBucketName))
 	if err != nil {
 		return err
 	}
@@ -126,7 +131,7 @@ func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
 		return nil, engine.ErrTableNotFound
 	}
 
-	bb := b.Bucket([]byte("__genji_indexes"))
+	bb := b.Bucket([]byte(indexBucketName))
 	if bb == nil {
 		return nil, engine.ErrIndexNotFound
 	}
@@ -149,7 +154,7 @@ func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
 
 	m := make(map[string]index.Index)
 
-	bb := b.Bucket([]byte("__genji_indexes"))
+	bb := b.Bucket([]byte(indexBucketName))
 	if bb == nil {
 		return nil, nil
 	}
@@ -175,7 +180,7 @@ func (t *Transaction) DropIndex(table, fieldName string) error {
 		return engine.ErrTableNotFound
 	}
 
-	bb := b.Bucket([]byte("__genji_indexes"))
+	bb := b.Bucket([]byte(indexBucketName))
 	if bb == nil {
 		return engine.ErrIndexNotFound
 	}

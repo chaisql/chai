@@ -158,6 +158,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			{"TableDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Delete([]byte("id")) }},
 			{"TableReplace", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Replace([]byte("id"), record.FieldBuffer{}) }},
 			{"IndexSet", engine.ErrTransactionReadOnly, func(err *error) { *err = idx.Set([]byte("value"), []byte("id")) }},
+			{"IndexDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = idx.Delete([]byte("id")) }},
 		}
 
 		for _, test := range tests {

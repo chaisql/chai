@@ -24,7 +24,7 @@ func (i *Index) Set(value []byte, rowid []byte) error {
 
 	buf := make([]byte, 0, len(value)+len(rowid)+1)
 	buf = append(buf, value...)
-	buf = append(buf, '_')
+	buf = append(buf, separator)
 	buf = append(buf, rowid...)
 
 	err := i.b.Put(buf, nil)
@@ -33,6 +33,24 @@ func (i *Index) Set(value []byte, rowid []byte) error {
 	}
 
 	return err
+}
+
+func (i *Index) Delete(rowid []byte) error {
+	if !i.b.Writable() {
+		return engine.ErrTransactionReadOnly
+	}
+
+	suffix := make([]byte, len(rowid)+1)
+	suffix[0] = separator
+	copy(suffix[1:], rowid)
+
+	return i.b.ForEach(func(k []byte, v []byte) error {
+		if bytes.HasSuffix(k, suffix) {
+			return i.b.Delete(k)
+		}
+
+		return nil
+	})
 }
 
 func (i *Index) Cursor() index.Cursor {
@@ -54,7 +72,7 @@ func (c *Cursor) First() ([]byte, []byte) {
 		return nil, nil
 	}
 
-	idx := bytes.LastIndexByte(value, '_')
+	idx := bytes.LastIndexByte(value, separator)
 	return value[:idx], value[idx+1:]
 }
 
@@ -64,7 +82,7 @@ func (c *Cursor) Last() ([]byte, []byte) {
 		return nil, nil
 	}
 
-	idx := bytes.LastIndexByte(value, '_')
+	idx := bytes.LastIndexByte(value, separator)
 	return value[:idx], value[idx+1:]
 }
 
@@ -75,7 +93,7 @@ func (c *Cursor) Next() ([]byte, []byte) {
 		return nil, nil
 	}
 
-	idx := bytes.LastIndexByte(value, '_')
+	idx := bytes.LastIndexByte(value, separator)
 	return value[:idx], value[idx+1:]
 }
 
@@ -86,7 +104,7 @@ func (c *Cursor) Prev() ([]byte, []byte) {
 		return nil, nil
 	}
 
-	idx := bytes.LastIndexByte(value, '_')
+	idx := bytes.LastIndexByte(value, separator)
 	return value[:idx], value[idx+1:]
 }
 
@@ -96,6 +114,6 @@ func (c *Cursor) Seek(seek []byte) ([]byte, []byte) {
 		return nil, nil
 	}
 
-	idx := bytes.LastIndexByte(value, '_')
+	idx := bytes.LastIndexByte(value, separator)
 	return value[:idx], value[idx+1:]
 }

@@ -58,17 +58,24 @@ func TestIndexDelete(t *testing.T, builder Builder) {
 	defer cleanup()
 
 	t.Run("Delete valid rowid succeeds", func(t *testing.T) {
-		require.NoError(t, idx.Set([]byte("value"), []byte("rowid")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("rowid")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("other-rowid")))
+		require.NoError(t, idx.Set([]byte("value2"), []byte("yet-another-rowid")))
 		require.NoError(t, idx.Delete([]byte("rowid")))
-		require.Error(t, idx.Delete([]byte("rowid")))
+		c := idx.Cursor()
+		v, rowid := c.Seek([]byte("value1"))
+		require.Equal(t, "value1", string(v))
+		require.Equal(t, "other-rowid", string(rowid))
+		v, rowid = c.Next()
+		require.Equal(t, "value2", string(v))
+		require.Equal(t, "yet-another-rowid", string(rowid))
+		v, rowid = c.Next()
+		require.Nil(t, v)
+		require.Nil(t, rowid)
 	})
 
-	t.Run("Delete nil rowid fails", func(t *testing.T) {
-		require.Error(t, idx.Delete(nil))
-	})
-
-	t.Run("Delete non existing rowid fails", func(t *testing.T) {
-		require.Error(t, idx.Delete([]byte("foo")))
+	t.Run("Delete non existing rowid succeeds", func(t *testing.T) {
+		require.NoError(t, idx.Delete([]byte("foo")))
 	})
 }
 
