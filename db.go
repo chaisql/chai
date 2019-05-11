@@ -141,6 +141,27 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	return rowid, nil
 }
 
+func (t Table) Delete(rowid []byte) error {
+	err := t.Table.Delete(rowid)
+	if err != nil {
+		return err
+	}
+
+	indexes, err := t.tx.Indexes(t.name)
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
+		err = idx.Delete(rowid)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (t Table) Replace(rowid []byte, r record.Record) error {
 	if t.schema != nil {
 		err := t.schema.Validate(r)
