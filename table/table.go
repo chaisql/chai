@@ -41,10 +41,6 @@ type Scanner interface {
 	ScanTable(Reader) error
 }
 
-type Indexer interface {
-	Indexes() map[string]field.Type
-}
-
 // RecordBuffer contains a list of records. It implements the Table interface.
 type RecordBuffer struct {
 	tree    *b.Tree
