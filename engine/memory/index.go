@@ -50,6 +50,22 @@ func (i *index) Set(value []byte, rowid []byte) error {
 	return nil
 }
 
+func (i *index) Delete(rowid []byte) error {
+	if !i.tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	i.tree.Ascend(func(bi btree.Item) bool {
+		it := bi.(*indexedItem)
+		if bytes.Equal(it.rowid, rowid) {
+			i.tree.Delete(bi)
+		}
+		return true
+	})
+
+	return nil
+}
+
 func (i *index) Cursor() idx.Cursor {
 	return &indexCursor{
 		tree: i.tree,
