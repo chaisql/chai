@@ -51,14 +51,14 @@ func (q Query) Run(tx *genji.Tx) Result {
 	}
 
 	matcher := And(q.matchers...)
-	tree, err := matcher.MatchIndex(q.tableSelector.Name(), tx)
+	tree, ok, err := matcher.MatchIndex(q.tableSelector.Name(), tx)
 	if err != nil && err != engine.ErrIndexNotFound {
 		return Result{err: err}
 	}
 
 	var b table.Browser
 
-	if err == nil && tree.Len() > 0 {
+	if ok && err != nil {
 		b.Reader = &indexResultTable{
 			tree:  tree,
 			table: t,

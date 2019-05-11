@@ -102,16 +102,12 @@ type indexPair struct {
 }
 
 func TestIndexMatchers(t *testing.T) {
-	type indexMatcher interface {
-		MatchIndex(table string, tx *genji.Tx) (*btree.BTree, error)
-	}
-
 	tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
 	defer cleanup()
 
 	tests := []struct {
 		name    string
-		matcher indexMatcher
+		matcher query.IndexMatcher
 		rowids  []string
 	}{
 		{"eq/int/one", query.EqInt(query.Field("age"), 10), []string{"c"}},
@@ -160,8 +156,9 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rowids, err := test.matcher.MatchIndex("test", tx)
+			rowids, ok, err := test.matcher.MatchIndex("test", tx)
 			require.NoError(t, err)
+			require.True(t, ok)
 			var ids []string
 			rowids.Ascend(func(i btree.Item) bool {
 				ids = append(ids, string(i.(query.Item)))
@@ -215,7 +212,7 @@ func TestAndMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.And(test.matchers...)
 
-				rowids, err := m.MatchIndex("test", tx)
+				rowids, _, err := m.MatchIndex("test", tx)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -276,7 +273,7 @@ func TestOrMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.Or(test.matchers...)
 
-				rowids, err := m.MatchIndex("test", tx)
+				rowids, _, err := m.MatchIndex("test", tx)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -331,9 +328,7 @@ func BenchmarkIndexMatcher(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tree, err := matcher.MatchIndex("test", tx)
-				fmt.Println(tree.Len())
-				require.NoError(b, err)
+				matcher.MatchIndex("test", tx)
 			}
 			b.StopTimer()
 		})
