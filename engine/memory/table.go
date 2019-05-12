@@ -62,3 +62,18 @@ func (t *tableTx) Replace(rowid []byte, r record.Record) error {
 
 	return t.RecordBuffer.Replace(rowid, r)
 }
+
+func (t *tableTx) Truncate() error {
+	if !t.tx.writable {
+		return engine.ErrTransactionReadOnly
+	}
+
+	old := t.RecordBuffer
+	t.RecordBuffer = new(table.RecordBuffer)
+
+	t.tx.undos = append(t.tx.undos, func() {
+		t.RecordBuffer = old
+	})
+
+	return nil
+}
