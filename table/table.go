@@ -31,6 +31,7 @@ type Writer interface {
 	Insert(record.Record) (rowid []byte, err error)
 	Delete(rowid []byte) error
 	Replace(rowid []byte, r record.Record) error
+	Truncate() error
 }
 
 type Pker interface {
@@ -144,5 +145,13 @@ func (rb *RecordBuffer) Replace(rowid []byte, r record.Record) error {
 	}
 
 	rb.tree.Set(rowid, r)
+	return nil
+}
+
+func (rb *RecordBuffer) Truncate() error {
+	if rb.tree != nil {
+		rb.tree.Clear()
+	}
+
 	return nil
 }
