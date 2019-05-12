@@ -238,3 +238,10 @@ func (s *Store) Replace(rowid []byte, r record.Record) error {
 		return t.Replace(rowid, r)
 	})
 }
+
+// Truncate the table.
+func (s *Store) Truncate() error {
+	return s.UpdateTable(func(t table.Table) error {
+		return t.Truncate()
+	})
+}
