@@ -99,9 +99,6 @@ func (s *Store) Init() error {
 		} else {
 			err = tx.CreateTable(s.tableName)
 		}
-		if err == engine.ErrTableAlreadyExists {
-			return nil
-		}
 
 		if err != nil && err != engine.ErrTableAlreadyExists {
 			return err
