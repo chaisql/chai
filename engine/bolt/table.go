@@ -9,12 +9,14 @@ import (
 )
 
 type Table struct {
-	Bucket *bolt.Bucket
+	bucket *bolt.Bucket
 	codec  record.Codec
+	tx     *bolt.Tx
+	name   []byte
 }
 
 func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
-	if !t.Bucket.Writable() {
+	if !t.bucket.Writable() {
 		return nil, engine.ErrTransactionReadOnly
 	}
 
@@ -24,7 +26,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 			return nil, err
 		}
 	} else {
-		seq, err := t.Bucket.NextSequence()
+		seq, err := t.bucket.NextSequence()
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +40,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 		return nil, err
 	}
 
-	err = t.Bucket.Put(rowid, data)
+	err = t.bucket.Put(rowid, data)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +49,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 }
 
 func (t *Table) Record(rowid []byte) (record.Record, error) {
-	v := t.Bucket.Get(rowid)
+	v := t.bucket.Get(rowid)
 	if v == nil {
 		return nil, table.ErrRecordNotFound
 	}
@@ -56,20 +58,20 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 }
 
 func (t *Table) Delete(rowid []byte) error {
-	if !t.Bucket.Writable() {
+	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
 
-	v := t.Bucket.Get(rowid)
+	v := t.bucket.Get(rowid)
 	if v == nil {
 		return table.ErrRecordNotFound
 	}
 
-	return t.Bucket.Delete(rowid)
+	return t.bucket.Delete(rowid)
 }
 
 func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
-	return t.Bucket.ForEach(func(k, v []byte) error {
+	return t.bucket.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
 		}
@@ -84,11 +86,11 @@ func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 }
 
 func (t *Table) Replace(rowid []byte, r record.Record) error {
-	if !t.Bucket.Writable() {
+	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
 
-	v := t.Bucket.Get(rowid)
+	v := t.bucket.Get(rowid)
 	if v == nil {
 		return table.ErrRecordNotFound
 	}
@@ -98,5 +100,19 @@ func (t *Table) Replace(rowid []byte, r record.Record) error {
 		return err
 	}
 
-	return t.Bucket.Put(rowid, v)
+	return t.bucket.Put(rowid, v)
+}
+
+func (t *Table) Truncate() error {
+	if !t.bucket.Writable() {
+		return engine.ErrTransactionReadOnly
+	}
+
+	err := t.tx.DeleteBucket(t.name)
+	if err != nil {
+		return err
+	}
+
+	_, err = t.tx.CreateBucket(t.name)
+	return err
 }

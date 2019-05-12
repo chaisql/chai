@@ -65,14 +65,17 @@ func (t *Transaction) Commit() error {
 }
 
 func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error) {
-	b := t.tx.Bucket([]byte(name))
+	bname := []byte(name)
+	b := t.tx.Bucket(bname)
 	if b == nil {
 		return nil, engine.ErrTableNotFound
 	}
 
 	return &Table{
-		Bucket: b,
+		bucket: b,
 		codec:  codec,
+		tx:     t.tx,
+		name:   bname,
 	}, nil
 }
 
