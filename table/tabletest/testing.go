@@ -32,6 +32,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"TableWriter/Insert", TestTableWriterInsert},
 		{"TableWriter/Delete", TestTableWriterDelete},
 		{"TableWriter/Replace", TestTableWriterReplace},
+		{"TableWriter/Truncate", TestTableWriterTruncate},
 	}
 
 	for _, test := range tests {
@@ -309,5 +310,39 @@ func TestTableWriterReplace(t *testing.T, builder Builder) {
 		f, err = res.Field("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "c", string(f.Data))
+	})
+}
+
+// TestTableWriterTruncate verifies Truncate behaviour.
+func TestTableWriterTruncate(t *testing.T, builder Builder) {
+	t.Run("Should succeed if table empty", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		err := tb.Truncate()
+		require.NoError(t, err)
+	})
+
+	t.Run("Should truncate the table", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		// create two records
+		rec1 := newRecord()
+		rec2 := newRecord()
+
+		_, err := tb.Insert(rec1)
+		require.NoError(t, err)
+		_, err = tb.Insert(rec2)
+		require.NoError(t, err)
+
+		err = tb.Truncate()
+		require.NoError(t, err)
+
+		err = tb.Iterate(func(_ []byte, _ record.Record) error {
+			return errors.New("should not iterate")
+		})
+
+		require.NoError(t, err)
 	})
 }
