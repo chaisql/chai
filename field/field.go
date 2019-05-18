@@ -11,8 +11,8 @@ type Type uint8
 
 // List of supported field types.
 const (
-	String Type = iota + 1
-	Bytes
+	Bytes Type = iota + 1
+	String
 	Bool
 	Uint
 	Uint8
@@ -35,21 +35,21 @@ type Field struct {
 	Data []byte
 }
 
-// NewString encodes x and returns a field.
-func NewString(name string, x string) Field {
-	return Field{
-		Name: name,
-		Type: String,
-		Data: []byte(x),
-	}
-}
-
 // NewBytes encodes x and returns a field.
 func NewBytes(name string, x []byte) Field {
 	return Field{
 		Name: name,
 		Type: Bytes,
 		Data: x,
+	}
+}
+
+// NewString encodes x and returns a field.
+func NewString(name string, x string) Field {
+	return Field{
+		Name: name,
+		Type: String,
+		Data: []byte(x),
 	}
 }
 
@@ -170,7 +170,18 @@ func NewFloat64(name string, x float64) Field {
 	}
 }
 
-// EncodeBool takes an bool and returns its binary representation.
+// EncodeBytes takes a bytes and returns it.
+// It is present to ease code generation.
+func EncodeBytes(x []byte) []byte {
+	return x
+}
+
+// EncodeString takes a string and returns its binary representation.
+func EncodeString(x string) []byte {
+	return []byte(x)
+}
+
+// EncodeBool takes a bool and returns its binary representation.
 func EncodeBool(x bool) []byte {
 	if x {
 		return []byte{1}
@@ -242,6 +253,17 @@ func EncodeFloat32(x float32) []byte {
 // EncodeFloat64 takes an float64 and returns its binary representation.
 func EncodeFloat64(x float64) []byte {
 	return EncodeUint64(math.Float64bits(x))
+}
+
+// DecodeBytes takes a byte slice and returns.
+// It is present to ease code generation.
+func DecodeBytes(buf []byte) ([]byte, error) {
+	return buf, nil
+}
+
+// DecodeString takes a byte slice and decodes it into a string.
+func DecodeString(buf []byte) (string, error) {
+	return string(buf), nil
 }
 
 // DecodeBool takes a byte slice and decodes it into a boolean.
