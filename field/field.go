@@ -35,6 +35,7 @@ type Field struct {
 	Data []byte
 }
 
+// NewString encodes x and returns a field.
 func NewString(name string, x string) Field {
 	return Field{
 		Name: name,
@@ -43,6 +44,7 @@ func NewString(name string, x string) Field {
 	}
 }
 
+// NewBytes encodes x and returns a field.
 func NewBytes(name string, x []byte) Field {
 	return Field{
 		Name: name,
@@ -51,6 +53,7 @@ func NewBytes(name string, x []byte) Field {
 	}
 }
 
+// NewBool encodes x and returns a field.
 func NewBool(name string, x bool) Field {
 	return Field{
 		Name: name,
@@ -59,6 +62,7 @@ func NewBool(name string, x bool) Field {
 	}
 }
 
+// NewUint encodes x and returns a field.
 func NewUint(name string, x uint) Field {
 	return Field{
 		Name: name,
@@ -67,6 +71,7 @@ func NewUint(name string, x uint) Field {
 	}
 }
 
+// NewUint8 encodes x and returns a field.
 func NewUint8(name string, x uint8) Field {
 	return Field{
 		Name: name,
@@ -75,6 +80,7 @@ func NewUint8(name string, x uint8) Field {
 	}
 }
 
+// NewUint16 encodes x and returns a field.
 func NewUint16(name string, x uint16) Field {
 	return Field{
 		Name: name,
@@ -83,6 +89,7 @@ func NewUint16(name string, x uint16) Field {
 	}
 }
 
+// NewUint32 encodes x and returns a field.
 func NewUint32(name string, x uint32) Field {
 	return Field{
 		Name: name,
@@ -91,6 +98,7 @@ func NewUint32(name string, x uint32) Field {
 	}
 }
 
+// NewUint64 encodes x and returns a field.
 func NewUint64(name string, x uint64) Field {
 	return Field{
 		Name: name,
@@ -99,6 +107,7 @@ func NewUint64(name string, x uint64) Field {
 	}
 }
 
+// NewInt encodes x and returns a field.
 func NewInt(name string, x int) Field {
 	return Field{
 		Name: name,
@@ -107,6 +116,7 @@ func NewInt(name string, x int) Field {
 	}
 }
 
+// NewInt8 encodes x and returns a field.
 func NewInt8(name string, x int8) Field {
 	return Field{
 		Name: name,
@@ -115,6 +125,7 @@ func NewInt8(name string, x int8) Field {
 	}
 }
 
+// NewInt16 encodes x and returns a field.
 func NewInt16(name string, x int16) Field {
 	return Field{
 		Name: name,
@@ -123,6 +134,7 @@ func NewInt16(name string, x int16) Field {
 	}
 }
 
+// NewInt32 encodes x and returns a field.
 func NewInt32(name string, x int32) Field {
 	return Field{
 		Name: name,
@@ -131,6 +143,7 @@ func NewInt32(name string, x int32) Field {
 	}
 }
 
+// NewInt64 encodes x and returns a field.
 func NewInt64(name string, x int64) Field {
 	return Field{
 		Name: name,
@@ -139,6 +152,7 @@ func NewInt64(name string, x int64) Field {
 	}
 }
 
+// NewFloat32 encodes x and returns a field.
 func NewFloat32(name string, x float32) Field {
 	return Field{
 		Name: name,
@@ -147,6 +161,7 @@ func NewFloat32(name string, x float32) Field {
 	}
 }
 
+// NewFloat64 encodes x and returns a field.
 func NewFloat64(name string, x float64) Field {
 	return Field{
 		Name: name,
@@ -155,6 +170,7 @@ func NewFloat64(name string, x float64) Field {
 	}
 }
 
+// EncodeBool takes an bool and returns its binary representation.
 func EncodeBool(x bool) []byte {
 	if x {
 		return []byte{1}
@@ -162,48 +178,57 @@ func EncodeBool(x bool) []byte {
 	return []byte{0}
 }
 
+// EncodeUint takes an uint and returns its binary representation.
 func EncodeUint(x uint) []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, uint64(x))
 	return buf[:n]
 }
 
+// EncodeUint8 takes an uint8 and returns its binary representation.
 func EncodeUint8(x uint8) []byte {
 	return []byte{x}
 }
 
+// EncodeUint16 takes an uint16 and returns its binary representation.
 func EncodeUint16(x uint16) []byte {
 	var buf [2]byte
 	binary.BigEndian.PutUint16(buf[:], x)
 	return buf[:]
 }
 
+// EncodeUint32 takes an uint32 and returns its binary representation.
 func EncodeUint32(x uint32) []byte {
 	var buf [4]byte
 	binary.BigEndian.PutUint32(buf[:], x)
 	return buf[:]
 }
 
+// EncodeUint64 takes an uint64 and returns its binary representation.
 func EncodeUint64(x uint64) []byte {
 	var buf [8]byte
 	binary.BigEndian.PutUint64(buf[:], x)
 	return buf[:]
 }
 
+// EncodeInt takes an int and returns its binary representation.
 func EncodeInt(x int) []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, int64(x))
 	return buf[:n]
 }
 
+// EncodeInt8 takes an int8 and returns its binary representation.
 func EncodeInt8(x int8) []byte {
 	return EncodeUint8(uint8(x))
 }
 
+// EncodeInt16 takes an int16 and returns its binary representation.
 func EncodeInt16(x int16) []byte {
 	return EncodeUint16(uint16(x))
 }
 
+// EncodeInt32 takes an int32 and returns its binary representation.
 func EncodeInt32(x int32) []byte {
 	return EncodeUint32(uint32(x))
 }
@@ -213,14 +238,17 @@ func EncodeInt64(x int64) []byte {
 	return EncodeUint64(uint64(x))
 }
 
+// EncodeFloat32 takes an float32 and returns its binary representation.
 func EncodeFloat32(x float32) []byte {
 	return EncodeUint32(math.Float32bits(x))
 }
 
+// EncodeFloat64 takes an float64 and returns its binary representation.
 func EncodeFloat64(x float64) []byte {
 	return EncodeUint64(math.Float64bits(x))
 }
 
+// DecodeBool takes a byte slice and decodes it into a boolean.
 func DecodeBool(buf []byte) (bool, error) {
 	if len(buf) != 1 {
 		return false, errors.New("cannot decode buffer to bool")
@@ -228,6 +256,7 @@ func DecodeBool(buf []byte) (bool, error) {
 	return buf[0] == 1, nil
 }
 
+// DecodeUint takes a byte slice and decodes it into a uint.
 func DecodeUint(buf []byte) (uint, error) {
 	i, n := binary.Uvarint(buf)
 	if n <= 0 {
@@ -237,6 +266,7 @@ func DecodeUint(buf []byte) (uint, error) {
 	return uint(i), nil
 }
 
+// DecodeUint8 takes a byte slice and decodes it into a uint8.
 func DecodeUint8(buf []byte) (uint8, error) {
 	if len(buf) == 0 {
 		return 0, errors.New("cannot decode buffer to uint8")
@@ -245,6 +275,7 @@ func DecodeUint8(buf []byte) (uint8, error) {
 	return buf[0], nil
 }
 
+// DecodeUint16 takes a byte slice and decodes it into a uint16.
 func DecodeUint16(buf []byte) (uint16, error) {
 	if len(buf) < 2 {
 		return 0, errors.New("cannot decode buffer to uint16")
@@ -253,6 +284,7 @@ func DecodeUint16(buf []byte) (uint16, error) {
 	return binary.BigEndian.Uint16(buf), nil
 }
 
+// DecodeUint32 takes a byte slice and decodes it into a uint32.
 func DecodeUint32(buf []byte) (uint32, error) {
 	if len(buf) < 4 {
 		return 0, errors.New("cannot decode buffer to uint32")
@@ -261,6 +293,7 @@ func DecodeUint32(buf []byte) (uint32, error) {
 	return binary.BigEndian.Uint32(buf), nil
 }
 
+// DecodeUint64 takes a byte slice and decodes it into a uint64.
 func DecodeUint64(buf []byte) (uint64, error) {
 	if len(buf) < 8 {
 		return 0, errors.New("cannot decode buffer to uint64")
@@ -269,6 +302,7 @@ func DecodeUint64(buf []byte) (uint64, error) {
 	return binary.BigEndian.Uint64(buf), nil
 }
 
+// DecodeInt takes a byte slice and decodes it into an int.
 func DecodeInt(buf []byte) (int, error) {
 	i, n := binary.Varint(buf)
 	if n <= 0 {
@@ -278,6 +312,7 @@ func DecodeInt(buf []byte) (int, error) {
 	return int(i), nil
 }
 
+// DecodeInt8 takes a byte slice and decodes it into an int8.
 func DecodeInt8(buf []byte) (int8, error) {
 	v, err := DecodeUint8(buf)
 	if err != nil {
@@ -287,6 +322,7 @@ func DecodeInt8(buf []byte) (int8, error) {
 	return int8(v), nil
 }
 
+// DecodeInt16 takes a byte slice and decodes it into an int16.
 func DecodeInt16(buf []byte) (int16, error) {
 	v, err := DecodeUint16(buf)
 	if err != nil {
@@ -296,6 +332,7 @@ func DecodeInt16(buf []byte) (int16, error) {
 	return int16(v), nil
 }
 
+// DecodeInt32 takes a byte slice and decodes it into an int32.
 func DecodeInt32(buf []byte) (int32, error) {
 	v, err := DecodeUint32(buf)
 	if err != nil {
@@ -306,7 +343,6 @@ func DecodeInt32(buf []byte) (int32, error) {
 }
 
 // DecodeInt64 takes a byte slice and decodes it into an int64.
-// An error is returned if the value is invalid.
 func DecodeInt64(buf []byte) (int64, error) {
 	v, err := DecodeUint64(buf)
 	if err != nil {
@@ -316,6 +352,7 @@ func DecodeInt64(buf []byte) (int64, error) {
 	return int64(v), nil
 }
 
+// DecodeFloat32 takes a byte slice and decodes it into an float32.
 func DecodeFloat32(buf []byte) (float32, error) {
 	x, err := DecodeUint32(buf)
 	if err != nil {
@@ -325,6 +362,7 @@ func DecodeFloat32(buf []byte) (float32, error) {
 	return math.Float32frombits(x), nil
 }
 
+// DecodeFloat64 takes a byte slice and decodes it into an float64.
 func DecodeFloat64(buf []byte) (float64, error) {
 	x, err := DecodeUint64(buf)
 	if err != nil {
