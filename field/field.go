@@ -246,15 +246,27 @@ func DecodeUint8(buf []byte) (uint8, error) {
 }
 
 func DecodeUint16(buf []byte) (uint16, error) {
-	return 0, nil
+	if len(buf) < 2 {
+		return 0, errors.New("cannot decode buffer to uint16")
+	}
+
+	return binary.BigEndian.Uint16(buf), nil
 }
 
 func DecodeUint32(buf []byte) (uint32, error) {
-	return 0, nil
+	if len(buf) < 4 {
+		return 0, errors.New("cannot decode buffer to uint32")
+	}
+
+	return binary.BigEndian.Uint32(buf), nil
 }
 
 func DecodeUint64(buf []byte) (uint64, error) {
-	return 0, nil
+	if len(buf) < 8 {
+		return 0, errors.New("cannot decode buffer to uint64")
+	}
+
+	return binary.BigEndian.Uint64(buf), nil
 }
 
 func DecodeInt(buf []byte) (int, error) {
