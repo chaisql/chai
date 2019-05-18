@@ -238,7 +238,11 @@ func DecodeUint(buf []byte) (uint, error) {
 }
 
 func DecodeUint8(buf []byte) (uint8, error) {
-	return 0, nil
+	if len(buf) == 0 {
+		return 0, errors.New("cannot decode buffer to uint8")
+	}
+
+	return buf[0], nil
 }
 
 func DecodeUint16(buf []byte) (uint16, error) {
