@@ -317,9 +317,19 @@ func DecodeInt64(buf []byte) (int64, error) {
 }
 
 func DecodeFloat32(buf []byte) (float32, error) {
-	return 0, nil
+	x, err := DecodeUint32(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	return math.Float32frombits(x), nil
 }
 
 func DecodeFloat64(buf []byte) (float64, error) {
-	return 0, nil
+	x, err := DecodeUint64(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	return math.Float64frombits(x), nil
 }
