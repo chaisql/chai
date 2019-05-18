@@ -180,9 +180,7 @@ func EncodeBool(x bool) []byte {
 
 // EncodeUint takes an uint and returns its binary representation.
 func EncodeUint(x uint) []byte {
-	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(buf, uint64(x))
-	return buf[:n]
+	return EncodeUint64(uint64(x))
 }
 
 // EncodeUint8 takes an uint8 and returns its binary representation.
@@ -213,9 +211,7 @@ func EncodeUint64(x uint64) []byte {
 
 // EncodeInt takes an int and returns its binary representation.
 func EncodeInt(x int) []byte {
-	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutVarint(buf, int64(x))
-	return buf[:n]
+	return EncodeInt64(int64(x))
 }
 
 // EncodeInt8 takes an int8 and returns its binary representation.
@@ -258,12 +254,8 @@ func DecodeBool(buf []byte) (bool, error) {
 
 // DecodeUint takes a byte slice and decodes it into a uint.
 func DecodeUint(buf []byte) (uint, error) {
-	i, n := binary.Uvarint(buf)
-	if n <= 0 {
-		return 0, errors.New("cannot decode buffer to uint")
-	}
-
-	return uint(i), nil
+	x, err := DecodeUint64(buf)
+	return uint(x), err
 }
 
 // DecodeUint8 takes a byte slice and decodes it into a uint8.
@@ -304,12 +296,8 @@ func DecodeUint64(buf []byte) (uint64, error) {
 
 // DecodeInt takes a byte slice and decodes it into an int.
 func DecodeInt(buf []byte) (int, error) {
-	i, n := binary.Varint(buf)
-	if n <= 0 {
-		return 0, errors.New("cannot decode buffer to int")
-	}
-
-	return int(i), nil
+	x, err := DecodeInt64(buf)
+	return int(x), err
 }
 
 // DecodeInt8 takes a byte slice and decodes it into an int8.
