@@ -270,7 +270,12 @@ func DecodeUint64(buf []byte) (uint64, error) {
 }
 
 func DecodeInt(buf []byte) (int, error) {
-	return 0, nil
+	i, n := binary.Varint(buf)
+	if n <= 0 {
+		return 0, errors.New("cannot decode buffer to int")
+	}
+
+	return int(i), nil
 }
 
 func DecodeInt8(buf []byte) (int8, error) {
