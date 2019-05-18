@@ -279,26 +279,41 @@ func DecodeInt(buf []byte) (int, error) {
 }
 
 func DecodeInt8(buf []byte) (int8, error) {
-	return 0, nil
+	v, err := DecodeUint8(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	return int8(v), nil
 }
 
 func DecodeInt16(buf []byte) (int16, error) {
-	return 0, nil
+	v, err := DecodeUint16(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	return int16(v), nil
 }
 
 func DecodeInt32(buf []byte) (int32, error) {
-	return 0, nil
+	v, err := DecodeUint32(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	return int32(v), nil
 }
 
 // DecodeInt64 takes a byte slice and decodes it into an int64.
 // An error is returned if the value is invalid.
 func DecodeInt64(buf []byte) (int64, error) {
-	i, n := binary.Varint(buf)
-	if n <= 0 {
-		return 0, errors.New("cannot decode buffer to in64")
+	v, err := DecodeUint64(buf)
+	if err != nil {
+		return 0, err
 	}
 
-	return i, nil
+	return int64(v), nil
 }
 
 func DecodeFloat32(buf []byte) (float32, error) {
