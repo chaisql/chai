@@ -42,6 +42,8 @@ func TestEncodeDecode(t *testing.T) {
 	}
 }
 
+const Rng = 1000
+
 func TestOrdering(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -62,21 +64,18 @@ func TestOrdering(t *testing.T) {
 		{"float64", -1000, 1000, func(i int) []byte { return field.EncodeFloat64(float64(i)) }},
 	}
 
-	var numbers [][]byte
 	for _, test := range tests {
-		numbers = numbers[:0]
-
 		t.Run(test.name, func(t *testing.T) {
+			var prev []byte
 			for i := test.min; i < test.max; i++ {
-				numbers = append(numbers, test.enc(i))
-			}
-
-			for i := range numbers {
-				if i == 0 {
+				cur := test.enc(i)
+				if prev == nil {
+					prev = cur
 					continue
 				}
 
-				require.Equal(t, -1, bytes.Compare(numbers[i-1], numbers[i]))
+				require.Equal(t, -1, bytes.Compare(prev, cur))
+				prev = cur
 			}
 		})
 	}
