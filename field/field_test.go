@@ -1,6 +1,7 @@
 package field_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/asdine/genji/field"
@@ -39,4 +40,42 @@ func TestEncodeDecode(t *testing.T) {
 			require.Equal(t, test.expected, actual)
 		})
 	}
+}
+
+func TestOrdering(t *testing.T) {
+	tests := []struct {
+		name string
+		enc  func(int) []byte
+	}{
+		{"uint", func(i int) []byte { return field.EncodeUint(uint(i)) }},
+		{"uint8", func(i int) []byte { return field.EncodeUint8(uint8(i)) }},
+		{"uint16", func(i int) []byte { return field.EncodeUint16(uint16(i)) }},
+		{"uint32", func(i int) []byte { return field.EncodeUint32(uint32(i)) }},
+		{"uint64", func(i int) []byte { return field.EncodeUint64(uint64(i)) }},
+		{"int", func(i int) []byte { return field.EncodeInt(i) }},
+		{"int8", func(i int) []byte { return field.EncodeInt8(int8(i)) }},
+		{"int16", func(i int) []byte { return field.EncodeInt16(int16(i)) }},
+		{"int32", func(i int) []byte { return field.EncodeInt32(int32(i)) }},
+		{"int64", func(i int) []byte { return field.EncodeInt64(int64(i)) }},
+	}
+
+	var numbers [][]byte
+	for _, test := range tests {
+		numbers = numbers[:0]
+
+		t.Run(test.name, func(t *testing.T) {
+			for i := -1000; i < 1000; i++ {
+				numbers = append(numbers, test.enc(i))
+			}
+
+			for i := 0; i < 2000; i++ {
+				if i == 0 {
+					continue
+				}
+
+				require.True(t, bytes.Compare(numbers[i-1], numbers[i]) < 0)
+			}
+		})
+	}
+
 }
