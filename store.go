@@ -5,7 +5,6 @@ import (
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 type Store struct {
@@ -68,25 +67,25 @@ func (s *Store) Update(fn func(tx *Tx) error) error {
 	return s.Tx(true, fn)
 }
 
-func (s *Store) ViewTable(fn func(table.Table) error) error {
+func (s *Store) ViewTable(fn func(*Table) error) error {
 	return s.View(func(tx *Tx) error {
 		tb, err := tx.Table(s.tableName)
 		if err != nil {
 			return err
 		}
 
-		return fn(tb)
+		return fn(tb.(*Table))
 	})
 }
 
-func (s *Store) UpdateTable(fn func(table.Table) error) error {
+func (s *Store) UpdateTable(fn func(*Table) error) error {
 	return s.Update(func(tx *Tx) error {
 		tb, err := tx.Table(s.tableName)
 		if err != nil {
 			return err
 		}
 
-		return fn(tb)
+		return fn(tb.(*Table))
 	})
 }
 
@@ -130,7 +129,7 @@ func (s *Store) Init() error {
 
 // Insert a record in the table and return the primary key.
 func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
-	err = s.UpdateTable(func(t table.Table) error {
+	err = s.UpdateTable(func(t *Table) error {
 		rowid, err = t.Insert(r)
 		return err
 	})
@@ -139,7 +138,7 @@ func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
 
 // Get a record using its primary key.
 func (s *Store) Get(rowid []byte, scanner record.Scanner) error {
-	return s.ViewTable(func(t table.Table) error {
+	return s.ViewTable(func(t *Table) error {
 		rec, err := t.Record(rowid)
 		if err != nil {
 			return err
@@ -151,7 +150,7 @@ func (s *Store) Get(rowid []byte, scanner record.Scanner) error {
 
 // Delete a record using its primary key.
 func (s *Store) Delete(rowid []byte) error {
-	return s.UpdateTable(func(t table.Table) error {
+	return s.UpdateTable(func(t *Table) error {
 		return t.Delete(rowid)
 	})
 }
@@ -207,7 +206,7 @@ func (s *Store) ReIndex(fieldName string) error {
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
 func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) error) error {
-	return s.ViewTable(func(t table.Table) error {
+	return s.ViewTable(func(t *Table) error {
 		var skipped, count int
 		errStop := errors.New("stop")
 
@@ -234,14 +233,14 @@ func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) e
 
 // Replace a record by another one.
 func (s *Store) Replace(rowid []byte, r record.Record) error {
-	return s.UpdateTable(func(t table.Table) error {
+	return s.UpdateTable(func(t *Table) error {
 		return t.Replace(rowid, r)
 	})
 }
 
 // Truncate the table.
 func (s *Store) Truncate() error {
-	return s.UpdateTable(func(t table.Table) error {
+	return s.UpdateTable(func(t *Table) error {
 		return t.Truncate()
 	})
 }
