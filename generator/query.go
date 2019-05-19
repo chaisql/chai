@@ -18,7 +18,7 @@ const querySelectorStructTmpl = `
 type {{$structName}}QuerySelector struct{
 {{- range $i, $a := .Fields }}
 	{{- if eq .Type "string"}}
-		{{$a.Name}} query.StrField
+		{{$a.Name}} query.StringField
 	{{- else if eq .Type "int64"}}
 		{{$a.Name}} query.Int64Field
 	{{- end}}
@@ -41,7 +41,7 @@ func new{{.ExportedName}}QuerySelector() {{$structName}}QuerySelector {
 	return {{$structName}}QuerySelector{
 		{{- range $i, $a := .Fields }}
 			{{- if eq .Type "string"}}
-				{{$a.Name}}: query.NewStrField("{{$a.Name}}"),
+				{{$a.Name}}: query.NewStringField("{{$a.Name}}"),
 			{{- else if eq .Type "int64"}}
 				{{$a.Name}}: query.NewInt64Field("{{$a.Name}}"),
 			{{- end}}

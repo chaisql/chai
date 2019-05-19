@@ -175,7 +175,7 @@ func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
 
 // BasicQuerySelector provides helpers for selecting fields from the Basic structure.
 type BasicQuerySelector struct {
-	A query.StrField
+	A query.StringField
 	B query.Int64Field
 	C query.Int64Field
 	D query.Int64Field
@@ -184,7 +184,7 @@ type BasicQuerySelector struct {
 // NewBasicQuerySelector creates a BasicQuerySelector.
 func NewBasicQuerySelector() BasicQuerySelector {
 	return BasicQuerySelector{
-		A: query.NewStrField("A"),
+		A: query.NewStringField("A"),
 		B: query.NewInt64Field("B"),
 		C: query.NewInt64Field("C"),
 		D: query.NewInt64Field("D"),
@@ -389,7 +389,7 @@ func (b *basicStore) Replace(rowid []byte, record *basic) error {
 
 // basicQuerySelector provides helpers for selecting fields from the basic structure.
 type basicQuerySelector struct {
-	A query.StrField
+	A query.StringField
 	B query.Int64Field
 	C query.Int64Field
 	D query.Int64Field
@@ -398,7 +398,7 @@ type basicQuerySelector struct {
 // newbasicQuerySelector creates a basicQuerySelector.
 func newBasicQuerySelector() basicQuerySelector {
 	return basicQuerySelector{
-		A: query.NewStrField("A"),
+		A: query.NewStringField("A"),
 		B: query.NewInt64Field("B"),
 		C: query.NewInt64Field("C"),
 		D: query.NewInt64Field("D"),
@@ -588,14 +588,14 @@ func (p *PkStore) Replace(pk int64, record *Pk) error {
 
 // PkQuerySelector provides helpers for selecting fields from the Pk structure.
 type PkQuerySelector struct {
-	A query.StrField
+	A query.StringField
 	B query.Int64Field
 }
 
 // NewPkQuerySelector creates a PkQuerySelector.
 func NewPkQuerySelector() PkQuerySelector {
 	return PkQuerySelector{
-		A: query.NewStrField("A"),
+		A: query.NewStringField("A"),
 		B: query.NewInt64Field("B"),
 	}
 }
@@ -767,14 +767,14 @@ func (i *IndexedStore) Replace(rowid []byte, record *Indexed) error {
 
 // IndexedQuerySelector provides helpers for selecting fields from the Indexed structure.
 type IndexedQuerySelector struct {
-	A query.StrField
+	A query.StringField
 	B query.Int64Field
 }
 
 // NewIndexedQuerySelector creates a IndexedQuerySelector.
 func NewIndexedQuerySelector() IndexedQuerySelector {
 	return IndexedQuerySelector{
-		A: query.NewStrField("A"),
+		A: query.NewStringField("A"),
 		B: query.NewInt64Field("B"),
 	}
 }
