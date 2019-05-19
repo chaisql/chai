@@ -222,12 +222,15 @@ func EncodeUint64(x uint64) []byte {
 
 // EncodeInt takes an int and returns its binary representation.
 func EncodeInt(x int) []byte {
-	return EncodeUint64(uint64(x))
+	return EncodeInt64(int64(x))
 }
 
 // EncodeInt8 takes an int8 and returns its binary representation.
 func EncodeInt8(x int8) []byte {
-	return EncodeUint8(uint8(x))
+	if x >= 0 {
+		return []byte{1, uint8(x)}
+	}
+	return []byte{0, uint8(x)}
 }
 
 // EncodeInt16 takes an int16 and returns its binary representation.
@@ -324,7 +327,7 @@ func DecodeInt(buf []byte) (int, error) {
 
 // DecodeInt8 takes a byte slice and decodes it into an int8.
 func DecodeInt8(buf []byte) (int8, error) {
-	x, err := DecodeUint8(buf)
+	x, err := DecodeUint8(buf[1:])
 	return int8(x), err
 }
 
