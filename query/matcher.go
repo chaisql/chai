@@ -1,10 +1,11 @@
+//go:generate go run ./internal/gen.go
+
 package query
 
 import (
 	"bytes"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/google/btree"
@@ -27,20 +28,6 @@ func (i Item) Less(than btree.Item) bool {
 type EqMatcher struct {
 	f FieldSelector
 	v []byte
-}
-
-func EqInt(f FieldSelector, i int) *EqMatcher {
-	return &EqMatcher{
-		f: f,
-		v: field.EncodeInt64(int64(i)),
-	}
-}
-
-func EqStr(f FieldSelector, s string) *EqMatcher {
-	return &EqMatcher{
-		f: f,
-		v: []byte(s),
-	}
 }
 
 func (m *EqMatcher) Match(r record.Record) (bool, error) {
@@ -73,20 +60,6 @@ func (m *EqMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 type GtMatcher struct {
 	f FieldSelector
 	v []byte
-}
-
-func GtInt(f FieldSelector, i int) *GtMatcher {
-	return &GtMatcher{
-		f: f,
-		v: field.EncodeInt64(int64(i)),
-	}
-}
-
-func GtStr(f FieldSelector, s string) *GtMatcher {
-	return &GtMatcher{
-		f: f,
-		v: []byte(s),
-	}
 }
 
 func (m *GtMatcher) Match(r record.Record) (bool, error) {
@@ -124,20 +97,6 @@ type GteMatcher struct {
 	v []byte
 }
 
-func GteInt(f FieldSelector, i int) *GteMatcher {
-	return &GteMatcher{
-		f: f,
-		v: field.EncodeInt64(int64(i)),
-	}
-}
-
-func GteStr(f FieldSelector, s string) *GteMatcher {
-	return &GteMatcher{
-		f: f,
-		v: []byte(s),
-	}
-}
-
 func (m *GteMatcher) Match(r record.Record) (bool, error) {
 	rf, err := m.f.SelectField(r)
 	if err != nil {
@@ -168,20 +127,6 @@ func (m *GteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 type LtMatcher struct {
 	f FieldSelector
 	v []byte
-}
-
-func LtInt(f FieldSelector, i int) *LtMatcher {
-	return &LtMatcher{
-		f: f,
-		v: field.EncodeInt64(int64(i)),
-	}
-}
-
-func LtStr(f FieldSelector, s string) *LtMatcher {
-	return &LtMatcher{
-		f: f,
-		v: []byte(s),
-	}
 }
 
 func (m *LtMatcher) Match(r record.Record) (bool, error) {
@@ -217,20 +162,6 @@ func (m *LtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 type LteMatcher struct {
 	f FieldSelector
 	v []byte
-}
-
-func LteInt(f FieldSelector, i int) *LteMatcher {
-	return &LteMatcher{
-		f: f,
-		v: field.EncodeInt64(int64(i)),
-	}
-}
-
-func LteStr(f FieldSelector, s string) *LteMatcher {
-	return &LteMatcher{
-		f: f,
-		v: []byte(s),
-	}
 }
 
 func (m *LteMatcher) Match(r record.Record) (bool, error) {

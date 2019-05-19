@@ -82,7 +82,7 @@ func TestQueryWithIndex(t *testing.T) {
 			tx, cleanup := createTable(t, 10, true)
 			defer cleanup()
 
-			res := Select(Field("id"), Field("name")).From(Table("test")).Where(EqStr(Field("name"), "john-9")).Run(tx)
+			res := Select(Field("id"), Field("name")).From(Table("test")).Where(EqString(Field("name"), "john-9")).Run(tx)
 			require.NoError(t, res.Err())
 
 			b := table.NewBrowser(res.Table())

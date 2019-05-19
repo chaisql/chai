@@ -222,7 +222,7 @@ func EncodeUint64(x uint64) []byte {
 
 // EncodeInt takes an int and returns its binary representation.
 func EncodeInt(x int) []byte {
-	return EncodeInt64(int64(x))
+	return EncodeUint64(uint64(x))
 }
 
 // EncodeInt8 takes an int8 and returns its binary representation.
@@ -324,60 +324,36 @@ func DecodeInt(buf []byte) (int, error) {
 
 // DecodeInt8 takes a byte slice and decodes it into an int8.
 func DecodeInt8(buf []byte) (int8, error) {
-	v, err := DecodeUint8(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	return int8(v), nil
+	x, err := DecodeUint8(buf)
+	return int8(x), err
 }
 
 // DecodeInt16 takes a byte slice and decodes it into an int16.
 func DecodeInt16(buf []byte) (int16, error) {
-	v, err := DecodeUint16(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	return int16(v), nil
+	x, err := DecodeUint16(buf)
+	return int16(x), err
 }
 
 // DecodeInt32 takes a byte slice and decodes it into an int32.
 func DecodeInt32(buf []byte) (int32, error) {
-	v, err := DecodeUint32(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	return int32(v), nil
+	x, err := DecodeUint32(buf)
+	return int32(x), err
 }
 
 // DecodeInt64 takes a byte slice and decodes it into an int64.
 func DecodeInt64(buf []byte) (int64, error) {
-	v, err := DecodeUint64(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	return int64(v), nil
+	x, err := DecodeUint64(buf)
+	return int64(x), err
 }
 
 // DecodeFloat32 takes a byte slice and decodes it into an float32.
 func DecodeFloat32(buf []byte) (float32, error) {
 	x, err := DecodeUint32(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	return math.Float32frombits(x), nil
+	return math.Float32frombits(x), err
 }
 
 // DecodeFloat64 takes a byte slice and decodes it into an float64.
 func DecodeFloat64(buf []byte) (float64, error) {
 	x, err := DecodeUint64(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	return math.Float64frombits(x), nil
+	return math.Float64frombits(x), err
 }

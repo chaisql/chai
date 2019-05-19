@@ -54,62 +54,6 @@ func (a Alias) SelectField(r record.Record) (field.Field, error) {
 	}, nil
 }
 
-type Int64Field struct {
-	FieldSelector
-}
-
-func NewInt64Field(name string) Int64Field {
-	return Int64Field{FieldSelector: Field(name)}
-}
-
-func (f Int64Field) Eq(v int) Matcher {
-	return EqInt(f.FieldSelector, v)
-}
-
-func (f Int64Field) Gt(v int) Matcher {
-	return GtInt(f.FieldSelector, v)
-}
-
-func (f Int64Field) Gte(v int) Matcher {
-	return GteInt(f.FieldSelector, v)
-}
-
-func (f Int64Field) Lt(v int) Matcher {
-	return LtInt(f.FieldSelector, v)
-}
-
-func (f Int64Field) Lte(v int) Matcher {
-	return LteInt(f.FieldSelector, v)
-}
-
-type StrField struct {
-	FieldSelector
-}
-
-func NewStrField(name string) StrField {
-	return StrField{FieldSelector: Field(name)}
-}
-
-func (f StrField) Eq(v string) Matcher {
-	return EqStr(f.FieldSelector, v)
-}
-
-func (f StrField) Gt(v string) Matcher {
-	return GtStr(f.FieldSelector, v)
-}
-
-func (f StrField) Gte(v string) Matcher {
-	return GteStr(f.FieldSelector, v)
-}
-
-func (f StrField) Lt(v string) Matcher {
-	return LtStr(f.FieldSelector, v)
-}
-
-func (f StrField) Lte(v string) Matcher {
-	return LteStr(f.FieldSelector, v)
-}
-
 type Table string
 
 func (t Table) Name() string {
