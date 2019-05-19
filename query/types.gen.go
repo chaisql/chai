@@ -121,7 +121,6 @@ func LteString(f FieldSelector, x string) *LteMatcher {
 	}
 }
 
-
 // StringField is a type safe selector that allows to compare values with fields
 // based on their types.
 type StringField struct {
