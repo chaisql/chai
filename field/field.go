@@ -227,25 +227,46 @@ func EncodeInt(x int) []byte {
 
 // EncodeInt8 takes an int8 and returns its binary representation.
 func EncodeInt8(x int8) []byte {
+	var buf [2]byte
 	if x >= 0 {
-		return []byte{1, uint8(x)}
+		buf[0] = 1
 	}
-	return []byte{0, uint8(x)}
+	buf[1] = uint8(x)
+
+	return buf[:]
 }
 
 // EncodeInt16 takes an int16 and returns its binary representation.
 func EncodeInt16(x int16) []byte {
-	return EncodeUint16(uint16(x))
+	var buf [3]byte
+	if x >= 0 {
+		buf[0] = 1
+	}
+
+	binary.BigEndian.PutUint16(buf[1:], uint16(x))
+	return buf[:]
 }
 
 // EncodeInt32 takes an int32 and returns its binary representation.
 func EncodeInt32(x int32) []byte {
-	return EncodeUint32(uint32(x))
+	var buf [5]byte
+	if x >= 0 {
+		buf[0] = 1
+	}
+
+	binary.BigEndian.PutUint32(buf[1:], uint32(x))
+	return buf[:]
 }
 
 // EncodeInt64 takes an int64 and returns its binary representation.
 func EncodeInt64(x int64) []byte {
-	return EncodeUint64(uint64(x))
+	var buf [9]byte
+	if x >= 0 {
+		buf[0] = 1
+	}
+
+	binary.BigEndian.PutUint64(buf[1:], uint64(x))
+	return buf[:]
 }
 
 // EncodeFloat32 takes an float32 and returns its binary representation.
@@ -333,19 +354,19 @@ func DecodeInt8(buf []byte) (int8, error) {
 
 // DecodeInt16 takes a byte slice and decodes it into an int16.
 func DecodeInt16(buf []byte) (int16, error) {
-	x, err := DecodeUint16(buf)
+	x, err := DecodeUint16(buf[1:])
 	return int16(x), err
 }
 
 // DecodeInt32 takes a byte slice and decodes it into an int32.
 func DecodeInt32(buf []byte) (int32, error) {
-	x, err := DecodeUint32(buf)
+	x, err := DecodeUint32(buf[1:])
 	return int32(x), err
 }
 
 // DecodeInt64 takes a byte slice and decodes it into an int64.
 func DecodeInt64(buf []byte) (int64, error) {
-	x, err := DecodeUint64(buf)
+	x, err := DecodeUint64(buf[1:])
 	return int64(x), err
 }
 

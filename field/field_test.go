@@ -2,9 +2,11 @@ package field_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/asdine/genji/field"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,19 +46,20 @@ func TestEncodeDecode(t *testing.T) {
 
 func TestOrdering(t *testing.T) {
 	tests := []struct {
-		name string
-		enc  func(int) []byte
+		name     string
+		min, max int
+		enc      func(int) []byte
 	}{
-		{"uint", func(i int) []byte { return field.EncodeUint(uint(i)) }},
-		{"uint8", func(i int) []byte { return field.EncodeUint8(uint8(i)) }},
-		{"uint16", func(i int) []byte { return field.EncodeUint16(uint16(i)) }},
-		{"uint32", func(i int) []byte { return field.EncodeUint32(uint32(i)) }},
-		{"uint64", func(i int) []byte { return field.EncodeUint64(uint64(i)) }},
-		{"int", func(i int) []byte { return field.EncodeInt(i) }},
-		{"int8", func(i int) []byte { return field.EncodeInt8(int8(i)) }},
-		{"int16", func(i int) []byte { return field.EncodeInt16(int16(i)) }},
-		{"int32", func(i int) []byte { return field.EncodeInt32(int32(i)) }},
-		{"int64", func(i int) []byte { return field.EncodeInt64(int64(i)) }},
+		{"uint", 0, 1000, func(i int) []byte { return field.EncodeUint(uint(i)) }},
+		{"uint8", 0, 255, func(i int) []byte { return field.EncodeUint8(uint8(i)) }},
+		{"uint16", 0, 1000, func(i int) []byte { return field.EncodeUint16(uint16(i)) }},
+		{"uint32", 0, 1000, func(i int) []byte { return field.EncodeUint32(uint32(i)) }},
+		{"uint64", 0, 1000, func(i int) []byte { return field.EncodeUint64(uint64(i)) }},
+		{"int", -1000, 1000, func(i int) []byte { return field.EncodeInt(i) }},
+		{"int8", -100, 100, func(i int) []byte { return field.EncodeInt8(int8(i)) }},
+		{"int16", -1000, 1000, func(i int) []byte { return field.EncodeInt16(int16(i)) }},
+		{"int32", -1000, 1000, func(i int) []byte { return field.EncodeInt32(int32(i)) }},
+		{"int64", -1000, 1000, func(i int) []byte { return field.EncodeInt64(int64(i)) }},
 	}
 
 	var numbers [][]byte
@@ -64,16 +67,18 @@ func TestOrdering(t *testing.T) {
 		numbers = numbers[:0]
 
 		t.Run(test.name, func(t *testing.T) {
-			for i := -1000; i < 1000; i++ {
+			for i := test.min; i < test.max; i++ {
 				numbers = append(numbers, test.enc(i))
 			}
 
-			for i := 0; i < 2000; i++ {
+			for i := range numbers {
 				if i == 0 {
 					continue
 				}
 
-				require.True(t, bytes.Compare(numbers[i-1], numbers[i]) < 0)
+				if !assert.Equal(t, -1, bytes.Compare(numbers[i-1], numbers[i])) {
+					fmt.Println(i-test.min, numbers[i-1], numbers[i])
+				}
 			}
 		})
 	}
