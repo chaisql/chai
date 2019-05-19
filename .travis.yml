@@ -9,4 +9,4 @@ env:
   - GO111MODULE=on
 
 script:
-  - make test
+  - make testrace
