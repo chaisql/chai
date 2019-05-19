@@ -65,8 +65,8 @@ func TestGenerate(t *testing.T) {
 			Label     string
 			FieldLine string
 		}{
-			{"Int", "F int"},
 			{"Slice", "F []string"},
+			{"Maps", "F map[int]string"},
 			{"Embedded", "F"},
 		}
 
@@ -141,10 +141,10 @@ func TestGeneratedRecords(t *testing.T) {
 			typ  field.Type
 			data []byte
 		}{
-			{"A", field.String, []byte("A")},
-			{"B", field.Int64, field.EncodeInt64(r.B)},
-			{"C", field.Int64, field.EncodeInt64(r.C)},
-			{"D", field.Int64, field.EncodeInt64(r.D)},
+			{"A", field.String, field.EncodeString(r.A)},
+			{"B", field.Int, field.EncodeInt(r.B)},
+			{"C", field.Int32, field.EncodeInt32(r.C)},
+			{"D", field.Int32, field.EncodeInt32(r.D)},
 		}
 
 		for _, test := range tests {
@@ -281,7 +281,7 @@ func TestGeneratedRecords(t *testing.T) {
 				err = tb.Init()
 				require.NoError(t, err)
 
-				for i := int64(0); i < 10; i++ {
+				for i := 0; i < 10; i++ {
 					_, err = tb.Insert(&testdata.Basic{
 						B: i,
 					})

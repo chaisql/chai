@@ -152,24 +152,38 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 		rctx.Name = target
 
 		for _, fd := range s.Fields.List {
+			var typeName string
+
 			typ, ok := fd.Type.(*ast.Ident)
 			if !ok {
-				return false, errors.New("struct must only contain supported fields")
+				atyp, ok := fd.Type.(*ast.ArrayType)
+				if !ok {
+					return false, errors.New("struct must only contain supported fields")
+				}
+
+				typ, ok = atyp.Elt.(*ast.Ident)
+				if !ok || typ.Name != "byte" {
+					return false, errors.New("struct must only contain supported fields")
+				}
+
+				typeName = "[]byte"
+			} else {
+				typeName = typ.Name
 			}
 
 			if len(fd.Names) == 0 {
 				return false, errors.New("embedded fields are not supported")
 			}
 
-			if typ.Name != "int64" && typ.Name != "string" {
-				return false, fmt.Errorf("unsupported type %s", typ.Name)
+			if field.TypeFromGoType(typeName) == 0 {
+				return false, fmt.Errorf("unsupported type %s", typeName)
 			}
 
 			for _, name := range fd.Names {
 				rctx.Fields = append(rctx.Fields, struct {
 					Name, Type, GoType string
 				}{
-					name.String(), field.TypeFromGoType(string(typ.Name)).String(), string(typ.Name),
+					name.String(), field.TypeFromGoType(typeName).String(), typeName,
 				})
 			}
 

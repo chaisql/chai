@@ -22,20 +22,20 @@ func (b *Basic) Field(name string) (field.Field, error) {
 	case "B":
 		return field.Field{
 			Name: "B",
-			Type: field.Int64,
-			Data: field.EncodeInt64(b.B),
+			Type: field.Int,
+			Data: field.EncodeInt(b.B),
 		}, nil
 	case "C":
 		return field.Field{
 			Name: "C",
-			Type: field.Int64,
-			Data: field.EncodeInt64(b.C),
+			Type: field.Int32,
+			Data: field.EncodeInt32(b.C),
 		}, nil
 	case "D":
 		return field.Field{
 			Name: "D",
-			Type: field.Int64,
-			Data: field.EncodeInt64(b.D),
+			Type: field.Int32,
+			Data: field.EncodeInt32(b.D),
 		}, nil
 	}
 
@@ -85,11 +85,11 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 		case "A":
 			b.A, err = field.DecodeString(f.Data)
 		case "B":
-			b.B, err = field.DecodeInt64(f.Data)
+			b.B, err = field.DecodeInt(f.Data)
 		case "C":
-			b.C, err = field.DecodeInt64(f.Data)
+			b.C, err = field.DecodeInt32(f.Data)
 		case "D":
-			b.D, err = field.DecodeInt64(f.Data)
+			b.D, err = field.DecodeInt32(f.Data)
 		}
 		return err
 	})
@@ -106,9 +106,9 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 	schema := record.Schema{
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-			{Name: "C", Type: field.Int64},
-			{Name: "D", Type: field.Int64},
+			{Name: "B", Type: field.Int},
+			{Name: "C", Type: field.Int32},
+			{Name: "D", Type: field.Int32},
 		},
 	}
 
@@ -122,9 +122,9 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 	schema := record.Schema{
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-			{Name: "C", Type: field.Int64},
-			{Name: "D", Type: field.Int64},
+			{Name: "B", Type: field.Int},
+			{Name: "C", Type: field.Int32},
+			{Name: "D", Type: field.Int32},
 		},
 	}
 
@@ -181,18 +181,18 @@ func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
 // BasicQuerySelector provides helpers for selecting fields from the Basic structure.
 type BasicQuerySelector struct {
 	A query.StringField
-	B query.Int64Field
-	C query.Int64Field
-	D query.Int64Field
+	B query.IntField
+	C query.Int32Field
+	D query.Int32Field
 }
 
 // NewBasicQuerySelector creates a BasicQuerySelector.
 func NewBasicQuerySelector() BasicQuerySelector {
 	return BasicQuerySelector{
 		A: query.NewStringField("A"),
-		B: query.NewInt64Field("B"),
-		C: query.NewInt64Field("C"),
-		D: query.NewInt64Field("D"),
+		B: query.NewIntField("B"),
+		C: query.NewInt32Field("C"),
+		D: query.NewInt32Field("D"),
 	}
 }
 
@@ -235,26 +235,26 @@ func (b *basic) Field(name string) (field.Field, error) {
 	case "A":
 		return field.Field{
 			Name: "A",
-			Type: field.String,
-			Data: field.EncodeString(b.A),
+			Type: field.Bytes,
+			Data: field.EncodeBytes(b.A),
 		}, nil
 	case "B":
 		return field.Field{
 			Name: "B",
-			Type: field.Int64,
-			Data: field.EncodeInt64(b.B),
+			Type: field.Uint16,
+			Data: field.EncodeUint16(b.B),
 		}, nil
 	case "C":
 		return field.Field{
 			Name: "C",
-			Type: field.Int64,
-			Data: field.EncodeInt64(b.C),
+			Type: field.Float32,
+			Data: field.EncodeFloat32(b.C),
 		}, nil
 	case "D":
 		return field.Field{
 			Name: "D",
-			Type: field.Int64,
-			Data: field.EncodeInt64(b.D),
+			Type: field.Float32,
+			Data: field.EncodeFloat32(b.D),
 		}, nil
 	}
 
@@ -302,13 +302,13 @@ func (b *basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A, err = field.DecodeString(f.Data)
+			b.A, err = field.DecodeBytes(f.Data)
 		case "B":
-			b.B, err = field.DecodeInt64(f.Data)
+			b.B, err = field.DecodeUint16(f.Data)
 		case "C":
-			b.C, err = field.DecodeInt64(f.Data)
+			b.C, err = field.DecodeFloat32(f.Data)
 		case "D":
-			b.D, err = field.DecodeInt64(f.Data)
+			b.D, err = field.DecodeFloat32(f.Data)
 		}
 		return err
 	})
@@ -324,10 +324,10 @@ type basicStore struct {
 func newBasicStore(db *genji.DB) *basicStore {
 	schema := record.Schema{
 		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-			{Name: "C", Type: field.Int64},
-			{Name: "D", Type: field.Int64},
+			{Name: "A", Type: field.Bytes},
+			{Name: "B", Type: field.Uint16},
+			{Name: "C", Type: field.Float32},
+			{Name: "D", Type: field.Float32},
 		},
 	}
 
@@ -340,10 +340,10 @@ func newBasicStore(db *genji.DB) *basicStore {
 func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 	schema := record.Schema{
 		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-			{Name: "C", Type: field.Int64},
-			{Name: "D", Type: field.Int64},
+			{Name: "A", Type: field.Bytes},
+			{Name: "B", Type: field.Uint16},
+			{Name: "C", Type: field.Float32},
+			{Name: "D", Type: field.Float32},
 		},
 	}
 
@@ -399,19 +399,19 @@ func (b *basicStore) Replace(rowid []byte, record *basic) error {
 
 // basicQuerySelector provides helpers for selecting fields from the basic structure.
 type basicQuerySelector struct {
-	A query.StringField
-	B query.Int64Field
-	C query.Int64Field
-	D query.Int64Field
+	A query.BytesField
+	B query.Uint16Field
+	C query.Float32Field
+	D query.Float32Field
 }
 
 // newbasicQuerySelector creates a basicQuerySelector.
 func newBasicQuerySelector() basicQuerySelector {
 	return basicQuerySelector{
-		A: query.NewStringField("A"),
-		B: query.NewInt64Field("B"),
-		C: query.NewInt64Field("C"),
-		D: query.NewInt64Field("D"),
+		A: query.NewBytesField("A"),
+		B: query.NewUint16Field("B"),
+		C: query.NewFloat32Field("C"),
+		D: query.NewFloat32Field("D"),
 	}
 }
 
