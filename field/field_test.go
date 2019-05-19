@@ -60,7 +60,7 @@ func TestOrdering(t *testing.T) {
 		{"int16", -1000, 1000, func(i int) []byte { return field.EncodeInt16(int16(i)) }},
 		{"int32", -1000, 1000, func(i int) []byte { return field.EncodeInt32(int32(i)) }},
 		{"int64", -1000, 1000, func(i int) []byte { return field.EncodeInt64(int64(i)) }},
-		{"float32", -100, 100, func(i int) []byte { return field.EncodeFloat32(float32(i)) }},
+		{"float32", -1000, 1000, func(i int) []byte { return field.EncodeFloat32(float32(i)) }},
 		{"float64", -1000, 1000, func(i int) []byte { return field.EncodeFloat64(float64(i)) }},
 	}
 

@@ -387,7 +387,7 @@ func EncodeInt16(x int16) []byte {
 
 // DecodeInt16 takes a byte slice and decodes it into an int16.
 func DecodeInt16(buf []byte) (int16, error) {
-	x, err := DecodeUint16(buf[:])
+	x, err := DecodeUint16(buf)
 	x -= math.MaxInt16 + 1
 	return int16(x), err
 }
@@ -402,7 +402,7 @@ func EncodeInt32(x int32) []byte {
 
 // DecodeInt32 takes a byte slice and decodes it into an int32.
 func DecodeInt32(buf []byte) (int32, error) {
-	x, err := DecodeUint32(buf[:])
+	x, err := DecodeUint32(buf)
 	x -= math.MaxInt32 + 1
 	return int32(x), err
 }
@@ -417,7 +417,7 @@ func EncodeInt64(x int64) []byte {
 
 // DecodeInt64 takes a byte slice and decodes it into an int64.
 func DecodeInt64(buf []byte) (int64, error) {
-	x, err := DecodeUint64(buf[:])
+	x, err := DecodeUint64(buf)
 	x -= math.MaxInt64 + 1
 	return int64(x), err
 }
