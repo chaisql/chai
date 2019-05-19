@@ -2,11 +2,9 @@ package field_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/asdine/genji/field"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,6 +58,8 @@ func TestOrdering(t *testing.T) {
 		{"int16", -1000, 1000, func(i int) []byte { return field.EncodeInt16(int16(i)) }},
 		{"int32", -1000, 1000, func(i int) []byte { return field.EncodeInt32(int32(i)) }},
 		{"int64", -1000, 1000, func(i int) []byte { return field.EncodeInt64(int64(i)) }},
+		{"float32", -100, 100, func(i int) []byte { return field.EncodeFloat32(float32(i)) }},
+		{"float64", -1000, 1000, func(i int) []byte { return field.EncodeFloat64(float64(i)) }},
 	}
 
 	var numbers [][]byte
@@ -76,11 +76,8 @@ func TestOrdering(t *testing.T) {
 					continue
 				}
 
-				if !assert.Equal(t, -1, bytes.Compare(numbers[i-1], numbers[i])) {
-					fmt.Println(i-test.min, numbers[i-1], numbers[i])
-				}
+				require.Equal(t, -1, bytes.Compare(numbers[i-1], numbers[i]))
 			}
 		})
 	}
-
 }
