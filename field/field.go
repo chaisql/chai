@@ -417,3 +417,41 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	}
 	return math.Float64frombits(fb), nil
 }
+
+// TypeFromGoType returns the Type corresponding to the given Go type.
+func TypeFromGoType(tp string) Type {
+	switch tp {
+	case "[]byte":
+		return Bytes
+	case "string":
+		return String
+	case "bool":
+		return Bool
+	case "uint":
+		return Uint
+	case "uint8":
+		return Uint8
+	case "uint16":
+		return Uint16
+	case "uint32":
+		return Uint32
+	case "uint64":
+		return Uint64
+	case "int":
+		return Int
+	case "int8":
+		return Int8
+	case "int16":
+		return Int16
+	case "int32":
+		return Int32
+	case "int64":
+		return Int64
+	case "float32":
+		return Float32
+	case "float64":
+		return Float64
+	}
+
+	return 0
+}
