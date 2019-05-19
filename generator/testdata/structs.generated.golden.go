@@ -17,7 +17,7 @@ func (b *Basic) Field(name string) (field.Field, error) {
 		return field.Field{
 			Name: "A",
 			Type: field.String,
-			Data: []byte(b.A),
+			Data: field.EncodeString(b.A),
 		}, nil
 	case "B":
 		return field.Field{
@@ -83,7 +83,7 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A = string(f.Data)
+			b.A, err = field.DecodeString(f.Data)
 		case "B":
 			b.B, err = field.DecodeInt64(f.Data)
 		case "C":
@@ -143,6 +143,11 @@ func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 	var record Basic
 
 	return &record, b.Store.Get(rowid, &record)
+}
+
+// Delete a record using its primary key.
+func (b *BasicStore) Delete(rowid []byte) error {
+	return b.Store.Delete(rowid)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -231,7 +236,7 @@ func (b *basic) Field(name string) (field.Field, error) {
 		return field.Field{
 			Name: "A",
 			Type: field.String,
-			Data: []byte(b.A),
+			Data: field.EncodeString(b.A),
 		}, nil
 	case "B":
 		return field.Field{
@@ -297,7 +302,7 @@ func (b *basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A = string(f.Data)
+			b.A, err = field.DecodeString(f.Data)
 		case "B":
 			b.B, err = field.DecodeInt64(f.Data)
 		case "C":
@@ -357,6 +362,11 @@ func (b *basicStore) Get(rowid []byte) (*basic, error) {
 	var record basic
 
 	return &record, b.Store.Get(rowid, &record)
+}
+
+// Delete a record using its primary key.
+func (b *basicStore) Delete(rowid []byte) error {
+	return b.Store.Delete(rowid)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -445,7 +455,7 @@ func (p *Pk) Field(name string) (field.Field, error) {
 		return field.Field{
 			Name: "A",
 			Type: field.String,
-			Data: []byte(p.A),
+			Data: field.EncodeString(p.A),
 		}, nil
 	case "B":
 		return field.Field{
@@ -487,7 +497,7 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			p.A = string(f.Data)
+			p.A, err = field.DecodeString(f.Data)
 		case "B":
 			p.B, err = field.DecodeInt64(f.Data)
 		}
@@ -580,7 +590,7 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 // Replace the selected record by the given one.
 func (p *PkStore) Replace(pk int64, record *Pk) error {
 	rowid := field.EncodeInt64(pk)
-	if record.B == 0 && record.B != pk {
+	if record.B != pk {
 		record.B = pk
 	}
 	return p.Store.Replace(rowid, record)
@@ -638,7 +648,7 @@ func (i *Indexed) Field(name string) (field.Field, error) {
 		return field.Field{
 			Name: "A",
 			Type: field.String,
-			Data: []byte(i.A),
+			Data: field.EncodeString(i.A),
 		}, nil
 	case "B":
 		return field.Field{
@@ -680,7 +690,7 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			i.A = string(f.Data)
+			i.A, err = field.DecodeString(f.Data)
 		case "B":
 			i.B, err = field.DecodeInt64(f.Data)
 		}
@@ -735,6 +745,11 @@ func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
 	var record Indexed
 
 	return &record, i.Store.Get(rowid, &record)
+}
+
+// Delete a record using its primary key.
+func (i *IndexedStore) Delete(rowid []byte) error {
+	return i.Store.Delete(rowid)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -818,7 +833,7 @@ func (s *Sample) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			s.A = string(f.Data)
+			s.A, err = field.DecodeString(f.Data)
 		case "B":
 			s.B, err = field.DecodeInt64(f.Data)
 		}

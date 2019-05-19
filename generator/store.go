@@ -37,11 +37,7 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 	schema := record.Schema{
 		Fields: []field.Field{
 		{{- range .Fields}}
-			{{- if eq .Type "string"}}
-			{Name: "{{.Name}}", Type: field.String},
-			{{- else if eq .Type "int64"}}
-			{Name: "{{.Name}}", Type: field.Int64},
-			{{- end}}
+			{Name: "{{.Name}}", Type: field.{{.Type}}},
 		{{- end}}
 		},
 	}
@@ -67,11 +63,7 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 	schema := record.Schema{
 		Fields: []field.Field{
 		{{- range .Fields}}
-			{{- if eq .Type "string"}}
-			{Name: "{{.Name}}", Type: field.String},
-			{{- else if eq .Type "int64"}}
-			{Name: "{{.Name}}", Type: field.Int64},
-			{{- end}}
+			{Name: "{{.Name}}", Type: field.{{.Type}}},
 		{{- end}}
 		},
 	}
@@ -114,20 +106,12 @@ const storeGetTmpl = `
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Get(rowid []byte) (*{{$structName}}, error) {
 {{- else}}
-	{{- if eq .Pk.Type "string"}}
-func ({{$fl}} *{{$structName}}Store) Get(pk string) (*{{$structName}}, error) {
-	{{- else if eq .Pk.Type "int64"}}
-func ({{$fl}} *{{$structName}}Store) Get(pk int64) (*{{$structName}}, error) {
-	{{- end}}
+func ({{$fl}} *{{$structName}}Store) Get(pk {{.Pk.GoType}}) (*{{$structName}}, error) {
 {{- end}}
 	var record {{$structName}}
 
 	{{- if ne .Pk.Name ""}}
-		{{- if eq .Pk.Type "string"}}
-			rowid := []byte(pk)
-		{{- else if eq .Pk.Type "int64"}}
-			rowid := field.EncodeInt64(pk)
-		{{end}}
+		rowid := field.Encode{{.Pk.Type}}(pk)
 	{{- end}}
 
 	return &record, {{$fl}}.Store.Get(rowid, &record)
@@ -140,15 +124,14 @@ const storeDeleteTmpl = `
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-{{- if ne .Pk.Name ""}}
 // Delete a record using its primary key.
-	{{- if eq .Pk.Type "string"}}
-func ({{$fl}} *{{$structName}}Store) Delete(pk string) error {
-	rowid := []byte(pk)
-	{{- else if eq .Pk.Type "int64"}}
-func ({{$fl}} *{{$structName}}Store) Delete(pk int64) error {
-	rowid := field.EncodeInt64(pk)
-	{{- end}}
+{{- if ne .Pk.Name ""}}
+func ({{$fl}} *{{$structName}}Store) Delete(pk {{.Pk.GoType}}) error {
+	rowid := field.Encode{{.Pk.Type}}(pk)
+	return {{$fl}}.Store.Delete(rowid)
+}
+{{- else }}
+func ({{$fl}} *{{$structName}}Store) Delete(rowid []byte) error {
 	return {{$fl}}.Store.Delete(rowid)
 }
 {{- end}}
@@ -192,20 +175,11 @@ const storeReplaceTmpl = `
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName}}) error {
 {{- else}}
-	{{- if eq .Pk.Type "string"}}
-func ({{$fl}} *{{$structName}}Store) Replace(pk string, record *{{$structName}}) error {
-	rowid := []byte(pk)
-	if record.{{ .Pk.Name }} == "" && record.{{ .Pk.Name }} != pk {
+func ({{$fl}} *{{$structName}}Store) Replace(pk {{.Pk.GoType}}, record *{{$structName}}) error {
+	rowid := field.Encode{{.Pk.Type}}(pk)
+	if record.{{ .Pk.Name }} != pk {
 		record.{{ .Pk.Name }} = pk
 	}
-
-	{{- else if eq .Pk.Type "int64"}}
-func ({{$fl}} *{{$structName}}Store) Replace(pk int64, record *{{$structName}}) error {
-	rowid := field.EncodeInt64(pk)
-	if record.{{ .Pk.Name }} == 0 && record.{{ .Pk.Name }} != pk {
-		record.{{ .Pk.Name }} = pk
-	}
-	{{- end}}
 {{- end}}
 	return {{$fl}}.Store.Replace(rowid, record)
 }

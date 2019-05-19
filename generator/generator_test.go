@@ -1,5 +1,7 @@
 package generator
 
+//go:generate go test -run=TestGenerate -update
+
 import (
 	"bytes"
 	"flag"

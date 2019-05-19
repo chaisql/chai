@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/asdine/genji/field"
 )
 
 const recordsTmpl = `
@@ -40,19 +42,11 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.Name}}":
-		{{- if eq .Type "string"}}
 		return field.Field{
 			Name: "{{.Name}}",
-			Type: field.String,
-			Data: []byte({{$fl}}.{{.Name}}),
+			Type: field.{{.Type}},
+			Data: field.Encode{{.Type}}({{$fl}}.{{.Name}}),
 		}, nil
-		{{- else if eq .Type "int64"}}
-		return field.Field{
-			Name: "{{.Name}}",
-			Type: field.Int64,
-			Data: field.EncodeInt64({{$fl}}.{{.Name}}),
-		}, nil
-		{{- end}}
 	{{- end}}
 	}
 
@@ -99,11 +93,7 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		switch f.Name {
 		{{- range .Fields}}
 		case "{{.Name}}":
-			{{- if eq .Type "string"}}
-			{{$fl}}.{{.Name}} = string(f.Data)
-			{{- else if eq .Type "int64"}}
-			{{$fl}}.{{.Name}}, err = field.DecodeInt64(f.Data)
-			{{- end}}
+		{{$fl}}.{{.Name}}, err = field.Decode{{.Type}}(f.Data)
 		{{- end}}
 		}
 		return err
@@ -120,11 +110,7 @@ const recordPkTmpl = `
 {{- if ne .Pk.Name ""}}
 // Pk returns the primary key. It implements the table.Pker interface.
 func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
-	{{- if eq .Pk.Type "string"}}
-		return []byte({{$fl}}.{{.Pk.Name}}), nil
-	{{- else if eq .Pk.Type "int64"}}
-		return field.EncodeInt64({{$fl}}.{{.Pk.Name}}), nil
-	{{- end}}
+	return field.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
 }
 {{- end}}
 {{ end }}
@@ -133,10 +119,10 @@ func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
 type recordContext struct {
 	Name   string
 	Fields []struct {
-		Name, Type string
+		Name, Type, GoType string
 	}
 	Pk struct {
-		Name, Type string
+		Name, Type, GoType string
 	}
 	Indexes    []string
 	HasIndexes bool
@@ -181,9 +167,9 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 
 			for _, name := range fd.Names {
 				rctx.Fields = append(rctx.Fields, struct {
-					Name, Type string
+					Name, Type, GoType string
 				}{
-					name.String(), string(typ.Name),
+					name.String(), field.TypeFromGoType(string(typ.Name)).String(), string(typ.Name),
 				})
 			}
 
@@ -271,7 +257,8 @@ func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
 			}
 
 			ctx.Pk.Name = fd.Names[0].Name
-			ctx.Pk.Type = fd.Type.(*ast.Ident).Name
+			ctx.Pk.Type = field.TypeFromGoType(fd.Type.(*ast.Ident).Name).String()
+			ctx.Pk.GoType = fd.Type.(*ast.Ident).Name
 		case "index":
 			ctx.HasIndexes = true
 			ctx.Indexes = append(ctx.Indexes, fd.Names[0].Name)

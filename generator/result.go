@@ -1,10 +1,5 @@
 package generator
 
-import (
-	"go/ast"
-	"io"
-)
-
 const resultsTmpl = `
 {{- define "results" }}
   {{- range .Results }}
@@ -38,9 +33,3 @@ func ({{$fl}} *{{$structName}}Result) ScanTable(tr table.Reader) error {
 }
 {{ end }}
 `
-
-// GenerateResults parses the given asts, looks for the targets structs
-// and generates complementary code to the given writer.
-func GenerateResults(w io.Writer, files []*ast.File, targets []string) error {
-	return nil
-}
