@@ -424,58 +424,46 @@ func DecodeInt64(buf []byte) (int64, error) {
 
 // EncodeFloat32 takes an float32 and returns its binary representation.
 func EncodeFloat32(x float32) []byte {
-	var buf [5]byte
-	if x >= 0 {
-		buf[0] = 1
-	}
-
 	fb := math.Float32bits(x)
-	if x < 0 {
-		fb = -fb
+	if x >= 0 {
+		fb ^= 1 << 31
+	} else {
+		fb ^= 1<<32 - 1
 	}
-
-	binary.BigEndian.PutUint32(buf[1:], fb)
-	return buf[:]
+	return EncodeUint32(fb)
 }
 
 // DecodeFloat32 takes a byte slice and decodes it into an float32.
 func DecodeFloat32(buf []byte) (float32, error) {
-	fb, err := DecodeUint32(buf[1:])
-	if err != nil {
-		return 0, err
-	}
+	x := binary.BigEndian.Uint32(buf)
 
-	if buf[0] == 0 {
-		fb = -fb
+	if (x & (1 << 31)) != 0 {
+		x ^= 1 << 31
+	} else {
+		x ^= 1<<32 - 1
 	}
-	return math.Float32frombits(fb), nil
+	return math.Float32frombits(x), nil
 }
 
 // EncodeFloat64 takes an float64 and returns its binary representation.
 func EncodeFloat64(x float64) []byte {
-	var buf [9]byte
-	if x >= 0 {
-		buf[0] = 1
-	}
-
 	fb := math.Float64bits(x)
-	if x < 0 {
-		fb = -fb
+	if x >= 0 {
+		fb ^= 1 << 63
+	} else {
+		fb ^= 1<<64 - 1
 	}
-
-	binary.BigEndian.PutUint64(buf[1:], fb)
-	return buf[:]
+	return EncodeUint64(fb)
 }
 
 // DecodeFloat64 takes a byte slice and decodes it into an float64.
 func DecodeFloat64(buf []byte) (float64, error) {
-	fb, err := DecodeUint64(buf[1:])
-	if err != nil {
-		return 0, err
-	}
+	x := binary.BigEndian.Uint64(buf)
 
-	if buf[0] == 0 {
-		fb = -fb
+	if (x & (1 << 63)) != 0 {
+		x ^= 1 << 63
+	} else {
+		x ^= 1<<64 - 1
 	}
-	return math.Float64frombits(fb), nil
+	return math.Float64frombits(x), nil
 }
