@@ -1,6 +1,8 @@
 package genji
 
 import (
+	"fmt"
+
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -200,12 +202,17 @@ func (t Table) Replace(rowid []byte, r record.Record) error {
 
 // AddField changes the table structure by adding a field to all the records.
 // If the field data is empty, it is filled with the zero value of the field type.
+// Returns an error if the field already exists.
 func (t Table) AddField(f field.Field) error {
 	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
 			return err
+		}
+
+		if _, err = fb.Field(f.Name); err == nil {
+			return fmt.Errorf("field %s already exists", f.Name)
 		}
 
 		if f.Data == nil {
