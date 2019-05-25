@@ -467,3 +467,42 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	}
 	return math.Float64frombits(x), nil
 }
+
+// ZeroValue returns a field whose value is equal to the Go zero value
+// of the selected type.
+func ZeroValue(t Type) Field {
+	switch t {
+	case Bytes:
+		return NewBytes("", nil)
+	case String:
+		return NewString("", "")
+	case Bool:
+		return NewBool("", false)
+	case Uint:
+		return NewUint("", 0)
+	case Uint8:
+		return NewUint8("", 0)
+	case Uint16:
+		return NewUint16("", 0)
+	case Uint32:
+		return NewUint32("", 0)
+	case Uint64:
+		return NewUint64("", 0)
+	case Int:
+		return NewInt("", 0)
+	case Int8:
+		return NewInt8("", 0)
+	case Int16:
+		return NewInt16("", 0)
+	case Int32:
+		return NewInt32("", 0)
+	case Int64:
+		return NewInt64("", 0)
+	case Float32:
+		return NewFloat32("", 0)
+	case Float64:
+		return NewFloat64("", 0)
+	}
+
+	return Field{}
+}
