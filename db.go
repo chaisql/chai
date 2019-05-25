@@ -2,6 +2,7 @@ package genji
 
 import (
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
@@ -93,19 +94,21 @@ func (tx Tx) Table(name string) (table.Table, error) {
 	}
 
 	return &Table{
-		Table:  tb,
-		tx:     tx.Transaction,
-		name:   name,
-		schema: schema,
+		Table:   tb,
+		tx:      tx.Transaction,
+		name:    name,
+		schema:  schema,
+		schemas: tx.schemas,
 	}, nil
 }
 
 type Table struct {
 	table.Table
 
-	tx     engine.Transaction
-	name   string
-	schema *record.Schema
+	tx      engine.Transaction
+	name    string
+	schema  *record.Schema
+	schemas *SchemaStore
 }
 
 func (t Table) Insert(r record.Record) ([]byte, error) {
@@ -193,4 +196,28 @@ func (t Table) Replace(rowid []byte, r record.Record) error {
 	}
 
 	return nil
+}
+
+// AddField changes the table structure by adding a field to all the records.
+// If the field data is empty, it is filled with the zero value of the field type.
+func (t Table) AddField(f field.Field) error {
+	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
+		var fb record.FieldBuffer
+		err := fb.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		if f.Data == nil {
+			f.Data = field.ZeroValue(f.Type).Data
+		}
+		fb.Add(f)
+		return t.Table.Replace(rowid, fb)
+	})
+	if err != nil {
+		return err
+	}
+
+	t.schema.Fields = append(t.schema.Fields, f)
+	return t.schemas.Replace(t.name, t.schema)
 }

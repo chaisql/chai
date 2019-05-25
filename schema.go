@@ -77,3 +77,13 @@ func (s *SchemaStore) Get(tableName string) (*record.Schema, error) {
 
 	return sr.Schema, err
 }
+
+// Replace the schema for tableName by the given one.
+func (s *SchemaStore) Replace(tableName string, schema *record.Schema) error {
+	sr := record.SchemaRecord{
+		Schema: schema,
+	}
+	return s.store.UpdateTable(func(t *Table) error {
+		return t.Replace([]byte(tableName), &sr)
+	})
+}
