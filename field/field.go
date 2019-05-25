@@ -9,6 +9,25 @@ import (
 // Type represents a field type supported by the database.
 type Type uint8
 
+// List of supported field types.
+const (
+	Bytes Type = iota + 1
+	String
+	Bool
+	Uint
+	Uint8
+	Uint16
+	Uint32
+	Uint64
+	Int
+	Int8
+	Int16
+	Int32
+	Int64
+	Float32
+	Float64
+)
+
 func (t Type) String() string {
 	switch t {
 	case Bytes:
@@ -45,25 +64,6 @@ func (t Type) String() string {
 
 	return ""
 }
-
-// List of supported field types.
-const (
-	Bytes Type = iota + 1
-	String
-	Bool
-	Uint
-	Uint8
-	Uint16
-	Uint32
-	Uint64
-	Int
-	Int8
-	Int16
-	Int32
-	Int64
-	Float32
-	Float64
-)
 
 // TypeFromGoType returns the Type corresponding to the given Go type.
 func TypeFromGoType(tp string) Type {

@@ -24,7 +24,7 @@ func TestFormat(t *testing.T) {
 
 	require.EqualValues(t, "age", f.Header.FieldHeaders[0].Name)
 	require.EqualValues(t, 3, f.Header.FieldHeaders[0].NameSize)
-	require.EqualValues(t, 9, f.Header.FieldHeaders[0].Size)
+	require.EqualValues(t, 8, f.Header.FieldHeaders[0].Size)
 	require.EqualValues(t, field.Int64, f.Header.FieldHeaders[0].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Offset)
 
@@ -32,7 +32,7 @@ func TestFormat(t *testing.T) {
 	require.EqualValues(t, 4, f.Header.FieldHeaders[1].NameSize)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[1].Size)
 	require.EqualValues(t, field.String, f.Header.FieldHeaders[1].Type)
-	require.EqualValues(t, 9, f.Header.FieldHeaders[1].Offset)
+	require.EqualValues(t, 8, f.Header.FieldHeaders[1].Offset)
 }
 
 func TestDecodeField(t *testing.T) {
