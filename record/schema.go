@@ -9,7 +9,7 @@ import (
 
 // Schema contains information about a table and its fields.
 type Schema struct {
-	Fields []field.Field
+	Fields FieldBuffer
 }
 
 func (s *Schema) Field(fieldName string) (field.Field, error) {
@@ -87,7 +87,7 @@ func (s *SchemaRecord) Field(name string) (field.Field, error) {
 			Data: []byte(s.TableName),
 		}, nil
 	case "Fields":
-		data, err := Encode(FieldBuffer(s.Fields))
+		data, err := Encode(s.Fields)
 		if err != nil {
 			return field.Field{}, err
 		}

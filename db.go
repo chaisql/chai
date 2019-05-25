@@ -212,7 +212,7 @@ func (t Table) AddField(f field.Field) error {
 		}
 
 		if _, err = fb.Field(f.Name); err == nil {
-			return fmt.Errorf("field %s already exists", f.Name)
+			return fmt.Errorf("field %q already exists", f.Name)
 		}
 
 		if f.Data == nil {
@@ -225,6 +225,43 @@ func (t Table) AddField(f field.Field) error {
 		return err
 	}
 
-	t.schema.Fields = append(t.schema.Fields, f)
+	if t.schema == nil {
+		return nil
+	}
+
+	t.schema.Fields.Add(f)
+	return t.schemas.Replace(t.name, t.schema)
+}
+
+// DeleteField changes the table structure by deleting a field from all the records.
+// Returns an error if the field doesn't exists.
+func (t Table) DeleteField(name string) error {
+	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
+		var fb record.FieldBuffer
+		err := fb.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		err = fb.Delete(name)
+		if err != nil {
+			return err
+		}
+
+		return t.Table.Replace(rowid, fb)
+	})
+	if err != nil {
+		return err
+	}
+
+	if t.schema == nil {
+		return nil
+	}
+
+	err = t.schema.Fields.Delete(name)
+	if err != nil {
+		return err
+	}
+
 	return t.schemas.Replace(t.name, t.schema)
 }

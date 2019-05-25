@@ -1,7 +1,7 @@
 package record
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/asdine/genji/field"
 )
@@ -38,7 +38,7 @@ func (fb FieldBuffer) Field(name string) (field.Field, error) {
 		}
 	}
 
-	return field.Field{}, errors.New("not found")
+	return field.Field{}, fmt.Errorf("field %q not found", name)
 }
 
 func (fb FieldBuffer) Set(f field.Field) {
@@ -61,4 +61,17 @@ func (fb FieldBuffer) Iterate(fn func(field.Field) error) error {
 	}
 
 	return nil
+}
+
+// Delete a field from the buffer.
+func (fb *FieldBuffer) Delete(name string) error {
+	s := *fb
+	for i := range s {
+		if s[i].Name == name {
+			*fb = append(s[0:i], s[i+1:]...)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("field %q not found", name)
 }
