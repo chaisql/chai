@@ -74,8 +74,8 @@ func (s *Schema) String() string {
 	var b strings.Builder
 	for i, f := range s.Fields {
 		b.WriteString(f.Name + ":" + f.Type.String())
-		if i < len(s.Fields) {
-			b.WriteRune(',')
+		if i+1 < len(s.Fields) {
+			b.WriteString(", ")
 		}
 	}
 
