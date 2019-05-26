@@ -75,6 +75,10 @@ func (s *SchemaStore) Get(tableName string) (*record.Schema, error) {
 		return sr.ScanRecord(rec)
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	return sr.Schema, err
 }
 
