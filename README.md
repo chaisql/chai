@@ -62,6 +62,8 @@ This command generates a file that contains APIs specific to the `User` type.
 ```go
 // Instantiate an engine
 ng := memory.NewEngine()
+
+// Instantiate a DB using the engine
 db, err := genji.New(ng)
 if err != nil {
     log.Fatal(err)
