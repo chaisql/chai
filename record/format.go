@@ -10,11 +10,16 @@ import (
 	"github.com/asdine/genji/field"
 )
 
+// Format is an encoding format used to encode and decode records.
+// It is composed of a header and a body.
+// The header defines a list of fields, offsets and relevant metadata.
+// The body contains each fields data one concatenated one after another.
 type Format struct {
 	Header Header
 	Body   []byte
 }
 
+// Decode the given data into the format.
 func (f *Format) Decode(data []byte) error {
 	n, err := f.Header.Decode(data)
 	if err != nil {
@@ -25,12 +30,17 @@ func (f *Format) Decode(data []byte) error {
 	return nil
 }
 
+// A Header contains a representation of a record's metadata.
 type Header struct {
-	Size         uint64
-	FieldsCount  uint64
+	// Size of the header
+	Size uint64
+	// Number of fields
+	FieldsCount uint64
+	// List of headers for all the fields.
 	FieldHeaders []FieldHeader
 }
 
+// Decode data into the header.
 func (h *Header) Decode(data []byte) (int, error) {
 	var n int
 
@@ -63,6 +73,7 @@ func (h *Header) Decode(data []byte) (int, error) {
 	return read, nil
 }
 
+// BodySize returns the size of the body.
 func (h *Header) BodySize() int {
 	var size uint64
 
@@ -73,6 +84,7 @@ func (h *Header) BodySize() int {
 	return int(size)
 }
 
+// WriteTo encodes the header into w.
 func (h *Header) WriteTo(w io.Writer) (int64, error) {
 	intBuf := make([]byte, binary.MaxVarintLen64)
 	var buf bytes.Buffer
@@ -103,17 +115,25 @@ func (h *Header) WriteTo(w io.Writer) (int64, error) {
 	return buf.WriteTo(w)
 }
 
+// FieldHeader represents the metadata of a field.
 type FieldHeader struct {
+	// Size of the name of the field
 	NameSize uint64
-	Name     []byte
-	Type     uint64
-	Size     uint64
-	Offset   uint64
+	// Name of the field
+	Name []byte
+	// Type of the field, corresponds to the field.Type
+	Type uint64
+	// Size of the data of the field
+	Size uint64
+	// Offset describing where the field is located, starting
+	// from the end of the format header.
+	Offset uint64
 
 	nameString string // used for encoding
 	buf        [binary.MaxVarintLen64]byte
 }
 
+// Decode the data into the field header.
 func (f *FieldHeader) Decode(data []byte) (int, error) {
 	var n, read int
 
@@ -157,6 +177,7 @@ func (f *FieldHeader) Decode(data []byte) (int, error) {
 	return read, nil
 }
 
+// WriteTo encodes the field header into w.
 func (f *FieldHeader) WriteTo(w io.Writer) (int64, error) {
 	var written int
 
@@ -206,6 +227,7 @@ func (f *FieldHeader) WriteTo(w io.Writer) (int64, error) {
 	return int64(written), nil
 }
 
+// Encode takes a record and encodes it using the Format.
 func Encode(r Record) ([]byte, error) {
 	var format Format
 
@@ -245,6 +267,7 @@ func Encode(r Record) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DecodeField reads a single field from data without decoding the entire data.
 func DecodeField(data []byte, fieldName string) (field.Field, error) {
 	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
@@ -281,12 +304,18 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 	return field.Field{}, fmt.Errorf("field %s not found", fieldName)
 }
 
+// An EncodedRecord implements the record interface on top of an encoded representation of a
+// record.
+// It is useful to avoid decoding the entire record when only a few fields are needed.
 type EncodedRecord []byte
 
+// Field decodes the selected field.
 func (e EncodedRecord) Field(name string) (field.Field, error) {
 	return DecodeField(e, name)
 }
 
+// Iterate decodes each fields one by one and passes them to fn until the end of the record
+// or until fn returns an error.
 func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
 	var format Format
 	err := format.Decode(e)

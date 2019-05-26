@@ -18,6 +18,7 @@ type Codec interface {
 
 type codec struct{}
 
+// NewCodec creates a codec that uses Genji's record format.
 func NewCodec() Codec {
 	return codec{}
 }
