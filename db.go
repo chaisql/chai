@@ -9,10 +9,16 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+// DB represents a collection of tables stored in the underlying engine.
+// DB differs from the engine in that it provides automatic indexing, support for schemas
+// and database administration methods.
+// DB is safe for concurrent use unless the given engine isn't.
 type DB struct {
 	engine.Engine
 }
 
+// New initializes the DB using the given engine.
+// It creates the schema table.
 func New(ng engine.Engine) (*DB, error) {
 	db := DB{
 		Engine: ng,
@@ -26,6 +32,8 @@ func New(ng engine.Engine) (*DB, error) {
 	return &db, nil
 }
 
+// Begin starts a new transaction.
+// The returned transaction must be closed either by calling Rollback or Commit.
 func (db DB) Begin(writable bool) (*Tx, error) {
 	tx, err := db.Engine.Begin(writable)
 	if err != nil {
@@ -39,6 +47,7 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 	return &gtx, nil
 }
 
+// View starts a read only transaction, runs fn and automatically rolls it back.
 func (db DB) View(fn func(tx *Tx) error) error {
 	tx, err := db.Begin(false)
 	if err != nil {
@@ -49,6 +58,7 @@ func (db DB) View(fn func(tx *Tx) error) error {
 	return fn(tx)
 }
 
+// Update starts a read-write transaction, runs fn and automatically commits it.
 func (db DB) Update(fn func(tx *Tx) error) error {
 	tx, err := db.Begin(true)
 	if err != nil {
@@ -64,12 +74,19 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 	return tx.Commit()
 }
 
+// Tx represents a database transaction. It provides methods for managing the
+// collection of tables and the transaction itself.
+// Tx is either read-only or read/write. Read-only can be used to read tables
+// and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
 	engine.Transaction
 
 	schemas *schemaStore
 }
 
+// CreateTableWithSchema creates a table and associates the schema to it.
+// These tables are more stricts than schemaless ones, any inserted record will be
+// validated against that schema, making sure all records have the same fields.
 func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
 	err := tx.Transaction.CreateTable(name)
 	if err != nil {
@@ -80,6 +97,7 @@ func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
 	return err
 }
 
+// Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) Table(name string) (table.Table, error) {
 	tb, err := tx.Transaction.Table(name, record.NewCodec())
 	if err != nil {
@@ -104,6 +122,7 @@ func (tx Tx) Table(name string) (table.Table, error) {
 	}, nil
 }
 
+// A Table represents a collection of records.
 type Table struct {
 	table.Table
 
@@ -113,6 +132,10 @@ type Table struct {
 	schemas *schemaStore
 }
 
+// Insert the record into the table.
+// If the table is schemaful, the record is first validated against the schema,
+// and an error is returned if there is a mismatch.
+// Indexes are automatically updated.
 func (t Table) Insert(r record.Record) ([]byte, error) {
 	if t.schema != nil {
 		err := t.schema.Validate(r)
@@ -146,6 +169,8 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	return rowid, nil
 }
 
+// Delete a record by rowid.
+// Indexes are automatically updated.
 func (t Table) Delete(rowid []byte) error {
 	err := t.Table.Delete(rowid)
 	if err != nil {
@@ -167,6 +192,9 @@ func (t Table) Delete(rowid []byte) error {
 	return nil
 }
 
+// Replace a record by rowid. If the table is schemaful, r must match the schema.
+// An error is returned if the rowid doesn't exist.
+// Indexes are automatically updated.
 func (t Table) Replace(rowid []byte, r record.Record) error {
 	if t.schema != nil {
 		err := t.schema.Validate(r)
