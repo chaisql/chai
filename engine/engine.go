@@ -17,6 +17,10 @@ var (
 	ErrTransactionReadOnly = errors.New("transaction is read-only")
 )
 
+// An Engine is responsible for storing data.
+// Implementations can choose to store data on disk, in memory, in the browser etc. using the algorithms
+// and data structures of their choice.
+// Engines must support read-only and read/write transactions.
 type Engine interface {
 	Begin(writable bool) (Transaction, error)
 	Close() error

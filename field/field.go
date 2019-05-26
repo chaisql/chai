@@ -1,3 +1,4 @@
+// Package field defines types to manipulate and encode fields.
 package field
 
 import (
