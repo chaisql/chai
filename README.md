@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
 [![Go Report Card](https://goreportcard.com/badge/github.com/asdine/genji)](https://goreportcard.com/report/github.com/asdine/genji)
 
-Genji is a powerful embedded relational database build on top of key-value stores. It supports various engines that write data on-disk, like BoltDB, or in memory.
+Genji is a powerful embedded relational database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt), or in memory.
 
 It provides a complete framework with multiple APIs that can be used to manipulate, manage, read and write data.
 
@@ -13,7 +13,7 @@ or by using the query package which is a powerful SQL like query engine.
 
 ## Features
 
-- **Abstract storage**: Stores data on disk using BoltDB or in memory (_Badger is coming soon_)
+- **Abstract storage**: Stores data on disk using [BoltDB](https://github.com/etcd-io/bbolt) or in memory (_[Badger](https://github.com/dgraph-io/badger) is coming soon_)
 - **No reflection**: Uses code generation to map Go structure to tables
 - **Flexible structure**: Declare schemaful or schemaless tables
 - **Type safe APIs**: Generated code allows to avoid common errors
@@ -112,7 +112,7 @@ if err != nil {
 
 ## Engines
 
-Genji currently supports storing data in BoltDB and in-memory (_Badger is coming soon_)
+Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt) and in-memory (_[Badger](https://github.com/dgraph-io/badger) is coming soon_)
 
 ### Use the BoltDB engine
 
