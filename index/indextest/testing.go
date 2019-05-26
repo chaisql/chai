@@ -1,3 +1,4 @@
+// Package indextest defines a list of tests that can be used to test index implementations.
 package indextest
 
 import (
