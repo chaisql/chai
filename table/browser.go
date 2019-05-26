@@ -6,22 +6,31 @@ import (
 	"github.com/asdine/genji/record"
 )
 
+// A Browser provides functional style methods to read a table.
+// A Browser is immutable and doesn't modify underlying tables, each method creates a new in memory table.
 type Browser struct {
 	Reader
 
 	err error
 }
 
+// NewBrowser creates a Browser for the given reader.
 func NewBrowser(t Reader) Browser {
 	return Browser{
 		Reader: t,
 	}
 }
 
+// Err returns the current error.
+// Browser methods don't return errors when they fail, instead they store the error
+// in the browser for later verification. Every methods check if the error is empty before
+// running, otherwise the method is skipped.
+// Err must be checked at the end of a pipeline.
 func (b Browser) Err() error {
 	return b.err
 }
 
+// ForEach goes through every record of the reader until the end or until fn returns an error.
 func (b Browser) ForEach(fn func(rowid []byte, r record.Record) error) Browser {
 	if b.err != nil {
 		return b
@@ -38,6 +47,10 @@ func (b Browser) ForEach(fn func(rowid []byte, r record.Record) error) Browser {
 	return b
 }
 
+// Filter goes through all the records, filter them using fn and returns a new table reader containing
+// only the selected records.
+// If fn returns true, the record is kept otherwhise it is skipped.
+// If fn returns an error, Filter stops immediately.
 func (b Browser) Filter(fn func(rowid []byte, r record.Record) (bool, error)) Browser {
 	var rb RecordBuffer
 
@@ -61,6 +74,8 @@ func (b Browser) Filter(fn func(rowid []byte, r record.Record) (bool, error)) Br
 	return b
 }
 
+// Map goes through all the records, calls fn with each one of them and creates a new table reader containing the records returned by fn.
+// If fn returns an error, Map stops immediately.
 func (b Browser) Map(fn func(rowid []byte, r record.Record) (record.Record, error)) Browser {
 	var rb RecordBuffer
 
@@ -81,6 +96,8 @@ func (b Browser) Map(fn func(rowid []byte, r record.Record) (record.Record, erro
 	return b
 }
 
+// GroupBy goes through all the records and creates multiple table readers grouped by fieldName.
+// All the records containing the same value for the given field are grouped in the same table reader.
 func (b Browser) GroupBy(fieldName string) BrowserGroup {
 	var g BrowserGroup
 
@@ -124,6 +141,7 @@ func (b Browser) GroupBy(fieldName string) BrowserGroup {
 	return g
 }
 
+// Chunk splits the table into multiple tables of size n.
 func (b Browser) Chunk(n int) BrowserGroup {
 	var g BrowserGroup
 
@@ -147,6 +165,7 @@ func (b Browser) Chunk(n int) BrowserGroup {
 	return g
 }
 
+// Count counts all the records of the table.
 func (b Browser) Count() (int, error) {
 	if b.err != nil {
 		return 0, b.err
@@ -161,15 +180,22 @@ func (b Browser) Count() (int, error) {
 	return counter, b.err
 }
 
+// A BrowserGroup manages a group of tables.
 type BrowserGroup struct {
 	Readers []Browser
 	err     error
 }
 
+// Err returns the current error.
+// BrowserGroup methods don't return errors when they fail, instead they store the error
+// in the browser for later verification. Every methods check if the error is empty before
+// running, otherwise the method is skipped.
+// Err must be checked at the end of a pipeline.
 func (g BrowserGroup) Err() error {
 	return g.err
 }
 
+// Concat returns a table containing all the records of all the tables.
 func (g BrowserGroup) Concat() Browser {
 	var b Browser
 
