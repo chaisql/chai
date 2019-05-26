@@ -1,3 +1,4 @@
+// Package record defines interfaces, implementations and helpers to manipulate and encode records.
 package record
 
 import (
