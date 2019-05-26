@@ -16,33 +16,44 @@ var (
 	ErrRecordNotFound = errors.New("not found")
 )
 
-// A Table represents a group of records.
+// A Table represents a collection of records.
 type Table interface {
 	Reader
 	Writer
 }
 
+// A Reader can read data from a table.
 type Reader interface {
+	// Iterate goes through all the records of the table and calls the given function by passing each one of them.
+	// If the given function returns an error, the iteration stops.
 	Iterate(func(rowid []byte, r record.Record) error) error
+	// Record returns one record by rowid.
 	Record(rowid []byte) (record.Record, error)
 }
 
+// A Writer can manipulate a table.
 type Writer interface {
+	// Insert a record into the table and returns its rowid.
 	Insert(record.Record) (rowid []byte, err error)
+	// Delete a record by rowid. If the record is not found, returns ErrRecordNotFound.
 	Delete(rowid []byte) error
+	// Replace a record by another one. If the record is not found, returns ErrRecordNotFound.
 	Replace(rowid []byte, r record.Record) error
+	// Truncate deletes all the records from the table.
 	Truncate() error
 }
 
+// A Pker is a record that generates a rowid based on its primary key.
 type Pker interface {
 	Pk() ([]byte, error)
 }
 
+// A Scanner is a type that can read all the records of a table reader.
 type Scanner interface {
 	ScanTable(Reader) error
 }
 
-// RecordBuffer contains a list of records. It implements the Table interface.
+// RecordBuffer is table that stores records in memory in a B+Tree. It implements the Table interface.
 type RecordBuffer struct {
 	tree    *b.Tree
 	counter int64
@@ -71,14 +82,15 @@ func (rb *RecordBuffer) Insert(r record.Record) (rowid []byte, err error) {
 	return rowid, nil
 }
 
-// InsertFrom copies all the records of t to the buffer.
-func (rb *RecordBuffer) InsertFrom(t Reader) error {
+// ScanTable copies all the records of t to the buffer.
+func (rb *RecordBuffer) ScanTable(t Reader) error {
 	return t.Iterate(func(rowid []byte, r record.Record) error {
 		_, err := rb.Insert(r)
 		return err
 	})
 }
 
+// Record returns a record by rowid. If the record is not found, returns ErrRecordNotFound.
 func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
@@ -92,6 +104,7 @@ func (rb *RecordBuffer) Record(rowid []byte) (record.Record, error) {
 	return r, nil
 }
 
+// Set replaces a record if it already exists or creates one if not.
 func (rb *RecordBuffer) Set(rowid []byte, r record.Record) error {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
@@ -101,6 +114,7 @@ func (rb *RecordBuffer) Set(rowid []byte, r record.Record) error {
 	return nil
 }
 
+// Delete a record by rowid. If the record is not found, returns ErrRecordNotFound.
 func (rb *RecordBuffer) Delete(rowid []byte) error {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
@@ -114,6 +128,8 @@ func (rb *RecordBuffer) Delete(rowid []byte) error {
 	return nil
 }
 
+// Iterate goes through all the records of the table and calls the given function by passing each one of them.
+// If the given function returns an error, the iteration stops.
 func (rb *RecordBuffer) Iterate(fn func(rowid []byte, r record.Record) error) error {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
@@ -134,6 +150,7 @@ func (rb *RecordBuffer) Iterate(fn func(rowid []byte, r record.Record) error) er
 	return nil
 }
 
+// Replace a record by another one. If the record is not found, returns ErrRecordNotFound.
 func (rb *RecordBuffer) Replace(rowid []byte, r record.Record) error {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
@@ -148,6 +165,7 @@ func (rb *RecordBuffer) Replace(rowid []byte, r record.Record) error {
 	return nil
 }
 
+// Truncate deletes all the records from the table.
 func (rb *RecordBuffer) Truncate() error {
 	if rb.tree != nil {
 		rb.tree.Clear()

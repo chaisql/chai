@@ -181,7 +181,7 @@ func (g BrowserGroup) Concat() Browser {
 	var fb RecordBuffer
 
 	for _, r := range g.Readers {
-		err := fb.InsertFrom(r)
+		err := fb.ScanTable(r)
 		if err != nil {
 			b.err = err
 			return b
