@@ -1,14 +1,17 @@
-package record
+package record_test
 
 import (
 	"testing"
 
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
+var _ record.Record = new(record.FieldBuffer)
+
 func TestFieldBuffer(t *testing.T) {
-	b := FieldBuffer([]field.Field{
+	b := record.FieldBuffer([]field.Field{
 		field.NewInt64("a", 10),
 		field.NewString("b", "hello"),
 	})

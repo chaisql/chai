@@ -2,6 +2,7 @@ package genji
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
@@ -110,7 +111,7 @@ func (s *Store) Init() error {
 			}
 
 			if !s.schema.Equal(schema) {
-				return errors.New("schema mismatch")
+				return fmt.Errorf("given schema doesn't match current one: expected %q got %q", s.schema, schema)
 			}
 		}
 

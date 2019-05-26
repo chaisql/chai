@@ -3,6 +3,7 @@ package record
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/asdine/genji/field"
 )
@@ -65,6 +66,20 @@ func (s *Schema) Equal(other *Schema) bool {
 	}
 
 	return true
+}
+
+// String formats the schema into a coma separated list of fields.
+// Each field is formatted as a combination of name and type separated by a colon.
+func (s *Schema) String() string {
+	var b strings.Builder
+	for i, f := range s.Fields {
+		b.WriteString(f.Name + ":" + f.Type.String())
+		if i < len(s.Fields) {
+			b.WriteRune(',')
+		}
+	}
+
+	return b.String()
 }
 
 type SchemaRecord struct {
