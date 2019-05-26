@@ -106,17 +106,22 @@ func (s *Store) Init() error {
 			return err
 		}
 
+		schema, err := tx.schemas.Get(s.tableName)
+		if err != nil && err != table.ErrRecordNotFound {
+			return err
+		}
+
 		if s.schema != nil {
-			schema, err := tx.schemas.Get(s.tableName)
-			if err != nil {
-				if err == table.ErrRecordNotFound {
-					return errors.New("the table is schemaless, yet a schema has been passed")
-				}
-				return err
+			if schema == nil {
+				return errors.New("the table is schemaless, yet a schema has been passed")
 			}
 
 			if !s.schema.Equal(schema) {
 				return fmt.Errorf("given schema doesn't match current one: expected %q got %q", schema, s.schema)
+			}
+		} else {
+			if schema != nil {
+				return errors.New("the table is schemaful, yet no schema has been passed")
 			}
 		}
 
