@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 )
 
 type Store struct {
@@ -91,6 +92,7 @@ func (s *Store) UpdateTable(fn func(*Table) error) error {
 }
 
 // Init makes sure the table exists. No error is returned if the table already exists.
+// If the store was created using a schema, checks if the given schema matches the one stored in the table.
 func (s *Store) Init() error {
 	return s.Update(func(tx *Tx) error {
 		var err error
@@ -107,6 +109,9 @@ func (s *Store) Init() error {
 		if s.schema != nil {
 			schema, err := tx.schemas.Get(s.tableName)
 			if err != nil {
+				if err == table.ErrRecordNotFound {
+					return errors.New("the table is schemaless, yet a schema has been passed")
+				}
 				return err
 			}
 
