@@ -111,7 +111,7 @@ func (s *Store) Init() error {
 			}
 
 			if !s.schema.Equal(schema) {
-				return fmt.Errorf("given schema doesn't match current one: expected %q got %q", s.schema, schema)
+				return fmt.Errorf("given schema doesn't match current one: expected %q got %q", schema, s.schema)
 			}
 		}
 
