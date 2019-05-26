@@ -13,6 +13,7 @@ type Schema struct {
 	Fields FieldBuffer
 }
 
+// Field returns a field information by name.
 func (s *Schema) Field(fieldName string) (field.Field, error) {
 	for i := range s.Fields {
 		if s.Fields[i].Name == fieldName {
@@ -23,6 +24,8 @@ func (s *Schema) Field(fieldName string) (field.Field, error) {
 	return field.Field{}, fmt.Errorf("field %s not found", fieldName)
 }
 
+// Validate a record against the schema. The record fields must be organized in the same order
+// as the schema fields.
 func (s *Schema) Validate(rec Record) error {
 	var i int
 
@@ -50,6 +53,7 @@ func (s *Schema) Validate(rec Record) error {
 	return nil
 }
 
+// Equal compares the other schema with s and returns true if they are equal.
 func (s *Schema) Equal(other *Schema) bool {
 	if len(s.Fields) != len(other.Fields) {
 		return false
@@ -80,95 +84,4 @@ func (s *Schema) String() string {
 	}
 
 	return b.String()
-}
-
-type SchemaRecord struct {
-	*Schema
-	TableName string
-}
-
-// Pk returns the TableName as the primary key.
-func (s *SchemaRecord) Pk() ([]byte, error) {
-	return []byte(s.TableName), nil
-}
-
-// Field implements the field method of the Record interface.
-func (s *SchemaRecord) Field(name string) (field.Field, error) {
-	switch name {
-	case "TableName":
-		return field.Field{
-			Name: "TableName",
-			Type: field.String,
-			Data: []byte(s.TableName),
-		}, nil
-	case "Fields":
-		data, err := Encode(s.Fields)
-		if err != nil {
-			return field.Field{}, err
-		}
-
-		return field.Field{
-			Name: "Fields",
-			Type: field.String,
-			Data: data,
-		}, nil
-	}
-
-	return field.Field{}, errors.New("unknown field")
-}
-
-// Iterate through all the fields one by one and pass each of them to the given function.
-// It the given function returns an error, the iteration is interrupted.
-func (s *SchemaRecord) Iterate(fn func(field.Field) error) error {
-	var err error
-	var f field.Field
-
-	f, err = s.Field("TableName")
-	if err != nil {
-		return err
-	}
-
-	err = fn(f)
-	if err != nil {
-		return err
-	}
-
-	f, err = s.Field("Fields")
-	if err != nil {
-		return err
-	}
-
-	err = fn(f)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ScanRecord extracts fields from record and assigns them to the struct fields.
-func (s *SchemaRecord) ScanRecord(rec Record) error {
-	var f field.Field
-	var err error
-
-	f, err = rec.Field("TableName")
-	if err != nil {
-		return err
-	}
-	s.TableName = string(f.Data)
-
-	f, err = rec.Field("Fields")
-	if err != nil {
-		return err
-	}
-
-	if s.Schema == nil {
-		s.Schema = new(Schema)
-	}
-
-	ec := EncodedRecord(f.Data)
-	return ec.Iterate(func(f field.Field) error {
-		s.Fields = append(s.Fields, f)
-		return nil
-	})
 }
