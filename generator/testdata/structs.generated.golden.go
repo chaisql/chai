@@ -104,14 +104,6 @@ type BasicStore struct {
 // NewBasicStore creates a BasicStore.
 func NewBasicStore(db *genji.DB) *BasicStore {
 	var schema *record.Schema
-	schema = &record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int},
-			{Name: "C", Type: field.Int32},
-			{Name: "D", Type: field.Int32},
-		},
-	}
 
 	var indexes []string
 
@@ -120,18 +112,11 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 
 // NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
 func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
-	schema := record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int},
-			{Name: "C", Type: field.Int32},
-			{Name: "D", Type: field.Int32},
-		},
-	}
+	var schema *record.Schema
 
 	var indexes []string
 
-	return &BasicStore{Store: genji.NewStoreWithTx(tx, "Basic", &schema, indexes)}
+	return &BasicStore{Store: genji.NewStoreWithTx(tx, "Basic", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -324,14 +309,6 @@ type basicStore struct {
 // newBasicStore creates a basicStore.
 func newBasicStore(db *genji.DB) *basicStore {
 	var schema *record.Schema
-	schema = &record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.Bytes},
-			{Name: "B", Type: field.Uint16},
-			{Name: "C", Type: field.Float32},
-			{Name: "D", Type: field.Float32},
-		},
-	}
 
 	var indexes []string
 
@@ -340,18 +317,11 @@ func newBasicStore(db *genji.DB) *basicStore {
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
 func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
-	schema := record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.Bytes},
-			{Name: "B", Type: field.Uint16},
-			{Name: "C", Type: field.Float32},
-			{Name: "D", Type: field.Float32},
-		},
-	}
+	var schema *record.Schema
 
 	var indexes []string
 
-	return &basicStore{Store: genji.NewStoreWithTx(tx, "basic", &schema, indexes)}
+	return &basicStore{Store: genji.NewStoreWithTx(tx, "basic", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -451,6 +421,227 @@ func (b *basicResult) ScanTable(tr table.Reader) error {
 }
 
 // Field implements the field method of the record.Record interface.
+func (b *BasicSchemaful) Field(name string) (field.Field, error) {
+	switch name {
+	case "A":
+		return field.Field{
+			Name: "A",
+			Type: field.String,
+			Data: field.EncodeString(b.A),
+		}, nil
+	case "B":
+		return field.Field{
+			Name: "B",
+			Type: field.Int,
+			Data: field.EncodeInt(b.B),
+		}, nil
+	case "C":
+		return field.Field{
+			Name: "C",
+			Type: field.Int32,
+			Data: field.EncodeInt32(b.C),
+		}, nil
+	case "D":
+		return field.Field{
+			Name: "D",
+			Type: field.Int32,
+			Data: field.EncodeInt32(b.D),
+		}, nil
+	}
+
+	return field.Field{}, errors.New("unknown field")
+}
+
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (b *BasicSchemaful) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
+
+	f, _ = b.Field("A")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = b.Field("B")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = b.Field("C")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = b.Field("D")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
+func (b *BasicSchemaful) ScanRecord(rec record.Record) error {
+	return rec.Iterate(func(f field.Field) error {
+		var err error
+
+		switch f.Name {
+		case "A":
+			b.A, err = field.DecodeString(f.Data)
+		case "B":
+			b.B, err = field.DecodeInt(f.Data)
+		case "C":
+			b.C, err = field.DecodeInt32(f.Data)
+		case "D":
+			b.D, err = field.DecodeInt32(f.Data)
+		}
+		return err
+	})
+}
+
+// BasicSchemafulStore manages the table. It provides several typed helpers
+// that simplify common operations.
+type BasicSchemafulStore struct {
+	*genji.Store
+}
+
+// NewBasicSchemafulStore creates a BasicSchemafulStore.
+func NewBasicSchemafulStore(db *genji.DB) *BasicSchemafulStore {
+	var schema *record.Schema
+	schema = &record.Schema{
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int},
+			{Name: "C", Type: field.Int32},
+			{Name: "D", Type: field.Int32},
+		},
+	}
+
+	var indexes []string
+
+	return &BasicSchemafulStore{Store: genji.NewStore(db, "BasicSchemaful", schema, indexes)}
+}
+
+// NewBasicSchemafulStoreWithTx creates a BasicSchemafulStore valid for the lifetime of the given transaction.
+func NewBasicSchemafulStoreWithTx(tx *genji.Tx) *BasicSchemafulStore {
+	var schema *record.Schema
+	schema = &record.Schema{
+		Fields: []field.Field{
+			{Name: "A", Type: field.String},
+			{Name: "B", Type: field.Int},
+			{Name: "C", Type: field.Int32},
+			{Name: "D", Type: field.Int32},
+		},
+	}
+
+	var indexes []string
+
+	return &BasicSchemafulStore{Store: genji.NewStoreWithTx(tx, "BasicSchemaful", schema, indexes)}
+}
+
+// Insert a record in the table and return the primary key.
+func (b *BasicSchemafulStore) Insert(record *BasicSchemaful) (rowid []byte, err error) {
+	return b.Store.Insert(record)
+}
+
+// Get a record using its primary key.
+func (b *BasicSchemafulStore) Get(rowid []byte) (*BasicSchemaful, error) {
+	var record BasicSchemaful
+
+	return &record, b.Store.Get(rowid, &record)
+}
+
+// Delete a record using its primary key.
+func (b *BasicSchemafulStore) Delete(rowid []byte) error {
+	return b.Store.Delete(rowid)
+}
+
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func (b *BasicSchemafulStore) List(offset, limit int) ([]BasicSchemaful, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]BasicSchemaful, 0, size)
+	err := b.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record BasicSchemaful
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+// Replace the selected record by the given one.
+func (b *BasicSchemafulStore) Replace(rowid []byte, record *BasicSchemaful) error {
+	return b.Store.Replace(rowid, record)
+}
+
+// BasicSchemafulQuerySelector provides helpers for selecting fields from the BasicSchemaful structure.
+type BasicSchemafulQuerySelector struct {
+	A query.StringField
+	B query.IntField
+	C query.Int32Field
+	D query.Int32Field
+}
+
+// NewBasicSchemafulQuerySelector creates a BasicSchemafulQuerySelector.
+func NewBasicSchemafulQuerySelector() BasicSchemafulQuerySelector {
+	return BasicSchemafulQuerySelector{
+		A: query.NewStringField("A"),
+		B: query.NewIntField("B"),
+		C: query.NewInt32Field("C"),
+		D: query.NewInt32Field("D"),
+	}
+}
+
+// Table returns a query.TableSelector for BasicSchemaful.
+func (*BasicSchemafulQuerySelector) Table() query.TableSelector {
+	return query.Table("BasicSchemaful")
+}
+
+// All returns a list of all selectors for BasicSchemaful.
+func (s *BasicSchemafulQuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		s.A,
+		s.B,
+		s.C,
+		s.D,
+	}
+}
+
+// BasicSchemafulResult can be used to store the result of queries.
+// Selected fields must map the BasicSchemaful fields.
+type BasicSchemafulResult []BasicSchemaful
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (b *BasicSchemafulResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record BasicSchemaful
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*b = append(*b, record)
+		return nil
+	})
+}
+
+// Field implements the field method of the record.Record interface.
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
@@ -521,12 +712,6 @@ type PkStore struct {
 // NewPkStore creates a PkStore.
 func NewPkStore(db *genji.DB) *PkStore {
 	var schema *record.Schema
-	schema = &record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-		},
-	}
 
 	var indexes []string
 
@@ -535,16 +720,11 @@ func NewPkStore(db *genji.DB) *PkStore {
 
 // NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
 func NewPkStoreWithTx(tx *genji.Tx) *PkStore {
-	schema := record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-		},
-	}
+	var schema *record.Schema
 
 	var indexes []string
 
-	return &PkStore{Store: genji.NewStoreWithTx(tx, "Pk", &schema, indexes)}
+	return &PkStore{Store: genji.NewStoreWithTx(tx, "Pk", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -710,12 +890,6 @@ type IndexedStore struct {
 // NewIndexedStore creates a IndexedStore.
 func NewIndexedStore(db *genji.DB) *IndexedStore {
 	var schema *record.Schema
-	schema = &record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-		},
-	}
 
 	var indexes []string
 	indexes = append(indexes, "A")
@@ -725,18 +899,13 @@ func NewIndexedStore(db *genji.DB) *IndexedStore {
 
 // NewIndexedStoreWithTx creates a IndexedStore valid for the lifetime of the given transaction.
 func NewIndexedStoreWithTx(tx *genji.Tx) *IndexedStore {
-	schema := record.Schema{
-		Fields: []field.Field{
-			{Name: "A", Type: field.String},
-			{Name: "B", Type: field.Int64},
-		},
-	}
+	var schema *record.Schema
 
 	var indexes []string
 
 	indexes = append(indexes, "A")
 
-	return &IndexedStore{Store: genji.NewStoreWithTx(tx, "Indexed", &schema, indexes)}
+	return &IndexedStore{Store: genji.NewStoreWithTx(tx, "Indexed", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.

@@ -63,13 +63,16 @@ const storeNewWithTxTmpl = `
 {{- $structName := .Name -}}
 // {{.NameWithPrefix "New"}}StoreWithTx creates a {{$structName}}Store valid for the lifetime of the given transaction.
 func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
-	schema := record.Schema{
+	var schema *record.Schema
+	{{- if .Schema}}
+	schema = &record.Schema{
 		Fields: []field.Field{
 		{{- range .Fields}}
 			{Name: "{{.Name}}", Type: field.{{.Type}}},
 		{{- end}}
 		},
 	}
+	{{- end}}
 
 	var indexes []string
 	{{- if .HasIndexes }}
@@ -78,7 +81,7 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 		{{- end }}
 	{{- end }}
 
-	return &{{$structName}}Store{Store: genji.NewStoreWithTx(tx, "{{$structName}}", &schema, indexes)}
+	return &{{$structName}}Store{Store: genji.NewStoreWithTx(tx, "{{$structName}}", schema, indexes)}
 }
 {{ end }}
 `

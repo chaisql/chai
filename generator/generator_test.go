@@ -27,10 +27,11 @@ var update = flag.Bool("update", false, "update .golden file")
 func TestGenerate(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		structs := []Struct{
-			{"Basic", true},
-			{"basic", true},
-			{"Pk", true},
-			{"Indexed", true},
+			{"Basic", false},
+			{"basic", false},
+			{"BasicSchemaful", true},
+			{"Pk", false},
+			{"Indexed", false},
 		}
 
 		results := []string{
