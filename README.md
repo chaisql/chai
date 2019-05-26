@@ -107,3 +107,55 @@ if err != nil {
     log.Fatal(err)
 }
 ```
+
+## Engines
+
+Genji currently supports storing data in BoltDB and in-memory (_Badger is coming soon_)
+
+### Use the BoltDB engine
+
+```go
+import (
+    "log"
+
+    "github.com/asdine/genji"
+    "github.com/asdine/genji/engine/bolt"
+)
+
+// Create a bolt engine
+ng, err := bolt.NewEngine("genji.db", 0600, nil)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Pass it to genji
+db, err := genji.New(ng)
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
+```
+
+### Use the memory engine
+
+```go
+import (
+    "log"
+
+    "github.com/asdine/genji"
+    "github.com/asdine/genji/engine/memory"
+)
+
+// Create a memory engine
+ng, err := memory.NewEngine()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Pass it to genji
+db, err := genji.New(ng)
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
+```

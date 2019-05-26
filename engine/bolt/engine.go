@@ -1,3 +1,4 @@
+// Package bolt implements a BoltDB engine.
 package bolt
 
 import (
@@ -15,10 +16,12 @@ const (
 	indexBucketName      = "__genji.index"
 )
 
+// Engine represents a BoltDB engine. Each table is stored in a dedicated bucket.
 type Engine struct {
 	DB *bolt.DB
 }
 
+// NewEngine creates a BoltDB engine. It takes the same argument as Bolt's Open function.
 func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, error) {
 	db, err := bolt.Open(path, mode, opts)
 	if err != nil {
@@ -30,6 +33,7 @@ func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, erro
 	}, nil
 }
 
+// Begin creates a transaction using Bolt's transaction API.
 func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
 	tx, err := e.DB.Begin(writable)
 	if err != nil {
@@ -42,15 +46,18 @@ func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
 	}, nil
 }
 
+// Close the engine and underlying Bolt database.
 func (e *Engine) Close() error {
 	return e.DB.Close()
 }
 
+// A Transaction uses Bolt's transactions.
 type Transaction struct {
 	tx       *bolt.Tx
 	writable bool
 }
 
+// Rollback the transaction. Can be used safely after commit.
 func (t *Transaction) Rollback() error {
 	err := t.tx.Rollback()
 	if err != nil && err != bolt.ErrTxClosed {
@@ -60,10 +67,12 @@ func (t *Transaction) Rollback() error {
 	return nil
 }
 
+// Commit the transaction.
 func (t *Transaction) Commit() error {
 	return t.tx.Commit()
 }
 
+// Table returns a table by name. The table uses a Bolt bucket.
 func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error) {
 	bname := []byte(name)
 	b := t.tx.Bucket(bname)
@@ -79,6 +88,8 @@ func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error
 	}, nil
 }
 
+// CreateTable creates a bolt bucket and returns a table.
+// If the table already exists, returns engine.ErrTableAlreadyExists.
 func (t *Transaction) CreateTable(name string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
@@ -92,6 +103,7 @@ func (t *Transaction) CreateTable(name string) error {
 	return err
 }
 
+// DropTable deletes the underlying bucket.
 func (t *Transaction) DropTable(name string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
@@ -105,6 +117,7 @@ func (t *Transaction) DropTable(name string) error {
 	return err
 }
 
+// CreateIndex creates an index in a sub bucket of the table bucket.
 func (t *Transaction) CreateIndex(table, fieldName string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
@@ -128,6 +141,7 @@ func (t *Transaction) CreateIndex(table, fieldName string) error {
 	return err
 }
 
+// Index returns an index by name.
 func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
 	b := t.tx.Bucket([]byte(table))
 	if b == nil {
@@ -149,6 +163,7 @@ func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
 	}, nil
 }
 
+// Indexes lists all the indexes of this table.
 func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
 	b := t.tx.Bucket([]byte(table))
 	if b == nil {
@@ -173,6 +188,7 @@ func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
 	return m, err
 }
 
+// DropIndex drops an index by name, removing its corresponding bucket.
 func (t *Transaction) DropIndex(table, fieldName string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly

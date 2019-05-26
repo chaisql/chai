@@ -8,6 +8,9 @@ import (
 	bolt "github.com/etcd-io/bbolt"
 )
 
+// A Table is represented by a bucket.
+// Each record is stored as a key value pair, where the rowid is stored as the key.
+// Table uses the codec to encode the record and store is as the value.
 type Table struct {
 	bucket *bolt.Bucket
 	codec  record.Codec
@@ -15,6 +18,8 @@ type Table struct {
 	name   []byte
 }
 
+// Insert a record into the table bucket. If the record implements the table.Pker interface,
+// it uses the returned value as the rowid. If not, it generates a rowid using NextSequence.
 func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 	if !t.bucket.Writable() {
 		return nil, engine.ErrTransactionReadOnly
@@ -31,8 +36,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 			return nil, err
 		}
 
-		// TODO(asdine): encode in uint64 if that makes sense.
-		rowid = field.EncodeInt64(int64(seq))
+		rowid = field.EncodeUint64(seq)
 	}
 
 	data, err := t.codec.Encode(r)
@@ -48,6 +52,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 	return rowid, nil
 }
 
+// Record returns a record by rowid. If not found, returns table.ErrRecordNotFound.
 func (t *Table) Record(rowid []byte) (record.Record, error) {
 	v := t.bucket.Get(rowid)
 	if v == nil {
@@ -57,6 +62,7 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 	return t.codec.Decode(v)
 }
 
+// Delete a record by rowid. If not found, returns table.ErrRecordNotFound.
 func (t *Table) Delete(rowid []byte) error {
 	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
@@ -70,6 +76,8 @@ func (t *Table) Delete(rowid []byte) error {
 	return t.bucket.Delete(rowid)
 }
 
+// Iterate through all the records of the table until the end or until fn
+// returns an error.
 func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 	return t.bucket.ForEach(func(k, v []byte) error {
 		if v == nil {
@@ -85,6 +93,7 @@ func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 	})
 }
 
+// Replace a record by rowid. If not found, returns table.ErrRecordNotFound.
 func (t *Table) Replace(rowid []byte, r record.Record) error {
 	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
@@ -103,6 +112,7 @@ func (t *Table) Replace(rowid []byte, r record.Record) error {
 	return t.bucket.Put(rowid, v)
 }
 
+// Truncate deletes all the records of the table.
 func (t *Table) Truncate() error {
 	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
