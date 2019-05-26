@@ -34,13 +34,16 @@ const storeNewTmpl = `
 
 // {{.NameWithPrefix "New"}}Store creates a {{$structName}}Store.
 func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
-	schema := record.Schema{
+	var schema *record.Schema
+	{{- if .Schema}}
+	schema = &record.Schema{
 		Fields: []field.Field{
 		{{- range .Fields}}
 			{Name: "{{.Name}}", Type: field.{{.Type}}},
 		{{- end}}
 		},
 	}
+	{{- end}}
 
 	var indexes []string
 	{{- if .HasIndexes }}
@@ -49,7 +52,7 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 		{{- end }}
 	{{- end }}
 
-	return &{{$structName}}Store{Store: genji.NewStore(db, "{{$structName}}", &schema, indexes)}
+	return &{{$structName}}Store{Store: genji.NewStore(db, "{{$structName}}", schema, indexes)}
 }
 {{ end }}
 `

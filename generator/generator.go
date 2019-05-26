@@ -68,10 +68,19 @@ type Config struct {
 	Sources []io.Reader
 	// Names of the structures to analyse from the sources.
 	// Methods and other types will be generated from these.
-	Records []string
+	Structs []Struct
 	// Names of the structures to analyse from the sources.
 	// Methods and other types will be generated from these.
 	Results []string
+}
+
+// A Struct contains the names of the structure to analyse from the sources.
+// Methods and other types will be generated from this.
+type Struct struct {
+	// Name of the structure
+	Name string
+	// Whether the related table is schemaful or schemaless
+	Schema bool
 }
 
 // Generate parses the given asts, looks for the targets structs
@@ -163,10 +172,11 @@ func (g *genContext) readPackage(srcs []*ast.File) error {
 }
 
 func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
-	g.Records = make([]recordContext, len(cfg.Records))
-	for i := range cfg.Records {
+	g.Records = make([]recordContext, len(cfg.Structs))
+	for i := range cfg.Structs {
 		for _, src := range srcs {
-			ok, err := g.Records[i].lookupRecord(src, cfg.Records[i])
+			g.Records[i].Schema = cfg.Structs[i].Schema
+			ok, err := g.Records[i].lookupRecord(src, cfg.Structs[i].Name)
 			if err != nil {
 				return err
 			}

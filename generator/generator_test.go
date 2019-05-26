@@ -26,11 +26,11 @@ var update = flag.Bool("update", false, "update .golden file")
 
 func TestGenerate(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
-		records := []string{
-			"Basic",
-			"basic",
-			"Pk",
-			"Indexed",
+		structs := []Struct{
+			{"Basic", true},
+			{"basic", true},
+			{"Pk", true},
+			{"Indexed", true},
 		}
 
 		results := []string{
@@ -43,7 +43,7 @@ func TestGenerate(t *testing.T) {
 		var buf bytes.Buffer
 		err = Generate(&buf, Config{
 			Sources: []io.Reader{f},
-			Records: records,
+			Structs: structs,
 			Results: results,
 		})
 		require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestGenerate(t *testing.T) {
 				var buf bytes.Buffer
 				err := Generate(&buf, Config{
 					Sources: []io.Reader{strings.NewReader(src)},
-					Records: []string{"User"},
+					Structs: []Struct{{"User", true}},
 				})
 				require.Error(t, err)
 			})
@@ -100,7 +100,7 @@ func TestGenerate(t *testing.T) {
 		var buf bytes.Buffer
 		err := Generate(&buf, Config{
 			Sources: []io.Reader{strings.NewReader(src)},
-			Records: []string{"User"},
+			Structs: []Struct{{"User", true}},
 		})
 		require.Error(t, err)
 	})
@@ -122,7 +122,7 @@ func TestGenerate(t *testing.T) {
 		var buf bytes.Buffer
 		err := Generate(&buf, Config{
 			Sources: []io.Reader{strings.NewReader(src)},
-			Records: []string{"S"},
+			Structs: []Struct{{"S", true}},
 		})
 		require.Error(t, err)
 	})

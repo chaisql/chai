@@ -103,7 +103,8 @@ type BasicStore struct {
 
 // NewBasicStore creates a BasicStore.
 func NewBasicStore(db *genji.DB) *BasicStore {
-	schema := record.Schema{
+	var schema *record.Schema
+	schema = &record.Schema{
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int},
@@ -114,7 +115,7 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 
 	var indexes []string
 
-	return &BasicStore{Store: genji.NewStore(db, "Basic", &schema, indexes)}
+	return &BasicStore{Store: genji.NewStore(db, "Basic", schema, indexes)}
 }
 
 // NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
@@ -322,7 +323,8 @@ type basicStore struct {
 
 // newBasicStore creates a basicStore.
 func newBasicStore(db *genji.DB) *basicStore {
-	schema := record.Schema{
+	var schema *record.Schema
+	schema = &record.Schema{
 		Fields: []field.Field{
 			{Name: "A", Type: field.Bytes},
 			{Name: "B", Type: field.Uint16},
@@ -333,7 +335,7 @@ func newBasicStore(db *genji.DB) *basicStore {
 
 	var indexes []string
 
-	return &basicStore{Store: genji.NewStore(db, "basic", &schema, indexes)}
+	return &basicStore{Store: genji.NewStore(db, "basic", schema, indexes)}
 }
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
@@ -518,7 +520,8 @@ type PkStore struct {
 
 // NewPkStore creates a PkStore.
 func NewPkStore(db *genji.DB) *PkStore {
-	schema := record.Schema{
+	var schema *record.Schema
+	schema = &record.Schema{
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
@@ -527,7 +530,7 @@ func NewPkStore(db *genji.DB) *PkStore {
 
 	var indexes []string
 
-	return &PkStore{Store: genji.NewStore(db, "Pk", &schema, indexes)}
+	return &PkStore{Store: genji.NewStore(db, "Pk", schema, indexes)}
 }
 
 // NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
@@ -706,7 +709,8 @@ type IndexedStore struct {
 
 // NewIndexedStore creates a IndexedStore.
 func NewIndexedStore(db *genji.DB) *IndexedStore {
-	schema := record.Schema{
+	var schema *record.Schema
+	schema = &record.Schema{
 		Fields: []field.Field{
 			{Name: "A", Type: field.String},
 			{Name: "B", Type: field.Int64},
@@ -716,7 +720,7 @@ func NewIndexedStore(db *genji.DB) *IndexedStore {
 	var indexes []string
 	indexes = append(indexes, "A")
 
-	return &IndexedStore{Store: genji.NewStore(db, "Indexed", &schema, indexes)}
+	return &IndexedStore{Store: genji.NewStore(db, "Indexed", schema, indexes)}
 }
 
 // NewIndexedStoreWithTx creates a IndexedStore valid for the lifetime of the given transaction.

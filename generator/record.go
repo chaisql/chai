@@ -126,6 +126,7 @@ type recordContext struct {
 	}
 	Indexes    []string
 	HasIndexes bool
+	Schema     bool
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
