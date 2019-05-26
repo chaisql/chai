@@ -9,6 +9,9 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+// Store is a high level representation of a table.
+// It provides helpers to manage the underlying table.
+// It can be used used within or out of a transaction, automatically opening one when needed.
 type Store struct {
 	db        *DB
 	tx        *Tx
@@ -17,7 +20,10 @@ type Store struct {
 	indexes   []string
 }
 
-// NewStore creates a Store.
+// NewStore creates a store for the specified table. If schema is non nil, the Store will
+// manage the table as a schemaful table. If schema is nil, the table will be considered as
+// schemaless.
+// NewStore returns a long lived store that automatically creates its own transactions when needed.
 func NewStore(db *DB, tableName string, schema *record.Schema, indexes []string) *Store {
 	return &Store{
 		db:        db,
@@ -27,7 +33,7 @@ func NewStore(db *DB, tableName string, schema *record.Schema, indexes []string)
 	}
 }
 
-// NewStoreWithTx creates a Store valid for the lifetime of the given transaction.
+// NewStoreWithTx creates a store valid for the lifetime of the given transaction.
 func NewStoreWithTx(tx *Tx, tableName string, schema *record.Schema, indexes []string) *Store {
 	return &Store{
 		tx:        tx,
@@ -37,7 +43,7 @@ func NewStoreWithTx(tx *Tx, tableName string, schema *record.Schema, indexes []s
 	}
 }
 
-func (s *Store) Tx(writable bool, fn func(tx *Tx) error) error {
+func (s *Store) run(writable bool, fn func(tx *Tx) error) error {
 	tx := s.tx
 	var err error
 
@@ -61,14 +67,26 @@ func (s *Store) Tx(writable bool, fn func(tx *Tx) error) error {
 	return nil
 }
 
+// View starts a read only transaction, runs fn and automatically rolls it back.
+// If the store has been created within an existing transaction, View
+// will reuse it instead of creating one.
 func (s *Store) View(fn func(tx *Tx) error) error {
-	return s.Tx(false, fn)
+	return s.run(false, fn)
 }
 
+// Update starts a read-write transaction, runs fn and automatically commits it.
+// If the store has been created within an existing transaction, Update
+// will reuse it instead of creating one.
+// If fn returns an error, the transaction is rolled back, unless the store has
+// been created with NewStoreWithTx.
 func (s *Store) Update(fn func(tx *Tx) error) error {
-	return s.Tx(true, fn)
+	return s.run(true, fn)
 }
 
+// ViewTable starts a read only transaction, fetches the underlying table, calls fn with that table
+// and automatically rolls back the transaction.
+// If the store has been created within an existing transaction, ViewTable
+// will reuse it instead of creating one.
 func (s *Store) ViewTable(fn func(*Table) error) error {
 	return s.View(func(tx *Tx) error {
 		tb, err := tx.Table(s.tableName)
@@ -80,6 +98,12 @@ func (s *Store) ViewTable(fn func(*Table) error) error {
 	})
 }
 
+// UpdateTable starts a read/write transaction, fetches the underlying table, calls fn with that table
+// and automatically commits the transaction.
+// If the store has been created within an existing transaction, UpdateTable
+// will reuse it instead of creating one.
+// If fn returns an error, the transaction is rolled back, unless the store has
+// been created with NewStoreWithTx.
 func (s *Store) UpdateTable(fn func(*Table) error) error {
 	return s.Update(func(tx *Tx) error {
 		tb, err := tx.Table(s.tableName)
@@ -138,7 +162,7 @@ func (s *Store) Init() error {
 	})
 }
 
-// Insert a record in the table and return the primary key.
+// Insert a record in the table and return the rowid.
 func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
 	err = s.UpdateTable(func(t *Table) error {
 		rowid, err = t.Insert(r)
@@ -147,7 +171,7 @@ func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
 	return
 }
 
-// Get a record using its primary key.
+// Get a record by rowid and scans it into the scanner.
 func (s *Store) Get(rowid []byte, scanner record.Scanner) error {
 	return s.ViewTable(func(t *Table) error {
 		rec, err := t.Record(rowid)
@@ -159,7 +183,7 @@ func (s *Store) Get(rowid []byte, scanner record.Scanner) error {
 	})
 }
 
-// Delete a record using its primary key.
+// Delete a record by rowid.
 func (s *Store) Delete(rowid []byte) error {
 	return s.UpdateTable(func(t *Table) error {
 		return t.Delete(rowid)
