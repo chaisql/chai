@@ -307,7 +307,7 @@ func (t Table) RenameField(oldName, newName string) error {
 		}
 
 		f.Name = newName
-		fb.Set(f)
+		fb.Replace(oldName, f)
 		return t.Table.Replace(rowid, fb)
 	})
 	if err != nil {
@@ -319,7 +319,6 @@ func (t Table) RenameField(oldName, newName string) error {
 	}
 
 	sf.Name = newName
-	t.schema.Fields.Set(sf)
-
+	t.schema.Fields.Replace(oldName, sf)
 	return t.schemas.Replace(t.name, t.schema)
 }

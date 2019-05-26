@@ -75,3 +75,17 @@ func (fb *FieldBuffer) Delete(name string) error {
 
 	return fmt.Errorf("field %q not found", name)
 }
+
+// Replace the field with the given by f.
+func (fb *FieldBuffer) Replace(name string, f field.Field) error {
+	s := *fb
+	for i := range s {
+		if s[i].Name == name {
+			s[i] = f
+			*fb = s
+			return nil
+		}
+	}
+
+	return fmt.Errorf("field %q not found", name)
+}
