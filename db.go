@@ -204,6 +204,14 @@ func (t Table) Replace(rowid []byte, r record.Record) error {
 // If the field data is empty, it is filled with the zero value of the field type.
 // Returns an error if the field already exists.
 func (t Table) AddField(f field.Field) error {
+	if t.schema != nil {
+		if _, err := t.schema.Fields.Field(f.Name); err == nil {
+			return fmt.Errorf("field %q already exists", f.Name)
+		}
+	}
+
+	t.schema.Fields.Add(f)
+
 	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
@@ -234,8 +242,14 @@ func (t Table) AddField(f field.Field) error {
 }
 
 // DeleteField changes the table structure by deleting a field from all the records.
-// Returns an error if the field doesn't exists.
+// If a schema is used, returns an error if the field doesn't exists.
 func (t Table) DeleteField(name string) error {
+	if t.schema != nil {
+		if _, err := t.schema.Fields.Field(name); err != nil {
+			return fmt.Errorf("field %q doesn't exists", name)
+		}
+	}
+
 	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
@@ -245,7 +259,8 @@ func (t Table) DeleteField(name string) error {
 
 		err = fb.Delete(name)
 		if err != nil {
-			return err
+			// if the field doesn't exist, skip
+			return nil
 		}
 
 		return t.Table.Replace(rowid, fb)
@@ -262,6 +277,49 @@ func (t Table) DeleteField(name string) error {
 	if err != nil {
 		return err
 	}
+
+	return t.schemas.Replace(t.name, t.schema)
+}
+
+// RenameField changes the table structure by renaming the selected field on all the records.
+// If a schema is used, returns an error if the field doesn't exists.
+func (t Table) RenameField(oldName, newName string) error {
+	var sf field.Field
+	var err error
+
+	if t.schema != nil {
+		if sf, err = t.schema.Fields.Field(oldName); err != nil {
+			return fmt.Errorf("field %q doesn't exists", oldName)
+		}
+	}
+
+	err = t.Table.Iterate(func(rowid []byte, r record.Record) error {
+		var fb record.FieldBuffer
+		err := fb.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		f, err := fb.Field(oldName)
+		if err != nil {
+			// if the field doesn't exist, skip
+			return nil
+		}
+
+		f.Name = newName
+		fb.Set(f)
+		return t.Table.Replace(rowid, fb)
+	})
+	if err != nil {
+		return err
+	}
+
+	if t.schema == nil {
+		return nil
+	}
+
+	sf.Name = newName
+	t.schema.Fields.Set(sf)
 
 	return t.schemas.Replace(t.name, t.schema)
 }
