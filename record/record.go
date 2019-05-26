@@ -6,10 +6,13 @@ import (
 	"github.com/asdine/genji/field"
 )
 
-// A Record holds a group of fields.
+// A Record represents a group of fields.
 type Record interface {
-	Field(string) (field.Field, error)
-	Iterate(func(field.Field) error) error
+	// Iterate goes through all the fields of the record and calls the given function by passing each one of them.
+	// If the given function returns an error, the iteration stops.
+	Iterate(fn func(field.Field) error) error
+	// Field returns a field by name.
+	Field(name string) (field.Field, error)
 }
 
 // A Scanner can iterate over a record and scan all the fields.
@@ -17,13 +20,15 @@ type Scanner interface {
 	ScanRecord(Record) error
 }
 
-// FieldBuffer contains a list of fields. It implements the Record interface.
+// FieldBuffer is slice of fields which implements the Record interface.
 type FieldBuffer []field.Field
 
+// Add a field to the buffer.
 func (fb *FieldBuffer) Add(f field.Field) {
 	*fb = append(*fb, f)
 }
 
+// ScanRecord copies all the fields of r to the buffer.
 func (fb *FieldBuffer) ScanRecord(r Record) error {
 	return r.Iterate(func(f field.Field) error {
 		*fb = append(*fb, f)
@@ -31,6 +36,7 @@ func (fb *FieldBuffer) ScanRecord(r Record) error {
 	})
 }
 
+// Field returns a field by name. Returns an error if the field doesn't exists.
 func (fb FieldBuffer) Field(name string) (field.Field, error) {
 	for _, f := range fb {
 		if f.Name == name {
@@ -41,6 +47,7 @@ func (fb FieldBuffer) Field(name string) (field.Field, error) {
 	return field.Field{}, fmt.Errorf("field %q not found", name)
 }
 
+// Set replaces a field if it already exists or creates one if not.
 func (fb FieldBuffer) Set(f field.Field) {
 	for i := range fb {
 		if fb[i].Name == f.Name {
@@ -52,6 +59,8 @@ func (fb FieldBuffer) Set(f field.Field) {
 	fb.Add(f)
 }
 
+// Iterate goes through all the fields of the record and calls the given function by passing each one of them.
+// If the given function returns an error, the iteration stops.
 func (fb FieldBuffer) Iterate(fn func(field.Field) error) error {
 	for _, f := range fb {
 		err := fn(f)
