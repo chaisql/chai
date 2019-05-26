@@ -9,28 +9,28 @@ const (
 	schemaTableName = "__genji.schema"
 )
 
-// SchemaStore manages the schema table. It provides several typed helpers
+// schemaStore manages the schema table. It provides several typed helpers
 // that simplify common operations.
-type SchemaStore struct {
+type schemaStore struct {
 	store *Store
 }
 
-// NewSchemaStore creates a SchemaStore.
-func NewSchemaStore(db *DB) *SchemaStore {
-	return &SchemaStore{
+// newSchemaStore creates a schemaStore.
+func newSchemaStore(db *DB) *schemaStore {
+	return &schemaStore{
 		store: NewStore(db, schemaTableName, nil, nil),
 	}
 }
 
-// NewSchemaStoreWithTx creates a SchemaStore valid for the lifetime of the given transaction.
-func NewSchemaStoreWithTx(tx *Tx) *SchemaStore {
-	return &SchemaStore{
+// newSchemaStoreWithTx creates a schemaStore valid for the lifetime of the given transaction.
+func newSchemaStoreWithTx(tx *Tx) *schemaStore {
+	return &schemaStore{
 		store: NewStoreWithTx(tx, schemaTableName, nil, nil),
 	}
 }
 
 // Init makes sure the table exists. No error is returned if the table already exists.
-func (s *SchemaStore) Init() error {
+func (s *schemaStore) Init() error {
 	return s.store.Update(func(tx *Tx) error {
 		err := tx.CreateTable(schemaTableName)
 		if err == engine.ErrTableAlreadyExists {
@@ -42,7 +42,7 @@ func (s *SchemaStore) Init() error {
 }
 
 // Insert a record in the table and return the primary key.
-func (s *SchemaStore) Insert(tableName string, schema *record.Schema) (rowid []byte, err error) {
+func (s *schemaStore) Insert(tableName string, schema *record.Schema) (rowid []byte, err error) {
 	err = s.store.Update(func(tx *Tx) error {
 		t, err := tx.Transaction.Table(schemaTableName, record.NewCodec())
 		if err != nil {
@@ -56,7 +56,7 @@ func (s *SchemaStore) Insert(tableName string, schema *record.Schema) (rowid []b
 }
 
 // Get a schema using its table name.
-func (s *SchemaStore) Get(tableName string) (*record.Schema, error) {
+func (s *schemaStore) Get(tableName string) (*record.Schema, error) {
 	sr := record.SchemaRecord{
 		Schema: new(record.Schema),
 	}
@@ -83,7 +83,7 @@ func (s *SchemaStore) Get(tableName string) (*record.Schema, error) {
 }
 
 // Replace the schema for tableName by the given one.
-func (s *SchemaStore) Replace(tableName string, schema *record.Schema) error {
+func (s *schemaStore) Replace(tableName string, schema *record.Schema) error {
 	sr := record.SchemaRecord{
 		Schema: schema,
 	}

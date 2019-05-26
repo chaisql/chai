@@ -18,7 +18,7 @@ func New(ng engine.Engine) (*DB, error) {
 		Engine: ng,
 	}
 
-	err := NewSchemaStore(&db).Init()
+	err := newSchemaStore(&db).Init()
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 	gtx := Tx{
 		Transaction: tx,
 	}
-	gtx.schemas = NewSchemaStoreWithTx(&gtx)
+	gtx.schemas = newSchemaStoreWithTx(&gtx)
 	return &gtx, nil
 }
 
@@ -67,7 +67,7 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 type Tx struct {
 	engine.Transaction
 
-	schemas *SchemaStore
+	schemas *schemaStore
 }
 
 func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
@@ -110,7 +110,7 @@ type Table struct {
 	tx      engine.Transaction
 	name    string
 	schema  *record.Schema
-	schemas *SchemaStore
+	schemas *schemaStore
 }
 
 func (t Table) Insert(r record.Record) ([]byte, error) {
