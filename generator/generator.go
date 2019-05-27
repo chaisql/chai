@@ -83,8 +83,8 @@ type Struct struct {
 	Schema bool
 }
 
-// Generate parses the given asts, looks for the targets structs
-// and generates complementary code to the given writer.
+// Generate parses a list of files, looks for the targeted structs
+// and generates complementary code to w.
 func Generate(w io.Writer, cfg Config) error {
 	var gctx genContext
 
