@@ -44,13 +44,25 @@ func (i *Index) Delete(rowid []byte) error {
 	suffix[0] = separator
 	copy(suffix[1:], rowid)
 
-	return i.b.ForEach(func(k []byte, v []byte) error {
+	errStop := errors.New("stop")
+
+	err := i.b.ForEach(func(k []byte, v []byte) error {
 		if bytes.HasSuffix(k, suffix) {
-			return i.b.Delete(k)
+			err := i.b.Delete(k)
+			if err != nil {
+				return err
+			}
+			return errStop
 		}
 
 		return nil
 	})
+
+	if err != errStop {
+		return err
+	}
+
+	return nil
 }
 
 func (i *Index) Cursor() index.Cursor {
