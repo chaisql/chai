@@ -57,56 +57,95 @@ genji -f user.go -S User
 
 This command generates a file that contains APIs specific to the `User` type.
 
+```go
+// User gets new methods that implement some Genji interfaces.
+func (u *User) Field(name string) (field.Field, error) {}
+func (u *User) Iterate(fn func(field.Field) error) error {}
+func (u *User) ScanRecord(rec record.Record) error {}
+func (u *User) Pk() ([]byte, error) {}
+
+// A UserStore type is generated to simplify interaction with the User table
+// and simplify common operations.
+type UserStore struct {
+    *genji.Store
+}
+func NewUserStore(db *genji.DB) *UserStore {}
+func NewUserStoreWithTx(tx *genji.Tx) *UserStore {}
+func (u *UserStore) Insert(record *User) (err error) {}
+func (u *UserStore) Get(pk int64) (*User, error) {}
+func (u *UserStore) Delete(pk int64) error {}
+func (u *UserStore) List(offset, limit int) ([]User, error) {}
+func (u *UserStore) Replace(pk int64, record *User) error {}
+
+// A UserQuerySelector is generated to ease writing queries.
+type UserQuerySelector struct {
+    ID   query.Int64Field
+    Name query.StringField
+    Age  query.IntField
+}
+func NewUserQuerySelector() UserQuerySelector {}
+func (*UserQuerySelector) Table() query.TableSelector {}
+func (s *UserQuerySelector) All() []query.FieldSelector {}
+
+// UserResult can receive the result of a query that returns users.
+type UserResult []User
+func (u *UserResult) ScanTable(tr table.Reader) error {}
+```
+
 ### Example
 
 ```go
-// Instantiate an engine
-ng := memory.NewEngine()
+package main
 
-// Instantiate a DB using the engine
-db, err := genji.New(ng)
-if err != nil {
-    log.Fatal(err)
-}
-defer db.Close()
+func main() {
+    // Instantiate an engine
+    ng := memory.NewEngine()
 
-// Generated User store
-// A Store is a high level type safe API that wraps a Genji table.
-users := NewUserStore(db)
+    // Instantiate a DB using the engine
+    db, err := genji.New(ng)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
 
-// Insert a user using the generated methods
-err = users.Insert(&User{
-    ID:   10,
-    Name: "foo",
-    Age:  32,
-})
-if err != nil {
-    log.Fatal(err)
-}
+    // Create a UserStore from the generated code
+    // A Store is a high level type safe API that wraps a Genji table.
+    users := NewUserStore(db)
 
-// Get a user
-u, err := users.Get(10)
-if err != nil {
-    log.Fatal(err)
-}
+    // Insert a user using the generated methods
+    err = users.Insert(&User{
+        ID:   10,
+        Name: "foo",
+        Age:  32,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
 
-// List users
-list, err := users.List(0, 10)
-if err != nil {
-    log.Fatal(err)
-}
+    // Get a user using its primary key
+    u, err := users.Get(10)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-// Run complex queries
-qs := NewUserQuerySelector()
-var result UserResult
-err = users.View(func(tx *genji.Tx) error {
-    // SELECT ID, Name FROM User where Age >= 18
-    return query.Select(qs.ID, qs.Name).From(qs.Table()).Where(qs.Age.Gte(18)).
-        Run(tx).
-        Scan(&result)
-})
-if err != nil {
-    log.Fatal(err)
+    // List users
+    list, err := users.List(0, 10)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Run complex queries
+    qs := NewUserQuerySelector()
+    var result UserResult
+    err = users.View(func(tx *genji.Tx) error {
+        // SELECT ID, Name FROM User where Age >= 18
+        return query.Select(qs.ID, qs.Name).From(qs.Table()).Where(qs.Age.Gte(18)).
+            Run(tx).
+            Scan(&result)
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
