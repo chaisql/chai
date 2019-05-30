@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/asdine/genji.svg)](https://travis-ci.org/asdine/genji)
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
-[![Go Report Card](https://goreportcard.com/badge/github.com/asdine/genji)](https://goreportcard.com/report/github.com/asdine/genji)
 
 Genji is a powerful embedded relational database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt), or in memory.
 
@@ -31,13 +30,13 @@ go get -u github.com/asdine/genji/...
 
 ## Usage
 
-Declare a structure. Note that, even though struct tags are defined, Genji doesn't use reflection.
+Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection**.
 
 ```go
 // user.go
 
 type User struct {
-    ID int64 `genji:"pk"`
+    ID int64    `genji:"pk"`
     Name string `genji:"index"`
     Age int
 }
@@ -58,6 +57,8 @@ genji -f user.go -S User
 This command generates a file that contains APIs specific to the `User` type.
 
 ```go
+// user.genji.go
+
 // User gets new methods that implement some Genji interfaces.
 func (u *User) Field(name string) (field.Field, error) {}
 func (u *User) Iterate(fn func(field.Field) error) error {}
@@ -200,3 +201,49 @@ if err != nil {
 }
 defer db.Close()
 ```
+
+## Tags
+
+Genji scans the struct tags at compile time, not at runtime, and it uses this information to generate code.
+
+Here is a list of supported tags:
+
+- `pk`: Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id
+- `index`: Indicates that this field must be indexed.
+
+## Queries
+
+The [`query` package](https://godoc.org/github.com/asdine/genji/query) allows to run SQL like queries on tables using Go code.
+
+That's the simplest way of running queries, and the results can be mapped to the structure of your choice.
+
+```go
+// Create a query selector value
+qs := NewUserQuerySelector()
+
+// Declare the result value that will receive the result of the query.
+// Generated result types are always slices.
+var result UserResult
+
+// Open a managed transaction
+err = users.View(func(tx *genji.Tx) error {
+    // Use the query.Select function to run a SELECT query equivalent to
+    // SELECT ID, Name FROM User where Age >= 18
+
+    return query.
+        // Use the query selector to select the fields of your choice
+        Select(qs.ID, qs.Name).
+        // The name of the table is based on the name of the structure, in this case "User".
+        // The query selector provides a method to select the table.
+        From(qs.Table()).
+        // The fields of qs are generated based on the fields of the User structure and their type
+        // Here, because Age is an int, the Gte method expects an int.
+        Where(qs.Age.Gte(18)).
+        // Run the query using the transaction.
+        Run(tx).
+        // Scan the result to UserResult.
+        Scan(&result)
+})
+```
+
+It's also possible to use non generated types directly from the [`query` package](https://godoc.org/github.com/asdine/genji/query) or implement the necessary interfaces for more flexibility.
