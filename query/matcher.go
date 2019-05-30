@@ -11,36 +11,56 @@ import (
 	"github.com/google/btree"
 )
 
+// A Matcher defines conditions and indicates if a record
+// satisfies them.
+// Implementation can operate on a specific field
+// or on the entire record.
 type Matcher interface {
+	// Match returns true if the given record matches.
 	Match(record.Record) (bool, error)
 }
 
+// An IndexMatcher defines conditions and scans an index for records
+// satisfying them.
 type IndexMatcher interface {
-	MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error)
+	// MatcheIndex returns a tree of all the records rowids matching.
+	// If no index is found for a given field, it returns nil and false.
+	MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error)
 }
 
+// An Item is an element stored in a tree.
+// It implements the btree.Item interface.
 type Item []byte
 
+// Less implements the bree.Item interface to
+// sort the Item in the tree.
+// It compares i with than using bytes.Compare.
 func (i Item) Less(than btree.Item) bool {
 	return bytes.Compare(i, than.(Item)) < 0
 }
 
+// EqMatcher matches all the records whose field selected by the Field member are equal
+// to the Value member. It also supports selecting records from indexes.
 type EqMatcher struct {
-	f FieldSelector
-	v []byte
+	Field FieldSelector
+	Value []byte
 }
 
+// Match uses the field selector to select a field from r and returns true
+// if its encoded value is equal to the Value member.
 func (m *EqMatcher) Match(r record.Record) (bool, error) {
-	rf, err := m.f.SelectField(r)
+	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
 	}
 
-	return bytes.Compare(rf.Data, m.v) == 0, nil
+	return bytes.Compare(rf.Data, m.Value) == 0, nil
 }
 
-func (m *EqMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(table, m.f.Name())
+// MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
+// the field selected by the Field member equal to the Value member.
+func (m *EqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -48,8 +68,8 @@ func (m *EqMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 	tree := btree.New(3)
 
 	c := idx.Cursor()
-	v, rowid := c.Seek(m.v)
-	for rowid != nil && bytes.Equal(m.v, v) {
+	v, rowid := c.Seek(m.Value)
+	for rowid != nil && bytes.Equal(m.Value, v) {
 		tree.ReplaceOrInsert(Item(rowid))
 		v, rowid = c.Next()
 	}
@@ -57,22 +77,28 @@ func (m *EqMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 	return tree, true, nil
 }
 
+// GtMatcher matches all the records whose field selected by the Field member are strictly greater than
+// the Value member. It also supports selecting records from indexes.
 type GtMatcher struct {
-	f FieldSelector
-	v []byte
+	Field FieldSelector
+	Value []byte
 }
 
+// Match uses the field selector to select a field from r and returns true
+// if its encoded value is strictly greater than the Value member.
 func (m *GtMatcher) Match(r record.Record) (bool, error) {
-	rf, err := m.f.SelectField(r)
+	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
 	}
 
-	return bytes.Compare(rf.Data, m.v) > 0, nil
+	return bytes.Compare(rf.Data, m.Value) > 0, nil
 }
 
-func (m *GtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(table, m.f.Name())
+// MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
+// the field selected by the Field member strictly greater than the Value member.
+func (m *GtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -80,9 +106,9 @@ func (m *GtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 	tree := btree.New(3)
 
 	c := idx.Cursor()
-	v, rowid := c.Seek(m.v)
+	v, rowid := c.Seek(m.Value)
 	for rowid != nil {
-		if !bytes.Equal(m.v, v) {
+		if !bytes.Equal(m.Value, v) {
 			tree.ReplaceOrInsert(Item(rowid))
 		}
 
@@ -92,22 +118,28 @@ func (m *GtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 	return tree, true, nil
 }
 
+// GteMatcher matches all the records whose field selected by the Field member are greater than or equal
+// to the Value member. It also supports selecting records from indexes.
 type GteMatcher struct {
-	f FieldSelector
-	v []byte
+	Field FieldSelector
+	Value []byte
 }
 
+// Match uses the field selector to select a field from r and returns true
+// if its encoded value is greater than or equal to the Value member.
 func (m *GteMatcher) Match(r record.Record) (bool, error) {
-	rf, err := m.f.SelectField(r)
+	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
 	}
 
-	return bytes.Compare(rf.Data, m.v) >= 0, nil
+	return bytes.Compare(rf.Data, m.Value) >= 0, nil
 }
 
-func (m *GteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(table, m.f.Name())
+// MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
+// the field selected by the Field member greater than or equal to the Value member.
+func (m *GteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -115,7 +147,7 @@ func (m *GteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 	tree := btree.New(3)
 
 	c := idx.Cursor()
-	_, rowid := c.Seek(m.v)
+	_, rowid := c.Seek(m.Value)
 	for rowid != nil {
 		tree.ReplaceOrInsert(Item(rowid))
 		_, rowid = c.Next()
@@ -124,22 +156,28 @@ func (m *GteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 	return tree, true, nil
 }
 
+// LtMatcher matches all the records whose field selected by the Field member are strictly lesser than
+// the Value member. It also supports selecting records from indexes.
 type LtMatcher struct {
-	f FieldSelector
-	v []byte
+	Field FieldSelector
+	Value []byte
 }
 
+// Match uses the field selector to select a field from r and returns true
+// if its encoded value is strictly lesser than the Value member.
 func (m *LtMatcher) Match(r record.Record) (bool, error) {
-	rf, err := m.f.SelectField(r)
+	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
 	}
 
-	return bytes.Compare(rf.Data, m.v) < 0, nil
+	return bytes.Compare(rf.Data, m.Value) < 0, nil
 }
 
-func (m *LtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(table, m.f.Name())
+// MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
+// the field selected by the Field member strictly lesser than the Value member.
+func (m *LtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -147,10 +185,10 @@ func (m *LtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 	tree := btree.New(3)
 
 	c := idx.Cursor()
-	v, rowid := c.Seek(m.v)
+	v, rowid := c.Seek(m.Value)
 	v, rowid = c.Prev()
 	for rowid != nil {
-		if !bytes.Equal(m.v, v) {
+		if !bytes.Equal(m.Value, v) {
 			tree.ReplaceOrInsert(Item(rowid))
 		}
 		v, rowid = c.Prev()
@@ -159,22 +197,28 @@ func (m *LtMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, 
 	return tree, true, nil
 }
 
+// LteMatcher matches all the records whose field selected by the Field member are lesser than or equal
+// to the Value member. It also supports selecting records from indexes.
 type LteMatcher struct {
-	f FieldSelector
-	v []byte
+	Field FieldSelector
+	Value []byte
 }
 
+// Match uses the field selector to select a field from r and returns true
+// if its encoded value is lesser than or equal to the Value member.
 func (m *LteMatcher) Match(r record.Record) (bool, error) {
-	rf, err := m.f.SelectField(r)
+	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
 	}
 
-	return bytes.Compare(rf.Data, m.v) <= 0, nil
+	return bytes.Compare(rf.Data, m.Value) <= 0, nil
 }
 
-func (m *LteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(table, m.f.Name())
+// MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
+// the field selected by the Field member lesser than or equal to the Value member.
+func (m *LteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -182,9 +226,9 @@ func (m *LteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 	tree := btree.New(3)
 
 	c := idx.Cursor()
-	v, rowid := c.Seek(m.v)
+	v, rowid := c.Seek(m.Value)
 
-	for bytes.Equal(v, m.v) {
+	for bytes.Equal(v, m.Value) {
 		v, rowid = c.Next()
 	}
 	if v == nil {
@@ -192,7 +236,7 @@ func (m *LteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 	}
 
 	for rowid != nil {
-		if bytes.Compare(v, m.v) <= 0 {
+		if bytes.Compare(v, m.Value) <= 0 {
 			tree.ReplaceOrInsert(Item(rowid))
 		}
 
@@ -202,16 +246,20 @@ func (m *LteMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 	return tree, true, nil
 }
 
+// AndMatcher is a logical matcher used to evaluate multiple other matchers.
+// It matches if all of them matches.
 type AndMatcher struct {
-	matchers []Matcher
+	Matchers []Matcher
 }
 
+// And creates an AndMatcher.
 func And(matchers ...Matcher) *AndMatcher {
-	return &AndMatcher{matchers: matchers}
+	return &AndMatcher{Matchers: matchers}
 }
 
+// Match if all Matchers return true.
 func (a *AndMatcher) Match(r record.Record) (bool, error) {
-	for _, m := range a.matchers {
+	for _, m := range a.Matchers {
 		ok, err := m.Match(r)
 		if !ok || err != nil {
 			return ok, err
@@ -221,12 +269,14 @@ func (a *AndMatcher) Match(r record.Record) (bool, error) {
 	return true, nil
 }
 
-func (a *AndMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
+// MatchIndex matches if all Matchers implement the IndexMatcher interface and return true.
+// MatchIndex returns the intersection between all of trees returned.
+func (a *AndMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	var set *btree.BTree
 
-	for _, m := range a.matchers {
+	for _, m := range a.Matchers {
 		if i, ok := m.(IndexMatcher); ok {
-			rowids, ok, err := i.MatchIndex(table, tx)
+			rowids, ok, err := i.MatchIndex(tx, tableName)
 			if err != nil || !ok {
 				return nil, false, err
 			}
@@ -252,16 +302,20 @@ func (a *AndMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool,
 	return set, true, nil
 }
 
+// OrMatcher is a logical matcher used to evaluate multiple other matchers.
+// It matches if one of them matches.
 type OrMatcher struct {
-	matchers []Matcher
+	Matchers []Matcher
 }
 
+// Or creates an OrMatcher.
 func Or(matchers ...Matcher) *OrMatcher {
-	return &OrMatcher{matchers: matchers}
+	return &OrMatcher{Matchers: matchers}
 }
 
+// Match if one of the Matchers return true.
 func (o *OrMatcher) Match(r record.Record) (bool, error) {
-	for _, m := range o.matchers {
+	for _, m := range o.Matchers {
 		ok, err := m.Match(r)
 		if err != nil {
 			return false, err
@@ -275,12 +329,14 @@ func (o *OrMatcher) Match(r record.Record) (bool, error) {
 	return false, nil
 }
 
-func (o *OrMatcher) MatchIndex(table string, tx *genji.Tx) (*btree.BTree, bool, error) {
+// MatchIndex matches if all Matchers implement the IndexMatcher interface and return true.
+// MatchIndex returns the union between all of trees returned.
+func (o *OrMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	var set *btree.BTree
 
-	for _, m := range o.matchers {
+	for _, m := range o.Matchers {
 		if i, ok := m.(IndexMatcher); ok {
-			rowids, ok, err := i.MatchIndex(table, tx)
+			rowids, ok, err := i.MatchIndex(tx, tableName)
 			if err != nil || !ok {
 				return nil, false, err
 			}

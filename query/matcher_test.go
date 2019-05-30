@@ -156,7 +156,7 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rowids, ok, err := test.matcher.MatchIndex("test", tx)
+			rowids, ok, err := test.matcher.MatchIndex(tx, "test")
 			require.NoError(t, err)
 			require.True(t, ok)
 			var ids []string
@@ -212,7 +212,7 @@ func TestAndMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.And(test.matchers...)
 
-				rowids, _, err := m.MatchIndex("test", tx)
+				rowids, _, err := m.MatchIndex(tx, "test")
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -273,7 +273,7 @@ func TestOrMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.Or(test.matchers...)
 
-				rowids, _, err := m.MatchIndex("test", tx)
+				rowids, _, err := m.MatchIndex(tx, "test")
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -328,7 +328,7 @@ func BenchmarkIndexMatcher(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				matcher.MatchIndex("test", tx)
+				matcher.MatchIndex(tx, "test")
 			}
 			b.StopTimer()
 		})

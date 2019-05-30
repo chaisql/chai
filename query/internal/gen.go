@@ -17,40 +17,40 @@ import (
 // Eq{{ .Name }} matches if x is equal to the field selected by f.
 func Eq{{ .Name }}(f FieldSelector, x {{ .T }}) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.Encode{{ .Name }}(x),
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
 	}
 }
 
 // Gt{{ .Name }} matches if x is greater than the field selected by f.
 func Gt{{ .Name }}(f FieldSelector, x {{ .T }}) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.Encode{{ .Name }}(x),
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
 	}
 }
 
 // Gte{{ .Name }} matches if x is greater than or equal to the field selected by f.
 func Gte{{ .Name }}(f FieldSelector, x {{ .T }}) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.Encode{{ .Name }}(x),
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
 	}
 }
 
 // Lt{{ .Name }} matches if x is less than the field selected by f.
 func Lt{{ .Name }}(f FieldSelector, x {{ .T }}) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.Encode{{ .Name }}(x),
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
 	}
 }
 
 // Lte{{ .Name }} matches if x is less than or equal to the field selected by f.
 func Lte{{ .Name }}(f FieldSelector, x {{ .T }}) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.Encode{{ .Name }}(x),
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
 	}
 }
 

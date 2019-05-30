@@ -8,40 +8,40 @@ import (
 // EqBytes matches if x is equal to the field selected by f.
 func EqBytes(f FieldSelector, x []byte) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeBytes(x),
+		Field: f,
+		Value: field.EncodeBytes(x),
 	}
 }
 
 // GtBytes matches if x is greater than the field selected by f.
 func GtBytes(f FieldSelector, x []byte) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeBytes(x),
+		Field: f,
+		Value: field.EncodeBytes(x),
 	}
 }
 
 // GteBytes matches if x is greater than or equal to the field selected by f.
 func GteBytes(f FieldSelector, x []byte) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeBytes(x),
+		Field: f,
+		Value: field.EncodeBytes(x),
 	}
 }
 
 // LtBytes matches if x is less than the field selected by f.
 func LtBytes(f FieldSelector, x []byte) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeBytes(x),
+		Field: f,
+		Value: field.EncodeBytes(x),
 	}
 }
 
 // LteBytes matches if x is less than or equal to the field selected by f.
 func LteBytes(f FieldSelector, x []byte) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeBytes(x),
+		Field: f,
+		Value: field.EncodeBytes(x),
 	}
 }
 
@@ -84,40 +84,40 @@ func (f BytesField) Lte(x []byte) Matcher {
 // EqString matches if x is equal to the field selected by f.
 func EqString(f FieldSelector, x string) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeString(x),
+		Field: f,
+		Value: field.EncodeString(x),
 	}
 }
 
 // GtString matches if x is greater than the field selected by f.
 func GtString(f FieldSelector, x string) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeString(x),
+		Field: f,
+		Value: field.EncodeString(x),
 	}
 }
 
 // GteString matches if x is greater than or equal to the field selected by f.
 func GteString(f FieldSelector, x string) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeString(x),
+		Field: f,
+		Value: field.EncodeString(x),
 	}
 }
 
 // LtString matches if x is less than the field selected by f.
 func LtString(f FieldSelector, x string) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeString(x),
+		Field: f,
+		Value: field.EncodeString(x),
 	}
 }
 
 // LteString matches if x is less than or equal to the field selected by f.
 func LteString(f FieldSelector, x string) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeString(x),
+		Field: f,
+		Value: field.EncodeString(x),
 	}
 }
 
@@ -160,40 +160,40 @@ func (f StringField) Lte(x string) Matcher {
 // EqBool matches if x is equal to the field selected by f.
 func EqBool(f FieldSelector, x bool) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeBool(x),
+		Field: f,
+		Value: field.EncodeBool(x),
 	}
 }
 
 // GtBool matches if x is greater than the field selected by f.
 func GtBool(f FieldSelector, x bool) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeBool(x),
+		Field: f,
+		Value: field.EncodeBool(x),
 	}
 }
 
 // GteBool matches if x is greater than or equal to the field selected by f.
 func GteBool(f FieldSelector, x bool) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeBool(x),
+		Field: f,
+		Value: field.EncodeBool(x),
 	}
 }
 
 // LtBool matches if x is less than the field selected by f.
 func LtBool(f FieldSelector, x bool) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeBool(x),
+		Field: f,
+		Value: field.EncodeBool(x),
 	}
 }
 
 // LteBool matches if x is less than or equal to the field selected by f.
 func LteBool(f FieldSelector, x bool) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeBool(x),
+		Field: f,
+		Value: field.EncodeBool(x),
 	}
 }
 
@@ -236,40 +236,40 @@ func (f BoolField) Lte(x bool) Matcher {
 // EqUint matches if x is equal to the field selected by f.
 func EqUint(f FieldSelector, x uint) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeUint(x),
+		Field: f,
+		Value: field.EncodeUint(x),
 	}
 }
 
 // GtUint matches if x is greater than the field selected by f.
 func GtUint(f FieldSelector, x uint) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeUint(x),
+		Field: f,
+		Value: field.EncodeUint(x),
 	}
 }
 
 // GteUint matches if x is greater than or equal to the field selected by f.
 func GteUint(f FieldSelector, x uint) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeUint(x),
+		Field: f,
+		Value: field.EncodeUint(x),
 	}
 }
 
 // LtUint matches if x is less than the field selected by f.
 func LtUint(f FieldSelector, x uint) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeUint(x),
+		Field: f,
+		Value: field.EncodeUint(x),
 	}
 }
 
 // LteUint matches if x is less than or equal to the field selected by f.
 func LteUint(f FieldSelector, x uint) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeUint(x),
+		Field: f,
+		Value: field.EncodeUint(x),
 	}
 }
 
@@ -312,40 +312,40 @@ func (f UintField) Lte(x uint) Matcher {
 // EqUint8 matches if x is equal to the field selected by f.
 func EqUint8(f FieldSelector, x uint8) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeUint8(x),
+		Field: f,
+		Value: field.EncodeUint8(x),
 	}
 }
 
 // GtUint8 matches if x is greater than the field selected by f.
 func GtUint8(f FieldSelector, x uint8) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeUint8(x),
+		Field: f,
+		Value: field.EncodeUint8(x),
 	}
 }
 
 // GteUint8 matches if x is greater than or equal to the field selected by f.
 func GteUint8(f FieldSelector, x uint8) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeUint8(x),
+		Field: f,
+		Value: field.EncodeUint8(x),
 	}
 }
 
 // LtUint8 matches if x is less than the field selected by f.
 func LtUint8(f FieldSelector, x uint8) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeUint8(x),
+		Field: f,
+		Value: field.EncodeUint8(x),
 	}
 }
 
 // LteUint8 matches if x is less than or equal to the field selected by f.
 func LteUint8(f FieldSelector, x uint8) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeUint8(x),
+		Field: f,
+		Value: field.EncodeUint8(x),
 	}
 }
 
@@ -388,40 +388,40 @@ func (f Uint8Field) Lte(x uint8) Matcher {
 // EqUint16 matches if x is equal to the field selected by f.
 func EqUint16(f FieldSelector, x uint16) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeUint16(x),
+		Field: f,
+		Value: field.EncodeUint16(x),
 	}
 }
 
 // GtUint16 matches if x is greater than the field selected by f.
 func GtUint16(f FieldSelector, x uint16) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeUint16(x),
+		Field: f,
+		Value: field.EncodeUint16(x),
 	}
 }
 
 // GteUint16 matches if x is greater than or equal to the field selected by f.
 func GteUint16(f FieldSelector, x uint16) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeUint16(x),
+		Field: f,
+		Value: field.EncodeUint16(x),
 	}
 }
 
 // LtUint16 matches if x is less than the field selected by f.
 func LtUint16(f FieldSelector, x uint16) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeUint16(x),
+		Field: f,
+		Value: field.EncodeUint16(x),
 	}
 }
 
 // LteUint16 matches if x is less than or equal to the field selected by f.
 func LteUint16(f FieldSelector, x uint16) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeUint16(x),
+		Field: f,
+		Value: field.EncodeUint16(x),
 	}
 }
 
@@ -464,40 +464,40 @@ func (f Uint16Field) Lte(x uint16) Matcher {
 // EqUint32 matches if x is equal to the field selected by f.
 func EqUint32(f FieldSelector, x uint32) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeUint32(x),
+		Field: f,
+		Value: field.EncodeUint32(x),
 	}
 }
 
 // GtUint32 matches if x is greater than the field selected by f.
 func GtUint32(f FieldSelector, x uint32) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeUint32(x),
+		Field: f,
+		Value: field.EncodeUint32(x),
 	}
 }
 
 // GteUint32 matches if x is greater than or equal to the field selected by f.
 func GteUint32(f FieldSelector, x uint32) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeUint32(x),
+		Field: f,
+		Value: field.EncodeUint32(x),
 	}
 }
 
 // LtUint32 matches if x is less than the field selected by f.
 func LtUint32(f FieldSelector, x uint32) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeUint32(x),
+		Field: f,
+		Value: field.EncodeUint32(x),
 	}
 }
 
 // LteUint32 matches if x is less than or equal to the field selected by f.
 func LteUint32(f FieldSelector, x uint32) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeUint32(x),
+		Field: f,
+		Value: field.EncodeUint32(x),
 	}
 }
 
@@ -540,40 +540,40 @@ func (f Uint32Field) Lte(x uint32) Matcher {
 // EqUint64 matches if x is equal to the field selected by f.
 func EqUint64(f FieldSelector, x uint64) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeUint64(x),
+		Field: f,
+		Value: field.EncodeUint64(x),
 	}
 }
 
 // GtUint64 matches if x is greater than the field selected by f.
 func GtUint64(f FieldSelector, x uint64) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeUint64(x),
+		Field: f,
+		Value: field.EncodeUint64(x),
 	}
 }
 
 // GteUint64 matches if x is greater than or equal to the field selected by f.
 func GteUint64(f FieldSelector, x uint64) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeUint64(x),
+		Field: f,
+		Value: field.EncodeUint64(x),
 	}
 }
 
 // LtUint64 matches if x is less than the field selected by f.
 func LtUint64(f FieldSelector, x uint64) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeUint64(x),
+		Field: f,
+		Value: field.EncodeUint64(x),
 	}
 }
 
 // LteUint64 matches if x is less than or equal to the field selected by f.
 func LteUint64(f FieldSelector, x uint64) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeUint64(x),
+		Field: f,
+		Value: field.EncodeUint64(x),
 	}
 }
 
@@ -616,40 +616,40 @@ func (f Uint64Field) Lte(x uint64) Matcher {
 // EqInt matches if x is equal to the field selected by f.
 func EqInt(f FieldSelector, x int) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeInt(x),
+		Field: f,
+		Value: field.EncodeInt(x),
 	}
 }
 
 // GtInt matches if x is greater than the field selected by f.
 func GtInt(f FieldSelector, x int) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeInt(x),
+		Field: f,
+		Value: field.EncodeInt(x),
 	}
 }
 
 // GteInt matches if x is greater than or equal to the field selected by f.
 func GteInt(f FieldSelector, x int) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeInt(x),
+		Field: f,
+		Value: field.EncodeInt(x),
 	}
 }
 
 // LtInt matches if x is less than the field selected by f.
 func LtInt(f FieldSelector, x int) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeInt(x),
+		Field: f,
+		Value: field.EncodeInt(x),
 	}
 }
 
 // LteInt matches if x is less than or equal to the field selected by f.
 func LteInt(f FieldSelector, x int) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeInt(x),
+		Field: f,
+		Value: field.EncodeInt(x),
 	}
 }
 
@@ -692,40 +692,40 @@ func (f IntField) Lte(x int) Matcher {
 // EqInt8 matches if x is equal to the field selected by f.
 func EqInt8(f FieldSelector, x int8) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeInt8(x),
+		Field: f,
+		Value: field.EncodeInt8(x),
 	}
 }
 
 // GtInt8 matches if x is greater than the field selected by f.
 func GtInt8(f FieldSelector, x int8) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeInt8(x),
+		Field: f,
+		Value: field.EncodeInt8(x),
 	}
 }
 
 // GteInt8 matches if x is greater than or equal to the field selected by f.
 func GteInt8(f FieldSelector, x int8) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeInt8(x),
+		Field: f,
+		Value: field.EncodeInt8(x),
 	}
 }
 
 // LtInt8 matches if x is less than the field selected by f.
 func LtInt8(f FieldSelector, x int8) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeInt8(x),
+		Field: f,
+		Value: field.EncodeInt8(x),
 	}
 }
 
 // LteInt8 matches if x is less than or equal to the field selected by f.
 func LteInt8(f FieldSelector, x int8) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeInt8(x),
+		Field: f,
+		Value: field.EncodeInt8(x),
 	}
 }
 
@@ -768,40 +768,40 @@ func (f Int8Field) Lte(x int8) Matcher {
 // EqInt16 matches if x is equal to the field selected by f.
 func EqInt16(f FieldSelector, x int16) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeInt16(x),
+		Field: f,
+		Value: field.EncodeInt16(x),
 	}
 }
 
 // GtInt16 matches if x is greater than the field selected by f.
 func GtInt16(f FieldSelector, x int16) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeInt16(x),
+		Field: f,
+		Value: field.EncodeInt16(x),
 	}
 }
 
 // GteInt16 matches if x is greater than or equal to the field selected by f.
 func GteInt16(f FieldSelector, x int16) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeInt16(x),
+		Field: f,
+		Value: field.EncodeInt16(x),
 	}
 }
 
 // LtInt16 matches if x is less than the field selected by f.
 func LtInt16(f FieldSelector, x int16) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeInt16(x),
+		Field: f,
+		Value: field.EncodeInt16(x),
 	}
 }
 
 // LteInt16 matches if x is less than or equal to the field selected by f.
 func LteInt16(f FieldSelector, x int16) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeInt16(x),
+		Field: f,
+		Value: field.EncodeInt16(x),
 	}
 }
 
@@ -844,40 +844,40 @@ func (f Int16Field) Lte(x int16) Matcher {
 // EqInt32 matches if x is equal to the field selected by f.
 func EqInt32(f FieldSelector, x int32) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeInt32(x),
+		Field: f,
+		Value: field.EncodeInt32(x),
 	}
 }
 
 // GtInt32 matches if x is greater than the field selected by f.
 func GtInt32(f FieldSelector, x int32) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeInt32(x),
+		Field: f,
+		Value: field.EncodeInt32(x),
 	}
 }
 
 // GteInt32 matches if x is greater than or equal to the field selected by f.
 func GteInt32(f FieldSelector, x int32) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeInt32(x),
+		Field: f,
+		Value: field.EncodeInt32(x),
 	}
 }
 
 // LtInt32 matches if x is less than the field selected by f.
 func LtInt32(f FieldSelector, x int32) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeInt32(x),
+		Field: f,
+		Value: field.EncodeInt32(x),
 	}
 }
 
 // LteInt32 matches if x is less than or equal to the field selected by f.
 func LteInt32(f FieldSelector, x int32) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeInt32(x),
+		Field: f,
+		Value: field.EncodeInt32(x),
 	}
 }
 
@@ -920,40 +920,40 @@ func (f Int32Field) Lte(x int32) Matcher {
 // EqInt64 matches if x is equal to the field selected by f.
 func EqInt64(f FieldSelector, x int64) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeInt64(x),
+		Field: f,
+		Value: field.EncodeInt64(x),
 	}
 }
 
 // GtInt64 matches if x is greater than the field selected by f.
 func GtInt64(f FieldSelector, x int64) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeInt64(x),
+		Field: f,
+		Value: field.EncodeInt64(x),
 	}
 }
 
 // GteInt64 matches if x is greater than or equal to the field selected by f.
 func GteInt64(f FieldSelector, x int64) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeInt64(x),
+		Field: f,
+		Value: field.EncodeInt64(x),
 	}
 }
 
 // LtInt64 matches if x is less than the field selected by f.
 func LtInt64(f FieldSelector, x int64) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeInt64(x),
+		Field: f,
+		Value: field.EncodeInt64(x),
 	}
 }
 
 // LteInt64 matches if x is less than or equal to the field selected by f.
 func LteInt64(f FieldSelector, x int64) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeInt64(x),
+		Field: f,
+		Value: field.EncodeInt64(x),
 	}
 }
 
@@ -996,40 +996,40 @@ func (f Int64Field) Lte(x int64) Matcher {
 // EqFloat32 matches if x is equal to the field selected by f.
 func EqFloat32(f FieldSelector, x float32) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeFloat32(x),
+		Field: f,
+		Value: field.EncodeFloat32(x),
 	}
 }
 
 // GtFloat32 matches if x is greater than the field selected by f.
 func GtFloat32(f FieldSelector, x float32) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeFloat32(x),
+		Field: f,
+		Value: field.EncodeFloat32(x),
 	}
 }
 
 // GteFloat32 matches if x is greater than or equal to the field selected by f.
 func GteFloat32(f FieldSelector, x float32) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeFloat32(x),
+		Field: f,
+		Value: field.EncodeFloat32(x),
 	}
 }
 
 // LtFloat32 matches if x is less than the field selected by f.
 func LtFloat32(f FieldSelector, x float32) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeFloat32(x),
+		Field: f,
+		Value: field.EncodeFloat32(x),
 	}
 }
 
 // LteFloat32 matches if x is less than or equal to the field selected by f.
 func LteFloat32(f FieldSelector, x float32) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeFloat32(x),
+		Field: f,
+		Value: field.EncodeFloat32(x),
 	}
 }
 
@@ -1072,40 +1072,40 @@ func (f Float32Field) Lte(x float32) Matcher {
 // EqFloat64 matches if x is equal to the field selected by f.
 func EqFloat64(f FieldSelector, x float64) *EqMatcher {
 	return &EqMatcher{
-		f: f,
-		v: field.EncodeFloat64(x),
+		Field: f,
+		Value: field.EncodeFloat64(x),
 	}
 }
 
 // GtFloat64 matches if x is greater than the field selected by f.
 func GtFloat64(f FieldSelector, x float64) *GtMatcher {
 	return &GtMatcher{
-		f: f,
-		v: field.EncodeFloat64(x),
+		Field: f,
+		Value: field.EncodeFloat64(x),
 	}
 }
 
 // GteFloat64 matches if x is greater than or equal to the field selected by f.
 func GteFloat64(f FieldSelector, x float64) *GteMatcher {
 	return &GteMatcher{
-		f: f,
-		v: field.EncodeFloat64(x),
+		Field: f,
+		Value: field.EncodeFloat64(x),
 	}
 }
 
 // LtFloat64 matches if x is less than the field selected by f.
 func LtFloat64(f FieldSelector, x float64) *LtMatcher {
 	return &LtMatcher{
-		f: f,
-		v: field.EncodeFloat64(x),
+		Field: f,
+		Value: field.EncodeFloat64(x),
 	}
 }
 
 // LteFloat64 matches if x is less than or equal to the field selected by f.
 func LteFloat64(f FieldSelector, x float64) *LteMatcher {
 	return &LteMatcher{
-		f: f,
-		v: field.EncodeFloat64(x),
+		Field: f,
+		Value: field.EncodeFloat64(x),
 	}
 }
 

@@ -51,7 +51,7 @@ func (q Query) Run(tx *genji.Tx) Result {
 	}
 
 	matcher := And(q.matchers...)
-	tree, ok, err := matcher.MatchIndex(q.tableSelector.Name(), tx)
+	tree, ok, err := matcher.MatchIndex(tx, q.tableSelector.Name())
 	if err != nil && err != engine.ErrIndexNotFound {
 		return Result{err: err}
 	}
