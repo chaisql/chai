@@ -1,4 +1,3 @@
-
 package query
 
 import (
@@ -1144,5 +1143,3 @@ func (f Float64Field) Lt(x float64) Matcher {
 func (f Float64Field) Lte(x float64) Matcher {
 	return LteFloat64(f.FieldSelector, x)
 }
-
-

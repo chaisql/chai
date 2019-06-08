@@ -39,10 +39,11 @@ func (i Item) Less(than btree.Item) bool {
 	return bytes.Compare(i, than.(Item)) < 0
 }
 
-// MatcherExpr in an expression that wraps a matcher and calls its match
-// method when evaluated.
-type MatcherExpr struct {
-	Matcher
+// EqMatcher matches all the records whose field selected by the Field member are equal
+// to the Value member. It also supports selecting records from indexes.
+type EqMatcher struct {
+	Field FieldSelector
+	Value []byte
 }
 
 // Eval implements the Expr interface. It calls the Match method and translates
@@ -54,13 +55,6 @@ func (m *EqMatcher) Eval(ctx EvalContext) (Scalar, error) {
 	}
 
 	return trueScalar, err
-}
-
-// EqMatcher matches all the records whose field selected by the Field member are equal
-// to the Value member. It also supports selecting records from indexes.
-type EqMatcher struct {
-	Field FieldSelector
-	Value []byte
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -99,6 +93,17 @@ func (m *EqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 type GtMatcher struct {
 	Field FieldSelector
 	Value []byte
+}
+
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (m *GtMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := m.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -142,6 +147,17 @@ type GteMatcher struct {
 	Value []byte
 }
 
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (m *GteMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := m.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
+}
+
 // Match uses the field selector to select a field from r and returns true
 // if its encoded value is greater than or equal to the Value member.
 func (m *GteMatcher) Match(r record.Record) (bool, error) {
@@ -178,6 +194,17 @@ func (m *GteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, b
 type LtMatcher struct {
 	Field FieldSelector
 	Value []byte
+}
+
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (m *LtMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := m.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -219,6 +246,17 @@ func (m *LtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 type LteMatcher struct {
 	Field FieldSelector
 	Value []byte
+}
+
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (m *LteMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := m.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -272,6 +310,17 @@ type AndMatcher struct {
 // And creates an AndMatcher.
 func And(matchers ...Matcher) *AndMatcher {
 	return &AndMatcher{Matchers: matchers}
+}
+
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (a *AndMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := a.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
 }
 
 // Match if all Matchers return true.
@@ -328,6 +377,17 @@ type OrMatcher struct {
 // Or creates an OrMatcher.
 func Or(matchers ...Matcher) *OrMatcher {
 	return &OrMatcher{Matchers: matchers}
+}
+
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (o *OrMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := o.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
 }
 
 // Match if one of the Matchers return true.
