@@ -39,6 +39,23 @@ func (i Item) Less(than btree.Item) bool {
 	return bytes.Compare(i, than.(Item)) < 0
 }
 
+// MatcherExpr in an expression that wraps a matcher and calls its match
+// method when evaluated.
+type MatcherExpr struct {
+	Matcher
+}
+
+// Eval implements the Expr interface. It calls the Match method and translates
+// the result as a scalar.
+func (m *EqMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	ok, err := m.Match(ctx.Record)
+	if err != nil || !ok {
+		return falseScalar, err
+	}
+
+	return trueScalar, err
+}
+
 // EqMatcher matches all the records whose field selected by the Field member are equal
 // to the Value member. It also supports selecting records from indexes.
 type EqMatcher struct {
