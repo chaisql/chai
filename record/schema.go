@@ -77,7 +77,7 @@ func (s *Schema) Equal(other *Schema) bool {
 func (s *Schema) String() string {
 	var b strings.Builder
 	for i, f := range s.Fields {
-		b.WriteString(f.Name + ":" + f.Type.String())
+		b.WriteString(f.Name + "(" + f.Type.String() + ")")
 		if i+1 < len(s.Fields) {
 			b.WriteString(", ")
 		}
