@@ -66,27 +66,27 @@ func New{{ .Name }}Field(name string) {{ .Name }}Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f {{ .Name }}Field) Eq(x {{ .T }}) Matcher {
+func (f {{ .Name }}Field) Eq(x {{ .T }}) *EqMatcher {
 	return Eq{{ .Name }}(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f {{ .Name }}Field) Gt(x {{ .T }}) Matcher {
+func (f {{ .Name }}Field) Gt(x {{ .T }}) *GtMatcher {
 	return Gt{{ .Name }}(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f {{ .Name }}Field) Gte(x {{ .T }}) Matcher {
+func (f {{ .Name }}Field) Gte(x {{ .T }}) *GteMatcher {
 	return Gte{{ .Name }}(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f {{ .Name }}Field) Lt(x {{ .T }}) Matcher {
+func (f {{ .Name }}Field) Lt(x {{ .T }}) *LtMatcher {
 	return Lt{{ .Name }}(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f {{ .Name }}Field) Lte(x {{ .T }}) Matcher {
+func (f {{ .Name }}Field) Lte(x {{ .T }}) *LteMatcher {
 	return Lte{{ .Name }}(f.FieldSelector, x)
 }
 

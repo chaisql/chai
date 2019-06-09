@@ -1,3 +1,4 @@
+
 package query
 
 import (
@@ -56,27 +57,27 @@ func NewBytesField(name string) BytesField {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f BytesField) Eq(x []byte) Matcher {
+func (f BytesField) Eq(x []byte) *EqMatcher {
 	return EqBytes(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f BytesField) Gt(x []byte) Matcher {
+func (f BytesField) Gt(x []byte) *GtMatcher {
 	return GtBytes(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f BytesField) Gte(x []byte) Matcher {
+func (f BytesField) Gte(x []byte) *GteMatcher {
 	return GteBytes(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f BytesField) Lt(x []byte) Matcher {
+func (f BytesField) Lt(x []byte) *LtMatcher {
 	return LtBytes(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f BytesField) Lte(x []byte) Matcher {
+func (f BytesField) Lte(x []byte) *LteMatcher {
 	return LteBytes(f.FieldSelector, x)
 }
 
@@ -132,27 +133,27 @@ func NewStringField(name string) StringField {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f StringField) Eq(x string) Matcher {
+func (f StringField) Eq(x string) *EqMatcher {
 	return EqString(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f StringField) Gt(x string) Matcher {
+func (f StringField) Gt(x string) *GtMatcher {
 	return GtString(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f StringField) Gte(x string) Matcher {
+func (f StringField) Gte(x string) *GteMatcher {
 	return GteString(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f StringField) Lt(x string) Matcher {
+func (f StringField) Lt(x string) *LtMatcher {
 	return LtString(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f StringField) Lte(x string) Matcher {
+func (f StringField) Lte(x string) *LteMatcher {
 	return LteString(f.FieldSelector, x)
 }
 
@@ -208,27 +209,27 @@ func NewBoolField(name string) BoolField {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f BoolField) Eq(x bool) Matcher {
+func (f BoolField) Eq(x bool) *EqMatcher {
 	return EqBool(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f BoolField) Gt(x bool) Matcher {
+func (f BoolField) Gt(x bool) *GtMatcher {
 	return GtBool(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f BoolField) Gte(x bool) Matcher {
+func (f BoolField) Gte(x bool) *GteMatcher {
 	return GteBool(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f BoolField) Lt(x bool) Matcher {
+func (f BoolField) Lt(x bool) *LtMatcher {
 	return LtBool(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f BoolField) Lte(x bool) Matcher {
+func (f BoolField) Lte(x bool) *LteMatcher {
 	return LteBool(f.FieldSelector, x)
 }
 
@@ -284,27 +285,27 @@ func NewUintField(name string) UintField {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f UintField) Eq(x uint) Matcher {
+func (f UintField) Eq(x uint) *EqMatcher {
 	return EqUint(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f UintField) Gt(x uint) Matcher {
+func (f UintField) Gt(x uint) *GtMatcher {
 	return GtUint(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f UintField) Gte(x uint) Matcher {
+func (f UintField) Gte(x uint) *GteMatcher {
 	return GteUint(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f UintField) Lt(x uint) Matcher {
+func (f UintField) Lt(x uint) *LtMatcher {
 	return LtUint(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f UintField) Lte(x uint) Matcher {
+func (f UintField) Lte(x uint) *LteMatcher {
 	return LteUint(f.FieldSelector, x)
 }
 
@@ -360,27 +361,27 @@ func NewUint8Field(name string) Uint8Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint8Field) Eq(x uint8) Matcher {
+func (f Uint8Field) Eq(x uint8) *EqMatcher {
 	return EqUint8(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint8Field) Gt(x uint8) Matcher {
+func (f Uint8Field) Gt(x uint8) *GtMatcher {
 	return GtUint8(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint8Field) Gte(x uint8) Matcher {
+func (f Uint8Field) Gte(x uint8) *GteMatcher {
 	return GteUint8(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint8Field) Lt(x uint8) Matcher {
+func (f Uint8Field) Lt(x uint8) *LtMatcher {
 	return LtUint8(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint8Field) Lte(x uint8) Matcher {
+func (f Uint8Field) Lte(x uint8) *LteMatcher {
 	return LteUint8(f.FieldSelector, x)
 }
 
@@ -436,27 +437,27 @@ func NewUint16Field(name string) Uint16Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint16Field) Eq(x uint16) Matcher {
+func (f Uint16Field) Eq(x uint16) *EqMatcher {
 	return EqUint16(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint16Field) Gt(x uint16) Matcher {
+func (f Uint16Field) Gt(x uint16) *GtMatcher {
 	return GtUint16(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint16Field) Gte(x uint16) Matcher {
+func (f Uint16Field) Gte(x uint16) *GteMatcher {
 	return GteUint16(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint16Field) Lt(x uint16) Matcher {
+func (f Uint16Field) Lt(x uint16) *LtMatcher {
 	return LtUint16(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint16Field) Lte(x uint16) Matcher {
+func (f Uint16Field) Lte(x uint16) *LteMatcher {
 	return LteUint16(f.FieldSelector, x)
 }
 
@@ -512,27 +513,27 @@ func NewUint32Field(name string) Uint32Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint32Field) Eq(x uint32) Matcher {
+func (f Uint32Field) Eq(x uint32) *EqMatcher {
 	return EqUint32(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint32Field) Gt(x uint32) Matcher {
+func (f Uint32Field) Gt(x uint32) *GtMatcher {
 	return GtUint32(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint32Field) Gte(x uint32) Matcher {
+func (f Uint32Field) Gte(x uint32) *GteMatcher {
 	return GteUint32(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint32Field) Lt(x uint32) Matcher {
+func (f Uint32Field) Lt(x uint32) *LtMatcher {
 	return LtUint32(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint32Field) Lte(x uint32) Matcher {
+func (f Uint32Field) Lte(x uint32) *LteMatcher {
 	return LteUint32(f.FieldSelector, x)
 }
 
@@ -588,27 +589,27 @@ func NewUint64Field(name string) Uint64Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint64Field) Eq(x uint64) Matcher {
+func (f Uint64Field) Eq(x uint64) *EqMatcher {
 	return EqUint64(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint64Field) Gt(x uint64) Matcher {
+func (f Uint64Field) Gt(x uint64) *GtMatcher {
 	return GtUint64(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint64Field) Gte(x uint64) Matcher {
+func (f Uint64Field) Gte(x uint64) *GteMatcher {
 	return GteUint64(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint64Field) Lt(x uint64) Matcher {
+func (f Uint64Field) Lt(x uint64) *LtMatcher {
 	return LtUint64(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint64Field) Lte(x uint64) Matcher {
+func (f Uint64Field) Lte(x uint64) *LteMatcher {
 	return LteUint64(f.FieldSelector, x)
 }
 
@@ -664,27 +665,27 @@ func NewIntField(name string) IntField {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f IntField) Eq(x int) Matcher {
+func (f IntField) Eq(x int) *EqMatcher {
 	return EqInt(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f IntField) Gt(x int) Matcher {
+func (f IntField) Gt(x int) *GtMatcher {
 	return GtInt(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f IntField) Gte(x int) Matcher {
+func (f IntField) Gte(x int) *GteMatcher {
 	return GteInt(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f IntField) Lt(x int) Matcher {
+func (f IntField) Lt(x int) *LtMatcher {
 	return LtInt(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f IntField) Lte(x int) Matcher {
+func (f IntField) Lte(x int) *LteMatcher {
 	return LteInt(f.FieldSelector, x)
 }
 
@@ -740,27 +741,27 @@ func NewInt8Field(name string) Int8Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int8Field) Eq(x int8) Matcher {
+func (f Int8Field) Eq(x int8) *EqMatcher {
 	return EqInt8(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int8Field) Gt(x int8) Matcher {
+func (f Int8Field) Gt(x int8) *GtMatcher {
 	return GtInt8(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int8Field) Gte(x int8) Matcher {
+func (f Int8Field) Gte(x int8) *GteMatcher {
 	return GteInt8(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int8Field) Lt(x int8) Matcher {
+func (f Int8Field) Lt(x int8) *LtMatcher {
 	return LtInt8(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int8Field) Lte(x int8) Matcher {
+func (f Int8Field) Lte(x int8) *LteMatcher {
 	return LteInt8(f.FieldSelector, x)
 }
 
@@ -816,27 +817,27 @@ func NewInt16Field(name string) Int16Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int16Field) Eq(x int16) Matcher {
+func (f Int16Field) Eq(x int16) *EqMatcher {
 	return EqInt16(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int16Field) Gt(x int16) Matcher {
+func (f Int16Field) Gt(x int16) *GtMatcher {
 	return GtInt16(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int16Field) Gte(x int16) Matcher {
+func (f Int16Field) Gte(x int16) *GteMatcher {
 	return GteInt16(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int16Field) Lt(x int16) Matcher {
+func (f Int16Field) Lt(x int16) *LtMatcher {
 	return LtInt16(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int16Field) Lte(x int16) Matcher {
+func (f Int16Field) Lte(x int16) *LteMatcher {
 	return LteInt16(f.FieldSelector, x)
 }
 
@@ -892,27 +893,27 @@ func NewInt32Field(name string) Int32Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int32Field) Eq(x int32) Matcher {
+func (f Int32Field) Eq(x int32) *EqMatcher {
 	return EqInt32(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int32Field) Gt(x int32) Matcher {
+func (f Int32Field) Gt(x int32) *GtMatcher {
 	return GtInt32(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int32Field) Gte(x int32) Matcher {
+func (f Int32Field) Gte(x int32) *GteMatcher {
 	return GteInt32(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int32Field) Lt(x int32) Matcher {
+func (f Int32Field) Lt(x int32) *LtMatcher {
 	return LtInt32(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int32Field) Lte(x int32) Matcher {
+func (f Int32Field) Lte(x int32) *LteMatcher {
 	return LteInt32(f.FieldSelector, x)
 }
 
@@ -968,27 +969,27 @@ func NewInt64Field(name string) Int64Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int64Field) Eq(x int64) Matcher {
+func (f Int64Field) Eq(x int64) *EqMatcher {
 	return EqInt64(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int64Field) Gt(x int64) Matcher {
+func (f Int64Field) Gt(x int64) *GtMatcher {
 	return GtInt64(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int64Field) Gte(x int64) Matcher {
+func (f Int64Field) Gte(x int64) *GteMatcher {
 	return GteInt64(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int64Field) Lt(x int64) Matcher {
+func (f Int64Field) Lt(x int64) *LtMatcher {
 	return LtInt64(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int64Field) Lte(x int64) Matcher {
+func (f Int64Field) Lte(x int64) *LteMatcher {
 	return LteInt64(f.FieldSelector, x)
 }
 
@@ -1044,27 +1045,27 @@ func NewFloat32Field(name string) Float32Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Float32Field) Eq(x float32) Matcher {
+func (f Float32Field) Eq(x float32) *EqMatcher {
 	return EqFloat32(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Float32Field) Gt(x float32) Matcher {
+func (f Float32Field) Gt(x float32) *GtMatcher {
 	return GtFloat32(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Float32Field) Gte(x float32) Matcher {
+func (f Float32Field) Gte(x float32) *GteMatcher {
 	return GteFloat32(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Float32Field) Lt(x float32) Matcher {
+func (f Float32Field) Lt(x float32) *LtMatcher {
 	return LtFloat32(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Float32Field) Lte(x float32) Matcher {
+func (f Float32Field) Lte(x float32) *LteMatcher {
 	return LteFloat32(f.FieldSelector, x)
 }
 
@@ -1120,26 +1121,28 @@ func NewFloat64Field(name string) Float64Field {
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Float64Field) Eq(x float64) Matcher {
+func (f Float64Field) Eq(x float64) *EqMatcher {
 	return EqFloat64(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Float64Field) Gt(x float64) Matcher {
+func (f Float64Field) Gt(x float64) *GtMatcher {
 	return GtFloat64(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Float64Field) Gte(x float64) Matcher {
+func (f Float64Field) Gte(x float64) *GteMatcher {
 	return GteFloat64(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Float64Field) Lt(x float64) Matcher {
+func (f Float64Field) Lt(x float64) *LtMatcher {
 	return LtFloat64(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Float64Field) Lte(x float64) Matcher {
+func (f Float64Field) Lte(x float64) *LteMatcher {
 	return LteFloat64(f.FieldSelector, x)
 }
+
+
