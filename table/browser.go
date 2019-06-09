@@ -50,7 +50,7 @@ func (b Browser) ForEach(fn func(rowid []byte, r record.Record) error) Browser {
 
 // Filter goes through all the records, filter them using fn and returns a new table reader containing
 // only the selected records.
-// If fn returns true, the record is kept otherwhise it is skipped.
+// If fn returns true, the record is kept, otherwise it is skipped.
 // If fn returns an error, Filter stops immediately.
 func (b Browser) Filter(fn func(rowid []byte, r record.Record) (bool, error)) Browser {
 	var rb RecordBuffer
@@ -62,10 +62,10 @@ func (b Browser) Filter(fn func(rowid []byte, r record.Record) (bool, error)) Br
 		}
 
 		if ok {
-			rb.Insert(r)
+			err = rb.Set(rowid, r)
 		}
 
-		return nil
+		return err
 	})
 
 	if b.err == nil {
@@ -86,8 +86,7 @@ func (b Browser) Map(fn func(rowid []byte, r record.Record) (record.Record, erro
 			return err
 		}
 
-		rb.Insert(r)
-		return nil
+		return rb.Set(rowid, r)
 	})
 
 	if b.err == nil {
@@ -124,8 +123,7 @@ func (b Browser) GroupBy(fieldName string) BrowserGroup {
 			values = append(values, k)
 		}
 
-		tr.Insert(r)
-		return nil
+		return tr.Set(rowid, r)
 	})
 
 	if err := tr.Err(); err != nil {
@@ -154,9 +152,8 @@ func (b Browser) Chunk(n int) BrowserGroup {
 			g.Readers = append(g.Readers, NewBrowser(&fb))
 		}
 
-		fb.Insert(r)
 		i++
-		return nil
+		return fb.Set(rowid, r)
 	})
 
 	if b.err != nil {
