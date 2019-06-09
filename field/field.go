@@ -507,3 +507,41 @@ func ZeroValue(t Type) Field {
 
 	return Field{}
 }
+
+// Decode a field based on its type and returns its Go value.
+func Decode(f Field) (interface{}, error) {
+	switch f.Type {
+	case Bytes:
+		return DecodeBytes(f.Data)
+	case String:
+		return DecodeString(f.Data)
+	case Bool:
+		return DecodeBool(f.Data)
+	case Uint:
+		return DecodeUint(f.Data)
+	case Uint8:
+		return DecodeUint8(f.Data)
+	case Uint16:
+		return DecodeUint16(f.Data)
+	case Uint32:
+		return DecodeUint32(f.Data)
+	case Uint64:
+		return DecodeUint64(f.Data)
+	case Int:
+		return DecodeInt(f.Data)
+	case Int8:
+		return DecodeInt8(f.Data)
+	case Int16:
+		return DecodeInt16(f.Data)
+	case Int32:
+		return DecodeInt32(f.Data)
+	case Int64:
+		return DecodeInt64(f.Data)
+	case Float32:
+		return DecodeFloat32(f.Data)
+	case Float64:
+		return DecodeFloat64(f.Data)
+	}
+
+	return nil, errors.New("unknown type")
+}

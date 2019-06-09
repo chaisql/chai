@@ -80,3 +80,10 @@ func TestOrdering(t *testing.T) {
 		})
 	}
 }
+
+func TestDecode(t *testing.T) {
+	f := field.NewFloat64("foo", 3.14)
+	price, err := field.Decode(f)
+	require.NoError(t, err)
+	require.Equal(t, 3.14, price)
+}
