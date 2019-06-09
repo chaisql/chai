@@ -3,6 +3,7 @@ package record
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/asdine/genji/field"
 )
@@ -98,4 +99,13 @@ func (fb *FieldBuffer) Replace(name string, f field.Field) error {
 	}
 
 	return fmt.Errorf("field %q not found", name)
+}
+
+// DumpRecord is helper that dumps the content of a record into the given writer.
+func DumpRecord(w io.Writer, r Record) error {
+	return r.Iterate(func(f field.Field) error {
+		v, err := field.Decode(f)
+		fmt.Fprintf(w, "%s(%s): %#v\n", f.Name, f.Type, v)
+		return err
+	})
 }
