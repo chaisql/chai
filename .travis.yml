@@ -8,4 +8,5 @@ env:
   - GO111MODULE=on
 
 script:
+  - make
   - make testrace
