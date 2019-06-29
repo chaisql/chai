@@ -2,6 +2,7 @@
 package table
 
 import (
+	"errors"
 	"sort"
 
 	"github.com/asdine/genji/record"
@@ -176,6 +177,26 @@ func (b Browser) Count() (int, error) {
 	})
 
 	return counter, b.err
+}
+
+// First returns the first record of the table
+func (b Browser) First() (record.Record, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+
+	errStop := errors.New("stop")
+	var rec record.Record
+
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
+		rec = r
+		return errStop
+	})
+	if err := b.Err(); err != errStop {
+		return nil, err
+	}
+
+	return rec, nil
 }
 
 // A BrowserGroup manages a group of tables.

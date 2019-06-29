@@ -207,6 +207,20 @@ func TestBrowser(t *testing.T) {
 		})
 	})
 
+	t.Run("First", func(t *testing.T) {
+		t.Run("Ok", func(t *testing.T) {
+			rec, err := b.First()
+			require.NoError(t, err)
+			expected := record.FieldBuffer{
+				field.NewInt64("id", 0),
+				field.NewString("name", "john-0"),
+				field.NewInt64("age", 0),
+				field.NewInt64("group", 0),
+			}
+			require.Equal(t, expected, rec)
+		})
+	})
+
 	t.Run("Chunk", func(t *testing.T) {
 		t.Run("Ok", func(t *testing.T) {
 			g := b.Chunk(2)
