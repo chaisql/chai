@@ -22,7 +22,7 @@ type FieldSelector interface {
 
 // TableSelector can select a table from a transaction.
 type TableSelector interface {
-	// SelectTable select a table by calling the Table method of the transaction.
+	// SelectTable selects a table by calling the Table method of the transaction.
 	SelectTable(*genji.Tx) (*genji.Table, error)
 	// Name of the selected table.
 	Name() string
@@ -32,6 +32,7 @@ type TableSelector interface {
 // It is supposed to be used by casting a string into a Field.
 //   f := Field("Name")
 //   f.SelectField(r)
+// It implements the FieldSelector interface.
 type Field string
 
 // Name returns f as a string.
@@ -55,6 +56,7 @@ func (f Field) As(alias string) FieldSelector {
 // If deleguates the field selection to the underlying field selector
 // and replaces the Name attribute of the returned field by the value
 // of the Alias attribute.
+// It implements the FieldSelector interface.
 type Alias struct {
 	FieldSelector
 	Alias string
@@ -85,6 +87,7 @@ func (a Alias) SelectField(r record.Record) (field.Field, error) {
 // It is supposed to be used by casting a string into a Table.
 //   t := Table("Name")
 //   t.SelectTable(tx)
+// It implements the TableSelector interface.
 type Table string
 
 // Name returns t as a string.

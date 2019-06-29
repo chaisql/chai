@@ -22,6 +22,42 @@ func ExampleSelect() {
 	}
 }
 
+func ExampleAnd() {
+	// SELECT Name, Age FROM example WHERE Age >= 18 && Age < 100
+	res := query.
+		Select(query.StringField("Name"), query.IntField("Age")).
+		From(query.Table("example")).
+		Where(
+			query.And(
+				query.IntField("Age").Gte(18),
+				query.IntField("Age").Lt(100),
+			),
+		).
+		Run(tx)
+
+	if err := res.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ExampleOr() {
+	// SELECT Name, Age FROM example WHERE Age >= 18 || Group = "staff"
+	res := query.
+		Select(query.StringField("Name")).
+		From(query.Table("example")).
+		Where(
+			query.Or(
+				query.IntField("Age").Gte(18),
+				query.StringField("Age").Eq("staff"),
+			),
+		).
+		Run(tx)
+
+	if err := res.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func ExampleInsert() {
 	// INSERT INTO example (Name, Age) VALUES ("foo", 21)
 	res := query.
