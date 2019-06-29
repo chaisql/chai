@@ -22,14 +22,10 @@ func createRecord(age int) record.Record {
 }
 
 func TestMatchers(t *testing.T) {
-	type matcher interface {
-		Match(record.Record) (bool, error)
-	}
-
 	r := createRecord(10)
 	tests := []struct {
 		name    string
-		matcher matcher
+		matcher query.Expr
 		match   bool
 	}{
 		{"eq", query.EqInt(query.Field("age"), 10), true},
@@ -49,9 +45,9 @@ func TestMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			matched, err := test.matcher.Match(r)
+			matched, err := test.matcher.Eval(query.EvalContext{Record: r})
 			require.NoError(t, err)
-			require.Equal(t, test.match, matched)
+			require.Equal(t, test.match, matched.Truthy())
 		})
 	}
 }
@@ -107,7 +103,7 @@ func TestIndexMatchers(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		matcher query.IndexMatcher
+		matcher query.Expr
 		rowids  []string
 	}{
 		{"eq/int/one", query.EqInt(query.Field("age"), 10), []string{"c"}},
@@ -156,7 +152,7 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rowids, ok, err := test.matcher.MatchIndex(tx, "test")
+			rowids, ok, err := test.matcher.(query.IndexMatcher).MatchIndex(tx, "test")
 			require.NoError(t, err)
 			require.True(t, ok)
 			var ids []string
@@ -170,10 +166,10 @@ func TestIndexMatchers(t *testing.T) {
 	}
 }
 
-type simpleMatcher struct{}
+type simpleExpr struct{}
 
-func (s *simpleMatcher) Match(record.Record) (bool, error) {
-	return true, nil
+func (s *simpleExpr) Eval(query.EvalContext) (query.Scalar, error) {
+	return query.Scalar{Type: field.Bool, Data: field.EncodeBool(false)}, nil
 }
 
 func TestAndMatcher(t *testing.T) {
@@ -183,13 +179,13 @@ func TestAndMatcher(t *testing.T) {
 			query.LtInt(query.Field("age"), 10),
 		)
 
-		ok, err := m.Match(createRecord(5))
+		ok, err := m.Eval(query.EvalContext{Record: createRecord(5)})
 		require.NoError(t, err)
-		require.True(t, ok)
+		require.True(t, ok.Truthy())
 
-		ok, err = m.Match(createRecord(10))
+		ok, err = m.Eval(query.EvalContext{Record: createRecord(10)})
 		require.NoError(t, err)
-		require.False(t, ok)
+		require.False(t, ok.Truthy())
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
@@ -198,21 +194,21 @@ func TestAndMatcher(t *testing.T) {
 
 		tests := []struct {
 			name     string
-			matchers []query.Matcher
+			exprs    []query.Expr
 			expected []string
 		}{
-			{">2", []query.Matcher{query.GtInt(query.Field("age"), 2)}, []string{"a", "b", "c"}},
-			{">2 && <10", []query.Matcher{query.GtInt(query.Field("age"), 2), query.LtInt(query.Field("age"), 10)}, []string{"a", "b"}},
-			{">10 && <20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []string{}},
-			{">8 && <3", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 3)}, []string{}},
-			{">8 && non index matcher", []query.Matcher{query.GtInt(query.Field("age"), 8), new(simpleMatcher)}, []string{}},
+			{">2", []query.Expr{query.GtInt(query.Field("age"), 2)}, []string{"a", "b", "c"}},
+			{">2 && <10", []query.Expr{query.GtInt(query.Field("age"), 2), query.LtInt(query.Field("age"), 10)}, []string{"a", "b"}},
+			{">10 && <20", []query.Expr{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []string{}},
+			{">8 && <3", []query.Expr{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 3)}, []string{}},
+			{">8 && non index matcher", []query.Expr{query.GtInt(query.Field("age"), 8), new(simpleExpr)}, []string{}},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				m := query.And(test.matchers...)
+				m := query.And(test.exprs...)
 
-				rowids, _, err := m.MatchIndex(tx, "test")
+				rowids, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -234,22 +230,22 @@ func TestAndMatcher(t *testing.T) {
 
 func TestOrMatcher(t *testing.T) {
 	t.Run("Matcher", func(t *testing.T) {
-		m := query.Or(
+		e := query.Or(
 			query.GtInt(query.Field("age"), 8),
 			query.LtInt(query.Field("age"), 2),
 		)
 
-		ok, err := m.Match(createRecord(1))
+		ok, err := e.Eval(query.EvalContext{Record: createRecord(1)})
 		require.NoError(t, err)
-		require.True(t, ok)
+		require.True(t, ok.Truthy())
 
-		ok, err = m.Match(createRecord(9))
+		ok, err = e.Eval(query.EvalContext{Record: createRecord(9)})
 		require.NoError(t, err)
-		require.True(t, ok)
+		require.True(t, ok.Truthy())
 
-		ok, err = m.Match(createRecord(5))
+		ok, err = e.Eval(query.EvalContext{Record: createRecord(5)})
 		require.NoError(t, err)
-		require.False(t, ok)
+		require.False(t, ok.Truthy())
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
@@ -258,22 +254,22 @@ func TestOrMatcher(t *testing.T) {
 
 		tests := []struct {
 			name     string
-			matchers []query.Matcher
+			exprs    []query.Expr
 			expected []string
 		}{
-			{">2", []query.Matcher{query.GtInt(query.Field("age"), 2)}, []string{"a", "b", "c"}},
-			{">8 || <2", []query.Matcher{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 2)}, []string{"c", "z"}},
-			{">0 || <11", []query.Matcher{query.GtInt(query.Field("age"), 0), query.LtInt(query.Field("age"), 11)}, []string{"a", "b", "c", "x", "y", "z"}},
-			{">10 || <20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []string{"a", "b", "c", "x", "y", "z"}},
-			{">10 || >20", []query.Matcher{query.GtInt(query.Field("age"), 10), query.GtInt(query.Field("age"), 20)}, []string{}},
-			{">8 || non index matcher", []query.Matcher{query.GtInt(query.Field("age"), 8), new(simpleMatcher)}, []string{}},
+			{">2", []query.Expr{query.GtInt(query.Field("age"), 2)}, []string{"a", "b", "c"}},
+			{">8 || <2", []query.Expr{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 2)}, []string{"c", "z"}},
+			{">0 || <11", []query.Expr{query.GtInt(query.Field("age"), 0), query.LtInt(query.Field("age"), 11)}, []string{"a", "b", "c", "x", "y", "z"}},
+			{">10 || <20", []query.Expr{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []string{"a", "b", "c", "x", "y", "z"}},
+			{">10 || >20", []query.Expr{query.GtInt(query.Field("age"), 10), query.GtInt(query.Field("age"), 20)}, []string{}},
+			{">8 || non index matcher", []query.Expr{query.GtInt(query.Field("age"), 8), new(simpleExpr)}, []string{}},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				m := query.Or(test.matchers...)
+				m := query.Or(test.exprs...)
 
-				rowids, _, err := m.MatchIndex(tx, "test")
+				rowids, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -306,7 +302,7 @@ func BenchmarkMatcher(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				for _, r := range records {
-					matcher.Match(r)
+					matcher.Eval(query.EvalContext{Record: r})
 				}
 			}
 		})
@@ -324,7 +320,7 @@ func BenchmarkIndexMatcher(b *testing.B) {
 			tx, cleanup := createIndexes(b, ages, nil)
 			defer cleanup()
 
-			matcher := query.EqInt(query.Field("age"), size)
+			matcher := query.EqInt(query.Field("age"), size).(query.IndexMatcher)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {

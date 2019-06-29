@@ -11,15 +11,6 @@ import (
 	"github.com/google/btree"
 )
 
-// A Matcher defines conditions and indicates if a record
-// satisfies them.
-// Implementation can operate on a specific field
-// or on the entire record.
-type Matcher interface {
-	// Match returns true if the given record matches.
-	Match(record.Record) (bool, error)
-}
-
 // An IndexMatcher defines conditions and scans an index for records
 // satisfying them.
 type IndexMatcher interface {
@@ -39,16 +30,16 @@ func (i Item) Less(than btree.Item) bool {
 	return bytes.Compare(i, than.(Item)) < 0
 }
 
-// EqMatcher matches all the records whose field selected by the Field member are equal
+// eqMatcher matches all the records whose field selected by the Field member are equal
 // to the Value member. It also supports selecting records from indexes.
-type EqMatcher struct {
+type eqMatcher struct {
 	Field FieldSelector
 	Value []byte
 }
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *EqMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *eqMatcher) Eval(ctx EvalContext) (Scalar, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
 		return falseScalar, err
@@ -59,7 +50,7 @@ func (m *EqMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // Match uses the field selector to select a field from r and returns true
 // if its encoded value is equal to the Value member.
-func (m *EqMatcher) Match(r record.Record) (bool, error) {
+func (m *eqMatcher) Match(r record.Record) (bool, error) {
 	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
@@ -70,7 +61,7 @@ func (m *EqMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
 // the field selected by the Field member equal to the Value member.
-func (m *EqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (m *eqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
@@ -88,16 +79,16 @@ func (m *EqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 	return tree, true, nil
 }
 
-// GtMatcher matches all the records whose field selected by the Field member are strictly greater than
+// gtMatcher matches all the records whose field selected by the Field member are strictly greater than
 // the Value member. It also supports selecting records from indexes.
-type GtMatcher struct {
+type gtMatcher struct {
 	Field FieldSelector
 	Value []byte
 }
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *GtMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *gtMatcher) Eval(ctx EvalContext) (Scalar, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
 		return falseScalar, err
@@ -108,7 +99,7 @@ func (m *GtMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // Match uses the field selector to select a field from r and returns true
 // if its encoded value is strictly greater than the Value member.
-func (m *GtMatcher) Match(r record.Record) (bool, error) {
+func (m *gtMatcher) Match(r record.Record) (bool, error) {
 	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
@@ -119,7 +110,7 @@ func (m *GtMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
 // the field selected by the Field member strictly greater than the Value member.
-func (m *GtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (m *gtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
@@ -140,16 +131,16 @@ func (m *GtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 	return tree, true, nil
 }
 
-// GteMatcher matches all the records whose field selected by the Field member are greater than or equal
+// gteMatcher matches all the records whose field selected by the Field member are greater than or equal
 // to the Value member. It also supports selecting records from indexes.
-type GteMatcher struct {
+type gteMatcher struct {
 	Field FieldSelector
 	Value []byte
 }
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *GteMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *gteMatcher) Eval(ctx EvalContext) (Scalar, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
 		return falseScalar, err
@@ -160,7 +151,7 @@ func (m *GteMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // Match uses the field selector to select a field from r and returns true
 // if its encoded value is greater than or equal to the Value member.
-func (m *GteMatcher) Match(r record.Record) (bool, error) {
+func (m *gteMatcher) Match(r record.Record) (bool, error) {
 	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
@@ -171,7 +162,7 @@ func (m *GteMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
 // the field selected by the Field member greater than or equal to the Value member.
-func (m *GteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (m *gteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
@@ -189,16 +180,16 @@ func (m *GteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, b
 	return tree, true, nil
 }
 
-// LtMatcher matches all the records whose field selected by the Field member are strictly lesser than
+// ltMatcher matches all the records whose field selected by the Field member are strictly lesser than
 // the Value member. It also supports selecting records from indexes.
-type LtMatcher struct {
+type ltMatcher struct {
 	Field FieldSelector
 	Value []byte
 }
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *LtMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *ltMatcher) Eval(ctx EvalContext) (Scalar, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
 		return falseScalar, err
@@ -209,7 +200,7 @@ func (m *LtMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // Match uses the field selector to select a field from r and returns true
 // if its encoded value is strictly lesser than the Value member.
-func (m *LtMatcher) Match(r record.Record) (bool, error) {
+func (m *ltMatcher) Match(r record.Record) (bool, error) {
 	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
@@ -220,7 +211,7 @@ func (m *LtMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
 // the field selected by the Field member strictly lesser than the Value member.
-func (m *LtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (m *ltMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
@@ -241,16 +232,16 @@ func (m *LtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 	return tree, true, nil
 }
 
-// LteMatcher matches all the records whose field selected by the Field member are lesser than or equal
+// lteMatcher matches all the records whose field selected by the Field member are lesser than or equal
 // to the Value member. It also supports selecting records from indexes.
-type LteMatcher struct {
+type lteMatcher struct {
 	Field FieldSelector
 	Value []byte
 }
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *LteMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *lteMatcher) Eval(ctx EvalContext) (Scalar, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
 		return falseScalar, err
@@ -261,7 +252,7 @@ func (m *LteMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // Match uses the field selector to select a field from r and returns true
 // if its encoded value is lesser than or equal to the Value member.
-func (m *LteMatcher) Match(r record.Record) (bool, error) {
+func (m *lteMatcher) Match(r record.Record) (bool, error) {
 	rf, err := m.Field.SelectField(r)
 	if err != nil {
 		return false, err
@@ -272,7 +263,7 @@ func (m *LteMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the rowids of the records that have the value of
 // the field selected by the Field member lesser than or equal to the Value member.
-func (m *LteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (m *lteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	idx, err := tx.Index(tableName, m.Field.Name())
 	if err != nil {
 		return nil, false, err
@@ -301,47 +292,36 @@ func (m *LteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, b
 	return tree, true, nil
 }
 
-// AndMatcher is a logical matcher used to evaluate multiple other matchers.
+// andMatcher is a logical matcher used to evaluate multiple other matchers.
 // It matches if all of them matches.
-type AndMatcher struct {
-	Matchers []Matcher
+type andMatcher struct {
+	exprs []Expr
 }
 
-// And creates an AndMatcher.
-func And(matchers ...Matcher) *AndMatcher {
-	return &AndMatcher{Matchers: matchers}
+// And creates an expression that evaluates all of the given expressions and returns true if all of them are truthy.
+func And(exprs ...Expr) Expr {
+	return &andMatcher{exprs: exprs}
 }
 
-// Eval implements the Expr interface. It calls the Match method and translates
-// the result as a scalar.
-func (a *AndMatcher) Eval(ctx EvalContext) (Scalar, error) {
-	ok, err := a.Match(ctx.Record)
-	if err != nil || !ok {
-		return falseScalar, err
-	}
-
-	return trueScalar, err
-}
-
-// Match if all Matchers return true.
-func (a *AndMatcher) Match(r record.Record) (bool, error) {
-	for _, m := range a.Matchers {
-		ok, err := m.Match(r)
-		if !ok || err != nil {
-			return ok, err
+// Eval implements the Expr interface.
+func (a *andMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	for _, e := range a.exprs {
+		s, err := e.Eval(ctx)
+		if err != nil || !s.Truthy() {
+			return falseScalar, err
 		}
 	}
 
-	return true, nil
+	return trueScalar, nil
 }
 
-// MatchIndex matches if all Matchers implement the IndexMatcher interface and return true.
+// MatchIndex matches if all exprs implement the IndexMatcher interface and return true.
 // MatchIndex returns the intersection between all of trees returned.
-func (a *AndMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (a *andMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	var set *btree.BTree
 
-	for _, m := range a.Matchers {
-		if i, ok := m.(IndexMatcher); ok {
+	for _, e := range a.exprs {
+		if i, ok := e.(IndexMatcher); ok {
 			rowids, ok, err := i.MatchIndex(tx, tableName)
 			if err != nil || !ok {
 				return nil, false, err
@@ -368,51 +348,40 @@ func (a *AndMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, b
 	return set, true, nil
 }
 
-// OrMatcher is a logical matcher used to evaluate multiple other matchers.
+// orMatcher is a logical matcher used to evaluate multiple other matchers.
 // It matches if one of them matches.
-type OrMatcher struct {
-	Matchers []Matcher
+type orMatcher struct {
+	exprs []Expr
 }
 
-// Or creates an OrMatcher.
-func Or(matchers ...Matcher) *OrMatcher {
-	return &OrMatcher{Matchers: matchers}
+// Or creates an expression that evaluates all of the given expressions until one returns a truthy value, otherwise returns false.
+func Or(exprs ...Expr) Expr {
+	return &orMatcher{exprs: exprs}
 }
 
-// Eval implements the Expr interface. It calls the Match method and translates
-// the result as a scalar.
-func (o *OrMatcher) Eval(ctx EvalContext) (Scalar, error) {
-	ok, err := o.Match(ctx.Record)
-	if err != nil || !ok {
-		return falseScalar, err
-	}
-
-	return trueScalar, err
-}
-
-// Match if one of the Matchers return true.
-func (o *OrMatcher) Match(r record.Record) (bool, error) {
-	for _, m := range o.Matchers {
-		ok, err := m.Match(r)
+// Eval implements the Expr interface.
+func (o *orMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	for _, e := range o.exprs {
+		s, err := e.Eval(ctx)
 		if err != nil {
-			return false, err
+			return falseScalar, err
 		}
 
-		if ok {
-			return true, nil
+		if s.Truthy() {
+			return trueScalar, nil
 		}
 	}
 
-	return false, nil
+	return falseScalar, nil
 }
 
 // MatchIndex matches if all Matchers implement the IndexMatcher interface and return true.
 // MatchIndex returns the union between all of trees returned.
-func (o *OrMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (o *orMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
 	var set *btree.BTree
 
-	for _, m := range o.Matchers {
-		if i, ok := m.(IndexMatcher); ok {
+	for _, e := range o.exprs {
+		if i, ok := e.(IndexMatcher); ok {
 			rowids, ok, err := i.MatchIndex(tx, tableName)
 			if err != nil || !ok {
 				return nil, false, err

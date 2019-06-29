@@ -23,7 +23,7 @@ func ExampleSelect() {
 }
 
 func ExampleAnd() {
-	// SELECT Name, Age FROM example WHERE Age >= 18 && Age < 100
+	// SELECT Name, Age FROM example WHERE Age >= 18 AND Age < 100
 	res := query.
 		Select(query.StringField("Name"), query.IntField("Age")).
 		From(query.Table("example")).
@@ -41,7 +41,7 @@ func ExampleAnd() {
 }
 
 func ExampleOr() {
-	// SELECT Name, Age FROM example WHERE Age >= 18 || Group = "staff"
+	// SELECT Name, Age FROM example WHERE Age >= 18 OR Group = "staff"
 	res := query.
 		Select(query.StringField("Name")).
 		From(query.Table("example")).
