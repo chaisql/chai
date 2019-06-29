@@ -146,17 +146,16 @@ func TestInsert(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false, false)
 		defer cleanup()
 
-		_, err := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Run(tx)
-		require.Error(t, err)
+		res := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Run(tx)
+		require.Error(t, res.Err())
 	})
 
 	t.Run("Schemaless/WithFields", func(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false, false)
 		defer cleanup()
 
-		rowid, err := Insert().Into(Table("test")).Fields("a", "b").Values(IntValue(5), StringValue("hello")).Run(tx)
-		require.NoError(t, err)
-		require.NotEmpty(t, rowid)
+		res := Insert().Into(Table("test")).Fields("a", "b").Values(IntValue(5), StringValue("hello")).Run(tx)
+		require.NoError(t, res.Err())
 
 		tb, err := tx.Table("test")
 		require.NoError(t, err)
@@ -166,7 +165,13 @@ func TestInsert(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 11, count)
 
-		rec, err := tb.Record(rowid)
+		rec, err := table.NewBrowser(res.Table()).First()
+		require.NoError(t, err)
+
+		rowid, err := rec.Field("rowid")
+		require.NoError(t, err)
+
+		rec, err = tb.Record(rowid.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("a", 5),
@@ -179,9 +184,8 @@ func TestInsert(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false, true)
 		defer cleanup()
 
-		rowid, err := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Run(tx)
-		require.NoError(t, err)
-		require.NotEmpty(t, rowid)
+		res := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Run(tx)
+		require.NoError(t, res.Err())
 
 		tb, err := tx.Table("test")
 		require.NoError(t, err)
@@ -191,7 +195,13 @@ func TestInsert(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 11, count)
 
-		rec, err := tb.Record(rowid)
+		rec, err := table.NewBrowser(res.Table()).First()
+		require.NoError(t, err)
+
+		rowid, err := rec.Field("rowid")
+		require.NoError(t, err)
+
+		rec, err = tb.Record(rowid.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("id", 5),
@@ -206,9 +216,8 @@ func TestInsert(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false, true)
 		defer cleanup()
 
-		rowid, err := Insert().Into(Table("test")).Fields("age", "name").Values(IntValue(5), StringValue("hello")).Run(tx)
-		require.NoError(t, err)
-		require.NotEmpty(t, rowid)
+		res := Insert().Into(Table("test")).Fields("age", "name").Values(IntValue(5), StringValue("hello")).Run(tx)
+		require.NoError(t, res.Err())
 
 		tb, err := tx.Table("test")
 		require.NoError(t, err)
@@ -218,7 +227,13 @@ func TestInsert(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 11, count)
 
-		rec, err := tb.Record(rowid)
+		rec, err := table.NewBrowser(res.Table()).First()
+		require.NoError(t, err)
+
+		rowid, err := rec.Field("rowid")
+		require.NoError(t, err)
+
+		rec, err = tb.Record(rowid.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("id", 0),

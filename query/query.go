@@ -203,18 +203,18 @@ func (i InsertStmt) Values(values ...Expr) InsertStmt {
 	return i
 }
 
-func (i InsertStmt) Run(tx *genji.Tx) ([]byte, error) {
+func (i InsertStmt) Run(tx *genji.Tx) Result {
 	if i.tableSelector == nil {
-		return nil, errors.New("missing table selector")
+		return Result{err: errors.New("missing table selector")}
 	}
 
 	if i.values == nil {
-		return nil, errors.New("empty values")
+		return Result{err: errors.New("empty values")}
 	}
 
 	t, err := i.tableSelector.SelectTable(tx)
 	if err != nil {
-		return nil, err
+		return Result{err: err}
 	}
 
 	if len(i.fieldNames) == 0 {
@@ -229,17 +229,17 @@ func (i InsertStmt) Run(tx *genji.Tx) ([]byte, error) {
 	return i.runSchemafulWithSelectedFields(tx, t, &schema)
 }
 
-func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) ([]byte, error) {
+func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) Result {
 	schema, schemaful := t.Schema()
 
 	if !schemaful {
-		return nil, errors.New("fields must be selected for schemaless tables")
+		return Result{err: errors.New("fields must be selected for schemaless tables")}
 	}
 
 	var fb record.FieldBuffer
 
 	if len(schema.Fields) != len(i.values) {
-		return nil, fmt.Errorf("table %s has %d fields, got %d fields", i.tableSelector.Name(), len(schema.Fields), len(i.values))
+		return Result{err: fmt.Errorf("table %s has %d fields, got %d fields", i.tableSelector.Name(), len(schema.Fields), len(i.values))}
 	}
 
 	for idx, sf := range schema.Fields {
@@ -247,11 +247,11 @@ func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) ([]by
 			Tx: tx,
 		})
 		if err != nil {
-			return nil, err
+			return Result{err: err}
 		}
 
 		if sc.Type != sf.Type {
-			return nil, fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)
+			return Result{err: fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)}
 		}
 
 		fb.Add(field.Field{
@@ -261,14 +261,27 @@ func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) ([]by
 		})
 	}
 
-	return t.Insert(&fb)
+	rowid, err := t.Insert(&fb)
+	if err != nil {
+		return Result{err: err}
+	}
+
+	return Result{t: rowidToTable(rowid)}
 }
 
-func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table) ([]byte, error) {
+func rowidToTable(rowid []byte) table.Table {
+	var rb table.RecordBuffer
+	rb.Insert(record.FieldBuffer([]field.Field{
+		field.NewBytes("rowid", rowid),
+	}))
+	return &rb
+}
+
+func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table) Result {
 	var fb record.FieldBuffer
 
 	if len(i.fieldNames) != len(i.values) {
-		return nil, fmt.Errorf("%d values for %d fields", len(i.values), len(i.fieldNames))
+		return Result{err: fmt.Errorf("%d values for %d fields", len(i.values), len(i.fieldNames))}
 	}
 
 	for idx, name := range i.fieldNames {
@@ -276,7 +289,7 @@ func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table
 			Tx: tx,
 		})
 		if err != nil {
-			return nil, err
+			return Result{err: err}
 		}
 
 		fb.Add(field.Field{
@@ -286,10 +299,15 @@ func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table
 		})
 	}
 
-	return t.Insert(&fb)
+	rowid, err := t.Insert(&fb)
+	if err != nil {
+		return Result{err: err}
+	}
+
+	return Result{t: rowidToTable(rowid)}
 }
 
-func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table, schema *record.Schema) ([]byte, error) {
+func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table, schema *record.Schema) Result {
 	var fb record.FieldBuffer
 
 	for _, sf := range schema.Fields {
@@ -303,10 +321,10 @@ func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table,
 				Tx: tx,
 			})
 			if err != nil {
-				return nil, err
+				return Result{err: err}
 			}
 			if sc.Type != sf.Type {
-				return nil, fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)
+				return Result{err: fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)}
 			}
 			fb.Add(field.Field{
 				Name: name,
@@ -323,5 +341,10 @@ func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table,
 		}
 	}
 
-	return t.Insert(&fb)
+	rowid, err := t.Insert(&fb)
+	if err != nil {
+		return Result{err: err}
+	}
+
+	return Result{t: rowidToTable(rowid)}
 }
