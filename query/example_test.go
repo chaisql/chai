@@ -21,3 +21,17 @@ func Example_Select() {
 		log.Fatal(err)
 	}
 }
+
+func Example_Insert() {
+	// INSERT INTO example (Name, Age) VALUES ("foo", 21)
+	res := query.
+		Insert().
+		Into(query.Table("example")).
+		Fields("Name", "Age").
+		Values(query.StringValue("foo"), query.IntValue(21)).
+		Run(tx)
+
+	if err := res.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
