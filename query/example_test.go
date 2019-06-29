@@ -9,7 +9,7 @@ import (
 
 var tx *genji.Tx
 
-func Example_Select() {
+func ExampleSelect() {
 	// SELECT Name, Age FROM example WHERE Age >= 18
 	res := query.
 		Select(query.StringField("Name"), query.IntField("Age")).
@@ -22,7 +22,7 @@ func Example_Select() {
 	}
 }
 
-func Example_Insert() {
+func ExampleInsert() {
 	// INSERT INTO example (Name, Age) VALUES ("foo", 21)
 	res := query.
 		Insert().
@@ -32,6 +32,19 @@ func Example_Insert() {
 		Run(tx)
 
 	if err := res.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ExampleDelete() {
+	// DELETE FROM example (Name, Age) WHERE Age >= 18
+	err := query.
+		Delete().
+		From(query.Table("example")).
+		Where(query.IntField("Age").Gte(18)).
+		Run(tx)
+
+	if err != nil {
 		log.Fatal(err)
 	}
 }
