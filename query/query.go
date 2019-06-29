@@ -38,6 +38,9 @@ type SelectStmt struct {
 	whereExpr      Expr
 }
 
+// Select creates a DSL equivalent to the SQL Select command.
+// It takes a list of field selectors that indicate what fields must be selected from the targeted table.
+// This package provides typed field selectors that can be used with the Select method.
 func Select(selectors ...FieldSelector) SelectStmt {
 	return SelectStmt{fieldSelectors: selectors}
 }
@@ -97,6 +100,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 	return Result{t: b.Reader}
 }
 
+// Where uses e to filter records if it evaluates to a falsy value.
 func (q SelectStmt) Where(e Expr) SelectStmt {
 	q.whereExpr = e
 	return q
