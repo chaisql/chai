@@ -166,19 +166,19 @@ func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
 
 // BasicQuerySelector provides helpers for selecting fields from the Basic structure.
 type BasicQuerySelector struct {
-	A query.StringField
-	B query.IntField
-	C query.Int32Field
-	D query.Int32Field
+	A query.StringFieldSelector
+	B query.IntFieldSelector
+	C query.Int32FieldSelector
+	D query.Int32FieldSelector
 }
 
 // NewBasicQuerySelector creates a BasicQuerySelector.
 func NewBasicQuerySelector() BasicQuerySelector {
 	return BasicQuerySelector{
-		A: query.NewStringField("A"),
-		B: query.NewIntField("B"),
-		C: query.NewInt32Field("C"),
-		D: query.NewInt32Field("D"),
+		A: query.StringField("A"),
+		B: query.IntField("B"),
+		C: query.Int32Field("C"),
+		D: query.Int32Field("D"),
 	}
 }
 
@@ -371,19 +371,19 @@ func (b *basicStore) Replace(rowid []byte, record *basic) error {
 
 // basicQuerySelector provides helpers for selecting fields from the basic structure.
 type basicQuerySelector struct {
-	A query.BytesField
-	B query.Uint16Field
-	C query.Float32Field
-	D query.Float32Field
+	A query.BytesFieldSelector
+	B query.Uint16FieldSelector
+	C query.Float32FieldSelector
+	D query.Float32FieldSelector
 }
 
 // newbasicQuerySelector creates a basicQuerySelector.
 func newBasicQuerySelector() basicQuerySelector {
 	return basicQuerySelector{
-		A: query.NewBytesField("A"),
-		B: query.NewUint16Field("B"),
-		C: query.NewFloat32Field("C"),
-		D: query.NewFloat32Field("D"),
+		A: query.BytesField("A"),
+		B: query.Uint16Field("B"),
+		C: query.Float32Field("C"),
+		D: query.Float32Field("D"),
 	}
 }
 
@@ -592,19 +592,19 @@ func (b *BasicSchemafulStore) Replace(rowid []byte, record *BasicSchemaful) erro
 
 // BasicSchemafulQuerySelector provides helpers for selecting fields from the BasicSchemaful structure.
 type BasicSchemafulQuerySelector struct {
-	A query.StringField
-	B query.IntField
-	C query.Int32Field
-	D query.Int32Field
+	A query.StringFieldSelector
+	B query.IntFieldSelector
+	C query.Int32FieldSelector
+	D query.Int32FieldSelector
 }
 
 // NewBasicSchemafulQuerySelector creates a BasicSchemafulQuerySelector.
 func NewBasicSchemafulQuerySelector() BasicSchemafulQuerySelector {
 	return BasicSchemafulQuerySelector{
-		A: query.NewStringField("A"),
-		B: query.NewIntField("B"),
-		C: query.NewInt32Field("C"),
-		D: query.NewInt32Field("D"),
+		A: query.StringField("A"),
+		B: query.IntField("B"),
+		C: query.Int32Field("C"),
+		D: query.Int32Field("D"),
 	}
 }
 
@@ -781,15 +781,15 @@ func (p *PkStore) Replace(pk int64, record *Pk) error {
 
 // PkQuerySelector provides helpers for selecting fields from the Pk structure.
 type PkQuerySelector struct {
-	A query.StringField
-	B query.Int64Field
+	A query.StringFieldSelector
+	B query.Int64FieldSelector
 }
 
 // NewPkQuerySelector creates a PkQuerySelector.
 func NewPkQuerySelector() PkQuerySelector {
 	return PkQuerySelector{
-		A: query.NewStringField("A"),
-		B: query.NewInt64Field("B"),
+		A: query.StringField("A"),
+		B: query.Int64Field("B"),
 	}
 }
 
@@ -955,15 +955,15 @@ func (i *IndexedStore) Replace(rowid []byte, record *Indexed) error {
 
 // IndexedQuerySelector provides helpers for selecting fields from the Indexed structure.
 type IndexedQuerySelector struct {
-	A query.StringField
-	B query.Int64Field
+	A query.StringFieldSelector
+	B query.Int64FieldSelector
 }
 
 // NewIndexedQuerySelector creates a IndexedQuerySelector.
 func NewIndexedQuerySelector() IndexedQuerySelector {
 	return IndexedQuerySelector{
-		A: query.NewStringField("A"),
-		B: query.NewInt64Field("B"),
+		A: query.StringField("A"),
+		B: query.Int64Field("B"),
 	}
 }
 

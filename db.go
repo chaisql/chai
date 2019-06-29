@@ -390,3 +390,13 @@ func (t Table) String() string {
 
 	return buf.String()
 }
+
+// Schema returns the schema of the table and sets the boolean to true.
+// If the table is schemaless, an empty schema is returned and the boolean is set to false.
+func (t Table) Schema() (schema record.Schema, schemaful bool) {
+	if t.schema != nil {
+		return *t.schema, true
+	}
+
+	return record.Schema{}, false
+}

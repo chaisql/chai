@@ -167,17 +167,17 @@ func (u *UserStore) Replace(pk int64, record *User) error {
 
 // UserQuerySelector provides helpers for selecting fields from the User structure.
 type UserQuerySelector struct {
-	ID   query.Int64Field
-	Name query.StringField
-	Age  query.Uint32Field
+	ID   query.Int64FieldSelector
+	Name query.StringFieldSelector
+	Age  query.Uint32FieldSelector
 }
 
 // NewUserQuerySelector creates a UserQuerySelector.
 func NewUserQuerySelector() UserQuerySelector {
 	return UserQuerySelector{
-		ID:   query.NewInt64Field("ID"),
-		Name: query.NewStringField("Name"),
-		Age:  query.NewUint32Field("Age"),
+		ID:   query.Int64Field("ID"),
+		Name: query.StringField("Name"),
+		Age:  query.Uint32Field("Age"),
 	}
 }
 

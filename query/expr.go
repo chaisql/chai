@@ -26,6 +26,11 @@ func (s Scalar) Truthy() bool {
 	return !bytes.Equal(zf.Data, s.Data)
 }
 
+// Eval returns s. It implements the Expr interface.
+func (s Scalar) Eval(EvalContext) (Scalar, error) {
+	return s, nil
+}
+
 // An Expr evaluates to a scalar.
 type Expr interface {
 	Eval(EvalContext) (Scalar, error)

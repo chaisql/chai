@@ -54,40 +54,60 @@ func Lte{{ .Name }}(f FieldSelector, x {{ .T }}) *LteMatcher {
 	}
 }
 
-// {{ .Name }}Field is a type safe selector that allows to compare values with fields
+// {{ .Name }}FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type {{ .Name }}Field struct {
+type {{ .Name }}FieldSelector struct {
 	FieldSelector
 }
 
-// New{{ .Name }}Field creates a typed FieldSelector for fields of type {{ .T }}.
-func New{{ .Name }}Field(name string) {{ .Name }}Field {
-	return {{ .Name }}Field{FieldSelector: Field(name)}
+// {{ .Name }}Field creates a typed FieldSelector for fields of type {{ .T }}.
+func {{ .Name }}Field(name string) {{ .Name }}FieldSelector {
+	return {{ .Name }}FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f {{ .Name }}Field) Eq(x {{ .T }}) *EqMatcher {
+func (f {{ .Name }}FieldSelector) Eq(x {{ .T }}) *EqMatcher {
 	return Eq{{ .Name }}(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f {{ .Name }}Field) Gt(x {{ .T }}) *GtMatcher {
+func (f {{ .Name }}FieldSelector) Gt(x {{ .T }}) *GtMatcher {
 	return Gt{{ .Name }}(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f {{ .Name }}Field) Gte(x {{ .T }}) *GteMatcher {
+func (f {{ .Name }}FieldSelector) Gte(x {{ .T }}) *GteMatcher {
 	return Gte{{ .Name }}(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f {{ .Name }}Field) Lt(x {{ .T }}) *LtMatcher {
+func (f {{ .Name }}FieldSelector) Lt(x {{ .T }}) *LtMatcher {
 	return Lt{{ .Name }}(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f {{ .Name }}Field) Lte(x {{ .T }}) *LteMatcher {
+func (f {{ .Name }}FieldSelector) Lte(x {{ .T }}) *LteMatcher {
 	return Lte{{ .Name }}(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f {{ .Name }}FieldSelector) Value(x {{ .T }}) *Scalar {
+	return &Scalar{
+		Type: field.{{ .Name }},
+		Data: field.Encode{{ .Name }}(x),
+	}
+}
+
+// {{ .Name }}Value is an expression that evaluates to itself.
+type {{ .Name }}Value {{ .T }}
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v {{ .Name }}Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.{{ .Name }},
+		Data: field.Encode{{ .Name }}({{ .T }}(v)),
+	}, nil
 }
 
 {{ end}}

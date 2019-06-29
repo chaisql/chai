@@ -45,40 +45,60 @@ func LteBytes(f FieldSelector, x []byte) *LteMatcher {
 	}
 }
 
-// BytesField is a type safe selector that allows to compare values with fields
+// BytesFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type BytesField struct {
+type BytesFieldSelector struct {
 	FieldSelector
 }
 
-// NewBytesField creates a typed FieldSelector for fields of type []byte.
-func NewBytesField(name string) BytesField {
-	return BytesField{FieldSelector: Field(name)}
+// BytesField creates a typed FieldSelector for fields of type []byte.
+func BytesField(name string) BytesFieldSelector {
+	return BytesFieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f BytesField) Eq(x []byte) *EqMatcher {
+func (f BytesFieldSelector) Eq(x []byte) *EqMatcher {
 	return EqBytes(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f BytesField) Gt(x []byte) *GtMatcher {
+func (f BytesFieldSelector) Gt(x []byte) *GtMatcher {
 	return GtBytes(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f BytesField) Gte(x []byte) *GteMatcher {
+func (f BytesFieldSelector) Gte(x []byte) *GteMatcher {
 	return GteBytes(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f BytesField) Lt(x []byte) *LtMatcher {
+func (f BytesFieldSelector) Lt(x []byte) *LtMatcher {
 	return LtBytes(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f BytesField) Lte(x []byte) *LteMatcher {
+func (f BytesFieldSelector) Lte(x []byte) *LteMatcher {
 	return LteBytes(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f BytesFieldSelector) Value(x []byte) *Scalar {
+	return &Scalar{
+		Type: field.Bytes,
+		Data: field.EncodeBytes(x),
+	}
+}
+
+// BytesValue is an expression that evaluates to itself.
+type BytesValue []byte
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v BytesValue) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Bytes,
+		Data: field.EncodeBytes([]byte(v)),
+	}, nil
 }
 
 // EqString matches if x is equal to the field selected by f.
@@ -121,40 +141,60 @@ func LteString(f FieldSelector, x string) *LteMatcher {
 	}
 }
 
-// StringField is a type safe selector that allows to compare values with fields
+// StringFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type StringField struct {
+type StringFieldSelector struct {
 	FieldSelector
 }
 
-// NewStringField creates a typed FieldSelector for fields of type string.
-func NewStringField(name string) StringField {
-	return StringField{FieldSelector: Field(name)}
+// StringField creates a typed FieldSelector for fields of type string.
+func StringField(name string) StringFieldSelector {
+	return StringFieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f StringField) Eq(x string) *EqMatcher {
+func (f StringFieldSelector) Eq(x string) *EqMatcher {
 	return EqString(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f StringField) Gt(x string) *GtMatcher {
+func (f StringFieldSelector) Gt(x string) *GtMatcher {
 	return GtString(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f StringField) Gte(x string) *GteMatcher {
+func (f StringFieldSelector) Gte(x string) *GteMatcher {
 	return GteString(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f StringField) Lt(x string) *LtMatcher {
+func (f StringFieldSelector) Lt(x string) *LtMatcher {
 	return LtString(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f StringField) Lte(x string) *LteMatcher {
+func (f StringFieldSelector) Lte(x string) *LteMatcher {
 	return LteString(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f StringFieldSelector) Value(x string) *Scalar {
+	return &Scalar{
+		Type: field.String,
+		Data: field.EncodeString(x),
+	}
+}
+
+// StringValue is an expression that evaluates to itself.
+type StringValue string
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v StringValue) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.String,
+		Data: field.EncodeString(string(v)),
+	}, nil
 }
 
 // EqBool matches if x is equal to the field selected by f.
@@ -197,40 +237,60 @@ func LteBool(f FieldSelector, x bool) *LteMatcher {
 	}
 }
 
-// BoolField is a type safe selector that allows to compare values with fields
+// BoolFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type BoolField struct {
+type BoolFieldSelector struct {
 	FieldSelector
 }
 
-// NewBoolField creates a typed FieldSelector for fields of type bool.
-func NewBoolField(name string) BoolField {
-	return BoolField{FieldSelector: Field(name)}
+// BoolField creates a typed FieldSelector for fields of type bool.
+func BoolField(name string) BoolFieldSelector {
+	return BoolFieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f BoolField) Eq(x bool) *EqMatcher {
+func (f BoolFieldSelector) Eq(x bool) *EqMatcher {
 	return EqBool(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f BoolField) Gt(x bool) *GtMatcher {
+func (f BoolFieldSelector) Gt(x bool) *GtMatcher {
 	return GtBool(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f BoolField) Gte(x bool) *GteMatcher {
+func (f BoolFieldSelector) Gte(x bool) *GteMatcher {
 	return GteBool(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f BoolField) Lt(x bool) *LtMatcher {
+func (f BoolFieldSelector) Lt(x bool) *LtMatcher {
 	return LtBool(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f BoolField) Lte(x bool) *LteMatcher {
+func (f BoolFieldSelector) Lte(x bool) *LteMatcher {
 	return LteBool(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f BoolFieldSelector) Value(x bool) *Scalar {
+	return &Scalar{
+		Type: field.Bool,
+		Data: field.EncodeBool(x),
+	}
+}
+
+// BoolValue is an expression that evaluates to itself.
+type BoolValue bool
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v BoolValue) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Bool,
+		Data: field.EncodeBool(bool(v)),
+	}, nil
 }
 
 // EqUint matches if x is equal to the field selected by f.
@@ -273,40 +333,60 @@ func LteUint(f FieldSelector, x uint) *LteMatcher {
 	}
 }
 
-// UintField is a type safe selector that allows to compare values with fields
+// UintFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type UintField struct {
+type UintFieldSelector struct {
 	FieldSelector
 }
 
-// NewUintField creates a typed FieldSelector for fields of type uint.
-func NewUintField(name string) UintField {
-	return UintField{FieldSelector: Field(name)}
+// UintField creates a typed FieldSelector for fields of type uint.
+func UintField(name string) UintFieldSelector {
+	return UintFieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f UintField) Eq(x uint) *EqMatcher {
+func (f UintFieldSelector) Eq(x uint) *EqMatcher {
 	return EqUint(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f UintField) Gt(x uint) *GtMatcher {
+func (f UintFieldSelector) Gt(x uint) *GtMatcher {
 	return GtUint(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f UintField) Gte(x uint) *GteMatcher {
+func (f UintFieldSelector) Gte(x uint) *GteMatcher {
 	return GteUint(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f UintField) Lt(x uint) *LtMatcher {
+func (f UintFieldSelector) Lt(x uint) *LtMatcher {
 	return LtUint(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f UintField) Lte(x uint) *LteMatcher {
+func (f UintFieldSelector) Lte(x uint) *LteMatcher {
 	return LteUint(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f UintFieldSelector) Value(x uint) *Scalar {
+	return &Scalar{
+		Type: field.Uint,
+		Data: field.EncodeUint(x),
+	}
+}
+
+// UintValue is an expression that evaluates to itself.
+type UintValue uint
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v UintValue) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Uint,
+		Data: field.EncodeUint(uint(v)),
+	}, nil
 }
 
 // EqUint8 matches if x is equal to the field selected by f.
@@ -349,40 +429,60 @@ func LteUint8(f FieldSelector, x uint8) *LteMatcher {
 	}
 }
 
-// Uint8Field is a type safe selector that allows to compare values with fields
+// Uint8FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Uint8Field struct {
+type Uint8FieldSelector struct {
 	FieldSelector
 }
 
-// NewUint8Field creates a typed FieldSelector for fields of type uint8.
-func NewUint8Field(name string) Uint8Field {
-	return Uint8Field{FieldSelector: Field(name)}
+// Uint8Field creates a typed FieldSelector for fields of type uint8.
+func Uint8Field(name string) Uint8FieldSelector {
+	return Uint8FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint8Field) Eq(x uint8) *EqMatcher {
+func (f Uint8FieldSelector) Eq(x uint8) *EqMatcher {
 	return EqUint8(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint8Field) Gt(x uint8) *GtMatcher {
+func (f Uint8FieldSelector) Gt(x uint8) *GtMatcher {
 	return GtUint8(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint8Field) Gte(x uint8) *GteMatcher {
+func (f Uint8FieldSelector) Gte(x uint8) *GteMatcher {
 	return GteUint8(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint8Field) Lt(x uint8) *LtMatcher {
+func (f Uint8FieldSelector) Lt(x uint8) *LtMatcher {
 	return LtUint8(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint8Field) Lte(x uint8) *LteMatcher {
+func (f Uint8FieldSelector) Lte(x uint8) *LteMatcher {
 	return LteUint8(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Uint8FieldSelector) Value(x uint8) *Scalar {
+	return &Scalar{
+		Type: field.Uint8,
+		Data: field.EncodeUint8(x),
+	}
+}
+
+// Uint8Value is an expression that evaluates to itself.
+type Uint8Value uint8
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Uint8Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Uint8,
+		Data: field.EncodeUint8(uint8(v)),
+	}, nil
 }
 
 // EqUint16 matches if x is equal to the field selected by f.
@@ -425,40 +525,60 @@ func LteUint16(f FieldSelector, x uint16) *LteMatcher {
 	}
 }
 
-// Uint16Field is a type safe selector that allows to compare values with fields
+// Uint16FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Uint16Field struct {
+type Uint16FieldSelector struct {
 	FieldSelector
 }
 
-// NewUint16Field creates a typed FieldSelector for fields of type uint16.
-func NewUint16Field(name string) Uint16Field {
-	return Uint16Field{FieldSelector: Field(name)}
+// Uint16Field creates a typed FieldSelector for fields of type uint16.
+func Uint16Field(name string) Uint16FieldSelector {
+	return Uint16FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint16Field) Eq(x uint16) *EqMatcher {
+func (f Uint16FieldSelector) Eq(x uint16) *EqMatcher {
 	return EqUint16(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint16Field) Gt(x uint16) *GtMatcher {
+func (f Uint16FieldSelector) Gt(x uint16) *GtMatcher {
 	return GtUint16(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint16Field) Gte(x uint16) *GteMatcher {
+func (f Uint16FieldSelector) Gte(x uint16) *GteMatcher {
 	return GteUint16(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint16Field) Lt(x uint16) *LtMatcher {
+func (f Uint16FieldSelector) Lt(x uint16) *LtMatcher {
 	return LtUint16(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint16Field) Lte(x uint16) *LteMatcher {
+func (f Uint16FieldSelector) Lte(x uint16) *LteMatcher {
 	return LteUint16(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Uint16FieldSelector) Value(x uint16) *Scalar {
+	return &Scalar{
+		Type: field.Uint16,
+		Data: field.EncodeUint16(x),
+	}
+}
+
+// Uint16Value is an expression that evaluates to itself.
+type Uint16Value uint16
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Uint16Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Uint16,
+		Data: field.EncodeUint16(uint16(v)),
+	}, nil
 }
 
 // EqUint32 matches if x is equal to the field selected by f.
@@ -501,40 +621,60 @@ func LteUint32(f FieldSelector, x uint32) *LteMatcher {
 	}
 }
 
-// Uint32Field is a type safe selector that allows to compare values with fields
+// Uint32FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Uint32Field struct {
+type Uint32FieldSelector struct {
 	FieldSelector
 }
 
-// NewUint32Field creates a typed FieldSelector for fields of type uint32.
-func NewUint32Field(name string) Uint32Field {
-	return Uint32Field{FieldSelector: Field(name)}
+// Uint32Field creates a typed FieldSelector for fields of type uint32.
+func Uint32Field(name string) Uint32FieldSelector {
+	return Uint32FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint32Field) Eq(x uint32) *EqMatcher {
+func (f Uint32FieldSelector) Eq(x uint32) *EqMatcher {
 	return EqUint32(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint32Field) Gt(x uint32) *GtMatcher {
+func (f Uint32FieldSelector) Gt(x uint32) *GtMatcher {
 	return GtUint32(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint32Field) Gte(x uint32) *GteMatcher {
+func (f Uint32FieldSelector) Gte(x uint32) *GteMatcher {
 	return GteUint32(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint32Field) Lt(x uint32) *LtMatcher {
+func (f Uint32FieldSelector) Lt(x uint32) *LtMatcher {
 	return LtUint32(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint32Field) Lte(x uint32) *LteMatcher {
+func (f Uint32FieldSelector) Lte(x uint32) *LteMatcher {
 	return LteUint32(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Uint32FieldSelector) Value(x uint32) *Scalar {
+	return &Scalar{
+		Type: field.Uint32,
+		Data: field.EncodeUint32(x),
+	}
+}
+
+// Uint32Value is an expression that evaluates to itself.
+type Uint32Value uint32
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Uint32Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Uint32,
+		Data: field.EncodeUint32(uint32(v)),
+	}, nil
 }
 
 // EqUint64 matches if x is equal to the field selected by f.
@@ -577,40 +717,60 @@ func LteUint64(f FieldSelector, x uint64) *LteMatcher {
 	}
 }
 
-// Uint64Field is a type safe selector that allows to compare values with fields
+// Uint64FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Uint64Field struct {
+type Uint64FieldSelector struct {
 	FieldSelector
 }
 
-// NewUint64Field creates a typed FieldSelector for fields of type uint64.
-func NewUint64Field(name string) Uint64Field {
-	return Uint64Field{FieldSelector: Field(name)}
+// Uint64Field creates a typed FieldSelector for fields of type uint64.
+func Uint64Field(name string) Uint64FieldSelector {
+	return Uint64FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Uint64Field) Eq(x uint64) *EqMatcher {
+func (f Uint64FieldSelector) Eq(x uint64) *EqMatcher {
 	return EqUint64(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Uint64Field) Gt(x uint64) *GtMatcher {
+func (f Uint64FieldSelector) Gt(x uint64) *GtMatcher {
 	return GtUint64(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Uint64Field) Gte(x uint64) *GteMatcher {
+func (f Uint64FieldSelector) Gte(x uint64) *GteMatcher {
 	return GteUint64(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Uint64Field) Lt(x uint64) *LtMatcher {
+func (f Uint64FieldSelector) Lt(x uint64) *LtMatcher {
 	return LtUint64(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Uint64Field) Lte(x uint64) *LteMatcher {
+func (f Uint64FieldSelector) Lte(x uint64) *LteMatcher {
 	return LteUint64(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Uint64FieldSelector) Value(x uint64) *Scalar {
+	return &Scalar{
+		Type: field.Uint64,
+		Data: field.EncodeUint64(x),
+	}
+}
+
+// Uint64Value is an expression that evaluates to itself.
+type Uint64Value uint64
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Uint64Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Uint64,
+		Data: field.EncodeUint64(uint64(v)),
+	}, nil
 }
 
 // EqInt matches if x is equal to the field selected by f.
@@ -653,40 +813,60 @@ func LteInt(f FieldSelector, x int) *LteMatcher {
 	}
 }
 
-// IntField is a type safe selector that allows to compare values with fields
+// IntFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type IntField struct {
+type IntFieldSelector struct {
 	FieldSelector
 }
 
-// NewIntField creates a typed FieldSelector for fields of type int.
-func NewIntField(name string) IntField {
-	return IntField{FieldSelector: Field(name)}
+// IntField creates a typed FieldSelector for fields of type int.
+func IntField(name string) IntFieldSelector {
+	return IntFieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f IntField) Eq(x int) *EqMatcher {
+func (f IntFieldSelector) Eq(x int) *EqMatcher {
 	return EqInt(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f IntField) Gt(x int) *GtMatcher {
+func (f IntFieldSelector) Gt(x int) *GtMatcher {
 	return GtInt(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f IntField) Gte(x int) *GteMatcher {
+func (f IntFieldSelector) Gte(x int) *GteMatcher {
 	return GteInt(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f IntField) Lt(x int) *LtMatcher {
+func (f IntFieldSelector) Lt(x int) *LtMatcher {
 	return LtInt(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f IntField) Lte(x int) *LteMatcher {
+func (f IntFieldSelector) Lte(x int) *LteMatcher {
 	return LteInt(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f IntFieldSelector) Value(x int) *Scalar {
+	return &Scalar{
+		Type: field.Int,
+		Data: field.EncodeInt(x),
+	}
+}
+
+// IntValue is an expression that evaluates to itself.
+type IntValue int
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v IntValue) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Int,
+		Data: field.EncodeInt(int(v)),
+	}, nil
 }
 
 // EqInt8 matches if x is equal to the field selected by f.
@@ -729,40 +909,60 @@ func LteInt8(f FieldSelector, x int8) *LteMatcher {
 	}
 }
 
-// Int8Field is a type safe selector that allows to compare values with fields
+// Int8FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Int8Field struct {
+type Int8FieldSelector struct {
 	FieldSelector
 }
 
-// NewInt8Field creates a typed FieldSelector for fields of type int8.
-func NewInt8Field(name string) Int8Field {
-	return Int8Field{FieldSelector: Field(name)}
+// Int8Field creates a typed FieldSelector for fields of type int8.
+func Int8Field(name string) Int8FieldSelector {
+	return Int8FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int8Field) Eq(x int8) *EqMatcher {
+func (f Int8FieldSelector) Eq(x int8) *EqMatcher {
 	return EqInt8(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int8Field) Gt(x int8) *GtMatcher {
+func (f Int8FieldSelector) Gt(x int8) *GtMatcher {
 	return GtInt8(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int8Field) Gte(x int8) *GteMatcher {
+func (f Int8FieldSelector) Gte(x int8) *GteMatcher {
 	return GteInt8(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int8Field) Lt(x int8) *LtMatcher {
+func (f Int8FieldSelector) Lt(x int8) *LtMatcher {
 	return LtInt8(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int8Field) Lte(x int8) *LteMatcher {
+func (f Int8FieldSelector) Lte(x int8) *LteMatcher {
 	return LteInt8(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Int8FieldSelector) Value(x int8) *Scalar {
+	return &Scalar{
+		Type: field.Int8,
+		Data: field.EncodeInt8(x),
+	}
+}
+
+// Int8Value is an expression that evaluates to itself.
+type Int8Value int8
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Int8Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Int8,
+		Data: field.EncodeInt8(int8(v)),
+	}, nil
 }
 
 // EqInt16 matches if x is equal to the field selected by f.
@@ -805,40 +1005,60 @@ func LteInt16(f FieldSelector, x int16) *LteMatcher {
 	}
 }
 
-// Int16Field is a type safe selector that allows to compare values with fields
+// Int16FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Int16Field struct {
+type Int16FieldSelector struct {
 	FieldSelector
 }
 
-// NewInt16Field creates a typed FieldSelector for fields of type int16.
-func NewInt16Field(name string) Int16Field {
-	return Int16Field{FieldSelector: Field(name)}
+// Int16Field creates a typed FieldSelector for fields of type int16.
+func Int16Field(name string) Int16FieldSelector {
+	return Int16FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int16Field) Eq(x int16) *EqMatcher {
+func (f Int16FieldSelector) Eq(x int16) *EqMatcher {
 	return EqInt16(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int16Field) Gt(x int16) *GtMatcher {
+func (f Int16FieldSelector) Gt(x int16) *GtMatcher {
 	return GtInt16(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int16Field) Gte(x int16) *GteMatcher {
+func (f Int16FieldSelector) Gte(x int16) *GteMatcher {
 	return GteInt16(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int16Field) Lt(x int16) *LtMatcher {
+func (f Int16FieldSelector) Lt(x int16) *LtMatcher {
 	return LtInt16(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int16Field) Lte(x int16) *LteMatcher {
+func (f Int16FieldSelector) Lte(x int16) *LteMatcher {
 	return LteInt16(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Int16FieldSelector) Value(x int16) *Scalar {
+	return &Scalar{
+		Type: field.Int16,
+		Data: field.EncodeInt16(x),
+	}
+}
+
+// Int16Value is an expression that evaluates to itself.
+type Int16Value int16
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Int16Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Int16,
+		Data: field.EncodeInt16(int16(v)),
+	}, nil
 }
 
 // EqInt32 matches if x is equal to the field selected by f.
@@ -881,40 +1101,60 @@ func LteInt32(f FieldSelector, x int32) *LteMatcher {
 	}
 }
 
-// Int32Field is a type safe selector that allows to compare values with fields
+// Int32FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Int32Field struct {
+type Int32FieldSelector struct {
 	FieldSelector
 }
 
-// NewInt32Field creates a typed FieldSelector for fields of type int32.
-func NewInt32Field(name string) Int32Field {
-	return Int32Field{FieldSelector: Field(name)}
+// Int32Field creates a typed FieldSelector for fields of type int32.
+func Int32Field(name string) Int32FieldSelector {
+	return Int32FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int32Field) Eq(x int32) *EqMatcher {
+func (f Int32FieldSelector) Eq(x int32) *EqMatcher {
 	return EqInt32(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int32Field) Gt(x int32) *GtMatcher {
+func (f Int32FieldSelector) Gt(x int32) *GtMatcher {
 	return GtInt32(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int32Field) Gte(x int32) *GteMatcher {
+func (f Int32FieldSelector) Gte(x int32) *GteMatcher {
 	return GteInt32(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int32Field) Lt(x int32) *LtMatcher {
+func (f Int32FieldSelector) Lt(x int32) *LtMatcher {
 	return LtInt32(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int32Field) Lte(x int32) *LteMatcher {
+func (f Int32FieldSelector) Lte(x int32) *LteMatcher {
 	return LteInt32(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Int32FieldSelector) Value(x int32) *Scalar {
+	return &Scalar{
+		Type: field.Int32,
+		Data: field.EncodeInt32(x),
+	}
+}
+
+// Int32Value is an expression that evaluates to itself.
+type Int32Value int32
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Int32Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Int32,
+		Data: field.EncodeInt32(int32(v)),
+	}, nil
 }
 
 // EqInt64 matches if x is equal to the field selected by f.
@@ -957,40 +1197,60 @@ func LteInt64(f FieldSelector, x int64) *LteMatcher {
 	}
 }
 
-// Int64Field is a type safe selector that allows to compare values with fields
+// Int64FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Int64Field struct {
+type Int64FieldSelector struct {
 	FieldSelector
 }
 
-// NewInt64Field creates a typed FieldSelector for fields of type int64.
-func NewInt64Field(name string) Int64Field {
-	return Int64Field{FieldSelector: Field(name)}
+// Int64Field creates a typed FieldSelector for fields of type int64.
+func Int64Field(name string) Int64FieldSelector {
+	return Int64FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Int64Field) Eq(x int64) *EqMatcher {
+func (f Int64FieldSelector) Eq(x int64) *EqMatcher {
 	return EqInt64(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Int64Field) Gt(x int64) *GtMatcher {
+func (f Int64FieldSelector) Gt(x int64) *GtMatcher {
 	return GtInt64(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Int64Field) Gte(x int64) *GteMatcher {
+func (f Int64FieldSelector) Gte(x int64) *GteMatcher {
 	return GteInt64(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Int64Field) Lt(x int64) *LtMatcher {
+func (f Int64FieldSelector) Lt(x int64) *LtMatcher {
 	return LtInt64(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Int64Field) Lte(x int64) *LteMatcher {
+func (f Int64FieldSelector) Lte(x int64) *LteMatcher {
 	return LteInt64(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Int64FieldSelector) Value(x int64) *Scalar {
+	return &Scalar{
+		Type: field.Int64,
+		Data: field.EncodeInt64(x),
+	}
+}
+
+// Int64Value is an expression that evaluates to itself.
+type Int64Value int64
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Int64Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Int64,
+		Data: field.EncodeInt64(int64(v)),
+	}, nil
 }
 
 // EqFloat32 matches if x is equal to the field selected by f.
@@ -1033,40 +1293,60 @@ func LteFloat32(f FieldSelector, x float32) *LteMatcher {
 	}
 }
 
-// Float32Field is a type safe selector that allows to compare values with fields
+// Float32FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Float32Field struct {
+type Float32FieldSelector struct {
 	FieldSelector
 }
 
-// NewFloat32Field creates a typed FieldSelector for fields of type float32.
-func NewFloat32Field(name string) Float32Field {
-	return Float32Field{FieldSelector: Field(name)}
+// Float32Field creates a typed FieldSelector for fields of type float32.
+func Float32Field(name string) Float32FieldSelector {
+	return Float32FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Float32Field) Eq(x float32) *EqMatcher {
+func (f Float32FieldSelector) Eq(x float32) *EqMatcher {
 	return EqFloat32(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Float32Field) Gt(x float32) *GtMatcher {
+func (f Float32FieldSelector) Gt(x float32) *GtMatcher {
 	return GtFloat32(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Float32Field) Gte(x float32) *GteMatcher {
+func (f Float32FieldSelector) Gte(x float32) *GteMatcher {
 	return GteFloat32(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Float32Field) Lt(x float32) *LtMatcher {
+func (f Float32FieldSelector) Lt(x float32) *LtMatcher {
 	return LtFloat32(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Float32Field) Lte(x float32) *LteMatcher {
+func (f Float32FieldSelector) Lte(x float32) *LteMatcher {
 	return LteFloat32(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Float32FieldSelector) Value(x float32) *Scalar {
+	return &Scalar{
+		Type: field.Float32,
+		Data: field.EncodeFloat32(x),
+	}
+}
+
+// Float32Value is an expression that evaluates to itself.
+type Float32Value float32
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Float32Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Float32,
+		Data: field.EncodeFloat32(float32(v)),
+	}, nil
 }
 
 // EqFloat64 matches if x is equal to the field selected by f.
@@ -1109,40 +1389,60 @@ func LteFloat64(f FieldSelector, x float64) *LteMatcher {
 	}
 }
 
-// Float64Field is a type safe selector that allows to compare values with fields
+// Float64FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
-type Float64Field struct {
+type Float64FieldSelector struct {
 	FieldSelector
 }
 
-// NewFloat64Field creates a typed FieldSelector for fields of type float64.
-func NewFloat64Field(name string) Float64Field {
-	return Float64Field{FieldSelector: Field(name)}
+// Float64Field creates a typed FieldSelector for fields of type float64.
+func Float64Field(name string) Float64FieldSelector {
+	return Float64FieldSelector{FieldSelector: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
-func (f Float64Field) Eq(x float64) *EqMatcher {
+func (f Float64FieldSelector) Eq(x float64) *EqMatcher {
 	return EqFloat64(f.FieldSelector, x)
 }
 
 // Gt matches if x is greater than the field selected by f.
-func (f Float64Field) Gt(x float64) *GtMatcher {
+func (f Float64FieldSelector) Gt(x float64) *GtMatcher {
 	return GtFloat64(f.FieldSelector, x)
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
-func (f Float64Field) Gte(x float64) *GteMatcher {
+func (f Float64FieldSelector) Gte(x float64) *GteMatcher {
 	return GteFloat64(f.FieldSelector, x)
 }
 
 // Lt matches if x is less than the field selected by f.
-func (f Float64Field) Lt(x float64) *LtMatcher {
+func (f Float64FieldSelector) Lt(x float64) *LtMatcher {
 	return LtFloat64(f.FieldSelector, x)
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
-func (f Float64Field) Lte(x float64) *LteMatcher {
+func (f Float64FieldSelector) Lte(x float64) *LteMatcher {
 	return LteFloat64(f.FieldSelector, x)
+}
+
+// Value returns a scalar that can be used as an expression.
+func (f Float64FieldSelector) Value(x float64) *Scalar {
+	return &Scalar{
+		Type: field.Float64,
+		Data: field.EncodeFloat64(x),
+	}
+}
+
+// Float64Value is an expression that evaluates to itself.
+type Float64Value float64
+
+// Eval implements the Expr interface. It returns a scalar after encoding v to
+// the right type.
+func (v Float64Value) Eval(EvalContext) (Scalar, error) {
+	return Scalar{
+		Type: field.Float64,
+		Data: field.EncodeFloat64(float64(v)),
+	}, nil
 }
 
 

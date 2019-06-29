@@ -17,7 +17,7 @@ const querySelectorStructTmpl = `
 // {{$structName}}QuerySelector provides helpers for selecting fields from the {{$structName}} structure.
 type {{$structName}}QuerySelector struct{
 {{- range $i, $a := .Fields }}
-	{{$a.Name}} query.{{.Type}}Field
+	{{$a.Name}} query.{{.Type}}FieldSelector
 {{- end}}
 }
 {{ end }}
@@ -36,7 +36,7 @@ func new{{.ExportedName}}QuerySelector() {{$structName}}QuerySelector {
 {{- end}}
 	return {{$structName}}QuerySelector{
 		{{- range $i, $a := .Fields }}
-			{{$a.Name}}: query.New{{.Type}}Field("{{$a.Name}}"),
+			{{$a.Name}}: query.{{.Type}}Field("{{$a.Name}}"),
 		{{- end}}
 	}
 }

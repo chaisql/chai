@@ -2,9 +2,11 @@ package query
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 )
@@ -174,4 +176,152 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 	})
 
 	return b.Err()
+}
+
+type InsertStmt struct {
+	tableSelector TableSelector
+	fieldNames    []string
+	values        []Expr
+}
+
+func Insert() InsertStmt {
+	return InsertStmt{}
+}
+
+func (i InsertStmt) Into(tableSelector TableSelector) InsertStmt {
+	i.tableSelector = tableSelector
+	return i
+}
+
+func (i InsertStmt) Fields(fieldNames ...string) InsertStmt {
+	i.fieldNames = append(i.fieldNames, fieldNames...)
+	return i
+}
+
+func (i InsertStmt) Values(values ...Expr) InsertStmt {
+	i.values = append(i.values, values...)
+	return i
+}
+
+func (i InsertStmt) Run(tx *genji.Tx) ([]byte, error) {
+	if i.tableSelector == nil {
+		return nil, errors.New("missing table selector")
+	}
+
+	if i.values == nil {
+		return nil, errors.New("empty values")
+	}
+
+	t, err := i.tableSelector.SelectTable(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(i.fieldNames) == 0 {
+		return i.runWithoutSelectedFields(tx, t)
+	}
+
+	schema, schemaful := t.Schema()
+	if !schemaful {
+		return i.runSchemalessWithSelectedFields(tx, t)
+	}
+
+	return i.runSchemafulWithSelectedFields(tx, t, &schema)
+}
+
+func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) ([]byte, error) {
+	schema, schemaful := t.Schema()
+
+	if !schemaful {
+		return nil, errors.New("fields must be selected for schemaless tables")
+	}
+
+	var fb record.FieldBuffer
+
+	if len(schema.Fields) != len(i.values) {
+		return nil, fmt.Errorf("table %s has %d fields, got %d fields", i.tableSelector.Name(), len(schema.Fields), len(i.values))
+	}
+
+	for idx, sf := range schema.Fields {
+		sc, err := i.values[idx].Eval(EvalContext{
+			Tx: tx,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if sc.Type != sf.Type {
+			return nil, fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)
+		}
+
+		fb.Add(field.Field{
+			Name: sf.Name,
+			Type: sf.Type,
+			Data: sc.Data,
+		})
+	}
+
+	return t.Insert(&fb)
+}
+
+func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table) ([]byte, error) {
+	var fb record.FieldBuffer
+
+	if len(i.fieldNames) != len(i.values) {
+		return nil, fmt.Errorf("%d values for %d fields", len(i.values), len(i.fieldNames))
+	}
+
+	for idx, name := range i.fieldNames {
+		sc, err := i.values[idx].Eval(EvalContext{
+			Tx: tx,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		fb.Add(field.Field{
+			Name: name,
+			Type: sc.Type,
+			Data: sc.Data,
+		})
+	}
+
+	return t.Insert(&fb)
+}
+
+func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table, schema *record.Schema) ([]byte, error) {
+	var fb record.FieldBuffer
+
+	for _, sf := range schema.Fields {
+		var found bool
+		for idx, name := range i.fieldNames {
+			if name != sf.Name {
+				continue
+			}
+
+			sc, err := i.values[idx].Eval(EvalContext{
+				Tx: tx,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if sc.Type != sf.Type {
+				return nil, fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)
+			}
+			fb.Add(field.Field{
+				Name: name,
+				Type: sc.Type,
+				Data: sc.Data,
+			})
+			found = true
+		}
+
+		if !found {
+			zv := field.ZeroValue(sf.Type)
+			zv.Name = sf.Name
+			fb.Add(zv)
+		}
+	}
+
+	return t.Insert(&fb)
 }

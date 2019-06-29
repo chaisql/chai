@@ -4,7 +4,6 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 // A FieldSelector can extract a field from a record.
@@ -24,7 +23,7 @@ type FieldSelector interface {
 // TableSelector can select a table from a transaction.
 type TableSelector interface {
 	// SelectTable select a table by calling the Table method of the transaction.
-	SelectTable(*genji.Tx) (table.Table, error)
+	SelectTable(*genji.Tx) (*genji.Table, error)
 	// Name of the selected table.
 	Name() string
 }
@@ -94,6 +93,11 @@ func (t Table) Name() string {
 }
 
 // SelectTable selects the table t from tx.
-func (t Table) SelectTable(tx *genji.Tx) (table.Table, error) {
-	return tx.Table(string(t))
+func (t Table) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+	tb, err := tx.Table(string(t))
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.(*genji.Table), nil
 }
