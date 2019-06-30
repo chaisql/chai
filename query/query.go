@@ -11,15 +11,18 @@ import (
 	"github.com/asdine/genji/table"
 )
 
+// Result of a query.
 type Result struct {
 	t   table.Reader
 	err error
 }
 
+// Err returns a non nil error if an error occured during the query.
 func (q Result) Err() error {
 	return q.err
 }
 
+// Scan takes a table scanner and passes it the result table.
 func (q Result) Scan(s table.Scanner) error {
 	if q.err != nil {
 		return q.err
@@ -28,10 +31,13 @@ func (q Result) Scan(s table.Scanner) error {
 	return s.ScanTable(q.t)
 }
 
+// Table returns the table result.
 func (q Result) Table() table.Reader {
 	return q.t
 }
 
+// SelectStmt is a DSL that allows creating a full Select query.
+// It is typically created using the Select function.
 type SelectStmt struct {
 	fieldSelectors []FieldSelector
 	tableSelector  TableSelector
@@ -45,6 +51,10 @@ func Select(selectors ...FieldSelector) SelectStmt {
 	return SelectStmt{fieldSelectors: selectors}
 }
 
+// Run the Select query within tx.
+// If Where was called, records will be filtered depending on the result of the
+// given expression. If the Where expression implements the IndexMatcher interface,
+// the MatchIndex method will be called instead of the Eval one.
 func (q SelectStmt) Run(tx *genji.Tx) Result {
 	if q.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
@@ -101,11 +111,14 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
+// Calling this method is optional.
 func (q SelectStmt) Where(e Expr) SelectStmt {
 	q.whereExpr = e
 	return q
 }
 
+// From indicates which table to select from.
+// Calling this method before Run is mandatory.
 func (q SelectStmt) From(tableSelector TableSelector) SelectStmt {
 	q.tableSelector = tableSelector
 	return q
@@ -123,25 +136,36 @@ func whereClause(tx *genji.Tx, t table.Reader, e Expr) (table.Reader, error) {
 	return b.Reader, b.Err()
 }
 
+// DeleteStmt is a DSL that allows creating a full Delete query.
+// It is typically created using the Delete function.
 type DeleteStmt struct {
 	tableSelector TableSelector
 	whereExpr     Expr
 }
 
+// Delete creates a DSL equivalent to the SQL Delete command.
 func Delete() DeleteStmt {
 	return DeleteStmt{}
 }
 
-func (s DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
-	s.tableSelector = tableSelector
-	return s
+// From indicates which table to select from.
+// Calling this method before Run is mandatory.
+func (d DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
+	d.tableSelector = tableSelector
+	return d
 }
 
-func (s DeleteStmt) Where(e Expr) DeleteStmt {
-	s.whereExpr = e
-	return s
+// Where uses e to filter records if it evaluates to a falsy value.
+// Calling this method is optional.
+func (d DeleteStmt) Where(e Expr) DeleteStmt {
+	d.whereExpr = e
+	return d
 }
 
+// Run the Delete query within tx.
+// If Where was called, records will be filtered depending on the result of the
+// given expression. If the Where expression implements the IndexMatcher interface,
+// the MatchIndex method will be called instead of the Eval one.
 func (d DeleteStmt) Run(tx *genji.Tx) error {
 	if d.tableSelector == nil {
 		return errors.New("missing table selector")
@@ -182,31 +206,48 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 	return b.Err()
 }
 
+// InsertStmt is a DSL that allows creating a full Insert query.
+// It is typically created using the Insert function.
 type InsertStmt struct {
 	tableSelector TableSelector
 	fieldNames    []string
 	values        []Expr
 }
 
+// Insert creates a DSL equivalent to the SQL Insert command.
 func Insert() InsertStmt {
 	return InsertStmt{}
 }
 
+// Into indicates in which table to write the new records.
+// Calling this method before Run is mandatory.
 func (i InsertStmt) Into(tableSelector TableSelector) InsertStmt {
 	i.tableSelector = tableSelector
 	return i
 }
 
+// Fields to associate with values passed to the Values method.
 func (i InsertStmt) Fields(fieldNames ...string) InsertStmt {
 	i.fieldNames = append(i.fieldNames, fieldNames...)
 	return i
 }
 
+// Values to associate with the record fields.
 func (i InsertStmt) Values(values ...Expr) InsertStmt {
 	i.values = append(i.values, values...)
 	return i
 }
 
+// Run the Insert query within tx.
+// For schemaless tables:
+// - If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
+// - If the Fields method wasn't called, this will return an error
+//
+// For schemafull tables:
+// - If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
+// Missing fields will be fields with their zero values.
+// - If the Fields method wasn't called, this number of values must match the number of fields of the schema, and each value will be stored in
+// each field of the schema, in order.
 func (i InsertStmt) Run(tx *genji.Tx) Result {
 	if i.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
