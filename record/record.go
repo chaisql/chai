@@ -109,3 +109,36 @@ func DumpRecord(w io.Writer, r Record) error {
 		return err
 	})
 }
+
+// NewFromMap creates a record from a map.
+// Due to the way maps are designed, iteration order is not guaranteed.
+func NewFromMap(m map[string]interface{}) Record {
+	return mapRecord(m)
+}
+
+type mapRecord map[string]interface{}
+
+var _ Record = (*mapRecord)(nil)
+
+func (m mapRecord) Iterate(fn func(field.Field) error) error {
+	for k, v := range m {
+		f, err := field.New(k, v)
+		if err != nil {
+			return err
+		}
+
+		err = fn(f)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m mapRecord) Field(name string) (field.Field, error) {
+	v, ok := m[name]
+	if !ok {
+		return field.Field{}, fmt.Errorf("field %q not found", name)
+	}
+	return field.New(name, v)
+}
