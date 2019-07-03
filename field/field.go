@@ -4,6 +4,7 @@ package field
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 )
 
@@ -109,6 +110,44 @@ type Field struct {
 	Name string
 	Type Type
 	Data []byte
+}
+
+// New creates a field whose type is infered from x.
+func New(name string, x interface{}) (Field, error) {
+	switch v := x.(type) {
+	case []byte:
+		return NewBytes(name, v), nil
+	case string:
+		return NewString(name, v), nil
+	case bool:
+		return NewBool(name, v), nil
+	case uint:
+		return NewUint(name, v), nil
+	case uint8:
+		return NewUint8(name, v), nil
+	case uint16:
+		return NewUint16(name, v), nil
+	case uint32:
+		return NewUint32(name, v), nil
+	case uint64:
+		return NewUint64(name, v), nil
+	case int:
+		return NewInt(name, v), nil
+	case int8:
+		return NewInt8(name, v), nil
+	case int16:
+		return NewInt16(name, v), nil
+	case int32:
+		return NewInt32(name, v), nil
+	case int64:
+		return NewInt64(name, v), nil
+	case float32:
+		return NewFloat32(name, v), nil
+	case float64:
+		return NewFloat64(name, v), nil
+	default:
+		return Field{}, fmt.Errorf("unsupported type %t", x)
+	}
 }
 
 // NewBytes encodes x and returns a field.
