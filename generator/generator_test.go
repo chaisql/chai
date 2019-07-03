@@ -436,3 +436,25 @@ func TestGeneratedRecords(t *testing.T) {
 		require.Len(t, res, 5)
 	})
 }
+
+func BenchmarkGeneratedRecord(b *testing.B) {
+	db, err := genji.New(memory.NewEngine())
+	require.NoError(b, err)
+	store := testdata.NewBasicStore(db)
+
+	err = store.Init()
+	require.NoError(b, err)
+
+	id, err := store.Insert(&testdata.Basic{
+		A: "a",
+		B: 1000,
+		C: 2000,
+		D: 3000,
+	})
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.Get(id)
+	}
+}
