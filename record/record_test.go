@@ -26,3 +26,41 @@ func TestFieldBuffer(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, i)
 }
+
+func TestNewFromMap(t *testing.T) {
+	m := map[string]interface{}{
+		"Name": "foo",
+		"Age":  10,
+	}
+
+	rec := record.NewFromMap(m)
+
+	t.Run("Iterate", func(t *testing.T) {
+		counter := make(map[string]int)
+
+		err := rec.Iterate(func(f field.Field) error {
+			counter[f.Name]++
+			v, err := field.Decode(f)
+			require.NoError(t, err)
+			require.Equal(t, m[f.Name], v)
+			return nil
+		})
+		require.NoError(t, err)
+		require.Len(t, counter, 2)
+		require.Equal(t, counter["Name"], 1)
+		require.Equal(t, counter["Age"], 1)
+	})
+
+	t.Run("Field", func(t *testing.T) {
+		f, err := rec.Field("Name")
+		require.NoError(t, err)
+		require.Equal(t, field.Field{Name: "Name", Type: field.String, Data: []byte("foo")}, f)
+
+		f, err = rec.Field("Age")
+		require.NoError(t, err)
+		require.Equal(t, field.Field{Name: "Age", Type: field.Int, Data: field.EncodeInt(10)}, f)
+
+		_, err = rec.Field("bar")
+		require.Error(t, err)
+	})
+}
