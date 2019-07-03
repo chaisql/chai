@@ -126,9 +126,23 @@ func (b *BasicStore) Insert(record *Basic) (rowid []byte, err error) {
 
 // Get a record using its primary key.
 func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
+	rec, err := b.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := rec.(*Basic); ok {
+		return v, nil
+	}
+
 	var record Basic
 
-	return &record, b.Store.Get(rowid, &record)
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 // Delete a record using its primary key.
@@ -331,9 +345,23 @@ func (b *basicStore) Insert(record *basic) (rowid []byte, err error) {
 
 // Get a record using its primary key.
 func (b *basicStore) Get(rowid []byte) (*basic, error) {
+	rec, err := b.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := rec.(*basic); ok {
+		return v, nil
+	}
+
 	var record basic
 
-	return &record, b.Store.Get(rowid, &record)
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 // Delete a record using its primary key.
@@ -552,9 +580,23 @@ func (b *BasicSchemafulStore) Insert(record *BasicSchemaful) (rowid []byte, err 
 
 // Get a record using its primary key.
 func (b *BasicSchemafulStore) Get(rowid []byte) (*BasicSchemaful, error) {
+	rec, err := b.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := rec.(*BasicSchemaful); ok {
+		return v, nil
+	}
+
 	var record BasicSchemaful
 
-	return &record, b.Store.Get(rowid, &record)
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 // Delete a record using its primary key.
@@ -735,10 +777,24 @@ func (p *PkStore) Insert(record *Pk) (err error) {
 
 // Get a record using its primary key.
 func (p *PkStore) Get(pk int64) (*Pk, error) {
-	var record Pk
 	rowid := field.EncodeInt64(pk)
+	rec, err := p.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
 
-	return &record, p.Store.Get(rowid, &record)
+	if v, ok := rec.(*Pk); ok {
+		return v, nil
+	}
+
+	var record Pk
+
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 // Delete a record using its primary key.
@@ -915,9 +971,23 @@ func (i *IndexedStore) Insert(record *Indexed) (rowid []byte, err error) {
 
 // Get a record using its primary key.
 func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
+	rec, err := i.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := rec.(*Indexed); ok {
+		return v, nil
+	}
+
 	var record Indexed
 
-	return &record, i.Store.Get(rowid, &record)
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 // Delete a record using its primary key.

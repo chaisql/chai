@@ -172,15 +172,12 @@ func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
 }
 
 // Get a record by rowid and scans it into the scanner.
-func (s *Store) Get(rowid []byte, scanner record.Scanner) error {
-	return s.ViewTable(func(t *Table) error {
-		rec, err := t.Record(rowid)
-		if err != nil {
-			return err
-		}
-
-		return scanner.ScanRecord(rec)
+func (s *Store) Get(rowid []byte) (rec record.Record, err error) {
+	err = s.ViewTable(func(t *Table) error {
+		rec, err = t.Record(rowid)
+		return err
 	})
+	return
 }
 
 // Delete a record by rowid.

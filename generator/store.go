@@ -113,14 +113,25 @@ const storeGetTmpl = `
 func ({{$fl}} *{{$structName}}Store) Get(rowid []byte) (*{{$structName}}, error) {
 {{- else}}
 func ({{$fl}} *{{$structName}}Store) Get(pk {{.Pk.GoType}}) (*{{$structName}}, error) {
-{{- end}}
-	var record {{$structName}}
-
-	{{- if ne .Pk.Name ""}}
 		rowid := field.Encode{{.Pk.Type}}(pk)
 	{{- end}}
+	rec, err := {{$fl}}.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
 
-	return &record, {{$fl}}.Store.Get(rowid, &record)
+	if v, ok := rec.(*{{$structName}}); ok {
+		return v, nil
+	}
+
+	var record {{$structName}}
+
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 {{ end }}
 `

@@ -121,10 +121,24 @@ func (u *UserStore) Insert(record *User) (err error) {
 
 // Get a record using its primary key.
 func (u *UserStore) Get(pk int64) (*User, error) {
-	var record User
 	rowid := field.EncodeInt64(pk)
+	rec, err := u.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
 
-	return &record, u.Store.Get(rowid, &record)
+	if v, ok := rec.(*User); ok {
+		return v, nil
+	}
+
+	var record User
+
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 // Delete a record using its primary key.
