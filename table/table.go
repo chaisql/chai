@@ -1,8 +1,10 @@
 package table
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"sync/atomic"
 
@@ -172,4 +174,48 @@ func (rb *RecordBuffer) Truncate() error {
 	}
 
 	return nil
+}
+
+type schemaer interface {
+	Schema() (schema record.Schema, schemaful bool)
+}
+
+// Dump table information to w, structured as a csv .
+func Dump(w io.Writer, t Reader) error {
+	buf := bufio.NewWriter(w)
+
+	var schema record.Schema
+	var schemaful bool
+
+	if s, ok := t.(schemaer); ok {
+		schema, schemaful = s.Schema()
+	}
+
+	if schemaful {
+		fmt.Fprintf(buf, "%s\n", schema.String())
+	}
+
+	return t.Iterate(func(rowid []byte, r record.Record) error {
+		first := true
+		err := r.Iterate(func(f field.Field) error {
+			if !first {
+				buf.WriteString(", ")
+			}
+			first = false
+
+			v, err := field.Decode(f)
+			if schemaful {
+				fmt.Fprintf(buf, "%#v", v)
+			} else {
+				fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
+			}
+			return err
+		})
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(buf, "\n")
+		return nil
+	})
 }

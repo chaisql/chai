@@ -1,7 +1,6 @@
 package genji
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/asdine/genji/engine"
@@ -350,45 +349,6 @@ func (t Table) RenameField(oldName, newName string) error {
 	sf.Name = newName
 	t.schema.Fields.Replace(oldName, sf)
 	return t.schemas.Replace(t.name, t.schema)
-}
-
-// String displays the table as a csv compatible string.
-func (t Table) String() string {
-	var buf bytes.Buffer
-
-	if t.schema != nil {
-		fmt.Fprintf(&buf, "%s\n", t.schema.String())
-	}
-
-	err := t.Iterate(func(rowid []byte, r record.Record) error {
-		first := true
-		err := r.Iterate(func(f field.Field) error {
-			if !first {
-				buf.WriteString(", ")
-			}
-			first = false
-
-			v, err := field.Decode(f)
-			if t.schema != nil {
-				fmt.Fprintf(&buf, "%#v", v)
-			} else {
-				fmt.Fprintf(&buf, "%s(%s): %#v", f.Name, f.Type, v)
-			}
-			return err
-		})
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintf(&buf, "\n")
-		return nil
-	})
-
-	if err != nil {
-		return err.Error()
-	}
-
-	return buf.String()
 }
 
 // Schema returns the schema of the table and sets the boolean to true.
