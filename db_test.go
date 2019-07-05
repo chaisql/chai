@@ -1,6 +1,7 @@
 package genji_test
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
 )
 
@@ -124,8 +126,10 @@ name(String): "John 2", age(Int): 12
 					require.NotNil(t, rowid)
 				}
 
-				s := tb.(*genji.Table).String()
-				require.Equal(t, test.expected, s)
+				var buf bytes.Buffer
+				err = table.Dump(&buf, tb)
+				require.NoError(t, err)
+				require.Equal(t, test.expected, buf.String())
 				return nil
 			})
 			require.NoError(t, err)
