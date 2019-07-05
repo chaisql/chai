@@ -433,6 +433,10 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		return errors.New("missing table selector")
 	}
 
+	if len(u.pairs) == 0 {
+		return errors.New("Set method not called")
+	}
+
 	t, err := u.tableSelector.SelectTable(tx)
 	if err != nil {
 		return err
@@ -497,6 +501,11 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 			f.Type = s.Type
 			f.Data = s.Data
 			err = fb.Replace(f.Name, f)
+			if err != nil {
+				return err
+			}
+
+			err = t.Replace(rowid, &fb)
 			if err != nil {
 				return err
 			}

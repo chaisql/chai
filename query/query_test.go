@@ -245,6 +245,50 @@ func TestInsert(t *testing.T) {
 	})
 }
 
+func TestUpdate(t *testing.T) {
+	tests := []struct {
+		name       string
+		withIndex  bool
+		withSchema bool
+	}{
+		{"index/schemaless", true, false},
+		{"index/schemaful", true, true},
+		{"noindex/schemaless", false, false},
+		{"noindex/schemaful", false, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx, cleanup := createTable(t, 10, test.withIndex, test.withSchema)
+			defer cleanup()
+
+			err := Update(Table("test")).Set("age", IntValue(20)).Where(GtInt(Field("age"), 20)).Run(tx)
+			require.NoError(t, err)
+
+			tb, err := tx.Table("test")
+			require.NoError(t, err)
+
+			b := table.NewBrowser(tb)
+			count, err := b.Count()
+			require.NoError(t, err)
+			require.Equal(t, 10, count)
+
+			err = b.ForEach(func(rowid []byte, r record.Record) error {
+				f, err := r.Field("age")
+				require.NoError(t, err)
+				age, err := field.DecodeInt(f.Data)
+				require.NoError(t, err)
+				fmt.Println(age)
+				require.True(t, age <= 20)
+				return nil
+			}).Err()
+			require.NoError(t, err)
+		})
+
+	}
+
+}
+
 func BenchmarkSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
@@ -258,6 +302,5 @@ func BenchmarkSelect(b *testing.B) {
 			b.StopTimer()
 			tx.Rollback()
 		})
-
 	}
 }
