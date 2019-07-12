@@ -195,7 +195,7 @@ func Dump(w io.Writer, t Reader) error {
 		fmt.Fprintf(buf, "%s\n", schema.String())
 	}
 
-	return t.Iterate(func(rowid []byte, r record.Record) error {
+	err := t.Iterate(func(rowid []byte, r record.Record) error {
 		first := true
 		err := r.Iterate(func(f field.Field) error {
 			if !first {
@@ -218,4 +218,9 @@ func Dump(w io.Writer, t Reader) error {
 		fmt.Fprintf(buf, "\n")
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	return buf.Flush()
 }
