@@ -94,7 +94,7 @@ func (s *Store) ViewTable(fn func(*Table) error) error {
 			return err
 		}
 
-		return fn(tb.(*Table))
+		return fn(tb)
 	})
 }
 
@@ -111,7 +111,7 @@ func (s *Store) UpdateTable(fn func(*Table) error) error {
 			return err
 		}
 
-		return fn(tb.(*Table))
+		return fn(tb)
 	})
 }
 

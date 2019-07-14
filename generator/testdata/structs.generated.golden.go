@@ -125,6 +125,7 @@ func (b *BasicStore) Insert(record *Basic) (rowid []byte, err error) {
 }
 
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 	rec, err := b.Store.Get(rowid)
 	if err != nil {
@@ -146,6 +147,7 @@ func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 }
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (b *BasicStore) Delete(rowid []byte) error {
 	return b.Store.Delete(rowid)
 }
@@ -344,6 +346,7 @@ func (b *basicStore) Insert(record *basic) (rowid []byte, err error) {
 }
 
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (b *basicStore) Get(rowid []byte) (*basic, error) {
 	rec, err := b.Store.Get(rowid)
 	if err != nil {
@@ -365,6 +368,7 @@ func (b *basicStore) Get(rowid []byte) (*basic, error) {
 }
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (b *basicStore) Delete(rowid []byte) error {
 	return b.Store.Delete(rowid)
 }
@@ -579,6 +583,7 @@ func (b *BasicSchemafulStore) Insert(record *BasicSchemaful) (rowid []byte, err 
 }
 
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (b *BasicSchemafulStore) Get(rowid []byte) (*BasicSchemaful, error) {
 	rec, err := b.Store.Get(rowid)
 	if err != nil {
@@ -600,6 +605,7 @@ func (b *BasicSchemafulStore) Get(rowid []byte) (*BasicSchemaful, error) {
 }
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (b *BasicSchemafulStore) Delete(rowid []byte) error {
 	return b.Store.Delete(rowid)
 }
@@ -776,6 +782,7 @@ func (p *PkStore) Insert(record *Pk) (err error) {
 }
 
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (p *PkStore) Get(pk int64) (*Pk, error) {
 	rowid := field.EncodeInt64(pk)
 	rec, err := p.Store.Get(rowid)
@@ -798,6 +805,7 @@ func (p *PkStore) Get(pk int64) (*Pk, error) {
 }
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (p *PkStore) Delete(pk int64) error {
 	rowid := field.EncodeInt64(pk)
 	return p.Store.Delete(rowid)
@@ -970,6 +978,7 @@ func (i *IndexedStore) Insert(record *Indexed) (rowid []byte, err error) {
 }
 
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
 	rec, err := i.Store.Get(rowid)
 	if err != nil {
@@ -991,6 +1000,7 @@ func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
 }
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (i *IndexedStore) Delete(rowid []byte) error {
 	return i.Store.Delete(rowid)
 }

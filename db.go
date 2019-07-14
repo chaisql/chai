@@ -98,7 +98,7 @@ func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
 }
 
 // Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
-func (tx Tx) Table(name string) (table.Table, error) {
+func (tx Tx) Table(name string) (*Table, error) {
 	tb, err := tx.Transaction.Table(name, record.NewCodec())
 	if err != nil {
 		return nil, err
