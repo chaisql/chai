@@ -265,7 +265,6 @@ func (t Table) AddField(f field.Field) error {
 		return nil
 	}
 
-	t.schema.Fields.Add(f)
 	return t.schemas.Replace(t.name, t.schema)
 }
 
