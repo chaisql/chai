@@ -109,6 +109,7 @@ const storeGetTmpl = `
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 {{- if eq .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Get(rowid []byte) (*{{$structName}}, error) {
 {{- else}}
@@ -142,6 +143,7 @@ const storeDeleteTmpl = `
 {{- $structName := .Name -}}
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 {{- if ne .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Delete(pk {{.Pk.GoType}}) error {
 	rowid := field.Encode{{.Pk.Type}}(pk)

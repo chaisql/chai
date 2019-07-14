@@ -171,7 +171,8 @@ func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
 	return
 }
 
-// Get a record by rowid and scans it into the scanner.
+// Get a record by rowid.
+// If the rowid doesn't exist, returns table.ErrRecordNotFound.
 func (s *Store) Get(rowid []byte) (rec record.Record, err error) {
 	err = s.ViewTable(func(t *Table) error {
 		rec, err = t.Record(rowid)
@@ -181,6 +182,7 @@ func (s *Store) Get(rowid []byte) (rec record.Record, err error) {
 }
 
 // Delete a record by rowid.
+// If the rowid doesn't exist, returns table.ErrRecordNotFound.
 func (s *Store) Delete(rowid []byte) error {
 	return s.UpdateTable(func(t *Table) error {
 		return t.Delete(rowid)
