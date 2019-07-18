@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
@@ -253,16 +254,12 @@ func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
 		return err
 	}
 
-	if !strings.HasPrefix(unquoted, "genji:") {
+	v, ok := reflect.StructTag(unquoted).Lookup("genji")
+	if !ok {
 		return nil
 	}
 
-	rawOpts, err := strconv.Unquote(strings.TrimPrefix(unquoted, "genji:"))
-	if err != nil {
-		return err
-	}
-
-	gtags := strings.Split(rawOpts, ",")
+	gtags := strings.Split(v, ",")
 
 	for _, gtag := range gtags {
 		switch gtag {

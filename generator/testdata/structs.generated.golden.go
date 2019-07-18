@@ -1078,6 +1078,242 @@ func (i *IndexedResult) ScanTable(tr table.Reader) error {
 	})
 }
 
+// Field implements the field method of the record.Record interface.
+func (m *MultipleTags) Field(name string) (field.Field, error) {
+	switch name {
+	case "A":
+		return field.Field{
+			Name: "A",
+			Type: field.String,
+			Data: field.EncodeString(m.A),
+		}, nil
+	case "B":
+		return field.Field{
+			Name: "B",
+			Type: field.Int64,
+			Data: field.EncodeInt64(m.B),
+		}, nil
+	case "C":
+		return field.Field{
+			Name: "C",
+			Type: field.Float32,
+			Data: field.EncodeFloat32(m.C),
+		}, nil
+	case "D":
+		return field.Field{
+			Name: "D",
+			Type: field.Bool,
+			Data: field.EncodeBool(m.D),
+		}, nil
+	}
+
+	return field.Field{}, errors.New("unknown field")
+}
+
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (m *MultipleTags) Iterate(fn func(field.Field) error) error {
+	var err error
+	var f field.Field
+
+	f, _ = m.Field("A")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = m.Field("B")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = m.Field("C")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	f, _ = m.Field("D")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
+func (m *MultipleTags) ScanRecord(rec record.Record) error {
+	return rec.Iterate(func(f field.Field) error {
+		var err error
+
+		switch f.Name {
+		case "A":
+			m.A, err = field.DecodeString(f.Data)
+		case "B":
+			m.B, err = field.DecodeInt64(f.Data)
+		case "C":
+			m.C, err = field.DecodeFloat32(f.Data)
+		case "D":
+			m.D, err = field.DecodeBool(f.Data)
+		}
+		return err
+	})
+}
+
+// Pk returns the primary key. It implements the table.Pker interface.
+func (m *MultipleTags) Pk() ([]byte, error) {
+	return field.EncodeString(m.A), nil
+}
+
+// MultipleTagsStore manages the table. It provides several typed helpers
+// that simplify common operations.
+type MultipleTagsStore struct {
+	*genji.Store
+}
+
+// NewMultipleTagsStore creates a MultipleTagsStore.
+func NewMultipleTagsStore(db *genji.DB) *MultipleTagsStore {
+	var schema *record.Schema
+
+	var indexes []string
+	indexes = append(indexes, "D")
+
+	return &MultipleTagsStore{Store: genji.NewStore(db, "MultipleTags", schema, indexes)}
+}
+
+// NewMultipleTagsStoreWithTx creates a MultipleTagsStore valid for the lifetime of the given transaction.
+func NewMultipleTagsStoreWithTx(tx *genji.Tx) *MultipleTagsStore {
+	var schema *record.Schema
+
+	var indexes []string
+
+	indexes = append(indexes, "D")
+
+	return &MultipleTagsStore{Store: genji.NewStoreWithTx(tx, "MultipleTags", schema, indexes)}
+}
+
+// Insert a record in the table and return the primary key.
+func (m *MultipleTagsStore) Insert(record *MultipleTags) (err error) {
+	_, err = m.Store.Insert(record)
+	return err
+}
+
+// Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
+func (m *MultipleTagsStore) Get(pk string) (*MultipleTags, error) {
+	rowid := field.EncodeString(pk)
+	rec, err := m.Store.Get(rowid)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := rec.(*MultipleTags); ok {
+		return v, nil
+	}
+
+	var record MultipleTags
+
+	err = record.ScanRecord(rec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
+}
+
+// Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
+func (m *MultipleTagsStore) Delete(pk string) error {
+	rowid := field.EncodeString(pk)
+	return m.Store.Delete(rowid)
+}
+
+// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
+func (m *MultipleTagsStore) List(offset, limit int) ([]MultipleTags, error) {
+	size := limit
+	if size == -1 {
+		size = 0
+	}
+	list := make([]MultipleTags, 0, size)
+	err := m.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+		var record MultipleTags
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+		list = append(list, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+// Replace the selected record by the given one.
+func (m *MultipleTagsStore) Replace(pk string, record *MultipleTags) error {
+	rowid := field.EncodeString(pk)
+	if record.A != pk {
+		record.A = pk
+	}
+	return m.Store.Replace(rowid, record)
+}
+
+// MultipleTagsQuerySelector provides helpers for selecting fields from the MultipleTags structure.
+type MultipleTagsQuerySelector struct {
+	A query.StringFieldSelector
+	B query.Int64FieldSelector
+	C query.Float32FieldSelector
+	D query.BoolFieldSelector
+}
+
+// NewMultipleTagsQuerySelector creates a MultipleTagsQuerySelector.
+func NewMultipleTagsQuerySelector() MultipleTagsQuerySelector {
+	return MultipleTagsQuerySelector{
+		A: query.StringField("A"),
+		B: query.Int64Field("B"),
+		C: query.Float32Field("C"),
+		D: query.BoolField("D"),
+	}
+}
+
+// Table returns a query.TableSelector for MultipleTags.
+func (*MultipleTagsQuerySelector) Table() query.TableSelector {
+	return query.Table("MultipleTags")
+}
+
+// All returns a list of all selectors for MultipleTags.
+func (s *MultipleTagsQuerySelector) All() []query.FieldSelector {
+	return []query.FieldSelector{
+		s.A,
+		s.B,
+		s.C,
+		s.D,
+	}
+}
+
+// MultipleTagsResult can be used to store the result of queries.
+// Selected fields must map the MultipleTags fields.
+type MultipleTagsResult []MultipleTags
+
+// ScanTable iterates over table.Reader and stores all the records in the slice.
+func (m *MultipleTagsResult) ScanTable(tr table.Reader) error {
+	return tr.Iterate(func(_ []byte, r record.Record) error {
+		var record MultipleTags
+		err := record.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		*m = append(*m, record)
+		return nil
+	})
+}
+
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (s *Sample) ScanRecord(rec record.Record) error {

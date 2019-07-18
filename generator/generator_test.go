@@ -32,6 +32,7 @@ func TestGenerate(t *testing.T) {
 			{"BasicSchemaful", true},
 			{"Pk", false},
 			{"Indexed", false},
+			{"MultipleTags", false},
 		}
 
 		results := []string{

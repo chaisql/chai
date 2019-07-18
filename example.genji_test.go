@@ -120,6 +120,7 @@ func (u *UserStore) Insert(record *User) (err error) {
 }
 
 // Get a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (u *UserStore) Get(pk int64) (*User, error) {
 	rowid := field.EncodeInt64(pk)
 	rec, err := u.Store.Get(rowid)
@@ -142,6 +143,7 @@ func (u *UserStore) Get(pk int64) (*User, error) {
 }
 
 // Delete a record using its primary key.
+// If the record doesn't exist, returns table.ErrRecordNotFound.
 func (u *UserStore) Delete(pk int64) error {
 	rowid := field.EncodeInt64(pk)
 	return u.Store.Delete(rowid)
