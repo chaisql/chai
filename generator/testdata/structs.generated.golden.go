@@ -328,7 +328,7 @@ func newBasicStore(db *genji.DB) *basicStore {
 
 	var indexes []string
 
-	return &basicStore{Store: genji.NewStore(db, "basic", schema, indexes)}
+	return &basicStore{Store: genji.NewStore(db, "Basic", schema, indexes)}
 }
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
@@ -337,7 +337,7 @@ func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 
 	var indexes []string
 
-	return &basicStore{Store: genji.NewStoreWithTx(tx, "basic", schema, indexes)}
+	return &basicStore{Store: genji.NewStoreWithTx(tx, "Basic", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.

@@ -219,6 +219,10 @@ func (rctx *recordContext) UnexportedName() string {
 	return rctx.Unexport(rctx.Name)
 }
 
+func (rctx *recordContext) TableName() string {
+	return rctx.ExportedName()
+}
+
 func (rctx *recordContext) ExportedName() string {
 	if rctx.IsExported() {
 		return rctx.Name
