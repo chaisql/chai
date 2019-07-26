@@ -69,7 +69,7 @@ func (b Browser) Filter(fn func(rowid []byte, r record.Record) (bool, error)) Br
 		return err
 	})
 
-	if b.err == nil {
+	if b.err == nil || rb.tree != nil {
 		b.Reader = &rb
 	}
 
@@ -85,6 +85,54 @@ func (b Browser) Map(fn func(rowid []byte, r record.Record) (record.Record, erro
 		r, err := fn(rowid, r)
 		if err != nil {
 			return err
+		}
+
+		return rb.Set(rowid, r)
+	})
+
+	if b.err == nil || rb.tree != nil {
+		b.Reader = &rb
+	}
+
+	return b
+}
+
+// Limit creates a new table with maximum n records.
+func (b Browser) Limit(n int) Browser {
+	var rb RecordBuffer
+
+	var i int
+	errStop := errors.New("stop")
+
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
+		if i >= n {
+			return errStop
+		}
+
+		i++
+		return rb.Set(rowid, r)
+	})
+
+	if err := b.Err(); err != errStop && err != nil {
+		return b
+	}
+
+	b.err = nil
+	b.Reader = &rb
+
+	return b
+}
+
+// Offset creates a new table with n records skipped.
+func (b Browser) Offset(n int) Browser {
+	var rb RecordBuffer
+
+	var i int
+
+	b = b.ForEach(func(rowid []byte, r record.Record) error {
+		if i < n {
+			i++
+			return nil
 		}
 
 		return rb.Set(rowid, r)
