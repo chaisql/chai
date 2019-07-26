@@ -24,7 +24,9 @@ func New(ng engine.Engine) (*DB, error) {
 		Engine: ng,
 	}
 
-	err := newSchemaStore(&db).Init()
+	err := db.Update(func(tx *Tx) error {
+		return newSchemaStoreWithTx(tx).Init()
+	})
 	if err != nil {
 		return nil, err
 	}
