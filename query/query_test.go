@@ -89,13 +89,13 @@ func TestSelect(t *testing.T) {
 		tx, cleanup := createTable(t, 10, true, false)
 		defer cleanup()
 
-		res := Select(Field("id"), Field("name")).From(Table("test")).Where(EqString(Field("name"), "john-9")).Run(tx)
+		res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtString(Field("name"), "john")).Limit(5).Offset(1).Run(tx)
 		require.NoError(t, res.Err())
 
 		b := table.NewBrowser(res.Table())
 		count, err := b.Count()
 		require.NoError(t, err)
-		require.Equal(t, 1, count)
+		require.Equal(t, 5, count)
 
 		err = table.NewBrowser(res.Table()).ForEach(func(rowid []byte, r record.Record) error {
 			_, err := r.Field("id")

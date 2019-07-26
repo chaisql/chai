@@ -123,6 +123,8 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		if err != nil {
 			return Result{err: err}
 		}
+	} else {
+		b = b.Offset(int(offset)).Limit(int(limit))
 	}
 
 	b = b.Map(func(rowid []byte, r record.Record) (record.Record, error) {

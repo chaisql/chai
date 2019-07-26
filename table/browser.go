@@ -105,7 +105,7 @@ func (b Browser) Limit(n int) Browser {
 	errStop := errors.New("stop")
 
 	b = b.ForEach(func(rowid []byte, r record.Record) error {
-		if i >= n {
+		if n >= 0 && i >= n {
 			return errStop
 		}
 
