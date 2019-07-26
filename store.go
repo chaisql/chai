@@ -241,27 +241,7 @@ func (s *Store) ReIndex(fieldName string) error {
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
 func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) error) error {
 	return s.ViewTable(func(t *Table) error {
-		var skipped, count int
-		errStop := errors.New("stop")
-
-		err := t.Iterate(func(rowid []byte, r record.Record) error {
-			if skipped < offset {
-				skipped++
-				return nil
-			}
-
-			if count >= limit && limit != -1 {
-				return errStop
-			}
-
-			count++
-			return fn(rowid, r)
-		})
-		if err != errStop {
-			return err
-		}
-
-		return nil
+		return table.NewBrowser(t).Offset(offset).Limit(limit).ForEach(fn).Err()
 	})
 }
 
