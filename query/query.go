@@ -127,7 +127,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		b = b.Offset(int(offset)).Limit(int(limit))
 	}
 
-	b = b.Map(func(rowid []byte, r record.Record) (record.Record, error) {
+	b = b.Map(func(recordID []byte, r record.Record) (record.Record, error) {
 		var fb record.FieldBuffer
 
 		for _, s := range q.fieldSelectors {
@@ -291,8 +291,8 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		}
 	}
 
-	b = b.ForEach(func(rowid []byte, r record.Record) error {
-		return t.Delete(rowid)
+	b = b.ForEach(func(recordID []byte, r record.Record) error {
+		return t.Delete(recordID)
 	})
 
 	return b.Err()
@@ -398,18 +398,18 @@ func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) Resul
 		})
 	}
 
-	rowid, err := t.Insert(&fb)
+	recordID, err := t.Insert(&fb)
 	if err != nil {
 		return Result{err: err}
 	}
 
-	return Result{t: rowidToTable(rowid)}
+	return Result{t: recordIDToTable(recordID)}
 }
 
-func rowidToTable(rowid []byte) table.Table {
+func recordIDToTable(recordID []byte) table.Table {
 	var rb table.RecordBuffer
 	rb.Insert(record.FieldBuffer([]field.Field{
-		field.NewBytes("rowid", rowid),
+		field.NewBytes("recordID", recordID),
 	}))
 	return &rb
 }
@@ -436,12 +436,12 @@ func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table
 		})
 	}
 
-	rowid, err := t.Insert(&fb)
+	recordID, err := t.Insert(&fb)
 	if err != nil {
 		return Result{err: err}
 	}
 
-	return Result{t: rowidToTable(rowid)}
+	return Result{t: recordIDToTable(recordID)}
 }
 
 func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table, schema *record.Schema) Result {
@@ -478,12 +478,12 @@ func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table,
 		}
 	}
 
-	rowid, err := t.Insert(&fb)
+	recordID, err := t.Insert(&fb)
 	if err != nil {
 		return Result{err: err}
 	}
 
-	return Result{t: rowidToTable(rowid)}
+	return Result{t: recordIDToTable(recordID)}
 }
 
 // UpdateStmt is a DSL that allows creating a full Update query.
@@ -559,7 +559,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 
 	schema, schemaful := t.Schema()
 
-	b = b.ForEach(func(rowid []byte, r record.Record) error {
+	b = b.ForEach(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -597,7 +597,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 				return err
 			}
 
-			err = t.Replace(rowid, &fb)
+			err = t.Replace(recordID, &fb)
 			if err != nil {
 				return err
 			}

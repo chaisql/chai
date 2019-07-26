@@ -209,9 +209,9 @@ func TestGeneratedRecords(t *testing.T) {
 				record := testdata.Basic{
 					A: "A",
 				}
-				rowid, err := tb.Insert(&record)
+				recordID, err := tb.Insert(&record)
 				require.NoError(t, err)
-				require.NotNil(t, rowid)
+				require.NotNil(t, recordID)
 				return nil
 			})
 			require.NoError(t, err)
@@ -234,10 +234,10 @@ func TestGeneratedRecords(t *testing.T) {
 					C: 2,
 					D: 3,
 				}
-				rowid, err := tb.Insert(&record1)
+				recordID, err := tb.Insert(&record1)
 				require.NoError(t, err)
 
-				record2, err := tb.Get(rowid)
+				record2, err := tb.Get(recordID)
 				require.NoError(t, err)
 				require.Equal(t, record1, *record2)
 				return nil
@@ -262,10 +262,10 @@ func TestGeneratedRecords(t *testing.T) {
 					C: 2,
 					D: 3,
 				}
-				rowid, err := tb.Insert(&record1)
+				recordID, err := tb.Insert(&record1)
 				require.NoError(t, err)
 
-				err = tb.Delete(rowid)
+				err = tb.Delete(recordID)
 				require.NoError(t, err)
 				return nil
 			})
@@ -331,7 +331,7 @@ func TestGeneratedRecords(t *testing.T) {
 					C: 2,
 					D: 3,
 				}
-				rowid, err := tb.Insert(&record1)
+				recordID, err := tb.Insert(&record1)
 				require.NoError(t, err)
 
 				record2 := testdata.Basic{
@@ -341,10 +341,10 @@ func TestGeneratedRecords(t *testing.T) {
 					D: 33,
 				}
 
-				err = tb.Replace(rowid, &record2)
+				err = tb.Replace(recordID, &record2)
 				require.NoError(t, err)
 
-				rec, err := tb.Get(rowid)
+				rec, err := tb.Get(recordID)
 				require.Equal(t, record2, *rec)
 
 				return nil

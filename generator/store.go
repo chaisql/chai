@@ -95,7 +95,7 @@ const storeInsertTmpl = `
 {{- $structName := .Name -}}
 // Insert a record in the table and return the primary key.
 {{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (rowid []byte, err error) {
+func ({{$fl}} *{{$structName}}Store) Insert(record *{{$structName}}) (recordID []byte, err error) {
 	return {{$fl}}.Store.Insert(record)
 }
 {{- else }}
@@ -114,12 +114,12 @@ const storeGetTmpl = `
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 {{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Store) Get(rowid []byte) (*{{$structName}}, error) {
+func ({{$fl}} *{{$structName}}Store) Get(recordID []byte) (*{{$structName}}, error) {
 {{- else}}
 func ({{$fl}} *{{$structName}}Store) Get(pk {{.Pk.GoType}}) (*{{$structName}}, error) {
-		rowid := field.Encode{{.Pk.Type}}(pk)
+		recordID := field.Encode{{.Pk.Type}}(pk)
 	{{- end}}
-	rec, err := {{$fl}}.Store.Get(rowid)
+	rec, err := {{$fl}}.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,12 +149,12 @@ const storeDeleteTmpl = `
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 {{- if ne .Pk.Name ""}}
 func ({{$fl}} *{{$structName}}Store) Delete(pk {{.Pk.GoType}}) error {
-	rowid := field.Encode{{.Pk.Type}}(pk)
-	return {{$fl}}.Store.Delete(rowid)
+	recordID := field.Encode{{.Pk.Type}}(pk)
+	return {{$fl}}.Store.Delete(recordID)
 }
 {{- else }}
-func ({{$fl}} *{{$structName}}Store) Delete(rowid []byte) error {
-	return {{$fl}}.Store.Delete(rowid)
+func ({{$fl}} *{{$structName}}Store) Delete(recordID []byte) error {
+	return {{$fl}}.Store.Delete(recordID)
 }
 {{- end}}
 {{ end }}
@@ -171,7 +171,7 @@ func ({{$fl}} *{{$structName}}Store) List(offset, limit int) ([]{{$structName}},
 		size = 0
 	}
 	list := make([]{{$structName}}, 0, size)
-	err := {{$fl}}.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := {{$fl}}.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record {{$structName}}
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -195,15 +195,15 @@ const storeReplaceTmpl = `
 {{- $structName := .Name -}}
 // Replace the selected record by the given one.
 {{- if eq .Pk.Name ""}}
-func ({{$fl}} *{{$structName}}Store) Replace(rowid []byte, record *{{$structName}}) error {
+func ({{$fl}} *{{$structName}}Store) Replace(recordID []byte, record *{{$structName}}) error {
 {{- else}}
 func ({{$fl}} *{{$structName}}Store) Replace(pk {{.Pk.GoType}}, record *{{$structName}}) error {
-	rowid := field.Encode{{.Pk.Type}}(pk)
+	recordID := field.Encode{{.Pk.Type}}(pk)
 	if record.{{ .Pk.Name }} != pk {
 		record.{{ .Pk.Name }} = pk
 	}
 {{- end}}
-	return {{$fl}}.Store.Replace(rowid, record)
+	return {{$fl}}.Store.Replace(recordID, record)
 }
 {{ end }}
 `

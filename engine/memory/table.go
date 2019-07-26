@@ -12,55 +12,55 @@ type tableTx struct {
 	tx *transaction
 }
 
-func (t *tableTx) Insert(r record.Record) (rowid []byte, err error) {
+func (t *tableTx) Insert(r record.Record) (recordID []byte, err error) {
 	if !t.tx.writable {
 		return nil, engine.ErrTransactionReadOnly
 	}
 
-	rowid, err = t.RecordBuffer.Insert(r)
+	recordID, err = t.RecordBuffer.Insert(r)
 	if err != nil {
 		return nil, err
 	}
 
 	t.tx.undos = append(t.tx.undos, func() {
-		t.RecordBuffer.Delete(rowid)
+		t.RecordBuffer.Delete(recordID)
 	})
 
-	return rowid, nil
+	return recordID, nil
 }
 
-func (t *tableTx) Delete(rowid []byte) error {
+func (t *tableTx) Delete(recordID []byte) error {
 	if !t.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	r, err := t.RecordBuffer.Record(rowid)
+	r, err := t.RecordBuffer.Record(recordID)
 	if err != nil {
 		return err
 	}
 
 	t.tx.undos = append(t.tx.undos, func() {
-		t.RecordBuffer.Set(rowid, r)
+		t.RecordBuffer.Set(recordID, r)
 	})
 
-	return t.RecordBuffer.Delete(rowid)
+	return t.RecordBuffer.Delete(recordID)
 }
 
-func (t *tableTx) Replace(rowid []byte, r record.Record) error {
+func (t *tableTx) Replace(recordID []byte, r record.Record) error {
 	if !t.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	old, err := t.RecordBuffer.Record(rowid)
+	old, err := t.RecordBuffer.Record(recordID)
 	if err != nil {
 		return err
 	}
 
 	t.tx.undos = append(t.tx.undos, func() {
-		t.RecordBuffer.Set(rowid, old)
+		t.RecordBuffer.Set(recordID, old)
 	})
 
-	return t.RecordBuffer.Replace(rowid, r)
+	return t.RecordBuffer.Replace(recordID, r)
 }
 
 func (t *tableTx) Truncate() error {

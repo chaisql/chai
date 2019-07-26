@@ -70,7 +70,7 @@ func TestSelect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = table.NewBrowser(res.Table()).ForEach(func(rowid []byte, r record.Record) error {
+		err = table.NewBrowser(res.Table()).ForEach(func(recordID []byte, r record.Record) error {
 			_, err := r.Field("id")
 			require.NoError(t, err)
 			_, err = r.Field("name")
@@ -97,7 +97,7 @@ func TestSelect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = table.NewBrowser(res.Table()).ForEach(func(rowid []byte, r record.Record) error {
+		err = table.NewBrowser(res.Table()).ForEach(func(recordID []byte, r record.Record) error {
 			_, err := r.Field("id")
 			require.NoError(t, err)
 			_, err = r.Field("name")
@@ -129,7 +129,7 @@ func TestDelete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 3, count)
 
-		err = b.ForEach(func(rowid []byte, r record.Record) error {
+		err = b.ForEach(func(recordID []byte, r record.Record) error {
 			f, err := r.Field("age")
 			require.NoError(t, err)
 			age, err := field.DecodeInt(f.Data)
@@ -168,10 +168,10 @@ func TestInsert(t *testing.T) {
 		rec, err := table.NewBrowser(res.Table()).First()
 		require.NoError(t, err)
 
-		rowid, err := rec.Field("rowid")
+		recordID, err := rec.Field("recordID")
 		require.NoError(t, err)
 
-		rec, err = tb.Record(rowid.Data)
+		rec, err = tb.Record(recordID.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("a", 5),
@@ -198,10 +198,10 @@ func TestInsert(t *testing.T) {
 		rec, err := table.NewBrowser(res.Table()).First()
 		require.NoError(t, err)
 
-		rowid, err := rec.Field("rowid")
+		recordID, err := rec.Field("recordID")
 		require.NoError(t, err)
 
-		rec, err = tb.Record(rowid.Data)
+		rec, err = tb.Record(recordID.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("id", 5),
@@ -230,10 +230,10 @@ func TestInsert(t *testing.T) {
 		rec, err := table.NewBrowser(res.Table()).First()
 		require.NoError(t, err)
 
-		rowid, err := rec.Field("rowid")
+		recordID, err := rec.Field("recordID")
 		require.NoError(t, err)
 
-		rec, err = tb.Record(rowid.Data)
+		rec, err = tb.Record(recordID.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("id", 0),
@@ -273,7 +273,7 @@ func TestUpdate(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 10, count)
 
-			err = b.ForEach(func(rowid []byte, r record.Record) error {
+			err = b.ForEach(func(recordID []byte, r record.Record) error {
 				f, err := r.Field("age")
 				require.NoError(t, err)
 				age, err := field.DecodeInt(f.Data)

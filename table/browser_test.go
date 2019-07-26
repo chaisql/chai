@@ -31,7 +31,7 @@ func TestBrowser(t *testing.T) {
 	t.Run("ForEach", func(t *testing.T) {
 		t.Run("Order", func(t *testing.T) {
 			i := 0
-			b = b.ForEach(func(rowid []byte, r record.Record) error {
+			b = b.ForEach(func(recordID []byte, r record.Record) error {
 				f, err := r.Field("id")
 				require.NoError(t, err)
 				v, err := field.DecodeInt64(f.Data)
@@ -47,7 +47,7 @@ func TestBrowser(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			err := errors.New("some error")
-			b2 := b.ForEach(func(rowid []byte, r record.Record) error {
+			b2 := b.ForEach(func(recordID []byte, r record.Record) error {
 				return err
 			})
 
@@ -59,7 +59,7 @@ func TestBrowser(t *testing.T) {
 
 	t.Run("Filter", func(t *testing.T) {
 		// filter odd ids
-		b2 := b.Filter(func(rowid []byte, r record.Record) (bool, error) {
+		b2 := b.Filter(func(recordID []byte, r record.Record) (bool, error) {
 			f, err := r.Field("id")
 			require.NoError(t, err)
 			v, err := field.DecodeInt64(f.Data)
@@ -76,7 +76,7 @@ func TestBrowser(t *testing.T) {
 		t.Run("Immutable", func(t *testing.T) {
 			// browsers are immutable, b should not be changed
 			count := 0
-			b := b.ForEach(func(rowid []byte, r record.Record) error {
+			b := b.ForEach(func(recordID []byte, r record.Record) error {
 				count++
 				return nil
 			})
@@ -87,7 +87,7 @@ func TestBrowser(t *testing.T) {
 		t.Run("OK", func(t *testing.T) {
 			// b2 should only contain even ids
 			count := 0
-			b := b2.ForEach(func(rowid []byte, r record.Record) error {
+			b := b2.ForEach(func(recordID []byte, r record.Record) error {
 				f, err := r.Field("id")
 				require.NoError(t, err)
 				v, err := field.DecodeInt64(f.Data)
@@ -102,7 +102,7 @@ func TestBrowser(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			err := errors.New("some error")
-			b2 := b.Filter(func(rowid []byte, r record.Record) (bool, error) {
+			b2 := b.Filter(func(recordID []byte, r record.Record) (bool, error) {
 				return false, err
 			})
 			require.NoError(t, b.Err())
@@ -112,7 +112,7 @@ func TestBrowser(t *testing.T) {
 
 	t.Run("Map", func(t *testing.T) {
 		// double the age
-		b2 := b.Map(func(rowid []byte, r record.Record) (record.Record, error) {
+		b2 := b.Map(func(recordID []byte, r record.Record) (record.Record, error) {
 			f, err := r.Field("age")
 			require.NoError(t, err)
 			age, err := field.DecodeInt64(f.Data)
@@ -131,7 +131,7 @@ func TestBrowser(t *testing.T) {
 		t.Run("Immutable", func(t *testing.T) {
 			// browsers are immutable, b should not be changed
 			i := 0
-			b := b.ForEach(func(rowid []byte, r record.Record) error {
+			b := b.ForEach(func(recordID []byte, r record.Record) error {
 				f, err := r.Field("age")
 				require.NoError(t, err)
 				age, err := field.DecodeInt64(f.Data)
@@ -147,7 +147,7 @@ func TestBrowser(t *testing.T) {
 		t.Run("OK", func(t *testing.T) {
 			// b2 ages should be twice as big
 			i := 0
-			b := b2.ForEach(func(rowid []byte, r record.Record) error {
+			b := b2.ForEach(func(recordID []byte, r record.Record) error {
 				f, err := r.Field("age")
 				require.NoError(t, err)
 				age, err := field.DecodeInt64(f.Data)
@@ -162,7 +162,7 @@ func TestBrowser(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			err := errors.New("some error")
-			b2 := b.Map(func(rowid []byte, r record.Record) (record.Record, error) {
+			b2 := b.Map(func(recordID []byte, r record.Record) (record.Record, error) {
 				return nil, err
 			})
 			require.NoError(t, b.Err())
@@ -183,7 +183,7 @@ func TestBrowser(t *testing.T) {
 
 			g := b.GroupBy("group")
 			for i, b := range g.Readers {
-				b.ForEach(func(rowid []byte, r record.Record) error {
+				b.ForEach(func(recordID []byte, r record.Record) error {
 					f, err := r.Field("group")
 					require.NoError(t, err)
 

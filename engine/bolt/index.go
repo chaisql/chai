@@ -17,15 +17,15 @@ func NewIndex(b *bolt.Bucket) *Index {
 	return &Index{b}
 }
 
-func (i *Index) Set(value []byte, rowid []byte) error {
+func (i *Index) Set(value []byte, recordID []byte) error {
 	if len(value) == 0 {
 		return errors.New("value cannot be nil")
 	}
 
-	buf := make([]byte, 0, len(value)+len(rowid)+1)
+	buf := make([]byte, 0, len(value)+len(recordID)+1)
 	buf = append(buf, value...)
 	buf = append(buf, separator)
-	buf = append(buf, rowid...)
+	buf = append(buf, recordID...)
 
 	err := i.b.Put(buf, nil)
 	if err == bolt.ErrTxNotWritable {
@@ -35,14 +35,14 @@ func (i *Index) Set(value []byte, rowid []byte) error {
 	return err
 }
 
-func (i *Index) Delete(rowid []byte) error {
+func (i *Index) Delete(recordID []byte) error {
 	if !i.b.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
 
-	suffix := make([]byte, len(rowid)+1)
+	suffix := make([]byte, len(recordID)+1)
 	suffix[0] = separator
-	copy(suffix[1:], rowid)
+	copy(suffix[1:], recordID)
 
 	errStop := errors.New("stop")
 

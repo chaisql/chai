@@ -144,7 +144,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		}
 	}
 
-	rowid, err := t.Table.Insert(r)
+	recordID, err := t.Table.Insert(r)
 	if err != nil {
 		return nil, err
 	}
@@ -160,19 +160,19 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 			return nil, err
 		}
 
-		err = idx.Set(f.Data, rowid)
+		err = idx.Set(f.Data, recordID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return rowid, nil
+	return recordID, nil
 }
 
-// Delete a record by rowid.
+// Delete a record by recordID.
 // Indexes are automatically updated.
-func (t Table) Delete(rowid []byte) error {
-	err := t.Table.Delete(rowid)
+func (t Table) Delete(recordID []byte) error {
+	err := t.Table.Delete(recordID)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (t Table) Delete(rowid []byte) error {
 	}
 
 	for _, idx := range indexes {
-		err = idx.Delete(rowid)
+		err = idx.Delete(recordID)
 		if err != nil {
 			return err
 		}
@@ -192,10 +192,10 @@ func (t Table) Delete(rowid []byte) error {
 	return nil
 }
 
-// Replace a record by rowid. If the table is schemaful, r must match the schema.
-// An error is returned if the rowid doesn't exist.
+// Replace a record by recordID. If the table is schemaful, r must match the schema.
+// An error is returned if the recordID doesn't exist.
 // Indexes are automatically updated.
-func (t Table) Replace(rowid []byte, r record.Record) error {
+func (t Table) Replace(recordID []byte, r record.Record) error {
 	if t.schema != nil {
 		err := t.schema.Validate(r)
 		if err != nil {
@@ -203,7 +203,7 @@ func (t Table) Replace(rowid []byte, r record.Record) error {
 		}
 	}
 
-	err := t.Table.Replace(rowid, r)
+	err := t.Table.Replace(recordID, r)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (t Table) Replace(rowid []byte, r record.Record) error {
 			return err
 		}
 
-		err = idx.Set(f.Data, rowid)
+		err = idx.Set(f.Data, recordID)
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ func (t Table) AddField(f field.Field) error {
 
 	t.schema.Fields.Add(f)
 
-	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
+	err := t.Table.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -255,7 +255,7 @@ func (t Table) AddField(f field.Field) error {
 			f.Data = field.ZeroValue(f.Type).Data
 		}
 		fb.Add(f)
-		return t.Table.Replace(rowid, fb)
+		return t.Table.Replace(recordID, fb)
 	})
 	if err != nil {
 		return err
@@ -277,7 +277,7 @@ func (t Table) DeleteField(name string) error {
 		}
 	}
 
-	err := t.Table.Iterate(func(rowid []byte, r record.Record) error {
+	err := t.Table.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -290,7 +290,7 @@ func (t Table) DeleteField(name string) error {
 			return nil
 		}
 
-		return t.Table.Replace(rowid, fb)
+		return t.Table.Replace(recordID, fb)
 	})
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func (t Table) RenameField(oldName, newName string) error {
 		}
 	}
 
-	err = t.Table.Iterate(func(rowid []byte, r record.Record) error {
+	err = t.Table.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -335,7 +335,7 @@ func (t Table) RenameField(oldName, newName string) error {
 
 		f.Name = newName
 		fb.Replace(oldName, f)
-		return t.Table.Replace(rowid, fb)
+		return t.Table.Replace(recordID, fb)
 	})
 	if err != nil {
 		return err

@@ -9,7 +9,7 @@ import (
 )
 
 // A Table is represented by a bucket.
-// Each record is stored as a key value pair, where the rowid is stored as the key.
+// Each record is stored as a key value pair, where the recordID is stored as the key.
 // Table uses the codec to encode the record and store is as the value.
 type Table struct {
 	bucket *bolt.Bucket
@@ -19,14 +19,14 @@ type Table struct {
 }
 
 // Insert a record into the table bucket. If the record implements the table.Pker interface,
-// it uses the returned value as the rowid. If not, it generates a rowid using NextSequence.
-func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
+// it uses the returned value as the recordID. If not, it generates a recordID using NextSequence.
+func (t *Table) Insert(r record.Record) (recordID []byte, err error) {
 	if !t.bucket.Writable() {
 		return nil, engine.ErrTransactionReadOnly
 	}
 
 	if pker, ok := r.(table.Pker); ok {
-		rowid, err = pker.Pk()
+		recordID, err = pker.Pk()
 		if err != nil {
 			return nil, err
 		}
@@ -36,7 +36,7 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 			return nil, err
 		}
 
-		rowid = field.EncodeUint64(seq)
+		recordID = field.EncodeUint64(seq)
 	}
 
 	data, err := t.codec.Encode(r)
@@ -44,17 +44,17 @@ func (t *Table) Insert(r record.Record) (rowid []byte, err error) {
 		return nil, err
 	}
 
-	err = t.bucket.Put(rowid, data)
+	err = t.bucket.Put(recordID, data)
 	if err != nil {
 		return nil, err
 	}
 
-	return rowid, nil
+	return recordID, nil
 }
 
-// Record returns a record by rowid. If not found, returns table.ErrRecordNotFound.
-func (t *Table) Record(rowid []byte) (record.Record, error) {
-	v := t.bucket.Get(rowid)
+// Record returns a record by recordID. If not found, returns table.ErrRecordNotFound.
+func (t *Table) Record(recordID []byte) (record.Record, error) {
+	v := t.bucket.Get(recordID)
 	if v == nil {
 		return nil, table.ErrRecordNotFound
 	}
@@ -62,18 +62,18 @@ func (t *Table) Record(rowid []byte) (record.Record, error) {
 	return t.codec.Decode(v)
 }
 
-// Delete a record by rowid. If not found, returns table.ErrRecordNotFound.
-func (t *Table) Delete(rowid []byte) error {
+// Delete a record by recordID. If not found, returns table.ErrRecordNotFound.
+func (t *Table) Delete(recordID []byte) error {
 	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
 
-	v := t.bucket.Get(rowid)
+	v := t.bucket.Get(recordID)
 	if v == nil {
 		return table.ErrRecordNotFound
 	}
 
-	return t.bucket.Delete(rowid)
+	return t.bucket.Delete(recordID)
 }
 
 // Iterate through all the records of the table until the end or until fn
@@ -93,13 +93,13 @@ func (t *Table) Iterate(fn func([]byte, record.Record) error) error {
 	})
 }
 
-// Replace a record by rowid. If not found, returns table.ErrRecordNotFound.
-func (t *Table) Replace(rowid []byte, r record.Record) error {
+// Replace a record by recordID. If not found, returns table.ErrRecordNotFound.
+func (t *Table) Replace(recordID []byte, r record.Record) error {
 	if !t.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
 
-	v := t.bucket.Get(rowid)
+	v := t.bucket.Get(recordID)
 	if v == nil {
 		return table.ErrRecordNotFound
 	}
@@ -109,7 +109,7 @@ func (t *Table) Replace(rowid []byte, r record.Record) error {
 		return err
 	}
 
-	return t.bucket.Put(rowid, v)
+	return t.bucket.Put(recordID, v)
 }
 
 // Truncate deletes all the records of the table.

@@ -104,7 +104,7 @@ func TestIndexMatchers(t *testing.T) {
 	tests := []struct {
 		name    string
 		matcher query.Expr
-		rowids  []string
+		recordIDs  []string
 	}{
 		{"eq/int/one", query.EqInt(query.Field("age"), 10), []string{"c"}},
 		{"eq/int/multiple", query.EqInt(query.Field("age"), 2), []string{"x", "y"}},
@@ -152,16 +152,16 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rowids, ok, err := test.matcher.(query.IndexMatcher).MatchIndex(tx, "test")
+			recordIDs, ok, err := test.matcher.(query.IndexMatcher).MatchIndex(tx, "test")
 			require.NoError(t, err)
 			require.True(t, ok)
 			var ids []string
-			rowids.Ascend(func(i btree.Item) bool {
+			recordIDs.Ascend(func(i btree.Item) bool {
 				ids = append(ids, string(i.(query.Item)))
 				return true
 			})
 
-			require.EqualValues(t, test.rowids, ids)
+			require.EqualValues(t, test.recordIDs, ids)
 		})
 	}
 }
@@ -208,14 +208,14 @@ func TestAndMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.And(test.exprs...)
 
-				rowids, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
+				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
 				require.NoError(t, err)
 
 				ids := []string{}
 
-				if rowids != nil {
-					ids = make([]string, 0, rowids.Len())
-					rowids.Ascend(func(i btree.Item) bool {
+				if recordIDs != nil {
+					ids = make([]string, 0, recordIDs.Len())
+					recordIDs.Ascend(func(i btree.Item) bool {
 						ids = append(ids, string(i.(query.Item)))
 						return true
 					})
@@ -269,14 +269,14 @@ func TestOrMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.Or(test.exprs...)
 
-				rowids, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
+				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
 				require.NoError(t, err)
 
 				ids := []string{}
 
-				if rowids != nil {
-					ids = make([]string, 0, rowids.Len())
-					rowids.Ascend(func(i btree.Item) bool {
+				if recordIDs != nil {
+					ids = make([]string, 0, recordIDs.Len())
+					recordIDs.Ascend(func(i btree.Item) bool {
 						ids = append(ids, string(i.(query.Item)))
 						return true
 					})

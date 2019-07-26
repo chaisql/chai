@@ -44,12 +44,12 @@ func TestIndexSet(t *testing.T, builder Builder) {
 		require.Error(t, idx.Set([]byte{}, []byte("rid")))
 	})
 
-	t.Run("Set nil rowid succeeds", func(t *testing.T) {
+	t.Run("Set nil recordID succeeds", func(t *testing.T) {
 		require.NoError(t, idx.Set([]byte("value"), nil))
 	})
 
-	t.Run("Set value and rowid succeeds", func(t *testing.T) {
-		require.NoError(t, idx.Set([]byte("value"), []byte("rowid")))
+	t.Run("Set value and recordID succeeds", func(t *testing.T) {
+		require.NoError(t, idx.Set([]byte("value"), []byte("recordID")))
 	})
 }
 
@@ -58,24 +58,24 @@ func TestIndexDelete(t *testing.T, builder Builder) {
 	idx, cleanup := builder()
 	defer cleanup()
 
-	t.Run("Delete valid rowid succeeds", func(t *testing.T) {
-		require.NoError(t, idx.Set([]byte("value1"), []byte("rowid")))
-		require.NoError(t, idx.Set([]byte("value1"), []byte("other-rowid")))
-		require.NoError(t, idx.Set([]byte("value2"), []byte("yet-another-rowid")))
-		require.NoError(t, idx.Delete([]byte("rowid")))
+	t.Run("Delete valid recordID succeeds", func(t *testing.T) {
+		require.NoError(t, idx.Set([]byte("value1"), []byte("recordID")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("other-recordID")))
+		require.NoError(t, idx.Set([]byte("value2"), []byte("yet-another-recordID")))
+		require.NoError(t, idx.Delete([]byte("recordID")))
 		c := idx.Cursor()
-		v, rowid := c.Seek([]byte("value1"))
+		v, recordID := c.Seek([]byte("value1"))
 		require.Equal(t, "value1", string(v))
-		require.Equal(t, "other-rowid", string(rowid))
-		v, rowid = c.Next()
+		require.Equal(t, "other-recordID", string(recordID))
+		v, recordID = c.Next()
 		require.Equal(t, "value2", string(v))
-		require.Equal(t, "yet-another-rowid", string(rowid))
-		v, rowid = c.Next()
+		require.Equal(t, "yet-another-recordID", string(recordID))
+		v, recordID = c.Next()
 		require.Nil(t, v)
-		require.Nil(t, rowid)
+		require.Nil(t, recordID)
 	})
 
-	t.Run("Delete non existing rowid succeeds", func(t *testing.T) {
+	t.Run("Delete non existing recordID succeeds", func(t *testing.T) {
 		require.NoError(t, idx.Delete([]byte("foo")))
 	})
 }

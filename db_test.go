@@ -25,12 +25,12 @@ func TestTable(t *testing.T) {
 			tb, err := tx.Table("test")
 			require.NoError(t, err)
 
-			rowid, err := tb.Insert(record.FieldBuffer([]field.Field{
+			recordID, err := tb.Insert(record.FieldBuffer([]field.Field{
 				field.NewString("name", "John"),
 				field.NewInt64("age", 10),
 			}))
 			require.NoError(t, err)
-			require.NotNil(t, rowid)
+			require.NotNil(t, recordID)
 
 			m, err := tx.Indexes("test")
 			require.NoError(t, err)
@@ -56,12 +56,12 @@ func TestTable(t *testing.T) {
 			err = tx.CreateIndex("test", "name")
 			require.NoError(t, err)
 
-			rowid, err := tb.Insert(record.FieldBuffer([]field.Field{
+			recordID, err := tb.Insert(record.FieldBuffer([]field.Field{
 				field.NewString("name", "John"),
 				field.NewInt64("age", 10),
 			}))
 			require.NoError(t, err)
-			require.NotNil(t, rowid)
+			require.NotNil(t, recordID)
 
 			m, err := tx.Indexes("test")
 			require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestTable(t *testing.T) {
 			c := m["name"].Cursor()
 			v, rid := c.Seek([]byte("John"))
 			require.Equal(t, []byte("John"), v)
-			require.Equal(t, rowid, rid)
+			require.Equal(t, recordID, rid)
 
 			return nil
 		})
@@ -118,12 +118,12 @@ name(String): "John 2", age(Int): 12
 				require.NoError(t, err)
 
 				for i := 0; i < 3; i++ {
-					rowid, err := tb.Insert(record.FieldBuffer([]field.Field{
+					recordID, err := tb.Insert(record.FieldBuffer([]field.Field{
 						field.NewString("name", fmt.Sprintf("John %d", i)),
 						field.NewInt("age", 10+i),
 					}))
 					require.NoError(t, err)
-					require.NotNil(t, rowid)
+					require.NotNil(t, recordID)
 				}
 
 				var buf bytes.Buffer

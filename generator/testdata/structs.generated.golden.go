@@ -123,14 +123,14 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 }
 
 // Insert a record in the table and return the primary key.
-func (b *BasicStore) Insert(record *Basic) (rowid []byte, err error) {
+func (b *BasicStore) Insert(record *Basic) (recordID []byte, err error) {
 	return b.Store.Insert(record)
 }
 
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
-	rec, err := b.Store.Get(rowid)
+func (b *BasicStore) Get(recordID []byte) (*Basic, error) {
+	rec, err := b.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +151,8 @@ func (b *BasicStore) Get(rowid []byte) (*Basic, error) {
 
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (b *BasicStore) Delete(rowid []byte) error {
-	return b.Store.Delete(rowid)
+func (b *BasicStore) Delete(recordID []byte) error {
+	return b.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -162,7 +162,7 @@ func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
 		size = 0
 	}
 	list := make([]Basic, 0, size)
-	err := b.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := b.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record Basic
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -179,8 +179,8 @@ func (b *BasicStore) List(offset, limit int) ([]Basic, error) {
 }
 
 // Replace the selected record by the given one.
-func (b *BasicStore) Replace(rowid []byte, record *Basic) error {
-	return b.Store.Replace(rowid, record)
+func (b *BasicStore) Replace(recordID []byte, record *Basic) error {
+	return b.Store.Replace(recordID, record)
 }
 
 // BasicQuerySelector provides helpers for selecting fields from the Basic structure.
@@ -344,14 +344,14 @@ func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 }
 
 // Insert a record in the table and return the primary key.
-func (b *basicStore) Insert(record *basic) (rowid []byte, err error) {
+func (b *basicStore) Insert(record *basic) (recordID []byte, err error) {
 	return b.Store.Insert(record)
 }
 
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (b *basicStore) Get(rowid []byte) (*basic, error) {
-	rec, err := b.Store.Get(rowid)
+func (b *basicStore) Get(recordID []byte) (*basic, error) {
+	rec, err := b.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -372,8 +372,8 @@ func (b *basicStore) Get(rowid []byte) (*basic, error) {
 
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (b *basicStore) Delete(rowid []byte) error {
-	return b.Store.Delete(rowid)
+func (b *basicStore) Delete(recordID []byte) error {
+	return b.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -383,7 +383,7 @@ func (b *basicStore) List(offset, limit int) ([]basic, error) {
 		size = 0
 	}
 	list := make([]basic, 0, size)
-	err := b.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := b.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record basic
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -400,8 +400,8 @@ func (b *basicStore) List(offset, limit int) ([]basic, error) {
 }
 
 // Replace the selected record by the given one.
-func (b *basicStore) Replace(rowid []byte, record *basic) error {
-	return b.Store.Replace(rowid, record)
+func (b *basicStore) Replace(recordID []byte, record *basic) error {
+	return b.Store.Replace(recordID, record)
 }
 
 // basicQuerySelector provides helpers for selecting fields from the basic structure.
@@ -581,14 +581,14 @@ func NewBasicSchemafulStoreWithTx(tx *genji.Tx) *BasicSchemafulStore {
 }
 
 // Insert a record in the table and return the primary key.
-func (b *BasicSchemafulStore) Insert(record *BasicSchemaful) (rowid []byte, err error) {
+func (b *BasicSchemafulStore) Insert(record *BasicSchemaful) (recordID []byte, err error) {
 	return b.Store.Insert(record)
 }
 
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (b *BasicSchemafulStore) Get(rowid []byte) (*BasicSchemaful, error) {
-	rec, err := b.Store.Get(rowid)
+func (b *BasicSchemafulStore) Get(recordID []byte) (*BasicSchemaful, error) {
+	rec, err := b.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -609,8 +609,8 @@ func (b *BasicSchemafulStore) Get(rowid []byte) (*BasicSchemaful, error) {
 
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (b *BasicSchemafulStore) Delete(rowid []byte) error {
-	return b.Store.Delete(rowid)
+func (b *BasicSchemafulStore) Delete(recordID []byte) error {
+	return b.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -620,7 +620,7 @@ func (b *BasicSchemafulStore) List(offset, limit int) ([]BasicSchemaful, error) 
 		size = 0
 	}
 	list := make([]BasicSchemaful, 0, size)
-	err := b.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := b.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record BasicSchemaful
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -637,8 +637,8 @@ func (b *BasicSchemafulStore) List(offset, limit int) ([]BasicSchemaful, error) 
 }
 
 // Replace the selected record by the given one.
-func (b *BasicSchemafulStore) Replace(rowid []byte, record *BasicSchemaful) error {
-	return b.Store.Replace(rowid, record)
+func (b *BasicSchemafulStore) Replace(recordID []byte, record *BasicSchemaful) error {
+	return b.Store.Replace(recordID, record)
 }
 
 // BasicSchemafulQuerySelector provides helpers for selecting fields from the BasicSchemaful structure.
@@ -787,8 +787,8 @@ func (p *PkStore) Insert(record *Pk) (err error) {
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 func (p *PkStore) Get(pk int64) (*Pk, error) {
-	rowid := field.EncodeInt64(pk)
-	rec, err := p.Store.Get(rowid)
+	recordID := field.EncodeInt64(pk)
+	rec, err := p.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -810,8 +810,8 @@ func (p *PkStore) Get(pk int64) (*Pk, error) {
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 func (p *PkStore) Delete(pk int64) error {
-	rowid := field.EncodeInt64(pk)
-	return p.Store.Delete(rowid)
+	recordID := field.EncodeInt64(pk)
+	return p.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -821,7 +821,7 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 		size = 0
 	}
 	list := make([]Pk, 0, size)
-	err := p.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := p.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record Pk
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -839,11 +839,11 @@ func (p *PkStore) List(offset, limit int) ([]Pk, error) {
 
 // Replace the selected record by the given one.
 func (p *PkStore) Replace(pk int64, record *Pk) error {
-	rowid := field.EncodeInt64(pk)
+	recordID := field.EncodeInt64(pk)
 	if record.B != pk {
 		record.B = pk
 	}
-	return p.Store.Replace(rowid, record)
+	return p.Store.Replace(recordID, record)
 }
 
 // PkQuerySelector provides helpers for selecting fields from the Pk structure.
@@ -976,14 +976,14 @@ func NewIndexedStoreWithTx(tx *genji.Tx) *IndexedStore {
 }
 
 // Insert a record in the table and return the primary key.
-func (i *IndexedStore) Insert(record *Indexed) (rowid []byte, err error) {
+func (i *IndexedStore) Insert(record *Indexed) (recordID []byte, err error) {
 	return i.Store.Insert(record)
 }
 
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
-	rec, err := i.Store.Get(rowid)
+func (i *IndexedStore) Get(recordID []byte) (*Indexed, error) {
+	rec, err := i.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -1004,8 +1004,8 @@ func (i *IndexedStore) Get(rowid []byte) (*Indexed, error) {
 
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
-func (i *IndexedStore) Delete(rowid []byte) error {
-	return i.Store.Delete(rowid)
+func (i *IndexedStore) Delete(recordID []byte) error {
+	return i.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -1015,7 +1015,7 @@ func (i *IndexedStore) List(offset, limit int) ([]Indexed, error) {
 		size = 0
 	}
 	list := make([]Indexed, 0, size)
-	err := i.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := i.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record Indexed
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -1032,8 +1032,8 @@ func (i *IndexedStore) List(offset, limit int) ([]Indexed, error) {
 }
 
 // Replace the selected record by the given one.
-func (i *IndexedStore) Replace(rowid []byte, record *Indexed) error {
-	return i.Store.Replace(rowid, record)
+func (i *IndexedStore) Replace(recordID []byte, record *Indexed) error {
+	return i.Store.Replace(recordID, record)
 }
 
 // IndexedQuerySelector provides helpers for selecting fields from the Indexed structure.
@@ -1207,8 +1207,8 @@ func (m *MultipleTagsStore) Insert(record *MultipleTags) (err error) {
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 func (m *MultipleTagsStore) Get(pk string) (*MultipleTags, error) {
-	rowid := field.EncodeString(pk)
-	rec, err := m.Store.Get(rowid)
+	recordID := field.EncodeString(pk)
+	rec, err := m.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -1230,8 +1230,8 @@ func (m *MultipleTagsStore) Get(pk string) (*MultipleTags, error) {
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 func (m *MultipleTagsStore) Delete(pk string) error {
-	rowid := field.EncodeString(pk)
-	return m.Store.Delete(rowid)
+	recordID := field.EncodeString(pk)
+	return m.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -1241,7 +1241,7 @@ func (m *MultipleTagsStore) List(offset, limit int) ([]MultipleTags, error) {
 		size = 0
 	}
 	list := make([]MultipleTags, 0, size)
-	err := m.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := m.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record MultipleTags
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -1259,11 +1259,11 @@ func (m *MultipleTagsStore) List(offset, limit int) ([]MultipleTags, error) {
 
 // Replace the selected record by the given one.
 func (m *MultipleTagsStore) Replace(pk string, record *MultipleTags) error {
-	rowid := field.EncodeString(pk)
+	recordID := field.EncodeString(pk)
 	if record.A != pk {
 		record.A = pk
 	}
-	return m.Store.Replace(rowid, record)
+	return m.Store.Replace(recordID, record)
 }
 
 // MultipleTagsQuerySelector provides helpers for selecting fields from the MultipleTags structure.

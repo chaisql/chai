@@ -485,17 +485,17 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// insert data in first table
-		rowid, err := ta.Insert(record.FieldBuffer([]field.Field{field.NewInt64("a", 10)}))
+		recordID, err := ta.Insert(record.FieldBuffer([]field.Field{field.NewInt64("a", 10)}))
 		require.NoError(t, err)
 
 		// use ta to fetch data and verify if it's present
-		r, err := ta.Record(rowid)
+		r, err := ta.Record(recordID)
 		f, err := r.Field("a")
 		require.NoError(t, err)
 		require.Equal(t, f.Data, field.EncodeInt64(10))
 
 		// use tb to fetch data and verify it's not present
-		_, err = tb.Record(rowid)
+		_, err = tb.Record(recordID)
 		require.Equal(t, table.ErrRecordNotFound, err)
 	})
 }
@@ -647,13 +647,13 @@ func TestTransactionIndex(t *testing.T, builder Builder) {
 
 		// insert data in first index
 
-		err = res.Set([]byte("value"), []byte("rowid"))
+		err = res.Set([]byte("value"), []byte("recordID"))
 		require.NoError(t, err)
 
 		// use idxaa to fetch data and verify if it's present
-		value, rowid := idxaa.Cursor().Seek([]byte("value"))
+		value, recordID := idxaa.Cursor().Seek([]byte("value"))
 		require.Equal(t, []byte("value"), value)
-		require.Equal(t, []byte("rowid"), rowid)
+		require.Equal(t, []byte("recordID"), recordID)
 
 		// use other indexes to fetch data and verify it's not present
 		value, _ = idxab.Cursor().Seek([]byte("value"))

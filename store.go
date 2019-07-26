@@ -162,30 +162,30 @@ func (s *Store) Init() error {
 	})
 }
 
-// Insert a record in the table and return the rowid.
-func (s *Store) Insert(r record.Record) (rowid []byte, err error) {
+// Insert a record in the table and return the recordID.
+func (s *Store) Insert(r record.Record) (recordID []byte, err error) {
 	err = s.UpdateTable(func(t *Table) error {
-		rowid, err = t.Insert(r)
+		recordID, err = t.Insert(r)
 		return err
 	})
 	return
 }
 
-// Get a record by rowid.
-// If the rowid doesn't exist, returns table.ErrRecordNotFound.
-func (s *Store) Get(rowid []byte) (rec record.Record, err error) {
+// Get a record by recordID.
+// If the recordID doesn't exist, returns table.ErrRecordNotFound.
+func (s *Store) Get(recordID []byte) (rec record.Record, err error) {
 	err = s.ViewTable(func(t *Table) error {
-		rec, err = t.Record(rowid)
+		rec, err = t.Record(recordID)
 		return err
 	})
 	return
 }
 
-// Delete a record by rowid.
-// If the rowid doesn't exist, returns table.ErrRecordNotFound.
-func (s *Store) Delete(rowid []byte) error {
+// Delete a record by recordID.
+// If the recordID doesn't exist, returns table.ErrRecordNotFound.
+func (s *Store) Delete(recordID []byte) error {
 	return s.UpdateTable(func(t *Table) error {
-		return t.Delete(rowid)
+		return t.Delete(recordID)
 	})
 }
 
@@ -227,28 +227,28 @@ func (s *Store) ReIndex(fieldName string) error {
 			return err
 		}
 
-		return t.Iterate(func(rowid []byte, r record.Record) error {
+		return t.Iterate(func(recordID []byte, r record.Record) error {
 			f, err := r.Field(fieldName)
 			if err != nil {
 				return err
 			}
 
-			return idx.Set(f.Data, rowid)
+			return idx.Set(f.Data, recordID)
 		})
 	})
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
-func (s *Store) List(offset, limit int, fn func(rowid []byte, r record.Record) error) error {
+func (s *Store) List(offset, limit int, fn func(recordID []byte, r record.Record) error) error {
 	return s.ViewTable(func(t *Table) error {
 		return table.NewBrowser(t).Offset(offset).Limit(limit).ForEach(fn).Err()
 	})
 }
 
 // Replace a record by another one.
-func (s *Store) Replace(rowid []byte, r record.Record) error {
+func (s *Store) Replace(recordID []byte, r record.Record) error {
 	return s.UpdateTable(func(t *Table) error {
-		return t.Replace(rowid, r)
+		return t.Replace(recordID, r)
 	})
 }
 

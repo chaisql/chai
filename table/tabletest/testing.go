@@ -56,7 +56,7 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(rowid []byte, r record.Record) error {
+		err := tb.Iterate(func(recordID []byte, r record.Record) error {
 			i++
 			return nil
 		})
@@ -74,8 +74,8 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(rowid []byte, _ record.Record) error {
-			m[string(rowid)]++
+		err := tb.Iterate(func(recordID []byte, _ record.Record) error {
+			m[string(recordID)]++
 			return nil
 		})
 		require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(rowid []byte, _ record.Record) error {
+		err := tb.Iterate(func(recordID []byte, _ record.Record) error {
 			i++
 			if i >= 5 {
 				return errors.New("some error")
@@ -127,13 +127,13 @@ func TestTableReaderRecord(t *testing.T, builder Builder) {
 		rec1.Add(field.NewInt64("fieldc", 40))
 		rec2 := newRecord()
 
-		rowid1, err := tb.Insert(rec1)
+		recordID1, err := tb.Insert(rec1)
 		require.NoError(t, err)
 		_, err = tb.Insert(rec2)
 		require.NoError(t, err)
 
 		// fetch rec1 and make sure it returns the right one
-		res, err := tb.Record(rowid1)
+		res, err := tb.Record(recordID1)
 		require.NoError(t, err)
 		fc, err := res.Field("fieldc")
 		require.NoError(t, err)
@@ -143,20 +143,20 @@ func TestTableReaderRecord(t *testing.T, builder Builder) {
 
 // TestTableWriterInsert verifies Insert behaviour.
 func TestTableWriterInsert(t *testing.T, builder Builder) {
-	t.Run("Should generate a rowid by default", func(t *testing.T) {
+	t.Run("Should generate a recordID by default", func(t *testing.T) {
 		tb, cleanup := builder()
 		defer cleanup()
 
 		rec := newRecord()
-		rowid1, err := tb.Insert(rec)
+		recordID1, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.NotEmpty(t, rowid1)
+		require.NotEmpty(t, recordID1)
 
-		rowid2, err := tb.Insert(rec)
+		recordID2, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.NotEmpty(t, rowid2)
+		require.NotEmpty(t, recordID2)
 
-		require.NotEqual(t, rowid1, rowid2)
+		require.NotEqual(t, recordID1, recordID2)
 	})
 
 	t.Run("Should support Pker interface", func(t *testing.T) {
@@ -173,21 +173,21 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 		}
 
 		// insert
-		rowid, err := tb.Insert(rec)
+		recordID, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, field.EncodeInt64(2), rowid)
+		require.Equal(t, field.EncodeInt64(2), recordID)
 
-		// make sure the record is fetchable using the returned rowid
-		_, err = tb.Record(rowid)
+		// make sure the record is fetchable using the returned recordID
+		_, err = tb.Record(recordID)
 		require.NoError(t, err)
 
 		// insert again
-		rowid, err = tb.Insert(rec)
+		recordID, err = tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, field.EncodeInt64(4), rowid)
+		require.Equal(t, field.EncodeInt64(4), recordID)
 	})
 
-	t.Run("Should fail if Pk returns empty rowid", func(t *testing.T) {
+	t.Run("Should fail if Pk returns empty recordID", func(t *testing.T) {
 		tb, cleanup := builder()
 		defer cleanup()
 
@@ -240,21 +240,21 @@ func TestTableWriterDelete(t *testing.T, builder Builder) {
 		rec1.Add(field.NewInt64("fieldc", 40))
 		rec2 := newRecord()
 
-		rowid1, err := tb.Insert(rec1)
+		recordID1, err := tb.Insert(rec1)
 		require.NoError(t, err)
-		rowid2, err := tb.Insert(rec2)
+		recordID2, err := tb.Insert(rec2)
 		require.NoError(t, err)
 
 		// delete the record
-		err = tb.Delete([]byte(rowid1))
+		err = tb.Delete([]byte(recordID1))
 		require.NoError(t, err)
 
 		// try again, should fail
-		err = tb.Delete([]byte(rowid1))
+		err = tb.Delete([]byte(recordID1))
 		require.Equal(t, table.ErrRecordNotFound, err)
 
 		// make sure it didn't also delete the other one
-		res, err := tb.Record(rowid2)
+		res, err := tb.Record(recordID2)
 		require.NoError(t, err)
 		_, err = res.Field("fieldc")
 		require.Error(t, err)
@@ -282,9 +282,9 @@ func TestTableWriterReplace(t *testing.T, builder Builder) {
 			field.NewString("fieldb", "d"),
 		})
 
-		rowid1, err := tb.Insert(rec1)
+		recordID1, err := tb.Insert(rec1)
 		require.NoError(t, err)
-		rowid2, err := tb.Insert(rec2)
+		recordID2, err := tb.Insert(rec2)
 		require.NoError(t, err)
 
 		// create a third record
@@ -294,18 +294,18 @@ func TestTableWriterReplace(t *testing.T, builder Builder) {
 		})
 
 		// replace rec1 with rec3
-		err = tb.Replace(rowid1, rec3)
+		err = tb.Replace(recordID1, rec3)
 		require.NoError(t, err)
 
 		// make sure it replaced it correctly
-		res, err := tb.Record(rowid1)
+		res, err := tb.Record(recordID1)
 		require.NoError(t, err)
 		f, err := res.Field("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", string(f.Data))
 
 		// make sure it didn't also replace the other one
-		res, err = tb.Record(rowid2)
+		res, err = tb.Record(recordID2)
 		require.NoError(t, err)
 		f, err = res.Field("fielda")
 		require.NoError(t, err)

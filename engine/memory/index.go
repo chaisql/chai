@@ -15,7 +15,7 @@ type index struct {
 }
 
 type indexedItem struct {
-	value, rowid []byte
+	value, recordID []byte
 }
 
 func (i *indexedItem) Less(than btree.Item) bool {
@@ -26,18 +26,18 @@ func (i *indexedItem) Less(than btree.Item) bool {
 		return cmp < 0
 	}
 
-	if len(i.rowid) == 0 {
+	if len(i.recordID) == 0 {
 		return true
 	}
 
-	if len(other.rowid) == 0 {
+	if len(other.recordID) == 0 {
 		return false
 	}
 
-	return bytes.Compare(i.rowid, other.rowid) < 0
+	return bytes.Compare(i.recordID, other.recordID) < 0
 }
 
-func (i *index) Set(value []byte, rowid []byte) error {
+func (i *index) Set(value []byte, recordID []byte) error {
 	if !i.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -46,7 +46,7 @@ func (i *index) Set(value []byte, rowid []byte) error {
 		return errors.New("value cannot be nil")
 	}
 
-	newItem := &indexedItem{value, rowid}
+	newItem := &indexedItem{value, recordID}
 	replacedItem := i.tree.ReplaceOrInsert(newItem)
 	i.tx.undos = append(i.tx.undos, func() {
 		if replacedItem != nil {
@@ -60,7 +60,7 @@ func (i *index) Set(value []byte, rowid []byte) error {
 	return nil
 }
 
-func (i *index) Delete(rowid []byte) error {
+func (i *index) Delete(recordID []byte) error {
 	if !i.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -69,7 +69,7 @@ func (i *index) Delete(rowid []byte) error {
 
 	i.tree.Ascend(func(bi btree.Item) bool {
 		it := bi.(*indexedItem)
-		if bytes.Equal(it.rowid, rowid) {
+		if bytes.Equal(it.recordID, recordID) {
 			deleted = append(deleted, i.tree.Delete(bi))
 		}
 		return true
@@ -101,7 +101,7 @@ func (c *indexCursor) First() ([]byte, []byte) {
 	}
 
 	it := c.pivot.(*indexedItem)
-	return it.value, it.rowid
+	return it.value, it.recordID
 }
 
 func (c *indexCursor) Last() ([]byte, []byte) {
@@ -111,7 +111,7 @@ func (c *indexCursor) Last() ([]byte, []byte) {
 	}
 
 	it := c.pivot.(*indexedItem)
-	return it.value, it.rowid
+	return it.value, it.recordID
 }
 
 func (c *indexCursor) Next() ([]byte, []byte) {
@@ -130,7 +130,7 @@ func (c *indexCursor) Next() ([]byte, []byte) {
 	}
 
 	it := c.pivot.(*indexedItem)
-	return it.value, it.rowid
+	return it.value, it.recordID
 }
 
 func (c *indexCursor) Prev() ([]byte, []byte) {
@@ -149,7 +149,7 @@ func (c *indexCursor) Prev() ([]byte, []byte) {
 	}
 
 	it := c.pivot.(*indexedItem)
-	return it.value, it.rowid
+	return it.value, it.recordID
 }
 
 func (c *indexCursor) Seek(seek []byte) ([]byte, []byte) {
@@ -159,7 +159,7 @@ func (c *indexCursor) Seek(seek []byte) ([]byte, []byte) {
 
 	c.tree.AscendGreaterOrEqual(&indexedItem{value: seek}, func(i btree.Item) bool {
 		it := i.(*indexedItem)
-		k, v = it.value, it.rowid
+		k, v = it.value, it.recordID
 
 		c.pivot = i
 		return false
