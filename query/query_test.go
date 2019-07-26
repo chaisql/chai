@@ -62,13 +62,13 @@ func TestSelect(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false, false)
 		defer cleanup()
 
-		res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
+		res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Limit(5).Offset(1).Run(tx)
 		require.NoError(t, res.Err())
 
 		b := table.NewBrowser(res.Table())
 		count, err := b.Count()
 		require.NoError(t, err)
-		require.Equal(t, 7, count)
+		require.Equal(t, 5, count)
 
 		err = table.NewBrowser(res.Table()).ForEach(func(rowid []byte, r record.Record) error {
 			_, err := r.Field("id")
@@ -278,7 +278,6 @@ func TestUpdate(t *testing.T) {
 				require.NoError(t, err)
 				age, err := field.DecodeInt(f.Data)
 				require.NoError(t, err)
-				fmt.Println(age)
 				require.True(t, age <= 20)
 				return nil
 			}).Err()
@@ -298,6 +297,22 @@ func BenchmarkSelect(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				Select(Field("id"), Field("name"), Field("age"), Field("group")).From(Table("test")).Where(GtInt(Field("age"), -200)).Run(tx)
+			}
+			b.StopTimer()
+			tx.Rollback()
+		})
+	}
+}
+
+func BenchmarkSelectLimit(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
+			tx, cleanup := createTable(b, size, false, false)
+			defer cleanup()
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				Select(Field("id"), Field("name"), Field("age"), Field("group")).From(Table("test")).Where(GtInt(Field("age"), -200)).Limit(size/10 + 1).Run(tx)
 			}
 			b.StopTimer()
 			tx.Rollback()

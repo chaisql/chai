@@ -42,6 +42,8 @@ type SelectStmt struct {
 	fieldSelectors []FieldSelector
 	tableSelector  TableSelector
 	whereExpr      Expr
+	offsetExpr     Expr
+	limitExpr      Expr
 }
 
 // Select creates a DSL equivalent to the SQL Select command.
@@ -58,6 +60,41 @@ func Select(selectors ...FieldSelector) SelectStmt {
 func (q SelectStmt) Run(tx *genji.Tx) Result {
 	if q.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
+	}
+
+	var offset int64 = -1
+	var limit int64 = -1
+
+	if q.offsetExpr != nil {
+		s, err := q.offsetExpr.Eval(EvalContext{
+			Tx: tx,
+		})
+		if err != nil {
+			return Result{err: err}
+		}
+		if s.Type < field.Int {
+			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", s.Type)}
+		}
+		offset, err = field.DecodeInt64(s.Data)
+		if err != nil {
+			return Result{err: err}
+		}
+	}
+
+	if q.limitExpr != nil {
+		s, err := q.limitExpr.Eval(EvalContext{
+			Tx: tx,
+		})
+		if err != nil {
+			return Result{err: err}
+		}
+		if s.Type < field.Int {
+			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", s.Type)}
+		}
+		limit, err = field.DecodeInt64(s.Data)
+		if err != nil {
+			return Result{err: err}
+		}
 	}
 
 	t, err := q.tableSelector.SelectTable(tx)
@@ -82,7 +119,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 	}
 
 	if b.Reader == nil {
-		b.Reader, err = whereClause(tx, t, q.whereExpr)
+		b.Reader, err = whereClause(tx, t, q.whereExpr, limit, offset)
 		if err != nil {
 			return Result{err: err}
 		}
@@ -111,7 +148,6 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
-// Calling this method is optional.
 func (q SelectStmt) Where(e Expr) SelectStmt {
 	q.whereExpr = e
 	return q
@@ -124,16 +160,70 @@ func (q SelectStmt) From(tableSelector TableSelector) SelectStmt {
 	return q
 }
 
-func whereClause(tx *genji.Tx, t table.Reader, e Expr) (table.Reader, error) {
+// Limit the number of records returned.
+func (q SelectStmt) Limit(offset int) SelectStmt {
+	q.limitExpr = Int64Value(int64(offset))
+	return q
+}
+
+// LimitExpr takes an expression that will be evaluated to determine
+// how many records the query must return.
+// The result of the evaluation must be an integer.
+func (q SelectStmt) LimitExpr(e Expr) SelectStmt {
+	q.limitExpr = e
+	return q
+}
+
+// Offset indicates the number of records to skip.
+func (q SelectStmt) Offset(offset int) SelectStmt {
+	q.offsetExpr = Int64Value(int64(offset))
+	return q
+}
+
+// OffsetExpr takes an expression that will be evaluated to determine
+// how many records the query must skip.
+// The result of the evaluation must be a field.Int64.
+func (q SelectStmt) OffsetExpr(e Expr) SelectStmt {
+	q.offsetExpr = e
+	return q
+}
+
+var errStop = errors.New("stop")
+
+func whereClause(tx *genji.Tx, t table.Reader, e Expr, limit, offset int64) (table.Reader, error) {
+	var skipped, count int64
+
 	b := table.NewBrowser(t).Filter(func(_ []byte, r record.Record) (bool, error) {
 		sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
 		if err != nil {
 			return false, err
 		}
 
-		return sc.Truthy(), nil
+		ok := sc.Truthy()
+		if !ok {
+			return false, nil
+		}
+
+		if skipped < offset {
+			skipped++
+			return false, nil
+		}
+
+		if limit >= 0 && count >= limit {
+			return false, errStop
+		}
+
+		count++
+
+		return true, nil
 	})
-	return b.Reader, b.Err()
+
+	err := b.Err()
+	if err != nil && err != errStop {
+		return b.Reader, err
+	}
+
+	return b.Reader, nil
 }
 
 // DeleteStmt is a DSL that allows creating a full Delete query.
@@ -193,7 +283,7 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 	}
 
 	if b.Reader == nil {
-		b.Reader, err = whereClause(tx, t, d.whereExpr)
+		b.Reader, err = whereClause(tx, t, d.whereExpr, -1, -1)
 		if err != nil {
 			return err
 		}
@@ -459,7 +549,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 	}
 
 	if b.Reader == nil {
-		b.Reader, err = whereClause(tx, t, u.whereExpr)
+		b.Reader, err = whereClause(tx, t, u.whereExpr, -1, -1)
 		if err != nil {
 			return err
 		}
