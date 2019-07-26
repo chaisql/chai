@@ -10,6 +10,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/store"
 	"github.com/asdine/genji/table"
 )
 
@@ -92,7 +93,7 @@ func (u *User) Pk() ([]byte, error) {
 // UserStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type UserStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // NewUserStore creates a UserStore.
@@ -102,7 +103,7 @@ func NewUserStore(db *genji.DB) *UserStore {
 	var indexes []string
 	indexes = append(indexes, "Name")
 
-	return &UserStore{Store: genji.NewStore(db, "User", schema, indexes)}
+	return &UserStore{Store: store.New(db, "User", schema, indexes)}
 }
 
 // NewUserStoreWithTx creates a UserStore valid for the lifetime of the given transaction.
@@ -113,7 +114,7 @@ func NewUserStoreWithTx(tx *genji.Tx) *UserStore {
 
 	indexes = append(indexes, "Name")
 
-	return &UserStore{Store: genji.NewStoreWithTx(tx, "User", schema, indexes)}
+	return &UserStore{Store: store.NewWithTx(tx, "User", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -125,8 +126,8 @@ func (u *UserStore) Insert(record *User) (err error) {
 // Get a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 func (u *UserStore) Get(pk int64) (*User, error) {
-	rowid := field.EncodeInt64(pk)
-	rec, err := u.Store.Get(rowid)
+	recordID := field.EncodeInt64(pk)
+	rec, err := u.Store.Get(recordID)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +149,8 @@ func (u *UserStore) Get(pk int64) (*User, error) {
 // Delete a record using its primary key.
 // If the record doesn't exist, returns table.ErrRecordNotFound.
 func (u *UserStore) Delete(pk int64) error {
-	rowid := field.EncodeInt64(pk)
-	return u.Store.Delete(rowid)
+	recordID := field.EncodeInt64(pk)
+	return u.Store.Delete(recordID)
 }
 
 // List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
@@ -159,7 +160,7 @@ func (u *UserStore) List(offset, limit int) ([]User, error) {
 		size = 0
 	}
 	list := make([]User, 0, size)
-	err := u.Store.List(offset, limit, func(rowid []byte, r record.Record) error {
+	err := u.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
 		var record User
 		err := record.ScanRecord(r)
 		if err != nil {
@@ -177,11 +178,11 @@ func (u *UserStore) List(offset, limit int) ([]User, error) {
 
 // Replace the selected record by the given one.
 func (u *UserStore) Replace(pk int64, record *User) error {
-	rowid := field.EncodeInt64(pk)
+	recordID := field.EncodeInt64(pk)
 	if record.ID != pk {
 		record.ID = pk
 	}
-	return u.Store.Replace(rowid, record)
+	return u.Store.Replace(recordID, record)
 }
 
 // UserQuerySelector provides helpers for selecting fields from the User structure.

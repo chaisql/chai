@@ -10,6 +10,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/store"
 	"github.com/asdine/genji/table"
 )
 
@@ -101,7 +102,7 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 // BasicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type BasicStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // NewBasicStore creates a BasicStore.
@@ -110,7 +111,7 @@ func NewBasicStore(db *genji.DB) *BasicStore {
 
 	var indexes []string
 
-	return &BasicStore{Store: genji.NewStore(db, "Basic", schema, indexes)}
+	return &BasicStore{Store: store.New(db, "Basic", schema, indexes)}
 }
 
 // NewBasicStoreWithTx creates a BasicStore valid for the lifetime of the given transaction.
@@ -119,7 +120,7 @@ func NewBasicStoreWithTx(tx *genji.Tx) *BasicStore {
 
 	var indexes []string
 
-	return &BasicStore{Store: genji.NewStoreWithTx(tx, "Basic", schema, indexes)}
+	return &BasicStore{Store: store.NewWithTx(tx, "Basic", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -322,7 +323,7 @@ func (b *basic) ScanRecord(rec record.Record) error {
 // basicStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type basicStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // newBasicStore creates a basicStore.
@@ -331,7 +332,7 @@ func newBasicStore(db *genji.DB) *basicStore {
 
 	var indexes []string
 
-	return &basicStore{Store: genji.NewStore(db, "Basic", schema, indexes)}
+	return &basicStore{Store: store.New(db, "Basic", schema, indexes)}
 }
 
 // newBasicStoreWithTx creates a basicStore valid for the lifetime of the given transaction.
@@ -340,7 +341,7 @@ func newBasicStoreWithTx(tx *genji.Tx) *basicStore {
 
 	var indexes []string
 
-	return &basicStore{Store: genji.NewStoreWithTx(tx, "Basic", schema, indexes)}
+	return &basicStore{Store: store.NewWithTx(tx, "Basic", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -543,7 +544,7 @@ func (b *BasicSchemaful) ScanRecord(rec record.Record) error {
 // BasicSchemafulStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type BasicSchemafulStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // NewBasicSchemafulStore creates a BasicSchemafulStore.
@@ -560,7 +561,7 @@ func NewBasicSchemafulStore(db *genji.DB) *BasicSchemafulStore {
 
 	var indexes []string
 
-	return &BasicSchemafulStore{Store: genji.NewStore(db, "BasicSchemaful", schema, indexes)}
+	return &BasicSchemafulStore{Store: store.New(db, "BasicSchemaful", schema, indexes)}
 }
 
 // NewBasicSchemafulStoreWithTx creates a BasicSchemafulStore valid for the lifetime of the given transaction.
@@ -577,7 +578,7 @@ func NewBasicSchemafulStoreWithTx(tx *genji.Tx) *BasicSchemafulStore {
 
 	var indexes []string
 
-	return &BasicSchemafulStore{Store: genji.NewStoreWithTx(tx, "BasicSchemaful", schema, indexes)}
+	return &BasicSchemafulStore{Store: store.NewWithTx(tx, "BasicSchemaful", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -757,7 +758,7 @@ func (p *Pk) Pk() ([]byte, error) {
 // PkStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type PkStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // NewPkStore creates a PkStore.
@@ -766,7 +767,7 @@ func NewPkStore(db *genji.DB) *PkStore {
 
 	var indexes []string
 
-	return &PkStore{Store: genji.NewStore(db, "Pk", schema, indexes)}
+	return &PkStore{Store: store.New(db, "Pk", schema, indexes)}
 }
 
 // NewPkStoreWithTx creates a PkStore valid for the lifetime of the given transaction.
@@ -775,7 +776,7 @@ func NewPkStoreWithTx(tx *genji.Tx) *PkStore {
 
 	var indexes []string
 
-	return &PkStore{Store: genji.NewStoreWithTx(tx, "Pk", schema, indexes)}
+	return &PkStore{Store: store.NewWithTx(tx, "Pk", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -951,7 +952,7 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 // IndexedStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type IndexedStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // NewIndexedStore creates a IndexedStore.
@@ -961,7 +962,7 @@ func NewIndexedStore(db *genji.DB) *IndexedStore {
 	var indexes []string
 	indexes = append(indexes, "A")
 
-	return &IndexedStore{Store: genji.NewStore(db, "Indexed", schema, indexes)}
+	return &IndexedStore{Store: store.New(db, "Indexed", schema, indexes)}
 }
 
 // NewIndexedStoreWithTx creates a IndexedStore valid for the lifetime of the given transaction.
@@ -972,7 +973,7 @@ func NewIndexedStoreWithTx(tx *genji.Tx) *IndexedStore {
 
 	indexes = append(indexes, "A")
 
-	return &IndexedStore{Store: genji.NewStoreWithTx(tx, "Indexed", schema, indexes)}
+	return &IndexedStore{Store: store.NewWithTx(tx, "Indexed", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.
@@ -1174,7 +1175,7 @@ func (m *MultipleTags) Pk() ([]byte, error) {
 // MultipleTagsStore manages the table. It provides several typed helpers
 // that simplify common operations.
 type MultipleTagsStore struct {
-	*genji.Store
+	*store.Store
 }
 
 // NewMultipleTagsStore creates a MultipleTagsStore.
@@ -1184,7 +1185,7 @@ func NewMultipleTagsStore(db *genji.DB) *MultipleTagsStore {
 	var indexes []string
 	indexes = append(indexes, "D")
 
-	return &MultipleTagsStore{Store: genji.NewStore(db, "MultipleTags", schema, indexes)}
+	return &MultipleTagsStore{Store: store.New(db, "MultipleTags", schema, indexes)}
 }
 
 // NewMultipleTagsStoreWithTx creates a MultipleTagsStore valid for the lifetime of the given transaction.
@@ -1195,7 +1196,7 @@ func NewMultipleTagsStoreWithTx(tx *genji.Tx) *MultipleTagsStore {
 
 	indexes = append(indexes, "D")
 
-	return &MultipleTagsStore{Store: genji.NewStoreWithTx(tx, "MultipleTags", schema, indexes)}
+	return &MultipleTagsStore{Store: store.NewWithTx(tx, "MultipleTags", schema, indexes)}
 }
 
 // Insert a record in the table and return the primary key.

@@ -22,7 +22,7 @@ const storeStructTmpl = `
 // {{$structName}}Store manages the table. It provides several typed helpers
 // that simplify common operations.
 type {{$structName}}Store struct {
-	*genji.Store
+	*store.Store
 }
 {{ end }}
 `
@@ -53,7 +53,7 @@ func {{.NameWithPrefix "New"}}Store(db *genji.DB) *{{$structName}}Store {
 		{{- end }}
 	{{- end }}
 
-	return &{{$structName}}Store{Store: genji.NewStore(db, "{{$tableName}}", schema, indexes)}
+	return &{{$structName}}Store{Store: store.New(db, "{{$tableName}}", schema, indexes)}
 }
 {{ end }}
 `
@@ -84,7 +84,7 @@ func {{.NameWithPrefix "New"}}StoreWithTx(tx *genji.Tx) *{{$structName}}Store {
 		{{- end }}
 	{{- end }}
 
-	return &{{$structName}}Store{Store: genji.NewStoreWithTx(tx, "{{$tableName}}", schema, indexes)}
+	return &{{$structName}}Store{Store: store.NewWithTx(tx, "{{$tableName}}", schema, indexes)}
 }
 {{ end }}
 `
