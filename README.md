@@ -8,15 +8,14 @@ Genji is a powerful embedded relational database build on top of key-value store
 
 It provides a complete framework with multiple APIs that can be used to manipulate, manage, read and write data.
 
-Genji supports schemaful and schemaless tables that can be manipulated using the table package, which is a low level functional API
+Genji tables are schemaless and can be manipulated using the table package, which is a low level functional API
 or by using the query package which is a powerful SQL like query engine.
 
 ## Features
 
 - **Abstract storage**: Stores data on disk using [BoltDB](https://github.com/etcd-io/bbolt) or in memory (_[Badger](https://github.com/dgraph-io/badger) is coming soon_)
-- **No reflection**: Uses code generation to map Go structure to tables
-- **Flexible structure**: Declare schemaful or schemaless tables
-- **Type safe APIs**: Generated code allows to avoid common errors
+- **No reflection**: Uses code generation to map Go structures to tables
+- **Type safe APIs**: Generated code allows to avoid common errors and avoid reflection
 - **SQL Like queries**: Genji provides a query engine to run complex queries
 - **Index support**: Declare indexes and let Genji deal with them.
 - **Complete framework**: Use Genji to manipulate tables, extend the query system or implement you own engine.
@@ -43,16 +42,10 @@ type User struct {
 }
 ```
 
-Generate a schemaless table
+Generate code to make that structure compatible with Genji.
 
 ```bash
 genji -f user.go -s User
-```
-
-or a schemaful table
-
-```bash
-genji -f user.go -S User
 ```
 
 This command generates a file that contains APIs specific to the `User` type.
@@ -60,24 +53,11 @@ This command generates a file that contains APIs specific to the `User` type.
 ```go
 // user.genji.go
 
-// User gets new methods that implement some Genji interfaces.
+// The User type gets new methods that implement some Genji interfaces.
 func (u *User) Field(name string) (field.Field, error) {}
 func (u *User) Iterate(fn func(field.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
 func (u *User) Pk() ([]byte, error) {}
-
-// A UserStore type is generated to simplify interaction with the User table
-// and simplify common operations.
-type UserStore struct {
-    *genji.Store
-}
-func NewUserStore(db *genji.DB) *UserStore {}
-func NewUserStoreWithTx(tx *genji.Tx) *UserStore {}
-func (u *UserStore) Insert(record *User) (err error) {}
-func (u *UserStore) Get(pk int64) (*User, error) {}
-func (u *UserStore) Delete(pk int64) error {}
-func (u *UserStore) List(offset, limit int) ([]User, error) {}
-func (u *UserStore) Replace(pk int64, record *User) error {}
 
 // A UserQuerySelector is generated to ease writing queries.
 type UserQuerySelector struct {
@@ -104,10 +84,7 @@ func main() {
     ng := memory.NewEngine()
 
     // Instantiate a DB using the engine
-    db, err := genji.New(ng)
-    if err != nil {
-        log.Fatal(err)
-    }
+    db := genji.New(ng)
     defer db.Close()
 
     // Create a UserStore from the generated code
