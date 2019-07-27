@@ -41,15 +41,6 @@ func init() {
 		"record-Iterate":       recordIterateTmpl,
 		"record-ScanRecord":    recordScanRecordTmpl,
 		"record-Pk":            recordPkTmpl,
-		"store":                storeTmpl,
-		"store-Struct":         storeStructTmpl,
-		"store-New":            storeNewTmpl,
-		"store-NewWithTx":      storeNewWithTxTmpl,
-		"store-Insert":         storeInsertTmpl,
-		"store-Get":            storeGetTmpl,
-		"store-Delete":         storeDeleteTmpl,
-		"store-List":           storeListTmpl,
-		"store-Replace":        storeReplaceTmpl,
 		"query-Selector":       querySelectorTmpl,
 		"query-SelectorStruct": querySelectorStructTmpl,
 		"query-SelectorNew":    querySelectorNewTmpl,
@@ -82,8 +73,6 @@ type Config struct {
 type Struct struct {
 	// Name of the structure
 	Name string
-	// Whether the related table is schemaful or schemaless
-	Schema bool
 }
 
 // Generate parses a list of files, looks for the targeted structs
@@ -178,7 +167,6 @@ func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
 	g.Records = make([]recordContext, len(cfg.Structs))
 	for i := range cfg.Structs {
 		for _, src := range srcs {
-			g.Records[i].Schema = cfg.Structs[i].Schema
 			ok, err := g.Records[i].lookupRecord(src, cfg.Structs[i].Name)
 			if err != nil {
 				return err
@@ -210,8 +198,6 @@ func (g *genContext) selectImports() {
 
 	if len(g.Records) > 0 {
 		m["errors"]++
-		m["github.com/asdine/genji"]++
-		m["github.com/asdine/genji/store"]++
 		m["github.com/asdine/genji/field"]++
 		m["github.com/asdine/genji/query"]++
 		m["github.com/asdine/genji/record"]++

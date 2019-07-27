@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/generator/testdata"
 	"github.com/asdine/genji/record"
@@ -27,12 +25,11 @@ var update = flag.Bool("update", false, "update .golden file")
 func TestGenerate(t *testing.T) {
 	t.Run("Golden", func(t *testing.T) {
 		structs := []Struct{
-			{"Basic", false},
-			{"basic", false},
-			{"BasicSchemaful", true},
-			{"Pk", false},
-			{"Indexed", false},
-			{"MultipleTags", false},
+			{"Basic"},
+			{"basic"},
+			{"Pk"},
+			{"Indexed"},
+			{"MultipleTags"},
 		}
 
 		results := []string{
@@ -87,7 +84,7 @@ func TestGenerate(t *testing.T) {
 				var buf bytes.Buffer
 				err := Generate(&buf, Config{
 					Sources: []io.Reader{strings.NewReader(src)},
-					Structs: []Struct{{"User", true}},
+					Structs: []Struct{{"User"}},
 				})
 				require.Error(t, err)
 			})
@@ -102,7 +99,7 @@ func TestGenerate(t *testing.T) {
 		var buf bytes.Buffer
 		err := Generate(&buf, Config{
 			Sources: []io.Reader{strings.NewReader(src)},
-			Structs: []Struct{{"User", true}},
+			Structs: []Struct{{"User"}},
 		})
 		require.Error(t, err)
 	})
@@ -124,7 +121,7 @@ func TestGenerate(t *testing.T) {
 		var buf bytes.Buffer
 		err := Generate(&buf, Config{
 			Sources: []io.Reader{strings.NewReader(src)},
-			Structs: []Struct{{"S", true}},
+			Structs: []Struct{{"S"}},
 		})
 		require.Error(t, err)
 	})
@@ -172,185 +169,6 @@ func TestGeneratedRecords(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 4, i)
-
-		t.Run("Init", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				// verify table was created
-				tab, err := tx.Table("Basic")
-				require.NoError(t, err)
-				require.NotNil(t, tab)
-
-				// calling Init again should not fail
-				return tb.Init()
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Insert", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				record := testdata.Basic{
-					A: "A",
-				}
-				recordID, err := tb.Insert(&record)
-				require.NoError(t, err)
-				require.NotNil(t, recordID)
-				return nil
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Get", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				record1 := testdata.Basic{
-					A: "A",
-					B: 1,
-					C: 2,
-					D: 3,
-				}
-				recordID, err := tb.Insert(&record1)
-				require.NoError(t, err)
-
-				record2, err := tb.Get(recordID)
-				require.NoError(t, err)
-				require.Equal(t, record1, *record2)
-				return nil
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Delete", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				record1 := testdata.Basic{
-					A: "A",
-					B: 1,
-					C: 2,
-					D: 3,
-				}
-				recordID, err := tb.Insert(&record1)
-				require.NoError(t, err)
-
-				err = tb.Delete(recordID)
-				require.NoError(t, err)
-				return nil
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("List", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				for i := 0; i < 10; i++ {
-					_, err = tb.Insert(&testdata.Basic{
-						B: i,
-					})
-					require.NoError(t, err)
-				}
-
-				list, err := tb.List(0, 3)
-				require.NoError(t, err)
-				require.Len(t, list, 3)
-				require.EqualValues(t, 0, list[0].B)
-				require.EqualValues(t, 1, list[1].B)
-				require.EqualValues(t, 2, list[2].B)
-
-				list, err = tb.List(8, 5)
-				require.NoError(t, err)
-				require.Len(t, list, 2)
-				require.EqualValues(t, 8, list[0].B)
-				require.EqualValues(t, 9, list[1].B)
-
-				list, err = tb.List(7, -1)
-				require.NoError(t, err)
-				require.Len(t, list, 3)
-				require.EqualValues(t, 7, list[0].B)
-				require.EqualValues(t, 8, list[1].B)
-				require.EqualValues(t, 9, list[2].B)
-				return nil
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Replace", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewBasicStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				record1 := testdata.Basic{
-					A: "A",
-					B: 1,
-					C: 2,
-					D: 3,
-				}
-				recordID, err := tb.Insert(&record1)
-				require.NoError(t, err)
-
-				record2 := testdata.Basic{
-					A: "AA",
-					B: 11,
-					C: 22,
-					D: 33,
-				}
-
-				err = tb.Replace(recordID, &record2)
-				require.NoError(t, err)
-
-				rec, err := tb.Get(recordID)
-				require.Equal(t, record2, *rec)
-
-				return nil
-			})
-			require.NoError(t, err)
-		})
 	})
 
 	t.Run("Pk", func(t *testing.T) {
@@ -364,55 +182,6 @@ func TestGeneratedRecords(t *testing.T) {
 		pk, err := r.Pk()
 		require.NoError(t, err)
 		require.Equal(t, field.EncodeInt64(10), pk)
-
-		t.Run("Insert", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewPkStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				record := testdata.Pk{
-					A: "A",
-					B: 10,
-				}
-				err := tb.Insert(&record)
-				require.NoError(t, err)
-				return nil
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Get", func(t *testing.T) {
-			db, err := genji.New(memory.NewEngine())
-			require.NoError(t, err)
-
-			err = db.Update(func(tx *genji.Tx) error {
-				tb := testdata.NewPkStoreWithTx(tx)
-				require.NoError(t, err)
-
-				err = tb.Init()
-				require.NoError(t, err)
-
-				record1 := testdata.Pk{
-					A: "A",
-					B: 10,
-				}
-				err := tb.Insert(&record1)
-				require.NoError(t, err)
-
-				record2, err := tb.Get(record1.B)
-				require.NoError(t, err)
-
-				require.Equal(t, record1, *record2)
-				return nil
-			})
-			require.NoError(t, err)
-		})
 	})
 
 	t.Run("Result", func(t *testing.T) {
@@ -436,26 +205,4 @@ func TestGeneratedRecords(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 5)
 	})
-}
-
-func BenchmarkGeneratedRecord(b *testing.B) {
-	db, err := genji.New(memory.NewEngine())
-	require.NoError(b, err)
-	store := testdata.NewBasicStore(db)
-
-	err = store.Init()
-	require.NoError(b, err)
-
-	id, err := store.Insert(&testdata.Basic{
-		A: "a",
-		B: 1000,
-		C: 2000,
-		D: 3000,
-	})
-	require.NoError(b, err)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		store.Get(id)
-	}
 }
