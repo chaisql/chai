@@ -331,15 +331,8 @@ func (i InsertStmt) Values(values ...Expr) InsertStmt {
 }
 
 // Run the Insert query within tx.
-// For schemaless tables:
-// - If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
-// - If the Fields method wasn't called, this will return an error
-//
-// For schemafull tables:
-// - If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
-// Missing fields will be fields with their zero values.
-// - If the Fields method wasn't called, this number of values must match the number of fields of the schema, and each value will be stored in
-// each field of the schema, in order.
+// If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
+// If the Fields method wasn't called, this will return an error
 func (i InsertStmt) Run(tx *genji.Tx) Result {
 	if i.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
@@ -354,67 +347,6 @@ func (i InsertStmt) Run(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	if len(i.fieldNames) == 0 {
-		return i.runWithoutSelectedFields(tx, t)
-	}
-
-	schema, schemaful := t.Schema()
-	if !schemaful {
-		return i.runSchemalessWithSelectedFields(tx, t)
-	}
-
-	return i.runSchemafulWithSelectedFields(tx, t, &schema)
-}
-
-func (i InsertStmt) runWithoutSelectedFields(tx *genji.Tx, t *genji.Table) Result {
-	schema, schemaful := t.Schema()
-
-	if !schemaful {
-		return Result{err: errors.New("fields must be selected for schemaless tables")}
-	}
-
-	var fb record.FieldBuffer
-
-	if len(schema.Fields) != len(i.values) {
-		return Result{err: fmt.Errorf("table %s has %d fields, got %d fields", i.tableSelector.Name(), len(schema.Fields), len(i.values))}
-	}
-
-	for idx, sf := range schema.Fields {
-		sc, err := i.values[idx].Eval(EvalContext{
-			Tx: tx,
-		})
-		if err != nil {
-			return Result{err: err}
-		}
-
-		if sc.Type != sf.Type {
-			return Result{err: fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)}
-		}
-
-		fb.Add(field.Field{
-			Name: sf.Name,
-			Type: sf.Type,
-			Data: sc.Data,
-		})
-	}
-
-	recordID, err := t.Insert(&fb)
-	if err != nil {
-		return Result{err: err}
-	}
-
-	return Result{t: recordIDToTable(recordID)}
-}
-
-func recordIDToTable(recordID []byte) table.Table {
-	var rb table.RecordBuffer
-	rb.Insert(record.FieldBuffer([]field.Field{
-		field.NewBytes("recordID", recordID),
-	}))
-	return &rb
-}
-
-func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table) Result {
 	var fb record.FieldBuffer
 
 	if len(i.fieldNames) != len(i.values) {
@@ -444,46 +376,12 @@ func (i InsertStmt) runSchemalessWithSelectedFields(tx *genji.Tx, t *genji.Table
 	return Result{t: recordIDToTable(recordID)}
 }
 
-func (i InsertStmt) runSchemafulWithSelectedFields(tx *genji.Tx, t *genji.Table, schema *record.Schema) Result {
-	var fb record.FieldBuffer
-
-	for _, sf := range schema.Fields {
-		var found bool
-		for idx, name := range i.fieldNames {
-			if name != sf.Name {
-				continue
-			}
-
-			sc, err := i.values[idx].Eval(EvalContext{
-				Tx: tx,
-			})
-			if err != nil {
-				return Result{err: err}
-			}
-			if sc.Type != sf.Type {
-				return Result{err: fmt.Errorf("cannot assign value of type %q into field of type %q", sc.Type, sf.Type)}
-			}
-			fb.Add(field.Field{
-				Name: name,
-				Type: sc.Type,
-				Data: sc.Data,
-			})
-			found = true
-		}
-
-		if !found {
-			zv := field.ZeroValue(sf.Type)
-			zv.Name = sf.Name
-			fb.Add(zv)
-		}
-	}
-
-	recordID, err := t.Insert(&fb)
-	if err != nil {
-		return Result{err: err}
-	}
-
-	return Result{t: recordIDToTable(recordID)}
+func recordIDToTable(recordID []byte) table.Table {
+	var rb table.RecordBuffer
+	rb.Insert(record.FieldBuffer([]field.Field{
+		field.NewBytes("recordID", recordID),
+	}))
+	return &rb
 }
 
 // UpdateStmt is a DSL that allows creating a full Update query.
@@ -557,8 +455,6 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		}
 	}
 
-	schema, schemaful := t.Schema()
-
 	b = b.ForEach(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
@@ -578,16 +474,6 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 			})
 			if err != nil {
 				return err
-			}
-
-			if schemaful {
-				sf, err := schema.Field(fname)
-				if err != nil {
-					return err
-				}
-				if f.Type != sf.Type {
-					return fmt.Errorf("cannot assign value of type %q into field of type %q", f.Type, sf.Type)
-				}
 			}
 
 			f.Type = s.Type

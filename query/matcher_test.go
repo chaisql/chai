@@ -53,7 +53,7 @@ func TestMatchers(t *testing.T) {
 }
 
 func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func()) {
-	db, err := genji.New(memory.NewEngine())
+	db := genji.New(memory.NewEngine())
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
@@ -102,9 +102,9 @@ func TestIndexMatchers(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name    string
-		matcher query.Expr
-		recordIDs  []string
+		name      string
+		matcher   query.Expr
+		recordIDs []string
 	}{
 		{"eq/int/one", query.EqInt(query.Field("age"), 10), []string{"c"}},
 		{"eq/int/multiple", query.EqInt(query.Field("age"), 2), []string{"x", "y"}},

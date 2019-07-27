@@ -12,26 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTable(t require.TestingT, size int, withIndex bool, withSchema bool) (*genji.Tx, func()) {
-	db, err := genji.New(memory.NewEngine())
+func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func()) {
+	db := genji.New(memory.NewEngine())
 
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
-	if withSchema {
-		err = tx.CreateTableWithSchema("test", &record.Schema{
-			Fields: []field.Field{
-				{Name: "id", Type: field.Int},
-				{Name: "name", Type: field.String},
-				{Name: "age", Type: field.Int},
-				{Name: "group", Type: field.Int},
-			},
-		})
-		require.NoError(t, err)
-	} else {
-		err = tx.CreateTable("test")
-		require.NoError(t, err)
-	}
+	err = tx.CreateTable("test")
+	require.NoError(t, err)
 
 	tb, err := tx.Table("test")
 	require.NoError(t, err)
@@ -59,7 +47,7 @@ func createTable(t require.TestingT, size int, withIndex bool, withSchema bool) 
 
 func TestSelect(t *testing.T) {
 	t.Run("NoIndex", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, false, false)
+		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
 		res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtInt(Field("age"), 20)).Limit(5).Offset(1).Run(tx)
@@ -86,7 +74,7 @@ func TestSelect(t *testing.T) {
 	})
 
 	t.Run("WithIndex", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, true, false)
+		tx, cleanup := createTable(t, 10, true)
 		defer cleanup()
 
 		res := Select(Field("id"), Field("name")).From(Table("test")).Where(GtString(Field("name"), "john")).Limit(5).Offset(1).Run(tx)
@@ -115,7 +103,7 @@ func TestSelect(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	t.Run("NoIndex", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, false, false)
+		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
 		err := Delete().From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
@@ -142,16 +130,16 @@ func TestDelete(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	t.Run("Schemaless/NoFields", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, false, false)
+	t.Run("NoFields", func(t *testing.T) {
+		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
 		res := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Run(tx)
 		require.Error(t, res.Err())
 	})
 
-	t.Run("Schemaless/WithFields", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, false, false)
+	t.Run("WithFields", func(t *testing.T) {
+		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
 		res := Insert().Into(Table("test")).Fields("a", "b").Values(IntValue(5), StringValue("hello")).Run(tx)
@@ -179,87 +167,20 @@ func TestInsert(t *testing.T) {
 		})
 		require.EqualValues(t, &expected, rec)
 	})
-
-	t.Run("Schemaful/NoFields", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, false, true)
-		defer cleanup()
-
-		res := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Run(tx)
-		require.NoError(t, res.Err())
-
-		tb, err := tx.Table("test")
-		require.NoError(t, err)
-
-		b := table.NewBrowser(tb)
-		count, err := b.Count()
-		require.NoError(t, err)
-		require.Equal(t, 11, count)
-
-		rec, err := table.NewBrowser(res.Table()).First()
-		require.NoError(t, err)
-
-		recordID, err := rec.Field("recordID")
-		require.NoError(t, err)
-
-		rec, err = tb.Record(recordID.Data)
-		require.NoError(t, err)
-		expected := record.FieldBuffer([]field.Field{
-			field.NewInt("id", 5),
-			field.NewString("name", "hello"),
-			field.NewInt("age", 50),
-			field.NewInt("group", 5),
-		})
-		require.EqualValues(t, &expected, rec)
-	})
-
-	t.Run("Schemaful/WithFields", func(t *testing.T) {
-		tx, cleanup := createTable(t, 10, false, true)
-		defer cleanup()
-
-		res := Insert().Into(Table("test")).Fields("age", "name").Values(IntValue(5), StringValue("hello")).Run(tx)
-		require.NoError(t, res.Err())
-
-		tb, err := tx.Table("test")
-		require.NoError(t, err)
-
-		b := table.NewBrowser(tb)
-		count, err := b.Count()
-		require.NoError(t, err)
-		require.Equal(t, 11, count)
-
-		rec, err := table.NewBrowser(res.Table()).First()
-		require.NoError(t, err)
-
-		recordID, err := rec.Field("recordID")
-		require.NoError(t, err)
-
-		rec, err = tb.Record(recordID.Data)
-		require.NoError(t, err)
-		expected := record.FieldBuffer([]field.Field{
-			field.NewInt("id", 0),
-			field.NewString("name", "hello"),
-			field.NewInt("age", 5),
-			field.NewInt("group", 0),
-		})
-		require.EqualValues(t, &expected, rec)
-	})
 }
 
 func TestUpdate(t *testing.T) {
 	tests := []struct {
-		name       string
-		withIndex  bool
-		withSchema bool
+		name      string
+		withIndex bool
 	}{
-		{"index/schemaless", true, false},
-		{"index/schemaful", true, true},
-		{"noindex/schemaless", false, false},
-		{"noindex/schemaful", false, true},
+		{"index", true},
+		{"noindex", false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tx, cleanup := createTable(t, 10, test.withIndex, test.withSchema)
+			tx, cleanup := createTable(t, 10, test.withIndex)
 			defer cleanup()
 
 			err := Update(Table("test")).Set("age", IntValue(20)).Where(GtInt(Field("age"), 20)).Run(tx)
@@ -291,7 +212,7 @@ func TestUpdate(t *testing.T) {
 func BenchmarkSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
-			tx, cleanup := createTable(b, size, false, false)
+			tx, cleanup := createTable(b, size, false)
 			defer cleanup()
 
 			b.ResetTimer()
@@ -307,7 +228,7 @@ func BenchmarkSelect(b *testing.B) {
 func BenchmarkSelectLimit(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
-			tx, cleanup := createTable(b, size, false, false)
+			tx, cleanup := createTable(b, size, false)
 			defer cleanup()
 
 			b.ResetTimer()
