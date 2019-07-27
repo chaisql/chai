@@ -6,11 +6,9 @@ package genji_test
 import (
 	"errors"
 
-	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/store"
 	"github.com/asdine/genji/table"
 )
 
@@ -88,101 +86,6 @@ func (u *User) ScanRecord(rec record.Record) error {
 // Pk returns the primary key. It implements the table.Pker interface.
 func (u *User) Pk() ([]byte, error) {
 	return field.EncodeInt64(u.ID), nil
-}
-
-// UserStore manages the table. It provides several typed helpers
-// that simplify common operations.
-type UserStore struct {
-	*store.Store
-}
-
-// NewUserStore creates a UserStore.
-func NewUserStore(db *genji.DB) *UserStore {
-	var schema *record.Schema
-
-	var indexes []string
-	indexes = append(indexes, "Name")
-
-	return &UserStore{Store: store.New(db, "User", schema, indexes)}
-}
-
-// NewUserStoreWithTx creates a UserStore valid for the lifetime of the given transaction.
-func NewUserStoreWithTx(tx *genji.Tx) *UserStore {
-	var schema *record.Schema
-
-	var indexes []string
-
-	indexes = append(indexes, "Name")
-
-	return &UserStore{Store: store.NewWithTx(tx, "User", schema, indexes)}
-}
-
-// Insert a record in the table and return the primary key.
-func (u *UserStore) Insert(record *User) (err error) {
-	_, err = u.Store.Insert(record)
-	return err
-}
-
-// Get a record using its primary key.
-// If the record doesn't exist, returns table.ErrRecordNotFound.
-func (u *UserStore) Get(pk int64) (*User, error) {
-	recordID := field.EncodeInt64(pk)
-	rec, err := u.Store.Get(recordID)
-	if err != nil {
-		return nil, err
-	}
-
-	if v, ok := rec.(*User); ok {
-		return v, nil
-	}
-
-	var record User
-
-	err = record.ScanRecord(rec)
-	if err != nil {
-		return nil, err
-	}
-
-	return &record, nil
-}
-
-// Delete a record using its primary key.
-// If the record doesn't exist, returns table.ErrRecordNotFound.
-func (u *UserStore) Delete(pk int64) error {
-	recordID := field.EncodeInt64(pk)
-	return u.Store.Delete(recordID)
-}
-
-// List records from the specified offset. If the limit is equal to -1, it returns all records after the selected offset.
-func (u *UserStore) List(offset, limit int) ([]User, error) {
-	size := limit
-	if size == -1 {
-		size = 0
-	}
-	list := make([]User, 0, size)
-	err := u.Store.List(offset, limit, func(recordID []byte, r record.Record) error {
-		var record User
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-		list = append(list, record)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return list, nil
-}
-
-// Replace the selected record by the given one.
-func (u *UserStore) Replace(pk int64, record *User) error {
-	recordID := field.EncodeInt64(pk)
-	if record.ID != pk {
-		record.ID = pk
-	}
-	return u.Store.Replace(recordID, record)
 }
 
 // UserQuerySelector provides helpers for selecting fields from the User structure.

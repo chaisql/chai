@@ -21,64 +21,55 @@ type User struct {
 
 func Example() {
 	ng := memory.NewEngine()
-	db, err := genji.New(ng)
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := genji.New(ng)
 	defer db.Close()
 
-	// generated User store
-	users := NewUserStore(db)
+	// open a read-write transaction
+	err := db.Update(func(tx *genji.Tx) error {
+		// create a table
+		err := tx.CreateTable("foo")
+		if err != nil {
+			return err
+		}
 
-	// generated type safe methods
-	err = users.Insert(&User{
-		ID:   10,
-		Name: "foo",
-		Age:  32,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+		// get the table
+		t, err := tx.Table("foo")
+		if err != nil {
+			return err
+		}
 
-	// Get a user
-	u, err := users.Get(10)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(u)
+		// insert a User, no reflection involved
+		recordID, err := t.Insert(&User{
+			ID:   10,
+			Name: "foo",
+			Age:  32,
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Println(recordID)
 
-	// List users
-	list, err := users.List(0, 10)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(list)
+		// Use generated types to run queries
+		qs := NewUserQuerySelector()
+		var result UserResult
 
-	// complex queries
-	qs := NewUserQuerySelector()
-	var result UserResult
-	err = users.View(func(tx *genji.Tx) error {
-		// SELECT ID, Name FROM User where Age >= 18
-		return query.Select(qs.ID, qs.Name).From(qs.Table()).Where(qs.Age.Gte(18)).
+		// SELECT ID, Name FROM foo where Age >= 18
+		return query.Select(qs.ID, qs.Name).From(t).Where(qs.Age.Gte(18)).
 			Run(tx).
 			Scan(&result)
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result)
 }
 
 func ExampleDB() {
 	ng := memory.NewEngine()
-	db, err := genji.New(ng)
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := genji.New(ng)
 	defer db.Close()
 
-	err = db.Update(func(tx *genji.Tx) error {
-		err = tx.CreateTable("Table")
+	err := db.Update(func(tx *genji.Tx) error {
+		err := tx.CreateTable("Table")
 		if err != nil {
 			return err
 		}
