@@ -235,3 +235,31 @@ func (t Table) RenameField(oldName, newName string) error {
 		return t.Table.Replace(recordID, fb)
 	})
 }
+
+// ReIndex drops the selected index, creates a new one and runs over all the records
+// to fill the newly created index.
+func (t Table) ReIndex(fieldName string) error {
+	err := t.tx.DropIndex(t.name, fieldName)
+	if err != nil {
+		return err
+	}
+
+	err = t.tx.CreateIndex(t.name, fieldName)
+	if err != nil {
+		return err
+	}
+
+	idx, err := t.tx.Index(t.name, fieldName)
+	if err != nil {
+		return err
+	}
+
+	return t.Iterate(func(recordID []byte, r record.Record) error {
+		f, err := r.Field(fieldName)
+		if err != nil {
+			return err
+		}
+
+		return idx.Set(f.Data, recordID)
+	})
+}
