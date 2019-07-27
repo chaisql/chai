@@ -24,10 +24,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	db, err := genji.New(ng)
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := genji.New(ng)
 	defer db.Close()
 
 	err = db.Update(func(tx *genji.Tx) error {
