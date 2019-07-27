@@ -1,8 +1,6 @@
 package genji
 
 import (
-	"fmt"
-
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -10,7 +8,7 @@ import (
 )
 
 // DB represents a collection of tables stored in the underlying engine.
-// DB differs from the engine in that it provides automatic indexing, support for schemas
+// DB differs from the engine in that it provides automatic indexing
 // and database administration methods.
 // DB is safe for concurrent use unless the given engine isn't.
 type DB struct {
@@ -18,20 +16,10 @@ type DB struct {
 }
 
 // New initializes the DB using the given engine.
-// It creates the schema table.
-func New(ng engine.Engine) (*DB, error) {
-	db := DB{
+func New(ng engine.Engine) *DB {
+	return &DB{
 		Engine: ng,
 	}
-
-	err := db.Update(func(tx *Tx) error {
-		return newSchemaStoreWithTx(tx).Init()
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &db, nil
 }
 
 // Begin starts a new transaction.
@@ -42,11 +30,9 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 		return nil, err
 	}
 
-	gtx := Tx{
+	return &Tx{
 		Transaction: tx,
-	}
-	gtx.schemas = newSchemaStoreWithTx(&gtx)
-	return &gtx, nil
+	}, nil
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
@@ -82,21 +68,6 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
 	engine.Transaction
-
-	schemas *schemaStore
-}
-
-// CreateTableWithSchema creates a table and associates the schema to it.
-// These tables are more stricts than schemaless ones, any inserted record will be
-// validated against that schema, making sure all records have the same fields.
-func (tx Tx) CreateTableWithSchema(name string, schema *record.Schema) error {
-	err := tx.Transaction.CreateTable(name)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.schemas.Insert(name, schema)
-	return err
 }
 
 // Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
@@ -106,21 +77,10 @@ func (tx Tx) Table(name string) (*Table, error) {
 		return nil, err
 	}
 
-	schema, err := tx.schemas.Get(name)
-	if err != nil {
-		if err != table.ErrRecordNotFound {
-			return nil, err
-		}
-
-		schema = nil
-	}
-
 	return &Table{
-		Table:   tb,
-		tx:      tx.Transaction,
-		name:    name,
-		schema:  schema,
-		schemas: tx.schemas,
+		Table: tb,
+		tx:    tx.Transaction,
+		name:  name,
 	}, nil
 }
 
@@ -128,24 +88,13 @@ func (tx Tx) Table(name string) (*Table, error) {
 type Table struct {
 	table.Table
 
-	tx      engine.Transaction
-	name    string
-	schema  *record.Schema
-	schemas *schemaStore
+	tx   engine.Transaction
+	name string
 }
 
 // Insert the record into the table.
-// If the table is schemaful, the record is first validated against the schema,
-// and an error is returned if there is a mismatch.
 // Indexes are automatically updated.
 func (t Table) Insert(r record.Record) ([]byte, error) {
-	if t.schema != nil {
-		err := t.schema.Validate(r)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	recordID, err := t.Table.Insert(r)
 	if err != nil {
 		return nil, err
@@ -194,17 +143,10 @@ func (t Table) Delete(recordID []byte) error {
 	return nil
 }
 
-// Replace a record by recordID. If the table is schemaful, r must match the schema.
+// Replace a record by recordID.
 // An error is returned if the recordID doesn't exist.
 // Indexes are automatically updated.
 func (t Table) Replace(recordID []byte, r record.Record) error {
-	if t.schema != nil {
-		err := t.schema.Validate(r)
-		if err != nil {
-			return err
-		}
-	}
-
 	err := t.Table.Replace(recordID, r)
 	if err != nil {
 		return err
@@ -232,17 +174,9 @@ func (t Table) Replace(recordID []byte, r record.Record) error {
 
 // AddField changes the table structure by adding a field to all the records.
 // If the field data is empty, it is filled with the zero value of the field type.
-// Returns an error if the field already exists.
+// If a record already has the field, no change is performed on that record.
 func (t Table) AddField(f field.Field) error {
-	if t.schema != nil {
-		if _, err := t.schema.Fields.Field(f.Name); err == nil {
-			return fmt.Errorf("field %q already exists", f.Name)
-		}
-	}
-
-	t.schema.Fields.Add(f)
-
-	err := t.Table.Iterate(func(recordID []byte, r record.Record) error {
+	return t.Table.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -250,7 +184,8 @@ func (t Table) AddField(f field.Field) error {
 		}
 
 		if _, err = fb.Field(f.Name); err == nil {
-			return fmt.Errorf("field %q already exists", f.Name)
+			// if the field already exists, skip
+			return nil
 		}
 
 		if f.Data == nil {
@@ -259,27 +194,11 @@ func (t Table) AddField(f field.Field) error {
 		fb.Add(f)
 		return t.Table.Replace(recordID, fb)
 	})
-	if err != nil {
-		return err
-	}
-
-	if t.schema == nil {
-		return nil
-	}
-
-	return t.schemas.Replace(t.name, t.schema)
 }
 
 // DeleteField changes the table structure by deleting a field from all the records.
-// If a schema is used, returns an error if the field doesn't exists.
 func (t Table) DeleteField(name string) error {
-	if t.schema != nil {
-		if _, err := t.schema.Fields.Field(name); err != nil {
-			return fmt.Errorf("field %q doesn't exists", name)
-		}
-	}
-
-	err := t.Table.Iterate(func(recordID []byte, r record.Record) error {
+	return t.Table.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -294,35 +213,11 @@ func (t Table) DeleteField(name string) error {
 
 		return t.Table.Replace(recordID, fb)
 	})
-	if err != nil {
-		return err
-	}
-
-	if t.schema == nil {
-		return nil
-	}
-
-	err = t.schema.Fields.Delete(name)
-	if err != nil {
-		return err
-	}
-
-	return t.schemas.Replace(t.name, t.schema)
 }
 
 // RenameField changes the table structure by renaming the selected field on all the records.
-// If a schema is used, returns an error if the field doesn't exists.
 func (t Table) RenameField(oldName, newName string) error {
-	var sf field.Field
-	var err error
-
-	if t.schema != nil {
-		if sf, err = t.schema.Fields.Field(oldName); err != nil {
-			return fmt.Errorf("field %q doesn't exists", oldName)
-		}
-	}
-
-	err = t.Table.Iterate(func(recordID []byte, r record.Record) error {
+	return t.Table.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -339,25 +234,4 @@ func (t Table) RenameField(oldName, newName string) error {
 		fb.Replace(oldName, f)
 		return t.Table.Replace(recordID, fb)
 	})
-	if err != nil {
-		return err
-	}
-
-	if t.schema == nil {
-		return nil
-	}
-
-	sf.Name = newName
-	t.schema.Fields.Replace(oldName, sf)
-	return t.schemas.Replace(t.name, t.schema)
-}
-
-// Schema returns the schema of the table and sets the boolean to true.
-// If the table is schemaless, an empty schema is returned and the boolean is set to false.
-func (t Table) Schema() (schema record.Schema, schemaful bool) {
-	if t.schema != nil {
-		return *t.schema, true
-	}
-
-	return record.Schema{}, false
 }
