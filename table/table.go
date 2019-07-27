@@ -176,24 +176,9 @@ func (rb *RecordBuffer) Truncate() error {
 	return nil
 }
 
-type schemaer interface {
-	Schema() (schema record.Schema, schemaful bool)
-}
-
 // Dump table information to w, structured as a csv .
 func Dump(w io.Writer, t Reader) error {
 	buf := bufio.NewWriter(w)
-
-	var schema record.Schema
-	var schemaful bool
-
-	if s, ok := t.(schemaer); ok {
-		schema, schemaful = s.Schema()
-	}
-
-	if schemaful {
-		fmt.Fprintf(buf, "%s\n", schema.String())
-	}
 
 	err := t.Iterate(func(recordID []byte, r record.Record) error {
 		first := true
@@ -204,11 +189,8 @@ func Dump(w io.Writer, t Reader) error {
 			first = false
 
 			v, err := field.Decode(f)
-			if schemaful {
-				fmt.Fprintf(buf, "%#v", v)
-			} else {
-				fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
-			}
+
+			fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
 			return err
 		})
 		if err != nil {
