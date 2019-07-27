@@ -263,3 +263,13 @@ func (t Table) ReIndex(fieldName string) error {
 		return idx.Set(f.Data, recordID)
 	})
 }
+
+// SelectTable returns the current table. Implements the query.TableSelector interface.
+func (t Table) SelectTable(*Tx) (*Table, error) {
+	return &t, nil
+}
+
+// Name of the table.
+func (t Table) Name() string {
+	return t.name
+}
