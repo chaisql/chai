@@ -16,23 +16,11 @@ import (
 func (u *User) Field(name string) (field.Field, error) {
 	switch name {
 	case "ID":
-		return field.Field{
-			Name: "ID",
-			Type: field.Int64,
-			Data: field.EncodeInt64(u.ID),
-		}, nil
+		return field.NewInt64("ID", u.ID), nil
 	case "Name":
-		return field.Field{
-			Name: "Name",
-			Type: field.String,
-			Data: field.EncodeString(u.Name),
-		}, nil
+		return field.NewString("Name", u.Name), nil
 	case "Age":
-		return field.Field{
-			Name: "Age",
-			Type: field.Uint32,
-			Data: field.EncodeUint32(u.Age),
-		}, nil
+		return field.NewUint32("Age", u.Age), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")

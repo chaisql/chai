@@ -42,11 +42,7 @@ func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.Name}}":
-		return field.Field{
-			Name: "{{.Name}}",
-			Type: field.{{.Type}},
-			Data: field.Encode{{.Type}}({{$fl}}.{{.Name}}),
-		}, nil
+		return field.New{{.Type}}("{{.Name}}", {{$fl}}.{{.Name}}), nil
 	{{- end}}
 	}
 

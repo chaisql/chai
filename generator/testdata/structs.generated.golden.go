@@ -16,29 +16,13 @@ import (
 func (b *Basic) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
-		return field.Field{
-			Name: "A",
-			Type: field.String,
-			Data: field.EncodeString(b.A),
-		}, nil
+		return field.NewString("A", b.A), nil
 	case "B":
-		return field.Field{
-			Name: "B",
-			Type: field.Int,
-			Data: field.EncodeInt(b.B),
-		}, nil
+		return field.NewInt("B", b.B), nil
 	case "C":
-		return field.Field{
-			Name: "C",
-			Type: field.Int32,
-			Data: field.EncodeInt32(b.C),
-		}, nil
+		return field.NewInt32("C", b.C), nil
 	case "D":
-		return field.Field{
-			Name: "D",
-			Type: field.Int32,
-			Data: field.EncodeInt32(b.D),
-		}, nil
+		return field.NewInt32("D", b.D), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
@@ -152,29 +136,13 @@ func (b *BasicResult) ScanTable(tr table.Reader) error {
 func (b *basic) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
-		return field.Field{
-			Name: "A",
-			Type: field.Bytes,
-			Data: field.EncodeBytes(b.A),
-		}, nil
+		return field.NewBytes("A", b.A), nil
 	case "B":
-		return field.Field{
-			Name: "B",
-			Type: field.Uint16,
-			Data: field.EncodeUint16(b.B),
-		}, nil
+		return field.NewUint16("B", b.B), nil
 	case "C":
-		return field.Field{
-			Name: "C",
-			Type: field.Float32,
-			Data: field.EncodeFloat32(b.C),
-		}, nil
+		return field.NewFloat32("C", b.C), nil
 	case "D":
-		return field.Field{
-			Name: "D",
-			Type: field.Float32,
-			Data: field.EncodeFloat32(b.D),
-		}, nil
+		return field.NewFloat32("D", b.D), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
@@ -288,17 +256,9 @@ func (b *basicResult) ScanTable(tr table.Reader) error {
 func (p *Pk) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
-		return field.Field{
-			Name: "A",
-			Type: field.String,
-			Data: field.EncodeString(p.A),
-		}, nil
+		return field.NewString("A", p.A), nil
 	case "B":
-		return field.Field{
-			Name: "B",
-			Type: field.Int64,
-			Data: field.EncodeInt64(p.B),
-		}, nil
+		return field.NewInt64("B", p.B), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
@@ -395,17 +355,9 @@ func (p *PkResult) ScanTable(tr table.Reader) error {
 func (i *Indexed) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
-		return field.Field{
-			Name: "A",
-			Type: field.String,
-			Data: field.EncodeString(i.A),
-		}, nil
+		return field.NewString("A", i.A), nil
 	case "B":
-		return field.Field{
-			Name: "B",
-			Type: field.Int64,
-			Data: field.EncodeInt64(i.B),
-		}, nil
+		return field.NewInt64("B", i.B), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
@@ -497,29 +449,13 @@ func (i *IndexedResult) ScanTable(tr table.Reader) error {
 func (m *MultipleTags) Field(name string) (field.Field, error) {
 	switch name {
 	case "A":
-		return field.Field{
-			Name: "A",
-			Type: field.String,
-			Data: field.EncodeString(m.A),
-		}, nil
+		return field.NewString("A", m.A), nil
 	case "B":
-		return field.Field{
-			Name: "B",
-			Type: field.Int64,
-			Data: field.EncodeInt64(m.B),
-		}, nil
+		return field.NewInt64("B", m.B), nil
 	case "C":
-		return field.Field{
-			Name: "C",
-			Type: field.Float32,
-			Data: field.EncodeFloat32(m.C),
-		}, nil
+		return field.NewFloat32("C", m.C), nil
 	case "D":
-		return field.Field{
-			Name: "D",
-			Type: field.Bool,
-			Data: field.EncodeBool(m.D),
-		}, nil
+		return field.NewBool("D", m.D), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
