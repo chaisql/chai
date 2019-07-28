@@ -26,14 +26,17 @@ func Example() {
 
 	// open a read-write transaction
 	err := db.Update(func(tx *genji.Tx) error {
-		// create a table
-		err := tx.CreateTable("foo")
+
+		s := NewUserTableSchema()
+
+		// init the table
+		err := s.Init(tx)
 		if err != nil {
 			return err
 		}
 
 		// get the table
-		t, err := tx.Table("foo")
+		t, err := tx.Table(s.TableName())
 		if err != nil {
 			return err
 		}
@@ -49,12 +52,11 @@ func Example() {
 		}
 		fmt.Println(recordID)
 
-		// Use generated types to run queries
-		qs := NewUserQuerySelector()
+		// Create a result value
 		var result UserResult
 
 		// SELECT ID, Name FROM foo where Age >= 18
-		return query.Select(qs.ID, qs.Name).From(t).Where(qs.Age.Gte(18)).
+		return query.Select(s.ID, s.Name).From(t).Where(s.Age.Gte(18)).
 			Run(tx).
 			Scan(&result)
 	})

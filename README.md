@@ -59,15 +59,18 @@ func (u *User) Iterate(fn func(field.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
 func (u *User) Pk() ([]byte, error) {}
 
-// A UserQuerySelector is generated to ease writing queries.
-type UserQuerySelector struct {
+// A UserTableSchema is generated to ease writing queries.
+type UserTableSchema struct {
     ID   query.Int64Field
     Name query.StringField
     Age  query.IntField
 }
-func NewUserQuerySelector() UserQuerySelector {}
-func (*UserQuerySelector) Table() query.TableSelector {}
-func (s *UserQuerySelector) All() []query.FieldSelector {}
+func NewUserTableSchema() UserTableSchema {}
+func (*UserTableSchema) Init(tx *genji.Tx) error {}
+func (*UserTableSchema) Table() query.TableSelector {}
+func (*UserTableSchema) TableName() string {}
+func (*UserTableSchema) Indexes() []string {}
+func (s *UserTableSchema) All() []query.FieldSelector {}
 
 // UserResult can receive the result of a query that returns users.
 type UserResult []User
@@ -80,45 +83,68 @@ func (u *UserResult) ScanTable(tr table.Reader) error {}
 package main
 
 func main() {
-    // Instantiate an engine
+    // Instantiate an engine, here we'll store everything in memory
     ng := memory.NewEngine()
 
     // Instantiate a DB using the engine
     db := genji.New(ng)
     defer db.Close()
 
-    // Create a UserStore from the generated code
-    // A Store is a high level type safe API that wraps a Genji table.
-    users := NewUserStore(db)
+    // Create a UserTableSchema. This generated type contains information about the User table
+    // and provides methods to ease writing queries.
+    s := NewUserTableSchema()
 
-    // Insert a user using the generated methods
-    err = users.Insert(&User{
-        ID:   10,
-        Name: "foo",
-        Age:  32,
+    // Genji provides two types of transactions:
+    // - read-only, using the db.View or db.ViewTable methods
+    // - read-write, using the db.Update or db.UpdateTable methods
+
+    // Create a read-write transaction to initialize the User table.
+    // This ensures the table and all the indexes are created.
+    err := db.Update(s.Init)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Create a read-write transaction to create one or more users.
+    err = db.Update(func(tx *genji.Tx) error {
+        // Use the TableName method to get the table name
+        t, err := tx.Table(s.TableName())
+        if err != nil {
+            return err
+        }
+
+        // Insert a user into the User table
+        return t.Insert(&User{
+            ID:   10,
+            Name: "foo",
+            Age:  32,
+        })
     })
     if err != nil {
         log.Fatal(err)
     }
 
-    // Get a user using its primary key
-    u, err := users.Get(10)
+    // Genji provides shortcuts, UpdateTable and ViewTable,
+    // to create a transaction and get a table in one step.
+    err = db.UpdateTable(s.TableName(), func(t *genji.Table) error {
+        return t.Insert(&User{
+            ID:   10,
+            Name: "foo",
+            Age:  32,
+        })
+    })
     if err != nil {
         log.Fatal(err)
     }
 
-    // List users
-    list, err := users.List(0, 10)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Run complex queries
-    qs := NewUserQuerySelector()
+    // Then create a UserResult. This generated type can read the output of a query and read it in a type
+    // safe fashion.
     var result UserResult
-    err = users.View(func(tx *genji.Tx) error {
+
+    // Let's create a read transaction to run the query
+    err = db.ViewTable(s.TableName(), func(t *genji.Table) error {
         // SELECT ID, Name FROM User where Age >= 18
-        return query.Select(qs.ID, qs.Name).From(qs.Table()).Where(qs.Age.Gte(18)).
+        return query.Select(s.ID, s.Name).From(t).Where(s.Age.Gte(18)).
             Run(tx).
             Scan(&result)
     })
@@ -149,10 +175,7 @@ if err != nil {
 }
 
 // Pass it to genji
-db, err := genji.New(ng)
-if err != nil {
-    log.Fatal(err)
-}
+db := genji.New(ng)
 defer db.Close()
 ```
 
@@ -167,13 +190,10 @@ import (
 )
 
 // Create a memory engine
-ng, err := memory.NewEngine()
-if err != nil {
-    log.Fatal(err)
-}
+ng := memory.NewEngine()
 
 // Pass it to genji
-db, err := genji.New(ng)
+db := genji.New(ng)
 if err != nil {
     log.Fatal(err)
 }
@@ -196,8 +216,8 @@ The [`query` package](https://godoc.org/github.com/asdine/genji/query) allows to
 That's the simplest way of running queries, and the results can be mapped to the structure of your choice.
 
 ```go
-// Create a query selector value
-qs := NewUserQuerySelector()
+// Create a table schema value
+s := NewUserTableSchema()
 
 // Declare the result value that will receive the result of the query.
 // Generated result types are always slices.
@@ -209,14 +229,14 @@ err = users.View(func(tx *genji.Tx) error {
     // SELECT ID, Name FROM User where Age >= 18
 
     return query.
-        // Use the query selector to select the fields of your choice
-        Select(qs.ID, qs.Name).
+        // Use the table schema to select the fields of your choice
+        Select(s.ID, s.Name).
         // The name of the table is based on the name of the structure, in this case "User".
-        // The query selector provides a method to select the table.
-        From(qs.Table()).
-        // The fields of qs are generated based on the fields of the User structure and their type
+        // The table schema provides a method to select the table.
+        From(s.Table()).
+        // The fields of s are generated based on the fields of the User structure and their type
         // Here, because Age is an int, the Gte method expects an int.
-        Where(qs.Age.Gte(18)).
+        Where(s.Age.Gte(18)).
         // Run the query using the transaction.
         Run(tx).
         // Scan the result to UserResult.
