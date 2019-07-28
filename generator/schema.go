@@ -8,6 +8,7 @@ const tableSchemaTmpl = `
 {{ template "table-schema-Init" . }}
 {{ template "table-schema-Table" . }}
 {{ template "table-schema-TableName" . }}
+{{ template "table-schema-Indexes" . }}
 {{ template "table-schema-All" . }}
 {{ end }}
 `
@@ -64,6 +65,23 @@ const tableSchemaTableNameTmpl = `
 func (s *{{$structName}}TableSchema) TableName() string {
 	return "{{.TableName}}"
 }
+{{ end }}
+`
+
+const tableSchemaIndexesTmpl = `
+{{ define "table-schema-Indexes" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+{{- if .HasIndexes }}
+// Indexes returns the list of indexes of the {{.TableName}} table.
+func (*{{$structName}}TableSchema) Indexes() []string {
+	return []string{
+		{{- range $i, $a := .Indexes }}
+			"{{$a}}",
+		{{- end}}
+	}
+}
+{{- end }}
 {{ end }}
 `
 

@@ -460,6 +460,13 @@ func (s *IndexedTableSchema) TableName() string {
 	return "Indexed"
 }
 
+// Indexes returns the list of indexes of the Indexed table.
+func (*IndexedTableSchema) Indexes() []string {
+	return []string{
+		"A",
+	}
+}
+
 // All returns a list of all selectors for Indexed.
 func (s *IndexedTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
@@ -591,6 +598,13 @@ func (*MultipleTagsTableSchema) Table() query.TableSelector {
 // TableName returns the name of the table.
 func (s *MultipleTagsTableSchema) TableName() string {
 	return "MultipleTags"
+}
+
+// Indexes returns the list of indexes of the MultipleTags table.
+func (*MultipleTagsTableSchema) Indexes() []string {
+	return []string{
+		"D",
+	}
 }
 
 // All returns a list of all selectors for MultipleTags.

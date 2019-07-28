@@ -47,6 +47,7 @@ func init() {
 		"table-SchemaInit":      tableSchemaInitTmpl,
 		"table-SchemaTable":     tableSchemaTableTmpl,
 		"table-SchemaTableName": tableSchemaTableNameTmpl,
+		"table-SchemaIndexes":   tableSchemaIndexesTmpl,
 		"table-SchemaAll":       tableSchemaAllTmpl,
 		"results":               resultsTmpl,
 		"result":                resultTmpl,

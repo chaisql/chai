@@ -6,6 +6,7 @@ package genji_test
 import (
 	"errors"
 
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
@@ -76,29 +77,46 @@ func (u *User) Pk() ([]byte, error) {
 	return field.EncodeInt64(u.ID), nil
 }
 
-// UserQuerySelector provides helpers for selecting fields from the User structure.
-type UserQuerySelector struct {
+// UserTableSchema provides provides information about the User table.
+type UserTableSchema struct {
 	ID   query.Int64FieldSelector
 	Name query.StringFieldSelector
 	Age  query.Uint32FieldSelector
 }
 
-// NewUserQuerySelector creates a UserQuerySelector.
-func NewUserQuerySelector() UserQuerySelector {
-	return UserQuerySelector{
+// NewUserTableSchema creates a UserTableSchema.
+func NewUserTableSchema() UserTableSchema {
+	return UserTableSchema{
 		ID:   query.Int64Field("ID"),
 		Name: query.StringField("Name"),
 		Age:  query.Uint32Field("Age"),
 	}
 }
 
+// Init initializes the User table by ensuring the table and its index are created.
+func (s *UserTableSchema) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, s)
+}
+
 // Table returns a query.TableSelector for User.
-func (*UserQuerySelector) Table() query.TableSelector {
+func (*UserTableSchema) Table() query.TableSelector {
 	return query.Table("User")
 }
 
+// TableName returns the name of the table.
+func (s *UserTableSchema) TableName() string {
+	return "User"
+}
+
+// Indexes returns the list of indexes of the User table.
+func (*UserTableSchema) Indexes() []string {
+	return []string{
+		"Name",
+	}
+}
+
 // All returns a list of all selectors for User.
-func (s *UserQuerySelector) All() []query.FieldSelector {
+func (s *UserTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		s.ID,
 		s.Name,
