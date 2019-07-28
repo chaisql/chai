@@ -70,6 +70,24 @@ type Tx struct {
 	engine.Transaction
 }
 
+// CreateTableIfNotExists calls CreateTable and returns no error if it already exists.
+func (tx Tx) CreateTableIfNotExists(name string) error {
+	err := tx.CreateTable(name)
+	if err == nil || err == engine.ErrTableAlreadyExists {
+		return nil
+	}
+	return err
+}
+
+// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
+func (tx Tx) CreateIndexIfNotExists(table string, field string) error {
+	err := tx.CreateIndex(table, field)
+	if err == nil || err == engine.ErrIndexAlreadyExists {
+		return nil
+	}
+	return err
+}
+
 // Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) Table(name string) (*Table, error) {
 	tb, err := tx.Transaction.Table(name, record.NewCodec())
@@ -272,4 +290,39 @@ func (t Table) SelectTable(*Tx) (*Table, error) {
 // Name of the table.
 func (t Table) Name() string {
 	return t.name
+}
+
+// A TableNamer is a type that returns the name of a table.
+type TableNamer interface {
+	TableName() string
+}
+
+type indexer interface {
+	Indexes() []string
+}
+
+// InitTable ensures the table exists. If tn implements this interface
+//   type indexer interface {
+//	  Indexes() []string
+//   }
+// it ensures all these indexes exist and creates them if not, but it won't re-index the table.
+func InitTable(tx *Tx, tn TableNamer) error {
+	name := tn.TableName()
+
+	err := tx.CreateTableIfNotExists(name)
+	if err != nil {
+		return err
+	}
+
+	idxr, ok := tn.(indexer)
+	if ok {
+		for _, idx := range idxr.Indexes() {
+			err = tx.CreateIndexIfNotExists(name, idx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
