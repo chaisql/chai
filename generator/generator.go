@@ -35,19 +35,21 @@ var t *template.Template
 
 func init() {
 	templates := map[string]string{
-		"records":              recordsTmpl,
-		"record":               recordTmpl,
-		"record-Field":         recordFieldTmpl,
-		"record-Iterate":       recordIterateTmpl,
-		"record-ScanRecord":    recordScanRecordTmpl,
-		"record-Pk":            recordPkTmpl,
-		"query-Selector":       querySelectorTmpl,
-		"query-SelectorStruct": querySelectorStructTmpl,
-		"query-SelectorNew":    querySelectorNewTmpl,
-		"query-SelectorTable":  querySelectorTableTmpl,
-		"query-SelectorAll":    querySelectorAllTmpl,
-		"results":              resultsTmpl,
-		"result":               resultTmpl,
+		"records":               recordsTmpl,
+		"record":                recordTmpl,
+		"record-Field":          recordFieldTmpl,
+		"record-Iterate":        recordIterateTmpl,
+		"record-ScanRecord":     recordScanRecordTmpl,
+		"record-Pk":             recordPkTmpl,
+		"table-Schema":          tableSchemaTmpl,
+		"table-SchemaStruct":    tableSchemaStructTmpl,
+		"table-SchemaNew":       tableSchemaNewTmpl,
+		"table-SchemaInit":      tableSchemaInitTmpl,
+		"table-SchemaTable":     tableSchemaTableTmpl,
+		"table-SchemaTableName": tableSchemaTableNameTmpl,
+		"table-SchemaAll":       tableSchemaAllTmpl,
+		"results":               resultsTmpl,
+		"result":                resultTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))
@@ -198,6 +200,7 @@ func (g *genContext) selectImports() {
 
 	if len(g.Records) > 0 {
 		m["errors"]++
+		m["github.com/asdine/genji"]++
 		m["github.com/asdine/genji/field"]++
 		m["github.com/asdine/genji/query"]++
 		m["github.com/asdine/genji/record"]++

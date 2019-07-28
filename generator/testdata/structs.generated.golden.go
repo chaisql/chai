@@ -6,6 +6,7 @@ package testdata
 import (
 	"errors"
 
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
@@ -81,17 +82,17 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 	})
 }
 
-// BasicQuerySelector provides helpers for selecting fields from the Basic structure.
-type BasicQuerySelector struct {
+// BasicTableSchema provides provides information about the Basic table.
+type BasicTableSchema struct {
 	A query.StringFieldSelector
 	B query.IntFieldSelector
 	C query.Int32FieldSelector
 	D query.Int32FieldSelector
 }
 
-// NewBasicQuerySelector creates a BasicQuerySelector.
-func NewBasicQuerySelector() BasicQuerySelector {
-	return BasicQuerySelector{
+// NewBasicTableSchema creates a BasicTableSchema.
+func NewBasicTableSchema() BasicTableSchema {
+	return BasicTableSchema{
 		A: query.StringField("A"),
 		B: query.IntField("B"),
 		C: query.Int32Field("C"),
@@ -99,13 +100,23 @@ func NewBasicQuerySelector() BasicQuerySelector {
 	}
 }
 
+// Init initializes the Basic table by ensuring the table and its index are created.
+func (s *BasicTableSchema) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, s)
+}
+
 // Table returns a query.TableSelector for Basic.
-func (*BasicQuerySelector) Table() query.TableSelector {
+func (*BasicTableSchema) Table() query.TableSelector {
 	return query.Table("Basic")
 }
 
+// TableName returns the name of the table.
+func (s *BasicTableSchema) TableName() string {
+	return "Basic"
+}
+
 // All returns a list of all selectors for Basic.
-func (s *BasicQuerySelector) All() []query.FieldSelector {
+func (s *BasicTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		s.A,
 		s.B,
@@ -201,17 +212,17 @@ func (b *basic) ScanRecord(rec record.Record) error {
 	})
 }
 
-// basicQuerySelector provides helpers for selecting fields from the basic structure.
-type basicQuerySelector struct {
+// basicTableSchema provides provides information about the Basic table.
+type basicTableSchema struct {
 	A query.BytesFieldSelector
 	B query.Uint16FieldSelector
 	C query.Float32FieldSelector
 	D query.Float32FieldSelector
 }
 
-// newbasicQuerySelector creates a basicQuerySelector.
-func newBasicQuerySelector() basicQuerySelector {
-	return basicQuerySelector{
+// newbasicTableSchema creates a basicTableSchema.
+func newBasicTableSchema() basicTableSchema {
+	return basicTableSchema{
 		A: query.BytesField("A"),
 		B: query.Uint16Field("B"),
 		C: query.Float32Field("C"),
@@ -219,13 +230,23 @@ func newBasicQuerySelector() basicQuerySelector {
 	}
 }
 
+// Init initializes the Basic table by ensuring the table and its index are created.
+func (s *basicTableSchema) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, s)
+}
+
 // Table returns a query.TableSelector for basic.
-func (*basicQuerySelector) Table() query.TableSelector {
-	return query.Table("basic")
+func (*basicTableSchema) Table() query.TableSelector {
+	return query.Table("Basic")
+}
+
+// TableName returns the name of the table.
+func (s *basicTableSchema) TableName() string {
+	return "Basic"
 }
 
 // All returns a list of all selectors for basic.
-func (s *basicQuerySelector) All() []query.FieldSelector {
+func (s *basicTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		s.A,
 		s.B,
@@ -306,27 +327,37 @@ func (p *Pk) Pk() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
 }
 
-// PkQuerySelector provides helpers for selecting fields from the Pk structure.
-type PkQuerySelector struct {
+// PkTableSchema provides provides information about the Pk table.
+type PkTableSchema struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 }
 
-// NewPkQuerySelector creates a PkQuerySelector.
-func NewPkQuerySelector() PkQuerySelector {
-	return PkQuerySelector{
+// NewPkTableSchema creates a PkTableSchema.
+func NewPkTableSchema() PkTableSchema {
+	return PkTableSchema{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 	}
 }
 
+// Init initializes the Pk table by ensuring the table and its index are created.
+func (s *PkTableSchema) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, s)
+}
+
 // Table returns a query.TableSelector for Pk.
-func (*PkQuerySelector) Table() query.TableSelector {
+func (*PkTableSchema) Table() query.TableSelector {
 	return query.Table("Pk")
 }
 
+// TableName returns the name of the table.
+func (s *PkTableSchema) TableName() string {
+	return "Pk"
+}
+
 // All returns a list of all selectors for Pk.
-func (s *PkQuerySelector) All() []query.FieldSelector {
+func (s *PkTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		s.A,
 		s.B,
@@ -400,27 +431,37 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 	})
 }
 
-// IndexedQuerySelector provides helpers for selecting fields from the Indexed structure.
-type IndexedQuerySelector struct {
+// IndexedTableSchema provides provides information about the Indexed table.
+type IndexedTableSchema struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 }
 
-// NewIndexedQuerySelector creates a IndexedQuerySelector.
-func NewIndexedQuerySelector() IndexedQuerySelector {
-	return IndexedQuerySelector{
+// NewIndexedTableSchema creates a IndexedTableSchema.
+func NewIndexedTableSchema() IndexedTableSchema {
+	return IndexedTableSchema{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 	}
 }
 
+// Init initializes the Indexed table by ensuring the table and its index are created.
+func (s *IndexedTableSchema) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, s)
+}
+
 // Table returns a query.TableSelector for Indexed.
-func (*IndexedQuerySelector) Table() query.TableSelector {
+func (*IndexedTableSchema) Table() query.TableSelector {
 	return query.Table("Indexed")
 }
 
+// TableName returns the name of the table.
+func (s *IndexedTableSchema) TableName() string {
+	return "Indexed"
+}
+
 // All returns a list of all selectors for Indexed.
-func (s *IndexedQuerySelector) All() []query.FieldSelector {
+func (s *IndexedTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		s.A,
 		s.B,
@@ -519,17 +560,17 @@ func (m *MultipleTags) Pk() ([]byte, error) {
 	return field.EncodeString(m.A), nil
 }
 
-// MultipleTagsQuerySelector provides helpers for selecting fields from the MultipleTags structure.
-type MultipleTagsQuerySelector struct {
+// MultipleTagsTableSchema provides provides information about the MultipleTags table.
+type MultipleTagsTableSchema struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 	C query.Float32FieldSelector
 	D query.BoolFieldSelector
 }
 
-// NewMultipleTagsQuerySelector creates a MultipleTagsQuerySelector.
-func NewMultipleTagsQuerySelector() MultipleTagsQuerySelector {
-	return MultipleTagsQuerySelector{
+// NewMultipleTagsTableSchema creates a MultipleTagsTableSchema.
+func NewMultipleTagsTableSchema() MultipleTagsTableSchema {
+	return MultipleTagsTableSchema{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 		C: query.Float32Field("C"),
@@ -537,13 +578,23 @@ func NewMultipleTagsQuerySelector() MultipleTagsQuerySelector {
 	}
 }
 
+// Init initializes the MultipleTags table by ensuring the table and its index are created.
+func (s *MultipleTagsTableSchema) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, s)
+}
+
 // Table returns a query.TableSelector for MultipleTags.
-func (*MultipleTagsQuerySelector) Table() query.TableSelector {
+func (*MultipleTagsTableSchema) Table() query.TableSelector {
 	return query.Table("MultipleTags")
 }
 
+// TableName returns the name of the table.
+func (s *MultipleTagsTableSchema) TableName() string {
+	return "MultipleTags"
+}
+
 // All returns a list of all selectors for MultipleTags.
-func (s *MultipleTagsQuerySelector) All() []query.FieldSelector {
+func (s *MultipleTagsTableSchema) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		s.A,
 		s.B,
