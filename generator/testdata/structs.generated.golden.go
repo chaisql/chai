@@ -378,13 +378,14 @@ func (t *PkTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 
 // Insert is a shortcut that gets the Pk table from the transaction and
 // inserts a Pk into it.
-func (t *PkTable) Insert(tx *genji.Tx, x *Pk) ([]byte, error) {
+func (t *PkTable) Insert(tx *genji.Tx, x *Pk) error {
 	tb, err := t.SelectTable(tx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return tb.Insert(x)
+	_, err = tb.Insert(x)
+	return err
 }
 
 // TableName returns the name of the table.
@@ -646,13 +647,14 @@ func (t *MultipleTagsTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 
 // Insert is a shortcut that gets the MultipleTags table from the transaction and
 // inserts a MultipleTags into it.
-func (t *MultipleTagsTable) Insert(tx *genji.Tx, x *MultipleTags) ([]byte, error) {
+func (t *MultipleTagsTable) Insert(tx *genji.Tx, x *MultipleTags) error {
 	tb, err := t.SelectTable(tx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return tb.Insert(x)
+	_, err = tb.Insert(x)
+	return err
 }
 
 // TableName returns the name of the table.

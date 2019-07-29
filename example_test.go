@@ -3,7 +3,6 @@ package genji_test
 //go:generate genji -s User -f example_test.go
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/asdine/genji"
@@ -36,7 +35,7 @@ func Example() {
 		}
 
 		// insert a User, no reflection involved
-		recordID, err := t.Insert(tx, &User{
+		err = t.Insert(tx, &User{
 			ID:   10,
 			Name: "foo",
 			Age:  32,
@@ -44,7 +43,6 @@ func Example() {
 		if err != nil {
 			return err
 		}
-		fmt.Println(recordID)
 
 		// Create a result value
 		var result UserResult

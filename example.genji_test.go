@@ -106,13 +106,14 @@ func (t *UserTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 
 // Insert is a shortcut that gets the User table from the transaction and
 // inserts a User into it.
-func (t *UserTable) Insert(tx *genji.Tx, x *User) ([]byte, error) {
+func (t *UserTable) Insert(tx *genji.Tx, x *User) error {
 	tb, err := t.SelectTable(tx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return tb.Insert(x)
+	_, err = tb.Insert(x)
+	return err
 }
 
 // TableName returns the name of the table.
