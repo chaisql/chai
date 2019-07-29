@@ -195,6 +195,10 @@ var errStop = errors.New("stop")
 func whereClause(tx *genji.Tx, t table.Reader, e Expr, limit, offset int64) (table.Reader, error) {
 	var skipped, count int64
 
+	if e == nil {
+		return table.NewBrowser(t).Offset(int(offset)).Limit(int(limit)), nil
+	}
+
 	b := table.NewBrowser(t).Filter(func(_ []byte, r record.Record) (bool, error) {
 		sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
 		if err != nil {
