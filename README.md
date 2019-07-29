@@ -59,18 +59,19 @@ func (u *User) Iterate(fn func(field.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
 func (u *User) Pk() ([]byte, error) {}
 
-// A UserTableSchema is generated to ease writing queries.
-type UserTableSchema struct {
+// A UserTable type is generated to ease managing the User table and writing queries.
+type UserTable struct {
     ID   query.Int64Field
     Name query.StringField
     Age  query.IntField
 }
-func NewUserTableSchema() UserTableSchema {}
-func (*UserTableSchema) Init(tx *genji.Tx) error {}
-func (*UserTableSchema) Table() query.TableSelector {}
-func (*UserTableSchema) TableName() string {}
-func (*UserTableSchema) Indexes() []string {}
-func (s *UserTableSchema) All() []query.FieldSelector {}
+func NewUserTable() UserTable {}
+func (*UserTable) Init(tx *genji.Tx) error {}
+func (*UserTable) SelectTable() (*genji.Table, error) {}
+func (*UserTable) Insert(tx *genji.Tx, *User) error {}
+func (*UserTable) TableName() string {}
+func (*UserTable) Indexes() []string {}
+func (s *UserTable) All() []query.FieldSelector {}
 
 // UserResult can receive the result of a query that returns users.
 type UserResult []User
@@ -90,9 +91,9 @@ func main() {
     db := genji.New(ng)
     defer db.Close()
 
-    // Create a UserTableSchema. This generated type contains information about the User table
+    // Create a UserTable. This generated type contains information about the User table
     // and provides methods to ease writing queries.
-    s := NewUserTableSchema()
+    t := NewUserTable()
 
     // Genji provides two types of transactions:
     // - read-only, using the db.View or db.ViewTable methods
@@ -100,34 +101,15 @@ func main() {
 
     // Create a read-write transaction to initialize the User table.
     // This ensures the table and all the indexes are created.
-    err := db.Update(s.Init)
+    err := db.Update(t.Init)
     if err != nil {
         log.Fatal(err)
     }
 
     // Create a read-write transaction to create one or more users.
     err = db.Update(func(tx *genji.Tx) error {
-        // Use the TableName method to get the table name
-        t, err := tx.Table(s.TableName())
-        if err != nil {
-            return err
-        }
-
         // Insert a user into the User table
-        return t.Insert(&User{
-            ID:   10,
-            Name: "foo",
-            Age:  32,
-        })
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Genji provides shortcuts, UpdateTable and ViewTable,
-    // to create a transaction and get a table in one step.
-    err = db.UpdateTable(s.TableName(), func(t *genji.Table) error {
-        return t.Insert(&User{
+        return t.Insert(tx, &User{
             ID:   10,
             Name: "foo",
             Age:  32,
@@ -142,9 +124,9 @@ func main() {
     var result UserResult
 
     // Let's create a read transaction to run the query
-    err = db.ViewTable(s.TableName(), func(t *genji.Table) error {
+    err = db.View(func(tx *genji.Tx) error {
         // SELECT ID, Name FROM User where Age >= 18
-        return query.Select(s.ID, s.Name).From(t).Where(s.Age.Gte(18)).
+        return query.Select(t.ID, t.Name).From(t.Table()).Where(t.Age.Gte(18)).
             Run(tx).
             Scan(&result)
     })
@@ -216,8 +198,8 @@ The [`query` package](https://godoc.org/github.com/asdine/genji/query) allows to
 That's the simplest way of running queries, and the results can be mapped to the structure of your choice.
 
 ```go
-// Create a table schema value
-s := NewUserTableSchema()
+// Create a table value
+t := NewUserTable()
 
 // Declare the result value that will receive the result of the query.
 // Generated result types are always slices.
@@ -230,13 +212,13 @@ err = users.View(func(tx *genji.Tx) error {
 
     return query.
         // Use the table schema to select the fields of your choice
-        Select(s.ID, s.Name).
-        // The name of the table is based on the name of the structure, in this case "User".
-        // The table schema provides a method to select the table.
-        From(s.Table()).
-        // The fields of s are generated based on the fields of the User structure and their type
+        Select(t.ID, t.Name).
+        // The from method expects a type who can select the right table from the transaction,
+        // the UserTable implements the required interface.
+        From(t).
+        // The fields of t are generated based on the fields of the User structure and their type
         // Here, because Age is an int, the Gte method expects an int.
-        Where(s.Age.Gte(18)).
+        Where(t.Age.Gte(18)).
         // Run the query using the transaction.
         Run(tx).
         // Scan the result to UserResult.
