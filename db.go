@@ -314,8 +314,8 @@ func (t Table) SelectTable(*Tx) (*Table, error) {
 	return &t, nil
 }
 
-// Name of the table.
-func (t Table) Name() string {
+// TableName returns the name of the table.
+func (t Table) TableName() string {
 	return t.name
 }
 

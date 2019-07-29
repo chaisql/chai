@@ -27,22 +27,16 @@ func Example() {
 	// open a read-write transaction
 	err := db.Update(func(tx *genji.Tx) error {
 
-		s := NewUserTableSchema()
+		t := NewUserTable()
 
 		// init the table
-		err := s.Init(tx)
-		if err != nil {
-			return err
-		}
-
-		// get the table
-		t, err := tx.Table(s.TableName())
+		err := t.Init(tx)
 		if err != nil {
 			return err
 		}
 
 		// insert a User, no reflection involved
-		recordID, err := t.Insert(&User{
+		recordID, err := t.Insert(tx, &User{
 			ID:   10,
 			Name: "foo",
 			Age:  32,
@@ -56,7 +50,7 @@ func Example() {
 		var result UserResult
 
 		// SELECT ID, Name FROM foo where Age >= 18
-		return query.Select(s.ID, s.Name).From(t).Where(s.Age.Gte(18)).
+		return query.Select(t.ID, t.Name).From(t).Where(t.Age.Gte(18)).
 			Run(tx).
 			Scan(&result)
 	})

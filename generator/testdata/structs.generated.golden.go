@@ -82,17 +82,17 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 	})
 }
 
-// BasicTableSchema provides provides information about the Basic table.
-type BasicTableSchema struct {
+// BasicTable manages the Basic table.
+type BasicTable struct {
 	A query.StringFieldSelector
 	B query.IntFieldSelector
 	C query.Int32FieldSelector
 	D query.Int32FieldSelector
 }
 
-// NewBasicTableSchema creates a BasicTableSchema.
-func NewBasicTableSchema() BasicTableSchema {
-	return BasicTableSchema{
+// NewBasicTable creates a BasicTable.
+func NewBasicTable() *BasicTable {
+	return &BasicTable{
 		A: query.StringField("A"),
 		B: query.IntField("B"),
 		C: query.Int32Field("C"),
@@ -101,27 +101,39 @@ func NewBasicTableSchema() BasicTableSchema {
 }
 
 // Init initializes the Basic table by ensuring the table and its index are created.
-func (s *BasicTableSchema) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, s)
+func (t *BasicTable) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, t)
 }
 
-// Table returns a query.TableSelector for Basic.
-func (*BasicTableSchema) Table() query.TableSelector {
-	return query.Table("Basic")
+// SelectTable implements the query.TableSelector interface. It gets the Basic table from
+// the transaction.
+func (t *BasicTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+	return tx.Table(t.TableName())
+}
+
+// Insert is a shortcut that gets the Basic table from the transaction and
+// inserts a Basic into it.
+func (t *BasicTable) Insert(tx *genji.Tx, x *Basic) ([]byte, error) {
+	tb, err := t.SelectTable(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Insert(x)
 }
 
 // TableName returns the name of the table.
-func (s *BasicTableSchema) TableName() string {
+func (*BasicTable) TableName() string {
 	return "Basic"
 }
 
 // All returns a list of all selectors for Basic.
-func (s *BasicTableSchema) All() []query.FieldSelector {
+func (t *BasicTable) All() []query.FieldSelector {
 	return []query.FieldSelector{
-		s.A,
-		s.B,
-		s.C,
-		s.D,
+		t.A,
+		t.B,
+		t.C,
+		t.D,
 	}
 }
 
@@ -212,17 +224,17 @@ func (b *basic) ScanRecord(rec record.Record) error {
 	})
 }
 
-// basicTableSchema provides provides information about the Basic table.
-type basicTableSchema struct {
+// basicTable manages the Basic table.
+type basicTable struct {
 	A query.BytesFieldSelector
 	B query.Uint16FieldSelector
 	C query.Float32FieldSelector
 	D query.Float32FieldSelector
 }
 
-// newbasicTableSchema creates a basicTableSchema.
-func newBasicTableSchema() basicTableSchema {
-	return basicTableSchema{
+// newbasicTable creates a basicTable.
+func newBasicTable() *basicTable {
+	return &basicTable{
 		A: query.BytesField("A"),
 		B: query.Uint16Field("B"),
 		C: query.Float32Field("C"),
@@ -231,27 +243,39 @@ func newBasicTableSchema() basicTableSchema {
 }
 
 // Init initializes the Basic table by ensuring the table and its index are created.
-func (s *basicTableSchema) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, s)
+func (t *basicTable) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, t)
 }
 
-// Table returns a query.TableSelector for basic.
-func (*basicTableSchema) Table() query.TableSelector {
-	return query.Table("Basic")
+// SelectTable implements the query.TableSelector interface. It gets the Basic table from
+// the transaction.
+func (t *basicTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+	return tx.Table(t.TableName())
+}
+
+// Insert is a shortcut that gets the Basic table from the transaction and
+// inserts a basic into it.
+func (t *basicTable) Insert(tx *genji.Tx, x *basic) ([]byte, error) {
+	tb, err := t.SelectTable(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Insert(x)
 }
 
 // TableName returns the name of the table.
-func (s *basicTableSchema) TableName() string {
+func (*basicTable) TableName() string {
 	return "Basic"
 }
 
 // All returns a list of all selectors for basic.
-func (s *basicTableSchema) All() []query.FieldSelector {
+func (t *basicTable) All() []query.FieldSelector {
 	return []query.FieldSelector{
-		s.A,
-		s.B,
-		s.C,
-		s.D,
+		t.A,
+		t.B,
+		t.C,
+		t.D,
 	}
 }
 
@@ -327,40 +351,52 @@ func (p *Pk) Pk() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
 }
 
-// PkTableSchema provides provides information about the Pk table.
-type PkTableSchema struct {
+// PkTable manages the Pk table.
+type PkTable struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 }
 
-// NewPkTableSchema creates a PkTableSchema.
-func NewPkTableSchema() PkTableSchema {
-	return PkTableSchema{
+// NewPkTable creates a PkTable.
+func NewPkTable() *PkTable {
+	return &PkTable{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 	}
 }
 
 // Init initializes the Pk table by ensuring the table and its index are created.
-func (s *PkTableSchema) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, s)
+func (t *PkTable) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, t)
 }
 
-// Table returns a query.TableSelector for Pk.
-func (*PkTableSchema) Table() query.TableSelector {
-	return query.Table("Pk")
+// SelectTable implements the query.TableSelector interface. It gets the Pk table from
+// the transaction.
+func (t *PkTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+	return tx.Table(t.TableName())
+}
+
+// Insert is a shortcut that gets the Pk table from the transaction and
+// inserts a Pk into it.
+func (t *PkTable) Insert(tx *genji.Tx, x *Pk) ([]byte, error) {
+	tb, err := t.SelectTable(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Insert(x)
 }
 
 // TableName returns the name of the table.
-func (s *PkTableSchema) TableName() string {
+func (*PkTable) TableName() string {
 	return "Pk"
 }
 
 // All returns a list of all selectors for Pk.
-func (s *PkTableSchema) All() []query.FieldSelector {
+func (t *PkTable) All() []query.FieldSelector {
 	return []query.FieldSelector{
-		s.A,
-		s.B,
+		t.A,
+		t.B,
 	}
 }
 
@@ -431,47 +467,59 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 	})
 }
 
-// IndexedTableSchema provides provides information about the Indexed table.
-type IndexedTableSchema struct {
+// IndexedTable manages the Indexed table.
+type IndexedTable struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 }
 
-// NewIndexedTableSchema creates a IndexedTableSchema.
-func NewIndexedTableSchema() IndexedTableSchema {
-	return IndexedTableSchema{
+// NewIndexedTable creates a IndexedTable.
+func NewIndexedTable() *IndexedTable {
+	return &IndexedTable{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 	}
 }
 
 // Init initializes the Indexed table by ensuring the table and its index are created.
-func (s *IndexedTableSchema) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, s)
+func (t *IndexedTable) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, t)
 }
 
-// Table returns a query.TableSelector for Indexed.
-func (*IndexedTableSchema) Table() query.TableSelector {
-	return query.Table("Indexed")
+// SelectTable implements the query.TableSelector interface. It gets the Indexed table from
+// the transaction.
+func (t *IndexedTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+	return tx.Table(t.TableName())
+}
+
+// Insert is a shortcut that gets the Indexed table from the transaction and
+// inserts a Indexed into it.
+func (t *IndexedTable) Insert(tx *genji.Tx, x *Indexed) ([]byte, error) {
+	tb, err := t.SelectTable(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Insert(x)
 }
 
 // TableName returns the name of the table.
-func (s *IndexedTableSchema) TableName() string {
+func (*IndexedTable) TableName() string {
 	return "Indexed"
 }
 
 // Indexes returns the list of indexes of the Indexed table.
-func (*IndexedTableSchema) Indexes() []string {
+func (*IndexedTable) Indexes() []string {
 	return []string{
 		"A",
 	}
 }
 
 // All returns a list of all selectors for Indexed.
-func (s *IndexedTableSchema) All() []query.FieldSelector {
+func (t *IndexedTable) All() []query.FieldSelector {
 	return []query.FieldSelector{
-		s.A,
-		s.B,
+		t.A,
+		t.B,
 	}
 }
 
@@ -567,17 +615,17 @@ func (m *MultipleTags) Pk() ([]byte, error) {
 	return field.EncodeString(m.A), nil
 }
 
-// MultipleTagsTableSchema provides provides information about the MultipleTags table.
-type MultipleTagsTableSchema struct {
+// MultipleTagsTable manages the MultipleTags table.
+type MultipleTagsTable struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 	C query.Float32FieldSelector
 	D query.BoolFieldSelector
 }
 
-// NewMultipleTagsTableSchema creates a MultipleTagsTableSchema.
-func NewMultipleTagsTableSchema() MultipleTagsTableSchema {
-	return MultipleTagsTableSchema{
+// NewMultipleTagsTable creates a MultipleTagsTable.
+func NewMultipleTagsTable() *MultipleTagsTable {
+	return &MultipleTagsTable{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 		C: query.Float32Field("C"),
@@ -586,34 +634,46 @@ func NewMultipleTagsTableSchema() MultipleTagsTableSchema {
 }
 
 // Init initializes the MultipleTags table by ensuring the table and its index are created.
-func (s *MultipleTagsTableSchema) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, s)
+func (t *MultipleTagsTable) Init(tx *genji.Tx) error {
+	return genji.InitTable(tx, t)
 }
 
-// Table returns a query.TableSelector for MultipleTags.
-func (*MultipleTagsTableSchema) Table() query.TableSelector {
-	return query.Table("MultipleTags")
+// SelectTable implements the query.TableSelector interface. It gets the MultipleTags table from
+// the transaction.
+func (t *MultipleTagsTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+	return tx.Table(t.TableName())
+}
+
+// Insert is a shortcut that gets the MultipleTags table from the transaction and
+// inserts a MultipleTags into it.
+func (t *MultipleTagsTable) Insert(tx *genji.Tx, x *MultipleTags) ([]byte, error) {
+	tb, err := t.SelectTable(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Insert(x)
 }
 
 // TableName returns the name of the table.
-func (s *MultipleTagsTableSchema) TableName() string {
+func (*MultipleTagsTable) TableName() string {
 	return "MultipleTags"
 }
 
 // Indexes returns the list of indexes of the MultipleTags table.
-func (*MultipleTagsTableSchema) Indexes() []string {
+func (*MultipleTagsTable) Indexes() []string {
 	return []string{
 		"D",
 	}
 }
 
 // All returns a list of all selectors for MultipleTags.
-func (s *MultipleTagsTableSchema) All() []query.FieldSelector {
+func (t *MultipleTagsTable) All() []query.FieldSelector {
 	return []query.FieldSelector{
-		s.A,
-		s.B,
-		s.C,
-		s.D,
+		t.A,
+		t.B,
+		t.C,
+		t.D,
 	}
 }
 

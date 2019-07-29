@@ -27,7 +27,7 @@ const recordTmpl = `
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Pk" . }}
-{{- template "table-schema" . }}
+{{- template "table" . }}
 {{- template "result" . }}
 {{- end }}
 `
