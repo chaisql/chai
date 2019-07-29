@@ -25,7 +25,7 @@ type TableSelector interface {
 	// SelectTable selects a table by calling the Table method of the transaction.
 	SelectTable(*genji.Tx) (*genji.Table, error)
 	// Name of the selected table.
-	Name() string
+	TableName() string
 }
 
 // A Field is an adapter that can turn a string into a field selector.
@@ -90,8 +90,8 @@ func (a Alias) SelectField(r record.Record) (field.Field, error) {
 // It implements the TableSelector interface.
 type Table string
 
-// Name returns t as a string.
-func (t Table) Name() string {
+// TableName returns t as a string.
+func (t Table) TableName() string {
 	return string(t)
 }
 
