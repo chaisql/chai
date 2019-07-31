@@ -2,33 +2,22 @@ package engine
 
 import (
 	"errors"
-
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 // Common errors returned by the engine implementations.
 var (
-	// ErrTableNotFound must be returned when the targeted table doesn't exist.
-	ErrTableNotFound = errors.New("table not found")
+	// ErrTransactionReadOnly must be returned when attempting to call write methods on a read-only transaction.
+	ErrTransactionReadOnly = errors.New("transaction is read-only")
+
+	// ErrStoreNotFound is returned when the targeted store doesn't exist.
+	ErrStoreNotFound = errors.New("store not found")
+
+	// ErrStoreAlreadyExists must be returned when attempting to create a store with the
+	// same name as an existing one.
+	ErrStoreAlreadyExists = errors.New("store already exists")
 
 	// ErrKeyNotFound is returned when the targeted key doesn't exist.
 	ErrKeyNotFound = errors.New("key not found")
-
-	// ErrTableAlreadyExists must be returned when attempting to create a table with the
-	// same name as an existing one.
-	ErrTableAlreadyExists = errors.New("table already exists")
-
-	// ErrIndexNotFound must be returned when the targeted index doesn't exist.
-	ErrIndexNotFound = errors.New("index not found")
-
-	// ErrTableAlreadyExists must be returned when attempting to create an index with the
-	// same name as an existing one.
-	ErrIndexAlreadyExists = errors.New("index already exists")
-
-	// ErrTransactionReadOnly must be returned when attempting to call write methods on a read-only transaction.
-	ErrTransactionReadOnly = errors.New("transaction is read-only")
 )
 
 // An Engine is responsible for storing data.
@@ -40,25 +29,10 @@ type Engine interface {
 	Close() error
 }
 
-// A Transaction provides methods for managing the collection of tables and the transaction itself.
-// Transaction is either read-only or read/write. Read-only transactions can be used to read tables
-// and read/write ones can be used to read, create, delete and modify tables.
-type Transaction interface {
-	Rollback() error
-	Commit() error
-	Table(name string, codec record.Codec) (table.Table, error)
-	CreateTable(name string) error
-	DropTable(name string) error
-	Index(table, name string) (index.Index, error)
-	Indexes(table string) (map[string]index.Index, error)
-	CreateIndex(table, field string) error
-	DropIndex(table, field string) error
-}
-
-// A Tx provides methods for managing the collection of stores and the transaction itself.
-// Tx is either read-only or read/write. Read-only transactions can be used to read stores
+// A Transaction provides methods for managing the collection of stores and the transaction itself.
+// The transaction is either read-only or read/write. Read-only transactions can be used to read stores
 // and read/write ones can be used to read, create, delete and modify stores.
-type Tx interface {
+type Transaction interface {
 	Rollback() error
 	Commit() error
 	Store(name string) (Store, error)

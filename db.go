@@ -18,6 +18,15 @@ var (
 	ulidTs  = ulid.Timestamp(time.Now())
 )
 
+var (
+	// ErrTableNotFound is returned when the targeted table doesn't exist.
+	ErrTableNotFound = errors.New("table not found")
+
+	// ErrTableAlreadyExists is returned when attempting to create a table with the
+	// same name as an existing one.
+	ErrTableAlreadyExists = errors.New("table already exists")
+)
+
 // DB represents a collection of tables stored in the underlying engine.
 // DB differs from the engine in that it provides automatic indexing
 // and database administration methods.
@@ -105,13 +114,23 @@ func (db DB) UpdateTable(tableName string, fn func(*Table) error) error {
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
-	engine.Transaction
+	tx engine.Transaction
+}
+
+// CreateTable creates a table with the given name.
+// If it already exists, returns ErrTableAlreadyExists.
+func (tx Tx) CreateTable(name string) error {
+	err := tx.tx.CreateStore(name)
+	if err == engine.ErrStoreAlreadyExists {
+		return ErrTableAlreadyExists
+	}
+	return errors.Wrapf(err, "failed to create table %q", name)
 }
 
 // CreateTableIfNotExists calls CreateTable and returns no error if it already exists.
 func (tx Tx) CreateTableIfNotExists(name string) error {
 	err := tx.CreateTable(name)
-	if err == nil || err == engine.ErrTableAlreadyExists {
+	if err == nil || err == ErrTableAlreadyExists {
 		return nil
 	}
 	return err
@@ -128,14 +147,14 @@ func (tx Tx) CreateIndexIfNotExists(table string, field string) error {
 
 // Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) Table(name string) (*Table, error) {
-	tb, err := tx.Transaction.Table(name, record.NewCodec())
+	s, err := tx.Transaction.Store(name)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Table{
-		Table: tb,
 		tx:    tx.Transaction,
+		store: s,
 		name:  name,
 	}, nil
 }
