@@ -13,6 +13,9 @@ var (
 	// ErrTableNotFound must be returned when the targeted table doesn't exist.
 	ErrTableNotFound = errors.New("table not found")
 
+	// ErrKeyNotFound is returned when the targeted key doesn't exist.
+	ErrKeyNotFound = errors.New("key not found")
+
 	// ErrTableAlreadyExists must be returned when attempting to create a table with the
 	// same name as an existing one.
 	ErrTableAlreadyExists = errors.New("table already exists")
@@ -63,7 +66,7 @@ type Tx interface {
 	DropStore(name string) error
 }
 
-// A Store manages key value pairs.
+// A Store manages key value pairs. It is an abstraction on top of data structures that can provide random readThe store can be implemented by any data stru
 type Store interface {
 	// Get returns a value associated with the given key. If no key is not found, it returns ErrKeyNotFound.
 	Get(k []byte) ([]byte, error)

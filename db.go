@@ -1,10 +1,21 @@
 package genji
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
+	"github.com/oklog/ulid/v2"
+	"github.com/pkg/errors"
+)
+
+var (
+	seed    = time.Now().UnixNano()
+	entropy = rand.New(rand.NewSource(seed))
+	ulidTs  = ulid.Timestamp(time.Now())
 )
 
 // DB represents a collection of tables stored in the underlying engine.
@@ -131,16 +142,36 @@ func (tx Tx) Table(name string) (*Table, error) {
 
 // A Table represents a collection of records.
 type Table struct {
-	table.Table
-
-	tx   engine.Transaction
-	name string
+	tx    engine.Transaction
+	store engine.Store
+	name  string
 }
 
 // Insert the record into the table.
 // Indexes are automatically updated.
 func (t Table) Insert(r record.Record) ([]byte, error) {
-	recordID, err := t.Table.Insert(r)
+	v, err := record.Encode(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encode record")
+	}
+
+	var recordID []byte
+	if pker, ok := r.(table.Pker); ok {
+		recordID, err = pker.Pk()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to generate recordID from Pk method")
+		}
+	} else {
+		id, err := ulid.New(ulidTs, entropy)
+		if err == nil {
+			recordID, err = id.MarshalText()
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to generate recordID")
+		}
+	}
+
+	err = t.store.Put(recordID, v)
 	if err != nil {
 		return nil, err
 	}
