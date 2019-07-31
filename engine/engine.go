@@ -51,3 +51,34 @@ type Transaction interface {
 	CreateIndex(table, field string) error
 	DropIndex(table, field string) error
 }
+
+// A Tx provides methods for managing the collection of stores and the transaction itself.
+// Tx is either read-only or read/write. Read-only transactions can be used to read stores
+// and read/write ones can be used to read, create, delete and modify stores.
+type Tx interface {
+	Rollback() error
+	Commit() error
+	Store(name string) (Store, error)
+	CreateStore(name string) error
+	DropStore(name string) error
+}
+
+// A Store manages key value pairs.
+type Store interface {
+	// Get returns a value associated with the given key. If no key is not found, it returns ErrKeyNotFound.
+	Get(k []byte) ([]byte, error)
+	// Put stores a key value pair. If it already exists, it overrides it.
+	Put(k, v []byte) error
+	// Delete a key value pair. If the key is not found, returns ErrKeyNotFound.
+	Delete(k []byte) error
+	// Truncate deletes all the key value pairs from the store.
+	Truncate() error
+	// AscendGreater seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
+	// If the given function returns an error, the iteration stops and returns that error.
+	// If the pivot is nil, starts from the beginning.
+	AscendGreater(pivot []byte, fn func(k, v []byte) error) error
+	// DescendGreater seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
+	// If the given function returns an error, the iteration stops and returns that error.
+	// If the pivot is nil, starts from the end.
+	DescendGreater(pivot []byte, fn func(k, v []byte) error) error
+}
