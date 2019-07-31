@@ -38,6 +38,7 @@ type Transaction interface {
 	Store(name string) (Store, error)
 	CreateStore(name string) error
 	DropStore(name string) error
+	StoreList(prefix string) ([]string, error)
 }
 
 // A Store manages key value pairs. It is an abstraction on top of data structures that can provide random readThe store can be implemented by any data stru

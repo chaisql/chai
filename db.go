@@ -2,10 +2,12 @@ package genji
 
 import (
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/oklog/ulid/v2"
@@ -25,6 +27,13 @@ var (
 	// ErrTableAlreadyExists is returned when attempting to create a table with the
 	// same name as an existing one.
 	ErrTableAlreadyExists = errors.New("table already exists")
+
+	// ErrIndexNotFound is returned when the targeted index doesn't exist.
+	ErrIndexNotFound = errors.New("index not found")
+
+	// ErrIndexAlreadyExists is returned when attempting to create an index with the
+	// same name as an existing one.
+	ErrIndexAlreadyExists = errors.New("index already exists")
 )
 
 // DB represents a collection of tables stored in the underlying engine.
@@ -32,26 +41,26 @@ var (
 // and database administration methods.
 // DB is safe for concurrent use unless the given engine isn't.
 type DB struct {
-	engine.Engine
+	ng engine.Engine
 }
 
 // New initializes the DB using the given engine.
 func New(ng engine.Engine) *DB {
 	return &DB{
-		Engine: ng,
+		ng: ng,
 	}
 }
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.Engine.Begin(writable)
+	tx, err := db.ng.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Tx{
-		Transaction: tx,
+		tx: tx,
 	}, nil
 }
 
@@ -117,6 +126,16 @@ type Tx struct {
 	tx engine.Transaction
 }
 
+// Rollback the transaction. Can be used safely after commit.
+func (tx Tx) Rollback() error {
+	return tx.tx.Rollback()
+}
+
+// Commit the transaction.
+func (tx Tx) Commit() error {
+	return tx.tx.Commit()
+}
+
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx Tx) CreateTable(name string) error {
@@ -136,32 +155,110 @@ func (tx Tx) CreateTableIfNotExists(name string) error {
 	return err
 }
 
-// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
-func (tx Tx) CreateIndexIfNotExists(table string, field string) error {
-	err := tx.CreateIndex(table, field)
-	if err == nil || err == engine.ErrIndexAlreadyExists {
-		return nil
-	}
-	return err
-}
-
 // Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) Table(name string) (*Table, error) {
-	s, err := tx.Transaction.Store(name)
+	s, err := tx.tx.Store(name)
+	if err == engine.ErrStoreNotFound {
+		return nil, ErrTableNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return &Table{
-		tx:    tx.Transaction,
+		tx:    &tx,
 		store: s,
 		name:  name,
 	}, nil
 }
 
+// DropTable deletes a table from the database.
+func (tx Tx) DropTable(name string) error {
+	err := tx.tx.DropStore(name)
+	if err == engine.ErrStoreNotFound {
+		return ErrTableNotFound
+	}
+	return err
+}
+
+const sep = 0x1e
+
+func buildIndexName(tableName, field string) string {
+	var b strings.Builder
+	b.WriteString(tableName)
+	b.WriteByte(sep)
+	b.WriteString(field)
+
+	return b.String()
+}
+
+// CreateIndex creates an index with the given name.
+// If it already exists, returns ErrTableAlreadyExists.
+func (tx Tx) CreateIndex(tableName, field string) error {
+	err := tx.tx.CreateStore(buildIndexName(tableName, field))
+	if err == engine.ErrStoreAlreadyExists {
+		return ErrIndexAlreadyExists
+	}
+
+	return errors.Wrapf(err, "failed to create index %q on table %q", field, tableName)
+}
+
+// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
+func (tx Tx) CreateIndexIfNotExists(table string, field string) error {
+	err := tx.CreateIndex(table, field)
+	if err == nil || err == ErrIndexAlreadyExists {
+		return nil
+	}
+	return err
+}
+
+// Index returns an index by name.
+func (tx Tx) Index(tableName, field string) (*index.Index, error) {
+	s, err := tx.tx.Store(buildIndexName(tableName, field))
+	if err == engine.ErrStoreNotFound {
+		return nil, ErrTableNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &index.Index{
+		Store: s,
+	}, nil
+}
+
+// Indexes returns a map of all the indexes of a table.
+func (tx Tx) Indexes(tableName string) (map[string]*index.Index, error) {
+	prefix := buildIndexName(tableName, "")
+	list, err := tx.tx.StoreList(prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	indexes := make(map[string]*index.Index)
+	for _, storeName := range list {
+		idxName := strings.TrimPrefix(storeName, prefix)
+		indexes[idxName], err = tx.Index(tableName, idxName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return indexes, nil
+}
+
+// DropIndex deletes an index from the database.
+func (tx Tx) DropIndex(tableName, field string) error {
+	err := tx.tx.DropStore(buildIndexName(tableName, field))
+	if err == engine.ErrStoreNotFound {
+		return ErrIndexNotFound
+	}
+	return err
+}
+
 // A Table represents a collection of records.
 type Table struct {
-	tx    engine.Transaction
+	tx    *Tx
 	store engine.Store
 	name  string
 }
@@ -173,8 +270,6 @@ func (t Table) Iterate(fn func(recordID []byte, r record.Record) error) error {
 		return fn(recordID, record.EncodedRecord(v))
 	})
 }
-
-var wesh table.Table = new(Table)
 
 // Record returns one record by recordID.
 func (t Table) Record(recordID []byte) (record.Record, error) {
