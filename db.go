@@ -147,6 +147,29 @@ type Table struct {
 	name  string
 }
 
+// Iterate goes through all the records of the table and calls the given function by passing each one of them.
+// If the given function returns an error, the iteration stops.
+func (t Table) Iterate(fn func(recordID []byte, r record.Record) error) error {
+	return t.store.AscendGreater(nil, func(recordID, v []byte) error {
+		return fn(recordID, record.EncodedRecord(v))
+	})
+}
+
+var wesh table.Table = new(Table)
+
+// Record returns one record by recordID.
+func (t Table) Record(recordID []byte) (record.Record, error) {
+	v, err := t.store.Get(recordID)
+	if err != nil {
+		if err == engine.ErrKeyNotFound {
+			return nil, table.ErrRecordNotFound
+		}
+		return nil, errors.Wrapf(err, "failed to fetch record %q", recordID)
+	}
+
+	return record.EncodedRecord(v), err
+}
+
 // Insert the record into the table.
 // Indexes are automatically updated.
 func (t Table) Insert(r record.Record) ([]byte, error) {
@@ -199,7 +222,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 // Delete a record by recordID.
 // Indexes are automatically updated.
 func (t Table) Delete(recordID []byte) error {
-	err := t.Table.Delete(recordID)
+	err := t.store.Delete(recordID)
 	if err != nil {
 		return err
 	}
@@ -223,7 +246,12 @@ func (t Table) Delete(recordID []byte) error {
 // An error is returned if the recordID doesn't exist.
 // Indexes are automatically updated.
 func (t Table) Replace(recordID []byte, r record.Record) error {
-	err := t.Table.Replace(recordID, r)
+	v, err := record.Encode(r)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode record")
+	}
+
+	err = t.store.Put(recordID, v)
 	if err != nil {
 		return err
 	}
@@ -248,13 +276,18 @@ func (t Table) Replace(recordID []byte, r record.Record) error {
 	return nil
 }
 
+// Truncate deletes all the records from the table.
+func (t Table) Truncate() error {
+	return t.store.Truncate()
+}
+
 // AddField changes the table structure by adding a field to all the records.
 // If the field data is empty, it is filled with the zero value of the field type.
 // If a record already has the field, no change is performed on that record.
 func (t Table) AddField(f field.Field) error {
-	return t.Table.Iterate(func(recordID []byte, r record.Record) error {
+	return t.store.AscendGreater(nil, func(recordID, v []byte) error {
 		var fb record.FieldBuffer
-		err := fb.ScanRecord(r)
+		err := fb.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
 			return err
 		}
@@ -268,15 +301,21 @@ func (t Table) AddField(f field.Field) error {
 			f.Data = field.ZeroValue(f.Type).Data
 		}
 		fb.Add(f)
-		return t.Table.Replace(recordID, fb)
+
+		v, err = record.Encode(&fb)
+		if err != nil {
+			return err
+		}
+
+		return t.store.Put(recordID, v)
 	})
 }
 
 // DeleteField changes the table structure by deleting a field from all the records.
 func (t Table) DeleteField(name string) error {
-	return t.Table.Iterate(func(recordID []byte, r record.Record) error {
+	return t.store.AscendGreater(nil, func(recordID []byte, v []byte) error {
 		var fb record.FieldBuffer
-		err := fb.ScanRecord(r)
+		err := fb.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
 			return err
 		}
@@ -287,15 +326,20 @@ func (t Table) DeleteField(name string) error {
 			return nil
 		}
 
-		return t.Table.Replace(recordID, fb)
+		v, err = record.Encode(&fb)
+		if err != nil {
+			return err
+		}
+
+		return t.store.Put(recordID, v)
 	})
 }
 
 // RenameField changes the table structure by renaming the selected field on all the records.
 func (t Table) RenameField(oldName, newName string) error {
-	return t.Table.Iterate(func(recordID []byte, r record.Record) error {
+	return t.store.AscendGreater(nil, func(recordID []byte, v []byte) error {
 		var fb record.FieldBuffer
-		err := fb.ScanRecord(r)
+		err := fb.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
 			return err
 		}
@@ -308,7 +352,13 @@ func (t Table) RenameField(oldName, newName string) error {
 
 		f.Name = newName
 		fb.Replace(oldName, f)
-		return t.Table.Replace(recordID, fb)
+
+		v, err = record.Encode(&fb)
+		if err != nil {
+			return err
+		}
+
+		return t.store.Put(recordID, v)
 	})
 }
 
