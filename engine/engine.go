@@ -54,9 +54,9 @@ type Store interface {
 	// AscendGreater seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the beginning.
-	AscendGreater(pivot []byte, fn func(k, v []byte) error) error
+	AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error
 	// DescendGreater seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
-	DescendGreater(pivot []byte, fn func(k, v []byte) error) error
+	DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error
 }

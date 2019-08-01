@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
@@ -106,7 +105,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 
 	if im, ok := q.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, q.tableSelector.TableName())
-		if err != nil && err != engine.ErrIndexNotFound {
+		if err != nil && err != genji.ErrIndexNotFound {
 			return Result{err: err}
 		}
 
@@ -276,7 +275,7 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 
 	if im, ok := d.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, d.tableSelector.TableName())
-		if err != nil && err != engine.ErrIndexNotFound {
+		if err != nil && err != genji.ErrIndexNotFound {
 			return err
 		}
 
@@ -440,7 +439,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 
 	if im, ok := u.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, u.tableSelector.TableName())
-		if err != nil && err != engine.ErrIndexNotFound {
+		if err != nil && err != genji.ErrIndexNotFound {
 			return err
 		}
 

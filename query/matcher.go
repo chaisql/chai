@@ -69,11 +69,15 @@ func (m *eqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 
 	tree := btree.New(3)
 
-	c := idx.Cursor()
-	v, recordID := c.Seek(m.Value)
-	for recordID != nil && bytes.Equal(m.Value, v) {
-		tree.ReplaceOrInsert(Item(recordID))
-		v, recordID = c.Next()
+	err = idx.AscendGreaterOrEqual(m.Value, func(v, recordID []byte) error {
+		if recordID != nil && bytes.Equal(m.Value, v) {
+			tree.ReplaceOrInsert(Item(recordID))
+			return nil
+		}
+		return errStop
+	})
+	if err != errStop || err != nil {
+		return nil, false, err
 	}
 
 	return tree, true, nil
@@ -118,14 +122,15 @@ func (m *gtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 
 	tree := btree.New(3)
 
-	c := idx.Cursor()
-	v, recordID := c.Seek(m.Value)
-	for recordID != nil {
+	err = idx.AscendGreaterOrEqual(m.Value, func(v, recordID []byte) error {
 		if !bytes.Equal(m.Value, v) {
 			tree.ReplaceOrInsert(Item(recordID))
 		}
 
-		v, recordID = c.Next()
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
 	}
 
 	return tree, true, nil
@@ -170,11 +175,13 @@ func (m *gteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, b
 
 	tree := btree.New(3)
 
-	c := idx.Cursor()
-	_, recordID := c.Seek(m.Value)
-	for recordID != nil {
+	err = idx.AscendGreaterOrEqual(m.Value, func(v, recordID []byte) error {
 		tree.ReplaceOrInsert(Item(recordID))
-		_, recordID = c.Next()
+
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
 	}
 
 	return tree, true, nil
@@ -219,14 +226,15 @@ func (m *ltMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 
 	tree := btree.New(3)
 
-	c := idx.Cursor()
-	v, recordID := c.Seek(m.Value)
-	v, recordID = c.Prev()
-	for recordID != nil {
+	err = idx.DescendLessOrEqual(m.Value, func(v, recordID []byte) error {
 		if !bytes.Equal(m.Value, v) {
 			tree.ReplaceOrInsert(Item(recordID))
 		}
-		v, recordID = c.Prev()
+
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
 	}
 
 	return tree, true, nil
@@ -271,22 +279,13 @@ func (m *lteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, b
 
 	tree := btree.New(3)
 
-	c := idx.Cursor()
-	v, recordID := c.Seek(m.Value)
+	err = idx.DescendLessOrEqual(m.Value, func(v, recordID []byte) error {
+		tree.ReplaceOrInsert(Item(recordID))
 
-	for bytes.Equal(v, m.Value) {
-		v, recordID = c.Next()
-	}
-	if v == nil {
-		v, recordID = c.Last()
-	}
-
-	for recordID != nil {
-		if bytes.Compare(v, m.Value) <= 0 {
-			tree.ReplaceOrInsert(Item(recordID))
-		}
-
-		v, recordID = c.Prev()
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
 	}
 
 	return tree, true, nil

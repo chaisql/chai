@@ -19,12 +19,12 @@ func (i *Index) Delete(recordID []byte) error {
 	return nil
 }
 
-// AscendGreater seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
+// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
-func (i *Index) AscendGreater(pivot []byte, fn func(k, v []byte) error) error { return nil }
+func (i *Index) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error { return nil }
 
-// DescendGreater seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
+// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
-func (i *Index) DescendGreater(pivot []byte, fn func(k, v []byte) error) error { return nil }
+func (i *Index) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error { return nil }
