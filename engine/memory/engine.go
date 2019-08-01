@@ -2,32 +2,23 @@ package memory
 
 import (
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/asdine/genji/engine"
-	idx "github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/google/btree"
 )
 
 type Engine struct {
-	closed  bool
-	tables  map[string]*table.RecordBuffer
-	indexes map[tableIndex]*btree.BTree
+	closed bool
+	stores map[string]*btree.BTree
 
 	mu sync.RWMutex
 }
 
-type tableIndex struct {
-	table string
-	index string
-}
-
 func NewEngine() *Engine {
 	return &Engine{
-		tables:  make(map[string]*table.RecordBuffer),
-		indexes: make(map[tableIndex]*btree.BTree),
+		stores: make(map[string]*btree.BTree),
 	}
 }
 
@@ -103,131 +94,61 @@ func (tx *transaction) Commit() error {
 	return nil
 }
 
-func (tx *transaction) Table(name string, _ record.Codec) (table.Table, error) {
-	rb, ok := tx.ng.tables[name]
+func (tx *transaction) Store(name string) (engine.Store, error) {
+	tr, ok := tx.ng.stores[name]
 	if !ok {
-		return nil, engine.ErrTableNotFound
+		return nil, engine.ErrStoreNotFound
 	}
 
-	return &tableTx{tx: tx, RecordBuffer: rb}, nil
+	return &storeTx{tx: tx, tr: tr}, nil
 }
 
-func (tx *transaction) CreateTable(name string) error {
+func (tx *transaction) StoreList(prefix string) ([]string, error) {
+	list := make([]string, 0, len(tx.ng.stores))
+	for name := range tx.ng.stores {
+		list = append(list, name)
+	}
+
+	sort.Strings(list)
+
+	return list, nil
+}
+
+func (tx *transaction) CreateStore(name string) error {
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	_, err := tx.Table(name, nil)
+	_, err := tx.Store(name)
 	if err == nil {
-		return engine.ErrTableAlreadyExists
+		return engine.ErrStoreAlreadyExists
 	}
 
-	var rb table.RecordBuffer
+	tr := btree.New(3)
 
-	tx.ng.tables[name] = &rb
+	tx.ng.stores[name] = tr
 
 	tx.undos = append(tx.undos, func() {
-		delete(tx.ng.tables, name)
+		delete(tx.ng.stores, name)
 	})
 
 	return nil
 }
 
-func (tx *transaction) DropTable(name string) error {
+func (tx *transaction) DropStore(name string) error {
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	rb, ok := tx.ng.tables[name]
+	rb, ok := tx.ng.stores[name]
 	if !ok {
-		return engine.ErrTableNotFound
+		return engine.ErrStoreNotFound
 	}
 
-	delete(tx.ng.tables, name)
+	delete(tx.ng.stores, name)
 
 	tx.undos = append(tx.undos, func() {
-		tx.ng.tables[name] = rb
-	})
-
-	return nil
-}
-
-func (tx *transaction) Index(table, name string) (idx.Index, error) {
-	_, err := tx.Table(table, nil)
-	if err != nil {
-		return nil, engine.ErrTableNotFound
-	}
-
-	tree, ok := tx.ng.indexes[tableIndex{table, name}]
-	if !ok {
-		return nil, engine.ErrIndexNotFound
-	}
-
-	return &index{tree: tree, tx: tx}, nil
-}
-
-func (tx *transaction) Indexes(table string) (map[string]idx.Index, error) {
-	if _, err := tx.Table(table, nil); err != nil {
-		return nil, err
-	}
-
-	m := make(map[string]idx.Index)
-
-	for ti, tree := range tx.ng.indexes {
-		if ti.table != table {
-			continue
-		}
-
-		m[ti.index] = &index{tree: tree, tx: tx}
-	}
-
-	return m, nil
-}
-
-func (tx *transaction) CreateIndex(table, name string) error {
-	if !tx.writable {
-		return engine.ErrTransactionReadOnly
-	}
-
-	_, err := tx.Table(table, nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Index(table, name)
-	if err == nil {
-		return engine.ErrIndexAlreadyExists
-	}
-
-	tree := btree.New(3)
-	tx.ng.indexes[tableIndex{table, name}] = tree
-
-	tx.undos = append(tx.undos, func() {
-		delete(tx.ng.indexes, tableIndex{table, name})
-	})
-
-	return nil
-}
-
-func (tx *transaction) DropIndex(table, name string) error {
-	if !tx.writable {
-		return engine.ErrTransactionReadOnly
-	}
-
-	_, err := tx.Table(table, nil)
-	if err != nil {
-		return err
-	}
-
-	tree, ok := tx.ng.indexes[tableIndex{table, name}]
-	if !ok {
-		return engine.ErrIndexNotFound
-	}
-
-	delete(tx.ng.indexes, tableIndex{table, name})
-
-	tx.undos = append(tx.undos, func() {
-		tx.ng.indexes[tableIndex{table, name}] = tree
+		tx.ng.stores[name] = rb
 	})
 
 	return nil
