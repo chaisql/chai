@@ -94,8 +94,8 @@ func (s *storeTx) AscendGreaterOrEqual(start []byte, fn func(k, v []byte) error)
 	return
 }
 
-func (s *storeTx) DescendLessOrEqual(start []byte, fn func(k, v []byte) error) (err error) {
-	if start == nil {
+func (s *storeTx) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) (err error) {
+	if pivot == nil {
 		s.tr.Descend(btree.ItemIterator(func(i btree.Item) bool {
 			it := i.(*item)
 			err = fn(it.k, it.v)
@@ -104,7 +104,7 @@ func (s *storeTx) DescendLessOrEqual(start []byte, fn func(k, v []byte) error) (
 		return
 	}
 
-	s.tr.DescendLessOrEqual(&item{k: start}, btree.ItemIterator(func(i btree.Item) bool {
+	s.tr.DescendLessOrEqual(&item{k: pivot}, btree.ItemIterator(func(i btree.Item) bool {
 		it := i.(*item)
 		err = fn(it.k, it.v)
 		return err == nil
