@@ -38,7 +38,7 @@ type Transaction interface {
 	Store(name string) (Store, error)
 	CreateStore(name string) error
 	DropStore(name string) error
-	StoreList(prefix string) ([]string, error)
+	ListStores(prefix string) ([]string, error)
 }
 
 // A Store manages key value pairs. It is an abstraction on top of data structures that can provide random readThe store can be implemented by any data stru
@@ -51,11 +51,11 @@ type Store interface {
 	Delete(k []byte) error
 	// Truncate deletes all the key value pairs from the store.
 	Truncate() error
-	// AscendGreater seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
+	// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the beginning.
 	AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error
-	// DescendGreater seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
+	// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
 	DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error

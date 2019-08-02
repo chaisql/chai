@@ -5,9 +5,6 @@ import (
 	"os"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
 
@@ -72,142 +69,57 @@ func (t *Transaction) Commit() error {
 	return t.tx.Commit()
 }
 
-// Table returns a table by name. The table uses a Bolt bucket.
-func (t *Transaction) Table(name string, codec record.Codec) (table.Table, error) {
+// Store returns a store by name. The store uses a Bolt bucket.
+func (t *Transaction) Store(name string) (engine.Store, error) {
 	bname := []byte(name)
 	b := t.tx.Bucket(bname)
 	if b == nil {
-		return nil, engine.ErrTableNotFound
+		return nil, engine.ErrStoreNotFound
 	}
 
-	return &Table{
+	return &Store{
 		bucket: b,
-		codec:  codec,
 		tx:     t.tx,
 		name:   bname,
 	}, nil
 }
 
-// CreateTable creates a bolt bucket and returns a table.
-// If the table already exists, returns engine.ErrTableAlreadyExists.
-func (t *Transaction) CreateTable(name string) error {
+// CreateStore creates a bolt bucket and returns a store.
+// If the store already exists, returns engine.ErrStoreAlreadyExists.
+func (t *Transaction) CreateStore(name string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
 	_, err := t.tx.CreateBucket([]byte(name))
 	if err == bolt.ErrBucketExists {
-		return engine.ErrTableAlreadyExists
+		return engine.ErrStoreAlreadyExists
 	}
 
 	return err
 }
 
-// DropTable deletes the underlying bucket.
-func (t *Transaction) DropTable(name string) error {
+// DropStore deletes the underlying bucket.
+func (t *Transaction) DropStore(name string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
 	err := t.tx.DeleteBucket([]byte(name))
 	if err == bolt.ErrBucketNotFound {
-		return engine.ErrTableNotFound
+		return engine.ErrStoreNotFound
 	}
 
 	return err
 }
 
-// CreateIndex creates an index in a sub bucket of the table bucket.
-func (t *Transaction) CreateIndex(table, fieldName string) error {
-	if !t.writable {
-		return engine.ErrTransactionReadOnly
-	}
-
-	b := t.tx.Bucket([]byte(table))
-	if b == nil {
-		return engine.ErrTableNotFound
-	}
-
-	bb, err := b.CreateBucketIfNotExists([]byte(indexBucketName))
-	if err != nil {
-		return err
-	}
-
-	_, err = bb.CreateBucket([]byte(fieldName))
-	if err == bolt.ErrBucketExists {
-		return engine.ErrIndexAlreadyExists
-	}
-
-	return err
-}
-
-// Index returns an index by name.
-func (t *Transaction) Index(table, fieldName string) (index.Index, error) {
-	b := t.tx.Bucket([]byte(table))
-	if b == nil {
-		return nil, engine.ErrTableNotFound
-	}
-
-	bb := b.Bucket([]byte(indexBucketName))
-	if bb == nil {
-		return nil, engine.ErrIndexNotFound
-	}
-
-	ib := bb.Bucket([]byte(fieldName))
-	if ib == nil {
-		return nil, engine.ErrIndexNotFound
-	}
-
-	return &Index{
-		b: ib,
-	}, nil
-}
-
-// Indexes lists all the indexes of this table.
-func (t *Transaction) Indexes(table string) (map[string]index.Index, error) {
-	b := t.tx.Bucket([]byte(table))
-	if b == nil {
-		return nil, engine.ErrTableNotFound
-	}
-
-	m := make(map[string]index.Index)
-
-	bb := b.Bucket([]byte(indexBucketName))
-	if bb == nil {
-		return nil, nil
-	}
-
-	err := bb.ForEach(func(k, _ []byte) error {
-		m[string(k)] = &Index{
-			b: bb.Bucket(k),
-		}
-
+// ListStores returns a list of all the store names.
+func (t *Transaction) ListStores(name string) ([]string, error) {
+	var names []string
+	err := t.tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
+		names = append(names, string(name))
 		return nil
 	})
 
-	return m, err
-}
-
-// DropIndex drops an index by name, removing its corresponding bucket.
-func (t *Transaction) DropIndex(table, fieldName string) error {
-	if !t.writable {
-		return engine.ErrTransactionReadOnly
-	}
-
-	b := t.tx.Bucket([]byte(table))
-	if b == nil {
-		return engine.ErrTableNotFound
-	}
-
-	bb := b.Bucket([]byte(indexBucketName))
-	if bb == nil {
-		return engine.ErrIndexNotFound
-	}
-
-	err := bb.DeleteBucket([]byte(fieldName))
-	if err == bolt.ErrBucketNotFound {
-		return engine.ErrIndexNotFound
-	}
-
-	return err
+	return names, err
 }

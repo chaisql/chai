@@ -21,7 +21,6 @@ type User struct {
 func Example() {
 	ng := memory.NewEngine()
 	db := genji.New(ng)
-	defer db.Close()
 
 	// open a read-write transaction
 	err := db.Update(func(tx *genji.Tx) error {
@@ -60,7 +59,6 @@ func Example() {
 func ExampleDB() {
 	ng := memory.NewEngine()
 	db := genji.New(ng)
-	defer db.Close()
 
 	err := db.Update(func(tx *genji.Tx) error {
 		err := tx.CreateTable("Table")

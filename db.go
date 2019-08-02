@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	seed    = time.Now().UnixNano()
-	entropy = rand.New(rand.NewSource(seed))
-	ulidTs  = ulid.Timestamp(time.Now())
+	seed           = time.Now().UnixNano()
+	entropy        = rand.New(rand.NewSource(seed))
+	ulidTs         = ulid.Timestamp(time.Now())
+	separator byte = 0x1F
 )
 
 var (
@@ -181,12 +182,10 @@ func (tx Tx) DropTable(name string) error {
 	return err
 }
 
-const sep = 0x1e
-
 func buildIndexName(tableName, field string) string {
 	var b strings.Builder
 	b.WriteString(tableName)
-	b.WriteByte(sep)
+	b.WriteByte(separator)
 	b.WriteString(field)
 
 	return b.String()
@@ -195,7 +194,12 @@ func buildIndexName(tableName, field string) string {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx Tx) CreateIndex(tableName, field string) error {
-	err := tx.tx.CreateStore(buildIndexName(tableName, field))
+	_, err := tx.Table(tableName)
+	if err != nil {
+		return err
+	}
+
+	err = tx.tx.CreateStore(buildIndexName(tableName, field))
 	if err == engine.ErrStoreAlreadyExists {
 		return ErrIndexAlreadyExists
 	}
@@ -266,7 +270,7 @@ type Table struct {
 // Iterate goes through all the records of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (t Table) Iterate(fn func(recordID []byte, r record.Record) error) error {
-	return t.store.AscendGreater(nil, func(recordID, v []byte) error {
+	return t.store.AscendGreaterOrEqual(nil, func(recordID, v []byte) error {
 		return fn(recordID, record.EncodedRecord(v))
 	})
 }
@@ -399,7 +403,7 @@ func (t Table) Truncate() error {
 // If the field data is empty, it is filled with the zero value of the field type.
 // If a record already has the field, no change is performed on that record.
 func (t Table) AddField(f field.Field) error {
-	return t.store.AscendGreater(nil, func(recordID, v []byte) error {
+	return t.store.AscendGreaterOrEqual(nil, func(recordID, v []byte) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
@@ -427,7 +431,7 @@ func (t Table) AddField(f field.Field) error {
 
 // DeleteField changes the table structure by deleting a field from all the records.
 func (t Table) DeleteField(name string) error {
-	return t.store.AscendGreater(nil, func(recordID []byte, v []byte) error {
+	return t.store.AscendGreaterOrEqual(nil, func(recordID []byte, v []byte) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
@@ -451,7 +455,7 @@ func (t Table) DeleteField(name string) error {
 
 // RenameField changes the table structure by renaming the selected field on all the records.
 func (t Table) RenameField(oldName, newName string) error {
-	return t.store.AscendGreater(nil, func(recordID []byte, v []byte) error {
+	return t.store.AscendGreaterOrEqual(nil, func(recordID []byte, v []byte) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
