@@ -3,6 +3,7 @@
 package enginetest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/asdine/genji/engine"
@@ -29,7 +30,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Transaction/Store", TestTransactionStore},
 		{"Transaction/CreateStore", TestTransactionCreateStore},
 		{"Transaction/DropStore", TestTransactionDropStore},
-		// {"Transaction/ListStores", TestTransactionListStores},
+		{"Transaction/ListStores", TestTransactionListStores},
 		{"Store/AscendGreaterOrEqual", TestStoreAscendGreaterOrEqual},
 		{"Store/DescendLessOrEqual", TestStoreDescendLessOrEqual},
 	}
@@ -413,5 +414,54 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 
 		err = tx.DropStore("store")
 		require.Equal(t, engine.ErrStoreNotFound, err)
+	})
+}
+
+// TestTransactionListStores verifies ListStores behaviour.
+func TestTransactionListStores(t *testing.T, builder Builder) {
+	t.Run("With no prefix, should list all stores", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		for i := 0; i < 10; i++ {
+			err = tx.CreateStore(fmt.Sprintf("store%d", i))
+			require.NoError(t, err)
+		}
+
+		list, err := tx.ListStores("")
+		require.NoError(t, err)
+		require.Len(t, list, 10)
+		for i, name := range list {
+			require.Equal(t, fmt.Sprintf("store%d", i), name)
+		}
+	})
+
+	t.Run("With a prefix, should list some stores", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		for i := 0; i < 10; i++ {
+			if i%2 == 0 {
+				err = tx.CreateStore(fmt.Sprintf("foo%d", i))
+			} else {
+				err = tx.CreateStore(fmt.Sprintf("bar%d", i))
+			}
+			require.NoError(t, err)
+		}
+
+		list, err := tx.ListStores("f")
+		require.NoError(t, err)
+		require.Len(t, list, 5)
+		for i, name := range list {
+			require.Equal(t, fmt.Sprintf("foo%d", i*2), name)
+		}
 	})
 }

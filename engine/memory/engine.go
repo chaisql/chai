@@ -3,6 +3,7 @@ package memory
 import (
 	"errors"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/asdine/genji/engine"
@@ -106,7 +107,9 @@ func (tx *transaction) Store(name string) (engine.Store, error) {
 func (tx *transaction) ListStores(prefix string) ([]string, error) {
 	list := make([]string, 0, len(tx.ng.stores))
 	for name := range tx.ng.stores {
-		list = append(list, name)
+		if strings.HasPrefix(name, prefix) {
+			list = append(list, name)
+		}
 	}
 
 	sort.Strings(list)

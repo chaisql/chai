@@ -6,7 +6,6 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/enginetest"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMemoryEngine(t *testing.T) {
@@ -35,22 +34,3 @@ func TestMemoryEngine(t *testing.T) {
 // func BenchmarkMemoryEngineIndexSeek(b *testing.B) {
 // 	indextest.BenchmarkIndexSeek(b, indexBuilder(b))
 // }
-
-func storeBuilder(t require.TestingT) func() (engine.Store, func()) {
-	return func() (engine.Store, func()) {
-		ng := memory.NewEngine()
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-
-		err = tx.CreateStore("test")
-		require.NoError(t, err)
-
-		st, err := tx.Store("test")
-		require.NoError(t, err)
-
-		return st, func() {
-			tx.Rollback()
-			ng.Close()
-		}
-	}
-}
