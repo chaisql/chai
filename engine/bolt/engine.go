@@ -2,6 +2,7 @@
 package bolt
 
 import (
+	"bytes"
 	"os"
 
 	"github.com/asdine/genji/engine"
@@ -114,10 +115,13 @@ func (t *Transaction) DropStore(name string) error {
 }
 
 // ListStores returns a list of all the store names.
-func (t *Transaction) ListStores(name string) ([]string, error) {
+func (t *Transaction) ListStores(prefix string) ([]string, error) {
 	var names []string
+	p := []byte(prefix)
 	err := t.tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
-		names = append(names, string(name))
+		if bytes.HasPrefix(name, p) {
+			names = append(names, string(name))
+		}
 		return nil
 	})
 

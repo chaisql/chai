@@ -52,6 +52,11 @@ func New(ng engine.Engine) *DB {
 	}
 }
 
+// Close the underlying engine.
+func (db DB) Close() error {
+	return db.ng.Close()
+}
+
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db DB) Begin(writable bool) (*Tx, error) {

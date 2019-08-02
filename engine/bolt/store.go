@@ -4,7 +4,6 @@ import (
 	"bytes"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/table"
 	bolt "github.com/etcd-io/bbolt"
 )
 
@@ -42,7 +41,7 @@ func (s *Store) Delete(k []byte) error {
 
 	v := s.bucket.Get(k)
 	if v == nil {
-		return table.ErrRecordNotFound
+		return engine.ErrKeyNotFound
 	}
 
 	return s.bucket.Delete(k)
@@ -67,13 +66,19 @@ func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) e
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
 func (s *Store) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
+	var k, v []byte
+
 	c := s.bucket.Cursor()
-	k, v := c.Seek(pivot)
-	if k == nil {
+	if len(pivot) == 0 {
 		k, v = c.Last()
 	} else {
-		for bytes.Compare(k, pivot) > 0 {
-			k, v = c.Prev()
+		k, v = c.Seek(pivot)
+		if k == nil {
+			k, v = c.Last()
+		} else {
+			for bytes.Compare(k, pivot) > 0 {
+				k, v = c.Prev()
+			}
 		}
 	}
 
