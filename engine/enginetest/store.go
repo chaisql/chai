@@ -278,159 +278,73 @@ func TestStorePut(t *testing.T, builder Builder) {
 	})
 }
 
-// // TestTableReaderRecord verifies Record behaviour.
-// func TestTableReaderRecord(t *testing.T, builder Builder) {
-// 	t.Run("Should fail if not found", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
+// TestStoreGet verifies Get behaviour.
+func TestStoreGet(t *testing.T, builder Builder) {
+	t.Run("Should fail if not found", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
 
-// 		r, err := st.Record([]byte("id"))
-// 		require.Equal(t, table.ErrRecordNotFound, err)
-// 		require.Nil(t, r)
-// 	})
+		r, err := st.Get([]byte("id"))
+		require.Equal(t, engine.ErrKeyNotFound, err)
+		require.Nil(t, r)
+	})
 
-// 	t.Run("Should return the right record", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
+	t.Run("Should return the right key", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
 
-// 		// create two records, one with an additional field
-// 		rec1 := newRecord()
-// 		rec1.Add(field.NewInt64("fieldc", 40))
-// 		rec2 := newRecord()
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+		err = st.Put([]byte("bar"), []byte("BAR"))
+		require.NoError(t, err)
 
-// 		recordID1, err := st.Insert(rec1)
-// 		require.NoError(t, err)
-// 		_, err = st.Insert(rec2)
-// 		require.NoError(t, err)
+		v, err := st.Get([]byte("foo"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("FOO"), v)
 
-// 		// fetch rec1 and make sure it returns the right one
-// 		res, err := st.Record(recordID1)
-// 		require.NoError(t, err)
-// 		fc, err := res.Field("fieldc")
-// 		require.NoError(t, err)
-// 		require.Equal(t, rec1[2], fc)
-// 	})
-// }
+		v, err = st.Get([]byte("bar"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("BAR"), v)
+	})
+}
 
-// // TestTableWriterInsert verifies Insert behaviour.
-// func TestTableWriterInsert(t *testing.T, builder Builder) {
-// 	t.Run("Should generate a recordID by default", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
+// TestStoreDelete verifies Delete behaviour.
+func TestStoreDelete(t *testing.T, builder Builder) {
+	t.Run("Should fail if not found", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
 
-// 		rec := newRecord()
-// 		recordID1, err := st.Insert(rec)
-// 		require.NoError(t, err)
-// 		require.NotEmpty(t, recordID1)
+		err := st.Delete([]byte("id"))
+		require.Equal(t, engine.ErrKeyNotFound, err)
+	})
 
-// 		recordID2, err := st.Insert(rec)
-// 		require.NoError(t, err)
-// 		require.NotEmpty(t, recordID2)
+	t.Run("Should delete the right record", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
 
-// 		require.NotEqual(t, recordID1, recordID2)
-// 	})
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+		err = st.Put([]byte("bar"), []byte("BAR"))
+		require.NoError(t, err)
 
-// 	t.Run("Should support Pker interface", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
+		v, err := st.Get([]byte("foo"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("FOO"), v)
 
-// 		var counter int64
+		// delete the key
+		err = st.Delete([]byte("foo"))
+		require.NoError(t, err)
 
-// 		rec := recordPker{
-// 			pkGenerator: func() ([]byte, error) {
-// 				counter += 2
-// 				return field.EncodeInt64(counter), nil
-// 			},
-// 		}
+		// try again, should fail
+		err = st.Delete([]byte("foo"))
+		require.Equal(t, engine.ErrKeyNotFound, err)
 
-// 		// insert
-// 		recordID, err := st.Insert(rec)
-// 		require.NoError(t, err)
-// 		require.Equal(t, field.EncodeInt64(2), recordID)
-
-// 		// make sure the record is fetchable using the returned recordID
-// 		_, err = st.Record(recordID)
-// 		require.NoError(t, err)
-
-// 		// insert again
-// 		recordID, err = st.Insert(rec)
-// 		require.NoError(t, err)
-// 		require.Equal(t, field.EncodeInt64(4), recordID)
-// 	})
-
-// 	t.Run("Should fail if Pk returns empty recordID", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
-
-// 		tests := [][]byte{
-// 			nil,
-// 			[]byte{},
-// 			[]byte(nil),
-// 		}
-
-// 		for _, test := range tests {
-// 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
-// 				rec := recordPker{
-// 					pkGenerator: func() ([]byte, error) {
-// 						return nil, nil
-// 					},
-// 				}
-
-// 				_, err := st.Insert(rec)
-// 				require.Error(t, err)
-// 			})
-// 		}
-// 	})
-// }
-
-// type recordPker struct {
-// 	record.FieldBuffer
-// 	pkGenerator func() ([]byte, error)
-// }
-
-// func (r recordPker) Pk() ([]byte, error) {
-// 	return r.pkGenerator()
-// }
-
-// // TestTableWriterDelete verifies Delete behaviour.
-// func TestTableWriterDelete(t *testing.T, builder Builder) {
-// 	t.Run("Should fail if not found", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
-
-// 		err := st.Delete([]byte("id"))
-// 		require.Equal(t, table.ErrRecordNotFound, err)
-// 	})
-
-// 	t.Run("Should delete the right record", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
-
-// 		// create two records, one with an additional field
-// 		rec1 := newRecord()
-// 		rec1.Add(field.NewInt64("fieldc", 40))
-// 		rec2 := newRecord()
-
-// 		recordID1, err := st.Insert(rec1)
-// 		require.NoError(t, err)
-// 		recordID2, err := st.Insert(rec2)
-// 		require.NoError(t, err)
-
-// 		// delete the record
-// 		err = st.Delete([]byte(recordID1))
-// 		require.NoError(t, err)
-
-// 		// try again, should fail
-// 		err = st.Delete([]byte(recordID1))
-// 		require.Equal(t, table.ErrRecordNotFound, err)
-
-// 		// make sure it didn't also delete the other one
-// 		res, err := st.Record(recordID2)
-// 		require.NoError(t, err)
-// 		_, err = res.Field("fieldc")
-// 		require.Error(t, err)
-// 	})
-// }
+		// make sure it didn't also delete the other one
+		v, err = st.Get([]byte("bar"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("BAR"), v)
+	})
+}
 
 // // TestTableWriterReplace verifies Replace behaviour.
 // func TestTableWriterReplace(t *testing.T, builder Builder) {

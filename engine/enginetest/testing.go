@@ -34,6 +34,8 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Store/AscendGreaterOrEqual", TestStoreAscendGreaterOrEqual},
 		{"Store/DescendLessOrEqual", TestStoreDescendLessOrEqual},
 		{"Store/Put", TestStorePut},
+		{"Store/Get", TestStoreGet},
+		{"Store/Delete", TestStoreDelete},
 	}
 
 	for _, test := range tests {
