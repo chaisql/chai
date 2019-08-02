@@ -346,88 +346,31 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 	})
 }
 
-// // TestTableWriterReplace verifies Replace behaviour.
-// func TestTableWriterReplace(t *testing.T, builder Builder) {
-// 	t.Run("Should fail if not found", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
+// TestStoreTruncate verifies Truncate behaviour.
+func TestStoreTruncate(t *testing.T, builder Builder) {
+	t.Run("Should succeed if store is empty", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
 
-// 		err := st.Replace([]byte("id"), newRecord())
-// 		require.Equal(t, table.ErrRecordNotFound, err)
-// 	})
+		err := st.Truncate()
+		require.NoError(t, err)
+	})
 
-// 	t.Run("Should replace the right record", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
+	t.Run("Should truncate the store", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
 
-// 		// create two different records
-// 		rec1 := newRecord()
-// 		rec2 := record.FieldBuffer([]field.Field{
-// 			field.NewString("fielda", "c"),
-// 			field.NewString("fieldb", "d"),
-// 		})
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+		err = st.Put([]byte("bar"), []byte("BAR"))
+		require.NoError(t, err)
 
-// 		recordID1, err := st.Insert(rec1)
-// 		require.NoError(t, err)
-// 		recordID2, err := st.Insert(rec2)
-// 		require.NoError(t, err)
+		err = st.Truncate()
+		require.NoError(t, err)
 
-// 		// create a third record
-// 		rec3 := record.FieldBuffer([]field.Field{
-// 			field.NewString("fielda", "e"),
-// 			field.NewString("fieldb", "f"),
-// 		})
-
-// 		// replace rec1 with rec3
-// 		err = st.Replace(recordID1, rec3)
-// 		require.NoError(t, err)
-
-// 		// make sure it replaced it correctly
-// 		res, err := st.Record(recordID1)
-// 		require.NoError(t, err)
-// 		f, err := res.Field("fielda")
-// 		require.NoError(t, err)
-// 		require.Equal(t, "e", string(f.Data))
-
-// 		// make sure it didn't also replace the other one
-// 		res, err = st.Record(recordID2)
-// 		require.NoError(t, err)
-// 		f, err = res.Field("fielda")
-// 		require.NoError(t, err)
-// 		require.Equal(t, "c", string(f.Data))
-// 	})
-// }
-
-// // TestTableWriterTruncate verifies Truncate behaviour.
-// func TestTableWriterTruncate(t *testing.T, builder Builder) {
-// 	t.Run("Should succeed if table empty", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
-
-// 		err := st.Truncate()
-// 		require.NoError(t, err)
-// 	})
-
-// 	t.Run("Should truncate the table", func(t *testing.T) {
-// 		st, cleanup := storeBuilder(t, builder)
-// 		defer cleanup()
-
-// 		// create two records
-// 		rec1 := newRecord()
-// 		rec2 := newRecord()
-
-// 		_, err := st.Insert(rec1)
-// 		require.NoError(t, err)
-// 		_, err = st.Insert(rec2)
-// 		require.NoError(t, err)
-
-// 		err = st.Truncate()
-// 		require.NoError(t, err)
-
-// 		err = st.Iterate(func(_ []byte, _ record.Record) error {
-// 			return errors.New("should not iterate")
-// 		})
-
-// 		require.NoError(t, err)
-// 	})
-// }
+		err = st.AscendGreaterOrEqual(nil, func(_, _ []byte) error {
+			return errors.New("should not iterate")
+		})
+		require.NoError(t, err)
+	})
+}
