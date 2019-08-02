@@ -79,8 +79,8 @@ func (s *storeTx) Truncate() error {
 	return nil
 }
 
-func (s *storeTx) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) (err error) {
-	s.tr.AscendGreaterOrEqual(&item{k: pivot}, btree.ItemIterator(func(i btree.Item) bool {
+func (s *storeTx) AscendGreaterOrEqual(start []byte, fn func(k, v []byte) error) (err error) {
+	s.tr.AscendGreaterOrEqual(&item{k: start}, btree.ItemIterator(func(i btree.Item) bool {
 		it := i.(*item)
 		err = fn(it.k, it.v)
 		return err == nil
@@ -89,8 +89,17 @@ func (s *storeTx) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error)
 	return
 }
 
-func (s *storeTx) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) (err error) {
-	s.tr.DescendLessOrEqual(&item{k: pivot}, btree.ItemIterator(func(i btree.Item) bool {
+func (s *storeTx) DescendLessOrEqual(start []byte, fn func(k, v []byte) error) (err error) {
+	if start == nil {
+		s.tr.Descend(btree.ItemIterator(func(i btree.Item) bool {
+			it := i.(*item)
+			err = fn(it.k, it.v)
+			return err == nil
+		}))
+		return
+	}
+
+	s.tr.DescendLessOrEqual(&item{k: start}, btree.ItemIterator(func(i btree.Item) bool {
 		it := i.(*item)
 		err = fn(it.k, it.v)
 		return err == nil

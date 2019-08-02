@@ -65,7 +65,6 @@ func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func
 
 	return tx, func() {
 		tx.Rollback()
-		db.Close()
 	}
 }
 

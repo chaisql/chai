@@ -41,7 +41,6 @@ func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func(
 
 	return tx, func() {
 		tx.Rollback()
-		db.Close()
 	}
 }
 

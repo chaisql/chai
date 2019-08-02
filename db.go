@@ -234,7 +234,7 @@ func (tx Tx) Index(tableName, field string) (*index.Index, error) {
 // Indexes returns a map of all the indexes of a table.
 func (tx Tx) Indexes(tableName string) (map[string]*index.Index, error) {
 	prefix := buildIndexName(tableName, "")
-	list, err := tx.tx.StoreList(prefix)
+	list, err := tx.tx.ListStores(prefix)
 	if err != nil {
 		return nil, err
 	}

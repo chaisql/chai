@@ -6,11 +6,6 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/enginetest"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/index/indextest"
-	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
-	"github.com/asdine/genji/table/tabletest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,69 +16,39 @@ func TestMemoryEngine(t *testing.T) {
 	})
 }
 
-func TestMemoryEngineIndex(t *testing.T) {
-	indextest.TestSuite(t, indexBuilder(t))
-}
+// func BenchmarkMemoryEngineTableInsert(b *testing.B) {
+// 	tabletest.BenchmarkTableInsert(b, storeBuilder(b))
+// }
 
-func TestMemoryEngineTable(t *testing.T) {
-	tabletest.TestSuite(t, tableBuilder(t))
-}
+// func BenchmarkMemoryEngineTableScan(b *testing.B) {
+// 	tabletest.BenchmarkTableScan(b, storeBuilder(b))
+// }
 
-func BenchmarkMemoryEngineTableInsert(b *testing.B) {
-	tabletest.BenchmarkTableInsert(b, tableBuilder(b))
-}
+// func BenchmarkMemoryEngineIndexSet(b *testing.B) {
+// 	indextest.BenchmarkIndexSet(b, indexBuilder(b))
+// }
 
-func BenchmarkMemoryEngineTableScan(b *testing.B) {
-	tabletest.BenchmarkTableScan(b, tableBuilder(b))
-}
+// func BenchmarkMemoryEngineIndexIteration(b *testing.B) {
+// 	indextest.BenchmarkIndexIteration(b, indexBuilder(b))
+// }
 
-func BenchmarkMemoryEngineIndexSet(b *testing.B) {
-	indextest.BenchmarkIndexSet(b, indexBuilder(b))
-}
+// func BenchmarkMemoryEngineIndexSeek(b *testing.B) {
+// 	indextest.BenchmarkIndexSeek(b, indexBuilder(b))
+// }
 
-func BenchmarkMemoryEngineIndexIteration(b *testing.B) {
-	indextest.BenchmarkIndexIteration(b, indexBuilder(b))
-}
-
-func BenchmarkMemoryEngineIndexSeek(b *testing.B) {
-	indextest.BenchmarkIndexSeek(b, indexBuilder(b))
-}
-
-func tableBuilder(t require.TestingT) func() (table.Table, func()) {
-	return func() (table.Table, func()) {
+func storeBuilder(t require.TestingT) func() (engine.Store, func()) {
+	return func() (engine.Store, func()) {
 		ng := memory.NewEngine()
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
 
-		err = tx.CreateTable("test")
+		err = tx.CreateStore("test")
 		require.NoError(t, err)
 
-		tb, err := tx.Table("test", record.NewCodec())
+		st, err := tx.Store("test")
 		require.NoError(t, err)
 
-		return tb, func() {
-			tx.Rollback()
-			ng.Close()
-		}
-	}
-}
-
-func indexBuilder(t require.TestingT) func() (index.Index, func()) {
-	return func() (index.Index, func()) {
-		ng := memory.NewEngine()
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-
-		err = tx.CreateTable("test")
-		require.NoError(t, err)
-
-		err = tx.CreateIndex("test", "idx")
-		require.NoError(t, err)
-
-		idx, err := tx.Index("test", "idx")
-		require.NoError(t, err)
-
-		return idx, func() {
+		return st, func() {
 			tx.Rollback()
 			ng.Close()
 		}

@@ -3,14 +3,9 @@
 package enginetest
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,13 +26,12 @@ func TestSuite(t *testing.T, builder Builder) {
 	}{
 		{"Engine", TestEngine},
 		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
-		{"Transaction/CreateTable", TestTransactionCreateTable},
-		{"Transaction/DropTable", TestTransactionDropTable},
-		{"Transaction/Table", TestTransactionTable},
-		{"Transaction/CreateIndex", TestTransactionCreateIndex},
-		{"Transaction/DropIndex", TestTransactionDropIndex},
-		{"Transaction/Index", TestTransactionIndex},
-		{"Transaction/Indexes", TestTransactionIndexes},
+		{"Transaction/Store", TestTransactionStore},
+		{"Transaction/CreateStore", TestTransactionCreateStore},
+		{"Transaction/DropStore", TestTransactionDropStore},
+		// {"Transaction/ListStores", TestTransactionListStores},
+		{"Store/AscendGreaterOrEqual", TestStoreAscendGreaterOrEqual},
+		{"Store/DescendLessOrEqual", TestStoreDescendLessOrEqual},
 	}
 
 	for _, test := range tests {
@@ -124,13 +118,10 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
 
-		// create table for testing table methods
-		err = tx.CreateTable("table1")
+		// create store for testing store methods
+		err = tx.CreateStore("store1")
 		require.NoError(t, err)
 
-		// create index for testing index methods
-		err = tx.CreateIndex("table1", "idx")
-		require.NoError(t, err)
 		err = tx.Commit()
 		require.NoError(t, err)
 
@@ -138,12 +129,8 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		tx, err = ng.Begin(false)
 		defer tx.Rollback()
 
-		// fetch the table and the index
-		tb, err := tx.Table("table1", nil)
-		require.NoError(t, err)
-
-		// create index for testing index methods
-		idx, err := tx.Index("table1", "idx")
+		// fetch the store and the index
+		st, err := tx.Store("store1")
 		require.NoError(t, err)
 
 		tests := []struct {
@@ -151,16 +138,11 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			err  error
 			fn   func(*error)
 		}{
-			{"CreateTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateTable("table") }},
-			{"DropTable", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropTable("table") }},
-			{"CreateIndex", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateIndex("table", "idx") }},
-			{"DropIndex", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropIndex("table", "idx") }},
-			{"TableInsert", engine.ErrTransactionReadOnly, func(err *error) { _, *err = tb.Insert(record.FieldBuffer{}) }},
-			{"TableDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Delete([]byte("id")) }},
-			{"TableReplace", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Replace([]byte("id"), record.FieldBuffer{}) }},
-			{"TableTruncate", engine.ErrTransactionReadOnly, func(err *error) { *err = tb.Truncate() }},
-			{"IndexSet", engine.ErrTransactionReadOnly, func(err *error) { *err = idx.Set([]byte("value"), []byte("id")) }},
-			{"IndexDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = idx.Delete([]byte("id")) }},
+			{"CreateStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateStore("store") }},
+			{"DropStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropStore("store") }},
+			{"StorePut", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Put([]byte("id"), nil) }},
+			{"StoreDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Delete([]byte("id")) }},
+			{"StoreTruncate", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Truncate() }},
 		}
 
 		for _, test := range tests {
@@ -182,114 +164,29 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			readFn  func(engine.Transaction, *error)
 		}{
 			{
-				"CreateTable",
+				"CreateStore",
 				nil,
-				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table", record.NewCodec()) },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateStore("store") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Store("store") },
 			},
 			{
-				"DropTable",
-				func(tx engine.Transaction) error { return tx.CreateTable("table") },
-				func(tx engine.Transaction, err *error) { *err = tx.DropTable("table") },
-				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
+				"DropStore",
+				func(tx engine.Transaction) error { return tx.CreateStore("store") },
+				func(tx engine.Transaction, err *error) { *err = tx.DropStore("store") },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateStore("store") },
 			},
 			{
-				"CreateIndex",
-				nil,
+				"StorePut",
+				func(tx engine.Transaction) error { return tx.CreateStore("store") },
 				func(tx engine.Transaction, err *error) {
-					er := tx.CreateTable("table")
-					if er != nil {
-						*err = er
-						return
-					}
-
-					*err = tx.CreateIndex("table", "idx")
-				},
-				func(tx engine.Transaction, err *error) { _, *err = tx.Index("table", "idx") },
-			},
-			{
-				"DropIndex",
-				func(tx engine.Transaction) error {
-					err := tx.CreateTable("table")
-					if err != nil {
-						return err
-					}
-
-					return tx.CreateIndex("table", "idx")
-				},
-				func(tx engine.Transaction, err *error) { *err = tx.DropIndex("table", "idx") },
-				func(tx engine.Transaction, err *error) { *err = tx.CreateIndex("table", "idx") },
-			},
-			{
-				"IndexSet",
-				func(tx engine.Transaction) error {
-					err := tx.CreateTable("table")
-					if err != nil {
-						return err
-					}
-
-					return tx.CreateIndex("table", "idx")
+					st, er := tx.Store("store")
+					require.NoError(t, er)
+					require.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
 				},
 				func(tx engine.Transaction, err *error) {
-					idx, er := tx.Index("table", "idx")
-					if er != nil {
-						*err = er
-						return
-					}
-					*err = idx.Set([]byte("value"), []byte("id"))
-				},
-				func(tx engine.Transaction, err *error) {
-					idx, er := tx.Index("table", "idx")
-					if er != nil {
-						*err = er
-						return
-					}
-
-					v, _ := idx.Cursor().Seek([]byte("value"))
-					if v == nil {
-						*err = errors.New("not found")
-					}
-				},
-			},
-			{
-				"IndexDelete",
-				func(tx engine.Transaction) error {
-					err := tx.CreateTable("table")
-					if err != nil {
-						return err
-					}
-
-					err = tx.CreateIndex("table", "idx")
-					if err != nil {
-						return err
-					}
-
-					idx, err := tx.Index("table", "idx")
-					if err != nil {
-						return err
-					}
-
-					return idx.Set([]byte("value"), []byte("id"))
-				},
-				func(tx engine.Transaction, err *error) {
-					idx, er := tx.Index("table", "idx")
-					if er != nil {
-						*err = er
-						return
-					}
-					*err = idx.Delete([]byte("id"))
-				},
-				func(tx engine.Transaction, err *error) {
-					idx, er := tx.Index("table", "idx")
-					if er != nil {
-						*err = er
-						return
-					}
-
-					v, _ := idx.Cursor().Seek([]byte("value"))
-					if v != nil {
-						*err = errors.New("not found")
-					}
+					st, er := tx.Store("store")
+					require.NoError(t, er)
+					_, *err = st.Get([]byte("foo"))
 				},
 			},
 		}
@@ -376,22 +273,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			readFn  func(engine.Transaction, *error)
 		}{
 			{
-				"CreateTable",
-				func(tx engine.Transaction, err *error) { *err = tx.CreateTable("table") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Table("table", record.NewCodec()) },
-			},
-			{
-				"CreateIndex",
-				func(tx engine.Transaction, err *error) {
-					er := tx.CreateTable("table")
-					if er != nil {
-						*err = er
-						return
-					}
-
-					*err = tx.CreateIndex("table", "idx")
-				},
-				func(tx engine.Transaction, err *error) { _, *err = tx.Index("table", "idx") },
+				"CreateStore",
+				func(tx engine.Transaction, err *error) { *err = tx.CreateStore("store") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.Store("store") },
 			},
 		}
 
@@ -414,9 +298,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 }
 
-// TestTransactionCreateTable verifies CreateTable behaviour.
-func TestTransactionCreateTable(t *testing.T, builder Builder) {
-	t.Run("Should create a table", func(t *testing.T) {
+// TestTransactionCreateStore verifies CreateStore behaviour.
+func TestTransactionCreateStore(t *testing.T, builder Builder) {
+	t.Run("Should create a store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
@@ -424,15 +308,15 @@ func TestTransactionCreateTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateTable("table")
+		err = tx.CreateStore("store")
 		require.NoError(t, err)
 
-		tb, err := tx.Table("table", record.NewCodec())
+		st, err := tx.Store("store")
 		require.NoError(t, err)
-		require.NotNil(t, tb)
+		require.NotNil(t, st)
 	})
 
-	t.Run("Should fail if table already exists", func(t *testing.T) {
+	t.Run("Should fail if store already exists", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
@@ -440,16 +324,16 @@ func TestTransactionCreateTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateTable("table")
+		err = tx.CreateStore("store")
 		require.NoError(t, err)
-		err = tx.CreateTable("table")
-		require.Equal(t, engine.ErrTableAlreadyExists, err)
+		err = tx.CreateStore("store")
+		require.Equal(t, engine.ErrStoreAlreadyExists, err)
 	})
 }
 
-// TestTransactionTable verifies Table behaviour.
-func TestTransactionTable(t *testing.T, builder Builder) {
-	t.Run("Should fail if table not found", func(t *testing.T) {
+// TestTransactionStore verifies Store behaviour.
+func TestTransactionStore(t *testing.T, builder Builder) {
+	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
@@ -457,11 +341,11 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		_, err = tx.Table("table", record.NewCodec())
-		require.Equal(t, engine.ErrTableNotFound, err)
+		_, err = tx.Store("store")
+		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 
-	t.Run("Should return the right table", func(t *testing.T) {
+	t.Run("Should return the right store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
@@ -469,40 +353,39 @@ func TestTransactionTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		// create two tables
-		err = tx.CreateTable("tablea")
+		// create two stores
+		err = tx.CreateStore("storea")
 		require.NoError(t, err)
 
-		err = tx.CreateTable("tableb")
+		err = tx.CreateStore("storeb")
 		require.NoError(t, err)
 
-		// fetch first table
-		ta, err := tx.Table("tablea", record.NewCodec())
+		// fetch first store
+		sta, err := tx.Store("storea")
 		require.NoError(t, err)
 
-		// fetch second table
-		tb, err := tx.Table("tableb", record.NewCodec())
+		// fetch second store
+		stb, err := tx.Store("storeb")
 		require.NoError(t, err)
 
-		// insert data in first table
-		recordID, err := ta.Insert(record.FieldBuffer([]field.Field{field.NewInt64("a", 10)}))
+		// insert data in first store
+		err = sta.Put([]byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
 
-		// use ta to fetch data and verify if it's present
-		r, err := ta.Record(recordID)
-		f, err := r.Field("a")
+		// use sta to fetch data and verify if it's present
+		v, err := sta.Get([]byte("foo"))
 		require.NoError(t, err)
-		require.Equal(t, f.Data, field.EncodeInt64(10))
+		require.Equal(t, v, []byte("FOO"))
 
-		// use tb to fetch data and verify it's not present
-		_, err = tb.Record(recordID)
-		require.Equal(t, table.ErrRecordNotFound, err)
+		// use stb to fetch data and verify it's not present
+		_, err = stb.Get([]byte("foo"))
+		require.Equal(t, engine.ErrKeyNotFound, err)
 	})
 }
 
-// TestTransactionDropTable verifies DropTable behaviour.
-func TestTransactionDropTable(t *testing.T, builder Builder) {
-	t.Run("Should drop a table", func(t *testing.T) {
+// TestTransactionDropStore verifies DropStore behaviour.
+func TestTransactionDropStore(t *testing.T, builder Builder) {
+	t.Run("Should drop a store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
@@ -510,17 +393,17 @@ func TestTransactionDropTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateTable("table")
+		err = tx.CreateStore("store")
 		require.NoError(t, err)
 
-		err = tx.DropTable("table")
+		err = tx.DropStore("store")
 		require.NoError(t, err)
 
-		_, err = tx.Table("table", record.NewCodec())
-		require.Equal(t, engine.ErrTableNotFound, err)
+		_, err = tx.Store("store")
+		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 
-	t.Run("Should fail if table not found", func(t *testing.T) {
+	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
@@ -528,247 +411,7 @@ func TestTransactionDropTable(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.DropTable("table")
-		require.Equal(t, engine.ErrTableNotFound, err)
-	})
-}
-
-// TestTransactionCreateIndex verifies CreateIndex behaviour.
-func TestTransactionCreateIndex(t *testing.T, builder Builder) {
-	t.Run("Should create an index", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		err = tx.CreateIndex("table", "idx")
-		require.NoError(t, err)
-
-		idx, err := tx.Index("table", "idx")
-		require.NoError(t, err)
-		require.NotEmpty(t, idx)
-	})
-
-	t.Run("Should fail if index already exists", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		err = tx.CreateIndex("table", "idx")
-		require.NoError(t, err)
-
-		err = tx.CreateIndex("table", "idx")
-		require.Equal(t, engine.ErrIndexAlreadyExists, err)
-	})
-
-	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateIndex("table", "idx")
-		require.Equal(t, engine.ErrTableNotFound, err)
-	})
-}
-
-// TestTransactionIndex verifies Index behaviour.
-func TestTransactionIndex(t *testing.T, builder Builder) {
-	t.Run("Should fail if index not found", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		_, err = tx.Index("table", "idx")
-		require.Equal(t, engine.ErrIndexNotFound, err)
-	})
-
-	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		_, err = tx.Index("table", "idx")
-		require.Equal(t, engine.ErrTableNotFound, err)
-	})
-
-	t.Run("Should return the right index", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		// create two tables
-		err = tx.CreateTable("tablea")
-		require.NoError(t, err)
-		err = tx.CreateTable("tableb")
-		require.NoError(t, err)
-
-		// create four indexes
-		createFn := func(table, field string) index.Index {
-			err = tx.CreateIndex(table, field)
-			require.NoError(t, err)
-			idx, err := tx.Index(table, field)
-			require.NoError(t, err)
-			return idx
-		}
-		idxaa := createFn("tablea", "idxa")
-		idxab := createFn("tablea", "idxb")
-		idxba := createFn("tableb", "idxa")
-		idxbb := createFn("tableb", "idxb")
-
-		// fetch first index
-		res, err := tx.Index("tablea", "idxa")
-		require.NoError(t, err)
-
-		// insert data in first index
-
-		err = res.Set([]byte("value"), []byte("recordID"))
-		require.NoError(t, err)
-
-		// use idxaa to fetch data and verify if it's present
-		value, recordID := idxaa.Cursor().Seek([]byte("value"))
-		require.Equal(t, []byte("value"), value)
-		require.Equal(t, []byte("recordID"), recordID)
-
-		// use other indexes to fetch data and verify it's not present
-		value, _ = idxab.Cursor().Seek([]byte("value"))
-		require.Nil(t, value)
-		value, _ = idxba.Cursor().Seek([]byte("value"))
-		require.Nil(t, value)
-		value, _ = idxbb.Cursor().Seek([]byte("value"))
-		require.Nil(t, value)
-	})
-}
-
-// TestTransactionIndexes verifies Indexes behaviour.
-func TestTransactionIndexes(t *testing.T, builder Builder) {
-	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(false)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		_, err = tx.Indexes("table")
-		require.Equal(t, engine.ErrTableNotFound, err)
-	})
-
-	t.Run("Should return an empty map if no indexes", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		m, err := tx.Indexes("table")
-		require.Empty(t, m)
-	})
-
-	t.Run("Should return the right indexes", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		// create two indexes for the same table
-		err = tx.CreateIndex("table", "idx1")
-		require.NoError(t, err)
-		err = tx.CreateIndex("table", "idx2")
-		require.NoError(t, err)
-
-		m, err := tx.Indexes("table")
-		require.NoError(t, err)
-		require.Len(t, m, 2)
-		require.Contains(t, m, "idx1")
-		require.Contains(t, m, "idx2")
-	})
-}
-
-// TestTransactionDropIndex verifies DropIndex behaviour.
-func TestTransactionDropIndex(t *testing.T, builder Builder) {
-	t.Run("Should drop an index", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		err = tx.CreateIndex("table", "idx")
-		require.NoError(t, err)
-
-		err = tx.DropIndex("table", "idx")
-		require.NoError(t, err)
-
-		_, err = tx.Index("table", "idx")
-		require.Equal(t, engine.ErrIndexNotFound, err)
-	})
-
-	t.Run("Should fail if table not found", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.DropIndex("table", "idx")
-		require.Equal(t, engine.ErrTableNotFound, err)
-	})
-
-	t.Run("Should fail if index not found", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.CreateTable("table")
-		require.NoError(t, err)
-
-		err = tx.CreateIndex("table", "idx1")
-		require.NoError(t, err)
-
-		err = tx.DropIndex("table", "idx2")
-		require.Equal(t, engine.ErrIndexNotFound, err)
+		err = tx.DropStore("store")
+		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 }

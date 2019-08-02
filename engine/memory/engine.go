@@ -103,7 +103,7 @@ func (tx *transaction) Store(name string) (engine.Store, error) {
 	return &storeTx{tx: tx, tr: tr}, nil
 }
 
-func (tx *transaction) StoreList(prefix string) ([]string, error) {
+func (tx *transaction) ListStores(prefix string) ([]string, error) {
 	list := make([]string, 0, len(tx.ng.stores))
 	for name := range tx.ng.stores {
 		list = append(list, name)
