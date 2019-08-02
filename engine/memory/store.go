@@ -2,6 +2,7 @@ package memory
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/asdine/genji/engine"
 	"github.com/google/btree"
@@ -23,6 +24,10 @@ type storeTx struct {
 func (s *storeTx) Put(k, v []byte) error {
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
+	}
+
+	if len(k) == 0 {
+		return errors.New("empty keys are forbidden")
 	}
 
 	it := item{k, v}

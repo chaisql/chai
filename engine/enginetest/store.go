@@ -226,6 +226,58 @@ func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
 	})
 }
 
+// TestStorePut verifies Put behaviour.
+func TestStorePut(t *testing.T, builder Builder) {
+	t.Run("Should insert data", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+
+		v, err := st.Get([]byte("foo"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("FOO"), v)
+	})
+
+	t.Run("Should replace existing key", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+
+		err = st.Put([]byte("foo"), []byte("BAR"))
+		require.NoError(t, err)
+
+		v, err := st.Get([]byte("foo"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("BAR"), v)
+	})
+
+	t.Run("Should fail when key is nil or empty", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		err := st.Put(nil, []byte("FOO"))
+		require.Error(t, err)
+
+		err = st.Put([]byte(""), []byte("BAR"))
+		require.Error(t, err)
+	})
+
+	t.Run("Should succeed when value is nil or empty", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		err := st.Put([]byte("foo"), nil)
+		require.NoError(t, err)
+
+		err = st.Put([]byte("foo"), []byte(""))
+		require.NoError(t, err)
+	})
+}
+
 // // TestTableReaderRecord verifies Record behaviour.
 // func TestTableReaderRecord(t *testing.T, builder Builder) {
 // 	t.Run("Should fail if not found", func(t *testing.T) {
