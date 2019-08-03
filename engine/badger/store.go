@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/asdine/genji/engine"
 	"github.com/dgraph-io/badger"
@@ -27,6 +28,10 @@ func buildKey(prefix, k []byte) []byte {
 func (s *Store) Put(k, v []byte) error {
 	if !s.writable {
 		return engine.ErrTransactionReadOnly
+	}
+
+	if len(k) == 0 {
+		return errors.New("cannot store empty key")
 	}
 
 	return s.tx.Set(buildKey(s.prefix, k), v)
@@ -69,13 +74,16 @@ func (s *Store) Delete(k []byte) error {
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
 func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error {
+	prefix := buildKey(s.prefix, nil)
+
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchSize = 10
+	opt.Prefix = prefix
 	it := s.tx.NewIterator(opt)
 	defer it.Close()
 
-	prefix := buildKey(s.prefix, pivot)
-	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+	seek := buildKey(s.prefix, pivot)
+	for it.Seek(seek); it.ValidForPrefix(prefix); it.Next() {
 		item := it.Item()
 
 		v, err := item.ValueCopy(nil)
@@ -96,14 +104,18 @@ func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) e
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
 func (s *Store) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
+	prefix := buildKey(s.prefix, nil)
+
 	opt := badger.DefaultIteratorOptions
 	opt.Reverse = true
 	opt.PrefetchSize = 10
+	opt.Prefix = prefix
 	it := s.tx.NewIterator(opt)
 	defer it.Close()
 
-	prefix := buildKey(s.prefix, pivot)
-	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+	seek := buildKey(s.prefix, append(pivot, 0xFF))
+
+	for it.Seek(seek); it.ValidForPrefix(prefix); it.Next() {
 		item := it.Item()
 
 		v, err := item.ValueCopy(nil)

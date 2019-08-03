@@ -92,7 +92,6 @@ func buildStorePrefixKey(name string) []byte {
 	prefix = append(prefix, storePrefix)
 	prefix = append(prefix, separator)
 	prefix = append(prefix, name...)
-	prefix = append(prefix, separator)
 
 	return prefix
 }

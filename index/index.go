@@ -75,7 +75,7 @@ func (i *Index) AscendGreaterOrEqual(pivot []byte, fn func(value []byte, recordI
 func (i *Index) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
 	if len(pivot) > 0 {
 		// ensure the pivot is bigger than the requested value so it doesn't get skipped.
-		pivot = append(pivot, separator, 255)
+		pivot = append(pivot, separator, 0xFF)
 	}
 	return i.Store.DescendLessOrEqual(pivot, func(k, v []byte) error {
 		idx := bytes.LastIndexByte(k, separator)
