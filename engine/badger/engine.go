@@ -13,7 +13,7 @@ import (
 const (
 	separator   byte = 0x1F
 	storeKey         = "__genji.store"
-	storePrefix      = 't'
+	storePrefix      = 's'
 )
 
 // Engine represents a Badger engine.
@@ -171,12 +171,12 @@ func (t *Transaction) DropStore(name string) error {
 func (t *Transaction) ListStores(prefix string) ([]string, error) {
 	var names []string
 
-	p := buildStorePrefixKey(prefix)
+	p := buildStoreKey(prefix)
 	it := t.tx.NewIterator(badger.DefaultIteratorOptions)
 	defer it.Close()
 
 	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-		names = append(names, string(bytes.TrimPrefix(it.Item().Key(), p)))
+		names = append(names, string(bytes.TrimPrefix(it.Item().Key(), p[:len(p)-len(prefix)])))
 	}
 
 	return names, nil
