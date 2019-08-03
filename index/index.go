@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	separator byte = 0x1F
+	separator byte = 0x1E
 )
 
 // An Index associates encoded values with recordIDs.
