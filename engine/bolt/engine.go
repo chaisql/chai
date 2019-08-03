@@ -10,11 +10,10 @@ import (
 )
 
 const (
-	separator       byte = 0x1F
-	indexBucketName      = "__genji.index"
+	separator byte = 0x1F
 )
 
-// Engine represents a BoltDB engine. Each table is stored in a dedicated bucket.
+// Engine represents a BoltDB engine. Each store is stored in a dedicated bucket.
 type Engine struct {
 	DB *bolt.DB
 }
