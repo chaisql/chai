@@ -9,7 +9,7 @@ build: $(NAME)
 $(NAME):
 	go install ./cmd/$@
 
-gen:
+gen: $(NAME)
 	go generate ./...
 
 test: gen
