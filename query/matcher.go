@@ -76,7 +76,7 @@ func (m *eqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 		}
 		return errStop
 	})
-	if err != errStop || err != nil {
+	if err != errStop && err != nil {
 		return nil, false, err
 	}
 

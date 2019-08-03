@@ -221,9 +221,14 @@ func (tx Tx) CreateIndexIfNotExists(table string, field string) error {
 
 // Index returns an index by name.
 func (tx Tx) Index(tableName, field string) (*index.Index, error) {
+	_, err := tx.Table(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	s, err := tx.tx.Store(buildIndexName(tableName, field))
 	if err == engine.ErrStoreNotFound {
-		return nil, ErrTableNotFound
+		return nil, ErrIndexNotFound
 	}
 	if err != nil {
 		return nil, err

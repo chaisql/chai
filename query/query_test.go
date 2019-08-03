@@ -164,7 +164,10 @@ func TestInsert(t *testing.T) {
 			field.NewInt("a", 5),
 			field.NewString("b", "hello"),
 		})
-		require.EqualValues(t, &expected, rec)
+		d, err := record.Encode(expected)
+		require.NoError(t, err)
+
+		require.EqualValues(t, d, []byte(rec.(record.EncodedRecord)))
 	})
 }
 

@@ -69,9 +69,11 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 			Tx: tx,
 		})
 		if err != nil {
+
 			return Result{err: err}
 		}
 		if s.Type < field.Int {
+
 			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", s.Type)}
 		}
 		offset, err = field.DecodeInt64(s.Data)
