@@ -91,7 +91,7 @@ func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) e
 			return err
 		}
 
-		err = fn(bytes.TrimPrefix(item.Key(), prefix), v)
+		err = fn(bytes.TrimPrefix(item.KeyCopy(nil), prefix), v)
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func (s *Store) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) err
 			return err
 		}
 
-		err = fn(bytes.TrimPrefix(item.Key(), prefix), v)
+		err = fn(bytes.TrimPrefix(item.KeyCopy(nil), prefix), v)
 		if err != nil {
 			return err
 		}
