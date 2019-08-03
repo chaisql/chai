@@ -12,10 +12,10 @@ $(NAME):
 gen: $(NAME)
 	go generate ./...
 
-test: gen
+test:
 	go test -v -cover -timeout=1m ./...
 
-testrace: gen
+testrace:
 	go test -v -race -cover -timeout=2m ./...
 
 bench:
