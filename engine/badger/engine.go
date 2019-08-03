@@ -3,8 +3,6 @@ package badger
 
 import (
 	"bytes"
-	"fmt"
-	"strings"
 
 	"github.com/asdine/genji/engine"
 	"github.com/dgraph-io/badger"
@@ -124,10 +122,6 @@ func (t *Transaction) Store(name string) (engine.Store, error) {
 func (t *Transaction) CreateStore(name string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
-	}
-
-	if idx := strings.IndexRune(name, rune(separator)); idx != -1 {
-		return fmt.Errorf("store name contains forbidden character at pos %d", idx)
 	}
 
 	key := buildStoreKey(name)
