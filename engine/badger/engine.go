@@ -126,7 +126,7 @@ func (t *Transaction) CreateStore(name string) error {
 		return engine.ErrTransactionReadOnly
 	}
 
-	if idx := strings.IndexByte(name, separator); idx != -1 {
+	if idx := strings.IndexRune(name, rune(separator)); idx != -1 {
 		return fmt.Errorf("store name contains forbidden character at pos %d", idx)
 	}
 
