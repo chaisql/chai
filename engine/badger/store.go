@@ -8,7 +8,7 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-// A Store is an implementation of the engine.Store interface using a bucket.
+// A Store is an implementation of the engine.Store interface.
 type Store struct {
 	tx       *badger.Txn
 	prefix   []byte
@@ -51,7 +51,7 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 	return it.ValueCopy(nil)
 }
 
-// Delete a record by recordID. If not found, returns engine.ErrKeyNotFound.
+// Delete a record by key. If not found, returns engine.ErrKeyNotFound.
 func (s *Store) Delete(k []byte) error {
 	if !s.writable {
 		return engine.ErrTransactionReadOnly

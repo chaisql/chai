@@ -33,7 +33,7 @@ func NewEngine(opt badger.Options) (*Engine, error) {
 	}, nil
 }
 
-// Begin creates a transaction using Bolt's transaction API.
+// Begin creates a transaction using Badger's transaction API.
 func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
 	tx := e.DB.NewTransaction(writable)
 
@@ -43,12 +43,12 @@ func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
 	}, nil
 }
 
-// Close the engine and underlying Bolt database.
+// Close the engine and underlying Badger database.
 func (e *Engine) Close() error {
 	return e.DB.Close()
 }
 
-// A Transaction uses Bolt's transactions.
+// A Transaction uses Badger's transactions.
 type Transaction struct {
 	tx        *badger.Txn
 	writable  bool
@@ -96,7 +96,7 @@ func buildStorePrefixKey(name string) []byte {
 	return prefix
 }
 
-// Store returns a store by name. The store uses a Bolt bucket.
+// Store returns a store by name.
 func (t *Transaction) Store(name string) (engine.Store, error) {
 	key := buildStoreKey(name)
 
@@ -119,7 +119,7 @@ func (t *Transaction) Store(name string) (engine.Store, error) {
 	}, nil
 }
 
-// CreateStore creates a bolt bucket and returns a store.
+// CreateStore creates a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
 func (t *Transaction) CreateStore(name string) error {
 	if !t.writable {
@@ -142,7 +142,7 @@ func (t *Transaction) CreateStore(name string) error {
 	return t.tx.Set(key, nil)
 }
 
-// DropStore deletes the underlying bucket.
+// DropStore deletes the store and all its keys.
 func (t *Transaction) DropStore(name string) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
