@@ -126,7 +126,7 @@ func main() {
     // Let's create a read transaction to run the query
     err = db.View(func(tx *genji.Tx) error {
         // SELECT ID, Name FROM User where Age >= 18
-        return query.Select(t.ID, t.Name).From(t.Table()).Where(t.Age.Gte(18)).
+        return query.Select(t.ID, t.Name).From(t).Where(t.Age.Gte(18)).
             Run(tx).
             Scan(&result)
     })
