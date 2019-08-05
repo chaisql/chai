@@ -288,6 +288,17 @@ func TestOrMatcher(t *testing.T) {
 	})
 }
 
+func TestNotMatcher(t *testing.T) {
+	t.Run("Matcher", func(t *testing.T) {
+		ok, err := query.Not(query.Int32Value(10)).Eval(query.EvalContext{})
+		require.NoError(t, err)
+		require.False(t, ok.Truthy())
+
+		ok, err = query.Not(query.Int32Value(0)).Eval(query.EvalContext{})
+		require.NoError(t, err)
+		require.True(t, ok.Truthy())
+	})
+}
 func BenchmarkMatcher(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {

@@ -400,6 +400,27 @@ func (o *orMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bo
 	return set, true, nil
 }
 
+// notMatcher is a logical matcher used to return the opposite of the underlying expression.
+type notMatcher struct {
+	expr Expr
+}
+
+// Not creates an expression that evaluates an expression, takes the result and returns false if the
+// the result is truthy and true if the result is falsy.
+func Not(expr Expr) Expr {
+	return &notMatcher{expr: expr}
+}
+
+// Eval implements the Expr interface.
+func (m *notMatcher) Eval(ctx EvalContext) (Scalar, error) {
+	s, err := m.expr.Eval(ctx)
+	if err != nil || s.Truthy() {
+		return falseScalar, err
+	}
+
+	return trueScalar, nil
+}
+
 func intersection(s1, s2 *btree.BTree) *btree.BTree {
 	set := btree.New(3)
 
