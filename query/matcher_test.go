@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 	"github.com/google/btree"
@@ -53,7 +54,9 @@ func TestMatchers(t *testing.T) {
 }
 
 func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func()) {
-	db := genji.New(memory.NewEngine())
+	db, err := genji.New(memory.NewEngine())
+	require.NoError(t, err)
+
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
@@ -69,7 +72,7 @@ func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func
 }
 
 func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
-	err := tx.CreateIndex("test", "age")
+	err := tx.CreateIndex("test", "age", index.Options{})
 	require.NoError(t, err)
 	idx, err := tx.Index("test", "age")
 	require.NoError(t, err)
@@ -81,7 +84,7 @@ func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
 }
 
 func createStrIndex(t require.TestingT, tx *genji.Tx, teams []indexPair) {
-	err := tx.CreateIndex("test", "team")
+	err := tx.CreateIndex("test", "team", index.Options{})
 	require.NoError(t, err)
 	idx, err := tx.Index("test", "team")
 	require.NoError(t, err)

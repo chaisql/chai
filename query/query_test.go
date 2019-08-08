@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/asdine/genji/index"
+
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
@@ -13,7 +15,8 @@ import (
 )
 
 func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func()) {
-	db := genji.New(memory.NewEngine())
+	db, err := genji.New(memory.NewEngine())
+	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
@@ -25,7 +28,7 @@ func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func(
 	require.NoError(t, err)
 
 	if withIndex {
-		err = tx.CreateIndex("test", "name")
+		err = tx.CreateIndex("test", "name", index.Options{})
 		require.NoError(t, err)
 	}
 

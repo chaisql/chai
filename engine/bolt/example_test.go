@@ -10,7 +10,6 @@ import (
 	"github.com/asdine/genji/engine/bolt"
 )
 
-
 func Example() {
 	dir, err := ioutil.TempDir("", "bolt")
 	if err != nil {
@@ -23,6 +22,9 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	db := genji.New(ng)
+	db, err := genji.New(ng)
 	defer db.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

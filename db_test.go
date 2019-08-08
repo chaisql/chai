@@ -17,7 +17,9 @@ import (
 
 func tableBuilder(t testing.TB) func() (table.Table, func()) {
 	return func() (table.Table, func()) {
-		db := genji.New(memory.NewEngine())
+		db, err := genji.New(memory.NewEngine())
+		require.NoError(t, err)
+
 		tx, err := db.Begin(true)
 		require.NoError(t, err)
 
@@ -50,9 +52,10 @@ name(String): "John 2", age(Int): 12
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db := genji.New(memory.NewEngine())
+			db, err := genji.New(memory.NewEngine())
+			require.NoError(t, err)
 
-			err := db.Update(func(tx *genji.Tx) error {
+			err = db.Update(func(tx *genji.Tx) error {
 				err := tx.CreateTable("test")
 				require.NoError(t, err)
 
