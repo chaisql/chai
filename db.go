@@ -293,7 +293,21 @@ func (tx Tx) Indexes(tableName string) (map[string]index.Index, error) {
 
 // DropIndex deletes an index from the database.
 func (tx Tx) DropIndex(tableName, field string) error {
-	err := tx.tx.DropStore(buildIndexName(tableName, field))
+	it, err := tx.Table(indexTable)
+	if err != nil {
+		return err
+	}
+
+	indexName := buildIndexName(tableName, field)
+	err = it.Delete([]byte(indexName))
+	if err == table.ErrRecordNotFound {
+		return ErrIndexNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	err = tx.tx.DropStore(indexName)
 	if err == engine.ErrStoreNotFound {
 		return ErrIndexNotFound
 	}

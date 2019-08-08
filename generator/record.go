@@ -120,8 +120,13 @@ type recordContext struct {
 	Pk struct {
 		Name, Type, GoType string
 	}
-	Indexes    []string
+	Indexes    []indexOpt
 	HasIndexes bool
+}
+
+type indexOpt struct {
+	FieldName string
+	Unique    bool
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
@@ -271,7 +276,15 @@ func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
 			ctx.Pk.GoType = fd.Type.(*ast.Ident).Name
 		case "index":
 			ctx.HasIndexes = true
-			ctx.Indexes = append(ctx.Indexes, fd.Names[0].Name)
+			ctx.Indexes = append(ctx.Indexes, indexOpt{
+				FieldName: fd.Names[0].Name,
+			})
+		case "index(unique)":
+			ctx.HasIndexes = true
+			ctx.Indexes = append(ctx.Indexes, indexOpt{
+				FieldName: fd.Names[0].Name,
+				Unique:    true,
+			})
 		default:
 			return fmt.Errorf("unsupported genji tag '%s'", gtag)
 		}

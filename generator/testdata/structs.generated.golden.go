@@ -8,6 +8,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
@@ -426,6 +427,8 @@ func (i *Indexed) Field(name string) (field.Field, error) {
 		return field.NewString("A", i.A), nil
 	case "B":
 		return field.NewInt64("B", i.B), nil
+	case "C":
+		return field.NewInt64("C", i.C), nil
 	}
 
 	return field.Field{}, errors.New("unknown field")
@@ -449,6 +452,12 @@ func (i *Indexed) Iterate(fn func(field.Field) error) error {
 		return err
 	}
 
+	f, _ = i.Field("C")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -463,6 +472,8 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 			i.A, err = field.DecodeString(f.Data)
 		case "B":
 			i.B, err = field.DecodeInt64(f.Data)
+		case "C":
+			i.C, err = field.DecodeInt64(f.Data)
 		}
 		return err
 	})
@@ -472,6 +483,7 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 type IndexedTable struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
+	C query.Int64FieldSelector
 }
 
 // NewIndexedTable creates a IndexedTable.
@@ -479,6 +491,7 @@ func NewIndexedTable() *IndexedTable {
 	return &IndexedTable{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
+		C: query.Int64Field("C"),
 	}
 }
 
@@ -510,9 +523,10 @@ func (*IndexedTable) TableName() string {
 }
 
 // Indexes returns the list of indexes of the Indexed table.
-func (*IndexedTable) Indexes() []string {
-	return []string{
-		"A",
+func (*IndexedTable) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		"A": index.Options{Unique: false},
+		"B": index.Options{Unique: true},
 	}
 }
 
@@ -521,6 +535,7 @@ func (t *IndexedTable) All() []query.FieldSelector {
 	return []query.FieldSelector{
 		t.A,
 		t.B,
+		t.C,
 	}
 }
 
@@ -663,9 +678,9 @@ func (*MultipleTagsTable) TableName() string {
 }
 
 // Indexes returns the list of indexes of the MultipleTags table.
-func (*MultipleTagsTable) Indexes() []string {
-	return []string{
-		"D",
+func (*MultipleTagsTable) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		"D": index.Options{Unique: false},
 	}
 }
 

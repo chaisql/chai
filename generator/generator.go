@@ -207,6 +207,7 @@ func (g *genContext) selectImports() {
 		m["github.com/asdine/genji/query"]++
 		m["github.com/asdine/genji/record"]++
 		m["github.com/asdine/genji/table"]++
+		m["github.com/asdine/genji/index"]++
 	}
 
 	if len(g.Results) > 0 {

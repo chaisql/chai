@@ -8,6 +8,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
@@ -122,9 +123,9 @@ func (*UserTable) TableName() string {
 }
 
 // Indexes returns the list of indexes of the User table.
-func (*UserTable) Indexes() []string {
-	return []string{
-		"Name",
+func (*UserTable) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		"Name": index.Options{Unique: false},
 	}
 }
 

@@ -116,10 +116,10 @@ const tableIndexesTmpl = `
 {{- $structName := .Name -}}
 {{- if .HasIndexes }}
 // Indexes returns the list of indexes of the {{.TableName}} table.
-func (*{{$structName}}Table) Indexes() []string {
-	return []string{
+func (*{{$structName}}Table) Indexes() map[string]index.Options {
+	return map[string]index.Options{
 		{{- range $i, $a := .Indexes }}
-			"{{$a}}",
+			"{{$a.FieldName}}": index.Options{Unique: {{$a.Unique}}},
 		{{- end}}
 	}
 }
