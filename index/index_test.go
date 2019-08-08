@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getIndex(t testing.TB) (*index.Index, func()) {
+func getIndex(t testing.TB, opts index.Options) (*index.Index, func()) {
 	ng := memory.NewEngine()
 	tx, err := ng.Begin(true)
 	require.NoError(t, err)
@@ -22,13 +22,13 @@ func getIndex(t testing.TB) (*index.Index, func()) {
 	st, err := tx.Store("test")
 	require.NoError(t, err)
 
-	return &index.Index{Store: st}, func() {
+	return index.New(st, opts), func() {
 		tx.Rollback()
 	}
 }
 
 func TestIndexSet(t *testing.T) {
-	idx, cleanup := getIndex(t)
+	idx, cleanup := getIndex(t, index.Options{})
 	defer cleanup()
 
 	t.Run("Set nil value fails", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestIndexSet(t *testing.T) {
 }
 
 func TestIndexDelete(t *testing.T) {
-	idx, cleanup := getIndex(t)
+	idx, cleanup := getIndex(t, index.Options{})
 	defer cleanup()
 
 	t.Run("Delete valid recordID succeeds", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestIndexDelete(t *testing.T) {
 
 func TestIndexAscendGreaterThan(t *testing.T) {
 	t.Run("Should not iterate if index is empty", func(t *testing.T) {
-		idx, cleanup := getIndex(t)
+		idx, cleanup := getIndex(t, index.Options{})
 		defer cleanup()
 
 		i := 0
@@ -94,7 +94,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 	})
 
 	t.Run("With no pivot, should iterate over all records in order", func(t *testing.T) {
-		idx, cleanup := getIndex(t)
+		idx, cleanup := getIndex(t, index.Options{})
 		defer cleanup()
 
 		for i := byte(0); i < 10; i += 2 {
@@ -116,7 +116,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 	})
 
 	t.Run("With pivot, should iterate over some records in order", func(t *testing.T) {
-		idx, cleanup := getIndex(t)
+		idx, cleanup := getIndex(t, index.Options{})
 		defer cleanup()
 
 		for i := byte(0); i < 10; i += 2 {
@@ -140,7 +140,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 func TestIndexDescendLessOrEqual(t *testing.T) {
 	t.Run("Should not iterate if index is empty", func(t *testing.T) {
-		idx, cleanup := getIndex(t)
+		idx, cleanup := getIndex(t, index.Options{})
 		defer cleanup()
 
 		i := 0
@@ -153,7 +153,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 	})
 
 	t.Run("With no pivot, should iterate over all records in reverse order", func(t *testing.T) {
-		idx, cleanup := getIndex(t)
+		idx, cleanup := getIndex(t, index.Options{})
 		defer cleanup()
 
 		for i := byte(0); i < 10; i += 2 {
@@ -175,7 +175,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 	})
 
 	t.Run("With pivot, should iterate over some records in order", func(t *testing.T) {
-		idx, cleanup := getIndex(t)
+		idx, cleanup := getIndex(t, index.Options{})
 		defer cleanup()
 
 		for i := byte(0); i < 10; i++ {
@@ -205,7 +205,7 @@ func BenchmarkIndexSet(b *testing.B) {
 			b.ResetTimer()
 			b.StopTimer()
 			for i := 0; i < b.N; i++ {
-				idx, cleanup := getIndex(b)
+				idx, cleanup := getIndex(b, index.Options{})
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
@@ -223,7 +223,7 @@ func BenchmarkIndexSet(b *testing.B) {
 func BenchmarkIndexIteration(b *testing.B) {
 	for size := 10; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			idx, cleanup := getIndex(b)
+			idx, cleanup := getIndex(b, index.Options{})
 			defer cleanup()
 
 			for i := 0; i < size; i++ {
