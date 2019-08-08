@@ -12,8 +12,8 @@ const (
 )
 
 var (
-	// ErrAlreadyExists is returned when a value is already associated with a recordID
-	ErrAlreadyExists = errors.New("already exists")
+	// ErrDuplicate is returned when a value is already associated with a recordID
+	ErrDuplicate = errors.New("duplicate")
 )
 
 // An Index associates encoded values with recordIDs.
@@ -133,7 +133,7 @@ func (i *uniqueIndex) Set(value []byte, recordID []byte) error {
 
 	_, err := i.store.Get(value)
 	if err == nil {
-		return ErrAlreadyExists
+		return ErrDuplicate
 	}
 	if err != engine.ErrKeyNotFound {
 		return err

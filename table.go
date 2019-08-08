@@ -67,6 +67,11 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		}
 	}
 
+	_, err = t.store.Get(recordID)
+	if err == nil {
+		return nil, table.ErrDuplicate
+	}
+
 	err = t.store.Put(recordID, v)
 	if err != nil {
 		return nil, err
@@ -85,6 +90,10 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 
 		err = idx.Set(f.Data, recordID)
 		if err != nil {
+			if err == index.ErrDuplicate {
+				return nil, table.ErrDuplicate
+			}
+
 			return nil, err
 		}
 	}
@@ -118,11 +127,20 @@ func (t Table) Delete(recordID []byte) error {
 	return nil
 }
 
+type pkWrapper struct {
+	record.Record
+	pk []byte
+}
+
+func (p pkWrapper) Pk() ([]byte, error) {
+	return p.pk, nil
+}
+
 // Replace a record by recordID.
 // An error is returned if the recordID doesn't exist.
 // Indexes are automatically updated.
 func (t Table) Replace(recordID []byte, r record.Record) error {
-	_, err := t.store.Get(recordID)
+	err := t.Delete(recordID)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
 			return table.ErrRecordNotFound
@@ -130,34 +148,8 @@ func (t Table) Replace(recordID []byte, r record.Record) error {
 		return err
 	}
 
-	v, err := record.Encode(r)
-	if err != nil {
-		return errors.Wrap(err, "failed to encode record")
-	}
-
-	err = t.store.Put(recordID, v)
-	if err != nil {
-		return err
-	}
-
-	indexes, err := t.tx.Indexes(t.name)
-	if err != nil {
-		return err
-	}
-
-	for fieldName, idx := range indexes {
-		f, err := r.Field(fieldName)
-		if err != nil {
-			return err
-		}
-
-		err = idx.Set(f.Data, recordID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = t.Insert(pkWrapper{Record: r, pk: recordID})
+	return err
 }
 
 // Truncate deletes all the records from the table.

@@ -210,6 +210,24 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 			})
 		}
 	})
+
+	t.Run("Should return table.ErrDuplicate if recordID already exists", func(t *testing.T) {
+		tb, cleanup := builder()
+		defer cleanup()
+
+		rec := recordPker{
+			pkGenerator: func() ([]byte, error) {
+				return field.EncodeInt64(1), nil
+			},
+		}
+
+		// insert
+		_, err := tb.Insert(rec)
+		require.NoError(t, err)
+
+		_, err = tb.Insert(rec)
+		require.Equal(t, table.ErrDuplicate, err)
+	})
 }
 
 type recordPker struct {

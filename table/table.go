@@ -15,7 +15,11 @@ import (
 
 // Errors.
 var (
+	// ErrRecordNotFound is returned when no record is associated with the provided recordID.
 	ErrRecordNotFound = errors.New("not found")
+	// ErrDuplicate is returned when another record is already associated with a given recordID, primary key,
+	// or if there is a unique index violation.
+	ErrDuplicate = errors.New("duplicate")
 )
 
 // A Table represents a collection of records.

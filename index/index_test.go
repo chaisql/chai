@@ -57,7 +57,7 @@ func TestIndexSet(t *testing.T) {
 
 		require.NoError(t, idx.Set([]byte("value1"), []byte("recordID")))
 		require.NoError(t, idx.Set([]byte("value2"), []byte("recordID")))
-		require.Equal(t, index.ErrAlreadyExists, idx.Set([]byte("value1"), []byte("recordID")))
+		require.Equal(t, index.ErrDuplicate, idx.Set([]byte("value1"), []byte("recordID")))
 	})
 }
 
