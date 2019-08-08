@@ -11,6 +11,11 @@ const (
 	separator byte = 0x1E
 )
 
+var (
+	// ErrAlreadyExists is returned when a value is already associated with a recordID
+	ErrAlreadyExists = errors.New("already exists")
+)
+
 // An Index associates encoded values with recordIDs.
 // It is sorted by value following the lexicographic order.
 type Index interface {
@@ -39,6 +44,12 @@ type Options struct {
 
 // New creates an index with the given store and options.
 func New(store engine.Store, opts Options) Index {
+	if opts.Unique {
+		return &uniqueIndex{
+			store: store,
+		}
+	}
+
 	return &listIndex{
 		store: store,
 	}
@@ -106,4 +117,57 @@ func (i *listIndex) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error)
 		idx := bytes.LastIndexByte(k, separator)
 		return fn(k[:idx], k[idx+1:])
 	})
+}
+
+// uniqueIndex is an implementation that associates a value with a exactly one recordID.
+type uniqueIndex struct {
+	store engine.Store
+}
+
+// Set associates a value with exactly one recordID.
+// If the association already exists, it returns an error.
+func (i *uniqueIndex) Set(value []byte, recordID []byte) error {
+	if len(value) == 0 {
+		return errors.New("value cannot be nil")
+	}
+
+	_, err := i.store.Get(value)
+	if err == nil {
+		return ErrAlreadyExists
+	}
+	if err != engine.ErrKeyNotFound {
+		return err
+	}
+
+	return i.store.Put(value, recordID)
+}
+
+func (i *uniqueIndex) Delete(recordID []byte) error {
+	errStop := errors.New("stop")
+
+	err := i.store.AscendGreaterOrEqual(nil, func(value []byte, rID []byte) error {
+		if bytes.Equal(recordID, rID) {
+			err := i.store.Delete(value)
+			if err != nil {
+				return err
+			}
+			return errStop
+		}
+
+		return nil
+	})
+
+	if err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+func (i *uniqueIndex) AscendGreaterOrEqual(pivot []byte, fn func(value []byte, recordID []byte) error) error {
+	return i.store.AscendGreaterOrEqual(pivot, fn)
+}
+
+func (i *uniqueIndex) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
+	return i.store.DescendLessOrEqual(pivot, fn)
 }
