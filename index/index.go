@@ -143,22 +143,25 @@ func (i *uniqueIndex) Set(value []byte, recordID []byte) error {
 }
 
 func (i *uniqueIndex) Delete(recordID []byte) error {
-	errStop := errors.New("stop")
+	var toDelete [][]byte
 
 	err := i.store.AscendGreaterOrEqual(nil, func(value []byte, rID []byte) error {
 		if bytes.Equal(recordID, rID) {
-			err := i.store.Delete(value)
-			if err != nil {
-				return err
-			}
-			return errStop
+			toDelete = append(toDelete, value)
 		}
 
 		return nil
 	})
 
-	if err != errStop {
+	if err != nil {
 		return err
+	}
+
+	for _, v := range toDelete {
+		err := i.store.Delete(v)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
