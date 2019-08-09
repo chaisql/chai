@@ -88,7 +88,10 @@ func main() {
     ng := memory.NewEngine()
 
     // Instantiate a DB using the engine
-    db := genji.New(ng)
+    db, err := genji.New(ng)
+    if err != nil {
+        log.Fatal(err)
+    }
     defer db.Close()
 
     // Create a UserTable. This generated type contains information about the User table
@@ -182,8 +185,11 @@ func main() {
 	}
 
     // Pass it to genji
-	db := genji.New(ng)
-	defer db.Close()
+	db, err := genji.New(ng)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
 }
 ```
 
@@ -202,7 +208,7 @@ func main() {
     ng := memory.NewEngine()
 
     // Pass it to genji
-    db := genji.New(ng)
+    db, err := genji.New(ng)
     if err != nil {
         log.Fatal(err)
     }
@@ -218,6 +224,7 @@ Here is a list of supported tags:
 
 - `pk`: Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id
 - `index`: Indicates that this field must be indexed.
+- `index(unique)`: Indicates that this field must be indexed and that it must associate only one recordID per value.
 
 ## Queries
 
