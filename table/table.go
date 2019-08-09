@@ -83,6 +83,11 @@ func (rb *RecordBuffer) Insert(r record.Record) (recordID []byte, err error) {
 		recordID = field.EncodeInt64(atomic.AddInt64(&rb.counter, 1))
 	}
 
+	_, ok := rb.tree.Get(recordID)
+	if ok {
+		return nil, ErrDuplicate
+	}
+
 	rb.tree.Set(recordID, r)
 
 	return recordID, nil
