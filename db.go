@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	entropy         = rand.New(rand.NewSource(time.Now().UnixNano()))
-	separator  byte = 0x1F
-	indexTable      = "__genji.indexes"
+	entropy          = rand.New(rand.NewSource(time.Now().UnixNano()))
+	separator   byte = 0x1F
+	indexTable       = "__genji.indexes"
+	indexPrefix      = "i"
 )
 
 var (
@@ -194,6 +195,7 @@ func (tx Tx) DropTable(name string) error {
 
 func buildIndexName(tableName, field string) string {
 	var b strings.Builder
+	b.WriteString(indexPrefix)
 	b.WriteString(tableName)
 	b.WriteByte(separator)
 	b.WriteString(field)

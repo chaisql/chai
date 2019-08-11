@@ -87,6 +87,8 @@ func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
 		if err == table.ErrRecordNotFound {
 			return nil, ErrIndexNotFound
 		}
+
+		return nil, err
 	}
 	var idxopts indexOptions
 	err = idxopts.ScanRecord(r)
