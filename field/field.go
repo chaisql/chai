@@ -291,7 +291,7 @@ func EncodeBytes(x []byte) []byte {
 	return x
 }
 
-// DecodeBytes takes a byte slice and returns.
+// DecodeBytes takes a byte slice and returns it.
 // It is present to ease code generation.
 func DecodeBytes(buf []byte) ([]byte, error) {
 	return buf, nil

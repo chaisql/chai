@@ -180,12 +180,12 @@ import (
 func main() {
     // Create a badger engine
     ng, err := badger.NewEngine(bdg.DefaultOptions("genji")))
-	if err != nil {
-		log.Fatal(err)
-	}
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // Pass it to genji
-	db, err := genji.New(ng)
+    db, err := genji.New(ng)
     if err != nil {
         log.Fatal(err)
     }

@@ -10,7 +10,6 @@ const tableTmpl = `
 {{ template "table-Insert" . }}
 {{ template "table-TableName" . }}
 {{ template "table-Indexes" . }}
-{{ template "table-All" . }}
 {{ end }}
 `
 
@@ -124,20 +123,5 @@ func (*{{$structName}}Table) Indexes() map[string]index.Options {
 	}
 }
 {{- end }}
-{{ end }}
-`
-
-const tableAllTmpl = `
-{{ define "table-All" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-// All returns a list of all selectors for {{$structName}}.
-func (t *{{$structName}}Table) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		{{- range $i, $a := .Fields }}
-		t.{{$a.Name}},
-		{{- end}}
-	}
-}
 {{ end }}
 `
