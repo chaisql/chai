@@ -13,18 +13,18 @@ or by using the query package which is a powerful SQL like query engine.
 
 ## Features
 
-- **Abstract storage**: Stores data on disk using [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) or in memory
-- **No reflection**: Uses code generation to map Go structures to tables
-- **Type safe APIs**: Generated code allows to avoid common errors and avoid reflection
-- **SQL Like queries**: Genji provides a query engine to run complex queries
-- **Index support**: Declare indexes and let Genji deal with them.
-- **Complete framework**: Use Genji to manipulate tables, extend the query system or implement you own engine.
+* **Abstract storage**: Stores data on disk using [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) or in memory
+* **No reflection**: Uses code generation to map Go structures to tables
+* **Type safe APIs**: Generated code allows to avoid common errors and avoid reflection
+* **SQL Like queries**: Genji provides a query engine to run complex queries
+* **Index support**: Declare indexes and let Genji deal with them.
+* **Complete framework**: Use Genji to manipulate tables, extend the query system or implement you own engine.
 
 ## Installation
 
 Install the Genji library and command line tool
 
-```bash
+``` bash
 go get -u github.com/asdine/genji/...
 ```
 
@@ -32,11 +32,11 @@ go get -u github.com/asdine/genji/...
 
 Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection**.
 
-```go
+``` go
 // user.go
 
 type User struct {
-    ID int64    `genji:"pk"`
+    ID int64 `genji:"pk"`
     Name string `genji:"index"`
     Age int
 }
@@ -44,13 +44,13 @@ type User struct {
 
 Generate code to make that structure compatible with Genji.
 
-```bash
-genji -f user.go -s User
+``` bash
+genji -f user.go -t User
 ```
 
 This command generates a file that contains APIs specific to the `User` type.
 
-```go
+``` go
 // user.genji.go
 
 // The User type gets new methods that implement some Genji interfaces.
@@ -80,7 +80,7 @@ func (u *UserResult) ScanTable(tr table.Reader) error {}
 
 ### Example
 
-```go
+``` go
 package main
 
 func main() {
@@ -145,7 +145,7 @@ Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbo
 
 ### Use the BoltDB engine
 
-```go
+``` go
 import (
     "log"
 
@@ -168,13 +168,13 @@ func main() {
 
 ### Use the Badger engine
 
-```go
+``` go
 import (
-	"log"
+    "log"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/badger"
-	bdg "github.com/dgraph-io/badger"
+    "github.com/asdine/genji"
+    "github.com/asdine/genji/engine/badger"
+    bdg "github.com/dgraph-io/badger"
 )
 
 func main() {
@@ -195,7 +195,7 @@ func main() {
 
 ### Use the memory engine
 
-```go
+``` go
 import (
     "log"
 
@@ -222,9 +222,9 @@ Genji scans the struct tags at compile time, not at runtime, and it uses this in
 
 Here is a list of supported tags:
 
-- `pk`: Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id
-- `index`: Indicates that this field must be indexed.
-- `index(unique)`: Indicates that this field must be indexed and that it must associate only one recordID per value.
+* `pk` : Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id
+* `index` : Indicates that this field must be indexed.
+* `index(unique)` : Indicates that this field must be indexed and that it must associate only one recordID per value.
 
 ## Queries
 
@@ -232,7 +232,7 @@ The [`query` package](https://godoc.org/github.com/asdine/genji/query) allows to
 
 That's the simplest way of running queries, and the results can be mapped to the structure of your choice.
 
-```go
+``` go
 // Create a table value
 t := NewUserTable()
 

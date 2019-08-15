@@ -105,18 +105,6 @@ func (t *UserTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
 
-// Insert is a shortcut that gets the User table from the transaction and
-// inserts a User into it.
-func (t *UserTable) Insert(tx *genji.Tx, x *User) error {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return err
-	}
-
-	_, err = tb.Insert(x)
-	return err
-}
-
 // TableName returns the name of the table.
 func (*UserTable) TableName() string {
 	return "User"
@@ -126,15 +114,6 @@ func (*UserTable) TableName() string {
 func (*UserTable) Indexes() map[string]index.Options {
 	return map[string]index.Options{
 		"Name": index.Options{Unique: false},
-	}
-}
-
-// All returns a list of all selectors for User.
-func (t *UserTable) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		t.ID,
-		t.Name,
-		t.Age,
 	}
 }
 

@@ -29,7 +29,7 @@ func Example() {
 	// open a read-write transaction
 	err = db.Update(func(tx *genji.Tx) error {
 
-		t := NewUserTable()
+		users := NewUserTable()
 
 		// init the table
 		err := t.Init(tx)
@@ -37,8 +37,13 @@ func Example() {
 			return err
 		}
 
+		t, err := users.SelectTable(tx)
+		if err != nil {
+			return err
+		}
+	
 		// insert a User, no reflection involved
-		err = t.Insert(tx, &User{
+		_, err = t.Insert(&User{
 			ID:   10,
 			Name: "foo",
 			Age:  32,

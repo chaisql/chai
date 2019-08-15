@@ -112,30 +112,9 @@ func (t *BasicTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
 
-// Insert is a shortcut that gets the Basic table from the transaction and
-// inserts a Basic into it.
-func (t *BasicTable) Insert(tx *genji.Tx, x *Basic) ([]byte, error) {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return tb.Insert(x)
-}
-
 // TableName returns the name of the table.
 func (*BasicTable) TableName() string {
 	return "Basic"
-}
-
-// All returns a list of all selectors for Basic.
-func (t *BasicTable) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		t.A,
-		t.B,
-		t.C,
-		t.D,
-	}
 }
 
 // BasicResult can be used to store the result of queries.
@@ -254,30 +233,9 @@ func (t *basicTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
 
-// Insert is a shortcut that gets the Basic table from the transaction and
-// inserts a basic into it.
-func (t *basicTable) Insert(tx *genji.Tx, x *basic) ([]byte, error) {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return tb.Insert(x)
-}
-
 // TableName returns the name of the table.
 func (*basicTable) TableName() string {
 	return "Basic"
-}
-
-// All returns a list of all selectors for basic.
-func (t *basicTable) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		t.A,
-		t.B,
-		t.C,
-		t.D,
-	}
 }
 
 // basicResult can be used to store the result of queries.
@@ -377,29 +335,9 @@ func (t *PkTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
 
-// Insert is a shortcut that gets the Pk table from the transaction and
-// inserts a Pk into it.
-func (t *PkTable) Insert(tx *genji.Tx, x *Pk) error {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return err
-	}
-
-	_, err = tb.Insert(x)
-	return err
-}
-
 // TableName returns the name of the table.
 func (*PkTable) TableName() string {
 	return "Pk"
-}
-
-// All returns a list of all selectors for Pk.
-func (t *PkTable) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		t.A,
-		t.B,
-	}
 }
 
 // PkResult can be used to store the result of queries.
@@ -506,17 +444,6 @@ func (t *IndexedTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
 
-// Insert is a shortcut that gets the Indexed table from the transaction and
-// inserts a Indexed into it.
-func (t *IndexedTable) Insert(tx *genji.Tx, x *Indexed) ([]byte, error) {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return tb.Insert(x)
-}
-
 // TableName returns the name of the table.
 func (*IndexedTable) TableName() string {
 	return "Indexed"
@@ -527,15 +454,6 @@ func (*IndexedTable) Indexes() map[string]index.Options {
 	return map[string]index.Options{
 		"A": index.Options{Unique: false},
 		"B": index.Options{Unique: true},
-	}
-}
-
-// All returns a list of all selectors for Indexed.
-func (t *IndexedTable) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		t.A,
-		t.B,
-		t.C,
 	}
 }
 
@@ -660,18 +578,6 @@ func (t *MultipleTagsTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
 
-// Insert is a shortcut that gets the MultipleTags table from the transaction and
-// inserts a MultipleTags into it.
-func (t *MultipleTagsTable) Insert(tx *genji.Tx, x *MultipleTags) error {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return err
-	}
-
-	_, err = tb.Insert(x)
-	return err
-}
-
 // TableName returns the name of the table.
 func (*MultipleTagsTable) TableName() string {
 	return "MultipleTags"
@@ -681,16 +587,6 @@ func (*MultipleTagsTable) TableName() string {
 func (*MultipleTagsTable) Indexes() map[string]index.Options {
 	return map[string]index.Options{
 		"D": index.Options{Unique: false},
-	}
-}
-
-// All returns a list of all selectors for MultipleTags.
-func (t *MultipleTagsTable) All() []query.FieldSelector {
-	return []query.FieldSelector{
-		t.A,
-		t.B,
-		t.C,
-		t.D,
 	}
 }
 

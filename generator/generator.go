@@ -46,7 +46,6 @@ func init() {
 		"table-New":         tableNewTmpl,
 		"table-Init":        tableInitTmpl,
 		"table-SelectTable": tableSelectTableTmpl,
-		"table-Insert":      tableInsertTmpl,
 		"table-TableName":   tableTableNameTmpl,
 		"table-Indexes":     tableIndexesTmpl,
 		"results":           resultsTmpl,

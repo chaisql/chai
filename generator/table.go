@@ -7,7 +7,6 @@ const tableTmpl = `
 {{ template "table-New" . }}
 {{ template "table-Init" . }}
 {{ template "table-SelectTable" . }}
-{{ template "table-Insert" . }}
 {{ template "table-TableName" . }}
 {{ template "table-Indexes" . }}
 {{ end }}
@@ -66,35 +65,6 @@ const tableSelectTableTmpl = `
 func (t *{{$structName}}Table) SelectTable(tx *genji.Tx) (*genji.Table, error) {
 	return tx.Table(t.TableName())
 }
-{{ end }}
-`
-
-const tableInsertTmpl = `
-{{ define "table-Insert" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-// Insert is a shortcut that gets the {{.TableName}} table from the transaction and 
-// inserts a {{$structName}} into it.
-{{- if ne .Pk.Name ""}}
-func (t *{{$structName}}Table) Insert(tx *genji.Tx, x *{{$structName}}) error {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return err
-	}
-
-	_, err = tb.Insert(x)
-	return err
-}
-{{- else}}
-func (t *{{$structName}}Table) Insert(tx *genji.Tx, x *{{$structName}}) ([]byte, error) {
-	tb, err := t.SelectTable(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return tb.Insert(x)
-}
-{{end}}
 {{ end }}
 `
 
