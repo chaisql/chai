@@ -128,20 +128,22 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		b = b.Offset(int(offset)).Limit(int(limit))
 	}
 
-	b = b.Map(func(recordID []byte, r record.Record) (record.Record, error) {
-		var fb record.FieldBuffer
+	if len(q.fieldSelectors) != 0 {
+		b = b.Map(func(recordID []byte, r record.Record) (record.Record, error) {
+			var fb record.FieldBuffer
 
-		for _, s := range q.fieldSelectors {
-			f, err := s.SelectField(r)
-			if err != nil {
-				return nil, err
+			for _, s := range q.fieldSelectors {
+				f, err := s.SelectField(r)
+				if err != nil {
+					return nil, err
+				}
+
+				fb.Add(f)
 			}
 
-			fb.Add(f)
-		}
-
-		return &fb, nil
-	})
+			return &fb, nil
+		})
+	}
 
 	if b.Err() != nil {
 		return Result{err: b.Err()}
