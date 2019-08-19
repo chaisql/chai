@@ -215,7 +215,7 @@ func TestUpdate(t *testing.T) {
 
 }
 
-func BenchmarkSelect(b *testing.B) {
+func BenchmarkStatementSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
 			tx, cleanup := createTable(b, size, false)
@@ -232,7 +232,7 @@ func BenchmarkSelect(b *testing.B) {
 	}
 }
 
-func BenchmarkSelectLimit(b *testing.B) {
+func BenchmarkStatementSelectLimit(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
 			tx, cleanup := createTable(b, size, false)
@@ -249,7 +249,7 @@ func BenchmarkSelectLimit(b *testing.B) {
 	}
 }
 
-func BenchmarkSelectWithIndex(b *testing.B) {
+func BenchmarkStatementSelectWithIndex(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
 			tx, cleanup := createTable(b, size, false)
@@ -266,7 +266,7 @@ func BenchmarkSelectWithIndex(b *testing.B) {
 	}
 }
 
-func BenchmarkDelete(b *testing.B) {
+func BenchmarkStatementDelete(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
 			tx, cleanup := createTable(b, size, false)
@@ -282,7 +282,7 @@ func BenchmarkDelete(b *testing.B) {
 	}
 }
 
-func BenchmarkUpdate(b *testing.B) {
+func BenchmarkStatementUpdate(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
 			tx, cleanup := createTable(b, size, false)
