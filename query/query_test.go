@@ -249,3 +249,20 @@ func BenchmarkSelectLimit(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkSelectWithIndex(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
+			tx, cleanup := createTable(b, size, false)
+			defer cleanup()
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tb := Select().From(Table("test")).Where(GtString(Field("name"), "")).Run(tx).Table()
+				table.NewBrowser(tb).Count()
+			}
+			b.StopTimer()
+			tx.Rollback()
+		})
+	}
+}
