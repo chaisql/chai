@@ -2,6 +2,7 @@
 package field
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -545,6 +546,63 @@ func ZeroValue(t Type) Field {
 	}
 
 	return Field{}
+}
+
+var (
+	bytesZeroValue   = ZeroValue(Bytes)
+	stringZeroValue  = ZeroValue(String)
+	boolZeroValue    = ZeroValue(Bool)
+	uintZeroValue    = ZeroValue(Uint)
+	uint8ZeroValue   = ZeroValue(Uint8)
+	uint16ZeroValue  = ZeroValue(Uint16)
+	uint32ZeroValue  = ZeroValue(Uint32)
+	uint64ZeroValue  = ZeroValue(Uint64)
+	intZeroValue     = ZeroValue(Int)
+	int8ZeroValue    = ZeroValue(Int8)
+	int16ZeroValue   = ZeroValue(Int16)
+	int32ZeroValue   = ZeroValue(Int32)
+	int64ZeroValue   = ZeroValue(Int64)
+	float32ZeroValue = ZeroValue(Float32)
+	float64ZeroValue = ZeroValue(Float64)
+)
+
+// IsZeroValue indicates if the field data is the zero value for the field type.
+// This function doesn't perform any allocation.
+func IsZeroValue(t Type, data []byte) bool {
+	switch t {
+	case Bytes:
+		return bytes.Equal(data, bytesZeroValue.Data)
+	case String:
+		return bytes.Equal(data, stringZeroValue.Data)
+	case Bool:
+		return bytes.Equal(data, boolZeroValue.Data)
+	case Uint:
+		return bytes.Equal(data, uintZeroValue.Data)
+	case Uint8:
+		return bytes.Equal(data, uint8ZeroValue.Data)
+	case Uint16:
+		return bytes.Equal(data, uint16ZeroValue.Data)
+	case Uint32:
+		return bytes.Equal(data, uint32ZeroValue.Data)
+	case Uint64:
+		return bytes.Equal(data, uint64ZeroValue.Data)
+	case Int:
+		return bytes.Equal(data, intZeroValue.Data)
+	case Int8:
+		return bytes.Equal(data, int8ZeroValue.Data)
+	case Int16:
+		return bytes.Equal(data, int16ZeroValue.Data)
+	case Int32:
+		return bytes.Equal(data, int32ZeroValue.Data)
+	case Int64:
+		return bytes.Equal(data, int64ZeroValue.Data)
+	case Float32:
+		return bytes.Equal(data, float32ZeroValue.Data)
+	case Float64:
+		return bytes.Equal(data, float64ZeroValue.Data)
+	}
+
+	return false
 }
 
 // Decode a field based on its type and returns its Go value.

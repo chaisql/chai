@@ -1,8 +1,6 @@
 package query
 
 import (
-	"bytes"
-
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -22,8 +20,7 @@ type Scalar struct {
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 func (s Scalar) Truthy() bool {
-	zf := field.ZeroValue(s.Type)
-	return !bytes.Equal(zf.Data, s.Data)
+	return !field.IsZeroValue(s.Type, s.Data)
 }
 
 // Eval returns s. It implements the Expr interface.
