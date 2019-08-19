@@ -23,8 +23,18 @@ type Table struct {
 // Iterate goes through all the records of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (t Table) Iterate(fn func(recordID []byte, r record.Record) error) error {
+	// To avoid unnecessary allocations, we create the slice once and reuse it
+	// at each call of the fn method.
+	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
+	// we can assume that it's thread safe.
+	// TODO(asdine) Add a mutex if proven necessary
+	var r record.EncodedRecord
+
 	return t.store.AscendGreaterOrEqual(nil, func(recordID, v []byte) error {
-		return fn(recordID, record.EncodedRecord(v))
+		r = v
+		// r must be passed as pointer, not value, because passing a value to an interface
+		// requires an allocation, while it doesn't for a pointer.
+		return fn(recordID, &r)
 	})
 }
 
