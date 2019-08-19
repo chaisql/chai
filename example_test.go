@@ -32,7 +32,7 @@ func Example() {
 		users := NewUserTable()
 
 		// init the table
-		err := t.Init(tx)
+		err := users.Init(tx)
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ func Example() {
 		if err != nil {
 			return err
 		}
-	
+
 		// insert a User, no reflection involved
 		_, err = t.Insert(&User{
 			ID:   10,
@@ -56,7 +56,7 @@ func Example() {
 		var result UserResult
 
 		// SELECT ID, Name FROM foo where Age >= 18
-		return query.Select(t.ID, t.Name).From(t).Where(t.Age.Gte(18)).
+		return query.Select(users.ID, users.Name).From(t).Where(users.Age.Gte(18)).
 			Run(tx).
 			Scan(&result)
 	})
