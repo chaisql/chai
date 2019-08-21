@@ -16,7 +16,10 @@ import (
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
-		ng, err := badger.NewEngine(bdg.DefaultOptions(path.Join(dir, "badger")))
+		opts := bdg.DefaultOptions(path.Join(dir, "badger"))
+		opts.Logger = nil
+
+		ng, err := badger.NewEngine(opts)
 		require.NoError(t, err)
 		return ng, cleanup
 	}
