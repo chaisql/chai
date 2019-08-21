@@ -127,6 +127,18 @@ func (s Stream) Offset(n int) Stream {
 	})
 }
 
+// Count counts all the records from the stream.
+func (s Stream) Count() (int, error) {
+	counter := 0
+
+	err := s.Iterate(func(recordID []byte, r record.Record) error {
+		counter++
+		return nil
+	})
+
+	return counter, err
+}
+
 // An Operator is used to modify a stream.
 // If an operator returns a record, it will be passed to the next stream.
 // If it returns a nil record, the record will be ignored.
