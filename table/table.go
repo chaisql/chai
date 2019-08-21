@@ -25,6 +25,7 @@ var (
 // A Table represents a collection of records.
 type Table interface {
 	Reader
+	RecordGetter
 	Writer
 }
 
@@ -33,8 +34,13 @@ type Reader interface {
 	// Iterate goes through all the records of the table and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(func(recordID []byte, r record.Record) error) error
-	// Record returns one record by recordID.
-	Record(recordID []byte) (record.Record, error)
+}
+
+// A RecordGetter is a type that allows to get one record by recordID.
+// It is usually implemented by tables that provide random access.
+type RecordGetter interface {
+	// GetRecord returns one record by recordID.
+	GetRecord(recordID []byte) (record.Record, error)
 }
 
 // A Writer can manipulate a table.
@@ -101,8 +107,9 @@ func (rb *RecordBuffer) ScanTable(t Reader) error {
 	})
 }
 
-// Record returns a record by recordID. If the record is not found, returns ErrRecordNotFound.
-func (rb *RecordBuffer) Record(recordID []byte) (record.Record, error) {
+// GetRecord returns a record by recordID. If the record is not found, returns ErrRecordNotFound.
+// It implements the RecordGetter interface.
+func (rb *RecordBuffer) GetRecord(recordID []byte) (record.Record, error) {
 	if rb.tree == nil {
 		rb.tree = b.TreeNew(bytes.Compare)
 	}

@@ -162,7 +162,7 @@ func TestInsert(t *testing.T) {
 		recordID, err := rec.Field("recordID")
 		require.NoError(t, err)
 
-		rec, err = tb.Record(recordID.Data)
+		rec, err = tb.GetRecord(recordID.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("a", 5),

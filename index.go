@@ -82,7 +82,7 @@ func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
 		return nil, err
 	}
 
-	r, err := it.Record([]byte(indexName))
+	r, err := it.GetRecord([]byte(indexName))
 	if err != nil {
 		if err == table.ErrRecordNotFound {
 			return nil, ErrIndexNotFound

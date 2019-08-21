@@ -455,7 +455,7 @@ func (i *indexResultTable) Record(recordID []byte) (record.Record, error) {
 		return nil, table.ErrRecordNotFound
 	}
 
-	return i.table.Record(recordID)
+	return i.table.GetRecord(recordID)
 }
 
 func (i *indexResultTable) Iterate(fn func([]byte, record.Record) error) error {
@@ -464,7 +464,7 @@ func (i *indexResultTable) Iterate(fn func([]byte, record.Record) error) error {
 	i.tree.Ascend(func(it btree.Item) bool {
 		var rec record.Record
 		recordID := []byte(it.(Item))
-		rec, err = i.table.Record(recordID)
+		rec, err = i.table.GetRecord(recordID)
 		if err != nil {
 			return false
 		}

@@ -218,7 +218,7 @@ func (tx Tx) CreateIndex(tableName, field string, opts index.Options) error {
 
 	idxName := buildIndexName(tableName, field)
 
-	_, err = it.Record([]byte(idxName))
+	_, err = it.GetRecord([]byte(idxName))
 	if err == nil {
 		return ErrIndexAlreadyExists
 	}

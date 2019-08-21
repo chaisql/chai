@@ -38,8 +38,8 @@ func (t Table) Iterate(fn func(recordID []byte, r record.Record) error) error {
 	})
 }
 
-// Record returns one record by recordID.
-func (t Table) Record(recordID []byte) (record.Record, error) {
+// GetRecord returns one record by recordID. It implements the table.RecordGetter interface.
+func (t Table) GetRecord(recordID []byte) (record.Record, error) {
 	v, err := t.store.Get(recordID)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
