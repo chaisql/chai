@@ -16,9 +16,15 @@ type Stream struct {
 	op Operator
 }
 
-// NewStream creates a stream using the given table.
+// NewStream creates a stream using the given reader.
 func NewStream(rd Reader) Stream {
 	return Stream{rd: rd}
+}
+
+// NewStreamFromRecords creates a stream that will iterate over
+// the given records.
+func NewStreamFromRecords(records ...record.Record) Stream {
+	return Stream{rd: recordsReader(records)}
 }
 
 // Iterate calls the underlying reader iterate method.

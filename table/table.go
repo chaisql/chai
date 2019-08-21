@@ -3,7 +3,6 @@ package table
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sync/atomic"
@@ -11,6 +10,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	b "github.com/asdine/genji/table/internal"
+	"github.com/pkg/errors"
 )
 
 // Errors.
@@ -221,4 +221,29 @@ func Dump(w io.Writer, t Reader) error {
 	}
 
 	return buf.Flush()
+}
+
+type recordsReader []record.Record
+
+func (rr recordsReader) Iterate(fn func(recordID []byte, r record.Record) error) error {
+	var recordID []byte
+	var err error
+
+	for i, r := range rr {
+		if pker, ok := r.(PrimaryKeyer); ok {
+			recordID, err = pker.PrimaryKey()
+			if err != nil {
+				return errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
+			}
+		} else {
+			recordID = field.EncodeInt(i)
+		}
+
+		err = fn(recordID, r)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
