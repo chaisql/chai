@@ -2,14 +2,11 @@ package table
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
-	"sync/atomic"
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
-	b "github.com/asdine/genji/table/internal"
 	"github.com/pkg/errors"
 )
 
@@ -63,133 +60,6 @@ type PrimaryKeyer interface {
 // A Scanner is a type that can read all the records of a table reader.
 type Scanner interface {
 	ScanTable(Reader) error
-}
-
-// RecordBuffer is table that stores records in memory in a B+Tree. It implements the Table interface.
-type RecordBuffer struct {
-	tree    *b.Tree
-	counter int64
-}
-
-// Insert adds a record to the buffer.
-func (rb *RecordBuffer) Insert(r record.Record) (recordID []byte, err error) {
-	if rb.tree == nil {
-		rb.tree = b.TreeNew(bytes.Compare)
-	}
-
-	if pker, ok := r.(PrimaryKeyer); ok {
-		recordID, err = pker.PrimaryKey()
-		if err != nil {
-			return nil, err
-		}
-		if len(recordID) == 0 {
-			return nil, errors.New("empty primary key")
-		}
-	} else {
-		recordID = field.EncodeInt64(atomic.AddInt64(&rb.counter, 1))
-	}
-
-	_, ok := rb.tree.Get(recordID)
-	if ok {
-		return nil, ErrDuplicate
-	}
-
-	rb.tree.Set(recordID, r)
-
-	return recordID, nil
-}
-
-// ScanTable copies all the records of t to the buffer.
-func (rb *RecordBuffer) ScanTable(t Reader) error {
-	return t.Iterate(func(recordID []byte, r record.Record) error {
-		_, err := rb.Insert(r)
-		return err
-	})
-}
-
-// GetRecord returns a record by recordID. If the record is not found, returns ErrRecordNotFound.
-// It implements the RecordGetter interface.
-func (rb *RecordBuffer) GetRecord(recordID []byte) (record.Record, error) {
-	if rb.tree == nil {
-		rb.tree = b.TreeNew(bytes.Compare)
-	}
-
-	r, ok := rb.tree.Get(recordID)
-	if !ok {
-		return nil, ErrRecordNotFound
-	}
-
-	return r, nil
-}
-
-// Set replaces a record if it already exists or creates one if not.
-func (rb *RecordBuffer) Set(recordID []byte, r record.Record) error {
-	if rb.tree == nil {
-		rb.tree = b.TreeNew(bytes.Compare)
-	}
-
-	rb.tree.Set(recordID, r)
-	return nil
-}
-
-// Delete a record by recordID. If the record is not found, returns ErrRecordNotFound.
-func (rb *RecordBuffer) Delete(recordID []byte) error {
-	if rb.tree == nil {
-		rb.tree = b.TreeNew(bytes.Compare)
-	}
-
-	ok := rb.tree.Delete(recordID)
-	if !ok {
-		return ErrRecordNotFound
-	}
-
-	return nil
-}
-
-// Iterate goes through all the records of the table and calls the given function by passing each one of them.
-// If the given function returns an error, the iteration stops.
-func (rb *RecordBuffer) Iterate(fn func(recordID []byte, r record.Record) error) error {
-	if rb.tree == nil {
-		rb.tree = b.TreeNew(bytes.Compare)
-	}
-
-	e, err := rb.tree.SeekFirst()
-	if err == io.EOF {
-		return nil
-	}
-
-	for k, r, err := e.Next(); err != io.EOF; k, r, err = e.Next() {
-		if err := fn(k, r); err != nil {
-			return err
-		}
-	}
-
-	e.Close()
-	return nil
-}
-
-// Replace a record by another one. If the record is not found, returns ErrRecordNotFound.
-func (rb *RecordBuffer) Replace(recordID []byte, r record.Record) error {
-	if rb.tree == nil {
-		rb.tree = b.TreeNew(bytes.Compare)
-	}
-
-	_, ok := rb.tree.Get(recordID)
-	if !ok {
-		return ErrRecordNotFound
-	}
-
-	rb.tree.Set(recordID, r)
-	return nil
-}
-
-// Truncate deletes all the records from the table.
-func (rb *RecordBuffer) Truncate() error {
-	if rb.tree != nil {
-		rb.tree.Clear()
-	}
-
-	return nil
 }
 
 // Dump table information to w, structured as a csv .
