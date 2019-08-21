@@ -12,27 +12,22 @@ import (
 
 // Result of a query.
 type Result struct {
-	t   table.Reader
+	*table.Stream
 	err error
 }
 
 // Err returns a non nil error if an error occured during the query.
-func (q Result) Err() error {
-	return q.err
+func (r Result) Err() error {
+	return r.err
 }
 
 // Scan takes a table scanner and passes it the result table.
-func (q Result) Scan(s table.Scanner) error {
-	if q.err != nil {
-		return q.err
+func (r Result) Scan(s table.Scanner) error {
+	if r.err != nil {
+		return r.err
 	}
 
-	return s.ScanTable(q.t)
-}
-
-// Table returns the table result.
-func (q Result) Table() table.Reader {
-	return q.t
+	return s.ScanTable(r.Stream)
 }
 
 // SelectStmt is a DSL that allows creating a full Select query.
@@ -133,7 +128,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		st = st.Limit(limit)
 	}
 
-	return Result{t: st}
+	return Result{Stream: &st}
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
@@ -340,7 +335,8 @@ func (i InsertStmt) Run(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	return Result{t: recordIDToTable(recordID)}
+	st := table.NewStream(recordIDToTable(recordID))
+	return Result{Stream: &st}
 }
 
 func recordIDToTable(recordID []byte) table.Table {

@@ -55,12 +55,11 @@ func TestSelect(t *testing.T) {
 		res := Select().From(Table("test")).Where(GtInt(Field("age"), 20)).Limit(5).Offset(1).Run(tx)
 		require.NoError(t, res.Err())
 
-		b := table.NewBrowser(res.Table())
-		count, err := b.Count()
+		count, err := res.Count()
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = table.NewBrowser(res.Table()).ForEach(func(recordID []byte, r record.Record) error {
+		err = res.Iterate(func(recordID []byte, r record.Record) error {
 			_, err := r.Field("id")
 			require.NoError(t, err)
 			_, err = r.Field("name")
@@ -71,7 +70,7 @@ func TestSelect(t *testing.T) {
 			require.NoError(t, err)
 
 			return nil
-		}).Err()
+		})
 		require.NoError(t, err)
 	})
 
@@ -82,12 +81,11 @@ func TestSelect(t *testing.T) {
 		res := Select().From(Table("test")).Where(GtString(Field("name"), "john")).Limit(5).Offset(1).Run(tx)
 		require.NoError(t, res.Err())
 
-		b := table.NewBrowser(res.Table())
-		count, err := b.Count()
+		count, err := res.Count()
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = table.NewBrowser(res.Table()).ForEach(func(recordID []byte, r record.Record) error {
+		err = res.Iterate(func(recordID []byte, r record.Record) error {
 			_, err := r.Field("id")
 			require.NoError(t, err)
 			_, err = r.Field("name")
@@ -98,7 +96,7 @@ func TestSelect(t *testing.T) {
 			require.NoError(t, err)
 
 			return nil
-		}).Err()
+		})
 		require.NoError(t, err)
 	})
 
@@ -115,19 +113,19 @@ func TestDelete(t *testing.T) {
 		tb, err := tx.Table("test")
 		require.NoError(t, err)
 
-		b := table.NewBrowser(tb)
-		count, err := b.Count()
+		st := table.NewStream(tb)
+		count, err := st.Count()
 		require.NoError(t, err)
 		require.Equal(t, 3, count)
 
-		err = b.ForEach(func(recordID []byte, r record.Record) error {
+		err = st.Iterate(func(recordID []byte, r record.Record) error {
 			f, err := r.Field("age")
 			require.NoError(t, err)
 			age, err := field.DecodeInt(f.Data)
 			require.NoError(t, err)
 			require.True(t, age <= 20)
 			return nil
-		}).Err()
+		})
 		require.NoError(t, err)
 	})
 }
@@ -151,18 +149,18 @@ func TestInsert(t *testing.T) {
 		tb, err := tx.Table("test")
 		require.NoError(t, err)
 
-		b := table.NewBrowser(tb)
-		count, err := b.Count()
+		st := table.NewStream(tb)
+		count, err := st.Count()
 		require.NoError(t, err)
 		require.Equal(t, 11, count)
 
-		rec, err := table.NewBrowser(res.Table()).First()
+		_, rec, err := res.First()
 		require.NoError(t, err)
 
-		recordID, err := rec.Field("recordID")
+		rIDf, err := rec.Field("recordID")
 		require.NoError(t, err)
 
-		rec, err = tb.GetRecord(recordID.Data)
+		rec, err = tb.GetRecord(rIDf.Data)
 		require.NoError(t, err)
 		expected := record.FieldBuffer([]field.Field{
 			field.NewInt("a", 5),
@@ -195,24 +193,22 @@ func TestUpdate(t *testing.T) {
 			tb, err := tx.Table("test")
 			require.NoError(t, err)
 
-			b := table.NewBrowser(tb)
-			count, err := b.Count()
+			st := table.NewStream(tb)
+			count, err := st.Count()
 			require.NoError(t, err)
 			require.Equal(t, 10, count)
 
-			err = b.ForEach(func(recordID []byte, r record.Record) error {
+			err = st.Iterate(func(recordID []byte, r record.Record) error {
 				f, err := r.Field("age")
 				require.NoError(t, err)
 				age, err := field.DecodeInt(f.Data)
 				require.NoError(t, err)
 				require.True(t, age <= 20)
 				return nil
-			}).Err()
+			})
 			require.NoError(t, err)
 		})
-
 	}
-
 }
 
 func BenchmarkStatementSelect(b *testing.B) {
@@ -223,8 +219,7 @@ func BenchmarkStatementSelect(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb := Select().From(Table("test")).Where(GtInt(Field("age"), -200)).Run(tx).Table()
-				table.NewBrowser(tb).Count()
+				Select().From(Table("test")).Where(GtInt(Field("age"), -200)).Run(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -240,8 +235,7 @@ func BenchmarkStatementSelectLimit(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb := Select().From(Table("test")).Where(GtInt(Field("age"), -200)).Limit(size/10 + 1).Run(tx).Table()
-				table.NewBrowser(tb).Count()
+				Select().From(Table("test")).Where(GtInt(Field("age"), -200)).Limit(size/10 + 1).Run(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -257,8 +251,7 @@ func BenchmarkStatementSelectWithIndex(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb := Select().From(Table("test")).Where(GtString(Field("name"), "")).Run(tx).Table()
-				table.NewBrowser(tb).Count()
+				Select().From(Table("test")).Where(GtString(Field("name"), "")).Run(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
