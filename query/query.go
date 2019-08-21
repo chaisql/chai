@@ -61,8 +61,8 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		return Result{err: errors.New("missing table selector")}
 	}
 
-	var offset int64 = -1
-	var limit int64 = -1
+	offset := -1
+	limit := -1
 
 	if q.offsetExpr != nil {
 		s, err := q.offsetExpr.Eval(EvalContext{
@@ -74,7 +74,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		if s.Type < field.Int {
 			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", s.Type)}
 		}
-		offset, err = field.DecodeInt64(s.Data)
+		offset, err = field.DecodeInt(s.Data)
 		if err != nil {
 			return Result{err: err}
 		}
@@ -90,7 +90,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		if s.Type < field.Int {
 			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", s.Type)}
 		}
-		limit, err = field.DecodeInt64(s.Data)
+		limit, err = field.DecodeInt(s.Data)
 		if err != nil {
 			return Result{err: err}
 		}
@@ -101,11 +101,9 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	var tr table.Reader
-	st := streamTable{
-		tx: tx,
-	}
+	var tr table.Reader = t
 
+	var useIndex bool
 	if im, ok := q.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, q.tableSelector.TableName())
 		if err != nil && err != genji.ErrIndexNotFound {
@@ -113,6 +111,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		}
 
 		if ok && err == nil {
+			useIndex = true
 			tr = &indexResultTable{
 				tree:  tree,
 				table: t,
@@ -120,45 +119,21 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		}
 	}
 
-	if tr == nil {
-		st.funcs = append(st.funcs, whereClause(tx, t, q.whereExpr))
+	st := table.NewStream(tr)
+
+	if !useIndex {
+		st = st.Filter(whereClause(tx, q.whereExpr))
 	}
+
 	if offset > 0 {
-		st.funcs = append(st.funcs, func() func(r record.Record) (record.Record, error) {
-			var skipped int64
-
-			return func(r record.Record) (record.Record, error) {
-				if skipped < offset {
-					skipped++
-					return nil, nil
-				}
-
-				return r, nil
-			}
-		})
+		st = st.Offset(offset)
 	}
 
 	if limit >= 0 {
-		st.funcs = append(st.funcs, func() func(r record.Record) (record.Record, error) {
-			var count int64
-			return func(r record.Record) (record.Record, error) {
-				if count < limit {
-					count++
-					return r, nil
-				}
-
-				return nil, errStop
-			}
-		})
+		st = st.Limit(limit)
 	}
 
-	if tr == nil {
-		tr = t
-	}
-
-	st.r = tr
-
-	return Result{t: &st}
+	return Result{t: st}
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
@@ -204,29 +179,20 @@ func (q SelectStmt) OffsetExpr(e Expr) SelectStmt {
 
 var errStop = errors.New("stop")
 
-func whereClause(tx *genji.Tx, t table.Reader, e Expr) func() func(r record.Record) (record.Record, error) {
+func whereClause(tx *genji.Tx, e Expr) func(recordID []byte, r record.Record) (bool, error) {
 	if e == nil {
-		return func() func(r record.Record) (record.Record, error) {
-			return func(r record.Record) (record.Record, error) {
-				return r, nil
-			}
+		return func(recordID []byte, r record.Record) (bool, error) {
+			return true, nil
 		}
 	}
 
-	return func() func(r record.Record) (record.Record, error) {
-		return func(r record.Record) (record.Record, error) {
-			sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
-			if err != nil {
-				return nil, err
-			}
-
-			ok := sc.Truthy()
-			if !ok {
-				return nil, nil
-			}
-
-			return r, nil
+	return func(recordID []byte, r record.Record) (bool, error) {
+		sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
+		if err != nil {
+			return false, err
 		}
+
+		return sc.Truthy(), nil
 	}
 }
 
@@ -270,10 +236,8 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		return err
 	}
 
-	var tr table.Reader
-	st := streamTable{
-		tx: tx,
-	}
+	var useIndex bool
+	var tr table.Reader = t
 
 	if im, ok := d.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, d.tableSelector.TableName())
@@ -282,6 +246,7 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		}
 
 		if ok && err == nil {
+			useIndex = true
 			tr = &indexResultTable{
 				tree:  tree,
 				table: t,
@@ -289,12 +254,11 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		}
 	}
 
-	if tr == nil {
-		st.funcs = append(st.funcs, whereClause(tx, t, d.whereExpr))
-		tr = t
-	}
+	st := table.NewStream(tr)
 
-	st.r = tr
+	if !useIndex {
+		st = st.Filter(whereClause(tx, d.whereExpr))
+	}
 
 	return st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)
@@ -435,10 +399,9 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		return err
 	}
 
-	var tr table.Reader
-	st := streamTable{
-		tx: tx,
-	}
+	var tr table.Reader = t
+
+	var useIndex bool
 
 	if im, ok := u.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, u.tableSelector.TableName())
@@ -447,6 +410,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		}
 
 		if ok && err == nil {
+			useIndex = true
 			tr = &indexResultTable{
 				tree:  tree,
 				table: t,
@@ -454,12 +418,11 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		}
 	}
 
-	if tr == nil {
-		st.funcs = append(st.funcs, whereClause(tx, t, u.whereExpr))
-		tr = t
-	}
+	st := table.NewStream(tr)
 
-	st.r = tr
+	if !useIndex {
+		st = st.Filter(whereClause(tx, u.whereExpr))
+	}
 
 	return st.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
