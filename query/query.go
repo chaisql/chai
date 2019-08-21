@@ -69,11 +69,9 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 			Tx: tx,
 		})
 		if err != nil {
-
 			return Result{err: err}
 		}
 		if s.Type < field.Int {
-
 			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", s.Type)}
 		}
 		offset, err = field.DecodeInt64(s.Data)
@@ -103,7 +101,10 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	var b table.Browser
+	var tr table.Reader
+	st := streamTable{
+		tx: tx,
+	}
 
 	if im, ok := q.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, q.tableSelector.TableName())
@@ -112,44 +113,52 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		}
 
 		if ok && err == nil {
-			b.Reader = &indexResultTable{
+			tr = &indexResultTable{
 				tree:  tree,
 				table: t,
 			}
 		}
 	}
 
-	if b.Reader == nil {
-		b.Reader, err = whereClause(tx, t, q.whereExpr, limit, offset)
-		if err != nil {
-			return Result{err: err}
-		}
-	} else {
-		b = b.Offset(int(offset)).Limit(int(limit))
+	if tr == nil {
+		st.funcs = append(st.funcs, whereClause(tx, t, q.whereExpr))
 	}
+	if offset > 0 {
+		st.funcs = append(st.funcs, func() func(r record.Record) (record.Record, error) {
+			var skipped int64
 
-	if len(q.fieldSelectors) != 0 {
-		b = b.Map(func(recordID []byte, r record.Record) (record.Record, error) {
-			var fb record.FieldBuffer
-
-			for _, s := range q.fieldSelectors {
-				f, err := s.SelectField(r)
-				if err != nil {
-					return nil, err
+			return func(r record.Record) (record.Record, error) {
+				if skipped < offset {
+					skipped++
+					return nil, nil
 				}
 
-				fb.Add(f)
+				return r, nil
 			}
-
-			return &fb, nil
 		})
 	}
 
-	if b.Err() != nil {
-		return Result{err: b.Err()}
+	if limit >= 0 {
+		st.funcs = append(st.funcs, func() func(r record.Record) (record.Record, error) {
+			var count int64
+			return func(r record.Record) (record.Record, error) {
+				if count < limit {
+					count++
+					return r, nil
+				}
+
+				return nil, errStop
+			}
+		})
 	}
 
-	return Result{t: b.Reader}
+	if tr == nil {
+		tr = t
+	}
+
+	st.r = tr
+
+	return Result{t: &st}
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
@@ -195,44 +204,30 @@ func (q SelectStmt) OffsetExpr(e Expr) SelectStmt {
 
 var errStop = errors.New("stop")
 
-func whereClause(tx *genji.Tx, t table.Reader, e Expr, limit, offset int64) (table.Reader, error) {
-	var skipped, count int64
-
+func whereClause(tx *genji.Tx, t table.Reader, e Expr) func() func(r record.Record) (record.Record, error) {
 	if e == nil {
-		return table.NewBrowser(t).Offset(int(offset)).Limit(int(limit)), nil
+		return func() func(r record.Record) (record.Record, error) {
+			return func(r record.Record) (record.Record, error) {
+				return r, nil
+			}
+		}
 	}
 
-	b := table.NewBrowser(t).Filter(func(_ []byte, r record.Record) (bool, error) {
-		sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
-		if err != nil {
-			return false, err
+	return func() func(r record.Record) (record.Record, error) {
+		return func(r record.Record) (record.Record, error) {
+			sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
+			if err != nil {
+				return nil, err
+			}
+
+			ok := sc.Truthy()
+			if !ok {
+				return nil, nil
+			}
+
+			return r, nil
 		}
-
-		ok := sc.Truthy()
-		if !ok {
-			return false, nil
-		}
-
-		if skipped < offset {
-			skipped++
-			return false, nil
-		}
-
-		if limit >= 0 && count >= limit {
-			return false, errStop
-		}
-
-		count++
-
-		return true, nil
-	})
-
-	err := b.Err()
-	if err != nil && err != errStop {
-		return b.Reader, err
 	}
-
-	return b.Reader, nil
 }
 
 // DeleteStmt is a DSL that allows creating a full Delete query.
@@ -275,7 +270,10 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		return err
 	}
 
-	var b table.Browser
+	var tr table.Reader
+	st := streamTable{
+		tx: tx,
+	}
 
 	if im, ok := d.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, d.tableSelector.TableName())
@@ -284,25 +282,23 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		}
 
 		if ok && err == nil {
-			b.Reader = &indexResultTable{
+			tr = &indexResultTable{
 				tree:  tree,
 				table: t,
 			}
 		}
 	}
 
-	if b.Reader == nil {
-		b.Reader, err = whereClause(tx, t, d.whereExpr, -1, -1)
-		if err != nil {
-			return err
-		}
+	if tr == nil {
+		st.funcs = append(st.funcs, whereClause(tx, t, d.whereExpr))
+		tr = t
 	}
 
-	b = b.ForEach(func(recordID []byte, r record.Record) error {
+	st.r = tr
+
+	return st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)
 	})
-
-	return b.Err()
 }
 
 // InsertStmt is a DSL that allows creating a full Insert query.
@@ -439,7 +435,10 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		return err
 	}
 
-	var b table.Browser
+	var tr table.Reader
+	st := streamTable{
+		tx: tx,
+	}
 
 	if im, ok := u.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(tx, u.tableSelector.TableName())
@@ -448,21 +447,21 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		}
 
 		if ok && err == nil {
-			b.Reader = &indexResultTable{
+			tr = &indexResultTable{
 				tree:  tree,
 				table: t,
 			}
 		}
 	}
 
-	if b.Reader == nil {
-		b.Reader, err = whereClause(tx, t, u.whereExpr, -1, -1)
-		if err != nil {
-			return err
-		}
+	if tr == nil {
+		st.funcs = append(st.funcs, whereClause(tx, t, u.whereExpr))
+		tr = t
 	}
 
-	b = b.ForEach(func(recordID []byte, r record.Record) error {
+	st.r = tr
+
+	return st.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -498,6 +497,4 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 
 		return nil
 	})
-
-	return b.Err()
 }
