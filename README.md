@@ -57,7 +57,7 @@ This command generates a file that contains APIs specific to the `User` type.
 func (u *User) Field(name string) (field.Field, error) {}
 func (u *User) Iterate(fn func(field.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
-func (u *User) Pk() ([]byte, error) {}
+func (u *User) PrimaryKey() ([]byte, error) {}
 
 // A UserTable type is generated to ease managing the User table and writing queries.
 type UserTable struct {

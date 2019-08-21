@@ -159,7 +159,7 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 		require.NotEqual(t, recordID1, recordID2)
 	})
 
-	t.Run("Should support Pker interface", func(t *testing.T) {
+	t.Run("Should support PrimaryKeyer interface", func(t *testing.T) {
 		tb, cleanup := builder()
 		defer cleanup()
 
@@ -235,7 +235,7 @@ type recordPker struct {
 	pkGenerator func() ([]byte, error)
 }
 
-func (r recordPker) Pk() ([]byte, error) {
+func (r recordPker) PrimaryKey() ([]byte, error) {
 	return r.pkGenerator()
 }
 

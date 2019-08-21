@@ -73,8 +73,8 @@ func (u *User) ScanRecord(rec record.Record) error {
 	})
 }
 
-// Pk returns the primary key. It implements the table.Pker interface.
-func (u *User) Pk() ([]byte, error) {
+// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
+func (u *User) PrimaryKey() ([]byte, error) {
 	return field.EncodeInt64(u.ID), nil
 }
 

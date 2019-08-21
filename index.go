@@ -13,7 +13,7 @@ type indexOptions struct {
 	Unique    bool
 }
 
-func (i *indexOptions) Pk() ([]byte, error) {
+func (i *indexOptions) PrimaryKey() ([]byte, error) {
 	return []byte(buildIndexName(i.TableName, i.FieldName)), nil
 }
 

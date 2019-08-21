@@ -177,9 +177,9 @@ func TestGeneratedRecords(t *testing.T) {
 		}
 
 		require.Implements(t, (*record.Record)(nil), &r)
-		require.Implements(t, (*table.Pker)(nil), &r)
+		require.Implements(t, (*table.PrimaryKeyer)(nil), &r)
 
-		pk, err := r.Pk()
+		pk, err := r.PrimaryKey()
 		require.NoError(t, err)
 		require.Equal(t, field.EncodeInt64(10), pk)
 	})

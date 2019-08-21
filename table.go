@@ -62,10 +62,10 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	}
 
 	var recordID []byte
-	if pker, ok := r.(table.Pker); ok {
-		recordID, err = pker.Pk()
+	if pker, ok := r.(table.PrimaryKeyer); ok {
+		recordID, err = pker.PrimaryKey()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to generate recordID from Pk method")
+			return nil, errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
 		}
 	} else {
 		id, err := ulid.New(ulid.Timestamp(time.Now()), entropy)
@@ -142,7 +142,7 @@ type pkWrapper struct {
 	pk []byte
 }
 
-func (p pkWrapper) Pk() ([]byte, error) {
+func (p pkWrapper) PrimaryKey() ([]byte, error) {
 	return p.pk, nil
 }
 

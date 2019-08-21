@@ -55,9 +55,9 @@ type Writer interface {
 	Truncate() error
 }
 
-// A Pker is a record that generates a recordID based on its primary key.
-type Pker interface {
-	Pk() ([]byte, error)
+// A PrimaryKeyer is a record that generates a recordID based on its primary key.
+type PrimaryKeyer interface {
+	PrimaryKey() ([]byte, error)
 }
 
 // A Scanner is a type that can read all the records of a table reader.
@@ -77,13 +77,13 @@ func (rb *RecordBuffer) Insert(r record.Record) (recordID []byte, err error) {
 		rb.tree = b.TreeNew(bytes.Compare)
 	}
 
-	if pker, ok := r.(Pker); ok {
-		recordID, err = pker.Pk()
+	if pker, ok := r.(PrimaryKeyer); ok {
+		recordID, err = pker.PrimaryKey()
 		if err != nil {
 			return nil, err
 		}
 		if len(recordID) == 0 {
-			return nil, errors.New("empty pk")
+			return nil, errors.New("empty primary key")
 		}
 	} else {
 		recordID = field.EncodeInt64(atomic.AddInt64(&rb.counter, 1))

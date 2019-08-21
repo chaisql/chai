@@ -104,8 +104,8 @@ const recordPkTmpl = `
 {{- $structName := .Name -}}
 
 {{- if ne .Pk.Name ""}}
-// Pk returns the primary key. It implements the table.Pker interface.
-func ({{$fl}} *{{$structName}}) Pk() ([]byte, error) {
+// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
+func ({{$fl}} *{{$structName}}) PrimaryKey() ([]byte, error) {
 	return field.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
 }
 {{- end}}

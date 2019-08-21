@@ -305,8 +305,8 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 	})
 }
 
-// Pk returns the primary key. It implements the table.Pker interface.
-func (p *Pk) Pk() ([]byte, error) {
+// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
+func (p *Pk) PrimaryKey() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
 }
 
@@ -544,8 +544,8 @@ func (m *MultipleTags) ScanRecord(rec record.Record) error {
 	})
 }
 
-// Pk returns the primary key. It implements the table.Pker interface.
-func (m *MultipleTags) Pk() ([]byte, error) {
+// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
+func (m *MultipleTags) PrimaryKey() ([]byte, error) {
 	return field.EncodeString(m.A), nil
 }
 
