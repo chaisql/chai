@@ -111,6 +111,22 @@ func (s Stream) Limit(n int) Stream {
 	})
 }
 
+// Offset ignores n records then passes the subsequent ones to the stream.
+func (s Stream) Offset(n int) Stream {
+	return s.Pipe(func() func(recordID []byte, r record.Record) (record.Record, error) {
+		var skipped int
+
+		return func(recordID []byte, r record.Record) (record.Record, error) {
+			if skipped < n {
+				skipped++
+				return nil, nil
+			}
+
+			return r, nil
+		}
+	})
+}
+
 // An Operator is used to modify a stream.
 // If an operator returns a record, it will be passed to the next stream.
 // If it returns a nil record, the record will be ignored.
