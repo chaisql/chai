@@ -9,7 +9,8 @@ import (
 )
 
 type item struct {
-	k, v []byte
+	k, v    []byte
+	deleted bool
 }
 
 func (i *item) Less(than btree.Item) bool {
@@ -30,11 +31,27 @@ func (s *storeTx) Put(k, v []byte) error {
 		return errors.New("empty keys are forbidden")
 	}
 
-	it := item{k, v}
-	s.tr.ReplaceOrInsert(&it)
+	it := &item{k: k}
+	if i := s.tr.Get(it); i != nil {
+		cur := i.(*item)
 
-	s.tx.undos = append(s.tx.undos, func() {
-		s.tr.Delete(&it)
+		oldv, oldDeleted := cur.v, cur.deleted
+		cur.v = v
+		cur.deleted = false
+
+		s.tx.onRollback = append(s.tx.onRollback, func() {
+			cur.v = oldv
+			cur.deleted = oldDeleted
+		})
+
+		return nil
+	}
+
+	it.v = v
+	s.tr.ReplaceOrInsert(it)
+
+	s.tx.onRollback = append(s.tx.onRollback, func() {
+		s.tr.Delete(it)
 	})
 
 	return nil
@@ -44,6 +61,11 @@ func (s *storeTx) Get(k []byte) ([]byte, error) {
 	it := s.tr.Get(&item{k: k})
 
 	if it == nil {
+		return nil, engine.ErrKeyNotFound
+	}
+
+	i := it.(*item)
+	if i.deleted {
 		return nil, engine.ErrKeyNotFound
 	}
 
@@ -60,12 +82,20 @@ func (s *storeTx) Delete(k []byte) error {
 		return engine.ErrKeyNotFound
 	}
 
-	s.tr.Delete(it)
+	i := it.(*item)
+	if i.deleted {
+		return engine.ErrKeyNotFound
+	}
 
-	s.tx.undos = append(s.tx.undos, func() {
-		s.tr.ReplaceOrInsert(it)
+	i.deleted = true
+
+	s.tx.onRollback = append(s.tx.onRollback, func() {
+		i.deleted = false
 	})
 
+	s.tx.onCommit = append(s.tx.onCommit, func() {
+		s.tr.Delete(i)
+	})
 	return nil
 }
 
@@ -77,7 +107,7 @@ func (s *storeTx) Truncate() error {
 	old := s.tr
 	s.tr = btree.New(3)
 
-	s.tx.undos = append(s.tx.undos, func() {
+	s.tx.onRollback = append(s.tx.onRollback, func() {
 		s.tr = old
 	})
 
@@ -85,11 +115,20 @@ func (s *storeTx) Truncate() error {
 }
 
 func (s *storeTx) AscendGreaterOrEqual(start []byte, fn func(k, v []byte) error) (err error) {
-	s.tr.AscendGreaterOrEqual(&item{k: start}, btree.ItemIterator(func(i btree.Item) bool {
+	iterator := btree.ItemIterator(func(i btree.Item) bool {
 		it := i.(*item)
+		if it.deleted {
+			return true
+		}
 		err = fn(it.k, it.v)
 		return err == nil
-	}))
+	})
+
+	if len(start) == 0 {
+		s.tr.Ascend(iterator)
+	} else {
+		s.tr.AscendGreaterOrEqual(&item{k: start}, iterator)
+	}
 
 	return
 }
@@ -98,6 +137,9 @@ func (s *storeTx) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) (
 	if pivot == nil {
 		s.tr.Descend(btree.ItemIterator(func(i btree.Item) bool {
 			it := i.(*item)
+			if it.deleted {
+				return true
+			}
 			err = fn(it.k, it.v)
 			return err == nil
 		}))
@@ -106,6 +148,9 @@ func (s *storeTx) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) (
 
 	s.tr.DescendLessOrEqual(&item{k: pivot}, btree.ItemIterator(func(i btree.Item) bool {
 		it := i.(*item)
+		if it.deleted {
+			return true
+		}
 		err = fn(it.k, it.v)
 		return err == nil
 	}))

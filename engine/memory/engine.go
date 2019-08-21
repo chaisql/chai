@@ -51,7 +51,8 @@ func (ng *Engine) Close() error {
 type transaction struct {
 	ng         *Engine
 	writable   bool
-	undos      []func()
+	onRollback []func() // called during a rollback
+	onCommit   []func() // called during a commit
 	terminated bool
 }
 
@@ -60,7 +61,7 @@ func (tx *transaction) Rollback() error {
 		return nil
 	}
 
-	for _, undo := range tx.undos {
+	for _, undo := range tx.onRollback {
 		undo()
 	}
 
@@ -87,6 +88,10 @@ func (tx *transaction) Commit() error {
 	tx.terminated = true
 
 	if tx.writable {
+		for _, fn := range tx.onCommit {
+			fn()
+		}
+
 		tx.ng.mu.Unlock()
 	} else {
 		tx.ng.mu.RUnlock()
@@ -131,7 +136,7 @@ func (tx *transaction) CreateStore(name string) error {
 
 	tx.ng.stores[name] = tr
 
-	tx.undos = append(tx.undos, func() {
+	tx.onRollback = append(tx.onRollback, func() {
 		delete(tx.ng.stores, name)
 	})
 
@@ -150,7 +155,7 @@ func (tx *transaction) DropStore(name string) error {
 
 	delete(tx.ng.stores, name)
 
-	tx.undos = append(tx.undos, func() {
+	tx.onRollback = append(tx.onRollback, func() {
 		tx.ng.stores[name] = rb
 	})
 

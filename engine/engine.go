@@ -57,6 +57,7 @@ type Transaction interface {
 	ListStores(prefix string) ([]string, error)
 }
 
+
 // A Store manages key value pairs. It is an abstraction on top of any data structure that can provide
 // random read, random write, and ordered sequential read.
 type Store interface {
