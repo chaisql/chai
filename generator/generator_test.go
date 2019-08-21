@@ -192,16 +192,15 @@ func TestGeneratedRecords(t *testing.T) {
 		require.Implements(t, (*record.Scanner)(nil), &r)
 
 		var res testdata.SampleResult
-		var buf table.RecordBuffer
+		var list []record.Record
 		for i := 0; i < 5; i++ {
-			_, err := buf.Insert(record.FieldBuffer([]field.Field{
+			list = append(list, record.FieldBuffer([]field.Field{
 				field.NewString("A", strconv.Itoa(i+1)),
 				field.NewInt64("B", int64(i+1)),
 			}))
-			require.NoError(t, err)
 		}
 
-		err := res.ScanTable(&buf)
+		err := res.ScanTable(table.NewStreamFromRecords(list...))
 		require.NoError(t, err)
 		require.Len(t, res, 5)
 	})

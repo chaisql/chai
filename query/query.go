@@ -335,16 +335,10 @@ func (i InsertStmt) Run(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	st := table.NewStream(recordIDToTable(recordID))
-	return Result{Stream: &st}
-}
-
-func recordIDToTable(recordID []byte) table.Table {
-	var rb table.RecordBuffer
-	rb.Insert(record.FieldBuffer([]field.Field{
+	st := table.NewStreamFromRecords(record.FieldBuffer([]field.Field{
 		field.NewBytes("recordID", recordID),
 	}))
-	return &rb
+	return Result{Stream: &st}
 }
 
 // UpdateStmt is a DSL that allows creating a full Update query.
