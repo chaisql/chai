@@ -139,6 +139,18 @@ func (s Stream) Count() (int, error) {
 	return counter, err
 }
 
+// First runs the stream, returns the first record found and closes the stream.
+// If the stream is empty, all return values are nil.
+func (s Stream) First() (recordID []byte, r record.Record, err error) {
+	err = s.Limit(1).Iterate(func(rID []byte, rec record.Record) error {
+		recordID = rID
+		r = rec
+		return nil
+	})
+
+	return
+}
+
 // An Operator is used to modify a stream.
 // If an operator returns a record, it will be passed to the next stream.
 // If it returns a nil record, the record will be ignored.
