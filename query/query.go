@@ -33,18 +33,15 @@ func (r Result) Scan(s table.Scanner) error {
 // SelectStmt is a DSL that allows creating a full Select query.
 // It is typically created using the Select function.
 type SelectStmt struct {
-	fieldSelectors []FieldSelector
-	tableSelector  TableSelector
-	whereExpr      Expr
-	offsetExpr     Expr
-	limitExpr      Expr
+	tableSelector TableSelector
+	whereExpr     Expr
+	offsetExpr    Expr
+	limitExpr     Expr
 }
 
 // Select creates a DSL equivalent to the SQL Select command.
-// It takes a list of field selectors that indicate what fields must be selected from the targeted table.
-// This package provides typed field selectors that can be used with the Select method.
-func Select(selectors ...FieldSelector) SelectStmt {
-	return SelectStmt{fieldSelectors: selectors}
+func Select() SelectStmt {
+	return SelectStmt{}
 }
 
 // Run the Select query within tx.

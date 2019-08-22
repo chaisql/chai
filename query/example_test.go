@@ -12,7 +12,7 @@ var tx *genji.Tx
 func ExampleSelect() {
 	// SELECT Name, Age FROM example WHERE Age >= 18
 	res := query.
-		Select(query.StringField("Name"), query.IntField("Age")).
+		Select().
 		From(query.Table("example")).
 		Where(query.IntField("Age").Gte(18)).
 		Run(tx)
@@ -25,7 +25,7 @@ func ExampleSelect() {
 func ExampleAnd() {
 	// SELECT Name, Age FROM example WHERE Age >= 18 AND Age < 100
 	res := query.
-		Select(query.StringField("Name"), query.IntField("Age")).
+		Select().
 		From(query.Table("example")).
 		Where(
 			query.And(
@@ -43,7 +43,7 @@ func ExampleAnd() {
 func ExampleOr() {
 	// SELECT Name, Age FROM example WHERE Age >= 18 OR Group = "staff"
 	res := query.
-		Select(query.StringField("Name")).
+		Select().
 		From(query.Table("example")).
 		Where(
 			query.Or(
