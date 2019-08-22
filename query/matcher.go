@@ -449,15 +449,6 @@ type indexResultTable struct {
 	table table.Table
 }
 
-func (i *indexResultTable) Record(recordID []byte) (record.Record, error) {
-	it := i.tree.Get(Item(recordID))
-	if it == nil {
-		return nil, table.ErrRecordNotFound
-	}
-
-	return i.table.GetRecord(recordID)
-}
-
 func (i *indexResultTable) Iterate(fn func([]byte, record.Record) error) error {
 	var err error
 

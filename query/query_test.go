@@ -52,7 +52,7 @@ func TestSelect(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		res := Select().From(Table("test")).Where(GtInt(Field("age"), 20)).Limit(5).Offset(1).Run(tx)
+		res := Select().From(Table("test")).Where(IntField("age").Gt(20)).Limit(5).Offset(1).Run(tx)
 		require.NoError(t, res.Err())
 
 		count, err := res.Count()
@@ -78,7 +78,7 @@ func TestSelect(t *testing.T) {
 		tx, cleanup := createTable(t, 10, true)
 		defer cleanup()
 
-		res := Select().From(Table("test")).Where(GtString(Field("name"), "john")).Limit(5).Offset(1).Run(tx)
+		res := Select().From(Table("test")).Where(StringField("name").Gt("john")).Limit(5).Offset(1).Run(tx)
 		require.NoError(t, res.Err())
 
 		count, err := res.Count()
@@ -107,7 +107,7 @@ func TestDelete(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		err := Delete().From(Table("test")).Where(GtInt(Field("age"), 20)).Run(tx)
+		err := Delete().From(Table("test")).Where(IntField("age").Gt(20)).Run(tx)
 		require.NoError(t, err)
 
 		tb, err := tx.Table("test")
@@ -187,7 +187,7 @@ func TestUpdate(t *testing.T) {
 			tx, cleanup := createTable(t, 10, test.withIndex)
 			defer cleanup()
 
-			err := Update(Table("test")).Set("age", IntValue(20)).Where(GtInt(Field("age"), 20)).Run(tx)
+			err := Update(Table("test")).Set("age", IntValue(20)).Where(IntField("age").Gt(20)).Run(tx)
 			require.NoError(t, err)
 
 			tb, err := tx.Table("test")
@@ -219,7 +219,7 @@ func BenchmarkStatementSelect(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				Select().From(Table("test")).Where(GtInt(Field("age"), -200)).Run(tx).Count()
+				Select().From(Table("test")).Where(IntField("age").Gt(-200)).Run(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -235,7 +235,7 @@ func BenchmarkStatementSelectLimit(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				Select().From(Table("test")).Where(GtInt(Field("age"), -200)).Limit(size/10 + 1).Run(tx).Count()
+				Select().From(Table("test")).Where(IntField("age").Gt(-200)).Limit(size/10 + 1).Run(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -251,7 +251,7 @@ func BenchmarkStatementSelectWithIndex(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				Select().From(Table("test")).Where(GtString(Field("name"), "")).Run(tx).Count()
+				Select().From(Table("test")).Where(StringField("name").Gt("")).Run(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -267,7 +267,7 @@ func BenchmarkStatementDelete(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				err := Delete().From(Table("test")).Where(GtInt(Field("age"), -200)).Run(tx)
+				err := Delete().From(Table("test")).Where(IntField("age").Gt(-200)).Run(tx)
 				require.NoError(b, err)
 			}
 			b.StopTimer()
@@ -284,7 +284,7 @@ func BenchmarkStatementUpdate(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				err := Update(Table("test")).Where(GtInt(Field("age"), -200)).Set("age", IntValue(100)).Run(tx)
+				err := Update(Table("test")).Where(IntField("age").Gt(-200)).Set("age", IntValue(100)).Run(tx)
 				require.NoError(b, err)
 			}
 			b.StopTimer()

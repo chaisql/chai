@@ -29,19 +29,19 @@ func TestMatchers(t *testing.T) {
 		matcher query.Expr
 		match   bool
 	}{
-		{"eq", query.EqInt(query.Field("age"), 10), true},
-		{"gt/10>10", query.GtInt(query.Field("age"), 10), false},
-		{"gt/10>11", query.GtInt(query.Field("age"), 11), false},
-		{"gt/10>9", query.GtInt(query.Field("age"), 9), true},
-		{"gte/10>=10", query.GteInt(query.Field("age"), 10), true},
-		{"gte/10>=11", query.GteInt(query.Field("age"), 11), false},
-		{"gte/10>=9", query.GteInt(query.Field("age"), 9), true},
-		{"lt/10<10", query.LtInt(query.Field("age"), 10), false},
-		{"lt/10<11", query.LtInt(query.Field("age"), 11), true},
-		{"lt/10<9", query.LtInt(query.Field("age"), 9), false},
-		{"lte/10<=10", query.LteInt(query.Field("age"), 10), true},
-		{"lte/10<=11", query.LteInt(query.Field("age"), 11), true},
-		{"lte/10<=9", query.LteInt(query.Field("age"), 9), false},
+		{"eq", query.IntField("age").Eq(10), true},
+		{"gt/10>10", query.IntField("age").Gt(10), false},
+		{"gt/10>11", query.IntField("age").Gt(11), false},
+		{"gt/10>9", query.IntField("age").Gt(9), true},
+		{"gte/10>=10", query.IntField("age").Gte(10), true},
+		{"gte/10>=11", query.IntField("age").Gte(11), false},
+		{"gte/10>=9", query.IntField("age").Gte(9), true},
+		{"lt/10<10", query.IntField("age").Lt(10), false},
+		{"lt/10<11", query.IntField("age").Lt(11), true},
+		{"lt/10<9", query.IntField("age").Lt(9), false},
+		{"lte/10<=10", query.IntField("age").Lte(10), true},
+		{"lte/10<=11", query.IntField("age").Lte(11), true},
+		{"lte/10<=9", query.IntField("age").Lte(9), false},
 	}
 
 	for _, test := range tests {
@@ -108,48 +108,48 @@ func TestIndexMatchers(t *testing.T) {
 		matcher   query.Expr
 		recordIDs []string
 	}{
-		{"eq/int/one", query.EqInt(query.Field("age"), 10), []string{"c"}},
-		{"eq/int/multiple", query.EqInt(query.Field("age"), 2), []string{"x", "y"}},
-		{"eq/int/none", query.EqInt(query.Field("age"), 15), nil},
-		{"eq/str/one", query.EqString(query.Field("team"), "PSG"), []string{"c"}},
-		{"eq/str/multiple", query.EqString(query.Field("team"), "OM"), []string{"b", "y"}},
-		{"eq/str/none", query.EqString(query.Field("team"), "SCB"), nil},
-		{"gt/int/>10", query.GtInt(query.Field("age"), 10), nil},
-		{"gt/int/>7", query.GtInt(query.Field("age"), 7), []string{"c"}},
-		{"gt/int/>1", query.GtInt(query.Field("age"), 1), []string{"a", "b", "c", "x", "y"}},
-		{"gt/int/>-1", query.GtInt(query.Field("age"), -1), []string{"a", "b", "c", "x", "y", "z"}},
-		{"gt/str/>PSG", query.GtString(query.Field("team"), "PSG"), nil},
-		{"gt/str/>OM", query.GtString(query.Field("team"), "OM"), []string{"c"}},
-		{"gt/str/>NICE", query.GtString(query.Field("team"), "NICE"), []string{"b", "c", "y", "z"}},
-		{"gt/str/>ACA", query.GtString(query.Field("team"), "ACA"), []string{"a", "b", "c", "y", "z"}},
-		{"gt/str/>A", query.GtString(query.Field("team"), "A"), []string{"a", "b", "c", "x", "y", "z"}},
-		{"gte/int/>=11", query.GteInt(query.Field("age"), 11), nil},
-		{"gte/int/>=7", query.GteInt(query.Field("age"), 7), []string{"c"}},
-		{"gte/int/>=2", query.GteInt(query.Field("age"), 2), []string{"a", "b", "c", "x", "y"}},
-		{"gte/int/>=1", query.GteInt(query.Field("age"), 1), []string{"a", "b", "c", "x", "y", "z"}},
-		{"gte/str/>=PSG", query.GteString(query.Field("team"), "PSG"), []string{"c"}},
-		{"gte/str/>=OM", query.GteString(query.Field("team"), "OM"), []string{"b", "c", "y"}},
-		{"gte/str/>=NICE", query.GteString(query.Field("team"), "NICE"), []string{"b", "c", "y", "z"}},
-		{"gte/str/>=ACA", query.GteString(query.Field("team"), "ACA"), []string{"a", "b", "c", "x", "y", "z"}},
-		{"lt/int/<1", query.LtInt(query.Field("age"), 1), nil},
-		{"lt/int/<4", query.LtInt(query.Field("age"), 4), []string{"a", "x", "y", "z"}},
-		{"lt/int/<10", query.LtInt(query.Field("age"), 10), []string{"a", "b", "x", "y", "z"}},
-		{"lt/int/<11", query.LtInt(query.Field("age"), 11), []string{"a", "b", "c", "x", "y", "z"}},
-		{"lt/str/<A", query.LtString(query.Field("team"), "A"), nil},
-		{"lt/str/<ACA", query.LtString(query.Field("team"), "ACA"), nil},
-		{"lt/str/<NICE", query.LtString(query.Field("team"), "NICE"), []string{"a", "x"}},
-		{"lt/str/<OM", query.LtString(query.Field("team"), "OM"), []string{"a", "x", "z"}},
-		{"lt/str/<STRASBOURG", query.LtString(query.Field("team"), "STRASBOURG"), []string{"a", "b", "c", "x", "y", "z"}},
-		{"lte/int/<=0", query.LteInt(query.Field("age"), 0), nil},
-		{"lte/int/<=2", query.LteInt(query.Field("age"), 2), []string{"x", "y", "z"}},
-		{"lte/int/<=4", query.LteInt(query.Field("age"), 4), []string{"a", "x", "y", "z"}},
-		{"lte/int/<=10", query.LteInt(query.Field("age"), 10), []string{"a", "b", "c", "x", "y", "z"}},
-		{"lte/int/<=11", query.LteInt(query.Field("age"), 11), []string{"a", "b", "c", "x", "y", "z"}},
-		{"lte/str/<=A", query.LteString(query.Field("team"), "A"), nil},
-		{"lte/str/<=ACA", query.LteString(query.Field("team"), "ACA"), []string{"x"}},
-		{"lte/str/<=NICE", query.LteString(query.Field("team"), "NICE"), []string{"a", "x"}},
-		{"lte/str/<=OM", query.LteString(query.Field("team"), "OM"), []string{"a", "b", "x", "y", "z"}},
-		{"lte/str/<=STRASBOURG", query.LteString(query.Field("team"), "STRASBOURG"), []string{"a", "b", "c", "x", "y", "z"}},
+		{"eq/int/one", query.IntField("age").Eq(10), []string{"c"}},
+		{"eq/int/multiple", query.IntField("age").Eq(2), []string{"x", "y"}},
+		{"eq/int/none", query.IntField("age").Eq(15), nil},
+		{"eq/str/one", query.StringField("team").Eq("PSG"), []string{"c"}},
+		{"eq/str/multiple", query.StringField("team").Eq("OM"), []string{"b", "y"}},
+		{"eq/str/none", query.StringField("team").Eq("SCB"), nil},
+		{"gt/int/>10", query.IntField("age").Gt(10), nil},
+		{"gt/int/>7", query.IntField("age").Gt(7), []string{"c"}},
+		{"gt/int/>1", query.IntField("age").Gt(1), []string{"a", "b", "c", "x", "y"}},
+		{"gt/int/>-1", query.IntField("age").Gt(-1), []string{"a", "b", "c", "x", "y", "z"}},
+		{"gt/str/>PSG", query.StringField("team").Gt("PSG"), nil},
+		{"gt/str/>OM", query.StringField("team").Gt("OM"), []string{"c"}},
+		{"gt/str/>NICE", query.StringField("team").Gt("NICE"), []string{"b", "c", "y", "z"}},
+		{"gt/str/>ACA", query.StringField("team").Gt("ACA"), []string{"a", "b", "c", "y", "z"}},
+		{"gt/str/>A", query.StringField("team").Gt("A"), []string{"a", "b", "c", "x", "y", "z"}},
+		{"gte/int/>=11", query.IntField("age").Gte(11), nil},
+		{"gte/int/>=7", query.IntField("age").Gte(7), []string{"c"}},
+		{"gte/int/>=2", query.IntField("age").Gte(2), []string{"a", "b", "c", "x", "y"}},
+		{"gte/int/>=1", query.IntField("age").Gte(1), []string{"a", "b", "c", "x", "y", "z"}},
+		{"gte/str/>=PSG", query.StringField("team").Gte("PSG"), []string{"c"}},
+		{"gte/str/>=OM", query.StringField("team").Gte("OM"), []string{"b", "c", "y"}},
+		{"gte/str/>=NICE", query.StringField("team").Gte("NICE"), []string{"b", "c", "y", "z"}},
+		{"gte/str/>=ACA", query.StringField("team").Gte("ACA"), []string{"a", "b", "c", "x", "y", "z"}},
+		{"lt/int/<1", query.IntField("age").Lt(1), nil},
+		{"lt/int/<4", query.IntField("age").Lt(4), []string{"a", "x", "y", "z"}},
+		{"lt/int/<10", query.IntField("age").Lt(10), []string{"a", "b", "x", "y", "z"}},
+		{"lt/int/<11", query.IntField("age").Lt(11), []string{"a", "b", "c", "x", "y", "z"}},
+		{"lt/str/<A", query.StringField("team").Lt("A"), nil},
+		{"lt/str/<ACA", query.StringField("team").Lt("ACA"), nil},
+		{"lt/str/<NICE", query.StringField("team").Lt("NICE"), []string{"a", "x"}},
+		{"lt/str/<OM", query.StringField("team").Lt("OM"), []string{"a", "x", "z"}},
+		{"lt/str/<STRASBOURG", query.StringField("team").Lt("STRASBOURG"), []string{"a", "b", "c", "x", "y", "z"}},
+		{"lte/int/<=0", query.IntField("age").Lte(0), nil},
+		{"lte/int/<=2", query.IntField("age").Lte(2), []string{"x", "y", "z"}},
+		{"lte/int/<=4", query.IntField("age").Lte(4), []string{"a", "x", "y", "z"}},
+		{"lte/int/<=10", query.IntField("age").Lte(10), []string{"a", "b", "c", "x", "y", "z"}},
+		{"lte/int/<=11", query.IntField("age").Lte(11), []string{"a", "b", "c", "x", "y", "z"}},
+		{"lte/str/<=A", query.StringField("team").Lte("A"), nil},
+		{"lte/str/<=ACA", query.StringField("team").Lte("ACA"), []string{"x"}},
+		{"lte/str/<=NICE", query.StringField("team").Lte("NICE"), []string{"a", "x"}},
+		{"lte/str/<=OM", query.StringField("team").Lte("OM"), []string{"a", "b", "x", "y", "z"}},
+		{"lte/str/<=STRASBOURG", query.StringField("team").Lte("STRASBOURG"), []string{"a", "b", "c", "x", "y", "z"}},
 	}
 
 	for _, test := range tests {
@@ -177,8 +177,8 @@ func (s *simpleExpr) Eval(query.EvalContext) (query.Scalar, error) {
 func TestAndMatcher(t *testing.T) {
 	t.Run("Matcher", func(t *testing.T) {
 		m := query.And(
-			query.GtInt(query.Field("age"), 2),
-			query.LtInt(query.Field("age"), 10),
+			query.IntField("age").Gt(2),
+			query.IntField("age").Lt(10),
 		)
 
 		ok, err := m.Eval(query.EvalContext{Record: createRecord(5)})
@@ -199,11 +199,11 @@ func TestAndMatcher(t *testing.T) {
 			exprs    []query.Expr
 			expected []string
 		}{
-			{">2", []query.Expr{query.GtInt(query.Field("age"), 2)}, []string{"a", "b", "c"}},
-			{">2 && <10", []query.Expr{query.GtInt(query.Field("age"), 2), query.LtInt(query.Field("age"), 10)}, []string{"a", "b"}},
-			{">10 && <20", []query.Expr{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []string{}},
-			{">8 && <3", []query.Expr{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 3)}, []string{}},
-			{">8 && non index matcher", []query.Expr{query.GtInt(query.Field("age"), 8), new(simpleExpr)}, []string{}},
+			{">2", []query.Expr{query.IntField("age").Gt(2)}, []string{"a", "b", "c"}},
+			{">2 && <10", []query.Expr{query.IntField("age").Gt(2), query.IntField("age").Lt(10)}, []string{"a", "b"}},
+			{">10 && <20", []query.Expr{query.IntField("age").Gt(10), query.IntField("age").Lt(20)}, []string{}},
+			{">8 && <3", []query.Expr{query.IntField("age").Gt(8), query.IntField("age").Lt(3)}, []string{}},
+			{">8 && non index matcher", []query.Expr{query.IntField("age").Gt(8), new(simpleExpr)}, []string{}},
 		}
 
 		for _, test := range tests {
@@ -233,8 +233,8 @@ func TestAndMatcher(t *testing.T) {
 func TestOrMatcher(t *testing.T) {
 	t.Run("Matcher", func(t *testing.T) {
 		e := query.Or(
-			query.GtInt(query.Field("age"), 8),
-			query.LtInt(query.Field("age"), 2),
+			query.IntField("age").Gt(8),
+			query.IntField("age").Lt(2),
 		)
 
 		ok, err := e.Eval(query.EvalContext{Record: createRecord(1)})
@@ -259,12 +259,12 @@ func TestOrMatcher(t *testing.T) {
 			exprs    []query.Expr
 			expected []string
 		}{
-			{">2", []query.Expr{query.GtInt(query.Field("age"), 2)}, []string{"a", "b", "c"}},
-			{">8 || <2", []query.Expr{query.GtInt(query.Field("age"), 8), query.LtInt(query.Field("age"), 2)}, []string{"c", "z"}},
-			{">0 || <11", []query.Expr{query.GtInt(query.Field("age"), 0), query.LtInt(query.Field("age"), 11)}, []string{"a", "b", "c", "x", "y", "z"}},
-			{">10 || <20", []query.Expr{query.GtInt(query.Field("age"), 10), query.LtInt(query.Field("age"), 20)}, []string{"a", "b", "c", "x", "y", "z"}},
-			{">10 || >20", []query.Expr{query.GtInt(query.Field("age"), 10), query.GtInt(query.Field("age"), 20)}, []string{}},
-			{">8 || non index matcher", []query.Expr{query.GtInt(query.Field("age"), 8), new(simpleExpr)}, []string{}},
+			{">2", []query.Expr{query.IntField("age").Gt(2)}, []string{"a", "b", "c"}},
+			{">8 || <2", []query.Expr{query.IntField("age").Gt(8), query.IntField("age").Lt(2)}, []string{"c", "z"}},
+			{">0 || <11", []query.Expr{query.IntField("age").Gt(0), query.IntField("age").Lt(11)}, []string{"a", "b", "c", "x", "y", "z"}},
+			{">10 || <20", []query.Expr{query.IntField("age").Gt(10), query.IntField("age").Lt(20)}, []string{"a", "b", "c", "x", "y", "z"}},
+			{">10 || >20", []query.Expr{query.IntField("age").Gt(10), query.IntField("age").Gt(20)}, []string{}},
+			{">8 || non index matcher", []query.Expr{query.IntField("age").Gt(8), new(simpleExpr)}, []string{}},
 		}
 
 		for _, test := range tests {
@@ -310,7 +310,7 @@ func BenchmarkMatcher(b *testing.B) {
 				records[i] = createRecord(i)
 			}
 
-			matcher := query.EqInt(query.Field("age"), size)
+			matcher := query.IntField("age").Eq(size)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -333,7 +333,7 @@ func BenchmarkIndexMatcher(b *testing.B) {
 			tx, cleanup := createIndexes(b, ages, nil)
 			defer cleanup()
 
-			matcher := query.EqInt(query.Field("age"), size).(query.IndexMatcher)
+			matcher := query.IntField("age").Eq(size).(query.IndexMatcher)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {

@@ -6,54 +6,13 @@ import (
 	"text/template"
 )
 
-const tmpl = `
-package query
+const tmpl = `package query
 
 import (
 	"github.com/asdine/genji/field"
 )
 
 {{ range .Types -}}
-// Eq{{ .Name }} matches if x is equal to the field selected by f.
-func Eq{{ .Name }}(f FieldSelector, x {{ .T }}) Expr {
-	return &eqMatcher{
-		Field: f,
-		Value: field.Encode{{ .Name }}(x),
-	}
-}
-
-// Gt{{ .Name }} matches if x is greater than the field selected by f.
-func Gt{{ .Name }}(f FieldSelector, x {{ .T }}) Expr {
-	return &gtMatcher{
-		Field: f,
-		Value: field.Encode{{ .Name }}(x),
-	}
-}
-
-// Gte{{ .Name }} matches if x is greater than or equal to the field selected by f.
-func Gte{{ .Name }}(f FieldSelector, x {{ .T }}) Expr {
-	return &gteMatcher{
-		Field: f,
-		Value: field.Encode{{ .Name }}(x),
-	}
-}
-
-// Lt{{ .Name }} matches if x is less than the field selected by f.
-func Lt{{ .Name }}(f FieldSelector, x {{ .T }}) Expr {
-	return &ltMatcher{
-		Field: f,
-		Value: field.Encode{{ .Name }}(x),
-	}
-}
-
-// Lte{{ .Name }} matches if x is less than or equal to the field selected by f.
-func Lte{{ .Name }}(f FieldSelector, x {{ .T }}) Expr {
-	return &lteMatcher{
-		Field: f,
-		Value: field.Encode{{ .Name }}(x),
-	}
-}
-
 // {{ .Name }}FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type {{ .Name }}FieldSelector struct {
@@ -67,27 +26,42 @@ func {{ .Name }}Field(name string) {{ .Name }}FieldSelector {
 
 // Eq matches if x is equal to the field selected by f.
 func (f {{ .Name }}FieldSelector) Eq(x {{ .T }}) Expr {
-	return Eq{{ .Name }}(f.FieldSelector, x)
+	return &eqMatcher{
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
+	}
 }
 
 // Gt matches if x is greater than the field selected by f.
 func (f {{ .Name }}FieldSelector) Gt(x {{ .T }}) Expr {
-	return Gt{{ .Name }}(f.FieldSelector, x)
+	return &gtMatcher{
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
+	}
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
 func (f {{ .Name }}FieldSelector) Gte(x {{ .T }}) Expr {
-	return Gte{{ .Name }}(f.FieldSelector, x)
+	return &gteMatcher{
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
+	}
 }
 
 // Lt matches if x is less than the field selected by f.
 func (f {{ .Name }}FieldSelector) Lt(x {{ .T }}) Expr {
-	return Lt{{ .Name }}(f.FieldSelector, x)
+	return &ltMatcher{
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
+	}
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
 func (f {{ .Name }}FieldSelector) Lte(x {{ .T }}) Expr {
-	return Lte{{ .Name }}(f.FieldSelector, x)
+	return &lteMatcher{
+		Field: f,
+		Value: field.Encode{{ .Name }}(x),
+	}
 }
 
 // Value returns a scalar that can be used as an expression.
@@ -109,8 +83,7 @@ func (v {{ .Name }}Value) Eval(EvalContext) (Scalar, error) {
 		Data: field.Encode{{ .Name }}({{ .T }}(v)),
 	}, nil
 }
-
-{{ end}}
+{{- end}}
 `
 
 type Types struct {
