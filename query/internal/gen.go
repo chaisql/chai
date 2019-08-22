@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"strings"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 const tmpl = `package query
@@ -101,13 +104,10 @@ func (t *Type) NameLower() string {
 
 func main() {
 	t := template.Must(template.New("main").Parse(tmpl))
-	f, err := os.Create("types.gen.go")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
 
-	err = t.Execute(f, &Types{
+	var buf bytes.Buffer
+
+	err := t.Execute(&buf, &Types{
 		Types: []Type{
 			{"Bytes", "[]byte"},
 			{"String", "string"},
@@ -126,6 +126,28 @@ func main() {
 			{"Float64", "float64"},
 		},
 	})
+	if err != nil {
+		panic(err)
+	}
+
+	// format using goimports
+	output, err := imports.Process("", buf.Bytes(), &imports.Options{
+		TabWidth:   8,
+		TabIndent:  true,
+		Comments:   true,
+		FormatOnly: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	f, err := os.Create("types.gen.go")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	_, err = f.Write(output)
 	if err != nil {
 		panic(err)
 	}
