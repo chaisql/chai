@@ -6,12 +6,10 @@ package testdata
 import (
 	"errors"
 
-	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 // GetField implements the field method of the record.Record interface.
@@ -78,56 +76,23 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 	})
 }
 
-// BasicTable manages the Basic table.
-type BasicTable struct {
+// BasicFields describes the fields of the Basic record.
+// It can be used to select fields during queries.
+type BasicFields struct {
 	A query.StringFieldSelector
 	B query.IntFieldSelector
 	C query.Int32FieldSelector
 	D query.Int32FieldSelector
 }
 
-// NewBasicTable creates a BasicTable.
-func NewBasicTable() *BasicTable {
-	return &BasicTable{
+// NewBasicFields creates a BasicFields.
+func NewBasicFields() *BasicFields {
+	return &BasicFields{
 		A: query.StringField("A"),
 		B: query.IntField("B"),
 		C: query.Int32Field("C"),
 		D: query.Int32Field("D"),
 	}
-}
-
-// Init initializes the Basic table by ensuring the table and its index are created.
-func (t *BasicTable) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, t)
-}
-
-// SelectTable implements the query.TableSelector interface. It gets the Basic table from
-// the transaction.
-func (t *BasicTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(t.TableName())
-}
-
-// TableName returns the name of the table.
-func (*BasicTable) TableName() string {
-	return "Basic"
-}
-
-// BasicResult can be used to store the result of queries.
-// Selected fields must map the Basic fields.
-type BasicResult []Basic
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (b *BasicResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record Basic
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*b = append(*b, record)
-		return nil
-	})
 }
 
 // GetField implements the field method of the record.Record interface.
@@ -194,56 +159,23 @@ func (b *basic) ScanRecord(rec record.Record) error {
 	})
 }
 
-// basicTable manages the Basic table.
-type basicTable struct {
+// basicFields describes the fields of the basic record.
+// It can be used to select fields during queries.
+type basicFields struct {
 	A query.BytesFieldSelector
 	B query.Uint16FieldSelector
 	C query.Float32FieldSelector
 	D query.Float32FieldSelector
 }
 
-// newbasicTable creates a basicTable.
-func newBasicTable() *basicTable {
-	return &basicTable{
+// newBasicFields creates a basicFields.
+func newBasicFields() *basicFields {
+	return &basicFields{
 		A: query.BytesField("A"),
 		B: query.Uint16Field("B"),
 		C: query.Float32Field("C"),
 		D: query.Float32Field("D"),
 	}
-}
-
-// Init initializes the Basic table by ensuring the table and its index are created.
-func (t *basicTable) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, t)
-}
-
-// SelectTable implements the query.TableSelector interface. It gets the Basic table from
-// the transaction.
-func (t *basicTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(t.TableName())
-}
-
-// TableName returns the name of the table.
-func (*basicTable) TableName() string {
-	return "Basic"
-}
-
-// basicResult can be used to store the result of queries.
-// Selected fields must map the basic fields.
-type basicResult []basic
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (b *basicResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record basic
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*b = append(*b, record)
-		return nil
-	})
 }
 
 // GetField implements the field method of the record.Record interface.
@@ -297,52 +229,19 @@ func (p *Pk) PrimaryKey() ([]byte, error) {
 	return field.EncodeInt64(p.B), nil
 }
 
-// PkTable manages the Pk table.
-type PkTable struct {
+// PkFields describes the fields of the Pk record.
+// It can be used to select fields during queries.
+type PkFields struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 }
 
-// NewPkTable creates a PkTable.
-func NewPkTable() *PkTable {
-	return &PkTable{
+// NewPkFields creates a PkFields.
+func NewPkFields() *PkFields {
+	return &PkFields{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 	}
-}
-
-// Init initializes the Pk table by ensuring the table and its index are created.
-func (t *PkTable) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, t)
-}
-
-// SelectTable implements the query.TableSelector interface. It gets the Pk table from
-// the transaction.
-func (t *PkTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(t.TableName())
-}
-
-// TableName returns the name of the table.
-func (*PkTable) TableName() string {
-	return "Pk"
-}
-
-// PkResult can be used to store the result of queries.
-// Selected fields must map the Pk fields.
-type PkResult []Pk
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (p *PkResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record Pk
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*p = append(*p, record)
-		return nil
-	})
 }
 
 // GetField implements the field method of the record.Record interface.
@@ -400,62 +299,29 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 	})
 }
 
-// IndexedTable manages the Indexed table.
-type IndexedTable struct {
+// IndexedFields describes the fields of the Indexed record.
+// It can be used to select fields during queries.
+type IndexedFields struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 	C query.Int64FieldSelector
 }
 
-// NewIndexedTable creates a IndexedTable.
-func NewIndexedTable() *IndexedTable {
-	return &IndexedTable{
+// NewIndexedFields creates a IndexedFields.
+func NewIndexedFields() *IndexedFields {
+	return &IndexedFields{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 		C: query.Int64Field("C"),
 	}
 }
 
-// Init initializes the Indexed table by ensuring the table and its index are created.
-func (t *IndexedTable) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, t)
-}
-
-// SelectTable implements the query.TableSelector interface. It gets the Indexed table from
-// the transaction.
-func (t *IndexedTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(t.TableName())
-}
-
-// TableName returns the name of the table.
-func (*IndexedTable) TableName() string {
-	return "Indexed"
-}
-
-// Indexes returns the list of indexes of the Indexed table.
-func (*IndexedTable) Indexes() map[string]index.Options {
+// NewIndexedIndexes creates a map containing the configuration for each index of the table.
+func NewIndexedIndexes() map[string]index.Options {
 	return map[string]index.Options{
 		"A": index.Options{Unique: false},
 		"B": index.Options{Unique: true},
 	}
-}
-
-// IndexedResult can be used to store the result of queries.
-// Selected fields must map the Indexed fields.
-type IndexedResult []Indexed
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (i *IndexedResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record Indexed
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*i = append(*i, record)
-		return nil
-	})
 }
 
 // GetField implements the field method of the record.Record interface.
@@ -527,17 +393,18 @@ func (m *MultipleTags) PrimaryKey() ([]byte, error) {
 	return field.EncodeString(m.A), nil
 }
 
-// MultipleTagsTable manages the MultipleTags table.
-type MultipleTagsTable struct {
+// MultipleTagsFields describes the fields of the MultipleTags record.
+// It can be used to select fields during queries.
+type MultipleTagsFields struct {
 	A query.StringFieldSelector
 	B query.Int64FieldSelector
 	C query.Float32FieldSelector
 	D query.BoolFieldSelector
 }
 
-// NewMultipleTagsTable creates a MultipleTagsTable.
-func NewMultipleTagsTable() *MultipleTagsTable {
-	return &MultipleTagsTable{
+// NewMultipleTagsFields creates a MultipleTagsFields.
+func NewMultipleTagsFields() *MultipleTagsFields {
+	return &MultipleTagsFields{
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 		C: query.Float32Field("C"),
@@ -545,77 +412,9 @@ func NewMultipleTagsTable() *MultipleTagsTable {
 	}
 }
 
-// Init initializes the MultipleTags table by ensuring the table and its index are created.
-func (t *MultipleTagsTable) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, t)
-}
-
-// SelectTable implements the query.TableSelector interface. It gets the MultipleTags table from
-// the transaction.
-func (t *MultipleTagsTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(t.TableName())
-}
-
-// TableName returns the name of the table.
-func (*MultipleTagsTable) TableName() string {
-	return "MultipleTags"
-}
-
-// Indexes returns the list of indexes of the MultipleTags table.
-func (*MultipleTagsTable) Indexes() map[string]index.Options {
+// NewMultipleTagsIndexes creates a map containing the configuration for each index of the table.
+func NewMultipleTagsIndexes() map[string]index.Options {
 	return map[string]index.Options{
 		"D": index.Options{Unique: false},
 	}
-}
-
-// MultipleTagsResult can be used to store the result of queries.
-// Selected fields must map the MultipleTags fields.
-type MultipleTagsResult []MultipleTags
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (m *MultipleTagsResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record MultipleTags
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*m = append(*m, record)
-		return nil
-	})
-}
-
-// ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func (s *Sample) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
-		var err error
-
-		switch f.Name {
-		case "A":
-			s.A, err = field.DecodeString(f.Data)
-		case "B":
-			s.B, err = field.DecodeInt64(f.Data)
-		}
-		return err
-	})
-}
-
-// SampleResult can be used to store the result of queries.
-// Selected fields must map the Sample fields.
-type SampleResult []Sample
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (s *SampleResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record Sample
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*s = append(*s, record)
-		return nil
-	})
 }

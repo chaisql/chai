@@ -27,8 +27,8 @@ const recordTmpl = `
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Pk" . }}
-{{- template "table" . }}
-{{- template "result" . }}
+{{- template "fields" . }}
+{{- template "indexes" . }}
 {{- end }}
 `
 
@@ -214,10 +214,6 @@ func (rctx *recordContext) UnexportedName() string {
 	}
 
 	return rctx.Unexport(rctx.Name)
-}
-
-func (rctx *recordContext) TableName() string {
-	return rctx.ExportedName()
 }
 
 func (rctx *recordContext) ExportedName() string {

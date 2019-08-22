@@ -38,9 +38,3 @@ type MultipleTags struct {
 	C float32
 	D bool `json:"d" genji:"index"`
 }
-
-// Sample will hold one row of the result of a query
-type Sample struct {
-	A string
-	B int64
-}

@@ -26,7 +26,6 @@ import (
 )
 
 {{ template "records" . }}
-{{ template "results" . }}
 
 {{- end }}
 `
@@ -41,15 +40,10 @@ func init() {
 		"record-Iterate":    recordIterateTmpl,
 		"record-ScanRecord": recordScanRecordTmpl,
 		"record-Pk":         recordPkTmpl,
-		"table":             tableTmpl,
-		"table-Struct":      tableStructTmpl,
-		"table-New":         tableNewTmpl,
-		"table-Init":        tableInitTmpl,
-		"table-SelectTable": tableSelectTableTmpl,
-		"table-TableName":   tableTableNameTmpl,
-		"table-Indexes":     tableIndexesTmpl,
-		"results":           resultsTmpl,
-		"result":            resultTmpl,
+		"fields":            fieldsTmpl,
+		"fields-Struct":     fieldsStructTmpl,
+		"fields-New":        fieldsNewTmpl,
+		"indexes":           indexesTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))
@@ -65,9 +59,6 @@ type Config struct {
 	// Names of the structures to analyse from the sources.
 	// Methods and other types will be generated from these.
 	Structs []Struct
-	// Names of the structures to analyse from the sources.
-	// Methods and other types will be generated from these.
-	Results []string
 }
 
 // A Struct contains the names of the structure to analyse from the sources.
@@ -148,7 +139,6 @@ type genContext struct {
 	Pkg     string
 	Imports []string
 	Records []recordContext
-	Results []recordContext
 }
 
 func (g *genContext) readPackage(srcs []*ast.File) error {
@@ -179,19 +169,6 @@ func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
 		}
 	}
 
-	g.Results = make([]recordContext, len(cfg.Results))
-	for i := range cfg.Results {
-		for _, src := range srcs {
-			ok, err := g.Results[i].lookupRecord(src, cfg.Results[i])
-			if err != nil {
-				return err
-			}
-			if ok {
-				break
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -200,17 +177,10 @@ func (g *genContext) selectImports() {
 
 	if len(g.Records) > 0 {
 		m["errors"]++
-		m["github.com/asdine/genji"]++
 		m["github.com/asdine/genji/field"]++
 		m["github.com/asdine/genji/query"]++
 		m["github.com/asdine/genji/record"]++
-		m["github.com/asdine/genji/table"]++
 		m["github.com/asdine/genji/index"]++
-	}
-
-	if len(g.Results) > 0 {
-		m["github.com/asdine/genji/record"]++
-		m["github.com/asdine/genji/table"]++
 	}
 
 	g.Imports = make([]string, 0, len(m))
