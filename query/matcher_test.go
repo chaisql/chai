@@ -53,28 +53,26 @@ func TestMatchers(t *testing.T) {
 	}
 }
 
-func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Tx, func()) {
+func createIndexes(t require.TestingT, ages, teams []indexPair) (*genji.Table, func()) {
 	db, err := genji.New(memory.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
-	err = tx.CreateTable("test")
+	tb, err := tx.CreateTable("test")
 	require.NoError(t, err)
 
-	createIntIndex(t, tx, ages)
-	createStrIndex(t, tx, teams)
+	createIntIndex(t, tb, ages)
+	createStrIndex(t, tb, teams)
 
-	return tx, func() {
+	return tb, func() {
 		tx.Rollback()
 	}
 }
 
-func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
-	err := tx.CreateIndex("test", "age", index.Options{})
-	require.NoError(t, err)
-	idx, err := tx.Index("test", "age")
+func createIntIndex(t require.TestingT, tb *genji.Table, ages []indexPair) {
+	idx, err := tb.CreateIndex("age", index.Options{})
 	require.NoError(t, err)
 
 	for _, pair := range ages {
@@ -83,10 +81,8 @@ func createIntIndex(t require.TestingT, tx *genji.Tx, ages []indexPair) {
 	}
 }
 
-func createStrIndex(t require.TestingT, tx *genji.Tx, teams []indexPair) {
-	err := tx.CreateIndex("test", "team", index.Options{})
-	require.NoError(t, err)
-	idx, err := tx.Index("test", "team")
+func createStrIndex(t require.TestingT, tb *genji.Table, teams []indexPair) {
+	idx, err := tb.CreateIndex("team", index.Options{})
 	require.NoError(t, err)
 
 	for _, pair := range teams {
@@ -100,7 +96,7 @@ type indexPair struct {
 }
 
 func TestIndexMatchers(t *testing.T) {
-	tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
+	tb, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, []indexPair{{"ACA", "x"}, {"LOSC", "a"}, {"OL", "z"}, {"OM", "b"}, {"OM", "y"}, {"PSG", "c"}})
 	defer cleanup()
 
 	tests := []struct {
@@ -154,7 +150,7 @@ func TestIndexMatchers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			recordIDs, ok, err := test.matcher.(query.IndexMatcher).MatchIndex(tx, "test")
+			recordIDs, ok, err := test.matcher.(query.IndexMatcher).MatchIndex(tb)
 			require.NoError(t, err)
 			require.True(t, ok)
 			var ids []string
@@ -191,7 +187,7 @@ func TestAndMatcher(t *testing.T) {
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
-		tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
+		tb, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
 		defer cleanup()
 
 		tests := []struct {
@@ -210,7 +206,7 @@ func TestAndMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.And(test.exprs...)
 
-				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
+				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tb)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -251,7 +247,7 @@ func TestOrMatcher(t *testing.T) {
 	})
 
 	t.Run("IndexMatcher", func(t *testing.T) {
-		tx, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
+		tb, cleanup := createIndexes(t, []indexPair{{1, "z"}, {2, "y"}, {2, "x"}, {3, "a"}, {5, "b"}, {10, "c"}}, nil)
 		defer cleanup()
 
 		tests := []struct {
@@ -271,7 +267,7 @@ func TestOrMatcher(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				m := query.Or(test.exprs...)
 
-				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tx, "test")
+				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tb)
 				require.NoError(t, err)
 
 				ids := []string{}
@@ -330,14 +326,14 @@ func BenchmarkIndexMatcher(b *testing.B) {
 				ages[i] = indexPair{V: i, R: fmt.Sprintf("%d", i)}
 			}
 
-			tx, cleanup := createIndexes(b, ages, nil)
+			tb, cleanup := createIndexes(b, ages, nil)
 			defer cleanup()
 
 			matcher := query.IntField("age").Eq(size).(query.IndexMatcher)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				matcher.MatchIndex(tx, "test")
+				matcher.MatchIndex(tb)
 			}
 			b.StopTimer()
 		})

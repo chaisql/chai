@@ -23,10 +23,7 @@ func tableBuilder(t testing.TB) func() (table.Table, func()) {
 		tx, err := db.Begin(true)
 		require.NoError(t, err)
 
-		err = tx.CreateTable("test")
-		require.NoError(t, err)
-
-		tb, err := tx.Table("test")
+		tb, err := tx.CreateTable("test")
 		require.NoError(t, err)
 
 		return tb, func() {
@@ -56,10 +53,7 @@ name(String): "John 2", age(Int): 12
 			require.NoError(t, err)
 
 			err = db.Update(func(tx *genji.Tx) error {
-				err := tx.CreateTable("test")
-				require.NoError(t, err)
-
-				tb, err := tx.Table("test")
+				tb, err := tx.CreateTable("test")
 				require.NoError(t, err)
 
 				for i := 0; i < 3; i++ {

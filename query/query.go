@@ -100,7 +100,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 
 	var useIndex bool
 	if im, ok := q.whereExpr.(IndexMatcher); ok {
-		tree, ok, err := im.MatchIndex(tx, q.tableSelector.TableName())
+		tree, ok, err := im.MatchIndex(t)
 		if err != nil && err != genji.ErrIndexNotFound {
 			return Result{err: err}
 		}
@@ -235,7 +235,7 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 	var tr table.Reader = t
 
 	if im, ok := d.whereExpr.(IndexMatcher); ok {
-		tree, ok, err := im.MatchIndex(tx, d.tableSelector.TableName())
+		tree, ok, err := im.MatchIndex(t)
 		if err != nil && err != genji.ErrIndexNotFound {
 			return err
 		}
@@ -394,7 +394,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 	var useIndex bool
 
 	if im, ok := u.whereExpr.(IndexMatcher); ok {
-		tree, ok, err := im.MatchIndex(tx, u.tableSelector.TableName())
+		tree, ok, err := im.MatchIndex(t)
 		if err != nil && err != genji.ErrIndexNotFound {
 			return err
 		}

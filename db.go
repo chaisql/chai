@@ -2,12 +2,9 @@ package genji
 
 import (
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/table"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +46,8 @@ func New(ng engine.Engine) (*DB, error) {
 	}
 
 	err := db.Update(func(tx *Tx) error {
-		return tx.CreateTableIfNotExists(indexTable)
+		_, err := tx.CreateTableIfNotExists(indexTable)
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -150,21 +148,36 @@ func (tx Tx) Commit() error {
 
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateTable(name string) error {
+func (tx Tx) CreateTable(name string) (*Table, error) {
 	err := tx.tx.CreateStore(name)
 	if err == engine.ErrStoreAlreadyExists {
-		return ErrTableAlreadyExists
+		return nil, ErrTableAlreadyExists
 	}
-	return errors.Wrapf(err, "failed to create table %q", name)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create table %q", name)
+	}
+
+	s, err := tx.tx.Store(name)
+	return &Table{
+		tx:    &tx,
+		store: s,
+		name:  name,
+	}, nil
 }
 
 // CreateTableIfNotExists calls CreateTable and returns no error if it already exists.
-func (tx Tx) CreateTableIfNotExists(name string) error {
-	err := tx.CreateTable(name)
-	if err == nil || err == ErrTableAlreadyExists {
-		return nil
+func (tx Tx) CreateTableIfNotExists(name string) (*Table, error) {
+	t, err := tx.CreateTable(name)
+	if err == nil {
+		return t, nil
 	}
-	return err
+
+	if err == ErrTableAlreadyExists {
+		return tx.Table(name)
+	}
+
+	return nil, err
 }
 
 // Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
@@ -189,129 +202,6 @@ func (tx Tx) DropTable(name string) error {
 	err := tx.tx.DropStore(name)
 	if err == engine.ErrStoreNotFound {
 		return ErrTableNotFound
-	}
-	return err
-}
-
-func buildIndexName(tableName, field string) string {
-	var b strings.Builder
-	b.WriteString(indexPrefix)
-	b.WriteString(tableName)
-	b.WriteByte(separator)
-	b.WriteString(field)
-
-	return b.String()
-}
-
-// CreateIndex creates an index with the given name.
-// If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateIndex(tableName, field string, opts index.Options) error {
-	_, err := tx.Table(tableName)
-	if err != nil {
-		return err
-	}
-
-	it, err := tx.Table(indexTable)
-	if err != nil {
-		return err
-	}
-
-	idxName := buildIndexName(tableName, field)
-
-	_, err = it.GetRecord([]byte(idxName))
-	if err == nil {
-		return ErrIndexAlreadyExists
-	}
-	if err != table.ErrRecordNotFound {
-		return err
-	}
-
-	_, err = it.Insert(&indexOptions{
-		TableName: tableName,
-		FieldName: field,
-		Unique:    opts.Unique,
-	})
-	if err != nil {
-		return err
-	}
-
-	err = tx.tx.CreateStore(idxName)
-	return errors.Wrapf(err, "failed to create index %q on table %q", field, tableName)
-}
-
-// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
-func (tx Tx) CreateIndexIfNotExists(table string, field string, opts index.Options) error {
-	err := tx.CreateIndex(table, field, opts)
-	if err == nil || err == ErrIndexAlreadyExists {
-		return nil
-	}
-	return err
-}
-
-// Index returns an index by name.
-func (tx Tx) Index(tableName, field string) (index.Index, error) {
-	_, err := tx.Table(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	indexName := buildIndexName(tableName, field)
-
-	opts, err := readIndexOptions(&tx, indexName)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := tx.tx.Store(buildIndexName(tableName, field))
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return index.New(s, index.Options{Unique: opts.Unique}), nil
-}
-
-// Indexes returns a map of all the indexes of a table.
-func (tx Tx) Indexes(tableName string) (map[string]index.Index, error) {
-	prefix := buildIndexName(tableName, "")
-	list, err := tx.tx.ListStores(prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	indexes := make(map[string]index.Index)
-	for _, storeName := range list {
-		idxName := strings.TrimPrefix(storeName, prefix)
-		indexes[idxName], err = tx.Index(tableName, idxName)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return indexes, nil
-}
-
-// DropIndex deletes an index from the database.
-func (tx Tx) DropIndex(tableName, field string) error {
-	it, err := tx.Table(indexTable)
-	if err != nil {
-		return err
-	}
-
-	indexName := buildIndexName(tableName, field)
-	err = it.Delete([]byte(indexName))
-	if err == table.ErrRecordNotFound {
-		return ErrIndexNotFound
-	}
-	if err != nil {
-		return err
-	}
-
-	err = tx.tx.DropStore(indexName)
-	if err == engine.ErrStoreNotFound {
-		return ErrIndexNotFound
 	}
 	return err
 }

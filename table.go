@@ -1,6 +1,7 @@
 package genji
 
 import (
+	"strings"
 	"time"
 
 	"github.com/asdine/genji/index"
@@ -87,7 +88,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		return nil, err
 	}
 
-	indexes, err := t.tx.Indexes(t.name)
+	indexes, err := t.Indexes()
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +123,7 @@ func (t Table) Delete(recordID []byte) error {
 		return err
 	}
 
-	indexes, err := t.tx.Indexes(t.name)
+	indexes, err := t.Indexes()
 	if err != nil {
 		return err
 	}
@@ -248,10 +249,139 @@ func (t Table) RenameField(oldName, newName string) error {
 	})
 }
 
+func buildIndexName(tableName, field string) string {
+	var b strings.Builder
+	b.WriteString(indexPrefix)
+	b.WriteString(tableName)
+	b.WriteByte(separator)
+	b.WriteString(field)
+
+	return b.String()
+}
+
+// CreateIndex creates an index with the given name.
+// If it already exists, returns ErrTableAlreadyExists.
+func (t Table) CreateIndex(field string, opts index.Options) (index.Index, error) {
+	it, err := t.tx.Table(indexTable)
+	if err != nil {
+		return nil, err
+	}
+
+	idxName := buildIndexName(t.name, field)
+
+	_, err = it.GetRecord([]byte(idxName))
+	if err == nil {
+		return nil, ErrIndexAlreadyExists
+	}
+	if err != table.ErrRecordNotFound {
+		return nil, err
+	}
+
+	_, err = it.Insert(&indexOptions{
+		TableName: t.name,
+		FieldName: field,
+		Unique:    opts.Unique,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = t.tx.tx.CreateStore(idxName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create index %q on table %q", field, t.name)
+	}
+
+	s, err := t.tx.tx.Store(idxName)
+	if err == engine.ErrStoreNotFound {
+		return nil, ErrIndexNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return index.New(s, index.Options{Unique: opts.Unique}), nil
+}
+
+// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
+func (t Table) CreateIndexIfNotExists(field string, opts index.Options) (index.Index, error) {
+	idx, err := t.CreateIndex(field, opts)
+	if err == nil {
+		return idx, nil
+	}
+	if err == ErrIndexAlreadyExists {
+		return t.Index(field)
+	}
+
+	return nil, err
+}
+
+// Index returns an index by name.
+func (t Table) Index(field string) (index.Index, error) {
+	indexName := buildIndexName(t.name, field)
+
+	opts, err := readIndexOptions(t.tx, indexName)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := t.tx.tx.Store(indexName)
+	if err == engine.ErrStoreNotFound {
+		return nil, ErrIndexNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return index.New(s, index.Options{Unique: opts.Unique}), nil
+}
+
+// Indexes returns a map of all the indexes of a table.
+func (t Table) Indexes() (map[string]index.Index, error) {
+	prefix := buildIndexName(t.name, "")
+	list, err := t.tx.tx.ListStores(prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	indexes := make(map[string]index.Index)
+	for _, storeName := range list {
+		idxName := strings.TrimPrefix(storeName, prefix)
+		indexes[idxName], err = t.Index(idxName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return indexes, nil
+}
+
+// DropIndex deletes an index from the database.
+func (t Table) DropIndex(field string) error {
+	it, err := t.tx.Table(indexTable)
+	if err != nil {
+		return err
+	}
+
+	indexName := buildIndexName(t.name, field)
+	err = it.Delete([]byte(indexName))
+	if err == table.ErrRecordNotFound {
+		return ErrIndexNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	err = t.tx.tx.DropStore(indexName)
+	if err == engine.ErrStoreNotFound {
+		return ErrIndexNotFound
+	}
+	return err
+}
+
 // ReIndex drops the selected index, creates a new one and runs over all the records
 // to fill the newly created index.
 func (t Table) ReIndex(fieldName string) error {
-	err := t.tx.DropIndex(t.name, fieldName)
+	err := t.DropIndex(fieldName)
 	if err != nil {
 		return err
 	}
@@ -263,12 +393,7 @@ func (t Table) ReIndex(fieldName string) error {
 		return err
 	}
 
-	err = t.tx.CreateIndex(t.name, fieldName, index.Options{Unique: opts.Unique})
-	if err != nil {
-		return err
-	}
-
-	idx, err := t.tx.Index(t.name, fieldName)
+	idx, err := t.CreateIndex(fieldName, index.Options{Unique: opts.Unique})
 	if err != nil {
 		return err
 	}
@@ -310,7 +435,7 @@ type indexer interface {
 func InitTable(tx *Tx, tn TableNamer) error {
 	name := tn.TableName()
 
-	err := tx.CreateTableIfNotExists(name)
+	t, err := tx.CreateTableIfNotExists(name)
 	if err != nil {
 		return err
 	}
@@ -318,7 +443,7 @@ func InitTable(tx *Tx, tn TableNamer) error {
 	idxr, ok := tn.(indexer)
 	if ok {
 		for fieldName, idxOpts := range idxr.Indexes() {
-			err = tx.CreateIndexIfNotExists(name, fieldName, idxOpts)
+			_, err = t.CreateIndexIfNotExists(fieldName, idxOpts)
 			if err != nil {
 				return err
 			}

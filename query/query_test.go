@@ -21,14 +21,11 @@ func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func(
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
-	err = tx.CreateTable("test")
-	require.NoError(t, err)
-
-	tb, err := tx.Table("test")
+	tb, err := tx.CreateTable("test")
 	require.NoError(t, err)
 
 	if withIndex {
-		err = tx.CreateIndex("test", "name", index.Options{})
+		_, err = tb.CreateIndex("name", index.Options{})
 		require.NoError(t, err)
 	}
 

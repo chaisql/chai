@@ -16,7 +16,7 @@ import (
 type IndexMatcher interface {
 	// MatcheIndex returns a tree of all the records recordIDs matching.
 	// If no index is found for a given field, it returns nil and false.
-	MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error)
+	MatchIndex(t *genji.Table) (*btree.BTree, bool, error)
 }
 
 // An Item is an element stored in a tree.
@@ -61,8 +61,8 @@ func (m *eqMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member equal to the Value member.
-func (m *eqMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(tableName, m.Field.Name())
+func (m *eqMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
+	idx, err := t.Index(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -114,8 +114,8 @@ func (m *gtMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member strictly greater than the Value member.
-func (m *gtMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(tableName, m.Field.Name())
+func (m *gtMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
+	idx, err := t.Index(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -167,8 +167,8 @@ func (m *gteMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member greater than or equal to the Value member.
-func (m *gteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(tableName, m.Field.Name())
+func (m *gteMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
+	idx, err := t.Index(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -218,8 +218,8 @@ func (m *ltMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member strictly lesser than the Value member.
-func (m *ltMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(tableName, m.Field.Name())
+func (m *ltMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
+	idx, err := t.Index(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -271,8 +271,8 @@ func (m *lteMatcher) Match(r record.Record) (bool, error) {
 
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member lesser than or equal to the Value member.
-func (m *lteMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
-	idx, err := tx.Index(tableName, m.Field.Name())
+func (m *lteMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
+	idx, err := t.Index(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -316,12 +316,12 @@ func (a *andMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // MatchIndex matches if all exprs implement the IndexMatcher interface and return true.
 // MatchIndex returns the intersection between all of trees returned.
-func (a *andMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (a *andMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
 	var set *btree.BTree
 
 	for _, e := range a.exprs {
 		if i, ok := e.(IndexMatcher); ok {
-			recordIDs, ok, err := i.MatchIndex(tx, tableName)
+			recordIDs, ok, err := i.MatchIndex(t)
 			if err != nil || !ok {
 				return nil, false, err
 			}
@@ -376,12 +376,12 @@ func (o *orMatcher) Eval(ctx EvalContext) (Scalar, error) {
 
 // MatchIndex matches if all Matchers implement the IndexMatcher interface and return true.
 // MatchIndex returns the union between all of trees returned.
-func (o *orMatcher) MatchIndex(tx *genji.Tx, tableName string) (*btree.BTree, bool, error) {
+func (o *orMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
 	var set *btree.BTree
 
 	for _, e := range o.exprs {
 		if i, ok := e.(IndexMatcher); ok {
-			recordIDs, ok, err := i.MatchIndex(tx, tableName)
+			recordIDs, ok, err := i.MatchIndex(t)
 			if err != nil || !ok {
 				return nil, false, err
 			}
