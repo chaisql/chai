@@ -77,7 +77,6 @@ func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) e
 	prefix := buildKey(s.prefix, nil)
 
 	opt := badger.DefaultIteratorOptions
-	opt.PrefetchSize = 10
 	opt.Prefix = prefix
 	it := s.tx.NewIterator(opt)
 	defer it.Close()
@@ -108,7 +107,6 @@ func (s *Store) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) err
 
 	opt := badger.DefaultIteratorOptions
 	opt.Reverse = true
-	opt.PrefetchSize = 10
 	opt.Prefix = prefix
 	it := s.tx.NewIterator(opt)
 	defer it.Close()
