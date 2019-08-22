@@ -34,28 +34,23 @@ func (b *Basic) Field(name string) (field.Field, error) {
 // It the given function returns an error, the iteration is interrupted.
 func (b *Basic) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
-	f, _ = b.Field("A")
-	err = fn(f)
+	err = fn(field.NewString("A", b.A))
 	if err != nil {
 		return err
 	}
 
-	f, _ = b.Field("B")
-	err = fn(f)
+	err = fn(field.NewInt("B", b.B))
 	if err != nil {
 		return err
 	}
 
-	f, _ = b.Field("C")
-	err = fn(f)
+	err = fn(field.NewInt32("C", b.C))
 	if err != nil {
 		return err
 	}
 
-	f, _ = b.Field("D")
-	err = fn(f)
+	err = fn(field.NewInt32("D", b.D))
 	if err != nil {
 		return err
 	}
@@ -155,28 +150,23 @@ func (b *basic) Field(name string) (field.Field, error) {
 // It the given function returns an error, the iteration is interrupted.
 func (b *basic) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
-	f, _ = b.Field("A")
-	err = fn(f)
+	err = fn(field.NewBytes("A", b.A))
 	if err != nil {
 		return err
 	}
 
-	f, _ = b.Field("B")
-	err = fn(f)
+	err = fn(field.NewUint16("B", b.B))
 	if err != nil {
 		return err
 	}
 
-	f, _ = b.Field("C")
-	err = fn(f)
+	err = fn(field.NewFloat32("C", b.C))
 	if err != nil {
 		return err
 	}
 
-	f, _ = b.Field("D")
-	err = fn(f)
+	err = fn(field.NewFloat32("D", b.D))
 	if err != nil {
 		return err
 	}
@@ -272,16 +262,13 @@ func (p *Pk) Field(name string) (field.Field, error) {
 // It the given function returns an error, the iteration is interrupted.
 func (p *Pk) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
-	f, _ = p.Field("A")
-	err = fn(f)
+	err = fn(field.NewString("A", p.A))
 	if err != nil {
 		return err
 	}
 
-	f, _ = p.Field("B")
-	err = fn(f)
+	err = fn(field.NewInt64("B", p.B))
 	if err != nil {
 		return err
 	}
@@ -376,22 +363,18 @@ func (i *Indexed) Field(name string) (field.Field, error) {
 // It the given function returns an error, the iteration is interrupted.
 func (i *Indexed) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
-	f, _ = i.Field("A")
-	err = fn(f)
+	err = fn(field.NewString("A", i.A))
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.Field("B")
-	err = fn(f)
+	err = fn(field.NewInt64("B", i.B))
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.Field("C")
-	err = fn(f)
+	err = fn(field.NewInt64("C", i.C))
 	if err != nil {
 		return err
 	}
@@ -495,28 +478,23 @@ func (m *MultipleTags) Field(name string) (field.Field, error) {
 // It the given function returns an error, the iteration is interrupted.
 func (m *MultipleTags) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
-	f, _ = m.Field("A")
-	err = fn(f)
+	err = fn(field.NewString("A", m.A))
 	if err != nil {
 		return err
 	}
 
-	f, _ = m.Field("B")
-	err = fn(f)
+	err = fn(field.NewInt64("B", m.B))
 	if err != nil {
 		return err
 	}
 
-	f, _ = m.Field("C")
-	err = fn(f)
+	err = fn(field.NewFloat32("C", m.C))
 	if err != nil {
 		return err
 	}
 
-	f, _ = m.Field("D")
-	err = fn(f)
+	err = fn(field.NewBool("D", m.D))
 	if err != nil {
 		return err
 	}

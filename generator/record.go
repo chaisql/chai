@@ -60,11 +60,9 @@ const recordIterateTmpl = `
 // It the given function returns an error, the iteration is interrupted.
 func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
 	{{range .Fields}}
-	f, _ = {{$fl}}.Field("{{.Name}}")
-	err = fn(f)
+	err = fn(field.New{{.Type}}("{{.Name}}", {{$fl}}.{{.Name}}))
 	if err != nil {
 		return err
 	}

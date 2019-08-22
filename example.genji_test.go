@@ -32,22 +32,18 @@ func (u *User) Field(name string) (field.Field, error) {
 // It the given function returns an error, the iteration is interrupted.
 func (u *User) Iterate(fn func(field.Field) error) error {
 	var err error
-	var f field.Field
 
-	f, _ = u.Field("ID")
-	err = fn(f)
+	err = fn(field.NewInt64("ID", u.ID))
 	if err != nil {
 		return err
 	}
 
-	f, _ = u.Field("Name")
-	err = fn(f)
+	err = fn(field.NewString("Name", u.Name))
 	if err != nil {
 		return err
 	}
 
-	f, _ = u.Field("Age")
-	err = fn(f)
+	err = fn(field.NewUint32("Age", u.Age))
 	if err != nil {
 		return err
 	}
