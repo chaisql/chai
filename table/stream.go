@@ -75,9 +75,7 @@ func (s Stream) Pipe(op Operator) Stream {
 // If fn returns an error, the stream is interrupted.
 func (s Stream) Map(fn func(recordID []byte, r record.Record) (record.Record, error)) Stream {
 	return s.Pipe(func() func(recordID []byte, r record.Record) (record.Record, error) {
-		return func(recordID []byte, r record.Record) (record.Record, error) {
-			return fn(recordID, r)
-		}
+		return fn
 	})
 }
 

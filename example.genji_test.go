@@ -72,6 +72,13 @@ func (u *User) PrimaryKey() ([]byte, error) {
 	return field.EncodeInt64(u.ID), nil
 }
 
+// Indexes creates a map containing the configuration for each index of the table.
+func (u *User) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		"Name": index.Options{Unique: false},
+	}
+}
+
 // UserFields describes the fields of the User record.
 // It can be used to select fields during queries.
 type UserFields struct {
@@ -86,12 +93,5 @@ func NewUserFields() *UserFields {
 		ID:   query.Int64Field("ID"),
 		Name: query.StringField("Name"),
 		Age:  query.Uint32Field("Age"),
-	}
-}
-
-// NewUserIndexes creates a map containing the configuration for each index of the table.
-func NewUserIndexes() map[string]index.Options {
-	return map[string]index.Options{
-		"Name": index.Options{Unique: false},
 	}
 }

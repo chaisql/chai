@@ -36,20 +36,3 @@ func {{.NameWithPrefix "New"}}Fields() *{{$structName}}Fields {
 }
 {{ end }}
 `
-
-const indexesTmpl = `
-{{ define "indexes" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-{{- if .HasIndexes }}
-// {{.NameWithPrefix "New"}}Indexes creates a map containing the configuration for each index of the table.
-func {{.NameWithPrefix "New"}}Indexes() map[string]index.Options {
-	return map[string]index.Options{
-		{{- range $i, $a := .Indexes }}
-			"{{$a.FieldName}}": index.Options{Unique: {{$a.Unique}}},
-		{{- end}}
-	}
-}
-{{- end }}
-{{ end }}
-`

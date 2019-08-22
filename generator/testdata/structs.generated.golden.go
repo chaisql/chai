@@ -299,6 +299,14 @@ func (i *Indexed) ScanRecord(rec record.Record) error {
 	})
 }
 
+// Indexes creates a map containing the configuration for each index of the table.
+func (i *Indexed) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		"A": index.Options{Unique: false},
+		"B": index.Options{Unique: true},
+	}
+}
+
 // IndexedFields describes the fields of the Indexed record.
 // It can be used to select fields during queries.
 type IndexedFields struct {
@@ -313,14 +321,6 @@ func NewIndexedFields() *IndexedFields {
 		A: query.StringField("A"),
 		B: query.Int64Field("B"),
 		C: query.Int64Field("C"),
-	}
-}
-
-// NewIndexedIndexes creates a map containing the configuration for each index of the table.
-func NewIndexedIndexes() map[string]index.Options {
-	return map[string]index.Options{
-		"A": index.Options{Unique: false},
-		"B": index.Options{Unique: true},
 	}
 }
 
@@ -393,6 +393,13 @@ func (m *MultipleTags) PrimaryKey() ([]byte, error) {
 	return field.EncodeString(m.A), nil
 }
 
+// Indexes creates a map containing the configuration for each index of the table.
+func (m *MultipleTags) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		"D": index.Options{Unique: false},
+	}
+}
+
 // MultipleTagsFields describes the fields of the MultipleTags record.
 // It can be used to select fields during queries.
 type MultipleTagsFields struct {
@@ -409,12 +416,5 @@ func NewMultipleTagsFields() *MultipleTagsFields {
 		B: query.Int64Field("B"),
 		C: query.Float32Field("C"),
 		D: query.BoolField("D"),
-	}
-}
-
-// NewMultipleTagsIndexes creates a map containing the configuration for each index of the table.
-func NewMultipleTagsIndexes() map[string]index.Options {
-	return map[string]index.Options{
-		"D": index.Options{Unique: false},
 	}
 }

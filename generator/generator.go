@@ -43,7 +43,7 @@ func init() {
 		"fields":            fieldsTmpl,
 		"fields-Struct":     fieldsStructTmpl,
 		"fields-New":        fieldsNewTmpl,
-		"indexes":           indexesTmpl,
+		"record-Indexes":    recordIndexesTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))

@@ -28,12 +28,7 @@ func Example() {
 
 	// open a read-write transaction
 	err = db.Update(func(tx *genji.Tx) error {
-		t, err := tx.CreateTableIfNotExists("users")
-		if err != nil {
-			return err
-		}
-
-		err = t.CreateIndexesIfNotExist(NewUserIndexes())
+		t, err := tx.InitTable("users", new(User))
 		if err != nil {
 			return err
 		}
@@ -44,10 +39,21 @@ func Example() {
 			Name: "foo",
 			Age:  32,
 		})
+		return err
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// open a read-only transaction
+	err = db.View(func(tx *genji.Tx) error {
+		t, err := tx.GetTable("users")
 		if err != nil {
 			return err
 		}
 
+		// create an object that contains informations about all the fields of the user
+		// record. This is a generated function
 		f := NewUserFields()
 
 		var users []User
@@ -65,6 +71,7 @@ func Example() {
 				return nil
 			})
 	})
+
 	if err != nil {
 		log.Fatal(err)
 	}

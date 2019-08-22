@@ -27,8 +27,8 @@ const recordTmpl = `
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Pk" . }}
+{{- template "record-Indexes" . }}
 {{- template "fields" . }}
-{{- template "indexes" . }}
 {{- end }}
 `
 
@@ -107,6 +107,23 @@ func ({{$fl}} *{{$structName}}) PrimaryKey() ([]byte, error) {
 	return field.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
 }
 {{- end}}
+{{ end }}
+`
+
+const recordIndexesTmpl = `
+{{ define "record-Indexes" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+{{- if .HasIndexes }}
+// Indexes creates a map containing the configuration for each index of the table.
+func ({{$fl}} *{{$structName}}) Indexes() map[string]index.Options {
+	return map[string]index.Options{
+		{{- range $i, $a := .Indexes }}
+			"{{$a.FieldName}}": index.Options{Unique: {{$a.Unique}}},
+		{{- end}}
+	}
+}
+{{- end }}
 {{ end }}
 `
 
