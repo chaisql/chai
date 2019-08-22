@@ -422,7 +422,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		}
 
 		for fname, e := range u.pairs {
-			f, err := fb.Field(fname)
+			f, err := fb.GetField(fname)
 			if err != nil {
 				return err
 			}

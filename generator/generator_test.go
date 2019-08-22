@@ -148,7 +148,7 @@ func TestGeneratedRecords(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				f, err := r.Field(test.name)
+				f, err := r.GetField(test.name)
 				require.NoError(t, err)
 				require.Equal(t, test.name, f.Name)
 				require.Equal(t, test.typ, f.Type)

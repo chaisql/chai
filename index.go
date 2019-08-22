@@ -18,7 +18,7 @@ func (i *indexOptions) PrimaryKey() ([]byte, error) {
 }
 
 // Field implements the field method of the record.Record interface.
-func (i *indexOptions) Field(name string) (field.Field, error) {
+func (i *indexOptions) GetField(name string) (field.Field, error) {
 	switch name {
 	case "Unique":
 		return field.NewBool("Unique", i.Unique), nil
@@ -37,19 +37,19 @@ func (i *indexOptions) Iterate(fn func(field.Field) error) error {
 	var err error
 	var f field.Field
 
-	f, _ = i.Field("Unique")
+	f, _ = i.GetField("Unique")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.Field("TableName")
+	f, _ = i.GetField("TableName")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.Field("FieldName")
+	f, _ = i.GetField("FieldName")
 	err = fn(f)
 	if err != nil {
 		return err

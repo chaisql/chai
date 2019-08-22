@@ -14,8 +14,8 @@ import (
 	"github.com/asdine/genji/table"
 )
 
-// Field implements the field method of the record.Record interface.
-func (u *User) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func (u *User) GetField(name string) (field.Field, error) {
 	switch name {
 	case "ID":
 		return field.NewInt64("ID", u.ID), nil

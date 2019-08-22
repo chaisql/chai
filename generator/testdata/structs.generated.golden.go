@@ -14,8 +14,8 @@ import (
 	"github.com/asdine/genji/table"
 )
 
-// Field implements the field method of the record.Record interface.
-func (b *Basic) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func (b *Basic) GetField(name string) (field.Field, error) {
 	switch name {
 	case "A":
 		return field.NewString("A", b.A), nil
@@ -130,8 +130,8 @@ func (b *BasicResult) ScanTable(tr table.Reader) error {
 	})
 }
 
-// Field implements the field method of the record.Record interface.
-func (b *basic) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func (b *basic) GetField(name string) (field.Field, error) {
 	switch name {
 	case "A":
 		return field.NewBytes("A", b.A), nil
@@ -246,8 +246,8 @@ func (b *basicResult) ScanTable(tr table.Reader) error {
 	})
 }
 
-// Field implements the field method of the record.Record interface.
-func (p *Pk) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func (p *Pk) GetField(name string) (field.Field, error) {
 	switch name {
 	case "A":
 		return field.NewString("A", p.A), nil
@@ -345,8 +345,8 @@ func (p *PkResult) ScanTable(tr table.Reader) error {
 	})
 }
 
-// Field implements the field method of the record.Record interface.
-func (i *Indexed) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func (i *Indexed) GetField(name string) (field.Field, error) {
 	switch name {
 	case "A":
 		return field.NewString("A", i.A), nil
@@ -458,8 +458,8 @@ func (i *IndexedResult) ScanTable(tr table.Reader) error {
 	})
 }
 
-// Field implements the field method of the record.Record interface.
-func (m *MultipleTags) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func (m *MultipleTags) GetField(name string) (field.Field, error) {
 	switch name {
 	case "A":
 		return field.NewString("A", m.A), nil

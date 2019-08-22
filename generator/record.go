@@ -23,7 +23,7 @@ const recordsTmpl = `
 
 const recordTmpl = `
 {{- define "record" }}
-{{- template "record-Field" . }}
+{{- template "record-GetField" . }}
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Pk" . }}
@@ -32,13 +32,13 @@ const recordTmpl = `
 {{- end }}
 `
 
-const recordFieldTmpl = `
-{{ define "record-Field" }}
+const recordGetFieldTmpl = `
+{{ define "record-GetField" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-// Field implements the field method of the record.Record interface.
-func ({{$fl}} *{{$structName}}) Field(name string) (field.Field, error) {
+// GetField implements the field method of the record.Record interface.
+func ({{$fl}} *{{$structName}}) GetField(name string) (field.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.Name}}":

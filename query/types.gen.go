@@ -73,7 +73,9 @@ func (v BytesValue) Eval(EvalContext) (Scalar, error) {
 		Type: field.Bytes,
 		Data: field.EncodeBytes([]byte(v)),
 	}, nil
-}// StringFieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// StringFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type StringFieldSelector struct {
 	FieldSelector
@@ -142,7 +144,9 @@ func (v StringValue) Eval(EvalContext) (Scalar, error) {
 		Type: field.String,
 		Data: field.EncodeString(string(v)),
 	}, nil
-}// BoolFieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// BoolFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type BoolFieldSelector struct {
 	FieldSelector
@@ -211,7 +215,9 @@ func (v BoolValue) Eval(EvalContext) (Scalar, error) {
 		Type: field.Bool,
 		Data: field.EncodeBool(bool(v)),
 	}, nil
-}// UintFieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// UintFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type UintFieldSelector struct {
 	FieldSelector
@@ -280,7 +286,9 @@ func (v UintValue) Eval(EvalContext) (Scalar, error) {
 		Type: field.Uint,
 		Data: field.EncodeUint(uint(v)),
 	}, nil
-}// Uint8FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Uint8FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Uint8FieldSelector struct {
 	FieldSelector
@@ -349,7 +357,9 @@ func (v Uint8Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Uint8,
 		Data: field.EncodeUint8(uint8(v)),
 	}, nil
-}// Uint16FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Uint16FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Uint16FieldSelector struct {
 	FieldSelector
@@ -418,7 +428,9 @@ func (v Uint16Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Uint16,
 		Data: field.EncodeUint16(uint16(v)),
 	}, nil
-}// Uint32FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Uint32FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Uint32FieldSelector struct {
 	FieldSelector
@@ -487,7 +499,9 @@ func (v Uint32Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Uint32,
 		Data: field.EncodeUint32(uint32(v)),
 	}, nil
-}// Uint64FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Uint64FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Uint64FieldSelector struct {
 	FieldSelector
@@ -556,7 +570,9 @@ func (v Uint64Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Uint64,
 		Data: field.EncodeUint64(uint64(v)),
 	}, nil
-}// IntFieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// IntFieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type IntFieldSelector struct {
 	FieldSelector
@@ -625,7 +641,9 @@ func (v IntValue) Eval(EvalContext) (Scalar, error) {
 		Type: field.Int,
 		Data: field.EncodeInt(int(v)),
 	}, nil
-}// Int8FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Int8FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Int8FieldSelector struct {
 	FieldSelector
@@ -694,7 +712,9 @@ func (v Int8Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Int8,
 		Data: field.EncodeInt8(int8(v)),
 	}, nil
-}// Int16FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Int16FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Int16FieldSelector struct {
 	FieldSelector
@@ -763,7 +783,9 @@ func (v Int16Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Int16,
 		Data: field.EncodeInt16(int16(v)),
 	}, nil
-}// Int32FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Int32FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Int32FieldSelector struct {
 	FieldSelector
@@ -832,7 +854,9 @@ func (v Int32Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Int32,
 		Data: field.EncodeInt32(int32(v)),
 	}, nil
-}// Int64FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Int64FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Int64FieldSelector struct {
 	FieldSelector
@@ -901,7 +925,9 @@ func (v Int64Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Int64,
 		Data: field.EncodeInt64(int64(v)),
 	}, nil
-}// Float32FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Float32FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Float32FieldSelector struct {
 	FieldSelector
@@ -970,7 +996,9 @@ func (v Float32Value) Eval(EvalContext) (Scalar, error) {
 		Type: field.Float32,
 		Data: field.EncodeFloat32(float32(v)),
 	}, nil
-}// Float64FieldSelector is a type safe field selector that allows to compare values with fields
+}
+
+// Float64FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type Float64FieldSelector struct {
 	FieldSelector

@@ -42,7 +42,7 @@ func (f Field) Name() string {
 
 // SelectField selects the field f from r.
 func (f Field) SelectField(r record.Record) (field.Field, error) {
-	return r.Field(string(f))
+	return r.GetField(string(f))
 }
 
 // As returns a alias to f.

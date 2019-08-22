@@ -83,7 +83,7 @@ func (v {{ .Name }}Value) Eval(EvalContext) (Scalar, error) {
 		Data: field.Encode{{ .Name }}({{ .T }}(v)),
 	}, nil
 }
-{{- end}}
+{{end}}
 `
 
 type Types struct {

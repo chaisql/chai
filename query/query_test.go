@@ -60,13 +60,13 @@ func TestSelect(t *testing.T) {
 		require.Equal(t, 5, count)
 
 		err = res.Iterate(func(recordID []byte, r record.Record) error {
-			_, err := r.Field("id")
+			_, err := r.GetField("id")
 			require.NoError(t, err)
-			_, err = r.Field("name")
+			_, err = r.GetField("name")
 			require.NoError(t, err)
-			_, err = r.Field("age")
+			_, err = r.GetField("age")
 			require.NoError(t, err)
-			_, err = r.Field("group")
+			_, err = r.GetField("group")
 			require.NoError(t, err)
 
 			return nil
@@ -86,13 +86,13 @@ func TestSelect(t *testing.T) {
 		require.Equal(t, 5, count)
 
 		err = res.Iterate(func(recordID []byte, r record.Record) error {
-			_, err := r.Field("id")
+			_, err := r.GetField("id")
 			require.NoError(t, err)
-			_, err = r.Field("name")
+			_, err = r.GetField("name")
 			require.NoError(t, err)
-			_, err = r.Field("age")
+			_, err = r.GetField("age")
 			require.NoError(t, err)
-			_, err = r.Field("group")
+			_, err = r.GetField("group")
 			require.NoError(t, err)
 
 			return nil
@@ -119,7 +119,7 @@ func TestDelete(t *testing.T) {
 		require.Equal(t, 3, count)
 
 		err = st.Iterate(func(recordID []byte, r record.Record) error {
-			f, err := r.Field("age")
+			f, err := r.GetField("age")
 			require.NoError(t, err)
 			age, err := field.DecodeInt(f.Data)
 			require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestInsert(t *testing.T) {
 		_, rec, err := res.First()
 		require.NoError(t, err)
 
-		rIDf, err := rec.Field("recordID")
+		rIDf, err := rec.GetField("recordID")
 		require.NoError(t, err)
 
 		rec, err = tb.GetRecord(rIDf.Data)
@@ -199,7 +199,7 @@ func TestUpdate(t *testing.T) {
 			require.Equal(t, 10, count)
 
 			err = st.Iterate(func(recordID []byte, r record.Record) error {
-				f, err := r.Field("age")
+				f, err := r.GetField("age")
 				require.NoError(t, err)
 				age, err := field.DecodeInt(f.Data)
 				require.NoError(t, err)

@@ -309,8 +309,8 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 // It is useful to avoid decoding the entire record when only a few fields are needed.
 type EncodedRecord []byte
 
-// Field decodes the selected field.
-func (e EncodedRecord) Field(name string) (field.Field, error) {
+// GetField decodes the selected field.
+func (e EncodedRecord) GetField(name string) (field.Field, error) {
 	return DecodeField(e, name)
 }
 

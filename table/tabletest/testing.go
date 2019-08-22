@@ -135,7 +135,7 @@ func TestTableReaderRecord(t *testing.T, builder Builder) {
 		// fetch rec1 and make sure it returns the right one
 		res, err := tb.GetRecord(recordID1)
 		require.NoError(t, err)
-		fc, err := res.Field("fieldc")
+		fc, err := res.GetField("fieldc")
 		require.NoError(t, err)
 		require.Equal(t, rec1[2], fc)
 	})
@@ -274,7 +274,7 @@ func TestTableWriterDelete(t *testing.T, builder Builder) {
 		// make sure it didn't also delete the other one
 		res, err := tb.GetRecord(recordID2)
 		require.NoError(t, err)
-		_, err = res.Field("fieldc")
+		_, err = res.GetField("fieldc")
 		require.Error(t, err)
 	})
 }
@@ -318,14 +318,14 @@ func TestTableWriterReplace(t *testing.T, builder Builder) {
 		// make sure it replaced it correctly
 		res, err := tb.GetRecord(recordID1)
 		require.NoError(t, err)
-		f, err := res.Field("fielda")
+		f, err := res.GetField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", string(f.Data))
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetRecord(recordID2)
 		require.NoError(t, err)
-		f, err = res.Field("fielda")
+		f, err = res.GetField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "c", string(f.Data))
 	})

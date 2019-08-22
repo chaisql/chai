@@ -93,7 +93,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	}
 
 	for fieldName, idx := range indexes {
-		f, err := r.Field(fieldName)
+		f, err := r.GetField(fieldName)
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +178,7 @@ func (t Table) AddField(f field.Field) error {
 			return err
 		}
 
-		if _, err = fb.Field(f.Name); err == nil {
+		if _, err = fb.GetField(f.Name); err == nil {
 			// if the field already exists, skip
 			return nil
 		}
@@ -230,7 +230,7 @@ func (t Table) RenameField(oldName, newName string) error {
 			return err
 		}
 
-		f, err := fb.Field(oldName)
+		f, err := fb.GetField(oldName)
 		if err != nil {
 			// if the field doesn't exist, skip
 			return nil
@@ -274,7 +274,7 @@ func (t Table) ReIndex(fieldName string) error {
 	}
 
 	return t.Iterate(func(recordID []byte, r record.Record) error {
-		f, err := r.Field(fieldName)
+		f, err := r.GetField(fieldName)
 		if err != nil {
 			return err
 		}

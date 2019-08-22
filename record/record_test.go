@@ -52,15 +52,15 @@ func TestNewFromMap(t *testing.T) {
 	})
 
 	t.Run("Field", func(t *testing.T) {
-		f, err := rec.Field("Name")
+		f, err := rec.GetField("Name")
 		require.NoError(t, err)
 		require.Equal(t, field.Field{Name: "Name", Type: field.String, Data: []byte("foo")}, f)
 
-		f, err = rec.Field("Age")
+		f, err = rec.GetField("Age")
 		require.NoError(t, err)
 		require.Equal(t, field.Field{Name: "Age", Type: field.Int, Data: field.EncodeInt(10)}, f)
 
-		_, err = rec.Field("bar")
+		_, err = rec.GetField("bar")
 		require.Error(t, err)
 	})
 }

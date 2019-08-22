@@ -63,7 +63,7 @@ func TestEncodedRecord(t *testing.T) {
 	require.NoError(t, err)
 
 	ec := EncodedRecord(data)
-	f, err := ec.Field("age")
+	f, err := ec.GetField("age")
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
 

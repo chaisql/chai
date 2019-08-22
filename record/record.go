@@ -13,8 +13,8 @@ type Record interface {
 	// Iterate goes through all the fields of the record and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(fn func(field.Field) error) error
-	// Field returns a field by name.
-	Field(name string) (field.Field, error)
+	// GetField returns a field by name.
+	GetField(name string) (field.Field, error)
 }
 
 // A Scanner can iterate over a record and scan all the fields.
@@ -38,8 +38,8 @@ func (fb *FieldBuffer) ScanRecord(r Record) error {
 	})
 }
 
-// Field returns a field by name. Returns an error if the field doesn't exists.
-func (fb FieldBuffer) Field(name string) (field.Field, error) {
+// GetField returns a field by name. Returns an error if the field doesn't exists.
+func (fb FieldBuffer) GetField(name string) (field.Field, error) {
 	for _, f := range fb {
 		if f.Name == name {
 			return f, nil
@@ -135,7 +135,7 @@ func (m mapRecord) Iterate(fn func(field.Field) error) error {
 	return nil
 }
 
-func (m mapRecord) Field(name string) (field.Field, error) {
+func (m mapRecord) GetField(name string) (field.Field, error) {
 	v, ok := m[name]
 	if !ok {
 		return field.Field{}, fmt.Errorf("field %q not found", name)
