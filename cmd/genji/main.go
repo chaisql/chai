@@ -26,12 +26,11 @@ func (i *stringFlags) Set(value string) error {
 }
 
 func main() {
-	var files, structs, results stringFlags
+	var files, structs stringFlags
 	var output string
 
 	flag.Var(&files, "f", "path of the files to parse")
 	flag.Var(&structs, "s", "name of the source structure")
-	flag.Var(&results, "res", "name of the result structure, optional")
 	flag.StringVar(&output, "o", "", "name of the generated file, optional")
 
 	flag.Parse()
@@ -40,7 +39,7 @@ func main() {
 		exitRecordUsage()
 	}
 
-	err := generate(files, structs, results, output)
+	err := generate(files, structs, output)
 	if err != nil {
 		fail("%v\n", err)
 	}
@@ -56,7 +55,7 @@ func exitRecordUsage() {
 	os.Exit(2)
 }
 
-func generate(files []string, structs []string, results []string, output string) error {
+func generate(files []string, structs []string, output string) error {
 	if !areGoFiles(files) {
 		return errors.New("input files must be Go files")
 	}
@@ -81,7 +80,6 @@ func generate(files []string, structs []string, results []string, output string)
 	err := generator.Generate(&buf, generator.Config{
 		Sources: sources,
 		Structs: list,
-		Results: results,
 	})
 	if err != nil {
 		return err

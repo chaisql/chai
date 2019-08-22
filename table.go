@@ -309,14 +309,28 @@ func (t Table) CreateIndexIfNotExists(field string, opts index.Options) (index.I
 		return idx, nil
 	}
 	if err == ErrIndexAlreadyExists {
-		return t.Index(field)
+		return t.GetIndex(field)
 	}
 
 	return nil, err
 }
 
-// Index returns an index by name.
-func (t Table) Index(field string) (index.Index, error) {
+// CreateIndexesIfNotExist takes a map that associates field names to index options
+// and ensures these indexes are created if they don't already exist.
+// This method doesn't reindex the table if a new index is created.
+func (t Table) CreateIndexesIfNotExist(indexes map[string]index.Options) error {
+	for fieldName, idxOpts := range indexes {
+		_, err := t.CreateIndexIfNotExists(fieldName, idxOpts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetIndex returns an index by name.
+func (t Table) GetIndex(field string) (index.Index, error) {
 	indexName := buildIndexName(t.name, field)
 
 	opts, err := readIndexOptions(t.tx, indexName)
@@ -346,7 +360,7 @@ func (t Table) Indexes() (map[string]index.Index, error) {
 	indexes := make(map[string]index.Index)
 	for _, storeName := range list {
 		idxName := strings.TrimPrefix(storeName, prefix)
-		indexes[idxName], err = t.Index(idxName)
+		indexes[idxName], err = t.GetIndex(idxName)
 		if err != nil {
 			return nil, err
 		}
@@ -416,39 +430,4 @@ func (t Table) SelectTable(*Tx) (*Table, error) {
 // TableName returns the name of the table.
 func (t Table) TableName() string {
 	return t.name
-}
-
-// A TableNamer is a type that returns the name of a table.
-type TableNamer interface {
-	TableName() string
-}
-
-type indexer interface {
-	Indexes() map[string]index.Options
-}
-
-// InitTable ensures the table exists. If tn implements this interface
-//   type indexer interface {
-//	  Indexes() map[string]index.Options
-//   }
-// it ensures all these indexes exist and creates them if not, but it won't re-index the table.
-func InitTable(tx *Tx, tn TableNamer) error {
-	name := tn.TableName()
-
-	t, err := tx.CreateTableIfNotExists(name)
-	if err != nil {
-		return err
-	}
-
-	idxr, ok := tn.(indexer)
-	if ok {
-		for fieldName, idxOpts := range idxr.Indexes() {
-			_, err = t.CreateIndexIfNotExists(fieldName, idxOpts)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

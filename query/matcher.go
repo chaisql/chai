@@ -62,7 +62,7 @@ func (m *eqMatcher) Match(r record.Record) (bool, error) {
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member equal to the Value member.
 func (m *eqMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
-	idx, err := t.Index(m.Field.Name())
+	idx, err := t.GetIndex(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -115,7 +115,7 @@ func (m *gtMatcher) Match(r record.Record) (bool, error) {
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member strictly greater than the Value member.
 func (m *gtMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
-	idx, err := t.Index(m.Field.Name())
+	idx, err := t.GetIndex(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -168,7 +168,7 @@ func (m *gteMatcher) Match(r record.Record) (bool, error) {
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member greater than or equal to the Value member.
 func (m *gteMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
-	idx, err := t.Index(m.Field.Name())
+	idx, err := t.GetIndex(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -219,7 +219,7 @@ func (m *ltMatcher) Match(r record.Record) (bool, error) {
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member strictly lesser than the Value member.
 func (m *ltMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
-	idx, err := t.Index(m.Field.Name())
+	idx, err := t.GetIndex(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}
@@ -272,7 +272,7 @@ func (m *lteMatcher) Match(r record.Record) (bool, error) {
 // MatchIndex selects the index from tx and returns all the recordIDs of the records that have the value of
 // the field selected by the Field member lesser than or equal to the Value member.
 func (m *lteMatcher) MatchIndex(t *genji.Table) (*btree.BTree, bool, error) {
-	idx, err := t.Index(m.Field.Name())
+	idx, err := t.GetIndex(m.Field.Name())
 	if err != nil {
 		return nil, false, err
 	}

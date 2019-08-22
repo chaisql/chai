@@ -6,12 +6,10 @@ package genji_test
 import (
 	"errors"
 
-	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 // GetField implements the field method of the record.Record interface.
@@ -74,59 +72,26 @@ func (u *User) PrimaryKey() ([]byte, error) {
 	return field.EncodeInt64(u.ID), nil
 }
 
-// UserTable manages the User table.
-type UserTable struct {
+// UserFields describes the fields of the User record.
+// It can be used to select fields during queries.
+type UserFields struct {
 	ID   query.Int64FieldSelector
 	Name query.StringFieldSelector
 	Age  query.Uint32FieldSelector
 }
 
-// NewUserTable creates a UserTable.
-func NewUserTable() *UserTable {
-	return &UserTable{
+// NewUserFields creates a UserFields.
+func NewUserFields() *UserFields {
+	return &UserFields{
 		ID:   query.Int64Field("ID"),
 		Name: query.StringField("Name"),
 		Age:  query.Uint32Field("Age"),
 	}
 }
 
-// Init initializes the User table by ensuring the table and its index are created.
-func (t *UserTable) Init(tx *genji.Tx) error {
-	return genji.InitTable(tx, t)
-}
-
-// SelectTable implements the query.TableSelector interface. It gets the User table from
-// the transaction.
-func (t *UserTable) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(t.TableName())
-}
-
-// TableName returns the name of the table.
-func (*UserTable) TableName() string {
-	return "User"
-}
-
-// Indexes returns the list of indexes of the User table.
-func (*UserTable) Indexes() map[string]index.Options {
+// NewUserIndexes creates a map containing the configuration for each index of the table.
+func NewUserIndexes() map[string]index.Options {
 	return map[string]index.Options{
 		"Name": index.Options{Unique: false},
 	}
-}
-
-// UserResult can be used to store the result of queries.
-// Selected fields must map the User fields.
-type UserResult []User
-
-// ScanTable iterates over table.Reader and stores all the records in the slice.
-func (u *UserResult) ScanTable(tr table.Reader) error {
-	return tr.Iterate(func(_ []byte, r record.Record) error {
-		var record User
-		err := record.ScanRecord(r)
-		if err != nil {
-			return err
-		}
-
-		*u = append(*u, record)
-		return nil
-	})
 }

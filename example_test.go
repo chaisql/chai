@@ -28,16 +28,12 @@ func Example() {
 
 	// open a read-write transaction
 	err = db.Update(func(tx *genji.Tx) error {
-
-		users := NewUserTable()
-
-		// init the table
-		err := users.Init(tx)
+		t, err := tx.CreateTableIfNotExists("users")
 		if err != nil {
 			return err
 		}
 
-		t, err := users.SelectTable(tx)
+		err = t.CreateIndexesIfNotExist(NewUserIndexes())
 		if err != nil {
 			return err
 		}
@@ -52,13 +48,22 @@ func Example() {
 			return err
 		}
 
-		// Create a result value
-		var result UserResult
+		f := NewUserFields()
 
+		var users []User
 		// SELECT ID, Name FROM foo where Age >= 18
-		return query.Select(users.ID, users.Name).From(t).Where(users.Age.Gte(18)).
+		return query.Select().From(t).Where(f.Age.Gte(18)).
 			Run(tx).
-			Scan(&result)
+			Iterate(func(recordID []byte, r record.Record) error {
+				var u User
+				err := u.ScanRecord(r)
+				if err != nil {
+					return err
+				}
+
+				users = append(users, u)
+				return nil
+			})
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -74,12 +79,7 @@ func ExampleDB() {
 	defer db.Close()
 
 	err = db.Update(func(tx *genji.Tx) error {
-		err := tx.CreateTable("Table")
-		if err != nil {
-			return err
-		}
-
-		t, err := tx.Table("Table")
+		t, err := tx.CreateTable("Table")
 		if err != nil {
 			return err
 		}
