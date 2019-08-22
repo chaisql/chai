@@ -107,7 +107,7 @@ func TestDelete(t *testing.T) {
 		err := Delete().From(Table("test")).Where(IntField("age").Gt(20)).Run(tx)
 		require.NoError(t, err)
 
-		tb, err := tx.Table("test")
+		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
 		st := table.NewStream(tb)
@@ -143,7 +143,7 @@ func TestInsert(t *testing.T) {
 		res := Insert().Into(Table("test")).Fields("a", "b").Values(IntValue(5), StringValue("hello")).Run(tx)
 		require.NoError(t, res.Err())
 
-		tb, err := tx.Table("test")
+		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
 		st := table.NewStream(tb)
@@ -187,7 +187,7 @@ func TestUpdate(t *testing.T) {
 			err := Update(Table("test")).Set("age", IntValue(20)).Where(IntField("age").Gt(20)).Run(tx)
 			require.NoError(t, err)
 
-			tb, err := tx.Table("test")
+			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
 
 			st := table.NewStream(tb)

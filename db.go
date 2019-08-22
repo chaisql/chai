@@ -105,7 +105,7 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 // and automatically rolls back the transaction.
 func (db DB) ViewTable(tableName string, fn func(*Table) error) error {
 	return db.View(func(tx *Tx) error {
-		tb, err := tx.Table(tableName)
+		tb, err := tx.GetTable(tableName)
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func (db DB) ViewTable(tableName string, fn func(*Table) error) error {
 // If fn returns an error, the transaction is rolled back.
 func (db DB) UpdateTable(tableName string, fn func(*Table) error) error {
 	return db.Update(func(tx *Tx) error {
-		tb, err := tx.Table(tableName)
+		tb, err := tx.GetTable(tableName)
 		if err != nil {
 			return err
 		}
@@ -174,14 +174,14 @@ func (tx Tx) CreateTableIfNotExists(name string) (*Table, error) {
 	}
 
 	if err == ErrTableAlreadyExists {
-		return tx.Table(name)
+		return tx.GetTable(name)
 	}
 
 	return nil, err
 }
 
-// Table returns a table by name. The table instance is only valid for the lifetime of the transaction.
-func (tx Tx) Table(name string) (*Table, error) {
+// GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
+func (tx Tx) GetTable(name string) (*Table, error) {
 	s, err := tx.tx.Store(name)
 	if err == engine.ErrStoreNotFound {
 		return nil, ErrTableNotFound

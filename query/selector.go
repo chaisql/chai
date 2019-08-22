@@ -97,5 +97,5 @@ func (t Table) TableName() string {
 
 // SelectTable selects the table t from tx.
 func (t Table) SelectTable(tx *genji.Tx) (*genji.Table, error) {
-	return tx.Table(string(t))
+	return tx.GetTable(string(t))
 }

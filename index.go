@@ -77,7 +77,7 @@ func (i *indexOptions) ScanRecord(rec record.Record) error {
 }
 
 func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
-	it, err := tx.Table(indexTable)
+	it, err := tx.GetTable(indexTable)
 	if err != nil {
 		return nil, err
 	}

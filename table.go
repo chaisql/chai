@@ -262,7 +262,7 @@ func buildIndexName(tableName, field string) string {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (t Table) CreateIndex(field string, opts index.Options) (index.Index, error) {
-	it, err := t.tx.Table(indexTable)
+	it, err := t.tx.GetTable(indexTable)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func (t Table) Indexes() (map[string]index.Index, error) {
 
 // DropIndex deletes an index from the database.
 func (t Table) DropIndex(field string) error {
-	it, err := t.tx.Table(indexTable)
+	it, err := t.tx.GetTable(indexTable)
 	if err != nil {
 		return err
 	}
