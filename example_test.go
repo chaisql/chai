@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 )
@@ -72,33 +71,6 @@ func Example() {
 			})
 	})
 
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func ExampleDB() {
-	ng := memory.NewEngine()
-	db, err := genji.New(ng)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	err = db.Update(func(tx *genji.Tx) error {
-		t, err := tx.CreateTable("Table")
-		if err != nil {
-			return err
-		}
-
-		r := record.FieldBuffer{
-			field.NewString("Name", "foo"),
-			field.NewInt("Age", 10),
-		}
-
-		_, err = t.Insert(r)
-		return err
-	})
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -4,7 +4,7 @@ Genji supports various engines that write data on-disk, like BoltDB or Badger, a
 
 It provides a complete framework with multiple APIs that can be used to manipulate, manage, read and write data.
 
-Genji tables are schemaless and can be manipulated using the table package, which is a low level functional API
+Genji tables are schemaless and can be manipulated using the table package, which is a low-level functional API
 or by using the query package which is a powerful SQL like query engine.
 
 Tables can be mapped to Go structures without reflection: Genji relies on code generation to translate data to and from Go structures.
@@ -37,14 +37,14 @@ Here is how the most important packages are organized, from bottom to up:
 
 Engine and key value stores
 
-Genji relies on key value stores to store data. The engine package defines interfaces that must be implemented
-in order to be used by the Genji database. As long as an implementation satisfies the engine package requirements, data can be stored anywhere.
+Genji relies on key-value stores to store data. The engine package defines interfaces that must be implemented
+to be used by the Genji database. As long as an implementation satisfies the engine package requirements, data can be stored anywhere.
 
 Out of the box, Genji provides three implementations: BoltDB, Badger and in-memory.
 
 See the engine package documentation for more details.
 
-Field, Record and Table
+Field, Record, and Table
 
 Genji defines its own semantic to describe data.
 Data stored in Genji being schemaless, the usual SQL triplet "column", "row", "table" wasn't chosen
@@ -54,8 +54,8 @@ to what people are used to in this language.
 
 That's why the triplet "field", "record" and "table" was chosen.
 
-A field is a piece of information that has a type, a content and a name. It is managed by the field package, which provides helpers
-to create and manipulate them. The field is the equivalent to the SQL column, though it might contain nested fields in the future.
+A field is a piece of information that has a type, content, and a name. It is managed by the field package, which provides helpers
+to create and manipulate them. The field is equivalent to the SQL column, though it might contain nested fields in the future.
 
   type Field struct {
 	  Name string
@@ -75,7 +75,7 @@ This is equivalent to the SQL row. It is managed by the record package, which al
   }
 
 A table is a group of records. It allows to read and write records. It is also an interface, but Genji provides implementations that should cover most of the use cases
-and that use the engine key value stores to fetch and store data.
+and that use the engine key-value stores to fetch and store data.
 This is equivalent to the SQL table. It is managed by the table package, which also provides a way to stream records from a table.
 
 These are the basic building blocks of the Genji database. The other packages use them to build complex features such as SQL-Like queries,
@@ -83,7 +83,7 @@ database migrations, indexing, code generation, etc.
 
 The genji package
 
-The genji package is central and acts as the main entrypoint for using the database.
+The genji package is central and acts as the main entry point for using the database.
 It leverages the features of most of the other packages, implementing some interfaces here,
 importing some types there. Its table implementation takes advantage of the index package to provide automatic support
 for indexing.
@@ -92,9 +92,9 @@ The query package then uses almost every other packages, including genji, to pro
 
 Types, code generation and the absence of reflection
 
-Genji's framework is self sufficient and covers most of the use cases, but since it doesn't use reflection,
+Genji's framework is self-sufficient and covers most of the use cases, but since it doesn't use reflection,
 users are expected to implement the record interface to allow their types to be used with the API.
-This is a design choice in order to make Genji APIs safe and use compile time checks rather than runtime ones.
+This is a design choice to make Genji APIs safe and use compile-time checks rather than runtime ones.
 
 Instead, it is possible to use the genji command line to generate code. This tool will add methods to the structure of your choice
 to implement the record interface.
@@ -107,10 +107,10 @@ Let's assume that there is a file named user.go containing the following type:
 	Age  uint32
   }
 
-Note that even if struct tags are defined, Genji won't use reflection. They will be parsed by the genji command line tool
+Note that even if struct tags are defined, Genji won't use reflection. They will be parsed by the genji command-line tool
 to generate code based on them. See the generator package for more information on the semantics of the struct tags.
 
-The genji command line can be used as following to generate the code:
+The genji command line can be used as follows to generate the code:
 
   genji -f user.go -s User
 
