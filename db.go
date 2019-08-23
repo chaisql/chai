@@ -105,28 +105,28 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
 // and automatically rolls back the transaction.
-func (db DB) ViewTable(tableName string, fn func(*Table) error) error {
+func (db DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
 	return db.View(func(tx *Tx) error {
 		tb, err := tx.GetTable(tableName)
 		if err != nil {
 			return err
 		}
 
-		return fn(tb)
+		return fn(tx, tb)
 	})
 }
 
 // UpdateTable starts a read/write transaction, fetches the selected table, calls fn with that table
 // and automatically commits the transaction.
 // If fn returns an error, the transaction is rolled back.
-func (db DB) UpdateTable(tableName string, fn func(*Table) error) error {
+func (db DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 	return db.Update(func(tx *Tx) error {
 		tb, err := tx.GetTable(tableName)
 		if err != nil {
 			return err
 		}
 
-		return fn(tb)
+		return fn(tx, tb)
 	})
 }
 
