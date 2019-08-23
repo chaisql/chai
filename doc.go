@@ -78,17 +78,17 @@ A table is a group of records. It allows to read and write records. It is also a
 and that use the engine key value stores to fetch and store data.
 This is equivalent to the SQL table. It is managed by the table package, which also provides a way to stream records from a table.
 
-These are the basic building blocks of the Genji database. The other packages use them to build complex features such as complex queries,
+These are the basic building blocks of the Genji database. The other packages use them to build complex features such as SQL-Like queries,
 database migrations, indexing, code generation, etc.
 
-Index, query and genji
+The genji package
 
 The genji package is central and acts as the main entrypoint for using the database.
 It leverages the features of most of the other packages, implementing some interfaces here,
 importing some types there. Its table implementation takes advantage of the index package to provide automatic support
 for indexing.
 
-The query package then uses everything (except the engine package) to provide SQL Like queries.
+The query package then uses almost every other packages, including genji, to provide SQL Like queries.
 
 Types, code generation and the absence of reflection
 
@@ -99,7 +99,7 @@ This is a design choice in order to make Genji APIs safe and use compile time ch
 Instead, it is possible to use the genji command line to generate code. This tool will add methods to the structure of your choice
 to implement the record interface.
 
-Assuming there is a file named user.go containing the following type:
+Let's assume that there is a file named user.go containing the following type:
 
   type User struct {
 	ID   int64  `genji:"pk"`
@@ -114,7 +114,7 @@ The genji command line can be used as following to generate the code:
 
   genji -f user.go -s User
 
-  This will generate a file named user.genji.go containing the following types and methods
+This will generate a file named user.genji.go containing the following types and methods
 
   // user.genji.go
 
