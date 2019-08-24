@@ -33,6 +33,37 @@ type Reader interface {
 	Iterate(func(recordID []byte, r record.Record) error) error
 }
 
+// NewReaderFromRecords creates a reader that will iterate over
+// the given records.
+func NewReaderFromRecords(records ...record.Record) Reader {
+	return recordsReader(records)
+}
+
+type recordsReader []record.Record
+
+func (rr recordsReader) Iterate(fn func(recordID []byte, r record.Record) error) error {
+	var recordID []byte
+	var err error
+
+	for i, r := range rr {
+		if pker, ok := r.(PrimaryKeyer); ok {
+			recordID, err = pker.PrimaryKey()
+			if err != nil {
+				return errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
+			}
+		} else {
+			recordID = field.EncodeInt(i)
+		}
+
+		err = fn(recordID, r)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // A RecordGetter is a type that allows to get one record by recordID.
 // It is usually implemented by tables that provide random access.
 type RecordGetter interface {
@@ -91,29 +122,4 @@ func Dump(w io.Writer, t Reader) error {
 	}
 
 	return buf.Flush()
-}
-
-type recordsReader []record.Record
-
-func (rr recordsReader) Iterate(fn func(recordID []byte, r record.Record) error) error {
-	var recordID []byte
-	var err error
-
-	for i, r := range rr {
-		if pker, ok := r.(PrimaryKeyer); ok {
-			recordID, err = pker.PrimaryKey()
-			if err != nil {
-				return errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
-			}
-		} else {
-			recordID = field.EncodeInt(i)
-		}
-
-		err = fn(recordID, r)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

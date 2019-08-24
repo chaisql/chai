@@ -332,9 +332,9 @@ func (i InsertStmt) Run(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	st := table.NewStreamFromRecords(record.FieldBuffer([]field.Field{
+	st := table.NewStream(table.NewReaderFromRecords(record.FieldBuffer([]field.Field{
 		field.NewBytes("recordID", recordID),
-	}))
+	})))
 	return Result{Stream: &st}
 }
 
