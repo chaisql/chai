@@ -102,9 +102,9 @@ to implement the record interface.
 Let's assume that there is a file named user.go containing the following type:
 
   type User struct {
-	ID   int64  `genji:"pk"`
-	Name string `genji:"index"`
-	Age  uint32
+	  ID   int64  `genji:"pk"`
+	  Name string `genji:"index"`
+	  Age  uint32
   }
 
 Note that even if struct tags are defined, Genji won't use reflection. They will be parsed by the genji command-line tool
