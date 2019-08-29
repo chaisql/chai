@@ -1,0 +1,37 @@
+{
+    package parser
+}
+
+Input <- _ expr:Expr EOF {
+    return expr, nil
+}
+
+Expr <- _ selectStmt:SelectStmt {
+    return selectStmt, nil
+}
+
+SelectStmt "Select statement" <- SelectKeyWord _ From
+
+SelectKeyWord <- "select"i
+
+From <- FromKeyWord _ tableName:TableName {
+    return query.Table(tableName.(string)), nil
+}
+
+FromKeyWord <- "from"i
+
+TableName <- tableName:Identifier {
+    return tableName, nil
+}
+
+Identifier <- (EnglishChar / UnicodeChar)+ (EnglishChar / UnicodeChar / '_')* {
+    return string(c.text), nil
+}
+
+EnglishChar <- [a-zA-Z]
+
+UnicodeChar <- [^\u0000-\u007F]
+
+_ "whitespace" <- [ \n\t\r]*
+
+EOF <- !.
