@@ -4,7 +4,7 @@ Genji supports various engines that write data on-disk, like BoltDB or Badger, a
 
 It provides a complete framework with multiple APIs that can be used to manipulate, manage, read and write data.
 
-Genji tables are schemaless and can be manipulated using the table package, which is a low-level functional API
+Genji tables are schemaless and can be manipulated using the table package, which is a low-level streaming API
 or by using the query package which is a powerful SQL like query engine.
 
 Tables can be mapped to Go structures without reflection: Genji relies on code generation to translate data to and from Go structures.
@@ -49,8 +49,7 @@ Field, Record, and Table
 Genji defines its own semantic to describe data.
 Data stored in Genji being schemaless, the usual SQL triplet "column", "row", "table" wasn't chosen
 for the vocabulary of this library. Also, Genji is a database written in Go for Go, and its primary goal
-is to map structures and maps to tables, though it's not limited to that. The semantics were to be as close as possible
-to what people are used to in this language.
+is to map structures and maps to tables, though it's not limited to that.
 
 That's why the triplet "field", "record" and "table" was chosen.
 
@@ -116,10 +115,8 @@ The genji command line can be used as follows to generate the code:
 
 This will generate a file named user.genji.go containing the following types and methods
 
-  // user.genji.go
-
   // The User type gets new methods that implement some Genji interfaces.
-  func (u *User) Field(name string) (field.Field, error) {}
+  func (u *User) GetField(name string) (field.Field, error) {}
   func (u *User) Iterate(fn func(field.Field) error) error {}
   func (u *User) ScanRecord(rec record.Record) error {}
   func (u *User) PrimaryKey() ([]byte, error) {}
@@ -133,5 +130,7 @@ This will generate a file named user.genji.go containing the following types and
   }
   func NewUserFields() UserFields {}
 
+The User type now implements all the interfaces needed to interact correctly with the database APIs.
+See the examples in this page to see how it can be used.
 */
 package genji

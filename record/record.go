@@ -25,6 +25,11 @@ type Scanner interface {
 // FieldBuffer is slice of fields which implements the Record interface.
 type FieldBuffer []field.Field
 
+// NewFieldBuffer creates a FieldBuffer with the given fields.
+func NewFieldBuffer(fields ...field.Field) FieldBuffer {
+	return FieldBuffer(fields)
+}
+
 // Add a field to the buffer.
 func (fb *FieldBuffer) Add(f field.Field) {
 	*fb = append(*fb, f)
@@ -50,10 +55,11 @@ func (fb FieldBuffer) GetField(name string) (field.Field, error) {
 }
 
 // Set replaces a field if it already exists or creates one if not.
-func (fb FieldBuffer) Set(f field.Field) {
-	for i := range fb {
-		if fb[i].Name == f.Name {
-			fb[i] = f
+func (fb *FieldBuffer) Set(f field.Field) {
+	s := *fb
+	for i := range s {
+		if s[i].Name == f.Name {
+			(*fb)[i] = f
 			return
 		}
 	}
@@ -87,7 +93,7 @@ func (fb *FieldBuffer) Delete(name string) error {
 	return fmt.Errorf("field %q not found", name)
 }
 
-// Replace the field with the given by f.
+// Replace the field with the given name by f.
 func (fb *FieldBuffer) Replace(name string, f field.Field) error {
 	s := *fb
 	for i := range s {
@@ -98,7 +104,7 @@ func (fb *FieldBuffer) Replace(name string, f field.Field) error {
 		}
 	}
 
-	return fmt.Errorf("field %q not found", name)
+	return fmt.Errorf("field %q not found", f.Name)
 }
 
 // DumpRecord is helper that dumps the content of a record into the given writer.

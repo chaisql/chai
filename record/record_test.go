@@ -11,20 +11,120 @@ import (
 var _ record.Record = new(record.FieldBuffer)
 
 func TestFieldBuffer(t *testing.T) {
-	b := record.FieldBuffer([]field.Field{
+	buf := record.NewFieldBuffer(
 		field.NewInt64("a", 10),
 		field.NewString("b", "hello"),
+	)
+
+	t.Run("Iterate", func(t *testing.T) {
+		var i int
+		err := buf.Iterate(func(f field.Field) error {
+			require.NotEmpty(t, f)
+			require.Equal(t, f, buf[i])
+			i++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, i)
 	})
 
-	var i int
-	err := b.Iterate(func(f field.Field) error {
-		require.NotEmpty(t, f)
-		require.Equal(t, f, b[i])
-		i++
-		return nil
+	t.Run("Add", func(t *testing.T) {
+		buf := record.NewFieldBuffer(
+			field.NewInt64("a", 10),
+			field.NewString("b", "hello"),
+		)
+
+		c := field.NewBool("c", true)
+		buf.Add(c)
+		require.Len(t, buf, 3)
+		require.Equal(t, buf[2], c)
 	})
-	require.NoError(t, err)
-	require.Equal(t, 2, i)
+
+	t.Run("ScanRecord", func(t *testing.T) {
+		buf1 := record.NewFieldBuffer(
+			field.NewInt64("a", 10),
+			field.NewString("b", "hello"),
+		)
+
+		buf2 := record.NewFieldBuffer(
+			field.NewInt64("a", 20),
+			field.NewString("b", "bye"),
+			field.NewBool("c", true),
+		)
+
+		err := buf1.ScanRecord(buf2)
+		require.NoError(t, err)
+
+		require.Equal(t, record.NewFieldBuffer(
+			field.NewInt64("a", 10),
+			field.NewString("b", "hello"),
+			field.NewInt64("a", 20),
+			field.NewString("b", "bye"),
+			field.NewBool("c", true),
+		), buf1)
+	})
+
+	t.Run("GetField", func(t *testing.T) {
+		f, err := buf.GetField("a")
+		require.NoError(t, err)
+		require.Equal(t, field.NewInt64("a", 10), f)
+
+		f, err = buf.GetField("not existing")
+		require.Error(t, err)
+		require.Zero(t, f)
+	})
+
+	t.Run("Set", func(t *testing.T) {
+		buf1 := record.NewFieldBuffer(
+			field.NewInt64("a", 10),
+			field.NewString("b", "hello"),
+		)
+
+		buf1.Set(field.NewInt64("a", 11))
+		require.Equal(t, field.NewInt64("a", 11), buf1[0])
+
+		buf1.Set(field.NewInt64("c", 12))
+		require.Len(t, buf1, 3)
+		require.Equal(t, field.NewInt64("c", 12), buf1[2])
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		buf1 := record.NewFieldBuffer(
+			field.NewInt64("a", 10),
+			field.NewString("b", "hello"),
+		)
+
+		err := buf1.Delete("a")
+		require.NoError(t, err)
+		require.Len(t, buf1, 1)
+		require.Equal(t, record.NewFieldBuffer(
+			field.NewString("b", "hello"),
+		), buf1)
+
+		err = buf1.Delete("b")
+		require.NoError(t, err)
+		require.Len(t, buf1, 0)
+
+		err = buf1.Delete("b")
+		require.Error(t, err)
+	})
+
+	t.Run("Replace", func(t *testing.T) {
+		buf1 := record.NewFieldBuffer(
+			field.NewInt64("a", 10),
+			field.NewString("b", "hello"),
+		)
+
+		err := buf1.Replace("a", field.NewInt64("c", 10))
+		require.NoError(t, err)
+		require.Equal(t, record.NewFieldBuffer(
+			field.NewInt64("c", 10),
+			field.NewString("b", "hello"),
+		), buf1)
+
+		err = buf1.Replace("d", field.NewInt64("c", 11))
+		require.Error(t, err)
+	})
 }
 
 func TestNewFromMap(t *testing.T) {
