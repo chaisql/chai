@@ -8,7 +8,7 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	s, err := Parse("wesh", []byte("sElEct FroM f北P京_市_"), Debug(true))
+	s, err := Parse("", []byte("sElEct FroM f北P京_市_ where age"), Debug(true))
 	require.NoError(t, err)
 	spew.Dump(s)
 }

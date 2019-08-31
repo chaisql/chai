@@ -45,6 +45,17 @@ func (f Field) SelectField(r record.Record) (field.Field, error) {
 	return r.GetField(string(f))
 }
 
+// Eval extracts the record from the context and selects the right field.
+// It implements the Expr interface.
+func (f Field) Eval(ctx EvalContext) (Scalar, error) {
+	fd, err := f.SelectField(ctx.Record)
+	if err != nil {
+		return Scalar{}, err
+	}
+
+	return Scalar{Type: fd.Type, Data: fd.Data}, nil
+}
+
 // As returns a alias to f.
 // The alias selects the same field as f but returns a different name
 // when the SelectField method is called.
