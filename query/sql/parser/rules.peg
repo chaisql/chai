@@ -46,13 +46,20 @@ EOF <- !.
 Expression
 */
 
-Expr <- Scalar / FieldSelector 
+Expr <- first:(Scalar / FieldSelector) op:(_ Operator _ Expr)? {
+    if op != nil {
+        chunks := op.([]interface{})
+        return chunks[1].(func(a, b query.Expr) query.Expr)(first.(query.Expr), chunks[3].(query.Expr)), nil
+    }
+
+    return first, nil
+}
 
 /*
 Expression - Scalar
 */
 
-Scalar <- StringScalar / NumericScalar / BoolScalar
+Scalar <- (StringScalar / NumericScalar / BoolScalar)
 
 StringScalar <- val:(SingleQuotedWord / DoubleQuotedWord) {
     return &query.Scalar{Type: field.String, Data: []byte(val.(string))}, nil
@@ -65,7 +72,7 @@ NumericScalar ← '-'? Integer fractional:( '.' DecimalDigit+ )? Exponent? {
             return nil, err
         }
 
-        return &query.Scalar{Type: field.Float64, Data: field.EncodeFloat64(f)}, nil
+        return &query.Scalar{Type: field.Float64, Value: f, Data: field.EncodeFloat64(f)}, nil
     }
 
     i, err := strconv.ParseInt(string(c.text), 10, 64)
@@ -73,7 +80,7 @@ NumericScalar ← '-'? Integer fractional:( '.' DecimalDigit+ )? Exponent? {
         return nil, err
     }
 
-    return &query.Scalar{Type: field.Int64, Data: field.EncodeInt64(i)}, nil
+    return &query.Scalar{Type: field.Int64, Value: i, Data: field.EncodeInt64(i)}, nil
 }
 
 BoolScalar <- v:("true" / "TRUE" / "false" / "FALSE" ) {
@@ -81,7 +88,7 @@ BoolScalar <- v:("true" / "TRUE" / "false" / "FALSE" ) {
     if err != nil {
         return nil, err
     }
-    return &query.Scalar{Type: field.Bool, Data: field.EncodeBool(x)}, nil
+    return &query.Scalar{Type: field.Bool, Value: x}, nil
 }
 
 /*
@@ -98,10 +105,12 @@ Expression - Operators
 
 Operator <- BinaryOperator
 
-BinaryOperator <- Expr _ (EqOperator) _ Expr
+BinaryOperator <- EqOperator
 
-EqOperator <- "eq" {
-    return query.Eq
+EqOperator <- "=" {
+    return func(a, b query.Expr) query.Expr {
+        return query.Eqq(a, b)
+    }, nil
 }
 
 /*

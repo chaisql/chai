@@ -13,8 +13,9 @@ var (
 
 // A Scalar represents a value of any type defined by the field package.
 type Scalar struct {
-	Type field.Type
-	Data []byte
+	Type  field.Type
+	Data  []byte
+	Value interface{}
 }
 
 // Truthy returns true if the Data is different than the zero value of
@@ -26,6 +27,24 @@ func (s Scalar) Truthy() bool {
 // Eval returns s. It implements the Expr interface.
 func (s Scalar) Eval(EvalContext) (Scalar, error) {
 	return s, nil
+}
+
+// LitteralType describes the type of a litteral
+type LitteralType int
+
+// Types of litterals.
+const (
+	String LitteralType = iota + 1
+	Bool
+	Int
+	Float
+)
+
+// A Litteral is a constant litteral value. It is used by operators to ease evaluation with scalars
+// that are not exactly of the same type. How they are converted and compared depends on the operator.
+type Litteral struct {
+	Type  LitteralType
+	Value interface{}
 }
 
 // An Expr evaluates to a scalar.

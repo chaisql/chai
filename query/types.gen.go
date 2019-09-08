@@ -922,8 +922,9 @@ type Int64Value int64
 // the right type.
 func (v Int64Value) Eval(EvalContext) (Scalar, error) {
 	return Scalar{
-		Type: field.Int64,
-		Data: field.EncodeInt64(int64(v)),
+		Type:  field.Int64,
+		Data:  field.EncodeInt64(int64(v)),
+		Value: v,
 	}, nil
 }
 

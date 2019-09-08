@@ -5,6 +5,7 @@ require (
 	github.com/dgraph-io/badger v1.6.0
 	github.com/etcd-io/bbolt v1.3.3
 	github.com/google/btree v1.0.0
+	github.com/mna/pigeon v1.0.0 // indirect
 	github.com/oklog/ulid v1.3.1
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.3.0

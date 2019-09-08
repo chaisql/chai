@@ -140,11 +140,15 @@ func (s Stream) Count() (int, error) {
 // First runs the stream, returns the first record found and closes the stream.
 // If the stream is empty, all return values are nil.
 func (s Stream) First() (recordID []byte, r record.Record, err error) {
-	err = s.Limit(1).Iterate(func(rID []byte, rec record.Record) error {
+	err = s.Iterate(func(rID []byte, rec record.Record) error {
 		recordID = rID
 		r = rec
-		return nil
+		return ErrStreamClosed
 	})
+
+	if err == ErrStreamClosed {
+		err = nil
+	}
 
 	return
 }

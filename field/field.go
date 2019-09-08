@@ -642,3 +642,18 @@ func Decode(f Field) (interface{}, error) {
 
 	return nil, errors.New("unknown type")
 }
+
+// IsNumber returns true if t is either an integer of a float.
+func IsNumber(t Type) bool {
+	return IsInteger(t) || IsFloat(t)
+}
+
+// IsInteger returns true if t is a signed or unsigned integer of any size.
+func IsInteger(t Type) bool {
+	return t >= Uint && t <= Int64
+}
+
+// IsFloat returns true if t is either a Float32 or Float64.
+func IsFloat(t Type) bool {
+	return t == Float32 || t == Float64
+}

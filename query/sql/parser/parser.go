@@ -1,3 +1,3 @@
 package parser
 
-//go:generate sh -c "pigeon rules.peg | goimports > rules.go"
+//go:generate sh -c "pigeon -optimize-parser rules.peg | goimports > rules.go"
