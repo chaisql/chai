@@ -18,16 +18,28 @@ const (
 	WS
 
 	// Literals
-	IDENT // fields, table_name
-
-	// Misc characters
-	ASTERISK // *
-	COMMA    // ,
+	IDENT   // fields, table_name
+	NUMBER  // 12345.67
+	INTEGER // 12345
+	STRING  // "abc"
+	TRUE    // true
+	FALSE   // false
 
 	// Keywords
 	SELECT
 	FROM
 	WHERE
+
+	// Operators
+	EQ  // =
+	GT  // >
+	GTE // >=
+	LT  // <
+	LTE // <=
+
+	// Misc characters
+	ASTERISK // *
+	COMMA    // ,
 )
 
 var eof = rune(0)
@@ -72,12 +84,16 @@ func (s *Scanner) Scan() (tok Token, lit string) {
 	// Read the next rune.
 	ch := s.read()
 
-	// If we see whitespace then consume all contiguous whitespace.
-	// If we see a letter then consume as an ident or reserved word.
 	if isWhitespace(ch) {
+		// If we see whitespace then consume all contiguous whitespace.
 		s.unread()
 		return s.scanWhitespace()
+	} else if isDigit(ch) || ch == '-' {
+		// If we see a digit or the minus sign consume a number.
+		s.unread()
+		return s.scanNumber()
 	} else if isLetter(ch) {
+		// If we see a letter then consume as an ident or reserved word.
 		s.unread()
 		return s.scanIdent()
 	}
@@ -148,4 +164,55 @@ func (s *Scanner) scanIdent() (tok Token, lit string) {
 
 	// Otherwise return as a regular identifier.
 	return IDENT, buf.String()
+}
+
+// scanNumber consumes anything that looks like the start of a number.
+func (s *Scanner) scanNumber() (tok Token, lit string) {
+	var buf bytes.Buffer
+
+	// Check if the initial rune is a "-".
+	ch := s.read()
+	if ch == '-' {
+		buf.WriteRune(ch)
+	} else {
+		s.unread()
+	}
+
+	// Read as many digits as possible.
+	_, _ = buf.WriteString(s.scanDigits())
+
+	// If next code points are a full stop and digit then consume them.
+	isDecimal := false
+	if ch0 := s.read(); ch0 == '.' {
+		isDecimal = true
+		if ch1 := s.read(); isDigit(ch1) {
+			_, _ = buf.WriteRune(ch0)
+			_, _ = buf.WriteRune(ch1)
+			_, _ = buf.WriteString(s.scanDigits())
+		} else {
+			s.unread()
+		}
+	} else {
+		s.unread()
+	}
+
+	// Read as an integer if it doesn't have a fractional part.
+	if !isDecimal {
+		return INTEGER, buf.String()
+	}
+	return NUMBER, buf.String()
+}
+
+// scanDigits consumes a contiguous series of digits.
+func (s *Scanner) scanDigits() string {
+	var buf bytes.Buffer
+	for {
+		ch := s.read()
+		if !isDigit(ch) {
+			s.unread()
+			break
+		}
+		_, _ = buf.WriteRune(ch)
+	}
+	return buf.String()
 }

@@ -28,6 +28,12 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `foo`, tok: parser.IDENT, lit: `foo`},
 		{s: `Zx12_3U_-`, tok: parser.IDENT, lit: `Zx12_3U_`},
 
+		// Numbers
+		{s: `123`, tok: parser.INTEGER, lit: `123`},
+		{s: `-123`, tok: parser.INTEGER, lit: `-123`},
+		{s: `123.45`, tok: parser.NUMBER, lit: `123.45`},
+		{s: `-123.45`, tok: parser.NUMBER, lit: `-123.45`},
+
 		// Keywords
 		{s: `FROM`, tok: parser.FROM, lit: "FROM"},
 		{s: `SELECT`, tok: parser.SELECT, lit: "SELECT"},
