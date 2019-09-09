@@ -35,16 +35,14 @@ func (e eqOp) Eval(ctx EvalContext) (Scalar, error) {
 	}
 
 	if len(sa.Data) > 0 && sa.Value == nil {
-		sa.Value, err = field.DecodeInt64(sa.Data)
-		// sa.Value, err = field.Decode(field.Field{Type: sa.Type, Data: sa.Data})
+		sa.Value, err = field.Decode(field.Field{Type: sa.Type, Data: sa.Data})
 		if err != nil {
 			return falseScalar, err
 		}
 	}
 
 	if len(sb.Data) > 0 && sb.Value == nil {
-		sb.Value, err = field.DecodeInt64(sb.Data)
-		// sb.Value, err = field.Decode(field.Field{Type: sb.Type, Data: sb.Data})
+		sb.Value, err = field.Decode(field.Field{Type: sb.Type, Data: sb.Data})
 		if err != nil {
 			return falseScalar, err
 		}

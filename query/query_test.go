@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/index"
-
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"

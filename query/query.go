@@ -35,6 +35,16 @@ func New(statements ...Statement) Query {
 	return Query{statements: statements}
 }
 
+// Run parses s and runs the query against db.
+func Run(db *genji.DB, s string) Result {
+	q, err := ParseQuery(s)
+	if err != nil {
+		return Result{err: err}
+	}
+
+	return q.Run(db)
+}
+
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
 	Exec(*TxOpener) Result

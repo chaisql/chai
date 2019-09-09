@@ -1,4 +1,4 @@
-package sql
+package query
 
 import (
 	"fmt"
@@ -10,12 +10,11 @@ import (
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
-func createTable(t require.TestingT, size int, withIndex bool) (*genji.DB, func()) {
+func createDB(t require.TestingT, size int, withIndex bool) (*genji.DB, func()) {
 	db, err := genji.New(memory.NewEngine())
 	require.NoError(t, err)
 
@@ -49,7 +48,7 @@ func createTable(t require.TestingT, size int, withIndex bool) (*genji.DB, func(
 }
 
 func TestParser(t *testing.T) {
-	db, cleanup := createTable(t, 10, false)
+	db, cleanup := createDB(t, 10, false)
 	defer cleanup()
 
 	q, err := ParseQuery("SELECT FROM test WHERE age = 10")
@@ -67,55 +66,4 @@ func TestParser(t *testing.T) {
 	id, err := field.Decode(idf)
 	require.NoError(t, err)
 	require.Equal(t, 1, id)
-}
-
-func BenchmarkQuery(b *testing.B) {
-	db, cleanup := createTable(b, 10000, false)
-	defer cleanup()
-
-	b.Run("SQL", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			q, _ := ParseQuery("SELECT FROM test WHERE age = 10")
-
-			q.Run(db).Count()
-		}
-		b.StopTimer()
-	})
-
-	b.Run("Naked", func(b *testing.B) {
-		b.ResetTimer()
-
-		for i := 0; i < b.N; i++ {
-			q := query.New(query.Select().From(query.Table("test")).Where(query.Eqq(query.Field("age"), query.Scalar{
-				Type:  field.Int64,
-				Data:  field.EncodeInt64(10),
-				Value: 10,
-			})))
-
-			q.Run(db).Count()
-		}
-		b.StopTimer()
-	})
-}
-
-var q1 query.Query
-var q2 query.Query
-
-func BenchmarkParseQuery(b *testing.B) {
-	b.Run("SQL", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			q1, _ = ParseQuery("SELECT FROM test WHERE age = 10 AND name = 'hey'")
-		}
-	})
-
-	b.Run("Naked", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			q2 = query.New(query.Select().From(query.Table("test")).Where(query.Eqq(query.Field("age"), query.Scalar{
-				Type:  field.Int64,
-				Data:  field.EncodeInt64(10),
-				Value: 10,
-			})))
-		}
-	})
 }

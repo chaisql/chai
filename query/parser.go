@@ -1,12 +1,10 @@
-package sql
+package query
 
 import (
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
-
-	"github.com/asdine/genji/query"
 )
 
 // Parser represents an Genji SQL parser.
@@ -20,26 +18,26 @@ func NewParser(r io.Reader) *Parser {
 }
 
 // ParseQuery parses a query string and returns its AST representation.
-func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
+func ParseQuery(s string) (Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
 
-// ParseQuery parses an Genji SQL string and returns a query.Query.
-func (p *Parser) ParseQuery() (query.Query, error) {
-	var statements []query.Statement
+// ParseQuery parses an Genji SQL string and returns a Query.
+func (p *Parser) ParseQuery() (Query, error) {
+	var statements []Statement
 	semi := true
 
 	for {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == EOF {
-			return query.New(statements...), nil
+			return New(statements...), nil
 		} else if tok == SEMICOLON {
 			semi = true
 		} else {
 			if !semi {
-				return query.Query{}, newParseError(tokstr(tok, lit), []string{";"}, pos)
+				return Query{}, newParseError(tokstr(tok, lit), []string{";"}, pos)
 			}
 			p.Unscan()
 			s, err := p.ParseStatement()
 			if err != nil {
-				return query.Query{}, err
+				return Query{}, err
 			}
 			statements = append(statements, s)
 			semi = false
@@ -48,7 +46,7 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 }
 
 // ParseStatement parses a Genji SQL string and returns a Statement AST object.
-func (p *Parser) ParseStatement() (query.Statement, error) {
+func (p *Parser) ParseStatement() (Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok == SELECT {
 		return p.parseSelectStatement()
@@ -59,8 +57,8 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
-	stmt := query.Select()
+func (p *Parser) parseSelectStatement() (SelectStmt, error) {
+	stmt := Select()
 
 	// Parse "FROM".
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != FROM {
@@ -72,7 +70,7 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.From(query.Table(tableName))
+	stmt = stmt.From(Table(tableName))
 
 	// Parse condition: "WHERE EXPR".
 	expr, err := p.parseCondition()
@@ -85,7 +83,7 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
-func (p *Parser) parseCondition() (query.Expr, error) {
+func (p *Parser) parseCondition() (Expr, error) {
 	// Check if the WHERE token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != WHERE {
 		p.Unscan()
@@ -104,18 +102,18 @@ func (p *Parser) parseCondition() (query.Expr, error) {
 // BinaryExpr represents an operation between two expressions.
 type BinaryExpr struct {
 	Op        Token
-	LHS       query.Expr
-	RHS       query.Expr
-	innerExpr query.Expr
+	LHS       Expr
+	RHS       Expr
+	innerExpr Expr
 }
 
-// Eval calls the innerExpr expession. It implements the query.Expr interface.
-func (e BinaryExpr) Eval(ctx query.EvalContext) (query.Scalar, error) {
+// Eval calls the innerExpr expession. It implements the Expr interface.
+func (e BinaryExpr) Eval(ctx EvalContext) (Scalar, error) {
 	return e.innerExpr.Eval(ctx)
 }
 
 // ParseExpr parses an expression.
-func (p *Parser) ParseExpr() (query.Expr, error) {
+func (p *Parser) ParseExpr() (Expr, error) {
 	var err error
 	// Dummy root node.
 	root := &BinaryExpr{}
@@ -136,7 +134,7 @@ func (p *Parser) ParseExpr() (query.Expr, error) {
 			return root.RHS, nil
 		}
 
-		var rhs query.Expr
+		var rhs Expr
 
 		if rhs, err = p.parseUnaryExpr(); err != nil {
 			return nil, err
@@ -151,10 +149,7 @@ func (p *Parser) ParseExpr() (query.Expr, error) {
 			if !ok || r.Op.Precedence() >= op.Precedence() {
 				// Add the new expression here and break.
 				be := BinaryExpr{LHS: node.RHS, RHS: rhs, Op: op}
-				switch op {
-				case EQ:
-					be.innerExpr = query.Eqq(node.RHS, rhs)
-				}
+				be.innerExpr = opToExpr(op, node.RHS, rhs)
 				node.RHS = &be
 				break
 			}
@@ -163,33 +158,42 @@ func (p *Parser) ParseExpr() (query.Expr, error) {
 	}
 }
 
+func opToExpr(op Token, lhs, rhs Expr) Expr {
+	switch op {
+	case EQ:
+		return Eqq(lhs, rhs)
+	}
+
+	return nil
+}
+
 // parseUnaryExpr parses an non-binary expression.
-func (p *Parser) parseUnaryExpr() (query.Expr, error) {
+func (p *Parser) parseUnaryExpr() (Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case IDENT:
-		return query.Field(lit), nil
+		return Field(lit), nil
 	case STRING:
-		return query.StringValue(lit), nil
+		return StringValue(lit), nil
 	case NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return query.Float64Value(v), nil
+		return Float64Value(v), nil
 	case INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
 			// The check for negative numbers is handled somewhere else so this should always be a positive number.
 			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
-				return query.Uint64Value(v), nil
+				return Uint64Value(v), nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		return query.Int64Value(v), nil
+		return Int64Value(v), nil
 	case TRUE, FALSE:
-		return query.BoolValue(tok == TRUE), nil
+		return BoolValue(tok == TRUE), nil
 	default:
 		return nil, newParseError(tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
