@@ -76,6 +76,7 @@ const (
 	DURATION
 	FROM
 	IN
+	INF
 	INSERT
 	INTO
 	LIMIT

@@ -15,7 +15,7 @@ type Scanner struct {
 
 // NewScanner returns a new instance of Scanner.
 func NewScanner(r io.Reader) *Scanner {
-	return &Scanner{r: &reader{r: bufio.NewReader(r)}}
+	return &Scanner{r: &reader{r: bufio.NewReaderSize(r, 128)}}
 }
 
 // Scan returns the next token and position from the underlying reader.
