@@ -20,6 +20,25 @@ func Delete() DeleteStmt {
 	return DeleteStmt{}
 }
 
+// Exec runs the Delete statement in a read-write transaction.
+// It implements the Statement interface.
+func (d DeleteStmt) Exec(txm *TxOpener) (res Result) {
+	err := txm.Update(func(tx *genji.Tx) error {
+		res = d.Run(tx)
+		return nil
+	})
+
+	if res.err != nil {
+		return
+	}
+
+	if err != nil {
+		res.err = err
+	}
+
+	return
+}
+
 // From indicates which table to select from.
 // Calling this method before Run is mandatory.
 func (d DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
@@ -38,14 +57,14 @@ func (d DeleteStmt) Where(e Expr) DeleteStmt {
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (d DeleteStmt) Run(tx *genji.Tx) error {
+func (d DeleteStmt) Run(tx *genji.Tx) Result {
 	if d.tableSelector == nil {
-		return errors.New("missing table selector")
+		return Result{err: errors.New("missing table selector")}
 	}
 
 	t, err := d.tableSelector.SelectTable(tx)
 	if err != nil {
-		return err
+		return Result{err: err}
 	}
 
 	var useIndex bool
@@ -54,7 +73,7 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 	if im, ok := d.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(t)
 		if err != nil && err != genji.ErrIndexNotFound {
-			return err
+			return Result{err: err}
 		}
 
 		if ok && err == nil {
@@ -72,7 +91,8 @@ func (d DeleteStmt) Run(tx *genji.Tx) error {
 		st = st.Filter(whereClause(tx, d.whereExpr))
 	}
 
-	return st.Iterate(func(recordID []byte, r record.Record) error {
+	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)
 	})
+	return Result{err: err}
 }

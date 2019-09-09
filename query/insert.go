@@ -23,6 +23,25 @@ func Insert() InsertStmt {
 	return InsertStmt{}
 }
 
+// Exec runs the Insert statement in a read-write transaction.
+// It implements the Statement interface.
+func (i InsertStmt) Exec(txm *TxOpener) (res Result) {
+	err := txm.Update(func(tx *genji.Tx) error {
+		res = i.Run(tx)
+		return nil
+	})
+
+	if res.err != nil {
+		return
+	}
+
+	if err != nil {
+		res.err = err
+	}
+
+	return
+}
+
 // Into indicates in which table to write the new records.
 // Calling this method before Run is mandatory.
 func (i InsertStmt) Into(tableSelector TableSelector) InsertStmt {

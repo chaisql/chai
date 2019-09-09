@@ -74,13 +74,13 @@ func ExampleInsert() {
 
 func ExampleDelete() {
 	// DELETE FROM example (Name, Age) WHERE Age >= 18
-	err := query.
+	res := query.
 		Delete().
 		From(query.Table("example")).
 		Where(query.IntField("Age").Gte(18)).
 		Run(tx)
 
-	if err != nil {
-		log.Fatal(err)
+	if res.Err() != nil {
+		log.Fatal(res.Err())
 	}
 }

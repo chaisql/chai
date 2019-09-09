@@ -24,6 +24,25 @@ func Update(tableSelector TableSelector) UpdateStmt {
 	}
 }
 
+// Exec runs the Update statement in a read-write transaction.
+// It implements the Statement interface.
+func (u UpdateStmt) Exec(txm *TxOpener) (res Result) {
+	err := txm.Update(func(tx *genji.Tx) error {
+		res = u.Run(tx)
+		return nil
+	})
+
+	if res.err != nil {
+		return
+	}
+
+	if err != nil {
+		res.err = err
+	}
+
+	return
+}
+
 // Set assignes the result of the evaluation of e into the field selected
 // by f.
 func (u UpdateStmt) Set(fieldName string, e Expr) UpdateStmt {
@@ -42,18 +61,18 @@ func (u UpdateStmt) Where(e Expr) UpdateStmt {
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (u UpdateStmt) Run(tx *genji.Tx) error {
+func (u UpdateStmt) Run(tx *genji.Tx) Result {
 	if u.tableSelector == nil {
-		return errors.New("missing table selector")
+		return Result{err: errors.New("missing table selector")}
 	}
 
 	if len(u.pairs) == 0 {
-		return errors.New("Set method not called")
+		return Result{err: errors.New("Set method not called")}
 	}
 
 	t, err := u.tableSelector.SelectTable(tx)
 	if err != nil {
-		return err
+		return Result{err: err}
 	}
 
 	var tr table.Reader = t
@@ -63,7 +82,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 	if im, ok := u.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(t)
 		if err != nil && err != genji.ErrIndexNotFound {
-			return err
+			return Result{err: err}
 		}
 
 		if ok && err == nil {
@@ -81,7 +100,7 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 		st = st.Filter(whereClause(tx, u.whereExpr))
 	}
 
-	return st.Iterate(func(recordID []byte, r record.Record) error {
+	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -117,4 +136,5 @@ func (u UpdateStmt) Run(tx *genji.Tx) error {
 
 		return nil
 	})
+	return Result{err: err}
 }

@@ -131,8 +131,8 @@ func TestDelete(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		err := Delete().From(Table("test")).Where(IntField("age").Gt(20)).Run(tx)
-		require.NoError(t, err)
+		res := Delete().From(Table("test")).Where(IntField("age").Gt(20)).Run(tx)
+		require.NoError(t, res.Err())
 
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
@@ -211,8 +211,8 @@ func TestUpdate(t *testing.T) {
 			tx, cleanup := createTable(t, 10, test.withIndex)
 			defer cleanup()
 
-			err := Update(Table("test")).Set("age", IntValue(20)).Where(IntField("age").Gt(20)).Run(tx)
-			require.NoError(t, err)
+			res := Update(Table("test")).Set("age", IntValue(20)).Where(IntField("age").Gt(20)).Run(tx)
+			require.NoError(t, res.Err())
 
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
@@ -291,8 +291,8 @@ func BenchmarkStatementDelete(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				err := Delete().From(Table("test")).Where(IntField("age").Gt(-200)).Run(tx)
-				require.NoError(b, err)
+				res := Delete().From(Table("test")).Where(IntField("age").Gt(-200)).Run(tx)
+				require.NoError(b, res.Err())
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -308,8 +308,8 @@ func BenchmarkStatementUpdate(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				err := Update(Table("test")).Where(IntField("age").Gt(-200)).Set("age", IntValue(100)).Run(tx)
-				require.NoError(b, err)
+				res := Update(Table("test")).Where(IntField("age").Gt(-200)).Set("age", IntValue(100)).Run(tx)
+				require.NoError(b, res.Err())
 			}
 			b.StopTimer()
 			tx.Rollback()

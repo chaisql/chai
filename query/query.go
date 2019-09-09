@@ -8,29 +8,49 @@ import (
 	"github.com/asdine/genji/table"
 )
 
-// A Query can execute actions against the database. It can read or write data
+// A Query can execute statements against the database. It can read or write data
 // from any table, or even alter the structure of the database.
-// Results are returned as a stream.
-type Query interface {
-	Run(*genji.DB) Result
+// Results are returned as streams.
+type Query struct {
+	statements []Statement
+}
+
+// Run executes all the statements in their own transaction and returns the last result.
+func (q Query) Run(db *genji.DB) Result {
+	txm := TxOpener{DB: db}
+	var res Result
+
+	for _, stmt := range q.statements {
+		res = stmt.Exec(&txm)
+		if res.err != nil {
+			return res
+		}
+	}
+
+	return res
+}
+
+// New creates a new Query with the given statements.
+func New(statements ...Statement) Query {
+	return Query{statements: statements}
 }
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*TxManager) (*table.Stream, error)
+	Exec(*TxOpener) Result
 }
 
-// TxManager is used by statements to automatically open transactions.
+// TxOpener is used by statements to automatically open transactions.
 // If the Tx field is nil, it will automatically create a new transaction.
 // If the Tx field is not nil, it will be passed to View and Update.
-type TxManager struct {
+type TxOpener struct {
 	DB *genji.DB
 	Tx *genji.Tx
 }
 
 // View runs fn in a read-only transaction if the Tx field is nil.
 // If not, it will pass it to fn regardless of it being a read-only or read-write transaction.
-func (tx TxManager) View(fn func(tx *genji.Tx) error) error {
+func (tx TxOpener) View(fn func(tx *genji.Tx) error) error {
 	if tx.Tx != nil {
 		return fn(tx.Tx)
 	}
@@ -40,7 +60,7 @@ func (tx TxManager) View(fn func(tx *genji.Tx) error) error {
 
 // Update runs fn in a read-write transaction if the Tx field is nil.
 // If not, it will pass it to fn regardless of it being a read-only or read-write transaction.
-func (tx TxManager) Update(fn func(tx *genji.Tx) error) error {
+func (tx TxOpener) Update(fn func(tx *genji.Tx) error) error {
 	if tx.Tx != nil {
 		return fn(tx.Tx)
 	}

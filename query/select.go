@@ -23,20 +23,39 @@ func Select() SelectStmt {
 	return SelectStmt{}
 }
 
+// Exec runs the Select statement in a read-only transaction.
+// It implements the Statement interface.
+func (s SelectStmt) Exec(txm *TxOpener) (res Result) {
+	err := txm.View(func(tx *genji.Tx) error {
+		res = s.Run(tx)
+		return nil
+	})
+
+	if res.err != nil {
+		return
+	}
+
+	if err != nil {
+		res.err = err
+	}
+
+	return
+}
+
 // Run the Select query within tx.
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (q SelectStmt) Run(tx *genji.Tx) Result {
-	if q.tableSelector == nil {
+func (s SelectStmt) Run(tx *genji.Tx) Result {
+	if s.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
 
 	offset := -1
 	limit := -1
 
-	if q.offsetExpr != nil {
-		s, err := q.offsetExpr.Eval(EvalContext{
+	if s.offsetExpr != nil {
+		s, err := s.offsetExpr.Eval(EvalContext{
 			Tx: tx,
 		})
 		if err != nil {
@@ -51,8 +70,8 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		}
 	}
 
-	if q.limitExpr != nil {
-		s, err := q.limitExpr.Eval(EvalContext{
+	if s.limitExpr != nil {
+		s, err := s.limitExpr.Eval(EvalContext{
 			Tx: tx,
 		})
 		if err != nil {
@@ -67,7 +86,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 		}
 	}
 
-	t, err := q.tableSelector.SelectTable(tx)
+	t, err := s.tableSelector.SelectTable(tx)
 	if err != nil {
 		return Result{err: err}
 	}
@@ -75,7 +94,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 	var tr table.Reader = t
 
 	var useIndex bool
-	if im, ok := q.whereExpr.(IndexMatcher); ok {
+	if im, ok := s.whereExpr.(IndexMatcher); ok {
 		tree, ok, err := im.MatchIndex(t)
 		if err != nil && err != genji.ErrIndexNotFound {
 			return Result{err: err}
@@ -93,7 +112,7 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 	st := table.NewStream(tr)
 
 	if !useIndex {
-		st = st.Filter(whereClause(tx, q.whereExpr))
+		st = st.Filter(whereClause(tx, s.whereExpr))
 	}
 
 	if offset > 0 {
@@ -108,42 +127,42 @@ func (q SelectStmt) Run(tx *genji.Tx) Result {
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
-func (q SelectStmt) Where(e Expr) SelectStmt {
-	q.whereExpr = e
-	return q
+func (s SelectStmt) Where(e Expr) SelectStmt {
+	s.whereExpr = e
+	return s
 }
 
 // From indicates which table to select from.
 // Calling this method before Run is mandatory.
-func (q SelectStmt) From(tableSelector TableSelector) SelectStmt {
-	q.tableSelector = tableSelector
-	return q
+func (s SelectStmt) From(tableSelector TableSelector) SelectStmt {
+	s.tableSelector = tableSelector
+	return s
 }
 
 // Limit the number of records returned.
-func (q SelectStmt) Limit(offset int) SelectStmt {
-	q.limitExpr = Int64Value(int64(offset))
-	return q
+func (s SelectStmt) Limit(offset int) SelectStmt {
+	s.limitExpr = Int64Value(int64(offset))
+	return s
 }
 
 // LimitExpr takes an expression that will be evaluated to determine
 // how many records the query must return.
 // The result of the evaluation must be an integer.
-func (q SelectStmt) LimitExpr(e Expr) SelectStmt {
-	q.limitExpr = e
-	return q
+func (s SelectStmt) LimitExpr(e Expr) SelectStmt {
+	s.limitExpr = e
+	return s
 }
 
 // Offset indicates the number of records to skip.
-func (q SelectStmt) Offset(offset int) SelectStmt {
-	q.offsetExpr = Int64Value(int64(offset))
-	return q
+func (s SelectStmt) Offset(offset int) SelectStmt {
+	s.offsetExpr = Int64Value(int64(offset))
+	return s
 }
 
 // OffsetExpr takes an expression that will be evaluated to determine
 // how many records the query must skip.
 // The result of the evaluation must be a field.Int64.
-func (q SelectStmt) OffsetExpr(e Expr) SelectStmt {
-	q.offsetExpr = e
-	return q
+func (s SelectStmt) OffsetExpr(e Expr) SelectStmt {
+	s.offsetExpr = e
+	return s
 }
