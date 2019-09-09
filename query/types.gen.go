@@ -64,15 +64,12 @@ func (f BytesFieldSelector) Value(x []byte) *Scalar {
 }
 
 // BytesValue is an expression that evaluates to itself.
-type BytesValue []byte
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v BytesValue) Eval(EvalContext) (Scalar, error) {
+func BytesValue(v []byte) Scalar {
 	return Scalar{
-		Type: field.Bytes,
-		Data: field.EncodeBytes([]byte(v)),
-	}, nil
+		Type:  field.Bytes,
+		Data:  field.EncodeBytes([]byte(v)),
+		Value: v,
+	}
 }
 
 // StringFieldSelector is a type safe field selector that allows to compare values with fields
@@ -135,15 +132,12 @@ func (f StringFieldSelector) Value(x string) *Scalar {
 }
 
 // StringValue is an expression that evaluates to itself.
-type StringValue string
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v StringValue) Eval(EvalContext) (Scalar, error) {
+func StringValue(v string) Scalar {
 	return Scalar{
-		Type: field.String,
-		Data: field.EncodeString(string(v)),
-	}, nil
+		Type:  field.String,
+		Data:  field.EncodeString(string(v)),
+		Value: v,
+	}
 }
 
 // BoolFieldSelector is a type safe field selector that allows to compare values with fields
@@ -206,15 +200,12 @@ func (f BoolFieldSelector) Value(x bool) *Scalar {
 }
 
 // BoolValue is an expression that evaluates to itself.
-type BoolValue bool
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v BoolValue) Eval(EvalContext) (Scalar, error) {
+func BoolValue(v bool) Scalar {
 	return Scalar{
-		Type: field.Bool,
-		Data: field.EncodeBool(bool(v)),
-	}, nil
+		Type:  field.Bool,
+		Data:  field.EncodeBool(bool(v)),
+		Value: v,
+	}
 }
 
 // UintFieldSelector is a type safe field selector that allows to compare values with fields
@@ -277,15 +268,12 @@ func (f UintFieldSelector) Value(x uint) *Scalar {
 }
 
 // UintValue is an expression that evaluates to itself.
-type UintValue uint
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v UintValue) Eval(EvalContext) (Scalar, error) {
+func UintValue(v uint) Scalar {
 	return Scalar{
-		Type: field.Uint,
-		Data: field.EncodeUint(uint(v)),
-	}, nil
+		Type:  field.Uint,
+		Data:  field.EncodeUint(uint(v)),
+		Value: v,
+	}
 }
 
 // Uint8FieldSelector is a type safe field selector that allows to compare values with fields
@@ -348,15 +336,12 @@ func (f Uint8FieldSelector) Value(x uint8) *Scalar {
 }
 
 // Uint8Value is an expression that evaluates to itself.
-type Uint8Value uint8
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Uint8Value) Eval(EvalContext) (Scalar, error) {
+func Uint8Value(v uint8) Scalar {
 	return Scalar{
-		Type: field.Uint8,
-		Data: field.EncodeUint8(uint8(v)),
-	}, nil
+		Type:  field.Uint8,
+		Data:  field.EncodeUint8(uint8(v)),
+		Value: v,
+	}
 }
 
 // Uint16FieldSelector is a type safe field selector that allows to compare values with fields
@@ -419,15 +404,12 @@ func (f Uint16FieldSelector) Value(x uint16) *Scalar {
 }
 
 // Uint16Value is an expression that evaluates to itself.
-type Uint16Value uint16
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Uint16Value) Eval(EvalContext) (Scalar, error) {
+func Uint16Value(v uint16) Scalar {
 	return Scalar{
-		Type: field.Uint16,
-		Data: field.EncodeUint16(uint16(v)),
-	}, nil
+		Type:  field.Uint16,
+		Data:  field.EncodeUint16(uint16(v)),
+		Value: v,
+	}
 }
 
 // Uint32FieldSelector is a type safe field selector that allows to compare values with fields
@@ -490,15 +472,12 @@ func (f Uint32FieldSelector) Value(x uint32) *Scalar {
 }
 
 // Uint32Value is an expression that evaluates to itself.
-type Uint32Value uint32
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Uint32Value) Eval(EvalContext) (Scalar, error) {
+func Uint32Value(v uint32) Scalar {
 	return Scalar{
-		Type: field.Uint32,
-		Data: field.EncodeUint32(uint32(v)),
-	}, nil
+		Type:  field.Uint32,
+		Data:  field.EncodeUint32(uint32(v)),
+		Value: v,
+	}
 }
 
 // Uint64FieldSelector is a type safe field selector that allows to compare values with fields
@@ -561,15 +540,12 @@ func (f Uint64FieldSelector) Value(x uint64) *Scalar {
 }
 
 // Uint64Value is an expression that evaluates to itself.
-type Uint64Value uint64
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Uint64Value) Eval(EvalContext) (Scalar, error) {
+func Uint64Value(v uint64) Scalar {
 	return Scalar{
-		Type: field.Uint64,
-		Data: field.EncodeUint64(uint64(v)),
-	}, nil
+		Type:  field.Uint64,
+		Data:  field.EncodeUint64(uint64(v)),
+		Value: v,
+	}
 }
 
 // IntFieldSelector is a type safe field selector that allows to compare values with fields
@@ -632,15 +608,12 @@ func (f IntFieldSelector) Value(x int) *Scalar {
 }
 
 // IntValue is an expression that evaluates to itself.
-type IntValue int
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v IntValue) Eval(EvalContext) (Scalar, error) {
+func IntValue(v int) Scalar {
 	return Scalar{
-		Type: field.Int,
-		Data: field.EncodeInt(int(v)),
-	}, nil
+		Type:  field.Int,
+		Data:  field.EncodeInt(int(v)),
+		Value: v,
+	}
 }
 
 // Int8FieldSelector is a type safe field selector that allows to compare values with fields
@@ -703,15 +676,12 @@ func (f Int8FieldSelector) Value(x int8) *Scalar {
 }
 
 // Int8Value is an expression that evaluates to itself.
-type Int8Value int8
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Int8Value) Eval(EvalContext) (Scalar, error) {
+func Int8Value(v int8) Scalar {
 	return Scalar{
-		Type: field.Int8,
-		Data: field.EncodeInt8(int8(v)),
-	}, nil
+		Type:  field.Int8,
+		Data:  field.EncodeInt8(int8(v)),
+		Value: v,
+	}
 }
 
 // Int16FieldSelector is a type safe field selector that allows to compare values with fields
@@ -774,15 +744,12 @@ func (f Int16FieldSelector) Value(x int16) *Scalar {
 }
 
 // Int16Value is an expression that evaluates to itself.
-type Int16Value int16
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Int16Value) Eval(EvalContext) (Scalar, error) {
+func Int16Value(v int16) Scalar {
 	return Scalar{
-		Type: field.Int16,
-		Data: field.EncodeInt16(int16(v)),
-	}, nil
+		Type:  field.Int16,
+		Data:  field.EncodeInt16(int16(v)),
+		Value: v,
+	}
 }
 
 // Int32FieldSelector is a type safe field selector that allows to compare values with fields
@@ -845,15 +812,12 @@ func (f Int32FieldSelector) Value(x int32) *Scalar {
 }
 
 // Int32Value is an expression that evaluates to itself.
-type Int32Value int32
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Int32Value) Eval(EvalContext) (Scalar, error) {
+func Int32Value(v int32) Scalar {
 	return Scalar{
-		Type: field.Int32,
-		Data: field.EncodeInt32(int32(v)),
-	}, nil
+		Type:  field.Int32,
+		Data:  field.EncodeInt32(int32(v)),
+		Value: v,
+	}
 }
 
 // Int64FieldSelector is a type safe field selector that allows to compare values with fields
@@ -916,16 +880,12 @@ func (f Int64FieldSelector) Value(x int64) *Scalar {
 }
 
 // Int64Value is an expression that evaluates to itself.
-type Int64Value int64
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Int64Value) Eval(EvalContext) (Scalar, error) {
+func Int64Value(v int64) Scalar {
 	return Scalar{
 		Type:  field.Int64,
 		Data:  field.EncodeInt64(int64(v)),
 		Value: v,
-	}, nil
+	}
 }
 
 // Float32FieldSelector is a type safe field selector that allows to compare values with fields
@@ -988,15 +948,12 @@ func (f Float32FieldSelector) Value(x float32) *Scalar {
 }
 
 // Float32Value is an expression that evaluates to itself.
-type Float32Value float32
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Float32Value) Eval(EvalContext) (Scalar, error) {
+func Float32Value(v float32) Scalar {
 	return Scalar{
-		Type: field.Float32,
-		Data: field.EncodeFloat32(float32(v)),
-	}, nil
+		Type:  field.Float32,
+		Data:  field.EncodeFloat32(float32(v)),
+		Value: v,
+	}
 }
 
 // Float64FieldSelector is a type safe field selector that allows to compare values with fields
@@ -1059,13 +1016,10 @@ func (f Float64FieldSelector) Value(x float64) *Scalar {
 }
 
 // Float64Value is an expression that evaluates to itself.
-type Float64Value float64
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v Float64Value) Eval(EvalContext) (Scalar, error) {
+func Float64Value(v float64) Scalar {
 	return Scalar{
-		Type: field.Float64,
-		Data: field.EncodeFloat64(float64(v)),
-	}, nil
+		Type:  field.Float64,
+		Data:  field.EncodeFloat64(float64(v)),
+		Value: v,
+	}
 }

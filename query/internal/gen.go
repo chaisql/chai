@@ -76,15 +76,12 @@ func (f {{ .Name }}FieldSelector) Value(x {{ .T }}) *Scalar {
 }
 
 // {{ .Name }}Value is an expression that evaluates to itself.
-type {{ .Name }}Value {{ .T }}
-
-// Eval implements the Expr interface. It returns a scalar after encoding v to
-// the right type.
-func (v {{ .Name }}Value) Eval(EvalContext) (Scalar, error) {
+func {{ .Name }}Value(v {{ .T }}) Scalar {
 	return Scalar{
 		Type: field.{{ .Name }},
 		Data: field.Encode{{ .Name }}({{ .T }}(v)),
-	}, nil
+		Value: v,
+	}
 }
 {{end}}
 `
