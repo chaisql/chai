@@ -20,11 +20,11 @@ func Delete() DeleteStmt {
 	return DeleteStmt{}
 }
 
-// Exec runs the Delete statement in a read-write transaction.
+// Run the Delete statement in a read-write transaction.
 // It implements the Statement interface.
-func (d DeleteStmt) Exec(txm *TxOpener) (res Result) {
+func (d DeleteStmt) Run(txm *TxOpener) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = d.Run(tx)
+		res = d.Exec(tx)
 		return nil
 	})
 
@@ -53,11 +53,11 @@ func (d DeleteStmt) Where(e Expr) DeleteStmt {
 	return d
 }
 
-// Run the Delete query within tx.
+// Exec the Delete query within tx.
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (d DeleteStmt) Run(tx *genji.Tx) Result {
+func (d DeleteStmt) Exec(tx *genji.Tx) Result {
 	if d.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}

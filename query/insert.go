@@ -23,11 +23,11 @@ func Insert() InsertStmt {
 	return InsertStmt{}
 }
 
-// Exec runs the Insert statement in a read-write transaction.
+// Run runs the Insert statement in a read-write transaction.
 // It implements the Statement interface.
-func (i InsertStmt) Exec(txm *TxOpener) (res Result) {
+func (i InsertStmt) Run(txm *TxOpener) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = i.Run(tx)
+		res = i.Exec(tx)
 		return nil
 	})
 
@@ -61,10 +61,10 @@ func (i InsertStmt) Values(values ...Expr) InsertStmt {
 	return i
 }
 
-// Run the Insert query within tx.
+// Exec the Insert query within tx.
 // If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
 // If the Fields method wasn't called, this will return an error
-func (i InsertStmt) Run(tx *genji.Tx) Result {
+func (i InsertStmt) Exec(tx *genji.Tx) Result {
 	if i.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}

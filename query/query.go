@@ -21,7 +21,7 @@ func (q Query) Run(db *genji.DB) Result {
 	var res Result
 
 	for _, stmt := range q.statements {
-		res = stmt.Exec(&txm)
+		res = stmt.Run(&txm)
 		if res.err != nil {
 			return res
 		}
@@ -47,7 +47,7 @@ func Run(db *genji.DB, s string) Result {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Exec(*TxOpener) Result
+	Run(*TxOpener) Result
 }
 
 // TxOpener is used by statements to automatically open transactions.

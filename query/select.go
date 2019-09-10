@@ -23,11 +23,11 @@ func Select() SelectStmt {
 	return SelectStmt{}
 }
 
-// Exec runs the Select statement in a read-only transaction.
+// Run the Select statement in a read-only transaction.
 // It implements the Statement interface.
-func (s SelectStmt) Exec(txm *TxOpener) (res Result) {
+func (s SelectStmt) Run(txm *TxOpener) (res Result) {
 	err := txm.View(func(tx *genji.Tx) error {
-		res = s.Run(tx)
+		res = s.Exec(tx)
 		return nil
 	})
 
@@ -42,11 +42,11 @@ func (s SelectStmt) Exec(txm *TxOpener) (res Result) {
 	return
 }
 
-// Run the Select query within tx.
+// Exec the Select query within tx.
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (s SelectStmt) Run(tx *genji.Tx) Result {
+func (s SelectStmt) Exec(tx *genji.Tx) Result {
 	if s.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}

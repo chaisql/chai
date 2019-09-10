@@ -24,11 +24,11 @@ func Update(tableSelector TableSelector) UpdateStmt {
 	}
 }
 
-// Exec runs the Update statement in a read-write transaction.
+// Run the Update statement in a read-write transaction.
 // It implements the Statement interface.
-func (u UpdateStmt) Exec(txm *TxOpener) (res Result) {
+func (u UpdateStmt) Run(txm *TxOpener) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = u.Run(tx)
+		res = u.Exec(tx)
 		return nil
 	})
 
@@ -57,11 +57,11 @@ func (u UpdateStmt) Where(e Expr) UpdateStmt {
 	return u
 }
 
-// Run the Update query within tx.
+// Exec the Update query within tx.
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (u UpdateStmt) Run(tx *genji.Tx) Result {
+func (u UpdateStmt) Exec(tx *genji.Tx) Result {
 	if u.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
