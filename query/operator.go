@@ -6,34 +6,58 @@ import (
 	"github.com/asdine/genji/field"
 )
 
-type cmpOp struct {
+type simpleOperator struct {
 	a, b Expr
 	tok  Token
 }
 
+func (op simpleOperator) Precedence() int {
+	return op.tok.Precedence()
+}
+
+func (op simpleOperator) LeftHand() Expr {
+	return op.a
+}
+
+func (op simpleOperator) RightHand() Expr {
+	return op.b
+}
+
+func (op *simpleOperator) SetLeftHandExpr(a Expr) {
+	op.a = a
+}
+
+func (op *simpleOperator) SetRightHandExpr(b Expr) {
+	op.b = b
+}
+
+type cmpOp struct {
+	simpleOperator
+}
+
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
-	return &cmpOp{a, b, EQ}
+	return cmpOp{simpleOperator{a, b, EQ}}
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) Expr {
-	return &cmpOp{a, b, GT}
+	return cmpOp{simpleOperator{a, b, GT}}
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
-	return &cmpOp{a, b, GTE}
+	return cmpOp{simpleOperator{a, b, GTE}}
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) Expr {
-	return &cmpOp{a, b, LT}
+	return cmpOp{simpleOperator{a, b, LT}}
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
-	return &cmpOp{a, b, LTE}
+	return cmpOp{simpleOperator{a, b, LTE}}
 }
 
 func (op cmpOp) Eval(ctx EvalContext) (Scalar, error) {
@@ -113,26 +137,6 @@ func (op cmpOp) Eval(ctx EvalContext) (Scalar, error) {
 	return falseScalar, nil
 }
 
-func (op cmpOp) Precedence() int {
-	return op.tok.Precedence()
-}
-
-func (op cmpOp) LeftHand() Expr {
-	return op.a
-}
-
-func (op cmpOp) RightHand() Expr {
-	return op.b
-}
-
-func (op *cmpOp) SetLeftHandExpr(a Expr) {
-	op.a = a
-}
-
-func (op *cmpOp) SetRightHandExpr(b Expr) {
-	op.b = b
-}
-
 func numberToFloat(v interface{}) float64 {
 	var f float64
 
@@ -163,12 +167,12 @@ func numberToFloat(v interface{}) float64 {
 }
 
 type andOp struct {
-	a, b Expr
+	simpleOperator
 }
 
 // And creates an expression that evaluates a and b and returns true if both are truthy.
 func And(a, b Expr) Expr {
-	return &andOp{a, b}
+	return &andOp{simpleOperator{a, b, AND}}
 }
 
 // Eval implements the Expr interface.
@@ -186,33 +190,13 @@ func (op *andOp) Eval(ctx EvalContext) (Scalar, error) {
 	return trueScalar, nil
 }
 
-func (op *andOp) Precedence() int {
-	return AND.Precedence()
-}
-
-func (op *andOp) LeftHand() Expr {
-	return op.a
-}
-
-func (op *andOp) RightHand() Expr {
-	return op.b
-}
-
-func (op *andOp) SetLeftHandExpr(a Expr) {
-	op.a = a
-}
-
-func (op *andOp) SetRightHandExpr(b Expr) {
-	op.b = b
-}
-
 type orOp struct {
-	a, b Expr
+	simpleOperator
 }
 
-// And creates an expression that evaluates a and b and returns true if both are truthy.
+// Or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy or false if falsy.
 func Or(a, b Expr) Expr {
-	return &orOp{a, b}
+	return &orOp{simpleOperator{a, b, OR}}
 }
 
 // Eval implements the Expr interface.
@@ -234,24 +218,4 @@ func (op *orOp) Eval(ctx EvalContext) (Scalar, error) {
 	}
 
 	return falseScalar, nil
-}
-
-func (op *orOp) Precedence() int {
-	return OR.Precedence()
-}
-
-func (op *orOp) LeftHand() Expr {
-	return op.a
-}
-
-func (op *orOp) RightHand() Expr {
-	return op.b
-}
-
-func (op *orOp) SetLeftHandExpr(a Expr) {
-	op.a = a
-}
-
-func (op *orOp) SetRightHandExpr(b Expr) {
-	op.b = b
 }

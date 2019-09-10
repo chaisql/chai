@@ -297,7 +297,7 @@ type andMatcher struct {
 	exprs []Expr
 }
 
-// And creates an expression that evaluates all of the given expressions and returns true if all of them are truthy.
+// Andd creates an expression that evaluates all of the given expressions and returns true if all of them are truthy.
 func Andd(exprs ...Expr) Expr {
 	return &andMatcher{exprs: exprs}
 }
@@ -353,7 +353,7 @@ type orMatcher struct {
 	exprs []Expr
 }
 
-// Or creates an expression that evaluates all of the given expressions until one returns a truthy value, otherwise returns false.
+// Orr creates an expression that evaluates all of the given expressions until one returns a truthy value, otherwise returns false.
 func Orr(exprs ...Expr) Expr {
 	return &orMatcher{exprs: exprs}
 }

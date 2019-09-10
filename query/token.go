@@ -33,14 +33,14 @@ const (
 
 	operatorBeg
 	// ADD and the following are Genji SQL Operators
-	ADD         // +
-	SUB         // -
-	MUL         // *
-	DIV         // /
-	MOD         // %
-	BITWISE_AND // &
-	BITWISE_OR  // |
-	BITWISE_XOR // ^
+	ADD        // +
+	SUB        // -
+	MUL        // *
+	DIV        // /
+	MOD        // %
+	BITWISEAND // &
+	BITWISEOR  // |
+	BITWISEXOR // ^
 
 	AND // AND
 	OR  // OR
@@ -104,14 +104,14 @@ var tokens = [...]string{
 	FALSE:       "FALSE",
 	REGEX:       "REGEX",
 
-	ADD:         "+",
-	SUB:         "-",
-	MUL:         "*",
-	DIV:         "/",
-	MOD:         "%",
-	BITWISE_AND: "&",
-	BITWISE_OR:  "|",
-	BITWISE_XOR: "^",
+	ADD:        "+",
+	SUB:        "-",
+	MUL:        "*",
+	DIV:        "/",
+	MOD:        "%",
+	BITWISEAND: "&",
+	BITWISEOR:  "|",
+	BITWISEXOR: "^",
 
 	AND: "AND",
 	OR:  "OR",
@@ -186,9 +186,9 @@ func (tok Token) Precedence() int {
 		return 2
 	case EQ, NEQ, EQREGEX, NEQREGEX, LT, LTE, GT, GTE:
 		return 3
-	case ADD, SUB, BITWISE_OR, BITWISE_XOR:
+	case ADD, SUB, BITWISEOR, BITWISEXOR:
 		return 4
-	case MUL, DIV, MOD, BITWISE_AND:
+	case MUL, DIV, MOD, BITWISEAND:
 		return 5
 	}
 	return 0
