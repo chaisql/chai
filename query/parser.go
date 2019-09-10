@@ -161,7 +161,7 @@ func (p *Parser) ParseExpr() (Expr, error) {
 func opToExpr(op Token, lhs, rhs Expr) Expr {
 	switch op {
 	case EQ:
-		return Eqq(lhs, rhs)
+		return Eq(lhs, rhs)
 	}
 
 	return nil

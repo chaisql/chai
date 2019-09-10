@@ -6,28 +6,64 @@ import (
 	"github.com/asdine/genji/field"
 )
 
-type eqOp struct {
+type cmpOp struct {
 	a, b Expr
+	tok  Token
 }
 
-func Eqq(a, b Expr) Expr {
-	return eqOp{a, b}
+// Eq creates an expression that returns true if a equals b.
+func Eq(a, b Expr) Expr {
+	return cmpOp{a, b, EQ}
 }
 
-func (e eqOp) Eval(ctx EvalContext) (Scalar, error) {
-	sa, err := e.a.Eval(ctx)
+// Gt creates an expression that returns true if a is greater than b.
+func Gt(a, b Expr) Expr {
+	return cmpOp{a, b, GT}
+}
+
+// Gte creates an expression that returns true if a is greater than or equal to b.
+func Gte(a, b Expr) Expr {
+	return cmpOp{a, b, GTE}
+}
+
+// Lt creates an expression that returns true if a is lesser than b.
+func Lt(a, b Expr) Expr {
+	return cmpOp{a, b, LT}
+}
+
+// Lte creates an expression that returns true if a is lesser than or equal to b.
+func Lte(a, b Expr) Expr {
+	return cmpOp{a, b, LTE}
+}
+
+func (o cmpOp) Eval(ctx EvalContext) (Scalar, error) {
+	sa, err := o.a.Eval(ctx)
 	if err != nil {
 		return falseScalar, err
 	}
 
-	sb, err := e.b.Eval(ctx)
+	sb, err := o.b.Eval(ctx)
 	if err != nil {
 		return falseScalar, err
 	}
 
 	// if same type, no conversion needed
-	if sa.Type == sb.Type {
-		if bytes.Equal(sa.Data, sb.Data) {
+	if sa.Type == sb.Type || (sa.Type == field.String && sb.Type == field.Bytes) || (sb.Type == field.String && sa.Type == field.Bytes) {
+		var ok bool
+		switch o.tok {
+		case EQ:
+			ok = bytes.Equal(sa.Data, sb.Data)
+		case GT:
+			ok = bytes.Compare(sa.Data, sb.Data) > 0
+		case GTE:
+			ok = bytes.Compare(sa.Data, sb.Data) >= 0
+		case LT:
+			ok = bytes.Compare(sa.Data, sb.Data) < 0
+		case LTE:
+			ok = bytes.Compare(sa.Data, sb.Data) <= 0
+		}
+
+		if ok {
 			return trueScalar, nil
 		}
 
@@ -48,28 +84,26 @@ func (e eqOp) Eval(ctx EvalContext) (Scalar, error) {
 		}
 	}
 
-	// string == []byte
-	if sa.Type == field.String && sb.Type == field.Bytes {
-		if sa.Value.(string) == string(sb.Value.([]byte)) {
-			return trueScalar, nil
-		}
-
-		return falseScalar, nil
-	}
-
-	// []byte == string
-	if sb.Type == field.String && sa.Type == field.Bytes {
-		if sb.Value.(string) == string(sa.Value.([]byte)) {
-			return trueScalar, nil
-		}
-
-		return falseScalar, nil
-	}
-
-	// int or float == int or float
+	// number OP number
 	if field.IsNumber(sa.Type) && field.IsNumber(sb.Type) {
 		af, bf := numberToFloat(sa.Value), numberToFloat(sb.Value)
-		if af == bf {
+
+		var ok bool
+
+		switch o.tok {
+		case EQ:
+			ok = af == bf
+		case GT:
+			ok = af > bf
+		case GTE:
+			ok = af >= bf
+		case LT:
+			ok = af < bf
+		case LTE:
+			ok = af <= bf
+		}
+
+		if ok {
 			return trueScalar, nil
 		}
 
