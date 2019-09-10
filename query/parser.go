@@ -48,17 +48,47 @@ func (p *Parser) ParseQuery() (Query, error) {
 // ParseStatement parses a Genji SQL string and returns a Statement AST object.
 func (p *Parser) ParseStatement() (Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok == SELECT {
+	switch tok {
+	case SELECT:
 		return p.parseSelectStatement()
+	case DELETE:
+		return p.parseDeleteStatement()
 	}
 
-	return nil, newParseError(tokstr(tok, lit), []string{"SELECT"}, pos)
+	return nil, newParseError(tokstr(tok, lit), []string{"SELECT", "DELETE"}, pos)
 }
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
 func (p *Parser) parseSelectStatement() (SelectStmt, error) {
 	stmt := Select()
+
+	// Parse "FROM".
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != FROM {
+		return stmt, newParseError(tokstr(tok, lit), []string{"FROM"}, pos)
+	}
+
+	// Parse table name
+	tableName, err := p.ParseIdent()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.From(Table(tableName))
+
+	// Parse condition: "WHERE EXPR".
+	expr, err := p.parseCondition()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.Where(expr)
+
+	return stmt, nil
+}
+
+// parseDeleteStatement parses a delete string and returns a Statement AST object.
+// This function assumes the DELETE token has already been consumed.
+func (p *Parser) parseDeleteStatement() (DeleteStmt, error) {
+	stmt := Delete()
 
 	// Parse "FROM".
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != FROM {
@@ -97,19 +127,6 @@ func (p *Parser) parseCondition() (Expr, error) {
 	}
 
 	return expr, nil
-}
-
-// BinaryExpr represents an operation between two expressions.
-type BinaryExpr struct {
-	Op        Token
-	LHS       Expr
-	RHS       Expr
-	innerExpr Expr
-}
-
-// Eval calls the innerExpr expession. It implements the Expr interface.
-func (e BinaryExpr) Eval(ctx EvalContext) (Scalar, error) {
-	return e.innerExpr.Eval(ctx)
 }
 
 type operator interface {
