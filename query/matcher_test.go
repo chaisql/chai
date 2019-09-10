@@ -204,7 +204,7 @@ func TestAndMatcher(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				m := query.And(test.exprs...)
+				m := query.Andd(test.exprs...)
 
 				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tb)
 				require.NoError(t, err)
@@ -228,7 +228,7 @@ func TestAndMatcher(t *testing.T) {
 
 func TestOrMatcher(t *testing.T) {
 	t.Run("Matcher", func(t *testing.T) {
-		e := query.Or(
+		e := query.Orr(
 			query.IntField("age").Gt(8),
 			query.IntField("age").Lt(2),
 		)
@@ -265,7 +265,7 @@ func TestOrMatcher(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				m := query.Or(test.exprs...)
+				m := query.Orr(test.exprs...)
 
 				recordIDs, _, err := m.(query.IndexMatcher).MatchIndex(tb)
 				require.NoError(t, err)

@@ -112,18 +112,27 @@ func (e BinaryExpr) Eval(ctx EvalContext) (Scalar, error) {
 	return e.innerExpr.Eval(ctx)
 }
 
+type operator interface {
+	Precedence() int
+	LeftHand() Expr
+	RightHand() Expr
+	SetLeftHandExpr(Expr)
+	SetRightHandExpr(Expr)
+}
+
 // ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (Expr, error) {
 	var err error
 	// Dummy root node.
-	root := &BinaryExpr{}
+	var root operator = &cmpOp{}
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
-	root.RHS, err = p.parseUnaryExpr()
+	e, err := p.parseUnaryExpr()
 	if err != nil {
 		return nil, err
 	}
+	root.SetRightHandExpr(e)
 
 	// Loop over operations and unary exprs and build a tree based on precendence.
 	for {
@@ -131,7 +140,7 @@ func (p *Parser) ParseExpr() (Expr, error) {
 		op, _, _ := p.ScanIgnoreWhitespace()
 		if !op.isOperator() {
 			p.Unscan()
-			return root.RHS, nil
+			return root.RightHand(), nil
 		}
 
 		var rhs Expr
@@ -144,16 +153,14 @@ func (p *Parser) ParseExpr() (Expr, error) {
 		// descending the RHS of the expression tree until we reach the last
 		// BinaryExpr or a BinaryExpr whose RHS has an operator with
 		// precedence >= the operator being added.
-		for node := root; ; {
-			r, ok := node.RHS.(*BinaryExpr)
-			if !ok || r.Op.Precedence() >= op.Precedence() {
+		for node := root.(operator); ; {
+			p, ok := node.RightHand().(operator)
+			if !ok || p.Precedence() >= op.Precedence() {
 				// Add the new expression here and break.
-				be := BinaryExpr{LHS: node.RHS, RHS: rhs, Op: op}
-				be.innerExpr = opToExpr(op, node.RHS, rhs)
-				node.RHS = &be
+				node.SetRightHandExpr(opToExpr(op, node.RightHand(), rhs))
 				break
 			}
-			node = r
+			node = p
 		}
 	}
 }
@@ -162,6 +169,18 @@ func opToExpr(op Token, lhs, rhs Expr) Expr {
 	switch op {
 	case EQ:
 		return Eq(lhs, rhs)
+	case GT:
+		return Gt(lhs, rhs)
+	case GTE:
+		return Gte(lhs, rhs)
+	case LT:
+		return Lt(lhs, rhs)
+	case LTE:
+		return Lte(lhs, rhs)
+	case AND:
+		return And(lhs, rhs)
+	case OR:
+		return Or(lhs, rhs)
 	}
 
 	return nil

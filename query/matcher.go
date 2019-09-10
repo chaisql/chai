@@ -298,7 +298,7 @@ type andMatcher struct {
 }
 
 // And creates an expression that evaluates all of the given expressions and returns true if all of them are truthy.
-func And(exprs ...Expr) Expr {
+func Andd(exprs ...Expr) Expr {
 	return &andMatcher{exprs: exprs}
 }
 
@@ -354,7 +354,7 @@ type orMatcher struct {
 }
 
 // Or creates an expression that evaluates all of the given expressions until one returns a truthy value, otherwise returns false.
-func Or(exprs ...Expr) Expr {
+func Orr(exprs ...Expr) Expr {
 	return &orMatcher{exprs: exprs}
 }
 

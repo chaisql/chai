@@ -2,7 +2,6 @@ package query
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -48,22 +47,38 @@ func createDB(t require.TestingT, size int, withIndex bool) (*genji.DB, func()) 
 }
 
 func TestParser(t *testing.T) {
-	db, cleanup := createDB(t, 10, false)
-	defer cleanup()
+	tests := []struct {
+		name     string
+		s        string
+		expected Statement
+	}{
+		{"=", "SELECT FROM test WHERE age = 10", Select().From(Table("test")).Where(Eq(Field("age"), Int64Value(10)))},
+		{"AND", "SELECT FROM test WHERE age = 10 AND age <= 11",
+			Select().From(Table("test")).Where(And(
+				Eq(Field("age"), Int64Value(10)),
+				Lte(Field("age"), Int64Value(11)),
+			))},
+		{"OR", "SELECT FROM test WHERE age = 10 OR age = 11",
+			Select().From(Table("test")).Where(Or(
+				Eq(Field("age"), Int64Value(10)),
+				Eq(Field("age"), Int64Value(11)),
+			))},
+		{"AND then OR", "SELECT FROM test WHERE age >= 10 AND age > 11 OR age < 10.4",
+			Select().From(Table("test")).Where(Or(
+				And(
+					Gte(Field("age"), Int64Value(10)),
+					Gt(Field("age"), Int64Value(11)),
+				),
+				Lt(Field("age"), Float64Value(10.4)),
+			))},
+	}
 
-	q, err := ParseQuery("SELECT FROM test WHERE age = 10")
-	require.NoError(t, err)
-
-	res := q.Run(db)
-	count, err := res.Count()
-	require.NoError(t, err)
-	require.Equal(t, 1, count)
-	_, r, err := res.First()
-	require.NoError(t, err)
-	record.DumpRecord(os.Stderr, r)
-	idf, err := r.GetField("id")
-	require.NoError(t, err)
-	id, err := field.Decode(idf)
-	require.NoError(t, err)
-	require.Equal(t, 1, id)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q, err := ParseQuery(test.s)
+			require.NoError(t, err)
+			require.Len(t, q.statements, 1)
+			require.EqualValues(t, test.expected, q.statements[0])
+		})
+	}
 }
