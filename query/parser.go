@@ -53,6 +53,8 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseSelectStatement()
 	case DELETE:
 		return p.parseDeleteStatement()
+	case UPDATE:
+		return p.parseUpdateStatement()
 	}
 
 	return nil, newParseError(tokstr(tok, lit), []string{"SELECT", "DELETE"}, pos)
@@ -112,6 +114,36 @@ func (p *Parser) parseDeleteStatement() (DeleteStmt, error) {
 	return stmt, nil
 }
 
+// parseUpdateStatement parses a update string and returns a Statement AST object.
+// This function assumes the UPDATE token has already been consumed.
+func (p *Parser) parseUpdateStatement() (UpdateStmt, error) {
+	stmt := UpdateStmt{
+		pairs: make(map[string]Expr),
+	}
+
+	// Parse table name
+	tableName, err := p.ParseIdent()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.tableSelector = Table(tableName)
+
+	// Parse assignment: "SET field = EXPR".
+	stmt.pairs, err = p.parseSetClause()
+	if err != nil {
+		return stmt, err
+	}
+
+	// Parse condition: "WHERE EXPR".
+	where, err := p.parseCondition()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.Where(where)
+
+	return stmt, nil
+}
+
 // parseCondition parses the "WHERE" clause of the query, if it exists.
 func (p *Parser) parseCondition() (Expr, error) {
 	// Check if the WHERE token exists.
@@ -127,6 +159,50 @@ func (p *Parser) parseCondition() (Expr, error) {
 	}
 
 	return expr, nil
+}
+
+// parseSetClause parses the "SET" clause of the query.
+func (p *Parser) parseSetClause() (map[string]Expr, error) {
+	// Check if the SET token exists.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != SET {
+		return nil, newParseError(tokstr(tok, lit), []string{"SET"}, pos)
+	}
+
+	pairs := make(map[string]Expr)
+
+	firstPair := true
+	for {
+		if !firstPair {
+			// Scan for a comma.
+			tok, _, _ := p.ScanIgnoreWhitespace()
+			if tok != COMMA {
+				p.Unscan()
+				break
+			}
+		}
+
+		// Scan the identifier for the field name.
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		if tok != IDENT {
+			return nil, newParseError(tokstr(tok, lit), []string{"identifier"}, pos)
+		}
+
+		// Scan the eq sign
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != EQ {
+			return nil, newParseError(tokstr(tok, lit), []string{"="}, pos)
+		}
+
+		// Scan the expr for the value.
+		expr, err := p.ParseExpr()
+		if err != nil {
+			return nil, err
+		}
+		pairs[lit] = expr
+
+		firstPair = false
+	}
+
+	return pairs, nil
 }
 
 type operator interface {

@@ -83,7 +83,9 @@ const (
 	OFFSET
 	ORDER
 	SELECT
+	SET
 	TO
+	UPDATE
 	VALUES
 	WHERE
 	keywordEnd
@@ -150,7 +152,9 @@ var tokens = [...]string{
 	OFFSET:   "OFFSET",
 	ORDER:    "ORDER",
 	SELECT:   "SELECT",
+	SET:      "SET",
 	TO:       "TO",
+	UPDATE:   "UPDATE",
 	VALUES:   "VALUES",
 	WHERE:    "WHERE",
 }
