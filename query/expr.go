@@ -29,24 +29,6 @@ func (s Scalar) Eval(EvalContext) (Scalar, error) {
 	return s, nil
 }
 
-// LitteralType describes the type of a litteral
-type LitteralType int
-
-// Types of litterals.
-const (
-	String LitteralType = iota + 1
-	Bool
-	Int
-	Float
-)
-
-// A Litteral is a constant litteral value. It is used by operators to ease evaluation with scalars
-// that are not exactly of the same type. How they are converted and compared depends on the operator.
-type Litteral struct {
-	Type  LitteralType
-	Value interface{}
-}
-
 // An Expr evaluates to a scalar.
 // It can be used as an argument to a WHERE clause or any other method that
 // expects an expression.

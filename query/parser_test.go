@@ -134,3 +134,31 @@ func TestParserUdpate(t *testing.T) {
 		})
 	}
 }
+
+func TestParserInsert(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		expected Statement
+		errored  bool
+	}{
+		{"No columns", "INSERT INTO test VALUES ('a', 'b', 'c')", Insert().Into(Table("test")).Values(StringValue("a"), StringValue("b"), StringValue("c")), false},
+		{"With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
+			Insert().Into(Table("test")).
+				Fields("a", "b").
+				Values(StringValue("c"), StringValue("d"), StringValue("e")), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q, err := ParseQuery(test.s)
+			if test.errored {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, q.statements, 1)
+			require.EqualValues(t, test.expected, q.statements[0])
+		})
+	}
+}

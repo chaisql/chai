@@ -63,7 +63,7 @@ func (i InsertStmt) Values(values ...Expr) InsertStmt {
 
 // Exec the Insert query within tx.
 // If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
-// If the Fields method wasn't called, this will return an error
+// If the Fields method wasn't called, this will return an error.
 func (i InsertStmt) Exec(tx *genji.Tx) Result {
 	if i.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}

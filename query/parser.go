@@ -55,6 +55,8 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseDeleteStatement()
 	case UPDATE:
 		return p.parseUpdateStatement()
+	case INSERT:
+		return p.parseInsertStatement()
 	}
 
 	return nil, newParseError(tokstr(tok, lit), []string{"SELECT", "DELETE"}, pos)
@@ -144,6 +146,40 @@ func (p *Parser) parseUpdateStatement() (UpdateStmt, error) {
 	return stmt, nil
 }
 
+// parseInsertStatement parses an insert string and returns a Statement AST object.
+// This function assumes the INSERT token has already been consumed.
+func (p *Parser) parseInsertStatement() (InsertStmt, error) {
+	stmt := Insert()
+
+	// Parse "INTO".
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != INTO {
+		return stmt, newParseError(tokstr(tok, lit), []string{"INTO"}, pos)
+	}
+
+	// Parse table name
+	tableName, err := p.ParseIdent()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.Into(Table(tableName))
+
+	fields, ok, err := p.parseFieldList()
+	if err != nil {
+		return stmt, err
+	}
+	if ok {
+		stmt = stmt.Fields(fields...)
+	}
+
+	values, err := p.parseValues()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.Values(values...)
+
+	return stmt, nil
+}
+
 // parseCondition parses the "WHERE" clause of the query, if it exists.
 func (p *Parser) parseCondition() (Expr, error) {
 	// Check if the WHERE token exists.
@@ -203,6 +239,82 @@ func (p *Parser) parseSetClause() (map[string]Expr, error) {
 	}
 
 	return pairs, nil
+}
+
+// parseValues parses the "VALUES" clause of the query, if it exists.
+func (p *Parser) parseValues() ([]Expr, error) {
+	// Check if the VALUES token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != VALUES {
+		p.Unscan()
+		return nil, nil
+	}
+
+	// Scan the identifier for the source.
+	expr, err := p.parseExprList()
+	if err != nil {
+		return nil, err
+	}
+
+	return expr, nil
+}
+
+// parseFieldList parses a list of fields in the form: (field, field, ...), if exists
+func (p *Parser) parseFieldList() ([]string, bool, error) {
+	// Parse ( token.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != LPAREN {
+		p.Unscan()
+		return nil, false, nil
+	}
+
+	// Parse field list.
+	var fields []string
+	var err error
+	if fields, err = p.ParseIdentList(); err != nil {
+		return nil, false, err
+	}
+
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != RPAREN {
+		return nil, false, newParseError(tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return fields, true, nil
+}
+
+// parseExprList parses a list of expressions in the form: (expr, expr, ...)
+func (p *Parser) parseExprList() ([]Expr, error) {
+	// Parse ( token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != LPAREN {
+		return nil, newParseError(tokstr(tok, lit), []string{"("}, pos)
+	}
+
+	// Parse first (required) expr.
+	expr, err := p.ParseExpr()
+	if err != nil {
+		return nil, err
+	}
+	exprs := []Expr{expr}
+
+	// Parse remaining (optional) exprs.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != COMMA {
+			p.Unscan()
+			break
+		}
+
+		if expr, err = p.ParseExpr(); err != nil {
+			return nil, err
+		}
+
+		exprs = append(exprs, expr)
+	}
+
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != RPAREN {
+		return nil, newParseError(tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return exprs, nil
 }
 
 type operator interface {
@@ -318,6 +430,30 @@ func (p *Parser) ParseIdent() (string, error) {
 		return "", newParseError(tokstr(tok, lit), []string{"identifier"}, pos)
 	}
 	return lit, nil
+}
+
+// ParseIdentList parses a comma delimited list of identifiers.
+func (p *Parser) ParseIdentList() ([]string, error) {
+	// Parse first (required) identifier.
+	ident, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	idents := []string{ident}
+
+	// Parse remaining (optional) identifiers.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != COMMA {
+			p.Unscan()
+			return idents, nil
+		}
+
+		if ident, err = p.ParseIdent(); err != nil {
+			return nil, err
+		}
+
+		idents = append(idents, ident)
+	}
 }
 
 // Scan returns the next token from the underlying scanner.
