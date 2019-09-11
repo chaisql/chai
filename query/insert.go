@@ -92,64 +92,47 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 			return Result{err: err}
 		}
 
-		// each record must be a list of expressions
+		// each record must be a list of values
 		// (e1, e2, e3, ...)
-		el, ok := v.(ExprList)
+		vl, ok := v.(LitteralValueList)
 		if !ok {
 			return Result{err: errors.New("invalid values")}
 		}
 
-		if len(stmt.fieldNames) != el.Length() {
-			return Result{err: fmt.Errorf("%d values for %d fields", len(stmt.values), len(stmt.fieldNames))}
+		if len(stmt.fieldNames) != len(vl) {
+			return Result{err: fmt.Errorf("%d values for %d fields", len(vl), len(stmt.fieldNames))}
 		}
 
-		i := 0
-
-		// iterate over each expression
-		el.Iterate(func(e Expr) error {
+		// iterate over each value
+		for i, v := range vl {
 			// get the field name
 			fieldName := stmt.fieldNames[i]
 
-			// evaluate the expression
-			v, err := e.Eval(ectx)
-			if err != nil {
-				return err
-			}
+			var lv *LitteralValue
 
-			// if the value is a list of expressions, evaluate recursively until
-			// the result returns a simple value.
-			if el, ok := v.(ExprList); ok {
-				v, err = ValueFromExprList(ectx, el)
-				if err != nil {
-					return err
+			// each value must be either a LitteralValue or a LitteralValueList with exactly
+			// one value
+			switch t := v.(type) {
+			case LitteralValue:
+				lv = &t
+			case LitteralValueList:
+				if len(t) == 1 {
+					if val, ok := t[0].(LitteralValue); ok {
+						lv = &val
+					}
 				}
+				return Result{err: fmt.Errorf("value expected, got list")}
 			}
 
 			// Assign the value to the field and add it to the record
-			switch t := v.(type) {
-			case LitteralValue:
-				fb.Add(field.Field{
-					Name: fieldName,
-					Value: value.Value{
-						Type: t.Type,
-						Data: t.Data,
-					},
-				})
-			case FieldExpr:
-				fb.Add(field.Field{
-					Name: fieldName,
-					Value: value.Value{
-						Type: t.Type,
-						Data: t.Data,
-					},
-				})
-			default:
-				return fmt.Errorf("unsupported expression type %v", v)
-			}
-
-			i++
-			return nil
-		})
+			fb.Add(field.Field{
+				Name: fieldName,
+				Value: value.Value{
+					Type: lv.Type,
+					Data: lv.Data,
+				},
+			})
+		}
 
 		_, err = t.Insert(&fb)
 		if err != nil {
