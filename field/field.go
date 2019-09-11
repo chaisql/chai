@@ -286,6 +286,45 @@ func NewFloat64(name string, x float64) Field {
 	}
 }
 
+func (f Field) String() string {
+	var v interface{}
+
+	switch f.Type {
+	case Bytes:
+		v, _ = DecodeBytes(f.Data)
+	case String:
+		v, _ = DecodeString(f.Data)
+	case Bool:
+		v, _ = DecodeBool(f.Data)
+	case Uint:
+		v, _ = DecodeUint(f.Data)
+	case Uint8:
+		v, _ = DecodeUint8(f.Data)
+	case Uint16:
+		v, _ = DecodeUint16(f.Data)
+	case Uint32:
+		v, _ = DecodeUint32(f.Data)
+	case Uint64:
+		v, _ = DecodeUint64(f.Data)
+	case Int:
+		v, _ = DecodeInt(f.Data)
+	case Int8:
+		v, _ = DecodeInt8(f.Data)
+	case Int16:
+		v, _ = DecodeInt16(f.Data)
+	case Int32:
+		v, _ = DecodeInt32(f.Data)
+	case Int64:
+		v, _ = DecodeInt64(f.Data)
+	case Float32:
+		v, _ = DecodeFloat32(f.Data)
+	case Float64:
+		v, _ = DecodeFloat64(f.Data)
+	}
+
+	return fmt.Sprintf("%s:%v", f.Name, v)
+}
+
 // EncodeBytes takes a bytes and returns it.
 // It is present to ease code generation.
 func EncodeBytes(x []byte) []byte {
