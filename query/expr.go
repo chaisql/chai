@@ -1,8 +1,6 @@
 package query
 
 import (
-	"strings"
-
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
@@ -49,14 +47,6 @@ type Value interface {
 	Truthy() bool
 }
 
-// A ExprList is an expression that contains other expressions.
-type ExprList interface {
-	Expr
-
-	Iterate(func(Expr) error) error
-	Length() int
-}
-
 // A LitteralValue represents a litteral value of any type defined by the value package.
 type LitteralValue struct {
 	value.Value
@@ -74,39 +64,39 @@ func (l LitteralValue) Eval(EvalContext) (Value, error) {
 	return l, nil
 }
 
-// LitteralExprList is a list of expressions.
-type LitteralExprList []Expr
+// A LitteralValueList represents a litteral value of any type defined by the value package.
+type LitteralValueList []Value
 
-// Truthy returns true if the length of l is greater than zero.
+// Truthy returns true if the Data is different than the zero value of
+// the type of s.
 // It implements the Value interface.
-func (l LitteralExprList) Truthy() bool {
+func (l LitteralValueList) Truthy() bool {
 	return len(l) > 0
 }
 
-// Eval returns the first element of l. It implements the Expr interface.
+// LitteralExprList is a list of expressions.
+type LitteralExprList []Expr
+
+// Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
 func (l LitteralExprList) Eval(ctx EvalContext) (Value, error) {
 	if len(l) == 0 {
 		return LitteralValue{}, nil
 	}
 
-	return l[0].Eval(ctx)
-}
-
-// Iterate over the list of exprs and calls fn for each one sequentially.
-func (l LitteralExprList) Iterate(fn func(Expr) error) error {
-	for _, e := range l {
-		err := fn(e)
-		if err != nil {
-			return err
-		}
+	if len(l) == 1 {
+		return l[0].Eval(ctx)
 	}
 
-	return nil
-}
+	var err error
 
-// Length of the list.
-func (l LitteralExprList) Length() int {
-	return len(l)
+	values := make(LitteralValueList, len(l))
+	for i, e := range l {
+		values[i], err = e.Eval(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return values, nil
 }
 
 // FieldExpr is a field that can be used as a Value.
@@ -123,154 +113,154 @@ func (f FieldExpr) Truthy() bool {
 	return !value.IsZeroValue(f.Type, f.Data)
 }
 
-// RecordExpr is a record that can be used as a Value.
-type RecordExpr struct {
-	r record.Record
-}
+// // RecordExpr is a record that can be used as a Value.
+// type RecordExpr struct {
+// 	r record.Record
+// }
 
-// String returns the string representation of r.
-func (r RecordExpr) String() string {
-	var builder strings.Builder
+// // String returns the string representation of r.
+// func (r RecordExpr) String() string {
+// 	var builder strings.Builder
 
-	builder.WriteRune('(')
+// 	builder.WriteRune('(')
 
-	i := 0
-	r.r.Iterate(func(f field.Field) error {
-		if i > 0 {
-			builder.WriteString(", ")
-		}
-		builder.WriteString(f.String())
-		return nil
-	})
+// 	i := 0
+// 	r.r.Iterate(func(f field.Field) error {
+// 		if i > 0 {
+// 			builder.WriteString(", ")
+// 		}
+// 		builder.WriteString(f.String())
+// 		return nil
+// 	})
 
-	builder.WriteRune(')')
-	return builder.String()
-}
+// 	builder.WriteRune(')')
+// 	return builder.String()
+// }
 
-// Eval returns r. It implements the Expr interface.
-func (r RecordExpr) Eval(EvalContext) (v Value, err error) {
-	err = r.r.Iterate(func(f field.Field) error {
-		v = FieldExpr(f)
-		return errStop
-	})
-	if err == errStop {
-		err = nil
-	}
+// // Eval returns r. It implements the Expr interface.
+// func (r RecordExpr) Eval(EvalContext) (v Value, err error) {
+// 	err = r.r.Iterate(func(f field.Field) error {
+// 		v = FieldExpr(f)
+// 		return errStop
+// 	})
+// 	if err == errStop {
+// 		err = nil
+// 	}
 
-	if v == nil {
-		v = FieldExpr{}
-	}
+// 	if v == nil {
+// 		v = FieldExpr{}
+// 	}
 
-	return
-}
+// 	return
+// }
 
-// Truthy returns true if the record is not nil.
-// It implements the Value interface.
-func (r RecordExpr) Truthy() bool {
-	return r.r != nil
-}
+// // Truthy returns true if the record is not nil.
+// // It implements the Value interface.
+// func (r RecordExpr) Truthy() bool {
+// 	return r.r != nil
+// }
 
-// Iterate over the list of fields and calls fn for each one sequentially.
-func (r RecordExpr) Iterate(fn func(Expr) error) error {
-	return r.r.Iterate(func(f field.Field) error {
-		return fn(FieldExpr(f))
-	})
-}
+// // Iterate over the list of fields and calls fn for each one sequentially.
+// func (r RecordExpr) Iterate(fn func(Expr) error) error {
+// 	return r.r.Iterate(func(f field.Field) error {
+// 		return fn(FieldExpr(f))
+// 	})
+// }
 
-// Length of the record.
-func (r RecordExpr) Length() int {
-	var i int
-	r.r.Iterate(func(field.Field) error {
-		i++
-		return nil
-	})
-	return i
-}
+// // Length of the record.
+// func (r RecordExpr) Length() int {
+// 	var i int
+// 	r.r.Iterate(func(field.Field) error {
+// 		i++
+// 		return nil
+// 	})
+// 	return i
+// }
 
-// TableExpr is a table.Reader that can be used as an Expr.
-type TableExpr struct {
+// TableValue is a table.Reader that can be used as an Value.
+type TableValue struct {
 	r table.Reader
 }
 
 // String returns the string representation of t.
-func (t TableExpr) String() string {
-	var builder strings.Builder
+// func (t TableValue) String() string {
+// 	var builder strings.Builder
 
-	builder.WriteRune('(')
+// 	builder.WriteRune('(')
 
-	i := 0
-	t.r.Iterate(func(_ []byte, r record.Record) error {
-		if i > 0 {
-			builder.WriteString(", ")
-		}
-		builder.WriteString(RecordExpr{r}.String())
-		return nil
-	})
+// 	i := 0
+// 	t.r.Iterate(func(_ []byte, r record.Record) error {
+// 		if i > 0 {
+// 			builder.WriteString(", ")
+// 		}
+// 		builder.WriteString(RecordExpr{r}.String())
+// 		return nil
+// 	})
 
-	builder.WriteRune(')')
-	return builder.String()
-}
+// 	builder.WriteRune(')')
+// 	return builder.String()
+// }
 
 // Eval returns t. It implements the Expr interface.
-func (t TableExpr) Eval(EvalContext) (v Value, err error) {
-	err = t.r.Iterate(func(_ []byte, r record.Record) error {
-		v = RecordExpr{r}
-		return errStop
-	})
-	if err == errStop {
-		err = nil
-	}
+// func (t TableExpr) Eval(EvalContext) (v Value, err error) {
+// 	err = t.r.Iterate(func(_ []byte, r record.Record) error {
+// 		v = RecordExpr{r}
+// 		return errStop
+// 	})
+// 	if err == errStop {
+// 		err = nil
+// 	}
 
-	if v == nil {
-		v = RecordExpr{}
-	}
+// 	if v == nil {
+// 		v = RecordExpr{}
+// 	}
 
-	return
-}
+// 	return
+// }
 
 // Truthy returns true if the table is not nil.
 // It implements the Value interface.
-func (t TableExpr) Truthy() bool {
+func (t TableValue) Truthy() bool {
 	return t.r != nil
 }
 
-// Iterate over the list of records and calls fn for each one sequentially.
-func (t TableExpr) Iterate(fn func(Expr) error) error {
-	return t.r.Iterate(func(_ []byte, r record.Record) error {
-		return fn(RecordExpr{r})
-	})
-}
+// // Iterate over the list of records and calls fn for each one sequentially.
+// func (t TableValue) Iterate(fn func(Expr) error) error {
+// 	return t.r.Iterate(func(_ []byte, r record.Record) error {
+// 		return fn(RecordExpr{r})
+// 	})
+// }
 
-// Length of the table.
-func (t TableExpr) Length() int {
-	i, _ := table.NewStream(t.r).Count()
-	return i
-}
+// // Length of the table.
+// func (t TableValue) Length() int {
+// 	i, _ := table.NewStream(t.r).Count()
+// 	return i
+// }
 
 // ValueFromExprList evaluates el recursively until it returns a single value.
-func ValueFromExprList(ctx EvalContext, el ExprList) (Value, error) {
-	var val Value
+// func ValueFromExprList(ctx EvalContext, el ExprList) (Value, error) {
+// 	var val Value
 
-	err := el.Iterate(func(e Expr) error {
-		v, err := e.Eval(ctx)
-		if err != nil {
-			return err
-		}
+// 	err := el.Iterate(func(e Expr) error {
+// 		v, err := e.Eval(ctx)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		if list, ok := v.(ExprList); ok {
-			val, err = ValueFromExprList(ctx, list)
-			if err != nil {
-				return err
-			}
+// 		if list, ok := v.(ExprList); ok {
+// 			val, err = ValueFromExprList(ctx, list)
+// 			if err != nil {
+// 				return err
+// 			}
 
-			return errStop
-		}
+// 			return errStop
+// 		}
 
-		val = v
-		return errStop
-	})
-	if err == errStop {
-		return val, nil
-	}
-	return val, err
-}
+// 		val = v
+// 		return errStop
+// 	})
+// 	if err == errStop {
+// 		return val, nil
+// 	}
+// 	return val, err
+// }
