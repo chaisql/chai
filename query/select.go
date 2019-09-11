@@ -55,32 +55,46 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 	limit := -1
 
 	if s.offsetExpr != nil {
-		s, err := s.offsetExpr.Eval(EvalContext{
+		v, err := s.offsetExpr.Eval(EvalContext{
 			Tx: tx,
 		})
 		if err != nil {
 			return Result{err: err}
 		}
-		if s.Type < value.Int {
-			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", s.Type)}
+
+		lv, ok := v.(LitteralValue)
+		if !ok {
+			return Result{err: fmt.Errorf("expected value got list")}
 		}
-		offset, err = value.DecodeInt(s.Data)
+
+		if lv.Type < value.Int {
+			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", lv.Type)}
+		}
+
+		offset, err = value.DecodeInt(lv.Data)
 		if err != nil {
 			return Result{err: err}
 		}
 	}
 
 	if s.limitExpr != nil {
-		s, err := s.limitExpr.Eval(EvalContext{
+		v, err := s.limitExpr.Eval(EvalContext{
 			Tx: tx,
 		})
 		if err != nil {
 			return Result{err: err}
 		}
-		if s.Type < value.Int {
-			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", s.Type)}
+
+		lv, ok := v.(LitteralValue)
+		if !ok {
+			return Result{err: fmt.Errorf("expected value got list")}
 		}
-		limit, err = value.DecodeInt(s.Data)
+
+		if lv.Type < value.Int {
+			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", lv.Type)}
+		}
+
+		limit, err = value.DecodeInt(lv.Data)
 		if err != nil {
 			return Result{err: err}
 		}

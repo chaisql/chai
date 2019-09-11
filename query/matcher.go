@@ -39,13 +39,13 @@ type eqMatcher struct {
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *eqMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *eqMatcher) Eval(ctx EvalContext) (Value, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, err
+	return trueLitteral, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -92,13 +92,13 @@ type gtMatcher struct {
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *gtMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *gtMatcher) Eval(ctx EvalContext) (Value, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, err
+	return trueLitteral, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -145,13 +145,13 @@ type gteMatcher struct {
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *gteMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *gteMatcher) Eval(ctx EvalContext) (Value, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, err
+	return trueLitteral, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -196,13 +196,13 @@ type ltMatcher struct {
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *ltMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *ltMatcher) Eval(ctx EvalContext) (Value, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, err
+	return trueLitteral, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -249,13 +249,13 @@ type lteMatcher struct {
 
 // Eval implements the Expr interface. It calls the Match method and translates
 // the result as a scalar.
-func (m *lteMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *lteMatcher) Eval(ctx EvalContext) (Value, error) {
 	ok, err := m.Match(ctx.Record)
 	if err != nil || !ok {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, err
+	return trueLitteral, err
 }
 
 // Match uses the field selector to select a field from r and returns true
@@ -303,15 +303,15 @@ func Andd(exprs ...Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (a *andMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (a *andMatcher) Eval(ctx EvalContext) (Value, error) {
 	for _, e := range a.exprs {
 		s, err := e.Eval(ctx)
 		if err != nil || !s.Truthy() {
-			return falseScalar, err
+			return falseLitteral, err
 		}
 	}
 
-	return trueScalar, nil
+	return trueLitteral, nil
 }
 
 // MatchIndex matches if all exprs implement the IndexMatcher interface and return true.
@@ -359,19 +359,19 @@ func Orr(exprs ...Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (o *orMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (o *orMatcher) Eval(ctx EvalContext) (Value, error) {
 	for _, e := range o.exprs {
 		s, err := e.Eval(ctx)
 		if err != nil {
-			return falseScalar, err
+			return falseLitteral, err
 		}
 
 		if s.Truthy() {
-			return trueScalar, nil
+			return trueLitteral, nil
 		}
 	}
 
-	return falseScalar, nil
+	return falseLitteral, nil
 }
 
 // MatchIndex matches if all Matchers implement the IndexMatcher interface and return true.
@@ -412,13 +412,13 @@ func Not(expr Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (m *notMatcher) Eval(ctx EvalContext) (Scalar, error) {
+func (m *notMatcher) Eval(ctx EvalContext) (Value, error) {
 	s, err := m.expr.Eval(ctx)
 	if err != nil || s.Truthy() {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, nil
+	return trueLitteral, nil
 }
 
 func intersection(s1, s2 *btree.BTree) *btree.BTree {

@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 )
 
@@ -140,5 +141,6 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 		}
 	}
 
-	return Result{}
+	st := table.NewStream(table.NewReaderFromRecords())
+	return Result{Stream: &st}
 }

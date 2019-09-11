@@ -19,70 +19,52 @@ import (
 // {{ .Name }}FieldSelector is a type safe field selector that allows to compare values with fields
 // based on their types.
 type {{ .Name }}FieldSelector struct {
-	FieldSelector
+	Field
 }
 
 // {{ .Name }}Field creates a typed FieldSelector for fields of type {{ .T }}.
 func {{ .Name }}Field(name string) {{ .Name }}FieldSelector {
-	return {{ .Name }}FieldSelector{FieldSelector: Field(name)}
+	return {{ .Name }}FieldSelector{Field: Field(name)}
 }
 
 // Eq matches if x is equal to the field selected by f.
 func (f {{ .Name }}FieldSelector) Eq(x {{ .T }}) Expr {
-	return &eqMatcher{
-		Field: f,
-		Value: value.Encode{{ .Name }}(x),
-	}
+	return Eq(f.Field, {{ .Name }}Value(x))
 }
 
 // Gt matches if x is greater than the field selected by f.
 func (f {{ .Name }}FieldSelector) Gt(x {{ .T }}) Expr {
-	return &gtMatcher{
-		Field: f,
-		Value: value.Encode{{ .Name }}(x),
-	}
+	return Gt(f.Field, {{ .Name }}Value(x))
 }
 
 // Gte matches if x is greater than or equal to the field selected by f.
 func (f {{ .Name }}FieldSelector) Gte(x {{ .T }}) Expr {
-	return &gteMatcher{
-		Field: f,
-		Value: value.Encode{{ .Name }}(x),
-	}
+	return Gte(f.Field, {{ .Name }}Value(x))
 }
 
 // Lt matches if x is less than the field selected by f.
 func (f {{ .Name }}FieldSelector) Lt(x {{ .T }}) Expr {
-	return &ltMatcher{
-		Field: f,
-		Value: value.Encode{{ .Name }}(x),
-	}
+	return Lt(f.Field, {{ .Name }}Value(x))
 }
 
 // Lte matches if x is less than or equal to the field selected by f.
 func (f {{ .Name }}FieldSelector) Lte(x {{ .T }}) Expr {
-	return &lteMatcher{
-		Field: f,
-		Value: value.Encode{{ .Name }}(x),
-	}
+	return Lte(f.Field, {{ .Name }}Value(x))
 }
 
 // Value returns a scalar that can be used as an expression.
-func (f {{ .Name }}FieldSelector) Value(x {{ .T }}) *Scalar {
-	return &Scalar{
+func (f {{ .Name }}FieldSelector) Value(x {{ .T }}) *value.Value {
+	return &value.Value{
 		Type: value.{{ .Name }},
 		Data: value.Encode{{ .Name }}(x),
 	}
 }
 
-// {{ .Name }}Value is an expression that evaluates to itself.
-func {{ .Name }}Value(v {{ .T }}) Scalar {
-	return Scalar{
-		Type: value.{{ .Name }},
-		Data: value.Encode{{ .Name }}({{ .T }}(v)),
-		Value: v,
-	}
+// {{ .Name }}Value creates a litteral value of type {{ .Name }}.
+func {{ .Name }}Value(v {{ .T }}) LitteralValue {
+	return LitteralValue{value.New{{ .Name }}(v)}
 }
+
 {{end}}
 `
 

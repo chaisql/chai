@@ -108,11 +108,11 @@ func whereClause(tx *genji.Tx, e Expr) func(recordID []byte, r record.Record) (b
 	}
 
 	return func(recordID []byte, r record.Record) (bool, error) {
-		sc, err := e.Eval(EvalContext{Tx: tx, Record: r})
+		v, err := e.Eval(EvalContext{Tx: tx, Record: r})
 		if err != nil {
 			return false, err
 		}
 
-		return sc.Truthy(), nil
+		return v.Truthy(), nil
 	}
 }

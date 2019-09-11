@@ -2,6 +2,7 @@ package query
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
@@ -113,7 +114,7 @@ func (u UpdateStmt) Exec(tx *genji.Tx) Result {
 				return err
 			}
 
-			s, err := e.Eval(EvalContext{
+			v, err := e.Eval(EvalContext{
 				Tx:     tx,
 				Record: r,
 			})
@@ -121,8 +122,13 @@ func (u UpdateStmt) Exec(tx *genji.Tx) Result {
 				return err
 			}
 
-			f.Type = s.Type
-			f.Data = s.Data
+			lv, ok := v.(LitteralValue)
+			if !ok {
+				return fmt.Errorf("expected value got list")
+			}
+
+			f.Type = lv.Type
+			f.Data = lv.Data
 			err = fb.Replace(f.Name, f)
 			if err != nil {
 				return err

@@ -2,6 +2,7 @@ package query
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/asdine/genji/value"
 )
@@ -60,57 +61,100 @@ func Lte(a, b Expr) Expr {
 	return cmpOp{simpleOperator{a, b, LTE}}
 }
 
-func (op cmpOp) Eval(ctx EvalContext) (Scalar, error) {
-	sa, err := op.a.Eval(ctx)
+func (op cmpOp) Eval(ctx EvalContext) (Value, error) {
+	v1, err := op.a.Eval(ctx)
 	if err != nil {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	sb, err := op.b.Eval(ctx)
+	v2, err := op.b.Eval(ctx)
 	if err != nil {
-		return falseScalar, err
+		return falseLitteral, err
 	}
+
+	ok, err := op.compare(v1, v2)
+	if ok {
+		return trueLitteral, err
+	}
+
+	return falseLitteral, err
+}
+
+func (op cmpOp) compare(l, r Value) (bool, error) {
+	// l must be of the same type
+	switch t := l.(type) {
+	case LitteralValue:
+		if v, ok := r.(LitteralValue); ok {
+			return op.compareLitterals(t, v)
+		}
+		if vl, ok := r.(LitteralValueList); ok && len(vl) == 1 {
+			return op.compare(t, vl[0])
+		}
+
+		return false, fmt.Errorf("can't compare expressions")
+	case LitteralValueList:
+		if vl, ok := r.(LitteralValueList); ok {
+			// make sure they have the same number of elements
+			if len(t) != len(vl) {
+				return false, fmt.Errorf("comparing %d elements with %d elements", len(t), len(vl))
+			}
+			for i := range t {
+				ok, err := op.compare(t[i], vl[i])
+				if err != nil {
+					return ok, err
+				}
+				if !ok {
+					return false, nil
+				}
+			}
+
+			return true, nil
+		}
+		if v, ok := r.(LitteralValue); ok && len(t) == 1 {
+			return op.compare(t[0], v)
+		}
+	default:
+		return false, fmt.Errorf("invalid type %v", l)
+	}
+
+	return false, nil
+}
+
+func (op cmpOp) compareLitterals(l, r LitteralValue) (bool, error) {
+	var err error
 
 	// if same type, no conversion needed
-	if sa.Type == sb.Type || (sa.Type == value.String && sb.Type == value.Bytes) || (sb.Type == value.String && sa.Type == value.Bytes) {
+	if l.Type == r.Type || (l.Type == value.String && r.Type == value.Bytes) || (r.Type == value.String && l.Type == value.Bytes) {
 		var ok bool
 		switch op.tok {
 		case EQ:
-			ok = bytes.Equal(sa.Data, sb.Data)
+			ok = bytes.Equal(l.Data, r.Data)
 		case GT:
-			ok = bytes.Compare(sa.Data, sb.Data) > 0
+			ok = bytes.Compare(l.Data, r.Data) > 0
 		case GTE:
-			ok = bytes.Compare(sa.Data, sb.Data) >= 0
+			ok = bytes.Compare(l.Data, r.Data) >= 0
 		case LT:
-			ok = bytes.Compare(sa.Data, sb.Data) < 0
+			ok = bytes.Compare(l.Data, r.Data) < 0
 		case LTE:
-			ok = bytes.Compare(sa.Data, sb.Data) <= 0
+			ok = bytes.Compare(l.Data, r.Data) <= 0
 		}
 
-		if ok {
-			return trueScalar, nil
-		}
-
-		return falseScalar, nil
+		return ok, nil
 	}
 
-	if len(sa.Data) > 0 && sa.Value == nil {
-		sa.Value, err = value.Value{Type: sa.Type, Data: sa.Data}.Decode()
-		if err != nil {
-			return falseScalar, err
-		}
+	lv, err := l.Decode()
+	if err != nil {
+		return false, err
 	}
 
-	if len(sb.Data) > 0 && sb.Value == nil {
-		sb.Value, err = value.Value{Type: sb.Type, Data: sb.Data}.Decode()
-		if err != nil {
-			return falseScalar, err
-		}
+	rv, err := r.Decode()
+	if err != nil {
+		return false, err
 	}
 
 	// number OP number
-	if value.IsNumber(sa.Type) && value.IsNumber(sb.Type) {
-		af, bf := numberToFloat(sa.Value), numberToFloat(sb.Value)
+	if value.IsNumber(l.Type) && value.IsNumber(r.Type) {
+		af, bf := numberToFloat(lv), numberToFloat(rv)
 
 		var ok bool
 
@@ -128,13 +172,12 @@ func (op cmpOp) Eval(ctx EvalContext) (Scalar, error) {
 		}
 
 		if ok {
-			return trueScalar, nil
+			return true, nil
 		}
 
-		return falseScalar, nil
+		return false, nil
 	}
-
-	return falseScalar, nil
+	return false, nil
 }
 
 func numberToFloat(v interface{}) float64 {
@@ -176,18 +219,18 @@ func And(a, b Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (op *andOp) Eval(ctx EvalContext) (Scalar, error) {
+func (op *andOp) Eval(ctx EvalContext) (Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil || !s.Truthy() {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
 	s, err = op.b.Eval(ctx)
 	if err != nil || !s.Truthy() {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 
-	return trueScalar, nil
+	return trueLitteral, nil
 }
 
 type orOp struct {
@@ -200,22 +243,22 @@ func Or(a, b Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (op *orOp) Eval(ctx EvalContext) (Scalar, error) {
+func (op *orOp) Eval(ctx EvalContext) (Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 	if s.Truthy() {
-		return trueScalar, nil
+		return trueLitteral, nil
 	}
 
 	s, err = op.b.Eval(ctx)
 	if err != nil {
-		return falseScalar, err
+		return falseLitteral, err
 	}
 	if s.Truthy() {
-		return trueScalar, nil
+		return trueLitteral, nil
 	}
 
-	return falseScalar, nil
+	return falseLitteral, nil
 }

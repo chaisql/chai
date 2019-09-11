@@ -167,8 +167,8 @@ func TestIndexMatchers(t *testing.T) {
 
 type simpleExpr struct{}
 
-func (s *simpleExpr) Eval(query.EvalContext) (query.Scalar, error) {
-	return query.Scalar{Type: value.Bool, Data: value.EncodeBool(false)}, nil
+func (s *simpleExpr) Eval(query.EvalContext) (query.Value, error) {
+	return query.BoolValue(true), nil
 }
 
 func TestAndMatcher(t *testing.T) {
