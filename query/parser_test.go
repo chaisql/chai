@@ -162,3 +162,28 @@ func TestParserInsert(t *testing.T) {
 		})
 	}
 }
+
+func TestParserCreateTable(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		expected Statement
+		errored  bool
+	}{
+		{"Basic", "CREATE TABLE test", CreateTable("test"), false},
+		{"If not exists", "CREATE TABLE test IF NOT EXISTS", CreateTable("test").IfNotExists(), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q, err := ParseQuery(test.s)
+			if test.errored {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, q.statements, 1)
+			require.EqualValues(t, test.expected, q.statements[0])
+		})
+	}
+}

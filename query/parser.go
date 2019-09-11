@@ -57,6 +57,8 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseUpdateStatement()
 	case INSERT:
 		return p.parseInsertStatement()
+	case CREATE:
+		return p.parseCreateStatement()
 	}
 
 	return nil, newParseError(tokstr(tok, lit), []string{"SELECT", "DELETE"}, pos)
@@ -176,6 +178,44 @@ func (p *Parser) parseInsertStatement() (InsertStmt, error) {
 		return stmt, err
 	}
 	stmt = stmt.Values(values...)
+
+	return stmt, nil
+}
+
+// parseCreateStatement parses a create string and returns a Statement AST object.
+// This function assumes the CREATE token has already been consumed.
+func (p *Parser) parseCreateStatement() (CreateTableStmt, error) {
+	var stmt CreateTableStmt
+
+	// Parse "TABLE".
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != TABLE {
+		return stmt, newParseError(tokstr(tok, lit), []string{"TABLE"}, pos)
+	}
+
+	// Parse table name
+	tableName, err := p.ParseIdent()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.tableName = tableName
+
+	// Parse "IF"
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != IF {
+		p.Unscan()
+		return stmt, nil
+	}
+
+	// Parse "NOT"
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != NOT {
+		return stmt, newParseError(tokstr(tok, lit), []string{"NOT", "EXISTS"}, pos)
+	}
+
+	// Parse "EXISTS"
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != EXISTS {
+		return stmt, newParseError(tokstr(tok, lit), []string{"EXISTS"}, pos)
+	}
+
+	stmt.ifNotExists = true
 
 	return stmt, nil
 }

@@ -70,20 +70,25 @@ const (
 	AS
 	ASC
 	BY
+	CREATE
 	DELETE
 	DESC
 	DROP
 	DURATION
+	EXISTS
 	FROM
+	IF
 	IN
 	INF
 	INSERT
 	INTO
 	LIMIT
+	NOT
 	OFFSET
 	ORDER
 	SELECT
 	SET
+	TABLE
 	TO
 	UPDATE
 	VALUES
@@ -140,19 +145,24 @@ var tokens = [...]string{
 	AS:       "AS",
 	ASC:      "ASC",
 	BY:       "BY",
+	CREATE:   "CREATE",
 	DELETE:   "DELETE",
 	DESC:     "DESC",
 	DROP:     "DROP",
 	DURATION: "DURATION",
+	EXISTS:   "EXISTS",
 	FROM:     "FROM",
+	IF:       "IF",
 	IN:       "IN",
 	INSERT:   "INSERT",
 	INTO:     "INTO",
 	LIMIT:    "LIMIT",
+	NOT:      "NOT",
 	OFFSET:   "OFFSET",
 	ORDER:    "ORDER",
 	SELECT:   "SELECT",
 	SET:      "SET",
+	TABLE:    "TABLE",
 	TO:       "TO",
 	UPDATE:   "UPDATE",
 	VALUES:   "VALUES",
