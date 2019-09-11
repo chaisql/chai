@@ -78,28 +78,8 @@ func (u UpdateStmt) Exec(tx *genji.Tx) Result {
 
 	var tr table.Reader = t
 
-	var useIndex bool
-
-	if im, ok := u.whereExpr.(IndexMatcher); ok {
-		tree, ok, err := im.MatchIndex(t)
-		if err != nil && err != genji.ErrIndexNotFound {
-			return Result{err: err}
-		}
-
-		if ok && err == nil {
-			useIndex = true
-			tr = &indexResultTable{
-				tree:  tree,
-				table: t,
-			}
-		}
-	}
-
 	st := table.NewStream(tr)
-
-	if !useIndex {
-		st = st.Filter(whereClause(tx, u.whereExpr))
-	}
+	st = st.Filter(whereClause(tx, u.whereExpr))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer

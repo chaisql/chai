@@ -67,29 +67,10 @@ func (d DeleteStmt) Exec(tx *genji.Tx) Result {
 		return Result{err: err}
 	}
 
-	var useIndex bool
 	var tr table.Reader = t
 
-	if im, ok := d.whereExpr.(IndexMatcher); ok {
-		tree, ok, err := im.MatchIndex(t)
-		if err != nil && err != genji.ErrIndexNotFound {
-			return Result{err: err}
-		}
-
-		if ok && err == nil {
-			useIndex = true
-			tr = &indexResultTable{
-				tree:  tree,
-				table: t,
-			}
-		}
-	}
-
 	st := table.NewStream(tr)
-
-	if !useIndex {
-		st = st.Filter(whereClause(tx, d.whereExpr))
-	}
+	st = st.Filter(whereClause(tx, d.whereExpr))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)
