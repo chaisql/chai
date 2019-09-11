@@ -82,8 +82,8 @@ func TestOrdering(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
-	f := value.NewFloat64(3.14)
-	price, err := value.Decode(f)
+	v := value.NewFloat64(3.14)
+	price, err := v.Decode()
 	require.NoError(t, err)
 	require.Equal(t, 3.14, price)
 }

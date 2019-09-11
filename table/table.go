@@ -7,6 +7,7 @@ import (
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
 
@@ -52,7 +53,7 @@ func (rr recordsReader) Iterate(fn func(recordID []byte, r record.Record) error)
 				return errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
 			}
 		} else {
-			recordID = field.EncodeInt(i)
+			recordID = value.EncodeInt(i)
 		}
 
 		err = fn(recordID, r)
@@ -105,7 +106,7 @@ func Dump(w io.Writer, t Reader) error {
 			}
 			first = false
 
-			v, err := field.Decode(f)
+			v, err := f.Decode()
 
 			fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
 			return err

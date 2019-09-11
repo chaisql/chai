@@ -1,19 +1,21 @@
 package query
 
 import (
+	"fmt"
+
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 var (
-	trueScalar  = Scalar{Type: field.Bool, Data: field.EncodeBool(true)}
-	falseScalar = Scalar{Type: field.Bool, Data: field.EncodeBool(false)}
+	trueScalar  = Scalar{Type: value.Bool, Data: value.EncodeBool(true)}
+	falseScalar = Scalar{Type: value.Bool, Data: value.EncodeBool(false)}
 )
 
-// A Scalar represents a value of any type defined by the field package.
+// A Scalar represents a value of any type defined by the value package.
 type Scalar struct {
-	Type  field.Type
+	Type  value.Type
 	Data  []byte
 	Value interface{}
 }
@@ -21,7 +23,7 @@ type Scalar struct {
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 func (s Scalar) Truthy() bool {
-	return !field.IsZeroValue(s.Type, s.Data)
+	return !value.IsZeroValue(s.Type, s.Data)
 }
 
 // Eval returns s. It implements the Expr interface.
@@ -56,4 +58,42 @@ type Expr interface {
 type EvalContext struct {
 	Tx     *genji.Tx
 	Record record.Record // can be nil
+}
+
+type EExpr interface {
+	Eval(EvalContext) (Value, error)
+}
+
+type Value interface {
+	Truthy() bool
+	String() string
+}
+
+type ValueList interface {
+	Iterate(func(Value) error) error
+}
+
+type ValuePair struct {
+	Key   string
+	Value Value
+}
+
+func (v ValuePair) String() string {
+	return fmt.Sprintf("%s:%s", v.Key, v.Value)
+}
+
+// A Scalar represents a value of any type defined by the field package.
+type Litteral struct {
+	value.Value
+}
+
+// Truthy returns true if the Data is different than the zero value of
+// the type of s.
+func (l Litteral) Truthy() bool {
+	return !value.IsZeroValue(l.Type, l.Data)
+}
+
+// Eval returns s. It implements the Expr interface.
+func (l Litteral) Eval(EvalContext) (Value, error) {
+	return l, nil
 }

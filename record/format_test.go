@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,13 +26,13 @@ func TestFormat(t *testing.T) {
 	require.EqualValues(t, "age", f.Header.FieldHeaders[0].Name)
 	require.EqualValues(t, 3, f.Header.FieldHeaders[0].NameSize)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[0].Size)
-	require.EqualValues(t, field.Int64, f.Header.FieldHeaders[0].Type)
+	require.EqualValues(t, value.Int64, f.Header.FieldHeaders[0].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Offset)
 
 	require.EqualValues(t, "name", f.Header.FieldHeaders[1].Name)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[1].NameSize)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[1].Size)
-	require.EqualValues(t, field.String, f.Header.FieldHeaders[1].Type)
+	require.EqualValues(t, value.String, f.Header.FieldHeaders[1].Type)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[1].Offset)
 }
 

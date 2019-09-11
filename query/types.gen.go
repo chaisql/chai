@@ -1,7 +1,7 @@
 package query
 
 import (
-	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 )
 
 // BytesFieldSelector is a type safe field selector that allows to compare values with fields
@@ -19,7 +19,7 @@ func BytesField(name string) BytesFieldSelector {
 func (f BytesFieldSelector) Eq(x []byte) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeBytes(x),
+		Value: value.EncodeBytes(x),
 	}
 }
 
@@ -27,7 +27,7 @@ func (f BytesFieldSelector) Eq(x []byte) Expr {
 func (f BytesFieldSelector) Gt(x []byte) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeBytes(x),
+		Value: value.EncodeBytes(x),
 	}
 }
 
@@ -35,7 +35,7 @@ func (f BytesFieldSelector) Gt(x []byte) Expr {
 func (f BytesFieldSelector) Gte(x []byte) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeBytes(x),
+		Value: value.EncodeBytes(x),
 	}
 }
 
@@ -43,7 +43,7 @@ func (f BytesFieldSelector) Gte(x []byte) Expr {
 func (f BytesFieldSelector) Lt(x []byte) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeBytes(x),
+		Value: value.EncodeBytes(x),
 	}
 }
 
@@ -51,23 +51,23 @@ func (f BytesFieldSelector) Lt(x []byte) Expr {
 func (f BytesFieldSelector) Lte(x []byte) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeBytes(x),
+		Value: value.EncodeBytes(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f BytesFieldSelector) Value(x []byte) *Scalar {
 	return &Scalar{
-		Type: field.Bytes,
-		Data: field.EncodeBytes(x),
+		Type: value.Bytes,
+		Data: value.EncodeBytes(x),
 	}
 }
 
 // BytesValue is an expression that evaluates to itself.
 func BytesValue(v []byte) Scalar {
 	return Scalar{
-		Type:  field.Bytes,
-		Data:  field.EncodeBytes([]byte(v)),
+		Type:  value.Bytes,
+		Data:  value.EncodeBytes([]byte(v)),
 		Value: v,
 	}
 }
@@ -87,7 +87,7 @@ func StringField(name string) StringFieldSelector {
 func (f StringFieldSelector) Eq(x string) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeString(x),
+		Value: value.EncodeString(x),
 	}
 }
 
@@ -95,7 +95,7 @@ func (f StringFieldSelector) Eq(x string) Expr {
 func (f StringFieldSelector) Gt(x string) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeString(x),
+		Value: value.EncodeString(x),
 	}
 }
 
@@ -103,7 +103,7 @@ func (f StringFieldSelector) Gt(x string) Expr {
 func (f StringFieldSelector) Gte(x string) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeString(x),
+		Value: value.EncodeString(x),
 	}
 }
 
@@ -111,7 +111,7 @@ func (f StringFieldSelector) Gte(x string) Expr {
 func (f StringFieldSelector) Lt(x string) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeString(x),
+		Value: value.EncodeString(x),
 	}
 }
 
@@ -119,23 +119,23 @@ func (f StringFieldSelector) Lt(x string) Expr {
 func (f StringFieldSelector) Lte(x string) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeString(x),
+		Value: value.EncodeString(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f StringFieldSelector) Value(x string) *Scalar {
 	return &Scalar{
-		Type: field.String,
-		Data: field.EncodeString(x),
+		Type: value.String,
+		Data: value.EncodeString(x),
 	}
 }
 
 // StringValue is an expression that evaluates to itself.
 func StringValue(v string) Scalar {
 	return Scalar{
-		Type:  field.String,
-		Data:  field.EncodeString(string(v)),
+		Type:  value.String,
+		Data:  value.EncodeString(string(v)),
 		Value: v,
 	}
 }
@@ -155,7 +155,7 @@ func BoolField(name string) BoolFieldSelector {
 func (f BoolFieldSelector) Eq(x bool) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeBool(x),
+		Value: value.EncodeBool(x),
 	}
 }
 
@@ -163,7 +163,7 @@ func (f BoolFieldSelector) Eq(x bool) Expr {
 func (f BoolFieldSelector) Gt(x bool) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeBool(x),
+		Value: value.EncodeBool(x),
 	}
 }
 
@@ -171,7 +171,7 @@ func (f BoolFieldSelector) Gt(x bool) Expr {
 func (f BoolFieldSelector) Gte(x bool) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeBool(x),
+		Value: value.EncodeBool(x),
 	}
 }
 
@@ -179,7 +179,7 @@ func (f BoolFieldSelector) Gte(x bool) Expr {
 func (f BoolFieldSelector) Lt(x bool) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeBool(x),
+		Value: value.EncodeBool(x),
 	}
 }
 
@@ -187,23 +187,23 @@ func (f BoolFieldSelector) Lt(x bool) Expr {
 func (f BoolFieldSelector) Lte(x bool) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeBool(x),
+		Value: value.EncodeBool(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f BoolFieldSelector) Value(x bool) *Scalar {
 	return &Scalar{
-		Type: field.Bool,
-		Data: field.EncodeBool(x),
+		Type: value.Bool,
+		Data: value.EncodeBool(x),
 	}
 }
 
 // BoolValue is an expression that evaluates to itself.
 func BoolValue(v bool) Scalar {
 	return Scalar{
-		Type:  field.Bool,
-		Data:  field.EncodeBool(bool(v)),
+		Type:  value.Bool,
+		Data:  value.EncodeBool(bool(v)),
 		Value: v,
 	}
 }
@@ -223,7 +223,7 @@ func UintField(name string) UintFieldSelector {
 func (f UintFieldSelector) Eq(x uint) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeUint(x),
+		Value: value.EncodeUint(x),
 	}
 }
 
@@ -231,7 +231,7 @@ func (f UintFieldSelector) Eq(x uint) Expr {
 func (f UintFieldSelector) Gt(x uint) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeUint(x),
+		Value: value.EncodeUint(x),
 	}
 }
 
@@ -239,7 +239,7 @@ func (f UintFieldSelector) Gt(x uint) Expr {
 func (f UintFieldSelector) Gte(x uint) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeUint(x),
+		Value: value.EncodeUint(x),
 	}
 }
 
@@ -247,7 +247,7 @@ func (f UintFieldSelector) Gte(x uint) Expr {
 func (f UintFieldSelector) Lt(x uint) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeUint(x),
+		Value: value.EncodeUint(x),
 	}
 }
 
@@ -255,23 +255,23 @@ func (f UintFieldSelector) Lt(x uint) Expr {
 func (f UintFieldSelector) Lte(x uint) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeUint(x),
+		Value: value.EncodeUint(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f UintFieldSelector) Value(x uint) *Scalar {
 	return &Scalar{
-		Type: field.Uint,
-		Data: field.EncodeUint(x),
+		Type: value.Uint,
+		Data: value.EncodeUint(x),
 	}
 }
 
 // UintValue is an expression that evaluates to itself.
 func UintValue(v uint) Scalar {
 	return Scalar{
-		Type:  field.Uint,
-		Data:  field.EncodeUint(uint(v)),
+		Type:  value.Uint,
+		Data:  value.EncodeUint(uint(v)),
 		Value: v,
 	}
 }
@@ -291,7 +291,7 @@ func Uint8Field(name string) Uint8FieldSelector {
 func (f Uint8FieldSelector) Eq(x uint8) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeUint8(x),
+		Value: value.EncodeUint8(x),
 	}
 }
 
@@ -299,7 +299,7 @@ func (f Uint8FieldSelector) Eq(x uint8) Expr {
 func (f Uint8FieldSelector) Gt(x uint8) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeUint8(x),
+		Value: value.EncodeUint8(x),
 	}
 }
 
@@ -307,7 +307,7 @@ func (f Uint8FieldSelector) Gt(x uint8) Expr {
 func (f Uint8FieldSelector) Gte(x uint8) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeUint8(x),
+		Value: value.EncodeUint8(x),
 	}
 }
 
@@ -315,7 +315,7 @@ func (f Uint8FieldSelector) Gte(x uint8) Expr {
 func (f Uint8FieldSelector) Lt(x uint8) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeUint8(x),
+		Value: value.EncodeUint8(x),
 	}
 }
 
@@ -323,23 +323,23 @@ func (f Uint8FieldSelector) Lt(x uint8) Expr {
 func (f Uint8FieldSelector) Lte(x uint8) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeUint8(x),
+		Value: value.EncodeUint8(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Uint8FieldSelector) Value(x uint8) *Scalar {
 	return &Scalar{
-		Type: field.Uint8,
-		Data: field.EncodeUint8(x),
+		Type: value.Uint8,
+		Data: value.EncodeUint8(x),
 	}
 }
 
 // Uint8Value is an expression that evaluates to itself.
 func Uint8Value(v uint8) Scalar {
 	return Scalar{
-		Type:  field.Uint8,
-		Data:  field.EncodeUint8(uint8(v)),
+		Type:  value.Uint8,
+		Data:  value.EncodeUint8(uint8(v)),
 		Value: v,
 	}
 }
@@ -359,7 +359,7 @@ func Uint16Field(name string) Uint16FieldSelector {
 func (f Uint16FieldSelector) Eq(x uint16) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeUint16(x),
+		Value: value.EncodeUint16(x),
 	}
 }
 
@@ -367,7 +367,7 @@ func (f Uint16FieldSelector) Eq(x uint16) Expr {
 func (f Uint16FieldSelector) Gt(x uint16) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeUint16(x),
+		Value: value.EncodeUint16(x),
 	}
 }
 
@@ -375,7 +375,7 @@ func (f Uint16FieldSelector) Gt(x uint16) Expr {
 func (f Uint16FieldSelector) Gte(x uint16) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeUint16(x),
+		Value: value.EncodeUint16(x),
 	}
 }
 
@@ -383,7 +383,7 @@ func (f Uint16FieldSelector) Gte(x uint16) Expr {
 func (f Uint16FieldSelector) Lt(x uint16) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeUint16(x),
+		Value: value.EncodeUint16(x),
 	}
 }
 
@@ -391,23 +391,23 @@ func (f Uint16FieldSelector) Lt(x uint16) Expr {
 func (f Uint16FieldSelector) Lte(x uint16) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeUint16(x),
+		Value: value.EncodeUint16(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Uint16FieldSelector) Value(x uint16) *Scalar {
 	return &Scalar{
-		Type: field.Uint16,
-		Data: field.EncodeUint16(x),
+		Type: value.Uint16,
+		Data: value.EncodeUint16(x),
 	}
 }
 
 // Uint16Value is an expression that evaluates to itself.
 func Uint16Value(v uint16) Scalar {
 	return Scalar{
-		Type:  field.Uint16,
-		Data:  field.EncodeUint16(uint16(v)),
+		Type:  value.Uint16,
+		Data:  value.EncodeUint16(uint16(v)),
 		Value: v,
 	}
 }
@@ -427,7 +427,7 @@ func Uint32Field(name string) Uint32FieldSelector {
 func (f Uint32FieldSelector) Eq(x uint32) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeUint32(x),
+		Value: value.EncodeUint32(x),
 	}
 }
 
@@ -435,7 +435,7 @@ func (f Uint32FieldSelector) Eq(x uint32) Expr {
 func (f Uint32FieldSelector) Gt(x uint32) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeUint32(x),
+		Value: value.EncodeUint32(x),
 	}
 }
 
@@ -443,7 +443,7 @@ func (f Uint32FieldSelector) Gt(x uint32) Expr {
 func (f Uint32FieldSelector) Gte(x uint32) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeUint32(x),
+		Value: value.EncodeUint32(x),
 	}
 }
 
@@ -451,7 +451,7 @@ func (f Uint32FieldSelector) Gte(x uint32) Expr {
 func (f Uint32FieldSelector) Lt(x uint32) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeUint32(x),
+		Value: value.EncodeUint32(x),
 	}
 }
 
@@ -459,23 +459,23 @@ func (f Uint32FieldSelector) Lt(x uint32) Expr {
 func (f Uint32FieldSelector) Lte(x uint32) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeUint32(x),
+		Value: value.EncodeUint32(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Uint32FieldSelector) Value(x uint32) *Scalar {
 	return &Scalar{
-		Type: field.Uint32,
-		Data: field.EncodeUint32(x),
+		Type: value.Uint32,
+		Data: value.EncodeUint32(x),
 	}
 }
 
 // Uint32Value is an expression that evaluates to itself.
 func Uint32Value(v uint32) Scalar {
 	return Scalar{
-		Type:  field.Uint32,
-		Data:  field.EncodeUint32(uint32(v)),
+		Type:  value.Uint32,
+		Data:  value.EncodeUint32(uint32(v)),
 		Value: v,
 	}
 }
@@ -495,7 +495,7 @@ func Uint64Field(name string) Uint64FieldSelector {
 func (f Uint64FieldSelector) Eq(x uint64) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeUint64(x),
+		Value: value.EncodeUint64(x),
 	}
 }
 
@@ -503,7 +503,7 @@ func (f Uint64FieldSelector) Eq(x uint64) Expr {
 func (f Uint64FieldSelector) Gt(x uint64) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeUint64(x),
+		Value: value.EncodeUint64(x),
 	}
 }
 
@@ -511,7 +511,7 @@ func (f Uint64FieldSelector) Gt(x uint64) Expr {
 func (f Uint64FieldSelector) Gte(x uint64) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeUint64(x),
+		Value: value.EncodeUint64(x),
 	}
 }
 
@@ -519,7 +519,7 @@ func (f Uint64FieldSelector) Gte(x uint64) Expr {
 func (f Uint64FieldSelector) Lt(x uint64) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeUint64(x),
+		Value: value.EncodeUint64(x),
 	}
 }
 
@@ -527,23 +527,23 @@ func (f Uint64FieldSelector) Lt(x uint64) Expr {
 func (f Uint64FieldSelector) Lte(x uint64) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeUint64(x),
+		Value: value.EncodeUint64(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Uint64FieldSelector) Value(x uint64) *Scalar {
 	return &Scalar{
-		Type: field.Uint64,
-		Data: field.EncodeUint64(x),
+		Type: value.Uint64,
+		Data: value.EncodeUint64(x),
 	}
 }
 
 // Uint64Value is an expression that evaluates to itself.
 func Uint64Value(v uint64) Scalar {
 	return Scalar{
-		Type:  field.Uint64,
-		Data:  field.EncodeUint64(uint64(v)),
+		Type:  value.Uint64,
+		Data:  value.EncodeUint64(uint64(v)),
 		Value: v,
 	}
 }
@@ -563,7 +563,7 @@ func IntField(name string) IntFieldSelector {
 func (f IntFieldSelector) Eq(x int) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeInt(x),
+		Value: value.EncodeInt(x),
 	}
 }
 
@@ -571,7 +571,7 @@ func (f IntFieldSelector) Eq(x int) Expr {
 func (f IntFieldSelector) Gt(x int) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeInt(x),
+		Value: value.EncodeInt(x),
 	}
 }
 
@@ -579,7 +579,7 @@ func (f IntFieldSelector) Gt(x int) Expr {
 func (f IntFieldSelector) Gte(x int) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeInt(x),
+		Value: value.EncodeInt(x),
 	}
 }
 
@@ -587,7 +587,7 @@ func (f IntFieldSelector) Gte(x int) Expr {
 func (f IntFieldSelector) Lt(x int) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeInt(x),
+		Value: value.EncodeInt(x),
 	}
 }
 
@@ -595,23 +595,23 @@ func (f IntFieldSelector) Lt(x int) Expr {
 func (f IntFieldSelector) Lte(x int) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeInt(x),
+		Value: value.EncodeInt(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f IntFieldSelector) Value(x int) *Scalar {
 	return &Scalar{
-		Type: field.Int,
-		Data: field.EncodeInt(x),
+		Type: value.Int,
+		Data: value.EncodeInt(x),
 	}
 }
 
 // IntValue is an expression that evaluates to itself.
 func IntValue(v int) Scalar {
 	return Scalar{
-		Type:  field.Int,
-		Data:  field.EncodeInt(int(v)),
+		Type:  value.Int,
+		Data:  value.EncodeInt(int(v)),
 		Value: v,
 	}
 }
@@ -631,7 +631,7 @@ func Int8Field(name string) Int8FieldSelector {
 func (f Int8FieldSelector) Eq(x int8) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeInt8(x),
+		Value: value.EncodeInt8(x),
 	}
 }
 
@@ -639,7 +639,7 @@ func (f Int8FieldSelector) Eq(x int8) Expr {
 func (f Int8FieldSelector) Gt(x int8) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeInt8(x),
+		Value: value.EncodeInt8(x),
 	}
 }
 
@@ -647,7 +647,7 @@ func (f Int8FieldSelector) Gt(x int8) Expr {
 func (f Int8FieldSelector) Gte(x int8) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeInt8(x),
+		Value: value.EncodeInt8(x),
 	}
 }
 
@@ -655,7 +655,7 @@ func (f Int8FieldSelector) Gte(x int8) Expr {
 func (f Int8FieldSelector) Lt(x int8) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeInt8(x),
+		Value: value.EncodeInt8(x),
 	}
 }
 
@@ -663,23 +663,23 @@ func (f Int8FieldSelector) Lt(x int8) Expr {
 func (f Int8FieldSelector) Lte(x int8) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeInt8(x),
+		Value: value.EncodeInt8(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Int8FieldSelector) Value(x int8) *Scalar {
 	return &Scalar{
-		Type: field.Int8,
-		Data: field.EncodeInt8(x),
+		Type: value.Int8,
+		Data: value.EncodeInt8(x),
 	}
 }
 
 // Int8Value is an expression that evaluates to itself.
 func Int8Value(v int8) Scalar {
 	return Scalar{
-		Type:  field.Int8,
-		Data:  field.EncodeInt8(int8(v)),
+		Type:  value.Int8,
+		Data:  value.EncodeInt8(int8(v)),
 		Value: v,
 	}
 }
@@ -699,7 +699,7 @@ func Int16Field(name string) Int16FieldSelector {
 func (f Int16FieldSelector) Eq(x int16) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeInt16(x),
+		Value: value.EncodeInt16(x),
 	}
 }
 
@@ -707,7 +707,7 @@ func (f Int16FieldSelector) Eq(x int16) Expr {
 func (f Int16FieldSelector) Gt(x int16) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeInt16(x),
+		Value: value.EncodeInt16(x),
 	}
 }
 
@@ -715,7 +715,7 @@ func (f Int16FieldSelector) Gt(x int16) Expr {
 func (f Int16FieldSelector) Gte(x int16) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeInt16(x),
+		Value: value.EncodeInt16(x),
 	}
 }
 
@@ -723,7 +723,7 @@ func (f Int16FieldSelector) Gte(x int16) Expr {
 func (f Int16FieldSelector) Lt(x int16) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeInt16(x),
+		Value: value.EncodeInt16(x),
 	}
 }
 
@@ -731,23 +731,23 @@ func (f Int16FieldSelector) Lt(x int16) Expr {
 func (f Int16FieldSelector) Lte(x int16) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeInt16(x),
+		Value: value.EncodeInt16(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Int16FieldSelector) Value(x int16) *Scalar {
 	return &Scalar{
-		Type: field.Int16,
-		Data: field.EncodeInt16(x),
+		Type: value.Int16,
+		Data: value.EncodeInt16(x),
 	}
 }
 
 // Int16Value is an expression that evaluates to itself.
 func Int16Value(v int16) Scalar {
 	return Scalar{
-		Type:  field.Int16,
-		Data:  field.EncodeInt16(int16(v)),
+		Type:  value.Int16,
+		Data:  value.EncodeInt16(int16(v)),
 		Value: v,
 	}
 }
@@ -767,7 +767,7 @@ func Int32Field(name string) Int32FieldSelector {
 func (f Int32FieldSelector) Eq(x int32) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeInt32(x),
+		Value: value.EncodeInt32(x),
 	}
 }
 
@@ -775,7 +775,7 @@ func (f Int32FieldSelector) Eq(x int32) Expr {
 func (f Int32FieldSelector) Gt(x int32) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeInt32(x),
+		Value: value.EncodeInt32(x),
 	}
 }
 
@@ -783,7 +783,7 @@ func (f Int32FieldSelector) Gt(x int32) Expr {
 func (f Int32FieldSelector) Gte(x int32) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeInt32(x),
+		Value: value.EncodeInt32(x),
 	}
 }
 
@@ -791,7 +791,7 @@ func (f Int32FieldSelector) Gte(x int32) Expr {
 func (f Int32FieldSelector) Lt(x int32) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeInt32(x),
+		Value: value.EncodeInt32(x),
 	}
 }
 
@@ -799,23 +799,23 @@ func (f Int32FieldSelector) Lt(x int32) Expr {
 func (f Int32FieldSelector) Lte(x int32) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeInt32(x),
+		Value: value.EncodeInt32(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Int32FieldSelector) Value(x int32) *Scalar {
 	return &Scalar{
-		Type: field.Int32,
-		Data: field.EncodeInt32(x),
+		Type: value.Int32,
+		Data: value.EncodeInt32(x),
 	}
 }
 
 // Int32Value is an expression that evaluates to itself.
 func Int32Value(v int32) Scalar {
 	return Scalar{
-		Type:  field.Int32,
-		Data:  field.EncodeInt32(int32(v)),
+		Type:  value.Int32,
+		Data:  value.EncodeInt32(int32(v)),
 		Value: v,
 	}
 }
@@ -835,7 +835,7 @@ func Int64Field(name string) Int64FieldSelector {
 func (f Int64FieldSelector) Eq(x int64) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeInt64(x),
+		Value: value.EncodeInt64(x),
 	}
 }
 
@@ -843,7 +843,7 @@ func (f Int64FieldSelector) Eq(x int64) Expr {
 func (f Int64FieldSelector) Gt(x int64) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeInt64(x),
+		Value: value.EncodeInt64(x),
 	}
 }
 
@@ -851,7 +851,7 @@ func (f Int64FieldSelector) Gt(x int64) Expr {
 func (f Int64FieldSelector) Gte(x int64) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeInt64(x),
+		Value: value.EncodeInt64(x),
 	}
 }
 
@@ -859,7 +859,7 @@ func (f Int64FieldSelector) Gte(x int64) Expr {
 func (f Int64FieldSelector) Lt(x int64) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeInt64(x),
+		Value: value.EncodeInt64(x),
 	}
 }
 
@@ -867,23 +867,23 @@ func (f Int64FieldSelector) Lt(x int64) Expr {
 func (f Int64FieldSelector) Lte(x int64) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeInt64(x),
+		Value: value.EncodeInt64(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Int64FieldSelector) Value(x int64) *Scalar {
 	return &Scalar{
-		Type: field.Int64,
-		Data: field.EncodeInt64(x),
+		Type: value.Int64,
+		Data: value.EncodeInt64(x),
 	}
 }
 
 // Int64Value is an expression that evaluates to itself.
 func Int64Value(v int64) Scalar {
 	return Scalar{
-		Type:  field.Int64,
-		Data:  field.EncodeInt64(int64(v)),
+		Type:  value.Int64,
+		Data:  value.EncodeInt64(int64(v)),
 		Value: v,
 	}
 }
@@ -903,7 +903,7 @@ func Float32Field(name string) Float32FieldSelector {
 func (f Float32FieldSelector) Eq(x float32) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeFloat32(x),
+		Value: value.EncodeFloat32(x),
 	}
 }
 
@@ -911,7 +911,7 @@ func (f Float32FieldSelector) Eq(x float32) Expr {
 func (f Float32FieldSelector) Gt(x float32) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeFloat32(x),
+		Value: value.EncodeFloat32(x),
 	}
 }
 
@@ -919,7 +919,7 @@ func (f Float32FieldSelector) Gt(x float32) Expr {
 func (f Float32FieldSelector) Gte(x float32) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeFloat32(x),
+		Value: value.EncodeFloat32(x),
 	}
 }
 
@@ -927,7 +927,7 @@ func (f Float32FieldSelector) Gte(x float32) Expr {
 func (f Float32FieldSelector) Lt(x float32) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeFloat32(x),
+		Value: value.EncodeFloat32(x),
 	}
 }
 
@@ -935,23 +935,23 @@ func (f Float32FieldSelector) Lt(x float32) Expr {
 func (f Float32FieldSelector) Lte(x float32) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeFloat32(x),
+		Value: value.EncodeFloat32(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Float32FieldSelector) Value(x float32) *Scalar {
 	return &Scalar{
-		Type: field.Float32,
-		Data: field.EncodeFloat32(x),
+		Type: value.Float32,
+		Data: value.EncodeFloat32(x),
 	}
 }
 
 // Float32Value is an expression that evaluates to itself.
 func Float32Value(v float32) Scalar {
 	return Scalar{
-		Type:  field.Float32,
-		Data:  field.EncodeFloat32(float32(v)),
+		Type:  value.Float32,
+		Data:  value.EncodeFloat32(float32(v)),
 		Value: v,
 	}
 }
@@ -971,7 +971,7 @@ func Float64Field(name string) Float64FieldSelector {
 func (f Float64FieldSelector) Eq(x float64) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.EncodeFloat64(x),
+		Value: value.EncodeFloat64(x),
 	}
 }
 
@@ -979,7 +979,7 @@ func (f Float64FieldSelector) Eq(x float64) Expr {
 func (f Float64FieldSelector) Gt(x float64) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.EncodeFloat64(x),
+		Value: value.EncodeFloat64(x),
 	}
 }
 
@@ -987,7 +987,7 @@ func (f Float64FieldSelector) Gt(x float64) Expr {
 func (f Float64FieldSelector) Gte(x float64) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.EncodeFloat64(x),
+		Value: value.EncodeFloat64(x),
 	}
 }
 
@@ -995,7 +995,7 @@ func (f Float64FieldSelector) Gte(x float64) Expr {
 func (f Float64FieldSelector) Lt(x float64) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.EncodeFloat64(x),
+		Value: value.EncodeFloat64(x),
 	}
 }
 
@@ -1003,23 +1003,23 @@ func (f Float64FieldSelector) Lt(x float64) Expr {
 func (f Float64FieldSelector) Lte(x float64) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.EncodeFloat64(x),
+		Value: value.EncodeFloat64(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f Float64FieldSelector) Value(x float64) *Scalar {
 	return &Scalar{
-		Type: field.Float64,
-		Data: field.EncodeFloat64(x),
+		Type: value.Float64,
+		Data: value.EncodeFloat64(x),
 	}
 }
 
 // Float64Value is an expression that evaluates to itself.
 func Float64Value(v float64) Scalar {
 	return Scalar{
-		Type:  field.Float64,
-		Data:  field.EncodeFloat64(float64(v)),
+		Type:  value.Float64,
+		Data:  value.EncodeFloat64(float64(v)),
 		Value: v,
 	}
 }

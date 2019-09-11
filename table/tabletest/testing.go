@@ -10,6 +10,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -168,14 +169,14 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 		rec := recordPker{
 			pkGenerator: func() ([]byte, error) {
 				counter += 2
-				return field.EncodeInt64(counter), nil
+				return value.EncodeInt64(counter), nil
 			},
 		}
 
 		// insert
 		recordID, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, field.EncodeInt64(2), recordID)
+		require.Equal(t, value.EncodeInt64(2), recordID)
 
 		// make sure the record is fetchable using the returned recordID
 		_, err = tb.GetRecord(recordID)
@@ -184,7 +185,7 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 		// insert again
 		recordID, err = tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, field.EncodeInt64(4), recordID)
+		require.Equal(t, value.EncodeInt64(4), recordID)
 	})
 
 	t.Run("Should fail if Pk returns empty recordID", func(t *testing.T) {
@@ -217,7 +218,7 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 
 		rec := recordPker{
 			pkGenerator: func() ([]byte, error) {
-				return field.EncodeInt64(1), nil
+				return value.EncodeInt64(1), nil
 			},
 		}
 

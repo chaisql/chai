@@ -3,7 +3,7 @@ package query
 import (
 	"bytes"
 
-	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 )
 
 type simpleOperator struct {
@@ -72,7 +72,7 @@ func (op cmpOp) Eval(ctx EvalContext) (Scalar, error) {
 	}
 
 	// if same type, no conversion needed
-	if sa.Type == sb.Type || (sa.Type == field.String && sb.Type == field.Bytes) || (sb.Type == field.String && sa.Type == field.Bytes) {
+	if sa.Type == sb.Type || (sa.Type == value.String && sb.Type == value.Bytes) || (sb.Type == value.String && sa.Type == value.Bytes) {
 		var ok bool
 		switch op.tok {
 		case EQ:
@@ -95,21 +95,21 @@ func (op cmpOp) Eval(ctx EvalContext) (Scalar, error) {
 	}
 
 	if len(sa.Data) > 0 && sa.Value == nil {
-		sa.Value, err = field.Decode(field.Field{Type: sa.Type, Data: sa.Data})
+		sa.Value, err = value.Value{Type: sa.Type, Data: sa.Data}.Decode()
 		if err != nil {
 			return falseScalar, err
 		}
 	}
 
 	if len(sb.Data) > 0 && sb.Value == nil {
-		sb.Value, err = field.Decode(field.Field{Type: sb.Type, Data: sb.Data})
+		sb.Value, err = value.Value{Type: sb.Type, Data: sb.Data}.Decode()
 		if err != nil {
 			return falseScalar, err
 		}
 	}
 
 	// number OP number
-	if field.IsNumber(sa.Type) && field.IsNumber(sb.Type) {
+	if value.IsNumber(sa.Type) && value.IsNumber(sb.Type) {
 		af, bf := numberToFloat(sa.Value), numberToFloat(sb.Value)
 
 		var ok bool

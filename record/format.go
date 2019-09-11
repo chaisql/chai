@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 )
 
 // Format is an encoding format used to encode and decode records.
@@ -295,8 +296,10 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 		if fieldName == string(fh.Name) {
 			return field.Field{
 				Name: fieldName,
-				Type: field.Type(fh.Type),
-				Data: body[fh.Offset : fh.Offset+fh.Size],
+				Value: value.Value{
+					Type: value.Type(fh.Type),
+					Data: body[fh.Offset : fh.Offset+fh.Size],
+				},
 			}, nil
 		}
 	}
@@ -326,8 +329,10 @@ func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
 	for _, fh := range format.Header.FieldHeaders {
 		err = fn(field.Field{
 			Name: string(fh.Name),
-			Type: field.Type(fh.Type),
-			Data: format.Body[fh.Offset : fh.Offset+fh.Size],
+			Value: value.Value{
+				Type: value.Type(fh.Type),
+				Data: format.Body[fh.Offset : fh.Offset+fh.Size],
+			},
 		})
 		if err != nil {
 			return err

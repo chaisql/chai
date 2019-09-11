@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/value"
 )
 
 // SelectStmt is a DSL that allows creating a full Select query.
@@ -61,10 +61,10 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		if err != nil {
 			return Result{err: err}
 		}
-		if s.Type < field.Int {
+		if s.Type < value.Int {
 			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", s.Type)}
 		}
-		offset, err = field.DecodeInt(s.Data)
+		offset, err = value.DecodeInt(s.Data)
 		if err != nil {
 			return Result{err: err}
 		}
@@ -77,10 +77,10 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		if err != nil {
 			return Result{err: err}
 		}
-		if s.Type < field.Int {
+		if s.Type < value.Int {
 			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", s.Type)}
 		}
-		limit, err = field.DecodeInt(s.Data)
+		limit, err = value.DecodeInt(s.Data)
 		if err != nil {
 			return Result{err: err}
 		}

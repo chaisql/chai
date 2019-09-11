@@ -9,8 +9,9 @@ import (
 
 // A Field is a typed information stored in the database.
 type Field struct {
-	Name  string
-	Value value.Value
+	value.Value
+
+	Name string
 }
 
 // New creates a field whose type is infered from x.

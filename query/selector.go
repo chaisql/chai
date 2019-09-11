@@ -4,6 +4,7 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 // A FieldSelector can extract a field from a record.
@@ -88,8 +89,10 @@ func (a Alias) SelectField(r record.Record) (field.Field, error) {
 	}
 
 	return field.Field{
-		Data: f.Data,
-		Type: f.Type,
+		Value: value.Value{
+			Data: f.Data,
+			Type: f.Type,
+		},
 		Name: a.Alias,
 	}, nil
 }

@@ -12,7 +12,7 @@ import (
 const tmpl = `package query
 
 import (
-	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 )
 
 {{ range .Types -}}
@@ -31,7 +31,7 @@ func {{ .Name }}Field(name string) {{ .Name }}FieldSelector {
 func (f {{ .Name }}FieldSelector) Eq(x {{ .T }}) Expr {
 	return &eqMatcher{
 		Field: f,
-		Value: field.Encode{{ .Name }}(x),
+		Value: value.Encode{{ .Name }}(x),
 	}
 }
 
@@ -39,7 +39,7 @@ func (f {{ .Name }}FieldSelector) Eq(x {{ .T }}) Expr {
 func (f {{ .Name }}FieldSelector) Gt(x {{ .T }}) Expr {
 	return &gtMatcher{
 		Field: f,
-		Value: field.Encode{{ .Name }}(x),
+		Value: value.Encode{{ .Name }}(x),
 	}
 }
 
@@ -47,7 +47,7 @@ func (f {{ .Name }}FieldSelector) Gt(x {{ .T }}) Expr {
 func (f {{ .Name }}FieldSelector) Gte(x {{ .T }}) Expr {
 	return &gteMatcher{
 		Field: f,
-		Value: field.Encode{{ .Name }}(x),
+		Value: value.Encode{{ .Name }}(x),
 	}
 }
 
@@ -55,7 +55,7 @@ func (f {{ .Name }}FieldSelector) Gte(x {{ .T }}) Expr {
 func (f {{ .Name }}FieldSelector) Lt(x {{ .T }}) Expr {
 	return &ltMatcher{
 		Field: f,
-		Value: field.Encode{{ .Name }}(x),
+		Value: value.Encode{{ .Name }}(x),
 	}
 }
 
@@ -63,23 +63,23 @@ func (f {{ .Name }}FieldSelector) Lt(x {{ .T }}) Expr {
 func (f {{ .Name }}FieldSelector) Lte(x {{ .T }}) Expr {
 	return &lteMatcher{
 		Field: f,
-		Value: field.Encode{{ .Name }}(x),
+		Value: value.Encode{{ .Name }}(x),
 	}
 }
 
 // Value returns a scalar that can be used as an expression.
 func (f {{ .Name }}FieldSelector) Value(x {{ .T }}) *Scalar {
 	return &Scalar{
-		Type: field.{{ .Name }},
-		Data: field.Encode{{ .Name }}(x),
+		Type: value.{{ .Name }},
+		Data: value.Encode{{ .Name }}(x),
 	}
 }
 
 // {{ .Name }}Value is an expression that evaluates to itself.
 func {{ .Name }}Value(v {{ .T }}) Scalar {
 	return Scalar{
-		Type: field.{{ .Name }},
-		Data: field.Encode{{ .Name }}({{ .T }}(v)),
+		Type: value.{{ .Name }},
+		Data: value.Encode{{ .Name }}({{ .T }}(v)),
 		Value: v,
 	}
 }

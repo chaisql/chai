@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/value"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
@@ -185,7 +186,7 @@ func (t Table) AddField(f field.Field) error {
 		}
 
 		if f.Data == nil {
-			f.Data = field.ZeroValue(f.Type).Data
+			f.Data = value.ZeroValue(f.Type).Data
 		}
 		fb.Add(f)
 

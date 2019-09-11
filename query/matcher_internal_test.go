@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 	"github.com/google/btree"
 )
 
@@ -13,7 +13,7 @@ func BenchmarkIntersection(b *testing.B) {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			set := btree.New(3)
 			for i := 0; i < size; i++ {
-				set.ReplaceOrInsert(Item(field.EncodeInt64(int64(i))))
+				set.ReplaceOrInsert(Item(value.EncodeInt64(int64(i))))
 			}
 
 			b.ResetTimer()
@@ -31,8 +31,8 @@ func BenchmarkUnion(b *testing.B) {
 			set2 := btree.New(3)
 
 			for i := 0; i < size; i++ {
-				set1.ReplaceOrInsert(Item(field.EncodeInt64(int64(i))))
-				set2.ReplaceOrInsert(Item(field.EncodeInt64(int64(i))))
+				set1.ReplaceOrInsert(Item(value.EncodeInt64(int64(i))))
+				set2.ReplaceOrInsert(Item(value.EncodeInt64(int64(i))))
 			}
 
 			b.ResetTimer()

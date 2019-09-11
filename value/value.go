@@ -271,6 +271,53 @@ func NewFloat64(x float64) Value {
 	}
 }
 
+// Decode a value based on its type, caches it and returns its Go value.
+// If the decoded value is already cached, returns it immediatly.
+func (v Value) Decode() (interface{}, error) {
+	if v.v != nil {
+		return v.v, nil
+	}
+
+	var err error
+
+	switch v.Type {
+	case Bytes:
+		v.v, err = DecodeBytes(v.Data)
+	case String:
+		v.v, err = DecodeString(v.Data)
+	case Bool:
+		v.v, err = DecodeBool(v.Data)
+	case Uint:
+		v.v, err = DecodeUint(v.Data)
+	case Uint8:
+		v.v, err = DecodeUint8(v.Data)
+	case Uint16:
+		v.v, err = DecodeUint16(v.Data)
+	case Uint32:
+		v.v, err = DecodeUint32(v.Data)
+	case Uint64:
+		v.v, err = DecodeUint64(v.Data)
+	case Int:
+		v.v, err = DecodeInt(v.Data)
+	case Int8:
+		v.v, err = DecodeInt8(v.Data)
+	case Int16:
+		v.v, err = DecodeInt16(v.Data)
+	case Int32:
+		v.v, err = DecodeInt32(v.Data)
+	case Int64:
+		v.v, err = DecodeInt64(v.Data)
+	case Float32:
+		v.v, err = DecodeFloat32(v.Data)
+	case Float64:
+		v.v, err = DecodeFloat64(v.Data)
+	default:
+		return nil, errors.New("unknown type")
+	}
+
+	return v.v, err
+}
+
 // String returns a string representation of the value. It implements the fmt.Stringer interface.
 func (v Value) String() string {
 	var vv interface{}
@@ -628,44 +675,6 @@ func IsZeroValue(t Type, data []byte) bool {
 	}
 
 	return false
-}
-
-// Decode a value based on its type and returns its Go value.
-func Decode(v Value) (interface{}, error) {
-	switch v.Type {
-	case Bytes:
-		return DecodeBytes(v.Data)
-	case String:
-		return DecodeString(v.Data)
-	case Bool:
-		return DecodeBool(v.Data)
-	case Uint:
-		return DecodeUint(v.Data)
-	case Uint8:
-		return DecodeUint8(v.Data)
-	case Uint16:
-		return DecodeUint16(v.Data)
-	case Uint32:
-		return DecodeUint32(v.Data)
-	case Uint64:
-		return DecodeUint64(v.Data)
-	case Int:
-		return DecodeInt(v.Data)
-	case Int8:
-		return DecodeInt8(v.Data)
-	case Int16:
-		return DecodeInt16(v.Data)
-	case Int32:
-		return DecodeInt32(v.Data)
-	case Int64:
-		return DecodeInt64(v.Data)
-	case Float32:
-		return DecodeFloat32(v.Data)
-	case Float64:
-		return DecodeFloat64(v.Data)
-	}
-
-	return nil, errors.New("unknown type")
 }
 
 // IsNumber returns true if t is either an integer of a float.
