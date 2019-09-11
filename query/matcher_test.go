@@ -10,6 +10,7 @@ import (
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 	"github.com/google/btree"
 	"github.com/stretchr/testify/require"
 )
@@ -76,7 +77,7 @@ func createIntIndex(t require.TestingT, tb *genji.Table, ages []indexPair) {
 	require.NoError(t, err)
 
 	for _, pair := range ages {
-		err := idx.Set(field.EncodeInt(pair.V.(int)), []byte(pair.R.(string)))
+		err := idx.Set(value.EncodeInt(pair.V.(int)), []byte(pair.R.(string)))
 		require.NoError(t, err)
 	}
 }
@@ -167,7 +168,7 @@ func TestIndexMatchers(t *testing.T) {
 type simpleExpr struct{}
 
 func (s *simpleExpr) Eval(query.EvalContext) (query.Scalar, error) {
-	return query.Scalar{Type: field.Bool, Data: field.EncodeBool(false)}, nil
+	return query.Scalar{Type: value.Bool, Data: value.EncodeBool(false)}, nil
 }
 
 func TestAndMatcher(t *testing.T) {
