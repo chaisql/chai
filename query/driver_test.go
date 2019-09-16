@@ -83,18 +83,38 @@ func TestDriver(t *testing.T) {
 		time.Sleep(time.Millisecond) // ensure records are stored in order
 	}
 
-	rows, err := dbx.Query("SELECT * FROM test")
-	require.NoError(t, err)
-	defer rows.Close()
-
-	var count int
-	var rt rectest
-	for rows.Next() {
-		err = rows.Scan(&rt)
+	t.Run("Wildcard", func(t *testing.T) {
+		rows, err := dbx.Query("SELECT * FROM test")
 		require.NoError(t, err)
-		require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
-		count++
-	}
-	require.NoError(t, rows.Err())
-	require.Equal(t, 10, count)
+		defer rows.Close()
+
+		var count int
+		var rt rectest
+		for rows.Next() {
+			err = rows.Scan(&rt)
+			require.NoError(t, err)
+			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
+
+	t.Run("Multiple fields", func(t *testing.T) {
+		rows, err := dbx.Query("SELECT a, c FROM test")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var a, c int
+		for rows.Next() {
+			err = rows.Scan(&a, &c)
+			require.NoError(t, err)
+			require.Equal(t, count+1, a)
+			require.Equal(t, count+3, c)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
 }
