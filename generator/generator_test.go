@@ -17,6 +17,7 @@ import (
 	"github.com/asdine/genji/generator/testdata"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,8 +29,6 @@ func TestGenerate(t *testing.T) {
 			{"Basic"},
 			{"basic"},
 			{"Pk"},
-			{"Indexed"},
-			{"MultipleTags"},
 		}
 
 		f, err := os.Open("testdata/structs.go")
@@ -177,13 +176,13 @@ func TestGeneratedRecords(t *testing.T) {
 
 		tests := []struct {
 			name string
-			typ  field.Type
+			typ  value.Type
 			data []byte
 		}{
-			{"A", field.String, field.EncodeString(r.A)},
-			{"B", field.Int, field.EncodeInt(r.B)},
-			{"C", field.Int32, field.EncodeInt32(r.C)},
-			{"D", field.Int32, field.EncodeInt32(r.D)},
+			{"A", value.String, value.EncodeString(r.A)},
+			{"B", value.Int, value.EncodeInt(r.B)},
+			{"C", value.Int32, value.EncodeInt32(r.C)},
+			{"D", value.Int32, value.EncodeInt32(r.D)},
 		}
 
 		for _, test := range tests {
@@ -221,6 +220,6 @@ func TestGeneratedRecords(t *testing.T) {
 
 		pk, err := r.PrimaryKey()
 		require.NoError(t, err)
-		require.Equal(t, field.EncodeInt64(10), pk)
+		require.Equal(t, value.EncodeInt64(10), pk)
 	})
 }

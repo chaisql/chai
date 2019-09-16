@@ -40,10 +40,6 @@ func init() {
 		"record-Iterate":    recordIterateTmpl,
 		"record-ScanRecord": recordScanRecordTmpl,
 		"record-Pk":         recordPkTmpl,
-		"fields":            fieldsTmpl,
-		"fields-Struct":     fieldsStructTmpl,
-		"fields-New":        fieldsNewTmpl,
-		"record-Indexes":    recordIndexesTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))
@@ -178,8 +174,8 @@ func (g *genContext) selectImports() {
 	if len(g.Records) > 0 {
 		m["errors"]++
 		m["github.com/asdine/genji/field"]++
-		m["github.com/asdine/genji/query"]++
 		m["github.com/asdine/genji/record"]++
+		m["github.com/asdine/genji/value"]++
 	}
 
 	for _, r := range g.Records {

@@ -7,9 +7,8 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
@@ -64,35 +63,16 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A, err = field.DecodeString(f.Data)
+			b.A, err = value.DecodeString(f.Data)
 		case "B":
-			b.B, err = field.DecodeInt(f.Data)
+			b.B, err = value.DecodeInt(f.Data)
 		case "C":
-			b.C, err = field.DecodeInt32(f.Data)
+			b.C, err = value.DecodeInt32(f.Data)
 		case "D":
-			b.D, err = field.DecodeInt32(f.Data)
+			b.D, err = value.DecodeInt32(f.Data)
 		}
 		return err
 	})
-}
-
-// BasicFields describes the fields of the Basic record.
-// It can be used to select fields during queries.
-type BasicFields struct {
-	A query.StringFieldSelector
-	B query.IntFieldSelector
-	C query.Int32FieldSelector
-	D query.Int32FieldSelector
-}
-
-// NewBasicFields creates a BasicFields.
-func NewBasicFields() *BasicFields {
-	return &BasicFields{
-		A: query.StringField("A"),
-		B: query.IntField("B"),
-		C: query.Int32Field("C"),
-		D: query.Int32Field("D"),
-	}
 }
 
 // GetField implements the field method of the record.Record interface.
@@ -147,35 +127,16 @@ func (b *basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A, err = field.DecodeBytes(f.Data)
+			b.A, err = value.DecodeBytes(f.Data)
 		case "B":
-			b.B, err = field.DecodeUint16(f.Data)
+			b.B, err = value.DecodeUint16(f.Data)
 		case "C":
-			b.C, err = field.DecodeFloat32(f.Data)
+			b.C, err = value.DecodeFloat32(f.Data)
 		case "D":
-			b.D, err = field.DecodeFloat32(f.Data)
+			b.D, err = value.DecodeFloat32(f.Data)
 		}
 		return err
 	})
-}
-
-// basicFields describes the fields of the basic record.
-// It can be used to select fields during queries.
-type basicFields struct {
-	A query.BytesFieldSelector
-	B query.Uint16FieldSelector
-	C query.Float32FieldSelector
-	D query.Float32FieldSelector
-}
-
-// newBasicFields creates a basicFields.
-func newBasicFields() *basicFields {
-	return &basicFields{
-		A: query.BytesField("A"),
-		B: query.Uint16Field("B"),
-		C: query.Float32Field("C"),
-		D: query.Float32Field("D"),
-	}
 }
 
 // GetField implements the field method of the record.Record interface.
@@ -216,9 +177,9 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			p.A, err = field.DecodeString(f.Data)
+			p.A, err = value.DecodeString(f.Data)
 		case "B":
-			p.B, err = field.DecodeInt64(f.Data)
+			p.B, err = value.DecodeInt64(f.Data)
 		}
 		return err
 	})
@@ -226,195 +187,5 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 
 // PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
 func (p *Pk) PrimaryKey() ([]byte, error) {
-	return field.EncodeInt64(p.B), nil
-}
-
-// PkFields describes the fields of the Pk record.
-// It can be used to select fields during queries.
-type PkFields struct {
-	A query.StringFieldSelector
-	B query.Int64FieldSelector
-}
-
-// NewPkFields creates a PkFields.
-func NewPkFields() *PkFields {
-	return &PkFields{
-		A: query.StringField("A"),
-		B: query.Int64Field("B"),
-	}
-}
-
-// GetField implements the field method of the record.Record interface.
-func (i *Indexed) GetField(name string) (field.Field, error) {
-	switch name {
-	case "A":
-		return field.NewString("A", i.A), nil
-	case "B":
-		return field.NewInt64("B", i.B), nil
-	case "C":
-		return field.NewInt64("C", i.C), nil
-	}
-
-	return field.Field{}, errors.New("unknown field")
-}
-
-// Iterate through all the fields one by one and pass each of them to the given function.
-// It the given function returns an error, the iteration is interrupted.
-func (i *Indexed) Iterate(fn func(field.Field) error) error {
-	var err error
-
-	err = fn(field.NewString("A", i.A))
-	if err != nil {
-		return err
-	}
-
-	err = fn(field.NewInt64("B", i.B))
-	if err != nil {
-		return err
-	}
-
-	err = fn(field.NewInt64("C", i.C))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func (i *Indexed) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
-		var err error
-
-		switch f.Name {
-		case "A":
-			i.A, err = field.DecodeString(f.Data)
-		case "B":
-			i.B, err = field.DecodeInt64(f.Data)
-		case "C":
-			i.C, err = field.DecodeInt64(f.Data)
-		}
-		return err
-	})
-}
-
-// Indexes creates a map containing the configuration for each index of the table.
-func (i *Indexed) Indexes() map[string]index.Options {
-	return map[string]index.Options{
-		"A": index.Options{Unique: false},
-		"B": index.Options{Unique: true},
-	}
-}
-
-// IndexedFields describes the fields of the Indexed record.
-// It can be used to select fields during queries.
-type IndexedFields struct {
-	A query.StringFieldSelector
-	B query.Int64FieldSelector
-	C query.Int64FieldSelector
-}
-
-// NewIndexedFields creates a IndexedFields.
-func NewIndexedFields() *IndexedFields {
-	return &IndexedFields{
-		A: query.StringField("A"),
-		B: query.Int64Field("B"),
-		C: query.Int64Field("C"),
-	}
-}
-
-// GetField implements the field method of the record.Record interface.
-func (m *MultipleTags) GetField(name string) (field.Field, error) {
-	switch name {
-	case "A":
-		return field.NewString("A", m.A), nil
-	case "B":
-		return field.NewInt64("B", m.B), nil
-	case "C":
-		return field.NewFloat32("C", m.C), nil
-	case "D":
-		return field.NewBool("D", m.D), nil
-	}
-
-	return field.Field{}, errors.New("unknown field")
-}
-
-// Iterate through all the fields one by one and pass each of them to the given function.
-// It the given function returns an error, the iteration is interrupted.
-func (m *MultipleTags) Iterate(fn func(field.Field) error) error {
-	var err error
-
-	err = fn(field.NewString("A", m.A))
-	if err != nil {
-		return err
-	}
-
-	err = fn(field.NewInt64("B", m.B))
-	if err != nil {
-		return err
-	}
-
-	err = fn(field.NewFloat32("C", m.C))
-	if err != nil {
-		return err
-	}
-
-	err = fn(field.NewBool("D", m.D))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func (m *MultipleTags) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
-		var err error
-
-		switch f.Name {
-		case "A":
-			m.A, err = field.DecodeString(f.Data)
-		case "B":
-			m.B, err = field.DecodeInt64(f.Data)
-		case "C":
-			m.C, err = field.DecodeFloat32(f.Data)
-		case "D":
-			m.D, err = field.DecodeBool(f.Data)
-		}
-		return err
-	})
-}
-
-// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
-func (m *MultipleTags) PrimaryKey() ([]byte, error) {
-	return field.EncodeString(m.A), nil
-}
-
-// Indexes creates a map containing the configuration for each index of the table.
-func (m *MultipleTags) Indexes() map[string]index.Options {
-	return map[string]index.Options{
-		"D": index.Options{Unique: false},
-	}
-}
-
-// MultipleTagsFields describes the fields of the MultipleTags record.
-// It can be used to select fields during queries.
-type MultipleTagsFields struct {
-	A query.StringFieldSelector
-	B query.Int64FieldSelector
-	C query.Float32FieldSelector
-	D query.BoolFieldSelector
-}
-
-// NewMultipleTagsFields creates a MultipleTagsFields.
-func NewMultipleTagsFields() *MultipleTagsFields {
-	return &MultipleTagsFields{
-		A: query.StringField("A"),
-		B: query.Int64Field("B"),
-		C: query.Float32Field("C"),
-		D: query.BoolField("D"),
-	}
+	return value.EncodeInt64(p.B), nil
 }
