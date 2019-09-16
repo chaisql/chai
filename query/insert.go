@@ -19,6 +19,7 @@ type InsertStmt struct {
 	fieldNames    []string
 	values        LitteralExprList
 	records       []record.Record
+	pairsList     [][]kvPair
 }
 
 // Insert creates a DSL equivalent to the SQL Insert command.
@@ -71,6 +72,11 @@ func (stmt InsertStmt) Records(records ...record.Record) InsertStmt {
 	return stmt
 }
 
+func (stmt InsertStmt) pairs(pairs ...kvPair) InsertStmt {
+	stmt.pairsList = append(stmt.pairsList, pairs)
+	return stmt
+}
+
 // Exec the Insert query within tx.
 // If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
 // If the Fields method wasn't called, this will return an error.
@@ -94,6 +100,42 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 
 	var lastID []byte
 	var rowsAffected driver.RowsAffected
+
+	if len(stmt.pairsList) > 0 {
+		if len(stmt.fieldNames) > 0 {
+			return Result{err: errors.New("can't provide a field list with RECORDS clause")}
+		}
+
+		for _, pairs := range stmt.pairsList {
+			var fb record.FieldBuffer
+			for _, pair := range pairs {
+				v, err := pair.e.Eval(ectx)
+				if err != nil {
+					return Result{err: err}
+				}
+
+				vl, ok := v.(LitteralValue)
+				if !ok {
+					return Result{err: errors.New("invalid values")}
+				}
+
+				fb.Add(field.Field{Name: pair.k, Value: vl.Value})
+			}
+
+			lastID, err = t.Insert(&fb)
+			if err != nil {
+				return Result{err: err}
+			}
+
+			rowsAffected++
+		}
+
+		return Result{
+			Stream:             table.NewStream(table.NewReaderFromRecords()),
+			lastInsertRecordID: lastID,
+			rowsAffected:       rowsAffected,
+		}
+	}
 
 	if len(stmt.records) > 0 {
 		for _, rec := range stmt.records {

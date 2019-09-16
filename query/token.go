@@ -88,6 +88,7 @@ const (
 	ORDER
 	SELECT
 	SET
+	RECORDS
 	TABLE
 	TO
 	UPDATE
@@ -162,6 +163,7 @@ var tokens = [...]string{
 	ORDER:    "ORDER",
 	SELECT:   "SELECT",
 	SET:      "SET",
+	RECORDS:  "RECORDS",
 	TABLE:    "TABLE",
 	TO:       "TO",
 	UPDATE:   "UPDATE",

@@ -143,11 +143,14 @@ func TestParserInsert(t *testing.T) {
 		expected Statement
 		errored  bool
 	}{
-		{"No columns", "INSERT INTO test VALUES ('a', 'b', 'c')", Insert().Into(Table("test")).Values(StringValue("a"), StringValue("b"), StringValue("c")), false},
-		{"With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
+		{"Values / No columns", "INSERT INTO test VALUES ('a', 'b', 'c')", Insert().Into(Table("test")).Values(StringValue("a"), StringValue("b"), StringValue("c")), false},
+		{"Values / With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			Insert().Into(Table("test")).
 				Fields("a", "b").
 				Values(StringValue("c"), StringValue("d"), StringValue("e")), false},
+		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)",
+			Insert().Into(Table("test")).
+				pairs(kvPair{"a", StringValue("a")}, kvPair{"b", Float64Value(2.3)}, kvPair{"c", Eq(Int64Value(1), Int64Value(1))}), false},
 	}
 
 	for _, test := range tests {

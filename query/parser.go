@@ -177,6 +177,7 @@ func (p *Parser) parseInsertStatement() (InsertStmt, error) {
 	}
 	stmt = stmt.Into(Table(tableName))
 
+	// Parse field list: (a, b, c)
 	fields, ok, err := p.parseFieldList()
 	if err != nil {
 		return stmt, err
@@ -185,11 +186,28 @@ func (p *Parser) parseInsertStatement() (InsertStmt, error) {
 		stmt = stmt.Fields(fields...)
 	}
 
-	values, err := p.parseValues()
+	// Parse VALUES (v1, v2, v3)
+	values, found, err := p.parseValues()
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.Values(values...)
+	if found {
+		stmt = stmt.Values(values...)
+		return stmt, nil
+	}
+
+	// If values was not found, parse RECORDS (r1, r2, r3)
+	pairsList, found, err := p.parseRecords()
+	if err != nil {
+		return stmt, err
+	}
+	if !found {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		p.Unscan()
+		return stmt, newParseError(tokstr(tok, lit), []string{"VALUES", "RECORDS"}, pos)
+	}
+
+	stmt.pairsList = pairsList
 
 	return stmt, nil
 }
@@ -317,20 +335,42 @@ func (p *Parser) parseSetClause() (map[string]Expr, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues() ([]Expr, error) {
+func (p *Parser) parseValues() ([]Expr, bool, error) {
 	// Check if the VALUES token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != VALUES {
 		p.Unscan()
-		return nil, nil
+		return nil, false, nil
 	}
 
 	// Scan the identifier for the source.
 	expr, err := p.parseExprList()
 	if err != nil {
-		return nil, err
+		return nil, true, err
 	}
 
-	return expr, nil
+	return expr, true, nil
+}
+
+// parseValues parses the "RECORDS" clause of the query, if it exists.
+func (p *Parser) parseRecords() ([][]kvPair, bool, error) {
+	// Check if the RECORDS token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != RECORDS {
+		p.Unscan()
+		return nil, false, nil
+	}
+
+	// Scan the list of key value pairs from the source.
+	pairs, ok, err := p.parseKVList()
+	if err != nil {
+		return nil, true, err
+	}
+	if !ok {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		p.Unscan()
+		return nil, false, newParseError(tokstr(tok, lit), []string{"records"}, pos)
+	}
+
+	return [][]kvPair{pairs}, true, nil
 }
 
 // parseFieldList parses a list of fields in the form: (field, field, ...), if exists
@@ -354,6 +394,69 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 	}
 
 	return fields, true, nil
+}
+
+// parseKV parses a key-value pair in the form IDENT = Expr.
+func (p *Parser) parseKV() (string, Expr, error) {
+	k, err := p.ParseIdent()
+	if err != nil {
+		return "", nil, err
+	}
+
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	if tok != COLON {
+		return "", nil, newParseError(tokstr(tok, lit), []string{":"}, pos)
+	}
+
+	expr, err := p.ParseExpr()
+	if err != nil {
+		return "", nil, err
+	}
+
+	return k, expr, nil
+}
+
+type kvPair struct {
+	k string
+	e Expr
+}
+
+// parseKVList parses a list of fields in the form: (k = Expr, k = Expr, ...), if exists
+func (p *Parser) parseKVList() ([]kvPair, bool, error) {
+	// Parse ( token.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != LPAREN {
+		p.Unscan()
+		return nil, false, nil
+	}
+
+	// Parse first (required) identifier.
+	k, expr, err := p.parseKV()
+	if err != nil {
+		return nil, true, err
+	}
+
+	pairs := []kvPair{{k, expr}}
+
+	// Parse remaining (optional) identifiers.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != COMMA {
+			p.Unscan()
+			break
+		}
+
+		if k, expr, err = p.parseKV(); err != nil {
+			return nil, true, err
+		}
+
+		pairs = append(pairs, kvPair{k, expr})
+	}
+
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != RPAREN {
+		return nil, true, newParseError(tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return pairs, true, nil
 }
 
 // parseExprList parses a list of expressions in the form: (expr, expr, ...)
