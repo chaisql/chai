@@ -50,7 +50,7 @@ func TestParserMultiStatement(t *testing.T) {
 		expected []Statement
 	}{
 		{"OnlyCommas", ";;;", nil},
-		{"TrailingComma", "SELECT FROM foo;;;DELETE FROM foo;", []Statement{
+		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []Statement{
 			Select().From(Table("foo")),
 			Delete().From(Table("foo")),
 		}},
@@ -71,8 +71,9 @@ func TestParserSelect(t *testing.T) {
 		s        string
 		expected Statement
 	}{
-		{"NoCond", "SELECT FROM test", Select().From(Table("test"))},
-		{"WithCond", "SELECT FROM test WHERE age = 10", Select().From(Table("test")).Where(Eq(Field("age"), Int64Value(10)))},
+		{"NoCond", "SELECT * FROM test", Select().From(Table("test"))},
+		{"WithFields", "SELECT a, b FROM test", Select(Field("a"), Field("b")).From(Table("test"))},
+		{"WithCond", "SELECT * FROM test WHERE age = 10", Select().From(Table("test")).Where(Eq(Field("age"), Int64Value(10)))},
 	}
 
 	for _, test := range tests {

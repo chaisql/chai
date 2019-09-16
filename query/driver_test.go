@@ -83,7 +83,7 @@ func TestDriver(t *testing.T) {
 		time.Sleep(time.Millisecond) // ensure records are stored in order
 	}
 
-	rows, err := dbx.Query("SELECT FROM test")
+	rows, err := dbx.Query("SELECT * FROM test")
 	require.NoError(t, err)
 	defer rows.Close()
 

@@ -74,6 +74,13 @@ func (p *Parser) ParseStatement() (Statement, error) {
 func (p *Parser) parseSelectStatement() (SelectStmt, error) {
 	stmt := Select()
 
+	// Parse field list or wildcard
+	fselectors, err := p.parseFieldNames()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.fieldSelectors = fselectors
+
 	// Parse "FROM".
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != FROM {
 		return stmt, newParseError(tokstr(tok, lit), []string{"FROM"}, pos)
@@ -223,6 +230,29 @@ func (p *Parser) parseCreateStatement() (CreateTableStmt, error) {
 	stmt.ifNotExists = true
 
 	return stmt, nil
+}
+
+// parseFieldNames parses the list of field names or a wildward.
+func (p *Parser) parseFieldNames() ([]FieldSelector, error) {
+	// Check if the * token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == MUL {
+		return nil, nil
+	}
+	p.Unscan()
+
+	// Scan the list of fields
+	idents, err := p.ParseIdentList()
+	if err != nil {
+		return nil, err
+	}
+
+	// turn it into field selectors
+	fselectors := make([]FieldSelector, len(idents))
+	for i := range idents {
+		fselectors[i] = Field(idents[i])
+	}
+
+	return fselectors, nil
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
