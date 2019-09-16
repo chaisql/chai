@@ -192,7 +192,7 @@ func (p *Parser) parseInsertStatement() (InsertStmt, error) {
 		return stmt, err
 	}
 	if found {
-		stmt = stmt.Values(values...)
+		stmt.values = values
 		return stmt, nil
 	}
 
@@ -342,13 +342,31 @@ func (p *Parser) parseValues() ([]Expr, bool, error) {
 		return nil, false, nil
 	}
 
-	// Scan the identifier for the source.
-	expr, err := p.parseExprList()
+	var valuesList LitteralExprList
+	// Parse first (required) value list.
+	exprs, err := p.parseExprList()
 	if err != nil {
 		return nil, true, err
 	}
 
-	return expr, true, nil
+	valuesList = append(valuesList, LitteralExprList(exprs))
+
+	// Parse remaining (optional) values.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != COMMA {
+			p.Unscan()
+			break
+		}
+
+		values, err := p.parseExprList()
+		if err != nil {
+			return nil, true, err
+		}
+
+		valuesList = append(valuesList, LitteralExprList(values))
+	}
+
+	return valuesList, true, nil
 }
 
 // parseValues parses the "RECORDS" clause of the query, if it exists.

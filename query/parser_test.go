@@ -148,6 +148,11 @@ func TestParserInsert(t *testing.T) {
 			Insert().Into(Table("test")).
 				Fields("a", "b").
 				Values(StringValue("c"), StringValue("d"), StringValue("e")), false},
+		{"Values / Multple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
+			Insert().Into(Table("test")).
+				Fields("a", "b").
+				Values(StringValue("c"), StringValue("d")).
+				Values(StringValue("e"), StringValue("f")), false},
 		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)",
 			Insert().Into(Table("test")).
 				pairs(kvPair{"a", StringValue("a")}, kvPair{"b", Float64Value(2.3)}, kvPair{"c", Eq(Int64Value(1), Int64Value(1))}), false},
