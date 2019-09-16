@@ -75,6 +75,17 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 	})
 }
 
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func (b *Basic) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return b.ScanRecord(r)
+}
+
 // GetField implements the field method of the record.Record interface.
 func (b *basic) GetField(name string) (field.Field, error) {
 	switch name {
@@ -139,6 +150,17 @@ func (b *basic) ScanRecord(rec record.Record) error {
 	})
 }
 
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func (b *basic) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return b.ScanRecord(r)
+}
+
 // GetField implements the field method of the record.Record interface.
 func (p *Pk) GetField(name string) (field.Field, error) {
 	switch name {
@@ -183,6 +205,17 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 		}
 		return err
 	})
+}
+
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func (p *Pk) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return p.ScanRecord(r)
 }
 
 // PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.

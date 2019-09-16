@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/asdine/genji/cmd/genji/generator/testdata"
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/generator/testdata"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
@@ -208,6 +208,11 @@ func TestGeneratedRecords(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 4, i)
+
+		var r2 testdata.Basic
+		err = r2.Scan(&r)
+		require.NoError(t, err)
+		require.Equal(t, r, r2)
 	})
 
 	t.Run("Pk", func(t *testing.T) {

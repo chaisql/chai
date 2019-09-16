@@ -26,6 +26,7 @@ const recordTmpl = `
 {{- template "record-GetField" . }}
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
+{{- template "record-Scan" . }}
 {{- template "record-Pk" . }}
 {{- end }}
 `
@@ -90,6 +91,24 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		}
 		return err
 	})
+}
+{{ end }}
+`
+
+const recordScanTmpl = `
+{{ define "record-Scan" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return {{$fl}}.ScanRecord(r)
 }
 {{ end }}
 `

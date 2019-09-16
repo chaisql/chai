@@ -39,6 +39,7 @@ func init() {
 		"record-Field":      recordGetFieldTmpl,
 		"record-Iterate":    recordIterateTmpl,
 		"record-ScanRecord": recordScanRecordTmpl,
+		"record-Scan":       recordScanTmpl,
 		"record-Pk":         recordPkTmpl,
 	}
 
