@@ -2,7 +2,6 @@ package query
 
 import (
 	"database/sql/driver"
-	"errors"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
@@ -119,8 +118,6 @@ func (r Result) LastInsertRecordID() ([]byte, error) {
 func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
-
-var errStop = errors.New("stop")
 
 func whereClause(tx *genji.Tx, e Expr) func(recordID []byte, r record.Record) (bool, error) {
 	if e == nil {
