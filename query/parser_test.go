@@ -151,6 +151,10 @@ func TestParserInsert(t *testing.T) {
 		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)",
 			Insert().Into(Table("test")).
 				pairs(kvPair{"a", StringValue("a")}, kvPair{"b", Float64Value(2.3)}, kvPair{"c", Eq(Int64Value(1), Int64Value(1))}), false},
+		{"Records / Multiple", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1), (a: 1, d: true)",
+			Insert().Into(Table("test")).
+				pairs(kvPair{"a", StringValue("a")}, kvPair{"b", Float64Value(2.3)}, kvPair{"c", Eq(Int64Value(1), Int64Value(1))}).
+				pairs(kvPair{"a", Int64Value(1)}, kvPair{"d", BoolValue(true)}), false},
 	}
 
 	for _, test := range tests {

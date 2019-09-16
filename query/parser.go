@@ -359,7 +359,9 @@ func (p *Parser) parseRecords() ([][]kvPair, bool, error) {
 		return nil, false, nil
 	}
 
-	// Scan the list of key value pairs from the source.
+	var pairsList [][]kvPair
+
+	// Parse first (required) record.
 	pairs, ok, err := p.parseKVList()
 	if err != nil {
 		return nil, true, err
@@ -367,10 +369,32 @@ func (p *Parser) parseRecords() ([][]kvPair, bool, error) {
 	if !ok {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		p.Unscan()
-		return nil, false, newParseError(tokstr(tok, lit), []string{"records"}, pos)
+		return nil, false, newParseError(tokstr(tok, lit), []string{"record"}, pos)
 	}
 
-	return [][]kvPair{pairs}, true, nil
+	pairsList = append(pairsList, pairs)
+
+	// Parse remaining (optional) records.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != COMMA {
+			p.Unscan()
+			break
+		}
+
+		pairs, ok, err := p.parseKVList()
+		if err != nil {
+			return nil, true, err
+		}
+		if !ok {
+			tok, pos, lit := p.ScanIgnoreWhitespace()
+			p.Unscan()
+			return nil, false, newParseError(tokstr(tok, lit), []string{"record"}, pos)
+		}
+
+		pairsList = append(pairsList, pairs)
+	}
+
+	return pairsList, true, nil
 }
 
 // parseFieldList parses a list of fields in the form: (field, field, ...), if exists
