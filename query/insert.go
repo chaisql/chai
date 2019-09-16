@@ -18,6 +18,7 @@ type InsertStmt struct {
 	tableSelector TableSelector
 	fieldNames    []string
 	values        LitteralExprList
+	records       []record.Record
 }
 
 // Insert creates a DSL equivalent to the SQL Insert command.
@@ -64,6 +65,12 @@ func (stmt InsertStmt) Values(values ...Expr) InsertStmt {
 	return stmt
 }
 
+// Records is called to add one or more records.
+func (stmt InsertStmt) Records(records ...record.Record) InsertStmt {
+	stmt.records = append(stmt.records, records...)
+	return stmt
+}
+
 // Exec the Insert query within tx.
 // If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
 // If the Fields method wasn't called, this will return an error.
@@ -87,6 +94,23 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 
 	var lastID []byte
 	var rowsAffected driver.RowsAffected
+
+	if len(stmt.records) > 0 {
+		for _, rec := range stmt.records {
+			lastID, err = t.Insert(rec)
+			if err != nil {
+				return Result{err: err}
+			}
+
+			rowsAffected++
+		}
+
+		return Result{
+			Stream:             table.NewStream(table.NewReaderFromRecords()),
+			lastInsertRecordID: lastID,
+			rowsAffected:       rowsAffected,
+		}
+	}
 
 	// iterate over all of the records (r1, r2, r3, ...)
 	for _, e := range stmt.values {
