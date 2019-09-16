@@ -148,7 +148,15 @@ func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
 		return nil, err
 	}
 
-	return newRecordStream(res), nil
+	rs := newRecordStream(res)
+	slct, ok := s.stmt.(SelectStmt)
+	if ok && len(slct.fieldSelectors) > 0 {
+		rs.fields = make([]string, len(slct.fieldSelectors))
+		for i := range slct.fieldSelectors {
+			rs.fields[i] = slct.fieldSelectors[i].Name()
+		}
+	}
+	return rs, nil
 }
 
 // Close does nothing.
@@ -161,6 +169,7 @@ type recordStream struct {
 	cancelFn func()
 	c        chan rec
 	wg       sync.WaitGroup
+	fields   []string
 }
 
 type rec struct {
@@ -226,8 +235,13 @@ func (rs *recordStream) iterate(ctx context.Context) {
 	}
 }
 
-// Columns always returns one column named "record".
+// Columns returns the fields selected by the SELECT statement.
+// If the wildcard was used, it returns one column named "record".
 func (rs *recordStream) Columns() []string {
+	if len(rs.fields) > 0 {
+		return rs.fields
+	}
+
 	return []string{"record"}
 }
 
@@ -251,6 +265,22 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 		return rec.err
 	}
 
-	dest[0] = rec.r
+	if len(rs.fields) == 0 {
+		dest[0] = rec.r
+		return nil
+	}
+
+	for i := range rs.fields {
+		f, err := rec.r.GetField(rs.fields[i])
+		if err != nil {
+			return err
+		}
+
+		dest[i], err = f.Decode()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
