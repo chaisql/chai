@@ -37,6 +37,32 @@ func TestSelectStatement(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("WithFields", func(t *testing.T) {
+		tx, cleanup := createTable(t, 10, false)
+		defer cleanup()
+
+		res := Select(Field("id"), Field("name")).From(Table("test")).Where(IntField("age").Gt(20)).Limit(5).Offset(1).Exec(tx)
+		require.NoError(t, res.Err())
+
+		count, err := res.Count()
+		require.NoError(t, err)
+		require.Equal(t, 5, count)
+
+		err = res.Iterate(func(recordID []byte, r record.Record) error {
+			_, err := r.GetField("id")
+			require.NoError(t, err)
+			_, err = r.GetField("name")
+			require.NoError(t, err)
+			_, err = r.GetField("age")
+			require.Error(t, err)
+			_, err = r.GetField("group")
+			require.Error(t, err)
+
+			return nil
+		})
+		require.NoError(t, err)
+	})
+
 	t.Run("WithIndex", func(t *testing.T) {
 		tx, cleanup := createTable(t, 10, true)
 		defer cleanup()

@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji"
+	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 )
@@ -12,15 +14,18 @@ import (
 // SelectStmt is a DSL that allows creating a full Select query.
 // It is typically created using the Select function.
 type SelectStmt struct {
-	tableSelector TableSelector
-	whereExpr     Expr
-	offsetExpr    Expr
-	limitExpr     Expr
+	tableSelector  TableSelector
+	whereExpr      Expr
+	offsetExpr     Expr
+	limitExpr      Expr
+	fieldSelectors []FieldSelector
 }
 
 // Select creates a DSL equivalent to the SQL Select command.
-func Select() SelectStmt {
-	return SelectStmt{}
+func Select(fields ...FieldSelector) SelectStmt {
+	return SelectStmt{
+		fieldSelectors: fields,
+	}
 }
 
 // Run the Select statement in a read-only transaction.
@@ -118,6 +123,18 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		st = st.Limit(limit)
 	}
 
+	if len(s.fieldSelectors) > 0 {
+		fieldNames := make([]string, len(s.fieldSelectors))
+		for i := range s.fieldSelectors {
+			fieldNames[i] = s.fieldSelectors[i].Name()
+		}
+		st = st.Map(func(recordID []byte, r record.Record) (record.Record, error) {
+			return recordMask{
+				r:      r,
+				fields: fieldNames,
+			}, nil
+		})
+	}
 	return Result{Stream: st}
 }
 
@@ -160,4 +177,37 @@ func (s SelectStmt) Offset(offset int) SelectStmt {
 func (s SelectStmt) OffsetExpr(e Expr) SelectStmt {
 	s.offsetExpr = e
 	return s
+}
+
+type recordMask struct {
+	r      record.Record
+	fields []string
+}
+
+var _ record.Record = recordMask{}
+
+func (r recordMask) GetField(name string) (field.Field, error) {
+	for _, n := range r.fields {
+		if n == name {
+			return r.r.GetField(name)
+		}
+	}
+
+	return field.Field{}, fmt.Errorf("field %q not found", name)
+}
+
+func (r recordMask) Iterate(fn func(f field.Field) error) error {
+	for _, n := range r.fields {
+		f, err := r.r.GetField(n)
+		if err != nil {
+			return err
+		}
+
+		err = fn(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

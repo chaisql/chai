@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 
@@ -252,7 +251,6 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 		return rec.err
 	}
 
-	fmt.Println("Received record", rec.recordID)
 	dest[0] = rec.r
 	return nil
 }
