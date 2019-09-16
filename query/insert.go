@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 
@@ -84,6 +85,9 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 		Tx: tx,
 	}
 
+	var lastID []byte
+	var rowsAffected driver.RowsAffected
+
 	// iterate over all of the records (r1, r2, r3, ...)
 	for _, e := range stmt.values {
 		var fb record.FieldBuffer
@@ -135,12 +139,17 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 			})
 		}
 
-		_, err = t.Insert(&fb)
+		lastID, err = t.Insert(&fb)
 		if err != nil {
 			return Result{err: err}
 		}
+
+		rowsAffected++
 	}
 
-	st := table.NewStream(table.NewReaderFromRecords())
-	return Result{Stream: &st}
+	return Result{
+		Stream:             table.NewStream(table.NewReaderFromRecords()),
+		lastInsertRecordID: lastID,
+		rowsAffected:       rowsAffected,
+	}
 }

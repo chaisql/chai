@@ -20,7 +20,12 @@ func NewParser(r io.Reader) *Parser {
 // ParseQuery parses a query string and returns its AST representation.
 func ParseQuery(s string) (Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
 
-// ParseQuery parses an Genji SQL string and returns a Query.
+// ParseStatement parses a single statement and returns its AST representation.
+func ParseStatement(s string) (Statement, error) {
+	return NewParser(strings.NewReader(s)).ParseStatement()
+}
+
+// ParseQuery parses a Genji SQL string and returns a Query.
 func (p *Parser) ParseQuery() (Query, error) {
 	var statements []Statement
 	semi := true

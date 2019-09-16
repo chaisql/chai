@@ -118,7 +118,7 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		st = st.Limit(limit)
 	}
 
-	return Result{Stream: &st}
+	return Result{Stream: st}
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.

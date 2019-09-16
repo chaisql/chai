@@ -13,22 +13,6 @@ var (
 )
 
 // An Expr evaluates to a value.
-// It can be used as an argument to a WHERE clause or any other method that
-// expects an expression.
-// This package provides several ways of creating expressions.
-//
-// Using Matchers:
-//    And()
-//    Or()
-//    Eq<T>() (i.e. EqString(), EqInt64(), ...)
-//    Gt<T>() (i.e. GtBool(), GtUint(), ...)
-//    Gte<T>() (i.e. GteBytes(), GteFloat64(), ...)
-//    Lt<T>() (i.e. LtFloat32(), LtUint8(), ...)
-//    Lte<T>() (i.e. LteUint16(), LteInt(), ...)
-//    ...
-//
-// Using Values:
-//    <T>Value() (i.e. StringValue(), Int32Value(), ...)
 type Expr interface {
 	Eval(EvalContext) (Value, error)
 }
@@ -79,7 +63,7 @@ type LitteralExprList []Expr
 // Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
 func (l LitteralExprList) Eval(ctx EvalContext) (Value, error) {
 	if len(l) == 0 {
-		return LitteralValue{}, nil
+		return nilLitteral, nil
 	}
 
 	if len(l) == 1 {

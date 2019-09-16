@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji"
@@ -80,8 +81,10 @@ func (tx TxOpener) Update(fn func(tx *genji.Tx) error) error {
 
 // Result of a query.
 type Result struct {
-	*table.Stream
-	err error
+	table.Stream
+	rowsAffected       driver.RowsAffected
+	err                error
+	lastInsertRecordID []byte
 }
 
 // Err returns a non nil error if an error occured during the query.
@@ -96,6 +99,25 @@ func (r Result) Scan(s table.Scanner) error {
 	}
 
 	return s.ScanTable(r.Stream)
+}
+
+// LastInsertId is not supported and returns an error.
+// Use LastInsertRecordID instead.
+func (r Result) LastInsertId() (int64, error) {
+	return r.rowsAffected.LastInsertId()
+}
+
+// LastInsertRecordID returns the database's auto-generated recordID
+// after, for example, an INSERT into a table with primary
+// key.
+func (r Result) LastInsertRecordID() ([]byte, error) {
+	return r.lastInsertRecordID, nil
+}
+
+// RowsAffected returns the number of rows affected by the
+// query.
+func (r Result) RowsAffected() (int64, error) {
+	return r.rowsAffected.RowsAffected()
 }
 
 var errStop = errors.New("stop")
