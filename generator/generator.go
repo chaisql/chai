@@ -180,7 +180,13 @@ func (g *genContext) selectImports() {
 		m["github.com/asdine/genji/field"]++
 		m["github.com/asdine/genji/query"]++
 		m["github.com/asdine/genji/record"]++
-		m["github.com/asdine/genji/index"]++
+	}
+
+	for _, r := range g.Records {
+		if r.HasIndexes {
+			m["github.com/asdine/genji/index"]++
+			break
+		}
 	}
 
 	g.Imports = make([]string, 0, len(m))
