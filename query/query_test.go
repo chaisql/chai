@@ -97,6 +97,33 @@ func TestSelect(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("WithEmptyIndex", func(t *testing.T) {
+		db, err := genji.New(memory.NewEngine())
+		require.NoError(t, err)
+
+		var n int
+		err = db.Update(func(tx *genji.Tx) error {
+			tb, err := tx.CreateTable("test")
+			if err != nil {
+				return err
+			}
+
+			_, err = tb.CreateIndex("a", index.Options{})
+			if err != nil {
+				return err
+			}
+
+			res := Select().From(tb).Where(And(StringField("a").Eq("foo"))).Limit(1).Run(tx)
+			if res.Err() != nil {
+				return res.Err()
+			}
+
+			n, err = res.Count()
+			return err
+		})
+		require.NoError(t, err)
+		require.Equal(t, 0, n)
+	})
 }
 
 func TestDelete(t *testing.T) {

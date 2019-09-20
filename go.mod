@@ -10,3 +10,5 @@ require (
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/tools v0.0.0-20190524210228-3d17549cdc6b
 )
+
+go 1.13

@@ -452,6 +452,11 @@ type indexResultTable struct {
 func (i *indexResultTable) Iterate(fn func([]byte, record.Record) error) error {
 	var err error
 
+	// if no results,
+	if i.tree == nil {
+		return nil
+	}
+
 	i.tree.Ascend(func(it btree.Item) bool {
 		var rec record.Record
 		recordID := []byte(it.(Item))
