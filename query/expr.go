@@ -23,53 +23,9 @@ type Expr interface {
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
 type EvalStack struct {
-	*EvalStack
-
-	tx     *genji.Tx
-	record record.Record
-	params []driver.NamedValue
-}
-
-func NewStack(from *EvalStack) EvalStack {
-	return EvalStack{
-		EvalStack: from,
-	}
-}
-
-func (es EvalStack) Tx() *genji.Tx {
-	if es.tx != nil {
-		return es.tx
-	}
-
-	if es.EvalStack != nil {
-		return es.EvalStack.Tx()
-	}
-
-	return nil
-}
-
-func (es EvalStack) Record() record.Record {
-	if es.record != nil {
-		return es.record
-	}
-
-	if es.EvalStack != nil {
-		return es.EvalStack.Record()
-	}
-
-	return nil
-}
-
-func (es EvalStack) Params() []driver.NamedValue {
-	if es.params != nil {
-		return es.params
-	}
-
-	if es.EvalStack != nil {
-		return es.EvalStack.Params()
-	}
-
-	return nil
+	Tx     *genji.Tx
+	Record record.Record
+	Params []driver.NamedValue
 }
 
 // A Value is the result of evaluating an expression.

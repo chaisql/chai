@@ -77,6 +77,11 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("Set method not called")}
 	}
 
+	stack := EvalStack{
+		Tx:     tx,
+		Params: args,
+	}
+
 	t, err := stmt.tableSelector.SelectTable(tx)
 	if err != nil {
 		return Result{err: err}
@@ -85,7 +90,7 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(stmt.whereExpr, EvalStack{tx: tx}))
+	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
@@ -101,8 +106,8 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 			}
 
 			v, err := e.Eval(EvalStack{
-				tx:     tx,
-				record: r,
+				Tx:     tx,
+				Record: r,
 			})
 			if err != nil {
 				return err

@@ -48,8 +48,8 @@ func (f Field) SelectField(r record.Record) (field.Field, error) {
 
 // Eval extracts the record from the context and selects the right field.
 // It implements the Expr interface.
-func (f Field) Eval(ctx EvalStack) (Value, error) {
-	fd, err := f.SelectField(ctx.Record())
+func (f Field) Eval(stack EvalStack) (Value, error) {
+	fd, err := f.SelectField(stack.Record)
 	if err != nil {
 		return nilLitteral, err
 	}

@@ -49,7 +49,7 @@ func (stmt CreateTableStmt) IfNotExists() CreateTableStmt {
 	return stmt
 }
 
-func (stmt CreateTableStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+func (stmt CreateTableStmt) exec(tx *genji.Tx, _ []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}

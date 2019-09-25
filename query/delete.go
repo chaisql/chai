@@ -68,6 +68,8 @@ func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("missing table selector")}
 	}
 
+	stack := EvalStack{Tx: tx, Params: args}
+
 	t, err := stmt.tableSelector.SelectTable(tx)
 	if err != nil {
 		return Result{err: err}
@@ -76,7 +78,7 @@ func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(stmt.whereExpr, EvalStack{tx: tx}))
+	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)

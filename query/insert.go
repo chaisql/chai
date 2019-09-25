@@ -96,22 +96,23 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: err}
 	}
 
-	ectx := EvalStack{
-		tx: tx,
+	stack := EvalStack{
+		Tx:     tx,
+		Params: args,
 	}
 
 	if len(stmt.pairsList) > 0 {
-		return stmt.insertPairList(t, ectx)
+		return stmt.insertPairList(t, stack)
 	}
 
 	if len(stmt.records) > 0 {
-		return stmt.insertRecords(t, ectx)
+		return stmt.insertRecords(t, stack)
 	}
 
-	return stmt.insertValues(t, ectx)
+	return stmt.insertValues(t, stack)
 }
 
-func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalStack) Result {
+func (stmt InsertStmt) insertPairList(t *genji.Table, stack EvalStack) Result {
 	if len(stmt.fieldNames) > 0 {
 		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
@@ -122,7 +123,7 @@ func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalStack) Result {
 	for _, pairs := range stmt.pairsList {
 		var fb record.FieldBuffer
 		for _, pair := range pairs {
-			v, err := pair.e.Eval(ectx)
+			v, err := pair.e.Eval(stack)
 			if err != nil {
 				res.err = err
 				return res
@@ -150,7 +151,7 @@ func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalStack) Result {
 	return res
 }
 
-func (stmt InsertStmt) insertRecords(t *genji.Table, ectx EvalStack) Result {
+func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
 	var res Result
 	var err error
 
@@ -167,14 +168,14 @@ func (stmt InsertStmt) insertRecords(t *genji.Table, ectx EvalStack) Result {
 	return res
 }
 
-func (stmt InsertStmt) insertValues(t *genji.Table, ectx EvalStack) Result {
+func (stmt InsertStmt) insertValues(t *genji.Table, stack EvalStack) Result {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)
 	for _, e := range stmt.values {
 		var fb record.FieldBuffer
 
-		v, err := e.Eval(ectx)
+		v, err := e.Eval(stack)
 		if err != nil {
 			return Result{err: err}
 		}
