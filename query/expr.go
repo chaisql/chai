@@ -86,9 +86,9 @@ func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 	return values, nil
 }
 
-type BoundParam string
+type NamedParam string
 
-func (p BoundParam) Eval(stack EvalStack) (Value, error) {
+func (p NamedParam) Eval(stack EvalStack) (Value, error) {
 	for _, nv := range stack.Params {
 		if nv.Name == string(p) {
 			v, err := value.New(nv.Value)
@@ -103,4 +103,22 @@ func (p BoundParam) Eval(stack EvalStack) (Value, error) {
 	}
 
 	return nil, fmt.Errorf("param %s not found", p)
+}
+
+type PositionalParam int
+
+func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
+	idx := int(p - 1)
+	if idx >= len(stack.Params) {
+		return nil, fmt.Errorf("can't find param number %d", p)
+	}
+
+	v, err := value.New(stack.Params[idx].Value)
+	if err != nil {
+		return nil, err
+	}
+
+	return LitteralValue{
+		Value: v,
+	}, nil
 }

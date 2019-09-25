@@ -71,8 +71,9 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `"foo\"bar\""`, tok: query.IDENT, lit: `foo"bar"`},
 		{s: `test"`, tok: query.BADSTRING, lit: "", pos: query.Pos{Line: 0, Char: 3}},
 		{s: `"test`, tok: query.BADSTRING, lit: `test`},
-		{s: `$host`, tok: query.BOUNDPARAM, lit: `$host`},
-		{s: `$"host param"`, tok: query.BOUNDPARAM, lit: `$host param`},
+		{s: `$host`, tok: query.NAMEDPARAM, lit: `$host`},
+		{s: `$"host param"`, tok: query.NAMEDPARAM, lit: `$host param`},
+		{s: `?`, tok: query.POSITIONALPARAM, lit: ""},
 
 		{s: `true`, tok: query.TRUE},
 		{s: `false`, tok: query.FALSE},

@@ -9,7 +9,9 @@ import (
 
 // Parser represents an Genji SQL parser.
 type Parser struct {
-	s *bufScanner
+	s             *bufScanner
+	orderedParams int
+	namedParams   int
 }
 
 // NewParser returns a new instance of Parser.
@@ -617,11 +619,21 @@ func (p *Parser) parseUnaryExpr() (Expr, error) {
 	switch tok {
 	case IDENT:
 		return Field(lit), nil
-	case BOUNDPARAM:
+	case NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
 		}
-		return BoundParam(lit[1:]), nil
+		if p.orderedParams > 0 {
+			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+		}
+		p.namedParams++
+		return NamedParam(lit[1:]), nil
+	case POSITIONALPARAM:
+		if p.namedParams > 0 {
+			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+		}
+		p.orderedParams++
+		return PositionalParam(p.orderedParams), nil
 	case STRING:
 		return StringValue(lit), nil
 	case NUMBER:

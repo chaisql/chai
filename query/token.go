@@ -17,18 +17,19 @@ const (
 
 	literalBeg
 	// IDENT and the following are Genji SQL literal tokens.
-	IDENT       // main
-	BOUNDPARAM  // $param
-	NUMBER      // 12345.67
-	INTEGER     // 12345
-	DURATIONVAL // 13h
-	STRING      // "abc"
-	BADSTRING   // "abc
-	BADESCAPE   // \q
-	TRUE        // true
-	FALSE       // false
-	REGEX       // Regular expressions
-	BADREGEX    // `.*
+	IDENT           // main
+	NAMEDPARAM      // $param
+	POSITIONALPARAM // ?
+	NUMBER          // 12345.67
+	INTEGER         // 12345
+	DURATIONVAL     // 13h
+	STRING          // "abc"
+	BADSTRING       // "abc
+	BADESCAPE       // \q
+	TRUE            // true
+	FALSE           // false
+	REGEX           // Regular expressions
+	BADREGEX        // `.*
 	literalEnd
 
 	operatorBeg
@@ -102,15 +103,16 @@ var tokens = [...]string{
 	EOF:     "EOF",
 	WS:      "WS",
 
-	IDENT:       "IDENT",
-	NUMBER:      "NUMBER",
-	DURATIONVAL: "DURATIONVAL",
-	STRING:      "STRING",
-	BADSTRING:   "BADSTRING",
-	BADESCAPE:   "BADESCAPE",
-	TRUE:        "TRUE",
-	FALSE:       "FALSE",
-	REGEX:       "REGEX",
+	IDENT:           "IDENT",
+	POSITIONALPARAM: "?",
+	NUMBER:          "NUMBER",
+	DURATIONVAL:     "DURATIONVAL",
+	STRING:          "STRING",
+	BADSTRING:       "BADSTRING",
+	BADESCAPE:       "BADESCAPE",
+	TRUE:            "TRUE",
+	FALSE:           "FALSE",
+	REGEX:           "REGEX",
 
 	ADD:        "+",
 	SUB:        "-",

@@ -3,7 +3,6 @@ package query
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -76,7 +75,7 @@ func TestDriver(t *testing.T) {
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
-		res, err = dbx.Exec(fmt.Sprintf("INSERT INTO test (a, b, c) VALUES (%d, %d, %d)", i+1, i+2, i+3))
+		res, err = dbx.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i+1, i+2, i+3)
 		require.NoError(t, err)
 		n, err = res.RowsAffected()
 		require.NoError(t, err)
@@ -120,6 +119,23 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Params", func(t *testing.T) {
+		rows, err := dbx.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, 6)
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var a int
+		for rows.Next() {
+			err = rows.Scan(&a)
+			require.NoError(t, err)
+			require.Equal(t, 5, a)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 1, count)
+	})
+
+	t.Run("Named Params", func(t *testing.T) {
 		rows, err := dbx.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
 		require.NoError(t, err)
 		defer rows.Close()
@@ -135,4 +151,5 @@ func TestDriver(t *testing.T) {
 		require.NoError(t, rows.Err())
 		require.Equal(t, 1, count)
 	})
+
 }

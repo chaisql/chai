@@ -58,7 +58,9 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 		if tok != IDENT {
 			return tok, pos, "$" + lit
 		}
-		return BOUNDPARAM, pos, "$" + lit
+		return NAMEDPARAM, pos, "$" + lit
+	case '?':
+		return POSITIONALPARAM, pos, ""
 	case '+':
 		return ADD, pos, ""
 	case '-':

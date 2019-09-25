@@ -31,7 +31,7 @@ func Insert() InsertStmt {
 // It implements the Statement interface.
 func (stmt InsertStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = stmt.Exec(tx)
+		res = stmt.exec(tx, args)
 		return nil
 	})
 

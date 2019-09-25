@@ -28,7 +28,7 @@ func TestParserExpr(t *testing.T) {
 			Or(
 				And(
 					Gte(Field("age"), Int64Value(10)),
-					Gt(Field("age"), BoundParam("age")),
+					Gt(Field("age"), NamedParam("age")),
 				),
 				Lt(Field("age"), Float64Value(10.4)),
 			)},
@@ -39,6 +39,41 @@ func TestParserExpr(t *testing.T) {
 			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, ex)
+		})
+	}
+}
+
+func TestParserParams(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		expected Expr
+		errored  bool
+	}{
+		{"one positional", "age = ?", Eq(Field("age"), PositionalParam(1)), false},
+		{"multiple positional", "age = ? AND age <= ?",
+			And(
+				Eq(Field("age"), PositionalParam(1)),
+				Lte(Field("age"), PositionalParam(2)),
+			), false},
+		{"one named", "age = $age", Eq(Field("age"), NamedParam("age")), false},
+		{"multiple named", "age = $foo OR age = $bar",
+			Or(
+				Eq(Field("age"), NamedParam("foo")),
+				Eq(Field("age"), NamedParam("bar")),
+			), false},
+		{"mixed", "age >= ? AND age > $foo OR age < ?", nil, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
+			if test.errored {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.EqualValues(t, test.expected, ex)
+			}
 		})
 	}
 }
