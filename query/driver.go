@@ -147,7 +147,7 @@ func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
 
 // QueryContext executes a query that may return rows, such as a
 // SELECT.
-func (s stmt) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	res := s.stmt.Run(s.txo, args)
 
 	if err := res.Err(); err != nil {
