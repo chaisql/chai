@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
@@ -116,5 +117,22 @@ func TestDriver(t *testing.T) {
 		}
 		require.NoError(t, rows.Err())
 		require.Equal(t, 10, count)
+	})
+
+	t.Run("Params", func(t *testing.T) {
+		rows, err := dbx.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var a int
+		for rows.Next() {
+			err = rows.Scan(&a)
+			require.NoError(t, err)
+			require.Equal(t, 5, a)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 1, count)
 	})
 }

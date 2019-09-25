@@ -24,11 +24,11 @@ func TestParserExpr(t *testing.T) {
 				Eq(Field("age"), Int64Value(10)),
 				Eq(Field("age"), Int64Value(11)),
 			)},
-		{"AND then OR", "age >= 10 AND age > 11 OR age < 10.4",
+		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
 			Or(
 				And(
 					Gte(Field("age"), Int64Value(10)),
-					Gt(Field("age"), Int64Value(11)),
+					Gt(Field("age"), BoundParam("age")),
 				),
 				Lt(Field("age"), Float64Value(10.4)),
 			)},

@@ -2,6 +2,7 @@ package query
 
 import (
 	"database/sql/driver"
+	"fmt"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
@@ -64,23 +65,42 @@ func (l LitteralValueList) Truthy() bool {
 type LitteralExprList []Expr
 
 // Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
-func (l LitteralExprList) Eval(ctx EvalStack) (Value, error) {
+func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 	if len(l) == 0 {
 		return nilLitteral, nil
 	}
 
 	if len(l) == 1 {
-		return l[0].Eval(ctx)
+		return l[0].Eval(stack)
 	}
 
 	var err error
 
 	values := make(LitteralValueList, len(l))
 	for i, e := range l {
-		values[i], err = e.Eval(ctx)
+		values[i], err = e.Eval(stack)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return values, nil
+}
+
+type BoundParam string
+
+func (p BoundParam) Eval(stack EvalStack) (Value, error) {
+	for _, nv := range stack.Params {
+		if nv.Name == string(p) {
+			v, err := value.New(nv.Value)
+			if err != nil {
+				return nil, err
+			}
+
+			return LitteralValue{
+				Value: v,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("param %s not found", p)
 }

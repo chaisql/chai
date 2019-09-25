@@ -617,6 +617,11 @@ func (p *Parser) parseUnaryExpr() (Expr, error) {
 	switch tok {
 	case IDENT:
 		return Field(lit), nil
+	case BOUNDPARAM:
+		if len(lit) == 1 {
+			return nil, &ParseError{Message: "missing param name"}
+		}
+		return BoundParam(lit[1:]), nil
 	case STRING:
 		return StringValue(lit), nil
 	case NUMBER:
