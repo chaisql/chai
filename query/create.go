@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji"
@@ -20,9 +21,9 @@ func CreateTable(tableName string) CreateTableStmt {
 
 // Run the Create statement in a read-write transaction.
 // It implements the Statement interface.
-func (c CreateTableStmt) Run(txm *TxOpener) (res Result) {
+func (c CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = c.Exec(tx)
+		res = c.exec(tx, arg)
 		return nil
 	})
 
@@ -44,7 +45,11 @@ func (c CreateTableStmt) IfNotExists() CreateTableStmt {
 }
 
 // Exec the CreateTable statement within tx.
-func (c CreateTableStmt) Exec(tx *genji.Tx) Result {
+func (c CreateTableStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+	return c.exec(tx, nil)
+}
+
+func (c CreateTableStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	if c.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}

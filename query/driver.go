@@ -123,7 +123,9 @@ func (s stmt) NumInput() int { return -1 }
 
 // Exec executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
-func (s stmt) Exec(args []driver.Value) (driver.Result, error) { return nil, nil }
+func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
+	return nil, errors.New("not implemented")
+}
 
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
@@ -134,15 +136,19 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	res := s.stmt.Run(s.txo)
+	res := s.stmt.Run(s.txo, args)
 
 	return res, res.Err()
 }
 
-// Query executes a query that may return rows, such as a
-// SELECT.
 func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
-	res := s.stmt.Run(s.txo)
+	return nil, errors.New("not implemented")
+}
+
+// QueryContext executes a query that may return rows, such as a
+// SELECT.
+func (s stmt) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	res := s.stmt.Run(s.txo, args)
 
 	if err := res.Err(); err != nil {
 		return nil, err

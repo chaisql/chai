@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql/driver"
 	"errors"
 	"fmt"
 
@@ -30,9 +31,9 @@ func Select(fields ...FieldSelector) SelectStmt {
 
 // Run the Select statement in a read-only transaction.
 // It implements the Statement interface.
-func (s SelectStmt) Run(txm *TxOpener) (res Result) {
+func (stmt SelectStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
 	err := txm.View(func(tx *genji.Tx) error {
-		res = s.Exec(tx)
+		res = stmt.exec(tx, args)
 		return nil
 	})
 
@@ -47,20 +48,31 @@ func (s SelectStmt) Run(txm *TxOpener) (res Result) {
 	return
 }
 
+// Exec the Select statement within tx.
+func (stmt SelectStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+	nv := make([]driver.NamedValue, len(args))
+	for i := range args {
+		nv[i].Ordinal = i + 1
+		nv[i].Value = args[i]
+	}
+
+	return stmt.exec(tx, nv)
+}
+
 // Exec the Select query within tx.
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (s SelectStmt) Exec(tx *genji.Tx) Result {
-	if s.tableSelector == nil {
+func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
 
 	offset := -1
 	limit := -1
 
-	if s.offsetExpr != nil {
-		v, err := s.offsetExpr.Eval(EvalContext{
+	if stmt.offsetExpr != nil {
+		v, err := stmt.offsetExpr.Eval(EvalContext{
 			Tx: tx,
 		})
 		if err != nil {
@@ -82,8 +94,8 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		}
 	}
 
-	if s.limitExpr != nil {
-		v, err := s.limitExpr.Eval(EvalContext{
+	if stmt.limitExpr != nil {
+		v, err := stmt.limitExpr.Eval(EvalContext{
 			Tx: tx,
 		})
 		if err != nil {
@@ -105,7 +117,7 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		}
 	}
 
-	t, err := s.tableSelector.SelectTable(tx)
+	t, err := stmt.tableSelector.SelectTable(tx)
 	if err != nil {
 		return Result{err: err}
 	}
@@ -113,7 +125,7 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(tx, s.whereExpr))
+	st = st.Filter(whereClause(tx, stmt.whereExpr))
 
 	if offset > 0 {
 		st = st.Offset(offset)
@@ -123,10 +135,10 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 		st = st.Limit(limit)
 	}
 
-	if len(s.fieldSelectors) > 0 {
-		fieldNames := make([]string, len(s.fieldSelectors))
-		for i := range s.fieldSelectors {
-			fieldNames[i] = s.fieldSelectors[i].Name()
+	if len(stmt.fieldSelectors) > 0 {
+		fieldNames := make([]string, len(stmt.fieldSelectors))
+		for i := range stmt.fieldSelectors {
+			fieldNames[i] = stmt.fieldSelectors[i].Name()
 		}
 		st = st.Map(func(recordID []byte, r record.Record) (record.Record, error) {
 			return recordMask{
@@ -139,44 +151,44 @@ func (s SelectStmt) Exec(tx *genji.Tx) Result {
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
-func (s SelectStmt) Where(e Expr) SelectStmt {
-	s.whereExpr = e
-	return s
+func (stmt SelectStmt) Where(e Expr) SelectStmt {
+	stmt.whereExpr = e
+	return stmt
 }
 
 // From indicates which table to select from.
 // Calling this method before Run is mandatory.
-func (s SelectStmt) From(tableSelector TableSelector) SelectStmt {
-	s.tableSelector = tableSelector
-	return s
+func (stmt SelectStmt) From(tableSelector TableSelector) SelectStmt {
+	stmt.tableSelector = tableSelector
+	return stmt
 }
 
 // Limit the number of records returned.
-func (s SelectStmt) Limit(offset int) SelectStmt {
-	s.limitExpr = Int64Value(int64(offset))
-	return s
+func (stmt SelectStmt) Limit(offset int) SelectStmt {
+	stmt.limitExpr = Int64Value(int64(offset))
+	return stmt
 }
 
 // LimitExpr takes an expression that will be evaluated to determine
 // how many records the query must return.
 // The result of the evaluation must be an integer.
-func (s SelectStmt) LimitExpr(e Expr) SelectStmt {
-	s.limitExpr = e
-	return s
+func (stmt SelectStmt) LimitExpr(e Expr) SelectStmt {
+	stmt.limitExpr = e
+	return stmt
 }
 
 // Offset indicates the number of records to skip.
-func (s SelectStmt) Offset(offset int) SelectStmt {
-	s.offsetExpr = Int64Value(int64(offset))
-	return s
+func (stmt SelectStmt) Offset(offset int) SelectStmt {
+	stmt.offsetExpr = Int64Value(int64(offset))
+	return stmt
 }
 
 // OffsetExpr takes an expression that will be evaluated to determine
 // how many records the query must skip.
 // The result of the evaluation must be a field.Int64.
-func (s SelectStmt) OffsetExpr(e Expr) SelectStmt {
-	s.offsetExpr = e
-	return s
+func (stmt SelectStmt) OffsetExpr(e Expr) SelectStmt {
+	stmt.offsetExpr = e
+	return stmt
 }
 
 type recordMask struct {

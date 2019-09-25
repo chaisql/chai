@@ -105,7 +105,7 @@ func TestSelectStatement(t *testing.T) {
 				return err
 			}
 
-			res := Select().From(tb).Where(And(StringField("a").Eq("foo"))).Limit(1).Run(tx)
+			res := Select().From(tb).Where(And(StringField("a").Eq("foo"), StringField("a").Eq("foo"))).Limit(1).Exec(tx)
 			if res.Err() != nil {
 				return res.Err()
 			}

@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji"
@@ -22,9 +23,9 @@ func Delete() DeleteStmt {
 
 // Run the Delete statement in a read-write transaction.
 // It implements the Statement interface.
-func (d DeleteStmt) Run(txm *TxOpener) (res Result) {
+func (stmt DeleteStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = d.Exec(tx)
+		res = stmt.exec(tx, args)
 		return nil
 	})
 
@@ -39,30 +40,27 @@ func (d DeleteStmt) Run(txm *TxOpener) (res Result) {
 	return
 }
 
-// From indicates which table to select from.
-// Calling this method before Run is mandatory.
-func (d DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
-	d.tableSelector = tableSelector
-	return d
+// Exec the Delete statement within tx.
+func (stmt DeleteStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+	nv := make([]driver.NamedValue, len(args))
+	for i := range args {
+		nv[i].Ordinal = i + 1
+		nv[i].Value = args[i]
+	}
+
+	return stmt.exec(tx, nv)
 }
 
-// Where uses e to filter records if it evaluates to a falsy value.
-// Calling this method is optional.
-func (d DeleteStmt) Where(e Expr) DeleteStmt {
-	d.whereExpr = e
-	return d
-}
-
-// Exec the Delete query within tx.
+// exec the Delete query within tx.
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (d DeleteStmt) Exec(tx *genji.Tx) Result {
-	if d.tableSelector == nil {
+func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
 
-	t, err := d.tableSelector.SelectTable(tx)
+	t, err := stmt.tableSelector.SelectTable(tx)
 	if err != nil {
 		return Result{err: err}
 	}
@@ -70,10 +68,24 @@ func (d DeleteStmt) Exec(tx *genji.Tx) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(tx, d.whereExpr))
+	st = st.Filter(whereClause(tx, stmt.whereExpr))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)
 	})
 	return Result{err: err}
+}
+
+// From indicates which table to select from.
+// Calling this method before Run is mandatory.
+func (stmt DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
+	stmt.tableSelector = tableSelector
+	return stmt
+}
+
+// Where uses e to filter records if it evaluates to a falsy value.
+// Calling this method is optional.
+func (stmt DeleteStmt) Where(e Expr) DeleteStmt {
+	stmt.whereExpr = e
+	return stmt
 }

@@ -16,12 +16,12 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *genji.DB) Result {
+func (q Query) Run(db *genji.DB, args ...interface{}) Result {
 	txm := TxOpener{DB: db}
 	var res Result
 
 	for _, stmt := range q.statements {
-		res = stmt.Run(&txm)
+		res = stmt.Run(&txm, nil)
 		if res.err != nil {
 			return res
 		}
@@ -47,7 +47,7 @@ func Run(db *genji.DB, s string) Result {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*TxOpener) Result
+	Run(*TxOpener, []driver.NamedValue) Result
 }
 
 // TxOpener is used by statements to automatically open transactions.
