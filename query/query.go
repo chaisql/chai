@@ -135,3 +135,20 @@ func whereClause(tx *genji.Tx, e Expr) func(recordID []byte, r record.Record) (b
 		return v.Truthy(), nil
 	}
 }
+
+func argsToNamedValues(args []interface{}) []driver.NamedValue {
+	nv := make([]driver.NamedValue, len(args))
+	for i := range args {
+		switch t := args[i].(type) {
+		case driver.NamedValue:
+			nv[i] = t
+		case *driver.NamedValue:
+			nv[i] = *t
+		default:
+			nv[i].Ordinal = i + 1
+			nv[i].Value = args[i]
+		}
+	}
+
+	return nv
+}

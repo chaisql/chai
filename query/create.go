@@ -21,9 +21,9 @@ func CreateTable(tableName string) CreateTableStmt {
 
 // Run the Create statement in a read-write transaction.
 // It implements the Statement interface.
-func (c CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Result) {
+func (stmt CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
-		res = c.exec(tx, arg)
+		res = stmt.exec(tx, arg)
 		return nil
 	})
 
@@ -38,27 +38,27 @@ func (c CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Result
 	return
 }
 
-// IfNotExists sets the ifNotExists flag to true.
-func (c CreateTableStmt) IfNotExists() CreateTableStmt {
-	c.ifNotExists = true
-	return c
-}
-
 // Exec the CreateTable statement within tx.
-func (c CreateTableStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
-	return c.exec(tx, nil)
+func (stmt CreateTableStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+	return stmt.exec(tx, argsToNamedValues(args))
 }
 
-func (c CreateTableStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
-	if c.tableName == "" {
+// IfNotExists sets the ifNotExists flag to true.
+func (stmt CreateTableStmt) IfNotExists() CreateTableStmt {
+	stmt.ifNotExists = true
+	return stmt
+}
+
+func (stmt CreateTableStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}
 
 	var err error
-	if c.ifNotExists {
-		_, err = tx.CreateTableIfNotExists(c.tableName)
+	if stmt.ifNotExists {
+		_, err = tx.CreateTableIfNotExists(stmt.tableName)
 	} else {
-		_, err = tx.CreateTable(c.tableName)
+		_, err = tx.CreateTable(stmt.tableName)
 	}
 
 	return Result{err: err}

@@ -47,13 +47,21 @@ func (stmt UpdateStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result)
 
 // Exec the Update statement within tx.
 func (stmt UpdateStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
-	nv := make([]driver.NamedValue, len(args))
-	for i := range args {
-		nv[i].Ordinal = i + 1
-		nv[i].Value = args[i]
-	}
+	return stmt.exec(tx, argsToNamedValues(args))
+}
 
-	return stmt.exec(tx, nv)
+// Set assignes the result of the evaluation of e into the field selected
+// by f.
+func (stmt UpdateStmt) Set(fieldName string, e Expr) UpdateStmt {
+	stmt.pairs[fieldName] = e
+	return stmt
+}
+
+// Where uses e to filter records if it evaluates to a falsy value.
+// Calling this method is optional.
+func (stmt UpdateStmt) Where(e Expr) UpdateStmt {
+	stmt.whereExpr = e
+	return stmt
 }
 
 // Exec the Update query within tx.
@@ -121,18 +129,4 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return nil
 	})
 	return Result{err: err}
-}
-
-// Set assignes the result of the evaluation of e into the field selected
-// by f.
-func (stmt UpdateStmt) Set(fieldName string, e Expr) UpdateStmt {
-	stmt.pairs[fieldName] = e
-	return stmt
-}
-
-// Where uses e to filter records if it evaluates to a falsy value.
-// Calling this method is optional.
-func (stmt UpdateStmt) Where(e Expr) UpdateStmt {
-	stmt.whereExpr = e
-	return stmt
 }

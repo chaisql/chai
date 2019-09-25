@@ -1,6 +1,8 @@
 package query
 
 import (
+	"database/sql/driver"
+
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
@@ -23,6 +25,7 @@ type Expr interface {
 type EvalContext struct {
 	Tx     *genji.Tx
 	Record record.Record // can be nil
+	Params []driver.NamedValue
 }
 
 // A Value is the result of evaluating an expression.

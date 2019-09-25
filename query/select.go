@@ -50,13 +50,48 @@ func (stmt SelectStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result)
 
 // Exec the Select statement within tx.
 func (stmt SelectStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
-	nv := make([]driver.NamedValue, len(args))
-	for i := range args {
-		nv[i].Ordinal = i + 1
-		nv[i].Value = args[i]
-	}
+	return stmt.exec(tx, argsToNamedValues(args))
+}
 
-	return stmt.exec(tx, nv)
+// Where uses e to filter records if it evaluates to a falsy value.
+func (stmt SelectStmt) Where(e Expr) SelectStmt {
+	stmt.whereExpr = e
+	return stmt
+}
+
+// From indicates which table to select from.
+// Calling this method before Run is mandatory.
+func (stmt SelectStmt) From(tableSelector TableSelector) SelectStmt {
+	stmt.tableSelector = tableSelector
+	return stmt
+}
+
+// Limit the number of records returned.
+func (stmt SelectStmt) Limit(offset int) SelectStmt {
+	stmt.limitExpr = Int64Value(int64(offset))
+	return stmt
+}
+
+// LimitExpr takes an expression that will be evaluated to determine
+// how many records the query must return.
+// The result of the evaluation must be an integer.
+func (stmt SelectStmt) LimitExpr(e Expr) SelectStmt {
+	stmt.limitExpr = e
+	return stmt
+}
+
+// Offset indicates the number of records to skip.
+func (stmt SelectStmt) Offset(offset int) SelectStmt {
+	stmt.offsetExpr = Int64Value(int64(offset))
+	return stmt
+}
+
+// OffsetExpr takes an expression that will be evaluated to determine
+// how many records the query must skip.
+// The result of the evaluation must be a field.Int64.
+func (stmt SelectStmt) OffsetExpr(e Expr) SelectStmt {
+	stmt.offsetExpr = e
+	return stmt
 }
 
 // Exec the Select query within tx.
@@ -148,47 +183,6 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		})
 	}
 	return Result{Stream: st}
-}
-
-// Where uses e to filter records if it evaluates to a falsy value.
-func (stmt SelectStmt) Where(e Expr) SelectStmt {
-	stmt.whereExpr = e
-	return stmt
-}
-
-// From indicates which table to select from.
-// Calling this method before Run is mandatory.
-func (stmt SelectStmt) From(tableSelector TableSelector) SelectStmt {
-	stmt.tableSelector = tableSelector
-	return stmt
-}
-
-// Limit the number of records returned.
-func (stmt SelectStmt) Limit(offset int) SelectStmt {
-	stmt.limitExpr = Int64Value(int64(offset))
-	return stmt
-}
-
-// LimitExpr takes an expression that will be evaluated to determine
-// how many records the query must return.
-// The result of the evaluation must be an integer.
-func (stmt SelectStmt) LimitExpr(e Expr) SelectStmt {
-	stmt.limitExpr = e
-	return stmt
-}
-
-// Offset indicates the number of records to skip.
-func (stmt SelectStmt) Offset(offset int) SelectStmt {
-	stmt.offsetExpr = Int64Value(int64(offset))
-	return stmt
-}
-
-// OffsetExpr takes an expression that will be evaluated to determine
-// how many records the query must skip.
-// The result of the evaluation must be a field.Int64.
-func (stmt SelectStmt) OffsetExpr(e Expr) SelectStmt {
-	stmt.offsetExpr = e
-	return stmt
 }
 
 type recordMask struct {

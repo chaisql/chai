@@ -48,13 +48,7 @@ func (stmt InsertStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result)
 
 // Exec the Insert query within tx.
 func (stmt InsertStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
-	nv := make([]driver.NamedValue, len(args))
-	for i := range args {
-		nv[i].Ordinal = i + 1
-		nv[i].Value = args[i]
-	}
-
-	return stmt.exec(tx, nv)
+	return stmt.exec(tx, argsToNamedValues(args))
 }
 
 // Into indicates in which table to write the new records.
