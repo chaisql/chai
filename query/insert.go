@@ -96,8 +96,8 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: err}
 	}
 
-	ectx := EvalContext{
-		Tx: tx,
+	ectx := EvalStack{
+		tx: tx,
 	}
 
 	if len(stmt.pairsList) > 0 {
@@ -111,7 +111,7 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	return stmt.insertValues(t, ectx)
 }
 
-func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalContext) Result {
+func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalStack) Result {
 	if len(stmt.fieldNames) > 0 {
 		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
@@ -150,7 +150,7 @@ func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalContext) Result {
 	return res
 }
 
-func (stmt InsertStmt) insertRecords(t *genji.Table, ectx EvalContext) Result {
+func (stmt InsertStmt) insertRecords(t *genji.Table, ectx EvalStack) Result {
 	var res Result
 	var err error
 
@@ -167,7 +167,7 @@ func (stmt InsertStmt) insertRecords(t *genji.Table, ectx EvalContext) Result {
 	return res
 }
 
-func (stmt InsertStmt) insertValues(t *genji.Table, ectx EvalContext) Result {
+func (stmt InsertStmt) insertValues(t *genji.Table, ectx EvalStack) Result {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)

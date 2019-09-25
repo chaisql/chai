@@ -85,7 +85,7 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(tx, stmt.whereExpr))
+	st = st.Filter(whereClause(stmt.whereExpr, EvalStack{tx: tx}))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		var fb record.FieldBuffer
@@ -100,9 +100,9 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			v, err := e.Eval(EvalContext{
-				Tx:     tx,
-				Record: r,
+			v, err := e.Eval(EvalStack{
+				tx:     tx,
+				record: r,
 			})
 			if err != nil {
 				return err

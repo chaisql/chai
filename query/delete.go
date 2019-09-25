@@ -76,7 +76,7 @@ func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(tx, stmt.whereExpr))
+	st = st.Filter(whereClause(stmt.whereExpr, EvalStack{tx: tx}))
 
 	err = st.Iterate(func(recordID []byte, r record.Record) error {
 		return t.Delete(recordID)

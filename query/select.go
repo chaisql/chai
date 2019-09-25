@@ -107,8 +107,8 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	limit := -1
 
 	if stmt.offsetExpr != nil {
-		v, err := stmt.offsetExpr.Eval(EvalContext{
-			Tx: tx,
+		v, err := stmt.offsetExpr.Eval(EvalStack{
+			tx: tx,
 		})
 		if err != nil {
 			return Result{err: err}
@@ -130,8 +130,8 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	}
 
 	if stmt.limitExpr != nil {
-		v, err := stmt.limitExpr.Eval(EvalContext{
-			Tx: tx,
+		v, err := stmt.limitExpr.Eval(EvalStack{
+			tx: tx,
 		})
 		if err != nil {
 			return Result{err: err}
@@ -160,7 +160,7 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	var tr table.Reader = t
 
 	st := table.NewStream(tr)
-	st = st.Filter(whereClause(tx, stmt.whereExpr))
+	st = st.Filter(whereClause(stmt.whereExpr, EvalStack{tx: tx}))
 
 	if offset > 0 {
 		st = st.Offset(offset)

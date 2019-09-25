@@ -16,16 +16,60 @@ var (
 
 // An Expr evaluates to a value.
 type Expr interface {
-	Eval(EvalContext) (Value, error)
+	Eval(EvalStack) (Value, error)
 }
 
-// EvalContext contains information about the context in which
+// EvalStack contains information about the context in which
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
-type EvalContext struct {
-	Tx     *genji.Tx
-	Record record.Record // can be nil
-	Params []driver.NamedValue
+type EvalStack struct {
+	*EvalStack
+
+	tx     *genji.Tx
+	record record.Record
+	params []driver.NamedValue
+}
+
+func NewStack(from *EvalStack) EvalStack {
+	return EvalStack{
+		EvalStack: from,
+	}
+}
+
+func (es EvalStack) Tx() *genji.Tx {
+	if es.tx != nil {
+		return es.tx
+	}
+
+	if es.EvalStack != nil {
+		return es.EvalStack.Tx()
+	}
+
+	return nil
+}
+
+func (es EvalStack) Record() record.Record {
+	if es.record != nil {
+		return es.record
+	}
+
+	if es.EvalStack != nil {
+		return es.EvalStack.Record()
+	}
+
+	return nil
+}
+
+func (es EvalStack) Params() []driver.NamedValue {
+	if es.params != nil {
+		return es.params
+	}
+
+	if es.EvalStack != nil {
+		return es.EvalStack.Params()
+	}
+
+	return nil
 }
 
 // A Value is the result of evaluating an expression.
@@ -46,7 +90,7 @@ func (l LitteralValue) Truthy() bool {
 }
 
 // Eval returns l. It implements the Expr interface.
-func (l LitteralValue) Eval(EvalContext) (Value, error) {
+func (l LitteralValue) Eval(EvalStack) (Value, error) {
 	return l, nil
 }
 
@@ -64,7 +108,7 @@ func (l LitteralValueList) Truthy() bool {
 type LitteralExprList []Expr
 
 // Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
-func (l LitteralExprList) Eval(ctx EvalContext) (Value, error) {
+func (l LitteralExprList) Eval(ctx EvalStack) (Value, error) {
 	if len(l) == 0 {
 		return nilLitteral, nil
 	}

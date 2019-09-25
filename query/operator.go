@@ -61,7 +61,7 @@ func Lte(a, b Expr) Expr {
 	return cmpOp{simpleOperator{a, b, LTE}}
 }
 
-func (op cmpOp) Eval(ctx EvalContext) (Value, error) {
+func (op cmpOp) Eval(ctx EvalStack) (Value, error) {
 	v1, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err
@@ -219,7 +219,7 @@ func And(a, b Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (op *andOp) Eval(ctx EvalContext) (Value, error) {
+func (op *andOp) Eval(ctx EvalStack) (Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil || !s.Truthy() {
 		return falseLitteral, err
@@ -243,7 +243,7 @@ func Or(a, b Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (op *orOp) Eval(ctx EvalContext) (Value, error) {
+func (op *orOp) Eval(ctx EvalStack) (Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err

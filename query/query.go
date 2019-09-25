@@ -119,7 +119,7 @@ func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
 
-func whereClause(tx *genji.Tx, e Expr) func(recordID []byte, r record.Record) (bool, error) {
+func whereClause(e Expr, es EvalStack) func(recordID []byte, r record.Record) (bool, error) {
 	if e == nil {
 		return func(recordID []byte, r record.Record) (bool, error) {
 			return true, nil
@@ -127,7 +127,8 @@ func whereClause(tx *genji.Tx, e Expr) func(recordID []byte, r record.Record) (b
 	}
 
 	return func(recordID []byte, r record.Record) (bool, error) {
-		v, err := e.Eval(EvalContext{Tx: tx, Record: r})
+		es.record = r
+		v, err := e.Eval(es)
 		if err != nil {
 			return false, err
 		}

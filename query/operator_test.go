@@ -46,7 +46,7 @@ func TestOperator(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.fn(test.a, test.b).Eval(EvalContext{})
+			res, err := test.fn(test.a, test.b).Eval(EvalStack{})
 			require.NoError(t, err)
 			require.Equal(t, test.res, res)
 		})
