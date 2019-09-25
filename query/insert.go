@@ -29,7 +29,7 @@ func Insert() InsertStmt {
 
 // Run runs the Insert statement in a read-write transaction.
 // It implements the Statement interface.
-func (stmt InsertStmt) Run(txm *TxOpener) (res Result) {
+func (stmt InsertStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
 	err := txm.Update(func(tx *genji.Tx) error {
 		res = stmt.Exec(tx)
 		return nil
@@ -78,15 +78,17 @@ func (stmt InsertStmt) pairs(pairs ...kvPair) InsertStmt {
 }
 
 // Exec the Insert query within tx.
-// If the Fields method was called prior to the Run method, each value will be associated with one of the given field name, in order.
-// If the Fields method wasn't called, this will return an error.
-func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
+func (stmt InsertStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+	return stmt.exec(tx, nil)
+}
+
+func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
 
-	if stmt.values == nil {
-		return Result{err: errors.New("empty values")}
+	if stmt.values == nil && stmt.records == nil && stmt.pairsList == nil {
+		return Result{err: errors.New("values and records are empty")}
 	}
 
 	t, err := stmt.tableSelector.SelectTable(tx)
@@ -98,61 +100,75 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 		Tx: tx,
 	}
 
-	var lastID []byte
-	var rowsAffected driver.RowsAffected
-
 	if len(stmt.pairsList) > 0 {
-		if len(stmt.fieldNames) > 0 {
-			return Result{err: errors.New("can't provide a field list with RECORDS clause")}
-		}
-
-		for _, pairs := range stmt.pairsList {
-			var fb record.FieldBuffer
-			for _, pair := range pairs {
-				v, err := pair.e.Eval(ectx)
-				if err != nil {
-					return Result{err: err}
-				}
-
-				vl, ok := v.(LitteralValue)
-				if !ok {
-					return Result{err: errors.New("invalid values")}
-				}
-
-				fb.Add(field.Field{Name: pair.k, Value: vl.Value})
-			}
-
-			lastID, err = t.Insert(&fb)
-			if err != nil {
-				return Result{err: err}
-			}
-
-			rowsAffected++
-		}
-
-		return Result{
-			Stream:             table.NewStream(table.NewReaderFromRecords()),
-			lastInsertRecordID: lastID,
-			rowsAffected:       rowsAffected,
-		}
+		return stmt.insertPairList(t, ectx)
 	}
 
 	if len(stmt.records) > 0 {
-		for _, rec := range stmt.records {
-			lastID, err = t.Insert(rec)
+		return stmt.insertRecords(t, ectx)
+	}
+
+	return stmt.insertValues(t, ectx)
+}
+
+func (stmt InsertStmt) insertPairList(t *genji.Table, ectx EvalContext) Result {
+	if len(stmt.fieldNames) > 0 {
+		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
+	}
+
+	var res Result
+	var err error
+
+	for _, pairs := range stmt.pairsList {
+		var fb record.FieldBuffer
+		for _, pair := range pairs {
+			v, err := pair.e.Eval(ectx)
 			if err != nil {
-				return Result{err: err}
+				res.err = err
+				return res
 			}
 
-			rowsAffected++
+			vl, ok := v.(LitteralValue)
+			if !ok {
+				res.err = errors.New("invalid values")
+				return res
+			}
+
+			fb.Add(field.Field{Name: pair.k, Value: vl.Value})
 		}
 
-		return Result{
-			Stream:             table.NewStream(table.NewReaderFromRecords()),
-			lastInsertRecordID: lastID,
-			rowsAffected:       rowsAffected,
+		res.lastInsertRecordID, err = t.Insert(&fb)
+		if err != nil {
+			res.err = err
+			return res
 		}
+
+		res.rowsAffected++
 	}
+
+	res.Stream = table.NewStream(table.NewReaderFromRecords())
+	return res
+}
+
+func (stmt InsertStmt) insertRecords(t *genji.Table, ectx EvalContext) Result {
+	var res Result
+	var err error
+
+	for _, rec := range stmt.records {
+		res.lastInsertRecordID, err = t.Insert(rec)
+		if err != nil {
+			return Result{err: err}
+		}
+
+		res.rowsAffected++
+	}
+
+	res.Stream = table.NewStream(table.NewReaderFromRecords())
+	return res
+}
+
+func (stmt InsertStmt) insertValues(t *genji.Table, ectx EvalContext) Result {
+	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)
 	for _, e := range stmt.values {
@@ -205,17 +221,15 @@ func (stmt InsertStmt) Exec(tx *genji.Tx) Result {
 			})
 		}
 
-		lastID, err = t.Insert(&fb)
+		res.lastInsertRecordID, err = t.Insert(&fb)
 		if err != nil {
 			return Result{err: err}
 		}
 
-		rowsAffected++
+		res.rowsAffected++
 	}
 
-	return Result{
-		Stream:             table.NewStream(table.NewReaderFromRecords()),
-		lastInsertRecordID: lastID,
-		rowsAffected:       rowsAffected,
-	}
+	res.Stream = table.NewStream(table.NewReaderFromRecords())
+
+	return res
 }
