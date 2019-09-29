@@ -9,7 +9,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/sys v0.0.0-20190801041406-cbf593c0f2f3 // indirect
-	golang.org/x/tools v0.0.0-20190524210228-3d17549cdc6b
+	golang.org/x/tools v0.0.0-20190912185636-87d9f09c5d89
 )
 
 go 1.13
