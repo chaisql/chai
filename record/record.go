@@ -110,7 +110,7 @@ func (fb *FieldBuffer) Replace(name string, f field.Field) error {
 // DumpRecord is helper that dumps the content of a record into the given writer.
 func DumpRecord(w io.Writer, r Record) error {
 	return r.Iterate(func(f field.Field) error {
-		v, err := field.Decode(f)
+		v, err := f.Decode()
 		fmt.Fprintf(w, "%s(%s): %#v\n", f.Name, f.Type, v)
 		return err
 	})

@@ -5,6 +5,7 @@ import (
 
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,7 +141,7 @@ func TestNewFromMap(t *testing.T) {
 
 		err := rec.Iterate(func(f field.Field) error {
 			counter[f.Name]++
-			v, err := field.Decode(f)
+			v, err := f.Decode()
 			require.NoError(t, err)
 			require.Equal(t, m[f.Name], v)
 			return nil
@@ -154,11 +155,11 @@ func TestNewFromMap(t *testing.T) {
 	t.Run("Field", func(t *testing.T) {
 		f, err := rec.GetField("Name")
 		require.NoError(t, err)
-		require.Equal(t, field.Field{Name: "Name", Type: field.String, Data: []byte("foo")}, f)
+		require.Equal(t, field.Field{Name: "Name", Value: value.Value{Type: value.String, Data: []byte("foo")}}, f)
 
 		f, err = rec.GetField("Age")
 		require.NoError(t, err)
-		require.Equal(t, field.Field{Name: "Age", Type: field.Int, Data: field.EncodeInt(10)}, f)
+		require.Equal(t, field.Field{Name: "Age", Value: value.Value{Type: value.Int, Data: value.EncodeInt(10)}}, f)
 
 		_, err = rec.GetField("bar")
 		require.Error(t, err)

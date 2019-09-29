@@ -15,7 +15,7 @@ func ExampleSelect() {
 		Select().
 		From(query.Table("example")).
 		Where(query.IntField("Age").Gte(18)).
-		Run(tx)
+		Exec(tx)
 
 	if err := res.Err(); err != nil {
 		log.Fatal(err)
@@ -33,7 +33,7 @@ func ExampleAnd() {
 				query.IntField("Age").Lt(100),
 			),
 		).
-		Run(tx)
+		Exec(tx)
 
 	if err := res.Err(); err != nil {
 		log.Fatal(err)
@@ -51,7 +51,7 @@ func ExampleOr() {
 				query.StringField("Age").Eq("staff"),
 			),
 		).
-		Run(tx)
+		Exec(tx)
 
 	if err := res.Err(); err != nil {
 		log.Fatal(err)
@@ -65,7 +65,7 @@ func ExampleInsert() {
 		Into(query.Table("example")).
 		Fields("Name", "Age").
 		Values(query.StringValue("foo"), query.IntValue(21)).
-		Run(tx)
+		Exec(tx)
 
 	if err := res.Err(); err != nil {
 		log.Fatal(err)
@@ -74,13 +74,13 @@ func ExampleInsert() {
 
 func ExampleDelete() {
 	// DELETE FROM example (Name, Age) WHERE Age >= 18
-	err := query.
+	res := query.
 		Delete().
 		From(query.Table("example")).
 		Where(query.IntField("Age").Gte(18)).
-		Run(tx)
+		Exec(tx)
 
-	if err != nil {
-		log.Fatal(err)
+	if res.Err() != nil {
+		log.Fatal(res.Err())
 	}
 }

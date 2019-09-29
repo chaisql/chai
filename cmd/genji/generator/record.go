@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/asdine/genji/field"
+	"github.com/asdine/genji/value"
 )
 
 const recordsTmpl = `
@@ -26,9 +26,8 @@ const recordTmpl = `
 {{- template "record-GetField" . }}
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
+{{- template "record-Scan" . }}
 {{- template "record-Pk" . }}
-{{- template "record-Indexes" . }}
-{{- template "fields" . }}
 {{- end }}
 `
 
@@ -87,11 +86,29 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		switch f.Name {
 		{{- range .Fields}}
 		case "{{.Name}}":
-		{{$fl}}.{{.Name}}, err = field.Decode{{.Type}}(f.Data)
+		{{$fl}}.{{.Name}}, err = value.Decode{{.Type}}(f.Data)
 		{{- end}}
 		}
 		return err
 	})
+}
+{{ end }}
+`
+
+const recordScanTmpl = `
+{{ define "record-Scan" }}
+{{- $fl := .FirstLetter -}}
+{{- $structName := .Name -}}
+
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return {{$fl}}.ScanRecord(r)
 }
 {{ end }}
 `
@@ -104,26 +121,9 @@ const recordPkTmpl = `
 {{- if ne .Pk.Name ""}}
 // PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
 func ({{$fl}} *{{$structName}}) PrimaryKey() ([]byte, error) {
-	return field.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
+	return value.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
 }
 {{- end}}
-{{ end }}
-`
-
-const recordIndexesTmpl = `
-{{ define "record-Indexes" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-{{- if .HasIndexes }}
-// Indexes creates a map containing the configuration for each index of the table.
-func ({{$fl}} *{{$structName}}) Indexes() map[string]index.Options {
-	return map[string]index.Options{
-		{{- range $i, $a := .Indexes }}
-			"{{$a.FieldName}}": index.Options{Unique: {{$a.Unique}}},
-		{{- end}}
-	}
-}
-{{- end }}
 {{ end }}
 `
 
@@ -135,13 +135,6 @@ type recordContext struct {
 	Pk struct {
 		Name, Type, GoType string
 	}
-	Indexes    []indexOpt
-	HasIndexes bool
-}
-
-type indexOpt struct {
-	FieldName string
-	Unique    bool
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
@@ -191,7 +184,7 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 				return false, errors.New("embedded fields are not supported")
 			}
 
-			if field.TypeFromGoType(typeName) == 0 {
+			if value.TypeFromGoType(typeName) == 0 {
 				return false, fmt.Errorf("unsupported type %s", typeName)
 			}
 
@@ -199,7 +192,7 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 				rctx.Fields = append(rctx.Fields, struct {
 					Name, Type, GoType string
 				}{
-					name.String(), field.TypeFromGoType(typeName).String(), typeName,
+					name.String(), value.TypeFromGoType(typeName).String(), typeName,
 				})
 			}
 
@@ -283,19 +276,8 @@ func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
 			}
 
 			ctx.Pk.Name = fd.Names[0].Name
-			ctx.Pk.Type = field.TypeFromGoType(fd.Type.(*ast.Ident).Name).String()
+			ctx.Pk.Type = value.TypeFromGoType(fd.Type.(*ast.Ident).Name).String()
 			ctx.Pk.GoType = fd.Type.(*ast.Ident).Name
-		case "index":
-			ctx.HasIndexes = true
-			ctx.Indexes = append(ctx.Indexes, indexOpt{
-				FieldName: fd.Names[0].Name,
-			})
-		case "index(unique)":
-			ctx.HasIndexes = true
-			ctx.Indexes = append(ctx.Indexes, indexOpt{
-				FieldName: fd.Names[0].Name,
-				Unique:    true,
-			})
 		default:
 			return fmt.Errorf("unsupported genji tag '%s'", gtag)
 		}

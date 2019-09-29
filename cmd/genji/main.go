@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/asdine/genji/generator"
+	"github.com/asdine/genji/cmd/genji/generator"
 	"github.com/pkg/errors"
 )
 

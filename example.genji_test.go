@@ -7,9 +7,8 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
@@ -57,41 +56,28 @@ func (u *User) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "ID":
-			u.ID, err = field.DecodeInt64(f.Data)
+			u.ID, err = value.DecodeInt64(f.Data)
 		case "Name":
-			u.Name, err = field.DecodeString(f.Data)
+			u.Name, err = value.DecodeString(f.Data)
 		case "Age":
-			u.Age, err = field.DecodeUint32(f.Data)
+			u.Age, err = value.DecodeUint32(f.Data)
 		}
 		return err
 	})
 }
 
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func (u *User) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return u.ScanRecord(r)
+}
+
 // PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
 func (u *User) PrimaryKey() ([]byte, error) {
-	return field.EncodeInt64(u.ID), nil
-}
-
-// Indexes creates a map containing the configuration for each index of the table.
-func (u *User) Indexes() map[string]index.Options {
-	return map[string]index.Options{
-		"Name": index.Options{Unique: false},
-	}
-}
-
-// UserFields describes the fields of the User record.
-// It can be used to select fields during queries.
-type UserFields struct {
-	ID   query.Int64FieldSelector
-	Name query.StringFieldSelector
-	Age  query.Uint32FieldSelector
-}
-
-// NewUserFields creates a UserFields.
-func NewUserFields() *UserFields {
-	return &UserFields{
-		ID:   query.Int64Field("ID"),
-		Name: query.StringField("Name"),
-		Age:  query.Uint32Field("Age"),
-	}
+	return value.EncodeInt64(u.ID), nil
 }

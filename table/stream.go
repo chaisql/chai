@@ -125,6 +125,20 @@ func (s Stream) Offset(n int) Stream {
 	})
 }
 
+// Append adds the given reader to the stream.
+func (s Stream) Append(rd Reader) Stream {
+	if mr, ok := s.rd.(multiReader); ok {
+		mr.readers = append(mr.readers, rd)
+		s.rd = mr
+	} else {
+		s.rd = multiReader{
+			readers: []Reader{s, rd},
+		}
+	}
+
+	return s
+}
+
 // Count counts all the records from the stream.
 func (s Stream) Count() (int, error) {
 	counter := 0
@@ -140,11 +154,15 @@ func (s Stream) Count() (int, error) {
 // First runs the stream, returns the first record found and closes the stream.
 // If the stream is empty, all return values are nil.
 func (s Stream) First() (recordID []byte, r record.Record, err error) {
-	err = s.Limit(1).Iterate(func(rID []byte, rec record.Record) error {
+	err = s.Iterate(func(rID []byte, rec record.Record) error {
 		recordID = rID
 		r = rec
-		return nil
+		return ErrStreamClosed
 	})
+
+	if err == ErrStreamClosed {
+		err = nil
+	}
 
 	return
 }
@@ -158,3 +176,18 @@ func (s Stream) First() (recordID []byte, r record.Record, err error) {
 // Operators can be reused, and thus, any side effect should be kept within the operator closure
 // unless the nature of the operator prevents that.
 type Operator func() func(recordID []byte, r record.Record) (record.Record, error)
+
+type multiReader struct {
+	readers []Reader
+}
+
+func (m multiReader) Iterate(fn func(recordID []byte, r record.Record) error) error {
+	for _, rd := range m.readers {
+		err := rd.Iterate(fn)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

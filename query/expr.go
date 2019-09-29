@@ -1,58 +1,146 @@
 package query
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 var (
-	trueScalar  = Scalar{Type: field.Bool, Data: field.EncodeBool(true)}
-	falseScalar = Scalar{Type: field.Bool, Data: field.EncodeBool(false)}
+	trueLitteral  = LitteralValue{Value: value.NewBool(true)}
+	falseLitteral = LitteralValue{Value: value.NewBool(false)}
+	nilLitteral   = LitteralValue{Value: value.NewString("nil")}
 )
 
-// A Scalar represents a value of any type defined by the field package.
-type Scalar struct {
-	Type field.Type
-	Data []byte
+// An Expr evaluates to a value.
+type Expr interface {
+	Eval(EvalStack) (Value, error)
+}
+
+// EvalStack contains information about the context in which
+// the expression is evaluated.
+// Any of the members can be nil except the transaction.
+type EvalStack struct {
+	Tx     *genji.Tx
+	Record record.Record
+	Params []driver.NamedValue
+}
+
+// A Value is the result of evaluating an expression.
+type Value interface {
+	Truthy() bool
+}
+
+// A LitteralValue represents a litteral value of any type defined by the value package.
+type LitteralValue struct {
+	value.Value
 }
 
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
-func (s Scalar) Truthy() bool {
-	return !field.IsZeroValue(s.Type, s.Data)
+// It implements the Value interface.
+func (l LitteralValue) Truthy() bool {
+	return !value.IsZeroValue(l.Type, l.Data)
 }
 
-// Eval returns s. It implements the Expr interface.
-func (s Scalar) Eval(EvalContext) (Scalar, error) {
-	return s, nil
+// Eval returns l. It implements the Expr interface.
+func (l LitteralValue) Eval(EvalStack) (Value, error) {
+	return l, nil
 }
 
-// An Expr evaluates to a scalar.
-// It can be used as an argument to a WHERE clause or any other method that
-// expects an expression.
-// This package provides several ways of creating expressions.
-//
-// Using Matchers:
-//    And()
-//    Or()
-//    Eq<T>() (i.e. EqString(), EqInt64(), ...)
-//    Gt<T>() (i.e. GtBool(), GtUint(), ...)
-//    Gte<T>() (i.e. GteBytes(), GteFloat64(), ...)
-//    Lt<T>() (i.e. LtFloat32(), LtUint8(), ...)
-//    Lte<T>() (i.e. LteUint16(), LteInt(), ...)
-//    ...
-//
-// Using Values:
-//    <T>Value() (i.e. StringValue(), Int32Value(), ...)
-type Expr interface {
-	Eval(EvalContext) (Scalar, error)
+// A LitteralValueList represents a litteral value of any type defined by the value package.
+type LitteralValueList []Value
+
+// Truthy returns true if the Data is different than the zero value of
+// the type of s.
+// It implements the Value interface.
+func (l LitteralValueList) Truthy() bool {
+	return len(l) > 0
 }
 
-// EvalContext contains information about the context in which
-// the expression is evaluated.
-// Any of the members can be nil except the transaction.
-type EvalContext struct {
-	Tx     *genji.Tx
-	Record record.Record // can be nil
+// LitteralExprList is a list of expressions.
+type LitteralExprList []Expr
+
+// Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
+func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
+	if len(l) == 0 {
+		return nilLitteral, nil
+	}
+
+	if len(l) == 1 {
+		return l[0].Eval(stack)
+	}
+
+	var err error
+
+	values := make(LitteralValueList, len(l))
+	for i, e := range l {
+		values[i], err = e.Eval(stack)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return values, nil
+}
+
+type NamedParam string
+
+func (p NamedParam) Eval(stack EvalStack) (Value, error) {
+	v, err := p.extract(stack.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	vl, err := value.New(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return LitteralValue{
+		Value: vl,
+	}, nil
+}
+
+func (p NamedParam) extract(params []driver.NamedValue) (interface{}, error) {
+	for _, nv := range params {
+		if nv.Name == string(p) {
+			return nv.Value, nil
+		}
+	}
+
+	return nil, fmt.Errorf("param %s not found", p)
+}
+
+type PositionalParam int
+
+func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
+	v, err := p.extract(stack.Params)
+	if err != nil {
+		return nil, err
+	}
+
+	vl, err := value.New(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return LitteralValue{
+		Value: vl,
+	}, nil
+}
+
+func (p PositionalParam) extract(params []driver.NamedValue) (interface{}, error) {
+	idx := int(p - 1)
+	if idx >= len(params) {
+		return nil, fmt.Errorf("can't find param number %d", p)
+	}
+
+	return params[idx].Value, nil
+}
+
+type paramExtractor interface {
+	extract(params []driver.NamedValue) (interface{}, error)
 }

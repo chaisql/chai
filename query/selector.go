@@ -4,6 +4,7 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 // A FieldSelector can extract a field from a record.
@@ -45,6 +46,17 @@ func (f Field) SelectField(r record.Record) (field.Field, error) {
 	return r.GetField(string(f))
 }
 
+// Eval extracts the record from the context and selects the right field.
+// It implements the Expr interface.
+func (f Field) Eval(stack EvalStack) (Value, error) {
+	fd, err := f.SelectField(stack.Record)
+	if err != nil {
+		return nilLitteral, nil
+	}
+
+	return LitteralValue{fd.Value}, nil
+}
+
 // As returns a alias to f.
 // The alias selects the same field as f but returns a different name
 // when the SelectField method is called.
@@ -77,8 +89,10 @@ func (a Alias) SelectField(r record.Record) (field.Field, error) {
 	}
 
 	return field.Field{
-		Data: f.Data,
-		Type: f.Type,
+		Value: value.Value{
+			Data: f.Data,
+			Type: f.Type,
+		},
 		Name: a.Alias,
 	}, nil
 }

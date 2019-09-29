@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/value"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/field"
@@ -67,6 +68,9 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		recordID, err = pker.PrimaryKey()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
+		}
+		if len(recordID) == 0 {
+			return nil, errors.New("primary key must not be empty")
 		}
 	} else {
 		id, err := ulid.New(ulid.Timestamp(time.Now()), entropy)
@@ -185,7 +189,7 @@ func (t Table) AddField(f field.Field) error {
 		}
 
 		if f.Data == nil {
-			f.Data = field.ZeroValue(f.Type).Data
+			f.Data = value.ZeroValue(f.Type).Data
 		}
 		fb.Add(f)
 

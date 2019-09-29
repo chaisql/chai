@@ -4,6 +4,7 @@ import (
 	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
 
@@ -66,11 +67,11 @@ func (i *indexOptions) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "Unique":
-			i.Unique, err = field.DecodeBool(f.Data)
+			i.Unique, err = value.DecodeBool(f.Data)
 		case "TableName":
-			i.TableName, err = field.DecodeString(f.Data)
+			i.TableName, err = value.DecodeString(f.Data)
 		case "FieldName":
-			i.FieldName, err = field.DecodeString(f.Data)
+			i.FieldName, err = value.DecodeString(f.Data)
 		}
 		return err
 	})

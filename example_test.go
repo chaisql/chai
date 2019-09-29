@@ -3,17 +3,17 @@ package genji_test
 //go:generate genji -s User -f example_test.go
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/record"
 )
 
 type User struct {
-	ID   int64  `genji:"pk"`
-	Name string `genji:"index"`
+	ID   int64 `genji:"pk"`
+	Name string
 	Age  uint32
 }
 
@@ -25,53 +25,42 @@ func Example() {
 	}
 	defer db.Close()
 
-	// open a read-write transaction
-	err = db.Update(func(tx *genji.Tx) error {
-		t, err := tx.InitTable("users", new(User))
-		if err != nil {
-			return err
-		}
+	dbx := query.NewSQLDB(db)
 
-		// insert a User, no reflection involved
-		_, err = t.Insert(&User{
-			ID:   10,
-			Name: "foo",
-			Age:  32,
-		})
-		return err
-	})
+	_, err = dbx.Exec("CREATE TABLE user IF NOT EXISTS")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// open a read-only transaction
-	err = db.View(func(tx *genji.Tx) error {
-		t, err := tx.GetTable("users")
-		if err != nil {
-			return err
-		}
-
-		// create an object that contains informations about all the fields of the user
-		// record. This is a generated function
-		f := NewUserFields()
-
-		var users []User
-		// SELECT ID, Name FROM foo where Age >= 18
-		return query.Select().From(t).Where(f.Age.Gte(18)).
-			Run(tx).
-			Iterate(func(recordID []byte, r record.Record) error {
-				var u User
-				err := u.ScanRecord(r)
-				if err != nil {
-					return err
-				}
-
-				users = append(users, u)
-				return nil
-			})
-	})
-
+	_, err = dbx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	_, err = dbx.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := dbx.Query("SELECT * FROM user WHERE Name = ?", "bar")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var u User
+		err = rows.Scan(&u)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(u)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Output: {1 bar 100}
 }
