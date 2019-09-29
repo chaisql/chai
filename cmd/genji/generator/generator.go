@@ -179,13 +179,6 @@ func (g *genContext) selectImports() {
 		m["github.com/asdine/genji/value"]++
 	}
 
-	for _, r := range g.Records {
-		if r.HasIndexes {
-			m["github.com/asdine/genji/index"]++
-			break
-		}
-	}
-
 	g.Imports = make([]string, 0, len(m))
 	for k := range m {
 		g.Imports = append(g.Imports, k)

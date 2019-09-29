@@ -140,8 +140,8 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 `
 
