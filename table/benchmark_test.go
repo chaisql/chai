@@ -1,4 +1,4 @@
-package tabletest
+package table_test
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 // BenchmarkTableInsert benchmarks the Insert method with 1, 10, 1000 and 10000 successive insertions.
-func BenchmarkTableInsert(b *testing.B, builder Builder) {
+func BenchmarkTableInsert(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			var fields []record.Field
@@ -23,7 +23,7 @@ func BenchmarkTableInsert(b *testing.B, builder Builder) {
 			b.ResetTimer()
 			b.StopTimer()
 			for i := 0; i < b.N; i++ {
-				tb, cleanup := builder()
+				tb, cleanup := newTestTable(b)
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
@@ -37,10 +37,10 @@ func BenchmarkTableInsert(b *testing.B, builder Builder) {
 }
 
 // BenchmarkTableScan benchmarks the Scan method with 1, 10, 1000 and 10000 successive insertions.
-func BenchmarkTableScan(b *testing.B, builder Builder) {
+func BenchmarkTableScan(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			tb, cleanup := builder()
+			tb, cleanup := newTestTable(b)
 			defer cleanup()
 
 			var fields []record.Field
