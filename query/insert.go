@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -27,7 +27,7 @@ func Insert() InsertStmt {
 // Run runs the Insert statement in a read-write transaction.
 // It implements the Statement interface.
 func (stmt InsertStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
-	err := txm.Update(func(tx *genji.Tx) error {
+	err := txm.Update(func(tx *database.Tx) error {
 		res = stmt.exec(tx, args)
 		return nil
 	})
@@ -44,7 +44,7 @@ func (stmt InsertStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result)
 }
 
 // Exec the Insert query within tx.
-func (stmt InsertStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+func (stmt InsertStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 	return stmt.exec(tx, argsToNamedValues(args))
 }
 
@@ -83,7 +83,7 @@ func (stmt InsertStmt) pairs(pairs ...kvPair) InsertStmt {
 	return stmt
 }
 
-func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+func (stmt InsertStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
@@ -109,7 +109,7 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	return stmt.insertValues(t, stack)
 }
 
-func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
+func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) Result {
 	if len(stmt.fieldNames) > 0 {
 		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
@@ -166,7 +166,7 @@ func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
 	return res
 }
 
-func (stmt InsertStmt) insertValues(t *genji.Table, stack EvalStack) Result {
+func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) Result {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)

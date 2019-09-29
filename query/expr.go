@@ -4,7 +4,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -24,7 +24,7 @@ type Expr interface {
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
 type EvalStack struct {
-	Tx     *genji.Tx
+	Tx     *database.Tx
 	Record record.Record
 	Params []driver.NamedValue
 }

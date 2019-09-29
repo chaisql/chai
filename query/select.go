@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -30,7 +30,7 @@ func Select(fields ...FieldSelector) SelectStmt {
 // Run the Select statement in a read-only transaction.
 // It implements the Statement interface.
 func (stmt SelectStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
-	err := txm.View(func(tx *genji.Tx) error {
+	err := txm.View(func(tx *database.Tx) error {
 		res = stmt.exec(tx, args)
 		return nil
 	})
@@ -47,7 +47,7 @@ func (stmt SelectStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result)
 }
 
 // Exec the Select statement within tx.
-func (stmt SelectStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+func (stmt SelectStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 	return stmt.exec(tx, argsToNamedValues(args))
 }
 
@@ -96,7 +96,7 @@ func (stmt SelectStmt) OffsetExpr(e Expr) SelectStmt {
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}

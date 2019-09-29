@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
-func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func()) {
-	db, err := genji.New(memory.NewEngine())
+func createTable(t require.TestingT, size int, withIndex bool) (*database.Tx, func()) {
+	db, err := database.New(memory.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)

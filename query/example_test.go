@@ -3,11 +3,11 @@ package query_test
 import (
 	"log"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/query"
 )
 
-var tx *genji.Tx
+var tx *database.Tx
 
 func ExampleSelect() {
 	// SELECT Name, Age FROM example WHERE Age >= 18

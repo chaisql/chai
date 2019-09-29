@@ -1,7 +1,7 @@
 package query
 
 import (
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -23,7 +23,7 @@ type FieldSelector interface {
 // TableSelector can select a table from a transaction.
 type TableSelector interface {
 	// SelectTable selects a table by calling the Table method of the transaction.
-	SelectTable(*genji.Tx) (*genji.Table, error)
+	SelectTable(*database.Tx) (*database.Table, error)
 	// Name of the selected table.
 	TableName() string
 }
@@ -109,6 +109,6 @@ func (t Table) TableName() string {
 }
 
 // SelectTable selects the table t from tx.
-func (t Table) SelectTable(tx *genji.Tx) (*genji.Table, error) {
+func (t Table) SelectTable(tx *database.Tx) (*database.Table, error) {
 	return tx.GetTable(string(t))
 }

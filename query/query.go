@@ -3,9 +3,8 @@ package query
 import (
 	"database/sql/driver"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 // A Query can execute statements against the database. It can read or write data
@@ -16,7 +15,7 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *genji.DB, args ...interface{}) Result {
+func (q Query) Run(db *database.DB, args ...interface{}) Result {
 	txm := TxOpener{DB: db}
 	var res Result
 
@@ -36,7 +35,7 @@ func New(statements ...Statement) Query {
 }
 
 // Run parses s and runs the query against db.
-func Run(db *genji.DB, s string) Result {
+func Run(db *database.DB, s string) Result {
 	q, err := ParseQuery(s)
 	if err != nil {
 		return Result{err: err}
@@ -54,13 +53,13 @@ type Statement interface {
 // If the Tx field is nil, it will automatically create a new transaction.
 // If the Tx field is not nil, it will be passed to View and Update.
 type TxOpener struct {
-	DB *genji.DB
-	Tx *genji.Tx
+	DB *database.DB
+	Tx *database.Tx
 }
 
 // View runs fn in a read-only transaction if the Tx field is nil.
 // If not, it will pass it to fn regardless of it being a read-only or read-write transaction.
-func (tx TxOpener) View(fn func(tx *genji.Tx) error) error {
+func (tx TxOpener) View(fn func(tx *database.Tx) error) error {
 	if tx.Tx != nil {
 		return fn(tx.Tx)
 	}
@@ -70,7 +69,7 @@ func (tx TxOpener) View(fn func(tx *genji.Tx) error) error {
 
 // Update runs fn in a read-write transaction if the Tx field is nil.
 // If not, it will pass it to fn regardless of it being a read-only or read-write transaction.
-func (tx TxOpener) Update(fn func(tx *genji.Tx) error) error {
+func (tx TxOpener) Update(fn func(tx *database.Tx) error) error {
 	if tx.Tx != nil {
 		return fn(tx.Tx)
 	}
@@ -89,15 +88,6 @@ type Result struct {
 // Err returns a non nil error if an error occured during the query.
 func (r Result) Err() error {
 	return r.err
-}
-
-// Scan takes a table scanner and passes it the result table.
-func (r Result) Scan(s table.Scanner) error {
-	if r.err != nil {
-		return r.err
-	}
-
-	return s.ScanTable(r.Stream)
 }
 
 // LastInsertId is not supported and returns an error.

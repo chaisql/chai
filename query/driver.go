@@ -2,57 +2,38 @@ package query
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"io"
 	"sync"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 )
 
-type connector struct {
+type Connector struct {
 	driver driver.Driver
 }
 
-func NewSQLDB(db *genji.DB) *sql.DB {
-	return sql.OpenDB(newConnector(db))
-}
-
-func newConnector(db *genji.DB) driver.Connector {
-	return connector{
+func newConnector(db *database.DB) driver.Connector {
+	return Connector{
 		driver: newDriver(db),
 	}
 }
 
-// Connect returns a connection to the database.
-// Connect may return a cached connection (one previously
-// closed), but doing so is unnecessary; the sql package
-// maintains a pool of idle connections for efficient re-use.
-//
-// The provided context.Context is for dialing purposes only
-// (see net.DialContext) and should not be stored or used for
-// other purposes.
-//
-// The returned connection is only used by one goroutine at a
-// time.
-func (c connector) Connect(ctx context.Context) (driver.Conn, error) {
+func (c Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	return c.driver.Open("")
 }
 
-// Driver returns the underlying Driver of the connector,
-// mainly to maintain compatibility with the Driver method
-// on sql.DB.
-func (c connector) Driver() driver.Driver {
+func (c Connector) Driver() driver.Driver {
 	return c.driver
 }
 
 type drivr struct {
-	db *genji.DB
+	db *database.DB
 }
 
-func newDriver(db *genji.DB) driver.Driver {
+func newDriver(db *database.DB) driver.Driver {
 	return drivr{
 		db: db,
 	}
@@ -74,7 +55,7 @@ func (d drivr) Open(name string) (driver.Conn, error) {
 // Conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db *genji.DB
+	db *database.DB
 }
 
 // Prepare returns a prepared statement, bound to this connection.

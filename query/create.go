@@ -4,7 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 )
 
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
@@ -22,7 +22,7 @@ func CreateTable(tableName string) CreateTableStmt {
 // Run the Create statement in a read-write transaction.
 // It implements the Statement interface.
 func (stmt CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Result) {
-	err := txm.Update(func(tx *genji.Tx) error {
+	err := txm.Update(func(tx *database.Tx) error {
 		res = stmt.exec(tx, arg)
 		return nil
 	})
@@ -31,6 +31,7 @@ func (stmt CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Res
 		return
 	}
 
+	
 	if err != nil {
 		res.err = err
 	}
@@ -39,7 +40,7 @@ func (stmt CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Res
 }
 
 // Exec the CreateTable statement within tx.
-func (stmt CreateTableStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+func (stmt CreateTableStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 	return stmt.exec(tx, argsToNamedValues(args))
 }
 
@@ -49,7 +50,7 @@ func (stmt CreateTableStmt) IfNotExists() CreateTableStmt {
 	return stmt
 }
 
-func (stmt CreateTableStmt) exec(tx *genji.Tx, _ []driver.NamedValue) Result {
+func (stmt CreateTableStmt) exec(tx *database.Tx, _ []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}

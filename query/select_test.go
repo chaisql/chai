@@ -3,7 +3,7 @@ package query
 import (
 	"testing"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
@@ -90,11 +90,11 @@ func TestSelectStatement(t *testing.T) {
 	})
 
 	t.Run("WithEmptyIndex", func(t *testing.T) {
-		db, err := genji.New(memory.NewEngine())
+		db, err := database.New(memory.NewEngine())
 		require.NoError(t, err)
 
 		var n int
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *database.Tx) error {
 			tb, err := tx.CreateTable("test")
 			if err != nil {
 				return err

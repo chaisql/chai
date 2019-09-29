@@ -4,7 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 )
 
@@ -23,7 +23,7 @@ func Delete() DeleteStmt {
 // Run the Delete statement in a read-write transaction.
 // It implements the Statement interface.
 func (stmt DeleteStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
-	err := txm.Update(func(tx *genji.Tx) error {
+	err := txm.Update(func(tx *database.Tx) error {
 		res = stmt.exec(tx, args)
 		return nil
 	})
@@ -40,7 +40,7 @@ func (stmt DeleteStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result)
 }
 
 // Exec the Delete statement within tx.
-func (stmt DeleteStmt) Exec(tx *genji.Tx, args ...interface{}) Result {
+func (stmt DeleteStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 	return stmt.exec(tx, argsToNamedValues(args))
 }
 
@@ -62,7 +62,7 @@ func (stmt DeleteStmt) Where(e Expr) DeleteStmt {
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
+func (stmt DeleteStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
