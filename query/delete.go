@@ -21,23 +21,15 @@ func Delete() DeleteStmt {
 	return DeleteStmt{}
 }
 
-// Run the Delete statement in a read-write transaction.
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt DeleteStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the Delete statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DeleteStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
-	err := txm.Update(func(tx *database.Tx) error {
-		res = stmt.exec(tx, args)
-		return nil
-	})
-
-	if res.err != nil {
-		return
-	}
-
-	if err != nil {
-		res.err = err
-	}
-
-	return
+func (stmt DeleteStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	return stmt.exec(tx, args)
 }
 
 // Exec the Delete statement within tx.

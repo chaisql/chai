@@ -51,54 +51,87 @@ func newDriver(db *database.DB) driver.Driver {
 // The returned connection is only used by one goroutine at a
 // time.
 func (d drivr) Open(name string) (driver.Conn, error) {
-	return conn{db: d.db}, nil
+	return &conn{db: d.db}, nil
 }
 
 // Conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db *database.DB
+	db            *database.DB
+	tx            *database.Tx
+	nonPromotable bool
 }
 
 // Prepare returns a prepared statement, bound to this connection.
-func (c conn) Prepare(q string) (driver.Stmt, error) {
-	s, err := parser.ParseStatement(q)
+func (c *conn) Prepare(q string) (driver.Stmt, error) {
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
 	return stmt{
-		txo:  &query.TxOpener{DB: c.db},
-		stmt: s,
+		db:            c.db,
+		tx:            c.tx,
+		q:             pq,
+		nonPromotable: c.nonPromotable,
 	}, nil
 }
 
-// Close does nothing.
-func (c conn) Close() error {
+// Close closes any ongoing transaction.
+func (c *conn) Close() error {
+	if c.tx != nil {
+		return c.tx.Rollback()
+	}
+
 	return nil
 }
 
 // Begin starts and returns a new transaction.
-func (c conn) Begin() (driver.Tx, error) {
-	return c.db.Begin(true)
+func (c *conn) Begin() (driver.Tx, error) {
+	return c.BeginTx(context.Background(), driver.TxOptions{})
 }
 
 // BeginTx starts and returns a new transaction.
 // It uses the ReadOnly option to determine whether to start a read-only or read/write transaction.
 // If the Isolation option is non zero, an error is returned.
-func (c conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	if opts.Isolation != 0 {
 		return nil, errors.New("isolation levels are not supported")
 	}
 
-	return c.db.Begin(!opts.ReadOnly)
+	var err error
+
+	// if the ReadOnly flag is explicitly specified, create a non promotable transaction,
+	// otherwise start with a promotable read only transaction.
+	if opts.ReadOnly {
+		c.nonPromotable = true
+	}
+
+	c.tx, err = c.db.Begin(false)
+	return c, err
+}
+
+func (c *conn) Commit() error {
+	err := c.tx.Commit()
+	c.tx = nil
+	c.nonPromotable = false
+	return err
+}
+
+func (c *conn) Rollback() error {
+	err := c.tx.Rollback()
+	c.tx = nil
+	c.nonPromotable = false
+	return err
 }
 
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	txo  *query.TxOpener
-	stmt query.Statement
+	db            *database.DB
+	tx            *database.Tx
+	q             query.Query
+	nonPromotable bool
 }
 
 // NumInput returns the number of placeholder parameters.
@@ -132,9 +165,24 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	res := s.stmt.Run(s.txo, args)
+	var res query.Result
 
-	return res, res.Err()
+	// if calling ExecContext within a transaction, use it,
+	// otherwise use DB.
+	if s.tx != nil {
+		res = s.q.Exec(s.tx, args, s.nonPromotable)
+	} else {
+		res = s.q.Run(s.db, args)
+	}
+
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+
+	// s.q.Run might return a stream if the last Statement is a Select,
+	// make sure the result is closed before returning so any transaction
+	// created by s.q.Run is closed.
+	return res, res.Close()
 }
 
 func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
@@ -144,20 +192,41 @@ func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
 // QueryContext executes a query that may return rows, such as a
 // SELECT.
 func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
-	res := s.stmt.Run(s.txo, args)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	var res query.Result
+
+	// if calling QueryContext within a transaction, use it,
+	// otherwise use DB.
+	if s.tx != nil {
+		res = s.q.Exec(s.tx, args, s.nonPromotable)
+	} else {
+		res = s.q.Run(s.db, args)
+	}
 
 	if err := res.Err(); err != nil {
 		return nil, err
 	}
 
 	rs := newRecordStream(res)
-	slct, ok := s.stmt.(query.SelectStmt)
+	if len(s.q.Statements) == 0 {
+		return rs, nil
+	}
+
+	lastStmt := s.q.Statements[len(s.q.Statements)-1]
+
+	slct, ok := lastStmt.(query.SelectStmt)
 	if ok && len(slct.FieldSelectors) > 0 {
 		rs.fields = make([]string, len(slct.FieldSelectors))
 		for i := range slct.FieldSelectors {
 			rs.fields[i] = slct.FieldSelectors[i].Name()
 		}
 	}
+
 	return rs, nil
 }
 
@@ -248,7 +317,7 @@ func (rs *recordStream) Columns() []string {
 // Close closes the rows iterator.
 func (rs *recordStream) Close() error {
 	rs.cancelFn()
-	return nil
+	return rs.res.Close()
 }
 
 // Next expects exactly one destination. This destination must implement record.Scanner

@@ -16,12 +16,64 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *database.DB, args ...interface{}) Result {
-	txm := TxOpener{DB: db}
+func (q Query) Run(db *database.DB, args []driver.NamedValue) Result {
+	var res Result
+	var tx *database.Tx
+	var err error
+
+	for _, stmt := range q.Statements {
+		// it there is an opened transaction but there are still statements
+		// to be executed, close the current transaction.
+		if tx != nil {
+			if tx.Writable() {
+				err := tx.Commit()
+				if err != nil {
+					return Result{err: err}
+				}
+			} else {
+				err := tx.Rollback()
+				if err != nil {
+					return Result{err: err}
+				}
+			}
+		}
+
+		// start a new transaction for every statement
+		tx, err = db.Begin(!stmt.IsReadOnly())
+		if err != nil {
+			return Result{err: err}
+		}
+
+		res = stmt.Run(tx, args)
+		if res.err != nil {
+			tx.Rollback()
+			return res
+		}
+	}
+
+	// the returned result will now own the transaction.
+	// its Close method is expected to be called.
+	res.tx = tx
+
+	return res
+}
+
+// Exec the query within the given transaction. If the one of the statements requires a read-write
+// transaction and tx is not, tx will get promoted.
+func (q Query) Exec(tx *database.Tx, args []driver.NamedValue, forceReadOnly bool) Result {
 	var res Result
 
 	for _, stmt := range q.Statements {
-		res = stmt.Run(&txm, nil)
+		// if the statement requires a writable transaction,
+		// promote the current transaction.
+		if !forceReadOnly && !tx.Writable() && !stmt.IsReadOnly() {
+			err := tx.Promote()
+			if err != nil {
+				return Result{err: err}
+			}
+		}
+
+		res = stmt.Run(tx, args)
 		if res.err != nil {
 			return res
 		}
@@ -37,35 +89,8 @@ func New(statements ...Statement) Query {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*TxOpener, []driver.NamedValue) Result
-}
-
-// TxOpener is used by statements to automatically open transactions.
-// If the Tx field is nil, it will automatically create a new transaction.
-// If the Tx field is not nil, it will be passed to View and Update.
-type TxOpener struct {
-	DB *database.DB
-	Tx *database.Tx
-}
-
-// View runs fn in a read-only transaction if the Tx field is nil.
-// If not, it will pass it to fn regardless of it being a read-only or read-write transaction.
-func (tx TxOpener) View(fn func(tx *database.Tx) error) error {
-	if tx.Tx != nil {
-		return fn(tx.Tx)
-	}
-
-	return tx.DB.View(fn)
-}
-
-// Update runs fn in a read-write transaction if the Tx field is nil.
-// If not, it will pass it to fn regardless of it being a read-only or read-write transaction.
-func (tx TxOpener) Update(fn func(tx *database.Tx) error) error {
-	if tx.Tx != nil {
-		return fn(tx.Tx)
-	}
-
-	return tx.DB.Update(fn)
+	Run(*database.Tx, []driver.NamedValue) Result
+	IsReadOnly() bool
 }
 
 // Result of a query.
@@ -74,6 +99,8 @@ type Result struct {
 	rowsAffected       driver.RowsAffected
 	err                error
 	lastInsertRecordID []byte
+	tx                 *database.Tx
+	closed             bool
 }
 
 // Err returns a non nil error if an error occured during the query.
@@ -98,6 +125,28 @@ func (r Result) LastInsertRecordID() ([]byte, error) {
 // query.
 func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
+}
+
+// Close the result stream. It must be always be called when the
+// result is not errored. Calling it when Err() is not nil is safe.
+func (r *Result) Close() error {
+	if r.closed {
+		return nil
+	}
+
+	r.closed = true
+
+	var err error
+
+	if r.tx != nil {
+		if r.tx.Writable() {
+			err = r.tx.Commit()
+		} else {
+			err = r.tx.Rollback()
+		}
+	}
+
+	return err
 }
 
 func whereClause(e expr.Expr, stack expr.EvalStack) func(r record.Record) (bool, error) {

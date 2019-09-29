@@ -26,23 +26,15 @@ func Update(tableSelector TableSelector) UpdateStmt {
 	}
 }
 
-// Run the Update statement in a read-write transaction.
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt UpdateStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt UpdateStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
-	err := txm.Update(func(tx *database.Tx) error {
-		res = stmt.exec(tx, args)
-		return nil
-	})
-
-	if res.err != nil {
-		return
-	}
-
-	if err != nil {
-		res.err = err
-	}
-
-	return
+func (stmt UpdateStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	return stmt.exec(tx, args)
 }
 
 // Exec the Update statement within tx.

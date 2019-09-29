@@ -19,23 +19,15 @@ func CreateTable(tableName string) CreateTableStmt {
 	return CreateTableStmt{tableName: tableName}
 }
 
-// Run the Create statement in a read-write transaction.
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt CreateTableStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Result) {
-	err := txm.Update(func(tx *database.Tx) error {
-		res = stmt.exec(tx, arg)
-		return nil
-	})
-
-	if res.err != nil {
-		return
-	}
-
-	if err != nil {
-		res.err = err
-	}
-
-	return
+func (stmt CreateTableStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	return stmt.exec(tx, args)
 }
 
 // Exec the CreateTable statement within tx.

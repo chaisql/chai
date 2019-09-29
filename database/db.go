@@ -53,7 +53,9 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 	}
 
 	return &Tx{
-		tx: tx,
+		db:       &db,
+		tx:       tx,
+		writable: writable,
 	}, nil
 }
 

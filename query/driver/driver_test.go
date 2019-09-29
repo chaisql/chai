@@ -1,12 +1,14 @@
 package driver
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
@@ -150,5 +152,87 @@ func TestDriver(t *testing.T) {
 		}
 		require.NoError(t, rows.Err())
 		require.Equal(t, 1, count)
+	})
+
+	t.Run("Transactions", func(t *testing.T) {
+		tx, err := dbx.Begin()
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		rows, err := tx.Query("SELECT * FROM test")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var rt rectest
+		for rows.Next() {
+			err = rows.Scan(&rt)
+			require.NoError(t, err)
+			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
+
+	t.Run("Multiple queries", func(t *testing.T) {
+		rows, err := dbx.Query(`
+			SELECT * FROM test;;;
+			INSERT INTO test (a, b, c) VALUES (11, 12, 13);
+			SELECT * FROM test;
+		`)
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var rt rectest
+		for rows.Next() {
+			err = rows.Scan(&rt)
+			require.NoError(t, err)
+			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 11, count)
+	})
+
+	time.Sleep(time.Millisecond)
+
+	t.Run("Multiple queries in transaction", func(t *testing.T) {
+		tx, err := dbx.Begin()
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		rows, err := tx.Query(`
+			SELECT * FROM test;;;
+			INSERT INTO test (a, b, c) VALUES (12, 13, 14);
+			SELECT * FROM test;
+		`)
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var rt rectest
+		for rows.Next() {
+			err = rows.Scan(&rt)
+			require.NoError(t, err)
+			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 12, count)
+	})
+
+	t.Run("Multiple queries in read only transaction", func(t *testing.T) {
+		tx, err := dbx.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		_, err = tx.Query(`
+			SELECT * FROM test;;;
+			INSERT INTO test (a, b, c) VALUES (12, 13, 14);
+			SELECT * FROM test;
+		`)
+		require.Equal(t, err, engine.ErrTransactionReadOnly)
 	})
 }

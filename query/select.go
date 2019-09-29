@@ -28,23 +28,15 @@ func Select(fields ...FieldSelector) SelectStmt {
 	}
 }
 
-// Run the Select statement in a read-only transaction.
+// IsReadOnly always returns true. It implements the Statement interface.
+func (stmt SelectStmt) IsReadOnly() bool {
+	return true
+}
+
+// Run the Select statement in the given transaction.
 // It implements the Statement interface.
-func (stmt SelectStmt) Run(txm *TxOpener, args []driver.NamedValue) (res Result) {
-	err := txm.View(func(tx *database.Tx) error {
-		res = stmt.exec(tx, args)
-		return nil
-	})
-
-	if res.err != nil {
-		return
-	}
-
-	if err != nil {
-		res.err = err
-	}
-
-	return
+func (stmt SelectStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	return stmt.exec(tx, args)
 }
 
 // Exec the Select statement within tx.
