@@ -2,7 +2,6 @@ package database
 
 import (
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
@@ -84,7 +83,7 @@ func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
 
 	r, err := it.GetRecord([]byte(indexName))
 	if err != nil {
-		if err == table.ErrRecordNotFound {
+		if err == ErrRecordNotFound {
 			return nil, ErrIndexNotFound
 		}
 

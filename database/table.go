@@ -7,12 +7,10 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
-
 
 // A Table represents a collection of records.
 type Table struct {
@@ -55,12 +53,17 @@ func (t Table) GetRecord(key []byte) (record.Record, error) {
 	v, err := t.store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
-			return nil, table.ErrRecordNotFound
+			return nil, ErrRecordNotFound
 		}
 		return nil, errors.Wrapf(err, "failed to fetch record %q", key)
 	}
 
 	return record.EncodedRecord(v), err
+}
+
+// A PrimaryKeyer is a record that generates a key based on its primary key.
+type PrimaryKeyer interface {
+	PrimaryKey() ([]byte, error)
 }
 
 // Insert the record into the table.
@@ -74,7 +77,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 	}
 
 	var key []byte
-	if pker, ok := r.(table.PrimaryKeyer); ok {
+	if pker, ok := r.(PrimaryKeyer); ok {
 		key, err = pker.PrimaryKey()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to generate key from PrimaryKey method")
@@ -94,7 +97,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 
 	_, err = t.store.Get(key)
 	if err == nil {
-		return nil, table.ErrDuplicate
+		return nil, ErrDuplicateRecord
 	}
 
 	err = t.store.Put(key, v)
@@ -116,7 +119,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		err = idx.Set(f.Data, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
-				return nil, table.ErrDuplicate
+				return nil, ErrDuplicateRecord
 			}
 
 			return nil, err
@@ -132,7 +135,7 @@ func (t Table) Delete(key []byte) error {
 	err := t.store.Delete(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
-			return table.ErrRecordNotFound
+			return ErrRecordNotFound
 		}
 		return err
 	}
@@ -168,7 +171,7 @@ func (t Table) Replace(key []byte, r record.Record) error {
 	err := t.Delete(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
-			return table.ErrRecordNotFound
+			return ErrRecordNotFound
 		}
 		return err
 	}
@@ -287,7 +290,7 @@ func (t Table) CreateIndex(field string, opts index.Options) (index.Index, error
 	if err == nil {
 		return nil, ErrIndexAlreadyExists
 	}
-	if err != table.ErrRecordNotFound {
+	if err != ErrRecordNotFound {
 		return nil, err
 	}
 
@@ -392,7 +395,7 @@ func (t Table) DropIndex(field string) error {
 
 	indexName := buildIndexName(t.name, field)
 	err = it.Delete([]byte(indexName))
-	if err == table.ErrRecordNotFound {
+	if err == ErrRecordNotFound {
 		return ErrIndexNotFound
 	}
 	if err != nil {

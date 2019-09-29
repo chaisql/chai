@@ -20,6 +20,7 @@ var (
 	// ErrRecordNotFound is returned when no record is associated with the provided key.
 	ErrRecordNotFound = errors.New("not found")
 
+	
 	// ErrDuplicateRecord is returned when another record is already associated with a given key, primary key,
 	// or if there is a unique index violation.
 	ErrDuplicateRecord = errors.New("duplicate")
