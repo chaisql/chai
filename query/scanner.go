@@ -8,6 +8,9 @@ import (
 	"io"
 )
 
+// Code heavily inspired from the influxdata/influxql repository
+// https://github.com/influxdata/influxql/blob/57f403b00b124eb900835c0c944e9b60d848db5e/scanner.go#L12
+
 // Scanner represents a lexical scanner for Genji.
 type Scanner struct {
 	r *reader
