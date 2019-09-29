@@ -1,4 +1,4 @@
-package genji
+package database
 
 import (
 	"github.com/asdine/genji/record"

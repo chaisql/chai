@@ -1,4 +1,4 @@
-package genji
+package database
 
 import (
 	"strings"
@@ -12,6 +12,7 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
+
 
 // A Table represents a collection of records.
 type Table struct {
