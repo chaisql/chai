@@ -1,4 +1,4 @@
-package query
+package scanner
 
 import (
 	"bufio"
@@ -363,9 +363,9 @@ func isIdentChar(ch rune) bool { return isLetter(ch) || isDigit(ch) || ch == '_'
 // isIdentFirstChar returns true if the rune can be used as the first char in an unquoted identifer.
 func isIdentFirstChar(ch rune) bool { return isLetter(ch) || ch == '_' }
 
-// bufScanner represents a wrapper for scanner to add a buffer.
+// BufScanner represents a wrapper for scanner to add a buffer.
 // It provides a fixed-length circular buffer that can be unread.
-type bufScanner struct {
+type BufScanner struct {
 	s   *Scanner
 	i   int // buffer index
 	n   int // buffer size
@@ -376,23 +376,23 @@ type bufScanner struct {
 	}
 }
 
-// newBufScanner returns a new buffered scanner for a reader.
-func newBufScanner(r io.Reader) *bufScanner {
-	return &bufScanner{s: NewScanner(r)}
+// NewBufScanner returns a new buffered scanner for a reader.
+func NewBufScanner(r io.Reader) *BufScanner {
+	return &BufScanner{s: NewScanner(r)}
 }
 
 // Scan reads the next token from the scanner.
-func (s *bufScanner) Scan() (tok Token, pos Pos, lit string) {
+func (s *BufScanner) Scan() (tok Token, pos Pos, lit string) {
 	return s.scanFunc(s.s.Scan)
 }
 
 // ScanRegex reads a regex token from the scanner.
-func (s *bufScanner) ScanRegex() (tok Token, pos Pos, lit string) {
+func (s *BufScanner) ScanRegex() (tok Token, pos Pos, lit string) {
 	return s.scanFunc(s.s.ScanRegex)
 }
 
 // scanFunc uses the provided function to scan the next token.
-func (s *bufScanner) scanFunc(scan func() (Token, Pos, string)) (tok Token, pos Pos, lit string) {
+func (s *BufScanner) scanFunc(scan func() (Token, Pos, string)) (tok Token, pos Pos, lit string) {
 	// If we have unread tokens then read them off the buffer first.
 	if s.n > 0 {
 		s.n--
@@ -408,10 +408,10 @@ func (s *bufScanner) scanFunc(scan func() (Token, Pos, string)) (tok Token, pos 
 }
 
 // Unscan pushes the previously token back onto the buffer.
-func (s *bufScanner) Unscan() { s.n++ }
+func (s *BufScanner) Unscan() { s.n++ }
 
 // curr returns the last read token.
-func (s *bufScanner) curr() (tok Token, pos Pos, lit string) {
+func (s *BufScanner) curr() (tok Token, pos Pos, lit string) {
 	buf := &s.buf[(s.i-s.n+len(s.buf))%len(s.buf)]
 	return buf.tok, buf.pos, buf.lit
 }

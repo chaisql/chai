@@ -31,7 +31,6 @@ func (stmt CreateTableStmt) Run(txm *TxOpener, arg []driver.NamedValue) (res Res
 		return
 	}
 
-	
 	if err != nil {
 		res.err = err
 	}

@@ -1,4 +1,4 @@
-package query
+package scanner
 
 import (
 	"strings"
@@ -212,11 +212,11 @@ func (tok Token) Precedence() int {
 	return 0
 }
 
-// isOperator returns true for operator tokens.
-func (tok Token) isOperator() bool { return tok > operatorBeg && tok < operatorEnd }
+// IsOperator returns true for operator tokens.
+func (tok Token) IsOperator() bool { return tok > operatorBeg && tok < operatorEnd }
 
-// tokstr returns a literal if provided, otherwise returns the token string.
-func tokstr(tok Token, lit string) string {
+// Tokstr returns a literal if provided, otherwise returns the token string.
+func Tokstr(tok Token, lit string) string {
 	if lit != "" {
 		return lit
 	}

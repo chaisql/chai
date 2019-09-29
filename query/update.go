@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 )
 
@@ -13,15 +14,15 @@ import (
 // It is typically created using the Update function.
 type UpdateStmt struct {
 	tableSelector TableSelector
-	pairs         map[string]Expr
-	whereExpr     Expr
+	pairs         map[string]expr.Expr
+	whereExpr     expr.Expr
 }
 
 // Update creates a DSL equivalent to the SQL Update command.
 func Update(tableSelector TableSelector) UpdateStmt {
 	return UpdateStmt{
 		tableSelector: tableSelector,
-		pairs:         make(map[string]Expr),
+		pairs:         make(map[string]expr.Expr),
 	}
 }
 
@@ -51,14 +52,14 @@ func (stmt UpdateStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 
 // Set assignes the result of the evaluation of e into the field selected
 // by f.
-func (stmt UpdateStmt) Set(fieldName string, e Expr) UpdateStmt {
+func (stmt UpdateStmt) Set(fieldName string, e expr.Expr) UpdateStmt {
 	stmt.pairs[fieldName] = e
 	return stmt
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
 // Calling this method is optional.
-func (stmt UpdateStmt) Where(e Expr) UpdateStmt {
+func (stmt UpdateStmt) Where(e expr.Expr) UpdateStmt {
 	stmt.whereExpr = e
 	return stmt
 }
@@ -76,7 +77,7 @@ func (stmt UpdateStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("Set method not called")}
 	}
 
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -107,7 +108,7 @@ func (stmt UpdateStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			v, err := e.Eval(EvalStack{
+			v, err := e.Eval(expr.EvalStack{
 				Tx:     tx,
 				Record: r,
 			})
@@ -115,7 +116,7 @@ func (stmt UpdateStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			lv, ok := v.(LitteralValue)
+			lv, ok := v.(expr.LitteralValue)
 			if !ok {
 				return fmt.Errorf("expected value got list")
 			}

@@ -1,32 +1,12 @@
-package query
+package q
 
 import (
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
-
-// A FieldSelector can extract a field from a record.
-type FieldSelector interface {
-	// SelectField takes a field from a record.
-	// If the field selector was created using the As method
-	// it must replace the name of f by the alias.
-	SelectField(record.Record) (f record.Field, err error)
-	// Name of the field selector.
-	Name() string
-	// As creates an alias to a field.
-	// The returned field selector selects the same field but a different name
-	// when the SelectField is called.
-	As(alias string) FieldSelector
-}
-
-// TableSelector can select a table from a transaction.
-type TableSelector interface {
-	// SelectTable selects a table by calling the Table method of the transaction.
-	SelectTable(*database.Tx) (*database.Table, error)
-	// Name of the selected table.
-	TableName() string
-}
 
 // A Field is an adapter that can turn a string into a field selector.
 // It is supposed to be used by casting a string into a Field.
@@ -47,19 +27,19 @@ func (f Field) SelectField(r record.Record) (record.Field, error) {
 
 // Eval extracts the record from the context and selects the right field.
 // It implements the Expr interface.
-func (f Field) Eval(stack EvalStack) (Value, error) {
+func (f Field) Eval(stack expr.EvalStack) (expr.Value, error) {
 	fd, err := f.SelectField(stack.Record)
 	if err != nil {
-		return nilLitteral, nil
+		return expr.NilLitteral, nil
 	}
 
-	return LitteralValue{fd.Value}, nil
+	return expr.LitteralValue{Value: fd.Value}, nil
 }
 
 // As returns a alias to f.
 // The alias selects the same field as f but returns a different name
 // when the SelectField method is called.
-func (f Field) As(alias string) FieldSelector {
+func (f Field) As(alias string) query.FieldSelector {
 	return &Alias{FieldSelector: f, Alias: alias}
 }
 
@@ -69,7 +49,7 @@ func (f Field) As(alias string) FieldSelector {
 // of the Alias attribute.
 // It implements the FieldSelector interface.
 type Alias struct {
-	FieldSelector
+	query.FieldSelector
 	Alias string
 }
 

@@ -1,8 +1,11 @@
-package query
+package query_test
 
 import (
 	"testing"
 
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/expr"
+	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
@@ -22,7 +25,7 @@ func TestUpdateStatement(t *testing.T) {
 			tx, cleanup := createTable(t, 10, test.withIndex)
 			defer cleanup()
 
-			res := Update(Table("test")).Set("age", IntValue(20)).Where(IntField("age").Gt(20)).Exec(tx)
+			res := query.Update(q.Table("test")).Set("age", expr.IntValue(20)).Where(q.IntField("age").Gt(20)).Exec(tx)
 			require.NoError(t, res.Err())
 
 			tb, err := tx.GetTable("test")

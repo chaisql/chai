@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -15,7 +16,7 @@ import (
 type InsertStmt struct {
 	tableSelector TableSelector
 	fieldNames    []string
-	values        LitteralExprList
+	values        expr.LitteralExprList
 	records       []interface{}
 }
 
@@ -63,13 +64,13 @@ func (stmt InsertStmt) Fields(fieldNames ...string) InsertStmt {
 
 // Values is called to add one record. The list of supplied values will be used as the fields
 // of this record.
-func (stmt InsertStmt) Values(values ...Expr) InsertStmt {
-	stmt.values = append(stmt.values, LitteralExprList(values))
+func (stmt InsertStmt) Values(values ...expr.Expr) InsertStmt {
+	stmt.values = append(stmt.values, expr.LitteralExprList(values))
 	return stmt
 }
 
 // Records is called to add one or more records.
-func (stmt InsertStmt) Records(records ...record.Record) InsertStmt {
+func (stmt InsertStmt) Records(records ...interface{}) InsertStmt {
 	for _, r := range records {
 		stmt.records = append(stmt.records, r)
 	}
@@ -77,7 +78,12 @@ func (stmt InsertStmt) Records(records ...record.Record) InsertStmt {
 	return stmt
 }
 
-func (stmt InsertStmt) pairs(pairs ...kvPair) InsertStmt {
+type KVPair struct {
+	K string
+	V expr.Expr
+}
+
+func (stmt InsertStmt) Pairs(pairs ...KVPair) InsertStmt {
 	stmt.records = append(stmt.records, pairs)
 
 	return stmt
@@ -97,7 +103,7 @@ func (stmt InsertStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		return Result{err: err}
 	}
 
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -109,7 +115,11 @@ func (stmt InsertStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 	return stmt.insertValues(t, stack)
 }
 
-func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) Result {
+type paramExtractor interface {
+	Extract(params []driver.NamedValue) (interface{}, error)
+}
+
+func (stmt InsertStmt) insertRecords(t *database.Table, stack expr.EvalStack) Result {
 	if len(stmt.fieldNames) > 0 {
 		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
@@ -124,7 +134,7 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) Result 
 		case record.Record:
 			r = tp
 		case paramExtractor:
-			v, err := tp.extract(stack.Params)
+			v, err := tp.Extract(stack.Params)
 			if err != nil {
 				return Result{err: err}
 			}
@@ -134,22 +144,22 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) Result 
 			if !ok {
 				return Result{err: fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)}
 			}
-		case []kvPair:
+		case []KVPair:
 			var fb record.FieldBuffer
 			for _, pair := range tp {
-				v, err := pair.e.Eval(stack)
+				v, err := pair.V.Eval(stack)
 				if err != nil {
 					res.err = err
 					return res
 				}
 
-				vl, ok := v.(LitteralValue)
+				vl, ok := v.(expr.LitteralValue)
 				if !ok {
 					res.err = errors.New("invalid values")
 					return res
 				}
 
-				fb.Add(record.Field{Name: pair.k, Value: vl.Value})
+				fb.Add(record.Field{Name: pair.K, Value: vl.Value})
 			}
 			r = &fb
 		}
@@ -166,7 +176,7 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) Result 
 	return res
 }
 
-func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) Result {
+func (stmt InsertStmt) insertValues(t *database.Table, stack expr.EvalStack) Result {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)
@@ -180,7 +190,7 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) Result {
 
 		// each record must be a list of values
 		// (e1, e2, e3, ...)
-		vl, ok := v.(LitteralValueList)
+		vl, ok := v.(expr.LitteralValueList)
 		if !ok {
 			return Result{err: errors.New("invalid values")}
 		}
@@ -194,16 +204,16 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) Result {
 			// get the field name
 			fieldName := stmt.fieldNames[i]
 
-			var lv *LitteralValue
+			var lv *expr.LitteralValue
 
 			// each value must be either a LitteralValue or a LitteralValueList with exactly
 			// one value
 			switch t := v.(type) {
-			case LitteralValue:
+			case expr.LitteralValue:
 				lv = &t
-			case LitteralValueList:
+			case expr.LitteralValueList:
 				if len(t) == 1 {
-					if val, ok := t[0].(LitteralValue); ok {
+					if val, ok := t[0].(expr.LitteralValue); ok {
 						lv = &val
 					}
 				}

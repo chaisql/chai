@@ -1,4 +1,4 @@
-package query
+package expr
 
 import (
 	"database/sql/driver"
@@ -12,7 +12,7 @@ import (
 var (
 	trueLitteral  = LitteralValue{Value: value.NewBool(true)}
 	falseLitteral = LitteralValue{Value: value.NewBool(false)}
-	nilLitteral   = LitteralValue{Value: value.NewString("nil")}
+	NilLitteral   = LitteralValue{Value: value.NewString("nil")}
 )
 
 // An Expr evaluates to a value.
@@ -67,7 +67,7 @@ type LitteralExprList []Expr
 // Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
 func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 	if len(l) == 0 {
-		return nilLitteral, nil
+		return NilLitteral, nil
 	}
 
 	if len(l) == 1 {
@@ -89,7 +89,7 @@ func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 type NamedParam string
 
 func (p NamedParam) Eval(stack EvalStack) (Value, error) {
-	v, err := p.extract(stack.Params)
+	v, err := p.Extract(stack.Params)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (p NamedParam) Eval(stack EvalStack) (Value, error) {
 	}, nil
 }
 
-func (p NamedParam) extract(params []driver.NamedValue) (interface{}, error) {
+func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
 	for _, nv := range params {
 		if nv.Name == string(p) {
 			return nv.Value, nil
@@ -117,7 +117,7 @@ func (p NamedParam) extract(params []driver.NamedValue) (interface{}, error) {
 type PositionalParam int
 
 func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
-	v, err := p.extract(stack.Params)
+	v, err := p.Extract(stack.Params)
 	if err != nil {
 		return nil, err
 	}
@@ -132,15 +132,11 @@ func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
 	}, nil
 }
 
-func (p PositionalParam) extract(params []driver.NamedValue) (interface{}, error) {
+func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error) {
 	idx := int(p - 1)
 	if idx >= len(params) {
 		return nil, fmt.Errorf("can't find param number %d", p)
 	}
 
 	return params[idx].Value, nil
-}
-
-type paramExtractor interface {
-	extract(params []driver.NamedValue) (interface{}, error)
 }

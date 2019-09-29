@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -14,16 +15,16 @@ import (
 // It is typically created using the Select function.
 type SelectStmt struct {
 	tableSelector  TableSelector
-	whereExpr      Expr
-	offsetExpr     Expr
-	limitExpr      Expr
-	fieldSelectors []FieldSelector
+	whereExpr      expr.Expr
+	offsetExpr     expr.Expr
+	limitExpr      expr.Expr
+	FieldSelectors []FieldSelector
 }
 
 // Select creates a DSL equivalent to the SQL Select command.
 func Select(fields ...FieldSelector) SelectStmt {
 	return SelectStmt{
-		fieldSelectors: fields,
+		FieldSelectors: fields,
 	}
 }
 
@@ -52,7 +53,7 @@ func (stmt SelectStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 }
 
 // Where uses e to filter records if it evaluates to a falsy value.
-func (stmt SelectStmt) Where(e Expr) SelectStmt {
+func (stmt SelectStmt) Where(e expr.Expr) SelectStmt {
 	stmt.whereExpr = e
 	return stmt
 }
@@ -66,28 +67,28 @@ func (stmt SelectStmt) From(tableSelector TableSelector) SelectStmt {
 
 // Limit the number of records returned.
 func (stmt SelectStmt) Limit(offset int) SelectStmt {
-	stmt.limitExpr = Int64Value(int64(offset))
+	stmt.limitExpr = expr.Int64Value(int64(offset))
 	return stmt
 }
 
 // LimitExpr takes an expression that will be evaluated to determine
 // how many records the query must return.
 // The result of the evaluation must be an integer.
-func (stmt SelectStmt) LimitExpr(e Expr) SelectStmt {
+func (stmt SelectStmt) LimitExpr(e expr.Expr) SelectStmt {
 	stmt.limitExpr = e
 	return stmt
 }
 
 // Offset indicates the number of records to skip.
 func (stmt SelectStmt) Offset(offset int) SelectStmt {
-	stmt.offsetExpr = Int64Value(int64(offset))
+	stmt.offsetExpr = expr.Int64Value(int64(offset))
 	return stmt
 }
 
 // OffsetExpr takes an expression that will be evaluated to determine
 // how many records the query must skip.
 // The result of the evaluation must be a field.Int64.
-func (stmt SelectStmt) OffsetExpr(e Expr) SelectStmt {
+func (stmt SelectStmt) OffsetExpr(e expr.Expr) SelectStmt {
 	stmt.offsetExpr = e
 	return stmt
 }
@@ -104,7 +105,7 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 	offset := -1
 	limit := -1
 
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -115,7 +116,7 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 			return Result{err: err}
 		}
 
-		lv, ok := v.(LitteralValue)
+		lv, ok := v.(expr.LitteralValue)
 		if !ok {
 			return Result{err: fmt.Errorf("expected value got list")}
 		}
@@ -136,7 +137,7 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 			return Result{err: err}
 		}
 
-		lv, ok := v.(LitteralValue)
+		lv, ok := v.(expr.LitteralValue)
 		if !ok {
 			return Result{err: fmt.Errorf("expected value got list")}
 		}
@@ -167,10 +168,10 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		st = st.Limit(limit)
 	}
 
-	if len(stmt.fieldSelectors) > 0 {
-		fieldNames := make([]string, len(stmt.fieldSelectors))
-		for i := range stmt.fieldSelectors {
-			fieldNames[i] = stmt.fieldSelectors[i].Name()
+	if len(stmt.FieldSelectors) > 0 {
+		fieldNames := make([]string, len(stmt.FieldSelectors))
+		for i := range stmt.FieldSelectors {
+			fieldNames[i] = stmt.FieldSelectors[i].Name()
 		}
 		st = st.Map(func(r record.Record) (record.Record, error) {
 			return recordMask{

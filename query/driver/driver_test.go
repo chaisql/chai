@@ -1,4 +1,4 @@
-package query
+package driver
 
 import (
 	"database/sql"

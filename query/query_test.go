@@ -1,4 +1,4 @@
-package query
+package query_test
 
 import (
 	"fmt"
@@ -7,6 +7,9 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/expr"
+	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +52,7 @@ func BenchmarkStatementSelect(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				Select().From(Table("test")).Where(IntField("age").Gt(-200)).Exec(tx).Count()
+				query.Select().From(q.Table("test")).Where(q.IntField("age").Gt(-200)).Exec(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -65,7 +68,7 @@ func BenchmarkStatementSelectLimit(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				Select().From(Table("test")).Where(IntField("age").Gt(-200)).Limit(size/10 + 1).Exec(tx).Count()
+				query.Select().From(q.Table("test")).Where(q.IntField("age").Gt(-200)).Limit(size/10 + 1).Exec(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -81,7 +84,7 @@ func BenchmarkStatementSelectWithIndex(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				Select().From(Table("test")).Where(StringField("name").Gt("")).Exec(tx).Count()
+				query.Select().From(q.Table("test")).Where(q.StringField("name").Gt("")).Exec(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -97,7 +100,7 @@ func BenchmarkStatementDelete(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				res := Delete().From(Table("test")).Where(IntField("age").Gt(-200)).Exec(tx)
+				res := query.Delete().From(q.Table("test")).Where(q.IntField("age").Gt(-200)).Exec(tx)
 				require.NoError(b, res.Err())
 			}
 			b.StopTimer()
@@ -114,7 +117,7 @@ func BenchmarkStatementUpdate(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				res := Update(Table("test")).Where(IntField("age").Gt(-200)).Set("age", IntValue(100)).Exec(tx)
+				res := query.Update(q.Table("test")).Where(q.IntField("age").Gt(-200)).Set("age", expr.IntValue(100)).Exec(tx)
 				require.NoError(b, res.Err())
 			}
 			b.StopTimer()

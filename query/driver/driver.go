@@ -1,4 +1,4 @@
-package query
+package driver
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/parser"
 	"github.com/asdine/genji/record"
 )
 
@@ -60,13 +62,13 @@ type conn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c conn) Prepare(q string) (driver.Stmt, error) {
-	s, err := ParseStatement(q)
+	s, err := parser.ParseStatement(q)
 	if err != nil {
 		return nil, err
 	}
 
 	return stmt{
-		txo:  &TxOpener{DB: c.db},
+		txo:  &query.TxOpener{DB: c.db},
 		stmt: s,
 	}, nil
 }
@@ -95,8 +97,8 @@ func (c conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, er
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	txo  *TxOpener
-	stmt Statement
+	txo  *query.TxOpener
+	stmt query.Statement
 }
 
 // NumInput returns the number of placeholder parameters.
@@ -149,11 +151,11 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	}
 
 	rs := newRecordStream(res)
-	slct, ok := s.stmt.(SelectStmt)
-	if ok && len(slct.fieldSelectors) > 0 {
-		rs.fields = make([]string, len(slct.fieldSelectors))
-		for i := range slct.fieldSelectors {
-			rs.fields[i] = slct.fieldSelectors[i].Name()
+	slct, ok := s.stmt.(query.SelectStmt)
+	if ok && len(slct.FieldSelectors) > 0 {
+		rs.fields = make([]string, len(slct.FieldSelectors))
+		for i := range slct.FieldSelectors {
+			rs.fields[i] = slct.FieldSelectors[i].Name()
 		}
 	}
 	return rs, nil
@@ -165,7 +167,7 @@ func (s stmt) Close() error {
 }
 
 type recordStream struct {
-	res      Result
+	res      query.Result
 	cancelFn func()
 	c        chan rec
 	wg       sync.WaitGroup
@@ -177,7 +179,7 @@ type rec struct {
 	err error
 }
 
-func newRecordStream(res Result) *recordStream {
+func newRecordStream(res query.Result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	records := recordStream{

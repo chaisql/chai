@@ -1,4 +1,4 @@
-package query
+package query_test
 
 import (
 	"testing"
@@ -6,6 +6,9 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/expr"
+	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +18,7 @@ func TestSelectStatement(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		res := Select().From(Table("test")).Where(IntField("age").Gt(20)).Limit(5).Offset(1).Exec(tx)
+		res := query.Select().From(q.Table("test")).Where(q.IntField("age").Gt(20)).Limit(5).Offset(1).Exec(tx)
 		require.NoError(t, res.Err())
 
 		count, err := res.Count()
@@ -41,7 +44,7 @@ func TestSelectStatement(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		res := Select(Field("id"), Field("name")).From(Table("test")).Where(IntField("age").Gt(20)).Limit(5).Offset(1).Exec(tx)
+		res := query.Select(q.Field("id"), q.Field("name")).From(q.Table("test")).Where(q.IntField("age").Gt(20)).Limit(5).Offset(1).Exec(tx)
 		require.NoError(t, res.Err())
 
 		count, err := res.Count()
@@ -67,7 +70,7 @@ func TestSelectStatement(t *testing.T) {
 		tx, cleanup := createTable(t, 10, true)
 		defer cleanup()
 
-		res := Select().From(Table("test")).Where(StringField("name").Gt("john")).Limit(5).Offset(1).Exec(tx)
+		res := query.Select().From(q.Table("test")).Where(q.StringField("name").Gt("john")).Limit(5).Offset(1).Exec(tx)
 		require.NoError(t, res.Err())
 
 		count, err := res.Count()
@@ -105,7 +108,7 @@ func TestSelectStatement(t *testing.T) {
 				return err
 			}
 
-			res := Select().From(tb).Where(And(StringField("a").Eq("foo"), StringField("a").Eq("foo"))).Limit(1).Exec(tx)
+			res := query.Select().From(tb).Where(expr.And(q.StringField("a").Eq("foo"), q.StringField("a").Eq("foo"))).Limit(1).Exec(tx)
 			if res.Err() != nil {
 				return res.Err()
 			}

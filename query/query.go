@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 )
 
@@ -11,7 +12,7 @@ import (
 // from any table, or even alter the structure of the database.
 // Results are returned as streams.
 type Query struct {
-	statements []Statement
+	Statements []Statement
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
@@ -19,7 +20,7 @@ func (q Query) Run(db *database.DB, args ...interface{}) Result {
 	txm := TxOpener{DB: db}
 	var res Result
 
-	for _, stmt := range q.statements {
+	for _, stmt := range q.Statements {
 		res = stmt.Run(&txm, nil)
 		if res.err != nil {
 			return res
@@ -31,17 +32,7 @@ func (q Query) Run(db *database.DB, args ...interface{}) Result {
 
 // New creates a new Query with the given statements.
 func New(statements ...Statement) Query {
-	return Query{statements: statements}
-}
-
-// Run parses s and runs the query against db.
-func Run(db *database.DB, s string) Result {
-	q, err := ParseQuery(s)
-	if err != nil {
-		return Result{err: err}
-	}
-
-	return q.Run(db)
+	return Query{Statements: statements}
 }
 
 // A Statement represents a unique action that can be executed against the database.
@@ -109,7 +100,7 @@ func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
 
-func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
+func whereClause(e expr.Expr, stack expr.EvalStack) func(r record.Record) (bool, error) {
 	if e == nil {
 		return func(r record.Record) (bool, error) {
 			return true, nil
@@ -142,4 +133,26 @@ func argsToNamedValues(args []interface{}) []driver.NamedValue {
 	}
 
 	return nv
+}
+
+// A FieldSelector can extract a field from a record.
+type FieldSelector interface {
+	// SelectField takes a field from a record.
+	// If the field selector was created using the As method
+	// it must replace the name of f by the alias.
+	SelectField(record.Record) (f record.Field, err error)
+	// Name of the field selector.
+	Name() string
+	// As creates an alias to a field.
+	// The returned field selector selects the same field but a different name
+	// when the SelectField is called.
+	As(alias string) FieldSelector
+}
+
+// TableSelector can select a table from a transaction.
+type TableSelector interface {
+	// SelectTable selects a table by calling the Table method of the transaction.
+	SelectTable(*database.Tx) (*database.Table, error)
+	// Name of the selected table.
+	TableName() string
 }

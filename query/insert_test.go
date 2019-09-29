@@ -1,8 +1,11 @@
-package query
+package query_test
 
 import (
 	"testing"
 
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/expr"
+	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +15,7 @@ func TestInsertStatement(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		res := Insert().Into(Table("test")).Values(IntValue(5), StringValue("hello"), IntValue(50), IntValue(5)).Exec(tx)
+		res := query.Insert().Into(q.Table("test")).Values(expr.IntValue(5), expr.StringValue("hello"), expr.IntValue(50), expr.IntValue(5)).Exec(tx)
 		require.Error(t, res.Err())
 	})
 
@@ -20,7 +23,7 @@ func TestInsertStatement(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		res := Insert().Into(Table("test")).Fields("a", "b").Values(IntValue(5), StringValue("hello")).Exec(tx)
+		res := query.Insert().Into(q.Table("test")).Fields("a", "b").Values(expr.IntValue(5), expr.StringValue("hello")).Exec(tx)
 		require.NoError(t, res.Err())
 
 		tb, err := tx.GetTable("test")

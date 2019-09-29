@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 )
 
@@ -12,7 +13,7 @@ import (
 // It is typically created using the Delete function.
 type DeleteStmt struct {
 	tableSelector TableSelector
-	whereExpr     Expr
+	whereExpr     expr.Expr
 }
 
 // Delete creates a DSL equivalent to the SQL Delete command.
@@ -53,7 +54,7 @@ func (stmt DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
 
 // Where uses e to filter records if it evaluates to a falsy value.
 // Calling this method is optional.
-func (stmt DeleteStmt) Where(e Expr) DeleteStmt {
+func (stmt DeleteStmt) Where(e expr.Expr) DeleteStmt {
 	stmt.whereExpr = e
 	return stmt
 }
@@ -67,7 +68,7 @@ func (stmt DeleteStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("missing table selector")}
 	}
 
-	stack := EvalStack{Tx: tx, Params: args}
+	stack := expr.EvalStack{Tx: tx, Params: args}
 
 	t, err := stmt.tableSelector.SelectTable(tx)
 	if err != nil {
