@@ -199,7 +199,7 @@ func (p *Parser) parseInsertStatement() (InsertStmt, error) {
 	}
 
 	// If values was not found, parse RECORDS (r1, r2, r3)
-	pairsList, found, err := p.parseRecords()
+	records, found, err := p.parseRecords()
 	if err != nil {
 		return stmt, err
 	}
@@ -209,7 +209,7 @@ func (p *Parser) parseInsertStatement() (InsertStmt, error) {
 		return stmt, newParseError(tokstr(tok, lit), []string{"VALUES", "RECORDS"}, pos)
 	}
 
-	stmt.pairsList = pairsList
+	stmt.records = records
 
 	return stmt, nil
 }
@@ -372,27 +372,23 @@ func (p *Parser) parseValues() ([]Expr, bool, error) {
 }
 
 // parseValues parses the "RECORDS" clause of the query, if it exists.
-func (p *Parser) parseRecords() ([][]kvPair, bool, error) {
+func (p *Parser) parseRecords() ([]interface{}, bool, error) {
 	// Check if the RECORDS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != RECORDS {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	var pairsList [][]kvPair
+	var records []interface{}
 
 	// Parse first (required) record.
-	pairs, ok, err := p.parseKVList()
+	// It can either be a param or kv list
+	rec, err := p.parseRecord()
 	if err != nil {
-		return nil, true, err
-	}
-	if !ok {
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		p.Unscan()
-		return nil, false, newParseError(tokstr(tok, lit), []string{"record"}, pos)
+		return nil, false, err
 	}
 
-	pairsList = append(pairsList, pairs)
+	records = append(records, rec)
 
 	// Parse remaining (optional) records.
 	for {
@@ -401,20 +397,42 @@ func (p *Parser) parseRecords() ([][]kvPair, bool, error) {
 			break
 		}
 
-		pairs, ok, err := p.parseKVList()
+		rec, err := p.parseRecord()
 		if err != nil {
-			return nil, true, err
-		}
-		if !ok {
-			tok, pos, lit := p.ScanIgnoreWhitespace()
-			p.Unscan()
-			return nil, false, newParseError(tokstr(tok, lit), []string{"record"}, pos)
+			return nil, false, err
 		}
 
-		pairsList = append(pairsList, pairs)
+		records = append(records, rec)
 	}
 
-	return pairsList, true, nil
+	return records, true, nil
+}
+
+func (p *Parser) parseRecord() (interface{}, error) {
+	// Parse a param first
+	v, err := p.parseParam()
+	if err != nil {
+		p.Unscan()
+		return nil, err
+	}
+	if v != nil {
+		return v, nil
+	}
+
+	// If not a param, it must be a pairlist
+	p.Unscan()
+
+	pairs, ok, err := p.parseKVList()
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		p.Unscan()
+		return nil, newParseError(tokstr(tok, lit), []string{"record"}, pos)
+	}
+
+	return pairs, nil
 }
 
 // parseFieldList parses a list of fields in the form: (field, field, ...), if exists
@@ -690,6 +708,30 @@ func (p *Parser) ParseIdentList() ([]string, error) {
 		}
 
 		idents = append(idents, ident)
+	}
+}
+
+// parseParam parses a positional or named param.
+func (p *Parser) parseParam() (interface{}, error) {
+	tok, _, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case NAMEDPARAM:
+		if len(lit) == 1 {
+			return nil, &ParseError{Message: "missing param name"}
+		}
+		if p.orderedParams > 0 {
+			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+		}
+		p.namedParams++
+		return NamedParam(lit[1:]), nil
+	case POSITIONALPARAM:
+		if p.namedParams > 0 {
+			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+		}
+		p.orderedParams++
+		return PositionalParam(p.orderedParams), nil
+	default:
+		return nil, nil
 	}
 }
 

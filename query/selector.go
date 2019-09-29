@@ -51,7 +51,7 @@ func (f Field) SelectField(r record.Record) (field.Field, error) {
 func (f Field) Eval(stack EvalStack) (Value, error) {
 	fd, err := f.SelectField(stack.Record)
 	if err != nil {
-		return nilLitteral, err
+		return nilLitteral, nil
 	}
 
 	return LitteralValue{fd.Value}, nil

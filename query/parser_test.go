@@ -195,6 +195,18 @@ func TestParserInsert(t *testing.T) {
 			Insert().Into(Table("test")).
 				pairs(kvPair{"a", StringValue("a")}, kvPair{"b", Float64Value(2.3)}, kvPair{"c", Eq(Int64Value(1), Int64Value(1))}).
 				pairs(kvPair{"a", Int64Value(1)}, kvPair{"d", BoolValue(true)}), false},
+		{"Records / Positional Param", "INSERT INTO test RECORDS ?, ?",
+			func() Statement {
+				st := Insert().Into(Table("test"))
+				st.records = append(st.records, PositionalParam(1), PositionalParam(2))
+				return st
+			}(), false},
+		{"Records / Named Param", "INSERT INTO test RECORDS $foo, $bar",
+			func() Statement {
+				st := Insert().Into(Table("test"))
+				st.records = append(st.records, NamedParam("foo"), NamedParam("bar"))
+				return st
+			}(), false},
 	}
 
 	for _, test := range tests {

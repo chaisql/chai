@@ -151,5 +151,4 @@ func TestDriver(t *testing.T) {
 		require.NoError(t, rows.Err())
 		require.Equal(t, 1, count)
 	})
-
 }

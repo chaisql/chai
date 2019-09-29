@@ -89,16 +89,25 @@ func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 type NamedParam string
 
 func (p NamedParam) Eval(stack EvalStack) (Value, error) {
-	for _, nv := range stack.Params {
-		if nv.Name == string(p) {
-			v, err := value.New(nv.Value)
-			if err != nil {
-				return nil, err
-			}
+	v, err := p.extract(stack.Params)
+	if err != nil {
+		return nil, err
+	}
 
-			return LitteralValue{
-				Value: v,
-			}, nil
+	vl, err := value.New(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return LitteralValue{
+		Value: vl,
+	}, nil
+}
+
+func (p NamedParam) extract(params []driver.NamedValue) (interface{}, error) {
+	for _, nv := range params {
+		if nv.Name == string(p) {
+			return nv.Value, nil
 		}
 	}
 
@@ -108,17 +117,30 @@ func (p NamedParam) Eval(stack EvalStack) (Value, error) {
 type PositionalParam int
 
 func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
-	idx := int(p - 1)
-	if idx >= len(stack.Params) {
-		return nil, fmt.Errorf("can't find param number %d", p)
+	v, err := p.extract(stack.Params)
+	if err != nil {
+		return nil, err
 	}
 
-	v, err := value.New(stack.Params[idx].Value)
+	vl, err := value.New(v)
 	if err != nil {
 		return nil, err
 	}
 
 	return LitteralValue{
-		Value: v,
+		Value: vl,
 	}, nil
+}
+
+func (p PositionalParam) extract(params []driver.NamedValue) (interface{}, error) {
+	idx := int(p - 1)
+	if idx >= len(params) {
+		return nil, fmt.Errorf("can't find param number %d", p)
+	}
+
+	return params[idx].Value, nil
+}
+
+type paramExtractor interface {
+	extract(params []driver.NamedValue) (interface{}, error)
 }

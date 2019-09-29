@@ -18,8 +18,7 @@ type InsertStmt struct {
 	tableSelector TableSelector
 	fieldNames    []string
 	values        LitteralExprList
-	records       []record.Record
-	pairsList     [][]kvPair
+	records       []interface{}
 }
 
 // Insert creates a DSL equivalent to the SQL Insert command.
@@ -73,12 +72,16 @@ func (stmt InsertStmt) Values(values ...Expr) InsertStmt {
 
 // Records is called to add one or more records.
 func (stmt InsertStmt) Records(records ...record.Record) InsertStmt {
-	stmt.records = append(stmt.records, records...)
+	for _, r := range records {
+		stmt.records = append(stmt.records, r)
+	}
+
 	return stmt
 }
 
 func (stmt InsertStmt) pairs(pairs ...kvPair) InsertStmt {
-	stmt.pairsList = append(stmt.pairsList, pairs)
+	stmt.records = append(stmt.records, pairs)
+
 	return stmt
 }
 
@@ -87,7 +90,7 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("missing table selector")}
 	}
 
-	if stmt.values == nil && stmt.records == nil && stmt.pairsList == nil {
+	if stmt.values == nil && stmt.records == nil {
 		return Result{err: errors.New("values and records are empty")}
 	}
 
@@ -101,10 +104,6 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		Params: args,
 	}
 
-	if len(stmt.pairsList) > 0 {
-		return stmt.insertPairList(t, stack)
-	}
-
 	if len(stmt.records) > 0 {
 		return stmt.insertRecords(t, stack)
 	}
@@ -112,7 +111,7 @@ func (stmt InsertStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	return stmt.insertValues(t, stack)
 }
 
-func (stmt InsertStmt) insertPairList(t *genji.Table, stack EvalStack) Result {
+func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
 	if len(stmt.fieldNames) > 0 {
 		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
@@ -120,43 +119,44 @@ func (stmt InsertStmt) insertPairList(t *genji.Table, stack EvalStack) Result {
 	var res Result
 	var err error
 
-	for _, pairs := range stmt.pairsList {
-		var fb record.FieldBuffer
-		for _, pair := range pairs {
-			v, err := pair.e.Eval(stack)
-			if err != nil {
-				res.err = err
-				return res
-			}
-
-			vl, ok := v.(LitteralValue)
-			if !ok {
-				res.err = errors.New("invalid values")
-				return res
-			}
-
-			fb.Add(field.Field{Name: pair.k, Value: vl.Value})
-		}
-
-		res.lastInsertRecordID, err = t.Insert(&fb)
-		if err != nil {
-			res.err = err
-			return res
-		}
-
-		res.rowsAffected++
-	}
-
-	res.Stream = table.NewStream(table.NewReaderFromRecords())
-	return res
-}
-
-func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
-	var res Result
-	var err error
-
 	for _, rec := range stmt.records {
-		res.lastInsertRecordID, err = t.Insert(rec)
+		var r record.Record
+
+		switch tp := rec.(type) {
+		case record.Record:
+			r = tp
+		case paramExtractor:
+			v, err := tp.extract(stack.Params)
+			if err != nil {
+				return Result{err: err}
+			}
+
+			var ok bool
+			r, ok = v.(record.Record)
+			if !ok {
+				return Result{err: fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)}
+			}
+		case []kvPair:
+			var fb record.FieldBuffer
+			for _, pair := range tp {
+				v, err := pair.e.Eval(stack)
+				if err != nil {
+					res.err = err
+					return res
+				}
+
+				vl, ok := v.(LitteralValue)
+				if !ok {
+					res.err = errors.New("invalid values")
+					return res
+				}
+
+				fb.Add(field.Field{Name: pair.k, Value: vl.Value})
+			}
+			r = &fb
+		}
+
+		res.lastInsertRecordID, err = t.Insert(r)
 		if err != nil {
 			return Result{err: err}
 		}

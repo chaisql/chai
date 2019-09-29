@@ -127,6 +127,19 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return nil, errors.New("not implemented")
 }
 
+// CheckNamedValue has the same behaviour as driver.DefaultParamaterConverter, except that
+// it allows record.Records to be passed as parameters.
+// It implements the driver.NamedValueChecker interface.
+func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
+	if _, ok := nv.Value.(record.Record); ok {
+		return nil
+	}
+
+	var err error
+	nv.Value, err = driver.DefaultParameterConverter.ConvertValue(nv.Value)
+	return err
+}
+
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
 func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {

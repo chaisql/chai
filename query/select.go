@@ -183,6 +183,12 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 			}, nil
 		})
 	}
+
+	// n, err := st.Count()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println("N", n)
 	return Result{Stream: st}
 }
 
