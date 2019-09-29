@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/cmd/genji/generator/testdata"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
@@ -219,7 +219,7 @@ func TestGeneratedRecords(t *testing.T) {
 		}
 
 		require.Implements(t, (*record.Record)(nil), &r)
-		require.Implements(t, (*table.PrimaryKeyer)(nil), &r)
+		require.Implements(t, (*database.PrimaryKeyer)(nil), &r)
 
 		pk, err := r.PrimaryKey()
 		require.NoError(t, err)

@@ -66,7 +66,7 @@ func TestDriver(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	dbx := sql.OpenDB(newConnector(db))
+	dbx := sql.OpenDB(NewConnector(db))
 
 	res, err := dbx.Exec("CREATE TABLE test")
 	require.NoError(t, err)

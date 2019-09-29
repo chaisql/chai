@@ -23,7 +23,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	db, err := genji.New(ng)
+	db, err := genji.Open(ng)
 	if err != nil {
 		log.Fatal(err)
 	}
