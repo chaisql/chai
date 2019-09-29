@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ table.Reader = (*genji.Table)(nil)
+var _ record.Iterator = (*genji.Table)(nil)
 
 func TestDump(t *testing.T) {
 	tests := []struct {

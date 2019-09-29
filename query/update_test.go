@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +28,7 @@ func TestUpdateStatement(t *testing.T) {
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
 
-			st := table.NewStream(tb)
+			st := record.NewStream(tb)
 			count, err := st.Count()
 			require.NoError(t, err)
 			require.Equal(t, 10, count)

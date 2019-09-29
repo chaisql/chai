@@ -80,7 +80,7 @@ func (tx TxOpener) Update(fn func(tx *genji.Tx) error) error {
 
 // Result of a query.
 type Result struct {
-	table.Stream
+	record.Stream
 	rowsAffected       driver.RowsAffected
 	err                error
 	lastInsertRecordID []byte

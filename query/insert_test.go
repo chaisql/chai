@@ -3,7 +3,7 @@ package query
 import (
 	"testing"
 
-	"github.com/asdine/genji/table"
+	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +26,7 @@ func TestInsertStatement(t *testing.T) {
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		st := table.NewStream(tb)
+		st := record.NewStream(tb)
 		count, err := st.Count()
 		require.NoError(t, err)
 		require.Equal(t, 11, count)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 )
 
 // DeleteStmt is a DSL that allows creating a full Delete query.
@@ -75,9 +74,7 @@ func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: err}
 	}
 
-	var tr table.Reader = t
-
-	st := table.NewStream(tr)
+	st := record.NewStream(t)
 	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
 	err = st.Iterate(func(r record.Record) error {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 )
 
@@ -163,7 +162,7 @@ func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
 		res.rowsAffected++
 	}
 
-	res.Stream = table.NewStream(table.NewReaderFromRecords())
+	res.Stream = record.NewStream(record.NewIteratorFromRecords())
 	return res
 }
 
@@ -229,7 +228,7 @@ func (stmt InsertStmt) insertValues(t *genji.Table, stack EvalStack) Result {
 		res.rowsAffected++
 	}
 
-	res.Stream = table.NewStream(table.NewReaderFromRecords())
+	res.Stream = record.NewStream(record.NewIteratorFromRecords())
 
 	return res
 }

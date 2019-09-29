@@ -20,37 +20,9 @@ var (
 
 // A Table represents a collection of records.
 type Table interface {
-	Reader
+	record.Iterator
 	RecordGetter
 	Writer
-}
-
-// A Reader can read data from a table.
-type Reader interface {
-	// Iterate goes through all the records of the table and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(func(r record.Record) error) error
-}
-
-// NewReaderFromRecords creates a reader that will iterate over
-// the given records.
-func NewReaderFromRecords(records ...record.Record) Reader {
-	return recordsReader(records)
-}
-
-type recordsReader []record.Record
-
-func (rr recordsReader) Iterate(fn func(r record.Record) error) error {
-	var err error
-
-	for _, r := range rr {
-		err = fn(r)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // A RecordGetter is a type that allows to get one record by key.
@@ -79,11 +51,11 @@ type PrimaryKeyer interface {
 
 // A Scanner is a type that can read all the records of a table reader.
 type Scanner interface {
-	ScanTable(Reader) error
+	ScanTable(record.Iterator) error
 }
 
 // Dump table information to w, structured as a csv .
-func Dump(w io.Writer, t Reader) error {
+func Dump(w io.Writer, t record.Iterator) error {
 	buf := bufio.NewWriter(w)
 
 	err := t.Iterate(func(r record.Record) error {

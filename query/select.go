@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
 )
 
@@ -157,9 +156,7 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		return Result{err: err}
 	}
 
-	var tr table.Reader = t
-
-	st := table.NewStream(tr)
+	st := record.NewStream(t)
 	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
 	if offset > 0 {
