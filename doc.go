@@ -68,9 +68,9 @@ This is equivalent to the SQL row. It is managed by the record package, which al
   type Record interface {
 	  // Iterate goes through all the fields of the record and calls the given function by passing each one of them.
 	  // If the given function returns an error, the iteration stops.
-	  Iterate(fn func(field.Field) error) error
+	  Iterate(fn func(record.Field) error) error
 	  // GetField returns a field by name.
-	  GetField(name string) (field.Field, error)
+	  GetField(name string) (record.Field, error)
   }
 
 A table is a group of records. It allows to read and write records. It is also an interface, but Genji provides implementations that should cover most of the use cases
@@ -116,8 +116,8 @@ The genji command line can be used as follows to generate the code:
 This will generate a file named user.genji.go containing the following types and methods
 
   // The User type gets new methods that implement some Genji interfaces.
-  func (u *User) GetField(name string) (field.Field, error) {}
-  func (u *User) Iterate(fn func(field.Field) error) error {}
+  func (u *User) GetField(name string) (record.Field, error) {}
+  func (u *User) Iterate(fn func(record.Field) error) error {}
   func (u *User) ScanRecord(rec record.Record) error {}
   func (u *User) PrimaryKey() ([]byte, error) {}
   func (u *User) Indexes() map[string]index.Options

@@ -4,17 +4,15 @@ package record
 import (
 	"fmt"
 	"io"
-
-	"github.com/asdine/genji/field"
 )
 
 // A Record represents a group of fields.
 type Record interface {
 	// Iterate goes through all the fields of the record and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(field.Field) error) error
+	Iterate(fn func(Field) error) error
 	// GetField returns a field by name.
-	GetField(name string) (field.Field, error)
+	GetField(name string) (Field, error)
 }
 
 // A Scanner can iterate over a record and scan all the fields.
@@ -23,39 +21,39 @@ type Scanner interface {
 }
 
 // FieldBuffer is slice of fields which implements the Record interface.
-type FieldBuffer []field.Field
+type FieldBuffer []Field
 
 // NewFieldBuffer creates a FieldBuffer with the given fields.
-func NewFieldBuffer(fields ...field.Field) FieldBuffer {
+func NewFieldBuffer(fields ...Field) FieldBuffer {
 	return FieldBuffer(fields)
 }
 
 // Add a field to the buffer.
-func (fb *FieldBuffer) Add(f field.Field) {
+func (fb *FieldBuffer) Add(f Field) {
 	*fb = append(*fb, f)
 }
 
 // ScanRecord copies all the fields of r to the buffer.
 func (fb *FieldBuffer) ScanRecord(r Record) error {
-	return r.Iterate(func(f field.Field) error {
+	return r.Iterate(func(f Field) error {
 		*fb = append(*fb, f)
 		return nil
 	})
 }
 
 // GetField returns a field by name. Returns an error if the field doesn't exists.
-func (fb FieldBuffer) GetField(name string) (field.Field, error) {
+func (fb FieldBuffer) GetField(name string) (Field, error) {
 	for _, f := range fb {
 		if f.Name == name {
 			return f, nil
 		}
 	}
 
-	return field.Field{}, fmt.Errorf("field %q not found", name)
+	return Field{}, fmt.Errorf("field %q not found", name)
 }
 
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(f field.Field) {
+func (fb *FieldBuffer) Set(f Field) {
 	s := *fb
 	for i := range s {
 		if s[i].Name == f.Name {
@@ -69,7 +67,7 @@ func (fb *FieldBuffer) Set(f field.Field) {
 
 // Iterate goes through all the fields of the record and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (fb FieldBuffer) Iterate(fn func(field.Field) error) error {
+func (fb FieldBuffer) Iterate(fn func(Field) error) error {
 	for _, f := range fb {
 		err := fn(f)
 		if err != nil {
@@ -94,7 +92,7 @@ func (fb *FieldBuffer) Delete(name string) error {
 }
 
 // Replace the field with the given name by f.
-func (fb *FieldBuffer) Replace(name string, f field.Field) error {
+func (fb *FieldBuffer) Replace(name string, f Field) error {
 	s := *fb
 	for i := range s {
 		if s[i].Name == name {
@@ -109,7 +107,7 @@ func (fb *FieldBuffer) Replace(name string, f field.Field) error {
 
 // DumpRecord is helper that dumps the content of a record into the given writer.
 func DumpRecord(w io.Writer, r Record) error {
-	return r.Iterate(func(f field.Field) error {
+	return r.Iterate(func(f Field) error {
 		v, err := f.Decode()
 		fmt.Fprintf(w, "%s(%s): %#v\n", f.Name, f.Type, v)
 		return err
@@ -126,9 +124,9 @@ type mapRecord map[string]interface{}
 
 var _ Record = (*mapRecord)(nil)
 
-func (m mapRecord) Iterate(fn func(field.Field) error) error {
+func (m mapRecord) Iterate(fn func(Field) error) error {
 	for k, v := range m {
-		f, err := field.New(k, v)
+		f, err := NewField(k, v)
 		if err != nil {
 			return err
 		}
@@ -141,10 +139,10 @@ func (m mapRecord) Iterate(fn func(field.Field) error) error {
 	return nil
 }
 
-func (m mapRecord) GetField(name string) (field.Field, error) {
+func (m mapRecord) GetField(name string) (Field, error) {
 	v, ok := m[name]
 	if !ok {
-		return field.Field{}, fmt.Errorf("field %q not found", name)
+		return Field{}, fmt.Errorf("field %q not found", name)
 	}
-	return field.New(name, v)
+	return NewField(name, v)
 }

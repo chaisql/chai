@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji"
 )
 
+
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
 // It is typically created using the CreateTable function.
 type CreateTableStmt struct {

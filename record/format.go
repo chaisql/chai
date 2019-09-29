@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/value"
 )
 
@@ -122,7 +121,7 @@ type FieldHeader struct {
 	NameSize uint64
 	// Name of the field
 	Name []byte
-	// Type of the field, corresponds to the field.Type
+	// Type of the field, corresponds to the value.Type
 	Type uint64
 	// Size of the data of the field
 	Size uint64
@@ -233,7 +232,7 @@ func Encode(r Record) ([]byte, error) {
 	var format Format
 
 	var offset uint64
-	err := r.Iterate(func(f field.Field) error {
+	err := r.Iterate(func(f Field) error {
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f.Name)),
 			nameString: f.Name,
@@ -257,7 +256,7 @@ func Encode(r Record) ([]byte, error) {
 
 	buf.Grow(format.Header.BodySize())
 
-	err = r.Iterate(func(f field.Field) error {
+	err = r.Iterate(func(f Field) error {
 		_, err = buf.Write(f.Data)
 		return err
 	})
@@ -269,10 +268,10 @@ func Encode(r Record) ([]byte, error) {
 }
 
 // DecodeField reads a single field from data without decoding the entire data.
-func DecodeField(data []byte, fieldName string) (field.Field, error) {
+func DecodeField(data []byte, fieldName string) (Field, error) {
 	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
-		return field.Field{}, errors.New("can't decode data")
+		return Field{}, errors.New("can't decode data")
 	}
 
 	hdata := data[n : n+int(hsize)]
@@ -281,7 +280,7 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 	// skip number of fields
 	_, n = binary.Uvarint(hdata)
 	if n <= 0 {
-		return field.Field{}, errors.New("can't decode data")
+		return Field{}, errors.New("can't decode data")
 	}
 	hdata = hdata[n:]
 
@@ -289,12 +288,12 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 	for len(hdata) > 0 {
 		n, err := fh.Decode(hdata)
 		if err != nil {
-			return field.Field{}, err
+			return Field{}, err
 		}
 		hdata = hdata[n:]
 
 		if fieldName == string(fh.Name) {
-			return field.Field{
+			return Field{
 				Name: fieldName,
 				Value: value.Value{
 					Type: value.Type(fh.Type),
@@ -304,7 +303,7 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 		}
 	}
 
-	return field.Field{}, fmt.Errorf("field %s not found", fieldName)
+	return Field{}, fmt.Errorf("field %s not found", fieldName)
 }
 
 // An EncodedRecord implements the record interface on top of an encoded representation of a
@@ -313,13 +312,13 @@ func DecodeField(data []byte, fieldName string) (field.Field, error) {
 type EncodedRecord []byte
 
 // GetField decodes the selected field.
-func (e EncodedRecord) GetField(name string) (field.Field, error) {
+func (e EncodedRecord) GetField(name string) (Field, error) {
 	return DecodeField(e, name)
 }
 
 // Iterate decodes each fields one by one and passes them to fn until the end of the record
 // or until fn returns an error.
-func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
+func (e EncodedRecord) Iterate(fn func(Field) error) error {
 	var format Format
 	err := format.Decode(e)
 	if err != nil {
@@ -327,7 +326,7 @@ func (e EncodedRecord) Iterate(fn func(field.Field) error) error {
 	}
 
 	for _, fh := range format.Header.FieldHeaders {
-		err = fn(field.Field{
+		err = fn(Field{
 			Name: string(fh.Name),
 			Value: value.Value{
 				Type: value.Type(fh.Type),

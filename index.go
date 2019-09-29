@@ -1,7 +1,6 @@
 package genji
 
 import (
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
@@ -19,24 +18,24 @@ func (i *indexOptions) PrimaryKey() ([]byte, error) {
 }
 
 // Field implements the field method of the record.Record interface.
-func (i *indexOptions) GetField(name string) (field.Field, error) {
+func (i *indexOptions) GetField(name string) (record.Field, error) {
 	switch name {
 	case "Unique":
-		return field.NewBool("Unique", i.Unique), nil
+		return record.NewBoolField("Unique", i.Unique), nil
 	case "TableName":
-		return field.NewString("TableName", i.TableName), nil
+		return record.NewStringField("TableName", i.TableName), nil
 	case "FieldName":
-		return field.NewString("FieldName", i.FieldName), nil
+		return record.NewStringField("FieldName", i.FieldName), nil
 	}
 
-	return field.Field{}, errors.New("unknown field")
+	return record.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (i *indexOptions) Iterate(fn func(field.Field) error) error {
+func (i *indexOptions) Iterate(fn func(record.Field) error) error {
 	var err error
-	var f field.Field
+	var f record.Field
 
 	f, _ = i.GetField("Unique")
 	err = fn(f)
@@ -62,7 +61,7 @@ func (i *indexOptions) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (i *indexOptions) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
+	return rec.Iterate(func(f record.Field) error {
 		var err error
 
 		switch f.Name {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
@@ -29,10 +28,10 @@ func createTable(t require.TestingT, size int, withIndex bool) (*genji.Tx, func(
 
 	for i := 0; i < size; i++ {
 		_, err = tb.Insert(record.FieldBuffer{
-			field.NewInt("id", int(i)),
-			field.NewString("name", fmt.Sprintf("john-%d", i)),
-			field.NewInt("age", int(i*10)),
-			field.NewInt("group", int(i%3)),
+			record.NewIntField("id", int(i)),
+			record.NewStringField("name", fmt.Sprintf("john-%d", i)),
+			record.NewIntField("age", int(i*10)),
+			record.NewIntField("group", int(i%3)),
 		})
 		require.NoError(t, err)
 	}

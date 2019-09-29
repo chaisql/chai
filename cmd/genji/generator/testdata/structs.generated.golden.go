@@ -6,48 +6,47 @@ package testdata
 import (
 	"errors"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
-func (b *Basic) GetField(name string) (field.Field, error) {
+func (b *Basic) GetField(name string) (record.Field, error) {
 	switch name {
 	case "A":
-		return field.NewString("A", b.A), nil
+		return record.NewStringField("A", b.A), nil
 	case "B":
-		return field.NewInt("B", b.B), nil
+		return record.NewIntField("B", b.B), nil
 	case "C":
-		return field.NewInt32("C", b.C), nil
+		return record.NewInt32Field("C", b.C), nil
 	case "D":
-		return field.NewInt32("D", b.D), nil
+		return record.NewInt32Field("D", b.D), nil
 	}
 
-	return field.Field{}, errors.New("unknown field")
+	return record.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (b *Basic) Iterate(fn func(field.Field) error) error {
+func (b *Basic) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(field.NewString("A", b.A))
+	err = fn(record.NewStringField("A", b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewInt("B", b.B))
+	err = fn(record.NewIntField("B", b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewInt32("C", b.C))
+	err = fn(record.NewInt32Field("C", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewInt32("D", b.D))
+	err = fn(record.NewInt32Field("D", b.D))
 	if err != nil {
 		return err
 	}
@@ -58,7 +57,7 @@ func (b *Basic) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (b *Basic) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
+	return rec.Iterate(func(f record.Field) error {
 		var err error
 
 		switch f.Name {
@@ -87,42 +86,42 @@ func (b *Basic) Scan(src interface{}) error {
 }
 
 // GetField implements the field method of the record.Record interface.
-func (b *basic) GetField(name string) (field.Field, error) {
+func (b *basic) GetField(name string) (record.Field, error) {
 	switch name {
 	case "A":
-		return field.NewBytes("A", b.A), nil
+		return record.NewBytesField("A", b.A), nil
 	case "B":
-		return field.NewUint16("B", b.B), nil
+		return record.NewUint16Field("B", b.B), nil
 	case "C":
-		return field.NewFloat32("C", b.C), nil
+		return record.NewFloat32Field("C", b.C), nil
 	case "D":
-		return field.NewFloat32("D", b.D), nil
+		return record.NewFloat32Field("D", b.D), nil
 	}
 
-	return field.Field{}, errors.New("unknown field")
+	return record.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (b *basic) Iterate(fn func(field.Field) error) error {
+func (b *basic) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(field.NewBytes("A", b.A))
+	err = fn(record.NewBytesField("A", b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewUint16("B", b.B))
+	err = fn(record.NewUint16Field("B", b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewFloat32("C", b.C))
+	err = fn(record.NewFloat32Field("C", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewFloat32("D", b.D))
+	err = fn(record.NewFloat32Field("D", b.D))
 	if err != nil {
 		return err
 	}
@@ -133,7 +132,7 @@ func (b *basic) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (b *basic) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
+	return rec.Iterate(func(f record.Field) error {
 		var err error
 
 		switch f.Name {
@@ -162,28 +161,28 @@ func (b *basic) Scan(src interface{}) error {
 }
 
 // GetField implements the field method of the record.Record interface.
-func (p *Pk) GetField(name string) (field.Field, error) {
+func (p *Pk) GetField(name string) (record.Field, error) {
 	switch name {
 	case "A":
-		return field.NewString("A", p.A), nil
+		return record.NewStringField("A", p.A), nil
 	case "B":
-		return field.NewInt64("B", p.B), nil
+		return record.NewInt64Field("B", p.B), nil
 	}
 
-	return field.Field{}, errors.New("unknown field")
+	return record.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (p *Pk) Iterate(fn func(field.Field) error) error {
+func (p *Pk) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(field.NewString("A", p.A))
+	err = fn(record.NewStringField("A", p.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewInt64("B", p.B))
+	err = fn(record.NewInt64Field("B", p.B))
 	if err != nil {
 		return err
 	}
@@ -194,7 +193,7 @@ func (p *Pk) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (p *Pk) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
+	return rec.Iterate(func(f record.Field) error {
 		var err error
 
 		switch f.Name {

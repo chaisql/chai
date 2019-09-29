@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -13,10 +12,10 @@ import (
 func BenchmarkTableInsert(b *testing.B, builder Builder) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			var fields []field.Field
+			var fields []record.Field
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+				fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 			}
 
 			rec := record.FieldBuffer(fields)
@@ -44,10 +43,10 @@ func BenchmarkTableScan(b *testing.B, builder Builder) {
 			tb, cleanup := builder()
 			defer cleanup()
 
-			var fields []field.Field
+			var fields []record.Field
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+				fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 			}
 
 			rec := record.FieldBuffer(fields)

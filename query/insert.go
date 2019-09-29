@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
@@ -151,7 +150,7 @@ func (stmt InsertStmt) insertRecords(t *genji.Table, stack EvalStack) Result {
 					return res
 				}
 
-				fb.Add(field.Field{Name: pair.k, Value: vl.Value})
+				fb.Add(record.Field{Name: pair.k, Value: vl.Value})
 			}
 			r = &fb
 		}
@@ -213,7 +212,7 @@ func (stmt InsertStmt) insertValues(t *genji.Table, stack EvalStack) Result {
 			}
 
 			// Assign the value to the field and add it to the record
-			fb.Add(field.Field{
+			fb.Add(record.Field{
 				Name: fieldName,
 				Value: value.Value{
 					Type: lv.Type,

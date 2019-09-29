@@ -54,8 +54,8 @@ This command generates a file that contains APIs specific to the `User` type.
 // user.genji.go
 
 // The User type gets new methods that implement some Genji interfaces.
-func (u *User) Field(name string) (field.Field, error) {}
-func (u *User) Iterate(fn func(field.Field) error) error {}
+func (u *User) Field(name string) (record.Field, error) {}
+func (u *User) Iterate(fn func(record.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
 func (u *User) PrimaryKey() ([]byte, error) {}
 func (u *User) Indexes() map[string]index.Options {}

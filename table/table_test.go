@@ -8,7 +8,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/stretchr/testify/require"
@@ -37,9 +36,9 @@ name(String): "John 2", age(Int): 12
 				require.NoError(t, err)
 
 				for i := 0; i < 3; i++ {
-					recordID, err := tb.Insert(record.FieldBuffer([]field.Field{
-						field.NewString("name", fmt.Sprintf("John %d", i)),
-						field.NewInt("age", 10+i),
+					recordID, err := tb.Insert(record.FieldBuffer([]record.Field{
+						record.NewStringField("name", fmt.Sprintf("John %d", i)),
+						record.NewIntField("age", 10+i),
 					}))
 					require.NoError(t, err)
 					require.NotNil(t, recordID)

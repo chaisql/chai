@@ -2,7 +2,6 @@ package query
 
 import (
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -12,7 +11,7 @@ type FieldSelector interface {
 	// SelectField takes a field from a record.
 	// If the field selector was created using the As method
 	// it must replace the name of f by the alias.
-	SelectField(record.Record) (f field.Field, err error)
+	SelectField(record.Record) (f record.Field, err error)
 	// Name of the field selector.
 	Name() string
 	// As creates an alias to a field.
@@ -42,7 +41,7 @@ func (f Field) Name() string {
 }
 
 // SelectField selects the field f from r.
-func (f Field) SelectField(r record.Record) (field.Field, error) {
+func (f Field) SelectField(r record.Record) (record.Field, error) {
 	return r.GetField(string(f))
 }
 
@@ -82,13 +81,13 @@ func (a Alias) Name() string {
 // SelectField calls the SelectField method of FieldSelector.
 // It returns a new field with the same data and type as the returned one
 // but sets its name as the Alias attribute.
-func (a Alias) SelectField(r record.Record) (field.Field, error) {
+func (a Alias) SelectField(r record.Record) (record.Field, error) {
 	f, err := a.FieldSelector.SelectField(r)
 	if err != nil {
-		return field.Field{}, err
+		return record.Field{}, err
 	}
 
-	return field.Field{
+	return record.Field{
 		Value: value.Value{
 			Data: f.Data,
 			Type: f.Type,

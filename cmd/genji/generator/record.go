@@ -37,15 +37,15 @@ const recordGetFieldTmpl = `
 {{- $structName := .Name -}}
 
 // GetField implements the field method of the record.Record interface.
-func ({{$fl}} *{{$structName}}) GetField(name string) (field.Field, error) {
+func ({{$fl}} *{{$structName}}) GetField(name string) (record.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.Name}}":
-		return field.New{{.Type}}("{{.Name}}", {{$fl}}.{{.Name}}), nil
+		return record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}), nil
 	{{- end}}
 	}
 
-	return field.Field{}, errors.New("unknown field")
+	return record.Field{}, errors.New("unknown field")
 }
 {{ end }}
 `
@@ -57,11 +57,11 @@ const recordIterateTmpl = `
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func ({{$fl}} *{{$structName}}) Iterate(fn func(field.Field) error) error {
+func ({{$fl}} *{{$structName}}) Iterate(fn func(record.Field) error) error {
 	var err error
 
 	{{range .Fields}}
-	err = fn(field.New{{.Type}}("{{.Name}}", {{$fl}}.{{.Name}}))
+	err = fn(record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}))
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ const recordScanRecordTmpl = `
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
+	return rec.Iterate(func(f record.Field) error {
 		var err error
 
 		switch f.Name {

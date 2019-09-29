@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/cmd/genji/generator/testdata"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
@@ -139,7 +138,6 @@ package s
 import (
 	"errors"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
@@ -155,7 +153,7 @@ import (
 		rd := bufio.NewReader(&buf)
 		var res bytes.Buffer
 
-		for i := 0; i < 12; i++ {
+		for i := 0; i < 11; i++ {
 			l, err := rd.ReadString('\n')
 			require.NoError(t, err)
 			res.WriteString(l)
@@ -196,7 +194,7 @@ func TestGeneratedRecords(t *testing.T) {
 		}
 
 		var i int
-		err := r.Iterate(func(f field.Field) error {
+		err := r.Iterate(func(f record.Field) error {
 			t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
 				require.NotEmpty(t, f)
 				require.Equal(t, tests[i].name, f.Name)

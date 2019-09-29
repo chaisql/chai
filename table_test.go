@@ -6,7 +6,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/table/tabletest"
@@ -49,8 +48,8 @@ func ExampleDB() {
 		}
 
 		r := record.FieldBuffer{
-			field.NewString("Name", "foo"),
-			field.NewInt("Age", 10),
+			record.NewStringField("Name", "foo"),
+			record.NewIntField("Age", 10),
 		}
 
 		_, err = t.Insert(r)

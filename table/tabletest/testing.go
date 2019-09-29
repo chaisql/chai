@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
@@ -44,9 +43,9 @@ func TestSuite(t *testing.T, builder Builder) {
 }
 
 func newRecord() record.FieldBuffer {
-	return record.FieldBuffer([]field.Field{
-		field.NewString("fielda", "a"),
-		field.NewString("fieldb", "b"),
+	return record.FieldBuffer([]record.Field{
+		record.NewStringField("fielda", "a"),
+		record.NewStringField("fieldb", "b"),
 	})
 }
 
@@ -125,7 +124,7 @@ func TestTableReaderRecord(t *testing.T, builder Builder) {
 
 		// create two records, one with an additional field
 		rec1 := newRecord()
-		rec1.Add(field.NewInt64("fieldc", 40))
+		rec1.Add(record.NewInt64Field("fieldc", 40))
 		rec2 := newRecord()
 
 		recordID1, err := tb.Insert(rec1)
@@ -256,7 +255,7 @@ func TestTableWriterDelete(t *testing.T, builder Builder) {
 
 		// create two records, one with an additional field
 		rec1 := newRecord()
-		rec1.Add(field.NewInt64("fieldc", 40))
+		rec1.Add(record.NewInt64Field("fieldc", 40))
 		rec2 := newRecord()
 
 		recordID1, err := tb.Insert(rec1)
@@ -296,9 +295,9 @@ func TestTableWriterReplace(t *testing.T, builder Builder) {
 
 		// create two different records
 		rec1 := newRecord()
-		rec2 := record.FieldBuffer([]field.Field{
-			field.NewString("fielda", "c"),
-			field.NewString("fieldb", "d"),
+		rec2 := record.FieldBuffer([]record.Field{
+			record.NewStringField("fielda", "c"),
+			record.NewStringField("fieldb", "d"),
 		})
 
 		recordID1, err := tb.Insert(rec1)
@@ -307,9 +306,9 @@ func TestTableWriterReplace(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// create a third record
-		rec3 := record.FieldBuffer([]field.Field{
-			field.NewString("fielda", "e"),
-			field.NewString("fieldb", "f"),
+		rec3 := record.FieldBuffer([]record.Field{
+			record.NewStringField("fielda", "e"),
+			record.NewStringField("fieldb", "f"),
 		})
 
 		// replace rec1 with rec3

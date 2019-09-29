@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
@@ -100,7 +99,7 @@ func Dump(w io.Writer, t Reader) error {
 
 	err := t.Iterate(func(recordID []byte, r record.Record) error {
 		first := true
-		err := r.Iterate(func(f field.Field) error {
+		err := r.Iterate(func(f record.Field) error {
 			if !first {
 				buf.WriteString(", ")
 			}

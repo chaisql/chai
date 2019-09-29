@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/asdine/genji/value"
@@ -199,17 +198,17 @@ type recordMask struct {
 
 var _ record.Record = recordMask{}
 
-func (r recordMask) GetField(name string) (field.Field, error) {
+func (r recordMask) GetField(name string) (record.Field, error) {
 	for _, n := range r.fields {
 		if n == name {
 			return r.r.GetField(name)
 		}
 	}
 
-	return field.Field{}, fmt.Errorf("field %q not found", name)
+	return record.Field{}, fmt.Errorf("field %q not found", name)
 }
 
-func (r recordMask) Iterate(fn func(f field.Field) error) error {
+func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	for _, n := range r.fields {
 		f, err := r.r.GetField(n)
 		if err != nil {

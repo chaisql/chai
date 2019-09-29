@@ -6,9 +6,7 @@ import (
 
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/value"
-
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/table"
 	"github.com/oklog/ulid"
@@ -175,7 +173,7 @@ func (t Table) Truncate() error {
 // AddField changes the table structure by adding a field to all the records.
 // If the field data is empty, it is filled with the zero value of the field type.
 // If a record already has the field, no change is performed on that record.
-func (t Table) AddField(f field.Field) error {
+func (t Table) AddField(f record.Field) error {
 	return t.store.AscendGreaterOrEqual(nil, func(recordID, v []byte) error {
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(record.EncodedRecord(v))

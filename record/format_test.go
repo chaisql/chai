@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/field"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFormat(t *testing.T) {
-	data, err := Encode(FieldBuffer([]field.Field{
-		field.NewInt64("age", 10),
-		field.NewString("name", "john"),
+	data, err := Encode(FieldBuffer([]Field{
+		NewInt64Field("age", 10),
+		NewStringField("name", "john"),
 	}))
 	require.NoError(t, err)
 
@@ -37,9 +36,9 @@ func TestFormat(t *testing.T) {
 }
 
 func TestDecodeField(t *testing.T) {
-	rec := FieldBuffer([]field.Field{
-		field.NewInt64("age", 10),
-		field.NewString("name", "john"),
+	rec := FieldBuffer([]Field{
+		NewInt64Field("age", 10),
+		NewStringField("name", "john"),
 	})
 
 	data, err := Encode(rec)
@@ -55,9 +54,9 @@ func TestDecodeField(t *testing.T) {
 }
 
 func TestEncodedRecord(t *testing.T) {
-	rec := FieldBuffer([]field.Field{
-		field.NewInt64("age", 10),
-		field.NewString("name", "john"),
+	rec := FieldBuffer([]Field{
+		NewInt64Field("age", 10),
+		NewStringField("name", "john"),
 	})
 
 	data, err := Encode(rec)
@@ -69,7 +68,7 @@ func TestEncodedRecord(t *testing.T) {
 	require.Equal(t, rec[0], f)
 
 	var i int
-	err = ec.Iterate(func(f field.Field) error {
+	err = ec.Iterate(func(f Field) error {
 		require.Equal(t, rec[i], f)
 		i++
 		return nil
@@ -79,10 +78,10 @@ func TestEncodedRecord(t *testing.T) {
 }
 
 func BenchmarkEncode(b *testing.B) {
-	var fields []field.Field
+	var fields []Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
 
 	b.ResetTimer()
@@ -92,10 +91,10 @@ func BenchmarkEncode(b *testing.B) {
 }
 
 func BenchmarkFormatDecode(b *testing.B) {
-	var fields []field.Field
+	var fields []Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
 
 	data, err := Encode(FieldBuffer(fields))
@@ -109,10 +108,10 @@ func BenchmarkFormatDecode(b *testing.B) {
 }
 
 func BenchmarkDecodeField(b *testing.B) {
-	var fields []field.Field
+	var fields []Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
 	data, err := Encode(FieldBuffer(fields))
 	require.NoError(b, err)
@@ -124,10 +123,10 @@ func BenchmarkDecodeField(b *testing.B) {
 }
 
 func BenchmarkEncodedRecord(b *testing.B) {
-	var fields []field.Field
+	var fields []Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, field.NewInt64(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
 	data, err := Encode(FieldBuffer(fields))
 	require.NoError(b, err)
@@ -136,7 +135,7 @@ func BenchmarkEncodedRecord(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ec.Iterate(func(field.Field) error {
+		ec.Iterate(func(Field) error {
 			return nil
 		})
 	}
