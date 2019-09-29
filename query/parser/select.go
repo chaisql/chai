@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/query/scanner"
 )
@@ -18,12 +19,7 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 	stmt := query.Select(fselectors...)
 
 	// Parse "FROM".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"FROM"}, pos)
-	}
-
-	// Parse table name
-	tableName, err := p.ParseIdent()
+	tableName, err := p.parseFrom()
 	if err != nil {
 		return stmt, err
 	}
@@ -35,6 +31,18 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 		return stmt, err
 	}
 	stmt = stmt.Where(expr)
+
+	limit, err := p.parseLimit()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.LimitExpr(limit)
+
+	offset, err := p.parseOffset()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = stmt.OffsetExpr(offset)
 
 	return stmt, nil
 }
@@ -60,4 +68,33 @@ func (p *Parser) parseFieldNames() ([]query.FieldSelector, error) {
 	}
 
 	return fselectors, nil
+}
+
+func (p *Parser) parseFrom() (string, error) {
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
+		return "", newParseError(scanner.Tokstr(tok, lit), []string{"FROM"}, pos)
+	}
+
+	// Parse table name
+	return p.ParseIdent()
+}
+
+func (p *Parser) parseLimit() (expr.Expr, error) {
+	// parse LIMIT token
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
+		p.Unscan()
+		return nil, nil
+	}
+
+	return p.ParseExpr()
+}
+
+func (p *Parser) parseOffset() (expr.Expr, error) {
+	// parse OFFSET token
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
+		p.Unscan()
+		return nil, nil
+	}
+
+	return p.ParseExpr()
 }

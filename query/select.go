@@ -66,8 +66,8 @@ func (stmt SelectStmt) From(tableSelector TableSelector) SelectStmt {
 }
 
 // Limit the number of records returned.
-func (stmt SelectStmt) Limit(offset int) SelectStmt {
-	stmt.limitExpr = expr.Int64Value(int64(offset))
+func (stmt SelectStmt) Limit(limit int) SelectStmt {
+	stmt.limitExpr = expr.Int64Value(int64(limit))
 	return stmt
 }
 
