@@ -192,9 +192,8 @@ type recordStream struct {
 }
 
 type rec struct {
-	recordID []byte
-	r        record.Record
-	err      error
+	r   record.Record
+	err error
 }
 
 func newRecordStream(res Result) *recordStream {
@@ -224,13 +223,12 @@ func (rs *recordStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(recordID []byte, r record.Record) error {
+	err := rs.res.Iterate(func(r record.Record) error {
 		select {
 		case <-ctx.Done():
 			return errStop
 		case rs.c <- rec{
-			recordID: recordID,
-			r:        r,
+			r: r,
 		}:
 
 			select {

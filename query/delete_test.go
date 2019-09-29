@@ -25,7 +25,7 @@ func TestDeleteStatement(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 3, count)
 
-		err = st.Iterate(func(recordID []byte, r record.Record) error {
+		err = st.Iterate(func(r record.Record) error {
 			f, err := r.GetField("age")
 			require.NoError(t, err)
 			age, err := value.DecodeInt(f.Data)

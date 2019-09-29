@@ -119,14 +119,14 @@ func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
 
-func whereClause(e Expr, stack EvalStack) func(recordID []byte, r record.Record) (bool, error) {
+func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
 	if e == nil {
-		return func(recordID []byte, r record.Record) (bool, error) {
+		return func(r record.Record) (bool, error) {
 			return true, nil
 		}
 	}
 
-	return func(recordID []byte, r record.Record) (bool, error) {
+	return func(r record.Record) (bool, error) {
 		stack.Record = r
 		v, err := e.Eval(stack)
 		if err != nil {

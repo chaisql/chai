@@ -6,15 +6,14 @@ import (
 	"io"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
 
 // Errors.
 var (
-	// ErrRecordNotFound is returned when no record is associated with the provided recordID.
+	// ErrRecordNotFound is returned when no record is associated with the provided key.
 	ErrRecordNotFound = errors.New("not found")
-	// ErrDuplicate is returned when another record is already associated with a given recordID, primary key,
+	// ErrDuplicate is returned when another record is already associated with a given key, primary key,
 	// or if there is a unique index violation.
 	ErrDuplicate = errors.New("duplicate")
 )
@@ -30,7 +29,7 @@ type Table interface {
 type Reader interface {
 	// Iterate goes through all the records of the table and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(func(recordID []byte, r record.Record) error) error
+	Iterate(func(r record.Record) error) error
 }
 
 // NewReaderFromRecords creates a reader that will iterate over
@@ -41,21 +40,11 @@ func NewReaderFromRecords(records ...record.Record) Reader {
 
 type recordsReader []record.Record
 
-func (rr recordsReader) Iterate(fn func(recordID []byte, r record.Record) error) error {
-	var recordID []byte
+func (rr recordsReader) Iterate(fn func(r record.Record) error) error {
 	var err error
 
-	for i, r := range rr {
-		if pker, ok := r.(PrimaryKeyer); ok {
-			recordID, err = pker.PrimaryKey()
-			if err != nil {
-				return errors.Wrap(err, "failed to generate recordID from PrimaryKey method")
-			}
-		} else {
-			recordID = value.EncodeInt(i)
-		}
-
-		err = fn(recordID, r)
+	for _, r := range rr {
+		err = fn(r)
 		if err != nil {
 			return err
 		}
@@ -64,26 +53,26 @@ func (rr recordsReader) Iterate(fn func(recordID []byte, r record.Record) error)
 	return nil
 }
 
-// A RecordGetter is a type that allows to get one record by recordID.
+// A RecordGetter is a type that allows to get one record by key.
 // It is usually implemented by tables that provide random access.
 type RecordGetter interface {
-	// GetRecord returns one record by recordID.
-	GetRecord(recordID []byte) (record.Record, error)
+	// GetRecord returns one record by key.
+	GetRecord(key []byte) (record.Record, error)
 }
 
 // A Writer can manipulate a table.
 type Writer interface {
-	// Insert a record into the table and returns its recordID.
-	Insert(record.Record) (recordID []byte, err error)
-	// Delete a record by recordID. If the record is not found, returns ErrRecordNotFound.
-	Delete(recordID []byte) error
+	// Insert a record into the table and returns its key.
+	Insert(record.Record) (key []byte, err error)
+	// Delete a record by key. If the record is not found, returns ErrRecordNotFound.
+	Delete(key []byte) error
 	// Replace a record by another one. If the record is not found, returns ErrRecordNotFound.
-	Replace(recordID []byte, r record.Record) error
+	Replace(key []byte, r record.Record) error
 	// Truncate deletes all the records from the table.
 	Truncate() error
 }
 
-// A PrimaryKeyer is a record that generates a recordID based on its primary key.
+// A PrimaryKeyer is a record that generates a key based on its primary key.
 type PrimaryKeyer interface {
 	PrimaryKey() ([]byte, error)
 }
@@ -97,7 +86,7 @@ type Scanner interface {
 func Dump(w io.Writer, t Reader) error {
 	buf := bufio.NewWriter(w)
 
-	err := t.Iterate(func(recordID []byte, r record.Record) error {
+	err := t.Iterate(func(r record.Record) error {
 		first := true
 		err := r.Iterate(func(f record.Field) error {
 			if !first {

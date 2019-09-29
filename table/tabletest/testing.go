@@ -56,7 +56,7 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(recordID []byte, r record.Record) error {
+		err := tb.Iterate(func(r record.Record) error {
 			i++
 			return nil
 		})
@@ -74,8 +74,8 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(recordID []byte, _ record.Record) error {
-			m[string(recordID)]++
+		err := tb.Iterate(func(r record.Record) error {
+			m[string(r.(record.Keyer).Key())]++
 			return nil
 		})
 		require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestTableReaderIterate(t *testing.T, builder Builder) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(recordID []byte, _ record.Record) error {
+		err := tb.Iterate(func(_ record.Record) error {
 			i++
 			if i >= 5 {
 				return errors.New("some error")
@@ -357,7 +357,7 @@ func TestTableWriterTruncate(t *testing.T, builder Builder) {
 		err = tb.Truncate()
 		require.NoError(t, err)
 
-		err = tb.Iterate(func(_ []byte, _ record.Record) error {
+		err = tb.Iterate(func(_ record.Record) error {
 			return errors.New("should not iterate")
 		})
 

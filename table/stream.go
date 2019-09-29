@@ -30,15 +30,15 @@ func NewStream(rd Reader) Stream {
 // and returned by this function, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
 // It implements the Reader interface.
-func (s Stream) Iterate(fn func(recordID []byte, r record.Record) error) error {
+func (s Stream) Iterate(fn func(r record.Record) error) error {
 	if s.op == nil {
 		return s.rd.Iterate(fn)
 	}
 
 	opFn := s.op()
 
-	err := s.rd.Iterate(func(recordID []byte, r record.Record) error {
-		r, err := opFn(recordID, r)
+	err := s.rd.Iterate(func(r record.Record) error {
+		r, err := opFn(r)
 		if err != nil {
 			return err
 		}
@@ -47,7 +47,7 @@ func (s Stream) Iterate(fn func(recordID []byte, r record.Record) error) error {
 			return nil
 		}
 
-		return fn(recordID, r)
+		return fn(r)
 	})
 	if err != ErrStreamClosed {
 		return err
@@ -67,8 +67,8 @@ func (s Stream) Pipe(op Operator) Stream {
 
 // Map applies fn to each received record and passes it to the next stream.
 // If fn returns an error, the stream is interrupted.
-func (s Stream) Map(fn func(recordID []byte, r record.Record) (record.Record, error)) Stream {
-	return s.Pipe(func() func(recordID []byte, r record.Record) (record.Record, error) {
+func (s Stream) Map(fn func(r record.Record) (record.Record, error)) Stream {
+	return s.Pipe(func() func(r record.Record) (record.Record, error) {
 		return fn
 	})
 }
@@ -76,10 +76,10 @@ func (s Stream) Map(fn func(recordID []byte, r record.Record) (record.Record, er
 // Filter filters each received record using fn.
 // If fn returns true, the record is kept, otherwise it is skipped.
 // If fn returns an error, the stream is interrupted.
-func (s Stream) Filter(fn func(recordID []byte, r record.Record) (bool, error)) Stream {
-	return s.Pipe(func() func(recordID []byte, r record.Record) (record.Record, error) {
-		return func(recordID []byte, r record.Record) (record.Record, error) {
-			ok, err := fn(recordID, r)
+func (s Stream) Filter(fn func(r record.Record) (bool, error)) Stream {
+	return s.Pipe(func() func(r record.Record) (record.Record, error) {
+		return func(r record.Record) (record.Record, error) {
+			ok, err := fn(r)
 			if err != nil {
 				return nil, err
 			}
@@ -95,10 +95,10 @@ func (s Stream) Filter(fn func(recordID []byte, r record.Record) (bool, error)) 
 
 // Limit interrupts the stream once the number of passed records have reached n.
 func (s Stream) Limit(n int) Stream {
-	return s.Pipe(func() func(recordID []byte, r record.Record) (record.Record, error) {
+	return s.Pipe(func() func(r record.Record) (record.Record, error) {
 		var count int
 
-		return func(recordID []byte, r record.Record) (record.Record, error) {
+		return func(r record.Record) (record.Record, error) {
 			if count < n {
 				count++
 				return r, nil
@@ -111,10 +111,10 @@ func (s Stream) Limit(n int) Stream {
 
 // Offset ignores n records then passes the subsequent ones to the stream.
 func (s Stream) Offset(n int) Stream {
-	return s.Pipe(func() func(recordID []byte, r record.Record) (record.Record, error) {
+	return s.Pipe(func() func(r record.Record) (record.Record, error) {
 		var skipped int
 
-		return func(recordID []byte, r record.Record) (record.Record, error) {
+		return func(r record.Record) (record.Record, error) {
 			if skipped < n {
 				skipped++
 				return nil, nil
@@ -143,7 +143,7 @@ func (s Stream) Append(rd Reader) Stream {
 func (s Stream) Count() (int, error) {
 	counter := 0
 
-	err := s.Iterate(func(recordID []byte, r record.Record) error {
+	err := s.Iterate(func(r record.Record) error {
 		counter++
 		return nil
 	})
@@ -153,9 +153,8 @@ func (s Stream) Count() (int, error) {
 
 // First runs the stream, returns the first record found and closes the stream.
 // If the stream is empty, all return values are nil.
-func (s Stream) First() (recordID []byte, r record.Record, err error) {
-	err = s.Iterate(func(rID []byte, rec record.Record) error {
-		recordID = rID
+func (s Stream) First() (r record.Record, err error) {
+	err = s.Iterate(func(rec record.Record) error {
 		r = rec
 		return ErrStreamClosed
 	})
@@ -175,13 +174,13 @@ func (s Stream) First() (recordID []byte, r record.Record, err error) {
 // the Iterate method will stop the iteration and return nil.
 // Operators can be reused, and thus, any side effect should be kept within the operator closure
 // unless the nature of the operator prevents that.
-type Operator func() func(recordID []byte, r record.Record) (record.Record, error)
+type Operator func() func(r record.Record) (record.Record, error)
 
 type multiReader struct {
 	readers []Reader
 }
 
-func (m multiReader) Iterate(fn func(recordID []byte, r record.Record) error) error {
+func (m multiReader) Iterate(fn func(r record.Record) error) error {
 	for _, rd := range m.readers {
 		err := rd.Iterate(fn)
 		if err != nil {

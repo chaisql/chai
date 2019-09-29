@@ -22,7 +22,7 @@ func TestSelectStatement(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = res.Iterate(func(recordID []byte, r record.Record) error {
+		err = res.Iterate(func(r record.Record) error {
 			_, err := r.GetField("id")
 			require.NoError(t, err)
 			_, err = r.GetField("name")
@@ -48,7 +48,7 @@ func TestSelectStatement(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = res.Iterate(func(recordID []byte, r record.Record) error {
+		err = res.Iterate(func(r record.Record) error {
 			_, err := r.GetField("id")
 			require.NoError(t, err)
 			_, err = r.GetField("name")
@@ -74,7 +74,7 @@ func TestSelectStatement(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 5, count)
 
-		err = res.Iterate(func(recordID []byte, r record.Record) error {
+		err = res.Iterate(func(r record.Record) error {
 			_, err := r.GetField("id")
 			require.NoError(t, err)
 			_, err = r.GetField("name")

@@ -92,7 +92,12 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	st := table.NewStream(tr)
 	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
-	err = st.Iterate(func(recordID []byte, r record.Record) error {
+	err = st.Iterate(func(r record.Record) error {
+		rk, ok := r.(record.Keyer)
+		if !ok {
+			return errors.New("attempt to update record without key")
+		}
+
 		var fb record.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
@@ -125,7 +130,7 @@ func (stmt UpdateStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			err = t.Replace(recordID, &fb)
+			err = t.Replace(rk.Key(), &fb)
 			if err != nil {
 				return err
 			}

@@ -175,7 +175,7 @@ func (stmt SelectStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 		for i := range stmt.fieldSelectors {
 			fieldNames[i] = stmt.fieldSelectors[i].Name()
 		}
-		st = st.Map(func(recordID []byte, r record.Record) (record.Record, error) {
+		st = st.Map(func(r record.Record) (record.Record, error) {
 			return recordMask{
 				r:      r,
 				fields: fieldNames,

@@ -80,8 +80,12 @@ func (stmt DeleteStmt) exec(tx *genji.Tx, args []driver.NamedValue) Result {
 	st := table.NewStream(tr)
 	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
-	err = st.Iterate(func(recordID []byte, r record.Record) error {
-		return t.Delete(recordID)
+	err = st.Iterate(func(r record.Record) error {
+		if k, ok := r.(record.Keyer); ok {
+			return t.Delete(k.Key())
+		}
+
+		return errors.New("attempt to delete record without key")
 	})
 	return Result{err: err}
 }

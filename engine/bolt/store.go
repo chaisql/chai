@@ -33,7 +33,7 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 	return v, nil
 }
 
-// Delete a record by recordID. If not found, returns table.ErrRecordNotFound.
+// Delete a record by key. If not found, returns table.ErrRecordNotFound.
 func (s *Store) Delete(k []byte) error {
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
