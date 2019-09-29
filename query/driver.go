@@ -15,7 +15,7 @@ type Connector struct {
 	driver driver.Driver
 }
 
-func newConnector(db *database.DB) driver.Connector {
+func NewConnector(db *database.DB) driver.Connector {
 	return Connector{
 		driver: newDriver(db),
 	}
