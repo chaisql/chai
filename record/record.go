@@ -15,6 +15,12 @@ type Record interface {
 	GetField(name string) (Field, error)
 }
 
+// A Keyer returns the key identifying records in their storage.
+// This is usually implemented by records read from storages.
+type Keyer interface {
+	Key() []byte
+}
+
 // A Scanner can iterate over a record and scan all the fields.
 type Scanner interface {
 	ScanRecord(Record) error
