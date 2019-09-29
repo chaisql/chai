@@ -1,7 +1,10 @@
 package record
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"io"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.
@@ -189,6 +192,37 @@ func (s Stream) First() (r Record, err error) {
 	}
 
 	return
+}
+
+// Dump stream information to w, structured as a csv.
+func (s Stream) Dump(w io.Writer) error {
+	buf := bufio.NewWriter(w)
+
+	err := s.Iterate(func(r Record) error {
+		first := true
+		err := r.Iterate(func(f Field) error {
+			if !first {
+				buf.WriteString(", ")
+			}
+			first = false
+
+			v, err := f.Decode()
+
+			fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(buf, "\n")
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return buf.Flush()
 }
 
 // An Operator is used to modify a stream.

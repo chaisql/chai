@@ -1,10 +1,6 @@
 package table
 
 import (
-	"bufio"
-	"fmt"
-	"io"
-
 	"github.com/asdine/genji/record"
 	"github.com/pkg/errors"
 )
@@ -52,35 +48,4 @@ type PrimaryKeyer interface {
 // A Scanner is a type that can read all the records of a table reader.
 type Scanner interface {
 	ScanTable(record.Iterator) error
-}
-
-// Dump table information to w, structured as a csv .
-func Dump(w io.Writer, t record.Iterator) error {
-	buf := bufio.NewWriter(w)
-
-	err := t.Iterate(func(r record.Record) error {
-		first := true
-		err := r.Iterate(func(f record.Field) error {
-			if !first {
-				buf.WriteString(", ")
-			}
-			first = false
-
-			v, err := f.Decode()
-
-			fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
-			return err
-		})
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintf(buf, "\n")
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return buf.Flush()
 }
