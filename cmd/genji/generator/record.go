@@ -185,7 +185,7 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 			}
 
 			if value.TypeFromGoType(typeName) == 0 {
-				return false, fmt.Errorf("unsupported tyype %s", typeName)
+				return false, fmt.Errorf("unsupported type %s", typeName)
 			}
 
 			for _, name := range fd.Names {

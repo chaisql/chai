@@ -202,7 +202,7 @@ func TestTableWriterInsert(t *testing.T, builder Builder) {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
 				rec := recordPker{
 					pkGenerator: func() ([]byte, error) {
-						return nil, nil
+						return test, nil
 					},
 				}
 
