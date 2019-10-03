@@ -201,7 +201,7 @@ type FieldSelector interface {
 // TableSelector can select a table from a transaction.
 type TableSelector interface {
 	// SelectTable selects a table by calling the Table method of the transaction.
-	SelectTable(*database.Tx) (*database.Table, error)
+	SelectTable(*database.Tx) (record.Iterator, error)
 	// Name of the selected table.
 	TableName() string
 }

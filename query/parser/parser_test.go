@@ -90,7 +90,7 @@ func TestParserMultiStatement(t *testing.T) {
 		{"OnlyCommas", ";;;", nil},
 		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []query.Statement{
 			query.Select().From(q.Table("foo")),
-			query.Delete().From(q.Table("foo")),
+			query.Delete().From("foo"),
 		}},
 	}
 

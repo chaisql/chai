@@ -25,7 +25,7 @@ func TestUpdateStatement(t *testing.T) {
 			tx, cleanup := createTable(t, 10, test.withIndex)
 			defer cleanup()
 
-			res := query.Update(q.Table("test")).Set("age", expr.IntValue(20)).Where(q.IntField("age").Gt(20)).Exec(tx)
+			res := query.Update("test").Set("age", expr.IntValue(20)).Where(q.IntField("age").Gt(20)).Exec(tx)
 			require.NoError(t, res.Err())
 
 			tb, err := tx.GetTable("test")

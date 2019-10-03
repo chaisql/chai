@@ -8,58 +8,58 @@ import (
 	"github.com/asdine/genji/value"
 )
 
-type simpleOperator struct {
-	a, b Expr
-	tok  scanner.Token
+type SimpleOperator struct {
+	a, b  Expr
+	Token scanner.Token
 }
 
-func (op simpleOperator) Precedence() int {
-	return op.tok.Precedence()
+func (op SimpleOperator) Precedence() int {
+	return op.Token.Precedence()
 }
 
-func (op simpleOperator) LeftHand() Expr {
+func (op SimpleOperator) LeftHand() Expr {
 	return op.a
 }
 
-func (op simpleOperator) RightHand() Expr {
+func (op SimpleOperator) RightHand() Expr {
 	return op.b
 }
 
-func (op *simpleOperator) SetLeftHandExpr(a Expr) {
+func (op *SimpleOperator) SetLeftHandExpr(a Expr) {
 	op.a = a
 }
 
-func (op *simpleOperator) SetRightHandExpr(b Expr) {
+func (op *SimpleOperator) SetRightHandExpr(b Expr) {
 	op.b = b
 }
 
 type CmpOp struct {
-	simpleOperator
+	SimpleOperator
 }
 
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
-	return CmpOp{simpleOperator{a, b, scanner.EQ}}
+	return CmpOp{SimpleOperator{a, b, scanner.EQ}}
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) Expr {
-	return CmpOp{simpleOperator{a, b, scanner.GT}}
+	return CmpOp{SimpleOperator{a, b, scanner.GT}}
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
-	return CmpOp{simpleOperator{a, b, scanner.GTE}}
+	return CmpOp{SimpleOperator{a, b, scanner.GTE}}
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) Expr {
-	return CmpOp{simpleOperator{a, b, scanner.LT}}
+	return CmpOp{SimpleOperator{a, b, scanner.LT}}
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
-	return CmpOp{simpleOperator{a, b, scanner.LTE}}
+	return CmpOp{SimpleOperator{a, b, scanner.LTE}}
 }
 
 func (op CmpOp) Eval(ctx EvalStack) (Value, error) {
@@ -127,7 +127,7 @@ func (op CmpOp) compareLitterals(l, r LitteralValue) (bool, error) {
 	// if same type, no conversion needed
 	if l.Type == r.Type || (l.Type == value.String && r.Type == value.Bytes) || (r.Type == value.String && l.Type == value.Bytes) {
 		var ok bool
-		switch op.tok {
+		switch op.Token {
 		case scanner.EQ:
 			ok = bytes.Equal(l.Data, r.Data)
 		case scanner.GT:
@@ -159,7 +159,7 @@ func (op CmpOp) compareLitterals(l, r LitteralValue) (bool, error) {
 
 		var ok bool
 
-		switch op.tok {
+		switch op.Token {
 		case scanner.EQ:
 			ok = af == bf
 		case scanner.GT:
@@ -210,17 +210,17 @@ func numberToFloat(v interface{}) float64 {
 	return f
 }
 
-type andOp struct {
-	simpleOperator
+type AndOp struct {
+	SimpleOperator
 }
 
 // And creates an expression that evaluates a and b and returns true if both are truthy.
 func And(a, b Expr) Expr {
-	return &andOp{simpleOperator{a, b, scanner.AND}}
+	return &AndOp{SimpleOperator{a, b, scanner.AND}}
 }
 
 // Eval implements the Expr interface.
-func (op *andOp) Eval(ctx EvalStack) (Value, error) {
+func (op *AndOp) Eval(ctx EvalStack) (Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil || !s.Truthy() {
 		return falseLitteral, err
@@ -234,17 +234,17 @@ func (op *andOp) Eval(ctx EvalStack) (Value, error) {
 	return trueLitteral, nil
 }
 
-type orOp struct {
-	simpleOperator
+type OrOp struct {
+	SimpleOperator
 }
 
 // Or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy or false if falsy.
 func Or(a, b Expr) Expr {
-	return &orOp{simpleOperator{a, b, scanner.OR}}
+	return &OrOp{SimpleOperator{a, b, scanner.OR}}
 }
 
 // Eval implements the Expr interface.
-func (op *orOp) Eval(ctx EvalStack) (Value, error) {
+func (op *OrOp) Eval(ctx EvalStack) (Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err

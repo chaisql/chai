@@ -64,7 +64,7 @@ func ExampleInsert() {
 	// INSERT INTO example (Name, Age) VALUES ("foo", 21)
 	res := query.
 		Insert().
-		Into(q.Table("example")).
+		Into("example").
 		Fields("Name", "Age").
 		Values(expr.StringValue("foo"), expr.IntValue(21)).
 		Exec(tx)
@@ -78,7 +78,7 @@ func ExampleDelete() {
 	// DELETE FROM example (Name, Age) WHERE Age >= 18
 	res := query.
 		Delete().
-		From(q.Table("example")).
+		From("example").
 		Where(q.IntField("Age").Gte(18)).
 		Exec(tx)
 

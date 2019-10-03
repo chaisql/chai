@@ -14,10 +14,10 @@ import (
 // InsertStmt is a DSL that allows creating a full Insert query.
 // It is typically created using the Insert function.
 type InsertStmt struct {
-	tableSelector TableSelector
-	fieldNames    []string
-	values        expr.LitteralExprList
-	records       []interface{}
+	tableName  string
+	fieldNames []string
+	values     expr.LitteralExprList
+	records    []interface{}
 }
 
 // Insert creates a DSL equivalent to the SQL Insert command.
@@ -43,8 +43,8 @@ func (stmt InsertStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 
 // Into indicates in which table to write the new records.
 // Calling this method before Run is mandatory.
-func (stmt InsertStmt) Into(tableSelector TableSelector) InsertStmt {
-	stmt.tableSelector = tableSelector
+func (stmt InsertStmt) Into(tableName string) InsertStmt {
+	stmt.tableName = tableName
 	return stmt
 }
 
@@ -82,15 +82,15 @@ func (stmt InsertStmt) Pairs(pairs ...KVPair) InsertStmt {
 }
 
 func (stmt InsertStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
-	if stmt.tableSelector == nil {
-		return Result{err: errors.New("missing table selector")}
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
 	}
 
 	if stmt.values == nil && stmt.records == nil {
 		return Result{err: errors.New("values and records are empty")}
 	}
 
-	t, err := stmt.tableSelector.SelectTable(tx)
+	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
 		return Result{err: err}
 	}

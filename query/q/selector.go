@@ -89,6 +89,6 @@ func (t Table) TableName() string {
 }
 
 // SelectTable selects the table t from tx.
-func (t Table) SelectTable(tx *database.Tx) (*database.Table, error) {
+func (t Table) SelectTable(tx *database.Tx) (record.Iterator, error) {
 	return tx.GetTable(string(t))
 }

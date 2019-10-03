@@ -13,16 +13,16 @@ import (
 // UpdateStmt is a DSL that allows creating a full Update query.
 // It is typically created using the Update function.
 type UpdateStmt struct {
-	tableSelector TableSelector
-	pairs         map[string]expr.Expr
-	whereExpr     expr.Expr
+	tableName string
+	pairs     map[string]expr.Expr
+	whereExpr expr.Expr
 }
 
 // Update creates a DSL equivalent to the SQL Update command.
-func Update(tableSelector TableSelector) UpdateStmt {
+func Update(tableName string) UpdateStmt {
 	return UpdateStmt{
-		tableSelector: tableSelector,
-		pairs:         make(map[string]expr.Expr),
+		tableName: tableName,
+		pairs:     make(map[string]expr.Expr),
 	}
 }
 
@@ -61,8 +61,8 @@ func (stmt UpdateStmt) Where(e expr.Expr) UpdateStmt {
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
 func (stmt UpdateStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
-	if stmt.tableSelector == nil {
-		return Result{err: errors.New("missing table selector")}
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
 	}
 
 	if len(stmt.pairs) == 0 {
@@ -74,7 +74,7 @@ func (stmt UpdateStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		Params: args,
 	}
 
-	t, err := stmt.tableSelector.SelectTable(tx)
+	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
 		return Result{err: err}
 	}

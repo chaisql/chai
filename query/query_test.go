@@ -100,7 +100,7 @@ func BenchmarkStatementDelete(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				res := query.Delete().From(q.Table("test")).Where(q.IntField("age").Gt(-200)).Exec(tx)
+				res := query.Delete().From("test").Where(q.IntField("age").Gt(-200)).Exec(tx)
 				require.NoError(b, res.Err())
 			}
 			b.StopTimer()
@@ -117,7 +117,7 @@ func BenchmarkStatementUpdate(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				res := query.Update(q.Table("test")).Where(q.IntField("age").Gt(-200)).Set("age", expr.IntValue(100)).Exec(tx)
+				res := query.Update("test").Where(q.IntField("age").Gt(-200)).Set("age", expr.IntValue(100)).Exec(tx)
 				require.NoError(b, res.Err())
 			}
 			b.StopTimer()

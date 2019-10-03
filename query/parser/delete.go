@@ -2,7 +2,6 @@ package parser
 
 import (
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/query/scanner"
 )
 
@@ -21,7 +20,7 @@ func (p *Parser) parseDeleteStatement() (query.DeleteStmt, error) {
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.From(q.Table(tableName))
+	stmt = stmt.From(tableName)
 
 	// Parse condition: "WHERE EXPR".
 	expr, err := p.parseCondition()

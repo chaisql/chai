@@ -3,7 +3,6 @@ package parser
 import (
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/query/scanner"
 )
 
@@ -13,10 +12,10 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 	// Parse table name
 	tableName, err := p.ParseIdent()
 	if err != nil {
-		return query.Update(nil), err
+		return query.Update(""), err
 	}
 
-	stmt := query.Update(q.Table(tableName))
+	stmt := query.Update(tableName)
 
 	// Parse assignment: "SET field = EXPR".
 	pairs, err := p.parseSetClause()

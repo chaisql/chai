@@ -3,7 +3,6 @@ package parser
 import (
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/query/scanner"
 )
 
@@ -22,7 +21,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.Into(q.Table(tableName))
+	stmt = stmt.Into(tableName)
 
 	// Parse field list: (a, b, c)
 	fields, ok, err := p.parseFieldList()

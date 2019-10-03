@@ -94,6 +94,11 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("missing table selector")}
 	}
 
+	ts, err := newQueryOptimizer(tx, stmt.tableSelector).optimizeQuery(stmt.whereExpr, args)
+	if err != nil {
+		return Result{err: err}
+	}
+
 	offset := -1
 	limit := -1
 
@@ -144,7 +149,7 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		}
 	}
 
-	t, err := stmt.tableSelector.SelectTable(tx)
+	t, err := ts.SelectTable(tx)
 	if err != nil {
 		return Result{err: err}
 	}
@@ -173,11 +178,6 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 		})
 	}
 
-	// n, err := st.Count()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println("N", n)
 	return Result{Stream: st}
 }
 

@@ -440,7 +440,7 @@ func (t Table) ReIndex(fieldName string) error {
 }
 
 // SelectTable returns the current table. Implements the query.TableSelector interface.
-func (t Table) SelectTable(*Tx) (*Table, error) {
+func (t Table) SelectTable(*Tx) (record.Iterator, error) {
 	return &t, nil
 }
 

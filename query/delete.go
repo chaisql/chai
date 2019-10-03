@@ -12,8 +12,8 @@ import (
 // DeleteStmt is a DSL that allows creating a full Delete query.
 // It is typically created using the Delete function.
 type DeleteStmt struct {
-	tableSelector TableSelector
-	whereExpr     expr.Expr
+	tableName string
+	whereExpr expr.Expr
 }
 
 // Delete creates a DSL equivalent to the SQL Delete command.
@@ -39,8 +39,8 @@ func (stmt DeleteStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 
 // From indicates which table to select from.
 // Calling this method before Run is mandatory.
-func (stmt DeleteStmt) From(tableSelector TableSelector) DeleteStmt {
-	stmt.tableSelector = tableSelector
+func (stmt DeleteStmt) From(tableName string) DeleteStmt {
+	stmt.tableName = tableName
 	return stmt
 }
 
@@ -56,13 +56,13 @@ func (stmt DeleteStmt) Where(e expr.Expr) DeleteStmt {
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
 func (stmt DeleteStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
-	if stmt.tableSelector == nil {
-		return Result{err: errors.New("missing table selector")}
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
 	}
 
 	stack := expr.EvalStack{Tx: tx, Params: args}
 
-	t, err := stmt.tableSelector.SelectTable(tx)
+	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
 		return Result{err: err}
 	}

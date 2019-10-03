@@ -15,7 +15,7 @@ func TestDeleteStatement(t *testing.T) {
 		tx, cleanup := createTable(t, 10, false)
 		defer cleanup()
 
-		res := query.Delete().From(q.Table("test")).Where(q.IntField("age").Gt(20)).Exec(tx)
+		res := query.Delete().From("test").Where(q.IntField("age").Gt(20)).Exec(tx)
 		require.NoError(t, res.Err())
 
 		tb, err := tx.GetTable("test")
