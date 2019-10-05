@@ -52,7 +52,7 @@ func BenchmarkStatementSelect(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				query.Select().From(q.Table("test")).Where(q.IntField("age").Gt(-200)).Exec(tx).Count()
+				query.Select().From(q.Table("test")).Where(q.StringField("name").Eq("john-1")).Exec(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
@@ -79,12 +79,12 @@ func BenchmarkStatementSelectLimit(b *testing.B) {
 func BenchmarkStatementSelectWithIndex(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%0.5d", size), func(b *testing.B) {
-			tx, cleanup := createTable(b, size, false)
+			tx, cleanup := createTable(b, size, true)
 			defer cleanup()
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				query.Select().From(q.Table("test")).Where(q.StringField("name").Gt("")).Exec(tx).Count()
+				query.Select().From(q.Table("test")).Where(q.StringField("name").Eq("john-1")).Exec(tx).Count()
 			}
 			b.StopTimer()
 			tx.Rollback()
