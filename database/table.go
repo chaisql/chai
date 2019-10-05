@@ -48,7 +48,7 @@ func (t Table) Iterate(fn func(r record.Record) error) error {
 	})
 }
 
-// GetRecord returns one record by key. It implements the table.RecordGetter interface.
+// GetRecord returns one record by key.
 func (t Table) GetRecord(key []byte) (record.Record, error) {
 	v, err := t.store.Get(key)
 	if err != nil {
@@ -295,6 +295,7 @@ func (t Table) CreateIndex(name, field string, opts index.Options) (index.Index,
 	}
 
 	_, err = it.Insert(&indexOptions{
+		Name:      name,
 		TableName: t.name,
 		FieldName: field,
 		Unique:    opts.Unique,
@@ -326,7 +327,7 @@ func (t Table) CreateIndexIfNotExists(name, field string, opts index.Options) (i
 		return idx, nil
 	}
 	if err == ErrIndexAlreadyExists {
-		return t.GetIndex(field)
+		return t.GetIndex(name)
 	}
 
 	return nil, err

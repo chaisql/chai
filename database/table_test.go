@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
@@ -34,8 +35,8 @@ func newRecord() record.FieldBuffer {
 	})
 }
 
-// TestTableReaderIterate verifies Iterate behaviour.
-func TestTableReaderIterate(t *testing.T) {
+// TestTableIterate verifies Iterate behaviour.
+func TestTableIterate(t *testing.T) {
 	t.Run("Should not fail with no records", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -92,8 +93,8 @@ func TestTableReaderIterate(t *testing.T) {
 	})
 }
 
-// TestTableReaderRecord verifies Record behaviour.
-func TestTableReaderRecord(t *testing.T) {
+// TestTableRecord verifies Record behaviour.
+func TestTableRecord(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -126,8 +127,8 @@ func TestTableReaderRecord(t *testing.T) {
 	})
 }
 
-// TestTableWriterInsert verifies Insert behaviour.
-func TestTableWriterInsert(t *testing.T) {
+// TestTableInsert verifies Insert behaviour.
+func TestTableInsert(t *testing.T) {
 	t.Run("Should generate a recordID by default", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -224,8 +225,8 @@ func (r recordPker) PrimaryKey() ([]byte, error) {
 	return r.pkGenerator()
 }
 
-// TestTableWriterDelete verifies Delete behaviour.
-func TestTableWriterDelete(t *testing.T) {
+// TestTableDelete verifies Delete behaviour.
+func TestTableDelete(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -264,8 +265,8 @@ func TestTableWriterDelete(t *testing.T) {
 	})
 }
 
-// TestTableWriterReplace verifies Replace behaviour.
-func TestTableWriterReplace(t *testing.T) {
+// TestTableReplace verifies Replace behaviour.
+func TestTableReplace(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -316,8 +317,8 @@ func TestTableWriterReplace(t *testing.T) {
 	})
 }
 
-// TestTableWriterTruncate verifies Truncate behaviour.
-func TestTableWriterTruncate(t *testing.T) {
+// TestTableTruncate verifies Truncate behaviour.
+func TestTableTruncate(t *testing.T) {
 	t.Run("Should succeed if table empty", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -347,6 +348,51 @@ func TestTableWriterTruncate(t *testing.T) {
 		})
 
 		require.NoError(t, err)
+	})
+}
+
+func TestTableCreateIndex(t *testing.T) {
+	t.Run("Should create an index and return it", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		idx, err := tb.CreateIndex("idxFoo", "foo", index.Options{})
+		require.NoError(t, err)
+		require.NotNil(t, idx)
+	})
+
+	t.Run("Should fail it already exists", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		_, err := tb.CreateIndex("idxFoo", "foo", index.Options{})
+		require.NoError(t, err)
+
+		_, err = tb.CreateIndex("idxFoo", "foo", index.Options{})
+		require.Equal(t, database.ErrIndexAlreadyExists, err)
+	})
+}
+
+func TestTableCreateIndexIfNotExists(t *testing.T) {
+	t.Run("Should create an index and return it", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		idx, err := tb.CreateIndexIfNotExists("idxFoo", "foo", index.Options{})
+		require.NoError(t, err)
+		require.NotNil(t, idx)
+	})
+
+	t.Run("Should success if it already exists", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		idx, err := tb.CreateIndex("idxFoo", "foo", index.Options{})
+		require.NoError(t, err)
+
+		idx2, err := tb.CreateIndexIfNotExists("idxFoo", "foo", index.Options{})
+		require.NoError(t, err)
+		require.Equal(t, idx, idx2)
 	})
 }
 
