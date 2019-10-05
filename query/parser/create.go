@@ -7,13 +7,20 @@ import (
 
 // parseCreateStatement parses a create string and returns a query.Statement AST object.
 // This function assumes the CREATE token has already been consumed.
-func (p *Parser) parseCreateStatement() (query.CreateTableStmt, error) {
-	var stmt query.CreateTableStmt
-
-	// Parse "TABLE".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.TABLE {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE"}, pos)
+func (p *Parser) parseCreateStatement() (query.Statement, error) {
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.TABLE:
+		return p.parseCreateTableStatement()
 	}
+
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
+}
+
+// parseCreateTableStatement parses a create table string and returns a query.Statement AST object.
+// This function assumes the CREATE TABLE tokens have already been consumed.
+func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
+	var stmt query.CreateTableStmt
 
 	// Parse table name
 	tableName, err := p.ParseIdent()

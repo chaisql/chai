@@ -7,13 +7,14 @@ import (
 )
 
 type indexOptions struct {
+	Name      string
 	TableName string
 	FieldName string
 	Unique    bool
 }
 
 func (i *indexOptions) PrimaryKey() ([]byte, error) {
-	return []byte(buildIndexName(i.TableName, i.FieldName)), nil
+	return []byte(buildIndexName(i.Name, i.TableName)), nil
 }
 
 // Field implements the field method of the record.Record interface.

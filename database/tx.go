@@ -2,8 +2,6 @@ package database
 
 import (
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
 	"github.com/pkg/errors"
 )
 
@@ -112,32 +110,4 @@ func (tx Tx) DropTable(name string) error {
 		return ErrTableNotFound
 	}
 	return err
-}
-
-type indexer interface {
-	Indexes() map[string]index.Options
-}
-
-// InitTable ensures the table exists before returning it.
-// If r implements the following interface, its method will be called to
-// call CreateIndexesIfNotExist and create all missing indexes.
-//   type indexer interface {
-//	   Indexes() map[string]index.Options
-//   }
-// Note that if a an index is created, the table won't be reindexed. Use the
-// ReIndex method to do so.
-func (tx Tx) InitTable(name string, r record.Record) (*Table, error) {
-	t, err := tx.CreateTableIfNotExists(name)
-	if err != nil {
-		return nil, err
-	}
-
-	if idxer, ok := r.(indexer); ok {
-		err = t.CreateIndexesIfNotExist(idxer.Indexes())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return t, nil
 }

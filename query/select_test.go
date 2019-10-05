@@ -103,7 +103,7 @@ func TestSelectStatement(t *testing.T) {
 				return err
 			}
 
-			_, err = tb.CreateIndex("a", index.Options{})
+			_, err = tb.CreateIndex("idx_test_a", "a", index.Options{})
 			if err != nil {
 				return err
 			}

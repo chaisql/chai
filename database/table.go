@@ -266,25 +266,25 @@ func (t Table) RenameField(oldName, newName string) error {
 	})
 }
 
-func buildIndexName(tableName, field string) string {
+func buildIndexName(name, tableName string) string {
 	var b strings.Builder
 	b.WriteString(indexPrefix)
-	b.WriteString(tableName)
+	b.WriteString(name)
 	b.WriteByte(separator)
-	b.WriteString(field)
+	b.WriteString(tableName)
 
 	return b.String()
 }
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (t Table) CreateIndex(field string, opts index.Options) (index.Index, error) {
+func (t Table) CreateIndex(name, field string, opts index.Options) (index.Index, error) {
 	it, err := t.tx.GetTable(indexTable)
 	if err != nil {
 		return nil, err
 	}
 
-	idxName := buildIndexName(t.name, field)
+	idxName := buildIndexName(name, t.name)
 
 	_, err = it.GetRecord([]byte(idxName))
 	if err == nil {
@@ -320,8 +320,8 @@ func (t Table) CreateIndex(field string, opts index.Options) (index.Index, error
 }
 
 // CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
-func (t Table) CreateIndexIfNotExists(field string, opts index.Options) (index.Index, error) {
-	idx, err := t.CreateIndex(field, opts)
+func (t Table) CreateIndexIfNotExists(name, field string, opts index.Options) (index.Index, error) {
+	idx, err := t.CreateIndex(name, field, opts)
 	if err == nil {
 		return idx, nil
 	}
@@ -332,23 +332,9 @@ func (t Table) CreateIndexIfNotExists(field string, opts index.Options) (index.I
 	return nil, err
 }
 
-// CreateIndexesIfNotExist takes a map that associates field names to index options
-// and ensures these indexes are created if they don't already exist.
-// This method doesn't reindex the table if a new index is created.
-func (t Table) CreateIndexesIfNotExist(indexes map[string]index.Options) error {
-	for fieldName, idxOpts := range indexes {
-		_, err := t.CreateIndexIfNotExists(fieldName, idxOpts)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // GetIndex returns an index by name.
-func (t Table) GetIndex(field string) (index.Index, error) {
-	indexName := buildIndexName(t.name, field)
+func (t Table) GetIndex(name string) (index.Index, error) {
+	indexName := buildIndexName(name, t.name)
 
 	opts, err := readIndexOptions(t.tx, indexName)
 	if err != nil {
@@ -411,28 +397,28 @@ func (t Table) DropIndex(field string) error {
 
 // ReIndex drops the selected index, creates a new one and runs over all the records
 // to fill the newly created index.
-func (t Table) ReIndex(fieldName string) error {
-	err := t.DropIndex(fieldName)
+func (t Table) ReIndex(name string) error {
+	err := t.DropIndex(name)
 	if err != nil {
 		return err
 	}
 
-	indexName := buildIndexName(t.name, fieldName)
+	indexName := buildIndexName(name, t.name)
 
 	opts, err := readIndexOptions(t.tx, indexName)
 	if err != nil {
 		return err
 	}
 
-	idx, err := t.CreateIndex(fieldName, index.Options{Unique: opts.Unique})
+	idx, err := t.CreateIndex(name, opts.FieldName, index.Options{Unique: opts.Unique})
 	if err != nil {
 		return err
 	}
 
 	return t.Iterate(func(r record.Record) error {
-		f, err := r.GetField(fieldName)
+		f, err := r.GetField(opts.FieldName)
 		if err != nil {
-			return err
+			return nil
 		}
 
 		return idx.Set(f.Data, r.(record.Keyer).Key())
