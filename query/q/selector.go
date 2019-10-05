@@ -33,7 +33,7 @@ func (f Field) Eval(stack expr.EvalStack) (expr.Value, error) {
 		return expr.NilLitteral, nil
 	}
 
-	return expr.LitteralValue{Value: fd.Value}, nil
+	return expr.NewSingleValue(fd.Value), nil
 }
 
 // As returns a alias to f.

@@ -145,13 +145,12 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack expr.EvalStack) Re
 					return res
 				}
 
-				vl, ok := v.(expr.LitteralValue)
-				if !ok {
+				if v.IsList {
 					res.err = errors.New("invalid values")
 					return res
 				}
 
-				fb.Add(record.Field{Name: pair.K, Value: vl.Value})
+				fb.Add(record.Field{Name: pair.K, Value: v.Value.Value})
 			}
 			r = &fb
 		}
@@ -182,17 +181,16 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack expr.EvalStack) Res
 
 		// each record must be a list of values
 		// (e1, e2, e3, ...)
-		vl, ok := v.(expr.LitteralValueList)
-		if !ok {
+		if !v.IsList {
 			return Result{err: errors.New("invalid values")}
 		}
 
-		if len(stmt.fieldNames) != len(vl) {
-			return Result{err: fmt.Errorf("%d values for %d fields", len(vl), len(stmt.fieldNames))}
+		if len(stmt.fieldNames) != len(v.List) {
+			return Result{err: fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.fieldNames))}
 		}
 
 		// iterate over each value
-		for i, v := range vl {
+		for i, v := range v.List {
 			// get the field name
 			fieldName := stmt.fieldNames[i]
 
@@ -200,13 +198,12 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack expr.EvalStack) Res
 
 			// each value must be either a LitteralValue or a LitteralValueList with exactly
 			// one value
-			switch t := v.(type) {
-			case expr.LitteralValue:
-				lv = &t
-			case expr.LitteralValueList:
-				if len(t) == 1 {
-					if val, ok := t[0].(expr.LitteralValue); ok {
-						lv = &val
+			if !v.IsList {
+				lv = &v.Value
+			} else {
+				if len(v.List) == 1 {
+					if val := v.List[0]; !val.IsList {
+						lv = &val.Value
 					}
 				}
 				return Result{err: fmt.Errorf("value expected, got list")}

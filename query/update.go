@@ -108,13 +108,12 @@ func (stmt UpdateStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			lv, ok := v.(expr.LitteralValue)
-			if !ok {
+			if v.IsList {
 				return fmt.Errorf("expected value got list")
 			}
 
-			f.Type = lv.Type
-			f.Data = lv.Data
+			f.Type = v.Value.Type
+			f.Data = v.Value.Data
 			err = fb.Replace(f.Name, f)
 			if err != nil {
 				return err

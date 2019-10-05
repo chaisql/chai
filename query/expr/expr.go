@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	trueLitteral  = LitteralValue{Value: value.NewBool(true)}
-	falseLitteral = LitteralValue{Value: value.NewBool(false)}
-	NilLitteral   = LitteralValue{Value: value.NewString("nil")}
+	trueLitteral  = NewSingleValue(value.NewBool(true))
+	falseLitteral = NewSingleValue(value.NewBool(false))
+	NilLitteral   = NewSingleValue(value.NewString("nil"))
 )
 
 // An Expr evaluates to a value.
@@ -30,8 +30,29 @@ type EvalStack struct {
 }
 
 // A Value is the result of evaluating an expression.
-type Value interface {
-	Truthy() bool
+type Value struct {
+	Value  LitteralValue
+	List   LitteralValueList
+	IsList bool
+}
+
+// Truthy returns true if the Data is different than the zero value of
+// the type of s.
+// It implements the Value interface.
+func (v Value) Truthy() bool {
+	if v.IsList {
+		return v.List.Truthy()
+	}
+
+	return v.Value.Truthy()
+}
+
+func NewSingleValue(v value.Value) Value {
+	return Value{
+		Value: LitteralValue{
+			Value: v,
+		},
+	}
 }
 
 // A LitteralValue represents a litteral value of any type defined by the value package.
@@ -48,7 +69,7 @@ func (l LitteralValue) Truthy() bool {
 
 // Eval returns l. It implements the Expr interface.
 func (l LitteralValue) Eval(EvalStack) (Value, error) {
-	return l, nil
+	return Value{Value: l}, nil
 }
 
 // A LitteralValueList represents a litteral value of any type defined by the value package.
@@ -80,10 +101,10 @@ func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 	for i, e := range l {
 		values[i], err = e.Eval(stack)
 		if err != nil {
-			return nil, err
+			return NilLitteral, err
 		}
 	}
-	return values, nil
+	return Value{List: values, IsList: true}, nil
 }
 
 type NamedParam string
@@ -91,17 +112,15 @@ type NamedParam string
 func (p NamedParam) Eval(stack EvalStack) (Value, error) {
 	v, err := p.Extract(stack.Params)
 	if err != nil {
-		return nil, err
+		return NilLitteral, err
 	}
 
 	vl, err := value.New(v)
 	if err != nil {
-		return nil, err
+		return NilLitteral, err
 	}
 
-	return LitteralValue{
-		Value: vl,
-	}, nil
+	return NewSingleValue(vl), nil
 }
 
 func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
@@ -119,17 +138,15 @@ type PositionalParam int
 func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
 	v, err := p.Extract(stack.Params)
 	if err != nil {
-		return nil, err
+		return NilLitteral, err
 	}
 
 	vl, err := value.New(v)
 	if err != nil {
-		return nil, err
+		return NilLitteral, err
 	}
 
-	return LitteralValue{
-		Value: vl,
-	}, nil
+	return NewSingleValue(vl), nil
 }
 
 func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error) {

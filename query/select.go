@@ -113,16 +113,15 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 			return Result{err: err}
 		}
 
-		lv, ok := v.(expr.LitteralValue)
-		if !ok {
+		if v.IsList {
 			return Result{err: fmt.Errorf("expected value got list")}
 		}
 
-		if lv.Type < value.Int {
-			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", lv.Type)}
+		if v.Value.Type < value.Int {
+			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", v.Value.Type)}
 		}
 
-		offset, err = value.DecodeInt(lv.Data)
+		offset, err = value.DecodeInt(v.Value.Data)
 		if err != nil {
 			return Result{err: err}
 		}
@@ -134,16 +133,15 @@ func (stmt SelectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 			return Result{err: err}
 		}
 
-		lv, ok := v.(expr.LitteralValue)
-		if !ok {
+		if v.IsList {
 			return Result{err: fmt.Errorf("expected value got list")}
 		}
 
-		if lv.Type < value.Int {
-			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", lv.Type)}
+		if v.Value.Type < value.Int {
+			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", v.Value.Type)}
 		}
 
-		limit, err = value.DecodeInt(lv.Data)
+		limit, err = value.DecodeInt(v.Value.Data)
 		if err != nil {
 			return Result{err: err}
 		}

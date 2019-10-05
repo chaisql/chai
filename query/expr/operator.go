@@ -83,42 +83,39 @@ func (op CmpOp) Eval(ctx EvalStack) (Value, error) {
 
 func (op CmpOp) compare(l, r Value) (bool, error) {
 	// l must be of the same type
-	switch t := l.(type) {
-	case LitteralValue:
-		if v, ok := r.(LitteralValue); ok {
-			return op.compareLitterals(t, v)
+	if !l.IsList {
+		if !r.IsList {
+			return op.compareLitterals(l.Value, r.Value)
 		}
-		if vl, ok := r.(LitteralValueList); ok && len(vl) == 1 {
-			return op.compare(t, vl[0])
+		if len(r.List) == 1 {
+			return op.compare(l, r.List[0])
 		}
 
 		return false, fmt.Errorf("can't compare expressions")
-	case LitteralValueList:
-		if vl, ok := r.(LitteralValueList); ok {
-			// make sure they have the same number of elements
-			if len(t) != len(vl) {
-				return false, fmt.Errorf("comparing %d elements with %d elements", len(t), len(vl))
-			}
-			for i := range t {
-				ok, err := op.compare(t[i], vl[i])
-				if err != nil {
-					return ok, err
-				}
-				if !ok {
-					return false, nil
-				}
-			}
-
-			return true, nil
-		}
-		if v, ok := r.(LitteralValue); ok && len(t) == 1 {
-			return op.compare(t[0], v)
-		}
-	default:
-		return false, fmt.Errorf("invalid type %v", l)
 	}
 
-	return false, nil
+	if r.IsList {
+		// make sure they have the same number of elements
+		if len(l.List) != len(r.List) {
+			return false, fmt.Errorf("comparing %d elements with %d elements", len(l.List), len(r.List))
+		}
+		for i := range l.List {
+			ok, err := op.compare(l.List[i], r.List[i])
+			if err != nil {
+				return ok, err
+			}
+			if !ok {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	}
+	if len(l.List) == 1 {
+		return op.compare(l.List[0], r)
+	}
+
+	return false, fmt.Errorf("can't compare expressions")
 }
 
 func (op CmpOp) compareLitterals(l, r LitteralValue) (bool, error) {

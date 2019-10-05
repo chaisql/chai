@@ -8,9 +8,10 @@ import (
 
 func TestOperator(t *testing.T) {
 	tests := []struct {
-		name      string
-		fn        func(a, b Expr) Expr
-		a, b, res Expr
+		name string
+		fn   func(a, b Expr) Expr
+		a, b Expr
+		res  Value
 	}{
 		{"EQ / Same type", Eq, Int32Value(10), Int32Value(10), trueLitteral},
 		{"EQ / Same type / Different values", Eq, Int32Value(10), Int32Value(11), falseLitteral},

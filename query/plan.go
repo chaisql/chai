@@ -187,15 +187,14 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 		return err
 	}
 
-	lv, ok := v.(expr.LitteralValue)
-	if !ok {
+	if v.IsList {
 		return errors.New("expression doesn't evaluate to scalar")
 	}
 
 	switch it.op {
 	case scanner.EQ:
-		err = it.index.AscendGreaterOrEqual(lv.Data, func(value []byte, key []byte) error {
-			if bytes.Equal(lv.Data, value) {
+		err = it.index.AscendGreaterOrEqual(v.Value.Data, func(value []byte, key []byte) error {
+			if bytes.Equal(v.Value.Data, value) {
 				r, err := it.tb.GetRecord(key)
 				if err != nil {
 					return err
@@ -207,8 +206,8 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return errStop
 		})
 	case scanner.GT:
-		err = it.index.AscendGreaterOrEqual(lv.Data, func(value []byte, key []byte) error {
-			if bytes.Equal(lv.Data, value) {
+		err = it.index.AscendGreaterOrEqual(v.Value.Data, func(value []byte, key []byte) error {
+			if bytes.Equal(v.Value.Data, value) {
 				return nil
 			}
 
@@ -220,7 +219,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.GTE:
-		err = it.index.AscendGreaterOrEqual(lv.Data, func(value []byte, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(v.Value.Data, func(value []byte, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err
@@ -229,8 +228,8 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LT:
-		err = it.index.DescendLessOrEqual(lv.Data, func(value []byte, key []byte) error {
-			if bytes.Equal(lv.Data, value) {
+		err = it.index.DescendLessOrEqual(v.Value.Data, func(value []byte, key []byte) error {
+			if bytes.Equal(v.Value.Data, value) {
 				return nil
 			}
 
@@ -242,7 +241,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LTE:
-		err = it.index.DescendLessOrEqual(lv.Data, func(value []byte, key []byte) error {
+		err = it.index.DescendLessOrEqual(v.Value.Data, func(value []byte, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err
