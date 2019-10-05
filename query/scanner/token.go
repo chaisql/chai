@@ -80,18 +80,21 @@ const (
 	FROM
 	IF
 	IN
+	INDEX
 	INF
 	INSERT
 	INTO
 	LIMIT
 	NOT
 	OFFSET
+	ON
 	ORDER
 	SELECT
 	SET
 	RECORDS
 	TABLE
 	TO
+	UNIQUE
 	UPDATE
 	VALUES
 	WHERE
@@ -157,17 +160,20 @@ var tokens = [...]string{
 	FROM:     "FROM",
 	IF:       "IF",
 	IN:       "IN",
+	INDEX:    "INDEX",
 	INSERT:   "INSERT",
 	INTO:     "INTO",
 	LIMIT:    "LIMIT",
 	NOT:      "NOT",
 	OFFSET:   "OFFSET",
+	ON:       "ON",
 	ORDER:    "ORDER",
 	SELECT:   "SELECT",
 	SET:      "SET",
 	RECORDS:  "RECORDS",
 	TABLE:    "TABLE",
 	TO:       "TO",
+	UNIQUE:   "UNIQUE",
 	UPDATE:   "UPDATE",
 	VALUES:   "VALUES",
 	WHERE:    "WHERE",

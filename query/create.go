@@ -68,11 +68,9 @@ type CreateIndexStmt struct {
 }
 
 // CreateIndex creates a DSL equivalent to the SQL CREATE INDEX command.
-func CreateIndex(idxName, tableName, fieldName string) CreateIndexStmt {
+func CreateIndex(idxName string) CreateIndexStmt {
 	return CreateIndexStmt{
-		idxName:   idxName,
-		tableName: tableName,
-		fieldName: fieldName,
+		idxName: idxName,
 	}
 }
 
@@ -101,6 +99,18 @@ func (stmt CreateIndexStmt) Exec(tx *database.Tx, args ...interface{}) Result {
 // IfNotExists sets the ifNotExists flag to true.
 func (stmt CreateIndexStmt) IfNotExists() CreateIndexStmt {
 	stmt.ifNotExists = true
+	return stmt
+}
+
+// On selects the table.
+func (stmt CreateIndexStmt) On(tableName string) CreateIndexStmt {
+	stmt.tableName = tableName
+	return stmt
+}
+
+// Field selects the field name.
+func (stmt CreateIndexStmt) Field(fieldName string) CreateIndexStmt {
+	stmt.fieldName = fieldName
 	return stmt
 }
 

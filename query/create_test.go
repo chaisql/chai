@@ -31,15 +31,15 @@ func TestCreateIndexStatement(t *testing.T) {
 	tx, cleanup := createTable(t, 0, false)
 	defer cleanup()
 
-	res := query.CreateIndex("foo", "test", "a").Exec(tx)
+	res := query.CreateIndex("foo").On("test").Field("a").Exec(tx)
 	require.NoError(t, res.Err())
 
-	res = query.CreateIndex("foo", "test", "a").Exec(tx)
+	res = query.CreateIndex("foo").On("test").Field("a").Exec(tx)
 	require.Error(t, res.Err())
 
-	res = query.CreateIndex("foo", "test", "a").IfNotExists().Exec(tx)
+	res = query.CreateIndex("foo").IfNotExists().On("test").Field("a").Exec(tx)
 	require.NoError(t, res.Err())
 
-	res = query.CreateIndex("bar", "test", "a").IfNotExists().Exec(tx)
+	res = query.CreateIndex("bar").IfNotExists().On("test").Field("a").Exec(tx)
 	require.NoError(t, res.Err())
 }

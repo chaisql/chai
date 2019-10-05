@@ -31,3 +31,31 @@ func TestParserCreateTable(t *testing.T) {
 		})
 	}
 }
+
+func TestParserCreateIndex(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		expected query.Statement
+		errored  bool
+	}{
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndex("idx").On("test").Field("foo"), false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo)", query.CreateIndex("idx").On("test").IfNotExists().Field("foo"), false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo)", query.CreateIndex("idx").On("test").IfNotExists().Field("foo").Unique(), false},
+		{"No fields", "CREATE INDEX idx ON test", nil, true},
+		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", nil, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q, err := ParseQuery(test.s)
+			if test.errored {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, q.Statements, 1)
+			require.EqualValues(t, test.expected, q.Statements[0])
+		})
+	}
+}
