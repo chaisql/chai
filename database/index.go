@@ -7,25 +7,27 @@ import (
 )
 
 type indexOptions struct {
-	Name      string
+	IndexName string
 	TableName string
 	FieldName string
 	Unique    bool
 }
 
 func (i *indexOptions) PrimaryKey() ([]byte, error) {
-	return []byte(buildIndexName(i.Name)), nil
+	return []byte(buildIndexName(i.IndexName)), nil
 }
 
 // Field implements the field method of the record.Record interface.
 func (i *indexOptions) GetField(name string) (record.Field, error) {
 	switch name {
-	case "Unique":
-		return record.NewBoolField("Unique", i.Unique), nil
+	case "IndexName":
+		return record.NewStringField("IndexName", i.IndexName), nil
 	case "TableName":
 		return record.NewStringField("TableName", i.TableName), nil
 	case "FieldName":
 		return record.NewStringField("FieldName", i.FieldName), nil
+	case "Unique":
+		return record.NewBoolField("Unique", i.Unique), nil
 	}
 
 	return record.Field{}, errors.New("unknown field")
@@ -37,7 +39,7 @@ func (i *indexOptions) Iterate(fn func(record.Field) error) error {
 	var err error
 	var f record.Field
 
-	f, _ = i.GetField("Unique")
+	f, _ = i.GetField("IndexName")
 	err = fn(f)
 	if err != nil {
 		return err
@@ -55,6 +57,12 @@ func (i *indexOptions) Iterate(fn func(record.Field) error) error {
 		return err
 	}
 
+	f, _ = i.GetField("Unique")
+	err = fn(f)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -65,12 +73,14 @@ func (i *indexOptions) ScanRecord(rec record.Record) error {
 		var err error
 
 		switch f.Name {
-		case "Unique":
-			i.Unique, err = value.DecodeBool(f.Data)
+		case "IndexName":
+			i.IndexName, err = value.DecodeString(f.Data)
 		case "TableName":
 			i.TableName, err = value.DecodeString(f.Data)
 		case "FieldName":
 			i.FieldName, err = value.DecodeString(f.Data)
+		case "Unique":
+			i.Unique, err = value.DecodeBool(f.Data)
 		}
 		return err
 	})

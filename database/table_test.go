@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
@@ -352,6 +353,44 @@ func TestTableTruncate(t *testing.T) {
 		})
 
 		require.NoError(t, err)
+	})
+}
+
+func TestTableIndexes(t *testing.T) {
+	t.Run("Should succeed if table has no indexes", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		m, err := tb.Indexes()
+		require.NoError(t, err)
+		require.Empty(t, m)
+	})
+
+	t.Run("Should return a map of all the indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		tb, err := tx.CreateTable("test1")
+		require.NoError(t, err)
+		_, err = tx.CreateTable("test2")
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("idx1a", "test1", "a", index.Options{Unique: true})
+		require.NoError(t, err)
+		_, err = tx.CreateIndex("idx1b", "test1", "b", index.Options{Unique: false})
+		require.NoError(t, err)
+		_, err = tx.CreateIndex("ifx2a", "test2", "a", index.Options{Unique: false})
+		require.NoError(t, err)
+
+		m, err := tb.Indexes()
+		require.NoError(t, err)
+		require.Len(t, m, 2)
+		idx1a, ok := m["idx1a"]
+		require.True(t, ok)
+		require.NotNil(t, idx1a)
+		idx1b, ok := m["idx1a"]
+		require.True(t, ok)
+		require.NotNil(t, idx1b)
 	})
 }
 

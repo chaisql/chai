@@ -143,7 +143,7 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 	}
 
 	_, err = it.Insert(&indexOptions{
-		Name:      indexName,
+		IndexName: indexName,
 		TableName: tableName,
 		FieldName: fieldName,
 		Unique:    opts.Unique,
