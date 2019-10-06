@@ -1,0 +1,49 @@
+package parser
+
+import (
+	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/query/scanner"
+)
+
+// parseDropStatement parses a drop string and returns a query.Statement AST object.
+// This function assumes the DROP token has already been consumed.
+func (p *Parser) parseDropStatement() (query.Statement, error) {
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.TABLE:
+		return p.parseDropTableStatement()
+	}
+
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
+}
+
+// parseDropTableStatement parses a drop table string and returns a query.Statement AST object.
+// This function assumes the DROP TABLE tokens have already been consumed.
+func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
+	var stmt query.DropTableStmt
+	var ifExists bool
+
+	// Parse "IF"
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.IF {
+		// Parse "EXISTS"
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
+			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
+		}
+		ifExists = true
+	} else {
+		p.Unscan()
+	}
+
+	// Parse table name
+	tableName, err := p.ParseIdent()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = query.DropTable(tableName)
+
+	if ifExists {
+		stmt = stmt.IfExists()
+	}
+
+	return stmt, nil
+}

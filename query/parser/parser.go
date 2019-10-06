@@ -71,9 +71,13 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 		return p.parseInsertStatement()
 	case scanner.CREATE:
 		return p.parseCreateStatement()
+	case scanner.DROP:
+		return p.parseDropStatement()
 	}
 
-	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SELECT", "DELETE"}, pos)
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{
+		"SELECT", "DELETE", "UPDATE", "INSERT", "CREATE", "DROP",
+	}, pos)
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
