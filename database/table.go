@@ -1,13 +1,12 @@
 package database
 
 import (
-	"strings"
+	"bytes"
 	"time"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/value"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
@@ -185,247 +184,6 @@ func (t Table) Truncate() error {
 	return t.store.Truncate()
 }
 
-// AddField changes the table structure by adding a field to all the records.
-// If the field data is empty, it is filled with the zero value of the field type.
-// If a record already has the field, no change is performed on that record.
-func (t Table) AddField(f record.Field) error {
-	return t.store.AscendGreaterOrEqual(nil, func(key, v []byte) error {
-		var fb record.FieldBuffer
-		err := fb.ScanRecord(record.EncodedRecord(v))
-		if err != nil {
-			return err
-		}
-
-		if _, err = fb.GetField(f.Name); err == nil {
-			// if the field already exists, skip
-			return nil
-		}
-
-		if f.Data == nil {
-			f.Data = value.ZeroValue(f.Type).Data
-		}
-		fb.Add(f)
-
-		v, err = record.Encode(&fb)
-		if err != nil {
-			return err
-		}
-
-		return t.store.Put(key, v)
-	})
-}
-
-// DeleteField changes the table structure by deleting a field from all the records.
-func (t Table) DeleteField(name string) error {
-	return t.store.AscendGreaterOrEqual(nil, func(key, v []byte) error {
-		var fb record.FieldBuffer
-		err := fb.ScanRecord(record.EncodedRecord(v))
-		if err != nil {
-			return err
-		}
-
-		err = fb.Delete(name)
-		if err != nil {
-			// if the field doesn't exist, skip
-			return nil
-		}
-
-		v, err = record.Encode(&fb)
-		if err != nil {
-			return err
-		}
-
-		return t.store.Put(key, v)
-	})
-}
-
-// RenameField changes the table structure by renaming the selected field on all the records.
-func (t Table) RenameField(oldName, newName string) error {
-	return t.store.AscendGreaterOrEqual(nil, func(key, v []byte) error {
-		var fb record.FieldBuffer
-		err := fb.ScanRecord(record.EncodedRecord(v))
-		if err != nil {
-			return err
-		}
-
-		f, err := fb.GetField(oldName)
-		if err != nil {
-			// if the field doesn't exist, skip
-			return nil
-		}
-
-		f.Name = newName
-		fb.Replace(oldName, f)
-
-		v, err = record.Encode(&fb)
-		if err != nil {
-			return err
-		}
-
-		return t.store.Put(key, v)
-	})
-}
-
-func buildIndexName(name, tableName string) string {
-	var b strings.Builder
-	b.WriteString(indexPrefix)
-	b.WriteString(name)
-	b.WriteByte(separator)
-	b.WriteString(tableName)
-
-	return b.String()
-}
-
-// CreateIndex creates an index with the given name.
-// If it already exists, returns ErrTableAlreadyExists.
-func (t Table) CreateIndex(name, field string, opts index.Options) (index.Index, error) {
-	it, err := t.tx.GetTable(indexTable)
-	if err != nil {
-		return nil, err
-	}
-
-	idxName := buildIndexName(name, t.name)
-
-	_, err = it.GetRecord([]byte(idxName))
-	if err == nil {
-		return nil, ErrIndexAlreadyExists
-	}
-	if err != ErrRecordNotFound {
-		return nil, err
-	}
-
-	_, err = it.Insert(&indexOptions{
-		Name:      name,
-		TableName: t.name,
-		FieldName: field,
-		Unique:    opts.Unique,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	err = t.tx.tx.CreateStore(idxName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create index %q on table %q", field, t.name)
-	}
-
-	s, err := t.tx.tx.Store(idxName)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return index.New(s, index.Options{Unique: opts.Unique}), nil
-}
-
-// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
-func (t Table) CreateIndexIfNotExists(name, field string, opts index.Options) (index.Index, error) {
-	idx, err := t.CreateIndex(name, field, opts)
-	if err == nil {
-		return idx, nil
-	}
-	if err == ErrIndexAlreadyExists {
-		return t.GetIndex(name)
-	}
-
-	return nil, err
-}
-
-// GetIndex returns an index by name.
-func (t Table) GetIndex(name string) (index.Index, error) {
-	indexName := buildIndexName(name, t.name)
-
-	opts, err := readIndexOptions(t.tx, indexName)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := t.tx.tx.Store(indexName)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return index.New(s, index.Options{Unique: opts.Unique}), nil
-}
-
-// Indexes returns a map of all the indexes of a table.
-func (t Table) Indexes() (map[string]index.Index, error) {
-	prefix := buildIndexName(t.name, "")
-	list, err := t.tx.tx.ListStores(prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	indexes := make(map[string]index.Index)
-	for _, storeName := range list {
-		idxName := strings.TrimPrefix(storeName, prefix)
-		indexes[idxName], err = t.GetIndex(idxName)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return indexes, nil
-}
-
-// DropIndex deletes an index from the database.
-func (t Table) DropIndex(field string) error {
-	it, err := t.tx.GetTable(indexTable)
-	if err != nil {
-		return err
-	}
-
-	indexName := buildIndexName(t.name, field)
-	err = it.Delete([]byte(indexName))
-	if err == ErrRecordNotFound {
-		return ErrIndexNotFound
-	}
-	if err != nil {
-		return err
-	}
-
-	err = t.tx.tx.DropStore(indexName)
-	if err == engine.ErrStoreNotFound {
-		return ErrIndexNotFound
-	}
-	return err
-}
-
-// ReIndex drops the selected index, creates a new one and runs over all the records
-// to fill the newly created index.
-func (t Table) ReIndex(name string) error {
-	err := t.DropIndex(name)
-	if err != nil {
-		return err
-	}
-
-	indexName := buildIndexName(name, t.name)
-
-	opts, err := readIndexOptions(t.tx, indexName)
-	if err != nil {
-		return err
-	}
-
-	idx, err := t.CreateIndex(name, opts.FieldName, index.Options{Unique: opts.Unique})
-	if err != nil {
-		return err
-	}
-
-	return t.Iterate(func(r record.Record) error {
-		f, err := r.GetField(opts.FieldName)
-		if err != nil {
-			return nil
-		}
-
-		return idx.Set(f.Data, r.(record.Keyer).Key())
-	})
-}
-
 // SelectTable returns the current table. Implements the query.TableSelector interface.
 func (t Table) SelectTable(*Tx) (record.Iterator, error) {
 	return &t, nil
@@ -434,4 +192,39 @@ func (t Table) SelectTable(*Tx) (record.Iterator, error) {
 // TableName returns the name of the table.
 func (t Table) TableName() string {
 	return t.name
+}
+
+// Indexes returns a map of all the indexes of a table.
+func (t Table) Indexes() (map[string]index.Index, error) {
+	tb, err := t.tx.GetTable(indexTable)
+	if err != nil {
+		return nil, err
+	}
+
+	tableName := []byte(t.name)
+	indexes := make(map[string]index.Index)
+
+	err = record.NewStream(tb).
+		Filter(func(r record.Record) (bool, error) {
+			f, err := r.GetField("TableName")
+			if err != nil {
+				return false, err
+			}
+
+			return bytes.Equal(f.Data, tableName), nil
+		}).
+		Iterate(func(r record.Record) error {
+			f, err := r.GetField("IndexName")
+			if err != nil {
+				return err
+			}
+
+			indexes[string(f.Data)], err = t.tx.GetIndex(string(f.Data))
+			return err
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	return indexes, nil
 }

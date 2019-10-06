@@ -54,3 +54,51 @@ func (stmt DropTableStmt) exec(tx *database.Tx, args []driver.NamedValue) Result
 
 	return Result{err: err}
 }
+
+// DropIndexStmt is a DSL that allows creating a DROP INDEX query.
+type DropIndexStmt struct {
+	tableName string
+	ifExists  bool
+}
+
+// DropIndex creates a DSL equivalent to the SQL DROP INDEX command.
+func DropIndex(tableName string) DropIndexStmt {
+	return DropIndexStmt{
+		tableName: tableName,
+	}
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt DropIndexStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the DropIndex statement in the given transaction.
+// It implements the Statement interface.
+func (stmt DropIndexStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	return stmt.exec(tx, args)
+}
+
+// Exec the DropIndex statement within tx.
+func (stmt DropIndexStmt) Exec(tx *database.Tx, args ...interface{}) Result {
+	return stmt.exec(tx, argsToNamedValues(args))
+}
+
+// IfExists sets the ifExists flag to true.
+func (stmt DropIndexStmt) IfExists() DropIndexStmt {
+	stmt.ifExists = true
+	return stmt
+}
+
+func (stmt DropIndexStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing index name")}
+	}
+
+	err := tx.DropIndex(stmt.tableName)
+	if err == database.ErrTableNotFound && stmt.ifExists {
+		return Result{}
+	}
+
+	return Result{err: err}
+}

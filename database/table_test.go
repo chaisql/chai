@@ -6,26 +6,30 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestTable(t testing.TB) (*database.Table, func()) {
+func newTestDB(t testing.TB) (*database.Tx, func()) {
 	db, err := database.New(memory.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
+	return tx, func() {
+		tx.Rollback()
+	}
+}
+func newTestTable(t testing.TB) (*database.Table, func()) {
+	tx, fn := newTestDB(t)
+
 	tb, err := tx.CreateTable("test")
 	require.NoError(t, err)
 
-	return tb, func() {
-		tx.Rollback()
-	}
+	return tb, fn
 }
 
 func newRecord() record.FieldBuffer {
@@ -348,51 +352,6 @@ func TestTableTruncate(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-	})
-}
-
-func TestTableCreateIndex(t *testing.T) {
-	t.Run("Should create an index and return it", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		idx, err := tb.CreateIndex("idxFoo", "foo", index.Options{})
-		require.NoError(t, err)
-		require.NotNil(t, idx)
-	})
-
-	t.Run("Should fail it already exists", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		_, err := tb.CreateIndex("idxFoo", "foo", index.Options{})
-		require.NoError(t, err)
-
-		_, err = tb.CreateIndex("idxFoo", "foo", index.Options{})
-		require.Equal(t, database.ErrIndexAlreadyExists, err)
-	})
-}
-
-func TestTableCreateIndexIfNotExists(t *testing.T) {
-	t.Run("Should create an index and return it", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		idx, err := tb.CreateIndexIfNotExists("idxFoo", "foo", index.Options{})
-		require.NoError(t, err)
-		require.NotNil(t, idx)
-	})
-
-	t.Run("Should success if it already exists", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		idx, err := tb.CreateIndex("idxFoo", "foo", index.Options{})
-		require.NoError(t, err)
-
-		idx2, err := tb.CreateIndexIfNotExists("idxFoo", "foo", index.Options{})
-		require.NoError(t, err)
-		require.Equal(t, idx, idx2)
 	})
 }
 

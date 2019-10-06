@@ -14,7 +14,7 @@ type indexOptions struct {
 }
 
 func (i *indexOptions) PrimaryKey() ([]byte, error) {
-	return []byte(buildIndexName(i.Name, i.TableName)), nil
+	return []byte(buildIndexName(i.Name)), nil
 }
 
 // Field implements the field method of the record.Record interface.

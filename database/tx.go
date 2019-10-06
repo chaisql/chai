@@ -1,7 +1,10 @@
 package database
 
 import (
+	"strings"
+
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/index"
 	"github.com/pkg/errors"
 )
 
@@ -108,6 +111,115 @@ func (tx Tx) DropTable(name string) error {
 	err := tx.tx.DropStore(name)
 	if err == engine.ErrStoreNotFound {
 		return ErrTableNotFound
+	}
+	return err
+}
+
+func buildIndexName(name string) string {
+	var b strings.Builder
+	b.WriteString(indexPrefix)
+	b.WriteByte(separator)
+	b.WriteString(name)
+
+	return b.String()
+}
+
+// CreateIndex creates an index with the given name.
+// If it already exists, returns ErrTableAlreadyExists.
+func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Options) (index.Index, error) {
+	it, err := tx.GetTable(indexTable)
+	if err != nil {
+		return nil, err
+	}
+
+	idxName := buildIndexName(indexName)
+
+	_, err = it.GetRecord([]byte(idxName))
+	if err == nil {
+		return nil, ErrIndexAlreadyExists
+	}
+	if err != ErrRecordNotFound {
+		return nil, err
+	}
+
+	_, err = it.Insert(&indexOptions{
+		Name:      indexName,
+		TableName: tableName,
+		FieldName: fieldName,
+		Unique:    opts.Unique,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.tx.CreateStore(idxName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create index %q on table %q", fieldName, tableName)
+	}
+
+	s, err := tx.tx.Store(idxName)
+	if err == engine.ErrStoreNotFound {
+		return nil, ErrIndexNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return index.New(s, index.Options{Unique: opts.Unique}), nil
+}
+
+// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
+func (tx Tx) CreateIndexIfNotExists(indexName, fieldName, tableName string, opts index.Options) (index.Index, error) {
+	idx, err := tx.CreateIndex(indexName, fieldName, tableName, opts)
+	if err == nil {
+		return idx, nil
+	}
+	if err == ErrIndexAlreadyExists {
+		return tx.GetIndex(indexName)
+	}
+
+	return nil, err
+}
+
+// GetIndex returns an index by name.
+func (tx Tx) GetIndex(name string) (index.Index, error) {
+	indexName := buildIndexName(name)
+
+	opts, err := readIndexOptions(&tx, indexName)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := tx.tx.Store(indexName)
+	if err == engine.ErrStoreNotFound {
+		return nil, ErrIndexNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return index.New(s, index.Options{Unique: opts.Unique}), nil
+}
+
+// DropIndex deletes an index from the database.
+func (tx Tx) DropIndex(name string) error {
+	it, err := tx.GetTable(indexTable)
+	if err != nil {
+		return err
+	}
+
+	indexName := buildIndexName(name)
+	err = it.Delete([]byte(indexName))
+	if err == ErrRecordNotFound {
+		return ErrIndexNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	err = tx.tx.DropStore(indexName)
+	if err == engine.ErrStoreNotFound {
+		return ErrIndexNotFound
 	}
 	return err
 }
