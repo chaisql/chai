@@ -12,6 +12,8 @@ func (p *Parser) parseDropStatement() (query.Statement, error) {
 	switch tok {
 	case scanner.TABLE:
 		return p.parseDropTableStatement()
+	case scanner.INDEX:
+		return p.parseDropIndexStatement()
 	}
 
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
@@ -40,6 +42,37 @@ func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
 		return stmt, err
 	}
 	stmt = query.DropTable(tableName)
+
+	if ifExists {
+		stmt = stmt.IfExists()
+	}
+
+	return stmt, nil
+}
+
+// parseDropIndexStatement parses a drop index string and returns a query.Statement AST object.
+// This function assumes the DROP INDEX tokens have already been consumed.
+func (p *Parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
+	var stmt query.DropIndexStmt
+	var ifExists bool
+
+	// Parse "IF"
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.IF {
+		// Parse "EXISTS"
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
+			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
+		}
+		ifExists = true
+	} else {
+		p.Unscan()
+	}
+
+	// Parse table name
+	tableName, err := p.ParseIdent()
+	if err != nil {
+		return stmt, err
+	}
+	stmt = query.DropIndex(tableName)
 
 	if ifExists {
 		stmt = stmt.IfExists()

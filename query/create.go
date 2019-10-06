@@ -60,7 +60,7 @@ func (stmt CreateTableStmt) exec(tx *database.Tx, _ []driver.NamedValue) Result 
 // CreateIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
 // It is typically created using the CreateIndex function.
 type CreateIndexStmt struct {
-	idxName     string
+	indexName   string
 	tableName   string
 	fieldName   string
 	ifNotExists bool
@@ -68,9 +68,9 @@ type CreateIndexStmt struct {
 }
 
 // CreateIndex creates a DSL equivalent to the SQL CREATE INDEX command.
-func CreateIndex(idxName string) CreateIndexStmt {
+func CreateIndex(indexName string) CreateIndexStmt {
 	return CreateIndexStmt{
-		idxName: idxName,
+		indexName: indexName,
 	}
 }
 
@@ -119,7 +119,7 @@ func (stmt CreateIndexStmt) exec(tx *database.Tx, _ []driver.NamedValue) Result 
 		return Result{err: errors.New("missing table name")}
 	}
 
-	if stmt.idxName == "" {
+	if stmt.indexName == "" {
 		return Result{err: errors.New("missing index name")}
 	}
 
@@ -127,15 +127,12 @@ func (stmt CreateIndexStmt) exec(tx *database.Tx, _ []driver.NamedValue) Result 
 		return Result{err: errors.New("missing field name")}
 	}
 
-	t, err := tx.GetTable(stmt.tableName)
-	if err != nil {
-		return Result{err: err}
-	}
+	var err error
 
 	if stmt.ifNotExists {
-		_, err = t.CreateIndexIfNotExists(stmt.idxName, stmt.fieldName, index.Options{Unique: stmt.unique})
+		_, err = tx.CreateIndexIfNotExists(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
 	} else {
-		_, err = t.CreateIndex(stmt.idxName, stmt.fieldName, index.Options{Unique: stmt.unique})
+		_, err = tx.CreateIndex(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
 	}
 
 	return Result{err: err}

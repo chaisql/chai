@@ -35,3 +35,20 @@ func TestDropTableStatement(t *testing.T) {
 	_, err := tx.GetTable("foo")
 	require.Error(t, err)
 }
+
+func TestDropIndexStatement(t *testing.T) {
+	tx, cleanup := createTable(t, 0, false)
+	defer cleanup()
+
+	res := query.CreateIndex("foo").On("test").Field("a").Exec(tx)
+	require.NoError(t, res.Err())
+
+	res = query.DropIndex("foo").Exec(tx)
+	require.NoError(t, res.Err())
+
+	res = query.DropIndex("foo").Exec(tx)
+	require.Error(t, res.Err())
+
+	res = query.DropIndex("foo").IfExists().Exec(tx)
+	require.NoError(t, res.Err())
+}

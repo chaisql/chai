@@ -7,15 +7,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParserDropTable(t *testing.T) {
+func TestParserDrop(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "DROP TABLE test", query.DropTable("test"), false},
-		{"If not exists", "DROP TABLE IF EXISTS test", query.DropTable("test").IfExists(), false},
+		{"Drop table", "DROP TABLE test", query.DropTable("test"), false},
+		{"Drop table If not exists", "DROP TABLE IF EXISTS test", query.DropTable("test").IfExists(), false},
+		{"Drop index", "DROP INDEX test", query.DropIndex("test"), false},
+		{"Drop index if exists", "DROP INDEX IF EXISTS test", query.DropIndex("test").IfExists(), false},
 	}
 
 	for _, test := range tests {

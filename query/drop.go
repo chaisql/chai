@@ -57,14 +57,14 @@ func (stmt DropTableStmt) exec(tx *database.Tx, args []driver.NamedValue) Result
 
 // DropIndexStmt is a DSL that allows creating a DROP INDEX query.
 type DropIndexStmt struct {
-	tableName string
+	indexName string
 	ifExists  bool
 }
 
 // DropIndex creates a DSL equivalent to the SQL DROP INDEX command.
-func DropIndex(tableName string) DropIndexStmt {
+func DropIndex(indexName string) DropIndexStmt {
 	return DropIndexStmt{
-		tableName: tableName,
+		indexName: indexName,
 	}
 }
 
@@ -91,13 +91,13 @@ func (stmt DropIndexStmt) IfExists() DropIndexStmt {
 }
 
 func (stmt DropIndexStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
-	if stmt.tableName == "" {
+	if stmt.indexName == "" {
 		return Result{err: errors.New("missing index name")}
 	}
 
-	err := tx.DropIndex(stmt.tableName)
-	if err == database.ErrTableNotFound && stmt.ifExists {
-		return Result{}
+	err := tx.DropIndex(stmt.indexName)
+	if err == database.ErrIndexNotFound && stmt.ifExists {
+		err = nil
 	}
 
 	return Result{err: err}

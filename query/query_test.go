@@ -25,7 +25,7 @@ func createTable(t require.TestingT, size int, withIndex bool) (*database.Tx, fu
 	require.NoError(t, err)
 
 	if withIndex {
-		_, err = tb.CreateIndex("idx_name", "name", index.Options{})
+		_, err = tx.CreateIndex("idx_name", "test", "name", index.Options{})
 		require.NoError(t, err)
 	}
 
