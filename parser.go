@@ -1,4 +1,4 @@
-package parser
+package genji
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/sql/scanner"
 )
-
 
 // Parser represents an Genji SQL parser.
 type Parser struct {

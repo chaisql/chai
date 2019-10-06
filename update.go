@@ -1,12 +1,10 @@
-package parser
+package genji
 
 import (
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
-
-
 
 // parseUpdateStatement parses a update string and returns a query.Statement AST object.
 // This function assumes the UPDATE token has already been consumed.

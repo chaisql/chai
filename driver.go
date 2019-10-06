@@ -10,7 +10,6 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/sql/parser"
 )
 
 type connector struct {
@@ -64,7 +63,7 @@ type conn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *conn) Prepare(q string) (driver.Stmt, error) {
-	pq, err := parser.ParseQuery(q)
+	pq, err := ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
