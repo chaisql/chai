@@ -5,7 +5,6 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/sql/driver"
 )
 
 func Open(ng engine.Engine) (*sql.DB, error) {
@@ -14,5 +13,5 @@ func Open(ng engine.Engine) (*sql.DB, error) {
 		return nil, err
 	}
 
-	return sql.OpenDB(driver.NewConnector(db)), nil
+	return sql.OpenDB(newConnector(db)), nil
 }

@@ -1,4 +1,4 @@
-package driver
+package genji
 
 import (
 	"context"
@@ -9,25 +9,25 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/sql/parser"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/sql/parser"
 )
 
-type Connector struct {
+type connector struct {
 	driver driver.Driver
 }
 
-func NewConnector(db *database.DB) driver.Connector {
-	return Connector{
+func newConnector(db *database.DB) driver.Connector {
+	return connector{
 		driver: newDriver(db),
 	}
 }
 
-func (c Connector) Connect(ctx context.Context) (driver.Conn, error) {
+func (c connector) Connect(ctx context.Context) (driver.Conn, error) {
 	return c.driver.Open("")
 }
 
-func (c Connector) Driver() driver.Driver {
+func (c connector) Driver() driver.Driver {
 	return c.driver
 }
 

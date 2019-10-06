@@ -28,6 +28,11 @@ func Example() {
 		log.Fatal(err)
 	}
 
+	_, err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	_, err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
