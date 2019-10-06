@@ -5,7 +5,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/query/driver"
+	"github.com/asdine/genji/sql/driver"
 )
 
 func Open(ng engine.Engine) (*sql.DB, error) {

@@ -8,8 +8,8 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/scanner"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 type queryPlan struct {

@@ -2,7 +2,7 @@ package parser
 
 import (
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/query/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 // parseDeleteStatement parses a delete string and returns a query.Statement AST object.

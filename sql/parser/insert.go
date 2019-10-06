@@ -3,7 +3,7 @@ package parser
 import (
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 // parseInsertStatement parses an insert string and returns a query.Statement AST object.

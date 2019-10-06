@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asdine/genji/query/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 // Ensure the scanner can scan tokens correctly.

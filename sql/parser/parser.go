@@ -9,8 +9,9 @@ import (
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/query/q"
-	"github.com/asdine/genji/query/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
+
 
 // Parser represents an Genji SQL parser.
 type Parser struct {

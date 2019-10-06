@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/asdine/genji/query/scanner"
+	"github.com/asdine/genji/sql/scanner"
 	"github.com/asdine/genji/value"
 )
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/query/parser"
+	"github.com/asdine/genji/sql/parser"
 	"github.com/asdine/genji/record"
 )
 

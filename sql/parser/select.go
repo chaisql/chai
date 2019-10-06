@@ -4,7 +4,7 @@ import (
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/query/q"
-	"github.com/asdine/genji/query/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 // parseSelectStatement parses a select string and returns a query.Statement AST object.
