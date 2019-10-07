@@ -425,8 +425,8 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		return nil, err
 	}
 
-	for fieldName, idx := range indexes {
-		f, err := r.GetField(fieldName)
+	for _, idx := range indexes {
+		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			continue
 		}
@@ -506,14 +506,14 @@ func (t Table) TableName() string {
 }
 
 // Indexes returns a map of all the indexes of a table.
-func (t Table) Indexes() (map[string]index.Index, error) {
+func (t Table) Indexes() (map[string]Index, error) {
 	tb, err := t.tx.GetTable(indexTable)
 	if err != nil {
 		return nil, err
 	}
 
 	tableName := []byte(t.name)
-	indexes := make(map[string]index.Index)
+	indexes := make(map[string]Index)
 
 	err = record.NewStream(tb).
 		Filter(func(r record.Record) (bool, error) {
@@ -525,13 +525,29 @@ func (t Table) Indexes() (map[string]index.Index, error) {
 			return bytes.Equal(f.Data, tableName), nil
 		}).
 		Iterate(func(r record.Record) error {
-			f, err := r.GetField("IndexName")
+			var opt indexOptions
+			err := opt.ScanRecord(r)
 			if err != nil {
 				return err
 			}
 
-			indexes[string(f.Data)], err = t.tx.GetIndex(string(f.Data))
-			return err
+			s, err := t.tx.tx.Store(buildIndexName(opt.IndexName))
+			if err == engine.ErrStoreNotFound {
+				return ErrIndexNotFound
+			}
+			if err != nil {
+				return err
+			}
+
+			indexes[opt.IndexName] = Index{
+				Index:     index.New(s, index.Options{Unique: opt.Unique}),
+				IndexName: opt.IndexName,
+				TableName: opt.TableName,
+				FieldName: opt.FieldName,
+				Unique:    opt.Unique,
+			}
+
+			return nil
 		})
 	if err != nil {
 		return nil, err
@@ -641,4 +657,13 @@ func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
 	}
 
 	return &idxopts, nil
+}
+
+type Index struct {
+	index.Index
+
+	IndexName string
+	TableName string
+	FieldName string
+	Unique    bool
 }

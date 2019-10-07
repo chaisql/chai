@@ -6,8 +6,8 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/record"
 )
 
 type queryPlan struct {
@@ -56,7 +56,7 @@ func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue)
 	}), nil
 }
 
-func buildQueryPlan(indexes map[string]index.Index, e expr) queryPlan {
+func buildQueryPlan(indexes map[string]Index, e expr) queryPlan {
 	var qp queryPlan
 
 	qp.tree = analyseExpr(indexes, e)
@@ -67,7 +67,7 @@ func buildQueryPlan(indexes map[string]index.Index, e expr) queryPlan {
 	return qp
 }
 
-func analyseExpr(indexes map[string]index.Index, e expr) *queryPlanNode {
+func analyseExpr(indexes map[string]Index, e expr) *queryPlanNode {
 	switch t := e.(type) {
 	case cmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)

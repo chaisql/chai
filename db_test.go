@@ -283,6 +283,35 @@ func TestTableInsert(t *testing.T) {
 		_, err = tb.Insert(rec)
 		require.Equal(t, genji.ErrDuplicateRecord, err)
 	})
+
+	t.Run("Should update indexes if there are indexed fields", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		tb, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
+		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+
+		rec := newRecord()
+		foo := record.NewFloat32Field("foo", 10)
+		rec = append(rec, foo)
+
+		key, err := tb.Insert(rec)
+		require.NoError(t, err)
+		require.NotEmpty(t, key)
+
+		var count int
+		err = idx.AscendGreaterOrEqual(nil, func(v, k []byte) error {
+			require.Equal(t, v, foo.Data)
+			require.Equal(t, key, k)
+			count++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
+	})
 }
 
 type recordPker struct {
