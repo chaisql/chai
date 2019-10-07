@@ -139,11 +139,9 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) result {
 		return result{err: errors.New("missing table name")}
 	}
 
-	var err error
-	if stmt.ifNotExists {
-		_, err = tx.CreateTableIfNotExists(stmt.tableName)
-	} else {
-		_, err = tx.CreateTable(stmt.tableName)
+	_, err := tx.CreateTable(stmt.tableName)
+	if stmt.ifNotExists && err == ErrTableAlreadyExists {
+		err = nil
 	}
 
 	return result{err: err}

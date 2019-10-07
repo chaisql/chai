@@ -46,7 +46,10 @@ func New(ng engine.Engine) (*DB, error) {
 	}
 
 	err := db.Update(func(tx *Tx) error {
-		_, err := tx.CreateTableIfNotExists(indexTable)
+		_, err := tx.GetTable(indexTable)
+		if err == ErrTableNotFound {
+			_, err = tx.CreateTable(indexTable)
+		}
 		return err
 	})
 	if err != nil {
@@ -195,20 +198,6 @@ func (tx Tx) CreateTable(name string) (*Table, error) {
 		store: s,
 		name:  name,
 	}, nil
-}
-
-// CreateTableIfNotExists calls CreateTable and returns no error if it already exists.
-func (tx Tx) CreateTableIfNotExists(name string) (*Table, error) {
-	t, err := tx.CreateTable(name)
-	if err == nil {
-		return t, nil
-	}
-
-	if err == ErrTableAlreadyExists {
-		return tx.GetTable(name)
-	}
-
-	return nil, err
 }
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
