@@ -1,7 +1,7 @@
 package record
 
 import (
-	"bufio"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -200,33 +200,34 @@ func (s Stream) First() (r Record, err error) {
 
 // Dump stream information to w, structured as a csv.
 func (s Stream) Dump(w io.Writer) error {
-	buf := bufio.NewWriter(w)
+	cw := csv.NewWriter(w)
 
+	var line []string
 	err := s.Iterate(func(r Record) error {
-		first := true
+		line = line[:0]
+
 		err := r.Iterate(func(f Field) error {
-			if !first {
-				buf.WriteString(", ")
-			}
-			first = false
-
 			v, err := f.Decode()
+			if err != nil {
+				return err
+			}
 
-			fmt.Fprintf(buf, "%s(%s): %#v", f.Name, f.Type, v)
+			line = append(line, fmt.Sprintf("%v", v))
+
 			return err
 		})
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintf(buf, "\n")
-		return nil
+		return cw.Write(line)
 	})
 	if err != nil {
 		return err
 	}
 
-	return buf.Flush()
+	cw.Flush()
+	return nil
 }
 
 // An Operator is used to modify a stream.

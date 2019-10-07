@@ -14,9 +14,9 @@ func TestDump(t *testing.T) {
 		name     string
 		expected string
 	}{
-		{"OK", `name(String): "John 0", age(Int): 10
-name(String): "John 1", age(Int): 11
-name(String): "John 2", age(Int): 12
+		{"OK", `John 0,10
+John 1,11
+John 2,12
 `},
 	}
 
@@ -33,6 +33,7 @@ name(String): "John 2", age(Int): 12
 
 			var buf bytes.Buffer
 			err := record.NewStream(record.NewIterator(records...)).Dump(&buf)
+			fmt.Println(buf.String())
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 			require.NoError(t, err)
