@@ -38,7 +38,7 @@ func (rr recordsIterator) Iterate(fn func(r Record) error) error {
 // through a list of functions for transformation.
 type Stream struct {
 	it Iterator
-	op Operator
+	op StreamOperator
 }
 
 // NewStream creates a stream using the given iterator.
@@ -87,7 +87,7 @@ func (s Stream) Iterate(fn func(r Record) error) error {
 
 // Pipe creates a new Stream who can read its data from s and apply
 // op to every record passed by its Iterate method.
-func (s Stream) Pipe(op Operator) Stream {
+func (s Stream) Pipe(op StreamOperator) Stream {
 	return Stream{
 		it: s,
 		op: op,
@@ -195,15 +195,15 @@ func (s Stream) First() (r Record, err error) {
 	return
 }
 
-// An Operator is used to modify a stream.
-// If an operator returns a record, it will be passed to the next stream.
+// An StreamOperator is used to modify a stream.
+// If a stream operator returns a record, it will be passed to the next stream.
 // If it returns a nil record, the record will be ignored.
 // If it returns an error, the stream will be interrupted and that error will bubble up
 // and returned by this function, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
-// Operators can be reused, and thus, any side effect should be kept within the operator closure
+// Stream operators can be reused, and thus, any state or side effect should be kept within the operator closure
 // unless the nature of the operator prevents that.
-type Operator func() func(r Record) (Record, error)
+type StreamOperator func() func(r Record) (Record, error)
 
 type multiIterator struct {
 	iterators []Iterator
