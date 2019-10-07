@@ -5,11 +5,9 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 )
 
 type queryPlan struct {
@@ -20,11 +18,11 @@ type queryPlan struct {
 type queryPlanNode struct {
 	indexedField FieldSelector
 	op           scanner.Token
-	e            expr.Expr
+	e            Expr
 	uniqueIndex  bool
 }
 
-func newQueryOptimizer(tx *database.Tx, ts TableSelector) queryOptimizer {
+func newQueryOptimizer(tx *Tx, ts TableSelector) queryOptimizer {
 	return queryOptimizer{
 		tx: tx,
 		ts: ts,
@@ -33,11 +31,11 @@ func newQueryOptimizer(tx *database.Tx, ts TableSelector) queryOptimizer {
 
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
-	tx *database.Tx
+	tx *Tx
 	ts TableSelector
 }
 
-func (qo queryOptimizer) optimizeQuery(whereExpr expr.Expr, args []driver.NamedValue) (TableSelector, error) {
+func (qo queryOptimizer) optimizeQuery(whereExpr Expr, args []driver.NamedValue) (TableSelector, error) {
 	tb, err := qo.tx.GetTable(qo.ts.TableName())
 	if err != nil {
 		return nil, err
@@ -62,7 +60,7 @@ func (qo queryOptimizer) optimizeQuery(whereExpr expr.Expr, args []driver.NamedV
 	}, nil
 }
 
-func buildQueryPlan(indexes map[string]index.Index, e expr.Expr) queryPlan {
+func buildQueryPlan(indexes map[string]index.Index, e Expr) queryPlan {
 	var qp queryPlan
 
 	qp.tree = analyseExpr(indexes, e)
@@ -73,9 +71,9 @@ func buildQueryPlan(indexes map[string]index.Index, e expr.Expr) queryPlan {
 	return qp
 }
 
-func analyseExpr(indexes map[string]index.Index, e expr.Expr) *queryPlanNode {
+func analyseExpr(indexes map[string]index.Index, e Expr) *queryPlanNode {
 	switch t := e.(type) {
-	case expr.CmpOp:
+	case CmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)
 		if !ok || !evaluatesToScalarOrParam(e) {
 			return nil
@@ -92,7 +90,7 @@ func analyseExpr(indexes map[string]index.Index, e expr.Expr) *queryPlanNode {
 			e:            e,
 			uniqueIndex:  idx.Config().Unique,
 		}
-	case *expr.AndOp:
+	case *AndOp:
 		nodeL := analyseExpr(indexes, t.LeftHand())
 		nodeR := analyseExpr(indexes, t.LeftHand())
 
@@ -114,7 +112,7 @@ func analyseExpr(indexes map[string]index.Index, e expr.Expr) *queryPlanNode {
 	return nil
 }
 
-func cmpOpCanUseIndex(cmp *expr.CmpOp) (bool, FieldSelector, expr.Expr) {
+func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
 	lf, leftIsField := cmp.LeftHand().(FieldSelector)
 	rf, rightIsField := cmp.RightHand().(FieldSelector)
 
@@ -129,14 +127,14 @@ func cmpOpCanUseIndex(cmp *expr.CmpOp) (bool, FieldSelector, expr.Expr) {
 		return true, rf, cmp.LeftHand()
 	}
 
-	return false, nil, nil
+	return false, "", nil
 }
 
-func evaluatesToScalarOrParam(e expr.Expr) bool {
+func evaluatesToScalarOrParam(e Expr) bool {
 	switch e.(type) {
-	case expr.LitteralValue:
+	case LitteralValue:
 		return true
-	case expr.NamedParam, expr.PositionalParam:
+	case NamedParam, PositionalParam:
 		return true
 	}
 
@@ -148,10 +146,10 @@ type indexTableSelector struct {
 	args  []driver.NamedValue
 	index index.Index
 	op    scanner.Token
-	e     expr.Expr
+	e     Expr
 }
 
-func (i indexTableSelector) SelectTable(tx *database.Tx) (record.Iterator, error) {
+func (i indexTableSelector) SelectTable(tx *Tx) (record.Iterator, error) {
 	tb, err := tx.GetTable(i.TableSelector.TableName())
 	if err != nil {
 		return nil, err
@@ -168,18 +166,18 @@ func (i indexTableSelector) SelectTable(tx *database.Tx) (record.Iterator, error
 }
 
 type indexIterator struct {
-	tx    *database.Tx
-	tb    *database.Table
+	tx    *Tx
+	tb    *Table
 	args  []driver.NamedValue
 	index index.Index
 	op    scanner.Token
-	e     expr.Expr
+	e     Expr
 }
 
 var errStop = errors.New("stop")
 
 func (it indexIterator) Iterate(fn func(r record.Record) error) error {
-	v, err := it.e.Eval(expr.EvalStack{
+	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
 	})

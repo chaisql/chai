@@ -4,9 +4,8 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
@@ -135,7 +134,7 @@ func (stmt createTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createTableStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}
@@ -167,7 +166,7 @@ func (stmt createIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createIndexStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}

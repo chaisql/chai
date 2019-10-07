@@ -3,8 +3,6 @@ package genji
 import (
 	"database/sql/driver"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
 )
 
@@ -16,9 +14,9 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *database.DB, args []driver.NamedValue) Result {
+func (q Query) Run(db *DB, args []driver.NamedValue) Result {
 	var res Result
-	var tx *database.Tx
+	var tx *Tx
 	var err error
 
 	for _, stmt := range q.Statements {
@@ -60,7 +58,7 @@ func (q Query) Run(db *database.DB, args []driver.NamedValue) Result {
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q Query) Exec(tx *database.Tx, args []driver.NamedValue, forceReadOnly bool) Result {
+func (q Query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) Result {
 	var res Result
 
 	for _, stmt := range q.Statements {
@@ -89,7 +87,7 @@ func NewQuery(statements ...Statement) Query {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*database.Tx, []driver.NamedValue) Result
+	Run(*Tx, []driver.NamedValue) Result
 	IsReadOnly() bool
 }
 
@@ -99,7 +97,7 @@ type Result struct {
 	rowsAffected       driver.RowsAffected
 	err                error
 	lastInsertRecordID []byte
-	tx                 *database.Tx
+	tx                 *Tx
 	closed             bool
 }
 
@@ -149,7 +147,7 @@ func (r *Result) Close() error {
 	return err
 }
 
-func whereClause(e expr.Expr, stack expr.EvalStack) func(r record.Record) (bool, error) {
+func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
 	if e == nil {
 		return func(r record.Record) (bool, error) {
 			return true, nil
@@ -185,19 +183,56 @@ func argsToNamedValues(args []interface{}) []driver.NamedValue {
 }
 
 // A FieldSelector can extract a field from a record.
-type FieldSelector interface {
-	// SelectField takes a field from a record.
-	// If the field selector was created using the As method
-	// it must replace the name of f by the alias.
-	SelectField(record.Record) (f record.Field, err error)
-	// Name of the field selector.
-	Name() string
+// A Field is an adapter that can turn a string into a field selector.
+// It is supposed to be used by casting a string into a Field.
+//   f := Field("Name")
+//   f.SelectField(r)
+// It implements the FieldSelector interface.
+type FieldSelector string
+
+// Name returns f as a string.
+func (f FieldSelector) Name() string {
+	return string(f)
 }
 
-// TableSelector can select a table from a transaction.
+// SelectField selects the field f from r.
+// SelectField takes a field from a record.
+// If the field selector was created using the As method
+// it must replace the name of f by the alias.
+func (f FieldSelector) SelectField(r record.Record) (record.Field, error) {
+	return r.GetField(string(f))
+}
+
+// Eval extracts the record from the context and selects the right field.
+// It implements the Expr interface.
+func (f FieldSelector) Eval(stack EvalStack) (Value, error) {
+	fd, err := f.SelectField(stack.Record)
+	if err != nil {
+		return NilLitteral, nil
+	}
+
+	return NewSingleValue(fd.Value), nil
+}
+
 type TableSelector interface {
 	// SelectTable selects a table by calling the Table method of the transaction.
-	SelectTable(*database.Tx) (record.Iterator, error)
+	SelectTable(*Tx) (record.Iterator, error)
 	// Name of the selected table.
 	TableName() string
+}
+
+// A TableSelector can select a table from a transaction.
+// It is supposed to be used by casting a string into a Table.
+//   t := Table("Name")
+//   t.SelectTable(tx)
+type tableSelector string
+
+// TableName returns t as a string.
+func (t tableSelector) TableName() string {
+	return string(t)
+}
+
+// SelectTable selects the table t from tx.
+func (t tableSelector) SelectTable(tx *Tx) (record.Iterator, error) {
+	return tx.GetTable(string(t))
 }

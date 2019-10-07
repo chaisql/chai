@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
@@ -64,7 +63,7 @@ func (rt *rectest) ScanRecord(r record.Record) error {
 }
 
 func TestDriver(t *testing.T) {
-	db, err := database.New(memory.NewEngine())
+	db, err := New(memory.NewEngine())
 	require.NoError(t, err)
 	defer db.Close()
 

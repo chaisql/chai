@@ -5,11 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
 
@@ -30,7 +27,7 @@ func (p *Parser) parseSelectStatement() (selectStmt, error) {
 	if err != nil {
 		return stmt, err
 	}
-	stmt.tableSelector = q.Table(tableName)
+	stmt.tableSelector = tableSelector(tableName)
 
 	// Parse condition: "WHERE EXPR".
 	stmt.whereExpr, err = p.parseCondition()
@@ -68,7 +65,7 @@ func (p *Parser) parseFieldNames() ([]FieldSelector, error) {
 	// turn it into field selectors
 	fselectors := make([]FieldSelector, len(idents))
 	for i := range idents {
-		fselectors[i] = q.Field(idents[i])
+		fselectors[i] = FieldSelector(idents[i])
 	}
 
 	return fselectors, nil
@@ -83,7 +80,7 @@ func (p *Parser) parseFrom() (string, error) {
 	return p.ParseIdent()
 }
 
-func (p *Parser) parseLimit() (expr.Expr, error) {
+func (p *Parser) parseLimit() (Expr, error) {
 	// parse LIMIT token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
 		p.Unscan()
@@ -93,7 +90,7 @@ func (p *Parser) parseLimit() (expr.Expr, error) {
 	return p.ParseExpr()
 }
 
-func (p *Parser) parseOffset() (expr.Expr, error) {
+func (p *Parser) parseOffset() (Expr, error) {
 	// parse OFFSET token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
 		p.Unscan()
@@ -106,9 +103,9 @@ func (p *Parser) parseOffset() (expr.Expr, error) {
 // selectStmt is a DSL that allows creating a full Select query.
 type selectStmt struct {
 	tableSelector  TableSelector
-	whereExpr      expr.Expr
-	offsetExpr     expr.Expr
-	limitExpr      expr.Expr
+	whereExpr      Expr
+	offsetExpr     Expr
+	limitExpr      Expr
 	FieldSelectors []FieldSelector
 }
 
@@ -119,7 +116,7 @@ func (stmt selectStmt) IsReadOnly() bool {
 
 // Run the Select statement in the given transaction.
 // It implements the Statement interface.
-func (stmt selectStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt selectStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	return stmt.exec(tx, args)
 }
 
@@ -127,7 +124,7 @@ func (stmt selectStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
 // If Where was called, records will be filtered depending on the result of the
 // given expression. If the Where expression implements the IndexMatcher interface,
 // the MatchIndex method will be called instead of the Eval one.
-func (stmt selectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.tableSelector == nil {
 		return Result{err: errors.New("missing table selector")}
 	}
@@ -140,7 +137,7 @@ func (stmt selectStmt) exec(tx *database.Tx, args []driver.NamedValue) Result {
 	offset := -1
 	limit := -1
 
-	stack := expr.EvalStack{
+	stack := EvalStack{
 		Tx:     tx,
 		Params: args,
 	}

@@ -7,7 +7,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 )
 
@@ -15,7 +14,7 @@ type connector struct {
 	driver driver.Driver
 }
 
-func newConnector(db *database.DB) driver.Connector {
+func newConnector(db *DB) driver.Connector {
 	return connector{
 		driver: newDriver(db),
 	}
@@ -30,10 +29,10 @@ func (c connector) Driver() driver.Driver {
 }
 
 type drivr struct {
-	db *database.DB
+	db *DB
 }
 
-func newDriver(db *database.DB) driver.Driver {
+func newDriver(db *DB) driver.Driver {
 	return drivr{
 		db: db,
 	}
@@ -55,8 +54,8 @@ func (d drivr) Open(name string) (driver.Conn, error) {
 // Conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db            *database.DB
-	tx            *database.Tx
+	db            *DB
+	tx            *Tx
 	nonPromotable bool
 }
 
@@ -126,8 +125,8 @@ func (c *conn) Rollback() error {
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	db            *database.DB
-	tx            *database.Tx
+	db            *DB
+	tx            *Tx
 	q             Query
 	nonPromotable bool
 }

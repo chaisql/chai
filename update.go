@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
@@ -39,13 +37,13 @@ func (p *Parser) parseUpdateStatement() (updateStmt, error) {
 }
 
 // parseSetClause parses the "SET" clause of the query.
-func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
+func (p *Parser) parseSetClause() (map[string]Expr, error) {
 	// Check if the SET token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.SET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SET"}, pos)
 	}
 
-	pairs := make(map[string]expr.Expr)
+	pairs := make(map[string]Expr)
 
 	firstPair := true
 	for {
@@ -85,8 +83,8 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 // updateStmt is a DSL that allows creating a full Update query.
 type updateStmt struct {
 	tableName string
-	pairs     map[string]expr.Expr
-	whereExpr expr.Expr
+	pairs     map[string]Expr
+	whereExpr Expr
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -96,7 +94,7 @@ func (stmt updateStmt) IsReadOnly() bool {
 
 // Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt updateStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}
@@ -105,7 +103,7 @@ func (stmt updateStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
 		return Result{err: errors.New("Set method not called")}
 	}
 
-	stack := expr.EvalStack{
+	stack := EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -136,7 +134,7 @@ func (stmt updateStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			v, err := e.Eval(expr.EvalStack{
+			v, err := e.Eval(EvalStack{
 				Tx:     tx,
 				Record: r,
 			})

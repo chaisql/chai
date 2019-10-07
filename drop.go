@@ -4,8 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 )
 
 // parseDropStatement parses a drop string and returns a Statement AST object.
@@ -61,13 +60,13 @@ func (stmt dropTableStmt) IsReadOnly() bool {
 
 // Run runs the DropTable statement in the given transaction.
 // It implements the Statement interface.
-func (stmt dropTableStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt dropTableStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}
 
 	err := tx.DropTable(stmt.tableName)
-	if err == database.ErrTableNotFound && stmt.ifExists {
+	if err == ErrTableNotFound && stmt.ifExists {
 		return Result{}
 	}
 
@@ -113,13 +112,13 @@ func (stmt dropIndexStmt) IsReadOnly() bool {
 
 // Run runs the DropIndex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt dropIndexStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.indexName == "" {
 		return Result{err: errors.New("missing index name")}
 	}
 
 	err := tx.DropIndex(stmt.indexName)
-	if err == database.ErrIndexNotFound && stmt.ifExists {
+	if err == ErrIndexNotFound && stmt.ifExists {
 		err = nil
 	}
 

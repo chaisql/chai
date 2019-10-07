@@ -6,9 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/q"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 )
 
 // Parser represents an Genji SQL parser.
@@ -80,7 +78,7 @@ func (p *Parser) ParseStatement() (Statement, error) {
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
-func (p *Parser) parseCondition() (expr.Expr, error) {
+func (p *Parser) parseCondition() (Expr, error) {
 	// Check if the WHERE token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WHERE {
 		p.Unscan()
@@ -98,17 +96,17 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 
 type operator interface {
 	Precedence() int
-	LeftHand() expr.Expr
-	RightHand() expr.Expr
-	SetLeftHandExpr(expr.Expr)
-	SetRightHandExpr(expr.Expr)
+	LeftHand() Expr
+	RightHand() Expr
+	SetLeftHandExpr(Expr)
+	SetRightHandExpr(Expr)
 }
 
 // ParseExpr parses an expression.
-func (p *Parser) ParseExpr() (expr.Expr, error) {
+func (p *Parser) ParseExpr() (Expr, error) {
 	var err error
 	// Dummy root node.
-	var root operator = &expr.CmpOp{}
+	var root operator = &CmpOp{}
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
@@ -127,7 +125,7 @@ func (p *Parser) ParseExpr() (expr.Expr, error) {
 			return root.RightHand(), nil
 		}
 
-		var rhs expr.Expr
+		var rhs Expr
 
 		if rhs, err = p.parseUnaryExpr(); err != nil {
 			return nil, err
@@ -149,33 +147,33 @@ func (p *Parser) ParseExpr() (expr.Expr, error) {
 	}
 }
 
-func opToExpr(op scanner.Token, lhs, rhs expr.Expr) expr.Expr {
+func opToExpr(op scanner.Token, lhs, rhs Expr) Expr {
 	switch op {
 	case scanner.EQ:
-		return expr.Eq(lhs, rhs)
+		return Eq(lhs, rhs)
 	case scanner.GT:
-		return expr.Gt(lhs, rhs)
+		return Gt(lhs, rhs)
 	case scanner.GTE:
-		return expr.Gte(lhs, rhs)
+		return Gte(lhs, rhs)
 	case scanner.LT:
-		return expr.Lt(lhs, rhs)
+		return Lt(lhs, rhs)
 	case scanner.LTE:
-		return expr.Lte(lhs, rhs)
+		return Lte(lhs, rhs)
 	case scanner.AND:
-		return expr.And(lhs, rhs)
+		return And(lhs, rhs)
 	case scanner.OR:
-		return expr.Or(lhs, rhs)
+		return Or(lhs, rhs)
 	}
 
 	return nil
 }
 
 // parseUnaryExpr parses an non-binary expression.
-func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
+func (p *Parser) parseUnaryExpr() (Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
-		return q.Field(lit), nil
+		return FieldSelector(lit), nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
@@ -184,34 +182,34 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.namedParams++
-		return expr.NamedParam(lit[1:]), nil
+		return NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
-		return expr.PositionalParam(p.orderedParams), nil
+		return PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return expr.StringValue(lit), nil
+		return StringValue(lit), nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return expr.Float64Value(v), nil
+		return Float64Value(v), nil
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
 			// The check for negative numbers is handled somewhere else so this should always be a positive number.
 			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
-				return expr.Uint64Value(v), nil
+				return Uint64Value(v), nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		return expr.Int64Value(v), nil
+		return Int64Value(v), nil
 	case scanner.TRUE, scanner.FALSE:
-		return expr.BoolValue(tok == scanner.TRUE), nil
+		return BoolValue(tok == scanner.TRUE), nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
@@ -262,13 +260,13 @@ func (p *Parser) parseParam() (interface{}, error) {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.namedParams++
-		return expr.NamedParam(lit[1:]), nil
+		return NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
-		return expr.PositionalParam(p.orderedParams), nil
+		return PositionalParam(p.orderedParams), nil
 	default:
 		return nil, nil
 	}

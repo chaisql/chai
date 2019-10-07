@@ -1,4 +1,4 @@
-package expr
+package genji
 
 import "github.com/asdine/genji/value"
 

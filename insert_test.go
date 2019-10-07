@@ -3,7 +3,6 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/query/expr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,22 +14,22 @@ func TestParserInsert(t *testing.T) {
 		errored  bool
 	}{
 		{"Values / No columns", "INSERT INTO test VALUES ('a', 'b', 'c')",
-			insertStmt{tableName: "test", values: expr.LitteralExprList{expr.LitteralExprList{expr.StringValue("a"), expr.StringValue("b"), expr.StringValue("c")}}}, false},
+			insertStmt{tableName: "test", values: LitteralExprList{LitteralExprList{StringValue("a"), StringValue("b"), StringValue("c")}}}, false},
 		{"Values / With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			insertStmt{
 				tableName:  "test",
 				fieldNames: []string{"a", "b"},
-				values: expr.LitteralExprList{
-					expr.LitteralExprList{expr.StringValue("c"), expr.StringValue("d"), expr.StringValue("e")},
+				values: LitteralExprList{
+					LitteralExprList{StringValue("c"), StringValue("d"), StringValue("e")},
 				},
 			}, false},
 		{"Values / Multple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
 			insertStmt{
 				tableName:  "test",
 				fieldNames: []string{"a", "b"},
-				values: expr.LitteralExprList{
-					expr.LitteralExprList{expr.StringValue("c"), expr.StringValue("d")},
-					expr.LitteralExprList{expr.StringValue("e"), expr.StringValue("f")},
+				values: LitteralExprList{
+					LitteralExprList{StringValue("c"), StringValue("d")},
+					LitteralExprList{StringValue("e"), StringValue("f")},
 				},
 			}, false},
 
@@ -39,9 +38,9 @@ func TestParserInsert(t *testing.T) {
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
-						kvPair{K: "a", V: expr.StringValue("a")},
-						kvPair{K: "b", V: expr.Float64Value(2.3)},
-						kvPair{K: "c", V: expr.Eq(expr.Int64Value(1), expr.Int64Value(1))},
+						kvPair{K: "a", V: StringValue("a")},
+						kvPair{K: "b", V: Float64Value(2.3)},
+						kvPair{K: "c", V: Eq(Int64Value(1), Int64Value(1))},
 					},
 				},
 			}, false},
@@ -50,22 +49,22 @@ func TestParserInsert(t *testing.T) {
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
-						kvPair{K: "a", V: expr.StringValue("a")},
-						kvPair{K: "b", V: expr.Float64Value(2.3)},
+						kvPair{K: "a", V: StringValue("a")},
+						kvPair{K: "b", V: Float64Value(2.3)},
 					},
-					[]kvPair{kvPair{K: "a", V: expr.Int64Value(1)}, kvPair{K: "d", V: expr.BoolValue(true)}},
+					[]kvPair{kvPair{K: "a", V: Int64Value(1)}, kvPair{K: "d", V: BoolValue(true)}},
 				},
 			}, false},
 		{"Records / Positional Param", "INSERT INTO test RECORDS ?, ?",
 			insertStmt{
 				tableName: "test",
-				records:   []interface{}{expr.PositionalParam(1), expr.PositionalParam(2)},
+				records:   []interface{}{PositionalParam(1), PositionalParam(2)},
 			},
 			false},
 		{"Records / Named Param", "INSERT INTO test RECORDS $foo, $bar",
 			insertStmt{
 				tableName: "test",
-				records:   []interface{}{expr.NamedParam("foo"), expr.NamedParam("bar")},
+				records:   []interface{}{NamedParam("foo"), NamedParam("bar")},
 			},
 			false},
 	}

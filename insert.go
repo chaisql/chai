@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
 
@@ -44,9 +42,9 @@ func (p *Parser) parseInsertStatement() (insertStmt, error) {
 		return stmt, err
 	}
 	if found {
-		stmt.values = make(expr.LitteralExprList, len(values))
+		stmt.values = make(LitteralExprList, len(values))
 		for i, v := range values {
-			stmt.values[i] = expr.LitteralExprList(v)
+			stmt.values[i] = LitteralExprList(v)
 		}
 		return stmt, nil
 	}
@@ -91,21 +89,21 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues() ([]expr.LitteralExprList, bool, error) {
+func (p *Parser) parseValues() ([]LitteralExprList, bool, error) {
 	// Check if the VALUES token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	var valuesList []expr.LitteralExprList
+	var valuesList []LitteralExprList
 	// Parse first (required) value list.
 	exprs, err := p.parseExprList()
 	if err != nil {
 		return nil, true, err
 	}
 
-	valuesList = append(valuesList, expr.LitteralExprList(exprs))
+	valuesList = append(valuesList, LitteralExprList(exprs))
 
 	// Parse remaining (optional) values.
 	for {
@@ -119,7 +117,7 @@ func (p *Parser) parseValues() ([]expr.LitteralExprList, bool, error) {
 			return nil, true, err
 		}
 
-		valuesList = append(valuesList, expr.LitteralExprList(values))
+		valuesList = append(valuesList, LitteralExprList(values))
 	}
 
 	return valuesList, true, nil
@@ -189,8 +187,8 @@ func (p *Parser) parseRecord() (interface{}, error) {
 	return pairs, nil
 }
 
-// parseKV parses a key-value pair in the form IDENT : expr.Expr.
-func (p *Parser) parseKV() (string, expr.Expr, error) {
+// parseKV parses a key-value pair in the form IDENT : Expr.
+func (p *Parser) parseKV() (string, Expr, error) {
 	k, err := p.ParseIdent()
 	if err != nil {
 		return "", nil, err
@@ -248,7 +246,7 @@ func (p *Parser) parseKVList() ([]kvPair, bool, error) {
 }
 
 // parseExprList parses a list of expressions in the form: (expr, expr, ...)
-func (p *Parser) parseExprList() ([]expr.Expr, error) {
+func (p *Parser) parseExprList() ([]Expr, error) {
 	// Parse ( token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
@@ -259,7 +257,7 @@ func (p *Parser) parseExprList() ([]expr.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	exprs := []expr.Expr{e}
+	exprs := []Expr{e}
 
 	// Parse remaining (optional) exprs.
 	for {
@@ -287,7 +285,7 @@ func (p *Parser) parseExprList() ([]expr.Expr, error) {
 type insertStmt struct {
 	tableName  string
 	fieldNames []string
-	values     expr.LitteralExprList
+	values     LitteralExprList
 	records    []interface{}
 }
 
@@ -298,7 +296,7 @@ func (stmt insertStmt) IsReadOnly() bool {
 
 type kvPair struct {
 	K string
-	V expr.Expr
+	V Expr
 }
 
 func (stmt insertStmt) Pairs(pairs ...kvPair) insertStmt {
@@ -307,7 +305,7 @@ func (stmt insertStmt) Pairs(pairs ...kvPair) insertStmt {
 	return stmt
 }
 
-func (stmt insertStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+func (stmt insertStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.tableName == "" {
 		return Result{err: errors.New("missing table name")}
 	}
@@ -321,7 +319,7 @@ func (stmt insertStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
 		return Result{err: err}
 	}
 
-	stack := expr.EvalStack{
+	stack := EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -337,7 +335,7 @@ type paramExtractor interface {
 	Extract(params []driver.NamedValue) (interface{}, error)
 }
 
-func (stmt insertStmt) insertRecords(t *database.Table, stack expr.EvalStack) Result {
+func (stmt insertStmt) insertRecords(t *Table, stack EvalStack) Result {
 	if len(stmt.fieldNames) > 0 {
 		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
@@ -393,7 +391,7 @@ func (stmt insertStmt) insertRecords(t *database.Table, stack expr.EvalStack) Re
 	return res
 }
 
-func (stmt insertStmt) insertValues(t *database.Table, stack expr.EvalStack) Result {
+func (stmt insertStmt) insertValues(t *Table, stack EvalStack) Result {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)
@@ -420,7 +418,7 @@ func (stmt insertStmt) insertValues(t *database.Table, stack expr.EvalStack) Res
 			// get the field name
 			fieldName := stmt.fieldNames[i]
 
-			var lv *expr.LitteralValue
+			var lv *LitteralValue
 
 			// each value must be either a LitteralValue or a LitteralValueList with exactly
 			// one value

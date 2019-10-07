@@ -3,8 +3,6 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/q"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +13,7 @@ func TestParserDelete(t *testing.T) {
 		expected Statement
 	}{
 		{"NoCond", "DELETE FROM test", deleteStmt{tableName: "test"}},
-		{"WithCond", "DELETE FROM test WHERE age = 10", deleteStmt{tableName: "test", whereExpr: expr.Eq(q.Field("age"), expr.Int64Value(10))}},
+		{"WithCond", "DELETE FROM test WHERE age = 10", deleteStmt{tableName: "test", whereExpr: Eq(FieldSelector("age"), Int64Value(10))}},
 	}
 
 	for _, test := range tests {

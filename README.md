@@ -91,7 +91,7 @@ func main() {
 
     // Create a read-write transaction to initialize the table.
     // This ensures the table and all the indexes are created.
-    err := db.Update(func(tx *database.Tx) error {
+    err := db.Update(func(tx *Tx) error {
         _, err := tx.InitTable("users", new(User))
         return err
     })
@@ -100,7 +100,7 @@ func main() {
     }
 
     // Create a read-write transaction to create one or more users.
-    err = db.Update(func(tx *database.Tx) error {
+    err = db.Update(func(tx *Tx) error {
         t, err := tx.GetTable("users")
         if err != nil {
             return err
@@ -121,7 +121,7 @@ func main() {
     var users []User
 
     // This time we will create a read transaction to run the query
-    err = db.View(func(tx *database.Tx) error {
+    err = db.View(func(tx *Tx) error {
         t, err := tx.GetTable("users")
         if err != nil {
             return err

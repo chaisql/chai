@@ -1,6 +1,6 @@
-package database
+package genji
 
-import "github.com/pkg/errors"
+import "errors"
 
 var (
 	// ErrTableNotFound is returned when the targeted table doesn't exist.

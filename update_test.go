@@ -3,8 +3,6 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/query/expr"
-	"github.com/asdine/genji/query/q"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,19 +16,19 @@ func TestParserUdpate(t *testing.T) {
 		{"No cond", "UPDATE test SET a = 1",
 			updateStmt{
 				tableName: "test",
-				pairs: map[string]expr.Expr{
-					"a": expr.Int64Value(1),
+				pairs: map[string]Expr{
+					"a": Int64Value(1),
 				},
 			},
 			false},
 		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			updateStmt{
 				tableName: "test",
-				pairs: map[string]expr.Expr{
-					"a": expr.Int64Value(1),
-					"b": expr.Int64Value(2),
+				pairs: map[string]Expr{
+					"a": Int64Value(1),
+					"b": Int64Value(2),
 				},
-				whereExpr: expr.Eq(q.Field("age"), expr.Int64Value(10)),
+				whereExpr: Eq(FieldSelector("age"), Int64Value(10)),
 			},
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},

@@ -1,10 +1,10 @@
-package database_test
+package genji_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/database"
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestDB(t testing.TB) (*database.Tx, func()) {
-	db, err := database.New(memory.NewEngine())
+func newTestDB(t testing.TB) (*genji.Tx, func()) {
+	db, err := genji.New(memory.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
@@ -24,13 +24,83 @@ func newTestDB(t testing.TB) (*database.Tx, func()) {
 		tx.Rollback()
 	}
 }
-func newTestTable(t testing.TB) (*database.Table, func()) {
+
+func newTestTable(t testing.TB) (*genji.Table, func()) {
 	tx, fn := newTestDB(t)
 
 	tb, err := tx.CreateTable("test")
 	require.NoError(t, err)
 
 	return tb, fn
+}
+
+func TestTxCreateIndex(t *testing.T) {
+	t.Run("Should create an index and return it", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+		require.NotNil(t, idx)
+	})
+
+	t.Run("Should fail if it already exists", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.Equal(t, genji.ErrIndexAlreadyExists, err)
+	})
+}
+
+func TestTxCreateIndexIfNotExists(t *testing.T) {
+	t.Run("Should create an index and return it", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		idx, err := tx.CreateIndexIfNotExists("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+		require.NotNil(t, idx)
+	})
+
+	t.Run("Should succeed if it already exists", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+
+		idx2, err := tx.CreateIndexIfNotExists("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+		require.Equal(t, idx, idx2)
+	})
+}
+
+func TestTxDropIndex(t *testing.T) {
+	t.Run("Should drop an index", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+
+		err = tx.DropIndex("idxFoo")
+		require.NoError(t, err)
+
+		_, err = tx.GetIndex("idxFoo")
+		require.Error(t, err)
+	})
+
+	t.Run("Should fail if it doesn't exist", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.DropIndex("idxFoo")
+		require.Equal(t, genji.ErrIndexNotFound, err)
+	})
 }
 
 func newRecord() record.FieldBuffer {
@@ -105,7 +175,7 @@ func TestTableRecord(t *testing.T) {
 		defer cleanup()
 
 		r, err := tb.GetRecord([]byte("id"))
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, genji.ErrRecordNotFound, err)
 		require.Nil(t, r)
 	})
 
@@ -217,7 +287,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = tb.Insert(rec)
-		require.Equal(t, database.ErrDuplicateRecord, err)
+		require.Equal(t, genji.ErrDuplicateRecord, err)
 	})
 }
 
@@ -237,7 +307,7 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Delete([]byte("id"))
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, genji.ErrRecordNotFound, err)
 	})
 
 	t.Run("Should delete the right record", func(t *testing.T) {
@@ -260,7 +330,7 @@ func TestTableDelete(t *testing.T) {
 
 		// try again, should fail
 		err = tb.Delete([]byte(recordID1))
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, genji.ErrRecordNotFound, err)
 
 		// make sure it didn't also delete the other one
 		res, err := tb.GetRecord(recordID2)
@@ -277,7 +347,7 @@ func TestTableReplace(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Replace([]byte("id"), newRecord())
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, genji.ErrRecordNotFound, err)
 	})
 
 	t.Run("Should replace the right record", func(t *testing.T) {
