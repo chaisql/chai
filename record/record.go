@@ -3,7 +3,6 @@ package record
 
 import (
 	"fmt"
-	"io"
 )
 
 // A Record represents a group of fields.
@@ -109,15 +108,6 @@ func (fb *FieldBuffer) Replace(name string, f Field) error {
 	}
 
 	return fmt.Errorf("field %q not found", f.Name)
-}
-
-// DumpRecord is helper that dumps the content of a record into the given writer.
-func DumpRecord(w io.Writer, r Record) error {
-	return r.Iterate(func(f Field) error {
-		v, err := f.Decode()
-		fmt.Fprintf(w, "%s(%s): %#v\n", f.Name, f.Type, v)
-		return err
-	})
 }
 
 // NewFromMap creates a record from a map.

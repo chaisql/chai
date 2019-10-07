@@ -1,10 +1,7 @@
 package record
 
 import (
-	"encoding/csv"
 	"errors"
-	"fmt"
-	"io"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.
@@ -196,38 +193,6 @@ func (s Stream) First() (r Record, err error) {
 	}
 
 	return
-}
-
-// Dump stream information to w, structured as a csv.
-func (s Stream) Dump(w io.Writer) error {
-	cw := csv.NewWriter(w)
-
-	var line []string
-	err := s.Iterate(func(r Record) error {
-		line = line[:0]
-
-		err := r.Iterate(func(f Field) error {
-			v, err := f.Decode()
-			if err != nil {
-				return err
-			}
-
-			line = append(line, fmt.Sprintf("%v", v))
-
-			return err
-		})
-		if err != nil {
-			return err
-		}
-
-		return cw.Write(line)
-	})
-	if err != nil {
-		return err
-	}
-
-	cw.Flush()
-	return nil
 }
 
 // An Operator is used to modify a stream.
