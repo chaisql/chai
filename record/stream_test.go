@@ -32,7 +32,7 @@ name(String): "John 2", age(Int): 12
 			}
 
 			var buf bytes.Buffer
-			err := record.NewStream(record.NewIteratorFromRecords(records...)).Dump(&buf)
+			err := record.NewStream(record.NewIterator(records...)).Dump(&buf)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 			require.NoError(t, err)

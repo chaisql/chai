@@ -33,7 +33,7 @@ type Index interface {
 	// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
-	DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error
+	DescendLessOrEqual(pivot []byte, fn func(value, key []byte) error) error
 
 	// Config returns the Index configuration.
 	Config() Options

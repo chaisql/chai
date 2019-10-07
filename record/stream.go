@@ -17,8 +17,8 @@ type Iterator interface {
 	Iterate(func(r Record) error) error
 }
 
-// NewIteratorFromRecords creates an iterator that iterates over records.
-func NewIteratorFromRecords(records ...Record) Iterator {
+// NewIterator creates an iterator that iterates over records.
+func NewIterator(records ...Record) Iterator {
 	return recordsIterator(records)
 }
 
@@ -59,6 +59,10 @@ func NewStream(it Iterator) Stream {
 // the Iterate method will stop the iteration and return nil.
 // It implements the Iterator interface.
 func (s Stream) Iterate(fn func(r Record) error) error {
+	if s.it == nil {
+		return nil
+	}
+
 	if s.op == nil {
 		return s.it.Iterate(fn)
 	}
