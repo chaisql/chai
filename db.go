@@ -495,11 +495,6 @@ func (t Table) Truncate() error {
 	return t.store.Truncate()
 }
 
-// SelectTable returns the current table. Implements the query.TableSelector interface.
-func (t Table) SelectTable(*Tx) (record.Iterator, error) {
-	return &t, nil
-}
-
 // TableName returns the name of the table.
 func (t Table) TableName() string {
 	return t.name

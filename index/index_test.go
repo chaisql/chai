@@ -38,16 +38,16 @@ func TestIndexSet(t *testing.T) {
 			require.Error(t, idx.Set([]byte{}, []byte("rid")))
 		})
 
-		t.Run(text+"Set nil recordID succeeds", func(t *testing.T) {
+		t.Run(text+"Set nil key succeeds", func(t *testing.T) {
 			idx, cleanup := getIndex(t, index.Options{Unique: unique})
 			defer cleanup()
 			require.NoError(t, idx.Set([]byte("value"), nil))
 		})
 
-		t.Run(text+"Set value and recordID succeeds", func(t *testing.T) {
+		t.Run(text+"Set value and key succeeds", func(t *testing.T) {
 			idx, cleanup := getIndex(t, index.Options{Unique: unique})
 			defer cleanup()
-			require.NoError(t, idx.Set([]byte("value"), []byte("recordID")))
+			require.NoError(t, idx.Set([]byte("value"), []byte("key")))
 		})
 	}
 
@@ -55,30 +55,30 @@ func TestIndexSet(t *testing.T) {
 		idx, cleanup := getIndex(t, index.Options{Unique: true})
 		defer cleanup()
 
-		require.NoError(t, idx.Set([]byte("value1"), []byte("recordID")))
-		require.NoError(t, idx.Set([]byte("value2"), []byte("recordID")))
-		require.Equal(t, index.ErrDuplicate, idx.Set([]byte("value1"), []byte("recordID")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("key")))
+		require.NoError(t, idx.Set([]byte("value2"), []byte("key")))
+		require.Equal(t, index.ErrDuplicate, idx.Set([]byte("value1"), []byte("key")))
 	})
 }
 
 func TestIndexDelete(t *testing.T) {
-	t.Run("Unique: false, Delete valid recordID succeeds", func(t *testing.T) {
+	t.Run("Unique: false, Delete valid key succeeds", func(t *testing.T) {
 		idx, cleanup := getIndex(t, index.Options{Unique: false})
 		defer cleanup()
 
-		require.NoError(t, idx.Set([]byte("value1"), []byte("recordID")))
-		require.NoError(t, idx.Set([]byte("value1"), []byte("other-recordID")))
-		require.NoError(t, idx.Set([]byte("value2"), []byte("yet-another-recordID")))
-		require.NoError(t, idx.Delete([]byte("recordID")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("key")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("other-key")))
+		require.NoError(t, idx.Set([]byte("value2"), []byte("yet-another-key")))
+		require.NoError(t, idx.Delete([]byte("key")))
 
 		i := 0
-		err := idx.AscendGreaterOrEqual([]byte("value1"), func(v, recordID []byte) error {
+		err := idx.AscendGreaterOrEqual([]byte("value1"), func(v, key []byte) error {
 			if i == 0 {
 				require.Equal(t, "value1", string(v))
-				require.Equal(t, "other-recordID", string(recordID))
+				require.Equal(t, "other-key", string(key))
 			} else if i == 1 {
 				require.Equal(t, "value2", string(v))
-				require.Equal(t, "yet-another-recordID", string(recordID))
+				require.Equal(t, "yet-another-key", string(key))
 			} else {
 				return errors.New("should not reach this point")
 			}
@@ -90,20 +90,20 @@ func TestIndexDelete(t *testing.T) {
 		require.Equal(t, 2, i)
 	})
 
-	t.Run("Unique: true, Delete valid recordID succeeds", func(t *testing.T) {
+	t.Run("Unique: true, Delete valid key succeeds", func(t *testing.T) {
 		idx, cleanup := getIndex(t, index.Options{Unique: true})
 		defer cleanup()
 
-		require.NoError(t, idx.Set([]byte("value1"), []byte("recordID1")))
-		require.NoError(t, idx.Set([]byte("value2"), []byte("recordID1")))
-		require.NoError(t, idx.Set([]byte("value3"), []byte("recordID2")))
-		require.NoError(t, idx.Delete([]byte("recordID1")))
+		require.NoError(t, idx.Set([]byte("value1"), []byte("key1")))
+		require.NoError(t, idx.Set([]byte("value2"), []byte("key1")))
+		require.NoError(t, idx.Set([]byte("value3"), []byte("key2")))
+		require.NoError(t, idx.Delete([]byte("key1")))
 
 		i := 0
-		err := idx.AscendGreaterOrEqual(nil, func(v, recordID []byte) error {
+		err := idx.AscendGreaterOrEqual(nil, func(v, key []byte) error {
 			if i == 0 {
 				require.Equal(t, "value3", string(v))
-				require.Equal(t, "recordID2", string(recordID))
+				require.Equal(t, "key2", string(key))
 			} else {
 				return errors.New("should not reach this point")
 			}
@@ -118,7 +118,7 @@ func TestIndexDelete(t *testing.T) {
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
-		t.Run(text+"Delete non existing recordID succeeds", func(t *testing.T) {
+		t.Run(text+"Delete non existing key succeeds", func(t *testing.T) {
 			idx, cleanup := getIndex(t, index.Options{Unique: unique})
 			defer cleanup()
 
@@ -136,7 +136,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			defer cleanup()
 
 			i := 0
-			err := idx.AscendGreaterOrEqual(nil, func(value []byte, recordID []byte) error {
+			err := idx.AscendGreaterOrEqual(nil, func(value []byte, key []byte) error {
 				i++
 				return errors.New("should not iterate")
 			})
@@ -200,7 +200,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			defer cleanup()
 
 			i := 0
-			err := idx.DescendLessOrEqual(nil, func(value []byte, recordID []byte) error {
+			err := idx.DescendLessOrEqual(nil, func(value []byte, key []byte) error {
 				i++
 				return errors.New("should not iterate")
 			})

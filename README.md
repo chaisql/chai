@@ -146,7 +146,7 @@ func main() {
             // Iterate over the stream to initiates the query.
             // Each record is read one by one from the database
             // to ensure O(1) memory most of the tine.
-            Iterate(func(recordID []byte, r record.Record) error {
+            Iterate(func(key []byte, r record.Record) error {
                 var u User
                 err := u.ScanRecord(r)
                 if err != nil {
@@ -248,4 +248,4 @@ Here is a list of supported tags:
 
 * `pk` : Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id
 * `index` : Indicates that this field must be indexed.
-* `index(unique)` : Indicates that this field must be indexed and that it must associate only one recordID per value.
+* `index(unique)` : Indicates that this field must be indexed and that it must associate only one key per value.

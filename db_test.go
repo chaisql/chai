@@ -165,13 +165,13 @@ func TestTableRecord(t *testing.T) {
 		rec1.Add(record.NewInt64Field("fieldc", 40))
 		rec2 := newRecord()
 
-		recordID1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
 		_, err = tb.Insert(rec2)
 		require.NoError(t, err)
 
 		// fetch rec1 and make sure it returns the right one
-		res, err := tb.GetRecord(recordID1)
+		res, err := tb.GetRecord(key1)
 		require.NoError(t, err)
 		fc, err := res.GetField("fieldc")
 		require.NoError(t, err)
@@ -181,20 +181,20 @@ func TestTableRecord(t *testing.T) {
 
 // TestTableInsert verifies Insert behaviour.
 func TestTableInsert(t *testing.T) {
-	t.Run("Should generate a recordID by default", func(t *testing.T) {
+	t.Run("Should generate a key by default", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
 		rec := newRecord()
-		recordID1, err := tb.Insert(rec)
+		key1, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.NotEmpty(t, recordID1)
+		require.NotEmpty(t, key1)
 
-		recordID2, err := tb.Insert(rec)
+		key2, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.NotEmpty(t, recordID2)
+		require.NotEmpty(t, key2)
 
-		require.NotEqual(t, recordID1, recordID2)
+		require.NotEqual(t, key1, key2)
 	})
 
 	t.Run("Should support PrimaryKeyer interface", func(t *testing.T) {
@@ -211,21 +211,21 @@ func TestTableInsert(t *testing.T) {
 		}
 
 		// insert
-		recordID, err := tb.Insert(rec)
+		key, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(2), recordID)
+		require.Equal(t, value.EncodeInt64(2), key)
 
-		// make sure the record is fetchable using the returned recordID
-		_, err = tb.GetRecord(recordID)
+		// make sure the record is fetchable using the returned key
+		_, err = tb.GetRecord(key)
 		require.NoError(t, err)
 
 		// insert again
-		recordID, err = tb.Insert(rec)
+		key, err = tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(4), recordID)
+		require.Equal(t, value.EncodeInt64(4), key)
 	})
 
-	t.Run("Should fail if Pk returns empty recordID", func(t *testing.T) {
+	t.Run("Should fail if Pk returns empty key", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
@@ -249,7 +249,7 @@ func TestTableInsert(t *testing.T) {
 		}
 	})
 
-	t.Run("Should return ErrDuplicate if recordID already exists", func(t *testing.T) {
+	t.Run("Should return ErrDuplicate if key already exists", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
@@ -296,21 +296,21 @@ func TestTableDelete(t *testing.T) {
 		rec1.Add(record.NewInt64Field("fieldc", 40))
 		rec2 := newRecord()
 
-		recordID1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
-		recordID2, err := tb.Insert(rec2)
+		key2, err := tb.Insert(rec2)
 		require.NoError(t, err)
 
 		// delete the record
-		err = tb.Delete([]byte(recordID1))
+		err = tb.Delete([]byte(key1))
 		require.NoError(t, err)
 
 		// try again, should fail
-		err = tb.Delete([]byte(recordID1))
+		err = tb.Delete([]byte(key1))
 		require.Equal(t, genji.ErrRecordNotFound, err)
 
 		// make sure it didn't also delete the other one
-		res, err := tb.GetRecord(recordID2)
+		res, err := tb.GetRecord(key2)
 		require.NoError(t, err)
 		_, err = res.GetField("fieldc")
 		require.Error(t, err)
@@ -338,9 +338,9 @@ func TestTableReplace(t *testing.T) {
 			record.NewStringField("fieldb", "d"),
 		})
 
-		recordID1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
-		recordID2, err := tb.Insert(rec2)
+		key2, err := tb.Insert(rec2)
 		require.NoError(t, err)
 
 		// create a third record
@@ -350,18 +350,18 @@ func TestTableReplace(t *testing.T) {
 		})
 
 		// replace rec1 with rec3
-		err = tb.Replace(recordID1, rec3)
+		err = tb.Replace(key1, rec3)
 		require.NoError(t, err)
 
 		// make sure it replaced it correctly
-		res, err := tb.GetRecord(recordID1)
+		res, err := tb.GetRecord(key1)
 		require.NoError(t, err)
 		f, err := res.GetField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", string(f.Data))
 
 		// make sure it didn't also replace the other one
-		res, err = tb.GetRecord(recordID2)
+		res, err = tb.GetRecord(key2)
 		require.NoError(t, err)
 		f, err = res.GetField("fielda")
 		require.NoError(t, err)

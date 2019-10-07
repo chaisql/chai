@@ -112,7 +112,7 @@ func (r result) LastInsertId() (int64, error) {
 	return r.rowsAffected.LastInsertId()
 }
 
-// LastInsertRecordID returns the database's auto-generated recordID
+// LastInsertRecordID returns the database's auto-generated key
 // after, for example, an INSERT into a table with primary
 // key.
 func (r result) LastInsertRecordID() ([]byte, error) {
