@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/query/q"
 	"github.com/asdine/genji/sql/scanner"
@@ -25,31 +24,31 @@ func NewParser(r io.Reader) *Parser {
 }
 
 // ParseQuery parses a query string and returns its AST representation.
-func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
+func ParseQuery(s string) (Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
 
 // ParseStatement parses a single statement and returns its AST representation.
-func ParseStatement(s string) (query.Statement, error) {
+func ParseStatement(s string) (Statement, error) {
 	return NewParser(strings.NewReader(s)).ParseStatement()
 }
 
 // ParseQuery parses a Genji SQL string and returns a Query.
-func (p *Parser) ParseQuery() (query.Query, error) {
-	var statements []query.Statement
+func (p *Parser) ParseQuery() (Query, error) {
+	var statements []Statement
 	semi := true
 
 	for {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.EOF {
-			return query.New(statements...), nil
+			return NewQuery(statements...), nil
 		} else if tok == scanner.SEMICOLON {
 			semi = true
 		} else {
 			if !semi {
-				return query.Query{}, newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
+				return Query{}, newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
 			}
 			p.Unscan()
 			s, err := p.ParseStatement()
 			if err != nil {
-				return query.Query{}, err
+				return Query{}, err
 			}
 			statements = append(statements, s)
 			semi = false
@@ -57,8 +56,8 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 	}
 }
 
-// ParseStatement parses a Genji SQL string and returns a query.Statement AST object.
-func (p *Parser) ParseStatement() (query.Statement, error) {
+// ParseStatement parses a Genji SQL string and returns a Statement AST object.
+func (p *Parser) ParseStatement() (Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SELECT:

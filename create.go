@@ -1,14 +1,17 @@
 package genji
 
 import (
-	"github.com/asdine/genji/query"
+	"database/sql/driver"
+	"errors"
+
+	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/sql/scanner"
 )
 
-
-// parseCreateStatement parses a create string and returns a query.Statement AST object.
+// parseCreateStatement parses a create string and returns a Statement AST object.
 // This function assumes the CREATE token has already been consumed.
-func (p *Parser) parseCreateStatement() (query.Statement, error) {
+func (p *Parser) parseCreateStatement() (Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -26,17 +29,17 @@ func (p *Parser) parseCreateStatement() (query.Statement, error) {
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
 }
 
-// parseCreateTableStatement parses a create table string and returns a query.Statement AST object.
+// parseCreateTableStatement parses a create table string and returns a Statement AST object.
 // This function assumes the CREATE TABLE tokens have already been consumed.
-func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
-	var stmt query.CreateTableStmt
+func (p *Parser) parseCreateTableStatement() (createTableStmt, error) {
+	var stmt createTableStmt
+	var err error
 
 	// Parse table name
-	tableName, err := p.ParseIdent()
+	stmt.tableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
-	stmt = query.CreateTable(tableName)
 
 	// Parse "IF"
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.IF {
@@ -54,16 +57,18 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
 	}
 
-	stmt = stmt.IfNotExists()
+	stmt.ifNotExists = true
 
 	return stmt, nil
 }
 
-// parseCreateIndexStatement parses a create index string and returns a query.Statement AST object.
+// parseCreateIndexStatement parses a create index string and returns a Statement AST object.
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
-func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, error) {
-	var stmt query.CreateIndexStmt
-	var ifNotExists bool
+func (p *Parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error) {
+	var err error
+	stmt := createIndexStmt{
+		unique: unique,
+	}
 
 	// Parse "IF"
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.IF {
@@ -77,24 +82,15 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
 		}
 
-		ifNotExists = true
+		stmt.ifNotExists = true
 	} else {
 		p.Unscan()
 	}
 
 	// Parse index name
-	indexName, err := p.ParseIdent()
+	stmt.indexName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
-	}
-	stmt = query.CreateIndex(indexName)
-
-	if ifNotExists {
-		stmt = stmt.IfNotExists()
-	}
-
-	if unique {
-		stmt = stmt.Unique()
 	}
 
 	// Parse "ON"
@@ -103,11 +99,10 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	// Parse table name
-	tableName, err := p.ParseIdent()
+	stmt.tableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.On(tableName)
 
 	fields, ok, err := p.parseFieldList()
 	if err != nil {
@@ -122,7 +117,76 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		return stmt, &ParseError{Message: "indexes on more than one field not supported"}
 	}
 
-	stmt = stmt.Field(fields[0])
+	stmt.fieldName = fields[0]
 
 	return stmt, nil
+}
+
+// createTableStmt is a DSL that allows creating a full CREATE TABLE statement.
+type createTableStmt struct {
+	tableName   string
+	ifNotExists bool
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt createTableStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the Create table statement in the given transaction.
+// It implements the Statement interface.
+func (stmt createTableStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
+	}
+
+	var err error
+	if stmt.ifNotExists {
+		_, err = tx.CreateTableIfNotExists(stmt.tableName)
+	} else {
+		_, err = tx.CreateTable(stmt.tableName)
+	}
+
+	return Result{err: err}
+}
+
+// createIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
+// It is typically created using the CreateIndex function.
+type createIndexStmt struct {
+	indexName   string
+	tableName   string
+	fieldName   string
+	ifNotExists bool
+	unique      bool
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt createIndexStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the Create table statement in the given transaction.
+// It implements the Statement interface.
+func (stmt createIndexStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
+	}
+
+	if stmt.indexName == "" {
+		return Result{err: errors.New("missing index name")}
+	}
+
+	if stmt.fieldName == "" {
+		return Result{err: errors.New("missing field name")}
+	}
+
+	var err error
+
+	if stmt.ifNotExists {
+		_, err = tx.CreateIndexIfNotExists(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
+	} else {
+		_, err = tx.CreateIndex(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
+	}
+
+	return Result{err: err}
 }

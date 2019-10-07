@@ -3,7 +3,6 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/query"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,11 +10,11 @@ func TestParserCreateTable(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE TABLE test", query.CreateTable("test"), false},
-		{"If not exists", "CREATE TABLE test IF NOT EXISTS", query.CreateTable("test").IfNotExists(), false},
+		{"Basic", "CREATE TABLE test", createTableStmt{tableName: "test"}, false},
+		{"If not exists", "CREATE TABLE test IF NOT EXISTS", createTableStmt{tableName: "test", ifNotExists: true}, false},
 	}
 
 	for _, test := range tests {
@@ -36,12 +35,12 @@ func TestParserCreateIndex(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndex("idx").On("test").Field("foo"), false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo)", query.CreateIndex("idx").On("test").IfNotExists().Field("foo"), false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo)", query.CreateIndex("idx").On("test").IfNotExists().Field("foo").Unique(), false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", createIndexStmt{indexName: "idx", tableName: "test", fieldName: "foo"}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo)", createIndexStmt{indexName: "idx", tableName: "test", fieldName: "foo", ifNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo)", createIndexStmt{indexName: "idx", tableName: "test", fieldName: "foo", ifNotExists: true, unique: true}, false},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
 		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}

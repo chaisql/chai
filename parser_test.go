@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/query/q"
 	"github.com/stretchr/testify/require"
@@ -85,12 +84,12 @@ func TestParserMultiStatement(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected []query.Statement
+		expected []Statement
 	}{
 		{"OnlyCommas", ";;;", nil},
-		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []query.Statement{
-			query.Select().From(q.Table("foo")),
-			query.Delete().From("foo"),
+		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []Statement{
+			selectStmt{tableSelector: q.Table("foo")},
+			deleteStmt{tableName: "foo"},
 		}},
 	}
 

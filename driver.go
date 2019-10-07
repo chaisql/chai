@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 )
 
@@ -129,7 +128,7 @@ func (c *conn) Rollback() error {
 type stmt struct {
 	db            *database.DB
 	tx            *database.Tx
-	q             query.Query
+	q             Query
 	nonPromotable bool
 }
 
@@ -164,7 +163,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	var res query.Result
+	var res Result
 
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
@@ -197,7 +196,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	var res query.Result
+	var res Result
 
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
@@ -218,7 +217,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
-	slct, ok := lastStmt.(query.SelectStmt)
+	slct, ok := lastStmt.(selectStmt)
 	if ok && len(slct.FieldSelectors) > 0 {
 		rs.fields = make([]string, len(slct.FieldSelectors))
 		for i := range slct.FieldSelectors {
@@ -235,7 +234,7 @@ func (s stmt) Close() error {
 }
 
 type recordStream struct {
-	res      query.Result
+	res      Result
 	cancelFn func()
 	c        chan rec
 	wg       sync.WaitGroup
@@ -247,7 +246,7 @@ type rec struct {
 	err error
 }
 
-func newRecordStream(res query.Result) *recordStream {
+func newRecordStream(res Result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	records := recordStream{
@@ -261,8 +260,6 @@ func newRecordStream(res query.Result) *recordStream {
 
 	return &records
 }
-
-var errStop = errors.New("stop")
 
 func (rs *recordStream) iterate(ctx context.Context) {
 	defer rs.wg.Done()

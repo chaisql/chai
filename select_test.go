@@ -3,7 +3,6 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/query/q"
 	"github.com/stretchr/testify/require"
@@ -13,31 +12,42 @@ func TestParserSelect(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected Statement
 		mustFail bool
 	}{
-		{"NoCond", "SELECT * FROM test", query.Select().From(q.Table("test")), false},
-		{"WithFields", "SELECT a, b FROM test", query.Select(q.Field("a"), q.Field("b")).From(q.Table("test")), false},
-		{"WithCond", "SELECT * FROM test WHERE age = 10", query.Select().From(q.Table("test")).Where(expr.Eq(q.Field("age"), expr.Int64Value(10))), false},
+		{"NoCond", "SELECT * FROM test",
+			selectStmt{
+				tableSelector: q.Table("test"),
+			}, false},
+		{"WithFields", "SELECT a, b FROM test",
+			selectStmt{
+				FieldSelectors: []FieldSelector{q.Field("a"), q.Field("b")},
+				tableSelector:  q.Table("test"),
+			}, false},
+		{"WithCond", "SELECT * FROM test WHERE age = 10",
+			selectStmt{
+				tableSelector: q.Table("test"),
+				whereExpr:     expr.Eq(q.Field("age"), expr.Int64Value(10)),
+			}, false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
-			query.Select().From(q.Table("test")).
-				Where(expr.Eq(q.Field("age"), expr.Int64Value(10))).
-				Limit(20),
-			false,
-		},
+			selectStmt{
+				tableSelector: q.Table("test"),
+				whereExpr:     expr.Eq(q.Field("age"), expr.Int64Value(10)),
+				limitExpr:     expr.Int64Value(20),
+			}, false},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
-			query.Select().From(q.Table("test")).
-				Where(expr.Eq(q.Field("age"), expr.Int64Value(10))).
-				Offset(20),
-			false,
-		},
+			selectStmt{
+				tableSelector: q.Table("test"),
+				whereExpr:     expr.Eq(q.Field("age"), expr.Int64Value(10)),
+				offsetExpr:    expr.Int64Value(20),
+			}, false},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
-			query.Select().From(q.Table("test")).
-				Where(expr.Eq(q.Field("age"), expr.Int64Value(10))).
-				Limit(10).
-				Offset(20),
-			false,
-		},
+			selectStmt{
+				tableSelector: q.Table("test"),
+				whereExpr:     expr.Eq(q.Field("age"), expr.Int64Value(10)),
+				offsetExpr:    expr.Int64Value(20),
+				limitExpr:     expr.Int64Value(10),
+			}, false},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
 	}
 

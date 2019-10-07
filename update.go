@@ -1,37 +1,39 @@
 package genji
 
 import (
-	"github.com/asdine/genji/query"
+	"database/sql/driver"
+	"errors"
+	"fmt"
+
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/query/expr"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/sql/scanner"
 )
 
-// parseUpdateStatement parses a update string and returns a query.Statement AST object.
+// parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
+func (p *Parser) parseUpdateStatement() (updateStmt, error) {
+	var stmt updateStmt
+	var err error
+
 	// Parse table name
-	tableName, err := p.ParseIdent()
-	if err != nil {
-		return query.Update(""), err
-	}
-
-	stmt := query.Update(tableName)
-
-	// Parse assignment: "SET field = EXPR".
-	pairs, err := p.parseSetClause()
+	stmt.tableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
-	for k, v := range pairs {
-		stmt = stmt.Set(k, v)
+
+	// Parse assignment: "SET field = EXPR".
+	stmt.pairs, err = p.parseSetClause()
+	if err != nil {
+		return stmt, err
 	}
 
 	// Parse condition: "WHERE EXPR".
-	where, err := p.parseCondition()
+	stmt.whereExpr, err = p.parseCondition()
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.Where(where)
 
 	return stmt, nil
 }
@@ -78,4 +80,88 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 	}
 
 	return pairs, nil
+}
+
+// updateStmt is a DSL that allows creating a full Update query.
+type updateStmt struct {
+	tableName string
+	pairs     map[string]expr.Expr
+	whereExpr expr.Expr
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt updateStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the Update table statement in the given transaction.
+// It implements the Statement interface.
+func (stmt updateStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
+	}
+
+	if len(stmt.pairs) == 0 {
+		return Result{err: errors.New("Set method not called")}
+	}
+
+	stack := expr.EvalStack{
+		Tx:     tx,
+		Params: args,
+	}
+
+	t, err := tx.GetTable(stmt.tableName)
+	if err != nil {
+		return Result{err: err}
+	}
+
+	st := record.NewStream(t)
+	st = st.Filter(whereClause(stmt.whereExpr, stack))
+
+	err = st.Iterate(func(r record.Record) error {
+		rk, ok := r.(record.Keyer)
+		if !ok {
+			return errors.New("attempt to update record without key")
+		}
+
+		var fb record.FieldBuffer
+		err := fb.ScanRecord(r)
+		if err != nil {
+			return err
+		}
+
+		for fname, e := range stmt.pairs {
+			f, err := fb.GetField(fname)
+			if err != nil {
+				return err
+			}
+
+			v, err := e.Eval(expr.EvalStack{
+				Tx:     tx,
+				Record: r,
+			})
+			if err != nil {
+				return err
+			}
+
+			if v.IsList {
+				return fmt.Errorf("expected value got list")
+			}
+
+			f.Type = v.Value.Type
+			f.Data = v.Value.Data
+			err = fb.Replace(f.Name, f)
+			if err != nil {
+				return err
+			}
+
+			err = t.Replace(rk.Key(), &fb)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	return Result{err: err}
 }

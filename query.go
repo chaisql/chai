@@ -1,4 +1,4 @@
-package query
+package genji
 
 import (
 	"database/sql/driver"
@@ -83,7 +83,7 @@ func (q Query) Exec(tx *database.Tx, args []driver.NamedValue, forceReadOnly boo
 }
 
 // New creates a new Query with the given statements.
-func New(statements ...Statement) Query {
+func NewQuery(statements ...Statement) Query {
 	return Query{Statements: statements}
 }
 
@@ -192,10 +192,6 @@ type FieldSelector interface {
 	SelectField(record.Record) (f record.Field, err error)
 	// Name of the field selector.
 	Name() string
-	// As creates an alias to a field.
-	// The returned field selector selects the same field but a different name
-	// when the SelectField is called.
-	As(alias string) FieldSelector
 }
 
 // TableSelector can select a table from a transaction.

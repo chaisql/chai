@@ -3,7 +3,6 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/query"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,13 +10,13 @@ func TestParserDrop(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected Statement
 		errored  bool
 	}{
-		{"Drop table", "DROP TABLE test", query.DropTable("test"), false},
-		{"Drop table If not exists", "DROP TABLE IF EXISTS test", query.DropTable("test").IfExists(), false},
-		{"Drop index", "DROP INDEX test", query.DropIndex("test"), false},
-		{"Drop index if exists", "DROP INDEX IF EXISTS test", query.DropIndex("test").IfExists(), false},
+		{"Drop table", "DROP TABLE test", dropTableStmt{tableName: "test"}, false},
+		{"Drop table If not exists", "DROP TABLE IF EXISTS test", dropTableStmt{tableName: "test", ifExists: true}, false},
+		{"Drop index", "DROP INDEX test", dropIndexStmt{indexName: "test"}, false},
+		{"Drop index if exists", "DROP INDEX IF EXISTS test", dropIndexStmt{indexName: "test", ifExists: true}, false},
 	}
 
 	for _, test := range tests {

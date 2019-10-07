@@ -2,10 +2,8 @@ package q
 
 import (
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/query/expr"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/value"
 )
 
 // A Field is an adapter that can turn a string into a field selector.
@@ -34,46 +32,6 @@ func (f Field) Eval(stack expr.EvalStack) (expr.Value, error) {
 	}
 
 	return expr.NewSingleValue(fd.Value), nil
-}
-
-// As returns a alias to f.
-// The alias selects the same field as f but returns a different name
-// when the SelectField method is called.
-func (f Field) As(alias string) query.FieldSelector {
-	return &Alias{FieldSelector: f, Alias: alias}
-}
-
-// An Alias is a field selector that wraps another one.
-// If deleguates the field selection to the underlying field selector
-// and replaces the Name attribute of the returned field by the value
-// of the Alias attribute.
-// It implements the FieldSelector interface.
-type Alias struct {
-	query.FieldSelector
-	Alias string
-}
-
-// Name calls the underlying FieldSelector Name method.
-func (a Alias) Name() string {
-	return a.FieldSelector.Name()
-}
-
-// SelectField calls the SelectField method of FieldSelector.
-// It returns a new field with the same data and type as the returned one
-// but sets its name as the Alias attribute.
-func (a Alias) SelectField(r record.Record) (record.Field, error) {
-	f, err := a.FieldSelector.SelectField(r)
-	if err != nil {
-		return record.Field{}, err
-	}
-
-	return record.Field{
-		Value: value.Value{
-			Data: f.Data,
-			Type: f.Type,
-		},
-		Name: a.Alias,
-	}, nil
 }
 
 // A Table is an adapter that can turn a string into a table selector.

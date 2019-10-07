@@ -1,17 +1,22 @@
 package genji
 
 import (
-	"github.com/asdine/genji/query"
+	"database/sql/driver"
+	"errors"
+	"fmt"
+
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/query/expr"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/sql/scanner"
+	"github.com/asdine/genji/value"
 )
 
-
-
-// parseInsertStatement parses an insert string and returns a query.Statement AST object.
+// parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
-	stmt := query.Insert()
+func (p *Parser) parseInsertStatement() (insertStmt, error) {
+	var stmt insertStmt
+	var err error
 
 	// Parse "INTO".
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTO {
@@ -19,11 +24,10 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	}
 
 	// Parse table name
-	tableName, err := p.ParseIdent()
+	stmt.tableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
-	stmt = stmt.Into(tableName)
 
 	// Parse field list: (a, b, c)
 	fields, ok, err := p.parseFieldList()
@@ -31,7 +35,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, err
 	}
 	if ok {
-		stmt = stmt.Fields(fields...)
+		stmt.fieldNames = fields
 	}
 
 	// Parse VALUES (v1, v2, v3)
@@ -40,8 +44,9 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, err
 	}
 	if found {
-		for _, v := range values {
-			stmt = stmt.Values(v...)
+		stmt.values = make(expr.LitteralExprList, len(values))
+		for i, v := range values {
+			stmt.values[i] = expr.LitteralExprList(v)
 		}
 		return stmt, nil
 	}
@@ -57,7 +62,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "RECORDS"}, pos)
 	}
 
-	stmt = stmt.Records(records...)
+	stmt.records = records
 
 	return stmt, nil
 }
@@ -205,7 +210,7 @@ func (p *Parser) parseKV() (string, expr.Expr, error) {
 }
 
 // parseKVList parses a list of fields in the form: (k = Expr, k = Expr, ...), if exists
-func (p *Parser) parseKVList() ([]query.KVPair, bool, error) {
+func (p *Parser) parseKVList() ([]kvPair, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -218,7 +223,7 @@ func (p *Parser) parseKVList() ([]query.KVPair, bool, error) {
 		return nil, true, err
 	}
 
-	pairs := []query.KVPair{query.KVPair{K: k, V: expr}}
+	pairs := []kvPair{kvPair{K: k, V: expr}}
 
 	// Parse remaining (optional) identifiers.
 	for {
@@ -231,7 +236,7 @@ func (p *Parser) parseKVList() ([]query.KVPair, bool, error) {
 			return nil, true, err
 		}
 
-		pairs = append(pairs, query.KVPair{K: k, V: expr})
+		pairs = append(pairs, kvPair{K: k, V: expr})
 	}
 
 	// Parse required ) token.
@@ -276,4 +281,179 @@ func (p *Parser) parseExprList() ([]expr.Expr, error) {
 	}
 
 	return exprs, nil
+}
+
+// insertStmt is a DSL that allows creating a full Insert query.
+type insertStmt struct {
+	tableName  string
+	fieldNames []string
+	values     expr.LitteralExprList
+	records    []interface{}
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt insertStmt) IsReadOnly() bool {
+	return false
+}
+
+type kvPair struct {
+	K string
+	V expr.Expr
+}
+
+func (stmt insertStmt) Pairs(pairs ...kvPair) insertStmt {
+	stmt.records = append(stmt.records, pairs)
+
+	return stmt
+}
+
+func (stmt insertStmt) Run(tx *database.Tx, args []driver.NamedValue) Result {
+	if stmt.tableName == "" {
+		return Result{err: errors.New("missing table name")}
+	}
+
+	if stmt.values == nil && stmt.records == nil {
+		return Result{err: errors.New("values and records are empty")}
+	}
+
+	t, err := tx.GetTable(stmt.tableName)
+	if err != nil {
+		return Result{err: err}
+	}
+
+	stack := expr.EvalStack{
+		Tx:     tx,
+		Params: args,
+	}
+
+	if len(stmt.records) > 0 {
+		return stmt.insertRecords(t, stack)
+	}
+
+	return stmt.insertValues(t, stack)
+}
+
+type paramExtractor interface {
+	Extract(params []driver.NamedValue) (interface{}, error)
+}
+
+func (stmt insertStmt) insertRecords(t *database.Table, stack expr.EvalStack) Result {
+	if len(stmt.fieldNames) > 0 {
+		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
+	}
+
+	var res Result
+	var err error
+
+	for _, rec := range stmt.records {
+		var r record.Record
+
+		switch tp := rec.(type) {
+		case record.Record:
+			r = tp
+		case paramExtractor:
+			v, err := tp.Extract(stack.Params)
+			if err != nil {
+				return Result{err: err}
+			}
+
+			var ok bool
+			r, ok = v.(record.Record)
+			if !ok {
+				return Result{err: fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)}
+			}
+		case []kvPair:
+			var fb record.FieldBuffer
+			for _, pair := range tp {
+				v, err := pair.V.Eval(stack)
+				if err != nil {
+					res.err = err
+					return res
+				}
+
+				if v.IsList {
+					res.err = errors.New("invalid values")
+					return res
+				}
+
+				fb.Add(record.Field{Name: pair.K, Value: v.Value.Value})
+			}
+			r = &fb
+		}
+
+		res.lastInsertRecordID, err = t.Insert(r)
+		if err != nil {
+			return Result{err: err}
+		}
+
+		res.rowsAffected++
+	}
+
+	res.Stream = record.NewStream(record.NewIteratorFromRecords())
+	return res
+}
+
+func (stmt insertStmt) insertValues(t *database.Table, stack expr.EvalStack) Result {
+	var res Result
+
+	// iterate over all of the records (r1, r2, r3, ...)
+	for _, e := range stmt.values {
+		var fb record.FieldBuffer
+
+		v, err := e.Eval(stack)
+		if err != nil {
+			return Result{err: err}
+		}
+
+		// each record must be a list of values
+		// (e1, e2, e3, ...)
+		if !v.IsList {
+			return Result{err: errors.New("invalid values")}
+		}
+
+		if len(stmt.fieldNames) != len(v.List) {
+			return Result{err: fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.fieldNames))}
+		}
+
+		// iterate over each value
+		for i, v := range v.List {
+			// get the field name
+			fieldName := stmt.fieldNames[i]
+
+			var lv *expr.LitteralValue
+
+			// each value must be either a LitteralValue or a LitteralValueList with exactly
+			// one value
+			if !v.IsList {
+				lv = &v.Value
+			} else {
+				if len(v.List) == 1 {
+					if val := v.List[0]; !val.IsList {
+						lv = &val.Value
+					}
+				}
+				return Result{err: fmt.Errorf("value expected, got list")}
+			}
+
+			// Assign the value to the field and add it to the record
+			fb.Add(record.Field{
+				Name: fieldName,
+				Value: value.Value{
+					Type: lv.Type,
+					Data: lv.Data,
+				},
+			})
+		}
+
+		res.lastInsertRecordID, err = t.Insert(&fb)
+		if err != nil {
+			return Result{err: err}
+		}
+
+		res.rowsAffected++
+	}
+
+	res.Stream = record.NewStream(record.NewIteratorFromRecords())
+
+	return res
 }
