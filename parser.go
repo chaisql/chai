@@ -1,52 +1,47 @@
 package genji
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/value"
 )
 
-// Parser represents an Genji SQL parser.
-type Parser struct {
+// parser represents an Genji SQL parser.
+type parser struct {
 	s             *scanner.BufScanner
 	orderedParams int
 	namedParams   int
 }
 
-// NewParser returns a new instance of Parser.
-func NewParser(r io.Reader) *Parser {
-	return &Parser{s: scanner.NewBufScanner(r)}
+// newParser returns a new instance of Parser.
+func newParser(r io.Reader) *parser {
+	return &parser{s: scanner.NewBufScanner(r)}
 }
 
-// ParseQuery parses a query string and returns its AST representation.
-func ParseQuery(s string) (Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
-
-// ParseStatement parses a single statement and returns its AST representation.
-func ParseStatement(s string) (Statement, error) {
-	return NewParser(strings.NewReader(s)).ParseStatement()
-}
+// parseQuery parses a query string and returns its AST representation.
+func parseQuery(s string) (query, error) { return newParser(strings.NewReader(s)).ParseQuery() }
 
 // ParseQuery parses a Genji SQL string and returns a Query.
-func (p *Parser) ParseQuery() (Query, error) {
-	var statements []Statement
+func (p *parser) ParseQuery() (query, error) {
+	var statements []statement
 	semi := true
 
 	for {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.EOF {
-			return NewQuery(statements...), nil
+			return newQuery(statements...), nil
 		} else if tok == scanner.SEMICOLON {
 			semi = true
 		} else {
 			if !semi {
-				return Query{}, newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
+				return query{}, newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
 			}
 			p.Unscan()
 			s, err := p.ParseStatement()
 			if err != nil {
-				return Query{}, err
+				return query{}, err
 			}
 			statements = append(statements, s)
 			semi = false
@@ -55,7 +50,7 @@ func (p *Parser) ParseQuery() (Query, error) {
 }
 
 // ParseStatement parses a Genji SQL string and returns a Statement AST object.
-func (p *Parser) ParseStatement() (Statement, error) {
+func (p *parser) ParseStatement() (statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SELECT:
@@ -78,7 +73,7 @@ func (p *Parser) ParseStatement() (Statement, error) {
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
-func (p *Parser) parseCondition() (Expr, error) {
+func (p *parser) parseCondition() (expr, error) {
 	// Check if the WHERE token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WHERE {
 		p.Unscan()
@@ -96,17 +91,17 @@ func (p *Parser) parseCondition() (Expr, error) {
 
 type operator interface {
 	Precedence() int
-	LeftHand() Expr
-	RightHand() Expr
-	SetLeftHandExpr(Expr)
-	SetRightHandExpr(Expr)
+	LeftHand() expr
+	RightHand() expr
+	SetLeftHandExpr(expr)
+	SetRightHandExpr(expr)
 }
 
 // ParseExpr parses an expression.
-func (p *Parser) ParseExpr() (Expr, error) {
+func (p *parser) ParseExpr() (expr, error) {
 	var err error
 	// Dummy root node.
-	var root operator = &CmpOp{}
+	var root operator = &cmpOp{}
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
@@ -125,7 +120,7 @@ func (p *Parser) ParseExpr() (Expr, error) {
 			return root.RightHand(), nil
 		}
 
-		var rhs Expr
+		var rhs expr
 
 		if rhs, err = p.parseUnaryExpr(); err != nil {
 			return nil, err
@@ -147,33 +142,33 @@ func (p *Parser) ParseExpr() (Expr, error) {
 	}
 }
 
-func opToExpr(op scanner.Token, lhs, rhs Expr) Expr {
+func opToExpr(op scanner.Token, lhs, rhs expr) expr {
 	switch op {
 	case scanner.EQ:
-		return Eq(lhs, rhs)
+		return eq(lhs, rhs)
 	case scanner.GT:
-		return Gt(lhs, rhs)
+		return gt(lhs, rhs)
 	case scanner.GTE:
-		return Gte(lhs, rhs)
+		return gte(lhs, rhs)
 	case scanner.LT:
-		return Lt(lhs, rhs)
+		return lt(lhs, rhs)
 	case scanner.LTE:
-		return Lte(lhs, rhs)
+		return lte(lhs, rhs)
 	case scanner.AND:
-		return And(lhs, rhs)
+		return and(lhs, rhs)
 	case scanner.OR:
-		return Or(lhs, rhs)
+		return or(lhs, rhs)
 	}
 
 	return nil
 }
 
 // parseUnaryExpr parses an non-binary expression.
-func (p *Parser) parseUnaryExpr() (Expr, error) {
+func (p *parser) parseUnaryExpr() (expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
-		return FieldSelector(lit), nil
+		return fieldSelector(lit), nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
@@ -182,41 +177,41 @@ func (p *Parser) parseUnaryExpr() (Expr, error) {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.namedParams++
-		return NamedParam(lit[1:]), nil
+		return namedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
-		return PositionalParam(p.orderedParams), nil
+		return positionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return StringValue(lit), nil
+		return litteralValue{value.NewString(lit)}, nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return Float64Value(v), nil
+		return litteralValue{value.NewFloat64(v)}, nil
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
 			// The check for negative numbers is handled somewhere else so this should always be a positive number.
 			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
-				return Uint64Value(v), nil
+				return litteralValue{value.NewUint64(v)}, nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		return Int64Value(v), nil
+		return litteralValue{value.NewInt64(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
-		return BoolValue(tok == scanner.TRUE), nil
+		return litteralValue{value.NewBool(tok == scanner.TRUE)}, nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
 }
 
 // ParseIdent parses an identifier.
-func (p *Parser) ParseIdent() (string, error) {
+func (p *parser) ParseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok != scanner.IDENT {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
@@ -225,7 +220,7 @@ func (p *Parser) ParseIdent() (string, error) {
 }
 
 // ParseIdentList parses a comma delimited list of identifiers.
-func (p *Parser) ParseIdentList() ([]string, error) {
+func (p *parser) ParseIdentList() ([]string, error) {
 	// Parse first (required) identifier.
 	ident, err := p.ParseIdent()
 	if err != nil {
@@ -249,7 +244,7 @@ func (p *Parser) ParseIdentList() ([]string, error) {
 }
 
 // parseParam parses a positional or named param.
-func (p *Parser) parseParam() (interface{}, error) {
+func (p *parser) parseParam() (interface{}, error) {
 	tok, _, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.NAMEDPARAM:
@@ -260,23 +255,23 @@ func (p *Parser) parseParam() (interface{}, error) {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.namedParams++
-		return NamedParam(lit[1:]), nil
+		return namedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
-		return PositionalParam(p.orderedParams), nil
+		return positionalParam(p.orderedParams), nil
 	default:
 		return nil, nil
 	}
 }
 
 // Scan returns the next token from the underlying scanner.
-func (p *Parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
+func (p *parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
 
 // ScanIgnoreWhitespace scans the next non-whitespace and non-comment token.
-func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit string) {
+func (p *parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit string) {
 	for {
 		tok, pos, lit = p.Scan()
 		if tok == scanner.WS || tok == scanner.COMMENT {
@@ -287,25 +282,4 @@ func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 }
 
 // Unscan pushes the previously read token back onto the buffer.
-func (p *Parser) Unscan() { p.s.Unscan() }
-
-// ParseError represents an error that occurred during parsing.
-type ParseError struct {
-	Message  string
-	Found    string
-	Expected []string
-	Pos      scanner.Pos
-}
-
-// newParseError returns a new instance of ParseError.
-func newParseError(found string, expected []string, pos scanner.Pos) *ParseError {
-	return &ParseError{Found: found, Expected: expected, Pos: pos}
-}
-
-// Error returns the string representation of the error.
-func (e *ParseError) Error() string {
-	if e.Message != "" {
-		return fmt.Sprintf("%s at line %d, char %d", e.Message, e.Pos.Line+1, e.Pos.Char+1)
-	}
-	return fmt.Sprintf("found %s, expected %s at line %d, char %d", e.Found, strings.Join(e.Expected, ", "), e.Pos.Line+1, e.Pos.Char+1)
-}
+func (p *parser) Unscan() { p.s.Unscan() }

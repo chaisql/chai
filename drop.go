@@ -4,12 +4,12 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 )
 
 // parseDropStatement parses a drop string and returns a Statement AST object.
 // This function assumes the DROP token has already been consumed.
-func (p *Parser) parseDropStatement() (Statement, error) {
+func (p *parser) parseDropStatement() (statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -23,7 +23,7 @@ func (p *Parser) parseDropStatement() (Statement, error) {
 
 // parseDropTableStatement parses a drop table string and returns a Statement AST object.
 // This function assumes the DROP TABLE tokens have already been consumed.
-func (p *Parser) parseDropTableStatement() (dropTableStmt, error) {
+func (p *parser) parseDropTableStatement() (dropTableStmt, error) {
 	var stmt dropTableStmt
 	var err error
 
@@ -60,22 +60,22 @@ func (stmt dropTableStmt) IsReadOnly() bool {
 
 // Run runs the DropTable statement in the given transaction.
 // It implements the Statement interface.
-func (stmt dropTableStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt dropTableStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.tableName == "" {
-		return Result{err: errors.New("missing table name")}
+		return result{err: errors.New("missing table name")}
 	}
 
 	err := tx.DropTable(stmt.tableName)
 	if err == ErrTableNotFound && stmt.ifExists {
-		return Result{}
+		return result{}
 	}
 
-	return Result{err: err}
+	return result{err: err}
 }
 
 // parseDropIndexStatement parses a drop index string and returns a Statement AST object.
 // This function assumes the DROP INDEX tokens have already been consumed.
-func (p *Parser) parseDropIndexStatement() (dropIndexStmt, error) {
+func (p *parser) parseDropIndexStatement() (dropIndexStmt, error) {
 	var stmt dropIndexStmt
 	var err error
 
@@ -112,9 +112,9 @@ func (stmt dropIndexStmt) IsReadOnly() bool {
 
 // Run runs the DropIndex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.indexName == "" {
-		return Result{err: errors.New("missing index name")}
+		return result{err: errors.New("missing index name")}
 	}
 
 	err := tx.DropIndex(stmt.indexName)
@@ -122,5 +122,5 @@ func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 		err = nil
 	}
 
-	return Result{err: err}
+	return result{err: err}
 }

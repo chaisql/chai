@@ -61,7 +61,7 @@ type conn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *conn) Prepare(q string) (driver.Stmt, error) {
-	pq, err := ParseQuery(q)
+	pq, err := parseQuery(q)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (c *conn) Rollback() error {
 type stmt struct {
 	db            *DB
 	tx            *Tx
-	q             Query
+	q             query
 	nonPromotable bool
 }
 
@@ -162,7 +162,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	var res Result
+	var res result
 
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
@@ -195,7 +195,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	var res Result
+	var res result
 
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
@@ -233,7 +233,7 @@ func (s stmt) Close() error {
 }
 
 type recordStream struct {
-	res      Result
+	res      result
 	cancelFn func()
 	c        chan rec
 	wg       sync.WaitGroup
@@ -245,7 +245,7 @@ type rec struct {
 	err error
 }
 
-func newRecordStream(res Result) *recordStream {
+func newRecordStream(res result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	records := recordStream{

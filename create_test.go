@@ -10,7 +10,7 @@ func TestParserCreateTable(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Statement
+		expected statement
 		errored  bool
 	}{
 		{"Basic", "CREATE TABLE test", createTableStmt{tableName: "test"}, false},
@@ -19,7 +19,7 @@ func TestParserCreateTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return
@@ -35,7 +35,7 @@ func TestParserCreateIndex(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Statement
+		expected statement
 		errored  bool
 	}{
 		{"Basic", "CREATE INDEX idx ON test (foo)", createIndexStmt{indexName: "idx", tableName: "test", fieldName: "foo"}, false},
@@ -47,7 +47,7 @@ func TestParserCreateIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

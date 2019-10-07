@@ -6,41 +6,41 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/value"
 )
 
 var (
-	trueLitteral  = NewSingleValue(value.NewBool(true))
-	falseLitteral = NewSingleValue(value.NewBool(false))
-	NilLitteral   = NewSingleValue(value.NewString("nil"))
+	trueLitteral  = newSingleEvalValue(value.NewBool(true))
+	falseLitteral = newSingleEvalValue(value.NewBool(false))
+	nilLitteral   = newSingleEvalValue(value.NewString("nil"))
 )
 
-// An Expr evaluates to a value.
-type Expr interface {
-	Eval(EvalStack) (Value, error)
+// An expr evaluates to a value.
+type expr interface {
+	Eval(evalStack) (evalValue, error)
 }
 
-// EvalStack contains information about the context in which
+// evalStack contains information about the context in which
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
-type EvalStack struct {
+type evalStack struct {
 	Tx     *Tx
 	Record record.Record
 	Params []driver.NamedValue
 }
 
-// A Value is the result of evaluating an expression.
-type Value struct {
-	Value  LitteralValue
-	List   LitteralValueList
+// A evalValue is the result of evaluating an expression.
+type evalValue struct {
+	Value  litteralValue
+	List   litteralValueList
 	IsList bool
 }
 
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 // It implements the Value interface.
-func (v Value) Truthy() bool {
+func (v evalValue) Truthy() bool {
 	if v.IsList {
 		return v.List.Truthy()
 	}
@@ -48,48 +48,123 @@ func (v Value) Truthy() bool {
 	return v.Value.Truthy()
 }
 
-func NewSingleValue(v value.Value) Value {
-	return Value{
-		Value: LitteralValue{
+func newSingleEvalValue(v value.Value) evalValue {
+	return evalValue{
+		Value: litteralValue{
 			Value: v,
 		},
 	}
 }
 
-// A LitteralValue represents a litteral value of any type defined by the value package.
-type LitteralValue struct {
+// A litteralValue represents a litteral value of any type defined by the value package.
+type litteralValue struct {
 	value.Value
+}
+
+// bytesValue creates a litteral value of type Bytes.
+func bytesValue(v []byte) litteralValue {
+	return litteralValue{value.NewBytes(v)}
+}
+
+// stringValue creates a litteral value of type String.
+func stringValue(v string) litteralValue {
+	return litteralValue{value.NewString(v)}
+}
+
+// boolValue creates a litteral value of type Bool.
+func boolValue(v bool) litteralValue {
+	return litteralValue{value.NewBool(v)}
+}
+
+// uintValue creates a litteral value of type Uint.
+func uintValue(v uint) litteralValue {
+	return litteralValue{value.NewUint(v)}
+}
+
+// uint8Value creates a litteral value of type Uint8.
+func uint8Value(v uint8) litteralValue {
+	return litteralValue{value.NewUint8(v)}
+}
+
+// uint16Value creates a litteral value of type Uint16.
+func uint16Value(v uint16) litteralValue {
+	return litteralValue{value.NewUint16(v)}
+}
+
+// uint32Value creates a litteral value of type Uint32.
+func uint32Value(v uint32) litteralValue {
+	return litteralValue{value.NewUint32(v)}
+}
+
+// uint64Value creates a litteral value of type Uint64.
+func uint64Value(v uint64) litteralValue {
+	return litteralValue{value.NewUint64(v)}
+}
+
+// intValue creates a litteral value of type Int.
+func intValue(v int) litteralValue {
+	return litteralValue{value.NewInt(v)}
+}
+
+// int8Value creates a litteral value of type Int8.
+func int8Value(v int8) litteralValue {
+	return litteralValue{value.NewInt8(v)}
+}
+
+// int16Value creates a litteral value of type Int16.
+func int16Value(v int16) litteralValue {
+	return litteralValue{value.NewInt16(v)}
+}
+
+// int32Value creates a litteral value of type Int32.
+func int32Value(v int32) litteralValue {
+	return litteralValue{value.NewInt32(v)}
+}
+
+// int64Value creates a litteral value of type Int64.
+func int64Value(v int64) litteralValue {
+	return litteralValue{value.NewInt64(v)}
+}
+
+// float32Value creates a litteral value of type Float32.
+func float32Value(v float32) litteralValue {
+	return litteralValue{value.NewFloat32(v)}
+}
+
+// float64Value creates a litteral value of type Float64.
+func float64Value(v float64) litteralValue {
+	return litteralValue{value.NewFloat64(v)}
 }
 
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 // It implements the Value interface.
-func (l LitteralValue) Truthy() bool {
+func (l litteralValue) Truthy() bool {
 	return !value.IsZeroValue(l.Type, l.Data)
 }
 
 // Eval returns l. It implements the Expr interface.
-func (l LitteralValue) Eval(EvalStack) (Value, error) {
-	return Value{Value: l}, nil
+func (l litteralValue) Eval(evalStack) (evalValue, error) {
+	return evalValue{Value: l}, nil
 }
 
-// A LitteralValueList represents a litteral value of any type defined by the value package.
-type LitteralValueList []Value
+// A litteralValueList represents a litteral value of any type defined by the value package.
+type litteralValueList []evalValue
 
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 // It implements the Value interface.
-func (l LitteralValueList) Truthy() bool {
+func (l litteralValueList) Truthy() bool {
 	return len(l) > 0
 }
 
-// LitteralExprList is a list of expressions.
-type LitteralExprList []Expr
+// litteralExprList is a list of expressions.
+type litteralExprList []expr
 
 // Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
-func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
+func (l litteralExprList) Eval(stack evalStack) (evalValue, error) {
 	if len(l) == 0 {
-		return NilLitteral, nil
+		return nilLitteral, nil
 	}
 
 	if len(l) == 1 {
@@ -98,33 +173,33 @@ func (l LitteralExprList) Eval(stack EvalStack) (Value, error) {
 
 	var err error
 
-	values := make(LitteralValueList, len(l))
+	values := make(litteralValueList, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(stack)
 		if err != nil {
-			return NilLitteral, err
+			return nilLitteral, err
 		}
 	}
-	return Value{List: values, IsList: true}, nil
+	return evalValue{List: values, IsList: true}, nil
 }
 
-type NamedParam string
+type namedParam string
 
-func (p NamedParam) Eval(stack EvalStack) (Value, error) {
+func (p namedParam) Eval(stack evalStack) (evalValue, error) {
 	v, err := p.Extract(stack.Params)
 	if err != nil {
-		return NilLitteral, err
+		return nilLitteral, err
 	}
 
 	vl, err := value.New(v)
 	if err != nil {
-		return NilLitteral, err
+		return nilLitteral, err
 	}
 
-	return NewSingleValue(vl), nil
+	return newSingleEvalValue(vl), nil
 }
 
-func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
+func (p namedParam) Extract(params []driver.NamedValue) (interface{}, error) {
 	for _, nv := range params {
 		if nv.Name == string(p) {
 			return nv.Value, nil
@@ -134,23 +209,23 @@ func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
 	return nil, fmt.Errorf("param %s not found", p)
 }
 
-type PositionalParam int
+type positionalParam int
 
-func (p PositionalParam) Eval(stack EvalStack) (Value, error) {
+func (p positionalParam) Eval(stack evalStack) (evalValue, error) {
 	v, err := p.Extract(stack.Params)
 	if err != nil {
-		return NilLitteral, err
+		return nilLitteral, err
 	}
 
 	vl, err := value.New(v)
 	if err != nil {
-		return NilLitteral, err
+		return nilLitteral, err
 	}
 
-	return NewSingleValue(vl), nil
+	return newSingleEvalValue(vl), nil
 }
 
-func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error) {
+func (p positionalParam) Extract(params []driver.NamedValue) (interface{}, error) {
 	idx := int(p - 1)
 	if idx >= len(params) {
 		return nil, fmt.Errorf("can't find param number %d", p)
@@ -159,61 +234,61 @@ func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error
 	return params[idx].Value, nil
 }
 
-type SimpleOperator struct {
-	a, b  Expr
+type simpleOperator struct {
+	a, b  expr
 	Token scanner.Token
 }
 
-func (op SimpleOperator) Precedence() int {
+func (op simpleOperator) Precedence() int {
 	return op.Token.Precedence()
 }
 
-func (op SimpleOperator) LeftHand() Expr {
+func (op simpleOperator) LeftHand() expr {
 	return op.a
 }
 
-func (op SimpleOperator) RightHand() Expr {
+func (op simpleOperator) RightHand() expr {
 	return op.b
 }
 
-func (op *SimpleOperator) SetLeftHandExpr(a Expr) {
+func (op *simpleOperator) SetLeftHandExpr(a expr) {
 	op.a = a
 }
 
-func (op *SimpleOperator) SetRightHandExpr(b Expr) {
+func (op *simpleOperator) SetRightHandExpr(b expr) {
 	op.b = b
 }
 
-type CmpOp struct {
-	SimpleOperator
+type cmpOp struct {
+	simpleOperator
 }
 
 // Eq creates an expression that returns true if a equals b.
-func Eq(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.EQ}}
+func eq(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.EQ}}
 }
 
-// Gt creates an expression that returns true if a is greater than b.
-func Gt(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.GT}}
+// gt creates an expression that returns true if a is greater than b.
+func gt(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.GT}}
 }
 
-// Gte creates an expression that returns true if a is greater than or equal to b.
-func Gte(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.GTE}}
+// gte creates an expression that returns true if a is greater than or equal to b.
+func gte(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.GTE}}
 }
 
-// Lt creates an expression that returns true if a is lesser than b.
-func Lt(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.LT}}
+// lt creates an expression that returns true if a is lesser than b.
+func lt(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.LT}}
 }
 
-// Lte creates an expression that returns true if a is lesser than or equal to b.
-func Lte(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.LTE}}
+// lte creates an expression that returns true if a is lesser than or equal to b.
+func lte(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.LTE}}
 }
 
-func (op CmpOp) Eval(ctx EvalStack) (Value, error) {
+func (op cmpOp) Eval(ctx evalStack) (evalValue, error) {
 	v1, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err
@@ -232,7 +307,7 @@ func (op CmpOp) Eval(ctx EvalStack) (Value, error) {
 	return falseLitteral, err
 }
 
-func (op CmpOp) compare(l, r Value) (bool, error) {
+func (op cmpOp) compare(l, r evalValue) (bool, error) {
 	// l must be of the same type
 	if !l.IsList {
 		if !r.IsList {
@@ -269,7 +344,7 @@ func (op CmpOp) compare(l, r Value) (bool, error) {
 	return false, fmt.Errorf("can't compare expressions")
 }
 
-func (op CmpOp) compareLitterals(l, r LitteralValue) (bool, error) {
+func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
 	var err error
 
 	// if same type, no conversion needed
@@ -358,17 +433,17 @@ func numberToFloat(v interface{}) float64 {
 	return f
 }
 
-type AndOp struct {
-	SimpleOperator
+type andOp struct {
+	simpleOperator
 }
 
-// And creates an expression that evaluates a and b and returns true if both are truthy.
-func And(a, b Expr) Expr {
-	return &AndOp{SimpleOperator{a, b, scanner.AND}}
+// and creates an expression that evaluates a and b and returns true if both are truthy.
+func and(a, b expr) expr {
+	return &andOp{simpleOperator{a, b, scanner.AND}}
 }
 
 // Eval implements the Expr interface.
-func (op *AndOp) Eval(ctx EvalStack) (Value, error) {
+func (op *andOp) Eval(ctx evalStack) (evalValue, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil || !s.Truthy() {
 		return falseLitteral, err
@@ -382,17 +457,17 @@ func (op *AndOp) Eval(ctx EvalStack) (Value, error) {
 	return trueLitteral, nil
 }
 
-type OrOp struct {
-	SimpleOperator
+type orOp struct {
+	simpleOperator
 }
 
-// Or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy or false if falsy.
-func Or(a, b Expr) Expr {
-	return &OrOp{SimpleOperator{a, b, scanner.OR}}
+// or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy or false if falsy.
+func or(a, b expr) expr {
+	return &orOp{simpleOperator{a, b, scanner.OR}}
 }
 
 // Eval implements the Expr interface.
-func (op *OrOp) Eval(ctx EvalStack) (Value, error) {
+func (op *orOp) Eval(ctx evalStack) (evalValue, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err

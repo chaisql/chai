@@ -10,25 +10,25 @@ func TestParserUdpate(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Statement
+		expected statement
 		errored  bool
 	}{
 		{"No cond", "UPDATE test SET a = 1",
 			updateStmt{
 				tableName: "test",
-				pairs: map[string]Expr{
-					"a": Int64Value(1),
+				pairs: map[string]expr{
+					"a": int64Value(1),
 				},
 			},
 			false},
 		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			updateStmt{
 				tableName: "test",
-				pairs: map[string]Expr{
-					"a": Int64Value(1),
-					"b": Int64Value(2),
+				pairs: map[string]expr{
+					"a": int64Value(1),
+					"b": int64Value(2),
 				},
-				whereExpr: Eq(FieldSelector("age"), Int64Value(10)),
+				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 			},
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},
@@ -40,7 +40,7 @@ func TestParserUdpate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

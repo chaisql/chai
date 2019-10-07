@@ -11,32 +11,32 @@ func TestParserExpr(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Expr
+		expected expr
 	}{
-		{"=", "age = 10", Eq(FieldSelector("age"), Int64Value(10))},
+		{"=", "age = 10", eq(fieldSelector("age"), int64Value(10))},
 		{"AND", "age = 10 AND age <= 11",
-			And(
-				Eq(FieldSelector("age"), Int64Value(10)),
-				Lte(FieldSelector("age"), Int64Value(11)),
+			and(
+				eq(fieldSelector("age"), int64Value(10)),
+				lte(fieldSelector("age"), int64Value(11)),
 			)},
 		{"OR", "age = 10 OR age = 11",
-			Or(
-				Eq(FieldSelector("age"), Int64Value(10)),
-				Eq(FieldSelector("age"), Int64Value(11)),
+			or(
+				eq(fieldSelector("age"), int64Value(10)),
+				eq(fieldSelector("age"), int64Value(11)),
 			)},
 		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
-			Or(
-				And(
-					Gte(FieldSelector("age"), Int64Value(10)),
-					Gt(FieldSelector("age"), NamedParam("age")),
+			or(
+				and(
+					gte(fieldSelector("age"), int64Value(10)),
+					gt(fieldSelector("age"), namedParam("age")),
 				),
-				Lt(FieldSelector("age"), Float64Value(10.4)),
+				lt(fieldSelector("age"), float64Value(10.4)),
 			)},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
+			ex, err := newParser(strings.NewReader(test.s)).ParseExpr()
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, ex)
 		})
@@ -47,27 +47,27 @@ func TestParserParams(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Expr
+		expected expr
 		errored  bool
 	}{
-		{"one positional", "age = ?", Eq(FieldSelector("age"), PositionalParam(1)), false},
+		{"one positional", "age = ?", eq(fieldSelector("age"), positionalParam(1)), false},
 		{"multiple positional", "age = ? AND age <= ?",
-			And(
-				Eq(FieldSelector("age"), PositionalParam(1)),
-				Lte(FieldSelector("age"), PositionalParam(2)),
+			and(
+				eq(fieldSelector("age"), positionalParam(1)),
+				lte(fieldSelector("age"), positionalParam(2)),
 			), false},
-		{"one named", "age = $age", Eq(FieldSelector("age"), NamedParam("age")), false},
+		{"one named", "age = $age", eq(fieldSelector("age"), namedParam("age")), false},
 		{"multiple named", "age = $foo OR age = $bar",
-			Or(
-				Eq(FieldSelector("age"), NamedParam("foo")),
-				Eq(FieldSelector("age"), NamedParam("bar")),
+			or(
+				eq(fieldSelector("age"), namedParam("foo")),
+				eq(fieldSelector("age"), namedParam("bar")),
 			), false},
 		{"mixed", "age >= ? AND age > $foo OR age < ?", nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
+			ex, err := newParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
 				require.Error(t, err)
 			} else {
@@ -82,18 +82,18 @@ func TestParserMultiStatement(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected []Statement
+		expected []statement
 	}{
 		{"OnlyCommas", ";;;", nil},
-		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []Statement{
-			selectStmt{tableSelector: tableSelector("foo")},
+		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []statement{
+			selectStmt{tableName: "foo"},
 			deleteStmt{tableName: "foo"},
 		}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, q.Statements)
 		})

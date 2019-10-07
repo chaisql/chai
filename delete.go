@@ -5,12 +5,12 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 )
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
 // This function assumes the DELETE token has already been consumed.
-func (p *Parser) parseDeleteStatement() (deleteStmt, error) {
+func (p *parser) parseDeleteStatement() (deleteStmt, error) {
 	var stmt deleteStmt
 	var err error
 
@@ -37,7 +37,7 @@ func (p *Parser) parseDeleteStatement() (deleteStmt, error) {
 // DeleteStmt is a DSL that allows creating a full Delete query.
 type deleteStmt struct {
 	tableName string
-	whereExpr Expr
+	whereExpr expr
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -45,16 +45,16 @@ func (stmt deleteStmt) IsReadOnly() bool {
 	return false
 }
 
-func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.tableName == "" {
-		return Result{err: errors.New("missing table name")}
+		return result{err: errors.New("missing table name")}
 	}
 
-	stack := EvalStack{Tx: tx, Params: args}
+	stack := evalStack{Tx: tx, Params: args}
 
 	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
-		return Result{err: err}
+		return result{err: err}
 	}
 
 	st := record.NewStream(t)
@@ -67,5 +67,5 @@ func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 
 		return errors.New("attempt to delete record without key")
 	})
-	return Result{err: err}
+	return result{err: err}
 }

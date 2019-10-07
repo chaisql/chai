@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (updateStmt, error) {
+func (p *parser) parseUpdateStatement() (updateStmt, error) {
 	var stmt updateStmt
 	var err error
 
@@ -37,13 +37,13 @@ func (p *Parser) parseUpdateStatement() (updateStmt, error) {
 }
 
 // parseSetClause parses the "SET" clause of the query.
-func (p *Parser) parseSetClause() (map[string]Expr, error) {
+func (p *parser) parseSetClause() (map[string]expr, error) {
 	// Check if the SET token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.SET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SET"}, pos)
 	}
 
-	pairs := make(map[string]Expr)
+	pairs := make(map[string]expr)
 
 	firstPair := true
 	for {
@@ -83,8 +83,8 @@ func (p *Parser) parseSetClause() (map[string]Expr, error) {
 // updateStmt is a DSL that allows creating a full Update query.
 type updateStmt struct {
 	tableName string
-	pairs     map[string]Expr
-	whereExpr Expr
+	pairs     map[string]expr
+	whereExpr expr
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -94,23 +94,23 @@ func (stmt updateStmt) IsReadOnly() bool {
 
 // Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.tableName == "" {
-		return Result{err: errors.New("missing table name")}
+		return result{err: errors.New("missing table name")}
 	}
 
 	if len(stmt.pairs) == 0 {
-		return Result{err: errors.New("Set method not called")}
+		return result{err: errors.New("Set method not called")}
 	}
 
-	stack := EvalStack{
+	stack := evalStack{
 		Tx:     tx,
 		Params: args,
 	}
 
 	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
-		return Result{err: err}
+		return result{err: err}
 	}
 
 	st := record.NewStream(t)
@@ -134,7 +134,7 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 				return err
 			}
 
-			v, err := e.Eval(EvalStack{
+			v, err := e.Eval(evalStack{
 				Tx:     tx,
 				Record: r,
 			})
@@ -161,5 +161,5 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 
 		return nil
 	})
-	return Result{err: err}
+	return result{err: err}
 }

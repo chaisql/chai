@@ -10,7 +10,7 @@ func TestParserDrop(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Statement
+		expected statement
 		errored  bool
 	}{
 		{"Drop table", "DROP TABLE test", dropTableStmt{tableName: "test"}, false},
@@ -21,7 +21,7 @@ func TestParserDrop(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

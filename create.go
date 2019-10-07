@@ -5,12 +5,12 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
 // This function assumes the CREATE token has already been consumed.
-func (p *Parser) parseCreateStatement() (Statement, error) {
+func (p *parser) parseCreateStatement() (statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -30,7 +30,7 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 
 // parseCreateTableStatement parses a create table string and returns a Statement AST object.
 // This function assumes the CREATE TABLE tokens have already been consumed.
-func (p *Parser) parseCreateTableStatement() (createTableStmt, error) {
+func (p *parser) parseCreateTableStatement() (createTableStmt, error) {
 	var stmt createTableStmt
 	var err error
 
@@ -63,7 +63,7 @@ func (p *Parser) parseCreateTableStatement() (createTableStmt, error) {
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
-func (p *Parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error) {
+func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error) {
 	var err error
 	stmt := createIndexStmt{
 		unique: unique,
@@ -134,9 +134,9 @@ func (stmt createTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.tableName == "" {
-		return Result{err: errors.New("missing table name")}
+		return result{err: errors.New("missing table name")}
 	}
 
 	var err error
@@ -146,7 +146,7 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 		_, err = tx.CreateTable(stmt.tableName)
 	}
 
-	return Result{err: err}
+	return result{err: err}
 }
 
 // createIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
@@ -166,17 +166,17 @@ func (stmt createIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.tableName == "" {
-		return Result{err: errors.New("missing table name")}
+		return result{err: errors.New("missing table name")}
 	}
 
 	if stmt.indexName == "" {
-		return Result{err: errors.New("missing index name")}
+		return result{err: errors.New("missing index name")}
 	}
 
 	if stmt.fieldName == "" {
-		return Result{err: errors.New("missing field name")}
+		return result{err: errors.New("missing field name")}
 	}
 
 	var err error
@@ -187,5 +187,5 @@ func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) Result {
 		_, err = tx.CreateIndex(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
 	}
 
-	return Result{err: err}
+	return result{err: err}
 }

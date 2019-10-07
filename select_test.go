@@ -10,48 +10,48 @@ func TestParserSelect(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Statement
+		expected statement
 		mustFail bool
 	}{
 		{"NoCond", "SELECT * FROM test",
 			selectStmt{
-				tableSelector: tableSelector("test"),
+				tableName: "test",
 			}, false},
 		{"WithFields", "SELECT a, b FROM test",
 			selectStmt{
-				FieldSelectors: []FieldSelector{FieldSelector("a"), FieldSelector("b")},
-				tableSelector:  tableSelector("test"),
+				FieldSelectors: []fieldSelector{fieldSelector("a"), fieldSelector("b")},
+				tableName:      "test",
 			}, false},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
 			selectStmt{
-				tableSelector: tableSelector("test"),
-				whereExpr:     Eq(FieldSelector("age"), Int64Value(10)),
+				tableName: "test",
+				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 			}, false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			selectStmt{
-				tableSelector: tableSelector("test"),
-				whereExpr:     Eq(FieldSelector("age"), Int64Value(10)),
-				limitExpr:     Int64Value(20),
+				tableName: "test",
+				whereExpr: eq(fieldSelector("age"), int64Value(10)),
+				limitExpr: int64Value(20),
 			}, false},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			selectStmt{
-				tableSelector: tableSelector("test"),
-				whereExpr:     Eq(FieldSelector("age"), Int64Value(10)),
-				offsetExpr:    Int64Value(20),
+				tableName:  "test",
+				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
+				offsetExpr: int64Value(20),
 			}, false},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			selectStmt{
-				tableSelector: tableSelector("test"),
-				whereExpr:     Eq(FieldSelector("age"), Int64Value(10)),
-				offsetExpr:    Int64Value(20),
-				limitExpr:     Int64Value(10),
+				tableName:  "test",
+				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
+				offsetExpr: int64Value(20),
+				limitExpr:  int64Value(10),
 			}, false},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)

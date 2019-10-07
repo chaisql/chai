@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/value"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (insertStmt, error) {
+func (p *parser) parseInsertStatement() (insertStmt, error) {
 	var stmt insertStmt
 	var err error
 
@@ -42,9 +42,9 @@ func (p *Parser) parseInsertStatement() (insertStmt, error) {
 		return stmt, err
 	}
 	if found {
-		stmt.values = make(LitteralExprList, len(values))
+		stmt.values = make(litteralExprList, len(values))
 		for i, v := range values {
-			stmt.values[i] = LitteralExprList(v)
+			stmt.values[i] = litteralExprList(v)
 		}
 		return stmt, nil
 	}
@@ -66,7 +66,7 @@ func (p *Parser) parseInsertStatement() (insertStmt, error) {
 }
 
 // parseFieldList parses a list of fields in the form: (field, field, ...), if exists
-func (p *Parser) parseFieldList() ([]string, bool, error) {
+func (p *parser) parseFieldList() ([]string, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -89,21 +89,21 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues() ([]LitteralExprList, bool, error) {
+func (p *parser) parseValues() ([]litteralExprList, bool, error) {
 	// Check if the VALUES token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	var valuesList []LitteralExprList
+	var valuesList []litteralExprList
 	// Parse first (required) value list.
 	exprs, err := p.parseExprList()
 	if err != nil {
 		return nil, true, err
 	}
 
-	valuesList = append(valuesList, LitteralExprList(exprs))
+	valuesList = append(valuesList, litteralExprList(exprs))
 
 	// Parse remaining (optional) values.
 	for {
@@ -117,14 +117,14 @@ func (p *Parser) parseValues() ([]LitteralExprList, bool, error) {
 			return nil, true, err
 		}
 
-		valuesList = append(valuesList, LitteralExprList(values))
+		valuesList = append(valuesList, litteralExprList(values))
 	}
 
 	return valuesList, true, nil
 }
 
 // parseValues parses the "RECORDS" clause of the query, if it exists.
-func (p *Parser) parseRecords() ([]interface{}, bool, error) {
+func (p *parser) parseRecords() ([]interface{}, bool, error) {
 	// Check if the RECORDS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RECORDS {
 		p.Unscan()
@@ -160,7 +160,7 @@ func (p *Parser) parseRecords() ([]interface{}, bool, error) {
 	return records, true, nil
 }
 
-func (p *Parser) parseRecord() (interface{}, error) {
+func (p *parser) parseRecord() (interface{}, error) {
 	// Parse a param first
 	v, err := p.parseParam()
 	if err != nil {
@@ -188,7 +188,7 @@ func (p *Parser) parseRecord() (interface{}, error) {
 }
 
 // parseKV parses a key-value pair in the form IDENT : Expr.
-func (p *Parser) parseKV() (string, Expr, error) {
+func (p *parser) parseKV() (string, expr, error) {
 	k, err := p.ParseIdent()
 	if err != nil {
 		return "", nil, err
@@ -208,7 +208,7 @@ func (p *Parser) parseKV() (string, Expr, error) {
 }
 
 // parseKVList parses a list of fields in the form: (k = Expr, k = Expr, ...), if exists
-func (p *Parser) parseKVList() ([]kvPair, bool, error) {
+func (p *parser) parseKVList() ([]kvPair, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -246,7 +246,7 @@ func (p *Parser) parseKVList() ([]kvPair, bool, error) {
 }
 
 // parseExprList parses a list of expressions in the form: (expr, expr, ...)
-func (p *Parser) parseExprList() ([]Expr, error) {
+func (p *parser) parseExprList() ([]expr, error) {
 	// Parse ( token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
@@ -257,7 +257,7 @@ func (p *Parser) parseExprList() ([]Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	exprs := []Expr{e}
+	exprs := []expr{e}
 
 	// Parse remaining (optional) exprs.
 	for {
@@ -285,7 +285,7 @@ func (p *Parser) parseExprList() ([]Expr, error) {
 type insertStmt struct {
 	tableName  string
 	fieldNames []string
-	values     LitteralExprList
+	values     litteralExprList
 	records    []interface{}
 }
 
@@ -296,7 +296,7 @@ func (stmt insertStmt) IsReadOnly() bool {
 
 type kvPair struct {
 	K string
-	V Expr
+	V expr
 }
 
 func (stmt insertStmt) Pairs(pairs ...kvPair) insertStmt {
@@ -305,21 +305,21 @@ func (stmt insertStmt) Pairs(pairs ...kvPair) insertStmt {
 	return stmt
 }
 
-func (stmt insertStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt insertStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	if stmt.tableName == "" {
-		return Result{err: errors.New("missing table name")}
+		return result{err: errors.New("missing table name")}
 	}
 
 	if stmt.values == nil && stmt.records == nil {
-		return Result{err: errors.New("values and records are empty")}
+		return result{err: errors.New("values and records are empty")}
 	}
 
 	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
-		return Result{err: err}
+		return result{err: err}
 	}
 
-	stack := EvalStack{
+	stack := evalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -335,12 +335,12 @@ type paramExtractor interface {
 	Extract(params []driver.NamedValue) (interface{}, error)
 }
 
-func (stmt insertStmt) insertRecords(t *Table, stack EvalStack) Result {
+func (stmt insertStmt) insertRecords(t *Table, stack evalStack) result {
 	if len(stmt.fieldNames) > 0 {
-		return Result{err: errors.New("can't provide a field list with RECORDS clause")}
+		return result{err: errors.New("can't provide a field list with RECORDS clause")}
 	}
 
-	var res Result
+	var res result
 	var err error
 
 	for _, rec := range stmt.records {
@@ -352,13 +352,13 @@ func (stmt insertStmt) insertRecords(t *Table, stack EvalStack) Result {
 		case paramExtractor:
 			v, err := tp.Extract(stack.Params)
 			if err != nil {
-				return Result{err: err}
+				return result{err: err}
 			}
 
 			var ok bool
 			r, ok = v.(record.Record)
 			if !ok {
-				return Result{err: fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)}
+				return result{err: fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)}
 			}
 		case []kvPair:
 			var fb record.FieldBuffer
@@ -381,7 +381,7 @@ func (stmt insertStmt) insertRecords(t *Table, stack EvalStack) Result {
 
 		res.lastInsertRecordID, err = t.Insert(r)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 
 		res.rowsAffected++
@@ -391,8 +391,8 @@ func (stmt insertStmt) insertRecords(t *Table, stack EvalStack) Result {
 	return res
 }
 
-func (stmt insertStmt) insertValues(t *Table, stack EvalStack) Result {
-	var res Result
+func (stmt insertStmt) insertValues(t *Table, stack evalStack) result {
+	var res result
 
 	// iterate over all of the records (r1, r2, r3, ...)
 	for _, e := range stmt.values {
@@ -400,17 +400,17 @@ func (stmt insertStmt) insertValues(t *Table, stack EvalStack) Result {
 
 		v, err := e.Eval(stack)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 
 		// each record must be a list of values
 		// (e1, e2, e3, ...)
 		if !v.IsList {
-			return Result{err: errors.New("invalid values")}
+			return result{err: errors.New("invalid values")}
 		}
 
 		if len(stmt.fieldNames) != len(v.List) {
-			return Result{err: fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.fieldNames))}
+			return result{err: fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.fieldNames))}
 		}
 
 		// iterate over each value
@@ -418,7 +418,7 @@ func (stmt insertStmt) insertValues(t *Table, stack EvalStack) Result {
 			// get the field name
 			fieldName := stmt.fieldNames[i]
 
-			var lv *LitteralValue
+			var lv *litteralValue
 
 			// each value must be either a LitteralValue or a LitteralValueList with exactly
 			// one value
@@ -430,7 +430,7 @@ func (stmt insertStmt) insertValues(t *Table, stack EvalStack) Result {
 						lv = &val.Value
 					}
 				}
-				return Result{err: fmt.Errorf("value expected, got list")}
+				return result{err: fmt.Errorf("value expected, got list")}
 			}
 
 			// Assign the value to the field and add it to the record
@@ -445,7 +445,7 @@ func (stmt insertStmt) insertValues(t *Table, stack EvalStack) Result {
 
 		res.lastInsertRecordID, err = t.Insert(&fb)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 
 		res.rowsAffected++

@@ -7,7 +7,7 @@ import (
 
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 )
 
 type queryPlan struct {
@@ -16,51 +16,47 @@ type queryPlan struct {
 }
 
 type queryPlanNode struct {
-	indexedField FieldSelector
+	indexedField fieldSelector
 	op           scanner.Token
-	e            Expr
+	e            expr
 	uniqueIndex  bool
 }
 
-func newQueryOptimizer(tx *Tx, ts TableSelector) queryOptimizer {
+func newQueryOptimizer(tx *Tx, t *Table) queryOptimizer {
 	return queryOptimizer{
 		tx: tx,
-		ts: ts,
+		t:  t,
 	}
 }
 
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
 	tx *Tx
-	ts TableSelector
+	t  *Table
 }
 
-func (qo queryOptimizer) optimizeQuery(whereExpr Expr, args []driver.NamedValue) (TableSelector, error) {
-	tb, err := qo.tx.GetTable(qo.ts.TableName())
+func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue) (record.Stream, error) {
+	indexes, err := qo.t.Indexes()
 	if err != nil {
-		return nil, err
-	}
-
-	indexes, err := tb.Indexes()
-	if err != nil {
-		return nil, err
+		return record.Stream{}, err
 	}
 
 	qp := buildQueryPlan(indexes, whereExpr)
 	if qp.scanTable {
-		return qo.ts, nil
+		return record.NewStream(qo.t), nil
 	}
 
-	return indexTableSelector{
-		TableSelector: qo.ts,
-		args:          args,
-		op:            qp.tree.op,
-		e:             qp.tree.e,
-		index:         indexes[qp.tree.indexedField.Name()],
-	}, nil
+	return record.NewStream(indexIterator{
+		tx:    qo.tx,
+		tb:    qo.t,
+		args:  args,
+		op:    qp.tree.op,
+		e:     qp.tree.e,
+		index: indexes[qp.tree.indexedField.Name()],
+	}), nil
 }
 
-func buildQueryPlan(indexes map[string]index.Index, e Expr) queryPlan {
+func buildQueryPlan(indexes map[string]index.Index, e expr) queryPlan {
 	var qp queryPlan
 
 	qp.tree = analyseExpr(indexes, e)
@@ -71,9 +67,9 @@ func buildQueryPlan(indexes map[string]index.Index, e Expr) queryPlan {
 	return qp
 }
 
-func analyseExpr(indexes map[string]index.Index, e Expr) *queryPlanNode {
+func analyseExpr(indexes map[string]index.Index, e expr) *queryPlanNode {
 	switch t := e.(type) {
-	case CmpOp:
+	case cmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)
 		if !ok || !evaluatesToScalarOrParam(e) {
 			return nil
@@ -90,7 +86,7 @@ func analyseExpr(indexes map[string]index.Index, e Expr) *queryPlanNode {
 			e:            e,
 			uniqueIndex:  idx.Config().Unique,
 		}
-	case *AndOp:
+	case *andOp:
 		nodeL := analyseExpr(indexes, t.LeftHand())
 		nodeR := analyseExpr(indexes, t.LeftHand())
 
@@ -112,9 +108,9 @@ func analyseExpr(indexes map[string]index.Index, e Expr) *queryPlanNode {
 	return nil
 }
 
-func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
-	lf, leftIsField := cmp.LeftHand().(FieldSelector)
-	rf, rightIsField := cmp.RightHand().(FieldSelector)
+func cmpOpCanUseIndex(cmp *cmpOp) (bool, fieldSelector, expr) {
+	lf, leftIsField := cmp.LeftHand().(fieldSelector)
+	rf, rightIsField := cmp.RightHand().(fieldSelector)
 
 	// field OP expr
 	if leftIsField && !rightIsField {
@@ -130,39 +126,15 @@ func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
 	return false, "", nil
 }
 
-func evaluatesToScalarOrParam(e Expr) bool {
+func evaluatesToScalarOrParam(e expr) bool {
 	switch e.(type) {
-	case LitteralValue:
+	case litteralValue:
 		return true
-	case NamedParam, PositionalParam:
+	case namedParam, positionalParam:
 		return true
 	}
 
 	return false
-}
-
-type indexTableSelector struct {
-	TableSelector
-	args  []driver.NamedValue
-	index index.Index
-	op    scanner.Token
-	e     Expr
-}
-
-func (i indexTableSelector) SelectTable(tx *Tx) (record.Iterator, error) {
-	tb, err := tx.GetTable(i.TableSelector.TableName())
-	if err != nil {
-		return nil, err
-	}
-
-	return indexIterator{
-		tx:    tx,
-		tb:    tb,
-		args:  i.args,
-		index: i.index,
-		op:    i.op,
-		e:     i.e,
-	}, nil
 }
 
 type indexIterator struct {
@@ -171,13 +143,13 @@ type indexIterator struct {
 	args  []driver.NamedValue
 	index index.Index
 	op    scanner.Token
-	e     Expr
+	e     expr
 }
 
 var errStop = errors.New("stop")
 
 func (it indexIterator) Iterate(fn func(r record.Record) error) error {
-	v, err := it.e.Eval(EvalStack{
+	v, err := it.e.Eval(evalStack{
 		Tx:     it.tx,
 		Params: it.args,
 	})

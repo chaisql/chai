@@ -10,26 +10,26 @@ func TestParserInsert(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected Statement
+		expected statement
 		errored  bool
 	}{
 		{"Values / No columns", "INSERT INTO test VALUES ('a', 'b', 'c')",
-			insertStmt{tableName: "test", values: LitteralExprList{LitteralExprList{StringValue("a"), StringValue("b"), StringValue("c")}}}, false},
+			insertStmt{tableName: "test", values: litteralExprList{litteralExprList{stringValue("a"), stringValue("b"), stringValue("c")}}}, false},
 		{"Values / With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			insertStmt{
 				tableName:  "test",
 				fieldNames: []string{"a", "b"},
-				values: LitteralExprList{
-					LitteralExprList{StringValue("c"), StringValue("d"), StringValue("e")},
+				values: litteralExprList{
+					litteralExprList{stringValue("c"), stringValue("d"), stringValue("e")},
 				},
 			}, false},
 		{"Values / Multple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
 			insertStmt{
 				tableName:  "test",
 				fieldNames: []string{"a", "b"},
-				values: LitteralExprList{
-					LitteralExprList{StringValue("c"), StringValue("d")},
-					LitteralExprList{StringValue("e"), StringValue("f")},
+				values: litteralExprList{
+					litteralExprList{stringValue("c"), stringValue("d")},
+					litteralExprList{stringValue("e"), stringValue("f")},
 				},
 			}, false},
 
@@ -38,9 +38,9 @@ func TestParserInsert(t *testing.T) {
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
-						kvPair{K: "a", V: StringValue("a")},
-						kvPair{K: "b", V: Float64Value(2.3)},
-						kvPair{K: "c", V: Eq(Int64Value(1), Int64Value(1))},
+						kvPair{K: "a", V: stringValue("a")},
+						kvPair{K: "b", V: float64Value(2.3)},
+						kvPair{K: "c", V: eq(int64Value(1), int64Value(1))},
 					},
 				},
 			}, false},
@@ -49,29 +49,29 @@ func TestParserInsert(t *testing.T) {
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
-						kvPair{K: "a", V: StringValue("a")},
-						kvPair{K: "b", V: Float64Value(2.3)},
+						kvPair{K: "a", V: stringValue("a")},
+						kvPair{K: "b", V: float64Value(2.3)},
 					},
-					[]kvPair{kvPair{K: "a", V: Int64Value(1)}, kvPair{K: "d", V: BoolValue(true)}},
+					[]kvPair{kvPair{K: "a", V: int64Value(1)}, kvPair{K: "d", V: boolValue(true)}},
 				},
 			}, false},
 		{"Records / Positional Param", "INSERT INTO test RECORDS ?, ?",
 			insertStmt{
 				tableName: "test",
-				records:   []interface{}{PositionalParam(1), PositionalParam(2)},
+				records:   []interface{}{positionalParam(1), positionalParam(2)},
 			},
 			false},
 		{"Records / Named Param", "INSERT INTO test RECORDS $foo, $bar",
 			insertStmt{
 				tableName: "test",
-				records:   []interface{}{NamedParam("foo"), NamedParam("bar")},
+				records:   []interface{}{namedParam("foo"), namedParam("bar")},
 			},
 			false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

@@ -1,6 +1,12 @@
 package genji
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/asdine/genji/internal/scanner"
+)
 
 var (
 	// ErrTableNotFound is returned when the targeted table doesn't exist.
@@ -24,3 +30,24 @@ var (
 	// or if there is a unique index violation.
 	ErrDuplicateRecord = errors.New("duplicate record")
 )
+
+// ParseError represents an error that occurred during parsing.
+type ParseError struct {
+	Message  string
+	Found    string
+	Expected []string
+	Pos      scanner.Pos
+}
+
+// newParseError returns a new instance of ParseError.
+func newParseError(found string, expected []string, pos scanner.Pos) *ParseError {
+	return &ParseError{Found: found, Expected: expected, Pos: pos}
+}
+
+// Error returns the string representation of the error.
+func (e *ParseError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("%s at line %d, char %d", e.Message, e.Pos.Line+1, e.Pos.Char+1)
+	}
+	return fmt.Sprintf("found %s, expected %s at line %d, char %d", e.Found, strings.Join(e.Expected, ", "), e.Pos.Line+1, e.Pos.Char+1)
+}

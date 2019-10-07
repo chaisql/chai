@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/value"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (selectStmt, error) {
+func (p *parser) parseSelectStatement() (selectStmt, error) {
 	var stmt selectStmt
 	var err error
 
@@ -23,11 +23,10 @@ func (p *Parser) parseSelectStatement() (selectStmt, error) {
 	}
 
 	// Parse "FROM".
-	tableName, err := p.parseFrom()
+	stmt.tableName, err = p.parseFrom()
 	if err != nil {
 		return stmt, err
 	}
-	stmt.tableSelector = tableSelector(tableName)
 
 	// Parse condition: "WHERE EXPR".
 	stmt.whereExpr, err = p.parseCondition()
@@ -49,7 +48,7 @@ func (p *Parser) parseSelectStatement() (selectStmt, error) {
 }
 
 // parseFieldNames parses the list of field names or a wildward.
-func (p *Parser) parseFieldNames() ([]FieldSelector, error) {
+func (p *parser) parseFieldNames() ([]fieldSelector, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
 		return nil, nil
@@ -63,15 +62,15 @@ func (p *Parser) parseFieldNames() ([]FieldSelector, error) {
 	}
 
 	// turn it into field selectors
-	fselectors := make([]FieldSelector, len(idents))
+	fselectors := make([]fieldSelector, len(idents))
 	for i := range idents {
-		fselectors[i] = FieldSelector(idents[i])
+		fselectors[i] = fieldSelector(idents[i])
 	}
 
 	return fselectors, nil
 }
 
-func (p *Parser) parseFrom() (string, error) {
+func (p *parser) parseFrom() (string, error) {
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"FROM"}, pos)
 	}
@@ -80,7 +79,7 @@ func (p *Parser) parseFrom() (string, error) {
 	return p.ParseIdent()
 }
 
-func (p *Parser) parseLimit() (Expr, error) {
+func (p *parser) parseLimit() (expr, error) {
 	// parse LIMIT token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
 		p.Unscan()
@@ -90,7 +89,7 @@ func (p *Parser) parseLimit() (Expr, error) {
 	return p.ParseExpr()
 }
 
-func (p *Parser) parseOffset() (Expr, error) {
+func (p *parser) parseOffset() (expr, error) {
 	// parse OFFSET token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
 		p.Unscan()
@@ -102,11 +101,11 @@ func (p *Parser) parseOffset() (Expr, error) {
 
 // selectStmt is a DSL that allows creating a full Select query.
 type selectStmt struct {
-	tableSelector  TableSelector
-	whereExpr      Expr
-	offsetExpr     Expr
-	limitExpr      Expr
-	FieldSelectors []FieldSelector
+	tableName      string
+	whereExpr      expr
+	offsetExpr     expr
+	limitExpr      expr
+	FieldSelectors []fieldSelector
 }
 
 // IsReadOnly always returns true. It implements the Statement interface.
@@ -116,28 +115,30 @@ func (stmt selectStmt) IsReadOnly() bool {
 
 // Run the Select statement in the given transaction.
 // It implements the Statement interface.
-func (stmt selectStmt) Run(tx *Tx, args []driver.NamedValue) Result {
+func (stmt selectStmt) Run(tx *Tx, args []driver.NamedValue) result {
 	return stmt.exec(tx, args)
 }
 
 // Exec the Select query within tx.
-// If Where was called, records will be filtered depending on the result of the
-// given expression. If the Where expression implements the IndexMatcher interface,
-// the MatchIndex method will be called instead of the Eval one.
-func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) Result {
-	if stmt.tableSelector == nil {
-		return Result{err: errors.New("missing table selector")}
+func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) result {
+	if stmt.tableName == "" {
+		return result{err: errors.New("missing table selector")}
 	}
 
-	ts, err := newQueryOptimizer(tx, stmt.tableSelector).optimizeQuery(stmt.whereExpr, args)
+	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
-		return Result{err: err}
+		return result{err: err}
+	}
+
+	st, err := newQueryOptimizer(tx, t).optimizeQuery(stmt.whereExpr, args)
+	if err != nil {
+		return result{err: err}
 	}
 
 	offset := -1
 	limit := -1
 
-	stack := EvalStack{
+	stack := evalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -145,49 +146,43 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) Result {
 	if stmt.offsetExpr != nil {
 		v, err := stmt.offsetExpr.Eval(stack)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 
 		if v.IsList {
-			return Result{err: fmt.Errorf("expected value got list")}
+			return result{err: fmt.Errorf("expected value got list")}
 		}
 
 		if v.Value.Type < value.Int {
-			return Result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", v.Value.Type)}
+			return result{err: fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", v.Value.Type)}
 		}
 
 		offset, err = value.DecodeInt(v.Value.Data)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 	}
 
 	if stmt.limitExpr != nil {
 		v, err := stmt.limitExpr.Eval(stack)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 
 		if v.IsList {
-			return Result{err: fmt.Errorf("expected value got list")}
+			return result{err: fmt.Errorf("expected value got list")}
 		}
 
 		if v.Value.Type < value.Int {
-			return Result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", v.Value.Type)}
+			return result{err: fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", v.Value.Type)}
 		}
 
 		limit, err = value.DecodeInt(v.Value.Data)
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 	}
 
-	t, err := ts.SelectTable(tx)
-	if err != nil {
-		return Result{err: err}
-	}
-
-	st := record.NewStream(t)
 	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
 	if offset > 0 {
@@ -211,7 +206,7 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) Result {
 		})
 	}
 
-	return Result{Stream: st}
+	return result{Stream: st}
 }
 
 type recordMask struct {

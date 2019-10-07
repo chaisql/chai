@@ -6,16 +6,16 @@ import (
 	"github.com/asdine/genji/record"
 )
 
-// A Query can execute statements against the database. It can read or write data
+// A query can execute statements against the database. It can read or write data
 // from any table, or even alter the structure of the database.
 // Results are returned as streams.
-type Query struct {
-	Statements []Statement
+type query struct {
+	Statements []statement
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *DB, args []driver.NamedValue) Result {
-	var res Result
+func (q query) Run(db *DB, args []driver.NamedValue) result {
+	var res result
 	var tx *Tx
 	var err error
 
@@ -26,12 +26,12 @@ func (q Query) Run(db *DB, args []driver.NamedValue) Result {
 			if tx.Writable() {
 				err := tx.Commit()
 				if err != nil {
-					return Result{err: err}
+					return result{err: err}
 				}
 			} else {
 				err := tx.Rollback()
 				if err != nil {
-					return Result{err: err}
+					return result{err: err}
 				}
 			}
 		}
@@ -39,7 +39,7 @@ func (q Query) Run(db *DB, args []driver.NamedValue) Result {
 		// start a new transaction for every statement
 		tx, err = db.Begin(!stmt.IsReadOnly())
 		if err != nil {
-			return Result{err: err}
+			return result{err: err}
 		}
 
 		res = stmt.Run(tx, args)
@@ -58,8 +58,8 @@ func (q Query) Run(db *DB, args []driver.NamedValue) Result {
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q Query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) Result {
-	var res Result
+func (q query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) result {
+	var res result
 
 	for _, stmt := range q.Statements {
 		// if the statement requires a writable transaction,
@@ -67,7 +67,7 @@ func (q Query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) Result
 		if !forceReadOnly && !tx.Writable() && !stmt.IsReadOnly() {
 			err := tx.Promote()
 			if err != nil {
-				return Result{err: err}
+				return result{err: err}
 			}
 		}
 
@@ -80,19 +80,19 @@ func (q Query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) Result
 	return res
 }
 
-// New creates a new Query with the given statements.
-func NewQuery(statements ...Statement) Query {
-	return Query{Statements: statements}
+// newQuery creates a new query with the given statements.
+func newQuery(statements ...statement) query {
+	return query{Statements: statements}
 }
 
-// A Statement represents a unique action that can be executed against the database.
-type Statement interface {
-	Run(*Tx, []driver.NamedValue) Result
+// A statement represents a unique action that can be executed against the database.
+type statement interface {
+	Run(*Tx, []driver.NamedValue) result
 	IsReadOnly() bool
 }
 
-// Result of a query.
-type Result struct {
+// result of a query.
+type result struct {
 	record.Stream
 	rowsAffected       driver.RowsAffected
 	err                error
@@ -102,32 +102,32 @@ type Result struct {
 }
 
 // Err returns a non nil error if an error occured during the query.
-func (r Result) Err() error {
+func (r result) Err() error {
 	return r.err
 }
 
 // LastInsertId is not supported and returns an error.
 // Use LastInsertRecordID instead.
-func (r Result) LastInsertId() (int64, error) {
+func (r result) LastInsertId() (int64, error) {
 	return r.rowsAffected.LastInsertId()
 }
 
 // LastInsertRecordID returns the database's auto-generated recordID
 // after, for example, an INSERT into a table with primary
 // key.
-func (r Result) LastInsertRecordID() ([]byte, error) {
+func (r result) LastInsertRecordID() ([]byte, error) {
 	return r.lastInsertRecordID, nil
 }
 
 // RowsAffected returns the number of rows affected by the
 // query.
-func (r Result) RowsAffected() (int64, error) {
+func (r result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
 
 // Close the result stream. It must be always be called when the
 // result is not errored. Calling it when Err() is not nil is safe.
-func (r *Result) Close() error {
+func (r *result) Close() error {
 	if r.closed {
 		return nil
 	}
@@ -147,7 +147,7 @@ func (r *Result) Close() error {
 	return err
 }
 
-func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
+func whereClause(e expr, stack evalStack) func(r record.Record) (bool, error) {
 	if e == nil {
 		return func(r record.Record) (bool, error) {
 			return true, nil
@@ -182,16 +182,16 @@ func argsToNamedValues(args []interface{}) []driver.NamedValue {
 	return nv
 }
 
-// A FieldSelector can extract a field from a record.
+// A fieldSelector can extract a field from a record.
 // A Field is an adapter that can turn a string into a field selector.
 // It is supposed to be used by casting a string into a Field.
 //   f := Field("Name")
 //   f.SelectField(r)
-// It implements the FieldSelector interface.
-type FieldSelector string
+// It implements the fieldSelector interface.
+type fieldSelector string
 
 // Name returns f as a string.
-func (f FieldSelector) Name() string {
+func (f fieldSelector) Name() string {
 	return string(f)
 }
 
@@ -199,40 +199,17 @@ func (f FieldSelector) Name() string {
 // SelectField takes a field from a record.
 // If the field selector was created using the As method
 // it must replace the name of f by the alias.
-func (f FieldSelector) SelectField(r record.Record) (record.Field, error) {
+func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
 	return r.GetField(string(f))
 }
 
 // Eval extracts the record from the context and selects the right field.
 // It implements the Expr interface.
-func (f FieldSelector) Eval(stack EvalStack) (Value, error) {
+func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
 	fd, err := f.SelectField(stack.Record)
 	if err != nil {
-		return NilLitteral, nil
+		return nilLitteral, nil
 	}
 
-	return NewSingleValue(fd.Value), nil
-}
-
-type TableSelector interface {
-	// SelectTable selects a table by calling the Table method of the transaction.
-	SelectTable(*Tx) (record.Iterator, error)
-	// Name of the selected table.
-	TableName() string
-}
-
-// A TableSelector can select a table from a transaction.
-// It is supposed to be used by casting a string into a Table.
-//   t := Table("Name")
-//   t.SelectTable(tx)
-type tableSelector string
-
-// TableName returns t as a string.
-func (t tableSelector) TableName() string {
-	return string(t)
-}
-
-// SelectTable selects the table t from tx.
-func (t tableSelector) SelectTable(tx *Tx) (record.Iterator, error) {
-	return tx.GetTable(string(t))
+	return newSingleEvalValue(fd.Value), nil
 }
