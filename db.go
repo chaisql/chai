@@ -243,6 +243,11 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 		return nil, err
 	}
 
+	_, err = tx.GetTable(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	idxName := buildIndexName(indexName)
 
 	_, err = it.GetRecord([]byte(idxName))

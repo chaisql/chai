@@ -39,6 +39,9 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
+		_, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
 		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
 		require.NoError(t, err)
 		require.NotNil(t, idx)
@@ -48,11 +51,22 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		_, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
 		require.NoError(t, err)
 
 		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
 		require.Equal(t, genji.ErrIndexAlreadyExists, err)
+	})
+
+	t.Run("Should fail if table doesn't exists", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.Equal(t, genji.ErrTableNotFound, err)
 	})
 }
 
@@ -61,7 +75,10 @@ func TestTxDropIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		_, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
 		require.NoError(t, err)
 
 		err = tx.DropIndex("idxFoo")
