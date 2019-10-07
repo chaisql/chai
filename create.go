@@ -177,12 +177,9 @@ func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
 		return result{err: errors.New("missing field name")}
 	}
 
-	var err error
-
-	if stmt.ifNotExists {
-		_, err = tx.CreateIndexIfNotExists(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
-	} else {
-		_, err = tx.CreateIndex(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
+	_, err := tx.CreateIndex(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
+	if stmt.ifNotExists && err == ErrIndexAlreadyExists {
+		err = nil
 	}
 
 	return result{err: err}

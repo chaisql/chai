@@ -56,29 +56,6 @@ func TestTxCreateIndex(t *testing.T) {
 	})
 }
 
-func TestTxCreateIndexIfNotExists(t *testing.T) {
-	t.Run("Should create an index and return it", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		idx, err := tx.CreateIndexIfNotExists("idxFoo", "test", "foo", index.Options{})
-		require.NoError(t, err)
-		require.NotNil(t, idx)
-	})
-
-	t.Run("Should succeed if it already exists", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
-		require.NoError(t, err)
-
-		idx2, err := tx.CreateIndexIfNotExists("idxFoo", "test", "foo", index.Options{})
-		require.NoError(t, err)
-		require.Equal(t, idx, idx2)
-	})
-}
-
 func TestTxDropIndex(t *testing.T) {
 	t.Run("Should drop an index", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)

@@ -279,19 +279,6 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 	return index.New(s, index.Options{Unique: opts.Unique}), nil
 }
 
-// CreateIndexIfNotExists calls CreateIndex and returns no error if it already exists.
-func (tx Tx) CreateIndexIfNotExists(indexName, fieldName, tableName string, opts index.Options) (index.Index, error) {
-	idx, err := tx.CreateIndex(indexName, fieldName, tableName, opts)
-	if err == nil {
-		return idx, nil
-	}
-	if err == ErrIndexAlreadyExists {
-		return tx.GetIndex(indexName)
-	}
-
-	return nil, err
-}
-
 // GetIndex returns an index by name.
 func (tx Tx) GetIndex(name string) (index.Index, error) {
 	indexName := buildIndexName(name)
