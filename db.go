@@ -237,7 +237,7 @@ func buildIndexName(name string) string {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Options) (index.Index, error) {
+func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Options) (*Index, error) {
 	it, err := tx.GetTable(indexTable)
 	if err != nil {
 		return nil, err
@@ -258,12 +258,14 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 		return nil, err
 	}
 
-	_, err = it.Insert(&indexOptions{
+	idxOpts := indexOptions{
 		IndexName: indexName,
 		TableName: tableName,
 		FieldName: fieldName,
 		Unique:    opts.Unique,
-	})
+	}
+
+	_, err = it.Insert(&idxOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -281,11 +283,17 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 		return nil, err
 	}
 
-	return index.New(s, index.Options{Unique: opts.Unique}), nil
+	return &Index{
+		Index:     index.New(s, index.Options{Unique: idxOpts.Unique}),
+		IndexName: idxOpts.IndexName,
+		TableName: idxOpts.TableName,
+		FieldName: idxOpts.FieldName,
+		Unique:    idxOpts.Unique,
+	}, nil
 }
 
 // GetIndex returns an index by name.
-func (tx Tx) GetIndex(name string) (index.Index, error) {
+func (tx Tx) GetIndex(name string) (*Index, error) {
 	indexName := buildIndexName(name)
 
 	opts, err := readIndexOptions(&tx, indexName)
@@ -301,7 +309,13 @@ func (tx Tx) GetIndex(name string) (index.Index, error) {
 		return nil, err
 	}
 
-	return index.New(s, index.Options{Unique: opts.Unique}), nil
+	return &Index{
+		Index:     index.New(s, index.Options{Unique: opts.Unique}),
+		IndexName: opts.IndexName,
+		TableName: opts.TableName,
+		FieldName: opts.FieldName,
+		Unique:    opts.Unique,
+	}, nil
 }
 
 // DropIndex deletes an index from the database.

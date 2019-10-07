@@ -34,9 +34,6 @@ type Index interface {
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
 	DescendLessOrEqual(pivot []byte, fn func(value, key []byte) error) error
-
-	// Config returns the Index configuration.
-	Config() Options
 }
 
 // Options of the index.
@@ -122,10 +119,6 @@ func (i *listIndex) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error)
 	})
 }
 
-func (i *listIndex) Config() Options {
-	return Options{}
-}
-
 // uniqueIndex is an implementation that associates a value with a exactly one key.
 type uniqueIndex struct {
 	store engine.Store
@@ -180,8 +173,4 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot []byte, fn func(value []byte, k
 
 func (i *uniqueIndex) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
 	return i.store.DescendLessOrEqual(pivot, fn)
-}
-
-func (i *uniqueIndex) Config() Options {
-	return Options{Unique: true}
 }

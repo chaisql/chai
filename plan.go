@@ -84,7 +84,7 @@ func analyseExpr(indexes map[string]Index, e expr) *queryPlanNode {
 			indexedField: fs,
 			op:           t.Token,
 			e:            e,
-			uniqueIndex:  idx.Config().Unique,
+			uniqueIndex:  idx.Unique,
 		}
 	case *andOp:
 		nodeL := analyseExpr(indexes, t.LeftHand())
