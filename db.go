@@ -198,6 +198,20 @@ func (tx *Tx) Promote() error {
 	return nil
 }
 
+func (tx *Tx) Query(q string, args ...interface{}) (record.Stream, error) {
+	pq, err := parseQuery(q)
+	if err != nil {
+		return record.Stream{}, err
+	}
+
+	res := pq.Exec(tx, argsToNamedValues(args), false)
+	if err != nil {
+		return record.Stream{}, err
+	}
+
+	return res.Stream, nil
+}
+
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx Tx) CreateTable(name string) (*Table, error) {
