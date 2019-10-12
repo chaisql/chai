@@ -106,6 +106,24 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 	return tx.Commit()
 }
 
+func (db DB) Query(q string, args ...interface{}) (record.Stream, error) {
+	pq, err := parseQuery(q)
+	if err != nil {
+		return record.Stream{}, err
+	}
+
+	var res result
+	err = db.View(func(tx *Tx) error {
+		res = pq.Exec(tx, argsToNamedValues(args), false)
+		return nil
+	})
+	if err != nil {
+		return record.Stream{}, err
+	}
+
+	return res.Stream, nil
+}
+
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
 // and automatically rolls back the transaction.
 func (db DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
