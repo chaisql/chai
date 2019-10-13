@@ -60,17 +60,19 @@ func (stmt dropTableStmt) IsReadOnly() bool {
 
 // Run runs the DropTable statement in the given transaction.
 // It implements the Statement interface.
-func (stmt dropTableStmt) Run(tx *Tx, args []driver.NamedValue) result {
+func (stmt dropTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
+	var res Result
+
 	if stmt.tableName == "" {
-		return result{err: errors.New("missing table name")}
+		return res, errors.New("missing table name")
 	}
 
 	err := tx.DropTable(stmt.tableName)
 	if err == ErrTableNotFound && stmt.ifExists {
-		return result{}
+		err = nil
 	}
 
-	return result{err: err}
+	return res, err
 }
 
 // parseDropIndexStatement parses a drop index string and returns a Statement AST object.
@@ -112,9 +114,11 @@ func (stmt dropIndexStmt) IsReadOnly() bool {
 
 // Run runs the DropIndex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
+func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
+	var res Result
+
 	if stmt.indexName == "" {
-		return result{err: errors.New("missing index name")}
+		return res, errors.New("missing index name")
 	}
 
 	err := tx.DropIndex(stmt.indexName)
@@ -122,5 +126,5 @@ func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
 		err = nil
 	}
 
-	return result{err: err}
+	return res, err
 }

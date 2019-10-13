@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/record"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
@@ -94,13 +94,15 @@ func (stmt updateStmt) IsReadOnly() bool {
 
 // Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) result {
+func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
+	var res Result
+
 	if stmt.tableName == "" {
-		return result{err: errors.New("missing table name")}
+		return res, errors.New("missing table name")
 	}
 
 	if len(stmt.pairs) == 0 {
-		return result{err: errors.New("Set method not called")}
+		return res, errors.New("Set method not called")
 	}
 
 	stack := evalStack{
@@ -110,7 +112,7 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) result {
 
 	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
-		return result{err: err}
+		return res, err
 	}
 
 	st := record.NewStream(t)
@@ -161,5 +163,5 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) result {
 
 		return nil
 	})
-	return result{err: err}
+	return res, err
 }

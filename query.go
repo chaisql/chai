@@ -14,8 +14,8 @@ type query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q query) Run(db *DB, args []driver.NamedValue) result {
-	var res result
+func (q query) Run(db *DB, args []driver.NamedValue) (*Result, error) {
+	var res Result
 	var tx *Tx
 	var err error
 
@@ -26,12 +26,12 @@ func (q query) Run(db *DB, args []driver.NamedValue) result {
 			if tx.Writable() {
 				err := tx.Commit()
 				if err != nil {
-					return result{err: err}
+					return nil, err
 				}
 			} else {
 				err := tx.Rollback()
 				if err != nil {
-					return result{err: err}
+					return nil, err
 				}
 			}
 		}
@@ -39,13 +39,13 @@ func (q query) Run(db *DB, args []driver.NamedValue) result {
 		// start a new transaction for every statement
 		tx, err = db.Begin(!stmt.IsReadOnly())
 		if err != nil {
-			return result{err: err}
+			return nil, err
 		}
 
-		res = stmt.Run(tx, args)
-		if res.err != nil {
+		res, err = stmt.Run(tx, args)
+		if err != nil {
 			tx.Rollback()
-			return res
+			return nil, err
 		}
 	}
 
@@ -53,13 +53,14 @@ func (q query) Run(db *DB, args []driver.NamedValue) result {
 	// its Close method is expected to be called.
 	res.tx = tx
 
-	return res
+	return &res, nil
 }
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) result {
-	var res result
+func (q query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) (*Result, error) {
+	var res Result
+	var err error
 
 	for _, stmt := range q.Statements {
 		// if the statement requires a writable transaction,
@@ -67,17 +68,17 @@ func (q query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) result
 		if !forceReadOnly && !tx.Writable() && !stmt.IsReadOnly() {
 			err := tx.Promote()
 			if err != nil {
-				return result{err: err}
+				return nil, err
 			}
 		}
 
-		res = stmt.Run(tx, args)
-		if res.err != nil {
-			return res
+		res, err = stmt.Run(tx, args)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return res
+	return &res, nil
 }
 
 // newQuery creates a new query with the given statements.
@@ -87,12 +88,12 @@ func newQuery(statements ...statement) query {
 
 // A statement represents a unique action that can be executed against the database.
 type statement interface {
-	Run(*Tx, []driver.NamedValue) result
+	Run(*Tx, []driver.NamedValue) (Result, error)
 	IsReadOnly() bool
 }
 
-// result of a query.
-type result struct {
+// Result of a query.
+type Result struct {
 	record.Stream
 	rowsAffected       driver.RowsAffected
 	err                error
@@ -102,32 +103,36 @@ type result struct {
 }
 
 // Err returns a non nil error if an error occured during the query.
-func (r result) Err() error {
+func (r Result) Err() error {
 	return r.err
 }
 
 // LastInsertId is not supported and returns an error.
 // Use LastInsertRecordID instead.
-func (r result) LastInsertId() (int64, error) {
+func (r Result) LastInsertId() (int64, error) {
 	return r.rowsAffected.LastInsertId()
 }
 
 // LastInsertRecordID returns the database's auto-generated key
 // after, for example, an INSERT into a table with primary
 // key.
-func (r result) LastInsertRecordID() ([]byte, error) {
+func (r Result) LastInsertRecordID() ([]byte, error) {
 	return r.lastInsertRecordID, nil
 }
 
 // RowsAffected returns the number of rows affected by the
 // query.
-func (r result) RowsAffected() (int64, error) {
+func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
 
 // Close the result stream. It must be always be called when the
 // result is not errored. Calling it when Err() is not nil is safe.
-func (r *result) Close() error {
+func (r *Result) Close() error {
+	if r == nil {
+		return nil
+	}
+
 	if r.closed {
 		return nil
 	}
@@ -135,7 +140,6 @@ func (r *result) Close() error {
 	r.closed = true
 
 	var err error
-
 	if r.tx != nil {
 		if r.tx.Writable() {
 			err = r.tx.Commit()

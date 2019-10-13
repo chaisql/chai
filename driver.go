@@ -162,17 +162,18 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	var res result
+	var res *Result
+	var err error
 
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res = s.q.Exec(s.tx, args, s.nonPromotable)
+		res, err = s.q.Exec(s.tx, args, s.nonPromotable)
 	} else {
-		res = s.q.Run(s.db, args)
+		res, err = s.q.Run(s.db, args)
 	}
 
-	if err := res.Err(); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -195,17 +196,18 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	var res result
+	var res *Result
+	var err error
 
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res = s.q.Exec(s.tx, args, s.nonPromotable)
+		res, err = s.q.Exec(s.tx, args, s.nonPromotable)
 	} else {
-		res = s.q.Run(s.db, args)
+		res, err = s.q.Run(s.db, args)
 	}
 
-	if err := res.Err(); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -233,7 +235,7 @@ func (s stmt) Close() error {
 }
 
 type recordStream struct {
-	res      result
+	res      *Result
 	cancelFn func()
 	c        chan rec
 	wg       sync.WaitGroup
@@ -245,7 +247,7 @@ type rec struct {
 	err error
 }
 
-func newRecordStream(res result) *recordStream {
+func newRecordStream(res *Result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	records := recordStream{

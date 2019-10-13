@@ -147,7 +147,7 @@ func New(x interface{}) (Value, error) {
 	case float64:
 		return NewFloat64(v), nil
 	default:
-		return Value{}, fmt.Errorf("unsupported type %t", x)
+		return Value{}, fmt.Errorf("unsupported type ololo %t", x)
 	}
 }
 

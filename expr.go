@@ -5,8 +5,8 @@ import (
 	"database/sql/driver"
 	"fmt"
 
-	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 )
 

@@ -4,8 +4,8 @@ import (
 	"database/sql/driver"
 	"errors"
 
-	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/record"
 )
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
@@ -45,16 +45,17 @@ func (stmt deleteStmt) IsReadOnly() bool {
 	return false
 }
 
-func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) result {
+func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
+	var res Result
 	if stmt.tableName == "" {
-		return result{err: errors.New("missing table name")}
+		return res, errors.New("missing table name")
 	}
 
 	stack := evalStack{Tx: tx, Params: args}
 
 	t, err := tx.GetTable(stmt.tableName)
 	if err != nil {
-		return result{err: err}
+		return res, err
 	}
 
 	st := record.NewStream(t)
@@ -67,5 +68,6 @@ func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) result {
 
 		return errors.New("attempt to delete record without key")
 	})
-	return result{err: err}
+
+	return res, err
 }

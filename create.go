@@ -134,9 +134,11 @@ func (stmt createTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) result {
+func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
+	var res Result
+
 	if stmt.tableName == "" {
-		return result{err: errors.New("missing table name")}
+		return res, errors.New("missing table name")
 	}
 
 	_, err := tx.CreateTable(stmt.tableName)
@@ -144,7 +146,7 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) result {
 		err = nil
 	}
 
-	return result{err: err}
+	return res, err
 }
 
 // createIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
@@ -164,17 +166,19 @@ func (stmt createIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
+func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
+	var res Result
+
 	if stmt.tableName == "" {
-		return result{err: errors.New("missing table name")}
+		return res, errors.New("missing table name")
 	}
 
 	if stmt.indexName == "" {
-		return result{err: errors.New("missing index name")}
+		return res, errors.New("missing index name")
 	}
 
 	if stmt.fieldName == "" {
-		return result{err: errors.New("missing field name")}
+		return res, errors.New("missing field name")
 	}
 
 	_, err := tx.CreateIndex(stmt.indexName, stmt.tableName, stmt.fieldName, index.Options{Unique: stmt.unique})
@@ -182,5 +186,5 @@ func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) result {
 		err = nil
 	}
 
-	return result{err: err}
+	return res, err
 }

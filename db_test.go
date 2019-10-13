@@ -2,6 +2,7 @@ package genji_test
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/asdine/genji"
@@ -12,6 +13,56 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
+
+func ExampleOpen() {
+	db, err := genji.Open(memory.NewEngine())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := db.Query("SELECT * FROM user WHERE Name = ?", "bar")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var u User
+		err = rows.Scan(&u)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(u)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Output: {1 bar 100}
+}
 
 func newTestDB(t testing.TB) (*genji.Tx, func()) {
 	db, err := genji.New(memory.NewEngine())

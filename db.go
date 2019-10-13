@@ -106,22 +106,35 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 	return tx.Commit()
 }
 
-func (db DB) Query(q string, args ...interface{}) (record.Stream, error) {
+func (db DB) Exec(q string, args ...interface{}) error {
+	res, err := db.Query(q, args...)
+	if err != nil {
+		return err
+	}
+
+	return res.Close()
+}
+
+func (db DB) Query(q string, args ...interface{}) (*Result, error) {
 	pq, err := parseQuery(q)
 	if err != nil {
-		return record.Stream{}, err
+		return nil, err
 	}
 
-	var res result
-	err = db.View(func(tx *Tx) error {
-		res = pq.Exec(tx, argsToNamedValues(args), false)
-		return nil
-	})
+	tx, err := db.Begin(false)
 	if err != nil {
-		return record.Stream{}, err
+		return nil, err
 	}
 
-	return res.Stream, nil
+	res, err := pq.Exec(tx, argsToNamedValues(args), false)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	res.tx = tx
+
+	return res, nil
 }
 
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
@@ -193,23 +206,17 @@ func (tx *Tx) Promote() error {
 		return err
 	}
 
-	tx.tx = newTx.tx
-	tx.writable = newTx.writable
+	*tx = *newTx
 	return nil
 }
 
-func (tx *Tx) Query(q string, args ...interface{}) (record.Stream, error) {
+func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	pq, err := parseQuery(q)
 	if err != nil {
-		return record.Stream{}, err
+		return nil, err
 	}
 
-	res := pq.Exec(tx, argsToNamedValues(args), false)
-	if err != nil {
-		return record.Stream{}, err
-	}
-
-	return res.Stream, nil
+	return pq.Exec(tx, argsToNamedValues(args), false)
 }
 
 // CreateTable creates a table with the given name.

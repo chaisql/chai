@@ -4,7 +4,6 @@ package genji_test
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
@@ -17,51 +16,49 @@ type User struct {
 }
 
 func Example() {
-	db, err := genji.Open(memory.NewEngine())
+	db, err := genji.New(memory.NewEngine())
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	_, err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	rows, err := db.Query("SELECT * FROM user WHERE Name = ?", "bar")
+	stream, err := db.Query("SELECT * FROM user WHERE Name = ?", "bar")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	defer rows.Close()
+	defer stream.Close()
 
-	for rows.Next() {
-		var u User
-		err = rows.Scan(&u)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(u)
-	}
-
-	err = rows.Err()
+	var u User
+	r, err := stream.First()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
+	err = u.ScanRecord(r)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(u)
 
 	// Output: {1 bar 100}
 }
