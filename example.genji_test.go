@@ -55,11 +55,11 @@ func (u *User) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "ID":
-			u.ID, err = value.DecodeInt64(f.Data)
+			u.ID, err = f.DecodeToInt64()
 		case "Name":
-			u.Name, err = value.DecodeString(f.Data)
+			u.Name, err = f.DecodeToString()
 		case "Age":
-			u.Age, err = value.DecodeUint32(f.Data)
+			u.Age, err = f.DecodeToUint32()
 		}
 		return err
 	})

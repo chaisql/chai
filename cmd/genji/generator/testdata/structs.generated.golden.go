@@ -62,13 +62,13 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A, err = value.DecodeString(f.Data)
+			b.A, err = f.DecodeToString()
 		case "B":
-			b.B, err = value.DecodeInt(f.Data)
+			b.B, err = f.DecodeToInt()
 		case "C":
-			b.C, err = value.DecodeInt32(f.Data)
+			b.C, err = f.DecodeToInt32()
 		case "D":
-			b.D, err = value.DecodeInt32(f.Data)
+			b.D, err = f.DecodeToInt32()
 		}
 		return err
 	})
@@ -137,13 +137,13 @@ func (b *basic) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			b.A, err = value.DecodeBytes(f.Data)
+			b.A, err = f.DecodeToBytes()
 		case "B":
-			b.B, err = value.DecodeUint16(f.Data)
+			b.B, err = f.DecodeToUint16()
 		case "C":
-			b.C, err = value.DecodeFloat32(f.Data)
+			b.C, err = f.DecodeToFloat32()
 		case "D":
-			b.D, err = value.DecodeFloat32(f.Data)
+			b.D, err = f.DecodeToFloat32()
 		}
 		return err
 	})
@@ -198,9 +198,9 @@ func (p *Pk) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		case "A":
-			p.A, err = value.DecodeString(f.Data)
+			p.A, err = f.DecodeToString()
 		case "B":
-			p.B, err = value.DecodeInt64(f.Data)
+			p.B, err = f.DecodeToInt64()
 		}
 		return err
 	})

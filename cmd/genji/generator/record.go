@@ -86,7 +86,7 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		switch f.Name {
 		{{- range .Fields}}
 		case "{{.Name}}":
-		{{$fl}}.{{.Name}}, err = value.Decode{{.Type}}(f.Data)
+		{{$fl}}.{{.Name}}, err = f.DecodeTo{{.Type}}()
 		{{- end}}
 		}
 		return err
