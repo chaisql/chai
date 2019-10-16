@@ -271,13 +271,7 @@ func NewFloat64(x float64) Value {
 	}
 }
 
-// Decode a value based on its type, caches it and returns its Go value.
-// If the decoded value is already cached, returns it immediatly.
-func (v Value) Decode() (interface{}, error) {
-	if v.v != nil {
-		return v.v, nil
-	}
-
+func (v *Value) decode() error {
 	var err error
 
 	switch v.Type {
@@ -312,10 +306,23 @@ func (v Value) Decode() (interface{}, error) {
 	case Float64:
 		v.v, err = DecodeFloat64(v.Data)
 	default:
-		return nil, errors.New("unknown type")
+		return errors.New("unknown type")
 	}
 
-	return v.v, err
+	return err
+}
+
+// Decode a value based on its type, caches it and returns its Go value.
+// If the decoded value is already cached, returns it immediatly.
+func (v Value) Decode() (interface{}, error) {
+	if v.v == nil {
+		err := v.decode()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return v.v, nil
 }
 
 // String returns a string representation of the value. It implements the fmt.Stringer interface.
@@ -356,6 +363,333 @@ func (v Value) String() string {
 	}
 
 	return fmt.Sprintf("%v", vv)
+}
+
+// DecodeToBytes returns v.Data. It's a convenience method to ease code generation.
+func (v Value) DecodeToBytes() ([]byte, error) {
+	return v.Data, nil
+}
+
+// DecodeToString turns a value of type String or Bytes into a string.
+// If fails if it's used with any other type.
+func (v Value) DecodeToString() (string, error) {
+	if v.Type == String {
+		return DecodeString(v.Data)
+	}
+
+	if v.Type == Bytes {
+		return string(v.Data), nil
+	}
+
+	return "", fmt.Errorf("can't convert %q to string", v.Type)
+}
+
+// DecodeToBool returns true if v is truthy, otherwise it returns false.
+func (v Value) DecodeToBool() (bool, error) {
+	if v.Type == Bool {
+		return DecodeBool(v.Data)
+	}
+
+	return !IsZeroValue(v.Type, v.Data), nil
+}
+
+// DecodeToUint turns any number into a uint.
+// It doesn't work with other types.
+func (v Value) DecodeToUint() (uint, error) {
+	if v.Type == Uint {
+		return DecodeUint(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return uint(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to uint", v.Type)
+}
+
+// DecodeToUint8 turns any number into a uint8.
+// It doesn't work with other types.
+func (v Value) DecodeToUint8() (uint8, error) {
+	if v.Type == Uint8 {
+		return DecodeUint8(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return uint8(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to uint8", v.Type)
+}
+
+// DecodeToUint16 turns any number into a uint16.
+// It doesn't work with other types.
+func (v Value) DecodeToUint16() (uint16, error) {
+	if v.Type == Uint16 {
+		return DecodeUint16(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return uint16(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to uint16", v.Type)
+}
+
+// DecodeToUint32 turns any number into a uint32.
+// It doesn't work with other types.
+func (v Value) DecodeToUint32() (uint32, error) {
+	if v.Type == Uint32 {
+		return DecodeUint32(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return uint32(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to uint32", v.Type)
+}
+
+// DecodeToUint64 turns any number into a uint64.
+// It doesn't work with other types.
+func (v Value) DecodeToUint64() (uint64, error) {
+	if v.Type == Uint64 {
+		return DecodeUint64(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return uint64(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to uint64", v.Type)
+}
+
+// DecodeToInt turns any number into an int.
+// It doesn't work with other types.
+func (v Value) DecodeToInt() (int, error) {
+	if v.Type == Int {
+		return DecodeInt(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return int(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to Int", v.Type)
+}
+
+// DecodeToInt8 turns any number into an int8.
+// It doesn't work with other types.
+func (v Value) DecodeToInt8() (int8, error) {
+	if v.Type == Int8 {
+		return DecodeInt8(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return int8(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to Int8", v.Type)
+}
+
+// DecodeToInt16 turns any number into an int16.
+// It doesn't work with other types.
+func (v Value) DecodeToInt16() (int16, error) {
+	if v.Type == Int16 {
+		return DecodeInt16(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return int16(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to int16", v.Type)
+}
+
+// DecodeToInt32 turns any number into an int32.
+// It doesn't work with other types.
+func (v Value) DecodeToInt32() (int32, error) {
+	if v.Type == Int32 {
+		return DecodeInt32(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return int32(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to int32", v.Type)
+}
+
+// DecodeToInt64 turns any number into an int64.
+// It doesn't work with other types.
+func (v Value) DecodeToInt64() (int64, error) {
+	if v.Type == Int64 {
+		return DecodeInt64(v.Data)
+	}
+
+	if IsNumber(v.Type) {
+		return decodeAsInt64(v)
+	}
+
+	return 0, fmt.Errorf("can't convert %q to int64", v.Type)
+}
+
+// DecodeToFloat32 turns any number into a float32.
+// It doesn't work with other types.
+func (v Value) DecodeToFloat32() (float32, error) {
+	if v.Type == Float32 {
+		return DecodeFloat32(v.Data)
+	}
+
+	if v.Type == Float64 {
+		f, err := DecodeFloat64(v.Data)
+		return float32(f), err
+	}
+
+	if IsInteger(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return float32(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to float32", v.Type)
+}
+
+// DecodeToFloat64 turns any number into a float64.
+// It doesn't work with other types.
+func (v Value) DecodeToFloat64() (float64, error) {
+	if v.Type == Float64 {
+		return DecodeFloat64(v.Data)
+	}
+
+	if v.Type == Float32 {
+		f, err := DecodeFloat32(v.Data)
+		return float64(f), err
+	}
+
+	if IsInteger(v.Type) {
+		x, err := decodeAsInt64(v)
+		if err != nil {
+			return 0, err
+		}
+		return float64(x), nil
+	}
+
+	return 0, fmt.Errorf("can't convert %q to float64", v.Type)
+}
+
+func decodeAsInt64(v Value) (int64, error) {
+	var i int64
+
+	switch v.Type {
+	case Uint:
+		x, err := DecodeUint(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Uint8:
+		x, err := DecodeUint8(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Uint16:
+		x, err := DecodeUint16(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Uint32:
+		x, err := DecodeUint32(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Uint64:
+		x, err := DecodeUint64(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Int:
+		x, err := DecodeInt(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Int8:
+		x, err := DecodeInt8(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Int16:
+		x, err := DecodeInt16(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Int32:
+		x, err := DecodeInt32(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Int64:
+		return DecodeInt64(v.Data)
+	case Float32:
+		x, err := DecodeFloat32(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	case Float64:
+		x, err := DecodeFloat64(v.Data)
+		if err != nil {
+			return 0, err
+		}
+		i = int64(x)
+	}
+
+	return i, nil
 }
 
 // EncodeBytes takes a bytes and returns it.

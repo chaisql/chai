@@ -96,6 +96,7 @@ func TestFieldString(t *testing.T) {
 	}{
 		{"bytes", value.NewBytes([]byte("bar")), "[98 97 114]"},
 		{"string", value.NewString("bar"), "bar"},
+		{"bool", value.NewBool(true), "true"},
 		{"uint", value.NewUint(10), "10"},
 		{"uint8", value.NewUint8(10), "10"},
 		{"uint16", value.NewUint16(10), "10"},
@@ -116,4 +117,215 @@ func TestFieldString(t *testing.T) {
 		})
 	}
 
+}
+
+func TestDecodeToBytes(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        value.Value
+		fails    bool
+		expected []byte
+	}{
+		{"bytes", value.NewBytes([]byte("bar")), false, []byte("bar")},
+		{"string", value.NewString("bar"), false, []byte("bar")},
+		{"bool", value.NewBool(true), false, value.NewBool(true).Data},
+		{"uint", value.NewUint(10), false, value.NewUint(10).Data},
+		{"uint8", value.NewUint8(10), false, value.NewUint8(10).Data},
+		{"uint16", value.NewUint16(10), false, value.NewUint16(10).Data},
+		{"uint32", value.NewUint32(10), false, value.NewUint32(10).Data},
+		{"uint64", value.NewUint64(10), false, value.NewUint64(10).Data},
+		{"int", value.NewInt(10), false, value.NewInt(10).Data},
+		{"int8", value.NewInt8(10), false, value.NewInt8(10).Data},
+		{"int16", value.NewInt16(10), false, value.NewInt16(10).Data},
+		{"int32", value.NewInt32(10), false, value.NewInt32(10).Data},
+		{"int64", value.NewInt64(10), false, value.NewInt64(10).Data},
+		{"float32", value.NewFloat32(10.1), false, value.NewFloat32(10.1).Data},
+		{"float64", value.NewFloat64(10.1), false, value.NewFloat64(10.1).Data},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.DecodeToBytes()
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
+
+func TestDecodeToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        value.Value
+		fails    bool
+		expected string
+	}{
+		{"bytes", value.NewBytes([]byte("bar")), false, "bar"},
+		{"string", value.NewString("bar"), false, "bar"},
+		{"bool", value.NewBool(true), true, ""},
+		{"uint", value.NewUint(10), true, ""},
+		{"uint8", value.NewUint8(10), true, ""},
+		{"uint16", value.NewUint16(10), true, ""},
+		{"uint32", value.NewUint32(10), true, ""},
+		{"uint64", value.NewUint64(10), true, ""},
+		{"int", value.NewInt(10), true, ""},
+		{"int8", value.NewInt8(10), true, ""},
+		{"int16", value.NewInt16(10), true, ""},
+		{"int32", value.NewInt32(10), true, ""},
+		{"int64", value.NewInt64(10), true, ""},
+		{"float32", value.NewFloat32(10.1), true, ""},
+		{"float64", value.NewFloat64(10.1), true, ""},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.DecodeToString()
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
+
+func TestDecodeToBool(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        value.Value
+		fails    bool
+		expected bool
+	}{
+		{"bytes", value.NewBytes([]byte("bar")), false, true},
+		{"zero bytes", value.NewBytes([]byte("")), false, false},
+		{"string", value.NewString("bar"), false, true},
+		{"zero string", value.NewString(""), false, false},
+		{"bool", value.NewBool(true), false, true},
+		{"zero bool", value.NewBool(false), false, false},
+		{"uint", value.NewUint(10), false, true},
+		{"zero uint", value.NewUint(0), false, false},
+		{"uint8", value.NewUint8(10), false, true},
+		{"zero uint8", value.NewUint8(0), false, false},
+		{"uint16", value.NewUint16(10), false, true},
+		{"zero uint16", value.NewUint16(0), false, false},
+		{"uint32", value.NewUint32(10), false, true},
+		{"zero uint32", value.NewUint32(0), false, false},
+		{"uint64", value.NewUint64(10), false, true},
+		{"zero uint64", value.NewUint64(0), false, false},
+		{"int", value.NewInt(10), false, true},
+		{"zero int", value.NewInt(0), false, false},
+		{"int8", value.NewInt8(10), false, true},
+		{"zero int8", value.NewInt8(0), false, false},
+		{"int16", value.NewInt16(10), false, true},
+		{"zero int16", value.NewInt16(0), false, false},
+		{"int32", value.NewInt32(10), false, true},
+		{"zero int32", value.NewInt32(0), false, false},
+		{"int64", value.NewInt64(10), false, true},
+		{"zero int64", value.NewInt64(0), false, false},
+		{"float32", value.NewFloat32(10.1), false, true},
+		{"zero float32", value.NewFloat32(0), false, false},
+		{"float64", value.NewFloat64(10.1), false, true},
+		{"zero float64", value.NewFloat64(0), false, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.DecodeToBool()
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
+
+func TestDecodeToNumber(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        value.Value
+		fails    bool
+		expected int64
+	}{
+		{"bytes", value.NewBytes([]byte("bar")), true, 0},
+		{"string", value.NewString("bar"), true, 0},
+		{"bool", value.NewBool(true), true, 0},
+		{"uint", value.NewUint(10), false, 10},
+		{"uint8", value.NewUint8(10), false, 10},
+		{"uint16", value.NewUint16(10), false, 10},
+		{"uint32", value.NewUint32(10), false, 10},
+		{"uint64", value.NewUint64(10), false, 10},
+		{"int", value.NewInt(10), false, 10},
+		{"int8", value.NewInt8(10), false, 10},
+		{"int16", value.NewInt16(10), false, 10},
+		{"int32", value.NewInt32(10), false, 10},
+		{"int64", value.NewInt64(10), false, 10},
+		{"float32", value.NewFloat32(10), false, 10},
+		{"float64", value.NewFloat64(10), false, 10},
+	}
+
+	check := func(t *testing.T, res interface{}, err error, fails bool, expected interface{}) {
+		if fails {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, expected, res)
+		}
+	}
+
+	for _, test := range tests {
+		t.Run(test.name+" to uint", func(t *testing.T) {
+			res, err := test.v.DecodeToUint()
+			check(t, res, err, test.fails, uint(test.expected))
+		})
+		t.Run(test.name+" to uint8", func(t *testing.T) {
+			res, err := test.v.DecodeToUint8()
+			check(t, res, err, test.fails, uint8(test.expected))
+		})
+		t.Run(test.name+" to uint16", func(t *testing.T) {
+			res, err := test.v.DecodeToUint16()
+			check(t, res, err, test.fails, uint16(test.expected))
+		})
+		t.Run(test.name+" to uint32", func(t *testing.T) {
+			res, err := test.v.DecodeToUint32()
+			check(t, res, err, test.fails, uint32(test.expected))
+		})
+		t.Run(test.name+" to uint64", func(t *testing.T) {
+			res, err := test.v.DecodeToUint64()
+			check(t, res, err, test.fails, uint64(test.expected))
+		})
+		t.Run(test.name+" to int", func(t *testing.T) {
+			res, err := test.v.DecodeToInt()
+			check(t, res, err, test.fails, int(test.expected))
+		})
+		t.Run(test.name+" to int8", func(t *testing.T) {
+			res, err := test.v.DecodeToInt8()
+			check(t, res, err, test.fails, int8(test.expected))
+		})
+		t.Run(test.name+" to int16", func(t *testing.T) {
+			res, err := test.v.DecodeToInt16()
+			check(t, res, err, test.fails, int16(test.expected))
+		})
+		t.Run(test.name+" to int32", func(t *testing.T) {
+			res, err := test.v.DecodeToInt32()
+			check(t, res, err, test.fails, int32(test.expected))
+		})
+		t.Run(test.name+" to int64", func(t *testing.T) {
+			res, err := test.v.DecodeToInt64()
+			check(t, res, err, test.fails, int64(test.expected))
+		})
+		t.Run(test.name+" to float32", func(t *testing.T) {
+			res, err := test.v.DecodeToFloat32()
+			check(t, res, err, test.fails, float32(test.expected))
+		})
+		t.Run(test.name+" to float64", func(t *testing.T) {
+			res, err := test.v.DecodeToFloat64()
+			check(t, res, err, test.fails, float64(test.expected))
+		})
+	}
 }
