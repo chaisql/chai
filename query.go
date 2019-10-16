@@ -96,15 +96,9 @@ type statement interface {
 type Result struct {
 	record.Stream
 	rowsAffected       driver.RowsAffected
-	err                error
 	lastInsertRecordID []byte
 	tx                 *Tx
 	closed             bool
-}
-
-// Err returns a non nil error if an error occured during the query.
-func (r Result) Err() error {
-	return r.err
 }
 
 // LastInsertId is not supported and returns an error.
@@ -126,15 +120,13 @@ func (r Result) RowsAffected() (int64, error) {
 	return r.rowsAffected.RowsAffected()
 }
 
-// Close the result stream. It must be always be called when the
-// result is not errored. Calling it when Err() is not nil is safe.
+// Close the result stream.
+// After closing the result, Stream is not supposed to be used.
+// If the result stream was already closed, it returns
+// ErrResultClosed.
 func (r *Result) Close() error {
-	if r == nil {
-		return nil
-	}
-
 	if r.closed {
-		return nil
+		return ErrResultClosed
 	}
 
 	r.closed = true

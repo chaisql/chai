@@ -9,6 +9,7 @@ import (
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/record/recordutil"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -62,6 +63,68 @@ func ExampleOpen() {
 	}
 
 	// Output: {1 bar 100}
+}
+
+func ExampleTx() {
+	db, err := genji.New(memory.NewEngine())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	tx, err := db.Begin(false)
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback()
+
+	err = tx.Exec("CREATE TABLE user IF NOT EXISTS")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = tx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	result, err := tx.Query("SELECT ID, Name, Age FROM user WHERE Name = ?", "foo")
+	if err != nil {
+		panic(err)
+	}
+	defer result.Close()
+
+	var u User
+	r, err := result.First()
+	if err != nil {
+		panic(err)
+	}
+
+	err = u.ScanRecord(r)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(u)
+
+	var id uint64
+	var name string
+	var age uint8
+
+	err = recordutil.Scan(r, &id, &name, &age)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(id, name, age)
+
+	err = tx.Commit()
+	if err != nil {
+		panic(err)
+	}
+
+	// Output: {10 foo 15}
+	// 10 foo 15
 }
 
 func newTestDB(t testing.TB) (*genji.Tx, func()) {

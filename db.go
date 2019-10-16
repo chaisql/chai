@@ -22,6 +22,7 @@ var (
 	indexPrefix      = "i"
 )
 
+// Open creates a Genji database and wraps it around a *sql.DB instance.
 func Open(ng engine.Engine) (*sql.DB, error) {
 	db, err := New(ng)
 	if err != nil {
@@ -106,6 +107,7 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 	return tx.Commit()
 }
 
+// Exec a query against the database without returning the result.
 func (db DB) Exec(q string, args ...interface{}) error {
 	res, err := db.Query(q, args...)
 	if err != nil {
@@ -115,6 +117,8 @@ func (db DB) Exec(q string, args ...interface{}) error {
 	return res.Close()
 }
 
+// Query the database and return the result.
+// The returned result must always be closed after usage.
 func (db DB) Query(q string, args ...interface{}) (*Result, error) {
 	pq, err := parseQuery(q)
 	if err != nil {
@@ -210,6 +214,8 @@ func (tx *Tx) Promote() error {
 	return nil
 }
 
+// Query the database withing the transaction and returns the result.
+// Closing the returned result after usage is not mandatory.
 func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	pq, err := parseQuery(q)
 	if err != nil {
@@ -217,6 +223,16 @@ func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	}
 
 	return pq.Exec(tx, argsToNamedValues(args), false)
+}
+
+// Exec a query against the database within tx and without returning the result.
+func (tx *Tx) Exec(q string, args ...interface{}) error {
+	res, err := tx.Query(q, args...)
+	if err != nil {
+		return err
+	}
+
+	return res.Close()
 }
 
 // CreateTable creates a table with the given name.
