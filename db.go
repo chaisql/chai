@@ -29,6 +29,11 @@ func Open(ng engine.Engine) (*sql.DB, error) {
 		return nil, err
 	}
 
+	return OpenDB(db)
+}
+
+// OpenDB connects to an existing database instance and returns a *sql.DB.
+func OpenDB(db *DB) (*sql.DB, error) {
 	return sql.OpenDB(newConnector(db)), nil
 }
 

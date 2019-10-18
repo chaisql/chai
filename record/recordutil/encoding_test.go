@@ -117,4 +117,22 @@ func TestScan(t *testing.T) {
 	require.Equal(t, m, int64(10))
 	require.Equal(t, n, float32(10.4))
 	require.Equal(t, o, float64(10.5))
+
+	t.Run("RecordScanner", func(t *testing.T) {
+		var rs recordScanner
+		rs.fn = func(rr record.Record) error {
+			require.Equal(t, r, rr)
+			return nil
+		}
+		err := recordutil.Scan(r, &rs)
+		require.NoError(t, err)
+	})
+}
+
+type recordScanner struct {
+	fn func(r record.Record) error
+}
+
+func (rs recordScanner) ScanRecord(r record.Record) error {
+	return rs.fn(r)
 }

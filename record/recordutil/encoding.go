@@ -113,6 +113,13 @@ func IteratorToJSON(w io.Writer, s record.Stream) error {
 func Scan(r record.Record, targets ...interface{}) error {
 	var i int
 
+	if len(targets) == 1 {
+		rs, ok := targets[0].(record.Scanner)
+		if ok {
+			return rs.ScanRecord(r)
+		}
+	}
+
 	return r.Iterate(func(f record.Field) error {
 		if i >= len(targets) {
 			return errors.New("target list too small")
