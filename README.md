@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is a SQL embedded database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
+Genji is an embedded SQL database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
 
 Genji tables are schemaless and can be manipulated using SQL queries. Genji is also compatible with the `database/sql` package.
 
@@ -94,7 +94,7 @@ err = res.
 
         err := fb.ScanRecord(r)
         ...
-        fb.Add("Group", record.NewStringField("admin"))
+        fb.Add(record.NewStringField("Group", "admin"))
         return &fb, nil
     }).
     // Iterate on them
@@ -121,7 +121,7 @@ res, err := db.QueryRow(...)
 
 ## Code generation
 
-Genji also supports structs as long as they implement the `record.Record` for writes and `record.Scanner` for reads.
+Genji also supports structs as long as they implement the `record.Record` interface for writes and the `record.Scanner` interface for reads.
 To simplify implementing these interfaces, Genji provides a command line tool that can generate methods for you.
 
 Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection** for these structures.
@@ -171,16 +171,14 @@ u2.ID = 21
 u3 := u1
 u3.ID = 22
 
-// It is possible to let Genji deal with analysing the structure when inserting a record
-// using the RECORDS clause
-// Note that it is also possible to write records by hand
+// It is possible to let Genji deal with analyzing the structure
+// when inserting a record, using the RECORDS clause
 err := db.Exec(`INSERT INTO user RECORDS ?, ?, ?`, &u1, &u2, &u3)
 // Note that it is also possible to write records by hand
 err := db.Exec(`INSERT INTO user RECORDS ?, (ID: 21, Name: "foo", Age: 40), ?`, &u1, &u3)
 
 // Let's select a few users
 var users []User
-
 
 res, err := db.Query("SELECT * FROM user")
 defer res.Close()
