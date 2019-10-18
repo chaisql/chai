@@ -4,21 +4,9 @@
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is a powerful embedded database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
+Genji is a SQL embedded database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
 
-It provides a complete framework with multiple APIs that can be used to manipulate, manage, read and write data.
-
-Genji tables are schemaless and can be manipulated using the table package, which is a low level functional API or by using the query package which is a powerful SQL like query engine.
-
-## Features
-
-* **Abstract storage**: Stores data on disk using [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) or in memory
-* **No reflection**: Uses code generation to map Go structures to tables
-* **Type safe APIs**: Generated code allows to avoid common errors and avoid reflection
-* **SQL Like queries**: Genji provides a query engine to run complex queries
-* **Index support**: Declare indexes and let Genji deal with them.
-* **Low memory footprint**: Read thousands of records with O(1) memory thanks to the streaming system
-* **Complete framework**: Use Genji to manipulate tables, extend the query system or implement you own engine.
+Genji tables are schemaless and can be manipulated using SQL queries. Genji is also compatible with the `database/sql` package.
 
 ## Installation
 
@@ -30,14 +18,120 @@ go get -u github.com/asdine/genji/...
 
 ## Usage
 
-Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection**.
+There are two ways of using Genji, either by using Genji's API or by using the `database/sql` package.
+
+### Using Genji's API
+
+```go
+// Instantiate an engine, here we'll store everything in memory
+ng := memory.NewEngine()
+
+// Create a database instance
+db, err := genji.New(ng)
+// Don't forget to close the database when you're done
+defer db.Close()
+
+// Create a table. Genji tables are schemaless, you don't need to specify a schema.
+err = db.Exec("CREATE TABLE user")
+
+// Create an index.
+err = db.Exec("CREATE INDEX idx_user_Name ON test (Name)")
+
+// Insert some data
+err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "Foo1", 15)
+err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 11, "Foo2", 20)
+
+// Use a transaction
+tx, err := db.Begin(true)
+defer tx.Rollback()
+err = tx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 12, "Foo3", 25)
+...
+err = tx.Commit()
+
+// Query some records
+res, err := db.Query("SELECT * FROM user WHERE Age > ?", 18)
+// always close the result when you're done with it
+defer res.Close()
+
+// Iterate over the results
+err = res.Iterate(func(r record.Record) error {
+    var id int
+    var name string
+    var age int32
+
+    err = recordutil.Scan(r, &id, &name, &age)
+    if err != nil {
+        return err
+    }
+
+    fmt.Println(id, name, age)
+    return nil
+})
+
+// Count results
+count, err := res.Count()
+
+// Get first record from the results
+r, err := res.First()
+var id int
+var name string
+var age int32
+err = recordutil.Scan(r, &id, &name, &age)
+
+// Apply some transformations
+err = res.
+    // Filter all even ids
+    Filter(func(r record.Record) (bool, error) {
+        f, err := r.GetField("ID")
+        ...
+        id, err := f.DecodeToInt()
+        ...
+        return id % 2 == 0, nil
+    }).
+    // Enrich the records with a new field
+    Map(func(r record.Record) (record.Record, error) {
+        var fb record.FieldBuffer
+
+        err := fb.ScanRecord(r)
+        ...
+        fb.Add("Group", record.NewStringField("admin"))
+        return &fb, nil
+    }).
+    // Iterate on them
+    Iterate(func(r record.Record) error {
+        ...
+    })
+```
+
+### Using database/sql
+
+```go
+// Instantiate an engine, here we'll store everything in memory
+ng := memory.NewEngine()
+
+// Create a sql/database DB instance
+db, err := genji.Open(ng)
+defer db.Close()
+
+// Then use db as usual
+res, err := db.ExecContext(...)
+res, err := db.Query(...)
+res, err := db.QueryRow(...)
+```
+
+## Code generation
+
+Genji also supports structs as long as they implement the `record.Record` for writes and `record.Scanner` for reads.
+To simplify implementing these interfaces, Genji provides a command line tool that can generate methods for you.
+
+Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection** for these structures.
 
 ``` go
 // user.go
 
 type User struct {
     ID int64    `genji:"pk"`
-    Name string `genji:"index"`
+    Name string
     Age int
 }
 ```
@@ -48,119 +142,60 @@ Generate code to make that structure compatible with Genji.
 genji -f user.go -s User
 ```
 
-This command generates a file that contains APIs specific to the `User` type.
+This command generates a file that adds methods to the `User` type.
 
 ``` go
 // user.genji.go
 
 // The User type gets new methods that implement some Genji interfaces.
-func (u *User) Field(name string) (record.Field, error) {}
+func (u *User) GetField(name string) (record.Field, error) {}
 func (u *User) Iterate(fn func(record.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
+func (u *User) Scan(src interface{}) error
 func (u *User) PrimaryKey() ([]byte, error) {}
-func (u *User) Indexes() map[string]index.Options {}
-
-// A UserFields type is generated to ease writing queries.
-type UserFields struct {
-    ID   query.Int64Field
-    Name query.StringField
-    Age  query.IntField
-}
-func NewUserFields() UserFields {}
 ```
 
 ### Example
 
 ``` go
-package main
-
-func main() {
-    // Instantiate an engine, here we'll store everything in memory
-    ng := memory.NewEngine()
-
-    // Instantiate a DB using the engine
-    db, err := genji.New(ng)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
-
-    // Genji provides two types of transactions:
-    // - read-only, using the db.View or db.ViewTable methods
-    // - read-write, using the db.Update or db.UpdateTable methods
-
-    // Create a read-write transaction to initialize the table.
-    // This ensures the table and all the indexes are created.
-    err := db.Update(func(tx *Tx) error {
-        _, err := tx.InitTable("users", new(User))
-        return err
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Create a read-write transaction to create one or more users.
-    err = db.Update(func(tx *Tx) error {
-        t, err := tx.GetTable("users")
-        if err != nil {
-            return err
-        }
-
-        // Insert a user into the users table
-        _, err := t.Insert(&User{
-            ID:   10,
-            Name: "foo",
-            Age:  32,
-        })
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Let's select a few users
-    var users []User
-
-    // This time we will create a read transaction to run the query
-    err = db.View(func(tx *Tx) error {
-        t, err := tx.GetTable("users")
-        if err != nil {
-            return err
-        }
-
-        // Create a UserFields. This generated type contains information about the fields of the User record
-        // that can be used to ease writing queries.
-        f := NewUserFields()
-
-        return query.
-            // Use the table schema to select the fields of your choice
-            Select().
-            // The from method expects a type who can select the right table from the transaction,
-            // the UserTableDescriptor implements the required interface.
-            From(t).
-            // The fields of f are generated based on the fields of the User structure and their type
-            // Here, because Age is an int, the Gte method expects an int.
-            Where(f.Age.Gte(18)).
-            // Run the query using the transaction.
-            // This function returns a Stream object that can be used to read records.
-            Run(tx).
-            // Iterate over the stream to initiates the query.
-            // Each record is read one by one from the database
-            // to ensure O(1) memory most of the tine.
-            Iterate(func(key []byte, r record.Record) error {
-                var u User
-                err := u.ScanRecord(r)
-                if err != nil {
-                    return err
-                }
-
-                users = append(users, u)
-                return nil
-            })
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
+// Let's create a user
+u1 := User{
+    ID: 20,
+    Name: "foo",
+    Age: 40,
 }
+
+// Let's create a few other ones
+u2 := u1
+u2.ID = 21
+u3 := u1
+u3.ID = 22
+
+// It is possible to let Genji deal with analysing the structure when inserting a record
+// using the RECORDS clause
+// Note that it is also possible to write records by hand
+err := db.Exec(`INSERT INTO user RECORDS ?, ?, ?`, &u1, &u2, &u3)
+// Note that it is also possible to write records by hand
+err := db.Exec(`INSERT INTO user RECORDS ?, (ID: 21, Name: "foo", Age: 40), ?`, &u1, &u3)
+
+// Let's select a few users
+var users []User
+
+
+res, err := db.Query("SELECT * FROM user")
+defer res.Close()
+
+err = res.Iterate(func(r record.Record) error {
+    var u User
+    // Use the generated ScanRecord method this time
+    err := u.ScanRecord(r)
+    if err != nil {
+        return err
+    }
+
+    users = append(users, u)
+    return nil
+})
 ```
 
 ## Engines
@@ -244,8 +279,6 @@ func main() {
 
 Genji scans the struct tags at compile time, not at runtime, and it uses this information to generate code.
 
-Here is a list of supported tags:
+Here is the description of the only supported tag:
 
 * `pk` : Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id
-* `index` : Indicates that this field must be indexed.
-* `index(unique)` : Indicates that this field must be indexed and that it must associate only one key per value.
