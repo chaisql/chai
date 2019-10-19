@@ -18,7 +18,7 @@ go get -u github.com/asdine/genji/...
 
 ## Usage
 
-There are two ways of using Genji, either by using Genji's API or by using the `database/sql` package.
+There are two ways of using Genji, either by using Genji's API or by using the [`database/sql`](https://golang.org/pkg/database/sql/) package.
 
 ### Using Genji's API
 
