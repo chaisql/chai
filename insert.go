@@ -379,7 +379,7 @@ func (stmt insertStmt) insertRecords(t *Table, stack evalStack) (Result, error) 
 			r = &fb
 		}
 
-		res.lastInsertRecordID, err = t.Insert(r)
+		res.lastInsertKey, err = t.Insert(r)
 		if err != nil {
 			return res, err
 		}
@@ -442,7 +442,7 @@ func (stmt insertStmt) insertValues(t *Table, stack evalStack) (Result, error) {
 			})
 		}
 
-		res.lastInsertRecordID, err = t.Insert(&fb)
+		res.lastInsertKey, err = t.Insert(&fb)
 		if err != nil {
 			return res, err
 		}

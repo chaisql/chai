@@ -13,7 +13,7 @@ Out of the box, Genji provides three implementations: BoltDB, Badger and in-memo
 
 See the engine package documentation for more details.
 
-Field, Record, and Stream
+Field, Record, Table and Stream
 
 Genji defines its own semantic to describe data.
 Data stored in Genji being schemaless, the usual SQL triplet "column", "row", "table" wasn't chosen
@@ -22,14 +22,17 @@ is to map structures and maps to tables, though it's not limited to that.
 
 That's why the triplet "field", "record" and "table" was chosen.
 
-A field is a piece of information that has a type, content, and a name. It is managed by the field package, which provides helpers
-to create and manipulate them. The field is equivalent to the SQL column, though it might contain nested fields in the future.
+A field is a piece of information that has a type, content, and a name.
+The field is equivalent to the SQL column, though it might contain nested fields in the future.
 
 A record is a group of fields. It is an interface that can be implemented manually or by using Genji's code generation.
 This is equivalent to the SQL row. It is managed by the record package, which also provides ways to encode and decode records.
 
 A table is an abstraction on top of K-V stores that can read and write records.
 This is equivalent to the SQL table.
+
+A stream can read data from a table, record by record, and apply transformations, filter them, etc.
+See the record package for more information.
 
 These are the basic building blocks of the Genji database.
 

@@ -95,23 +95,23 @@ type statement interface {
 // Result of a query.
 type Result struct {
 	record.Stream
-	rowsAffected       driver.RowsAffected
-	lastInsertRecordID []byte
-	tx                 *Tx
-	closed             bool
+	rowsAffected  driver.RowsAffected
+	lastInsertKey []byte
+	tx            *Tx
+	closed        bool
 }
 
 // LastInsertId is not supported and returns an error.
-// Use LastInsertRecordID instead.
+// Use LastInsertKey instead.
 func (r Result) LastInsertId() (int64, error) {
 	return r.rowsAffected.LastInsertId()
 }
 
-// LastInsertRecordID returns the database's auto-generated key
+// LastInsertKey returns the database's auto-generated key
 // after, for example, an INSERT into a table with primary
 // key.
-func (r Result) LastInsertRecordID() ([]byte, error) {
-	return r.lastInsertRecordID, nil
+func (r Result) LastInsertKey() ([]byte, error) {
+	return r.lastInsertKey, nil
 }
 
 // RowsAffected returns the number of rows affected by the

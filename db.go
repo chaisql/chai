@@ -733,6 +733,8 @@ func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
 	return &idxopts, nil
 }
 
+// Index of a table field. Contains information about
+// the index configuration and provides methods to manipulate the index.
 type Index struct {
 	index.Index
 
