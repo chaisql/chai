@@ -6,42 +6,40 @@ package genji_test
 import (
 	"errors"
 
-	"github.com/asdine/genji/field"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
-func (u *User) GetField(name string) (field.Field, error) {
+func (u *User) GetField(name string) (record.Field, error) {
 	switch name {
 	case "ID":
-		return field.NewInt64("ID", u.ID), nil
+		return record.NewInt64Field("ID", u.ID), nil
 	case "Name":
-		return field.NewString("Name", u.Name), nil
+		return record.NewStringField("Name", u.Name), nil
 	case "Age":
-		return field.NewUint32("Age", u.Age), nil
+		return record.NewUint32Field("Age", u.Age), nil
 	}
 
-	return field.Field{}, errors.New("unknown field")
+	return record.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (u *User) Iterate(fn func(field.Field) error) error {
+func (u *User) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(field.NewInt64("ID", u.ID))
+	err = fn(record.NewInt64Field("ID", u.ID))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewString("Name", u.Name))
+	err = fn(record.NewStringField("Name", u.Name))
 	if err != nil {
 		return err
 	}
 
-	err = fn(field.NewUint32("Age", u.Age))
+	err = fn(record.NewUint32Field("Age", u.Age))
 	if err != nil {
 		return err
 	}
@@ -52,46 +50,33 @@ func (u *User) Iterate(fn func(field.Field) error) error {
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the record.Scanner interface.
 func (u *User) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f field.Field) error {
+	return rec.Iterate(func(f record.Field) error {
 		var err error
 
 		switch f.Name {
 		case "ID":
-			u.ID, err = field.DecodeInt64(f.Data)
+			u.ID, err = f.DecodeToInt64()
 		case "Name":
-			u.Name, err = field.DecodeString(f.Data)
+			u.Name, err = f.DecodeToString()
 		case "Age":
-			u.Age, err = field.DecodeUint32(f.Data)
+			u.Age, err = f.DecodeToUint32()
 		}
 		return err
 	})
 }
 
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func (u *User) Scan(src interface{}) error {
+	r, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return u.ScanRecord(r)
+}
+
 // PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
 func (u *User) PrimaryKey() ([]byte, error) {
-	return field.EncodeInt64(u.ID), nil
-}
-
-// Indexes creates a map containing the configuration for each index of the table.
-func (u *User) Indexes() map[string]index.Options {
-	return map[string]index.Options{
-		"Name": index.Options{Unique: false},
-	}
-}
-
-// UserFields describes the fields of the User record.
-// It can be used to select fields during queries.
-type UserFields struct {
-	ID   query.Int64FieldSelector
-	Name query.StringFieldSelector
-	Age  query.Uint32FieldSelector
-}
-
-// NewUserFields creates a UserFields.
-func NewUserFields() *UserFields {
-	return &UserFields{
-		ID:   query.Int64Field("ID"),
-		Name: query.StringField("Name"),
-		Age:  query.Uint32Field("Age"),
-	}
+	return value.EncodeInt64(u.ID), nil
 }

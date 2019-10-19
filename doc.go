@@ -1,39 +1,8 @@
 /*
-Package genji implements a database on top of key-value stores.
+Package genji implements a SQL database on top of key-value stores.
 Genji supports various engines that write data on-disk, like BoltDB or Badger, and in memory.
 
-It provides a complete framework with multiple APIs that can be used to manipulate, manage, read and write data.
-
-Genji tables are schemaless and can be manipulated using the table package, which is a low-level streaming API
-or by using the query package which is a powerful SQL like query engine.
-
-Tables can be mapped to Go structures without reflection: Genji relies on code generation to translate data to and from Go structures.
-
-The Genji Framework
-
-Genji is designed as a framework. Each package can be accessed independently and most of the time they have a single purpose.
-Here is how the most important packages are organized, from bottom to up:
-
-                    +----------+            +----------+
-      +------------->  engine  |      +---->+  field   |
-      |             +-----^----+      |     +----^-----+
-      |                   |           |          |
-      |                   |           |          |
-      |                   |           |          |
-      |                   |           |     +----+-----+
-      |                   |           +---->+  record  |
-      |                   |           |     +----^-----+
-      |                   |           |          |
-      |                   |           |          |
-      |                   |           |          |
-  +---+----+        +-----+----+      |     +----+-----+
-  | index  +<-------+  genji   +------+---->+  table   |
-  +---^----+        +-----^----+      |     +----------+
-      |                   |           |
-      |                   |           |
-      |             +-----+----+      |
-      +-------------+  query   +------+
-                    +----------+
+Genji tables are schemaless and can be mapped to Go structures without reflection: Genji relies on code generation to translate data to and from Go structures.
 
 Engine and key value stores
 
@@ -44,7 +13,7 @@ Out of the box, Genji provides three implementations: BoltDB, Badger and in-memo
 
 See the engine package documentation for more details.
 
-Field, Record, and Table
+Field, Record, and Stream
 
 Genji defines its own semantic to describe data.
 Data stored in Genji being schemaless, the usual SQL triplet "column", "row", "table" wasn't chosen
@@ -56,79 +25,191 @@ That's why the triplet "field", "record" and "table" was chosen.
 A field is a piece of information that has a type, content, and a name. It is managed by the field package, which provides helpers
 to create and manipulate them. The field is equivalent to the SQL column, though it might contain nested fields in the future.
 
-  type Field struct {
-	  Name string
-	  Type Type
-	  Data []byte
-  }
-
 A record is a group of fields. It is an interface that can be implemented manually or by using Genji's code generation.
 This is equivalent to the SQL row. It is managed by the record package, which also provides ways to encode and decode records.
 
-  type Record interface {
-	  // Iterate goes through all the fields of the record and calls the given function by passing each one of them.
-	  // If the given function returns an error, the iteration stops.
-	  Iterate(fn func(field.Field) error) error
-	  // GetField returns a field by name.
-	  GetField(name string) (field.Field, error)
-  }
+A table is an abstraction on top of K-V stores that can read and write records.
+This is equivalent to the SQL table.
 
-A table is a group of records. It allows to read and write records. It is also an interface, but Genji provides implementations that should cover most of the use cases
-and that use the engine key-value stores to fetch and store data.
-This is equivalent to the SQL table. It is managed by the table package, which also provides a way to stream records from a table.
+These are the basic building blocks of the Genji database.
 
-These are the basic building blocks of the Genji database. The other packages use them to build complex features such as SQL-Like queries,
-database migrations, indexing, code generation, etc.
+SQL support
 
-The genji package
+Queries can be executed in two ways:
 
-The genji package is central and acts as the main entry point for using the database.
-It leverages the features of most of the other packages, implementing some interfaces here,
-importing some types there. Its table implementation takes advantage of the index package to provide automatic support
-for indexing.
+- Using Genji's streaming API
 
-The query package then uses almost every other packages, including genji, to provide SQL Like queries.
+- Using Genji as a driver for the database/sql package
 
-Types, code generation and the absence of reflection
+See code examples below to learn how to use both APIs.
 
-Genji's framework is self-sufficient and covers most of the use cases, but since it doesn't use reflection,
-users are expected to implement the record interface to allow their types to be used with the API.
-This is a design choice to make Genji APIs safe and use compile-time checks rather than runtime ones.
+The CREATE TABLE statement
 
-Instead, it is possible to use the genji command line to generate code. This tool will add methods to the structure of your choice
-to implement the record interface.
+Genji tables are schemaless, that means that there's no need to specify a schema when creating a table.
+Creating a table is as simple as:
+
+  CREATE TABLE tableName
+
+or:
+
+  CREATE TABLE tableName IF NOT EXISTS
+
+The CREATE INDEX statement
+
+Only one-field indexes are currently supported:
+
+  CREATE INDEX indexName ON tableName (fieldName)
+
+with a unique constraint:
+
+  CREATE UNIQUE INDEX indexName ON tableName (fieldName)
+
+with if not exists:
+
+  CREATE UNIQUE INDEX IF NOT EXISTS indexName ON tableName (fieldName)
+
+The DROP TABLE statement
+
+This will return an error if the table doesn't exists.
+
+  DROP TABLE tableName
+
+This won't:
+
+  DROP TABLE IF EXISTS tableName
+
+The DROP INDEX statement
+
+This will return an error if the index doesn't exists.
+
+  DROP INDEX indexName
+
+This won't:
+
+  DROP INDEX IF EXISTS indexName
+
+The INSERT statement
+
+Since tables are schemaless, providing a list of field names is mandatory when using the VALUES clause.
+
+  INSERT INTO tableName (fieldNameA, fieldNameB, fieldNameC) VALUES (10, true, "bar"), ("baz", 3.14, -10)
+
+Inserting records is also supported with the RECORDS clause.
+Genji SQL represents records as a set of key value pairs.
+Note that field names are forbidden when using the RECORDS clause.
+
+  INSERT INTO tableName RECORDS (fieldNameA: 10, fieldNameB: true, fieldNameC: "bar"), (fieldNameA: "bab", fieldNameD: 3.14)
+
+The SELECT statement
+
+Explicit field names:
+
+  SELECT fieldNameA, fieldNameB FROM tableName
+
+Using the wildcard:
+
+  SELECT * FROM tableName
+
+With the WHERE clause. See below for documentation about expressions.
+
+  SELECT * FROM tableName WHERE <expression>
+
+With LIMIT and OFFSET:
+
+  SELECT * FROM tableName LIMIT 10
+  SELECT * FROM tableName OFFSET 20
+
+When both LIMIT and OFFSET are used, LIMIT must appear before OFFSET:
+
+  SELECT * FROM tableName LIMIT 10 OFFSET 20
+
+The DELETE statement
+
+  DELETE FROM tableName
+  DELETE FROM tableName WHERE <expression>
+
+The UPDATE statement
+
+  UPDATE tableName SET fieldNameA = <expression>, fieldNameB = <expression>
+  UPDATE tableName SET fieldNameA = <expression>, fieldNameB = <expression> WHERE <expression>
+
+Expressions
+
+Litteral values:
+
+  10    Integers, interpreted as int64
+  3.14  Decimals, interpreted as float64
+  true  Booleans, interpreted as bool
+  "foo" Strings, interpreted as string
+  'foo' Strings, interpreted as string
+
+Identifiers:
+
+  foo   Any string without quotes is interpreted as a field name
+
+Binary operators: Comparison operators
+
+During comparison, only the values of numbers are compared, not the types,
+which allows comparing signed integers with unsigned integers or floats for example.
+
+When evaluating a binary expression, the left and right expressions are evaluated first
+then compared.
+
+ <exprA> = <exprB>  Evaluates to true if two expressions are equals
+ <exprA> > <exprB>  Evaluates to true if exprA is greater than exprB
+ <exprA> >= <exprB> Evaluates to true if exprA is greater than or equal to exprB
+ <exprA> < <exprB>  Evaluates to true if exprA is lesser than exprB
+ <exprA> <= <exprB> Evaluates to true if exprA is lesser than or equal to exprB
+
+
+Binary operators: Logical operators
+
+ <exprA> AND <exprB>   Evaluates to true if exprA and exprB evaluate to true
+ <exprA> OR <exprB>    Evaluates to true if exprA or exprB evaluate to true
+
+Parameters
+
+Genji SQL supports two kind of parameters: Positional parameters and named parameters
+
+Positional parameters are specified using the '?' character:
+
+  db.Query("SELECT * FROM tableName WHERE foo > ? AND bar = ?", 10, "baz")
+
+Named parameters are specified using the '$' character. Note that passing a named parameter requires using the
+database/sql package from the standard library.
+
+  db.Query("SELECT * FROM tableName WHERE foo > $a AND bar = $b", sql.Named("a", 10), sql.Named("b", "baz"))
+
+Note that combining both named and positional parameters is forbidden.
+
+Struct support and code generation
+
+Genji also supports structures for reading and writing records, but because Genji doesn't use reflection, these structures must implement a couple of interface
+to be able to interat with Genji properly.
+In order to simplify these implementation, Genji provides a command line code generator that can be used with the go:generate command.
 
 Let's assume that there is a file named user.go containing the following type:
 
   type User struct {
 	  ID   int64  `genji:"pk"`
-	  Name string `genji:"index"`
+	  Name string
 	  Age  uint32
   }
 
 Note that even if struct tags are defined, Genji won't use reflection. They will be parsed by the genji command-line tool
-to generate code based on them. See the generator package for more information on the semantics of the struct tags.
+to generate code based on them.
 
 The genji command line can be used as follows to generate the code:
 
   genji -f user.go -s User
 
-This will generate a file named user.genji.go containing the following types and methods
+This will generate a file named user.genji.go containing the following methods
 
   // The User type gets new methods that implement some Genji interfaces.
-  func (u *User) GetField(name string) (field.Field, error) {}
-  func (u *User) Iterate(fn func(field.Field) error) error {}
+  func (u *User) GetField(name string) (record.Field, error) {}
+  func (u *User) Iterate(fn func(record.Field) error) error {}
   func (u *User) ScanRecord(rec record.Record) error {}
   func (u *User) PrimaryKey() ([]byte, error) {}
-  func (u *User) Indexes() map[string]index.Options
-
-  // This type is used to simplify using the query package.
-  type UserFields struct {
-    ID   query.Int64Field
-    Name query.StringField
-    Age  query.IntField
-  }
-  func NewUserFields() UserFields {}
 
 The User type now implements all the interfaces needed to interact correctly with the database APIs.
 See the examples in this page to see how it can be used.
