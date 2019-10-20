@@ -161,14 +161,10 @@ func (l litteralValueList) Truthy() bool {
 // litteralExprList is a list of expressions.
 type litteralExprList []expr
 
-// Eval evaluates all the expressions. If it contains only one element it returns a LitteralValue, otherwise it returns a LitteralValueList. It implements the Expr interface.
+// Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
 func (l litteralExprList) Eval(stack evalStack) (evalValue, error) {
 	if len(l) == 0 {
 		return nilLitteral, nil
-	}
-
-	if len(l) == 1 {
-		return l[0].Eval(stack)
 	}
 
 	var err error
@@ -308,7 +304,6 @@ func (op cmpOp) Eval(ctx evalStack) (evalValue, error) {
 }
 
 func (op cmpOp) compare(l, r evalValue) (bool, error) {
-	// l must be of the same type
 	if !l.IsList {
 		if !r.IsList {
 			return op.compareLitterals(l.Value, r.Value)
