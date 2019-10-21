@@ -130,20 +130,7 @@ func (db DB) Query(q string, args ...interface{}) (*Result, error) {
 		return nil, err
 	}
 
-	tx, err := db.Begin(false)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := pq.Exec(tx, argsToNamedValues(args), false)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
-	res.tx = tx
-
-	return res, nil
+	return pq.Run(&db, argsToNamedValues(args))
 }
 
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
@@ -557,15 +544,54 @@ func (p pkWrapper) PrimaryKey() ([]byte, error) {
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
 func (t Table) Replace(key []byte, r record.Record) error {
-	err := t.Delete(key)
+	// make sure key exists
+	_, err := t.store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
 			return ErrRecordNotFound
 		}
+
 		return err
 	}
 
-	_, err = t.Insert(pkWrapper{Record: r, pk: key})
+	// remove key from indexes
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
+		err = idx.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+
+	// encode new record
+	v, err := record.Encode(r)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode record")
+	}
+
+	// replace old record with new record
+	err = t.store.Put(key, v)
+	if err != nil {
+		return err
+	}
+
+	// update indexes
+	for _, idx := range indexes {
+		f, err := r.GetField(idx.FieldName)
+		if err != nil {
+			continue
+		}
+
+		err = idx.Set(f.Data, key)
+		if err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 

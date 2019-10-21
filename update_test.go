@@ -3,6 +3,7 @@ package genji
 import (
 	"testing"
 
+	"github.com/asdine/genji/engine/memory"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,4 +51,27 @@ func TestParserUdpate(t *testing.T) {
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})
 	}
+}
+
+func TestUpdateStmt(t *testing.T) {
+	db, err := New(memory.NewEngine())
+	require.NoError(t, err)
+	defer db.Close()
+
+	err = db.Exec("CREATE TABLE test; INSERT INTO test (a) VALUES ('foo')")
+	require.NoError(t, err)
+
+	err = db.Exec("")
+	require.NoError(t, err)
+
+	st, err := db.Query(`
+		UPDATE test SET a = 'bar';
+		SELECT * FROM test
+	`)
+	require.NoError(t, err)
+	defer st.Close()
+
+	count, err := st.Count()
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
 }

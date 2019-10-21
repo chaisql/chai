@@ -139,6 +139,7 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 			v, err := e.Eval(evalStack{
 				Tx:     tx,
 				Record: r,
+				Params: args,
 			})
 			if err != nil {
 				return err
