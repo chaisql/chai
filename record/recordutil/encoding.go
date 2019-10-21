@@ -68,7 +68,7 @@ func (j jsonRecord) MarshalJSON() ([]byte, error) {
 }
 
 // IteratorToCSV encodes all the records of an iterator to CSV.
-func IteratorToCSV(w io.Writer, s record.Stream) error {
+func IteratorToCSV(w io.Writer, s record.Iterator) error {
 	cw := csv.NewWriter(w)
 
 	var line []string
@@ -100,7 +100,7 @@ func IteratorToCSV(w io.Writer, s record.Stream) error {
 }
 
 // IteratorToJSON encodes all the records of an iterator to JSON stream.
-func IteratorToJSON(w io.Writer, s record.Stream) error {
+func IteratorToJSON(w io.Writer, s record.Iterator) error {
 	enc := json.NewEncoder(w)
 
 	return s.Iterate(func(r record.Record) error {
