@@ -239,12 +239,7 @@ func (tx Tx) CreateTable(name string) (*Table, error) {
 		return nil, errors.Wrapf(err, "failed to create table %q", name)
 	}
 
-	s, err := tx.tx.Store(name)
-	return &Table{
-		tx:    &tx,
-		store: s,
-		name:  name,
-	}, nil
+	return tx.GetTable(name)
 }
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
@@ -257,11 +252,18 @@ func (tx Tx) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	return &Table{
+	t := Table{
 		tx:    &tx,
 		store: s,
 		name:  name,
-	}, nil
+	}
+
+	t.indexes, err = t.Indexes()
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
 }
 
 // DropTable deletes a table from the database.
@@ -390,9 +392,10 @@ func (tx Tx) DropIndex(name string) error {
 
 // A Table represents a collection of records.
 type Table struct {
-	tx    *Tx
-	store engine.Store
-	name  string
+	tx      *Tx
+	store   engine.Store
+	name    string
+	indexes map[string]Index
 }
 
 type encodedRecordWithKey struct {
@@ -481,12 +484,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		return nil, err
 	}
 
-	indexes, err := t.Indexes()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, idx := range indexes {
+	for _, idx := range t.indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			continue
@@ -508,27 +506,24 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 // Delete a record by key.
 // Indexes are automatically updated.
 func (t Table) Delete(key []byte) error {
-	err := t.store.Delete(key)
+	r, err := t.GetRecord(key)
 	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return ErrRecordNotFound
+		return err
+	}
+
+	for _, idx := range t.indexes {
+		f, err := r.GetField(idx.FieldName)
+		if err != nil {
+			return err
 		}
-		return err
-	}
 
-	indexes, err := t.Indexes()
-	if err != nil {
-		return err
-	}
-
-	for _, idx := range indexes {
-		err = idx.Delete(key)
+		err = idx.Delete(f.Data, key)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return t.store.Delete(key)
 }
 
 type pkWrapper struct {
@@ -545,23 +540,19 @@ func (p pkWrapper) PrimaryKey() ([]byte, error) {
 // Indexes are automatically updated.
 func (t Table) Replace(key []byte, r record.Record) error {
 	// make sure key exists
-	_, err := t.store.Get(key)
+	old, err := t.GetRecord(key)
 	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return ErrRecordNotFound
-		}
-
 		return err
 	}
 
 	// remove key from indexes
-	indexes, err := t.Indexes()
-	if err != nil {
-		return err
-	}
+	for _, idx := range t.indexes {
+		f, err := old.GetField(idx.FieldName)
+		if err != nil {
+			return err
+		}
 
-	for _, idx := range indexes {
-		err = idx.Delete(key)
+		err = idx.Delete(f.Data, key)
 		if err != nil {
 			return err
 		}
@@ -580,7 +571,7 @@ func (t Table) Replace(key []byte, r record.Record) error {
 	}
 
 	// update indexes
-	for _, idx := range indexes {
+	for _, idx := range t.indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			continue
@@ -607,9 +598,15 @@ func (t Table) TableName() string {
 
 // Indexes returns a map of all the indexes of a table.
 func (t Table) Indexes() (map[string]Index, error) {
-	tb, err := t.tx.GetTable(indexTable)
+	s, err := t.tx.tx.Store(indexTable)
 	if err != nil {
 		return nil, err
+	}
+
+	tb := Table{
+		tx:    t.tx,
+		store: s,
+		name:  indexTable,
 	}
 
 	tableName := []byte(t.name)
@@ -653,6 +650,7 @@ func (t Table) Indexes() (map[string]Index, error) {
 		return nil, err
 	}
 
+	t.indexes = indexes
 	return indexes, nil
 }
 

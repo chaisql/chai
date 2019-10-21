@@ -69,7 +69,7 @@ func TestIndexDelete(t *testing.T) {
 		require.NoError(t, idx.Set([]byte("value1"), []byte("key")))
 		require.NoError(t, idx.Set([]byte("value1"), []byte("other-key")))
 		require.NoError(t, idx.Set([]byte("value2"), []byte("yet-another-key")))
-		require.NoError(t, idx.Delete([]byte("key")))
+		require.NoError(t, idx.Delete([]byte("value1"), []byte("key")))
 
 		i := 0
 		err := idx.AscendGreaterOrEqual([]byte("value1"), func(v, key []byte) error {
@@ -95,16 +95,20 @@ func TestIndexDelete(t *testing.T) {
 		defer cleanup()
 
 		require.NoError(t, idx.Set([]byte("value1"), []byte("key1")))
-		require.NoError(t, idx.Set([]byte("value2"), []byte("key1")))
-		require.NoError(t, idx.Set([]byte("value3"), []byte("key2")))
-		require.NoError(t, idx.Delete([]byte("key1")))
+		require.NoError(t, idx.Set([]byte("value2"), []byte("key2")))
+		require.NoError(t, idx.Set([]byte("value3"), []byte("key3")))
+		require.NoError(t, idx.Delete([]byte("value2"), []byte("key2")))
 
 		i := 0
 		err := idx.AscendGreaterOrEqual(nil, func(v, key []byte) error {
-			if i == 0 {
+			switch i {
+			case 0:
+				require.Equal(t, "value1", string(v))
+				require.Equal(t, "key1", string(key))
+			case 1:
 				require.Equal(t, "value3", string(v))
-				require.Equal(t, "key2", string(key))
-			} else {
+				require.Equal(t, "key3", string(key))
+			default:
 				return errors.New("should not reach this point")
 			}
 
@@ -112,17 +116,17 @@ func TestIndexDelete(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, i)
+		require.Equal(t, 2, i)
 	})
 
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
-		t.Run(text+"Delete non existing key succeeds", func(t *testing.T) {
+		t.Run(text+"Delete non existing key fails", func(t *testing.T) {
 			idx, cleanup := getIndex(t, index.Options{Unique: unique})
 			defer cleanup()
 
-			require.NoError(t, idx.Delete([]byte("foo")))
+			require.Error(t, idx.Delete([]byte("foo"), []byte("foo")))
 		})
 	}
 }

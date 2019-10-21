@@ -23,7 +23,7 @@ type Index interface {
 	Set(value []byte, key []byte) error
 
 	// Delete all the references to the key from the index.
-	Delete(key []byte) error
+	Delete(value []byte, key []byte) error
 
 	// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
@@ -62,7 +62,7 @@ type listIndex struct {
 
 // Set associates a value with a key. It is possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
-func (i *listIndex) Set(value []byte, key []byte) error {
+func (i *listIndex) Set(value, key []byte) error {
 	if len(value) == 0 {
 		return errors.New("value cannot be nil")
 	}
@@ -75,30 +75,13 @@ func (i *listIndex) Set(value []byte, key []byte) error {
 	return i.store.Put(buf, nil)
 }
 
-func (i *listIndex) Delete(key []byte) error {
-	suffix := make([]byte, len(key)+1)
-	suffix[0] = separator
-	copy(suffix[1:], key)
+func (i *listIndex) Delete(value, key []byte) error {
+	buf := make([]byte, 0, len(value)+len(key)+1)
+	buf = append(buf, value...)
+	buf = append(buf, separator)
+	buf = append(buf, key...)
 
-	errStop := errors.New("stop")
-
-	err := i.store.AscendGreaterOrEqual(nil, func(k []byte, v []byte) error {
-		if bytes.HasSuffix(k, suffix) {
-			err := i.store.Delete(k)
-			if err != nil {
-				return err
-			}
-			return errStop
-		}
-
-		return nil
-	})
-
-	if err != errStop {
-		return err
-	}
-
-	return nil
+	return i.store.Delete(buf)
 }
 
 func (i *listIndex) AscendGreaterOrEqual(pivot []byte, fn func(value []byte, key []byte) error) error {
@@ -142,29 +125,8 @@ func (i *uniqueIndex) Set(value []byte, key []byte) error {
 	return i.store.Put(value, key)
 }
 
-func (i *uniqueIndex) Delete(key []byte) error {
-	var toDelete [][]byte
-
-	err := i.store.AscendGreaterOrEqual(nil, func(value []byte, rID []byte) error {
-		if bytes.Equal(key, rID) {
-			toDelete = append(toDelete, value)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	for _, v := range toDelete {
-		err := i.store.Delete(v)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (i *uniqueIndex) Delete(value, key []byte) error {
+	return i.store.Delete(value)
 }
 
 func (i *uniqueIndex) AscendGreaterOrEqual(pivot []byte, fn func(value []byte, key []byte) error) error {

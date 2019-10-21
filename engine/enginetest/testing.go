@@ -3,12 +3,14 @@
 package enginetest
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/record/recordutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -878,31 +880,31 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 	})
 
-	// 	t.Run("UPDATE", func(t *testing.T) {
-	// 		ng, cleanup := builder()
-	// 		defer cleanup()
+	t.Run("UPDATE", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
 
-	// 		db, err := genji.New(ng)
-	// 		require.NoError(t, err)
-	// 		defer db.Close()
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
 
-	// 		st, err := db.Query(`
-	// 			CREATE TABLE test;
-	// 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
-	// 			UPDATE test SET a = 5;
-	// 			SELECT * FROM test;
-	// 		`)
-	// 		require.NoError(t, err)
-	// 		defer st.Close()
-	// 		var buf bytes.Buffer
-	// 		err = recordutil.IteratorToJSON(&buf, st)
-	// 		require.NoError(t, err)
-	// 		require.Equal(t, `{"a":5}
-	// {"a":5}
-	// {"a":5}
-	// {"a":5}
-	// `, buf.String())
-	// 	})
+		st, err := db.Query(`
+				CREATE TABLE test;
+				INSERT INTO test (a) VALUES (1), (2), (3), (4);
+				UPDATE test SET a = 5;
+				SELECT * FROM test;
+			`)
+		require.NoError(t, err)
+		defer st.Close()
+		var buf bytes.Buffer
+		err = recordutil.IteratorToJSON(&buf, st)
+		require.NoError(t, err)
+		require.Equal(t, `{"a":5}
+{"a":5}
+{"a":5}
+{"a":5}
+`, buf.String())
+	})
 
 	t.Run("DELETE", func(t *testing.T) {
 		ng, cleanup := builder()
@@ -981,35 +983,35 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 	})
 
-	// 	t.Run("UPDATE", func(t *testing.T) {
-	// 		ng, cleanup := builder()
-	// 		defer cleanup()
+	t.Run("UPDATE", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
 
-	// 		db, err := genji.New(ng)
-	// 		require.NoError(t, err)
-	// 		defer db.Close()
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
 
-	// 		err = db.Update(func(tx *genji.Tx) error {
-	// 			st, err := tx.Query(`
-	// 			CREATE TABLE test;
-	// 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
-	// 			UPDATE test SET a = 5;
-	// 			SELECT * FROM test;
-	// 		`)
-	// 			require.NoError(t, err)
-	// 			defer st.Close()
-	// 			var buf bytes.Buffer
-	// 			err = recordutil.IteratorToJSON(&buf, st)
-	// 			require.NoError(t, err)
-	// 			require.Equal(t, `{"a":5}
-	// {"a":5}
-	// {"a":5}
-	// {"a":5}
-	// `, buf.String())
-	// 			return nil
-	// 		})
-	// 		require.NoError(t, err)
-	// 	})
+		err = db.Update(func(tx *genji.Tx) error {
+			st, err := tx.Query(`
+				CREATE TABLE test;
+				INSERT INTO test (a) VALUES (1), (2), (3), (4);
+				UPDATE test SET a = 5;
+				SELECT * FROM test;
+			`)
+			require.NoError(t, err)
+			defer st.Close()
+			var buf bytes.Buffer
+			err = recordutil.IteratorToJSON(&buf, st)
+			require.NoError(t, err)
+			require.Equal(t, `{"a":5}
+{"a":5}
+{"a":5}
+{"a":5}
+`, buf.String())
+			return nil
+		})
+		require.NoError(t, err)
+	})
 
 	t.Run("DELETE", func(t *testing.T) {
 		ng, cleanup := builder()

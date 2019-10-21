@@ -45,15 +45,15 @@ func (stmt deleteStmt) IsReadOnly() bool {
 	return false
 }
 
-const bufferSize = 100
+const deleteBufferSize = 100
 
-// Run deletes matching records by batches of bufferSize records.
+// Run deletes matching records by batches of deleteBufferSize records.
 // Some engines can't iterate while deleting keys (https://github.com/etcd-io/bbolt/issues/146)
 // and some can't create more than one iterator per read-write transaction (https://github.com/dgraph-io/badger/issues/1093).
 // To deal with these limitations, Run will iterate on a limited number of records, copy the keys
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no record
 // left to delete.
-// Increasing bufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
+// Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
 func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 	var res Result
 	if stmt.tableName == "" {
@@ -68,9 +68,9 @@ func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 	}
 
 	st := record.NewStream(t)
-	st = st.Filter(whereClause(stmt.whereExpr, stack)).Limit(bufferSize)
+	st = st.Filter(whereClause(stmt.whereExpr, stack)).Limit(deleteBufferSize)
 
-	keys := make([][]byte, bufferSize)
+	keys := make([][]byte, deleteBufferSize)
 
 	for {
 		var i int
@@ -98,7 +98,7 @@ func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 			}
 		}
 
-		if i < bufferSize {
+		if i < deleteBufferSize {
 			break
 		}
 	}

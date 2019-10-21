@@ -402,10 +402,13 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		tb, err := tx.CreateTable("test")
+		_, err := tx.CreateTable("test")
 		require.NoError(t, err)
 
 		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		require.NoError(t, err)
+
+		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
 		rec := newRecord()
