@@ -85,12 +85,9 @@ func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) e
 	for it.Seek(seek); it.ValidForPrefix(prefix); it.Next() {
 		item := it.Item()
 
-		v, err := item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-
-		err = fn(bytes.TrimPrefix(item.KeyCopy(nil), prefix), v)
+		err := item.Value(func(v []byte) error {
+			return fn(bytes.TrimPrefix(item.Key(), prefix), v)
+		})
 		if err != nil {
 			return err
 		}

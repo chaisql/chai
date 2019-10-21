@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +39,8 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Store/Get", TestStoreGet},
 		{"Store/Delete", TestStoreDelete},
 		{"Store/Truncate", TestStoreTruncate},
+		{"TestQueries", TestQueries},
+		{"TestQueriesSameTransaction", TestQueriesSameTransaction},
 	}
 
 	for _, test := range tests {
@@ -833,6 +836,202 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 
 		err = st.AscendGreaterOrEqual(nil, func(_, _ []byte) error {
 			return errors.New("should not iterate")
+		})
+		require.NoError(t, err)
+	})
+}
+
+// TestQueries test simple queries against the engine.
+func TestQueries(t *testing.T, builder Builder) {
+	t.Run("SELECT", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		st, err := db.Query(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES (1), (2), (3), (4);
+			SELECT * FROM test;
+		`)
+		require.NoError(t, err)
+		defer st.Close()
+		n, err := st.Count()
+		require.NoError(t, err)
+		require.Equal(t, 4, n)
+	})
+
+	t.Run("INSERT", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES (1), (2), (3), (4);
+		`)
+		require.NoError(t, err)
+	})
+
+	// 	t.Run("UPDATE", func(t *testing.T) {
+	// 		ng, cleanup := builder()
+	// 		defer cleanup()
+
+	// 		db, err := genji.New(ng)
+	// 		require.NoError(t, err)
+	// 		defer db.Close()
+
+	// 		st, err := db.Query(`
+	// 			CREATE TABLE test;
+	// 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
+	// 			UPDATE test SET a = 5;
+	// 			SELECT * FROM test;
+	// 		`)
+	// 		require.NoError(t, err)
+	// 		defer st.Close()
+	// 		var buf bytes.Buffer
+	// 		err = recordutil.IteratorToJSON(&buf, st)
+	// 		require.NoError(t, err)
+	// 		require.Equal(t, `{"a":5}
+	// {"a":5}
+	// {"a":5}
+	// {"a":5}
+	// `, buf.String())
+	// 	})
+
+	t.Run("DELETE", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test")
+		require.NoError(t, err)
+
+		err = db.Update(func(tx *genji.Tx) error {
+			for i := 1; i < 200; i++ {
+				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
+				require.NoError(t, err)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+
+		st, err := db.Query(`
+			DELETE FROM test WHERE a > 2;
+			SELECT * FROM test;
+		`)
+		require.NoError(t, err)
+		defer st.Close()
+		n, err := st.Count()
+		require.NoError(t, err)
+		require.Equal(t, 2, n)
+	})
+}
+
+// TestQueriesSameTransaction test simple queries in the same transaction.
+func TestQueriesSameTransaction(t *testing.T, builder Builder) {
+	t.Run("SELECT", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Update(func(tx *genji.Tx) error {
+			st, err := tx.Query(`
+				CREATE TABLE test;
+				INSERT INTO test (a) VALUES (1), (2), (3), (4);
+				SELECT * FROM test;
+			`)
+			require.NoError(t, err)
+			defer st.Close()
+			n, err := st.Count()
+			require.NoError(t, err)
+			require.Equal(t, 4, n)
+			return nil
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("INSERT", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Update(func(tx *genji.Tx) error {
+			err = tx.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES (1), (2), (3), (4);
+		`)
+			require.NoError(t, err)
+			return nil
+		})
+		require.NoError(t, err)
+	})
+
+	// 	t.Run("UPDATE", func(t *testing.T) {
+	// 		ng, cleanup := builder()
+	// 		defer cleanup()
+
+	// 		db, err := genji.New(ng)
+	// 		require.NoError(t, err)
+	// 		defer db.Close()
+
+	// 		err = db.Update(func(tx *genji.Tx) error {
+	// 			st, err := tx.Query(`
+	// 			CREATE TABLE test;
+	// 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
+	// 			UPDATE test SET a = 5;
+	// 			SELECT * FROM test;
+	// 		`)
+	// 			require.NoError(t, err)
+	// 			defer st.Close()
+	// 			var buf bytes.Buffer
+	// 			err = recordutil.IteratorToJSON(&buf, st)
+	// 			require.NoError(t, err)
+	// 			require.Equal(t, `{"a":5}
+	// {"a":5}
+	// {"a":5}
+	// {"a":5}
+	// `, buf.String())
+	// 			return nil
+	// 		})
+	// 		require.NoError(t, err)
+	// 	})
+
+	t.Run("DELETE", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		db, err := genji.New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Update(func(tx *genji.Tx) error {
+			st, err := tx.Query(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
+			DELETE FROM test WHERE a > 2;
+			SELECT * FROM test;
+		`)
+			require.NoError(t, err)
+			defer st.Close()
+			n, err := st.Count()
+			require.NoError(t, err)
+			require.Equal(t, 2, n)
+			return nil
 		})
 		require.NoError(t, err)
 	})
