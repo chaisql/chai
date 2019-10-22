@@ -74,7 +74,6 @@ func TestFieldBuffer(t *testing.T) {
 		require.Zero(t, f)
 	})
 
-	
 	t.Run("Set", func(t *testing.T) {
 		buf1 := record.NewFieldBuffer(
 			record.NewInt64Field("a", 10),
@@ -130,8 +129,9 @@ func TestFieldBuffer(t *testing.T) {
 
 func TestNewFromMap(t *testing.T) {
 	m := map[string]interface{}{
-		"Name": "foo",
-		"Age":  10,
+		"Name":     "foo",
+		"Age":      10,
+		"NilField": nil,
 	}
 
 	rec := record.NewFromMap(m)
