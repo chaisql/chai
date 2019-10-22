@@ -148,9 +148,10 @@ func TestNewFromMap(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Len(t, counter, 2)
+		require.Len(t, counter, 3)
 		require.Equal(t, counter["Name"], 1)
 		require.Equal(t, counter["Age"], 1)
+		require.Equal(t, counter["NilField"], 1)
 	})
 
 	t.Run("Field", func(t *testing.T) {
@@ -161,6 +162,10 @@ func TestNewFromMap(t *testing.T) {
 		f, err = rec.GetField("Age")
 		require.NoError(t, err)
 		require.Equal(t, record.Field{Name: "Age", Value: value.Value{Type: value.Int, Data: value.EncodeInt(10)}}, f)
+
+		f, err = rec.GetField("NilField")
+		require.NoError(t, err)
+		require.Equal(t, record.Field{Name: "NilField", Value: value.Value{Type: value.Null}}, f)
 
 		_, err = rec.GetField("bar")
 		require.Error(t, err)

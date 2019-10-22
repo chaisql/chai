@@ -127,10 +127,6 @@ var _ Record = (*mapRecord)(nil)
 
 func (m mapRecord) Iterate(fn func(Field) error) error {
 	for k, v := range m {
-		if v == nil {
-			continue
-		}
-
 		f, err := NewField(k, v)
 		if err != nil {
 			return err

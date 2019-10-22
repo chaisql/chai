@@ -88,6 +88,40 @@ func TestDecode(t *testing.T) {
 	require.Equal(t, 3.14, price)
 }
 
+func TestNew(t *testing.T) {
+	tests := []struct {
+		name  string
+		value interface{}
+	}{
+		{"bytes", []byte("bar")},
+		{"string", "bar"},
+		{"bool", true},
+		{"uint", uint(10)},
+		{"uint8", uint8(10)},
+		{"uint16", uint16(10)},
+		{"uint32", uint32(10)},
+		{"uint64", uint64(10)},
+		{"int", int(10)},
+		{"int8", int8(10)},
+		{"int16", int16(10)},
+		{"int32", int32(10)},
+		{"int64", int64(10)},
+		{"float32", 10.1},
+		{"float64", 10.1},
+		{"nil", nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			v, err := value.New(test.value)
+			require.NoError(t, err)
+			i, err := v.Decode()
+			require.NoError(t, err)
+			require.Equal(t, test.value, i)
+		})
+	}
+}
+
 func TestFieldString(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -116,7 +150,6 @@ func TestFieldString(t *testing.T) {
 			require.Equal(t, test.expected, test.value.String())
 		})
 	}
-
 }
 
 func TestDecodeToBytes(t *testing.T) {

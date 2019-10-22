@@ -29,6 +29,8 @@ const (
 	Int64
 	Float32
 	Float64
+
+	Null
 )
 
 func (t Type) String() string {
@@ -63,6 +65,8 @@ func (t Type) String() string {
 		return "Float32"
 	case Float64:
 		return "Float64"
+	case Null:
+		return "Null"
 	}
 
 	return ""
@@ -101,6 +105,8 @@ func TypeFromGoType(tp string) Type {
 		return Float32
 	case "float64":
 		return Float64
+	case "nil":
+		return Null
 	}
 
 	return 0
@@ -146,6 +152,8 @@ func New(x interface{}) (Value, error) {
 		return NewFloat32(v), nil
 	case float64:
 		return NewFloat64(v), nil
+	case nil:
+		return NewNull(), nil
 	default:
 		return Value{}, fmt.Errorf("unsupported type %t", x)
 	}
@@ -271,6 +279,13 @@ func NewFloat64(x float64) Value {
 	}
 }
 
+// NewNull returns a Null value.
+func NewNull() Value {
+	return Value{
+		Type: Null,
+	}
+}
+
 func (v *Value) decode() error {
 	var err error
 
@@ -305,6 +320,8 @@ func (v *Value) decode() error {
 		v.v, err = DecodeFloat32(v.Data)
 	case Float64:
 		v.v, err = DecodeFloat64(v.Data)
+	case Null:
+		v.v = nil
 	default:
 		return errors.New("unknown type")
 	}
