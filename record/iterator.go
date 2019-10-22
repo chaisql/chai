@@ -1,7 +1,11 @@
 package record
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.
@@ -218,4 +222,45 @@ func (m multiIterator) Iterate(fn func(r Record) error) error {
 	}
 
 	return nil
+}
+
+// IteratorToCSV encodes all the records of an iterator to CSV.
+func IteratorToCSV(w io.Writer, s Iterator) error {
+	cw := csv.NewWriter(w)
+
+	var line []string
+	err := s.Iterate(func(r Record) error {
+		line = line[:0]
+
+		err := r.Iterate(func(f Field) error {
+			v, err := f.Decode()
+			if err != nil {
+				return err
+			}
+
+			line = append(line, fmt.Sprintf("%v", v))
+
+			return err
+		})
+		if err != nil {
+			return err
+		}
+
+		return cw.Write(line)
+	})
+	if err != nil {
+		return err
+	}
+
+	cw.Flush()
+	return nil
+}
+
+// IteratorToJSON encodes all the records of an iterator to JSON stream.
+func IteratorToJSON(w io.Writer, s Iterator) error {
+	enc := json.NewEncoder(w)
+
+	return s.Iterate(func(r Record) error {
+		return enc.Encode(jsonRecord{r})
+	})
 }

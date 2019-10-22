@@ -103,12 +103,12 @@ const recordScanTmpl = `
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
-	r, ok := src.(record.Record)
+	rr, ok := src.(record.Record)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
 
-	return {{$fl}}.ScanRecord(r)
+	return {{$fl}}.ScanRecord(rr)
 }
 {{ end }}
 `
