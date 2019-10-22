@@ -253,6 +253,20 @@ func TestScan(t *testing.T) {
 		err := record.Scan(r, &rs)
 		require.NoError(t, err)
 	})
+
+	t.Run("Map", func(t *testing.T) {
+		m := make(map[string]interface{})
+		err := record.Scan(r, m)
+		require.NoError(t, err)
+		require.Len(t, m, 15)
+	})
+
+	t.Run("MapPtr", func(t *testing.T) {
+		var m map[string]interface{}
+		err := record.Scan(r, &m)
+		require.NoError(t, err)
+		require.Len(t, m, 15)
+	})
 }
 
 type recordScanner struct {

@@ -207,15 +207,37 @@ func (j jsonRecord) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// ToMap decodes the record into a map. m must be already allocated.
+func ToMap(r Record, m map[string]interface{}) error {
+	err := r.Iterate(func(f Field) error {
+		var err error
+		m[f.Name], err = f.Decode()
+		return err
+	})
+
+	return err
+}
+
 // Scan a record into the given variables. Each variable must be a pointer to
 // types supported by Genji.
+// If only one target is provided, the target can also be a Scanner,
+// a map[string]interface{} or a pointer to map[string]interface{}.
 func Scan(r Record, targets ...interface{}) error {
 	var i int
 
 	if len(targets) == 1 {
-		rs, ok := targets[0].(Scanner)
-		if ok {
+		if rs, ok := targets[0].(Scanner); ok {
 			return rs.ScanRecord(r)
+		}
+		if mPtr, ok := targets[0].(*map[string]interface{}); ok {
+			if *mPtr == nil {
+				*mPtr = make(map[string]interface{})
+			}
+
+			return ToMap(r, *mPtr)
+		}
+		if m, ok := targets[0].(map[string]interface{}); ok {
+			return ToMap(r, m)
 		}
 	}
 
