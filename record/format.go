@@ -232,6 +232,8 @@ func Encode(r Record) ([]byte, error) {
 	var format Format
 
 	var offset uint64
+	var dataList [][]byte
+
 	err := r.Iterate(func(f Field) error {
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f.Name)),
@@ -242,6 +244,7 @@ func Encode(r Record) ([]byte, error) {
 		})
 
 		offset += uint64(len(f.Data))
+		dataList = append(dataList, f.Data)
 		return nil
 	})
 	if err != nil {
@@ -256,12 +259,11 @@ func Encode(r Record) ([]byte, error) {
 
 	buf.Grow(format.Header.BodySize())
 
-	err = r.Iterate(func(f Field) error {
-		_, err = buf.Write(f.Data)
-		return err
-	})
-	if err != nil {
-		return nil, err
+	for _, data := range dataList {
+		_, err = buf.Write(data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return buf.Bytes(), nil

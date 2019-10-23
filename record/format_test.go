@@ -1,21 +1,24 @@
-package record
+package record_test
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
+	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/record/recordutil"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFormat(t *testing.T) {
-	data, err := Encode(FieldBuffer([]Field{
-		NewInt64Field("age", 10),
-		NewStringField("name", "john"),
+	data, err := record.Encode(record.FieldBuffer([]record.Field{
+		record.NewInt64Field("age", 10),
+		record.NewStringField("name", "john"),
 	}))
 	require.NoError(t, err)
 
-	var f Format
+	var f record.Format
 	err = f.Decode(data)
 	require.NoError(t, err)
 	require.Equal(t, len(f.Body), f.Header.BodySize())
@@ -36,39 +39,74 @@ func TestFormat(t *testing.T) {
 }
 
 func TestDecodeField(t *testing.T) {
-	rec := FieldBuffer([]Field{
-		NewInt64Field("age", 10),
-		NewStringField("name", "john"),
+	rec := record.FieldBuffer([]record.Field{
+		record.NewInt64Field("age", 10),
+		record.NewStringField("name", "john"),
 	})
 
-	data, err := Encode(rec)
+	data, err := record.Encode(rec)
 	require.NoError(t, err)
 
-	f, err := DecodeField(data, "age")
+	f, err := record.DecodeField(data, "age")
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
 
-	f, err = DecodeField(data, "name")
+	f, err = record.DecodeField(data, "name")
 	require.NoError(t, err)
 	require.Equal(t, rec[1], f)
 }
 
+func TestEncodeDecode(t *testing.T) {
+	tests := []struct {
+		name string
+		r    record.Record
+	}{
+		{
+			"record.FieldBuffer",
+			record.FieldBuffer([]record.Field{
+				record.NewInt64Field("age", 10),
+				record.NewStringField("name", "john"),
+			}),
+		},
+		{
+			"Map",
+			record.NewFromMap(map[string]interface{}{
+				"age":  10,
+				"name": "john",
+			}),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			enc, err := record.Encode(test.r)
+			require.NoError(t, err)
+			var buf1, buf2 bytes.Buffer
+			err = recordutil.RecordToJSON(&buf1, record.EncodedRecord(enc))
+			require.NoError(t, err)
+			err = recordutil.RecordToJSON(&buf2, test.r)
+			require.NoError(t, err)
+			require.JSONEq(t, buf2.String(), buf1.String())
+		})
+	}
+}
+
 func TestEncodedRecord(t *testing.T) {
-	rec := FieldBuffer([]Field{
-		NewInt64Field("age", 10),
-		NewStringField("name", "john"),
+	rec := record.FieldBuffer([]record.Field{
+		record.NewInt64Field("age", 10),
+		record.NewStringField("name", "john"),
 	})
 
-	data, err := Encode(rec)
+	data, err := record.Encode(rec)
 	require.NoError(t, err)
 
-	ec := EncodedRecord(data)
+	ec := record.EncodedRecord(data)
 	f, err := ec.GetField("age")
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
 
 	var i int
-	err = ec.Iterate(func(f Field) error {
+	err = ec.Iterate(func(f record.Field) error {
 		require.Equal(t, rec[i], f)
 		i++
 		return nil
@@ -78,64 +116,64 @@ func TestEncodedRecord(t *testing.T) {
 }
 
 func BenchmarkEncode(b *testing.B) {
-	var fields []Field
+	var fields []record.Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		Encode(FieldBuffer(fields))
+		record.Encode(record.FieldBuffer(fields))
 	}
 }
 
 func BenchmarkFormatDecode(b *testing.B) {
-	var fields []Field
+	var fields []record.Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
 
-	data, err := Encode(FieldBuffer(fields))
+	data, err := record.Encode(record.FieldBuffer(fields))
 	require.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var f Format
+		var f record.Format
 		f.Decode(data)
 	}
 }
 
 func BenchmarkDecodeField(b *testing.B) {
-	var fields []Field
+	var fields []record.Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
-	data, err := Encode(FieldBuffer(fields))
+	data, err := record.Encode(record.FieldBuffer(fields))
 	require.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		DecodeField(data, "name-99")
+		record.DecodeField(data, "name-99")
 	}
 }
 
 func BenchmarkEncodedRecord(b *testing.B) {
-	var fields []Field
+	var fields []record.Field
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 	}
-	data, err := Encode(FieldBuffer(fields))
+	data, err := record.Encode(record.FieldBuffer(fields))
 	require.NoError(b, err)
 
-	ec := EncodedRecord(data)
+	ec := record.EncodedRecord(data)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ec.Iterate(func(Field) error {
+		ec.Iterate(func(record.Field) error {
 			return nil
 		})
 	}
