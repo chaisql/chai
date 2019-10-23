@@ -154,7 +154,7 @@ func (m mapRecord) GetField(name string) (Field, error) {
 // Subsequent calls to Pk and Key will use the cached result.
 // pkfn must always return a non nil, non empty slice.
 func NewWithPK(r Record, pkfn func() ([]byte, error)) Record {
-	return recordWithPk{
+	return &recordWithPk{
 		Record: r,
 		pkfn:   pkfn,
 	}
@@ -167,7 +167,7 @@ type recordWithPk struct {
 	pk   []byte
 }
 
-func (r *recordWithPk) Pk() ([]byte, error) {
+func (r *recordWithPk) PrimaryKey() ([]byte, error) {
 	if r.pk != nil {
 		return r.pk, nil
 	}
@@ -178,7 +178,7 @@ func (r *recordWithPk) Pk() ([]byte, error) {
 }
 
 func (r recordWithPk) Key() []byte {
-	pk, err := r.Pk()
+	pk, err := r.PrimaryKey()
 	if err != nil {
 		panic(err)
 	}
