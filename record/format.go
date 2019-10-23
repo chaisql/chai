@@ -295,13 +295,20 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 		hdata = hdata[n:]
 
 		if fieldName == string(fh.Name) {
-			return Field{
+			data := body[fh.Offset : fh.Offset+fh.Size]
+
+			f := Field{
 				Name: fieldName,
 				Value: value.Value{
 					Type: value.Type(fh.Type),
-					Data: body[fh.Offset : fh.Offset+fh.Size],
 				},
-			}, nil
+			}
+
+			// make sure f.Data == nil to ease comparisons
+			if len(data) > 0 {
+				f.Data = body[fh.Offset : fh.Offset+fh.Size]
+			}
+			return f, nil
 		}
 	}
 

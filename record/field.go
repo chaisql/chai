@@ -143,6 +143,14 @@ func NewFloat64Field(name string, x float64) Field {
 	}
 }
 
+// NewNullField returns a null field.
+func NewNullField(name string) Field {
+	return Field{
+		Name:  name,
+		Value: value.NewNull(),
+	}
+}
+
 func (f Field) String() string {
 	return fmt.Sprintf("%s:%s", f.Name, f.Value)
 }

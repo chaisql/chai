@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
@@ -14,6 +13,7 @@ import (
 func TestFormat(t *testing.T) {
 	data, err := record.Encode(record.FieldBuffer([]record.Field{
 		record.NewInt64Field("age", 10),
+		record.NewNullField("address"),
 		record.NewStringField("name", "john"),
 	}))
 	require.NoError(t, err)
@@ -22,8 +22,8 @@ func TestFormat(t *testing.T) {
 	err = f.Decode(data)
 	require.NoError(t, err)
 	require.Equal(t, len(f.Body), f.Header.BodySize())
-	require.EqualValues(t, 2, f.Header.FieldsCount)
-	require.Len(t, f.Header.FieldHeaders, 2)
+	require.EqualValues(t, 3, f.Header.FieldsCount)
+	require.Len(t, f.Header.FieldHeaders, 3)
 
 	require.EqualValues(t, "age", f.Header.FieldHeaders[0].Name)
 	require.EqualValues(t, 3, f.Header.FieldHeaders[0].NameSize)
@@ -31,16 +31,23 @@ func TestFormat(t *testing.T) {
 	require.EqualValues(t, value.Int64, f.Header.FieldHeaders[0].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Offset)
 
-	require.EqualValues(t, "name", f.Header.FieldHeaders[1].Name)
-	require.EqualValues(t, 4, f.Header.FieldHeaders[1].NameSize)
-	require.EqualValues(t, 4, f.Header.FieldHeaders[1].Size)
-	require.EqualValues(t, value.String, f.Header.FieldHeaders[1].Type)
+	require.EqualValues(t, "address", f.Header.FieldHeaders[1].Name)
+	require.EqualValues(t, 7, f.Header.FieldHeaders[1].NameSize)
+	require.EqualValues(t, 0, f.Header.FieldHeaders[1].Size)
+	require.EqualValues(t, value.Null, f.Header.FieldHeaders[1].Type)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[1].Offset)
+
+	require.EqualValues(t, "name", f.Header.FieldHeaders[2].Name)
+	require.EqualValues(t, 4, f.Header.FieldHeaders[2].NameSize)
+	require.EqualValues(t, 4, f.Header.FieldHeaders[2].Size)
+	require.EqualValues(t, value.String, f.Header.FieldHeaders[2].Type)
+	require.EqualValues(t, 8, f.Header.FieldHeaders[2].Offset)
 }
 
 func TestDecodeField(t *testing.T) {
 	rec := record.FieldBuffer([]record.Field{
 		record.NewInt64Field("age", 10),
+		record.NewNullField("address"),
 		record.NewStringField("name", "john"),
 	})
 
@@ -51,9 +58,13 @@ func TestDecodeField(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
 
-	f, err = record.DecodeField(data, "name")
+	f, err = record.DecodeField(data, "address")
 	require.NoError(t, err)
 	require.Equal(t, rec[1], f)
+
+	f, err = record.DecodeField(data, "name")
+	require.NoError(t, err)
+	require.Equal(t, rec[2], f)
 }
 
 func TestEncodeDecode(t *testing.T) {
@@ -82,9 +93,9 @@ func TestEncodeDecode(t *testing.T) {
 			enc, err := record.Encode(test.r)
 			require.NoError(t, err)
 			var buf1, buf2 bytes.Buffer
-			err = recordutil.RecordToJSON(&buf1, record.EncodedRecord(enc))
+			err = record.ToJSON(&buf1, record.EncodedRecord(enc))
 			require.NoError(t, err)
-			err = recordutil.RecordToJSON(&buf2, test.r)
+			err = record.ToJSON(&buf2, test.r)
 			require.NoError(t, err)
 			require.JSONEq(t, buf2.String(), buf1.String())
 		})

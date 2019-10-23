@@ -148,15 +148,14 @@ func (m mapRecord) GetField(name string) (Field, error) {
 	return NewField(name, v)
 }
 
-// NewFromMapWithPK creates a record from a map.
-// Due to the way maps are designed, iteration order is not guaranteed.
-// The Record implements the genji.Pker and Keyer interfaces and uses pkfn to return the primary key for this record.
+// NewWithPK creates a record that implements the genji.Pker and Keyer interfaces
+// and uses pkfn to return the primary key for this record.
 // pkfn doesn't have to be idempotent: it will be called at most once and its result will be cached.
 // Subsequent calls to Pk and Key will use the cached result.
 // pkfn must always return a non nil, non empty slice.
-func NewFromMapWithPK(m map[string]interface{}, pkfn func() ([]byte, error)) Record {
+func NewWithPK(r Record, pkfn func() ([]byte, error)) Record {
 	return recordWithPk{
-		Record: mapRecord(m),
+		Record: r,
 		pkfn:   pkfn,
 	}
 }
