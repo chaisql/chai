@@ -9,7 +9,6 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 )
 
 type User struct {
@@ -68,7 +67,7 @@ func Example() {
 		var name string
 		var age int32
 
-		err = recordutil.Scan(r, &id, &name, &age)
+		err = record.Scan(r, &id, &name, &age)
 		if err != nil {
 			return err
 		}
@@ -92,7 +91,7 @@ func Example() {
 	var id int
 	var name string
 	var age int32
-	err = recordutil.Scan(r, &id, &name, &age)
+	err = record.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +121,7 @@ func Example() {
 		}).
 		// Iterate on them
 		Iterate(func(r record.Record) error {
-			return recordutil.DumpRecord(os.Stdout, r)
+			return record.Dump(os.Stdout, r)
 		})
 
 	if err != nil {

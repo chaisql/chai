@@ -59,7 +59,7 @@ err = res.Iterate(func(r record.Record) error {
     var name string
     var age int32
 
-    err = recordutil.Scan(r, &id, &name, &age)
+    err = record.Scan(r, &id, &name, &age)
     if err != nil {
         return err
     }
@@ -76,7 +76,7 @@ r, err := res.First()
 var id int
 var name string
 var age int32
-err = recordutil.Scan(r, &id, &name, &age)
+err = record.Scan(r, &id, &name, &age)
 
 // Apply some transformations
 err = res.

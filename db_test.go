@@ -9,7 +9,6 @@ import (
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -111,7 +110,7 @@ func ExampleTx() {
 	var name string
 	var age uint8
 
-	err = recordutil.Scan(r, &id, &name, &age)
+	err = record.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 )
 
 func ExampleResult_First() {
@@ -52,7 +51,7 @@ func ExampleResult_First() {
 	var name string
 	var age uint8
 
-	err = recordutil.Scan(r, &id, &name, &age)
+	err = record.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +106,7 @@ func ExampleResult_Iterate() {
 		var name string
 		var age uint8
 
-		err = recordutil.Scan(r, &id, &name, &age)
+		err = record.Scan(r, &id, &name, &age)
 		if err != nil {
 			return err
 		}
