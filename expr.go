@@ -423,6 +423,10 @@ func numberToFloat(v interface{}) float64 {
 		f = float64(t)
 	case int64:
 		f = float64(t)
+	case float32:
+		f = float64(t)
+	case float64:
+		f = t
 	}
 
 	return f

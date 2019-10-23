@@ -16,7 +16,7 @@ func TestOperator(t *testing.T) {
 	}{
 		{"EQ / Same type", eq, int32Value(10), int32Value(10), trueLitteral, false},
 		{"EQ / Same type / Different values", eq, int32Value(10), int32Value(11), falseLitteral, false},
-		{"EQ / Numbers", eq, int32Value(10), uint64Value(10), trueLitteral, false},
+		{"EQ / Numbers", eq, int32Value(10), float64Value(10), trueLitteral, false},
 		{"EQ / Numbers / Different values", eq, int32Value(10), uint64Value(11), falseLitteral, false},
 		{"EQ / Numbers / List with one elem / Single value", eq,
 			litteralExprList{int32Value(10)}, uint64Value(10), trueLitteral, false},
