@@ -2,6 +2,7 @@ package genji
 
 import (
 	"database/sql/driver"
+	"fmt"
 
 	"github.com/asdine/genji/record"
 )
@@ -196,6 +197,10 @@ func (f fieldSelector) Name() string {
 // If the field selector was created using the As method
 // it must replace the name of f by the alias.
 func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
+	if r == nil {
+		return record.Field{}, fmt.Errorf("field not found")
+	}
+
 	return r.GetField(string(f))
 }
 
