@@ -1,6 +1,7 @@
 package genji
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 
@@ -166,6 +167,12 @@ func argsToNamedValues(args []interface{}) []driver.NamedValue {
 	nv := make([]driver.NamedValue, len(args))
 	for i := range args {
 		switch t := args[i].(type) {
+		case sql.NamedArg:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case *sql.NamedArg:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
 		case driver.NamedValue:
 			nv[i] = t
 		case *driver.NamedValue:

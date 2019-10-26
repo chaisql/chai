@@ -299,12 +299,6 @@ type kvPair struct {
 	V expr
 }
 
-func (stmt insertStmt) Pairs(pairs ...kvPair) insertStmt {
-	stmt.records = append(stmt.records, pairs)
-
-	return stmt
-}
-
 func (stmt insertStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 	var res Result
 
