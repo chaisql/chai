@@ -11,7 +11,9 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "genji"
+	app.Name = "Genji"
+	app.Usage = "Toolkit for the Genji database"
+	app.Version = "v0.3.0"
 	app.EnableBashCompletion = true
 	app.Commands = []cli.Command{
 		{
@@ -48,6 +50,10 @@ func main() {
 				return generate(c.StringSlice("f"), c.StringSlice("s"), c.String("o"))
 			},
 		},
+	}
+
+	app.Action = func(c *cli.Context) error {
+		return runGenjiClient()
 	}
 
 	err := app.Run(os.Args)
