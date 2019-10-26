@@ -232,7 +232,7 @@ func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	for _, n := range r.fields {
 		f, err := r.r.GetField(n)
 		if err != nil {
-			return err
+			continue
 		}
 
 		err = fn(f)
