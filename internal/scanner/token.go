@@ -18,6 +18,7 @@ const (
 	literalBeg
 	// IDENT and the following are Genji SQL literal tokens.
 	IDENT           // main
+	IDENTORSTRING   // main
 	NAMEDPARAM      // $param
 	POSITIONALPARAM // ?
 	NUMBER          // 12345.67
@@ -107,6 +108,7 @@ var tokens = [...]string{
 	WS:      "WS",
 
 	IDENT:           "IDENT",
+	IDENTORSTRING:   "IDENTORSTRING",
 	POSITIONALPARAM: "?",
 	NUMBER:          "NUMBER",
 	DURATIONVAL:     "DURATIONVAL",
