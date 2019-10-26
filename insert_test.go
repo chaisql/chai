@@ -87,7 +87,7 @@ func TestParserInsert(t *testing.T) {
 	}
 }
 
-func TestInsert(t *testing.T) {
+func TestInsertStmt(t *testing.T) {
 	tests := []struct {
 		name     string
 		query    string

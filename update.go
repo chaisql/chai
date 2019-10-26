@@ -133,7 +133,7 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 		for fname, e := range stmt.pairs {
 			f, err := fb.GetField(fname)
 			if err != nil {
-				return err
+				continue
 			}
 
 			v, err := e.Eval(evalStack{
@@ -155,11 +155,11 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 			if err != nil {
 				return err
 			}
+		}
 
-			err = t.Replace(rk.Key(), &fb)
-			if err != nil {
-				return err
-			}
+		err = t.Replace(rk.Key(), &fb)
+		if err != nil {
+			return err
 		}
 
 		return nil
