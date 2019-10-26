@@ -14,6 +14,7 @@ func TestParserExpr(t *testing.T) {
 		expected expr
 	}{
 		{"=", "age = 10", eq(fieldSelector("age"), int64Value(10))},
+		{"IDENT OR STRING", `"age" = "10"`, eq(identOrStringLitteral("age"), identOrStringLitteral("10"))},
 		{"AND", "age = 10 AND age <= 11",
 			and(
 				eq(fieldSelector("age"), int64Value(10)),

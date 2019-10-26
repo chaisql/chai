@@ -13,8 +13,8 @@ func TestParserInsert(t *testing.T) {
 		expected statement
 		errored  bool
 	}{
-		{"Values / No columns", "INSERT INTO test VALUES ('a', 'b', 'c')",
-			insertStmt{tableName: "test", values: litteralExprList{litteralExprList{stringValue("a"), stringValue("b"), stringValue("c")}}}, false},
+		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`,
+			insertStmt{tableName: "test", values: litteralExprList{litteralExprList{identOrStringLitteral("a"), stringValue("b"), stringValue("c")}}}, false},
 		{"Values / With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			insertStmt{
 				tableName:  "test",
@@ -44,12 +44,12 @@ func TestParserInsert(t *testing.T) {
 					},
 				},
 			}, false},
-		{"Records / Multiple", "INSERT INTO test RECORDS (a: 'a', b: 2.3), (a: 1, d: true)",
+		{"Records / Multiple", `INSERT INTO test RECORDS ("a": "a", b: 2.3), (a: 1, d: true)`,
 			insertStmt{
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
-						kvPair{K: "a", V: stringValue("a")},
+						kvPair{K: "a", V: identOrStringLitteral("a")},
 						kvPair{K: "b", V: float64Value(2.3)},
 					},
 					[]kvPair{kvPair{K: "a", V: int64Value(1)}, kvPair{K: "d", V: boolValue(true)}},

@@ -86,7 +86,7 @@ func ExampleResult_Iterate() {
 		}
 	}
 
-	result, err := db.Query("SELECT * FROM user WHERE Age >= 18")
+	result, err := db.Query(`SELECT * FROM user WHERE "Age" >= 18`)
 	if err != nil {
 		panic(err)
 	}

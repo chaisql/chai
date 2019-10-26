@@ -169,6 +169,8 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 	switch tok {
 	case scanner.IDENT:
 		return fieldSelector(lit), nil
+	case scanner.IDENTORSTRING:
+		return identOrStringLitteral(lit), nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
@@ -213,7 +215,7 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 // ParseIdent parses an identifier.
 func (p *parser) ParseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok != scanner.IDENT {
+	if tok != scanner.IDENT && tok != scanner.IDENTORSTRING {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 	}
 	return lit, nil

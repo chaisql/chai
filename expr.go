@@ -230,6 +230,23 @@ func (p positionalParam) Extract(params []driver.NamedValue) (interface{}, error
 	return params[idx].Value, nil
 }
 
+// An identOrStringLitteral checks first if the string
+// refers to a field, if not, it will we used as a string litteral.
+type identOrStringLitteral string
+
+// Eval extracts the record from the context and selects the right field.
+// It implements the Expr interface.
+func (i identOrStringLitteral) Eval(stack evalStack) (evalValue, error) {
+	if stack.Record != nil {
+		v, err := fieldSelector(i).Eval(stack)
+		if err == nil {
+			return v, nil
+		}
+	}
+
+	return evalValue{Value: stringValue(string(i))}, nil
+}
+
 type simpleOperator struct {
 	a, b  expr
 	Token scanner.Token
