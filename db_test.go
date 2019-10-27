@@ -829,3 +829,32 @@ func BenchmarkTableScan(b *testing.B) {
 		})
 	}
 }
+
+func TestTxListTables(t *testing.T) {
+	t.Run("Should succeed if not tables", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		list, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, list, 0)
+	})
+
+	t.Run("Should return the right tables", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		_, err := tx.CreateTable("a")
+		require.NoError(t, err)
+		_, err = tx.CreateTable("b")
+		require.NoError(t, err)
+
+		_, err = tx.CreateIndex("idxa", "a", "foo", index.Options{})
+		require.NoError(t, err)
+
+		list, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, list, 2)
+		require.Equal(t, []string{"a", "b"}, list)
+	})
+}

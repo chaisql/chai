@@ -314,6 +314,30 @@ func (tx Tx) DropTable(name string) error {
 	return tx.tx.DropStore(name)
 }
 
+// ListTables lists all the tables.
+func (tx Tx) ListTables() ([]string, error) {
+	stores, err := tx.tx.ListStores("")
+	if err != nil {
+		return nil, err
+	}
+
+	tables := make([]string, 0, len(stores))
+	idxPrefix := indexPrefix + string([]byte{separator})
+
+	for _, st := range stores {
+		if st == indexTable {
+			continue
+		}
+		if strings.HasPrefix(st, idxPrefix) {
+			continue
+		}
+
+		tables = append(tables, st)
+	}
+
+	return tables, nil
+}
+
 func buildIndexName(name string) string {
 	var b strings.Builder
 	b.WriteString(indexPrefix)
