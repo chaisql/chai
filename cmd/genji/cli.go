@@ -38,6 +38,15 @@ type executor struct {
 }
 
 func (e *executor) Execute(in string) {
+	switch in {
+	case ".tables":
+		err := e.TablesCmd()
+		if err != nil {
+			fmt.Println(err)
+		}
+		return
+	}
+
 	if strings.HasSuffix(in, ";") {
 		e.query = e.query + in
 		e.IsEnable = false
@@ -62,6 +71,25 @@ func (e *executor) Query(q string) error {
 
 	defer res.Close()
 	return record.IteratorToCSV(os.Stdout, res)
+}
+
+func (e *executor) TablesCmd() error {
+	var tables []string
+	err := e.db.View(func(tx *genji.Tx) error {
+		var err error
+
+		tables, err = tx.ListTables()
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, t := range tables {
+		fmt.Println(t)
+	}
+
+	return nil
 }
 
 func (e *executor) ChangeLivePrefix() (string, bool) {
