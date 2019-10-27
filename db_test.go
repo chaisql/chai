@@ -595,10 +595,10 @@ func TestTableIndexes(t *testing.T) {
 		m, err := tb.Indexes()
 		require.NoError(t, err)
 		require.Len(t, m, 2)
-		idx1a, ok := m["idx1a"]
+		idx1a, ok := m["a"]
 		require.True(t, ok)
 		require.NotNil(t, idx1a)
-		idx1b, ok := m["idx1a"]
+		idx1b, ok := m["b"]
 		require.True(t, ok)
 		require.NotNil(t, idx1b)
 	})

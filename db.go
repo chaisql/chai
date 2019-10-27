@@ -636,7 +636,7 @@ func (t Table) Indexes() (map[string]Index, error) {
 				return err
 			}
 
-			indexes[opt.IndexName] = Index{
+			indexes[opt.FieldName] = Index{
 				Index:     index.New(s, index.Options{Unique: opt.Unique}),
 				IndexName: opt.IndexName,
 				TableName: opt.TableName,
