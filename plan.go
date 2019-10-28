@@ -185,7 +185,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 		})
 	case scanner.GT:
 		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
-			if bytes.Equal(v.Value.Data, val.Data) {
+			if bytes.Equal(data, val.Data) {
 				return nil
 			}
 

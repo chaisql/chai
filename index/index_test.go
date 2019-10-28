@@ -143,25 +143,47 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		})
 
 		t.Run(text+"With no pivot, should iterate over all records in order", func(t *testing.T) {
-			idx, cleanup := getIndex(t, index.Options{Unique: unique})
-			defer cleanup()
 
-			for i := byte(0); i < 10; i += 2 {
-				require.NoError(t, idx.Set(value.NewInt32(int32(i)), []byte{'a' + i}))
+			tests := []struct {
+				name  string
+				val   func(i int) value.Value
+				t     index.Type
+				pivot value.Value
+			}{
+				{"floats", func(i int) value.Value { return value.NewInt32(int32(i)) }, index.Float, index.EmptyPivot(value.Int32)},
+				{"bytes", func(i int) value.Value { return value.NewString(string([]byte{byte(i)})) }, index.Bytes, index.EmptyPivot(value.String)},
 			}
 
-			var i uint8
-			var count int
-			err := idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int32), func(val value.Value, rid []byte) error {
-				require.Equal(t, value.NewFloat64(float64(i)), val)
-				require.Equal(t, []byte{'a' + i}, rid)
+			for _, test := range tests {
+				t.Run(test.name, func(t *testing.T) {
+					idx, cleanup := getIndex(t, index.Options{Unique: unique})
+					defer cleanup()
 
-				i += 2
-				count++
-				return nil
-			})
-			require.NoError(t, err)
-			require.Equal(t, 5, count)
+					for i := 0; i < 10; i += 2 {
+						require.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
+					}
+
+					var i uint8
+					var count int
+					err := idx.AscendGreaterOrEqual(test.pivot, func(val value.Value, rid []byte) error {
+						switch test.t {
+						case index.Float:
+							require.Equal(t, value.NewFloat64(float64(i)), val)
+						case index.Bytes:
+							require.Equal(t, value.NewBytes([]byte{i}), val)
+						case index.Bool:
+							require.Equal(t, value.NewBool(i > 0), val)
+						}
+						require.Equal(t, []byte{'a' + i}, rid)
+
+						i += 2
+						count++
+						return nil
+					})
+					require.NoError(t, err)
+					require.Equal(t, 5, count)
+				})
+			}
 		})
 
 		t.Run(text+"With pivot, should iterate over some records in order", func(t *testing.T) {

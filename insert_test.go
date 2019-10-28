@@ -108,28 +108,41 @@ func TestInsertStmt(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			db, err := New(memory.NewEngine())
-			require.NoError(t, err)
-			defer db.Close()
+		testFn := func(withIndexes bool) func(t *testing.T) {
+			return func(t *testing.T) {
+				db, err := New(memory.NewEngine())
+				require.NoError(t, err)
+				defer db.Close()
 
-			err = db.Exec("CREATE TABLE test")
-			require.NoError(t, err)
-			err = db.Exec(test.query, test.params...)
-			if test.fails {
-				require.Error(t, err)
-				return
+				err = db.Exec("CREATE TABLE test")
+				require.NoError(t, err)
+				if withIndexes {
+					err = db.Exec(`
+						CREATE INDEX idx_a ON test (a);
+						CREATE INDEX idx_b ON test (b);
+						CREATE INDEX idx_c ON test (c);
+					`)
+					require.NoError(t, err)
+				}
+				err = db.Exec(test.query, test.params...)
+				if test.fails {
+					require.Error(t, err)
+					return
+				}
+				require.NoError(t, err)
+
+				st, err := db.Query("SELECT * FROM test")
+				require.NoError(t, err)
+				defer st.Close()
+
+				var buf bytes.Buffer
+				err = record.IteratorToCSV(&buf, st)
+				require.NoError(t, err)
+				require.Equal(t, test.expected, buf.String())
 			}
-			require.NoError(t, err)
+		}
 
-			st, err := db.Query("SELECT * FROM test")
-			require.NoError(t, err)
-			defer st.Close()
-
-			var buf bytes.Buffer
-			err = record.IteratorToCSV(&buf, st)
-			require.NoError(t, err)
-			require.Equal(t, test.expected, buf.String())
-		})
+		t.Run("No Index/"+test.name, testFn(false))
+		t.Run("With Index/"+test.name, testFn(true))
 	}
 }
