@@ -13,7 +13,7 @@ import (
 var (
 	trueLitteral  = newSingleEvalValue(value.NewBool(true))
 	falseLitteral = newSingleEvalValue(value.NewBool(false))
-	nilLitteral   = newSingleEvalValue(value.NewString("nil"))
+	nilLitteral   = newSingleEvalValue(value.NewNull())
 )
 
 // An expr evaluates to a value.
@@ -358,6 +358,16 @@ func (op cmpOp) compare(l, r evalValue) (bool, error) {
 
 func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
 	var err error
+
+	// deal with nil
+	if l.Type == value.Null || r.Type == value.Null {
+		switch op.Token {
+		case scanner.EQ, scanner.GTE, scanner.LTE:
+			return l.Type == r.Type, nil
+		case scanner.GT, scanner.LT:
+			return false, nil
+		}
+	}
 
 	// if same type, no conversion needed
 	if l.Type == r.Type || (l.Type == value.String && r.Type == value.Bytes) || (r.Type == value.String && l.Type == value.Bytes) {
