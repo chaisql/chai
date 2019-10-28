@@ -286,18 +286,18 @@ func buildIndexName(name string) string {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Options) (*Index, error) {
+func (tx Tx) CreateIndex(opts index.Options) (*Index, error) {
 	it, err := tx.GetTable(indexTable)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = tx.GetTable(tableName)
+	_, err = tx.GetTable(opts.TableName)
 	if err != nil {
 		return nil, err
 	}
 
-	idxName := buildIndexName(indexName)
+	idxName := buildIndexName(opts.IndexName)
 
 	_, err = it.GetRecord([]byte(idxName))
 	if err == nil {
@@ -308,9 +308,9 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 	}
 
 	idxOpts := indexOptions{
-		IndexName: indexName,
-		TableName: tableName,
-		FieldName: fieldName,
+		IndexName: opts.IndexName,
+		TableName: opts.TableName,
+		FieldName: opts.FieldName,
 		Unique:    opts.Unique,
 	}
 
@@ -319,21 +319,8 @@ func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Opti
 		return nil, err
 	}
 
-	err = tx.tx.CreateStore(idxName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create index %q on table %q", fieldName, tableName)
-	}
-
-	s, err := tx.tx.Store(idxName)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
 	return &Index{
-		Index:     index.New(s, index.Options{Unique: idxOpts.Unique}),
+		Index:     index.New(tx.tx, opts),
 		IndexName: idxOpts.IndexName,
 		TableName: idxOpts.TableName,
 		FieldName: idxOpts.FieldName,
@@ -350,16 +337,13 @@ func (tx Tx) GetIndex(name string) (*Index, error) {
 		return nil, err
 	}
 
-	s, err := tx.tx.Store(indexName)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
 	return &Index{
-		Index:     index.New(s, index.Options{Unique: opts.Unique}),
+		Index: index.New(tx.tx, index.Options{
+			IndexName: opts.IndexName,
+			TableName: opts.TableName,
+			FieldName: opts.FieldName,
+			Unique:    opts.Unique,
+		}),
 		IndexName: opts.IndexName,
 		TableName: opts.TableName,
 		FieldName: opts.FieldName,
@@ -375,6 +359,12 @@ func (tx Tx) DropIndex(name string) error {
 	}
 
 	indexName := buildIndexName(name)
+
+	opts, err := readIndexOptions(&tx, indexName)
+	if err != nil {
+		return err
+	}
+
 	err = it.Delete([]byte(indexName))
 	if err == ErrRecordNotFound {
 		return ErrIndexNotFound
@@ -383,11 +373,12 @@ func (tx Tx) DropIndex(name string) error {
 		return err
 	}
 
-	err = tx.tx.DropStore(indexName)
-	if err == engine.ErrStoreNotFound {
-		return ErrIndexNotFound
-	}
-	return err
+	return index.New(tx.tx, index.Options{
+		IndexName: opts.IndexName,
+		TableName: opts.TableName,
+		FieldName: opts.FieldName,
+		Unique:    opts.Unique,
+	}).Truncate()
 }
 
 // A Table represents a collection of records.
@@ -490,7 +481,7 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 			continue
 		}
 
-		err = idx.Set(f.Data, key)
+		err = idx.Set(f.Value, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
 				return nil, ErrDuplicateRecord
@@ -517,7 +508,7 @@ func (t Table) Delete(key []byte) error {
 			return err
 		}
 
-		err = idx.Delete(f.Data, key)
+		err = idx.Delete(f.Value, key)
 		if err != nil {
 			return err
 		}
@@ -552,7 +543,7 @@ func (t Table) Replace(key []byte, r record.Record) error {
 			return err
 		}
 
-		err = idx.Delete(f.Data, key)
+		err = idx.Delete(f.Value, key)
 		if err != nil {
 			return err
 		}
@@ -577,7 +568,7 @@ func (t Table) Replace(key []byte, r record.Record) error {
 			continue
 		}
 
-		err = idx.Set(f.Data, key)
+		err = idx.Set(f.Value, key)
 		if err != nil {
 			return err
 		}
@@ -622,26 +613,23 @@ func (t Table) Indexes() (map[string]Index, error) {
 			return bytes.Equal(f.Data, tableName), nil
 		}).
 		Iterate(func(r record.Record) error {
-			var opt indexOptions
-			err := opt.ScanRecord(r)
+			var opts indexOptions
+			err := opts.ScanRecord(r)
 			if err != nil {
 				return err
 			}
 
-			s, err := t.tx.tx.Store(buildIndexName(opt.IndexName))
-			if err == engine.ErrStoreNotFound {
-				return ErrIndexNotFound
-			}
-			if err != nil {
-				return err
-			}
-
-			indexes[opt.FieldName] = Index{
-				Index:     index.New(s, index.Options{Unique: opt.Unique}),
-				IndexName: opt.IndexName,
-				TableName: opt.TableName,
-				FieldName: opt.FieldName,
-				Unique:    opt.Unique,
+			indexes[opts.FieldName] = Index{
+				Index: index.New(t.tx.tx, index.Options{
+					IndexName: opts.IndexName,
+					TableName: opts.TableName,
+					FieldName: opts.FieldName,
+					Unique:    opts.Unique,
+				}),
+				IndexName: opts.IndexName,
+				TableName: opts.TableName,
+				FieldName: opts.FieldName,
+				Unique:    opts.Unique,
 			}
 
 			return nil

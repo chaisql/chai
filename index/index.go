@@ -71,6 +71,9 @@ type Index interface {
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
 	DescendLessOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error
+
+	// Truncate deletes all the index data.
+	Truncate() error
 }
 
 func buildIndexName(name string, t Type) string {
@@ -219,6 +222,20 @@ func (i *listIndex) DescendLessOrEqual(pivot value.Value, fn func(val value.Valu
 	})
 }
 
+func (i *listIndex) Truncate() error {
+	err := dropStore(i.tx, Float, i.opts)
+	if err != nil {
+		return err
+	}
+
+	err = dropStore(i.tx, Bytes, i.opts)
+	if err != nil {
+		return err
+	}
+
+	return dropStore(i.tx, Bool, i.opts)
+}
+
 // uniqueIndex is an implementation that associates a value with a exactly one key.
 type uniqueIndex struct {
 	tx   engine.Transaction
@@ -315,6 +332,20 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot value.Value, fn func(val value.Va
 	})
 }
 
+func (i *uniqueIndex) Truncate() error {
+	err := dropStore(i.tx, Float, i.opts)
+	if err != nil {
+		return err
+	}
+
+	err = dropStore(i.tx, Bytes, i.opts)
+	if err != nil {
+		return err
+	}
+
+	return dropStore(i.tx, Bool, i.opts)
+}
+
 func encodeFieldToIndexValue(val value.Value) ([]byte, error) {
 	if len(val.Data) > 0 && value.IsNumber(val.Type) && val.Type != value.Float64 {
 		x, err := val.DecodeToFloat64()
@@ -369,4 +400,18 @@ func getStore(tx engine.Transaction, t value.Type, opts Options) (engine.Store, 
 	}
 
 	return nil, err
+}
+
+func dropStore(tx engine.Transaction, t Type, opts Options) error {
+	idxName := buildIndexName(opts.IndexName, t)
+	_, err := tx.Store(idxName)
+	if err != nil && err != engine.ErrStoreNotFound {
+		return err
+	}
+
+	if err == engine.ErrStoreNotFound {
+		return nil
+	}
+
+	return tx.DropStore(idxName)
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/value"
 )
 
 type queryPlan struct {
@@ -36,12 +37,7 @@ type queryOptimizer struct {
 }
 
 func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue) (record.Stream, error) {
-	indexes, err := qo.t.Indexes()
-	if err != nil {
-		return record.Stream{}, err
-	}
-
-	qp := buildQueryPlan(indexes, whereExpr)
+	qp := buildQueryPlan(qo.t.indexes, whereExpr)
 	if qp.scanTable {
 		return record.NewStream(qo.t), nil
 	}
@@ -52,7 +48,7 @@ func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue)
 		args:  args,
 		op:    qp.tree.op,
 		e:     qp.tree.e,
-		index: indexes[qp.tree.indexedField.Name()],
+		index: qo.t.indexes[qp.tree.indexedField.Name()],
 	}), nil
 }
 
@@ -161,10 +157,22 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 		return errors.New("expression doesn't evaluate to scalar")
 	}
 
+	var data []byte
+	if value.IsNumber(v.Value.Type) {
+		x, err := v.Value.DecodeToFloat64()
+		if err != nil {
+			return err
+		}
+
+		data = value.NewFloat64(x).Data
+	} else {
+		data = v.Value.Data
+	}
+
 	switch it.op {
 	case scanner.EQ:
-		err = it.index.AscendGreaterOrEqual(v.Value.Data, func(value []byte, key []byte) error {
-			if bytes.Equal(v.Value.Data, value) {
+		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+			if bytes.Equal(data, val.Data) {
 				r, err := it.tb.GetRecord(key)
 				if err != nil {
 					return err
@@ -176,8 +184,8 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return errStop
 		})
 	case scanner.GT:
-		err = it.index.AscendGreaterOrEqual(v.Value.Data, func(value []byte, key []byte) error {
-			if bytes.Equal(v.Value.Data, value) {
+		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+			if bytes.Equal(v.Value.Data, val.Data) {
 				return nil
 			}
 
@@ -189,7 +197,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.GTE:
-		err = it.index.AscendGreaterOrEqual(v.Value.Data, func(value []byte, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err
@@ -198,8 +206,8 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LT:
-		err = it.index.DescendLessOrEqual(v.Value.Data, func(value []byte, key []byte) error {
-			if bytes.Equal(v.Value.Data, value) {
+		err = it.index.DescendLessOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+			if bytes.Equal(v.Value.Data, val.Data) {
 				return nil
 			}
 
@@ -211,7 +219,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LTE:
-		err = it.index.DescendLessOrEqual(v.Value.Data, func(value []byte, key []byte) error {
+		err = it.index.DescendLessOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err

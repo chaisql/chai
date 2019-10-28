@@ -20,3 +20,6 @@ vendor/
 # Benchmark and profiling files
 *.png
 profile.*
+
+# Databases
+*.db

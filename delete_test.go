@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/record/recordutil"
+	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
@@ -72,7 +72,7 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = recordutil.IteratorToCSV(&buf, st)
+			err = record.IteratorToCSV(&buf, st)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 		})

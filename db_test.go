@@ -155,7 +155,9 @@ func TestTxCreateIndex(t *testing.T) {
 		_, err := tx.CreateTable("test")
 		require.NoError(t, err)
 
-		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		idx, err := tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.NoError(t, err)
 		require.NotNil(t, idx)
 	})
@@ -167,10 +169,14 @@ func TestTxCreateIndex(t *testing.T) {
 		_, err := tx.CreateTable("test")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.Equal(t, genji.ErrIndexAlreadyExists, err)
 	})
 
@@ -178,7 +184,9 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		_, err := tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.Equal(t, genji.ErrTableNotFound, err)
 	})
 }
@@ -191,7 +199,9 @@ func TestTxDropIndex(t *testing.T) {
 		_, err := tx.CreateTable("test")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.NoError(t, err)
 
 		err = tx.DropIndex("idxFoo")
@@ -404,7 +414,9 @@ func TestTableInsert(t *testing.T) {
 		_, err := tx.CreateTable("test")
 		require.NoError(t, err)
 
-		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		idx, err := tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.NoError(t, err)
 
 		tb, err := tx.GetTable("test")
@@ -418,9 +430,12 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, key)
 
+		f, err := foo.DecodeToFloat64()
+		require.NoError(t, err)
+		expected := value.NewFloat64(f)
 		var count int
-		err = idx.AscendGreaterOrEqual(nil, func(v, k []byte) error {
-			require.Equal(t, v, foo.Data)
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Float64), func(val value.Value, k []byte) error {
+			require.Equal(t, val, expected)
 			require.Equal(t, key, k)
 			count++
 			return nil
@@ -584,11 +599,26 @@ func TestTableIndexes(t *testing.T) {
 		_, err = tx.CreateTable("test2")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idx1a", "test1", "a", index.Options{Unique: true})
+		_, err = tx.CreateIndex(index.Options{
+			Unique:    true,
+			IndexName: "idx1a",
+			TableName: "test1",
+			FieldName: "a",
+		})
 		require.NoError(t, err)
-		_, err = tx.CreateIndex("idx1b", "test1", "b", index.Options{Unique: false})
+		_, err = tx.CreateIndex(index.Options{
+			Unique:    false,
+			IndexName: "idx1b",
+			TableName: "test1",
+			FieldName: "b",
+		})
 		require.NoError(t, err)
-		_, err = tx.CreateIndex("ifx2a", "test2", "a", index.Options{Unique: false})
+		_, err = tx.CreateIndex(index.Options{
+			Unique:    false,
+			IndexName: "ifx2a",
+			TableName: "test2",
+			FieldName: "a",
+		})
 		require.NoError(t, err)
 
 		m, err := tb.Indexes()
