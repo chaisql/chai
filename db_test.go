@@ -220,6 +220,149 @@ func TestTxDropIndex(t *testing.T) {
 	})
 }
 
+func TestTxReIndex(t *testing.T) {
+	newTestTableFn := func(t *testing.T) (*genji.Tx, *genji.Table, func()) {
+		tx, cleanup := newTestDB(t)
+		tb, err := tx.CreateTable("test")
+		require.NoError(t, err)
+
+		for i := 0; i < 10; i++ {
+			_, err = tb.Insert(record.NewFieldBuffer(
+				record.NewIntField("a", i),
+				record.NewIntField("b", i*10),
+			))
+			require.NoError(t, err)
+		}
+
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "a",
+			TableName: "test",
+			FieldName: "a",
+		})
+		require.NoError(t, err)
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "b",
+			TableName: "test",
+			FieldName: "b",
+		})
+		require.NoError(t, err)
+
+		return tx, tb, cleanup
+	}
+
+	t.Run("Should fail if not found", func(t *testing.T) {
+		tx, _, cleanup := newTestTableFn(t)
+		defer cleanup()
+
+		err := tx.ReIndex("foo")
+		require.Equal(t, genji.ErrIndexNotFound, err)
+	})
+
+	t.Run("Should reindex the right index", func(t *testing.T) {
+		tx, _, cleanup := newTestTableFn(t)
+		defer cleanup()
+
+		err := tx.ReIndex("a")
+		require.NoError(t, err)
+
+		idx, err := tx.GetIndex("a")
+		require.NoError(t, err)
+
+		var i int
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			require.Equal(t, value.NewFloat64(float64(i)), val)
+			i++
+			return nil
+		})
+		require.Equal(t, 10, i)
+		require.NoError(t, err)
+
+		idx, err = tx.GetIndex("b")
+		require.NoError(t, err)
+
+		i = 0
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			i++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Zero(t, i)
+	})
+}
+
+func TestReIndexAll(t *testing.T) {
+	t.Run("Should succeed if not indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.ReIndexAll()
+		require.NoError(t, err)
+	})
+
+	t.Run("Should reindex all indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		tb1, err := tx.CreateTable("test1")
+		require.NoError(t, err)
+		tb2, err := tx.CreateTable("test2")
+		require.NoError(t, err)
+
+		for i := 0; i < 10; i++ {
+			_, err = tb1.Insert(record.NewFieldBuffer(
+				record.NewIntField("a", i),
+				record.NewIntField("b", i*10),
+			))
+			require.NoError(t, err)
+			_, err = tb2.Insert(record.NewFieldBuffer(
+				record.NewIntField("a", i),
+				record.NewIntField("b", i*10),
+			))
+			require.NoError(t, err)
+		}
+
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "t1a",
+			TableName: "test1",
+			FieldName: "a",
+		})
+		require.NoError(t, err)
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "t2a",
+			TableName: "test2",
+			FieldName: "a",
+		})
+		require.NoError(t, err)
+
+		err = tx.ReIndexAll()
+		require.NoError(t, err)
+
+		idx, err := tx.GetIndex("t1a")
+		require.NoError(t, err)
+
+		var i int
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			require.Equal(t, value.NewFloat64(float64(i)), val)
+			i++
+			return nil
+		})
+		require.Equal(t, 10, i)
+		require.NoError(t, err)
+
+		idx, err = tx.GetIndex("t2a")
+		require.NoError(t, err)
+
+		i = 0
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			require.Equal(t, value.NewFloat64(float64(i)), val)
+			i++
+			return nil
+		})
+		require.Equal(t, 10, i)
+		require.NoError(t, err)
+	})
+}
+
 func newRecord() record.FieldBuffer {
 	return record.FieldBuffer([]record.Field{
 		record.NewStringField("fielda", "a"),
