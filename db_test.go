@@ -849,7 +849,11 @@ func TestTxListTables(t *testing.T) {
 		_, err = tx.CreateTable("b")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxa", "a", "foo", index.Options{})
+		_, err = tx.CreateIndex(index.Options{
+			IndexName: "idxa",
+			TableName: "a",
+			FieldName: "foo",
+		})
 		require.NoError(t, err)
 
 		list, err := tx.ListTables()
