@@ -42,7 +42,8 @@ type executor struct {
 }
 
 func (e *executor) Execute(in string) {
-	switch in {
+	cmd := strings.TrimRight(in, ";")
+	switch cmd {
 	case ".tables":
 		err := e.TablesCmd()
 		if err != nil {
