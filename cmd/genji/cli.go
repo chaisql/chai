@@ -6,9 +6,13 @@ import (
 	"strings"
 
 	"github.com/asdine/genji"
+	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/engine/badger"
+	"github.com/asdine/genji/engine/bolt"
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
 	"github.com/c-bata/go-prompt"
+	bdg "github.com/dgraph-io/badger"
 )
 
 var suggestions = []prompt.Suggest{
@@ -96,12 +100,38 @@ func (e *executor) ChangeLivePrefix() (string, bool) {
 	return e.LivePrefix, e.IsEnable
 }
 
-func runGenjiClient() error {
-	db, err := genji.New(memory.NewEngine())
+func runGenjiClient(ngName, dbPath string) error {
+	var ng engine.Engine
+	var err error
+
+	switch ngName {
+	case "memory":
+		ng = memory.NewEngine()
+	case "bolt":
+		ng, err = bolt.NewEngine(dbPath, 0660, nil)
+	case "badger":
+		opts := bdg.DefaultOptions(dbPath)
+		opts.Logger = nil
+		ng, err = badger.NewEngine(opts)
+	}
+	if err != nil {
+		return err
+	}
+
+	db, err := genji.New(ng)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	switch ngName {
+	case "memory":
+		fmt.Println("Opened in-memory database.")
+	case "bolt":
+		fmt.Printf("Opened on-disk database using BoltDB engine at path %s.\n", dbPath)
+	case "badger":
+		fmt.Printf("Opened on-disk database using Badger engine at path %s.\n", dbPath)
+	}
 
 	e := executor{
 		db: db,

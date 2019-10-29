@@ -15,6 +15,17 @@ func main() {
 	app.Usage = "Toolkit for the Genji database"
 	app.Version = "v0.3.0"
 	app.EnableBashCompletion = true
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "bolt",
+			Usage: "use bolt engine",
+		},
+		cli.BoolFlag{
+			Name:  "badger",
+			Usage: "use badger engine",
+		},
+	}
+
 	app.Commands = []cli.Command{
 		{
 			Name:    "generate",
@@ -53,7 +64,29 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return runGenjiClient()
+		useBolt := c.Bool("bolt")
+		useBadger := c.Bool("badger")
+		if useBolt && useBadger {
+			return cli.NewExitError("cannot use bolt and badger options at the same time", 2)
+		}
+
+		dbpath := c.Args().First()
+
+		if (useBolt || useBadger) && dbpath == "" {
+			return cli.NewExitError("db path required when using bolt or badger", 2)
+		}
+
+		engine := "memory"
+
+		if useBolt || dbpath != "" {
+			engine = "bolt"
+		}
+
+		if useBadger {
+			engine = "badger"
+		}
+
+		return runGenjiClient(engine, dbpath)
 	}
 
 	err := app.Run(os.Args)

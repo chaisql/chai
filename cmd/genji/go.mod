@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/asdine/genji v0.2.1
 	github.com/c-bata/go-prompt v0.2.3
+	github.com/dgraph-io/badger v1.6.0
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5 // indirect
 	github.com/mattn/go-tty v0.0.0-20190424173100-523744f04859 // indirect
