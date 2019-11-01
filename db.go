@@ -106,6 +106,11 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 		return nil, err
 	}
 
+	tx.indexStore, err = tx.getIndexStore()
+	if err != nil {
+		return nil, err
+	}
+
 	return &tx, nil
 }
 
@@ -189,10 +194,11 @@ func (db DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
-	db        *DB
-	tx        engine.Transaction
-	writable  bool
-	tcfgStore *tableConfigStore
+	db         *DB
+	tx         engine.Transaction
+	writable   bool
+	tcfgStore  *tableConfigStore
+	indexStore *indexStore
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -278,10 +284,12 @@ func (tx Tx) CreateTable(name string, cfg *TableConfig) error {
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) GetTable(name string) (*Table, error) {
-	s, err := tx.tx.Store(name)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrTableNotFound
+	cfg, err := tx.tcfgStore.Get(name)
+	if err != nil {
+		return nil, err
 	}
+
+	s, err := tx.tx.Store(name)
 	if err != nil {
 		return nil, err
 	}
@@ -290,16 +298,18 @@ func (tx Tx) GetTable(name string) (*Table, error) {
 		tx:    &tx,
 		store: s,
 		name:  name,
+		cfg:   cfg,
 	}, nil
 }
 
 // DropTable deletes a table from the database.
 func (tx Tx) DropTable(name string) error {
-	err := tx.tx.DropStore(name)
-	if err == engine.ErrStoreNotFound {
-		return ErrTableNotFound
+	err := tx.tcfgStore.Delete(name)
+	if err != nil {
+		return err
 	}
-	return err
+
+	return tx.tx.DropStore(name)
 }
 
 func buildIndexName(name string) string {
@@ -314,23 +324,8 @@ func buildIndexName(name string) string {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx Tx) CreateIndex(opts index.Options) error {
-	it, err := tx.GetTable(indexStoreName)
+	_, err := tx.GetTable(opts.TableName)
 	if err != nil {
-		return err
-	}
-
-	_, err = tx.GetTable(opts.TableName)
-	if err != nil {
-		return err
-	}
-
-	idxName := buildIndexName(opts.IndexName)
-
-	_, err = it.GetRecord([]byte(idxName))
-	if err == nil {
-		return ErrIndexAlreadyExists
-	}
-	if err != ErrRecordNotFound {
 		return err
 	}
 
@@ -341,16 +336,12 @@ func (tx Tx) CreateIndex(opts index.Options) error {
 		Unique:    opts.Unique,
 	}
 
-	_, err = it.Insert(&idxOpts)
-
-	return err
+	return tx.indexStore.Insert(idxOpts)
 }
 
 // GetIndex returns an index by name.
 func (tx Tx) GetIndex(name string) (*Index, error) {
-	indexName := buildIndexName(name)
-
-	opts, err := readIndexOptions(&tx, indexName)
+	opts, err := tx.indexStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -371,22 +362,11 @@ func (tx Tx) GetIndex(name string) (*Index, error) {
 
 // DropIndex deletes an index from the database.
 func (tx Tx) DropIndex(name string) error {
-	it, err := tx.GetTable(indexStoreName)
+	opts, err := tx.indexStore.Get(name)
 	if err != nil {
 		return err
 	}
-
-	indexName := buildIndexName(name)
-
-	opts, err := readIndexOptions(&tx, indexName)
-	if err != nil {
-		return err
-	}
-
-	err = it.Delete([]byte(indexName))
-	if err == ErrRecordNotFound {
-		return ErrIndexNotFound
-	}
+	err = tx.indexStore.Delete(name)
 	if err != nil {
 		return err
 	}
@@ -428,14 +408,9 @@ func (tx Tx) ReIndex(indexName string) error {
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (tx Tx) ReIndexAll() error {
-	it, err := tx.GetTable(indexStoreName)
-	if err != nil {
-		return err
-	}
-
-	return it.Iterate(func(r record.Record) error {
+	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
 		var opts indexOptions
-		err = opts.ScanRecord(r)
+		err := opts.ScanRecord(record.EncodedRecord(v))
 		if err != nil {
 			return err
 		}
@@ -473,6 +448,7 @@ type Table struct {
 	tx    *Tx
 	store engine.Store
 	name  string
+	cfg   *TableConfig
 }
 
 type encodedRecordWithKey struct {
@@ -813,29 +789,6 @@ func (i *indexOptions) ScanRecord(rec record.Record) error {
 	})
 }
 
-func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
-	it, err := tx.GetTable(indexStoreName)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := it.GetRecord([]byte(indexName))
-	if err != nil {
-		if err == ErrRecordNotFound {
-			return nil, ErrIndexNotFound
-		}
-
-		return nil, err
-	}
-	var idxopts indexOptions
-	err = idxopts.ScanRecord(r)
-	if err != nil {
-		return nil, err
-	}
-
-	return &idxopts, nil
-}
-
 // Index of a table field. Contains information about
 // the index configuration and provides methods to manipulate the index.
 type Index struct {
@@ -845,6 +798,66 @@ type Index struct {
 	TableName string
 	FieldName string
 	Unique    bool
+}
+
+type indexStore struct {
+	st engine.Store
+}
+
+func (tx *Tx) getIndexStore() (*indexStore, error) {
+	st, err := tx.tx.Store(indexStoreName)
+	if err != nil {
+		return nil, err
+	}
+	return &indexStore{
+		st: st,
+	}, nil
+}
+
+func (t *indexStore) Insert(cfg indexOptions) error {
+	key := []byte(buildIndexName(cfg.IndexName))
+	_, err := t.st.Get(key)
+	if err == nil {
+		return ErrIndexAlreadyExists
+	}
+	if err != engine.ErrKeyNotFound {
+		return err
+	}
+
+	v, err := record.Encode(&cfg)
+	if err != nil {
+		return err
+	}
+
+	return t.st.Put(key, v)
+}
+
+func (t *indexStore) Get(indexName string) (*indexOptions, error) {
+	key := []byte(buildIndexName(indexName))
+	v, err := t.st.Get(key)
+	if err == engine.ErrKeyNotFound {
+		return nil, ErrIndexNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var idxopts indexOptions
+	err = idxopts.ScanRecord(record.EncodedRecord(v))
+	if err != nil {
+		return nil, err
+	}
+
+	return &idxopts, nil
+}
+
+func (t *indexStore) Delete(indexName string) error {
+	key := []byte(buildIndexName(indexName))
+	err := t.st.Delete(key)
+	if err == engine.ErrKeyNotFound {
+		return ErrIndexNotFound
+	}
+	return err
 }
 
 type tableConfigStore struct {
@@ -885,6 +898,9 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	key := []byte(tableName)
 	v, err := t.st.Get(key)
+	if err == engine.ErrKeyNotFound {
+		return nil, ErrTableNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -903,4 +919,13 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	}
 
 	return &cfg, nil
+}
+
+func (t *tableConfigStore) Delete(tableName string) error {
+	key := []byte(tableName)
+	err := t.st.Delete(key)
+	if err == engine.ErrKeyNotFound {
+		return ErrTableNotFound
+	}
+	return err
 }
