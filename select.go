@@ -196,12 +196,18 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 	}
 
 	if len(stmt.FieldSelectors) > 0 {
+		cfg, err := t.cfgStore.Get(t.name)
+		if err != nil {
+			return res, err
+		}
+
 		fieldNames := make([]string, len(stmt.FieldSelectors))
 		for i := range stmt.FieldSelectors {
 			fieldNames[i] = stmt.FieldSelectors[i].Name()
 		}
 		st = st.Map(func(r record.Record) (record.Record, error) {
 			return recordMask{
+				cfg:    cfg,
 				r:      r,
 				fields: fieldNames,
 			}, nil
@@ -212,6 +218,7 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 }
 
 type recordMask struct {
+	cfg    *TableConfig
 	r      record.Record
 	fields []string
 }
@@ -230,15 +237,28 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 
 func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	for _, n := range r.fields {
-		f, err := r.r.GetField(n)
-		if err != nil {
-			continue
+		if n == defaultPkName && r.cfg.PrimaryKey == "" {
+			var f record.Field
+			f.Type = value.Int
+			f.Data = r.r.(record.Keyer).Key()
+			f.Name = defaultPkName
+
+			err := fn(f)
+			if err != nil {
+				return err
+			}
+		} else {
+			f, err := r.r.GetField(n)
+			if err != nil {
+				continue
+			}
+
+			err = fn(f)
+			if err != nil {
+				return err
+			}
 		}
 
-		err = fn(f)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil

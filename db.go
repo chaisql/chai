@@ -18,6 +18,7 @@ var (
 	tableConfigStoreName      = "__genji.tables"
 	indexStoreName            = "__genji.indexes"
 	indexPrefix               = "i"
+	defaultPkName             = "_key"
 )
 
 // Open creates a Genji database and wraps it around a *sql.DB instance.
