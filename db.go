@@ -286,18 +286,11 @@ func (tx Tx) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	t := Table{
+	return &Table{
 		tx:    &tx,
 		store: s,
 		name:  name,
-	}
-
-	t.indexes, err = t.Indexes()
-	if err != nil {
-		return nil, err
-	}
-
-	return &t, nil
+	}, nil
 }
 
 // DropTable deletes a table from the database.
@@ -477,10 +470,9 @@ func (tx Tx) ReIndexAll() error {
 
 // A Table represents a collection of records.
 type Table struct {
-	tx      *Tx
-	store   engine.Store
-	name    string
-	indexes map[string]Index
+	tx    *Tx
+	store engine.Store
+	name  string
 }
 
 type encodedRecordWithKey struct {
@@ -569,7 +561,12 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 		return nil, err
 	}
 
-	for _, idx := range t.indexes {
+	indexes, err := t.Indexes()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			continue
@@ -596,7 +593,12 @@ func (t *Table) Delete(key []byte) error {
 		return err
 	}
 
-	for _, idx := range t.indexes {
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			return err
@@ -621,8 +623,13 @@ func (t *Table) Replace(key []byte, r record.Record) error {
 		return err
 	}
 
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
 	// remove key from indexes
-	for _, idx := range t.indexes {
+	for _, idx := range indexes {
 		f, err := old.GetField(idx.FieldName)
 		if err != nil {
 			return err
@@ -647,7 +654,7 @@ func (t *Table) Replace(key []byte, r record.Record) error {
 	}
 
 	// update indexes
-	for _, idx := range t.indexes {
+	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			continue
@@ -723,7 +730,6 @@ func (t *Table) Indexes() (map[string]Index, error) {
 		return nil, err
 	}
 
-	t.indexes = indexes
 	return indexes, nil
 }
 

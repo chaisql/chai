@@ -37,7 +37,12 @@ type queryOptimizer struct {
 }
 
 func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue) (record.Stream, error) {
-	qp := buildQueryPlan(qo.t.indexes, whereExpr)
+	indexes, err := qo.t.Indexes()
+	if err != nil {
+		return record.Stream{}, err
+	}
+
+	qp := buildQueryPlan(indexes, whereExpr)
 	if qp.scanTable {
 		return record.NewStream(qo.t), nil
 	}
@@ -48,7 +53,7 @@ func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue)
 		args:  args,
 		op:    qp.tree.op,
 		e:     qp.tree.e,
-		index: qo.t.indexes[qp.tree.indexedField.Name()],
+		index: indexes[qp.tree.indexedField.Name()],
 	}), nil
 }
 
