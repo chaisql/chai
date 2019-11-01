@@ -40,7 +40,6 @@ func init() {
 		"record-Iterate":    recordIterateTmpl,
 		"record-ScanRecord": recordScanRecordTmpl,
 		"record-Scan":       recordScanTmpl,
-		"record-Pk":         recordPkTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))

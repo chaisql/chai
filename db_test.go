@@ -589,15 +589,6 @@ func TestTableInsert(t *testing.T) {
 	})
 }
 
-type recordPker struct {
-	record.FieldBuffer
-	pkGenerator func() ([]byte, error)
-}
-
-func (r recordPker) PrimaryKey() ([]byte, error) {
-	return r.pkGenerator()
-}
-
 // TestTableDelete verifies Delete behaviour.
 func TestTableDelete(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {

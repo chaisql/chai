@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
@@ -158,66 +157,4 @@ func (b *basic) Scan(src interface{}) error {
 	}
 
 	return b.ScanRecord(rr)
-}
-
-// GetField implements the field method of the record.Record interface.
-func (p *Pk) GetField(name string) (record.Field, error) {
-	switch name {
-	case "A":
-		return record.NewStringField("A", p.A), nil
-	case "B":
-		return record.NewInt64Field("B", p.B), nil
-	}
-
-	return record.Field{}, errors.New("unknown field")
-}
-
-// Iterate through all the fields one by one and pass each of them to the given function.
-// It the given function returns an error, the iteration is interrupted.
-func (p *Pk) Iterate(fn func(record.Field) error) error {
-	var err error
-
-	err = fn(record.NewStringField("A", p.A))
-	if err != nil {
-		return err
-	}
-
-	err = fn(record.NewInt64Field("B", p.B))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func (p *Pk) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f record.Field) error {
-		var err error
-
-		switch f.Name {
-		case "A":
-			p.A, err = f.DecodeToString()
-		case "B":
-			p.B, err = f.DecodeToInt64()
-		}
-		return err
-	})
-}
-
-// Scan extracts fields from src and assigns them to the struct fields.
-// It implements the driver.Scanner interface.
-func (p *Pk) Scan(src interface{}) error {
-	rr, ok := src.(record.Record)
-	if !ok {
-		return errors.New("unable to scan record from src")
-	}
-
-	return p.ScanRecord(rr)
-}
-
-// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
-func (p *Pk) PrimaryKey() ([]byte, error) {
-	return value.EncodeInt64(p.B), nil
 }

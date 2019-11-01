@@ -27,7 +27,6 @@ const recordTmpl = `
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Scan" . }}
-{{- template "record-Pk" . }}
 {{- end }}
 `
 
@@ -110,20 +109,6 @@ func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
 
 	return {{$fl}}.ScanRecord(rr)
 }
-{{ end }}
-`
-
-const recordPkTmpl = `
-{{ define "record-Pk" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-
-{{- if ne .Pk.Name ""}}
-// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
-func ({{$fl}} *{{$structName}}) PrimaryKey() ([]byte, error) {
-	return value.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
-}
-{{- end}}
 {{ end }}
 `
 

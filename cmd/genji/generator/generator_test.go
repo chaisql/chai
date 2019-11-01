@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asdine/genji"
 	"github.com/asdine/genji/cmd/genji/generator/testdata"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
@@ -27,7 +26,6 @@ func TestGenerate(t *testing.T) {
 		structs := []Struct{
 			{"Basic"},
 			{"basic"},
-			{"Pk"},
 		}
 
 		f, err := os.Open("testdata/structs.go")
@@ -249,18 +247,5 @@ func TestGeneratedRecords(t *testing.T) {
 		err = r2.Scan(&r)
 		require.NoError(t, err)
 		require.Equal(t, r, r2)
-	})
-
-	t.Run("Pk", func(t *testing.T) {
-		r := testdata.Pk{
-			A: "A", B: 10,
-		}
-
-		require.Implements(t, (*record.Record)(nil), &r)
-		require.Implements(t, (*genji.PrimaryKeyer)(nil), &r)
-
-		pk, err := r.PrimaryKey()
-		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(10), pk)
 	})
 }
