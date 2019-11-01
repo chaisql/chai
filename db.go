@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	entropy               = rand.New(rand.NewSource(time.Now().UnixNano()))
-	separator        byte = 0x1F
-	tableConfigTable      = "__genji.tables"
-	indexTable            = "__genji.indexes"
-	indexPrefix           = "i"
+	entropy                   = rand.New(rand.NewSource(time.Now().UnixNano()))
+	separator            byte = 0x1F
+	tableConfigStoreName      = "__genji.tables"
+	indexStoreName            = "__genji.indexes"
+	indexPrefix               = "i"
 )
 
 // Open creates a Genji database and wraps it around a *sql.DB instance.
@@ -53,17 +53,17 @@ func New(ng engine.Engine) (*DB, error) {
 	}
 
 	err := db.Update(func(tx *Tx) error {
-		_, err := tx.tx.Store(tableConfigTable)
+		_, err := tx.tx.Store(tableConfigStoreName)
 		if err == engine.ErrStoreNotFound {
-			err = tx.tx.CreateStore(tableConfigTable)
+			err = tx.tx.CreateStore(tableConfigStoreName)
 		}
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.GetTable(indexTable)
+		_, err = tx.GetTable(indexStoreName)
 		if err == ErrTableNotFound {
-			_, err = tx.CreateTable(indexTable, nil)
+			_, err = tx.CreateTable(indexStoreName, nil)
 		}
 		return err
 	})
@@ -313,7 +313,7 @@ func buildIndexName(name string) string {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx Tx) CreateIndex(opts index.Options) (*Index, error) {
-	it, err := tx.GetTable(indexTable)
+	it, err := tx.GetTable(indexStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func (tx Tx) GetIndex(name string) (*Index, error) {
 
 // DropIndex deletes an index from the database.
 func (tx Tx) DropIndex(name string) error {
-	it, err := tx.GetTable(indexTable)
+	it, err := tx.GetTable(indexStoreName)
 	if err != nil {
 		return err
 	}
@@ -436,7 +436,7 @@ func (tx Tx) ReIndex(indexName string) error {
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (tx Tx) ReIndexAll() error {
-	it, err := tx.GetTable(indexTable)
+	it, err := tx.GetTable(indexStoreName)
 	if err != nil {
 		return err
 	}
@@ -675,7 +675,7 @@ func (t *Table) TableName() string {
 
 // Indexes returns a map of all the indexes of a table.
 func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.tx.Store(indexTable)
+	s, err := t.tx.tx.Store(indexStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -683,7 +683,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	tb := Table{
 		tx:    t.tx,
 		store: s,
-		name:  indexTable,
+		name:  indexStoreName,
 	}
 
 	tableName := []byte(t.name)
@@ -809,7 +809,7 @@ func (i *indexOptions) ScanRecord(rec record.Record) error {
 }
 
 func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
-	it, err := tx.GetTable(indexTable)
+	it, err := tx.GetTable(indexStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -847,7 +847,7 @@ type tableConfigStore struct {
 }
 
 func (tx *Tx) getTableConfigStore() (*tableConfigStore, error) {
-	st, err := tx.tx.Store(tableConfigTable)
+	st, err := tx.tx.Store(tableConfigStoreName)
 	if err != nil {
 		return nil, err
 	}
