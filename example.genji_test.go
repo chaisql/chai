@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
@@ -68,15 +67,10 @@ func (u *User) ScanRecord(rec record.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (u *User) Scan(src interface{}) error {
-	r, ok := src.(record.Record)
+	rr, ok := src.(record.Record)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
 
-	return u.ScanRecord(r)
-}
-
-// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
-func (u *User) PrimaryKey() ([]byte, error) {
-	return value.EncodeInt64(u.ID), nil
+	return u.ScanRecord(rr)
 }

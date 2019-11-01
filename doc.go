@@ -194,13 +194,10 @@ In order to simplify these implementation, Genji provides a command line code ge
 Let's assume that there is a file named user.go containing the following type:
 
   type User struct {
-	  ID   int64  `genji:"pk"`
+	  ID   int64
 	  Name string
 	  Age  uint32
   }
-
-Note that even if struct tags are defined, Genji won't use reflection. They will be parsed by the genji command-line tool
-to generate code based on them.
 
 The genji command line can be used as follows to generate the code:
 

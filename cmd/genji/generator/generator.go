@@ -175,11 +175,6 @@ func (g *genContext) selectImports() {
 		m["errors"]++
 		m["github.com/asdine/genji/record"]++
 	}
-	for _, r := range g.Records {
-		if r.Pk.Name != "" {
-			m["github.com/asdine/genji/value"]++
-		}
-	}
 
 	g.Imports = make([]string, 0, len(m))
 	for k := range m {

@@ -12,7 +12,7 @@ import (
 )
 
 type User struct {
-	ID   int64 `genji:"pk"`
+	ID   int64
 	Name string
 	Age  uint32
 }

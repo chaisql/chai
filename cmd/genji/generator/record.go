@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"reflect"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -117,9 +115,6 @@ type recordContext struct {
 	Fields []struct {
 		Name, Type, GoType string
 	}
-	Pk struct {
-		Name, Type, GoType string
-	}
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
@@ -180,13 +175,6 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 					name.String(), value.TypeFromGoType(typeName).String(), typeName,
 				})
 			}
-
-			if fd.Tag != nil {
-				err := handleGenjiTag(rctx, fd)
-				if err != nil {
-					return false, err
-				}
-			}
 		}
 
 		return true, nil
@@ -238,35 +226,4 @@ func (rctx *recordContext) Unexport(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToLower(rune(n[0])))
 	return string(name)
-}
-
-func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
-	unquoted, err := strconv.Unquote(fd.Tag.Value)
-	if err != nil {
-		return err
-	}
-
-	v, ok := reflect.StructTag(unquoted).Lookup("genji")
-	if !ok {
-		return nil
-	}
-
-	gtags := strings.Split(v, ",")
-
-	for _, gtag := range gtags {
-		switch gtag {
-		case "pk":
-			if ctx.Pk.Name != "" {
-				return errors.New("only one pk field is allowed")
-			}
-
-			ctx.Pk.Name = fd.Names[0].Name
-			ctx.Pk.Type = value.TypeFromGoType(fd.Type.(*ast.Ident).Name).String()
-			ctx.Pk.GoType = fd.Type.(*ast.Ident).Name
-		default:
-			return fmt.Errorf("unsupported genji tag '%s'", gtag)
-		}
-	}
-
-	return nil
 }

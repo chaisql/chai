@@ -148,43 +148,6 @@ func (m mapRecord) GetField(name string) (Field, error) {
 	return NewField(name, v)
 }
 
-// NewWithPK creates a record that implements the genji.Pker and Keyer interfaces
-// and uses pkfn to return the primary key for this record.
-// pkfn doesn't have to be idempotent: it will be called at most once and its result will be cached.
-// Subsequent calls to Pk and Key will use the cached result.
-// pkfn must always return a non nil, non empty slice.
-func NewWithPK(r Record, pkfn func() ([]byte, error)) Record {
-	return &recordWithPk{
-		Record: r,
-		pkfn:   pkfn,
-	}
-}
-
-type recordWithPk struct {
-	Record
-
-	pkfn func() ([]byte, error)
-	pk   []byte
-}
-
-func (r *recordWithPk) PrimaryKey() ([]byte, error) {
-	if r.pk != nil {
-		return r.pk, nil
-	}
-
-	var err error
-	r.pk, err = r.pkfn()
-	return r.pk, err
-}
-
-func (r recordWithPk) Key() []byte {
-	pk, err := r.PrimaryKey()
-	if err != nil {
-		panic(err)
-	}
-	return pk
-}
-
 // Dump is a helper that dumps the name, type and value of each field of a record into the given writer.
 func Dump(w io.Writer, r Record) error {
 	return r.Iterate(func(f Field) error {
