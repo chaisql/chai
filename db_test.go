@@ -141,7 +141,7 @@ func newTestDB(t testing.TB) (*genji.Tx, func()) {
 func newTestTable(t testing.TB) (*genji.Table, func()) {
 	tx, fn := newTestDB(t)
 
-	tb, err := tx.CreateTable("test")
+	tb, err := tx.CreateTable("test", nil)
 	require.NoError(t, err)
 
 	return tb, fn
@@ -152,7 +152,7 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		_, err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
 		idx, err := tx.CreateIndex(index.Options{
@@ -166,7 +166,7 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		_, err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
 		_, err = tx.CreateIndex(index.Options{
@@ -196,7 +196,7 @@ func TestTxDropIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		_, err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
 		_, err = tx.CreateIndex(index.Options{
@@ -223,7 +223,7 @@ func TestTxDropIndex(t *testing.T) {
 func TestTxReIndex(t *testing.T) {
 	newTestTableFn := func(t *testing.T) (*genji.Tx, *genji.Table, func()) {
 		tx, cleanup := newTestDB(t)
-		tb, err := tx.CreateTable("test")
+		tb, err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
 		for i := 0; i < 10; i++ {
@@ -303,9 +303,9 @@ func TestReIndexAll(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		tb1, err := tx.CreateTable("test1")
+		tb1, err := tx.CreateTable("test1", nil)
 		require.NoError(t, err)
-		tb2, err := tx.CreateTable("test2")
+		tb2, err := tx.CreateTable("test2", nil)
 		require.NoError(t, err)
 
 		for i := 0; i < 10; i++ {
@@ -554,7 +554,7 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		_, err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
 		idx, err := tx.CreateIndex(index.Options{
@@ -737,9 +737,9 @@ func TestTableIndexes(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		tb, err := tx.CreateTable("test1")
+		tb, err := tx.CreateTable("test1", nil)
 		require.NoError(t, err)
-		_, err = tx.CreateTable("test2")
+		_, err = tx.CreateTable("test2", nil)
 		require.NoError(t, err)
 
 		_, err = tx.CreateIndex(index.Options{

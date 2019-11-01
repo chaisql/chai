@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	entropy          = rand.New(rand.NewSource(time.Now().UnixNano()))
-	separator   byte = 0x1F
-	indexTable       = "__genji.indexes"
-	indexPrefix      = "i"
+	entropy               = rand.New(rand.NewSource(time.Now().UnixNano()))
+	separator        byte = 0x1F
+	tableConfigTable      = "__genji.tables"
+	indexTable            = "__genji.indexes"
+	indexPrefix           = "i"
 )
 
 // Open creates a Genji database and wraps it around a *sql.DB instance.
@@ -52,9 +53,17 @@ func New(ng engine.Engine) (*DB, error) {
 	}
 
 	err := db.Update(func(tx *Tx) error {
-		_, err := tx.GetTable(indexTable)
+		_, err := tx.tx.Store(tableConfigTable)
+		if err == engine.ErrStoreNotFound {
+			err = tx.tx.CreateStore(tableConfigTable)
+		}
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.GetTable(indexTable)
 		if err == ErrTableNotFound {
-			_, err = tx.CreateTable(indexTable)
+			_, err = tx.CreateTable(indexTable, nil)
 		}
 		return err
 	})
@@ -227,14 +236,31 @@ func (tx *Tx) Exec(q string, args ...interface{}) error {
 	return res.Close()
 }
 
+// TableConfig holds the configuration of a table
+type TableConfig struct {
+	KeyName string
+}
+
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateTable(name string) (*Table, error) {
-	err := tx.tx.CreateStore(name)
+func (tx Tx) CreateTable(name string, cfg *TableConfig) (*Table, error) {
+	cs, err := tx.getTableConfigStore()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = cs.Get(name)
+	if err == nil {
+		return nil, ErrTableAlreadyExists
+	}
+	if err != engine.ErrKeyNotFound {
+		return nil, err
+	}
+
+	err = tx.tx.CreateStore(name)
 	if err == engine.ErrStoreAlreadyExists {
 		return nil, ErrTableAlreadyExists
 	}
-
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create table %q", name)
 	}
@@ -814,4 +840,62 @@ type Index struct {
 	TableName string
 	FieldName string
 	Unique    bool
+}
+
+type tableConfigStore struct {
+	st engine.Store
+}
+
+func (tx *Tx) getTableConfigStore() (*tableConfigStore, error) {
+	st, err := tx.tx.Store(tableConfigTable)
+	if err != nil {
+		return nil, err
+	}
+	return &tableConfigStore{
+		st: st,
+	}, nil
+}
+
+func (t *tableConfigStore) Insert(tableName string, cfg *TableConfig) error {
+	key := []byte(tableName)
+	_, err := t.st.Get(key)
+	if err == nil {
+		return ErrTableAlreadyExists
+	}
+	if err != engine.ErrKeyNotFound {
+		return err
+	}
+
+	var fb record.FieldBuffer
+	fb.Add(record.NewStringField("KeyName", cfg.KeyName))
+
+	v, err := record.Encode(&fb)
+	if err != nil {
+		return err
+	}
+
+	return t.st.Put(key, v)
+}
+
+func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
+	key := []byte(tableName)
+	v, err := t.st.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg TableConfig
+
+	r := record.EncodedRecord(v)
+
+	f, err := r.GetField("KeyName")
+	if err != nil {
+		return nil, err
+	}
+	cfg.KeyName, err = f.DecodeToString()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }
