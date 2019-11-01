@@ -3,7 +3,6 @@ package genji
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
@@ -53,10 +52,8 @@ func TestDeleteStmt(t *testing.T) {
 			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
 			require.NoError(t, err)
-			time.Sleep(time.Millisecond)
 			err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar1')")
 			require.NoError(t, err)
-			time.Sleep(time.Millisecond)
 			err = db.Exec("INSERT INTO test (d, b, e) VALUES ('foo3', 'bar2', 'bar3')")
 			require.NoError(t, err)
 

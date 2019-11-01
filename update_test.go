@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"testing"
-	"time"
 
 	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
@@ -82,10 +81,8 @@ func TestUpdateStmt(t *testing.T) {
 			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
 			require.NoError(t, err)
-			time.Sleep(time.Millisecond)
 			err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
 			require.NoError(t, err)
-			time.Sleep(time.Millisecond)
 			err = db.Exec("INSERT INTO test (d, e) VALUES ('foo3', 'bar3')")
 			require.NoError(t, err)
 

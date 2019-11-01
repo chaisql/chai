@@ -491,23 +491,25 @@ func TestTableInsert(t *testing.T) {
 		require.NotEqual(t, key1, key2)
 	})
 
-	t.Run("Should support PrimaryKeyer interface", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
+	t.Run("Should use the right field if key is specified", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		var counter int64
+		err := tx.CreateTable("test", &genji.TableConfig{
+			PrimaryKey: "foo",
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
 
-		rec := recordPker{
-			pkGenerator: func() ([]byte, error) {
-				counter += 2
-				return value.EncodeInt64(counter), nil
-			},
-		}
+		rec := record.NewFieldBuffer(
+			record.NewIntField("foo", 1),
+		)
 
 		// insert
 		key, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(2), key)
+		require.Equal(t, value.EncodeInt(1), key)
 
 		// make sure the record is fetchable using the returned key
 		_, err = tb.GetRecord(key)
@@ -515,13 +517,19 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again
 		key, err = tb.Insert(rec)
-		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(4), key)
+		require.Equal(t, genji.ErrDuplicateRecord, err)
 	})
 
-	t.Run("Should fail if Pk returns empty key", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
+	t.Run("Should fail if Pk not found in record or empty", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
 		defer cleanup()
+
+		err := tx.CreateTable("test", &genji.TableConfig{
+			PrimaryKey: "foo",
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
 
 		tests := [][]byte{
 			nil,
@@ -531,34 +539,14 @@ func TestTableInsert(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
-				rec := recordPker{
-					pkGenerator: func() ([]byte, error) {
-						return test, nil
-					},
-				}
+				rec := record.NewFieldBuffer(
+					record.NewBytesField("foo", test),
+				)
 
 				_, err := tb.Insert(rec)
 				require.Error(t, err)
 			})
 		}
-	})
-
-	t.Run("Should return ErrDuplicate if key already exists", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		rec := recordPker{
-			pkGenerator: func() ([]byte, error) {
-				return value.EncodeInt64(1), nil
-			},
-		}
-
-		// insert
-		_, err := tb.Insert(rec)
-		require.NoError(t, err)
-
-		_, err = tb.Insert(rec)
-		require.Equal(t, genji.ErrDuplicateRecord, err)
 	})
 
 	t.Run("Should update indexes if there are indexed fields", func(t *testing.T) {

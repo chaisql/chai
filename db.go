@@ -3,20 +3,17 @@ package genji
 import (
 	"bytes"
 	"database/sql"
-	"math/rand"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
-	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
 
 var (
-	entropy                   = rand.New(rand.NewSource(time.Now().UnixNano()))
 	separator            byte = 0x1F
 	tableConfigStoreName      = "__genji.tables"
 	indexStoreName            = "__genji.indexes"
@@ -44,6 +41,8 @@ func OpenDB(db *DB) (*sql.DB, error) {
 // DB is safe for concurrent use unless the given engine isn't.
 type DB struct {
 	ng engine.Engine
+
+	mu sync.Mutex
 }
 
 // New initializes the DB using the given engine.
@@ -83,20 +82,20 @@ func New(ng engine.Engine) (*DB, error) {
 }
 
 // Close the underlying engine.
-func (db DB) Close() error {
+func (db *DB) Close() error {
 	return db.ng.Close()
 }
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db DB) Begin(writable bool) (*Tx, error) {
+func (db *DB) Begin(writable bool) (*Tx, error) {
 	ntx, err := db.ng.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
 
 	tx := Tx{
-		db:       &db,
+		db:       db,
 		tx:       ntx,
 		writable: writable,
 	}
@@ -115,7 +114,7 @@ func (db DB) Begin(writable bool) (*Tx, error) {
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
-func (db DB) View(fn func(tx *Tx) error) error {
+func (db *DB) View(fn func(tx *Tx) error) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -126,7 +125,7 @@ func (db DB) View(fn func(tx *Tx) error) error {
 }
 
 // Update starts a read-write transaction, runs fn and automatically commits it.
-func (db DB) Update(fn func(tx *Tx) error) error {
+func (db *DB) Update(fn func(tx *Tx) error) error {
 	tx, err := db.Begin(true)
 	if err != nil {
 		return err
@@ -142,7 +141,7 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 }
 
 // Exec a query against the database without returning the result.
-func (db DB) Exec(q string, args ...interface{}) error {
+func (db *DB) Exec(q string, args ...interface{}) error {
 	res, err := db.Query(q, args...)
 	if err != nil {
 		return err
@@ -153,18 +152,18 @@ func (db DB) Exec(q string, args ...interface{}) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db DB) Query(q string, args ...interface{}) (*Result, error) {
+func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
 	pq, err := parseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Run(&db, argsToNamedValues(args))
+	return pq.Run(db, argsToNamedValues(args))
 }
 
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
 // and automatically rolls back the transaction.
-func (db DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
+func (db *DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
 	return db.View(func(tx *Tx) error {
 		tb, err := tx.GetTable(tableName)
 		if err != nil {
@@ -178,7 +177,7 @@ func (db DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
 // UpdateTable starts a read/write transaction, fetches the selected table, calls fn with that table
 // and automatically commits the transaction.
 // If fn returns an error, the transaction is rolled back.
-func (db DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
+func (db *DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 	return db.Update(func(tx *Tx) error {
 		tb, err := tx.GetTable(tableName)
 		if err != nil {
@@ -260,7 +259,9 @@ func (tx *Tx) Exec(q string, args ...interface{}) error {
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
-	KeyName string
+	PrimaryKey string
+
+	lastKey int64
 }
 
 // CreateTable creates a table with the given name.
@@ -284,7 +285,7 @@ func (tx Tx) CreateTable(name string, cfg *TableConfig) error {
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) GetTable(name string) (*Table, error) {
-	cfg, err := tx.tcfgStore.Get(name)
+	_, err := tx.tcfgStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -295,10 +296,10 @@ func (tx Tx) GetTable(name string) (*Table, error) {
 	}
 
 	return &Table{
-		tx:    &tx,
-		store: s,
-		name:  name,
-		cfg:   cfg,
+		tx:       &tx,
+		store:    s,
+		name:     name,
+		cfgStore: tx.tcfgStore,
 	}, nil
 }
 
@@ -445,10 +446,10 @@ func (tx Tx) ReIndexAll() error {
 
 // A Table represents a collection of records.
 type Table struct {
-	tx    *Tx
-	store engine.Store
-	name  string
-	cfg   *TableConfig
+	tx       *Tx
+	store    engine.Store
+	name     string
+	cfgStore *tableConfigStore
 }
 
 type encodedRecordWithKey struct {
@@ -493,9 +494,37 @@ func (t *Table) GetRecord(key []byte) (record.Record, error) {
 	return record.EncodedRecord(v), err
 }
 
-// A PrimaryKeyer is a record that generates a key based on its primary key.
-type PrimaryKeyer interface {
-	PrimaryKey() ([]byte, error)
+func (t *Table) generateKey(r record.Record) ([]byte, error) {
+	cfg, err := t.cfgStore.Get(t.name)
+	if err != nil {
+		return nil, err
+	}
+
+	var key []byte
+	if cfg.PrimaryKey != "" {
+		f, err := r.GetField(cfg.PrimaryKey)
+		if err != nil {
+			return nil, err
+		}
+		return f.Data, nil
+	}
+
+	t.tx.db.mu.Lock()
+	defer t.tx.db.mu.Unlock()
+
+	cfg, err = t.cfgStore.Get(t.name)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.lastKey++
+	key = value.NewInt64(cfg.lastKey).Data
+	err = t.cfgStore.Replace(t.name, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return key, nil
 }
 
 // Insert the record into the table.
@@ -503,33 +532,19 @@ type PrimaryKeyer interface {
 // otherwise it will be generated automatically. Note that there are no ordering guarantees
 // regarding the key generated by default.
 func (t *Table) Insert(r record.Record) ([]byte, error) {
-	v, err := record.Encode(r)
+	key, err := t.generateKey(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode record")
-	}
-
-	var key []byte
-	if pker, ok := r.(PrimaryKeyer); ok {
-		key, err = pker.PrimaryKey()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to generate key from PrimaryKey method")
-		}
-		if len(key) == 0 {
-			return nil, errors.New("primary key must not be empty")
-		}
-	} else {
-		id, err := ulid.New(ulid.Timestamp(time.Now()), entropy)
-		if err == nil {
-			key, err = id.MarshalText()
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to generate key")
-		}
+		return nil, err
 	}
 
 	_, err = t.store.Get(key)
 	if err == nil {
 		return nil, ErrDuplicateRecord
+	}
+
+	v, err := record.Encode(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encode record")
 	}
 
 	err = t.store.Put(key, v)
@@ -716,10 +731,6 @@ type indexOptions struct {
 	Unique    bool
 }
 
-func (i *indexOptions) PrimaryKey() ([]byte, error) {
-	return []byte(buildIndexName(i.IndexName)), nil
-}
-
 // Field implements the field method of the record.Record interface.
 func (i *indexOptions) GetField(name string) (record.Field, error) {
 	switch name {
@@ -885,13 +896,35 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	}
 
 	var fb record.FieldBuffer
-	fb.Add(record.NewStringField("KeyName", cfg.KeyName))
+	fb.Add(record.NewStringField("PrimaryKey", cfg.PrimaryKey))
+	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
 
 	v, err := record.Encode(&fb)
 	if err != nil {
 		return err
 	}
 
+	return t.st.Put(key, v)
+}
+
+func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
+	key := []byte(tableName)
+	_, err := t.st.Get(key)
+	if err == engine.ErrKeyNotFound {
+		return ErrTableNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	var fb record.FieldBuffer
+	fb.Add(record.NewStringField("PrimaryKey", cfg.PrimaryKey))
+	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
+
+	v, err := record.Encode(&fb)
+	if err != nil {
+		return err
+	}
 	return t.st.Put(key, v)
 }
 
@@ -909,11 +942,19 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	r := record.EncodedRecord(v)
 
-	f, err := r.GetField("KeyName")
+	f, err := r.GetField("PrimaryKey")
 	if err != nil {
 		return nil, err
 	}
-	cfg.KeyName, err = f.DecodeToString()
+	cfg.PrimaryKey, err = f.DecodeToString()
+	if err != nil {
+		return nil, err
+	}
+	f, err = r.GetField("lastKey")
+	if err != nil {
+		return nil, err
+	}
+	cfg.lastKey, err = f.DecodeToInt64()
 	if err != nil {
 		return nil, err
 	}

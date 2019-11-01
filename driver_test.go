@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/memory"
@@ -81,7 +80,6 @@ func TestDriver(t *testing.T) {
 		n, err = res.RowsAffected()
 		require.NoError(t, err)
 		require.EqualValues(t, 1, n)
-		time.Sleep(time.Millisecond) // ensure records are stored in order
 	}
 
 	t.Run("Wildcard", func(t *testing.T) {
@@ -194,8 +192,6 @@ func TestDriver(t *testing.T) {
 		require.NoError(t, rows.Err())
 		require.Equal(t, 11, count)
 	})
-
-	time.Sleep(time.Millisecond)
 
 	t.Run("Multiple queries in transaction", func(t *testing.T) {
 		tx, err := dbx.Begin()
