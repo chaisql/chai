@@ -325,7 +325,7 @@ func (tx Tx) ListTables() ([]string, error) {
 	idxPrefix := indexPrefix + string([]byte{separator})
 
 	for _, st := range stores {
-		if st == indexTable {
+		if st == indexStoreName || st == tableConfigStoreName {
 			continue
 		}
 		if strings.HasPrefix(st, idxPrefix) {

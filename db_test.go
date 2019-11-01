@@ -844,12 +844,12 @@ func TestTxListTables(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("a")
+		err := tx.CreateTable("a", nil)
 		require.NoError(t, err)
-		_, err = tx.CreateTable("b")
+		err = tx.CreateTable("b", nil)
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex(index.Options{
+		err = tx.CreateIndex(index.Options{
 			IndexName: "idxa",
 			TableName: "a",
 			FieldName: "foo",
