@@ -90,16 +90,23 @@ func (db DB) Close() error {
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.ng.Begin(writable)
+	ntx, err := db.ng.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Tx{
+	tx := Tx{
 		db:       &db,
-		tx:       tx,
+		tx:       ntx,
 		writable: writable,
-	}, nil
+	}
+
+	tx.tcfgStore, err = tx.getTableConfigStore()
+	if err != nil {
+		return nil, err
+	}
+
+	return &tx, nil
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
@@ -182,9 +189,10 @@ func (db DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
-	db       *DB
-	tx       engine.Transaction
-	writable bool
+	db        *DB
+	tx        engine.Transaction
+	writable  bool
+	tcfgStore *tableConfigStore
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -252,23 +260,15 @@ type TableConfig struct {
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx Tx) CreateTable(name string, cfg *TableConfig) (*Table, error) {
-	cs, err := tx.getTableConfigStore()
+	if cfg == nil {
+		cfg = new(TableConfig)
+	}
+	err := tx.tcfgStore.Insert(name, *cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = cs.Get(name)
-	if err == nil {
-		return nil, ErrTableAlreadyExists
-	}
-	if err != engine.ErrKeyNotFound {
-		return nil, err
-	}
-
 	err = tx.tx.CreateStore(name)
-	if err == engine.ErrStoreAlreadyExists {
-		return nil, ErrTableAlreadyExists
-	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create table %q", name)
 	}
@@ -864,7 +864,7 @@ func (tx *Tx) getTableConfigStore() (*tableConfigStore, error) {
 	}, nil
 }
 
-func (t *tableConfigStore) Insert(tableName string, cfg *TableConfig) error {
+func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	key := []byte(tableName)
 	_, err := t.st.Get(key)
 	if err == nil {

@@ -30,10 +30,10 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Add", func(t *testing.T) {
-		buf := record.NewFieldBuffer(
-			record.NewInt64Field("a", 10),
-			record.NewStringField("b", "hello"),
-		)
+		var buf record.FieldBuffer
+
+		buf.Add(record.NewInt64Field("a", 10))
+		buf.Add(record.NewStringField("b", "hello"))
 
 		c := record.NewBoolField("c", true)
 		buf.Add(c)
