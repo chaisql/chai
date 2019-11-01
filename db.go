@@ -259,21 +259,21 @@ type TableConfig struct {
 
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateTable(name string, cfg *TableConfig) (*Table, error) {
+func (tx Tx) CreateTable(name string, cfg *TableConfig) error {
 	if cfg == nil {
 		cfg = new(TableConfig)
 	}
 	err := tx.tcfgStore.Insert(name, *cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = tx.tx.CreateStore(name)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create table %q", name)
+		return errors.Wrapf(err, "failed to create table %q", name)
 	}
 
-	return tx.GetTable(name)
+	return nil
 }
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
@@ -320,25 +320,25 @@ func buildIndexName(name string) string {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateIndex(opts index.Options) (*Index, error) {
+func (tx Tx) CreateIndex(opts index.Options) error {
 	it, err := tx.GetTable(indexStoreName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	_, err = tx.GetTable(opts.TableName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	idxName := buildIndexName(opts.IndexName)
 
 	_, err = it.GetRecord([]byte(idxName))
 	if err == nil {
-		return nil, ErrIndexAlreadyExists
+		return ErrIndexAlreadyExists
 	}
 	if err != ErrRecordNotFound {
-		return nil, err
+		return err
 	}
 
 	idxOpts := indexOptions{
@@ -349,17 +349,8 @@ func (tx Tx) CreateIndex(opts index.Options) (*Index, error) {
 	}
 
 	_, err = it.Insert(&idxOpts)
-	if err != nil {
-		return nil, err
-	}
 
-	return &Index{
-		Index:     index.New(tx.tx, opts),
-		IndexName: idxOpts.IndexName,
-		TableName: idxOpts.TableName,
-		FieldName: idxOpts.FieldName,
-		Unique:    idxOpts.Unique,
-	}, nil
+	return err
 }
 
 // GetIndex returns an index by name.

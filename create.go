@@ -141,7 +141,7 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error
 		return res, errors.New("missing table name")
 	}
 
-	_, err := tx.CreateTable(stmt.tableName, nil)
+	err := tx.CreateTable(stmt.tableName, nil)
 	if stmt.ifNotExists && err == ErrTableAlreadyExists {
 		err = nil
 	}
@@ -181,7 +181,7 @@ func (stmt createIndexStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error
 		return res, errors.New("missing field name")
 	}
 
-	_, err := tx.CreateIndex(index.Options{
+	err := tx.CreateIndex(index.Options{
 		Unique:    stmt.unique,
 		IndexName: stmt.indexName,
 		TableName: stmt.tableName,
