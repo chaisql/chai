@@ -52,21 +52,29 @@ func New(ng engine.Engine) (*DB, error) {
 		ng: ng,
 	}
 
-	err := db.Update(func(tx *Tx) error {
-		_, err := tx.tx.Store(tableConfigStoreName)
-		if err == engine.ErrStoreNotFound {
-			err = tx.tx.CreateStore(tableConfigStoreName)
-		}
-		if err != nil {
-			return err
-		}
+	ntx, err := db.ng.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	defer ntx.Rollback()
 
-		_, err = tx.GetTable(indexStoreName)
-		if err == ErrTableNotFound {
-			_, err = tx.CreateTable(indexStoreName, nil)
-		}
-		return err
-	})
+	_, err = ntx.Store(tableConfigStoreName)
+	if err == engine.ErrStoreNotFound {
+		err = ntx.CreateStore(tableConfigStoreName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = ntx.Store(indexStoreName)
+	if err == engine.ErrStoreNotFound {
+		err = ntx.CreateStore(indexStoreName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	err = ntx.Commit()
 	if err != nil {
 		return nil, err
 	}
