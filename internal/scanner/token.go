@@ -85,11 +85,13 @@ const (
 	INF
 	INSERT
 	INTO
+	KEY
 	LIMIT
 	NOT
 	OFFSET
 	ON
 	ORDER
+	PRIMARY
 	SELECT
 	SET
 	RECORDS
@@ -98,6 +100,7 @@ const (
 	UNIQUE
 	UPDATE
 	VALUES
+	WITH
 	WHERE
 	keywordEnd
 )
@@ -159,6 +162,7 @@ var tokens = [...]string{
 	DROP:     "DROP",
 	DURATION: "DURATION",
 	EXISTS:   "EXISTS",
+	KEY:      "KEY",
 	FROM:     "FROM",
 	IF:       "IF",
 	IN:       "IN",
@@ -170,6 +174,7 @@ var tokens = [...]string{
 	OFFSET:   "OFFSET",
 	ON:       "ON",
 	ORDER:    "ORDER",
+	PRIMARY:  "PRIMARY",
 	SELECT:   "SELECT",
 	SET:      "SET",
 	RECORDS:  "RECORDS",
@@ -178,6 +183,7 @@ var tokens = [...]string{
 	UNIQUE:   "UNIQUE",
 	UPDATE:   "UPDATE",
 	VALUES:   "VALUES",
+	WITH:     "WITH",
 	WHERE:    "WHERE",
 }
 

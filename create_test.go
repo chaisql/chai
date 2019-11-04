@@ -16,6 +16,7 @@ func TestParserCreateTable(t *testing.T) {
 	}{
 		{"Basic", "CREATE TABLE test", createTableStmt{tableName: "test"}, false},
 		{"If not exists", "CREATE TABLE test IF NOT EXISTS", createTableStmt{tableName: "test", ifNotExists: true}, false},
+		{"With primary key", "CREATE TABLE test WITH PRIMARY KEY foo", createTableStmt{tableName: "test", withPrimaryKey: "foo"}, false},
 	}
 
 	for _, test := range tests {
@@ -42,6 +43,7 @@ func TestCreateTableStmt(t *testing.T) {
 		{"Exists", "CREATE TABLE test;CREATE TABLE test", true},
 		{"If not exists", "CREATE TABLE test IF NOT EXISTS", false},
 		{"If not exists, twice", "CREATE TABLE test IF NOT EXISTS;CREATE TABLE test IF NOT EXISTS", false},
+		{"With primary key", "CREATE TABLE test WITH PRIMARY KEY foo", false},
 	}
 
 	for _, test := range tests {

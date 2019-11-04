@@ -40,25 +40,59 @@ func (p *parser) parseCreateTableStatement() (createTableStmt, error) {
 		return stmt, err
 	}
 
+	// Parse IF NOT EXISTS
+	stmt.ifNotExists, err = p.parseIfNotExists()
+	if err != nil {
+		return stmt, err
+	}
+
+	// WITH PRIMARY KEY
+	stmt.withPrimaryKey, err = p.parseWithPrimaryKey()
+	if err != nil {
+		return stmt, err
+	}
+
+	return stmt, nil
+}
+
+func (p *parser) parseIfNotExists() (bool, error) {
 	// Parse "IF"
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.IF {
 		p.Unscan()
-		return stmt, nil
+		return false, nil
 	}
 
 	// Parse "NOT"
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.NOT {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"NOT", "EXISTS"}, pos)
+		return false, newParseError(scanner.Tokstr(tok, lit), []string{"NOT", "EXISTS"}, pos)
 	}
 
 	// Parse "EXISTS"
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
+		return false, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
 	}
 
-	stmt.ifNotExists = true
+	return true, nil
+}
 
-	return stmt, nil
+func (p *parser) parseWithPrimaryKey() (string, error) {
+	// Parse "WITH"
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WITH {
+		p.Unscan()
+		return "", nil
+	}
+
+	// Parse "PRIMARY"
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.PRIMARY {
+		return "", newParseError(scanner.Tokstr(tok, lit), []string{"PRIMARY", "KEY", "IDENT"}, pos)
+	}
+
+	// Parse "KEY"
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
+		return "", newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+	}
+
+	return p.ParseIdent()
 }
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
@@ -123,8 +157,9 @@ func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error)
 
 // createTableStmt is a DSL that allows creating a full CREATE TABLE statement.
 type createTableStmt struct {
-	tableName   string
-	ifNotExists bool
+	tableName      string
+	ifNotExists    bool
+	withPrimaryKey string
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -141,7 +176,14 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error
 		return res, errors.New("missing table name")
 	}
 
-	err := tx.CreateTable(stmt.tableName, nil)
+	var cfg *TableConfig
+
+	if stmt.withPrimaryKey != "" {
+		cfg = new(TableConfig)
+		cfg.PrimaryKey = stmt.withPrimaryKey
+	}
+
+	err := tx.CreateTable(stmt.tableName, cfg)
 	if stmt.ifNotExists && err == ErrTableAlreadyExists {
 		err = nil
 	}
