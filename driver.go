@@ -148,6 +148,10 @@ func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
 		return nil
 	}
 
+	if _, ok := nv.Value.(record.Scanner); ok {
+		return nil
+	}
+
 	var err error
 	nv.Value, err = driver.DefaultParameterConverter.ConvertValue(nv.Value)
 	return err
@@ -219,10 +223,10 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
 	slct, ok := lastStmt.(selectStmt)
-	if ok && len(slct.FieldSelectors) > 0 {
-		rs.fields = make([]string, len(slct.FieldSelectors))
-		for i := range slct.FieldSelectors {
-			rs.fields[i] = slct.FieldSelectors[i].Name()
+	if ok && len(slct.selectors) > 0 {
+		rs.fields = make([]string, len(slct.selectors))
+		for i := range slct.selectors {
+			rs.fields[i] = slct.selectors[i].Name()
 		}
 	}
 
@@ -243,7 +247,7 @@ type recordStream struct {
 }
 
 type rec struct {
-	r   record.Record
+	r   recordMask
 	err error
 }
 
@@ -277,7 +281,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		case <-ctx.Done():
 			return errStop
 		case rs.c <- rec{
-			r: r,
+			r: r.(recordMask),
 		}:
 
 			select {
@@ -304,11 +308,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 // Columns returns the fields selected by the SELECT statement.
 // If the wildcard was used, it returns one column named "record".
 func (rs *recordStream) Columns() []string {
-	if len(rs.fields) > 0 {
-		return rs.fields
-	}
-
-	return []string{"record"}
+	return rs.fields
 }
 
 // Close closes the rows iterator.
@@ -317,8 +317,6 @@ func (rs *recordStream) Close() error {
 	return rs.res.Close()
 }
 
-// Next expects exactly one destination. This destination must implement record.Scanner
-// otherwise an error is returned.
 func (rs *recordStream) Next(dest []driver.Value) error {
 	rs.c <- rec{}
 
@@ -331,12 +329,13 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 		return rec.err
 	}
 
-	if len(rs.fields) == 0 {
-		dest[0] = rec.r
-		return nil
-	}
-
 	for i := range rs.fields {
+		if rs.fields[i] == "*" {
+			dest[i] = rec.r
+
+			continue
+		}
+
 		f, err := rec.r.GetField(rs.fields[i])
 		if err != nil {
 			return err

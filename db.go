@@ -516,7 +516,10 @@ func (t *Table) GetRecord(key []byte) (record.Record, error) {
 		return nil, errors.Wrapf(err, "failed to fetch record %q", key)
 	}
 
-	return record.EncodedRecord(v), err
+	var r encodedRecordWithKey
+	r.EncodedRecord = record.EncodedRecord(v)
+	r.key = key
+	return &r, err
 }
 
 func (t *Table) generateKey(r record.Record) ([]byte, error) {
@@ -531,6 +534,12 @@ func (t *Table) generateKey(r record.Record) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		return f.Data, nil
+	}
+
+	// check if the field _key is present in the record
+	f, err := r.GetField(defaultPkName)
+	if err == nil {
 		return f.Data, nil
 	}
 

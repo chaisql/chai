@@ -17,7 +17,7 @@ func (p *parser) parseSelectStatement() (selectStmt, error) {
 	var err error
 
 	// Parse field list or wildcard
-	stmt.FieldSelectors, err = p.parseFieldNames()
+	stmt.selectors, err = p.parseSelectors()
 	if err != nil {
 		return stmt, err
 	}
@@ -47,27 +47,44 @@ func (p *parser) parseSelectStatement() (selectStmt, error) {
 	return stmt, nil
 }
 
-// parseFieldNames parses the list of field names or a wildward.
-func (p *parser) parseFieldNames() ([]fieldSelector, error) {
-	// Check if the * token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return nil, nil
-	}
-	p.Unscan()
-
-	// Scan the list of fields
-	idents, err := p.ParseIdentList()
+// parseSelectors parses the list of selectors.
+func (p *parser) parseSelectors() ([]fieldSelector, error) {
+	// Parse first (required) identifier.
+	slctor, err := p.parseSelector()
 	if err != nil {
 		return nil, err
 	}
+	selectors := []fieldSelector{slctor}
 
-	// turn it into field selectors
-	fselectors := make([]fieldSelector, len(idents))
-	for i := range idents {
-		fselectors[i] = fieldSelector(idents[i])
+	// Parse remaining (optional) identifiers.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			return selectors, nil
+		}
+
+		if slctor, err = p.parseSelector(); err != nil {
+			return nil, err
+		}
+
+		selectors = append(selectors, slctor)
+	}
+}
+
+// parseSelectors parses the list of selectors.
+func (p *parser) parseSelector() (fieldSelector, error) {
+	// Check if the * token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
+		return "*", nil
+	}
+	p.Unscan()
+
+	ident, err := p.ParseIdent()
+	if err != nil {
+		return "", err
 	}
 
-	return fselectors, nil
+	return fieldSelector(ident), nil
 }
 
 func (p *parser) parseFrom() (string, error) {
@@ -101,11 +118,11 @@ func (p *parser) parseOffset() (expr, error) {
 
 // selectStmt is a DSL that allows creating a full Select query.
 type selectStmt struct {
-	tableName      string
-	whereExpr      expr
-	offsetExpr     expr
-	limitExpr      expr
-	FieldSelectors []fieldSelector
+	tableName  string
+	whereExpr  expr
+	offsetExpr expr
+	limitExpr  expr
+	selectors  []fieldSelector
 }
 
 // IsReadOnly always returns true. It implements the Statement interface.
@@ -195,24 +212,18 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		st = st.Limit(limit)
 	}
 
-	if len(stmt.FieldSelectors) > 0 {
-		cfg, err := t.cfgStore.Get(t.name)
-		if err != nil {
-			return res, err
-		}
-
-		fieldNames := make([]string, len(stmt.FieldSelectors))
-		for i := range stmt.FieldSelectors {
-			fieldNames[i] = stmt.FieldSelectors[i].Name()
-		}
-		st = st.Map(func(r record.Record) (record.Record, error) {
-			return recordMask{
-				cfg:    cfg,
-				r:      r,
-				fields: fieldNames,
-			}, nil
-		})
+	cfg, err := t.cfgStore.Get(t.name)
+	if err != nil {
+		return res, err
 	}
+
+	st = st.Map(func(r record.Record) (record.Record, error) {
+		return recordMask{
+			cfg:    cfg,
+			r:      r,
+			fields: stmt.selectors,
+		}, nil
+	})
 
 	return Result{Stream: st}, nil
 }
@@ -220,14 +231,14 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 type recordMask struct {
 	cfg    *TableConfig
 	r      record.Record
-	fields []string
+	fields []fieldSelector
 }
 
 var _ record.Record = recordMask{}
 
 func (r recordMask) GetField(name string) (record.Field, error) {
 	for _, n := range r.fields {
-		if n == name {
+		if n.Name() == name || n == "*" {
 			return r.r.GetField(name)
 		}
 	}
@@ -237,7 +248,8 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 
 func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	for _, n := range r.fields {
-		if n == defaultPkName && r.cfg.PrimaryKey == "" {
+		switch {
+		case n.Name() == defaultPkName && r.cfg.PrimaryKey == "":
 			var f record.Field
 			f.Type = value.Int
 			f.Data = r.r.(record.Keyer).Key()
@@ -247,8 +259,13 @@ func (r recordMask) Iterate(fn func(f record.Field) error) error {
 			if err != nil {
 				return err
 			}
-		} else {
-			f, err := r.r.GetField(n)
+		case n == "*":
+			err := r.r.Iterate(fn)
+			if err != nil {
+				return err
+			}
+		default:
+			f, err := n.SelectField(r)
 			if err != nil {
 				continue
 			}
@@ -258,7 +275,6 @@ func (r recordMask) Iterate(fn func(f record.Field) error) error {
 				return err
 			}
 		}
-
 	}
 
 	return nil

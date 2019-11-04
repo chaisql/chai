@@ -95,6 +95,7 @@ func TestDriver(t *testing.T) {
 			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
 			count++
 		}
+
 		require.NoError(t, rows.Err())
 		require.Equal(t, 10, count)
 	})
@@ -111,6 +112,27 @@ func TestDriver(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, count+1, a)
 			require.Equal(t, count+3, c)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
+
+	t.Run("Multiple fields and wildcards", func(t *testing.T) {
+		rows, err := dbx.Query("SELECT a, *, c, * FROM test")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var a, c int
+		var rt1, rt2 rectest
+		for rows.Next() {
+			err = rows.Scan(&a, &rt1, &c, &rt2)
+			require.NoError(t, err)
+			require.Equal(t, count+1, a)
+			require.Equal(t, count+3, c)
+			require.Equal(t, rt1, rectest{count + 1, count + 2, count + 3})
+			require.Equal(t, rt2, rectest{count + 1, count + 2, count + 3})
 			count++
 		}
 		require.NoError(t, rows.Err())

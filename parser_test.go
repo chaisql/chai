@@ -87,7 +87,7 @@ func TestParserMultiStatement(t *testing.T) {
 	}{
 		{"OnlyCommas", ";;;", nil},
 		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []statement{
-			selectStmt{tableName: "foo"},
+			selectStmt{selectors: []fieldSelector{"*"}, tableName: "foo"},
 			deleteStmt{tableName: "foo"},
 		}},
 	}

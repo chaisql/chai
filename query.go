@@ -186,23 +186,12 @@ func argsToNamedValues(args []interface{}) []driver.NamedValue {
 	return nv
 }
 
-// A fieldSelector can extract a field from a record.
-// A Field is an adapter that can turn a string into a field selector.
-// It is supposed to be used by casting a string into a Field.
-//   f := Field("Name")
-//   f.SelectField(r)
-// It implements the fieldSelector interface.
 type fieldSelector string
 
-// Name returns f as a string.
 func (f fieldSelector) Name() string {
 	return string(f)
 }
 
-// SelectField selects the field f from r.
-// SelectField takes a field from a record.
-// If the field selector was created using the As method
-// it must replace the name of f by the alias.
 func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
 	if r == nil {
 		return record.Field{}, fmt.Errorf("field not found")

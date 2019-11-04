@@ -19,32 +19,42 @@ func TestParserSelect(t *testing.T) {
 	}{
 		{"NoCond", "SELECT * FROM test",
 			selectStmt{
+				selectors: []fieldSelector{"*"},
 				tableName: "test",
 			}, false},
 		{"WithFields", "SELECT a, b FROM test",
 			selectStmt{
-				FieldSelectors: []fieldSelector{fieldSelector("a"), fieldSelector("b")},
-				tableName:      "test",
+				selectors: []fieldSelector{"a", "b"},
+				tableName: "test",
+			}, false},
+		{"WithFields and wildcard", "SELECT a, b, * FROM test",
+			selectStmt{
+				selectors: []fieldSelector{"a", "b", "*"},
+				tableName: "test",
 			}, false},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
 			selectStmt{
 				tableName: "test",
+				selectors: []fieldSelector{"*"},
 				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 			}, false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			selectStmt{
+				selectors: []fieldSelector{"*"},
 				tableName: "test",
 				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 				limitExpr: int64Value(20),
 			}, false},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			selectStmt{
+				selectors:  []fieldSelector{"*"},
 				tableName:  "test",
 				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
 				offsetExpr: int64Value(20),
 			}, false},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			selectStmt{
+				selectors:  []fieldSelector{"*"},
 				tableName:  "test",
 				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
 				offsetExpr: int64Value(20),
@@ -76,11 +86,12 @@ func TestSelectStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No cond", "SELECT * FROM test", false, "foo1,bar1,baz1\nfoo2,bar1,1\nfoo3,bar2\n", nil},
+		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "foo1,bar1,baz1,foo1,bar1,baz1,foo1\nfoo2,bar1,1,foo2,bar1,1,foo2\nfoo3,bar2,foo3,bar2\n", nil},
 		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2\n\n", nil},
 		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "foo1,bar1,baz1\nfoo2,bar1,1\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
 		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "foo1,bar1,baz1\n", nil},
-		{"With offset", "SELECT * FROM test WHERE b = 'bar1' OFFSET 1", false, "foo2,bar1,1\n", nil},
+		{"With offset", "SELECT *, _key FROM test WHERE b = 'bar1' OFFSET 1", false, "foo2,bar1,1,2\n", nil},
 		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "foo2,bar1,1\n", nil},
 		{"With offset then limit", "SELECT * FROM test WHERE b = 'bar1' OFFSET 1 LIMIT 1", true, "", nil},
 		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "foo1,bar1,baz1\nfoo3,bar2\n", []interface{}{"foo1", "foo3"}},

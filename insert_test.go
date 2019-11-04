@@ -96,14 +96,14 @@ func TestInsertStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`, true, ``, nil},
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ("a", 'b', 'c')`, false, "a,b,c\n", nil},
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, "d,e,f\n", []interface{}{"d", "f"}},
-		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, "d,e,f\n", []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
+		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ("a", 'b', 'c')`, false, "1,a,b,c\n", nil},
+		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, "1,d,e,f\n", []interface{}{"d", "f"}},
+		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, "1,d,e,f\n", []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
 		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', (1, 2, 3))`, true, "", nil},
-		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)", false, "a,2.3,true\n", nil},
-		{"Records / Positional Params", "INSERT INTO test RECORDS (a: ?, b: 2.3, c: ?)", false, "a,2.3,true\n", []interface{}{"a", true}},
-		{"Records / Named Params", "INSERT INTO test RECORDS (a: $a, b: 2.3, c: $c)", false, "1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
+		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)", false, "1,a,2.3,true\n", nil},
+		{"Records / Positional Params", "INSERT INTO test RECORDS (a: ?, b: 2.3, c: ?)", false, "1,a,2.3,true\n", []interface{}{"a", true}},
+		{"Records / Named Params", "INSERT INTO test RECORDS (a: $a, b: 2.3, c: $c)", false, "1,1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
 		{"Records / List ", "INSERT INTO test RECORDS (a: (1, 2, 3))", true, "", nil},
 	}
 
@@ -131,7 +131,7 @@ func TestInsertStmt(t *testing.T) {
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query("SELECT * FROM test")
+				st, err := db.Query("SELECT _key, * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 
