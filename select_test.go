@@ -146,4 +146,25 @@ func TestSelectStmt(t *testing.T) {
 			t.Run("With Index/"+test.name, testFn(true))
 		})
 	}
+
+	t.Run("Shadow _key", func(t *testing.T) {
+		db, err := New(memory.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test")
+		require.NoError(t, err)
+
+		err = db.Exec("INSERT INTO test (a, _key) VALUES ('foo', 'bar')")
+		require.NoError(t, err)
+
+		st, err := db.Query("SELECT a, _key FROM test")
+		require.NoError(t, err)
+		defer st.Close()
+
+		var buf bytes.Buffer
+		err = record.IteratorToCSV(&buf, st)
+		require.NoError(t, err)
+		require.Equal(t, "foo,bar\n", buf.String())
+	})
 }

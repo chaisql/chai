@@ -491,6 +491,17 @@ func TestTableInsert(t *testing.T) {
 		require.NotEqual(t, key1, key2)
 	})
 
+	t.Run("Should generate a key even if a field with the default key name is present", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		rec := newRecord()
+		rec.Add(record.NewStringField("_key", "foo"))
+		key, err := tb.Insert(rec)
+		require.NoError(t, err)
+		require.Equal(t, value.NewInt64(1).Data, key)
+	})
+
 	t.Run("Should use the right field if key is specified", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()

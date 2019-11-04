@@ -248,6 +248,16 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 
 func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	for _, n := range r.fields {
+		f, err := n.SelectField(r)
+		if err == nil {
+			err = fn(f)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		switch {
 		case n.Name() == defaultPkName && r.cfg.PrimaryKey == "":
 			var f record.Field
@@ -261,16 +271,6 @@ func (r recordMask) Iterate(fn func(f record.Field) error) error {
 			}
 		case n == "*":
 			err := r.r.Iterate(fn)
-			if err != nil {
-				return err
-			}
-		default:
-			f, err := n.SelectField(r)
-			if err != nil {
-				continue
-			}
-
-			err = fn(f)
 			if err != nil {
 				return err
 			}

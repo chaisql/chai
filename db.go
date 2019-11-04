@@ -537,12 +537,6 @@ func (t *Table) generateKey(r record.Record) ([]byte, error) {
 		return f.Data, nil
 	}
 
-	// check if the field _key is present in the record
-	f, err := r.GetField(defaultPkName)
-	if err == nil {
-		return f.Data, nil
-	}
-
 	t.tx.db.mu.Lock()
 	defer t.tx.db.mu.Unlock()
 
