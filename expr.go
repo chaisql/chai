@@ -28,6 +28,7 @@ type evalStack struct {
 	Tx     *Tx
 	Record record.Record
 	Params []driver.NamedValue
+	Cfg    *TableConfig
 }
 
 // A evalValue is the result of evaluating an expression.

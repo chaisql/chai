@@ -44,7 +44,7 @@ func TestCreateTableStmt(t *testing.T) {
 		{"Exists", "CREATE TABLE test;CREATE TABLE test", true},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", false},
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
-		{"With primary key", "CREATE TABLE test WITH PRIMARY KEY foo", false},
+		{"With primary key", "CREATE TABLE test(foo STRING PRIMARY KEY)", false},
 	}
 
 	for _, test := range tests {

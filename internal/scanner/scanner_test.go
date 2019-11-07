@@ -125,6 +125,26 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `VALUES`, tok: scanner.VALUES},
 		{s: `WHERE`, tok: scanner.WHERE},
 		{s: `seLECT`, tok: scanner.SELECT}, // case insensitive
+
+		// types
+		{s: "BYTES", tok: scanner.TYPEBYTES},
+		{s: "STRING", tok: scanner.TYPESTRING},
+		{s: "BOOL", tok: scanner.TYPEBOOL},
+		{s: "INT8", tok: scanner.TYPEINT8},
+		{s: "INT16", tok: scanner.TYPEINT16},
+		{s: "INT32", tok: scanner.TYPEINT32},
+		{s: "INT64", tok: scanner.TYPEINT64},
+		{s: "INT", tok: scanner.TYPEINT},
+		{s: "UINT8", tok: scanner.TYPEUINT8},
+		{s: "UINT16", tok: scanner.TYPEUINT16},
+		{s: "UINT32", tok: scanner.TYPEUINT32},
+		{s: "UINT64", tok: scanner.TYPEUINT64},
+		{s: "UINT", tok: scanner.TYPEUINT},
+		{s: "FLOAT32", tok: scanner.TYPEFLOAT32},
+		{s: "FLOAT64", tok: scanner.TYPEFLOAT64},
+		{s: "INTEGER", tok: scanner.TYPEINTEGER},
+		{s: "NUMERIC", tok: scanner.TYPENUMERIC},
+		{s: "TEXT", tok: scanner.TYPETEXT},
 	}
 
 	for i, tt := range tests {

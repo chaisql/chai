@@ -491,23 +491,13 @@ func TestTableInsert(t *testing.T) {
 		require.NotEqual(t, key1, key2)
 	})
 
-	t.Run("Should generate a key even if a field with the default key name is present", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		rec := newRecord()
-		rec.Add(record.NewStringField("_key", "foo"))
-		key, err := tb.Insert(rec)
-		require.NoError(t, err)
-		require.Equal(t, value.NewInt64(1).Data, key)
-	})
-
 	t.Run("Should use the right field if key is specified", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", &genji.TableConfig{
-			PrimaryKey: "foo",
+			PrimaryKeyName: "foo",
+			PrimaryKeyType: value.Int32,
 		})
 		require.NoError(t, err)
 		tb, err := tx.GetTable("test")
@@ -515,12 +505,13 @@ func TestTableInsert(t *testing.T) {
 
 		rec := record.NewFieldBuffer(
 			record.NewIntField("foo", 1),
+			record.NewStringField("bar", "baz"),
 		)
 
 		// insert
 		key, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt(1), key)
+		require.Equal(t, value.EncodeInt32(1), key)
 
 		// make sure the record is fetchable using the returned key
 		_, err = tb.GetRecord(key)
@@ -536,7 +527,8 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &genji.TableConfig{
-			PrimaryKey: "foo",
+			PrimaryKeyName: "foo",
+			PrimaryKeyType: value.Int,
 		})
 		require.NoError(t, err)
 		tb, err := tx.GetTable("test")

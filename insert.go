@@ -22,7 +22,7 @@ func (p *parser) parseInsertStatement() (insertStmt, error) {
 	}
 
 	// Parse table name
-	stmt.tableName, err = p.ParseIdent()
+	stmt.tableName, err = p.ParseIdentOrString()
 	if err != nil {
 		return stmt, err
 	}
@@ -189,7 +189,7 @@ func (p *parser) parseRecord() (interface{}, error) {
 
 // parseKV parses a key-value pair in the form IDENT : Expr.
 func (p *parser) parseKV() (string, expr, error) {
-	k, err := p.ParseIdent()
+	k, err := p.ParseIdentOrString()
 	if err != nil {
 		return "", nil, err
 	}

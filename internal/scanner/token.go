@@ -102,9 +102,7 @@ const (
 	VALUES
 	WITH
 	WHERE
-	keywordEnd
 
-	typesBeg
 	TYPEBYTES
 	TYPESTRING
 	TYPEBOOL
@@ -123,7 +121,7 @@ const (
 	TYPEINTEGER // alias to TYPEINT
 	TYPENUMERIC // alias to TYPEFLOAT64
 	TYPETEXT    // alias to TYPESTRING
-	typesEnd
+	keywordEnd
 )
 
 var tokens = [...]string{

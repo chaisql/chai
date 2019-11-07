@@ -131,7 +131,7 @@ func TestInsertStmt(t *testing.T) {
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query("SELECT _key, * FROM test")
+				st, err := db.Query("SELECT key(), * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 
@@ -151,7 +151,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test WITH PRIMARY KEY foo")
+		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
 		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (bar) VALUES (1)`)

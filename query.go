@@ -3,7 +3,6 @@ package genji
 import (
 	"database/sql"
 	"database/sql/driver"
-	"fmt"
 
 	"github.com/asdine/genji/record"
 )
@@ -184,29 +183,4 @@ func argsToNamedValues(args []interface{}) []driver.NamedValue {
 	}
 
 	return nv
-}
-
-type fieldSelector string
-
-func (f fieldSelector) Name() string {
-	return string(f)
-}
-
-func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
-	if r == nil {
-		return record.Field{}, fmt.Errorf("field not found")
-	}
-
-	return r.GetField(string(f))
-}
-
-// Eval extracts the record from the context and selects the right field.
-// It implements the Expr interface.
-func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
-	fd, err := f.SelectField(stack.Record)
-	if err != nil {
-		return nilLitteral, nil
-	}
-
-	return newSingleEvalValue(fd.Value), nil
 }

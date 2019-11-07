@@ -19,42 +19,42 @@ func TestParserSelect(t *testing.T) {
 	}{
 		{"NoCond", "SELECT * FROM test",
 			selectStmt{
-				selectors: []fieldSelector{"*"},
+				selectors: []resultField{wildcard{}},
 				tableName: "test",
 			}, false},
 		{"WithFields", "SELECT a, b FROM test",
 			selectStmt{
-				selectors: []fieldSelector{"a", "b"},
+				selectors: []resultField{fieldSelector("a"), fieldSelector("b")},
 				tableName: "test",
 			}, false},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
 			selectStmt{
-				selectors: []fieldSelector{"a", "b", "*"},
+				selectors: []resultField{fieldSelector("a"), fieldSelector("b"), wildcard{}},
 				tableName: "test",
 			}, false},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
 			selectStmt{
 				tableName: "test",
-				selectors: []fieldSelector{"*"},
+				selectors: []resultField{wildcard{}},
 				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 			}, false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			selectStmt{
-				selectors: []fieldSelector{"*"},
+				selectors: []resultField{wildcard{}},
 				tableName: "test",
 				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 				limitExpr: int64Value(20),
 			}, false},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			selectStmt{
-				selectors:  []fieldSelector{"*"},
+				selectors:  []resultField{wildcard{}},
 				tableName:  "test",
 				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
 				offsetExpr: int64Value(20),
 			}, false},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			selectStmt{
-				selectors:  []fieldSelector{"*"},
+				selectors:  []resultField{wildcard{}},
 				tableName:  "test",
 				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
 				offsetExpr: int64Value(20),
@@ -91,12 +91,12 @@ func TestSelectStmt(t *testing.T) {
 		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "foo1,bar1,baz1\nfoo2,bar1,1\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
 		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "foo1,bar1,baz1\n", nil},
-		{"With offset", "SELECT *, _key FROM test WHERE b = 'bar1' OFFSET 1", false, "foo2,bar1,1,2\n", nil},
+		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "foo2,bar1,1,2\n", nil},
 		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "foo2,bar1,1\n", nil},
 		{"With offset then limit", "SELECT * FROM test WHERE b = 'bar1' OFFSET 1 LIMIT 1", true, "", nil},
 		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "foo1,bar1,baz1\nfoo3,bar2\n", []interface{}{"foo1", "foo3"}},
 		{"With named params", "SELECT * FROM test WHERE a = $a OR d = $d", false, "foo1,bar1,baz1\nfoo3,bar2\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
-		{"With _key", "SELECT _key, a FROM test", false, "1,foo1\n2,foo2\n3\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
+		{"With key()", "SELECT key(), a FROM test", false, "1,foo1\n2,foo2\n3\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
 	}
 
 	for _, test := range tests {
@@ -143,37 +143,16 @@ func TestSelectStmt(t *testing.T) {
 			}
 
 			t.Run("No Index/"+test.name, testFn(false))
-			t.Run("With Index/"+test.name, testFn(true))
+			// t.Run("With Index/"+test.name, testFn(true))
 		})
 	}
-
-	t.Run("Shadow _key", func(t *testing.T) {
-		db, err := New(memory.NewEngine())
-		require.NoError(t, err)
-		defer db.Close()
-
-		err = db.Exec("CREATE TABLE test")
-		require.NoError(t, err)
-
-		err = db.Exec("INSERT INTO test (a, _key) VALUES ('foo', 'bar')")
-		require.NoError(t, err)
-
-		st, err := db.Query("SELECT a, _key FROM test")
-		require.NoError(t, err)
-		defer st.Close()
-
-		var buf bytes.Buffer
-		err = record.IteratorToCSV(&buf, st)
-		require.NoError(t, err)
-		require.Equal(t, "foo,bar\n", buf.String())
-	})
 
 	t.Run("with primary key", func(t *testing.T) {
 		db, err := New(memory.NewEngine())
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test WITH PRIMARY KEY foo")
+		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
 		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, "a")`)

@@ -215,6 +215,15 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 // ParseIdent parses an identifier.
 func (p *parser) ParseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
+	if tok != scanner.IDENT {
+		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+	}
+	return lit, nil
+}
+
+// ParseIdent parses an identifier.
+func (p *parser) ParseIdentOrString() (string, error) {
+	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok != scanner.IDENT && tok != scanner.IDENTORSTRING {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 	}
@@ -224,7 +233,7 @@ func (p *parser) ParseIdent() (string, error) {
 // ParseIdentList parses a comma delimited list of identifiers.
 func (p *parser) ParseIdentList() ([]string, error) {
 	// Parse first (required) identifier.
-	ident, err := p.ParseIdent()
+	ident, err := p.ParseIdentOrString()
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +319,7 @@ func (p *parser) parseType() (value.Type, error) {
 		return value.String, nil
 	}
 
-	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"TYPE"}, pos)
+	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 }
 
 // Scan returns the next token from the underlying scanner.
