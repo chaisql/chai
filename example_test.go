@@ -29,7 +29,7 @@ func Example() {
 	defer db.Close()
 
 	// Create a table. Genji tables are schemaless, you don't need to specify a schema.
-	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		panic(err)
 	}

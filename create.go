@@ -34,14 +34,14 @@ func (p *parser) parseCreateTableStatement() (createTableStmt, error) {
 	var stmt createTableStmt
 	var err error
 
-	// Parse table name
-	stmt.tableName, err = p.ParseIdent()
+	// Parse IF NOT EXISTS
+	stmt.ifNotExists, err = p.parseIfNotExists()
 	if err != nil {
 		return stmt, err
 	}
 
-	// Parse IF NOT EXISTS
-	stmt.ifNotExists, err = p.parseIfNotExists()
+	// Parse table name
+	stmt.tableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}

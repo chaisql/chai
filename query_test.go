@@ -16,7 +16,7 @@ func ExampleResult_First() {
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func ExampleResult_Iterate() {
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
