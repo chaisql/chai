@@ -145,4 +145,18 @@ func TestInsertStmt(t *testing.T) {
 		t.Run("No Index/"+test.name, testFn(false))
 		t.Run("With Index/"+test.name, testFn(true))
 	}
+
+	t.Run("with primary key", func(t *testing.T) {
+		db, err := New(memory.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test WITH PRIMARY KEY foo")
+		require.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test (bar) VALUES (1)`)
+		require.Error(t, err)
+		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
+		require.NoError(t, err)
+	})
 }

@@ -167,4 +167,25 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo,bar\n", buf.String())
 	})
+
+	t.Run("with primary key", func(t *testing.T) {
+		db, err := New(memory.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test WITH PRIMARY KEY foo")
+		require.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, "a")`)
+		require.NoError(t, err)
+
+		st, err := db.Query("SELECT foo FROM test")
+		require.NoError(t, err)
+		defer st.Close()
+
+		var buf bytes.Buffer
+		err = record.IteratorToCSV(&buf, st)
+		require.NoError(t, err)
+		require.Equal(t, "1\n", buf.String())
+	})
 }

@@ -382,6 +382,168 @@ func (v Value) String() string {
 	return fmt.Sprintf("%v", vv)
 }
 
+// DecodeTo decodes v to the selected type when possible.
+func (v Value) DecodeTo(t Type) (Value, error) {
+	if v.Type == t {
+		return v, nil
+	}
+
+	switch t {
+	case Bytes:
+		x, err := v.DecodeToBytes()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Bytes,
+			Data: EncodeBytes(x),
+			v:    x,
+		}, nil
+	case String:
+		x, err := v.DecodeToString()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: String,
+			Data: EncodeString(x),
+			v:    x,
+		}, nil
+	case Bool:
+		x, err := v.DecodeToBool()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Bool,
+			Data: EncodeBool(x),
+			v:    x,
+		}, nil
+	case Uint:
+		x, err := v.DecodeToUint()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Uint,
+			Data: EncodeUint(x),
+			v:    x,
+		}, nil
+	case Uint8:
+		x, err := v.DecodeToUint8()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Uint8,
+			Data: EncodeUint8(x),
+			v:    x,
+		}, nil
+	case Uint16:
+		x, err := v.DecodeToUint16()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Uint16,
+			Data: EncodeUint16(x),
+			v:    x,
+		}, nil
+	case Uint32:
+		x, err := v.DecodeToUint32()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Uint32,
+			Data: EncodeUint32(x),
+			v:    x,
+		}, nil
+	case Uint64:
+		x, err := v.DecodeToUint64()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Uint64,
+			Data: EncodeUint64(x),
+			v:    x,
+		}, nil
+	case Int:
+		x, err := v.DecodeToInt()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Int,
+			Data: EncodeInt(x),
+			v:    x,
+		}, nil
+	case Int8:
+		x, err := v.DecodeToInt8()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Int8,
+			Data: EncodeInt8(x),
+			v:    x,
+		}, nil
+	case Int16:
+		x, err := v.DecodeToInt16()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Int16,
+			Data: EncodeInt16(x),
+			v:    x,
+		}, nil
+	case Int32:
+		x, err := v.DecodeToInt32()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Int32,
+			Data: EncodeInt32(x),
+			v:    x,
+		}, nil
+	case Int64:
+		x, err := v.DecodeToInt64()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Int64,
+			Data: EncodeInt64(x),
+			v:    x,
+		}, nil
+	case Float32:
+		x, err := v.DecodeToFloat32()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Float32,
+			Data: EncodeFloat32(x),
+			v:    x,
+		}, nil
+	case Float64:
+		x, err := v.DecodeToFloat64()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: Float64,
+			Data: EncodeFloat64(x),
+			v:    x,
+		}, nil
+	}
+
+	return Value{}, fmt.Errorf("can't convert %q to %q", v.Type, t)
+}
+
 // DecodeToBytes returns v.Data. It's a convenience method to ease code generation.
 func (v Value) DecodeToBytes() ([]byte, error) {
 	return v.Data, nil

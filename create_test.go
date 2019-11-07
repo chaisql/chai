@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +17,7 @@ func TestParserCreateTable(t *testing.T) {
 	}{
 		{"Basic", "CREATE TABLE test", createTableStmt{tableName: "test"}, false},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", createTableStmt{tableName: "test", ifNotExists: true}, false},
-		{"With primary key", "CREATE TABLE test WITH PRIMARY KEY foo", createTableStmt{tableName: "test", withPrimaryKey: "foo"}, false},
+		{"With primary key", "CREATE TABLE test(foo INT PRIMARY KEY)", createTableStmt{tableName: "test", primaryKeyName: "foo", primaryKeyType: value.Int}, false},
 	}
 
 	for _, test := range tests {

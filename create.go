@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/value"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
@@ -46,8 +47,8 @@ func (p *parser) parseCreateTableStatement() (createTableStmt, error) {
 		return stmt, err
 	}
 
-	// WITH PRIMARY KEY
-	stmt.withPrimaryKey, err = p.parseWithPrimaryKey()
+	// parse primary key
+	stmt.primaryKeyName, stmt.primaryKeyType, err = p.parseTableOptions()
 	if err != nil {
 		return stmt, err
 	}
@@ -75,24 +76,39 @@ func (p *parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
-func (p *parser) parseWithPrimaryKey() (string, error) {
-	// Parse "WITH"
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WITH {
+func (p *parser) parseTableOptions() (string, value.Type, error) {
+	// Parse ( token.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
-		return "", nil
+		return "", 0, nil
+	}
+
+	keyName, err := p.ParseIdent()
+	if err != nil {
+		return "", 0, err
+	}
+
+	tp, err := p.parseType()
+	if err != nil {
+		return "", 0, err
 	}
 
 	// Parse "PRIMARY"
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.PRIMARY {
-		return "", newParseError(scanner.Tokstr(tok, lit), []string{"PRIMARY", "KEY", "IDENT"}, pos)
+		return "", 0, newParseError(scanner.Tokstr(tok, lit), []string{"PRIMARY", "KEY"}, pos)
 	}
 
 	// Parse "KEY"
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
-		return "", newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+		return "", 0, newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
 	}
 
-	return p.ParseIdent()
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+		return "", 0, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return keyName, tp, nil
 }
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
@@ -159,7 +175,8 @@ func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error)
 type createTableStmt struct {
 	tableName      string
 	ifNotExists    bool
-	withPrimaryKey string
+	primaryKeyName string
+	primaryKeyType value.Type
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -178,9 +195,10 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error
 
 	var cfg *TableConfig
 
-	if stmt.withPrimaryKey != "" {
+	if stmt.primaryKeyName != "" {
 		cfg = new(TableConfig)
-		cfg.PrimaryKey = stmt.withPrimaryKey
+		cfg.PrimaryKeyName = stmt.primaryKeyName
+		cfg.PrimaryKeyType = stmt.primaryKeyType
 	}
 
 	err := tx.CreateTable(stmt.tableName, cfg)

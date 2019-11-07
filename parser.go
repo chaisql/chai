@@ -269,6 +269,50 @@ func (p *parser) parseParam() (interface{}, error) {
 	}
 }
 
+func (p *parser) parseType() (value.Type, error) {
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.TYPEBYTES:
+		return value.Bytes, nil
+	case scanner.TYPESTRING:
+		return value.String, nil
+	case scanner.TYPEBOOL:
+		return value.Bool, nil
+	case scanner.TYPEINT8:
+		return value.Int8, nil
+	case scanner.TYPEINT16:
+		return value.Int16, nil
+	case scanner.TYPEINT32:
+		return value.Int32, nil
+	case scanner.TYPEINT64:
+		return value.Int64, nil
+	case scanner.TYPEINT:
+		return value.Int, nil
+	case scanner.TYPEUINT8:
+		return value.Uint8, nil
+	case scanner.TYPEUINT16:
+		return value.Uint16, nil
+	case scanner.TYPEUINT32:
+		return value.Uint32, nil
+	case scanner.TYPEUINT64:
+		return value.Uint64, nil
+	case scanner.TYPEUINT:
+		return value.Uint, nil
+	case scanner.TYPEFLOAT32:
+		return value.Float32, nil
+	case scanner.TYPEFLOAT64:
+		return value.Float64, nil
+	case scanner.TYPEINTEGER:
+		return value.Int, nil
+	case scanner.TYPENUMERIC:
+		return value.Float64, nil
+	case scanner.TYPETEXT:
+		return value.String, nil
+	}
+
+	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"TYPE"}, pos)
+}
+
 // Scan returns the next token from the underlying scanner.
 func (p *parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
 

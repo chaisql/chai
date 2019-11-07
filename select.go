@@ -149,7 +149,12 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		return res, err
 	}
 
-	st, err := newQueryOptimizer(tx, t).optimizeQuery(stmt.whereExpr, args)
+	opt, err := newQueryOptimizer(tx, t)
+	if err != nil {
+		return res, err
+	}
+
+	st, err := opt.optimizeQuery(stmt.whereExpr, args)
 	if err != nil {
 		return res, err
 	}
@@ -249,31 +254,12 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	for _, n := range r.fields {
 		f, err := n.SelectField(r)
-		if err == nil {
-			err = fn(f)
-			if err != nil {
-				return err
-			}
-
-			continue
+		if err != nil {
+			return err
 		}
-
-		switch {
-		case n.Name() == defaultPkName && r.cfg.PrimaryKey == "":
-			var f record.Field
-			f.Type = value.Int
-			f.Data = r.r.(record.Keyer).Key()
-			f.Name = defaultPkName
-
-			err := fn(f)
-			if err != nil {
-				return err
-			}
-		case n == "*":
-			err := r.r.Iterate(fn)
-			if err != nil {
-				return err
-			}
+		err = fn(f)
+		if err != nil {
+			return err
 		}
 	}
 

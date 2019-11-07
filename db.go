@@ -18,7 +18,6 @@ var (
 	tableConfigStoreName      = "__genji.tables"
 	indexStoreName            = "__genji.indexes"
 	indexPrefix               = "i"
-	defaultPkName             = "_key"
 )
 
 // Open creates a Genji database and wraps it around a *sql.DB instance.
@@ -260,7 +259,8 @@ func (tx *Tx) Exec(q string, args ...interface{}) error {
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
-	PrimaryKey string
+	PrimaryKeyName string
+	PrimaryKeyType value.Type
 
 	lastKey int64
 }
@@ -529,12 +529,16 @@ func (t *Table) generateKey(r record.Record) ([]byte, error) {
 	}
 
 	var key []byte
-	if cfg.PrimaryKey != "" {
-		f, err := r.GetField(cfg.PrimaryKey)
+	if cfg.PrimaryKeyName != "" {
+		f, err := r.GetField(cfg.PrimaryKeyName)
 		if err != nil {
 			return nil, err
 		}
-		return f.Data, nil
+		v, err := f.DecodeTo(cfg.PrimaryKeyType)
+		if err != nil {
+			return nil, err
+		}
+		return v.Data, nil
 	}
 
 	t.tx.db.mu.Lock()
@@ -928,7 +932,8 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	}
 
 	var fb record.FieldBuffer
-	fb.Add(record.NewStringField("PrimaryKey", cfg.PrimaryKey))
+	fb.Add(record.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(record.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
 	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
 
 	v, err := record.Encode(&fb)
@@ -950,7 +955,8 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 	}
 
 	var fb record.FieldBuffer
-	fb.Add(record.NewStringField("PrimaryKey", cfg.PrimaryKey))
+	fb.Add(record.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(record.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
 	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
 
 	v, err := record.Encode(&fb)
@@ -974,14 +980,24 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	r := record.EncodedRecord(v)
 
-	f, err := r.GetField("PrimaryKey")
+	f, err := r.GetField("PrimaryKeyName")
 	if err != nil {
 		return nil, err
 	}
-	cfg.PrimaryKey, err = f.DecodeToString()
+	cfg.PrimaryKeyName, err = f.DecodeToString()
 	if err != nil {
 		return nil, err
 	}
+	f, err = r.GetField("PrimaryKeyType")
+	if err != nil {
+		return nil, err
+	}
+	tp, err := f.DecodeToUint8()
+	if err != nil {
+		return nil, err
+	}
+	cfg.PrimaryKeyType = value.Type(tp)
+
 	f, err = r.GetField("lastKey")
 	if err != nil {
 		return nil, err
