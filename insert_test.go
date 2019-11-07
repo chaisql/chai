@@ -159,4 +159,16 @@ func TestInsertStmt(t *testing.T) {
 		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
 		require.NoError(t, err)
 	})
+
+	t.Run("with shadowing", func(t *testing.T) {
+		db, err := New(memory.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test")
+		require.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test ("key()", "key") VALUES (1, 2)`)
+		require.NoError(t, err)
+	})
 }

@@ -246,7 +246,7 @@ func (p *parser) ParseIdentList() ([]string, error) {
 			return idents, nil
 		}
 
-		if ident, err = p.ParseIdent(); err != nil {
+		if ident, err = p.ParseIdentOrString(); err != nil {
 			return nil, err
 		}
 
