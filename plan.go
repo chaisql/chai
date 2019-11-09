@@ -14,11 +14,10 @@ import (
 
 type queryPlan struct {
 	scanTable bool
-	tree      *queryPlanNode
-	pkOnly    bool
+	field     *queryPlanField
 }
 
-type queryPlanNode struct {
+type queryPlanField struct {
 	indexedField fieldSelector
 	op           scanner.Token
 	e            expr
@@ -50,14 +49,14 @@ func (qo *queryOptimizer) optimizeQuery() (record.Stream, error) {
 		return record.NewStream(qo.t), nil
 	}
 
-	if qp.pkOnly {
+	if qp.field.isPrimaryKey {
 		return record.NewStream(pkIterator{
 			tx:   qo.tx,
 			tb:   qo.t,
 			cfg:  qo.cfg,
 			args: qo.args,
-			op:   qp.tree.op,
-			e:    qp.tree.e,
+			op:   qp.field.op,
+			e:    qp.field.e,
 		}), nil
 	}
 
@@ -65,33 +64,24 @@ func (qo *queryOptimizer) optimizeQuery() (record.Stream, error) {
 		tx:    qo.tx,
 		tb:    qo.t,
 		args:  qo.args,
-		op:    qp.tree.op,
-		e:     qp.tree.e,
-		index: qo.indexes[qp.tree.indexedField.Name()],
+		op:    qp.field.op,
+		e:     qp.field.e,
+		index: qo.indexes[qp.field.indexedField.Name()],
 	}), nil
 }
 
 func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 	var qp queryPlan
 
-	qp.tree = qo.analyseExpr(qo.whereExpr)
-	if qp.tree == nil {
+	qp.field = qo.analyseExpr(qo.whereExpr)
+	if qp.field == nil {
 		qp.scanTable = true
-	}
-
-	// check if only the primary key is used in the where clause
-	qp.pkOnly = true
-	for _, f := range qo.stat.exprFields {
-		if f != qo.cfg.PrimaryKeyName {
-			qp.pkOnly = false
-			break
-		}
 	}
 
 	return qp
 }
 
-func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanNode {
+func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanField {
 	switch t := e.(type) {
 	case cmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)
@@ -101,7 +91,7 @@ func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanNode {
 
 		idx, ok := qo.indexes[fs.Name()]
 		if ok {
-			return &queryPlanNode{
+			return &queryPlanField{
 				indexedField: fs,
 				op:           t.Token,
 				e:            e,
@@ -110,7 +100,7 @@ func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanNode {
 		}
 
 		if qo.cfg.PrimaryKeyName == fs.Name() {
-			return &queryPlanNode{
+			return &queryPlanField{
 				indexedField: fs,
 				op:           t.Token,
 				e:            e,
