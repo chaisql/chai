@@ -297,7 +297,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 
 	switch it.op {
 	case scanner.EQ:
-		val, err := it.tb.store.Get(v.Value.Data)
+		val, err := it.tb.store.Get(data)
 		if err != nil {
 			if err == engine.ErrKeyNotFound {
 				return nil
