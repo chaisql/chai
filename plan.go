@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
+	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
@@ -14,6 +15,7 @@ import (
 type queryPlan struct {
 	scanTable bool
 	tree      *queryPlanNode
+	pkOnly    bool
 }
 
 type queryPlanNode struct {
@@ -21,6 +23,7 @@ type queryPlanNode struct {
 	op           scanner.Token
 	e            expr
 	uniqueIndex  bool
+	isPrimaryKey bool
 }
 
 func newQueryOptimizer(tx *Tx, t *Table) queryOptimizer {
@@ -32,43 +35,63 @@ func newQueryOptimizer(tx *Tx, t *Table) queryOptimizer {
 
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
-	tx *Tx
-	t  *Table
+	tx        *Tx
+	t         *Table
+	stat      parserStat
+	whereExpr expr
+	args      []driver.NamedValue
+	cfg       *TableConfig
+	indexes   map[string]Index
 }
 
-func (qo queryOptimizer) optimizeQuery(whereExpr expr, args []driver.NamedValue) (record.Stream, error) {
-	indexes, err := qo.t.Indexes()
-	if err != nil {
-		return record.Stream{}, err
-	}
-
-	qp := buildQueryPlan(indexes, whereExpr)
+func (qo *queryOptimizer) optimizeQuery() (record.Stream, error) {
+	qp := qo.buildQueryPlan()
 	if qp.scanTable {
 		return record.NewStream(qo.t), nil
+	}
+
+	if qp.pkOnly {
+		return record.NewStream(pkIterator{
+			tx:   qo.tx,
+			tb:   qo.t,
+			cfg:  qo.cfg,
+			args: qo.args,
+			op:   qp.tree.op,
+			e:    qp.tree.e,
+		}), nil
 	}
 
 	return record.NewStream(indexIterator{
 		tx:    qo.tx,
 		tb:    qo.t,
-		args:  args,
+		args:  qo.args,
 		op:    qp.tree.op,
 		e:     qp.tree.e,
-		index: indexes[qp.tree.indexedField.Name()],
+		index: qo.indexes[qp.tree.indexedField.Name()],
 	}), nil
 }
 
-func buildQueryPlan(indexes map[string]Index, e expr) queryPlan {
+func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 	var qp queryPlan
 
-	qp.tree = analyseExpr(indexes, e)
+	qp.tree = qo.analyseExpr(qo.whereExpr)
 	if qp.tree == nil {
 		qp.scanTable = true
+	}
+
+	// check if only the primary key is used in the where clause
+	qp.pkOnly = true
+	for _, f := range qo.stat.exprFields {
+		if f != qo.cfg.PrimaryKeyName {
+			qp.pkOnly = false
+			break
+		}
 	}
 
 	return qp
 }
 
-func analyseExpr(indexes map[string]Index, e expr) *queryPlanNode {
+func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanNode {
 	switch t := e.(type) {
 	case cmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)
@@ -76,20 +99,31 @@ func analyseExpr(indexes map[string]Index, e expr) *queryPlanNode {
 			return nil
 		}
 
-		idx, ok := indexes[fs.Name()]
-		if !ok {
-			return nil
+		idx, ok := qo.indexes[fs.Name()]
+		if ok {
+			return &queryPlanNode{
+				indexedField: fs,
+				op:           t.Token,
+				e:            e,
+				uniqueIndex:  idx.Unique,
+			}
 		}
 
-		return &queryPlanNode{
-			indexedField: fs,
-			op:           t.Token,
-			e:            e,
-			uniqueIndex:  idx.Unique,
+		if qo.cfg.PrimaryKeyName == fs.Name() {
+			return &queryPlanNode{
+				indexedField: fs,
+				op:           t.Token,
+				e:            e,
+				uniqueIndex:  true,
+				isPrimaryKey: true,
+			}
 		}
+
+		return nil
+
 	case *andOp:
-		nodeL := analyseExpr(indexes, t.LeftHand())
-		nodeR := analyseExpr(indexes, t.LeftHand())
+		nodeL := qo.analyseExpr(t.LeftHand())
+		nodeR := qo.analyseExpr(t.LeftHand())
 
 		if nodeL == nil && nodeR == nil {
 			return nil
@@ -115,7 +149,6 @@ func cmpOpCanUseIndex(cmp *cmpOp) (bool, fieldSelector, expr) {
 
 	// field OP expr
 	if leftIsField && !rightIsField {
-		cmp.RightHand()
 		return true, lf, cmp.RightHand()
 	}
 
@@ -212,7 +245,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 		})
 	case scanner.LT:
 		err = it.index.DescendLessOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
-			if bytes.Equal(v.Value.Data, val.Data) {
+			if bytes.Equal(data, val.Data) {
 				return nil
 			}
 
@@ -231,6 +264,85 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			}
 
 			return fn(r)
+		})
+	}
+
+	if err != nil && err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+type pkIterator struct {
+	tx   *Tx
+	tb   *Table
+	cfg  *TableConfig
+	args []driver.NamedValue
+	op   scanner.Token
+	e    expr
+}
+
+func (it pkIterator) Iterate(fn func(r record.Record) error) error {
+	v, err := it.e.Eval(evalStack{
+		Tx:     it.tx,
+		Params: it.args,
+	})
+	if err != nil {
+		return err
+	}
+
+	if v.IsList {
+		return errors.New("expression doesn't evaluate to scalar")
+	}
+
+	data := v.Value.Value.Data
+	if value.IsNumber(v.Value.Type) {
+		vv, err := v.Value.DecodeTo(it.cfg.PrimaryKeyType)
+		if err != nil {
+			return err
+		}
+		data = vv.Data
+	}
+
+	switch it.op {
+	case scanner.EQ:
+		val, err := it.tb.store.Get(v.Value.Data)
+		if err != nil {
+			if err == engine.ErrKeyNotFound {
+				return nil
+			}
+
+			return err
+		}
+		return fn(record.EncodedRecord(val))
+	case scanner.GT:
+		err = it.tb.store.AscendGreaterOrEqual(v.Value.Data, func(key, val []byte) error {
+			if bytes.Equal(data, val) {
+				return nil
+			}
+
+			return fn(record.EncodedRecord(val))
+		})
+	case scanner.GTE:
+		err = it.tb.store.AscendGreaterOrEqual(data, func(key, val []byte) error {
+			return fn(record.EncodedRecord(val))
+		})
+	case scanner.LT:
+		err = it.tb.store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
+			if bytes.Compare(data, val) <= 0 {
+				return errStop
+			}
+
+			return fn(record.EncodedRecord(val))
+		})
+	case scanner.LTE:
+		err = it.tb.store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
+			if bytes.Compare(data, val) < 0 {
+				return errStop
+			}
+
+			return fn(record.EncodedRecord(val))
 		})
 	}
 

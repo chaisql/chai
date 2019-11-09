@@ -44,34 +44,35 @@ func (p *parser) parseSelectStatement() (selectStmt, error) {
 		return stmt, err
 	}
 
+	stmt.stat = p.stat
 	return stmt, nil
 }
 
 // parseResultFields parses the list of result fields.
 func (p *parser) parseResultFields() ([]resultField, error) {
-	// Parse first (required) identifier.
-	slctor, err := p.parseResultField()
+	// Parse first (required) result field.
+	rf, err := p.parseResultField()
 	if err != nil {
 		return nil, err
 	}
-	selectors := []resultField{slctor}
+	rfields := []resultField{rf}
 
-	// Parse remaining (optional) identifiers.
+	// Parse remaining (optional) result fields.
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
-			return selectors, nil
+			return rfields, nil
 		}
 
-		if slctor, err = p.parseResultField(); err != nil {
+		if rf, err = p.parseResultField(); err != nil {
 			return nil, err
 		}
 
-		selectors = append(selectors, slctor)
+		rfields = append(rfields, rf)
 	}
 }
 
-// parseResultField parses the list of selectors.
+// parseResultField parses the list of result fields.
 func (p *parser) parseResultField() (resultField, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
@@ -137,6 +138,7 @@ type selectStmt struct {
 	offsetExpr expr
 	limitExpr  expr
 	selectors  []resultField
+	stat       parserStat
 }
 
 // IsReadOnly always returns true. It implements the Statement interface.
@@ -163,12 +165,27 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		return res, err
 	}
 
-	opt := newQueryOptimizer(tx, t)
+	indexes, err := t.Indexes()
 	if err != nil {
 		return res, err
 	}
 
-	st, err := opt.optimizeQuery(stmt.whereExpr, args)
+	cfg, err := t.cfgStore.Get(t.name)
+	if err != nil {
+		return res, err
+	}
+
+	qo := queryOptimizer{
+		tx:        tx,
+		t:         t,
+		stat:      stmt.stat,
+		whereExpr: stmt.whereExpr,
+		args:      args,
+		cfg:       cfg,
+		indexes:   indexes,
+	}
+
+	st, err := qo.optimizeQuery()
 	if err != nil {
 		return res, err
 	}
@@ -229,11 +246,6 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 
 	if limit >= 0 {
 		st = st.Limit(limit)
-	}
-
-	cfg, err := t.cfgStore.Get(t.name)
-	if err != nil {
-		return res, err
 	}
 
 	st = st.Map(func(r record.Record) (record.Record, error) {

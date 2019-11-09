@@ -37,6 +37,9 @@ func TestParserSelect(t *testing.T) {
 				tableName: "test",
 				selectors: []resultField{wildcard{}},
 				whereExpr: eq(fieldSelector("age"), int64Value(10)),
+				stat: parserStat{
+					exprFields: []string{"age"},
+				},
 			}, false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			selectStmt{
@@ -44,6 +47,9 @@ func TestParserSelect(t *testing.T) {
 				tableName: "test",
 				whereExpr: eq(fieldSelector("age"), int64Value(10)),
 				limitExpr: int64Value(20),
+				stat: parserStat{
+					exprFields: []string{"age"},
+				},
 			}, false},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			selectStmt{
@@ -51,6 +57,9 @@ func TestParserSelect(t *testing.T) {
 				tableName:  "test",
 				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
 				offsetExpr: int64Value(20),
+				stat: parserStat{
+					exprFields: []string{"age"},
+				},
 			}, false},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			selectStmt{
@@ -59,6 +68,9 @@ func TestParserSelect(t *testing.T) {
 				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
 				offsetExpr: int64Value(20),
 				limitExpr:  int64Value(10),
+				stat: parserStat{
+					exprFields: []string{"age"},
+				},
 			}, false},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
 	}
@@ -85,17 +97,17 @@ func TestSelectStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", "SELECT * FROM test", false, "foo1,bar1,baz1\nfoo2,bar1,1\nfoo3,bar2\n", nil},
-		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "foo1,bar1,baz1,foo1,bar1,baz1,foo1\nfoo2,bar1,1,foo2,bar1,1,foo2\nfoo3,bar2,foo3,bar2\n", nil},
+		{"No cond", "SELECT * FROM test", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n3,foo3,bar2\n", nil},
+		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "1,foo1,bar1,baz1,1,foo1,bar1,baz1,foo1\n2,foo2,bar1,1,2,foo2,bar1,1,foo2\n3,foo3,bar2,3,foo3,bar2\n", nil},
 		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2\n\n", nil},
-		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "foo1,bar1,baz1\nfoo2,bar1,1\n", nil},
+		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
-		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "foo1,bar1,baz1\n", nil},
-		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "foo2,bar1,1,2\n", nil},
-		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "foo2,bar1,1\n", nil},
+		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "1,foo1,bar1,baz1\n", nil},
+		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "2,foo2,bar1,1,2\n", nil},
+		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "2,foo2,bar1,1\n", nil},
 		{"With offset then limit", "SELECT * FROM test WHERE b = 'bar1' OFFSET 1 LIMIT 1", true, "", nil},
-		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "foo1,bar1,baz1\nfoo3,bar2\n", []interface{}{"foo1", "foo3"}},
-		{"With named params", "SELECT * FROM test WHERE a = $a OR d = $d", false, "foo1,bar1,baz1\nfoo3,bar2\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
+		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", []interface{}{"foo1", "foo3"}},
+		{"With named params", "SELECT * FROM test WHERE a = $a OR d = $d", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
 		{"With key()", "SELECT key(), a FROM test", false, "1,foo1\n2,foo2\n3\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
 	}
 
@@ -107,7 +119,7 @@ func TestSelectStmt(t *testing.T) {
 					require.NoError(t, err)
 					defer db.Close()
 
-					err = db.Exec("CREATE TABLE test")
+					err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
 					require.NoError(t, err)
 					if withIndexes {
 						err = db.Exec(`
@@ -120,11 +132,11 @@ func TestSelectStmt(t *testing.T) {
 						require.NoError(t, err)
 					}
 
-					err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
+					err = db.Exec("INSERT INTO test (k, a, b, c) VALUES (1, 'foo1', 'bar1', 'baz1')")
 					require.NoError(t, err)
-					err = db.Exec("INSERT INTO test (a, b, e) VALUES ('foo2', 'bar1', 1)")
+					err = db.Exec("INSERT INTO test (k, a, b, e) VALUES (2, 'foo2', 'bar1', 1)")
 					require.NoError(t, err)
-					err = db.Exec("INSERT INTO test (d, e) VALUES ('foo3', 'bar2')")
+					err = db.Exec("INSERT INTO test (k, d, e) VALUES (3, 'foo3', 'bar2')")
 					require.NoError(t, err)
 
 					st, err := db.Query(test.query, test.params...)
@@ -143,28 +155,31 @@ func TestSelectStmt(t *testing.T) {
 			}
 
 			t.Run("No Index/"+test.name, testFn(false))
-			// t.Run("With Index/"+test.name, testFn(true))
+			t.Run("With Index/"+test.name, testFn(true))
 		})
 	}
 
-	t.Run("with primary key", func(t *testing.T) {
+	t.Run("with primary key only", func(t *testing.T) {
 		db, err := New(memory.NewEngine())
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
+		err = db.Exec("CREATE TABLE test (foo UINT8 PRIMARY KEY)")
 		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, "a")`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, "b")`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, "c")`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, "d")`)
 		require.NoError(t, err)
 
-		st, err := db.Query("SELECT foo FROM test")
+		st, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
 		require.NoError(t, err)
 		defer st.Close()
 
 		var buf bytes.Buffer
 		err = record.IteratorToCSV(&buf, st)
 		require.NoError(t, err)
-		require.Equal(t, "1\n", buf.String())
+		require.Equal(t, "2,b\n3,c\n4,d\n", buf.String())
 	})
 }

@@ -14,6 +14,7 @@ type parser struct {
 	s             *scanner.BufScanner
 	orderedParams int
 	namedParams   int
+	stat          parserStat
 }
 
 // newParser returns a new instance of Parser.
@@ -168,6 +169,7 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
+		p.stat.exprFields = append(p.stat.exprFields, lit)
 		return fieldSelector(lit), nil
 	case scanner.IDENTORSTRING:
 		return identOrStringLitteral(lit), nil
@@ -338,3 +340,9 @@ func (p *parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 
 // Unscan pushes the previously read token back onto the buffer.
 func (p *parser) Unscan() { p.s.Unscan() }
+
+// parserStat carries contextual information
+// discovered while parsing queries.
+type parserStat struct {
+	exprFields []string
+}

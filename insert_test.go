@@ -158,6 +158,9 @@ func TestInsertStmt(t *testing.T) {
 		require.Error(t, err)
 		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
 		require.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
+		require.Equal(t, err, ErrDuplicateRecord)
 	})
 
 	t.Run("with shadowing", func(t *testing.T) {
