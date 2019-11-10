@@ -309,8 +309,6 @@ func (p *parser) parseType() (value.Type, error) {
 		return value.Uint64, nil
 	case scanner.TYPEUINT:
 		return value.Uint, nil
-	case scanner.TYPEFLOAT32:
-		return value.Float32, nil
 	case scanner.TYPEFLOAT64:
 		return value.Float64, nil
 	case scanner.TYPEINTEGER:

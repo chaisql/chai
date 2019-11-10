@@ -26,7 +26,6 @@ func TestFieldString(t *testing.T) {
 		{"int16", record.NewInt16Field("foo", 10), "foo:10"},
 		{"int32", record.NewInt32Field("foo", 10), "foo:10"},
 		{"int64", record.NewInt64Field("foo", 10), "foo:10"},
-		{"float32", record.NewFloat32Field("foo", 10.1), "foo:10.1"},
 		{"float64", record.NewFloat64Field("foo", 10.1), "foo:10.1"},
 	}
 

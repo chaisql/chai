@@ -28,7 +28,6 @@ func TestEncodeDecode(t *testing.T) {
 		{"int16", int16(-10), func() []byte { return value.EncodeInt16(-10) }, func(buf []byte) (interface{}, error) { return value.DecodeInt16(buf) }},
 		{"int32", int32(-10), func() []byte { return value.EncodeInt32(-10) }, func(buf []byte) (interface{}, error) { return value.DecodeInt32(buf) }},
 		{"int64", int64(-10), func() []byte { return value.EncodeInt64(-10) }, func(buf []byte) (interface{}, error) { return value.DecodeInt64(buf) }},
-		{"float32", float32(-3.14), func() []byte { return value.EncodeFloat32(-3.14) }, func(buf []byte) (interface{}, error) { return value.DecodeFloat32(buf) }},
 		{"float64", float64(-3.14), func() []byte { return value.EncodeFloat64(-3.14) }, func(buf []byte) (interface{}, error) { return value.DecodeFloat64(buf) }},
 	}
 
@@ -60,7 +59,6 @@ func TestOrdering(t *testing.T) {
 		{"int16", -1000, 1000, func(i int) []byte { return value.EncodeInt16(int16(i)) }},
 		{"int32", -1000, 1000, func(i int) []byte { return value.EncodeInt32(int32(i)) }},
 		{"int64", -1000, 1000, func(i int) []byte { return value.EncodeInt64(int64(i)) }},
-		{"float32", -1000, 1000, func(i int) []byte { return value.EncodeFloat32(float32(i)) }},
 		{"float64", -1000, 1000, func(i int) []byte { return value.EncodeFloat64(float64(i)) }},
 	}
 
@@ -106,7 +104,6 @@ func TestNew(t *testing.T) {
 		{"int16", int16(10)},
 		{"int32", int32(10)},
 		{"int64", int64(10)},
-		{"float32", 10.1},
 		{"float64", 10.1},
 		{"nil", nil},
 	}
@@ -141,7 +138,6 @@ func TestFieldString(t *testing.T) {
 		{"int16", value.NewInt16(10), "10"},
 		{"int32", value.NewInt32(10), "10"},
 		{"int64", value.NewInt64(10), "10"},
-		{"float32", value.NewFloat32(10.1), "10.1"},
 		{"float64", value.NewFloat64(10.1), "10.1"},
 	}
 
@@ -172,7 +168,6 @@ func TestDecodeToBytes(t *testing.T) {
 		{"int16", value.NewInt16(10), false, value.NewInt16(10).Data},
 		{"int32", value.NewInt32(10), false, value.NewInt32(10).Data},
 		{"int64", value.NewInt64(10), false, value.NewInt64(10).Data},
-		{"float32", value.NewFloat32(10.1), false, value.NewFloat32(10.1).Data},
 		{"float64", value.NewFloat64(10.1), false, value.NewFloat64(10.1).Data},
 	}
 
@@ -209,7 +204,6 @@ func TestDecodeToString(t *testing.T) {
 		{"int16", value.NewInt16(10), true, ""},
 		{"int32", value.NewInt32(10), true, ""},
 		{"int64", value.NewInt64(10), true, ""},
-		{"float32", value.NewFloat32(10.1), true, ""},
 		{"float64", value.NewFloat64(10.1), true, ""},
 	}
 
@@ -259,8 +253,6 @@ func TestDecodeToBool(t *testing.T) {
 		{"zero int32", value.NewInt32(0), false, false},
 		{"int64", value.NewInt64(10), false, true},
 		{"zero int64", value.NewInt64(0), false, false},
-		{"float32", value.NewFloat32(10.1), false, true},
-		{"zero float32", value.NewFloat32(0), false, false},
 		{"float64", value.NewFloat64(10.1), false, true},
 		{"zero float64", value.NewFloat64(0), false, false},
 	}
@@ -298,7 +290,6 @@ func TestDecodeToNumber(t *testing.T) {
 		{"int16", value.NewInt16(10), false, 10},
 		{"int32", value.NewInt32(10), false, 10},
 		{"int64", value.NewInt64(10), false, 10},
-		{"float32", value.NewFloat32(10), false, 10},
 		{"float64", value.NewFloat64(10), false, 10},
 	}
 
@@ -351,10 +342,6 @@ func TestDecodeToNumber(t *testing.T) {
 		t.Run(test.name+" to int64", func(t *testing.T) {
 			res, err := test.v.DecodeToInt64()
 			check(t, res, err, test.fails, int64(test.expected))
-		})
-		t.Run(test.name+" to float32", func(t *testing.T) {
-			res, err := test.v.DecodeToFloat32()
-			check(t, res, err, test.fails, float32(test.expected))
 		})
 		t.Run(test.name+" to float64", func(t *testing.T) {
 			res, err := test.v.DecodeToFloat64()

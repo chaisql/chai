@@ -320,12 +320,12 @@ func Scan(r Record, targets ...interface{}) error {
 
 			*t = x
 		case *float32:
-			x, err := f.DecodeToFloat32()
+			x, err := f.DecodeToFloat64()
 			if err != nil {
 				return err
 			}
 
-			*t = x
+			*t = float32(x)
 		case *float64:
 			x, err := f.DecodeToFloat64()
 			if err != nil {
@@ -355,7 +355,7 @@ func Scan(r Record, targets ...interface{}) error {
 
 			*t = x
 		default:
-			return errors.New("unsupported type")
+			return fmt.Errorf("unsupported type %T", t)
 		}
 		i++
 		return nil

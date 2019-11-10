@@ -127,11 +127,6 @@ func int64Value(v int64) litteralValue {
 	return litteralValue{value.NewInt64(v)}
 }
 
-// float32Value creates a litteral value of type Float32.
-func float32Value(v float32) litteralValue {
-	return litteralValue{value.NewFloat32(v)}
-}
-
 // float64Value creates a litteral value of type Float64.
 func float64Value(v float64) litteralValue {
 	return litteralValue{value.NewFloat64(v)}

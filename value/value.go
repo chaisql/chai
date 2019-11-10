@@ -27,7 +27,6 @@ const (
 	Int16
 	Int32
 	Int64
-	Float32
 	Float64
 
 	Null
@@ -61,8 +60,6 @@ func (t Type) String() string {
 		return "Int32"
 	case Int64:
 		return "Int64"
-	case Float32:
-		return "Float32"
 	case Float64:
 		return "Float64"
 	case Null:
@@ -101,8 +98,6 @@ func TypeFromGoType(tp string) Type {
 		return Int32
 	case "int64":
 		return Int64
-	case "float32":
-		return Float32
 	case "float64":
 		return Float64
 	case "nil":
@@ -148,14 +143,12 @@ func New(x interface{}) (Value, error) {
 		return NewInt32(v), nil
 	case int64:
 		return NewInt64(v), nil
-	case float32:
-		return NewFloat32(v), nil
 	case float64:
 		return NewFloat64(v), nil
 	case nil:
 		return NewNull(), nil
 	default:
-		return Value{}, fmt.Errorf("unsupported type %t", x)
+		return Value{}, fmt.Errorf("unsupported type %T", x)
 	}
 }
 
@@ -263,14 +256,6 @@ func NewInt64(x int64) Value {
 	}
 }
 
-// NewFloat32 encodes x and returns a value.
-func NewFloat32(x float32) Value {
-	return Value{
-		Type: Float32,
-		Data: EncodeFloat32(x),
-	}
-}
-
 // NewFloat64 encodes x and returns a value.
 func NewFloat64(x float64) Value {
 	return Value{
@@ -316,8 +301,6 @@ func (v *Value) decode() error {
 		v.v, err = DecodeInt32(v.Data)
 	case Int64:
 		v.v, err = DecodeInt64(v.Data)
-	case Float32:
-		v.v, err = DecodeFloat32(v.Data)
 	case Float64:
 		v.v, err = DecodeFloat64(v.Data)
 	case Null:
@@ -373,8 +356,6 @@ func (v Value) String() string {
 		vv, _ = DecodeInt32(v.Data)
 	case Int64:
 		vv, _ = DecodeInt64(v.Data)
-	case Float32:
-		vv, _ = DecodeFloat32(v.Data)
 	case Float64:
 		vv, _ = DecodeFloat64(v.Data)
 	}
@@ -517,16 +498,6 @@ func (v Value) DecodeTo(t Type) (Value, error) {
 		return Value{
 			Type: Int64,
 			Data: EncodeInt64(x),
-			v:    x,
-		}, nil
-	case Float32:
-		x, err := v.DecodeToFloat32()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: Float32,
-			Data: EncodeFloat32(x),
 			v:    x,
 		}, nil
 	case Float64:
@@ -748,39 +719,11 @@ func (v Value) DecodeToInt64() (int64, error) {
 	return 0, fmt.Errorf("can't convert %q to int64", v.Type)
 }
 
-// DecodeToFloat32 turns any number into a float32.
-// It doesn't work with other types.
-func (v Value) DecodeToFloat32() (float32, error) {
-	if v.Type == Float32 {
-		return DecodeFloat32(v.Data)
-	}
-
-	if v.Type == Float64 {
-		f, err := DecodeFloat64(v.Data)
-		return float32(f), err
-	}
-
-	if IsInteger(v.Type) {
-		x, err := decodeAsInt64(v)
-		if err != nil {
-			return 0, err
-		}
-		return float32(x), nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to float32", v.Type)
-}
-
 // DecodeToFloat64 turns any number into a float64.
 // It doesn't work with other types.
 func (v Value) DecodeToFloat64() (float64, error) {
 	if v.Type == Float64 {
 		return DecodeFloat64(v.Data)
-	}
-
-	if v.Type == Float32 {
-		f, err := DecodeFloat32(v.Data)
-		return float64(f), err
 	}
 
 	if IsInteger(v.Type) {
@@ -854,12 +797,6 @@ func decodeAsInt64(v Value) (int64, error) {
 		i = int64(x)
 	case Int64:
 		return DecodeInt64(v.Data)
-	case Float32:
-		x, err := DecodeFloat32(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
 	case Float64:
 		x, err := DecodeFloat64(v.Data)
 		if err != nil {
@@ -1048,29 +985,6 @@ func DecodeInt64(buf []byte) (int64, error) {
 	return int64(x), err
 }
 
-// EncodeFloat32 takes an float32 and returns its binary representation.
-func EncodeFloat32(x float32) []byte {
-	fb := math.Float32bits(x)
-	if x >= 0 {
-		fb ^= 1 << 31
-	} else {
-		fb ^= 1<<32 - 1
-	}
-	return EncodeUint32(fb)
-}
-
-// DecodeFloat32 takes a byte slice and decodes it into an float32.
-func DecodeFloat32(buf []byte) (float32, error) {
-	x := binary.BigEndian.Uint32(buf)
-
-	if (x & (1 << 31)) != 0 {
-		x ^= 1 << 31
-	} else {
-		x ^= 1<<32 - 1
-	}
-	return math.Float32frombits(x), nil
-}
-
 // EncodeFloat64 takes an float64 and returns its binary representation.
 func EncodeFloat64(x float64) []byte {
 	fb := math.Float64bits(x)
@@ -1124,8 +1038,6 @@ func ZeroValue(t Type) Value {
 		return NewInt32(0)
 	case Int64:
 		return NewInt64(0)
-	case Float32:
-		return NewFloat32(0)
 	case Float64:
 		return NewFloat64(0)
 	}
@@ -1147,7 +1059,6 @@ var (
 	int16ZeroValue   = ZeroValue(Int16)
 	int32ZeroValue   = ZeroValue(Int32)
 	int64ZeroValue   = ZeroValue(Int64)
-	float32ZeroValue = ZeroValue(Float32)
 	float64ZeroValue = ZeroValue(Float64)
 )
 
@@ -1181,8 +1092,6 @@ func IsZeroValue(t Type, data []byte) bool {
 		return bytes.Equal(data, int32ZeroValue.Data)
 	case Int64:
 		return bytes.Equal(data, int64ZeroValue.Data)
-	case Float32:
-		return bytes.Equal(data, float32ZeroValue.Data)
 	case Float64:
 		return bytes.Equal(data, float64ZeroValue.Data)
 	}
@@ -1202,5 +1111,5 @@ func IsInteger(t Type) bool {
 
 // IsFloat returns true if t is either a Float32 or Float64.
 func IsFloat(t Type) bool {
-	return t == Float32 || t == Float64
+	return t == Float64
 }

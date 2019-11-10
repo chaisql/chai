@@ -140,7 +140,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "UINT32", tok: scanner.TYPEUINT32},
 		{s: "UINT64", tok: scanner.TYPEUINT64},
 		{s: "UINT", tok: scanner.TYPEUINT},
-		{s: "FLOAT32", tok: scanner.TYPEFLOAT32},
 		{s: "FLOAT64", tok: scanner.TYPEFLOAT64},
 		{s: "INTEGER", tok: scanner.TYPEINTEGER},
 		{s: "NUMERIC", tok: scanner.TYPENUMERIC},

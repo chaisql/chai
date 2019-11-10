@@ -570,7 +570,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		rec := newRecord()
-		foo := record.NewFloat32Field("foo", 10)
+		foo := record.NewFloat64Field("foo", 10)
 		rec = append(rec, foo)
 
 		key, err := tb.Insert(rec)

@@ -211,8 +211,7 @@ func TestScan(t *testing.T) {
 		record.NewInt16Field("k", 10),
 		record.NewInt32Field("l", 10),
 		record.NewInt64Field("m", 10),
-		record.NewFloat32Field("n", 10.4),
-		record.NewFloat64Field("o", 10.5),
+		record.NewFloat64Field("n", 10.5),
 	})
 
 	var a []byte
@@ -228,10 +227,9 @@ func TestScan(t *testing.T) {
 	var k int16
 	var l int32
 	var m int64
-	var n float32
-	var o float64
+	var n float64
 
-	err := record.Scan(r, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o)
+	err := record.Scan(r, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n)
 	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -246,8 +244,7 @@ func TestScan(t *testing.T) {
 	require.Equal(t, k, int16(10))
 	require.Equal(t, l, int32(10))
 	require.Equal(t, m, int64(10))
-	require.Equal(t, n, float32(10.4))
-	require.Equal(t, o, float64(10.5))
+	require.Equal(t, n, float64(10.5))
 
 	t.Run("RecordScanner", func(t *testing.T) {
 		var rs recordScanner
@@ -263,14 +260,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := record.Scan(r, m)
 		require.NoError(t, err)
-		require.Len(t, m, 15)
+		require.Len(t, m, 14)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := record.Scan(r, &m)
 		require.NoError(t, err)
-		require.Len(t, m, 15)
+		require.Len(t, m, 14)
 	})
 }
 
