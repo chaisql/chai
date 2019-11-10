@@ -65,6 +65,9 @@ func TestUpdateStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No cond", `UPDATE test SET a = 'boo'`, false, "boo,bar1,baz1\nboo,bar2\nfoo3,bar3\n", nil},
+		{"No cond / with ident string", `UPDATE test SET "a" = 'boo'`, false, "boo,bar1,baz1\nboo,bar2\nfoo3,bar3\n", nil},
+		{"No cond / with multiple idents", `UPDATE test SET a = c`, false, "baz1,bar1,baz1\n<nil>,bar2\nfoo3,bar3\n", nil},
+		{"No cond / with string", `UPDATE test SET 'a' = 'boo'`, true, "", nil},
 		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE a = 'foo2'", false, "foo1,bar1,baz1\n1,2\nfoo3,bar3\n", nil},
 		{"Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, "foo1,bar1,baz1\nfoo2,bar2\nfoo3,bar3\n", nil},
 		{"Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, "a,b,baz1\nfoo2,bar2\nfoo3,bar3\n", []interface{}{"a", "b", "foo1"}},

@@ -171,8 +171,6 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 	case scanner.IDENT:
 		p.stat.exprFields = append(p.stat.exprFields, lit)
 		return fieldSelector(lit), nil
-	case scanner.IDENTORSTRING:
-		return identOrStringLitteral(lit), nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
@@ -223,19 +221,10 @@ func (p *parser) ParseIdent() (string, error) {
 	return lit, nil
 }
 
-// ParseIdent parses an identifier.
-func (p *parser) ParseIdentOrString() (string, error) {
-	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok != scanner.IDENT && tok != scanner.IDENTORSTRING {
-		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
-	}
-	return lit, nil
-}
-
 // ParseIdentList parses a comma delimited list of identifiers.
 func (p *parser) ParseIdentList() ([]string, error) {
 	// Parse first (required) identifier.
-	ident, err := p.ParseIdentOrString()
+	ident, err := p.ParseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +237,7 @@ func (p *parser) ParseIdentList() ([]string, error) {
 			return idents, nil
 		}
 
-		if ident, err = p.ParseIdentOrString(); err != nil {
+		if ident, err = p.ParseIdent(); err != nil {
 			return nil, err
 		}
 

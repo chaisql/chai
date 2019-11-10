@@ -35,7 +35,7 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 		return s.scanWhitespace()
 	} else if isLetter(ch0) || ch0 == '_' {
 		s.r.unread()
-		return s.scanIdent(true, false)
+		return s.scanIdent(true)
 	} else if isDigit(ch0) {
 		return s.scanNumber()
 	}
@@ -46,7 +46,7 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 		return EOF, pos, ""
 	case '"':
 		s.r.unread()
-		return s.scanIdent(true, true)
+		return s.scanIdent(true)
 	case '\'':
 		return s.scanString()
 	case '.':
@@ -57,7 +57,7 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 		}
 		return DOT, pos, ""
 	case '$':
-		tok, _, lit = s.scanIdent(false, false)
+		tok, _, lit = s.scanIdent(false)
 		if tok != IDENT {
 			return tok, pos, "$" + lit
 		}
@@ -194,7 +194,7 @@ func (s *Scanner) skipUntilEndComment() error {
 	}
 }
 
-func (s *Scanner) scanIdent(lookup, orString bool) (tok Token, pos Pos, lit string) {
+func (s *Scanner) scanIdent(lookup bool) (tok Token, pos Pos, lit string) {
 	// Save the starting position of the identifier.
 	_, pos = s.r.read()
 	s.r.unread()
@@ -207,9 +207,6 @@ func (s *Scanner) scanIdent(lookup, orString bool) (tok Token, pos Pos, lit stri
 			tok0, pos0, lit0 := s.scanString()
 			if tok0 == BADSTRING || tok0 == BADESCAPE {
 				return tok0, pos0, lit0
-			}
-			if orString {
-				return IDENTORSTRING, pos, lit0
 			}
 			return IDENT, pos, lit0
 		} else if isIdentChar(ch) {

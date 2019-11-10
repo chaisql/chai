@@ -15,10 +15,10 @@ func TestParserInsert(t *testing.T) {
 		name     string
 		s        string
 		expected statement
-		errored  bool
+		fails    bool
 	}{
-		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`,
-			insertStmt{tableName: "test", values: litteralExprList{litteralExprList{identOrStringLitteral("a"), stringValue("b"), stringValue("c")}}}, false},
+		{"Values / No columns", `INSERT INTO test VALUES ('a', 'b', 'c')`,
+			insertStmt{tableName: "test", values: litteralExprList{litteralExprList{stringValue("a"), stringValue("b"), stringValue("c")}}}, false},
 		{"Values / With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			insertStmt{
 				tableName:  "test",
@@ -37,23 +37,23 @@ func TestParserInsert(t *testing.T) {
 				},
 			}, false},
 
-		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)",
+		{"Records", `INSERT INTO test RECORDS (a: 'a', b: 2.3, "c ": 1 = 1)`,
 			insertStmt{
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
 						kvPair{K: "a", V: stringValue("a")},
 						kvPair{K: "b", V: float64Value(2.3)},
-						kvPair{K: "c", V: eq(int64Value(1), int64Value(1))},
+						kvPair{K: "c ", V: eq(int64Value(1), int64Value(1))},
 					},
 				},
 			}, false},
-		{"Records / Multiple", `INSERT INTO test RECORDS ("a": "a", b: 2.3), (a: 1, d: true)`,
+		{"Records / Multiple", `INSERT INTO test RECORDS ("a": 'a', b: 2.3), (a: 1, d: true)`,
 			insertStmt{
 				tableName: "test",
 				records: []interface{}{
 					[]kvPair{
-						kvPair{K: "a", V: identOrStringLitteral("a")},
+						kvPair{K: "a", V: stringValue("a")},
 						kvPair{K: "b", V: float64Value(2.3)},
 					},
 					[]kvPair{kvPair{K: "a", V: int64Value(1)}, kvPair{K: "d", V: boolValue(true)}},
@@ -76,7 +76,7 @@ func TestParserInsert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parseQuery(test.s)
-			if test.errored {
+			if test.fails {
 				require.Error(t, err)
 				return
 			}
@@ -96,7 +96,10 @@ func TestInsertStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`, true, ``, nil},
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ("a", 'b', 'c')`, false, "1,a,b,c\n", nil},
+		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, false, "1,a,b,c\n", nil},
+		{"Values / Ident", `INSERT INTO test (a) VALUES (a)`, true, ``, nil},
+		{"Values / Ident string", `INSERT INTO test (a) VALUES ("a")`, true, ``, nil},
+		{"Values / With fields ident string", `INSERT INTO test (a, "foo bar") VALUES ('c', 'd')`, false, "1,c,d\n", nil},
 		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, "1,d,e,f\n", []interface{}{"d", "f"}},
 		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, "1,d,e,f\n", []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
@@ -105,6 +108,8 @@ func TestInsertStmt(t *testing.T) {
 		{"Records / Positional Params", "INSERT INTO test RECORDS (a: ?, b: 2.3, c: ?)", false, "1,a,2.3,true\n", []interface{}{"a", true}},
 		{"Records / Named Params", "INSERT INTO test RECORDS (a: $a, b: 2.3, c: $c)", false, "1,1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
 		{"Records / List ", "INSERT INTO test RECORDS (a: (1, 2, 3))", true, "", nil},
+		{"Records / strings", `INSERT INTO test RECORDS ('a': 'a', b: 2.3)`, true, "", nil},
+		{"Records / ident value", `INSERT INTO test RECORDS ("a": "a")`, true, "", nil},
 	}
 
 	for _, test := range tests {

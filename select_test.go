@@ -102,6 +102,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2\n\n", nil},
 		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
+		{"With field comparison", "SELECT * FROM test WHERE b < a", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "1,foo1,bar1,baz1\n", nil},
 		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "2,foo2,bar1,1,2\n", nil},
 		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "2,foo2,bar1,1\n", nil},
@@ -168,10 +169,10 @@ func TestSelectStmt(t *testing.T) {
 		err = db.Exec("CREATE TABLE test (foo UINT8 PRIMARY KEY)")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, "a")`)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, "b")`)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, "c")`)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, "d")`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
+		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
 		require.NoError(t, err)
 
 		st, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")

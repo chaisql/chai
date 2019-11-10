@@ -94,7 +94,7 @@ func (p *parser) parseResultField() (resultField, error) {
 	p.Unscan()
 
 	// Check if it's an identifier
-	ident, err := p.ParseIdentOrString()
+	ident, err := p.ParseIdent()
 	if err != nil {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"ident or string"}, pos)
 	}
@@ -306,7 +306,7 @@ func (f fieldSelector) Name() string {
 
 func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
 	if r == nil {
-		return record.Field{}, fmt.Errorf("field not found")
+		return record.Field{}, errors.New("field not found")
 	}
 
 	return r.GetField(string(f))
@@ -324,6 +324,10 @@ func (f fieldSelector) Iterate(stack evalStack, fn func(fd record.Field) error) 
 // Eval extracts the record from the context and selects the right field.
 // It implements the Expr interface.
 func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
+	if stack.Record == nil {
+		return evalValue{}, errors.New("field not found")
+	}
+
 	fd, err := f.SelectField(stack.Record)
 	if err != nil {
 		return nilLitteral, nil
