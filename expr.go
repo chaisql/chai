@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"math"
 
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
@@ -348,7 +349,7 @@ func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
 		}
 	}
 
-	// if same type, no conversion needed
+	// if same type, or string and bytes, no conversion needed
 	if l.Type == r.Type || (l.Type == value.String && r.Type == value.Bytes) || (r.Type == value.String && l.Type == value.Bytes) {
 		var ok bool
 		switch op.Token {
@@ -377,6 +378,54 @@ func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
 		return false, err
 	}
 
+	// uint64 numbers can be bigger than int64 and thus cannot be converted
+	// to int64 without first checking if they can overflow.
+	// if they do, the result of all the operations is already known
+	if l.Type == value.Uint64 || r.Type == value.Uint64 {
+		var ui uint64
+		if l.Type == value.Uint64 {
+			ui = lv.(uint64)
+		} else if r.Type == value.Uint64 {
+			ui = rv.(uint64)
+		}
+		if ui > math.MaxInt64 {
+			switch op.Token {
+			case scanner.EQ:
+				return false, nil
+			case scanner.GT:
+				fallthrough
+			case scanner.GTE:
+				return l.Type == value.Uint64, nil
+			case scanner.LT:
+				return r.Type == value.Uint64, nil
+			case scanner.LTE:
+				return r.Type == value.Uint64, nil
+			}
+		}
+	}
+
+	// integer OP integer
+	if value.IsInteger(l.Type) && value.IsInteger(r.Type) {
+		ai, bi := numberToInt64(lv), numberToInt64(rv)
+
+		var ok bool
+
+		switch op.Token {
+		case scanner.EQ:
+			ok = ai == bi
+		case scanner.GT:
+			ok = ai > bi
+		case scanner.GTE:
+			ok = ai >= bi
+		case scanner.LT:
+			ok = ai < bi
+		case scanner.LTE:
+			ok = ai <= bi
+		}
+
+		return ok, nil
+	}
+
 	// number OP number
 	if value.IsNumber(l.Type) && value.IsNumber(r.Type) {
 		af, bf := numberToFloat(lv), numberToFloat(rv)
@@ -396,12 +445,9 @@ func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
 			ok = af <= bf
 		}
 
-		if ok {
-			return true, nil
-		}
-
-		return false, nil
+		return ok, nil
 	}
+
 	return false, nil
 }
 
@@ -436,6 +482,39 @@ func numberToFloat(v interface{}) float64 {
 	}
 
 	return f
+}
+
+func numberToInt64(v interface{}) int64 {
+	var i int64
+
+	switch t := v.(type) {
+	case uint:
+		i = int64(t)
+	case uint8:
+		i = int64(t)
+	case uint16:
+		i = int64(t)
+	case uint32:
+		i = int64(t)
+	case uint64:
+		i = int64(t)
+	case int:
+		i = int64(t)
+	case int8:
+		i = int64(t)
+	case int16:
+		i = int64(t)
+	case int32:
+		i = int64(t)
+	case int64:
+		i = t
+	case float32:
+		panic("attempt to convert float32 to int64 in comparison expression")
+	case float64:
+		panic("attempt to convert float32 to int64 in comparison expression")
+	}
+
+	return i
 }
 
 type andOp struct {

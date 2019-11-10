@@ -1,6 +1,7 @@
 package genji
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,7 @@ func TestOperator(t *testing.T) {
 		{"GT / Null and Value", gt, nilLitteral.Value, stringValue("foo"), falseLitteral, false},
 		{"GT / String Bytes", gt, stringValue("foo2"), bytesValue([]byte("foo1")), trueLitteral, false},
 		{"GT / Bytes String", gt, bytesValue([]byte("foo2")), stringValue("foo1"), trueLitteral, false},
+		{"GT / Numbers / Different sizes", gt, uint64Value(math.MaxUint64), int64Value(math.MaxInt64), trueLitteral, false},
 		{"GTE / Same type", gte, int32Value(11), int32Value(10), trueLitteral, false},
 		{"GTE / Same type / Lower", gte, int32Value(10), int32Value(11), falseLitteral, false},
 		{"GTE / Numbers", gte, int32Value(11), uint64Value(10), trueLitteral, false},
@@ -56,6 +58,7 @@ func TestOperator(t *testing.T) {
 		{"LT / Same type / Greater", lt, int32Value(11), int32Value(10), falseLitteral, false},
 		{"LT / Numbers", lt, int32Value(10), uint64Value(11), trueLitteral, false},
 		{"LT / Numbers / Greater", lt, int32Value(11), uint64Value(10), falseLitteral, false},
+		{"LT / Numbers / Different sizes", lt, int64Value(math.MaxInt64), uint64Value(math.MaxUint64), trueLitteral, false},
 		{"LT / Null", lt, nilLitteral.Value, nilLitteral.Value, falseLitteral, false},
 		{"LT / Zero and Null", lt, stringValue(""), nilLitteral.Value, falseLitteral, false},
 		{"LT / Null and Zero", lt, nilLitteral.Value, stringValue(""), falseLitteral, false},
