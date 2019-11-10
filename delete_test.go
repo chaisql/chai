@@ -16,7 +16,7 @@ func TestParserDelete(t *testing.T) {
 		expected statement
 	}{
 		{"NoCond", "DELETE FROM test", deleteStmt{tableName: "test"}},
-		{"WithCond", "DELETE FROM test WHERE age = 10", deleteStmt{tableName: "test", whereExpr: eq(fieldSelector("age"), int64Value(10))}},
+		{"WithCond", "DELETE FROM test WHERE age = 10", deleteStmt{tableName: "test", whereExpr: eq(fieldSelector("age"), int8Value(10))}},
 	}
 
 	for _, test := range tests {

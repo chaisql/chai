@@ -2,6 +2,7 @@ package genji
 
 import (
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -203,6 +204,14 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 				return litteralValue{value.NewUint64(v)}, nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
+		}
+		switch {
+		case v < math.MaxInt8:
+			return litteralValue{value.NewInt8(int8(v))}, nil
+		case v < math.MaxInt16:
+			return litteralValue{value.NewInt16(int16(v))}, nil
+		case v < math.MaxInt32:
+			return litteralValue{value.NewInt32(int32(v))}, nil
 		}
 		return litteralValue{value.NewInt64(v)}, nil
 	case scanner.TRUE, scanner.FALSE:

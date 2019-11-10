@@ -36,7 +36,7 @@ func TestParserSelect(t *testing.T) {
 			selectStmt{
 				tableName: "test",
 				selectors: []resultField{wildcard{}},
-				whereExpr: eq(fieldSelector("age"), int64Value(10)),
+				whereExpr: eq(fieldSelector("age"), int8Value(10)),
 				stat: parserStat{
 					exprFields: []string{"age"},
 				},
@@ -45,8 +45,8 @@ func TestParserSelect(t *testing.T) {
 			selectStmt{
 				selectors: []resultField{wildcard{}},
 				tableName: "test",
-				whereExpr: eq(fieldSelector("age"), int64Value(10)),
-				limitExpr: int64Value(20),
+				whereExpr: eq(fieldSelector("age"), int8Value(10)),
+				limitExpr: int8Value(20),
 				stat: parserStat{
 					exprFields: []string{"age"},
 				},
@@ -55,8 +55,8 @@ func TestParserSelect(t *testing.T) {
 			selectStmt{
 				selectors:  []resultField{wildcard{}},
 				tableName:  "test",
-				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
-				offsetExpr: int64Value(20),
+				whereExpr:  eq(fieldSelector("age"), int8Value(10)),
+				offsetExpr: int8Value(20),
 				stat: parserStat{
 					exprFields: []string{"age"},
 				},
@@ -65,9 +65,9 @@ func TestParserSelect(t *testing.T) {
 			selectStmt{
 				selectors:  []resultField{wildcard{}},
 				tableName:  "test",
-				whereExpr:  eq(fieldSelector("age"), int64Value(10)),
-				offsetExpr: int64Value(20),
-				limitExpr:  int64Value(10),
+				whereExpr:  eq(fieldSelector("age"), int8Value(10)),
+				offsetExpr: int8Value(20),
+				limitExpr:  int8Value(10),
 				stat: parserStat{
 					exprFields: []string{"age"},
 				},
@@ -115,50 +115,47 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			testFn := func(withIndexes bool) func(t *testing.T) {
-				return func(t *testing.T) {
-					db, err := New(memory.NewEngine())
-					require.NoError(t, err)
-					defer db.Close()
+		testFn := func(withIndexes bool) func(t *testing.T) {
+			return func(t *testing.T) {
+				db, err := New(memory.NewEngine())
+				require.NoError(t, err)
+				defer db.Close()
 
-					err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
-					require.NoError(t, err)
-					if withIndexes {
-						err = db.Exec(`
+				err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
+				require.NoError(t, err)
+				if withIndexes {
+					err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
 						CREATE INDEX idx_d ON test (d);
 					`)
-						require.NoError(t, err)
-					}
-
-					err = db.Exec("INSERT INTO test (k, a, b, c) VALUES (1, 'foo1', 'bar1', 'baz1')")
 					require.NoError(t, err)
-					err = db.Exec("INSERT INTO test (k, a, b, e) VALUES (2, 'foo2', 'bar1', 1)")
-					require.NoError(t, err)
-					err = db.Exec("INSERT INTO test (k, d, e) VALUES (3, 'foo3', 'bar2')")
-					require.NoError(t, err)
-
-					st, err := db.Query(test.query, test.params...)
-					if test.fails {
-						require.Error(t, err)
-						return
-					}
-					require.NoError(t, err)
-					defer st.Close()
-
-					var buf bytes.Buffer
-					err = record.IteratorToCSV(&buf, st)
-					require.NoError(t, err)
-					require.Equal(t, test.expected, buf.String())
 				}
-			}
 
-			t.Run("No Index/"+test.name, testFn(false))
-			t.Run("With Index/"+test.name, testFn(true))
-		})
+				err = db.Exec("INSERT INTO test (k, a, b, c) VALUES (1, 'foo1', 'bar1', 'baz1')")
+				require.NoError(t, err)
+				err = db.Exec("INSERT INTO test (k, a, b, e) VALUES (2, 'foo2', 'bar1', 1)")
+				require.NoError(t, err)
+				err = db.Exec("INSERT INTO test (k, d, e) VALUES (3, 'foo3', 'bar2')")
+				require.NoError(t, err)
+
+				st, err := db.Query(test.query, test.params...)
+				if test.fails {
+					require.Error(t, err)
+					return
+				}
+				require.NoError(t, err)
+				defer st.Close()
+
+				var buf bytes.Buffer
+				err = record.IteratorToCSV(&buf, st)
+				require.NoError(t, err)
+				require.Equal(t, test.expected, buf.String())
+			}
+		}
+		t.Run("No Index/"+test.name, testFn(false))
+		t.Run("With Index/"+test.name, testFn(true))
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {

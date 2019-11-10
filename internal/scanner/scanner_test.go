@@ -90,7 +90,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `100`, tok: scanner.INTEGER, lit: `100`},
 		{s: `100.23`, tok: scanner.NUMBER, lit: `100.23`},
 		{s: `.23`, tok: scanner.NUMBER, lit: `.23`},
-		//{s: `.`, tok: scanner.ILLEGAL, lit: `.`},
+		// {s: `.`, tok: scanner.ILLEGAL, lit: `.`},
 		{s: `10.3s`, tok: scanner.NUMBER, lit: `10.3`},
 
 		// Durations

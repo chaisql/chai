@@ -44,7 +44,7 @@ func TestParserInsert(t *testing.T) {
 					[]kvPair{
 						kvPair{K: "a", V: stringValue("a")},
 						kvPair{K: "b", V: float64Value(2.3)},
-						kvPair{K: "c ", V: eq(int64Value(1), int64Value(1))},
+						kvPair{K: "c ", V: eq(int8Value(1), int8Value(1))},
 					},
 				},
 			}, false},
@@ -56,7 +56,7 @@ func TestParserInsert(t *testing.T) {
 						kvPair{K: "a", V: stringValue("a")},
 						kvPair{K: "b", V: float64Value(2.3)},
 					},
-					[]kvPair{kvPair{K: "a", V: int64Value(1)}, kvPair{K: "d", V: boolValue(true)}},
+					[]kvPair{kvPair{K: "a", V: int8Value(1)}, kvPair{K: "d", V: boolValue(true)}},
 				},
 			}, false},
 		{"Records / Positional Param", "INSERT INTO test RECORDS ?, ?",

@@ -21,7 +21,7 @@ func TestParserUdpate(t *testing.T) {
 			updateStmt{
 				tableName: "test",
 				pairs: map[string]expr{
-					"a": int64Value(1),
+					"a": int8Value(1),
 				},
 			},
 			false},
@@ -29,10 +29,10 @@ func TestParserUdpate(t *testing.T) {
 			updateStmt{
 				tableName: "test",
 				pairs: map[string]expr{
-					"a": int64Value(1),
-					"b": int64Value(2),
+					"a": int8Value(1),
+					"b": int8Value(2),
 				},
-				whereExpr: eq(fieldSelector("age"), int64Value(10)),
+				whereExpr: eq(fieldSelector("age"), int8Value(10)),
 			},
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},

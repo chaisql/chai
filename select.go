@@ -209,10 +209,14 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		}
 
 		if v.Value.Type < value.Int {
-			return res, fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", v.Value.Type)
+			return res, fmt.Errorf("offset expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		offset, err = value.DecodeInt(v.Value.Data)
+		voff, err := v.Value.DecodeTo(value.Int)
+		if err != nil {
+			return res, err
+		}
+		offset, err = value.DecodeInt(voff.Data)
 		if err != nil {
 			return res, err
 		}
@@ -229,10 +233,14 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		}
 
 		if v.Value.Type < value.Int {
-			return res, fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", v.Value.Type)
+			return res, fmt.Errorf("limit expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		limit, err = value.DecodeInt(v.Value.Data)
+		vlim, err := v.Value.DecodeTo(value.Int)
+		if err != nil {
+			return res, err
+		}
+		limit, err = value.DecodeInt(vlim.Data)
 		if err != nil {
 			return res, err
 		}

@@ -30,34 +30,29 @@ func (rt *rectest) ScanRecord(r record.Record) error {
 	if err != nil {
 		return err
 	}
-	v, err := f.Decode()
+	rt.a, err = f.DecodeToInt()
 	if err != nil {
 		return err
 	}
-
-	rt.a = int(v.(int64))
 
 	f, err = r.GetField("b")
 	if err != nil {
 		return err
 	}
-	v, err = f.Decode()
+	rt.b, err = f.DecodeToInt()
 	if err != nil {
 		return err
 	}
-
-	rt.b = int(v.(int64))
 
 	f, err = r.GetField("c")
 	if err != nil {
 		return err
 	}
-	v, err = f.Decode()
+	rt.c, err = f.DecodeToInt()
 	if err != nil {
 		return err
 	}
 
-	rt.c = int(v.(int64))
 	return nil
 }
 
