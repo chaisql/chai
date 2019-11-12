@@ -199,7 +199,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 
 	switch it.op {
 	case scanner.EQ:
-		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
 			if bytes.Equal(data, val.Data) {
 				r, err := it.tb.GetRecord(key)
 				if err != nil {
@@ -212,7 +212,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return errStop
 		})
 	case scanner.GT:
-		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
 			if bytes.Equal(data, val.Data) {
 				return nil
 			}
@@ -225,7 +225,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.GTE:
-		err = it.index.AscendGreaterOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err
@@ -234,7 +234,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LT:
-		err = it.index.DescendLessOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+		err = it.index.DescendLessOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
 			if bytes.Equal(data, val.Data) {
 				return nil
 			}
@@ -247,7 +247,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LTE:
-		err = it.index.DescendLessOrEqual(v.Value.Value, func(val value.Value, key []byte) error {
+		err = it.index.DescendLessOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err

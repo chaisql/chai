@@ -20,15 +20,16 @@ const (
 // They are automatically converted to one of the following types:
 //
 // Strings and Bytes values are stored in Bytes indexes.
-// Signed and unsigned integers, and floats are stored in Float indexes.
+// Signed, unsigned integers, and floats are stored in Float indexes.
 // Booleans are stores in Bool indexes.
 type Type byte
 
 // index value types
 const (
-	Bytes Type = iota + 1
-	Float
+	Null Type = iota + 1
 	Bool
+	Float
+	Bytes
 )
 
 // NewTypeFromValueType returns the right index type associated with t.
@@ -45,7 +46,7 @@ func NewTypeFromValueType(t value.Type) Type {
 		return Bool
 	}
 
-	return 0
+	return Null
 }
 
 var (
@@ -65,12 +66,12 @@ type Index interface {
 	// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the beginning.
-	AscendGreaterOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error
+	AscendGreaterOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error
 
 	// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
-	DescendLessOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error
+	DescendLessOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error
 
 	// Truncate deletes all the index data.
 	Truncate() error
@@ -98,8 +99,8 @@ type Options struct {
 }
 
 // EmptyPivot returns a pivot that starts at the beginning of any indexed values compatible with the given type.
-func EmptyPivot(t value.Type) value.Value {
-	return value.Value{Type: t}
+func EmptyPivot(t value.Type) *value.Value {
+	return &value.Value{Type: t}
 }
 
 // New creates an index with the given store and options.
@@ -126,16 +127,12 @@ type listIndex struct {
 // Set associates a value with a key. It is possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
 func (i *listIndex) Set(val value.Value, key []byte) error {
-	if len(val.Data) == 0 {
-		return errors.New("value cannot be nil")
-	}
-
 	st, err := getOrCreateStore(i.tx, val.Type, i.opts)
 	if err != nil {
 		return err
 	}
 
-	v, err := encodeFieldToIndexValue(val)
+	v, err := encodeFieldToIndexValue(&val)
 	if err != nil {
 		return err
 	}
@@ -149,7 +146,7 @@ func (i *listIndex) Set(val value.Value, key []byte) error {
 }
 
 func (i *listIndex) Delete(val value.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(val)
+	v, err := encodeFieldToIndexValue(&val)
 	if err != nil {
 		return err
 	}
@@ -167,8 +164,36 @@ func (i *listIndex) Delete(val value.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
-func (i *listIndex) AscendGreaterOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error {
-	st, err := getStore(i.tx, pivot.Type, i.opts)
+func (i *listIndex) AscendGreaterOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	// iterate over all stores in order
+	if pivot == nil {
+		for t := Null; t <= Bytes; t++ {
+			st, err := getStore(i.tx, t, i.opts)
+			if err != nil {
+				return err
+			}
+			if st == nil {
+				continue
+			}
+
+			err = st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+				idx := bytes.LastIndexByte(k, Separator)
+				f, err := decodeIndexValueToField(t, k[:idx])
+				if err != nil {
+					return err
+				}
+
+				return fn(f, k[idx+1:])
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -183,7 +208,7 @@ func (i *listIndex) AscendGreaterOrEqual(pivot value.Value, fn func(val value.Va
 
 	return st.AscendGreaterOrEqual(v, func(k, v []byte) error {
 		idx := bytes.LastIndexByte(k, Separator)
-		f, err := decodeIndexValueToField(pivot.Type, k[:idx])
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), k[:idx])
 		if err != nil {
 			return err
 		}
@@ -192,8 +217,8 @@ func (i *listIndex) AscendGreaterOrEqual(pivot value.Value, fn func(val value.Va
 	})
 }
 
-func (i *listIndex) DescendLessOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error {
-	st, err := getStore(i.tx, pivot.Type, i.opts)
+func (i *listIndex) DescendLessOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -213,7 +238,7 @@ func (i *listIndex) DescendLessOrEqual(pivot value.Value, fn func(val value.Valu
 
 	return st.DescendLessOrEqual(v, func(k, v []byte) error {
 		idx := bytes.LastIndexByte(k, Separator)
-		f, err := decodeIndexValueToField(pivot.Type, k[:idx])
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), k[:idx])
 		if err != nil {
 			return err
 		}
@@ -249,7 +274,7 @@ func (i *uniqueIndex) Set(val value.Value, key []byte) error {
 		return errors.New("value cannot be nil")
 	}
 
-	v, err := encodeFieldToIndexValue(val)
+	v, err := encodeFieldToIndexValue(&val)
 	if err != nil {
 		return err
 	}
@@ -271,7 +296,7 @@ func (i *uniqueIndex) Set(val value.Value, key []byte) error {
 }
 
 func (i *uniqueIndex) Delete(val value.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(val)
+	v, err := encodeFieldToIndexValue(&val)
 	if err != nil {
 		return err
 	}
@@ -284,8 +309,8 @@ func (i *uniqueIndex) Delete(val value.Value, key []byte) error {
 	return st.Delete(v)
 }
 
-func (i *uniqueIndex) AscendGreaterOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error {
-	st, err := getStore(i.tx, pivot.Type, i.opts)
+func (i *uniqueIndex) AscendGreaterOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -299,7 +324,7 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot value.Value, fn func(val value.
 	}
 
 	return st.AscendGreaterOrEqual(v, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(pivot.Type, vv)
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv)
 		if err != nil {
 			return err
 		}
@@ -308,8 +333,8 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot value.Value, fn func(val value.
 	})
 }
 
-func (i *uniqueIndex) DescendLessOrEqual(pivot value.Value, fn func(val value.Value, key []byte) error) error {
-	st, err := getStore(i.tx, pivot.Type, i.opts)
+func (i *uniqueIndex) DescendLessOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -323,7 +348,7 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot value.Value, fn func(val value.Va
 	}
 
 	return st.DescendLessOrEqual(v, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(pivot.Type, vv)
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv)
 		if err != nil {
 			return err
 		}
@@ -346,22 +371,23 @@ func (i *uniqueIndex) Truncate() error {
 	return dropStore(i.tx, Bool, i.opts)
 }
 
-func encodeFieldToIndexValue(val value.Value) ([]byte, error) {
+func encodeFieldToIndexValue(val *value.Value) ([]byte, error) {
 	if len(val.Data) > 0 && value.IsNumber(val.Type) && val.Type != value.Float64 {
 		x, err := val.DecodeToFloat64()
 		if err != nil {
 			return nil, err
 		}
 
-		val = value.NewFloat64(x)
+		return value.NewFloat64(x).Data, nil
 	}
 
 	return val.Data, nil
 }
 
-func decodeIndexValueToField(vt value.Type, data []byte) (value.Value, error) {
-	t := NewTypeFromValueType(vt)
+func decodeIndexValueToField(t Type, data []byte) (value.Value, error) {
 	switch t {
+	case Null:
+		return value.Value{Type: value.Null}, nil
 	case Bytes:
 		return value.Value{Type: value.Bytes, Data: data}, nil
 	case Float:
@@ -370,7 +396,7 @@ func decodeIndexValueToField(vt value.Type, data []byte) (value.Value, error) {
 		return value.Value{Type: value.Bool, Data: data}, nil
 	}
 
-	return value.Value{}, fmt.Errorf("unknown index type %d", vt)
+	return value.Value{}, fmt.Errorf("unknown index type %d", t)
 }
 
 func getOrCreateStore(tx engine.Transaction, t value.Type, opts Options) (engine.Store, error) {
@@ -392,8 +418,8 @@ func getOrCreateStore(tx engine.Transaction, t value.Type, opts Options) (engine
 	return tx.Store(idxName)
 }
 
-func getStore(tx engine.Transaction, t value.Type, opts Options) (engine.Store, error) {
-	idxName := buildIndexName(opts.IndexName, NewTypeFromValueType(t))
+func getStore(tx engine.Transaction, t Type, opts Options) (engine.Store, error) {
+	idxName := buildIndexName(opts.IndexName, t)
 	st, err := tx.Store(idxName)
 	if err == nil || err == engine.ErrStoreNotFound {
 		return st, nil

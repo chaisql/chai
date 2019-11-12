@@ -314,7 +314,7 @@ func (f fieldSelector) Name() string {
 
 func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
 	if r == nil {
-		return record.Field{}, errors.New("field not found")
+		return record.Field{}, fmt.Errorf("field %q not found", f)
 	}
 
 	return r.GetField(string(f))
@@ -333,7 +333,7 @@ func (f fieldSelector) Iterate(stack evalStack, fn func(fd record.Field) error) 
 // It implements the Expr interface.
 func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
 	if stack.Record == nil {
-		return evalValue{}, errors.New("field not found")
+		return evalValue{}, fmt.Errorf("field %q not found", f)
 	}
 
 	fd, err := f.SelectField(stack.Record)

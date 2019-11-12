@@ -569,26 +569,34 @@ func TestTableInsert(t *testing.T) {
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		rec := newRecord()
+		// create one record with the foo field
+		rec1 := newRecord()
 		foo := record.NewFloat64Field("foo", 10)
-		rec = append(rec, foo)
+		rec1 = append(rec1, foo)
 
-		key, err := tb.Insert(rec)
-		require.NoError(t, err)
-		require.NotEmpty(t, key)
+		// create one record without the foo field
+		rec2 := newRecord()
 
-		f, err := foo.DecodeToFloat64()
+		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
-		expected := value.NewFloat64(f)
+		key2, err := tb.Insert(rec2)
+		require.NoError(t, err)
+
 		var count int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Float64), func(val value.Value, k []byte) error {
-			require.Equal(t, val, expected)
-			require.Equal(t, key, k)
+		err = idx.AscendGreaterOrEqual(nil, func(val value.Value, k []byte) error {
+			switch count {
+			case 0:
+				// key2, which doesn't countain the field must appear first in the next,
+				// as null values are the smallest possible values
+				require.Equal(t, key2, k)
+			case 1:
+				require.Equal(t, key1, k)
+			}
 			count++
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, count)
+		require.Equal(t, 2, count)
 	})
 }
 

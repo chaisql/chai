@@ -592,7 +592,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
-			continue
+			f.Value = nilLitteral.Value.Value
 		}
 
 		err = idx.Set(f.Value, key)

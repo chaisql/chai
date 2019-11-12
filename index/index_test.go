@@ -26,12 +26,6 @@ func TestIndexSet(t *testing.T) {
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
-		t.Run(text+"Set empty field fails", func(t *testing.T) {
-			idx, cleanup := getIndex(t, index.Options{Unique: unique})
-			defer cleanup()
-			require.Error(t, idx.Set(value.Value{}, []byte("rid")))
-		})
-
 		t.Run(text+"Set nil key succeeds", func(t *testing.T) {
 			idx, cleanup := getIndex(t, index.Options{Unique: unique})
 			defer cleanup()
@@ -65,8 +59,9 @@ func TestIndexDelete(t *testing.T) {
 		require.NoError(t, idx.Set(value.NewInt(11), []byte("yet-another-key")))
 		require.NoError(t, idx.Delete(value.NewInt(10), []byte("key")))
 
+		pivot := value.NewInt(10)
 		i := 0
-		err := idx.AscendGreaterOrEqual(value.NewInt(10), func(val value.Value, key []byte) error {
+		err := idx.AscendGreaterOrEqual(&pivot, func(val value.Value, key []byte) error {
 			if i == 0 {
 				require.Equal(t, value.NewFloat64(10), val)
 				require.Equal(t, "other-key", string(key))
@@ -148,7 +143,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				name  string
 				val   func(i int) value.Value
 				t     index.Type
-				pivot value.Value
+				pivot *value.Value
 			}{
 				{"floats", func(i int) value.Value { return value.NewInt32(int32(i)) }, index.Float, index.EmptyPivot(value.Int32)},
 				{"bytes", func(i int) value.Value { return value.NewString(string([]byte{byte(i)})) }, index.Bytes, index.EmptyPivot(value.String)},
@@ -196,7 +191,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 			var i uint8
 			var count int
-			err := idx.AscendGreaterOrEqual(value.NewString("C"), func(val value.Value, rid []byte) error {
+			pivot := value.NewString("C")
+			err := idx.AscendGreaterOrEqual(&pivot, func(val value.Value, rid []byte) error {
 				require.Equal(t, value.NewBytes([]byte{'C' + i}), val)
 				require.Equal(t, []byte{'c' + i}, rid)
 
@@ -259,7 +255,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 			var i byte = 0
 			var count int
-			err := idx.DescendLessOrEqual(value.NewString("F"), func(val value.Value, rid []byte) error {
+			pivot := value.NewString("F")
+			err := idx.DescendLessOrEqual(&pivot, func(val value.Value, rid []byte) error {
 				require.Equal(t, value.NewBytes([]byte{'F' - i}), val)
 				require.Equal(t, []byte{'f' - i}, rid)
 
