@@ -218,6 +218,34 @@ func (i *listIndex) AscendGreaterOrEqual(pivot *value.Value, fn func(val value.V
 }
 
 func (i *listIndex) DescendLessOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	// iterate over all stores in order
+	if pivot == nil {
+		for t := Bytes; t >= Null; t-- {
+			st, err := getStore(i.tx, t, i.opts)
+			if err != nil {
+				return err
+			}
+			if st == nil {
+				continue
+			}
+
+			err = st.DescendLessOrEqual(nil, func(k, v []byte) error {
+				idx := bytes.LastIndexByte(k, Separator)
+				f, err := decodeIndexValueToField(t, k[:idx])
+				if err != nil {
+					return err
+				}
+
+				return fn(f, k[idx+1:])
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
@@ -270,10 +298,6 @@ type uniqueIndex struct {
 // Set associates a value with exactly one key.
 // If the association already exists, it returns an error.
 func (i *uniqueIndex) Set(val value.Value, key []byte) error {
-	if len(val.Data) == 0 {
-		return errors.New("value cannot be nil")
-	}
-
 	v, err := encodeFieldToIndexValue(&val)
 	if err != nil {
 		return err
@@ -284,7 +308,12 @@ func (i *uniqueIndex) Set(val value.Value, key []byte) error {
 		return err
 	}
 
-	_, err = st.Get(v)
+	buf := make([]byte, 0, len(v)+2)
+	buf = append(buf, uint8(NewTypeFromValueType(val.Type)))
+	buf = append(buf, Separator)
+	buf = append(buf, v...)
+
+	_, err = st.Get(buf)
 	if err == nil {
 		return ErrDuplicate
 	}
@@ -292,7 +321,7 @@ func (i *uniqueIndex) Set(val value.Value, key []byte) error {
 		return err
 	}
 
-	return st.Put(v, key)
+	return st.Put(buf, key)
 }
 
 func (i *uniqueIndex) Delete(val value.Value, key []byte) error {
@@ -306,10 +335,42 @@ func (i *uniqueIndex) Delete(val value.Value, key []byte) error {
 		return err
 	}
 
-	return st.Delete(v)
+	buf := make([]byte, 0, len(v)+2)
+	buf = append(buf, uint8(NewTypeFromValueType(val.Type)))
+	buf = append(buf, Separator)
+	buf = append(buf, v...)
+
+	return st.Delete(buf)
 }
 
 func (i *uniqueIndex) AscendGreaterOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	// iterate over all stores in order
+	if pivot == nil {
+		for t := Null; t <= Bytes; t++ {
+			st, err := getStore(i.tx, t, i.opts)
+			if err != nil {
+				return err
+			}
+			if st == nil {
+				continue
+			}
+
+			err = st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+				f, err := decodeIndexValueToField(t, k[2:])
+				if err != nil {
+					return err
+				}
+
+				return fn(f, v)
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
@@ -323,8 +384,13 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *value.Value, fn func(val value
 		return err
 	}
 
-	return st.AscendGreaterOrEqual(v, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv)
+	buf := make([]byte, 0, len(v)+2)
+	buf = append(buf, uint8(NewTypeFromValueType(pivot.Type)))
+	buf = append(buf, Separator)
+	buf = append(buf, v...)
+
+	return st.AscendGreaterOrEqual(buf, func(vv []byte, key []byte) error {
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv[2:])
 		if err != nil {
 			return err
 		}
@@ -334,6 +400,33 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *value.Value, fn func(val value
 }
 
 func (i *uniqueIndex) DescendLessOrEqual(pivot *value.Value, fn func(val value.Value, key []byte) error) error {
+	// iterate over all stores in order
+	if pivot == nil {
+		for t := Bytes; t >= Null; t-- {
+			st, err := getStore(i.tx, t, i.opts)
+			if err != nil {
+				return err
+			}
+			if st == nil {
+				continue
+			}
+
+			err = st.DescendLessOrEqual(nil, func(k, v []byte) error {
+				f, err := decodeIndexValueToField(t, k[2:])
+				if err != nil {
+					return err
+				}
+
+				return fn(f, v)
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
 	if err != nil {
 		return err
@@ -347,8 +440,14 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot *value.Value, fn func(val value.V
 		return err
 	}
 
-	return st.DescendLessOrEqual(v, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv)
+	buf := make([]byte, 0, len(v)+3)
+	buf = append(buf, uint8(NewTypeFromValueType(pivot.Type)))
+	buf = append(buf, Separator)
+	buf = append(buf, v...)
+	buf = append(buf, 0xFF)
+
+	return st.DescendLessOrEqual(buf, func(vv []byte, key []byte) error {
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv[2:])
 		if err != nil {
 			return err
 		}
