@@ -296,6 +296,40 @@ func TestTxReIndex(t *testing.T) {
 	})
 }
 
+func TestQueryRecord(t *testing.T) {
+	t.Run("Should return the first record", func(t *testing.T) {
+		db, err := genji.New(memory.NewEngine())
+		require.NoError(t, err)
+
+		tx, err := db.Begin(true)
+		require.NoError(t, err)
+
+		err = tx.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
+		`)
+		require.NoError(t, err)
+
+		r, err := tx.QueryRecord("SELECT * FROM test")
+		require.NoError(t, err)
+
+		var a int
+		var b string
+		err = record.Scan(r, &a, &b)
+		require.NoError(t, err)
+		require.Equal(t, 1, a)
+		require.Equal(t, "foo", b)
+
+		require.NoError(t, tx.Commit())
+
+		r, err = db.QueryRecord("SELECT * FROM test")
+		err = record.Scan(r, &a, &b)
+		require.NoError(t, err)
+		require.Equal(t, 1, a)
+		require.Equal(t, "foo", b)
+	})
+}
+
 func TestReIndexAll(t *testing.T) {
 	t.Run("Should succeed if not indexes", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)

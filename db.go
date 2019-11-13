@@ -161,6 +161,29 @@ func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
 	return pq.Run(db, argsToNamedValues(args))
 }
 
+// QueryRecord runs the query and returns the first record.
+// If the query returns no error, QueryRecord returns ErrRecordNotFound.
+func (db *DB) QueryRecord(q string, args ...interface{}) (record.Record, error) {
+	res, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	r, err := res.First()
+	if err != nil {
+		return nil, err
+	}
+
+	var fb record.FieldBuffer
+	err = fb.ScanRecord(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fb, nil
+}
+
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
 // and automatically rolls back the transaction.
 func (db *DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
@@ -245,6 +268,18 @@ func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	}
 
 	return pq.Exec(tx, argsToNamedValues(args), false)
+}
+
+// QueryRecord runs the query and returns the first record.
+// If the query returns no error, QueryRecord returns ErrRecordNotFound.
+func (tx *Tx) QueryRecord(q string, args ...interface{}) (record.Record, error) {
+	res, err := tx.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	return res.First()
 }
 
 // Exec a query against the database within tx and without returning the result.
