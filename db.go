@@ -175,6 +175,10 @@ func (db *DB) QueryRecord(q string, args ...interface{}) (record.Record, error) 
 		return nil, err
 	}
 
+	if r == nil {
+		return nil, ErrRecordNotFound
+	}
+
 	var fb record.FieldBuffer
 	err = fb.ScanRecord(r)
 	if err != nil {
@@ -279,7 +283,15 @@ func (tx *Tx) QueryRecord(q string, args ...interface{}) (record.Record, error) 
 	}
 	defer res.Close()
 
-	return res.First()
+	r, err := res.First()
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return nil, ErrRecordNotFound
+	}
+
+	return r, nil
 }
 
 // Exec a query against the database within tx and without returning the result.

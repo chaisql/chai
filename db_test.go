@@ -297,36 +297,52 @@ func TestTxReIndex(t *testing.T) {
 }
 
 func TestQueryRecord(t *testing.T) {
-	t.Run("Should return the first record", func(t *testing.T) {
-		db, err := genji.New(memory.NewEngine())
-		require.NoError(t, err)
+	db, err := genji.New(memory.NewEngine())
+	require.NoError(t, err)
 
-		tx, err := db.Begin(true)
-		require.NoError(t, err)
+	tx, err := db.Begin(true)
+	require.NoError(t, err)
 
-		err = tx.Exec(`
+	err = tx.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
 		`)
-		require.NoError(t, err)
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit())
 
-		r, err := tx.QueryRecord("SELECT * FROM test")
-		require.NoError(t, err)
-
+	t.Run("Should return the first record", func(t *testing.T) {
 		var a int
 		var b string
+
+		r, err := db.QueryRecord("SELECT * FROM test")
 		err = record.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 
-		require.NoError(t, tx.Commit())
+		tx, err := db.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
 
-		r, err = db.QueryRecord("SELECT * FROM test")
+		r, err = tx.QueryRecord("SELECT * FROM test")
+		require.NoError(t, err)
 		err = record.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
+	})
+
+	t.Run("Should return an error if no record", func(t *testing.T) {
+		r, err := db.QueryRecord("SELECT * FROM test WHERE a > 100")
+		require.Equal(t, genji.ErrRecordNotFound, err)
+		require.Nil(t, r)
+
+		tx, err := db.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
+		r, err = tx.QueryRecord("SELECT * FROM test WHERE a > 100")
+		require.Equal(t, genji.ErrRecordNotFound, err)
+		require.Nil(t, r)
 	})
 }
 
