@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -57,20 +56,18 @@ func (rt *rectest) ScanRecord(r record.Record) error {
 }
 
 func TestDriver(t *testing.T) {
-	db, err := New(memoryengine.NewEngine())
+	db, err := sql.Open("genji", ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	dbx := sql.OpenDB(newConnector(db))
-
-	res, err := dbx.Exec("CREATE TABLE test")
+	res, err := db.Exec("CREATE TABLE test")
 	require.NoError(t, err)
 	n, err := res.RowsAffected()
 	require.NoError(t, err)
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
-		res, err = dbx.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i+1, i+2, i+3)
+		res, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i+1, i+2, i+3)
 		require.NoError(t, err)
 		n, err = res.RowsAffected()
 		require.NoError(t, err)
@@ -78,7 +75,7 @@ func TestDriver(t *testing.T) {
 	}
 
 	t.Run("Wildcard", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT * FROM test")
+		rows, err := db.Query("SELECT * FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -96,7 +93,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple fields", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a, c FROM test")
+		rows, err := db.Query("SELECT a, c FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -114,7 +111,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple fields and wildcards", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a, *, c, * FROM test")
+		rows, err := db.Query("SELECT a, *, c, * FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -135,7 +132,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Params", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, 6)
+		rows, err := db.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, 6)
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -152,7 +149,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Named Params", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
+		rows, err := db.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -169,7 +166,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Transactions", func(t *testing.T) {
-		tx, err := dbx.Begin()
+		tx, err := db.Begin()
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -190,7 +187,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple queries", func(t *testing.T) {
-		rows, err := dbx.Query(`
+		rows, err := db.Query(`
 			SELECT * FROM test;;;
 			INSERT INTO test (a, b, c) VALUES (11, 12, 13);
 			SELECT * FROM test;
@@ -211,7 +208,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple queries in transaction", func(t *testing.T) {
-		tx, err := dbx.Begin()
+		tx, err := db.Begin()
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -236,7 +233,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple queries in read only transaction", func(t *testing.T) {
-		tx, err := dbx.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
+		tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
 		require.NoError(t, err)
 		defer tx.Rollback()
 

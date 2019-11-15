@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/engine/boltengine"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
@@ -20,25 +22,27 @@ var (
 	indexPrefix               = "i"
 )
 
-// Open creates a Genji database and wraps it around a *sql.DB instance.
-func Open(ng engine.Engine) (*sql.DB, error) {
-	db, err := New(ng)
+// Open creates a Genji database at the given path.
+// If path is equal to ":memory:" it will open an in memory database,
+// otherwise it will create an on-disk database using the BoltDB engine.
+func Open(path string) (*DB, error) {
+	var ng engine.Engine
+	var err error
+
+	switch path {
+	case ":memory:":
+		ng = memoryengine.NewEngine()
+	default:
+		ng, err = boltengine.NewEngine(path, 0660, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return OpenDB(db)
-}
-
-// OpenDB connects to an existing database instance and returns a *sql.DB.
-func OpenDB(db *DB) (*sql.DB, error) {
-	return sql.OpenDB(newConnector(db)), nil
+	return New(ng)
 }
 
 // DB represents a collection of tables stored in the underlying engine.
-// DB differs from the engine in that it provides automatic indexing
-// and database administration methods.
-// DB is safe for concurrent use unless the given engine isn't.
 type DB struct {
 	ng engine.Engine
 
@@ -213,6 +217,11 @@ func (db *DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 
 		return fn(tx, tb)
 	})
+}
+
+// SQLDB returns a sql.DB wrapping this database.
+func (db *DB) SQLDB() *sql.DB {
+	return sql.OpenDB(newProxyConnector(db))
 }
 
 // Tx represents a database transaction. It provides methods for managing the

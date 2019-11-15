@@ -14,34 +14,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ExampleOpen() {
-	db, err := genji.Open(memoryengine.NewEngine())
+func ExampleDB_SQLDB() {
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
+	dbx := db.SQLDB()
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS user")
+	_, err = dbx.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	_, err = dbx.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	_, err = dbx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	_, err = dbx.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows, err := db.Query("SELECT * FROM user WHERE Name = ?", "bar")
+	rows, err := dbx.Query("SELECT * FROM user WHERE Name = ?", "bar")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package genji
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"io"
@@ -10,48 +11,57 @@ import (
 	"github.com/asdine/genji/record"
 )
 
-type connector struct {
-	driver driver.Driver
+func init() {
+	sql.Register("genji", sqlDriver{})
 }
 
-func newConnector(db *DB) driver.Connector {
-	return connector{
-		driver: newDriver(db),
+// sqlDriver is a driver.Driver that can open a new connection to a Genji database.
+// It is the driver used to register Genji against the database/sql package.
+type sqlDriver struct{}
+
+func (d sqlDriver) Open(name string) (driver.Conn, error) {
+	db, err := Open(name)
+	if err != nil {
+		return nil, err
 	}
+
+	return &conn{db: db}, nil
 }
 
-func (c connector) Connect(ctx context.Context) (driver.Conn, error) {
-	return c.driver.Open("")
-}
-
-func (c connector) Driver() driver.Driver {
-	return c.driver
-}
-
-type drivr struct {
+// proxyDriver is used to turn an existing DB into a driver.Driver.
+type proxyDriver struct {
 	db *DB
 }
 
 func newDriver(db *DB) driver.Driver {
-	return drivr{
+	return proxyDriver{
 		db: db,
 	}
 }
 
-// Open returns a new connection to the database.
-// The name is a string in a driver-specific format.
-//
-// Open may return a cached connection (one previously
-// closed), but doing so is unnecessary; the sql package
-// maintains a pool of idle connections for efficient re-use.
-//
-// The returned connection is only used by one goroutine at a
-// time.
-func (d drivr) Open(name string) (driver.Conn, error) {
+func (d proxyDriver) Open(name string) (driver.Conn, error) {
 	return &conn{db: d.db}, nil
 }
 
-// Conn represents a connection to the Genji database.
+type proxyConnector struct {
+	driver driver.Driver
+}
+
+func newProxyConnector(db *DB) driver.Connector {
+	return proxyConnector{
+		driver: newDriver(db),
+	}
+}
+
+func (c proxyConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	return c.driver.Open("")
+}
+
+func (c proxyConnector) Driver() driver.Driver {
+	return c.driver
+}
+
+// conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
 	db            *DB
