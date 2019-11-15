@@ -7,12 +7,12 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/badger"
-	"github.com/asdine/genji/engine/bolt"
+	"github.com/asdine/genji/engine/badgerengine"
+	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 	"github.com/c-bata/go-prompt"
-	bdg "github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 )
 
 var suggestions = []prompt.Suggest{
@@ -111,9 +111,9 @@ func runGenjiClient(ngName, dbPath string) error {
 	case "bolt":
 		ng, err = boltengine.NewEngine(dbPath, 0660, nil)
 	case "badger":
-		opts := bdg.DefaultOptions(dbPath)
+		opts := badger.DefaultOptions(dbPath)
 		opts.Logger = nil
-		ng, err = badger.NewEngine(opts)
+		ng, err = badgerengine.NewEngine(opts)
 	}
 	if err != nil {
 		return err

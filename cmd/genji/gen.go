@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-
 func generate(files []string, structs []string, output string) error {
 	if !areGoFiles(files) {
 		return errors.New("input files must be Go files")
