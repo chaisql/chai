@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
 func getIndex(t testing.TB, opts index.Options) (index.Index, func()) {
-	ng := memory.NewEngine()
+	ng := memoryengine.NewEngine()
 	tx, err := ng.Begin(true)
 	require.NoError(t, err)
 

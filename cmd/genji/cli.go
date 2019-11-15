@@ -9,7 +9,7 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/badger"
 	"github.com/asdine/genji/engine/bolt"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 	"github.com/c-bata/go-prompt"
 	bdg "github.com/dgraph-io/badger"
@@ -107,7 +107,7 @@ func runGenjiClient(ngName, dbPath string) error {
 
 	switch ngName {
 	case "memory":
-		ng = memory.NewEngine()
+		ng = memoryengine.NewEngine()
 	case "bolt":
 		ng, err = bolt.NewEngine(dbPath, 0660, nil)
 	case "badger":

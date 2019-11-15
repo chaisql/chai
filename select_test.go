@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -117,7 +117,7 @@ func TestSelectStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := New(memory.NewEngine())
+				db, err := New(memoryengine.NewEngine())
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -159,7 +159,7 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {
-		db, err := New(memory.NewEngine())
+		db, err := New(memoryengine.NewEngine())
 		require.NoError(t, err)
 		defer db.Close()
 

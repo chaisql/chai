@@ -5,12 +5,12 @@ import (
 	"log"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 )
 
 func ExampleResult_First() {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func ExampleResult_First() {
 }
 
 func ExampleResult_Iterate() {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}

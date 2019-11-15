@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is an embedded SQL database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
+Genji is an embedded SQL database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memoryengine.
 
 Genji tables are schemaless and can be manipulated using SQL queries. Genji is also compatible with the `database/sql` package.
 
@@ -24,7 +24,7 @@ There are two ways of using Genji, either by using Genji's API or by using the [
 
 ```go
 // Instantiate an engine, here we'll store everything in memory
-ng := memory.NewEngine()
+ng := memoryengine.NewEngine()
 
 // Create a database instance
 db, err := genji.New(ng)
@@ -107,7 +107,7 @@ err = res.
 
 ```go
 // Instantiate an engine, here we'll store everything in memory
-ng := memory.NewEngine()
+ng := memoryengine.NewEngine()
 
 // Create a sql/database DB instance
 db, err := genji.Open(ng)
@@ -198,7 +198,7 @@ err = res.Iterate(func(r record.Record) error {
 
 ## Engines
 
-Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) and in-memory.
+Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) and in-memoryengine.
 
 ### Use the BoltDB engine
 
@@ -257,12 +257,12 @@ import (
     "log"
 
     "github.com/asdine/genji"
-    "github.com/asdine/genji/engine/memory"
+    "github.com/asdine/genji/engine/memoryengine"
 )
 
 func main() {
     // Create a memory engine
-    ng := memory.NewEngine()
+    ng := memoryengine.NewEngine()
 
     // Pass it to genji
     db, err := genji.New(ng)

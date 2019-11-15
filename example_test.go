@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 )
 
@@ -19,7 +19,7 @@ type User struct {
 
 func Example() {
 	// Instantiate an engine, here we'll store everything in memory
-	ng := memory.NewEngine()
+	ng := memoryengine.NewEngine()
 
 	// Create a database instance
 	db, err := genji.New(ng)

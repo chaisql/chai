@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +57,7 @@ func (rt *rectest) ScanRecord(r record.Record) error {
 }
 
 func TestDriver(t *testing.T) {
-	db, err := New(memory.NewEngine())
+	db, err := New(memoryengine.NewEngine())
 	require.NoError(t, err)
 	defer db.Close()
 

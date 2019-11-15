@@ -1,15 +1,15 @@
-package memory_test
+package memoryengine_test
 
 import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/enginetest"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 )
 
 func builder() (engine.Engine, func()) {
-	ng := memory.NewEngine()
+	ng := memoryengine.NewEngine()
 	return ng, func() { ng.Close() }
 }
 

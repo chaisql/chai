@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
@@ -15,7 +15,7 @@ import (
 )
 
 func ExampleOpen() {
-	db, err := genji.Open(memory.NewEngine())
+	db, err := genji.Open(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func ExampleOpen() {
 }
 
 func ExampleTx() {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func ExampleTx() {
 }
 
 func newTestDB(t testing.TB) (*genji.Tx, func()) {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
@@ -297,7 +297,7 @@ func TestTxReIndex(t *testing.T) {
 }
 
 func TestQueryRecord(t *testing.T) {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
