@@ -8,7 +8,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine/badgerengine"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 )
 
 func Example() {

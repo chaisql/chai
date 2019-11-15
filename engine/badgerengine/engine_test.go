@@ -9,7 +9,7 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/enginetest"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/stretchr/testify/require"
 )
 
