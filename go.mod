@@ -1,7 +1,7 @@
 module github.com/asdine/genji
 
 require (
-	github.com/dgraph-io/badger v1.6.0
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/etcd-io/bbolt v1.3.3
 	github.com/google/btree v1.0.0
 	github.com/pkg/errors v0.8.1
