@@ -23,11 +23,11 @@ There are two ways of using Genji, either by using Genji's API or by using the [
 ### Using Genji's API
 
 ```go
-// Instantiate an engine, here we'll store everything in memory
-ng := memoryengine.NewEngine()
-
-// Create a database instance
-db, err := genji.New(ng)
+// Create a database instance, here we'll store everything on-disk using the BoltDB engine
+db, err := genji.Open("my.db")
+if err != nil {
+    log.Fatal(err)
+}
 // Don't forget to close the database when you're done
 defer db.Close()
 
@@ -106,11 +106,14 @@ err = res.
 ### Using database/sql
 
 ```go
-// Instantiate an engine, here we'll store everything in memory
-ng := memoryengine.NewEngine()
+// import Genji as a blank import
+import _ "github.com/asdine/genji"
 
 // Create a sql/database DB instance
-db, err := genji.Open(ng)
+db, err := sql.Open("genji", "my.db")
+if err != nil {
+    log.Fatal(err)
+}
 defer db.Close()
 
 // Then use db as usual
@@ -198,7 +201,7 @@ err = res.Iterate(func(r record.Record) error {
 
 ## Engines
 
-Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) and in-memoryengine.
+Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) and in-memory.
 
 ### Use the BoltDB engine
 
@@ -207,45 +210,10 @@ import (
     "log"
 
     "github.com/asdine/genji"
-    "github.com/asdine/genji/engine/bolt"
 )
 
 func main() {
-    // Create a bolt engine
-    ng, err := boltengine.NewEngine("genji.db", 0600, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Pass it to genji
-    db := genji.New(ng)
-    defer db.Close()
-}
-```
-
-### Use the Badger engine
-
-``` go
-import (
-    "log"
-
-    "github.com/asdine/genji"
-    "github.com/asdine/genji/engine/badger"
-    bdg "github.com/dgraph-io/badger"
-)
-
-func main() {
-    // Create a badger engine
-    ng, err := badger.NewEngine(bdg.DefaultOptions("genji")))
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Pass it to genji
-    db, err := genji.New(ng)
-    if err != nil {
-        log.Fatal(err)
-    }
+    db, err := genji.Open("my.db")
     defer db.Close()
 }
 ```
@@ -257,12 +225,42 @@ import (
     "log"
 
     "github.com/asdine/genji"
-    "github.com/asdine/genji/engine/memoryengine"
 )
 
 func main() {
-    // Create a memory engine
-    ng := memoryengine.NewEngine()
+    db, err := genji.Open(":memory:")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
+}
+```
+
+### Use the Badger engine
+
+The Badger engine must be installed first
+
+```sh
+go get github.com/asdine/genji/engine/badgerengine
+```
+
+Then, it can be instantiated using the `genji.New` function:
+
+``` go
+import (
+    "log"
+
+    "github.com/asdine/genji"
+    "github.com/asdine/genji/engine/badgerengine"
+    "github.com/dgraph-io/badger"
+)
+
+func main() {
+    // Create a badger engine
+    ng, err := badgerengine.NewEngine(badger.DefaultOptions("mydb")))
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // Pass it to genji
     db, err := genji.New(ng)
