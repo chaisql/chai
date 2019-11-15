@@ -6,7 +6,6 @@ require (
 	github.com/asdine/genji v0.2.2
 	github.com/asdine/genji/engine/badgerengine v0.2.2
 	github.com/c-bata/go-prompt v0.2.3
-	github.com/dgraph-io/badger v1.6.0
 	github.com/dgraph-io/badger/v2 v2.0.0
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-tty v0.0.0-20190424173100-523744f04859 // indirect
