@@ -1,4 +1,4 @@
-package bolt_test
+package boltengine_test
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/bolt"
+	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/enginetest"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ import (
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
-		ng, err := bolt.NewEngine(path.Join(dir, "test.db"), 0600, nil)
+		ng, err := boltengine.NewEngine(path.Join(dir, "test.db"), 0600, nil)
 		require.NoError(t, err)
 		return ng, cleanup
 	}

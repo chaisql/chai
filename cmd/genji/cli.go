@@ -109,7 +109,7 @@ func runGenjiClient(ngName, dbPath string) error {
 	case "memory":
 		ng = memoryengine.NewEngine()
 	case "bolt":
-		ng, err = bolt.NewEngine(dbPath, 0660, nil)
+		ng, err = boltengine.NewEngine(dbPath, 0660, nil)
 	case "badger":
 		opts := bdg.DefaultOptions(dbPath)
 		opts.Logger = nil

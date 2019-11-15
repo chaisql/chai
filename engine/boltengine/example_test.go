@@ -1,4 +1,4 @@
-package bolt_test
+package boltengine_test
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"path"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/bolt"
+	"github.com/asdine/genji/engine/boltengine"
 )
 
 func Example() {
@@ -17,7 +17,7 @@ func Example() {
 	}
 	defer os.RemoveAll(dir)
 
-	ng, err := bolt.NewEngine(path.Join(dir, "genji.db"), 0600, nil)
+	ng, err := boltengine.NewEngine(path.Join(dir, "genji.db"), 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

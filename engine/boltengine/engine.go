@@ -1,5 +1,5 @@
-// Package bolt implements a BoltDB engine.
-package bolt
+// Package boltengine implements a BoltDB engine.
+package boltengine
 
 import (
 	"bytes"

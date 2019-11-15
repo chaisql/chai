@@ -212,7 +212,7 @@ import (
 
 func main() {
     // Create a bolt engine
-    ng, err := bolt.NewEngine("genji.db", 0600, nil)
+    ng, err := boltengine.NewEngine("genji.db", 0600, nil)
     if err != nil {
         log.Fatal(err)
     }
