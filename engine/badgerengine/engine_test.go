@@ -7,19 +7,19 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/badger"
+	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/enginetest"
-	bdg "github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger"
 	"github.com/stretchr/testify/require"
 )
 
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
-		opts := bdg.DefaultOptions(path.Join(dir, "badger"))
+		opts := badger.DefaultOptions(path.Join(dir, "badger"))
 		opts.Logger = nil
 
-		ng, err := badger.NewEngine(opts)
+		ng, err := badgerengine.NewEngine(opts)
 		require.NoError(t, err)
 		return ng, cleanup
 	}

@@ -7,8 +7,8 @@ import (
 	"path"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/badger"
-	bdg "github.com/dgraph-io/badger"
+	"github.com/asdine/genji/engine/badgerengine"
+	"github.com/dgraph-io/badger"
 )
 
 func Example() {
@@ -18,7 +18,7 @@ func Example() {
 	}
 	defer os.RemoveAll(dir)
 
-	ng, err := badger.NewEngine(bdg.DefaultOptions(path.Join(dir, "badger")))
+	ng, err := badgerengine.NewEngine(badger.DefaultOptions(path.Join(dir, "badger")))
 	if err != nil {
 		log.Fatal(err)
 	}

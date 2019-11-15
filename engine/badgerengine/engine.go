@@ -8,7 +8,6 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-
 const (
 	separator   byte = 0x1F
 	storeKey         = "__genji.store"
