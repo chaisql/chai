@@ -1,4 +1,4 @@
-package badger_test
+package badgerengine_test
 
 import (
 	"io/ioutil"

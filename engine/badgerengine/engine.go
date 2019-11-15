@@ -1,5 +1,5 @@
-// Package badger implements a Badger engine.
-package badger
+// Package badgerengine implements a Badger engine.
+package badgerengine
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/dgraph-io/badger"
 )
+
 
 const (
 	separator   byte = 0x1F
