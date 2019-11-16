@@ -177,12 +177,14 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 		ng, err = badgerengine.NewEngine(opts)
 	}
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(2)
 	}
 
 	sh.db, err = genji.New(ng)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(2)
 	}
 
 	return sh.db, nil
