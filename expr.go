@@ -1,10 +1,8 @@
 package genji
 
 import (
-	"bytes"
 	"database/sql/driver"
 	"fmt"
-	"math"
 
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
@@ -337,184 +335,20 @@ func (op cmpOp) compare(l, r evalValue) (bool, error) {
 }
 
 func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
-	var err error
-
-	// deal with nil
-	if l.Type == value.Null || r.Type == value.Null {
-		switch op.Token {
-		case scanner.EQ, scanner.GTE, scanner.LTE:
-			return l.Type == r.Type, nil
-		case scanner.GT, scanner.LT:
-			return false, nil
-		}
+	switch op.Token {
+	case scanner.EQ:
+		return l.IsEqual(r.Value)
+	case scanner.GT:
+		return l.IsGreaterThan(r.Value)
+	case scanner.GTE:
+		return l.IsGreaterThanOrEqual(r.Value)
+	case scanner.LT:
+		return l.IsLesserThan(r.Value)
+	case scanner.LTE:
+		return l.IsLesserThanOrEqual(r.Value)
+	default:
+		panic(fmt.Sprintf("unknown token %v", op.Token))
 	}
-
-	// if same type, or string and bytes, no conversion needed
-	if l.Type == r.Type || (l.Type == value.String && r.Type == value.Bytes) || (r.Type == value.String && l.Type == value.Bytes) {
-		var ok bool
-		switch op.Token {
-		case scanner.EQ:
-			ok = bytes.Equal(l.Data, r.Data)
-		case scanner.GT:
-			ok = bytes.Compare(l.Data, r.Data) > 0
-		case scanner.GTE:
-			ok = bytes.Compare(l.Data, r.Data) >= 0
-		case scanner.LT:
-			ok = bytes.Compare(l.Data, r.Data) < 0
-		case scanner.LTE:
-			ok = bytes.Compare(l.Data, r.Data) <= 0
-		}
-
-		return ok, nil
-	}
-
-	lv, err := l.Decode()
-	if err != nil {
-		return false, err
-	}
-
-	rv, err := r.Decode()
-	if err != nil {
-		return false, err
-	}
-
-	// uint64 numbers can be bigger than int64 and thus cannot be converted
-	// to int64 without first checking if they can overflow.
-	// if they do, the result of all the operations is already known
-	if l.Type == value.Uint64 || r.Type == value.Uint64 {
-		var ui uint64
-		if l.Type == value.Uint64 {
-			ui = lv.(uint64)
-		} else if r.Type == value.Uint64 {
-			ui = rv.(uint64)
-		}
-		if ui > math.MaxInt64 {
-			switch op.Token {
-			case scanner.EQ:
-				return false, nil
-			case scanner.GT:
-				fallthrough
-			case scanner.GTE:
-				return l.Type == value.Uint64, nil
-			case scanner.LT:
-				return r.Type == value.Uint64, nil
-			case scanner.LTE:
-				return r.Type == value.Uint64, nil
-			}
-		}
-	}
-
-	// integer OP integer
-	if value.IsInteger(l.Type) && value.IsInteger(r.Type) {
-		ai, bi := numberToInt64(lv), numberToInt64(rv)
-
-		var ok bool
-
-		switch op.Token {
-		case scanner.EQ:
-			ok = ai == bi
-		case scanner.GT:
-			ok = ai > bi
-		case scanner.GTE:
-			ok = ai >= bi
-		case scanner.LT:
-			ok = ai < bi
-		case scanner.LTE:
-			ok = ai <= bi
-		}
-
-		return ok, nil
-	}
-
-	// number OP number
-	if value.IsNumber(l.Type) && value.IsNumber(r.Type) {
-		af, bf := numberToFloat(lv), numberToFloat(rv)
-
-		var ok bool
-
-		switch op.Token {
-		case scanner.EQ:
-			ok = af == bf
-		case scanner.GT:
-			ok = af > bf
-		case scanner.GTE:
-			ok = af >= bf
-		case scanner.LT:
-			ok = af < bf
-		case scanner.LTE:
-			ok = af <= bf
-		}
-
-		return ok, nil
-	}
-
-	return false, nil
-}
-
-func numberToFloat(v interface{}) float64 {
-	var f float64
-
-	switch t := v.(type) {
-	case uint:
-		f = float64(t)
-	case uint8:
-		f = float64(t)
-	case uint16:
-		f = float64(t)
-	case uint32:
-		f = float64(t)
-	case uint64:
-		f = float64(t)
-	case int:
-		f = float64(t)
-	case int8:
-		f = float64(t)
-	case int16:
-		f = float64(t)
-	case int32:
-		f = float64(t)
-	case int64:
-		f = float64(t)
-	case float32:
-		f = float64(t)
-	case float64:
-		f = t
-	}
-
-	return f
-}
-
-func numberToInt64(v interface{}) int64 {
-	var i int64
-
-	switch t := v.(type) {
-	case uint:
-		i = int64(t)
-	case uint8:
-		i = int64(t)
-	case uint16:
-		i = int64(t)
-	case uint32:
-		i = int64(t)
-	case uint64:
-		i = int64(t)
-	case int:
-		i = int64(t)
-	case int8:
-		i = int64(t)
-	case int16:
-		i = int64(t)
-	case int32:
-		i = int64(t)
-	case int64:
-		i = t
-	case float32:
-		panic("attempt to convert float32 to int64 in comparison expression")
-	case float64:
-		panic("attempt to convert float32 to int64 in comparison expression")
-	}
-
-	return i
 }
 
 type andOp struct {
