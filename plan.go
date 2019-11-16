@@ -288,7 +288,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 
 	data := v.Value.Value.Data
 	if value.IsNumber(v.Value.Type) {
-		vv, err := v.Value.DecodeTo(it.cfg.PrimaryKeyType)
+		vv, err := v.Value.ConvertTo(it.cfg.PrimaryKeyType)
 		if err != nil {
 			return err
 		}

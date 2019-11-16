@@ -590,7 +590,7 @@ func (t *Table) generateKey(r record.Record) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		v, err := f.DecodeTo(cfg.PrimaryKeyType)
+		v, err := f.ConvertTo(cfg.PrimaryKeyType)
 		if err != nil {
 			return nil, err
 		}

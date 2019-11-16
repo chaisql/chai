@@ -363,8 +363,8 @@ func (v Value) String() string {
 	return fmt.Sprintf("%v", vv)
 }
 
-// DecodeTo decodes v to the selected type when possible.
-func (v Value) DecodeTo(t Type) (Value, error) {
+// ConvertTo decodes v to the selected type when possible.
+func (v Value) ConvertTo(t Type) (Value, error) {
 	if v.Type == t {
 		return v, nil
 	}

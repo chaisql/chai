@@ -212,7 +212,7 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 			return res, fmt.Errorf("offset expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		voff, err := v.Value.DecodeTo(value.Int)
+		voff, err := v.Value.ConvertTo(value.Int)
 		if err != nil {
 			return res, err
 		}
@@ -236,7 +236,7 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 			return res, fmt.Errorf("limit expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		vlim, err := v.Value.DecodeTo(value.Int)
+		vlim, err := v.Value.ConvertTo(value.Int)
 		if err != nil {
 			return res, err
 		}
