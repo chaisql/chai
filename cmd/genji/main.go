@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/asdine/genji/cmd/genji/shell"
 	"github.com/urfave/cli"
 )
 
@@ -86,7 +87,10 @@ func main() {
 			engine = "badger"
 		}
 
-		return runGenjiClient(engine, dbpath)
+		return shell.Run(&shell.Options{
+			Engine: engine,
+			DBPath: dbpath,
+		})
 	}
 
 	err := app.Run(os.Args)
