@@ -1,4 +1,25 @@
-// Package value defines types to manipulate and encode values.
+// Package value defines types to manipulate, encode and compare values.
+//
+// Encoding values
+//
+// Each type is encoded in a way that allows ordering to be preserved. That way, vA < vB,
+// where vA and vB are two unencoded values of the same type, then eA < eB, where eA and eB
+// are the respective encoded values of vA and vB.
+//
+// Comparing values
+//
+// When comparing values, only compatible types can be compared together, otherwise the result
+// of the comparison will always be false.
+// Here is a list of types than can be compared with each other:
+//
+//   any integer	any integer
+//   any integer	float64
+//   float64		float64
+//   string			string
+//   string			bytes
+//   bytes			bytes
+//   bool			bool
+//	 null			null
 package value
 
 import (
