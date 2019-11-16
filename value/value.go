@@ -802,6 +802,9 @@ func decodeAsInt64(v Value) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
+		if math.Trunc(x) != x {
+			return 0, errors.New("cannot convert float64 value to integer without loss of precision")
+		}
 		i = int64(x)
 	}
 

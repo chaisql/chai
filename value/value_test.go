@@ -348,4 +348,11 @@ func TestDecodeToNumber(t *testing.T) {
 			check(t, res, err, test.fails, float64(test.expected))
 		})
 	}
+
+	t.Run("float64/precision loss", func(t *testing.T) {
+		_, err := value.NewFloat64(10.4).DecodeToUint16()
+		require.Error(t, err)
+		_, err = value.NewFloat64(10.4).ConvertTo(value.Int32)
+		require.Error(t, err)
+	})
 }
