@@ -253,6 +253,7 @@ func IteratorToCSV(w io.Writer, s Iterator) error {
 // IteratorToJSON encodes all the records of an iterator to JSON stream.
 func IteratorToJSON(w io.Writer, s Iterator) error {
 	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
 
 	return s.Iterate(func(r Record) error {
 		return enc.Encode(jsonRecord{r})

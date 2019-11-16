@@ -75,7 +75,7 @@ func (e *executor) Query(q string) error {
 	}
 
 	defer res.Close()
-	return record.IteratorToCSV(os.Stdout, res)
+	return record.IteratorToJSON(os.Stdout, res)
 }
 
 func (e *executor) TablesCmd() error {
