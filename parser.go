@@ -216,6 +216,8 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 		return litteralValue{value.NewInt64(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
 		return litteralValue{value.NewBool(tok == scanner.TRUE)}, nil
+	case scanner.NULL:
+		return litteralValue{value.NewNull()}, nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}

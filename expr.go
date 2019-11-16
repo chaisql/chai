@@ -131,6 +131,11 @@ func float64Value(v float64) litteralValue {
 	return litteralValue{value.NewFloat64(v)}
 }
 
+// nullValue creates a litteral value of type Null.
+func nullValue() litteralValue {
+	return litteralValue{value.NewNull()}
+}
+
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 // It implements the Value interface.

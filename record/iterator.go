@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -233,14 +232,9 @@ func IteratorToCSV(w io.Writer, s Iterator) error {
 		line = line[:0]
 
 		err := r.Iterate(func(f Field) error {
-			v, err := f.Decode()
-			if err != nil {
-				return err
-			}
+			line = append(line, f.Value.String())
 
-			line = append(line, fmt.Sprintf("%v", v))
-
-			return err
+			return nil
 		})
 		if err != nil {
 			return err

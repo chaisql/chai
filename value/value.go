@@ -379,6 +379,8 @@ func (v Value) String() string {
 		vv, _ = DecodeInt64(v.Data)
 	case Float64:
 		vv, _ = DecodeFloat64(v.Data)
+	case Null:
+		return "NULL"
 	}
 
 	return fmt.Sprintf("%v", vv)
@@ -1118,6 +1120,8 @@ func IsZeroValue(t Type, data []byte) bool {
 		return bytes.Equal(data, int64ZeroValue.Data)
 	case Float64:
 		return bytes.Equal(data, float64ZeroValue.Data)
+	case Null:
+		return false
 	}
 
 	return false

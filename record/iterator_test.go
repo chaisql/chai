@@ -14,9 +14,9 @@ func TestIteratorToCSV(t *testing.T) {
 		name     string
 		expected string
 	}{
-		{"OK", `John 0,10
-John 1,11
-John 2,12
+		{"OK", `"John, 0",10,3.14,NULL
+"John, 1",11,6.28,NULL
+"John, 2",12,9.42,NULL
 `},
 	}
 
@@ -26,8 +26,10 @@ John 2,12
 
 			for i := 0; i < 3; i++ {
 				records = append(records, record.FieldBuffer([]record.Field{
-					record.NewStringField("name", fmt.Sprintf("John %d", i)),
+					record.NewStringField("name", fmt.Sprintf("John, %d", i)),
 					record.NewIntField("age", 10+i),
+					record.NewFloat64Field("pi", 3.14*float64(i+1)),
+					record.NewNullField("friends"),
 				}))
 			}
 

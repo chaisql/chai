@@ -32,6 +32,7 @@ func TestParserExpr(t *testing.T) {
 				),
 				lt(fieldSelector("age"), float64Value(10.4)),
 			)},
+		{"with NULL", "age > NULL", gt(fieldSelector("age"), nullValue())},
 	}
 
 	for _, test := range tests {
