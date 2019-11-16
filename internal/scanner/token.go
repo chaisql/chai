@@ -28,6 +28,7 @@ const (
 	BADESCAPE       // \q
 	TRUE            // true
 	FALSE           // false
+	NULL            // NULL
 	REGEX           // Regular expressions
 	BADREGEX        // `.*
 	literalEnd
@@ -137,6 +138,7 @@ var tokens = [...]string{
 	TRUE:            "TRUE",
 	FALSE:           "FALSE",
 	REGEX:           "REGEX",
+	NULL:            "NULL",
 
 	ADD:        "+",
 	SUB:        "-",
@@ -228,11 +230,9 @@ func init() {
 	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
-	for _, tok := range []Token{AND, OR} {
+	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL} {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
-	keywords["true"] = TRUE
-	keywords["false"] = FALSE
 }
 
 // String returns the string representation of the token.

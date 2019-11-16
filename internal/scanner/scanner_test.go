@@ -75,8 +75,13 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `$"host param"`, tok: scanner.NAMEDPARAM, lit: `$host param`},
 		{s: `?`, tok: scanner.POSITIONALPARAM, lit: ""},
 
+		// Booleans
 		{s: `true`, tok: scanner.TRUE},
 		{s: `false`, tok: scanner.FALSE},
+
+		// Null
+		{s: `null`, tok: scanner.NULL},
+		{s: `NULL`, tok: scanner.NULL},
 
 		// Strings
 		{s: `'testing 123!'`, tok: scanner.STRING, lit: `testing 123!`},
@@ -90,7 +95,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `100`, tok: scanner.INTEGER, lit: `100`},
 		{s: `100.23`, tok: scanner.NUMBER, lit: `100.23`},
 		{s: `.23`, tok: scanner.NUMBER, lit: `.23`},
-		// {s: `.`, tok: scanner.ILLEGAL, lit: `.`},
 		{s: `10.3s`, tok: scanner.NUMBER, lit: `10.3`},
 
 		// Durations
