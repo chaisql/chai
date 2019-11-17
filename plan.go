@@ -234,9 +234,9 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LT:
-		err = it.index.DescendLessOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
-			if bytes.Equal(data, val.Data) {
-				return nil
+		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Value.Type), func(val value.Value, key []byte) error {
+			if bytes.Compare(data, val.Data) <= 0 {
+				return errStop
 			}
 
 			r, err := it.tb.GetRecord(key)
@@ -247,7 +247,11 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(r)
 		})
 	case scanner.LTE:
-		err = it.index.DescendLessOrEqual(&v.Value.Value, func(val value.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Value.Type), func(val value.Value, key []byte) error {
+			if bytes.Compare(data, val.Data) < 0 {
+				return errStop
+			}
+
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err

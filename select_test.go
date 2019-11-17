@@ -102,6 +102,8 @@ func TestSelectStmt(t *testing.T) {
 		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2\n\n", nil},
 		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
+		{"With lt cond", "SELECT * FROM test WHERE a < 'zzzzz'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
+		{"With lte cond", "SELECT * FROM test WHERE a <= 'foo3'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With field comparison", "SELECT * FROM test WHERE b < a", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "1,foo1,bar1,baz1\n", nil},
 		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "2,foo2,bar1,1,2\n", nil},
