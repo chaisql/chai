@@ -17,6 +17,10 @@ import (
 	"github.com/dgraph-io/badger/v2"
 )
 
+const (
+	historyFilename = ".genji_history"
+)
+
 // A Shell manages a command line shell program for manipulating a Genji database.
 type Shell struct {
 	db   *genji.DB
@@ -99,10 +103,13 @@ func Run(opts *Options) error {
 	e.Run()
 
 	if sh.db != nil {
-		return sh.db.Close()
+		err = sh.db.Close()
+		if err != nil {
+			return err
+		}
 	}
 
-	return nil
+	return sh.dumpHistory()
 }
 
 func (sh *Shell) loadHistory() ([]string, error) {
@@ -111,7 +118,7 @@ func (sh *Shell) loadHistory() ([]string, error) {
 		return nil, err
 	}
 
-	fname := filepath.Join(homeDir, ".genji_history")
+	fname := filepath.Join(homeDir, historyFilename)
 
 	_, err = os.Stat(fname)
 	if err != nil {
@@ -122,6 +129,7 @@ func (sh *Shell) loadHistory() ([]string, error) {
 	if err != nil {
 		return nil, nil
 	}
+	defer f.Close()
 
 	var history []string
 	s := bufio.NewScanner(f)
@@ -132,7 +140,34 @@ func (sh *Shell) loadHistory() ([]string, error) {
 	return history, s.Err()
 }
 
+func (sh *Shell) dumpHistory() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	fname := filepath.Join(homeDir, historyFilename)
+
+	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	for _, h := range sh.history {
+		_, err = w.WriteString(h + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	return w.Flush()
+}
+
 func (sh *Shell) execute(in string) {
+	sh.history = append(sh.history, in)
+
 	err := sh.executeInput(in)
 	if err != nil {
 		fmt.Println(err)
