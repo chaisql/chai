@@ -1,10 +1,11 @@
 package shell
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
@@ -18,14 +19,14 @@ import (
 
 // A Shell manages a command line shell program for manipulating a Genji database.
 type Shell struct {
-	db       *genji.DB
-	wg       sync.WaitGroup
-	opts     *Options
-	cancelFn func()
+	db   *genji.DB
+	opts *Options
 
 	query      string
 	livePrefix string
 	multiLine  bool
+
+	history []string
 }
 
 // Options of the shell.
@@ -81,12 +82,18 @@ func Run(opts *Options) error {
 		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
 	}
 
+	history, err := sh.loadHistory()
+	if err != nil {
+		return err
+	}
+
 	e := prompt.New(
 		sh.execute,
 		completer,
 		prompt.OptionPrefix("genji> "),
 		prompt.OptionTitle("genji"),
 		prompt.OptionLivePrefix(sh.changelivePrefix),
+		prompt.OptionHistory(history),
 	)
 
 	e.Run()
@@ -96,6 +103,33 @@ func Run(opts *Options) error {
 	}
 
 	return nil
+}
+
+func (sh *Shell) loadHistory() ([]string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	fname := filepath.Join(homeDir, ".genji_history")
+
+	_, err = os.Stat(fname)
+	if err != nil {
+		return nil, nil
+	}
+
+	f, err := os.Open(fname)
+	if err != nil {
+		return nil, nil
+	}
+
+	var history []string
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		history = append(history, s.Text())
+	}
+
+	return history, s.Err()
 }
 
 func (sh *Shell) execute(in string) {
