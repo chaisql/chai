@@ -72,6 +72,10 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 			s.skipUntilNewline()
 			return COMMENT, pos, ""
 		}
+		if isDigit(ch1) {
+			s.r.unread()
+			return s.scanNumber()
+		}
 		s.r.unread()
 		return SUB, pos, ""
 	case '*':
@@ -281,6 +285,8 @@ func (s *Scanner) scanNumber() (tok Token, pos Pos, lit string) {
 
 		// Unread the full stop so we can read it later.
 		s.r.unread()
+	} else if ch == '-' {
+		buf.WriteRune(ch)
 	} else {
 		s.r.unread()
 	}

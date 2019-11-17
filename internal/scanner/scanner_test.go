@@ -60,6 +60,8 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `!~`, tok: scanner.NEQREGEX},
 		{s: `:`, tok: scanner.COLON},
 		{s: `::`, tok: scanner.DOUBLECOLON},
+		{s: `--`, tok: scanner.COMMENT},
+		{s: `--10.3`, tok: scanner.COMMENT, lit: ``},
 
 		// Identifiers
 		{s: `foo`, tok: scanner.IDENT, lit: `foo`},
@@ -96,6 +98,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `100.23`, tok: scanner.NUMBER, lit: `100.23`},
 		{s: `.23`, tok: scanner.NUMBER, lit: `.23`},
 		{s: `10.3s`, tok: scanner.NUMBER, lit: `10.3`},
+		{s: `-10.3`, tok: scanner.NUMBER, lit: `-10.3`},
 
 		// Durations
 		{s: `10u`, tok: scanner.DURATIONVAL, lit: `10u`},
