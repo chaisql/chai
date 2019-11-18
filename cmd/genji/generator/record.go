@@ -176,6 +176,10 @@ func (rctx *recordContext) lookupRecord(f *ast.File, info *types.Info, target st
 			fld := str.Field(i)
 			tag := str.Tag(i)
 			tags := extractGenjiTags(tag)
+			_, ok := tags["ignore"] // This field has been tagged to be ignored or skipped
+			if ok {
+				continue
+			}
 			typ := fld.Type()
 
 			_, ok = typ.(*types.Basic)
