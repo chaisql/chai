@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -37,8 +39,8 @@ const recordGetFieldTmpl = `
 func ({{$fl}} *{{$structName}}) GetField(name string) (record.Field, error) {
 	switch name {
 	{{- range .Fields }}
-	case "{{.Name}}":
-		return record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}), nil
+	case "{{.FieldName}}":
+		return record.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}), nil
 	{{- end}}
 	}
 
@@ -58,7 +60,7 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(record.Field) error) error {
 	var err error
 
 	{{range .Fields}}
-	err = fn(record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}))
+	err = fn(record.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}))
 	if err != nil {
 		return err
 	}
@@ -82,7 +84,7 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		{{- range .Fields}}
-		case "{{.Name}}":
+		case "{{.FieldName}}":
 		{{$fl}}.{{.Name}}, err = f.DecodeTo{{.Type}}()
 		{{- end}}
 		}
@@ -112,9 +114,12 @@ func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
 
 type recordContext struct {
 	Name   string
-	Fields []struct {
-		Name, Type, GoType string
-	}
+	Fields []recordField
+}
+
+type recordField struct {
+	Name, Type, GoType string
+	FieldName          string
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
@@ -169,11 +174,16 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 			}
 
 			for _, name := range fd.Names {
-				rctx.Fields = append(rctx.Fields, struct {
-					Name, Type, GoType string
-				}{
-					name.String(), value.TypeFromGoType(typeName).String(), typeName,
+				rctx.Fields = append(rctx.Fields, recordField{
+					name.String(), value.TypeFromGoType(typeName).String(), typeName, name.String(),
 				})
+			}
+
+			if fd.Tag != nil {
+				err := handleGenjiTag(rctx, fd)
+				if err != nil {
+					return false, err
+				}
 			}
 		}
 
@@ -226,4 +236,26 @@ func (rctx *recordContext) Unexport(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToLower(rune(n[0])))
 	return string(name)
+}
+
+func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
+	if len(fd.Names) > 1 {
+		return errors.New("single genji tag for multiple fields not supported")
+	}
+
+	unquoted, err := strconv.Unquote(fd.Tag.Value)
+	if err != nil {
+		return err
+	}
+
+	v, ok := reflect.StructTag(unquoted).Lookup("genji")
+	if !ok {
+		return nil
+	}
+
+	if v != "" {
+		ctx.Fields[len(ctx.Fields)-1].FieldName = v
+	}
+
+	return nil
 }

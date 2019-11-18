@@ -1,6 +1,6 @@
 /*
 Package genji implements a SQL database on top of key-value stores.
-Genji supports various engines that write data on-disk, like BoltDB or Badger, and in memoryengine.
+Genji supports various engines that write data on-disk, like BoltDB or Badger, and in memory.
 
 Genji tables are schemaless and can be mapped to Go structures without reflection: Genji relies on code generation to translate data to and from Go structures.
 
@@ -9,7 +9,7 @@ Engine and key value stores
 Genji relies on key-value stores to store data. The engine package defines interfaces that must be implemented
 to be used by the Genji database. As long as an implementation satisfies the engine package requirements, data can be stored anywhere.
 
-Out of the box, Genji provides three implementations: BoltDB, Badger and in-memoryengine.
+Out of the box, Genji provides three implementations: BoltDB, Badger and in-memory.
 
 See the engine package documentation for more details.
 

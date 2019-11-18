@@ -26,6 +26,7 @@ func TestGenerate(t *testing.T) {
 		structs := []Struct{
 			{"Basic"},
 			{"basic"},
+			{"CustomFieldNames"},
 		}
 
 		f, err := os.Open("testdata/structs.go")
@@ -155,6 +156,23 @@ import (
 		}
 
 		require.Equal(t, expectedHeader, res.String())
+	})
+
+	t.Run("Multi field with single tag", func(t *testing.T) {
+		src := `
+			package user
+
+			type User struct {
+				A, B string ` + "`genji:\"ab\"`" + `
+			}
+		`
+
+		var buf bytes.Buffer
+		err := Generate(&buf, Config{
+			Sources: []io.Reader{strings.NewReader(src)},
+			Structs: []Struct{{"User"}},
+		})
+		require.Error(t, err)
 	})
 }
 

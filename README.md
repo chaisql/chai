@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is an embedded SQL database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memoryengine.
+Genji is an embedded SQL database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
 
 Genji tables are schemaless and can be manipulated using SQL queries. Genji is also compatible with the `database/sql` package.
 
@@ -12,7 +12,7 @@ Genji tables are schemaless and can be manipulated using SQL queries. Genji is a
 
 Install the Genji library and command line tool
 
-``` bash
+```bash
 go get -u github.com/asdine/genji/...
 ```
 
@@ -129,7 +129,7 @@ To simplify implementing these interfaces, Genji provides a command line tool th
 
 Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection** for these structures.
 
-``` go
+```go
 // user.go
 
 type User struct {
@@ -141,13 +141,13 @@ type User struct {
 
 Generate code to make that structure compatible with Genji.
 
-``` bash
+```bash
 genji -f user.go -s User
 ```
 
 This command generates a file that adds methods to the `User` type.
 
-``` go
+```go
 // user.genji.go
 
 // The User type gets new methods that implement some Genji interfaces.
@@ -160,7 +160,7 @@ func (u *User) PrimaryKey() ([]byte, error) {}
 
 ### Example
 
-``` go
+```go
 // Let's create a user
 u1 := User{
     ID: 20,
@@ -205,7 +205,7 @@ Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbo
 
 ### Use the BoltDB engine
 
-``` go
+```go
 import (
     "log"
 
@@ -220,7 +220,7 @@ func main() {
 
 ### Use the memory engine
 
-``` go
+```go
 import (
     "log"
 
@@ -246,7 +246,7 @@ go get github.com/asdine/genji/engine/badgerengine
 
 Then, it can be instantiated using the `genji.New` function:
 
-``` go
+```go
 import (
     "log"
 
@@ -270,11 +270,3 @@ func main() {
     defer db.Close()
 }
 ```
-
-## Tags
-
-Genji scans the struct tags at compile time, not at runtime, and it uses this information to generate code.
-
-Here is the description of the only supported tag:
-
-* `pk` : Indicates that this field is the primary key. The primary key can be of any type. If this tag is not provided, Genji uses its own internal autoincremented id

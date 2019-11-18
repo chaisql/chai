@@ -92,9 +92,9 @@ func (b *basic) GetField(name string) (record.Field, error) {
 	case "B":
 		return record.NewUint16Field("B", b.B), nil
 	case "C":
-		return record.NewFloat32Field("C", b.C), nil
+		return record.NewFloat64Field("C", b.C), nil
 	case "D":
-		return record.NewFloat32Field("D", b.D), nil
+		return record.NewFloat64Field("D", b.D), nil
 	}
 
 	return record.Field{}, errors.New("unknown field")
@@ -115,12 +115,12 @@ func (b *basic) Iterate(fn func(record.Field) error) error {
 		return err
 	}
 
-	err = fn(record.NewFloat32Field("C", b.C))
+	err = fn(record.NewFloat64Field("C", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewFloat32Field("D", b.D))
+	err = fn(record.NewFloat64Field("D", b.D))
 	if err != nil {
 		return err
 	}
@@ -140,9 +140,9 @@ func (b *basic) ScanRecord(rec record.Record) error {
 		case "B":
 			b.B, err = f.DecodeToUint16()
 		case "C":
-			b.C, err = f.DecodeToFloat32()
+			b.C, err = f.DecodeToFloat64()
 		case "D":
-			b.D, err = f.DecodeToFloat32()
+			b.D, err = f.DecodeToFloat64()
 		}
 		return err
 	})
@@ -157,4 +157,79 @@ func (b *basic) Scan(src interface{}) error {
 	}
 
 	return b.ScanRecord(rr)
+}
+
+// GetField implements the field method of the record.Record interface.
+func (c *CustomFieldNames) GetField(name string) (record.Field, error) {
+	switch name {
+	case "a":
+		return record.NewStringField("a", c.A), nil
+	case "B":
+		return record.NewIntField("B", c.B), nil
+	case "C":
+		return record.NewInt32Field("C", c.C), nil
+	case "D":
+		return record.NewInt32Field("D", c.D), nil
+	}
+
+	return record.Field{}, errors.New("unknown field")
+}
+
+// Iterate through all the fields one by one and pass each of them to the given function.
+// It the given function returns an error, the iteration is interrupted.
+func (c *CustomFieldNames) Iterate(fn func(record.Field) error) error {
+	var err error
+
+	err = fn(record.NewStringField("a", c.A))
+	if err != nil {
+		return err
+	}
+
+	err = fn(record.NewIntField("B", c.B))
+	if err != nil {
+		return err
+	}
+
+	err = fn(record.NewInt32Field("C", c.C))
+	if err != nil {
+		return err
+	}
+
+	err = fn(record.NewInt32Field("D", c.D))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ScanRecord extracts fields from record and assigns them to the struct fields.
+// It implements the record.Scanner interface.
+func (c *CustomFieldNames) ScanRecord(rec record.Record) error {
+	return rec.Iterate(func(f record.Field) error {
+		var err error
+
+		switch f.Name {
+		case "a":
+			c.A, err = f.DecodeToString()
+		case "B":
+			c.B, err = f.DecodeToInt()
+		case "C":
+			c.C, err = f.DecodeToInt32()
+		case "D":
+			c.D, err = f.DecodeToInt32()
+		}
+		return err
+	})
+}
+
+// Scan extracts fields from src and assigns them to the struct fields.
+// It implements the driver.Scanner interface.
+func (c *CustomFieldNames) Scan(src interface{}) error {
+	rr, ok := src.(record.Record)
+	if !ok {
+		return errors.New("unable to scan record from src")
+	}
+
+	return c.ScanRecord(rr)
 }

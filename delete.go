@@ -53,7 +53,7 @@ const deleteBufferSize = 100
 // To deal with these limitations, Run will iterate on a limited number of records, copy the keys
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no record
 // left to delete.
-// Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memoryengine.
+// Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
 func (stmt deleteStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 	var res Result
 	if stmt.tableName == "" {
