@@ -4,9 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/token"
+	"go/types"
 	"reflect"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -41,7 +40,11 @@ func ({{$fl}} *{{$structName}}) GetField(name string) (record.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.Name}}":
-		return record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}), nil
+		{{ if eq .GoType .GoNamedType -}}
+			return record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}), nil
+		{{- else -}}
+			return record.New{{.Type}}Field("{{.Name}}", {{.GoType}}({{$fl}}.{{.Name}})), nil
+		{{- end -}}
 	{{- end}}
 	}
 
@@ -61,7 +64,11 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(record.Field) error) error {
 	var err error
 
 	{{range .Fields}}
-	err = fn(record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}))
+	{{ if eq .GoType .GoNamedType -}}
+		err = fn(record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}))
+	{{- else -}}
+		err = fn(record.New{{.Type}}Field("{{.Name}}", {{.GoType}}({{$fl}}.{{.Name}})))
+	{{- end }}
 	if err != nil {
 		return err
 	}
@@ -86,7 +93,13 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 		switch f.Name {
 		{{- range .Fields}}
 		case "{{.Name}}":
-		{{$fl}}.{{.Name}}, err = f.DecodeTo{{.Type}}()
+		{{ if eq .GoType .GoNamedType -}}
+			{{$fl}}.{{.Name}}, err = f.DecodeTo{{.Type}}() 
+		{{- else -}}
+			var tmp {{.GoType}}
+			tmp, err = f.DecodeTo{{.Type}}() 
+			{{$fl}}.{{.Name}} = {{.GoNamedType}}(tmp)
+		{{- end }}
 		{{- end}}
 		}
 		return err
@@ -121,87 +134,84 @@ const recordPkTmpl = `
 {{- if ne .Pk.Name ""}}
 // PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
 func ({{$fl}} *{{$structName}}) PrimaryKey() ([]byte, error) {
-	return value.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
+	{{ if eq .Pk.GoType .Pk.GoNamedType -}}
+		return value.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
+	{{- else -}}
+		return value.Encode{{.Pk.Type}}({{.Pk.GoType}}({{$fl}}.{{.Pk.Name}})), nil
+	{{- end }}	
 }
 {{- end}}
 {{ end }}
 `
 
-type recordContext struct {
-	Name   string
-	Fields []struct {
-		Name, Type, GoType string
-	}
-	Pk struct {
-		Name, Type, GoType string
-	}
+type field struct {
+	Name, Type, GoType, GoNamedType string
 }
 
-func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
-	for _, n := range f.Decls {
-		gn, ok := ast.Node(n).(*ast.GenDecl)
-		if !ok || gn.Tok != token.TYPE || len(gn.Specs) == 0 {
+type recordContext struct {
+	Name   string
+	Fields []field
+	Pk     field
+}
+
+func (rctx *recordContext) lookupRecord(f *ast.File, info *types.Info, target string) (bool, error) {
+
+	for _, def := range info.Defs {
+		if def == nil {
 			continue
 		}
-
-		ts, ok := gn.Specs[0].(*ast.TypeSpec)
+		if def.Name() != target {
+			continue
+		}
+		tn, ok := def.(*types.TypeName)
 		if !ok {
-			continue
+			return false, nil
 		}
-
-		if ts.Name.Name != target {
-			continue
-		}
-
-		s, ok := ts.Type.(*ast.StructType)
+		str, ok := tn.Type().Underlying().(*types.Struct)
 		if !ok {
-			return false, errors.New("invalid object")
+			return false, nil
 		}
-
 		rctx.Name = target
+		for i := 0; i < str.NumFields(); i++ {
+			fld := str.Field(i)
+			tag := str.Tag(i)
+			tags := extractGenjiTags(tag)
+			typ := fld.Type()
 
-		for _, fd := range s.Fields.List {
-			var typeName string
-
-			typ, ok := fd.Type.(*ast.Ident)
+			_, ok = typ.(*types.Basic)
 			if !ok {
-				atyp, ok := fd.Type.(*ast.ArrayType)
-				if !ok {
-					return false, errors.New("struct must only contain supported fields")
-				}
-
-				typ, ok = atyp.Elt.(*ast.Ident)
-				if !ok || typ.Name != "byte" {
-					return false, errors.New("struct must only contain supported fields")
-				}
-
-				typeName = "[]byte"
-			} else {
-				typeName = typ.Name
-			}
-
-			if len(fd.Names) == 0 {
-				return false, errors.New("embedded fields are not supported")
-			}
-
-			if value.TypeFromGoType(typeName) == 0 {
-				return false, fmt.Errorf("unsupported type %s", typeName)
-			}
-
-			for _, name := range fd.Names {
-				rctx.Fields = append(rctx.Fields, struct {
-					Name, Type, GoType string
-				}{
-					name.String(), value.TypeFromGoType(typeName).String(), typeName,
-				})
-			}
-
-			if fd.Tag != nil {
-				err := handleGenjiTag(rctx, fd)
-				if err != nil {
-					return false, err
+				_, ok := typ.Underlying().(*types.Basic)
+				if ok {
+					typ = typ.Underlying()
+				} else {
+					sl, ok := fld.Type().Underlying().(*types.Slice)
+					if ok {
+						slType, ok := sl.Elem().Underlying().(*types.Basic)
+						if !ok || slType.Kind() != types.Byte {
+							return false, fmt.Errorf("struct must only contain supported fields: (%s %s) is not supported", fld.Name(), typ.String())
+						}
+					} else {
+						return false, fmt.Errorf("unsupported type %s", fld.Name())
+					}
 				}
 			}
+
+			if value.TypeFromGoType(typ.String()) == 0 {
+				return false, fmt.Errorf("unsupported type %s", typ.String())
+			}
+			namedType := fld.Type().String()
+			namedParts := strings.Split(namedType, ".")
+			namedType = namedParts[len(namedParts)-1]
+
+			fd := field{
+				fld.Name(), value.TypeFromGoType(typ.String()).String(), typ.String(), namedType,
+			}
+			err := handleGenjiTag(rctx, fd, tags)
+			if err != nil {
+				return false, err
+			}
+			rctx.Fields = append(rctx.Fields, fd)
+
 		}
 
 		return true, nil
@@ -255,31 +265,35 @@ func (rctx *recordContext) Unexport(n string) string {
 	return string(name)
 }
 
-func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
-	unquoted, err := strconv.Unquote(fd.Tag.Value)
-	if err != nil {
-		return err
+func extractGenjiTags(tag string) map[string]interface{} {
+	tags := map[string]interface{}{}
+	if len(tag) == 0 {
+		return nil
 	}
-
-	v, ok := reflect.StructTag(unquoted).Lookup("genji")
+	v, ok := reflect.StructTag(tag).Lookup("genji")
 	if !ok {
 		return nil
 	}
-
 	gtags := strings.Split(v, ",")
-
 	for _, gtag := range gtags {
-		switch gtag {
+		tags[gtag] = nil
+	}
+	return tags
+
+}
+
+func handleGenjiTag(ctx *recordContext, fd field, tags map[string]interface{}) error {
+
+	for tag := range tags {
+		switch tag {
 		case "pk":
 			if ctx.Pk.Name != "" {
 				return errors.New("only one pk field is allowed")
 			}
 
-			ctx.Pk.Name = fd.Names[0].Name
-			ctx.Pk.Type = value.TypeFromGoType(fd.Type.(*ast.Ident).Name).String()
-			ctx.Pk.GoType = fd.Type.(*ast.Ident).Name
+			ctx.Pk = fd
 		default:
-			return fmt.Errorf("unsupported genji tag '%s'", gtag)
+			return fmt.Errorf("unsupported genji tag '%s'", tag)
 		}
 	}
 

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"io"
 	"text/template"
 
@@ -70,7 +72,7 @@ type Struct struct {
 func Generate(w io.Writer, cfg Config) error {
 	var gctx genContext
 
-	srcs, err := readSources(cfg.Sources)
+	srcs, info, err := readSources(cfg.Sources)
 	if err != nil {
 		return err
 	}
@@ -80,7 +82,7 @@ func Generate(w io.Writer, cfg Config) error {
 		return err
 	}
 
-	err = gctx.readTargets(srcs, &cfg)
+	err = gctx.readTargets(srcs, &cfg, info)
 	if err != nil {
 		return err
 	}
@@ -110,26 +112,37 @@ func Generate(w io.Writer, cfg Config) error {
 	return err
 }
 
-func readSources(srcs []io.Reader) ([]*ast.File, error) {
+func readSources(srcs []io.Reader) ([]*ast.File, *types.Info, error) {
 	var buf bytes.Buffer
 	afs := make([]*ast.File, len(srcs))
 
+	info := types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue),
+		Defs:  make(map[*ast.Ident]types.Object),
+		Uses:  make(map[*ast.Ident]types.Object),
+	}
 	for i, r := range srcs {
 		buf.Reset()
 		_, err := buf.ReadFrom(r)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		fset := token.NewFileSet()
 		af, err := parser.ParseFile(fset, "", buf.String(), 0)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		conf := types.Config{Importer: importer.Default()}
+		_, err = conf.Check(af.Name.Name, fset, []*ast.File{af}, &info)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		afs[i] = af
 	}
 
-	return afs, nil
+	return afs, &info, nil
 }
 
 type genContext struct {
@@ -152,11 +165,11 @@ func (g *genContext) readPackage(srcs []*ast.File) error {
 	return nil
 }
 
-func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
+func (g *genContext) readTargets(srcs []*ast.File, cfg *Config, info *types.Info) error {
 	g.Records = make([]recordContext, len(cfg.Structs))
 	for i := range cfg.Structs {
 		for _, src := range srcs {
-			ok, err := g.Records[i].lookupRecord(src, cfg.Structs[i].Name)
+			ok, err := g.Records[i].lookupRecord(src, info, cfg.Structs[i].Name)
 			if err != nil {
 				return err
 			}
