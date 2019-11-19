@@ -101,7 +101,7 @@ func TestSelectStmt(t *testing.T) {
 		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "1,foo1,bar1,baz1,1,foo1,bar1,baz1,foo1\n2,foo2,bar1,1,2,foo2,bar1,1,foo2\n3,foo3,bar2,3,foo3,bar2\n", nil},
 		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2\n\n", nil},
 		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With neq cond", "SELECT * FROM test WHERE a != 'foo1'", false, "2,foo2,bar1,1\n", nil},
+		{"With neq cond", "SELECT * FROM test WHERE a != 'foo1'", false, "2,foo2,bar1,1\n3,foo3,bar2\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
 		{"With lt cond", "SELECT * FROM test WHERE a < 'zzzzz'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
 		{"With lte cond", "SELECT * FROM test WHERE a <= 'foo3'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
