@@ -1,6 +1,7 @@
 package genji
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"strconv"
@@ -148,6 +149,8 @@ func opToExpr(op scanner.Token, lhs, rhs expr) expr {
 	switch op {
 	case scanner.EQ:
 		return eq(lhs, rhs)
+	case scanner.NEQ:
+		return neq(lhs, rhs)
 	case scanner.GT:
 		return gt(lhs, rhs)
 	case scanner.GTE:
@@ -162,7 +165,7 @@ func opToExpr(op scanner.Token, lhs, rhs expr) expr {
 		return or(lhs, rhs)
 	}
 
-	return nil
+	panic(fmt.Sprintf("unknown operator %q", op))
 }
 
 // parseUnaryExpr parses an non-binary expression.

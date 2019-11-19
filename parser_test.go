@@ -14,6 +14,11 @@ func TestParserExpr(t *testing.T) {
 		expected expr
 	}{
 		{"=", "age = 10", eq(fieldSelector("age"), int8Value(10))},
+		{"!=", "age != 10", neq(fieldSelector("age"), int8Value(10))},
+		{">", "age > 10", gt(fieldSelector("age"), int8Value(10))},
+		{">=", "age >= 10", gte(fieldSelector("age"), int8Value(10))},
+		{"<", "age < 10", lt(fieldSelector("age"), int8Value(10))},
+		{"<=", "age <= 10", lte(fieldSelector("age"), int8Value(10))},
 		{"AND", "age = 10 AND age <= 11",
 			and(
 				eq(fieldSelector("age"), int8Value(10)),

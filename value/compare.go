@@ -20,6 +20,16 @@ func (v Value) IsEqual(other Value) (bool, error) {
 	return compare(operatorEq, v, other)
 }
 
+// IsNotEqual returns true if v is not equal to the given value.
+func (v Value) IsNotEqual(other Value) (bool, error) {
+	ok, err := v.IsEqual(other)
+	if err != nil {
+		return ok, err
+	}
+
+	return !ok, nil
+}
+
 // IsGreaterThan returns true if v is greather than the given value.
 func (v Value) IsGreaterThan(other Value) (bool, error) {
 	return compare(operatorGt, v, other)

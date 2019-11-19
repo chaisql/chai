@@ -259,9 +259,14 @@ type cmpOp struct {
 	simpleOperator
 }
 
-// Eq creates an expression that returns true if a equals b.
+// eq creates an expression that returns true if a equals b.
 func eq(a, b expr) expr {
 	return cmpOp{simpleOperator{a, b, scanner.EQ}}
+}
+
+// neq creates an expression that returns true if a equals b.
+func neq(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.NEQ}}
 }
 
 // gt creates an expression that returns true if a is greater than b.
@@ -343,6 +348,8 @@ func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
 	switch op.Token {
 	case scanner.EQ:
 		return l.IsEqual(r.Value)
+	case scanner.NEQ:
+		return l.IsNotEqual(r.Value)
 	case scanner.GT:
 		return l.IsGreaterThan(r.Value)
 	case scanner.GTE:

@@ -134,6 +134,12 @@ func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanField {
 }
 
 func cmpOpCanUseIndex(cmp *cmpOp) (bool, fieldSelector, expr) {
+	switch cmp.Token {
+	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE:
+	default:
+		return false, "", nil
+	}
+
 	lf, leftIsField := cmp.LeftHand().(fieldSelector)
 	rf, rightIsField := cmp.RightHand().(fieldSelector)
 

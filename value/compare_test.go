@@ -32,6 +32,8 @@ func TestComparison(t *testing.T) {
 	}{
 		{"=", 2, 1, false},
 		{"=", 2, 2, true},
+		{"!=", 2, 1, true},
+		{"!=", 2, 2, false},
 		{">", 2, 1, true},
 		{">", 1, 2, false},
 		{">", 2, 2, false},
@@ -53,6 +55,8 @@ func TestComparison(t *testing.T) {
 	}{
 		{"=", 1, false},
 		{"=", 0, false},
+		{"!=", 0, true},
+		{"!=", 1, true},
 		{">", 1, false},
 		{">", 0, false},
 		{">=", 1, false},
@@ -73,6 +77,8 @@ func TestComparison(t *testing.T) {
 					switch test.op {
 					case "=":
 						ok, err = numericFuncs[i].fn(test.a).IsEqual(numericFuncs[j].fn(test.b))
+					case "!=":
+						ok, err = numericFuncs[i].fn(test.a).IsNotEqual(numericFuncs[j].fn(test.b))
 					case ">":
 						ok, err = numericFuncs[i].fn(test.a).IsGreaterThan(numericFuncs[j].fn(test.b))
 					case ">=":
@@ -96,6 +102,8 @@ func TestComparison(t *testing.T) {
 				switch test.op {
 				case "=":
 					ok, err = numericFuncs[i].fn(test.a).IsEqual(value.NewNull())
+				case "!=":
+					ok, err = numericFuncs[i].fn(test.a).IsNotEqual(value.NewNull())
 				case ">":
 					ok, err = numericFuncs[i].fn(test.a).IsGreaterThan(value.NewNull())
 				case ">=":
@@ -126,6 +134,8 @@ func TestComparison(t *testing.T) {
 	}{
 		{"=", "b", "a", false},
 		{"=", "b", "b", true},
+		{"!=", "b", "a", true},
+		{"!=", "b", "b", false},
 		{">", "b", "a", true},
 		{">", "a", "b", false},
 		{">", "b", "b", false},
@@ -147,6 +157,8 @@ func TestComparison(t *testing.T) {
 	}{
 		{"=", "a", false},
 		{"=", "", false},
+		{"!=", "a", true},
+		{"!=", "", true},
 		{">", "a", false},
 		{">", "", false},
 		{">=", "a", false},
@@ -167,6 +179,8 @@ func TestComparison(t *testing.T) {
 					switch test.op {
 					case "=":
 						ok, err = textFuncs[i].fn(test.a).IsEqual(textFuncs[j].fn(test.b))
+					case "!=":
+						ok, err = textFuncs[i].fn(test.a).IsNotEqual(textFuncs[j].fn(test.b))
 					case ">":
 						ok, err = textFuncs[i].fn(test.a).IsGreaterThan(textFuncs[j].fn(test.b))
 					case ">=":
@@ -189,6 +203,8 @@ func TestComparison(t *testing.T) {
 					switch test.op {
 					case "=":
 						ok, err = textFuncs[i].fn(test.a).IsEqual(value.NewNull())
+					case "!=":
+						ok, err = textFuncs[i].fn(test.a).IsNotEqual(value.NewNull())
 					case ">":
 						ok, err = textFuncs[i].fn(test.a).IsGreaterThan(value.NewNull())
 					case ">=":
@@ -211,6 +227,7 @@ func TestComparison(t *testing.T) {
 		b  string
 	}{
 		{"=", 1, "1"},
+		{"=", 0, ""},
 		{"=", 0, ""},
 		{">", 2, "1"},
 		{">", 1, ""},
@@ -252,15 +269,7 @@ func TestComparison(t *testing.T) {
 		a := value.NewUint64(math.MaxUint64)
 		b := value.NewInt64(10)
 
-		ok, err := a.IsGreaterThan(b)
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		ok, err = b.IsGreaterThan(a)
-		require.NoError(t, err)
-		require.False(t, ok)
-
-		ok, err = a.IsEqual(b)
+		ok, err := a.IsEqual(b)
 		require.NoError(t, err)
 		require.False(t, ok)
 
@@ -268,11 +277,33 @@ func TestComparison(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
+		ok, err = a.IsNotEqual(b)
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		ok, err = a.IsNotEqual(a)
+		require.NoError(t, err)
+		require.False(t, ok)
+
+		ok, err = a.IsGreaterThan(b)
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		ok, err = b.IsGreaterThan(a)
+		require.NoError(t, err)
+		require.False(t, ok)
+
 		ok, err = a.IsLesserThanOrEqual(b)
 		require.NoError(t, err)
 		require.False(t, ok)
 
 		ok, err = b.IsLesserThanOrEqual(a)
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
+
+	t.Run("not equal with different types", func(t *testing.T) {
+		ok, err := value.NewInt(1).IsNotEqual(value.NewString("foo"))
 		require.NoError(t, err)
 		require.True(t, ok)
 	})
