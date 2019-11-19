@@ -12,14 +12,14 @@ import (
 // GetField implements the field method of the record.Record interface.
 func (b *Basic) GetField(name string) (record.Field, error) {
 	switch name {
-	case "A":
-		return record.NewStringField("A", b.A), nil
-	case "B":
-		return record.NewIntField("B", b.B), nil
-	case "C":
-		return record.NewInt32Field("C", b.C), nil
-	case "D":
-		return record.NewInt32Field("D", b.D), nil
+	case "a":
+		return record.NewStringField("a", b.A), nil
+	case "b":
+		return record.NewIntField("b", b.B), nil
+	case "c":
+		return record.NewInt32Field("c", b.C), nil
+	case "d":
+		return record.NewInt32Field("d", b.D), nil
 	}
 
 	return record.Field{}, errors.New("unknown field")
@@ -30,22 +30,22 @@ func (b *Basic) GetField(name string) (record.Field, error) {
 func (b *Basic) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(record.NewStringField("A", b.A))
+	err = fn(record.NewStringField("a", b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewIntField("B", b.B))
+	err = fn(record.NewIntField("b", b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewInt32Field("C", b.C))
+	err = fn(record.NewInt32Field("c", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewInt32Field("D", b.D))
+	err = fn(record.NewInt32Field("d", b.D))
 	if err != nil {
 		return err
 	}
@@ -60,13 +60,13 @@ func (b *Basic) ScanRecord(rec record.Record) error {
 		var err error
 
 		switch f.Name {
-		case "A":
+		case "a":
 			b.A, err = f.DecodeToString()
-		case "B":
+		case "b":
 			b.B, err = f.DecodeToInt()
-		case "C":
+		case "c":
 			b.C, err = f.DecodeToInt32()
-		case "D":
+		case "d":
 			b.D, err = f.DecodeToInt32()
 		}
 		return err
@@ -87,14 +87,14 @@ func (b *Basic) Scan(src interface{}) error {
 // GetField implements the field method of the record.Record interface.
 func (b *basic) GetField(name string) (record.Field, error) {
 	switch name {
-	case "A":
-		return record.NewBytesField("A", b.A), nil
-	case "B":
-		return record.NewUint16Field("B", b.B), nil
-	case "C":
-		return record.NewFloat64Field("C", b.C), nil
-	case "D":
-		return record.NewFloat64Field("D", b.D), nil
+	case "a":
+		return record.NewBytesField("a", b.A), nil
+	case "b":
+		return record.NewUint16Field("b", b.B), nil
+	case "c":
+		return record.NewFloat64Field("c", b.C), nil
+	case "d":
+		return record.NewFloat64Field("d", b.D), nil
 	}
 
 	return record.Field{}, errors.New("unknown field")
@@ -105,22 +105,22 @@ func (b *basic) GetField(name string) (record.Field, error) {
 func (b *basic) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(record.NewBytesField("A", b.A))
+	err = fn(record.NewBytesField("a", b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewUint16Field("B", b.B))
+	err = fn(record.NewUint16Field("b", b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewFloat64Field("C", b.C))
+	err = fn(record.NewFloat64Field("c", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewFloat64Field("D", b.D))
+	err = fn(record.NewFloat64Field("d", b.D))
 	if err != nil {
 		return err
 	}
@@ -135,13 +135,13 @@ func (b *basic) ScanRecord(rec record.Record) error {
 		var err error
 
 		switch f.Name {
-		case "A":
+		case "a":
 			b.A, err = f.DecodeToBytes()
-		case "B":
+		case "b":
 			b.B, err = f.DecodeToUint16()
-		case "C":
+		case "c":
 			b.C, err = f.DecodeToFloat64()
-		case "D":
+		case "d":
 			b.D, err = f.DecodeToFloat64()
 		}
 		return err
@@ -162,14 +162,14 @@ func (b *basic) Scan(src interface{}) error {
 // GetField implements the field method of the record.Record interface.
 func (c *CustomFieldNames) GetField(name string) (record.Field, error) {
 	switch name {
-	case "a":
-		return record.NewStringField("a", c.A), nil
-	case "B":
-		return record.NewIntField("B", c.B), nil
-	case "C":
-		return record.NewInt32Field("C", c.C), nil
-	case "D":
-		return record.NewInt32Field("D", c.D), nil
+	case "A":
+		return record.NewStringField("A", c.A), nil
+	case "b":
+		return record.NewIntField("b", c.B), nil
+	case "c":
+		return record.NewInt32Field("c", c.C), nil
+	case "d":
+		return record.NewInt32Field("d", c.D), nil
 	}
 
 	return record.Field{}, errors.New("unknown field")
@@ -180,22 +180,22 @@ func (c *CustomFieldNames) GetField(name string) (record.Field, error) {
 func (c *CustomFieldNames) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(record.NewStringField("a", c.A))
+	err = fn(record.NewStringField("A", c.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewIntField("B", c.B))
+	err = fn(record.NewIntField("b", c.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewInt32Field("C", c.C))
+	err = fn(record.NewInt32Field("c", c.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewInt32Field("D", c.D))
+	err = fn(record.NewInt32Field("d", c.D))
 	if err != nil {
 		return err
 	}
@@ -210,13 +210,13 @@ func (c *CustomFieldNames) ScanRecord(rec record.Record) error {
 		var err error
 
 		switch f.Name {
-		case "a":
+		case "A":
 			c.A, err = f.DecodeToString()
-		case "B":
+		case "b":
 			c.B, err = f.DecodeToInt()
-		case "C":
+		case "c":
 			c.C, err = f.DecodeToInt32()
-		case "D":
+		case "d":
 			c.D, err = f.DecodeToInt32()
 		}
 		return err

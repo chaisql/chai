@@ -118,8 +118,14 @@ type recordContext struct {
 }
 
 type recordField struct {
-	Name, Type, GoType string
-	FieldName          string
+	// Name of the struct field, as found in the structure
+	Name string
+	// Genji type
+	Type string
+	// Go type
+	GoType string
+	// Name of the field in the encoded record
+	FieldName string
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
@@ -175,7 +181,10 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 
 			for _, name := range fd.Names {
 				rctx.Fields = append(rctx.Fields, recordField{
-					name.String(), value.TypeFromGoType(typeName).String(), typeName, name.String(),
+					Name:      name.String(),
+					Type:      value.TypeFromGoType(typeName).String(),
+					GoType:    typeName,
+					FieldName: strings.ToLower(name.String()),
 				})
 			}
 
