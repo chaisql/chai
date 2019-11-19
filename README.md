@@ -35,21 +35,21 @@ defer db.Close()
 err = db.Exec("CREATE TABLE user")
 
 // Create an index.
-err = db.Exec("CREATE INDEX idx_user_Name ON test (Name)")
+err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
 
 // Insert some data
-err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "Foo1", 15)
-err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 11, "Foo2", 20)
+err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
+err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 11, "Foo2", 20)
 
 // Use a transaction
 tx, err := db.Begin(true)
 defer tx.Rollback()
-err = tx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 12, "Foo3", 25)
+err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 12, "Foo3", 25)
 ...
 err = tx.Commit()
 
 // Query some records
-res, err := db.Query("SELECT * FROM user WHERE Age > ?", 18)
+res, err := db.Query("SELECT * FROM user WHERE age > ?", 18)
 // always close the result when you're done with it
 defer res.Close()
 
@@ -82,7 +82,7 @@ err = record.Scan(r, &id, &name, &age)
 err = res.
     // Filter all even ids
     Filter(func(r record.Record) (bool, error) {
-        f, err := r.GetField("ID")
+        f, err := r.GetField("id")
         ...
         id, err := f.DecodeToInt()
         ...
@@ -133,16 +133,16 @@ Declare a structure. Note that, even though struct tags are defined, Genji **doe
 // user.go
 
 type User struct {
-    ID int64    `genji:"pk"`
+    ID int64
     Name string
-    Age int
+    Age int `genji:"age-of-the-user"`
 }
 ```
 
 Generate code to make that structure compatible with Genji.
 
 ```bash
-genji -f user.go -s User
+genji gen -f user.go -s User
 ```
 
 This command generates a file that adds methods to the `User` type.
@@ -155,8 +155,9 @@ func (u *User) GetField(name string) (record.Field, error) {}
 func (u *User) Iterate(fn func(record.Field) error) error {}
 func (u *User) ScanRecord(rec record.Record) error {}
 func (u *User) Scan(src interface{}) error
-func (u *User) PrimaryKey() ([]byte, error) {}
 ```
+
+Also, it will create mapping between struct fields and their corresponding `record.Field`. For that, it will apply the `strings.ToLower` function on the struct field name, unless the `genji` tag was specified for that field. If so, it will use the name found in the tag.
 
 ### Example
 
@@ -178,7 +179,7 @@ u3.ID = 22
 // when inserting a record, using the RECORDS clause
 err := db.Exec(`INSERT INTO user RECORDS ?, ?, ?`, &u1, &u2, &u3)
 // Note that it is also possible to write records by hand
-err := db.Exec(`INSERT INTO user RECORDS ?, (ID: 21, Name: "foo", Age: 40), ?`, &u1, &u3)
+err := db.Exec(`INSERT INTO user RECORDS ?, (userid: 21, name: "foo", age-of-the-user: 40), ?`, &u1, &u3)
 
 // Let's select a few users
 var users []User

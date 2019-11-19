@@ -55,7 +55,7 @@ Creating a table is as simple as:
 
 or:
 
-  CREATE TABLE tableName IF NOT EXISTS
+  CREATE TABLE IF NOT EXISTS tableName
 
 The CREATE INDEX statement
 
@@ -209,7 +209,7 @@ This will generate a file named user.genji.go containing the following methods
   func (u *User) GetField(name string) (record.Field, error) {}
   func (u *User) Iterate(fn func(record.Field) error) error {}
   func (u *User) ScanRecord(rec record.Record) error {}
-  func (u *User) PrimaryKey() ([]byte, error) {}
+  func (u *User) Scan(src interface{}) error {}
 
 The User type now implements all the interfaces needed to interact correctly with the database APIs.
 See the examples in this page to see how it can be used.

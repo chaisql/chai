@@ -21,12 +21,12 @@ func ExampleResult_First() {
 		log.Fatal(err)
 	}
 
-	err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := db.Query("SELECT * FROM user WHERE Name = ?", "foo")
+	result, err := db.Query("SELECT * FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -85,7 +85,7 @@ func ExampleResult_Iterate() {
 		}
 	}
 
-	result, err := db.Query(`SELECT * FROM user WHERE "Age" >= 18`)
+	result, err := db.Query(`SELECT * FROM user WHERE "age" >= 18`)
 	if err != nil {
 		panic(err)
 	}

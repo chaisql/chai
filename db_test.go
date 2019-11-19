@@ -27,12 +27,12 @@ func ExampleDB_SQLDB() {
 		log.Fatal(err)
 	}
 
-	_, err = dbx.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	_, err = dbx.Exec("CREATE INDEX IF NOT EXISTS idx_user_name ON user (name)")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = dbx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	_, err = dbx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func ExampleDB_SQLDB() {
 		log.Fatal(err)
 	}
 
-	rows, err := dbx.Query("SELECT * FROM user WHERE Name = ?", "bar")
+	rows, err := dbx.Query("SELECT * FROM user WHERE name = ?", "bar")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,12 +83,12 @@ func ExampleTx() {
 		log.Fatal(err)
 	}
 
-	err = tx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := tx.Query("SELECT ID, Name, Age FROM user WHERE Name = ?", "foo")
+	result, err := tx.Query("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
