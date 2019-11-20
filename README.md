@@ -179,7 +179,7 @@ u3.ID = 22
 // when inserting a record, using the RECORDS clause
 err := db.Exec(`INSERT INTO user RECORDS ?, ?, ?`, &u1, &u2, &u3)
 // Note that it is also possible to write records by hand
-err := db.Exec(`INSERT INTO user RECORDS ?, (userid: 21, name: "foo", age-of-the-user: 40), ?`, &u1, &u3)
+err := db.Exec(`INSERT INTO user RECORDS ?, (userid: 21, name: 'foo', "age-of-the-user": 40), ?`, &u1, &u3)
 
 // Let's select a few users
 var users []User
