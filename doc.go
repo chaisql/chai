@@ -143,12 +143,12 @@ Litteral values:
   10    Integers, interpreted as int64
   3.14  Decimals, interpreted as float64
   true  Booleans, interpreted as bool
-  "foo" Strings, interpreted as string
   'foo' Strings, interpreted as string
 
 Identifiers:
 
   foo   Any string without quotes is interpreted as a field name
+  "foo" Any double quoted string is interpreted as a field name
 
 Binary operators: Comparison operators
 
@@ -158,7 +158,8 @@ which allows comparing signed integers with unsigned integers or floats for exam
 When evaluating a binary expression, the left and right expressions are evaluated first
 then compared.
 
- <exprA> = <exprB>  Evaluates to true if two expressions are equals
+ <exprA> = <exprB>  Evaluates to true if two expressions are equal
+ <exprA> != <exprB>  Evaluates to true if two expressions are not equal
  <exprA> > <exprB>  Evaluates to true if exprA is greater than exprB
  <exprA> >= <exprB> Evaluates to true if exprA is greater than or equal to exprB
  <exprA> < <exprB>  Evaluates to true if exprA is lesser than exprB
