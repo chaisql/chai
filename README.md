@@ -127,6 +127,12 @@ res, err := db.QueryRow(...)
 Genji also supports structs as long as they implement the `record.Record` interface for writes and the `record.Scanner` interface for reads.
 To simplify implementing these interfaces, Genji provides a command line tool that can generate methods for you.
 
+First, install the Genji command line tool:
+
+```bash
+go get github.com/asdine/genji/cmd/genji
+```
+
 Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection** for these structures.
 
 ```go
@@ -270,4 +276,27 @@ func main() {
     }
     defer db.Close()
 }
+```
+
+## Genji shell
+
+Besides generating code, the genji command line provides an SQL shell that can be used to create, modify and consult Genji databases.
+
+Make sure the Genji command line is installed:
+
+```bash
+go get github.com/asdine/genji/cmd/genji
+```
+
+Example:
+
+```bash
+# Opening an in-memory database:
+genji
+
+# Opening a BoltDB database:
+genji my.db
+
+# Opening a Badger database:
+genji --badger pathToData
 ```
