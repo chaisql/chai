@@ -10,10 +10,10 @@ Genji tables are schemaless and can be manipulated using SQL queries. Genji is a
 
 ## Installation
 
-Install the Genji library and command line tool
+Install the Genji database
 
 ```bash
-go get -u github.com/asdine/genji/...
+go get github.com/asdine/genji
 ```
 
 ## Usage
