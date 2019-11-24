@@ -356,3 +356,19 @@ func TestDecodeToNumber(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestTypeFromGoType(t *testing.T) {
+	tests := []struct {
+		goType   string
+		expected value.Type
+	}{
+		{"[]byte", value.Bytes},
+		{"struct", value.Record},
+	}
+
+	for _, test := range tests {
+		t.Run(test.goType, func(t *testing.T) {
+			require.Equal(t, test.expected, value.TypeFromGoType(test.goType))
+		})
+	}
+}

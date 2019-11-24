@@ -51,6 +51,8 @@ const (
 	Float64
 
 	Null
+
+	Record
 )
 
 func (t Type) String() string {
@@ -85,6 +87,8 @@ func (t Type) String() string {
 		return "Float64"
 	case Null:
 		return "Null"
+	case Record:
+		return "Record"
 	}
 
 	return ""
@@ -123,6 +127,8 @@ func TypeFromGoType(tp string) Type {
 		return Float64
 	case "nil":
 		return Null
+	case "struct":
+		return Record
 	}
 
 	return 0
