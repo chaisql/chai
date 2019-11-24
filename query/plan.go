@@ -8,8 +8,8 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
 

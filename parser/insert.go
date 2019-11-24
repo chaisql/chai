@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/scanner"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.

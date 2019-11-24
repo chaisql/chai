@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
 

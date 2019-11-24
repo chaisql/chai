@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/scanner"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
