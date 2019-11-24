@@ -1,4 +1,4 @@
-package genji
+package query
 
 import (
 	"math"

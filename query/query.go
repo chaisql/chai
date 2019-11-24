@@ -1,11 +1,16 @@
-package genji
+package query
 
 import (
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/record"
 )
+
+// ErrResultClosed is returned when trying to close an already closed result.
+var ErrResultClosed = errors.New("result already closed")
 
 // A query can execute statements against the database. It can read or write data
 // from any table, or even alter the structure of the database.
@@ -15,9 +20,9 @@ type query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q query) Run(db *DB, args []driver.NamedValue) (*Result, error) {
+func (q query) Run(db *database.Database, args []driver.NamedValue) (*Result, error) {
 	var res Result
-	var tx *Tx
+	var tx *database.Transaction
 	var err error
 
 	for _, stmt := range q.Statements {
@@ -59,7 +64,7 @@ func (q query) Run(db *DB, args []driver.NamedValue) (*Result, error) {
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q query) Exec(tx *Tx, args []driver.NamedValue, forceReadOnly bool) (*Result, error) {
+func (q query) Exec(tx *database.Transaction, args []driver.NamedValue, forceReadOnly bool) (*Result, error) {
 	var res Result
 	var err error
 
@@ -89,7 +94,7 @@ func newQuery(statements ...statement) query {
 
 // A statement represents a unique action that can be executed against the database.
 type statement interface {
-	Run(*Tx, []driver.NamedValue) (Result, error)
+	Run(*database.Transaction, []driver.NamedValue) (Result, error)
 	IsReadOnly() bool
 }
 
@@ -98,7 +103,7 @@ type Result struct {
 	record.Stream
 	rowsAffected  driver.RowsAffected
 	lastInsertKey []byte
-	tx            *Tx
+	tx            *database.Transaction
 	closed        bool
 }
 
@@ -151,6 +156,8 @@ func whereClause(e expr, stack evalStack) func(r record.Record) (bool, error) {
 		}
 	}
 
+
+	
 	return func(r record.Record) (bool, error) {
 		stack.Record = r
 		v, err := e.Eval(stack)

@@ -1,9 +1,6 @@
 package genji
 
 import (
-	"database/sql/driver"
-	"errors"
-
 	"github.com/asdine/genji/internal/scanner"
 )
 
@@ -47,34 +44,6 @@ func (p *parser) parseDropTableStatement() (dropTableStmt, error) {
 	return stmt, nil
 }
 
-// dropTableStmt is a DSL that allows creating a DROP TABLE query.
-type dropTableStmt struct {
-	tableName string
-	ifExists  bool
-}
-
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt dropTableStmt) IsReadOnly() bool {
-	return false
-}
-
-// Run runs the DropTable statement in the given transaction.
-// It implements the Statement interface.
-func (stmt dropTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
-	var res Result
-
-	if stmt.tableName == "" {
-		return res, errors.New("missing table name")
-	}
-
-	err := tx.DropTable(stmt.tableName)
-	if err == ErrTableNotFound && stmt.ifExists {
-		err = nil
-	}
-
-	return res, err
-}
-
 // parseDropIndexStatement parses a drop index string and returns a Statement AST object.
 // This function assumes the DROP INDEX tokens have already been consumed.
 func (p *parser) parseDropIndexStatement() (dropIndexStmt, error) {
@@ -99,32 +68,4 @@ func (p *parser) parseDropIndexStatement() (dropIndexStmt, error) {
 	}
 
 	return stmt, nil
-}
-
-// dropIndexStmt is a DSL that allows creating a DROP INDEX query.
-type dropIndexStmt struct {
-	indexName string
-	ifExists  bool
-}
-
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt dropIndexStmt) IsReadOnly() bool {
-	return false
-}
-
-// Run runs the DropIndex statement in the given transaction.
-// It implements the Statement interface.
-func (stmt dropIndexStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
-	var res Result
-
-	if stmt.indexName == "" {
-		return res, errors.New("missing index name")
-	}
-
-	err := tx.DropIndex(stmt.indexName)
-	if err == ErrIndexNotFound && stmt.ifExists {
-		err = nil
-	}
-
-	return res, err
 }

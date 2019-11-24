@@ -1,4 +1,4 @@
-package genji
+package query
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ type queryPlanField struct {
 	isPrimaryKey bool
 }
 
-func newQueryOptimizer(tx *Tx, t *database.Table) queryOptimizer {
+func newQueryOptimizer(tx *database.Transaction, t *database.Table) queryOptimizer {
 	return queryOptimizer{
 		tx: tx,
 		t:  t,
@@ -35,9 +35,8 @@ func newQueryOptimizer(tx *Tx, t *database.Table) queryOptimizer {
 
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
-	tx        *Tx
+	tx        *database.Transaction
 	t         *database.Table
-	stat      parserStat
 	whereExpr expr
 	args      []driver.NamedValue
 	cfg       *database.TableConfig
@@ -169,7 +168,7 @@ func evaluatesToScalarOrParam(e expr) bool {
 }
 
 type indexIterator struct {
-	tx    *Tx
+	tx    *database.Transaction
 	tb    *database.Table
 	args  []driver.NamedValue
 	index index.Index
@@ -276,7 +275,7 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 }
 
 type pkIterator struct {
-	tx   *Tx
+	tx   *database.Transaction
 	tb   *database.Table
 	cfg  *database.TableConfig
 	args []driver.NamedValue

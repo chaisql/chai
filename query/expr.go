@@ -1,4 +1,4 @@
-package genji
+package query
 
 import (
 	"database/sql/driver"
@@ -25,7 +25,7 @@ type expr interface {
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
 type evalStack struct {
-	Tx     *Tx
+	Tx     *database.Transaction
 	Record record.Record
 	Params []driver.NamedValue
 	Cfg    *database.TableConfig
