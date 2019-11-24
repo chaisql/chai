@@ -165,14 +165,14 @@ func TestQueryRecord(t *testing.T) {
 
 	t.Run("Should return an error if no record", func(t *testing.T) {
 		r, err := db.QueryRecord("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, genji.ErrRecordNotFound, err)
+		require.Equal(t, database.ErrRecordNotFound, err)
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		require.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryRecord("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, genji.ErrRecordNotFound, err)
+		require.Equal(t, database.ErrRecordNotFound, err)
 		require.Nil(t, r)
 	})
 }
@@ -528,7 +528,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
-		require.Equal(t, err, genji.ErrDuplicateRecord)
+		require.Equal(t, err, database.ErrDuplicateRecord)
 	})
 
 	t.Run("with shadowing", func(t *testing.T) {

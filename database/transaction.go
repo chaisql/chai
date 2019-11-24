@@ -9,6 +9,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	separator            byte = 0x1F
+	tableConfigStoreName      = "__genji.tables"
+	indexStoreName            = "__genji.indexes"
+	indexPrefix               = "i"
+)
+
 // Transaction represents a database transaction. It provides methods for managing the
 // collection of tables and the transaction itself.
 // Transaction is either read-only or read/write. Read-only can be used to read tables

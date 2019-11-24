@@ -131,7 +131,7 @@ func (db *DB) QueryRecord(q string, args ...interface{}) (record.Record, error) 
 	}
 
 	if r == nil {
-		return nil, ErrRecordNotFound
+		return nil, database.ErrRecordNotFound
 	}
 
 	var fb record.FieldBuffer
@@ -208,7 +208,7 @@ func (tx *Tx) QueryRecord(q string, args ...interface{}) (record.Record, error) 
 		return nil, err
 	}
 	if r == nil {
-		return nil, ErrRecordNotFound
+		return nil, database.ErrRecordNotFound
 	}
 
 	return r, nil

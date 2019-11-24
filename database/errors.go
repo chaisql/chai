@@ -25,7 +25,4 @@ var (
 	// ErrDuplicateRecord is returned when another record is already associated with a given key, primary key,
 	// or if there is a unique index violation.
 	ErrDuplicateRecord = errors.New("duplicate record")
-
-	// ErrResultClosed is returned when trying to close an already closed result.
-	ErrResultClosed = errors.New("result already closed")
 )
