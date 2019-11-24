@@ -9,13 +9,13 @@ import (
 )
 
 // DeleteStmt is a DSL that allows creating a full Delete query.
-type deleteStmt struct {
-	tableName string
-	whereExpr expr
+type DeleteStmt struct {
+	TableName string
+	WhereExpr Expr
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt deleteStmt) IsReadOnly() bool {
+func (stmt DeleteStmt) IsReadOnly() bool {
 	return false
 }
 
@@ -28,21 +28,21 @@ const deleteBufferSize = 100
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no record
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (stmt deleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
-	if stmt.tableName == "" {
+	if stmt.TableName == "" {
 		return res, errors.New("missing table name")
 	}
 
-	stack := evalStack{Tx: tx, Params: args}
+	stack := EvalStack{Tx: tx, Params: args}
 
-	t, err := tx.GetTable(stmt.tableName)
+	t, err := tx.GetTable(stmt.TableName)
 	if err != nil {
 		return res, err
 	}
 
 	st := record.NewStream(t)
-	st = st.Filter(whereClause(stmt.whereExpr, stack)).Limit(deleteBufferSize)
+	st = st.Filter(whereClause(stmt.WhereExpr, stack)).Limit(deleteBufferSize)
 
 	keys := make([][]byte, deleteBufferSize)
 

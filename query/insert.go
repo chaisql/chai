@@ -10,46 +10,46 @@ import (
 	"github.com/asdine/genji/value"
 )
 
-// insertStmt is a DSL that allows creating a full Insert query.
-type insertStmt struct {
-	tableName  string
-	fieldNames []string
-	values     litteralExprList
-	records    []interface{}
+// InsertStmt is a DSL that allows creating a full Insert query.
+type InsertStmt struct {
+	TableName  string
+	FieldNames []string
+	Values     LiteralExprList
+	Records    []interface{}
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt insertStmt) IsReadOnly() bool {
+func (stmt InsertStmt) IsReadOnly() bool {
 	return false
 }
 
-type kvPair struct {
+type KVPair struct {
 	K string
-	V expr
+	V Expr
 }
 
-func (stmt insertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
-	if stmt.tableName == "" {
+	if stmt.TableName == "" {
 		return res, errors.New("missing table name")
 	}
 
-	if stmt.values == nil && stmt.records == nil {
+	if stmt.Values == nil && stmt.Records == nil {
 		return res, errors.New("values and records are empty")
 	}
 
-	t, err := tx.GetTable(stmt.tableName)
+	t, err := tx.GetTable(stmt.TableName)
 	if err != nil {
 		return res, err
 	}
 
-	stack := evalStack{
+	stack := EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
 
-	if len(stmt.records) > 0 {
+	if len(stmt.Records) > 0 {
 		return stmt.insertRecords(t, stack)
 	}
 
@@ -60,15 +60,15 @@ type paramExtractor interface {
 	Extract(params []driver.NamedValue) (interface{}, error)
 }
 
-func (stmt insertStmt) insertRecords(t *database.Table, stack evalStack) (Result, error) {
+func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result, error) {
 	var res Result
 	var err error
 
-	if len(stmt.fieldNames) > 0 {
+	if len(stmt.FieldNames) > 0 {
 		return res, errors.New("can't provide a field list with RECORDS clause")
 	}
 
-	for _, rec := range stmt.records {
+	for _, rec := range stmt.Records {
 		var r record.Record
 
 		switch tp := rec.(type) {
@@ -85,7 +85,7 @@ func (stmt insertStmt) insertRecords(t *database.Table, stack evalStack) (Result
 			if !ok {
 				return res, fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)
 			}
-		case []kvPair:
+		case []KVPair:
 			var fb record.FieldBuffer
 			for _, pair := range tp {
 				v, err := pair.V.Eval(stack)
@@ -113,11 +113,11 @@ func (stmt insertStmt) insertRecords(t *database.Table, stack evalStack) (Result
 	return res, nil
 }
 
-func (stmt insertStmt) insertValues(t *database.Table, stack evalStack) (Result, error) {
+func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) (Result, error) {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)
-	for _, e := range stmt.values {
+	for _, e := range stmt.Values {
 		var fb record.FieldBuffer
 
 		v, err := e.Eval(stack)
@@ -131,16 +131,16 @@ func (stmt insertStmt) insertValues(t *database.Table, stack evalStack) (Result,
 			return res, errors.New("invalid values")
 		}
 
-		if len(stmt.fieldNames) != len(v.List) {
-			return res, fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.fieldNames))
+		if len(stmt.FieldNames) != len(v.List) {
+			return res, fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.FieldNames))
 		}
 
 		// iterate over each value
 		for i, v := range v.List {
 			// get the field name
-			fieldName := stmt.fieldNames[i]
+			fieldName := stmt.FieldNames[i]
 
-			var lv *litteralValue
+			var lv *LiteralValue
 
 			// each value must be either a LitteralValue or a LitteralValueList with exactly
 			// one value

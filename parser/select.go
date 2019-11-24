@@ -1,55 +1,55 @@
-package genji
+package parser
 
 import (
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/query"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *parser) parseSelectStatement() (selectStmt, error) {
-	var stmt selectStmt
+func (p *parser) parseSelectStatement() (query.SelectStmt, error) {
+	var stmt query.SelectStmt
 	var err error
 
-	// Parse field list or wildcard
-	stmt.selectors, err = p.parseResultFields()
+	// Parse field list or query.Wildcard
+	stmt.Selectors, err = p.parseResultFields()
 	if err != nil {
 		return stmt, err
 	}
 
 	// Parse "FROM".
-	stmt.tableName, err = p.parseFrom()
+	stmt.TableName, err = p.parseFrom()
 	if err != nil {
 		return stmt, err
 	}
 
 	// Parse condition: "WHERE EXPR".
-	stmt.whereExpr, err = p.parseCondition()
+	stmt.WhereExpr, err = p.parseCondition()
 	if err != nil {
 		return stmt, err
 	}
 
-	stmt.limitExpr, err = p.parseLimit()
+	stmt.LimitExpr, err = p.parseLimit()
 	if err != nil {
 		return stmt, err
 	}
 
-	stmt.offsetExpr, err = p.parseOffset()
+	stmt.OffsetExpr, err = p.parseOffset()
 	if err != nil {
 		return stmt, err
 	}
 
-	stmt.stat = p.stat
 	return stmt, nil
 }
 
 // parseResultFields parses the list of result fields.
-func (p *parser) parseResultFields() ([]resultField, error) {
+func (p *parser) parseResultFields() ([]query.ResultField, error) {
 	// Parse first (required) result field.
 	rf, err := p.parseResultField()
 	if err != nil {
 		return nil, err
 	}
-	rfields := []resultField{rf}
+	rfields := []query.ResultField{rf}
 
 	// Parse remaining (optional) result fields.
 	for {
@@ -67,10 +67,10 @@ func (p *parser) parseResultFields() ([]resultField, error) {
 }
 
 // parseResultField parses the list of result fields.
-func (p *parser) parseResultField() (resultField, error) {
+func (p *parser) parseResultField() (query.ResultField, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return wildcard{}, nil
+		return query.Wildcard{}, nil
 	}
 	p.Unscan()
 
@@ -82,7 +82,7 @@ func (p *parser) parseResultField() (resultField, error) {
 				return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 			}
 
-			return keyFunc{}, nil
+			return query.KeyFunc{}, nil
 		}
 	}
 	p.Unscan()
@@ -93,7 +93,7 @@ func (p *parser) parseResultField() (resultField, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"ident or string"}, pos)
 	}
 
-	return fieldSelector(ident), nil
+	return query.FieldSelector(ident), nil
 }
 
 func (p *parser) parseFrom() (string, error) {
@@ -105,7 +105,7 @@ func (p *parser) parseFrom() (string, error) {
 	return p.ParseIdent()
 }
 
-func (p *parser) parseLimit() (expr, error) {
+func (p *parser) parseLimit() (query.Expr, error) {
 	// parse LIMIT token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
 		p.Unscan()
@@ -115,7 +115,7 @@ func (p *parser) parseLimit() (expr, error) {
 	return p.ParseExpr()
 }
 
-func (p *parser) parseOffset() (expr, error) {
+func (p *parser) parseOffset() (query.Expr, error) {
 	// parse OFFSET token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
 		p.Unscan()

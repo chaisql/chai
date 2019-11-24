@@ -8,38 +8,38 @@ import (
 	"github.com/asdine/genji/value"
 )
 
-// createTableStmt is a DSL that allows creating a full CREATE TABLE statement.
-type createTableStmt struct {
-	tableName      string
-	ifNotExists    bool
-	primaryKeyName string
-	primaryKeyType value.Type
+// CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
+type CreateTableStmt struct {
+	TableName      string
+	IfNotExists    bool
+	PrimaryKeyName string
+	PrimaryKeyType value.Type
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt createTableStmt) IsReadOnly() bool {
+func (stmt CreateTableStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createTableStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt CreateTableStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
-	if stmt.tableName == "" {
+	if stmt.TableName == "" {
 		return res, errors.New("missing table name")
 	}
 
 	var cfg *database.TableConfig
 
-	if stmt.primaryKeyName != "" {
+	if stmt.PrimaryKeyName != "" {
 		cfg = new(database.TableConfig)
-		cfg.PrimaryKeyName = stmt.primaryKeyName
-		cfg.PrimaryKeyType = stmt.primaryKeyType
+		cfg.PrimaryKeyName = stmt.PrimaryKeyName
+		cfg.PrimaryKeyType = stmt.PrimaryKeyType
 	}
 
-	err := tx.CreateTable(stmt.tableName, cfg)
-	if stmt.ifNotExists && err == database.ErrTableAlreadyExists {
+	err := tx.CreateTable(stmt.TableName, cfg)
+	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
 		err = nil
 	}
 

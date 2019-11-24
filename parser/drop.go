@@ -1,12 +1,13 @@
-package genji
+package parser
 
 import (
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/query"
 )
 
 // parseDropStatement parses a drop string and returns a Statement AST object.
 // This function assumes the DROP token has already been consumed.
-func (p *parser) parseDropStatement() (statement, error) {
+func (p *parser) parseDropStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -20,8 +21,8 @@ func (p *parser) parseDropStatement() (statement, error) {
 
 // parseDropTableStatement parses a drop table string and returns a Statement AST object.
 // This function assumes the DROP TABLE tokens have already been consumed.
-func (p *parser) parseDropTableStatement() (dropTableStmt, error) {
-	var stmt dropTableStmt
+func (p *parser) parseDropTableStatement() (query.DropTableStmt, error) {
+	var stmt query.DropTableStmt
 	var err error
 
 	// Parse "IF"
@@ -30,13 +31,13 @@ func (p *parser) parseDropTableStatement() (dropTableStmt, error) {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
 			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
 		}
-		stmt.ifExists = true
+		stmt.IfExists = true
 	} else {
 		p.Unscan()
 	}
 
 	// Parse table name
-	stmt.tableName, err = p.ParseIdent()
+	stmt.TableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -46,8 +47,8 @@ func (p *parser) parseDropTableStatement() (dropTableStmt, error) {
 
 // parseDropIndexStatement parses a drop index string and returns a Statement AST object.
 // This function assumes the DROP INDEX tokens have already been consumed.
-func (p *parser) parseDropIndexStatement() (dropIndexStmt, error) {
-	var stmt dropIndexStmt
+func (p *parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
+	var stmt query.DropIndexStmt
 	var err error
 
 	// Parse "IF"
@@ -56,13 +57,13 @@ func (p *parser) parseDropIndexStatement() (dropIndexStmt, error) {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
 			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
 		}
-		stmt.ifExists = true
+		stmt.IfExists = true
 	} else {
 		p.Unscan()
 	}
 
 	// Parse index name
-	stmt.indexName, err = p.ParseIdent()
+	stmt.IndexName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}

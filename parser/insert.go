@@ -1,13 +1,14 @@
-package genji
+package parser
 
 import (
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/query"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *parser) parseInsertStatement() (insertStmt, error) {
-	var stmt insertStmt
+func (p *parser) parseInsertStatement() (query.InsertStmt, error) {
+	var stmt query.InsertStmt
 	var err error
 
 	// Parse "INTO".
@@ -16,7 +17,7 @@ func (p *parser) parseInsertStatement() (insertStmt, error) {
 	}
 
 	// Parse table name
-	stmt.tableName, err = p.ParseIdent()
+	stmt.TableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -27,7 +28,7 @@ func (p *parser) parseInsertStatement() (insertStmt, error) {
 		return stmt, err
 	}
 	if ok {
-		stmt.fieldNames = fields
+		stmt.FieldNames = fields
 	}
 
 	// Parse VALUES (v1, v2, v3)
@@ -36,9 +37,9 @@ func (p *parser) parseInsertStatement() (insertStmt, error) {
 		return stmt, err
 	}
 	if found {
-		stmt.values = make(litteralExprList, len(values))
+		stmt.Values = make(query.LiteralExprList, len(values))
 		for i, v := range values {
-			stmt.values[i] = litteralExprList(v)
+			stmt.Values[i] = query.LiteralExprList(v)
 		}
 		return stmt, nil
 	}
@@ -54,7 +55,7 @@ func (p *parser) parseInsertStatement() (insertStmt, error) {
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "RECORDS"}, pos)
 	}
 
-	stmt.records = records
+	stmt.Records = records
 
 	return stmt, nil
 }
@@ -83,21 +84,21 @@ func (p *parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *parser) parseValues() ([]litteralExprList, bool, error) {
+func (p *parser) parseValues() ([]query.LiteralExprList, bool, error) {
 	// Check if the VALUES token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	var valuesList []litteralExprList
+	var valuesList []query.LiteralExprList
 	// Parse first (required) value list.
 	exprs, err := p.parseExprList()
 	if err != nil {
 		return nil, true, err
 	}
 
-	valuesList = append(valuesList, litteralExprList(exprs))
+	valuesList = append(valuesList, query.LiteralExprList(exprs))
 
 	// Parse remaining (optional) values.
 	for {
@@ -111,7 +112,7 @@ func (p *parser) parseValues() ([]litteralExprList, bool, error) {
 			return nil, true, err
 		}
 
-		valuesList = append(valuesList, litteralExprList(values))
+		valuesList = append(valuesList, query.LiteralExprList(values))
 	}
 
 	return valuesList, true, nil
@@ -182,7 +183,7 @@ func (p *parser) parseRecord() (interface{}, error) {
 }
 
 // parseKV parses a key-value pair in the form IDENT : Expr.
-func (p *parser) parseKV() (string, expr, error) {
+func (p *parser) parseKV() (string, query.Expr, error) {
 	k, err := p.ParseIdent()
 	if err != nil {
 		return "", nil, err
@@ -202,7 +203,7 @@ func (p *parser) parseKV() (string, expr, error) {
 }
 
 // parseKVList parses a list of fields in the form: (k = Expr, k = Expr, ...), if exists
-func (p *parser) parseKVList() ([]kvPair, bool, error) {
+func (p *parser) parseKVList() ([]query.KVPair, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -215,7 +216,7 @@ func (p *parser) parseKVList() ([]kvPair, bool, error) {
 		return nil, true, err
 	}
 
-	pairs := []kvPair{kvPair{K: k, V: expr}}
+	pairs := []query.KVPair{query.KVPair{K: k, V: expr}}
 
 	// Parse remaining (optional) identifiers.
 	for {
@@ -228,7 +229,7 @@ func (p *parser) parseKVList() ([]kvPair, bool, error) {
 			return nil, true, err
 		}
 
-		pairs = append(pairs, kvPair{K: k, V: expr})
+		pairs = append(pairs, query.KVPair{K: k, V: expr})
 	}
 
 	// Parse required ) token.
@@ -240,7 +241,7 @@ func (p *parser) parseKVList() ([]kvPair, bool, error) {
 }
 
 // parseExprList parses a list of expressions in the form: (expr, expr, ...)
-func (p *parser) parseExprList() ([]expr, error) {
+func (p *parser) parseExprList() ([]query.Expr, error) {
 	// Parse ( token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
@@ -251,7 +252,7 @@ func (p *parser) parseExprList() ([]expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	exprs := []expr{e}
+	exprs := []query.Expr{e}
 
 	// Parse remaining (optional) exprs.
 	for {

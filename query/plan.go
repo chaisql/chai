@@ -19,9 +19,9 @@ type queryPlan struct {
 }
 
 type queryPlanField struct {
-	indexedField fieldSelector
+	indexedField FieldSelector
 	op           scanner.Token
-	e            expr
+	e            Expr
 	uniqueIndex  bool
 	isPrimaryKey bool
 }
@@ -37,7 +37,7 @@ func newQueryOptimizer(tx *database.Transaction, t *database.Table) queryOptimiz
 type queryOptimizer struct {
 	tx        *database.Transaction
 	t         *database.Table
-	whereExpr expr
+	whereExpr Expr
 	args      []driver.NamedValue
 	cfg       *database.TableConfig
 	indexes   map[string]database.Index
@@ -81,9 +81,9 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 	return qp
 }
 
-func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanField {
+func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
 	switch t := e.(type) {
-	case cmpOp:
+	case CmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)
 		if !ok || !evaluatesToScalarOrParam(e) {
 			return nil
@@ -111,7 +111,7 @@ func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanField {
 
 		return nil
 
-	case *andOp:
+	case *AndOp:
 		nodeL := qo.analyseExpr(t.LeftHand())
 		nodeR := qo.analyseExpr(t.LeftHand())
 
@@ -133,15 +133,15 @@ func (qo *queryOptimizer) analyseExpr(e expr) *queryPlanField {
 	return nil
 }
 
-func cmpOpCanUseIndex(cmp *cmpOp) (bool, fieldSelector, expr) {
+func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
 	switch cmp.Token {
 	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE:
 	default:
 		return false, "", nil
 	}
 
-	lf, leftIsField := cmp.LeftHand().(fieldSelector)
-	rf, rightIsField := cmp.RightHand().(fieldSelector)
+	lf, leftIsField := cmp.LeftHand().(FieldSelector)
+	rf, rightIsField := cmp.RightHand().(FieldSelector)
 
 	// field OP expr
 	if leftIsField && !rightIsField {
@@ -156,11 +156,11 @@ func cmpOpCanUseIndex(cmp *cmpOp) (bool, fieldSelector, expr) {
 	return false, "", nil
 }
 
-func evaluatesToScalarOrParam(e expr) bool {
+func evaluatesToScalarOrParam(e Expr) bool {
 	switch e.(type) {
-	case litteralValue:
+	case LiteralValue:
 		return true
-	case namedParam, positionalParam:
+	case NamedParam, PositionalParam:
 		return true
 	}
 
@@ -173,13 +173,13 @@ type indexIterator struct {
 	args  []driver.NamedValue
 	index index.Index
 	op    scanner.Token
-	e     expr
+	e     Expr
 }
 
 var errStop = errors.New("stop")
 
 func (it indexIterator) Iterate(fn func(r record.Record) error) error {
-	v, err := it.e.Eval(evalStack{
+	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
 	})
@@ -280,11 +280,11 @@ type pkIterator struct {
 	cfg  *database.TableConfig
 	args []driver.NamedValue
 	op   scanner.Token
-	e    expr
+	e    Expr
 }
 
 func (it pkIterator) Iterate(fn func(r record.Record) error) error {
-	v, err := it.e.Eval(evalStack{
+	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
 	})

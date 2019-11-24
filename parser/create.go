@@ -1,13 +1,14 @@
-package genji
+package parser
 
 import (
 	"github.com/asdine/genji/internal/scanner"
+	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/value"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
 // This function assumes the CREATE token has already been consumed.
-func (p *parser) parseCreateStatement() (statement, error) {
+func (p *parser) parseCreateStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -27,24 +28,24 @@ func (p *parser) parseCreateStatement() (statement, error) {
 
 // parseCreateTableStatement parses a create table string and returns a Statement AST object.
 // This function assumes the CREATE TABLE tokens have already been consumed.
-func (p *parser) parseCreateTableStatement() (createTableStmt, error) {
-	var stmt createTableStmt
+func (p *parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
+	var stmt query.CreateTableStmt
 	var err error
 
 	// Parse IF NOT EXISTS
-	stmt.ifNotExists, err = p.parseIfNotExists()
+	stmt.IfNotExists, err = p.parseIfNotExists()
 	if err != nil {
 		return stmt, err
 	}
 
 	// Parse table name
-	stmt.tableName, err = p.ParseIdent()
+	stmt.TableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
 
 	// parse primary key
-	stmt.primaryKeyName, stmt.primaryKeyType, err = p.parseTableOptions()
+	stmt.PrimaryKeyName, stmt.PrimaryKeyType, err = p.parseTableOptions()
 	if err != nil {
 		return stmt, err
 	}
@@ -109,10 +110,10 @@ func (p *parser) parseTableOptions() (string, value.Type, error) {
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
-func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error) {
+func (p *parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, error) {
 	var err error
-	stmt := createIndexStmt{
-		unique: unique,
+	stmt := query.CreateIndexStmt{
+		Unique: unique,
 	}
 
 	// Parse "IF"
@@ -127,13 +128,13 @@ func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error)
 			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
 		}
 
-		stmt.ifNotExists = true
+		stmt.IfNotExists = true
 	} else {
 		p.Unscan()
 	}
 
 	// Parse index name
-	stmt.indexName, err = p.ParseIdent()
+	stmt.IndexName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -144,7 +145,7 @@ func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error)
 	}
 
 	// Parse table name
-	stmt.tableName, err = p.ParseIdent()
+	stmt.TableName, err = p.ParseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -162,7 +163,7 @@ func (p *parser) parseCreateIndexStatement(unique bool) (createIndexStmt, error)
 		return stmt, &ParseError{Message: "indexes on more than one field not supported"}
 	}
 
-	stmt.fieldName = fields[0]
+	stmt.FieldName = fields[0]
 
 	return stmt, nil
 }

@@ -10,35 +10,35 @@ import (
 	"github.com/asdine/genji/value"
 )
 
-// selectStmt is a DSL that allows creating a full Select query.
-type selectStmt struct {
-	tableName  string
-	whereExpr  expr
-	offsetExpr expr
-	limitExpr  expr
-	selectors  []resultField
+// SelectStmt is a DSL that allows creating a full Select query.
+type SelectStmt struct {
+	TableName  string
+	WhereExpr  Expr
+	OffsetExpr Expr
+	LimitExpr  Expr
+	Selectors  []ResultField
 }
 
 // IsReadOnly always returns true. It implements the Statement interface.
-func (stmt selectStmt) IsReadOnly() bool {
+func (stmt SelectStmt) IsReadOnly() bool {
 	return true
 }
 
 // Run the Select statement in the given transaction.
 // It implements the Statement interface.
-func (stmt selectStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt SelectStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	return stmt.exec(tx, args)
 }
 
 // Exec the Select query within tx.
-func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
-	if stmt.tableName == "" {
+	if stmt.TableName == "" {
 		return res, errors.New("missing table selector")
 	}
 
-	t, err := tx.GetTable(stmt.tableName)
+	t, err := tx.GetTable(stmt.TableName)
 	if err != nil {
 		return res, err
 	}
@@ -56,7 +56,7 @@ func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	qo := queryOptimizer{
 		tx:        tx,
 		t:         t,
-		whereExpr: stmt.whereExpr,
+		whereExpr: stmt.WhereExpr,
 		args:      args,
 		cfg:       cfg,
 		indexes:   indexes,
@@ -70,13 +70,13 @@ func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	offset := -1
 	limit := -1
 
-	stack := evalStack{
+	stack := EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
 
-	if stmt.offsetExpr != nil {
-		v, err := stmt.offsetExpr.Eval(stack)
+	if stmt.OffsetExpr != nil {
+		v, err := stmt.OffsetExpr.Eval(stack)
 		if err != nil {
 			return res, err
 		}
@@ -99,8 +99,8 @@ func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		}
 	}
 
-	if stmt.limitExpr != nil {
-		v, err := stmt.limitExpr.Eval(stack)
+	if stmt.LimitExpr != nil {
+		v, err := stmt.LimitExpr.Eval(stack)
 		if err != nil {
 			return res, err
 		}
@@ -123,7 +123,7 @@ func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		}
 	}
 
-	st = st.Filter(whereClause(stmt.whereExpr, stack))
+	st = st.Filter(whereClause(stmt.WhereExpr, stack))
 
 	if offset > 0 {
 		st = st.Offset(offset)
@@ -137,7 +137,7 @@ func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		return recordMask{
 			cfg:          cfg,
 			r:            r,
-			resultFields: stmt.selectors,
+			resultFields: stmt.Selectors,
 		}, nil
 	})
 
@@ -147,7 +147,7 @@ func (stmt selectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 type recordMask struct {
 	cfg          *database.TableConfig
 	r            record.Record
-	resultFields []resultField
+	resultFields []ResultField
 }
 
 var _ record.Record = recordMask{}
@@ -163,7 +163,7 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 }
 
 func (r recordMask) Iterate(fn func(f record.Field) error) error {
-	stack := evalStack{
+	stack := EvalStack{
 		Record: r.r,
 		Cfg:    r.cfg,
 	}
@@ -178,18 +178,18 @@ func (r recordMask) Iterate(fn func(f record.Field) error) error {
 	return nil
 }
 
-type resultField interface {
-	Iterate(stack evalStack, fn func(fd record.Field) error) error
+type ResultField interface {
+	Iterate(stack EvalStack, fn func(fd record.Field) error) error
 	Name() string
 }
 
-type fieldSelector string
+type FieldSelector string
 
-func (f fieldSelector) Name() string {
+func (f FieldSelector) Name() string {
 	return string(f)
 }
 
-func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
+func (f FieldSelector) SelectField(r record.Record) (record.Field, error) {
 	if r == nil {
 		return record.Field{}, fmt.Errorf("field %q not found", f)
 	}
@@ -197,7 +197,7 @@ func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
 	return r.GetField(string(f))
 }
 
-func (f fieldSelector) Iterate(stack evalStack, fn func(fd record.Field) error) error {
+func (f FieldSelector) Iterate(stack EvalStack, fn func(fd record.Field) error) error {
 	fd, err := f.SelectField(stack.Record)
 	if err != nil {
 		return nil
@@ -208,9 +208,9 @@ func (f fieldSelector) Iterate(stack evalStack, fn func(fd record.Field) error) 
 
 // Eval extracts the record from the context and selects the right field.
 // It implements the Expr interface.
-func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
+func (f FieldSelector) Eval(stack EvalStack) (EvalValue, error) {
 	if stack.Record == nil {
-		return evalValue{}, fmt.Errorf("field %q not found", f)
+		return EvalValue{}, fmt.Errorf("field %q not found", f)
 	}
 
 	fd, err := f.SelectField(stack.Record)
@@ -221,23 +221,23 @@ func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
 	return newSingleEvalValue(fd.Value), nil
 }
 
-type wildcard struct{}
+type Wildcard struct{}
 
-func (w wildcard) Name() string {
+func (w Wildcard) Name() string {
 	return "*"
 }
 
-func (w wildcard) Iterate(stack evalStack, fn func(fd record.Field) error) error {
+func (w Wildcard) Iterate(stack EvalStack, fn func(fd record.Field) error) error {
 	return stack.Record.Iterate(fn)
 }
 
-type keyFunc struct{}
+type KeyFunc struct{}
 
-func (k keyFunc) Name() string {
+func (k KeyFunc) Name() string {
 	return "key()"
 }
 
-func (k keyFunc) Iterate(stack evalStack, fn func(fd record.Field) error) error {
+func (k KeyFunc) Iterate(stack EvalStack, fn func(fd record.Field) error) error {
 	if stack.Cfg.PrimaryKeyName != "" {
 		fd, err := stack.Record.GetField(stack.Cfg.PrimaryKeyName)
 		if err != nil {

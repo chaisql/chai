@@ -8,45 +8,45 @@ import (
 	"github.com/asdine/genji/index"
 )
 
-// createIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
+// CreateIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
 // It is typically created using the CreateIndex function.
-type createIndexStmt struct {
-	indexName   string
-	tableName   string
-	fieldName   string
-	ifNotExists bool
-	unique      bool
+type CreateIndexStmt struct {
+	IndexName   string
+	TableName   string
+	FieldName   string
+	IfNotExists bool
+	Unique      bool
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt createIndexStmt) IsReadOnly() bool {
+func (stmt CreateIndexStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt createIndexStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
-	if stmt.tableName == "" {
+	if stmt.TableName == "" {
 		return res, errors.New("missing table name")
 	}
 
-	if stmt.indexName == "" {
+	if stmt.IndexName == "" {
 		return res, errors.New("missing index name")
 	}
 
-	if stmt.fieldName == "" {
+	if stmt.FieldName == "" {
 		return res, errors.New("missing field name")
 	}
 
 	err := tx.CreateIndex(index.Options{
-		Unique:    stmt.unique,
-		IndexName: stmt.indexName,
-		TableName: stmt.tableName,
-		FieldName: stmt.fieldName,
+		Unique:    stmt.Unique,
+		IndexName: stmt.IndexName,
+		TableName: stmt.TableName,
+		FieldName: stmt.FieldName,
 	})
-	if stmt.ifNotExists && err == database.ErrIndexAlreadyExists {
+	if stmt.IfNotExists && err == database.ErrIndexAlreadyExists {
 		err = nil
 	}
 

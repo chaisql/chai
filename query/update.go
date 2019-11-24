@@ -9,43 +9,43 @@ import (
 	"github.com/asdine/genji/record"
 )
 
-// updateStmt is a DSL that allows creating a full Update query.
-type updateStmt struct {
-	tableName string
-	pairs     map[string]expr
-	whereExpr expr
+// UpdateStmt is a DSL that allows creating a full Update query.
+type UpdateStmt struct {
+	TableName string
+	Pairs     map[string]Expr
+	WhereExpr Expr
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt updateStmt) IsReadOnly() bool {
+func (stmt UpdateStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt updateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
-	if stmt.tableName == "" {
+	if stmt.TableName == "" {
 		return res, errors.New("missing table name")
 	}
 
-	if len(stmt.pairs) == 0 {
+	if len(stmt.Pairs) == 0 {
 		return res, errors.New("Set method not called")
 	}
 
-	stack := evalStack{
+	stack := EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
 
-	t, err := tx.GetTable(stmt.tableName)
+	t, err := tx.GetTable(stmt.TableName)
 	if err != nil {
 		return res, err
 	}
 
 	st := record.NewStream(t)
-	st = st.Filter(whereClause(stmt.whereExpr, stack))
+	st = st.Filter(whereClause(stmt.WhereExpr, stack))
 
 	err = st.Iterate(func(r record.Record) error {
 		rk, ok := r.(record.Keyer)
@@ -59,13 +59,13 @@ func (stmt updateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 			return err
 		}
 
-		for fname, e := range stmt.pairs {
+		for fname, e := range stmt.Pairs {
 			f, err := fb.GetField(fname)
 			if err != nil {
 				continue
 			}
 
-			v, err := e.Eval(evalStack{
+			v, err := e.Eval(EvalStack{
 				Tx:     tx,
 				Record: r,
 				Params: args,

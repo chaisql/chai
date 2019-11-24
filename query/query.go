@@ -12,15 +12,15 @@ import (
 // ErrResultClosed is returned when trying to close an already closed result.
 var ErrResultClosed = errors.New("result already closed")
 
-// A query can execute statements against the database. It can read or write data
+// A Query can execute statements against the database. It can read or write data
 // from any table, or even alter the structure of the database.
 // Results are returned as streams.
-type query struct {
-	Statements []statement
+type Query struct {
+	Statements []Statement
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q query) Run(db *database.Database, args []driver.NamedValue) (*Result, error) {
+func (q Query) Run(db *database.Database, args []driver.NamedValue) (*Result, error) {
 	var res Result
 	var tx *database.Transaction
 	var err error
@@ -64,7 +64,7 @@ func (q query) Run(db *database.Database, args []driver.NamedValue) (*Result, er
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q query) Exec(tx *database.Transaction, args []driver.NamedValue, forceReadOnly bool) (*Result, error) {
+func (q Query) Exec(tx *database.Transaction, args []driver.NamedValue, forceReadOnly bool) (*Result, error) {
 	var res Result
 	var err error
 
@@ -87,13 +87,13 @@ func (q query) Exec(tx *database.Transaction, args []driver.NamedValue, forceRea
 	return &res, nil
 }
 
-// newQuery creates a new query with the given statements.
-func newQuery(statements ...statement) query {
-	return query{Statements: statements}
+// New creates a new query with the given statements.
+func New(statements ...Statement) Query {
+	return Query{Statements: statements}
 }
 
-// A statement represents a unique action that can be executed against the database.
-type statement interface {
+// A Statement represents a unique action that can be executed against the database.
+type Statement interface {
 	Run(*database.Transaction, []driver.NamedValue) (Result, error)
 	IsReadOnly() bool
 }
@@ -149,15 +149,13 @@ func (r *Result) Close() error {
 	return err
 }
 
-func whereClause(e expr, stack evalStack) func(r record.Record) (bool, error) {
+func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
 	if e == nil {
 		return func(r record.Record) (bool, error) {
 			return true, nil
 		}
 	}
 
-
-	
 	return func(r record.Record) (bool, error) {
 		stack.Record = r
 		v, err := e.Eval(stack)
