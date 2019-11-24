@@ -7,7 +7,7 @@ import (
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
 // This function assumes the DELETE token has already been consumed.
-func (p *parser) parseDeleteStatement() (query.DeleteStmt, error) {
+func (p *Parser) parseDeleteStatement() (query.DeleteStmt, error) {
 	var stmt query.DeleteStmt
 	var err error
 

@@ -2,11 +2,14 @@ package genji
 
 import (
 	"database/sql"
+	"database/sql/driver"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
+	"github.com/asdine/genji/parser"
+	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 )
 
@@ -104,13 +107,13 @@ func (db *DB) Exec(q string, args ...interface{}) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
-	pq, err := parseQuery(q)
+func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Run(db, argsToNamedValues(args))
+	return pq.Run(db.db, argsToNamedValues(args))
 }
 
 // QueryRecord runs the query and returns the first record.
@@ -182,13 +185,13 @@ type Tx struct {
 
 // Query the database withing the transaction and returns the result.
 // Closing the returned result after usage is not mandatory.
-func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
-	pq, err := parseQuery(q)
+func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Exec(tx, argsToNamedValues(args), false)
+	return pq.Exec(tx.Transaction, argsToNamedValues(args), false)
 }
 
 // QueryRecord runs the query and returns the first record.
@@ -219,4 +222,27 @@ func (tx *Tx) Exec(q string, args ...interface{}) error {
 	}
 
 	return res.Close()
+}
+
+func argsToNamedValues(args []interface{}) []driver.NamedValue {
+	nv := make([]driver.NamedValue, len(args))
+	for i := range args {
+		switch t := args[i].(type) {
+		case sql.NamedArg:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case *sql.NamedArg:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case driver.NamedValue:
+			nv[i] = t
+		case *driver.NamedValue:
+			nv[i] = *t
+		default:
+			nv[i].Ordinal = i + 1
+			nv[i].Value = args[i]
+		}
+	}
+
+	return nv
 }

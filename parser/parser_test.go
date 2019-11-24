@@ -43,7 +43,7 @@ func TestParserExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, err := newParser(strings.NewReader(test.s)).ParseExpr()
+			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, ex)
 		})
@@ -74,7 +74,7 @@ func TestParserParams(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, err := newParser(strings.NewReader(test.s)).ParseExpr()
+			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
 				require.Error(t, err)
 			} else {
@@ -100,7 +100,7 @@ func TestParserMultiStatement(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parseQuery(test.s)
+			q, err := ParseQuery(test.s)
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, q.Statements)
 		})

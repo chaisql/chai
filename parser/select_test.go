@@ -62,7 +62,7 @@ func TestParserSelect(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parseQuery(test.s)
+			q, err := ParseQuery(test.s)
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)

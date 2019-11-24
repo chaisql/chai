@@ -8,7 +8,7 @@ import (
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
 // This function assumes the CREATE token has already been consumed.
-func (p *parser) parseCreateStatement() (query.Statement, error) {
+func (p *Parser) parseCreateStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -28,7 +28,7 @@ func (p *parser) parseCreateStatement() (query.Statement, error) {
 
 // parseCreateTableStatement parses a create table string and returns a Statement AST object.
 // This function assumes the CREATE TABLE tokens have already been consumed.
-func (p *parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
+func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	var stmt query.CreateTableStmt
 	var err error
 
@@ -53,7 +53,7 @@ func (p *parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	return stmt, nil
 }
 
-func (p *parser) parseIfNotExists() (bool, error) {
+func (p *Parser) parseIfNotExists() (bool, error) {
 	// Parse "IF"
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.IF {
 		p.Unscan()
@@ -73,7 +73,7 @@ func (p *parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
-func (p *parser) parseTableOptions() (string, value.Type, error) {
+func (p *Parser) parseTableOptions() (string, value.Type, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -110,7 +110,7 @@ func (p *parser) parseTableOptions() (string, value.Type, error) {
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
-func (p *parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, error) {
+func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, error) {
 	var err error
 	stmt := query.CreateIndexStmt{
 		Unique: unique,

@@ -7,7 +7,7 @@ import (
 
 // parseDropStatement parses a drop string and returns a Statement AST object.
 // This function assumes the DROP token has already been consumed.
-func (p *parser) parseDropStatement() (query.Statement, error) {
+func (p *Parser) parseDropStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -21,7 +21,7 @@ func (p *parser) parseDropStatement() (query.Statement, error) {
 
 // parseDropTableStatement parses a drop table string and returns a Statement AST object.
 // This function assumes the DROP TABLE tokens have already been consumed.
-func (p *parser) parseDropTableStatement() (query.DropTableStmt, error) {
+func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
 	var stmt query.DropTableStmt
 	var err error
 
@@ -47,7 +47,7 @@ func (p *parser) parseDropTableStatement() (query.DropTableStmt, error) {
 
 // parseDropIndexStatement parses a drop index string and returns a Statement AST object.
 // This function assumes the DROP INDEX tokens have already been consumed.
-func (p *parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
+func (p *Parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
 	var stmt query.DropIndexStmt
 	var err error
 

@@ -8,6 +8,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/asdine/genji/parser"
+	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/record"
 )
 
@@ -71,7 +73,7 @@ type conn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *conn) Prepare(q string) (driver.Stmt, error) {
-	pq, err := parseQuery(q)
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +139,7 @@ func (c *conn) Rollback() error {
 type stmt struct {
 	db            *DB
 	tx            *Tx
-	q             query
+	q             query.Query
 	nonPromotable bool
 }
 
@@ -176,15 +178,15 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	var res *Result
+	var res *query.Result
 	var err error
 
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx, args, s.nonPromotable)
+		res, err = s.q.Exec(s.tx.Transaction, args, s.nonPromotable)
 	} else {
-		res, err = s.q.Run(s.db, args)
+		res, err = s.q.Run(s.db.db, args)
 	}
 
 	if err != nil {
@@ -210,15 +212,15 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	var res *Result
+	var res *query.Result
 	var err error
 
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx, args, s.nonPromotable)
+		res, err = s.q.Exec(s.tx.Transaction, args, s.nonPromotable)
 	} else {
-		res, err = s.q.Run(s.db, args)
+		res, err = s.q.Run(s.db.db, args)
 	}
 
 	if err != nil {
@@ -232,11 +234,11 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
-	slct, ok := lastStmt.(selectStmt)
-	if ok && len(slct.selectors) > 0 {
-		rs.fields = make([]string, len(slct.selectors))
-		for i := range slct.selectors {
-			rs.fields[i] = slct.selectors[i].Name()
+	slct, ok := lastStmt.(query.SelectStmt)
+	if ok && len(slct.Selectors) > 0 {
+		rs.fields = make([]string, len(slct.Selectors))
+		for i := range slct.Selectors {
+			rs.fields[i] = slct.Selectors[i].Name()
 		}
 	}
 
@@ -248,8 +250,10 @@ func (s stmt) Close() error {
 	return nil
 }
 
+var errStop = errors.New("stop")
+
 type recordStream struct {
-	res      *Result
+	res      *query.Result
 	cancelFn func()
 	c        chan rec
 	wg       sync.WaitGroup
@@ -257,11 +261,11 @@ type recordStream struct {
 }
 
 type rec struct {
-	r   recordMask
+	r   query.RecordMask
 	err error
 }
 
-func newRecordStream(res *Result) *recordStream {
+func newRecordStream(res *query.Result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	records := recordStream{
@@ -291,7 +295,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		case <-ctx.Done():
 			return errStop
 		case rs.c <- rec{
-			r: r.(recordMask),
+			r: r.(query.RecordMask),
 		}:
 
 			select {

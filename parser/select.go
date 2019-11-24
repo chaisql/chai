@@ -7,7 +7,7 @@ import (
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *parser) parseSelectStatement() (query.SelectStmt, error) {
+func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 	var stmt query.SelectStmt
 	var err error
 
@@ -43,7 +43,7 @@ func (p *parser) parseSelectStatement() (query.SelectStmt, error) {
 }
 
 // parseResultFields parses the list of result fields.
-func (p *parser) parseResultFields() ([]query.ResultField, error) {
+func (p *Parser) parseResultFields() ([]query.ResultField, error) {
 	// Parse first (required) result field.
 	rf, err := p.parseResultField()
 	if err != nil {
@@ -67,7 +67,7 @@ func (p *parser) parseResultFields() ([]query.ResultField, error) {
 }
 
 // parseResultField parses the list of result fields.
-func (p *parser) parseResultField() (query.ResultField, error) {
+func (p *Parser) parseResultField() (query.ResultField, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
 		return query.Wildcard{}, nil
@@ -96,7 +96,7 @@ func (p *parser) parseResultField() (query.ResultField, error) {
 	return query.FieldSelector(ident), nil
 }
 
-func (p *parser) parseFrom() (string, error) {
+func (p *Parser) parseFrom() (string, error) {
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"FROM"}, pos)
 	}
@@ -105,7 +105,7 @@ func (p *parser) parseFrom() (string, error) {
 	return p.ParseIdent()
 }
 
-func (p *parser) parseLimit() (query.Expr, error) {
+func (p *Parser) parseLimit() (query.Expr, error) {
 	// parse LIMIT token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
 		p.Unscan()
@@ -115,7 +115,7 @@ func (p *parser) parseLimit() (query.Expr, error) {
 	return p.ParseExpr()
 }
 
-func (p *parser) parseOffset() (query.Expr, error) {
+func (p *Parser) parseOffset() (query.Expr, error) {
 	// parse OFFSET token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
 		p.Unscan()

@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"errors"
 
@@ -165,27 +164,4 @@ func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
 
 		return v.Truthy(), nil
 	}
-}
-
-func argsToNamedValues(args []interface{}) []driver.NamedValue {
-	nv := make([]driver.NamedValue, len(args))
-	for i := range args {
-		switch t := args[i].(type) {
-		case sql.NamedArg:
-			nv[i].Name = t.Name
-			nv[i].Value = t.Value
-		case *sql.NamedArg:
-			nv[i].Name = t.Name
-			nv[i].Value = t.Value
-		case driver.NamedValue:
-			nv[i] = t
-		case *driver.NamedValue:
-			nv[i] = *t
-		default:
-			nv[i].Ordinal = i + 1
-			nv[i].Value = args[i]
-		}
-	}
-
-	return nv
 }

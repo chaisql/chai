@@ -7,7 +7,7 @@ import (
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *parser) parseUpdateStatement() (query.UpdateStmt, error) {
+func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 	var stmt query.UpdateStmt
 	var err error
 
@@ -33,7 +33,7 @@ func (p *parser) parseUpdateStatement() (query.UpdateStmt, error) {
 }
 
 // parseSetClause parses the "SET" clause of the query.
-func (p *parser) parseSetClause() (map[string]query.Expr, error) {
+func (p *Parser) parseSetClause() (map[string]query.Expr, error) {
 	// Check if the SET token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.SET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SET"}, pos)

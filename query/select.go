@@ -134,7 +134,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	}
 
 	st = st.Map(func(r record.Record) (record.Record, error) {
-		return recordMask{
+		return RecordMask{
 			cfg:          cfg,
 			r:            r,
 			resultFields: stmt.Selectors,
@@ -144,15 +144,15 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	return Result{Stream: st}, nil
 }
 
-type recordMask struct {
+type RecordMask struct {
 	cfg          *database.TableConfig
 	r            record.Record
 	resultFields []ResultField
 }
 
-var _ record.Record = recordMask{}
+var _ record.Record = RecordMask{}
 
-func (r recordMask) GetField(name string) (record.Field, error) {
+func (r RecordMask) GetField(name string) (record.Field, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == name || rf.Name() == "*" {
 			return r.r.GetField(name)
@@ -162,7 +162,7 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 	return record.Field{}, fmt.Errorf("field %q not found", name)
 }
 
-func (r recordMask) Iterate(fn func(f record.Field) error) error {
+func (r RecordMask) Iterate(fn func(f record.Field) error) error {
 	stack := EvalStack{
 		Record: r.r,
 		Cfg:    r.cfg,

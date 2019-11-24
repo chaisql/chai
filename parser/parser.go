@@ -12,24 +12,24 @@ import (
 	"github.com/asdine/genji/value"
 )
 
-// parser represents an Genji SQL parser.
-type parser struct {
+// Parser represents an Genji SQL Parser.
+type Parser struct {
 	s             *scanner.BufScanner
 	orderedParams int
 	namedParams   int
 	stat          parserStat
 }
 
-// newParser returns a new instance of Parser.
-func newParser(r io.Reader) *parser {
-	return &parser{s: scanner.NewBufScanner(r)}
+// NewParser returns a new instance of Parser.
+func NewParser(r io.Reader) *Parser {
+	return &Parser{s: scanner.NewBufScanner(r)}
 }
 
-// parseQuery parses a query string and returns its AST representation.
-func parseQuery(s string) (query.Query, error) { return newParser(strings.NewReader(s)).ParseQuery() }
+// ParseQuery parses a query string and returns its AST representation.
+func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
 
 // ParseQuery parses a Genji SQL string and returns a Query.
-func (p *parser) ParseQuery() (query.Query, error) {
+func (p *Parser) ParseQuery() (query.Query, error) {
 	var statements []query.Statement
 	semi := true
 
@@ -54,7 +54,7 @@ func (p *parser) ParseQuery() (query.Query, error) {
 }
 
 // ParseStatement parses a Genji SQL string and returns a Statement AST object.
-func (p *parser) ParseStatement() (query.Statement, error) {
+func (p *Parser) ParseStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SELECT:
@@ -77,7 +77,7 @@ func (p *parser) ParseStatement() (query.Statement, error) {
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
-func (p *parser) parseCondition() (query.Expr, error) {
+func (p *Parser) parseCondition() (query.Expr, error) {
 	// Check if the WHERE token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WHERE {
 		p.Unscan()
@@ -102,7 +102,7 @@ type operator interface {
 }
 
 // ParseExpr parses an expression.
-func (p *parser) ParseExpr() (query.Expr, error) {
+func (p *Parser) ParseExpr() (query.Expr, error) {
 	var err error
 	// Dummy root node.
 	var root operator = &query.CmpOp{}
@@ -170,7 +170,7 @@ func opToExpr(op scanner.Token, lhs, rhs query.Expr) query.Expr {
 }
 
 // parseUnaryExpr parses an non-binary expression.
-func (p *parser) parseUnaryExpr() (query.Expr, error) {
+func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
@@ -228,7 +228,7 @@ func (p *parser) parseUnaryExpr() (query.Expr, error) {
 }
 
 // ParseIdent parses an identifier.
-func (p *parser) ParseIdent() (string, error) {
+func (p *Parser) ParseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok != scanner.IDENT {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
@@ -237,7 +237,7 @@ func (p *parser) ParseIdent() (string, error) {
 }
 
 // ParseIdentList parses a comma delimited list of identifiers.
-func (p *parser) ParseIdentList() ([]string, error) {
+func (p *Parser) ParseIdentList() ([]string, error) {
 	// Parse first (required) identifier.
 	ident, err := p.ParseIdent()
 	if err != nil {
@@ -261,7 +261,7 @@ func (p *parser) ParseIdentList() ([]string, error) {
 }
 
 // parseParam parses a positional or named param.
-func (p *parser) parseParam() (interface{}, error) {
+func (p *Parser) parseParam() (interface{}, error) {
 	tok, _, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.NAMEDPARAM:
@@ -284,7 +284,7 @@ func (p *parser) parseParam() (interface{}, error) {
 	}
 }
 
-func (p *parser) parseType() (value.Type, error) {
+func (p *Parser) parseType() (value.Type, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEBYTES:
@@ -327,10 +327,10 @@ func (p *parser) parseType() (value.Type, error) {
 }
 
 // Scan returns the next token from the underlying scanner.
-func (p *parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
+func (p *Parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
 
 // ScanIgnoreWhitespace scans the next non-whitespace and non-comment token.
-func (p *parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit string) {
+func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit string) {
 	for {
 		tok, pos, lit = p.Scan()
 		if tok == scanner.WS || tok == scanner.COMMENT {
@@ -341,7 +341,7 @@ func (p *parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 }
 
 // Unscan pushes the previously read token back onto the buffer.
-func (p *parser) Unscan() { p.s.Unscan() }
+func (p *Parser) Unscan() { p.s.Unscan() }
 
 // parserStat carries contextual information
 // discovered while parsing queries.

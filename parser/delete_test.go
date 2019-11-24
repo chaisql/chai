@@ -19,7 +19,7 @@ func TestParserDelete(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parseQuery(test.s)
+			q, err := ParseQuery(test.s)
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])

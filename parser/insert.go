@@ -7,7 +7,7 @@ import (
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *parser) parseInsertStatement() (query.InsertStmt, error) {
+func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	var stmt query.InsertStmt
 	var err error
 
@@ -61,7 +61,7 @@ func (p *parser) parseInsertStatement() (query.InsertStmt, error) {
 }
 
 // parseFieldList parses a list of fields in the form: (field, field, ...), if exists
-func (p *parser) parseFieldList() ([]string, bool, error) {
+func (p *Parser) parseFieldList() ([]string, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -84,7 +84,7 @@ func (p *parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *parser) parseValues() ([]query.LiteralExprList, bool, error) {
+func (p *Parser) parseValues() ([]query.LiteralExprList, bool, error) {
 	// Check if the VALUES token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		p.Unscan()
@@ -119,7 +119,7 @@ func (p *parser) parseValues() ([]query.LiteralExprList, bool, error) {
 }
 
 // parseValues parses the "RECORDS" clause of the query, if it exists.
-func (p *parser) parseRecords() ([]interface{}, bool, error) {
+func (p *Parser) parseRecords() ([]interface{}, bool, error) {
 	// Check if the RECORDS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RECORDS {
 		p.Unscan()
@@ -155,7 +155,7 @@ func (p *parser) parseRecords() ([]interface{}, bool, error) {
 	return records, true, nil
 }
 
-func (p *parser) parseRecord() (interface{}, error) {
+func (p *Parser) parseRecord() (interface{}, error) {
 	// Parse a param first
 	v, err := p.parseParam()
 	if err != nil {
@@ -183,7 +183,7 @@ func (p *parser) parseRecord() (interface{}, error) {
 }
 
 // parseKV parses a key-value pair in the form IDENT : Expr.
-func (p *parser) parseKV() (string, query.Expr, error) {
+func (p *Parser) parseKV() (string, query.Expr, error) {
 	k, err := p.ParseIdent()
 	if err != nil {
 		return "", nil, err
@@ -203,7 +203,7 @@ func (p *parser) parseKV() (string, query.Expr, error) {
 }
 
 // parseKVList parses a list of fields in the form: (k = Expr, k = Expr, ...), if exists
-func (p *parser) parseKVList() ([]query.KVPair, bool, error) {
+func (p *Parser) parseKVList() ([]query.KVPair, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -241,7 +241,7 @@ func (p *parser) parseKVList() ([]query.KVPair, bool, error) {
 }
 
 // parseExprList parses a list of expressions in the form: (expr, expr, ...)
-func (p *parser) parseExprList() ([]query.Expr, error) {
+func (p *Parser) parseExprList() ([]query.Expr, error) {
 	// Parse ( token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
