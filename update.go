@@ -118,11 +118,6 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 	st := record.NewStream(t)
 	st = st.Filter(whereClause(stmt.whereExpr, stack))
 
-	indexes, err := t.Indexes()
-	if err != nil {
-		return res, err
-	}
-
 	err = st.Iterate(func(r record.Record) error {
 		rk, ok := r.(record.Keyer)
 		if !ok {
@@ -162,7 +157,7 @@ func (stmt updateStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error) {
 			}
 		}
 
-		err = t.replace(indexes, rk.Key(), &fb)
+		err = t.Replace(rk.Key(), &fb)
 		if err != nil {
 			return err
 		}

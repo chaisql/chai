@@ -95,9 +95,9 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // A Table represents a collection of records.
 type Table struct {
 	tx       *Transaction
-	store    engine.Store
+	Store    engine.Store
 	name     string
-	cfgStore *tableConfigStore
+	CfgStore *tableConfigStore
 }
 
 type encodedRecordWithKey struct {
@@ -120,7 +120,7 @@ func (t *Table) Iterate(fn func(r record.Record) error) error {
 	// TODO(asdine) Add a mutex if proven necessary
 	var r encodedRecordWithKey
 
-	return t.store.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+	return t.Store.AscendGreaterOrEqual(nil, func(k, v []byte) error {
 		r.EncodedRecord = v
 		r.key = k
 		// r must be passed as pointer, not value, because passing a value to an interface
@@ -131,7 +131,7 @@ func (t *Table) Iterate(fn func(r record.Record) error) error {
 
 // GetRecord returns one record by key.
 func (t *Table) GetRecord(key []byte) (record.Record, error) {
-	v, err := t.store.Get(key)
+	v, err := t.Store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
 			return nil, ErrRecordNotFound
@@ -146,7 +146,7 @@ func (t *Table) GetRecord(key []byte) (record.Record, error) {
 }
 
 func (t *Table) generateKey(r record.Record) ([]byte, error) {
-	cfg, err := t.cfgStore.Get(t.name)
+	cfg, err := t.CfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
@@ -167,14 +167,14 @@ func (t *Table) generateKey(r record.Record) ([]byte, error) {
 	t.tx.db.mu.Lock()
 	defer t.tx.db.mu.Unlock()
 
-	cfg, err = t.cfgStore.Get(t.name)
+	cfg, err = t.CfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg.lastKey++
 	key = value.NewInt64(cfg.lastKey).Data
-	err = t.cfgStore.Replace(t.name, cfg)
+	err = t.CfgStore.Replace(t.name, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 		return nil, err
 	}
 
-	_, err = t.store.Get(key)
+	_, err = t.Store.Get(key)
 	if err == nil {
 		return nil, ErrDuplicateRecord
 	}
@@ -202,7 +202,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to encode record")
 	}
 
-	err = t.store.Put(key, v)
+	err = t.Store.Put(key, v)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func (t *Table) Delete(key []byte) error {
 		}
 	}
 
-	return t.store.Delete(key)
+	return t.Store.Delete(key)
 }
 
 // Replace a record by key.
@@ -298,7 +298,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r record.Record) e
 	}
 
 	// replace old record with new record
-	err = t.store.Put(key, v)
+	err = t.Store.Put(key, v)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r record.Record) e
 
 // Truncate deletes all the records from the table.
 func (t *Table) Truncate() error {
-	return t.store.Truncate()
+	return t.Store.Truncate()
 }
 
 // TableName returns the name of the table.
@@ -338,7 +338,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 	tb := Table{
 		tx:    t.tx,
-		store: s,
+		Store: s,
 		name:  indexStoreName,
 	}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
@@ -331,7 +332,7 @@ type paramExtractor interface {
 	Extract(params []driver.NamedValue) (interface{}, error)
 }
 
-func (stmt insertStmt) insertRecords(t *Table, stack evalStack) (Result, error) {
+func (stmt insertStmt) insertRecords(t *database.Table, stack evalStack) (Result, error) {
 	var res Result
 	var err error
 
@@ -384,7 +385,7 @@ func (stmt insertStmt) insertRecords(t *Table, stack evalStack) (Result, error) 
 	return res, nil
 }
 
-func (stmt insertStmt) insertValues(t *Table, stack evalStack) (Result, error) {
+func (stmt insertStmt) insertValues(t *database.Table, stack evalStack) (Result, error) {
 	var res Result
 
 	// iterate over all of the records (r1, r2, r3, ...)

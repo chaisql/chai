@@ -3,6 +3,7 @@ package genji
 import (
 	"testing"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,7 @@ func TestCreateTableStmt(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			err = db.ViewTable("test", func(_ *Tx, _ *Table) error {
+			err = db.ViewTable("test", func(_ *Tx, _ *database.Table) error {
 				return nil
 			})
 			require.NoError(t, err)

@@ -90,9 +90,9 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 
 	return &Table{
 		tx:       &tx,
-		store:    s,
+		Store:    s,
 		name:     name,
-		cfgStore: tx.tcfgStore,
+		CfgStore: tx.tcfgStore,
 	}, nil
 }
 

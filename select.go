@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
@@ -170,7 +171,7 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		return res, err
 	}
 
-	cfg, err := t.cfgStore.Get(t.name)
+	cfg, err := t.CfgStore.Get(t.TableName())
 	if err != nil {
 		return res, err
 	}
@@ -268,7 +269,7 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 }
 
 type recordMask struct {
-	cfg          *TableConfig
+	cfg          *database.TableConfig
 	r            record.Record
 	resultFields []resultField
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/internal/scanner"
@@ -25,7 +26,7 @@ type queryPlanField struct {
 	isPrimaryKey bool
 }
 
-func newQueryOptimizer(tx *Tx, t *Table) queryOptimizer {
+func newQueryOptimizer(tx *Tx, t *database.Table) queryOptimizer {
 	return queryOptimizer{
 		tx: tx,
 		t:  t,
@@ -35,12 +36,12 @@ func newQueryOptimizer(tx *Tx, t *Table) queryOptimizer {
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
 	tx        *Tx
-	t         *Table
+	t         *database.Table
 	stat      parserStat
 	whereExpr expr
 	args      []driver.NamedValue
-	cfg       *TableConfig
-	indexes   map[string]Index
+	cfg       *database.TableConfig
+	indexes   map[string]database.Index
 }
 
 func (qo *queryOptimizer) optimizeQuery() (record.Stream, error) {
@@ -169,7 +170,7 @@ func evaluatesToScalarOrParam(e expr) bool {
 
 type indexIterator struct {
 	tx    *Tx
-	tb    *Table
+	tb    *database.Table
 	args  []driver.NamedValue
 	index index.Index
 	op    scanner.Token
@@ -276,8 +277,8 @@ func (it indexIterator) Iterate(fn func(r record.Record) error) error {
 
 type pkIterator struct {
 	tx   *Tx
-	tb   *Table
-	cfg  *TableConfig
+	tb   *database.Table
+	cfg  *database.TableConfig
 	args []driver.NamedValue
 	op   scanner.Token
 	e    expr
@@ -307,7 +308,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 
 	switch it.op {
 	case scanner.EQ:
-		val, err := it.tb.store.Get(data)
+		val, err := it.tb.Store.Get(data)
 		if err != nil {
 			if err == engine.ErrKeyNotFound {
 				return nil
@@ -317,7 +318,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 		}
 		return fn(record.EncodedRecord(val))
 	case scanner.GT:
-		err = it.tb.store.AscendGreaterOrEqual(v.Value.Data, func(key, val []byte) error {
+		err = it.tb.Store.AscendGreaterOrEqual(v.Value.Data, func(key, val []byte) error {
 			if bytes.Equal(data, val) {
 				return nil
 			}
@@ -325,11 +326,11 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(record.EncodedRecord(val))
 		})
 	case scanner.GTE:
-		err = it.tb.store.AscendGreaterOrEqual(data, func(key, val []byte) error {
+		err = it.tb.Store.AscendGreaterOrEqual(data, func(key, val []byte) error {
 			return fn(record.EncodedRecord(val))
 		})
 	case scanner.LT:
-		err = it.tb.store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
+		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
 			if bytes.Compare(data, val) <= 0 {
 				return errStop
 			}
@@ -337,7 +338,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 			return fn(record.EncodedRecord(val))
 		})
 	case scanner.LTE:
-		err = it.tb.store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
+		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
 			if bytes.Compare(data, val) < 0 {
 				return errStop
 			}

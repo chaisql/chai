@@ -10,13 +10,6 @@ import (
 	"github.com/asdine/genji/record"
 )
 
-var (
-	separator            byte = 0x1F
-	tableConfigStoreName      = "__genji.tables"
-	indexStoreName            = "__genji.indexes"
-	indexPrefix               = "i"
-)
-
 // Open creates a Genji database at the given path.
 // If path is equal to ":memory:" it will open an in memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.

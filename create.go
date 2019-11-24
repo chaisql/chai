@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/internal/scanner"
 	"github.com/asdine/genji/value"
@@ -193,16 +194,16 @@ func (stmt createTableStmt) Run(tx *Tx, args []driver.NamedValue) (Result, error
 		return res, errors.New("missing table name")
 	}
 
-	var cfg *TableConfig
+	var cfg *database.TableConfig
 
 	if stmt.primaryKeyName != "" {
-		cfg = new(TableConfig)
+		cfg = new(database.TableConfig)
 		cfg.PrimaryKeyName = stmt.primaryKeyName
 		cfg.PrimaryKeyType = stmt.primaryKeyType
 	}
 
 	err := tx.CreateTable(stmt.tableName, cfg)
-	if stmt.ifNotExists && err == ErrTableAlreadyExists {
+	if stmt.ifNotExists && err == database.ErrTableAlreadyExists {
 		err = nil
 	}
 
