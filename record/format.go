@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/asdine/genji/value"
 )
@@ -234,7 +235,17 @@ func Encode(r Record) ([]byte, error) {
 	var offset uint64
 	var dataList [][]byte
 
-	err := r.Iterate(func(f Field) error {
+	// copy the record into a buffer and sort the record
+	// by field names
+	var fb FieldBuffer
+	err := fb.ScanRecord(r)
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(&fb)
+	r = &fb
+
+	err = r.Iterate(func(f Field) error {
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f.Name)),
 			nameString: f.Name,

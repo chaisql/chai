@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 )
 
 // A Record represents a group of fields.
@@ -113,6 +114,23 @@ func (fb *FieldBuffer) Replace(name string, f Field) error {
 	}
 
 	return fmt.Errorf("field %q not found", f.Name)
+}
+
+func (fb FieldBuffer) Len() int {
+	return len(fb)
+}
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+// It implements the sort.Interface interface.
+func (fb FieldBuffer) Less(i, j int) bool {
+	return strings.Compare(fb[i].Name, fb[j].Name) < 0
+}
+
+// Swap swaps the elements with indexes i and j.
+// It implements the sort.Interface interface.
+func (fb *FieldBuffer) Swap(i, j int) {
+	(*fb)[i], (*fb)[j] = (*fb)[j], (*fb)[i]
 }
 
 // NewFromMap creates a record from a map.
