@@ -15,3 +15,7 @@ require (
 	github.com/urfave/cli v1.22.1
 	golang.org/x/tools v0.0.0-20191114222411-4191b8cbba09
 )
+
+replace github.com/asdine/genji v0.3.0 => ../..
+
+replace github.com/asdine/genji/engine/badgerengine v0.3.0 => ../../engine/badgerengine
