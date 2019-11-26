@@ -42,6 +42,16 @@ func TestFormat(t *testing.T) {
 	require.EqualValues(t, 4, f.Header.FieldHeaders[2].Size)
 	require.EqualValues(t, value.String, f.Header.FieldHeaders[2].Type)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[2].Offset)
+
+	// ensure using a pointer to FieldBuffer has the same behaviour
+	fb := record.FieldBuffer([]record.Field{
+		record.NewInt64Field("age", 10),
+		record.NewNullField("address"),
+		record.NewStringField("name", "john"),
+	})
+	dataPtr, err := record.Encode(&fb)
+	require.NoError(t, err)
+	require.Equal(t, data, dataPtr)
 }
 
 func TestDecodeField(t *testing.T) {
@@ -54,11 +64,11 @@ func TestDecodeField(t *testing.T) {
 	data, err := record.Encode(rec)
 	require.NoError(t, err)
 
-	f, err := record.DecodeField(data, "age")
+	f, err := record.DecodeField(data, "address")
 	require.NoError(t, err)
 	require.Equal(t, rec[0], f)
 
-	f, err = record.DecodeField(data, "address")
+	f, err = record.DecodeField(data, "age")
 	require.NoError(t, err)
 	require.Equal(t, rec[1], f)
 

@@ -50,7 +50,7 @@ func Example() {
 	}
 
 	// Query some records
-	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
+	stream, err := db.Query("SELECT id, name, age FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
 	}

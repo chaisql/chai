@@ -237,15 +237,24 @@ func Encode(r Record) ([]byte, error) {
 
 	// copy the record into a buffer and sort the record
 	// by field names
-	var fb FieldBuffer
-	err := fb.ScanRecord(r)
-	if err != nil {
-		return nil, err
+	switch t := r.(type) {
+	case FieldBuffer:
+		fb := &t
+		sort.Sort(fb)
+		r = fb
+	case *FieldBuffer:
+		sort.Sort(t)
+	default:
+		var fb FieldBuffer
+		err := fb.ScanRecord(r)
+		if err != nil {
+			return nil, err
+		}
+		sort.Sort(&fb)
+		r = &fb
 	}
-	sort.Sort(&fb)
-	r = &fb
 
-	err = r.Iterate(func(f Field) error {
+	err := r.Iterate(func(f Field) error {
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f.Name)),
 			nameString: f.Name,
