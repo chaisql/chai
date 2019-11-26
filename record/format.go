@@ -255,6 +255,14 @@ func Encode(r Record) ([]byte, error) {
 	}
 
 	err := r.Iterate(func(f Field) error {
+		if f.Type == value.Object {
+			var err error
+			f.Data, err = Encode(f.nestedRecord)
+			if err != nil {
+				return err
+			}
+		}
+
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f.Name)),
 			nameString: f.Name,
@@ -324,8 +332,10 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 				},
 			}
 
-			// make sure f.Data == nil to ease comparisons
-			if len(data) > 0 {
+			if f.Type == value.Object {
+				f.nestedRecord = EncodedRecord(data)
+			} else if len(data) > 0 {
+				// make sure f.Data == nil to ease comparisons
 				f.Data = body[fh.Offset : fh.Offset+fh.Size]
 			}
 			return f, nil
@@ -355,13 +365,20 @@ func (e EncodedRecord) Iterate(fn func(Field) error) error {
 	}
 
 	for _, fh := range format.Header.FieldHeaders {
-		err = fn(Field{
+		data := format.Body[fh.Offset : fh.Offset+fh.Size]
+		f := Field{
 			Name: string(fh.Name),
 			Value: value.Value{
 				Type: value.Type(fh.Type),
-				Data: format.Body[fh.Offset : fh.Offset+fh.Size],
 			},
-		})
+		}
+
+		if f.Type == value.Object {
+			f.nestedRecord = EncodedRecord(data)
+		} else {
+			f.Data = data
+		}
+		err = fn(f)
 		if err != nil {
 			return err
 		}

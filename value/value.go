@@ -52,7 +52,7 @@ const (
 
 	Null
 
-	Record
+	Object
 )
 
 func (t Type) String() string {
@@ -87,8 +87,8 @@ func (t Type) String() string {
 		return "Float64"
 	case Null:
 		return "Null"
-	case Record:
-		return "Record"
+	case Object:
+		return "Object"
 	}
 
 	return ""
@@ -128,7 +128,7 @@ func TypeFromGoType(tp string) Type {
 	case "nil":
 		return Null
 	case "struct":
-		return Record
+		return Object
 	}
 
 	return 0

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/asdine/genji/value"
 	"io"
 	"reflect"
 	"strings"
@@ -196,19 +197,26 @@ func (j jsonRecord) MarshalJSON() ([]byte, error) {
 		}
 		notFirst = true
 
-		v, err := f.Decode()
-		if err != nil {
-			return err
-		}
-
 		buf.WriteByte('"')
 		buf.WriteString(f.Name)
 		buf.WriteString(`":`)
 
+		var v interface{}
+		var err error
+
+		if f.Type == value.Object {
+			v = &jsonRecord{f.nestedRecord}
+		} else {
+			v, err = f.Decode()
+		}
+		if err != nil {
+			return err
+		}
 		mv, err := json.Marshal(v)
 		if err != nil {
 			return err
 		}
+
 		buf.Write(mv)
 		return nil
 	})

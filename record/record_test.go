@@ -175,20 +175,35 @@ func TestNewFromMap(t *testing.T) {
 func TestToJSON(t *testing.T) {
 	tests := []struct {
 		name     string
+		r        record.Record
 		expected string
 	}{
-		{"OK", `{"name":"John","age":10}` + "\n"},
+		{
+			"Flat",
+			record.FieldBuffer([]record.Field{
+				record.NewStringField("name", "John"),
+				record.NewUint16Field("age", 10),
+			}),
+			`{"name":"John","age":10}` + "\n",
+		},
+		{
+			"Nested",
+			record.FieldBuffer([]record.Field{
+				record.NewStringField("name", "John"),
+				record.NewUint16Field("age", 10),
+				record.NewObjectField("address", record.FieldBuffer([]record.Field{
+					record.NewStringField("city", "Ajaccio"),
+					record.NewStringField("country", "France"),
+				})),
+			}),
+			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"}}` + "\n",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := record.FieldBuffer([]record.Field{
-				record.NewStringField("name", "John"),
-				record.NewUint16Field("age", 10),
-			})
-
 			var buf bytes.Buffer
-			err := record.ToJSON(&buf, r)
+			err := record.ToJSON(&buf, test.r)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 			require.NoError(t, err)

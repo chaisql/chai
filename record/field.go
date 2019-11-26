@@ -11,6 +11,9 @@ type Field struct {
 	value.Value
 
 	Name string
+
+	// if the field is a nested record, the record is stored in this var
+	nestedRecord Record
 }
 
 // NewField creates a field whose type is infered from x.
@@ -143,6 +146,24 @@ func NewNullField(name string) Field {
 	}
 }
 
+func NewObjectField(name string, r Record) Field {
+	return Field{
+		Name: name,
+		Value: value.Value{
+			Type: value.Object,
+		},
+		nestedRecord: r,
+	}
+}
+
 func (f Field) String() string {
 	return fmt.Sprintf("%s:%s", f.Name, f.Value)
+}
+
+func (f *Field) Decode() (interface{}, error) {
+	if f.Type == value.Object {
+		return f.nestedRecord, nil
+	}
+
+	return f.Value.Decode()
 }

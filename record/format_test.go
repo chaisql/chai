@@ -96,6 +96,17 @@ func TestEncodeDecode(t *testing.T) {
 				"name": "john",
 			}),
 		},
+		{
+			"Nested Record",
+			record.FieldBuffer([]record.Field{
+				record.NewInt64Field("age", 10),
+				record.NewStringField("name", "john"),
+				record.NewObjectField("address", record.NewFromMap(map[string]interface{}{
+					"city":    "Ajaccio",
+					"country": "France",
+				})),
+			}),
+		},
 	}
 
 	for _, test := range tests {
@@ -116,6 +127,10 @@ func TestEncodedRecord(t *testing.T) {
 	rec := record.FieldBuffer([]record.Field{
 		record.NewInt64Field("age", 10),
 		record.NewStringField("name", "john"),
+		record.NewObjectField("address", record.NewFromMap(map[string]interface{}{
+			"city":    "Ajaccio",
+			"country": "France",
+		})),
 	})
 
 	data, err := record.Encode(rec)
@@ -124,16 +139,42 @@ func TestEncodedRecord(t *testing.T) {
 	ec := record.EncodedRecord(data)
 	f, err := ec.GetField("age")
 	require.NoError(t, err)
-	require.Equal(t, rec[0], f)
+	require.Equal(t, record.NewInt64Field("age", 10), f)
+	f, err = ec.GetField("address")
+	require.NoError(t, err)
+	var expected, actual bytes.Buffer
+	err = record.ToJSON(&expected, record.FieldBuffer{record.NewObjectField("address", record.NewFromMap(map[string]interface{}{
+		"city":    "Ajaccio",
+		"country": "France",
+	}))})
+	require.NoError(t, err)
+	err = record.ToJSON(&actual, record.FieldBuffer{f})
+	require.NoError(t, err)
+	require.JSONEq(t, expected.String(), actual.String())
 
 	var i int
 	err = ec.Iterate(func(f record.Field) error {
-		require.Equal(t, rec[i], f)
+		switch f.Name {
+		case "age":
+			require.Equal(t, record.NewInt64Field("age", 10), f)
+		case "address":
+			var expected, actual bytes.Buffer
+			err = record.ToJSON(&expected, record.FieldBuffer{record.NewObjectField("address", record.NewFromMap(map[string]interface{}{
+				"city":    "Ajaccio",
+				"country": "France",
+			}))})
+			require.NoError(t, err)
+			err = record.ToJSON(&actual, record.FieldBuffer{f})
+			require.NoError(t, err)
+			require.JSONEq(t, expected.String(), actual.String())
+		case "name":
+			require.Equal(t, record.NewStringField("name", "john"), f)
+		}
 		i++
 		return nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, 2, i)
+	require.Equal(t, 3, i)
 }
 
 func BenchmarkEncode(b *testing.B) {

@@ -363,7 +363,7 @@ func TestTypeFromGoType(t *testing.T) {
 		expected value.Type
 	}{
 		{"[]byte", value.Bytes},
-		{"struct", value.Record},
+		{"struct", value.Object},
 	}
 
 	for _, test := range tests {
