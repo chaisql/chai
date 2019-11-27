@@ -28,7 +28,6 @@ func TestEncodeDecode(t *testing.T) {
 		{"int16", int16(-10), func() []byte { return value.EncodeInt16(-10) }, func(buf []byte) (interface{}, error) { return value.DecodeInt16(buf) }},
 		{"int32", int32(-10), func() []byte { return value.EncodeInt32(-10) }, func(buf []byte) (interface{}, error) { return value.DecodeInt32(buf) }},
 		{"int64", int64(-10), func() []byte { return value.EncodeInt64(-10) }, func(buf []byte) (interface{}, error) { return value.DecodeInt64(buf) }},
-		{"float32", float32(-3.14), func() []byte { return value.EncodeFloat32(-3.14) }, func(buf []byte) (interface{}, error) { return value.DecodeFloat32(buf) }},
 		{"float64", float64(-3.14), func() []byte { return value.EncodeFloat64(-3.14) }, func(buf []byte) (interface{}, error) { return value.DecodeFloat64(buf) }},
 	}
 
@@ -60,7 +59,6 @@ func TestOrdering(t *testing.T) {
 		{"int16", -1000, 1000, func(i int) []byte { return value.EncodeInt16(int16(i)) }},
 		{"int32", -1000, 1000, func(i int) []byte { return value.EncodeInt32(int32(i)) }},
 		{"int64", -1000, 1000, func(i int) []byte { return value.EncodeInt64(int64(i)) }},
-		{"float32", -1000, 1000, func(i int) []byte { return value.EncodeFloat32(float32(i)) }},
 		{"float64", -1000, 1000, func(i int) []byte { return value.EncodeFloat64(float64(i)) }},
 	}
 
@@ -88,6 +86,39 @@ func TestDecode(t *testing.T) {
 	require.Equal(t, 3.14, price)
 }
 
+func TestNew(t *testing.T) {
+	tests := []struct {
+		name  string
+		value interface{}
+	}{
+		{"bytes", []byte("bar")},
+		{"string", "bar"},
+		{"bool", true},
+		{"uint", uint(10)},
+		{"uint8", uint8(10)},
+		{"uint16", uint16(10)},
+		{"uint32", uint32(10)},
+		{"uint64", uint64(10)},
+		{"int", int(10)},
+		{"int8", int8(10)},
+		{"int16", int16(10)},
+		{"int32", int32(10)},
+		{"int64", int64(10)},
+		{"float64", 10.1},
+		{"nil", nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			v, err := value.New(test.value)
+			require.NoError(t, err)
+			i, err := v.Decode()
+			require.NoError(t, err)
+			require.Equal(t, test.value, i)
+		})
+	}
+}
+
 func TestFieldString(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -107,7 +138,6 @@ func TestFieldString(t *testing.T) {
 		{"int16", value.NewInt16(10), "10"},
 		{"int32", value.NewInt32(10), "10"},
 		{"int64", value.NewInt64(10), "10"},
-		{"float32", value.NewFloat32(10.1), "10.1"},
 		{"float64", value.NewFloat64(10.1), "10.1"},
 	}
 
@@ -116,7 +146,6 @@ func TestFieldString(t *testing.T) {
 			require.Equal(t, test.expected, test.value.String())
 		})
 	}
-
 }
 
 func TestDecodeToBytes(t *testing.T) {
@@ -139,7 +168,6 @@ func TestDecodeToBytes(t *testing.T) {
 		{"int16", value.NewInt16(10), false, value.NewInt16(10).Data},
 		{"int32", value.NewInt32(10), false, value.NewInt32(10).Data},
 		{"int64", value.NewInt64(10), false, value.NewInt64(10).Data},
-		{"float32", value.NewFloat32(10.1), false, value.NewFloat32(10.1).Data},
 		{"float64", value.NewFloat64(10.1), false, value.NewFloat64(10.1).Data},
 	}
 
@@ -176,7 +204,6 @@ func TestDecodeToString(t *testing.T) {
 		{"int16", value.NewInt16(10), true, ""},
 		{"int32", value.NewInt32(10), true, ""},
 		{"int64", value.NewInt64(10), true, ""},
-		{"float32", value.NewFloat32(10.1), true, ""},
 		{"float64", value.NewFloat64(10.1), true, ""},
 	}
 
@@ -226,8 +253,6 @@ func TestDecodeToBool(t *testing.T) {
 		{"zero int32", value.NewInt32(0), false, false},
 		{"int64", value.NewInt64(10), false, true},
 		{"zero int64", value.NewInt64(0), false, false},
-		{"float32", value.NewFloat32(10.1), false, true},
-		{"zero float32", value.NewFloat32(0), false, false},
 		{"float64", value.NewFloat64(10.1), false, true},
 		{"zero float64", value.NewFloat64(0), false, false},
 	}
@@ -265,7 +290,6 @@ func TestDecodeToNumber(t *testing.T) {
 		{"int16", value.NewInt16(10), false, 10},
 		{"int32", value.NewInt32(10), false, 10},
 		{"int64", value.NewInt64(10), false, 10},
-		{"float32", value.NewFloat32(10), false, 10},
 		{"float64", value.NewFloat64(10), false, 10},
 	}
 
@@ -319,13 +343,16 @@ func TestDecodeToNumber(t *testing.T) {
 			res, err := test.v.DecodeToInt64()
 			check(t, res, err, test.fails, int64(test.expected))
 		})
-		t.Run(test.name+" to float32", func(t *testing.T) {
-			res, err := test.v.DecodeToFloat32()
-			check(t, res, err, test.fails, float32(test.expected))
-		})
 		t.Run(test.name+" to float64", func(t *testing.T) {
 			res, err := test.v.DecodeToFloat64()
 			check(t, res, err, test.fails, float64(test.expected))
 		})
 	}
+
+	t.Run("float64/precision loss", func(t *testing.T) {
+		_, err := value.NewFloat64(10.4).DecodeToUint16()
+		require.Error(t, err)
+		_, err = value.NewFloat64(10.4).ConvertTo(value.Int32)
+		require.Error(t, err)
+	})
 }

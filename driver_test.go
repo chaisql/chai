@@ -5,10 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
@@ -31,61 +29,53 @@ func (rt *rectest) ScanRecord(r record.Record) error {
 	if err != nil {
 		return err
 	}
-	v, err := f.Decode()
+	rt.a, err = f.DecodeToInt()
 	if err != nil {
 		return err
 	}
-
-	rt.a = int(v.(int64))
 
 	f, err = r.GetField("b")
 	if err != nil {
 		return err
 	}
-	v, err = f.Decode()
+	rt.b, err = f.DecodeToInt()
 	if err != nil {
 		return err
 	}
-
-	rt.b = int(v.(int64))
 
 	f, err = r.GetField("c")
 	if err != nil {
 		return err
 	}
-	v, err = f.Decode()
+	rt.c, err = f.DecodeToInt()
 	if err != nil {
 		return err
 	}
 
-	rt.c = int(v.(int64))
 	return nil
 }
 
 func TestDriver(t *testing.T) {
-	db, err := New(memory.NewEngine())
+	db, err := sql.Open("genji", ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	dbx := sql.OpenDB(newConnector(db))
-
-	res, err := dbx.Exec("CREATE TABLE test")
+	res, err := db.Exec("CREATE TABLE test")
 	require.NoError(t, err)
 	n, err := res.RowsAffected()
 	require.NoError(t, err)
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
-		res, err = dbx.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i+1, i+2, i+3)
+		res, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i+1, i+2, i+3)
 		require.NoError(t, err)
 		n, err = res.RowsAffected()
 		require.NoError(t, err)
 		require.EqualValues(t, 1, n)
-		time.Sleep(time.Millisecond) // ensure records are stored in order
 	}
 
 	t.Run("Wildcard", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT * FROM test")
+		rows, err := db.Query("SELECT * FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -97,12 +87,13 @@ func TestDriver(t *testing.T) {
 			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
 			count++
 		}
+
 		require.NoError(t, rows.Err())
 		require.Equal(t, 10, count)
 	})
 
 	t.Run("Multiple fields", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a, c FROM test")
+		rows, err := db.Query("SELECT a, c FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -119,8 +110,29 @@ func TestDriver(t *testing.T) {
 		require.Equal(t, 10, count)
 	})
 
+	t.Run("Multiple fields and wildcards", func(t *testing.T) {
+		rows, err := db.Query("SELECT a, *, c, * FROM test")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var a, c int
+		var rt1, rt2 rectest
+		for rows.Next() {
+			err = rows.Scan(&a, &rt1, &c, &rt2)
+			require.NoError(t, err)
+			require.Equal(t, count+1, a)
+			require.Equal(t, count+3, c)
+			require.Equal(t, rt1, rectest{count + 1, count + 2, count + 3})
+			require.Equal(t, rt2, rectest{count + 1, count + 2, count + 3})
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
+
 	t.Run("Params", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, 6)
+		rows, err := db.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, 6)
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -137,7 +149,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Named Params", func(t *testing.T) {
-		rows, err := dbx.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
+		rows, err := db.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -154,7 +166,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Transactions", func(t *testing.T) {
-		tx, err := dbx.Begin()
+		tx, err := db.Begin()
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -175,7 +187,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple queries", func(t *testing.T) {
-		rows, err := dbx.Query(`
+		rows, err := db.Query(`
 			SELECT * FROM test;;;
 			INSERT INTO test (a, b, c) VALUES (11, 12, 13);
 			SELECT * FROM test;
@@ -195,10 +207,8 @@ func TestDriver(t *testing.T) {
 		require.Equal(t, 11, count)
 	})
 
-	time.Sleep(time.Millisecond)
-
 	t.Run("Multiple queries in transaction", func(t *testing.T) {
-		tx, err := dbx.Begin()
+		tx, err := db.Begin()
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -223,7 +233,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple queries in read only transaction", func(t *testing.T) {
-		tx, err := dbx.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
+		tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
 		require.NoError(t, err)
 		defer tx.Rollback()
 

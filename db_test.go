@@ -6,43 +6,43 @@ import (
 	"testing"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
-func ExampleOpen() {
-	db, err := genji.Open(memory.NewEngine())
+func ExampleDB_SQLDB() {
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
+	dbx := db.SQLDB()
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	_, err = dbx.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	_, err = dbx.Exec("CREATE INDEX IF NOT EXISTS idx_user_name ON user (name)")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	_, err = dbx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	_, err = dbx.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows, err := db.Query("SELECT * FROM user WHERE Name = ?", "bar")
+	rows, err := dbx.Query("SELECT * FROM user WHERE name = ?", "bar")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func ExampleOpen() {
 }
 
 func ExampleTx() {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,17 +78,17 @@ func ExampleTx() {
 	}
 	defer tx.Rollback()
 
-	err = tx.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = tx.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = tx.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := tx.Query("SELECT ID, Name, Age FROM user WHERE Name = ?", "foo")
+	result, err := tx.Query("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -111,7 +111,7 @@ func ExampleTx() {
 	var name string
 	var age uint8
 
-	err = recordutil.Scan(r, &id, &name, &age)
+	err = record.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -128,7 +128,7 @@ func ExampleTx() {
 }
 
 func newTestDB(t testing.TB) (*genji.Tx, func()) {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
@@ -142,7 +142,9 @@ func newTestDB(t testing.TB) (*genji.Tx, func()) {
 func newTestTable(t testing.TB) (*genji.Table, func()) {
 	tx, fn := newTestDB(t)
 
-	tb, err := tx.CreateTable("test")
+	err := tx.CreateTable("test", nil)
+	require.NoError(t, err)
+	tb, err := tx.GetTable("test")
 	require.NoError(t, err)
 
 	return tb, fn
@@ -153,10 +155,14 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
+		require.NoError(t, err)
+		idx, err := tx.GetIndex("idxFoo")
 		require.NoError(t, err)
 		require.NotNil(t, idx)
 	})
@@ -165,13 +171,17 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.Equal(t, genji.ErrIndexAlreadyExists, err)
 	})
 
@@ -179,7 +189,9 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		err := tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.Equal(t, genji.ErrTableNotFound, err)
 	})
 }
@@ -189,10 +201,12 @@ func TestTxDropIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
 		require.NoError(t, err)
 
 		err = tx.DropIndex("idxFoo")
@@ -208,6 +222,206 @@ func TestTxDropIndex(t *testing.T) {
 
 		err := tx.DropIndex("idxFoo")
 		require.Equal(t, genji.ErrIndexNotFound, err)
+	})
+}
+
+func TestTxReIndex(t *testing.T) {
+	newTestTableFn := func(t *testing.T) (*genji.Tx, *genji.Table, func()) {
+		tx, cleanup := newTestDB(t)
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
+
+		for i := 0; i < 10; i++ {
+			_, err = tb.Insert(record.NewFieldBuffer(
+				record.NewIntField("a", i),
+				record.NewIntField("b", i*10),
+			))
+			require.NoError(t, err)
+		}
+
+		err = tx.CreateIndex(index.Options{
+			IndexName: "a",
+			TableName: "test",
+			FieldName: "a",
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(index.Options{
+			IndexName: "b",
+			TableName: "test",
+			FieldName: "b",
+		})
+		require.NoError(t, err)
+
+		return tx, tb, cleanup
+	}
+
+	t.Run("Should fail if not found", func(t *testing.T) {
+		tx, _, cleanup := newTestTableFn(t)
+		defer cleanup()
+
+		err := tx.ReIndex("foo")
+		require.Equal(t, genji.ErrIndexNotFound, err)
+	})
+
+	t.Run("Should reindex the right index", func(t *testing.T) {
+		tx, _, cleanup := newTestTableFn(t)
+		defer cleanup()
+
+		err := tx.ReIndex("a")
+		require.NoError(t, err)
+
+		idx, err := tx.GetIndex("a")
+		require.NoError(t, err)
+
+		var i int
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			require.Equal(t, value.NewFloat64(float64(i)), val)
+			i++
+			return nil
+		})
+		require.Equal(t, 10, i)
+		require.NoError(t, err)
+
+		idx, err = tx.GetIndex("b")
+		require.NoError(t, err)
+
+		i = 0
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			i++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Zero(t, i)
+	})
+}
+
+func TestQueryRecord(t *testing.T) {
+	db, err := genji.New(memoryengine.NewEngine())
+	require.NoError(t, err)
+
+	tx, err := db.Begin(true)
+	require.NoError(t, err)
+
+	err = tx.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
+		`)
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit())
+
+	t.Run("Should return the first record", func(t *testing.T) {
+		var a int
+		var b string
+
+		r, err := db.QueryRecord("SELECT * FROM test")
+		err = record.Scan(r, &a, &b)
+		require.NoError(t, err)
+		require.Equal(t, 1, a)
+		require.Equal(t, "foo", b)
+
+		tx, err := db.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		r, err = tx.QueryRecord("SELECT * FROM test")
+		require.NoError(t, err)
+		err = record.Scan(r, &a, &b)
+		require.NoError(t, err)
+		require.Equal(t, 1, a)
+		require.Equal(t, "foo", b)
+	})
+
+	t.Run("Should return an error if no record", func(t *testing.T) {
+		r, err := db.QueryRecord("SELECT * FROM test WHERE a > 100")
+		require.Equal(t, genji.ErrRecordNotFound, err)
+		require.Nil(t, r)
+
+		tx, err := db.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
+		r, err = tx.QueryRecord("SELECT * FROM test WHERE a > 100")
+		require.Equal(t, genji.ErrRecordNotFound, err)
+		require.Nil(t, r)
+	})
+}
+
+func TestReIndexAll(t *testing.T) {
+	t.Run("Should succeed if not indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.ReIndexAll()
+		require.NoError(t, err)
+	})
+
+	t.Run("Should reindex all indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test1", nil)
+		require.NoError(t, err)
+		tb1, err := tx.GetTable("test1")
+		require.NoError(t, err)
+
+		err = tx.CreateTable("test2", nil)
+		require.NoError(t, err)
+		tb2, err := tx.GetTable("test2")
+		require.NoError(t, err)
+
+		for i := 0; i < 10; i++ {
+			_, err = tb1.Insert(record.NewFieldBuffer(
+				record.NewIntField("a", i),
+				record.NewIntField("b", i*10),
+			))
+			require.NoError(t, err)
+			_, err = tb2.Insert(record.NewFieldBuffer(
+				record.NewIntField("a", i),
+				record.NewIntField("b", i*10),
+			))
+			require.NoError(t, err)
+		}
+
+		err = tx.CreateIndex(index.Options{
+			IndexName: "t1a",
+			TableName: "test1",
+			FieldName: "a",
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(index.Options{
+			IndexName: "t2a",
+			TableName: "test2",
+			FieldName: "a",
+		})
+		require.NoError(t, err)
+
+		err = tx.ReIndexAll()
+		require.NoError(t, err)
+
+		idx, err := tx.GetIndex("t1a")
+		require.NoError(t, err)
+
+		var i int
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			require.Equal(t, value.NewFloat64(float64(i)), val)
+			i++
+			return nil
+		})
+		require.Equal(t, 10, i)
+		require.NoError(t, err)
+
+		idx, err = tx.GetIndex("t2a")
+		require.NoError(t, err)
+
+		i = 0
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+			require.Equal(t, value.NewFloat64(float64(i)), val)
+			i++
+			return nil
+		})
+		require.Equal(t, 10, i)
+		require.NoError(t, err)
 	})
 }
 
@@ -328,23 +542,27 @@ func TestTableInsert(t *testing.T) {
 		require.NotEqual(t, key1, key2)
 	})
 
-	t.Run("Should support PrimaryKeyer interface", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
+	t.Run("Should use the right field if key is specified", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		var counter int64
+		err := tx.CreateTable("test", &genji.TableConfig{
+			PrimaryKeyName: "foo",
+			PrimaryKeyType: value.Int32,
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
 
-		rec := recordPker{
-			pkGenerator: func() ([]byte, error) {
-				counter += 2
-				return value.EncodeInt64(counter), nil
-			},
-		}
+		rec := record.NewFieldBuffer(
+			record.NewIntField("foo", 1),
+			record.NewStringField("bar", "baz"),
+		)
 
 		// insert
 		key, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(2), key)
+		require.Equal(t, value.EncodeInt32(1), key)
 
 		// make sure the record is fetchable using the returned key
 		_, err = tb.GetRecord(key)
@@ -352,13 +570,20 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again
 		key, err = tb.Insert(rec)
-		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt64(4), key)
+		require.Equal(t, genji.ErrDuplicateRecord, err)
 	})
 
-	t.Run("Should fail if Pk returns empty key", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
+	t.Run("Should fail if Pk not found in record or empty", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
 		defer cleanup()
+
+		err := tx.CreateTable("test", &genji.TableConfig{
+			PrimaryKeyName: "foo",
+			PrimaryKeyType: value.Int,
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
 
 		tests := [][]byte{
 			nil,
@@ -368,11 +593,9 @@ func TestTableInsert(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
-				rec := recordPker{
-					pkGenerator: func() ([]byte, error) {
-						return test, nil
-					},
-				}
+				rec := record.NewFieldBuffer(
+					record.NewBytesField("foo", test),
+				)
 
 				_, err := tb.Insert(rec)
 				require.Error(t, err)
@@ -380,64 +603,52 @@ func TestTableInsert(t *testing.T) {
 		}
 	})
 
-	t.Run("Should return ErrDuplicate if key already exists", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		rec := recordPker{
-			pkGenerator: func() ([]byte, error) {
-				return value.EncodeInt64(1), nil
-			},
-		}
-
-		// insert
-		_, err := tb.Insert(rec)
-		require.NoError(t, err)
-
-		_, err = tb.Insert(rec)
-		require.Equal(t, genji.ErrDuplicateRecord, err)
-	})
-
 	t.Run("Should update indexes if there are indexed fields", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		_, err := tx.CreateTable("test")
+		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		idx, err := tx.CreateIndex("idxFoo", "test", "foo", index.Options{})
+		err = tx.CreateIndex(index.Options{
+			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+		})
+		require.NoError(t, err)
+		idx, err := tx.GetIndex("idxFoo")
 		require.NoError(t, err)
 
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		rec := newRecord()
-		foo := record.NewFloat32Field("foo", 10)
-		rec = append(rec, foo)
+		// create one record with the foo field
+		rec1 := newRecord()
+		foo := record.NewFloat64Field("foo", 10)
+		rec1 = append(rec1, foo)
 
-		key, err := tb.Insert(rec)
+		// create one record without the foo field
+		rec2 := newRecord()
+
+		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
-		require.NotEmpty(t, key)
+		key2, err := tb.Insert(rec2)
+		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual(nil, func(v, k []byte) error {
-			require.Equal(t, v, foo.Data)
-			require.Equal(t, key, k)
+		err = idx.AscendGreaterOrEqual(nil, func(val value.Value, k []byte) error {
+			switch count {
+			case 0:
+				// key2, which doesn't countain the field must appear first in the next,
+				// as null values are the smallest possible values
+				require.Equal(t, key2, k)
+			case 1:
+				require.Equal(t, key1, k)
+			}
 			count++
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, count)
+		require.Equal(t, 2, count)
 	})
-}
-
-type recordPker struct {
-	record.FieldBuffer
-	pkGenerator func() ([]byte, error)
-}
-
-func (r recordPker) PrimaryKey() ([]byte, error) {
-	return r.pkGenerator()
 }
 
 // TestTableDelete verifies Delete behaviour.
@@ -580,16 +791,34 @@ func TestTableIndexes(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		tb, err := tx.CreateTable("test1")
+		err := tx.CreateTable("test1", nil)
 		require.NoError(t, err)
-		_, err = tx.CreateTable("test2")
+		tb, err := tx.GetTable("test1")
 		require.NoError(t, err)
 
-		_, err = tx.CreateIndex("idx1a", "test1", "a", index.Options{Unique: true})
+		err = tx.CreateTable("test2", nil)
 		require.NoError(t, err)
-		_, err = tx.CreateIndex("idx1b", "test1", "b", index.Options{Unique: false})
+
+		err = tx.CreateIndex(index.Options{
+			Unique:    true,
+			IndexName: "idx1a",
+			TableName: "test1",
+			FieldName: "a",
+		})
 		require.NoError(t, err)
-		_, err = tx.CreateIndex("ifx2a", "test2", "a", index.Options{Unique: false})
+		err = tx.CreateIndex(index.Options{
+			Unique:    false,
+			IndexName: "idx1b",
+			TableName: "test1",
+			FieldName: "b",
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(index.Options{
+			Unique:    false,
+			IndexName: "ifx2a",
+			TableName: "test2",
+			FieldName: "a",
+		})
 		require.NoError(t, err)
 
 		m, err := tb.Indexes()
@@ -661,4 +890,37 @@ func BenchmarkTableScan(b *testing.B) {
 			b.StopTimer()
 		})
 	}
+}
+
+func TestTxListTables(t *testing.T) {
+	t.Run("Should succeed if not tables", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		list, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, list, 0)
+	})
+
+	t.Run("Should return the right tables", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("a", nil)
+		require.NoError(t, err)
+		err = tx.CreateTable("b", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(index.Options{
+			IndexName: "idxa",
+			TableName: "a",
+			FieldName: "foo",
+		})
+		require.NoError(t, err)
+
+		list, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, list, 2)
+		require.Equal(t, []string{"a", "b"}, list)
+	})
 }

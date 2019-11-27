@@ -42,7 +42,6 @@ func init() {
 		"record-Iterate":    recordIterateTmpl,
 		"record-ScanRecord": recordScanRecordTmpl,
 		"record-Scan":       recordScanTmpl,
-		"record-Pk":         recordPkTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))
@@ -188,11 +187,6 @@ func (g *genContext) selectImports() {
 	if len(g.Records) > 0 {
 		m["errors"]++
 		m["github.com/asdine/genji/record"]++
-	}
-	for _, r := range g.Records {
-		if r.Pk.Name != "" {
-			m["github.com/asdine/genji/value"]++
-		}
 	}
 
 	g.Imports = make([]string, 0, len(m))

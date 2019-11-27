@@ -3,46 +3,50 @@ package genji
 import (
 	"bytes"
 	"database/sql"
-	"math/rand"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/engine/boltengine"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
-	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
 
 var (
-	entropy          = rand.New(rand.NewSource(time.Now().UnixNano()))
-	separator   byte = 0x1F
-	indexTable       = "__genji.indexes"
-	indexPrefix      = "i"
+	separator            byte = 0x1F
+	tableConfigStoreName      = "__genji.tables"
+	indexStoreName            = "__genji.indexes"
+	indexPrefix               = "i"
 )
 
-// Open creates a Genji database and wraps it around a *sql.DB instance.
-func Open(ng engine.Engine) (*sql.DB, error) {
-	db, err := New(ng)
+// Open creates a Genji database at the given path.
+// If path is equal to ":memory:" it will open an in memory database,
+// otherwise it will create an on-disk database using the BoltDB engine.
+func Open(path string) (*DB, error) {
+	var ng engine.Engine
+	var err error
+
+	switch path {
+	case ":memory:":
+		ng = memoryengine.NewEngine()
+	default:
+		ng, err = boltengine.NewEngine(path, 0660, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return OpenDB(db)
-}
-
-// OpenDB connects to an existing database instance and returns a *sql.DB.
-func OpenDB(db *DB) (*sql.DB, error) {
-	return sql.OpenDB(newConnector(db)), nil
+	return New(ng)
 }
 
 // DB represents a collection of tables stored in the underlying engine.
-// DB differs from the engine in that it provides automatic indexing
-// and database administration methods.
-// DB is safe for concurrent use unless the given engine isn't.
 type DB struct {
 	ng engine.Engine
+
+	mu sync.Mutex
 }
 
 // New initializes the DB using the given engine.
@@ -51,13 +55,29 @@ func New(ng engine.Engine) (*DB, error) {
 		ng: ng,
 	}
 
-	err := db.Update(func(tx *Tx) error {
-		_, err := tx.GetTable(indexTable)
-		if err == ErrTableNotFound {
-			_, err = tx.CreateTable(indexTable)
-		}
-		return err
-	})
+	ntx, err := db.ng.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	defer ntx.Rollback()
+
+	_, err = ntx.Store(tableConfigStoreName)
+	if err == engine.ErrStoreNotFound {
+		err = ntx.CreateStore(tableConfigStoreName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = ntx.Store(indexStoreName)
+	if err == engine.ErrStoreNotFound {
+		err = ntx.CreateStore(indexStoreName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	err = ntx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -66,27 +86,39 @@ func New(ng engine.Engine) (*DB, error) {
 }
 
 // Close the underlying engine.
-func (db DB) Close() error {
+func (db *DB) Close() error {
 	return db.ng.Close()
 }
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.ng.Begin(writable)
+func (db *DB) Begin(writable bool) (*Tx, error) {
+	ntx, err := db.ng.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Tx{
-		db:       &db,
-		tx:       tx,
+	tx := Tx{
+		db:       db,
+		tx:       ntx,
 		writable: writable,
-	}, nil
+	}
+
+	tx.tcfgStore, err = tx.getTableConfigStore()
+	if err != nil {
+		return nil, err
+	}
+
+	tx.indexStore, err = tx.getIndexStore()
+	if err != nil {
+		return nil, err
+	}
+
+	return &tx, nil
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
-func (db DB) View(fn func(tx *Tx) error) error {
+func (db *DB) View(fn func(tx *Tx) error) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -97,7 +129,7 @@ func (db DB) View(fn func(tx *Tx) error) error {
 }
 
 // Update starts a read-write transaction, runs fn and automatically commits it.
-func (db DB) Update(fn func(tx *Tx) error) error {
+func (db *DB) Update(fn func(tx *Tx) error) error {
 	tx, err := db.Begin(true)
 	if err != nil {
 		return err
@@ -113,7 +145,7 @@ func (db DB) Update(fn func(tx *Tx) error) error {
 }
 
 // Exec a query against the database without returning the result.
-func (db DB) Exec(q string, args ...interface{}) error {
+func (db *DB) Exec(q string, args ...interface{}) error {
 	res, err := db.Query(q, args...)
 	if err != nil {
 		return err
@@ -124,18 +156,45 @@ func (db DB) Exec(q string, args ...interface{}) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db DB) Query(q string, args ...interface{}) (*Result, error) {
+func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
 	pq, err := parseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Run(&db, argsToNamedValues(args))
+	return pq.Run(db, argsToNamedValues(args))
+}
+
+// QueryRecord runs the query and returns the first record.
+// If the query returns no error, QueryRecord returns ErrRecordNotFound.
+func (db *DB) QueryRecord(q string, args ...interface{}) (record.Record, error) {
+	res, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	r, err := res.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if r == nil {
+		return nil, ErrRecordNotFound
+	}
+
+	var fb record.FieldBuffer
+	err = fb.ScanRecord(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fb, nil
 }
 
 // ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
 // and automatically rolls back the transaction.
-func (db DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
+func (db *DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
 	return db.View(func(tx *Tx) error {
 		tb, err := tx.GetTable(tableName)
 		if err != nil {
@@ -149,7 +208,7 @@ func (db DB) ViewTable(tableName string, fn func(*Tx, *Table) error) error {
 // UpdateTable starts a read/write transaction, fetches the selected table, calls fn with that table
 // and automatically commits the transaction.
 // If fn returns an error, the transaction is rolled back.
-func (db DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
+func (db *DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 	return db.Update(func(tx *Tx) error {
 		tb, err := tx.GetTable(tableName)
 		if err != nil {
@@ -160,14 +219,21 @@ func (db DB) UpdateTable(tableName string, fn func(*Tx, *Table) error) error {
 	})
 }
 
+// SQLDB returns a sql.DB wrapping this database.
+func (db *DB) SQLDB() *sql.DB {
+	return sql.OpenDB(newProxyConnector(db))
+}
+
 // Tx represents a database transaction. It provides methods for managing the
 // collection of tables and the transaction itself.
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
-	db       *DB
-	tx       engine.Transaction
-	writable bool
+	db         *DB
+	tx         engine.Transaction
+	writable   bool
+	tcfgStore  *tableConfigStore
+	indexStore *indexStore
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -217,6 +283,26 @@ func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	return pq.Exec(tx, argsToNamedValues(args), false)
 }
 
+// QueryRecord runs the query and returns the first record.
+// If the query returns no error, QueryRecord returns ErrRecordNotFound.
+func (tx *Tx) QueryRecord(q string, args ...interface{}) (record.Record, error) {
+	res, err := tx.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	r, err := res.First()
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return nil, ErrRecordNotFound
+	}
+
+	return r, nil
+}
+
 // Exec a query against the database within tx and without returning the result.
 func (tx *Tx) Exec(q string, args ...interface{}) error {
 	res, err := tx.Query(q, args...)
@@ -227,52 +313,85 @@ func (tx *Tx) Exec(q string, args ...interface{}) error {
 	return res.Close()
 }
 
+// TableConfig holds the configuration of a table
+type TableConfig struct {
+	PrimaryKeyName string
+	PrimaryKeyType value.Type
+
+	lastKey int64
+}
+
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateTable(name string) (*Table, error) {
-	err := tx.tx.CreateStore(name)
-	if err == engine.ErrStoreAlreadyExists {
-		return nil, ErrTableAlreadyExists
+func (tx Tx) CreateTable(name string, cfg *TableConfig) error {
+	if cfg == nil {
+		cfg = new(TableConfig)
 	}
-
+	err := tx.tcfgStore.Insert(name, *cfg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create table %q", name)
+		return err
 	}
 
-	return tx.GetTable(name)
+	err = tx.tx.CreateStore(name)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create table %q", name)
+	}
+
+	return nil
 }
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Tx) GetTable(name string) (*Table, error) {
+	_, err := tx.tcfgStore.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
 	s, err := tx.tx.Store(name)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrTableNotFound
-	}
 	if err != nil {
 		return nil, err
 	}
 
-	t := Table{
-		tx:    &tx,
-		store: s,
-		name:  name,
-	}
-
-	t.indexes, err = t.Indexes()
-	if err != nil {
-		return nil, err
-	}
-
-	return &t, nil
+	return &Table{
+		tx:       &tx,
+		store:    s,
+		name:     name,
+		cfgStore: tx.tcfgStore,
+	}, nil
 }
 
 // DropTable deletes a table from the database.
 func (tx Tx) DropTable(name string) error {
-	err := tx.tx.DropStore(name)
-	if err == engine.ErrStoreNotFound {
-		return ErrTableNotFound
+	err := tx.tcfgStore.Delete(name)
+	if err != nil {
+		return err
 	}
-	return err
+
+	return tx.tx.DropStore(name)
+}
+
+// ListTables lists all the tables.
+func (tx Tx) ListTables() ([]string, error) {
+	stores, err := tx.tx.ListStores("")
+	if err != nil {
+		return nil, err
+	}
+
+	tables := make([]string, 0, len(stores))
+	idxPrefix := indexPrefix + string([]byte{separator})
+
+	for _, st := range stores {
+		if st == indexStoreName || st == tableConfigStoreName {
+			continue
+		}
+		if strings.HasPrefix(st, idxPrefix) {
+			continue
+		}
+
+		tables = append(tables, st)
+	}
+
+	return tables, nil
 }
 
 func buildIndexName(name string) string {
@@ -286,80 +405,36 @@ func buildIndexName(name string) string {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Tx) CreateIndex(indexName, tableName, fieldName string, opts index.Options) (*Index, error) {
-	it, err := tx.GetTable(indexTable)
+func (tx Tx) CreateIndex(opts index.Options) error {
+	_, err := tx.GetTable(opts.TableName)
 	if err != nil {
-		return nil, err
-	}
-
-	_, err = tx.GetTable(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	idxName := buildIndexName(indexName)
-
-	_, err = it.GetRecord([]byte(idxName))
-	if err == nil {
-		return nil, ErrIndexAlreadyExists
-	}
-	if err != ErrRecordNotFound {
-		return nil, err
+		return err
 	}
 
 	idxOpts := indexOptions{
-		IndexName: indexName,
-		TableName: tableName,
-		FieldName: fieldName,
+		IndexName: opts.IndexName,
+		TableName: opts.TableName,
+		FieldName: opts.FieldName,
 		Unique:    opts.Unique,
 	}
 
-	_, err = it.Insert(&idxOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.tx.CreateStore(idxName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create index %q on table %q", fieldName, tableName)
-	}
-
-	s, err := tx.tx.Store(idxName)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return &Index{
-		Index:     index.New(s, index.Options{Unique: idxOpts.Unique}),
-		IndexName: idxOpts.IndexName,
-		TableName: idxOpts.TableName,
-		FieldName: idxOpts.FieldName,
-		Unique:    idxOpts.Unique,
-	}, nil
+	return tx.indexStore.Insert(idxOpts)
 }
 
 // GetIndex returns an index by name.
 func (tx Tx) GetIndex(name string) (*Index, error) {
-	indexName := buildIndexName(name)
-
-	opts, err := readIndexOptions(&tx, indexName)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := tx.tx.Store(indexName)
-	if err == engine.ErrStoreNotFound {
-		return nil, ErrIndexNotFound
-	}
+	opts, err := tx.indexStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Index{
-		Index:     index.New(s, index.Options{Unique: opts.Unique}),
+		Index: index.New(tx.tx, index.Options{
+			IndexName: opts.IndexName,
+			TableName: opts.TableName,
+			FieldName: opts.FieldName,
+			Unique:    opts.Unique,
+		}),
 		IndexName: opts.IndexName,
 		TableName: opts.TableName,
 		FieldName: opts.FieldName,
@@ -369,33 +444,93 @@ func (tx Tx) GetIndex(name string) (*Index, error) {
 
 // DropIndex deletes an index from the database.
 func (tx Tx) DropIndex(name string) error {
-	it, err := tx.GetTable(indexTable)
+	opts, err := tx.indexStore.Get(name)
+	if err != nil {
+		return err
+	}
+	err = tx.indexStore.Delete(name)
 	if err != nil {
 		return err
 	}
 
-	indexName := buildIndexName(name)
-	err = it.Delete([]byte(indexName))
-	if err == ErrRecordNotFound {
-		return ErrIndexNotFound
-	}
+	return index.New(tx.tx, index.Options{
+		IndexName: opts.IndexName,
+		TableName: opts.TableName,
+		FieldName: opts.FieldName,
+		Unique:    opts.Unique,
+	}).Truncate()
+}
+
+// ReIndex truncates and recreates selected index from scratch.
+func (tx Tx) ReIndex(indexName string) error {
+	idx, err := tx.GetIndex(indexName)
 	if err != nil {
 		return err
 	}
 
-	err = tx.tx.DropStore(indexName)
-	if err == engine.ErrStoreNotFound {
-		return ErrIndexNotFound
+	tb, err := tx.GetTable(idx.TableName)
+	if err != nil {
+		return err
 	}
-	return err
+
+	err = idx.Truncate()
+	if err != nil {
+		return err
+	}
+
+	return tb.Iterate(func(r record.Record) error {
+		f, err := r.GetField(idx.FieldName)
+		if err != nil {
+			return err
+		}
+
+		return idx.Set(f.Value, r.(record.Keyer).Key())
+	})
+}
+
+// ReIndexAll truncates and recreates all indexes of the database from scratch.
+func (tx Tx) ReIndexAll() error {
+	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+		var opts indexOptions
+		err := opts.ScanRecord(record.EncodedRecord(v))
+		if err != nil {
+			return err
+		}
+
+		idx := index.New(tx.tx, index.Options{
+			IndexName: opts.IndexName,
+			TableName: opts.TableName,
+			FieldName: opts.FieldName,
+			Unique:    opts.Unique,
+		})
+
+		tb, err := tx.GetTable(opts.TableName)
+		if err != nil {
+			return err
+		}
+
+		err = idx.Truncate()
+		if err != nil {
+			return err
+		}
+
+		return tb.Iterate(func(r record.Record) error {
+			f, err := r.GetField(opts.FieldName)
+			if err != nil {
+				return err
+			}
+
+			return idx.Set(f.Value, r.(record.Keyer).Key())
+		})
+	})
 }
 
 // A Table represents a collection of records.
 type Table struct {
-	tx      *Tx
-	store   engine.Store
-	name    string
-	indexes map[string]Index
+	tx       *Tx
+	store    engine.Store
+	name     string
+	cfgStore *tableConfigStore
 }
 
 type encodedRecordWithKey struct {
@@ -410,7 +545,7 @@ func (e encodedRecordWithKey) Key() []byte {
 
 // Iterate goes through all the records of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t Table) Iterate(fn func(r record.Record) error) error {
+func (t *Table) Iterate(fn func(r record.Record) error) error {
 	// To avoid unnecessary allocations, we create the slice once and reuse it
 	// at each call of the fn method.
 	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
@@ -428,7 +563,7 @@ func (t Table) Iterate(fn func(r record.Record) error) error {
 }
 
 // GetRecord returns one record by key.
-func (t Table) GetRecord(key []byte) (record.Record, error) {
+func (t *Table) GetRecord(key []byte) (record.Record, error) {
 	v, err := t.store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
@@ -437,41 +572,57 @@ func (t Table) GetRecord(key []byte) (record.Record, error) {
 		return nil, errors.Wrapf(err, "failed to fetch record %q", key)
 	}
 
-	return record.EncodedRecord(v), err
+	var r encodedRecordWithKey
+	r.EncodedRecord = record.EncodedRecord(v)
+	r.key = key
+	return &r, err
 }
 
-// A PrimaryKeyer is a record that generates a key based on its primary key.
-type PrimaryKeyer interface {
-	PrimaryKey() ([]byte, error)
-}
-
-// Insert the record into the table.
-// If the record implements the table.Pker interface, it will be used to generate a key,
-// otherwise it will be generated automatically. Note that there are no ordering guarantees
-// regarding the key generated by default.
-func (t Table) Insert(r record.Record) ([]byte, error) {
-	v, err := record.Encode(r)
+func (t *Table) generateKey(r record.Record) ([]byte, error) {
+	cfg, err := t.cfgStore.Get(t.name)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode record")
+		return nil, err
 	}
 
 	var key []byte
-	if pker, ok := r.(PrimaryKeyer); ok {
-		key, err = pker.PrimaryKey()
+	if cfg.PrimaryKeyName != "" {
+		f, err := r.GetField(cfg.PrimaryKeyName)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to generate key from PrimaryKey method")
+			return nil, err
 		}
-		if len(key) == 0 {
-			return nil, errors.New("primary key must not be empty")
-		}
-	} else {
-		id, err := ulid.New(ulid.Timestamp(time.Now()), entropy)
-		if err == nil {
-			key, err = id.MarshalText()
-		}
+		v, err := f.ConvertTo(cfg.PrimaryKeyType)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to generate key")
+			return nil, err
 		}
+		return v.Data, nil
+	}
+
+	t.tx.db.mu.Lock()
+	defer t.tx.db.mu.Unlock()
+
+	cfg, err = t.cfgStore.Get(t.name)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.lastKey++
+	key = value.NewInt64(cfg.lastKey).Data
+	err = t.cfgStore.Replace(t.name, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return key, nil
+}
+
+// Insert the record into the table.
+// If a primary key has been specified during the table creation, the field is expected to be present
+// in the given record.
+// If no primary key has been selected, a monotonic autoincremented integer key will be generated.
+func (t *Table) Insert(r record.Record) ([]byte, error) {
+	key, err := t.generateKey(r)
+	if err != nil {
+		return nil, err
 	}
 
 	_, err = t.store.Get(key)
@@ -479,18 +630,28 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 		return nil, ErrDuplicateRecord
 	}
 
+	v, err := record.Encode(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encode record")
+	}
+
 	err = t.store.Put(key, v)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, idx := range t.indexes {
+	indexes, err := t.Indexes()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
-			continue
+			f.Value = nilLitteral.Value.Value
 		}
 
-		err = idx.Set(f.Data, key)
+		err = idx.Set(f.Value, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
 				return nil, ErrDuplicateRecord
@@ -505,19 +666,24 @@ func (t Table) Insert(r record.Record) ([]byte, error) {
 
 // Delete a record by key.
 // Indexes are automatically updated.
-func (t Table) Delete(key []byte) error {
+func (t *Table) Delete(key []byte) error {
 	r, err := t.GetRecord(key)
 	if err != nil {
 		return err
 	}
 
-	for _, idx := range t.indexes {
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			return err
 		}
 
-		err = idx.Delete(f.Data, key)
+		err = idx.Delete(f.Value, key)
 		if err != nil {
 			return err
 		}
@@ -526,19 +692,19 @@ func (t Table) Delete(key []byte) error {
 	return t.store.Delete(key)
 }
 
-type pkWrapper struct {
-	record.Record
-	pk []byte
-}
-
-func (p pkWrapper) PrimaryKey() ([]byte, error) {
-	return p.pk, nil
-}
-
 // Replace a record by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t Table) Replace(key []byte, r record.Record) error {
+func (t *Table) Replace(key []byte, r record.Record) error {
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	return t.replace(indexes, key, r)
+}
+
+func (t *Table) replace(indexes map[string]Index, key []byte, r record.Record) error {
 	// make sure key exists
 	old, err := t.GetRecord(key)
 	if err != nil {
@@ -546,13 +712,13 @@ func (t Table) Replace(key []byte, r record.Record) error {
 	}
 
 	// remove key from indexes
-	for _, idx := range t.indexes {
+	for _, idx := range indexes {
 		f, err := old.GetField(idx.FieldName)
 		if err != nil {
 			return err
 		}
 
-		err = idx.Delete(f.Data, key)
+		err = idx.Delete(f.Value, key)
 		if err != nil {
 			return err
 		}
@@ -571,13 +737,13 @@ func (t Table) Replace(key []byte, r record.Record) error {
 	}
 
 	// update indexes
-	for _, idx := range t.indexes {
+	for _, idx := range indexes {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			continue
 		}
 
-		err = idx.Set(f.Data, key)
+		err = idx.Set(f.Value, key)
 		if err != nil {
 			return err
 		}
@@ -587,18 +753,18 @@ func (t Table) Replace(key []byte, r record.Record) error {
 }
 
 // Truncate deletes all the records from the table.
-func (t Table) Truncate() error {
+func (t *Table) Truncate() error {
 	return t.store.Truncate()
 }
 
 // TableName returns the name of the table.
-func (t Table) TableName() string {
+func (t *Table) TableName() string {
 	return t.name
 }
 
 // Indexes returns a map of all the indexes of a table.
-func (t Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.tx.Store(indexTable)
+func (t *Table) Indexes() (map[string]Index, error) {
+	s, err := t.tx.tx.Store(indexStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -606,13 +772,13 @@ func (t Table) Indexes() (map[string]Index, error) {
 	tb := Table{
 		tx:    t.tx,
 		store: s,
-		name:  indexTable,
+		name:  indexStoreName,
 	}
 
 	tableName := []byte(t.name)
 	indexes := make(map[string]Index)
 
-	err = record.NewStream(tb).
+	err = record.NewStream(&tb).
 		Filter(func(r record.Record) (bool, error) {
 			f, err := r.GetField("TableName")
 			if err != nil {
@@ -622,26 +788,23 @@ func (t Table) Indexes() (map[string]Index, error) {
 			return bytes.Equal(f.Data, tableName), nil
 		}).
 		Iterate(func(r record.Record) error {
-			var opt indexOptions
-			err := opt.ScanRecord(r)
+			var opts indexOptions
+			err := opts.ScanRecord(r)
 			if err != nil {
 				return err
 			}
 
-			s, err := t.tx.tx.Store(buildIndexName(opt.IndexName))
-			if err == engine.ErrStoreNotFound {
-				return ErrIndexNotFound
-			}
-			if err != nil {
-				return err
-			}
-
-			indexes[opt.FieldName] = Index{
-				Index:     index.New(s, index.Options{Unique: opt.Unique}),
-				IndexName: opt.IndexName,
-				TableName: opt.TableName,
-				FieldName: opt.FieldName,
-				Unique:    opt.Unique,
+			indexes[opts.FieldName] = Index{
+				Index: index.New(t.tx.tx, index.Options{
+					IndexName: opts.IndexName,
+					TableName: opts.TableName,
+					FieldName: opts.FieldName,
+					Unique:    opts.Unique,
+				}),
+				IndexName: opts.IndexName,
+				TableName: opts.TableName,
+				FieldName: opts.FieldName,
+				Unique:    opts.Unique,
 			}
 
 			return nil
@@ -650,7 +813,6 @@ func (t Table) Indexes() (map[string]Index, error) {
 		return nil, err
 	}
 
-	t.indexes = indexes
 	return indexes, nil
 }
 
@@ -659,10 +821,6 @@ type indexOptions struct {
 	TableName string
 	FieldName string
 	Unique    bool
-}
-
-func (i *indexOptions) PrimaryKey() ([]byte, error) {
-	return []byte(buildIndexName(i.IndexName)), nil
 }
 
 // Field implements the field method of the record.Record interface.
@@ -734,29 +892,6 @@ func (i *indexOptions) ScanRecord(rec record.Record) error {
 	})
 }
 
-func readIndexOptions(tx *Tx, indexName string) (*indexOptions, error) {
-	it, err := tx.GetTable(indexTable)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := it.GetRecord([]byte(indexName))
-	if err != nil {
-		if err == ErrRecordNotFound {
-			return nil, ErrIndexNotFound
-		}
-
-		return nil, err
-	}
-	var idxopts indexOptions
-	err = idxopts.ScanRecord(r)
-	if err != nil {
-		return nil, err
-	}
-
-	return &idxopts, nil
-}
-
 // Index of a table field. Contains information about
 // the index configuration and provides methods to manipulate the index.
 type Index struct {
@@ -766,4 +901,176 @@ type Index struct {
 	TableName string
 	FieldName string
 	Unique    bool
+}
+
+type indexStore struct {
+	st engine.Store
+}
+
+func (tx *Tx) getIndexStore() (*indexStore, error) {
+	st, err := tx.tx.Store(indexStoreName)
+	if err != nil {
+		return nil, err
+	}
+	return &indexStore{
+		st: st,
+	}, nil
+}
+
+func (t *indexStore) Insert(cfg indexOptions) error {
+	key := []byte(buildIndexName(cfg.IndexName))
+	_, err := t.st.Get(key)
+	if err == nil {
+		return ErrIndexAlreadyExists
+	}
+	if err != engine.ErrKeyNotFound {
+		return err
+	}
+
+	v, err := record.Encode(&cfg)
+	if err != nil {
+		return err
+	}
+
+	return t.st.Put(key, v)
+}
+
+func (t *indexStore) Get(indexName string) (*indexOptions, error) {
+	key := []byte(buildIndexName(indexName))
+	v, err := t.st.Get(key)
+	if err == engine.ErrKeyNotFound {
+		return nil, ErrIndexNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var idxopts indexOptions
+	err = idxopts.ScanRecord(record.EncodedRecord(v))
+	if err != nil {
+		return nil, err
+	}
+
+	return &idxopts, nil
+}
+
+func (t *indexStore) Delete(indexName string) error {
+	key := []byte(buildIndexName(indexName))
+	err := t.st.Delete(key)
+	if err == engine.ErrKeyNotFound {
+		return ErrIndexNotFound
+	}
+	return err
+}
+
+type tableConfigStore struct {
+	st engine.Store
+}
+
+func (tx *Tx) getTableConfigStore() (*tableConfigStore, error) {
+	st, err := tx.tx.Store(tableConfigStoreName)
+	if err != nil {
+		return nil, err
+	}
+	return &tableConfigStore{
+		st: st,
+	}, nil
+}
+
+func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
+	key := []byte(tableName)
+	_, err := t.st.Get(key)
+	if err == nil {
+		return ErrTableAlreadyExists
+	}
+	if err != engine.ErrKeyNotFound {
+		return err
+	}
+
+	var fb record.FieldBuffer
+	fb.Add(record.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(record.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
+	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
+
+	v, err := record.Encode(&fb)
+	if err != nil {
+		return err
+	}
+
+	return t.st.Put(key, v)
+}
+
+func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
+	key := []byte(tableName)
+	_, err := t.st.Get(key)
+	if err == engine.ErrKeyNotFound {
+		return ErrTableNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	var fb record.FieldBuffer
+	fb.Add(record.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(record.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
+	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
+
+	v, err := record.Encode(&fb)
+	if err != nil {
+		return err
+	}
+	return t.st.Put(key, v)
+}
+
+func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
+	key := []byte(tableName)
+	v, err := t.st.Get(key)
+	if err == engine.ErrKeyNotFound {
+		return nil, ErrTableNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg TableConfig
+
+	r := record.EncodedRecord(v)
+
+	f, err := r.GetField("PrimaryKeyName")
+	if err != nil {
+		return nil, err
+	}
+	cfg.PrimaryKeyName, err = f.DecodeToString()
+	if err != nil {
+		return nil, err
+	}
+	f, err = r.GetField("PrimaryKeyType")
+	if err != nil {
+		return nil, err
+	}
+	tp, err := f.DecodeToUint8()
+	if err != nil {
+		return nil, err
+	}
+	cfg.PrimaryKeyType = value.Type(tp)
+
+	f, err = r.GetField("lastKey")
+	if err != nil {
+		return nil, err
+	}
+	cfg.lastKey, err = f.DecodeToInt64()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+func (t *tableConfigStore) Delete(tableName string) error {
+	key := []byte(tableName)
+	err := t.st.Delete(key)
+	if err == engine.ErrKeyNotFound {
+		return ErrTableNotFound
+	}
+	return err
 }

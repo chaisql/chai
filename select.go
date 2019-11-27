@@ -17,7 +17,7 @@ func (p *parser) parseSelectStatement() (selectStmt, error) {
 	var err error
 
 	// Parse field list or wildcard
-	stmt.FieldSelectors, err = p.parseFieldNames()
+	stmt.selectors, err = p.parseResultFields()
 	if err != nil {
 		return stmt, err
 	}
@@ -44,30 +44,62 @@ func (p *parser) parseSelectStatement() (selectStmt, error) {
 		return stmt, err
 	}
 
+	stmt.stat = p.stat
 	return stmt, nil
 }
 
-// parseFieldNames parses the list of field names or a wildward.
-func (p *parser) parseFieldNames() ([]fieldSelector, error) {
-	// Check if the * token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return nil, nil
-	}
-	p.Unscan()
-
-	// Scan the list of fields
-	idents, err := p.ParseIdentList()
+// parseResultFields parses the list of result fields.
+func (p *parser) parseResultFields() ([]resultField, error) {
+	// Parse first (required) result field.
+	rf, err := p.parseResultField()
 	if err != nil {
 		return nil, err
 	}
+	rfields := []resultField{rf}
 
-	// turn it into field selectors
-	fselectors := make([]fieldSelector, len(idents))
-	for i := range idents {
-		fselectors[i] = fieldSelector(idents[i])
+	// Parse remaining (optional) result fields.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			return rfields, nil
+		}
+
+		if rf, err = p.parseResultField(); err != nil {
+			return nil, err
+		}
+
+		rfields = append(rfields, rf)
+	}
+}
+
+// parseResultField parses the list of result fields.
+func (p *parser) parseResultField() (resultField, error) {
+	// Check if the * token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
+		return wildcard{}, nil
+	}
+	p.Unscan()
+
+	// Check if it's the key() function
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	if tok == scanner.KEY {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.LPAREN {
+			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+				return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+			}
+
+			return keyFunc{}, nil
+		}
+	}
+	p.Unscan()
+
+	// Check if it's an identifier
+	ident, err := p.ParseIdent()
+	if err != nil {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"ident or string"}, pos)
 	}
 
-	return fselectors, nil
+	return fieldSelector(ident), nil
 }
 
 func (p *parser) parseFrom() (string, error) {
@@ -101,11 +133,12 @@ func (p *parser) parseOffset() (expr, error) {
 
 // selectStmt is a DSL that allows creating a full Select query.
 type selectStmt struct {
-	tableName      string
-	whereExpr      expr
-	offsetExpr     expr
-	limitExpr      expr
-	FieldSelectors []fieldSelector
+	tableName  string
+	whereExpr  expr
+	offsetExpr expr
+	limitExpr  expr
+	selectors  []resultField
+	stat       parserStat
 }
 
 // IsReadOnly always returns true. It implements the Statement interface.
@@ -132,7 +165,27 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		return res, err
 	}
 
-	st, err := newQueryOptimizer(tx, t).optimizeQuery(stmt.whereExpr, args)
+	indexes, err := t.Indexes()
+	if err != nil {
+		return res, err
+	}
+
+	cfg, err := t.cfgStore.Get(t.name)
+	if err != nil {
+		return res, err
+	}
+
+	qo := queryOptimizer{
+		tx:        tx,
+		t:         t,
+		stat:      stmt.stat,
+		whereExpr: stmt.whereExpr,
+		args:      args,
+		cfg:       cfg,
+		indexes:   indexes,
+	}
+
+	st, err := qo.optimizeQuery()
 	if err != nil {
 		return res, err
 	}
@@ -156,10 +209,14 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		}
 
 		if v.Value.Type < value.Int {
-			return res, fmt.Errorf("offset expression must evaluate to a 64 bit integer, got %q", v.Value.Type)
+			return res, fmt.Errorf("offset expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		offset, err = value.DecodeInt(v.Value.Data)
+		voff, err := v.Value.ConvertTo(value.Int)
+		if err != nil {
+			return res, err
+		}
+		offset, err = value.DecodeInt(voff.Data)
 		if err != nil {
 			return res, err
 		}
@@ -176,10 +233,14 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		}
 
 		if v.Value.Type < value.Int {
-			return res, fmt.Errorf("limit expression must evaluate to a 64 bit integer, got %q", v.Value.Type)
+			return res, fmt.Errorf("limit expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		limit, err = value.DecodeInt(v.Value.Data)
+		vlim, err := v.Value.ConvertTo(value.Int)
+		if err != nil {
+			return res, err
+		}
+		limit, err = value.DecodeInt(vlim.Data)
 		if err != nil {
 			return res, err
 		}
@@ -195,32 +256,28 @@ func (stmt selectStmt) exec(tx *Tx, args []driver.NamedValue) (Result, error) {
 		st = st.Limit(limit)
 	}
 
-	if len(stmt.FieldSelectors) > 0 {
-		fieldNames := make([]string, len(stmt.FieldSelectors))
-		for i := range stmt.FieldSelectors {
-			fieldNames[i] = stmt.FieldSelectors[i].Name()
-		}
-		st = st.Map(func(r record.Record) (record.Record, error) {
-			return recordMask{
-				r:      r,
-				fields: fieldNames,
-			}, nil
-		})
-	}
+	st = st.Map(func(r record.Record) (record.Record, error) {
+		return recordMask{
+			cfg:          cfg,
+			r:            r,
+			resultFields: stmt.selectors,
+		}, nil
+	})
 
 	return Result{Stream: st}, nil
 }
 
 type recordMask struct {
-	r      record.Record
-	fields []string
+	cfg          *TableConfig
+	r            record.Record
+	resultFields []resultField
 }
 
 var _ record.Record = recordMask{}
 
 func (r recordMask) GetField(name string) (record.Field, error) {
-	for _, n := range r.fields {
-		if n == name {
+	for _, rf := range r.resultFields {
+		if rf.Name() == name || rf.Name() == "*" {
 			return r.r.GetField(name)
 		}
 	}
@@ -229,17 +286,94 @@ func (r recordMask) GetField(name string) (record.Field, error) {
 }
 
 func (r recordMask) Iterate(fn func(f record.Field) error) error {
-	for _, n := range r.fields {
-		f, err := r.r.GetField(n)
-		if err != nil {
-			continue
-		}
+	stack := evalStack{
+		Record: r.r,
+		Cfg:    r.cfg,
+	}
 
-		err = fn(f)
+	for _, rf := range r.resultFields {
+		err := rf.Iterate(stack, fn)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+type resultField interface {
+	Iterate(stack evalStack, fn func(fd record.Field) error) error
+	Name() string
+}
+
+type fieldSelector string
+
+func (f fieldSelector) Name() string {
+	return string(f)
+}
+
+func (f fieldSelector) SelectField(r record.Record) (record.Field, error) {
+	if r == nil {
+		return record.Field{}, fmt.Errorf("field %q not found", f)
+	}
+
+	return r.GetField(string(f))
+}
+
+func (f fieldSelector) Iterate(stack evalStack, fn func(fd record.Field) error) error {
+	fd, err := f.SelectField(stack.Record)
+	if err != nil {
+		return nil
+	}
+
+	return fn(fd)
+}
+
+// Eval extracts the record from the context and selects the right field.
+// It implements the Expr interface.
+func (f fieldSelector) Eval(stack evalStack) (evalValue, error) {
+	if stack.Record == nil {
+		return evalValue{}, fmt.Errorf("field %q not found", f)
+	}
+
+	fd, err := f.SelectField(stack.Record)
+	if err != nil {
+		return nilLitteral, nil
+	}
+
+	return newSingleEvalValue(fd.Value), nil
+}
+
+type wildcard struct{}
+
+func (w wildcard) Name() string {
+	return "*"
+}
+
+func (w wildcard) Iterate(stack evalStack, fn func(fd record.Field) error) error {
+	return stack.Record.Iterate(fn)
+}
+
+type keyFunc struct{}
+
+func (k keyFunc) Name() string {
+	return "key()"
+}
+
+func (k keyFunc) Iterate(stack evalStack, fn func(fd record.Field) error) error {
+	if stack.Cfg.PrimaryKeyName != "" {
+		fd, err := stack.Record.GetField(stack.Cfg.PrimaryKeyName)
+		if err != nil {
+			return err
+		}
+		return fn(fd)
+	}
+
+	return fn(record.Field{
+		Name: "key()",
+		Value: value.Value{
+			Data: stack.Record.(record.Keyer).Key(),
+			Type: value.Int64,
+		},
+	})
 }

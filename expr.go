@@ -1,7 +1,6 @@
 package genji
 
 import (
-	"bytes"
 	"database/sql/driver"
 	"fmt"
 
@@ -13,7 +12,7 @@ import (
 var (
 	trueLitteral  = newSingleEvalValue(value.NewBool(true))
 	falseLitteral = newSingleEvalValue(value.NewBool(false))
-	nilLitteral   = newSingleEvalValue(value.NewString("nil"))
+	nilLitteral   = newSingleEvalValue(value.NewNull())
 )
 
 // An expr evaluates to a value.
@@ -28,6 +27,7 @@ type evalStack struct {
 	Tx     *Tx
 	Record record.Record
 	Params []driver.NamedValue
+	Cfg    *TableConfig
 }
 
 // A evalValue is the result of evaluating an expression.
@@ -126,14 +126,14 @@ func int64Value(v int64) litteralValue {
 	return litteralValue{value.NewInt64(v)}
 }
 
-// float32Value creates a litteral value of type Float32.
-func float32Value(v float32) litteralValue {
-	return litteralValue{value.NewFloat32(v)}
-}
-
 // float64Value creates a litteral value of type Float64.
 func float64Value(v float64) litteralValue {
 	return litteralValue{value.NewFloat64(v)}
+}
+
+// nullValue creates a litteral value of type Null.
+func nullValue() litteralValue {
+	return litteralValue{value.NewNull()}
 }
 
 // Truthy returns true if the Data is different than the zero value of
@@ -230,23 +230,6 @@ func (p positionalParam) Extract(params []driver.NamedValue) (interface{}, error
 	return params[idx].Value, nil
 }
 
-// An identOrStringLitteral checks first if the string
-// refers to a field, if not, it will we used as a string litteral.
-type identOrStringLitteral string
-
-// Eval extracts the record from the context and selects the right field.
-// It implements the Expr interface.
-func (i identOrStringLitteral) Eval(stack evalStack) (evalValue, error) {
-	if stack.Record != nil {
-		v, err := fieldSelector(i).Eval(stack)
-		if err == nil {
-			return v, nil
-		}
-	}
-
-	return evalValue{Value: stringValue(string(i))}, nil
-}
-
 type simpleOperator struct {
 	a, b  expr
 	Token scanner.Token
@@ -276,9 +259,14 @@ type cmpOp struct {
 	simpleOperator
 }
 
-// Eq creates an expression that returns true if a equals b.
+// eq creates an expression that returns true if a equals b.
 func eq(a, b expr) expr {
 	return cmpOp{simpleOperator{a, b, scanner.EQ}}
+}
+
+// neq creates an expression that returns true if a equals b.
+func neq(a, b expr) expr {
+	return cmpOp{simpleOperator{a, b, scanner.NEQ}}
 }
 
 // gt creates an expression that returns true if a is greater than b.
@@ -357,96 +345,22 @@ func (op cmpOp) compare(l, r evalValue) (bool, error) {
 }
 
 func (op cmpOp) compareLitterals(l, r litteralValue) (bool, error) {
-	var err error
-
-	// if same type, no conversion needed
-	if l.Type == r.Type || (l.Type == value.String && r.Type == value.Bytes) || (r.Type == value.String && l.Type == value.Bytes) {
-		var ok bool
-		switch op.Token {
-		case scanner.EQ:
-			ok = bytes.Equal(l.Data, r.Data)
-		case scanner.GT:
-			ok = bytes.Compare(l.Data, r.Data) > 0
-		case scanner.GTE:
-			ok = bytes.Compare(l.Data, r.Data) >= 0
-		case scanner.LT:
-			ok = bytes.Compare(l.Data, r.Data) < 0
-		case scanner.LTE:
-			ok = bytes.Compare(l.Data, r.Data) <= 0
-		}
-
-		return ok, nil
+	switch op.Token {
+	case scanner.EQ:
+		return l.IsEqual(r.Value)
+	case scanner.NEQ:
+		return l.IsNotEqual(r.Value)
+	case scanner.GT:
+		return l.IsGreaterThan(r.Value)
+	case scanner.GTE:
+		return l.IsGreaterThanOrEqual(r.Value)
+	case scanner.LT:
+		return l.IsLesserThan(r.Value)
+	case scanner.LTE:
+		return l.IsLesserThanOrEqual(r.Value)
+	default:
+		panic(fmt.Sprintf("unknown token %v", op.Token))
 	}
-
-	lv, err := l.Decode()
-	if err != nil {
-		return false, err
-	}
-
-	rv, err := r.Decode()
-	if err != nil {
-		return false, err
-	}
-
-	// number OP number
-	if value.IsNumber(l.Type) && value.IsNumber(r.Type) {
-		af, bf := numberToFloat(lv), numberToFloat(rv)
-
-		var ok bool
-
-		switch op.Token {
-		case scanner.EQ:
-			ok = af == bf
-		case scanner.GT:
-			ok = af > bf
-		case scanner.GTE:
-			ok = af >= bf
-		case scanner.LT:
-			ok = af < bf
-		case scanner.LTE:
-			ok = af <= bf
-		}
-
-		if ok {
-			return true, nil
-		}
-
-		return false, nil
-	}
-	return false, nil
-}
-
-func numberToFloat(v interface{}) float64 {
-	var f float64
-
-	switch t := v.(type) {
-	case uint:
-		f = float64(t)
-	case uint8:
-		f = float64(t)
-	case uint16:
-		f = float64(t)
-	case uint32:
-		f = float64(t)
-	case uint64:
-		f = float64(t)
-	case int:
-		f = float64(t)
-	case int8:
-		f = float64(t)
-	case int16:
-		f = float64(t)
-	case int32:
-		f = float64(t)
-	case int64:
-		f = float64(t)
-	case float32:
-		f = float64(t)
-	case float64:
-		f = t
-	}
-
-	return f
 }
 
 type andOp struct {

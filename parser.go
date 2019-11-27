@@ -1,7 +1,9 @@
 package genji
 
 import (
+	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -14,6 +16,7 @@ type parser struct {
 	s             *scanner.BufScanner
 	orderedParams int
 	namedParams   int
+	stat          parserStat
 }
 
 // newParser returns a new instance of Parser.
@@ -146,6 +149,8 @@ func opToExpr(op scanner.Token, lhs, rhs expr) expr {
 	switch op {
 	case scanner.EQ:
 		return eq(lhs, rhs)
+	case scanner.NEQ:
+		return neq(lhs, rhs)
 	case scanner.GT:
 		return gt(lhs, rhs)
 	case scanner.GTE:
@@ -160,7 +165,7 @@ func opToExpr(op scanner.Token, lhs, rhs expr) expr {
 		return or(lhs, rhs)
 	}
 
-	return nil
+	panic(fmt.Sprintf("unknown operator %q", op))
 }
 
 // parseUnaryExpr parses an non-binary expression.
@@ -168,9 +173,8 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
+		p.stat.exprFields = append(p.stat.exprFields, lit)
 		return fieldSelector(lit), nil
-	case scanner.IDENTORSTRING:
-		return identOrStringLitteral(lit), nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
@@ -204,9 +208,19 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
+		switch {
+		case v < math.MaxInt8:
+			return litteralValue{value.NewInt8(int8(v))}, nil
+		case v < math.MaxInt16:
+			return litteralValue{value.NewInt16(int16(v))}, nil
+		case v < math.MaxInt32:
+			return litteralValue{value.NewInt32(int32(v))}, nil
+		}
 		return litteralValue{value.NewInt64(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
 		return litteralValue{value.NewBool(tok == scanner.TRUE)}, nil
+	case scanner.NULL:
+		return litteralValue{value.NewNull()}, nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
@@ -215,7 +229,7 @@ func (p *parser) parseUnaryExpr() (expr, error) {
 // ParseIdent parses an identifier.
 func (p *parser) ParseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok != scanner.IDENT && tok != scanner.IDENTORSTRING {
+	if tok != scanner.IDENT {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 	}
 	return lit, nil
@@ -269,6 +283,48 @@ func (p *parser) parseParam() (interface{}, error) {
 	}
 }
 
+func (p *parser) parseType() (value.Type, error) {
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.TYPEBYTES:
+		return value.Bytes, nil
+	case scanner.TYPESTRING:
+		return value.String, nil
+	case scanner.TYPEBOOL:
+		return value.Bool, nil
+	case scanner.TYPEINT8:
+		return value.Int8, nil
+	case scanner.TYPEINT16:
+		return value.Int16, nil
+	case scanner.TYPEINT32:
+		return value.Int32, nil
+	case scanner.TYPEINT64:
+		return value.Int64, nil
+	case scanner.TYPEINT:
+		return value.Int, nil
+	case scanner.TYPEUINT8:
+		return value.Uint8, nil
+	case scanner.TYPEUINT16:
+		return value.Uint16, nil
+	case scanner.TYPEUINT32:
+		return value.Uint32, nil
+	case scanner.TYPEUINT64:
+		return value.Uint64, nil
+	case scanner.TYPEUINT:
+		return value.Uint, nil
+	case scanner.TYPEFLOAT64:
+		return value.Float64, nil
+	case scanner.TYPEINTEGER:
+		return value.Int, nil
+	case scanner.TYPENUMERIC:
+		return value.Float64, nil
+	case scanner.TYPETEXT:
+		return value.String, nil
+	}
+
+	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
+}
+
 // Scan returns the next token from the underlying scanner.
 func (p *parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
 
@@ -285,3 +341,9 @@ func (p *parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 
 // Unscan pushes the previously read token back onto the buffer.
 func (p *parser) Unscan() { p.s.Unscan() }
+
+// parserStat carries contextual information
+// discovered while parsing queries.
+type parserStat struct {
+	exprFields []string
+}

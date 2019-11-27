@@ -10,7 +10,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/record/recordutil"
+	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
@@ -897,12 +897,12 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
-		err = recordutil.IteratorToJSON(&buf, st)
+		err = record.IteratorToCSV(&buf, st)
 		require.NoError(t, err)
-		require.Equal(t, `{"a":5}
-{"a":5}
-{"a":5}
-{"a":5}
+		require.Equal(t, `5
+5
+5
+5
 `, buf.String())
 	})
 
@@ -1001,12 +1001,12 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
-			err = recordutil.IteratorToJSON(&buf, st)
+			err = record.IteratorToCSV(&buf, st)
 			require.NoError(t, err)
-			require.Equal(t, `{"a":5}
-{"a":5}
-{"a":5}
-{"a":5}
+			require.Equal(t, `5
+5
+5
+5
 `, buf.String())
 			return nil
 		})

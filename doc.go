@@ -55,7 +55,7 @@ Creating a table is as simple as:
 
 or:
 
-  CREATE TABLE tableName IF NOT EXISTS
+  CREATE TABLE IF NOT EXISTS tableName
 
 The CREATE INDEX statement
 
@@ -143,12 +143,12 @@ Litteral values:
   10    Integers, interpreted as int64
   3.14  Decimals, interpreted as float64
   true  Booleans, interpreted as bool
-  "foo" Strings, interpreted as string
   'foo' Strings, interpreted as string
 
 Identifiers:
 
   foo   Any string without quotes is interpreted as a field name
+  "foo" Any double quoted string is interpreted as a field name
 
 Binary operators: Comparison operators
 
@@ -158,7 +158,8 @@ which allows comparing signed integers with unsigned integers or floats for exam
 When evaluating a binary expression, the left and right expressions are evaluated first
 then compared.
 
- <exprA> = <exprB>  Evaluates to true if two expressions are equals
+ <exprA> = <exprB>  Evaluates to true if two expressions are equal
+ <exprA> != <exprB>  Evaluates to true if two expressions are not equal
  <exprA> > <exprB>  Evaluates to true if exprA is greater than exprB
  <exprA> >= <exprB> Evaluates to true if exprA is greater than or equal to exprB
  <exprA> < <exprB>  Evaluates to true if exprA is lesser than exprB
@@ -194,13 +195,10 @@ In order to simplify these implementation, Genji provides a command line code ge
 Let's assume that there is a file named user.go containing the following type:
 
   type User struct {
-	  ID   int64  `genji:"pk"`
+	  ID   int64
 	  Name string
 	  Age  uint32
   }
-
-Note that even if struct tags are defined, Genji won't use reflection. They will be parsed by the genji command-line tool
-to generate code based on them.
 
 The genji command line can be used as follows to generate the code:
 
@@ -212,7 +210,7 @@ This will generate a file named user.genji.go containing the following methods
   func (u *User) GetField(name string) (record.Field, error) {}
   func (u *User) Iterate(fn func(record.Field) error) error {}
   func (u *User) ScanRecord(rec record.Record) error {}
-  func (u *User) PrimaryKey() ([]byte, error) {}
+  func (u *User) Scan(src interface{}) error {}
 
 The User type now implements all the interfaces needed to interact correctly with the database APIs.
 See the examples in this page to see how it can be used.

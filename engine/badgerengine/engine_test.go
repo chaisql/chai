@@ -1,4 +1,4 @@
-package bolt_test
+package badgerengine_test
 
 import (
 	"io/ioutil"
@@ -7,29 +7,33 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/bolt"
+	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/enginetest"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/stretchr/testify/require"
 )
 
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
-		ng, err := bolt.NewEngine(path.Join(dir, "test.db"), 0600, nil)
+		opts := badger.DefaultOptions(path.Join(dir, "badger"))
+		opts.Logger = nil
+
+		ng, err := badgerengine.NewEngine(opts)
 		require.NoError(t, err)
 		return ng, cleanup
 	}
 }
 
-func TestBoltEngine(t *testing.T) {
+func TestBadgerEngine(t *testing.T) {
 	enginetest.TestSuite(t, builder(t))
 }
 
-func BenchmarkBoltEngineStorePut(b *testing.B) {
+func BenchmarkBadgerEngineStorePut(b *testing.B) {
 	enginetest.BenchmarkStorePut(b, builder(b))
 }
 
-func BenchmarkBoltEngineTableScan(b *testing.B) {
+func BenchmarkBadgerEngineTableScan(b *testing.B) {
 	enginetest.BenchmarkStoreScan(b, builder(b))
 }
 

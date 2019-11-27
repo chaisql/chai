@@ -7,18 +7,17 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/value"
 )
 
 // GetField implements the field method of the record.Record interface.
 func (u *User) GetField(name string) (record.Field, error) {
 	switch name {
-	case "ID":
-		return record.NewInt64Field("ID", u.ID), nil
-	case "Name":
-		return record.NewStringField("Name", u.Name), nil
-	case "Age":
-		return record.NewUint32Field("Age", u.Age), nil
+	case "id":
+		return record.NewInt64Field("id", u.ID), nil
+	case "name":
+		return record.NewStringField("name", u.Name), nil
+	case "age":
+		return record.NewUint32Field("age", u.Age), nil
 	}
 
 	return record.Field{}, errors.New("unknown field")
@@ -29,17 +28,17 @@ func (u *User) GetField(name string) (record.Field, error) {
 func (u *User) Iterate(fn func(record.Field) error) error {
 	var err error
 
-	err = fn(record.NewInt64Field("ID", u.ID))
+	err = fn(record.NewInt64Field("id", u.ID))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewStringField("Name", u.Name))
+	err = fn(record.NewStringField("name", u.Name))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewUint32Field("Age", u.Age))
+	err = fn(record.NewUint32Field("age", u.Age))
 	if err != nil {
 		return err
 	}
@@ -54,11 +53,11 @@ func (u *User) ScanRecord(rec record.Record) error {
 		var err error
 
 		switch f.Name {
-		case "ID":
+		case "id":
 			u.ID, err = f.DecodeToInt64()
-		case "Name":
+		case "name":
 			u.Name, err = f.DecodeToString()
-		case "Age":
+		case "age":
 			u.Age, err = f.DecodeToUint32()
 		}
 		return err
@@ -68,15 +67,10 @@ func (u *User) ScanRecord(rec record.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (u *User) Scan(src interface{}) error {
-	r, ok := src.(record.Record)
+	rr, ok := src.(record.Record)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
 
-	return u.ScanRecord(r)
-}
-
-// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
-func (u *User) PrimaryKey() ([]byte, error) {
-	return value.EncodeInt64(u.ID), nil
+	return u.ScanRecord(rr)
 }

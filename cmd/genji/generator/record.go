@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/types"
@@ -26,7 +25,6 @@ const recordTmpl = `
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Scan" . }}
-{{- template "record-Pk" . }}
 {{- end }}
 `
 
@@ -39,11 +37,11 @@ const recordGetFieldTmpl = `
 func ({{$fl}} *{{$structName}}) GetField(name string) (record.Field, error) {
 	switch name {
 	{{- range .Fields }}
-	case "{{.Name}}":
+	case "{{.FieldName}}":
 		{{ if eq .GoType .GoNamedType -}}
-			return record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}), nil
+			return record.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}), nil
 		{{- else -}}
-			return record.New{{.Type}}Field("{{.Name}}", {{.GoType}}({{$fl}}.{{.Name}})), nil
+			return record.New{{.Type}}Field("{{.FieldName}}", {{.GoType}}({{$fl}}.{{.Name}})), nil
 		{{- end -}}
 	{{- end}}
 	}
@@ -65,9 +63,9 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(record.Field) error) error {
 
 	{{range .Fields}}
 	{{ if eq .GoType .GoNamedType -}}
-		err = fn(record.New{{.Type}}Field("{{.Name}}", {{$fl}}.{{.Name}}))
+		err = fn(record.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}))
 	{{- else -}}
-		err = fn(record.New{{.Type}}Field("{{.Name}}", {{.GoType}}({{$fl}}.{{.Name}})))
+		err = fn(record.New{{.Type}}Field("{{.FieldName}}", {{.GoType}}({{$fl}}.{{.Name}})))
 	{{- end }}
 	if err != nil {
 		return err
@@ -92,7 +90,7 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
 
 		switch f.Name {
 		{{- range .Fields}}
-		case "{{.Name}}":
+		case "{{.FieldName}}":
 		{{ if eq .GoType .GoNamedType -}}
 			{{$fl}}.{{.Name}}, err = f.DecodeTo{{.Type}}() 
 		{{- else -}}
@@ -116,42 +114,61 @@ const recordScanTmpl = `
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
-	r, ok := src.(record.Record)
+	rr, ok := src.(record.Record)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
 
-	return {{$fl}}.ScanRecord(r)
+	return {{$fl}}.ScanRecord(rr)
 }
 {{ end }}
 `
-
-const recordPkTmpl = `
-{{ define "record-Pk" }}
-{{- $fl := .FirstLetter -}}
-{{- $structName := .Name -}}
-
-{{- if ne .Pk.Name ""}}
-// PrimaryKey returns the primary key. It implements the table.PrimaryKeyer interface.
-func ({{$fl}} *{{$structName}}) PrimaryKey() ([]byte, error) {
-	{{ if eq .Pk.GoType .Pk.GoNamedType -}}
-		return value.Encode{{.Pk.Type}}({{$fl}}.{{.Pk.Name}}), nil
-	{{- else -}}
-		return value.Encode{{.Pk.Type}}({{.Pk.GoType}}({{$fl}}.{{.Pk.Name}})), nil
-	{{- end }}	
-}
-{{- end}}
-{{ end }}
-`
-
-type field struct {
-	Name, Type, GoType, GoNamedType string
-}
 
 type recordContext struct {
 	Name   string
-	Fields []field
-	Pk     field
+	Fields []recordField
+}
+
+type recordField struct {
+	// Name of the struct field, as found in the structure
+	Name string
+	// Genji type
+	Type string
+	// Go type
+	GoType string
+	// Name of the field in the encoded record
+	FieldName string
+	// The type
+	GoNamedType string
+}
+
+type recordTags []string
+
+func (r recordTags) FieldName() string {
+	switch {
+	case len(r) == 0:
+		return ""
+	case len(r) == 1 && r[0] == "-":
+		return ""
+	default:
+		return r[0]
+	}
+}
+
+func (r recordTags) Ignore() bool {
+	return len(r) == 1 && r[0] == "-"
+}
+
+func (r recordTags) Contains(option string) bool {
+	for i, opt := range r {
+		if i == 0 { // First tag is the name, not an option
+			continue
+		}
+		if opt == option {
+			return true
+		}
+	}
+	return false
 }
 
 func (rctx *recordContext) lookupRecord(f *ast.File, info *types.Info, target string) (bool, error) {
@@ -175,9 +192,8 @@ func (rctx *recordContext) lookupRecord(f *ast.File, info *types.Info, target st
 		for i := 0; i < str.NumFields(); i++ {
 			fld := str.Field(i)
 			tag := str.Tag(i)
-			tags := extractGenjiTags(tag)
-			_, ok := tags["ignore"] // This field has been tagged to be ignored or skipped
-			if ok {
+			tags := extractGenjiTag(tag)
+			if tags.Ignore() {
 				continue
 			}
 			typ := fld.Type()
@@ -207,14 +223,15 @@ func (rctx *recordContext) lookupRecord(f *ast.File, info *types.Info, target st
 			namedParts := strings.Split(namedType, ".")
 			namedType = namedParts[len(namedParts)-1]
 
-			fd := field{
-				fld.Name(), value.TypeFromGoType(typ.String()).String(), typ.String(), namedType,
+			fd := recordField{
+				fld.Name(), value.TypeFromGoType(typ.String()).String(), typ.String(), strings.ToLower(fld.Name()), namedType,
 			}
+
+			rctx.Fields = append(rctx.Fields, fd)
 			err := handleGenjiTag(rctx, fd, tags)
 			if err != nil {
 				return false, err
 			}
-			rctx.Fields = append(rctx.Fields, fd)
 
 		}
 
@@ -269,8 +286,8 @@ func (rctx *recordContext) Unexport(n string) string {
 	return string(name)
 }
 
-func extractGenjiTags(tag string) map[string]interface{} {
-	tags := map[string]interface{}{}
+func extractGenjiTag(tag string) recordTags {
+	tags := recordTags{}
 	if len(tag) == 0 {
 		return nil
 	}
@@ -278,27 +295,16 @@ func extractGenjiTags(tag string) map[string]interface{} {
 	if !ok {
 		return nil
 	}
-	gtags := strings.Split(v, ",")
-	for _, gtag := range gtags {
-		tags[gtag] = nil
-	}
+	tags = strings.Split(v, ",")
+
 	return tags
 
 }
 
-func handleGenjiTag(ctx *recordContext, fd field, tags map[string]interface{}) error {
+func handleGenjiTag(ctx *recordContext, fd recordField, tags recordTags) error {
 
-	for tag := range tags {
-		switch tag {
-		case "pk":
-			if ctx.Pk.Name != "" {
-				return errors.New("only one pk field is allowed")
-			}
-
-			ctx.Pk = fd
-		default:
-			return fmt.Errorf("unsupported genji tag '%s'", tag)
-		}
+	if tags.FieldName() != "" {
+		ctx.Fields[len(ctx.Fields)-1].FieldName = tags.FieldName()
 	}
 
 	return nil

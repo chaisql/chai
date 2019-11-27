@@ -1,48 +1,43 @@
 package genji_test
 
-//go:generate genji -s User -f example_test.go
+//go:generate genji gen -s User -f example_test.go
 
 import (
 	"fmt"
 	"os"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 )
 
 type User struct {
-	ID   int64 `genji:"pk"`
+	ID   int64
 	Name string
 	Age  uint32
 }
 
 func Example() {
-	// Instantiate an engine, here we'll store everything in memory
-	ng := memory.NewEngine()
-
-	// Create a database instance
-	db, err := genji.New(ng)
+	// Create a database instance, here we'll store everything in memory
+	db, err := genji.Open(":memory:")
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
 	// Create a table. Genji tables are schemaless, you don't need to specify a schema.
-	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		panic(err)
 	}
 
 	// Create an index.
-	err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_Name ON user (Name)")
+	err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_name ON user (name)")
 	if err != nil {
 		panic(err)
 	}
 
 	// Insert some data
-	err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +50,7 @@ func Example() {
 	}
 
 	// Query some records
-	stream, err := db.Query("SELECT * FROM user WHERE ID > ?", 1)
+	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +63,7 @@ func Example() {
 		var name string
 		var age int32
 
-		err = recordutil.Scan(r, &id, &name, &age)
+		err = record.Scan(r, &id, &name, &age)
 		if err != nil {
 			return err
 		}
@@ -92,7 +87,7 @@ func Example() {
 	var id int
 	var name string
 	var age int32
-	err = recordutil.Scan(r, &id, &name, &age)
+	err = record.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -101,7 +96,7 @@ func Example() {
 	err = stream.
 		// Filter all even ids
 		Filter(func(r record.Record) (bool, error) {
-			f, err := r.GetField("ID")
+			f, err := r.GetField("id")
 			if err != nil {
 				return false, err
 			}
@@ -117,12 +112,12 @@ func Example() {
 				return nil, err
 			}
 
-			fb.Add(record.NewStringField("Group", "admin"))
+			fb.Add(record.NewStringField("group", "admin"))
 			return &fb, nil
 		}).
 		// Iterate on them
 		Iterate(func(r record.Record) error {
-			return recordutil.DumpRecord(os.Stdout, r)
+			return record.Dump(os.Stdout, r)
 		})
 
 	if err != nil {
@@ -133,12 +128,12 @@ func Example() {
 	// 10 foo 15
 	// 2 baz 0
 	// Count: 2
-	// ID(Int): 10
-	// Name(String): "foo"
-	// Age(Int): 15
-	// Group(String): "admin"
-	// ID(Int64): 2
-	// Name(String): "baz"
-	// Age(Uint32): 0x0
-	// Group(String): "admin"
+	// id(Int): 10
+	// name(String): "foo"
+	// age(Int): 15
+	// group(String): "admin"
+	// id(Int64): 2
+	// name(String): "baz"
+	// age(Uint32): 0x0
+	// group(String): "admin"
 }

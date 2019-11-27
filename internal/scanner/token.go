@@ -18,7 +18,6 @@ const (
 	literalBeg
 	// IDENT and the following are Genji SQL literal tokens.
 	IDENT           // main
-	IDENTORSTRING   // main
 	NAMEDPARAM      // $param
 	POSITIONALPARAM // ?
 	NUMBER          // 12345.67
@@ -29,6 +28,7 @@ const (
 	BADESCAPE       // \q
 	TRUE            // true
 	FALSE           // false
+	NULL            // NULL
 	REGEX           // Regular expressions
 	BADREGEX        // `.*
 	literalEnd
@@ -85,11 +85,13 @@ const (
 	INF
 	INSERT
 	INTO
+	KEY
 	LIMIT
 	NOT
 	OFFSET
 	ON
 	ORDER
+	PRIMARY
 	SELECT
 	SET
 	RECORDS
@@ -98,7 +100,26 @@ const (
 	UNIQUE
 	UPDATE
 	VALUES
+	WITH
 	WHERE
+
+	TYPEBYTES
+	TYPESTRING
+	TYPEBOOL
+	TYPEINT8
+	TYPEINT16
+	TYPEINT32
+	TYPEINT64
+	TYPEINT
+	TYPEUINT8
+	TYPEUINT16
+	TYPEUINT32
+	TYPEUINT64
+	TYPEUINT
+	TYPEFLOAT64
+	TYPEINTEGER // alias to TYPEINT
+	TYPENUMERIC // alias to TYPEFLOAT64
+	TYPETEXT    // alias to TYPESTRING
 	keywordEnd
 )
 
@@ -108,7 +129,6 @@ var tokens = [...]string{
 	WS:      "WS",
 
 	IDENT:           "IDENT",
-	IDENTORSTRING:   "IDENTORSTRING",
 	POSITIONALPARAM: "?",
 	NUMBER:          "NUMBER",
 	DURATIONVAL:     "DURATIONVAL",
@@ -118,6 +138,7 @@ var tokens = [...]string{
 	TRUE:            "TRUE",
 	FALSE:           "FALSE",
 	REGEX:           "REGEX",
+	NULL:            "NULL",
 
 	ADD:        "+",
 	SUB:        "-",
@@ -159,6 +180,7 @@ var tokens = [...]string{
 	DROP:     "DROP",
 	DURATION: "DURATION",
 	EXISTS:   "EXISTS",
+	KEY:      "KEY",
 	FROM:     "FROM",
 	IF:       "IF",
 	IN:       "IN",
@@ -170,6 +192,7 @@ var tokens = [...]string{
 	OFFSET:   "OFFSET",
 	ON:       "ON",
 	ORDER:    "ORDER",
+	PRIMARY:  "PRIMARY",
 	SELECT:   "SELECT",
 	SET:      "SET",
 	RECORDS:  "RECORDS",
@@ -178,7 +201,26 @@ var tokens = [...]string{
 	UNIQUE:   "UNIQUE",
 	UPDATE:   "UPDATE",
 	VALUES:   "VALUES",
+	WITH:     "WITH",
 	WHERE:    "WHERE",
+
+	TYPEBYTES:   "BYTES",
+	TYPESTRING:  "STRING",
+	TYPEBOOL:    "BOOL",
+	TYPEINT8:    "INT8",
+	TYPEINT16:   "INT16",
+	TYPEINT32:   "INT32",
+	TYPEINT64:   "INT64",
+	TYPEINT:     "INT",
+	TYPEUINT8:   "UINT8",
+	TYPEUINT16:  "UINT16",
+	TYPEUINT32:  "UINT32",
+	TYPEUINT64:  "UINT64",
+	TYPEUINT:    "UINT",
+	TYPEFLOAT64: "FLOAT64",
+	TYPEINTEGER: "INTEGER",
+	TYPENUMERIC: "NUMERIC",
+	TYPETEXT:    "TEXT",
 }
 
 var keywords map[string]Token
@@ -188,11 +230,9 @@ func init() {
 	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
-	for _, tok := range []Token{AND, OR} {
+	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL} {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
-	keywords["true"] = TRUE
-	keywords["false"] = FALSE
 }
 
 // String returns the string representation of the token.

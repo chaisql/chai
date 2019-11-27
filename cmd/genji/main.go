@@ -1,47 +1,101 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
+	"log"
 	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/asdine/genji/cmd/genji/generator"
-	"github.com/pkg/errors"
+	"github.com/asdine/genji/cmd/genji/shell"
+	"github.com/urfave/cli"
 )
 
-type stringFlags []string
-
-func (i *stringFlags) String() string {
-	return "list of strings"
-}
-
-func (i *stringFlags) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
-
 func main() {
-	var files, structs stringFlags
-	var output string
-
-	flag.Var(&files, "f", "path of the files to parse")
-	flag.Var(&structs, "s", "name of the source structure")
-	flag.StringVar(&output, "o", "", "name of the generated file, optional")
-
-	flag.Parse()
-
-	if len(files) == 0 || len(structs) == 0 {
-		exitRecordUsage()
+	app := cli.NewApp()
+	app.Name = "Genji"
+	app.Usage = "Toolkit for the Genji database"
+	app.Version = "v0.3.0"
+	app.EnableBashCompletion = true
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "bolt",
+			Usage: "use bolt engine",
+		},
+		cli.BoolFlag{
+			Name:  "badger",
+			Usage: "use badger engine",
+		},
 	}
 
-	err := generate(files, structs, output)
+	app.Commands = []cli.Command{
+		{
+			Name:    "generate",
+			Aliases: []string{"gen"},
+			Usage:   "scan a structure and generate methods implementing various Genji interfaces",
+			Flags: []cli.Flag{
+				cli.StringSliceFlag{
+					Name:     "f",
+					Required: true,
+					Usage:    "paths of the files to parse",
+				},
+				cli.StringSliceFlag{
+					Name:     "s",
+					Required: true,
+					Usage:    "names of the source structures",
+				},
+				cli.StringFlag{
+					Name:  "output, o",
+					Usage: "name of the generated file",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				files := c.StringSlice("f")
+				structs := c.StringSlice("s")
+				if len(files) == 0 {
+					return cli.NewExitError("missing files", 2)
+				}
+
+				if len(structs) == 0 {
+					return cli.NewExitError("missing structs", 2)
+				}
+
+				return generate(c.StringSlice("f"), c.StringSlice("s"), c.String("o"))
+			},
+		},
+	}
+
+	app.Action = func(c *cli.Context) error {
+		useBolt := c.Bool("bolt")
+		useBadger := c.Bool("badger")
+		if useBolt && useBadger {
+			return cli.NewExitError("cannot use bolt and badger options at the same time", 2)
+		}
+
+		dbpath := c.Args().First()
+
+		if (useBolt || useBadger) && dbpath == "" {
+			return cli.NewExitError("db path required when using bolt or badger", 2)
+		}
+
+		engine := "memory"
+
+		if useBolt || dbpath != "" {
+			engine = "bolt"
+		}
+
+		if useBadger {
+			engine = "badger"
+		}
+
+		return shell.Run(&shell.Options{
+			Engine: engine,
+			DBPath: dbpath,
+		})
+	}
+
+	err := app.Run(os.Args)
 	if err != nil {
-		fail("%v\n", err)
+		log.Fatal(err)
 	}
 }
 
@@ -53,62 +107,4 @@ func fail(format string, a ...interface{}) {
 func exitRecordUsage() {
 	flag.Usage()
 	os.Exit(2)
-}
-
-func generate(files []string, structs []string, output string) error {
-	if !areGoFiles(files) {
-		return errors.New("input files must be Go files")
-	}
-
-	sources := make([]io.Reader, len(files))
-
-	for i, fname := range files {
-		f, err := os.Open(fname)
-		if err != nil {
-			return errors.Wrap(err, "failed to read file")
-		}
-
-		sources[i] = f
-	}
-
-	list := make([]generator.Struct, len(structs))
-	for i, name := range structs {
-		list[i].Name = name
-	}
-
-	var buf bytes.Buffer
-	err := generator.Generate(&buf, generator.Config{
-		Sources: sources,
-		Structs: list,
-	})
-	if err != nil {
-		return err
-	}
-
-	if output == "" {
-		suffix := filepath.Ext(files[0])
-		base := strings.TrimSuffix(files[0], suffix)
-		if strings.HasSuffix(base, "_test") {
-			base = strings.TrimSuffix(base, "_test")
-			suffix = "_test" + suffix
-		}
-		output = base + ".genji" + suffix
-	}
-
-	err = ioutil.WriteFile(output, buf.Bytes(), 0644)
-	if err != nil {
-		return errors.Wrapf(err, "failed to generate file at location %s", output)
-	}
-
-	return nil
-}
-
-func areGoFiles(files []string) bool {
-	for _, f := range files {
-		if filepath.Ext(f) != ".go" {
-			return false
-		}
-	}
-
-	return true
 }

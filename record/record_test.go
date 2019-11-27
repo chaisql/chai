@@ -1,6 +1,7 @@
 package record_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/asdine/genji/record"
@@ -29,10 +30,10 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Add", func(t *testing.T) {
-		buf := record.NewFieldBuffer(
-			record.NewInt64Field("a", 10),
-			record.NewStringField("b", "hello"),
-		)
+		var buf record.FieldBuffer
+
+		buf.Add(record.NewInt64Field("a", 10))
+		buf.Add(record.NewStringField("b", "hello"))
 
 		c := record.NewBoolField("c", true)
 		buf.Add(c)
@@ -147,9 +148,10 @@ func TestNewFromMap(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Len(t, counter, 2)
+		require.Len(t, counter, 3)
 		require.Equal(t, counter["Name"], 1)
 		require.Equal(t, counter["Age"], 1)
+		require.Equal(t, counter["NilField"], 1)
 	})
 
 	t.Run("Field", func(t *testing.T) {
@@ -161,7 +163,118 @@ func TestNewFromMap(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, record.Field{Name: "Age", Value: value.Value{Type: value.Int, Data: value.EncodeInt(10)}}, f)
 
+		f, err = rec.GetField("NilField")
+		require.NoError(t, err)
+		require.Equal(t, record.Field{Name: "NilField", Value: value.Value{Type: value.Null}}, f)
+
 		_, err = rec.GetField("bar")
 		require.Error(t, err)
 	})
+}
+
+func TestToJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"OK", `{"name":"John","age":10}` + "\n"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := record.FieldBuffer([]record.Field{
+				record.NewStringField("name", "John"),
+				record.NewUint16Field("age", 10),
+			})
+
+			var buf bytes.Buffer
+			err := record.ToJSON(&buf, r)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, buf.String())
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestScan(t *testing.T) {
+	r := record.FieldBuffer([]record.Field{
+		record.NewBytesField("a", []byte("foo")),
+		record.NewStringField("b", "bar"),
+		record.NewBoolField("c", true),
+		record.NewUintField("d", 10),
+		record.NewUint8Field("e", 10),
+		record.NewUint16Field("f", 10),
+		record.NewUint32Field("g", 10),
+		record.NewUint64Field("h", 10),
+		record.NewIntField("i", 10),
+		record.NewInt8Field("j", 10),
+		record.NewInt16Field("k", 10),
+		record.NewInt32Field("l", 10),
+		record.NewInt64Field("m", 10),
+		record.NewFloat64Field("n", 10.5),
+	})
+
+	var a []byte
+	var b string
+	var c bool
+	var d uint
+	var e uint8
+	var f uint16
+	var g uint32
+	var h uint64
+	var i int
+	var j int8
+	var k int16
+	var l int32
+	var m int64
+	var n float64
+
+	err := record.Scan(r, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n)
+	require.NoError(t, err)
+	require.Equal(t, a, []byte("foo"))
+	require.Equal(t, b, "bar")
+	require.Equal(t, c, true)
+	require.Equal(t, d, uint(10))
+	require.Equal(t, e, uint8(10))
+	require.Equal(t, f, uint16(10))
+	require.Equal(t, g, uint32(10))
+	require.Equal(t, h, uint64(10))
+	require.Equal(t, i, int(10))
+	require.Equal(t, j, int8(10))
+	require.Equal(t, k, int16(10))
+	require.Equal(t, l, int32(10))
+	require.Equal(t, m, int64(10))
+	require.Equal(t, n, float64(10.5))
+
+	t.Run("RecordScanner", func(t *testing.T) {
+		var rs recordScanner
+		rs.fn = func(rr record.Record) error {
+			require.Equal(t, r, rr)
+			return nil
+		}
+		err := record.Scan(r, &rs)
+		require.NoError(t, err)
+	})
+
+	t.Run("Map", func(t *testing.T) {
+		m := make(map[string]interface{})
+		err := record.Scan(r, m)
+		require.NoError(t, err)
+		require.Len(t, m, 14)
+	})
+
+	t.Run("MapPtr", func(t *testing.T) {
+		var m map[string]interface{}
+		err := record.Scan(r, &m)
+		require.NoError(t, err)
+		require.Len(t, m, 14)
+	})
+}
+
+type recordScanner struct {
+	fn func(r record.Record) error
+}
+
+func (rs recordScanner) ScanRecord(r record.Record) error {
+	return rs.fn(r)
 }

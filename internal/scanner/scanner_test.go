@@ -43,6 +43,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `or`, tok: scanner.OR},
 
 		{s: `=`, tok: scanner.EQ},
+		{s: `==`, tok: scanner.EQ},
 		{s: `<>`, tok: scanner.NEQ},
 		{s: `! `, tok: scanner.ILLEGAL, lit: "!"},
 		{s: `<`, tok: scanner.LT},
@@ -60,23 +61,30 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `!~`, tok: scanner.NEQREGEX},
 		{s: `:`, tok: scanner.COLON},
 		{s: `::`, tok: scanner.DOUBLECOLON},
+		{s: `--`, tok: scanner.COMMENT},
+		{s: `--10.3`, tok: scanner.COMMENT, lit: ``},
 
 		// Identifiers
 		{s: `foo`, tok: scanner.IDENT, lit: `foo`},
 		{s: `_foo`, tok: scanner.IDENT, lit: `_foo`},
 		{s: `Zx12_3U_-`, tok: scanner.IDENT, lit: `Zx12_3U_`},
-		{s: `"foo"`, tok: scanner.IDENTORSTRING, lit: `foo`},
-		{s: `"foo\\bar"`, tok: scanner.IDENTORSTRING, lit: `foo\bar`},
+		{s: `"foo"`, tok: scanner.IDENT, lit: `foo`},
+		{s: `"foo\\bar"`, tok: scanner.IDENT, lit: `foo\bar`},
 		{s: `"foo\bar"`, tok: scanner.BADESCAPE, lit: `\b`, pos: scanner.Pos{Line: 0, Char: 5}},
-		{s: `"foo\"bar\""`, tok: scanner.IDENTORSTRING, lit: `foo"bar"`},
+		{s: `"foo\"bar\""`, tok: scanner.IDENT, lit: `foo"bar"`},
 		{s: `test"`, tok: scanner.BADSTRING, lit: "", pos: scanner.Pos{Line: 0, Char: 3}},
 		{s: `"test`, tok: scanner.BADSTRING, lit: `test`},
 		{s: `$host`, tok: scanner.NAMEDPARAM, lit: `$host`},
 		{s: `$"host param"`, tok: scanner.NAMEDPARAM, lit: `$host param`},
 		{s: `?`, tok: scanner.POSITIONALPARAM, lit: ""},
 
+		// Booleans
 		{s: `true`, tok: scanner.TRUE},
 		{s: `false`, tok: scanner.FALSE},
+
+		// Null
+		{s: `null`, tok: scanner.NULL},
+		{s: `NULL`, tok: scanner.NULL},
 
 		// Strings
 		{s: `'testing 123!'`, tok: scanner.STRING, lit: `testing 123!`},
@@ -90,8 +98,8 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `100`, tok: scanner.INTEGER, lit: `100`},
 		{s: `100.23`, tok: scanner.NUMBER, lit: `100.23`},
 		{s: `.23`, tok: scanner.NUMBER, lit: `.23`},
-		//{s: `.`, tok: scanner.ILLEGAL, lit: `.`},
 		{s: `10.3s`, tok: scanner.NUMBER, lit: `10.3`},
+		{s: `-10.3`, tok: scanner.NUMBER, lit: `-10.3`},
 
 		// Durations
 		{s: `10u`, tok: scanner.DURATIONVAL, lit: `10u`},
@@ -125,6 +133,25 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `VALUES`, tok: scanner.VALUES},
 		{s: `WHERE`, tok: scanner.WHERE},
 		{s: `seLECT`, tok: scanner.SELECT}, // case insensitive
+
+		// types
+		{s: "BYTES", tok: scanner.TYPEBYTES},
+		{s: "STRING", tok: scanner.TYPESTRING},
+		{s: "BOOL", tok: scanner.TYPEBOOL},
+		{s: "INT8", tok: scanner.TYPEINT8},
+		{s: "INT16", tok: scanner.TYPEINT16},
+		{s: "INT32", tok: scanner.TYPEINT32},
+		{s: "INT64", tok: scanner.TYPEINT64},
+		{s: "INT", tok: scanner.TYPEINT},
+		{s: "UINT8", tok: scanner.TYPEUINT8},
+		{s: "UINT16", tok: scanner.TYPEUINT16},
+		{s: "UINT32", tok: scanner.TYPEUINT32},
+		{s: "UINT64", tok: scanner.TYPEUINT64},
+		{s: "UINT", tok: scanner.TYPEUINT},
+		{s: "FLOAT64", tok: scanner.TYPEFLOAT64},
+		{s: "INTEGER", tok: scanner.TYPEINTEGER},
+		{s: "NUMERIC", tok: scanner.TYPENUMERIC},
+		{s: "TEXT", tok: scanner.TYPETEXT},
 	}
 
 	for i, tt := range tests {

@@ -3,7 +3,8 @@ package genji
 import (
 	"testing"
 
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
+	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +16,8 @@ func TestParserCreateTable(t *testing.T) {
 		errored  bool
 	}{
 		{"Basic", "CREATE TABLE test", createTableStmt{tableName: "test"}, false},
-		{"If not exists", "CREATE TABLE test IF NOT EXISTS", createTableStmt{tableName: "test", ifNotExists: true}, false},
+		{"If not exists", "CREATE TABLE IF NOT EXISTS test", createTableStmt{tableName: "test", ifNotExists: true}, false},
+		{"With primary key", "CREATE TABLE test(foo INT PRIMARY KEY)", createTableStmt{tableName: "test", primaryKeyName: "foo", primaryKeyType: value.Int}, false},
 	}
 
 	for _, test := range tests {
@@ -40,13 +42,14 @@ func TestCreateTableStmt(t *testing.T) {
 	}{
 		{"Basic", `CREATE TABLE test`, false},
 		{"Exists", "CREATE TABLE test;CREATE TABLE test", true},
-		{"If not exists", "CREATE TABLE test IF NOT EXISTS", false},
-		{"If not exists, twice", "CREATE TABLE test IF NOT EXISTS;CREATE TABLE test IF NOT EXISTS", false},
+		{"If not exists", "CREATE TABLE IF NOT EXISTS test", false},
+		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
+		{"With primary key", "CREATE TABLE test(foo STRING PRIMARY KEY)", false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := New(memory.NewEngine())
+			db, err := New(memoryengine.NewEngine())
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -108,7 +111,7 @@ func TestCreateIndexStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := New(memory.NewEngine())
+			db, err := New(memoryengine.NewEngine())
 			require.NoError(t, err)
 			defer db.Close()
 

@@ -3,10 +3,9 @@ package genji
 import (
 	"bytes"
 	"testing"
-	"time"
 
-	"github.com/asdine/genji/engine/memory"
-	"github.com/asdine/genji/record/recordutil"
+	"github.com/asdine/genji/engine/memoryengine"
+	"github.com/asdine/genji/record"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +16,7 @@ func TestParserDelete(t *testing.T) {
 		expected statement
 	}{
 		{"NoCond", "DELETE FROM test", deleteStmt{tableName: "test"}},
-		{"WithCond", "DELETE FROM test WHERE age = 10", deleteStmt{tableName: "test", whereExpr: eq(fieldSelector("age"), int64Value(10))}},
+		{"WithCond", "DELETE FROM test WHERE age = 10", deleteStmt{tableName: "test", whereExpr: eq(fieldSelector("age"), int8Value(10))}},
 	}
 
 	for _, test := range tests {
@@ -45,7 +44,7 @@ func TestDeleteStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := New(memory.NewEngine())
+			db, err := New(memoryengine.NewEngine())
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -53,10 +52,8 @@ func TestDeleteStmt(t *testing.T) {
 			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
 			require.NoError(t, err)
-			time.Sleep(time.Millisecond)
 			err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar1')")
 			require.NoError(t, err)
-			time.Sleep(time.Millisecond)
 			err = db.Exec("INSERT INTO test (d, b, e) VALUES ('foo3', 'bar2', 'bar3')")
 			require.NoError(t, err)
 
@@ -72,7 +69,7 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = recordutil.IteratorToCSV(&buf, st)
+			err = record.IteratorToCSV(&buf, st)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 		})

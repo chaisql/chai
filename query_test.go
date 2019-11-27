@@ -5,29 +5,28 @@ import (
 	"log"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/memory"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/record"
-	"github.com/asdine/genji/record/recordutil"
 )
 
 func ExampleResult_First() {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.Exec("INSERT INTO user (ID, Name, Age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := db.Query("SELECT * FROM user WHERE Name = ?", "foo")
+	result, err := db.Query("SELECT * FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -52,7 +51,7 @@ func ExampleResult_First() {
 	var name string
 	var age uint8
 
-	err = recordutil.Scan(r, &id, &name, &age)
+	err = record.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -64,13 +63,13 @@ func ExampleResult_First() {
 }
 
 func ExampleResult_Iterate() {
-	db, err := genji.New(memory.NewEngine())
+	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE user IF NOT EXISTS")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,7 +85,7 @@ func ExampleResult_Iterate() {
 		}
 	}
 
-	result, err := db.Query(`SELECT * FROM user WHERE "Age" >= 18`)
+	result, err := db.Query(`SELECT * FROM user WHERE "age" >= 18`)
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +106,7 @@ func ExampleResult_Iterate() {
 		var name string
 		var age uint8
 
-		err = recordutil.Scan(r, &id, &name, &age)
+		err = record.Scan(r, &id, &name, &age)
 		if err != nil {
 			return err
 		}

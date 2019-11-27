@@ -127,19 +127,19 @@ func NewInt64Field(name string, x int64) Field {
 	}
 }
 
-// NewFloat32Field encodes x and returns a field.
-func NewFloat32Field(name string, x float32) Field {
-	return Field{
-		Name:  name,
-		Value: value.NewFloat32(x),
-	}
-}
-
 // NewFloat64Field encodes x and returns a field.
 func NewFloat64Field(name string, x float64) Field {
 	return Field{
 		Name:  name,
 		Value: value.NewFloat64(x),
+	}
+}
+
+// NewNullField returns a null field.
+func NewNullField(name string) Field {
+	return Field{
+		Name:  name,
+		Value: value.NewNull(),
 	}
 }
 

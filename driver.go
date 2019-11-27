@@ -2,6 +2,7 @@ package genji
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"io"
@@ -10,48 +11,57 @@ import (
 	"github.com/asdine/genji/record"
 )
 
-type connector struct {
-	driver driver.Driver
+func init() {
+	sql.Register("genji", sqlDriver{})
 }
 
-func newConnector(db *DB) driver.Connector {
-	return connector{
-		driver: newDriver(db),
+// sqlDriver is a driver.Driver that can open a new connection to a Genji database.
+// It is the driver used to register Genji against the database/sql package.
+type sqlDriver struct{}
+
+func (d sqlDriver) Open(name string) (driver.Conn, error) {
+	db, err := Open(name)
+	if err != nil {
+		return nil, err
 	}
+
+	return &conn{db: db}, nil
 }
 
-func (c connector) Connect(ctx context.Context) (driver.Conn, error) {
-	return c.driver.Open("")
-}
-
-func (c connector) Driver() driver.Driver {
-	return c.driver
-}
-
-type drivr struct {
+// proxyDriver is used to turn an existing DB into a driver.Driver.
+type proxyDriver struct {
 	db *DB
 }
 
 func newDriver(db *DB) driver.Driver {
-	return drivr{
+	return proxyDriver{
 		db: db,
 	}
 }
 
-// Open returns a new connection to the database.
-// The name is a string in a driver-specific format.
-//
-// Open may return a cached connection (one previously
-// closed), but doing so is unnecessary; the sql package
-// maintains a pool of idle connections for efficient re-use.
-//
-// The returned connection is only used by one goroutine at a
-// time.
-func (d drivr) Open(name string) (driver.Conn, error) {
+func (d proxyDriver) Open(name string) (driver.Conn, error) {
 	return &conn{db: d.db}, nil
 }
 
-// Conn represents a connection to the Genji database.
+type proxyConnector struct {
+	driver driver.Driver
+}
+
+func newProxyConnector(db *DB) driver.Connector {
+	return proxyConnector{
+		driver: newDriver(db),
+	}
+}
+
+func (c proxyConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	return c.driver.Open("")
+}
+
+func (c proxyConnector) Driver() driver.Driver {
+	return c.driver
+}
+
+// conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
 	db            *DB
@@ -148,6 +158,10 @@ func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
 		return nil
 	}
 
+	if _, ok := nv.Value.(record.Scanner); ok {
+		return nil
+	}
+
 	var err error
 	nv.Value, err = driver.DefaultParameterConverter.ConvertValue(nv.Value)
 	return err
@@ -219,10 +233,10 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
 	slct, ok := lastStmt.(selectStmt)
-	if ok && len(slct.FieldSelectors) > 0 {
-		rs.fields = make([]string, len(slct.FieldSelectors))
-		for i := range slct.FieldSelectors {
-			rs.fields[i] = slct.FieldSelectors[i].Name()
+	if ok && len(slct.selectors) > 0 {
+		rs.fields = make([]string, len(slct.selectors))
+		for i := range slct.selectors {
+			rs.fields[i] = slct.selectors[i].Name()
 		}
 	}
 
@@ -243,7 +257,7 @@ type recordStream struct {
 }
 
 type rec struct {
-	r   record.Record
+	r   recordMask
 	err error
 }
 
@@ -277,7 +291,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		case <-ctx.Done():
 			return errStop
 		case rs.c <- rec{
-			r: r,
+			r: r.(recordMask),
 		}:
 
 			select {
@@ -304,11 +318,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 // Columns returns the fields selected by the SELECT statement.
 // If the wildcard was used, it returns one column named "record".
 func (rs *recordStream) Columns() []string {
-	if len(rs.fields) > 0 {
-		return rs.fields
-	}
-
-	return []string{"record"}
+	return rs.fields
 }
 
 // Close closes the rows iterator.
@@ -317,8 +327,6 @@ func (rs *recordStream) Close() error {
 	return rs.res.Close()
 }
 
-// Next expects exactly one destination. This destination must implement record.Scanner
-// otherwise an error is returned.
 func (rs *recordStream) Next(dest []driver.Value) error {
 	rs.c <- rec{}
 
@@ -331,12 +339,13 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 		return rec.err
 	}
 
-	if len(rs.fields) == 0 {
-		dest[0] = rec.r
-		return nil
-	}
-
 	for i := range rs.fields {
+		if rs.fields[i] == "*" {
+			dest[i] = rec.r
+
+			continue
+		}
+
 		f, err := rec.r.GetField(rs.fields[i])
 		if err != nil {
 			return err
