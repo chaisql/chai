@@ -1,11 +1,11 @@
-package record_test
+package document_test
 
 import (
 	"bytes"
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,19 +22,19 @@ func TestIteratorToCSV(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var records []record.Record
+			var records []document.Record
 
 			for i := 0; i < 3; i++ {
-				records = append(records, record.FieldBuffer([]record.Field{
-					record.NewStringField("name", fmt.Sprintf("John, %d", i)),
-					record.NewIntField("age", 10+i),
-					record.NewFloat64Field("pi", 3.14*float64(i+1)),
-					record.NewNullField("friends"),
+				records = append(records, document.FieldBuffer([]document.Field{
+					document.NewStringField("name", fmt.Sprintf("John, %d", i)),
+					document.NewIntField("age", 10+i),
+					document.NewFloat64Field("pi", 3.14*float64(i+1)),
+					document.NewNullField("friends"),
 				}))
 			}
 
 			var buf bytes.Buffer
-			err := record.IteratorToCSV(&buf, record.NewStream(record.NewIterator(records...)))
+			err := document.IteratorToCSV(&buf, document.NewStream(document.NewIterator(records...)))
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 			require.NoError(t, err)

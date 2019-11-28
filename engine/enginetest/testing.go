@@ -10,7 +10,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -897,7 +897,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
-		err = record.IteratorToCSV(&buf, st)
+		err = document.IteratorToCSV(&buf, st)
 		require.NoError(t, err)
 		require.Equal(t, `5
 5
@@ -1001,7 +1001,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
-			err = record.IteratorToCSV(&buf, st)
+			err = document.IteratorToCSV(&buf, st)
 			require.NoError(t, err)
 			require.Equal(t, `5
 5

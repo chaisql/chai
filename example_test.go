@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
 type User struct {
@@ -42,7 +42,7 @@ func Example() {
 		panic(err)
 	}
 
-	// Since the user structure implements the record.Record interface, we can use it with the
+	// Since the user structure implements the document.Record interface, we can use it with the
 	// RECORDS clause.
 	err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
@@ -58,12 +58,12 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(r record.Record) error {
+	err = stream.Iterate(func(r document.Record) error {
 		var id int
 		var name string
 		var age int32
 
-		err = record.Scan(r, &id, &name, &age)
+		err = document.Scan(r, &id, &name, &age)
 		if err != nil {
 			return err
 		}
@@ -87,7 +87,7 @@ func Example() {
 	var id int
 	var name string
 	var age int32
-	err = record.Scan(r, &id, &name, &age)
+	err = document.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func Example() {
 	// Apply some transformations
 	err = stream.
 		// Filter all even ids
-		Filter(func(r record.Record) (bool, error) {
+		Filter(func(r document.Record) (bool, error) {
 			f, err := r.GetField("id")
 			if err != nil {
 				return false, err
@@ -104,20 +104,20 @@ func Example() {
 			return id%2 == 0, nil
 		}).
 		// Enrich the records with a new field
-		Map(func(r record.Record) (record.Record, error) {
-			var fb record.FieldBuffer
+		Map(func(r document.Record) (document.Record, error) {
+			var fb document.FieldBuffer
 
 			err := fb.ScanRecord(r)
 			if err != nil {
 				return nil, err
 			}
 
-			fb.Add(record.NewStringField("group", "admin"))
+			fb.Add(document.NewStringField("group", "admin"))
 			return &fb, nil
 		}).
 		// Iterate on them
-		Iterate(func(r record.Record) error {
-			return record.Dump(os.Stdout, r)
+		Iterate(func(r document.Record) error {
+			return document.Dump(os.Stdout, r)
 		})
 
 	if err != nil {

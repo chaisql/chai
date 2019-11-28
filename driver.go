@@ -10,7 +10,7 @@ import (
 
 	"github.com/asdine/genji/parser"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
 func init() {
@@ -153,14 +153,14 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 // CheckNamedValue has the same behaviour as driver.DefaultParamaterConverter, except that
-// it allows record.Records to be passed as parameters.
+// it allows document.Records to be passed as parameters.
 // It implements the driver.NamedValueChecker interface.
 func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
-	if _, ok := nv.Value.(record.Record); ok {
+	if _, ok := nv.Value.(document.Record); ok {
 		return nil
 	}
 
-	if _, ok := nv.Value.(record.Scanner); ok {
+	if _, ok := nv.Value.(document.Scanner); ok {
 		return nil
 	}
 
@@ -290,7 +290,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(r record.Record) error {
+	err := rs.res.Iterate(func(r document.Record) error {
 		select {
 		case <-ctx.Done():
 			return errStop

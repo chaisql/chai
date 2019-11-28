@@ -1,5 +1,5 @@
-// Package record defines interfaces, implementations and helpers to manipulate and encode records.
-package record
+// package document defines interfaces, implementations and helpers to manipulate and encode records.
+package document
 
 import (
 	"bytes"

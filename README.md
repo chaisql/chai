@@ -54,12 +54,12 @@ res, err := db.Query("SELECT * FROM user WHERE age > ?", 18)
 defer res.Close()
 
 // Iterate over the results
-err = res.Iterate(func(r record.Record) error {
+err = res.Iterate(func(r document.Record) error {
     var id int
     var name string
     var age int32
 
-    err = record.Scan(r, &id, &name, &age)
+    err = document.Scan(r, &id, &name, &age)
     if err != nil {
         return err
     }
@@ -76,12 +76,12 @@ r, err := res.First()
 var id int
 var name string
 var age int32
-err = record.Scan(r, &id, &name, &age)
+err = document.Scan(r, &id, &name, &age)
 
 // Apply some transformations
 err = res.
     // Filter all even ids
-    Filter(func(r record.Record) (bool, error) {
+    Filter(func(r document.Record) (bool, error) {
         f, err := r.GetField("id")
         ...
         id, err := f.DecodeToInt()
@@ -89,16 +89,16 @@ err = res.
         return id % 2 == 0, nil
     }).
     // Enrich the records with a new field
-    Map(func(r record.Record) (record.Record, error) {
-        var fb record.FieldBuffer
+    Map(func(r document.Record) (document.Record, error) {
+        var fb document.FieldBuffer
 
         err := fb.ScanRecord(r)
         ...
-        fb.Add(record.NewStringField("Group", "admin"))
+        fb.Add(document.NewStringField("Group", "admin"))
         return &fb, nil
     }).
     // Iterate on them
-    Iterate(func(r record.Record) error {
+    Iterate(func(r document.Record) error {
         ...
     })
 ```
@@ -124,7 +124,7 @@ res, err := db.QueryRow(...)
 
 ## Code generation
 
-Genji also supports structs as long as they implement the `record.Record` interface for writes and the `record.Scanner` interface for reads.
+Genji also supports structs as long as they implement the `document.Record` interface for writes and the `document.Scanner` interface for reads.
 To simplify implementing these interfaces, Genji provides a command line tool that can generate methods for you.
 
 First, install the Genji command line tool:
@@ -157,13 +157,13 @@ This command generates a file that adds methods to the `User` type.
 // user.genji.go
 
 // The User type gets new methods that implement some Genji interfaces.
-func (u *User) GetField(name string) (record.Field, error) {}
-func (u *User) Iterate(fn func(record.Field) error) error {}
-func (u *User) ScanRecord(rec record.Record) error {}
+func (u *User) GetField(name string) (document.Field, error) {}
+func (u *User) Iterate(fn func(document.Field) error) error {}
+func (u *User) ScanRecord(rec document.Record) error {}
 func (u *User) Scan(src interface{}) error
 ```
 
-Also, it will create mapping between struct fields and their corresponding `record.Field`. For that, it will apply the `strings.ToLower` function on the struct field name, unless the `genji` tag was specified for that field. If so, it will use the name found in the tag.
+Also, it will create mapping between struct fields and their corresponding `document.Field`. For that, it will apply the `strings.ToLower` function on the struct field name, unless the `genji` tag was specified for that field. If so, it will use the name found in the tag.
 
 ### Example
 
@@ -193,7 +193,7 @@ var users []User
 res, err := db.Query("SELECT * FROM user")
 defer res.Close()
 
-err = res.Iterate(func(r record.Record) error {
+err = res.Iterate(func(r document.Record) error {
     var u User
     // Use the generated ScanRecord method this time
     err := u.ScanRecord(r)

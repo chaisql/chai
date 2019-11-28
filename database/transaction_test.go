@@ -7,7 +7,7 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -120,9 +120,9 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := 0; i < 10; i++ {
-			_, err = tb.Insert(record.NewFieldBuffer(
-				record.NewIntField("a", i),
-				record.NewIntField("b", i*10),
+			_, err = tb.Insert(document.NewFieldBuffer(
+				document.NewIntField("a", i),
+				document.NewIntField("b", i*10),
 			))
 			require.NoError(t, err)
 		}
@@ -207,14 +207,14 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := 0; i < 10; i++ {
-			_, err = tb1.Insert(record.NewFieldBuffer(
-				record.NewIntField("a", i),
-				record.NewIntField("b", i*10),
+			_, err = tb1.Insert(document.NewFieldBuffer(
+				document.NewIntField("a", i),
+				document.NewIntField("b", i*10),
 			))
 			require.NoError(t, err)
-			_, err = tb2.Insert(record.NewFieldBuffer(
-				record.NewIntField("a", i),
-				record.NewIntField("b", i*10),
+			_, err = tb2.Insert(document.NewFieldBuffer(
+				document.NewIntField("a", i),
+				document.NewIntField("b", i*10),
 			))
 			require.NoError(t, err)
 		}
@@ -261,10 +261,10 @@ func TestReIndexAll(t *testing.T) {
 	})
 }
 
-func newRecord() record.FieldBuffer {
-	return record.FieldBuffer([]record.Field{
-		record.NewStringField("fielda", "a"),
-		record.NewStringField("fieldb", "b"),
+func newRecord() document.FieldBuffer {
+	return document.FieldBuffer([]document.Field{
+		document.NewStringField("fielda", "a"),
+		document.NewStringField("fieldb", "b"),
 	})
 }
 
@@ -275,7 +275,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(r record.Record) error {
+		err := tb.Iterate(func(r document.Record) error {
 			i++
 			return nil
 		})
@@ -293,8 +293,8 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(r record.Record) error {
-			m[string(r.(record.Keyer).Key())]++
+		err := tb.Iterate(func(r document.Record) error {
+			m[string(r.(document.Keyer).Key())]++
 			return nil
 		})
 		require.NoError(t, err)
@@ -314,7 +314,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(_ record.Record) error {
+		err := tb.Iterate(func(_ document.Record) error {
 			i++
 			if i >= 5 {
 				return errors.New("some error")
@@ -343,7 +343,7 @@ func TestTableRecord(t *testing.T) {
 
 		// create two records, one with an additional field
 		rec1 := newRecord()
-		rec1.Add(record.NewInt64Field("fieldc", 40))
+		rec1.Add(document.NewInt64Field("fieldc", 40))
 		rec2 := newRecord()
 
 		key1, err := tb.Insert(rec1)
@@ -390,9 +390,9 @@ func TestTableInsert(t *testing.T) {
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		rec := record.NewFieldBuffer(
-			record.NewIntField("foo", 1),
-			record.NewStringField("bar", "baz"),
+		rec := document.NewFieldBuffer(
+			document.NewIntField("foo", 1),
+			document.NewStringField("bar", "baz"),
 		)
 
 		// insert
@@ -429,8 +429,8 @@ func TestTableInsert(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
-				rec := record.NewFieldBuffer(
-					record.NewBytesField("foo", test),
+				rec := document.NewFieldBuffer(
+					document.NewBytesField("foo", test),
 				)
 
 				_, err := tb.Insert(rec)
@@ -458,7 +458,7 @@ func TestTableInsert(t *testing.T) {
 
 		// create one record with the foo field
 		rec1 := newRecord()
-		foo := record.NewFloat64Field("foo", 10)
+		foo := document.NewFloat64Field("foo", 10)
 		rec1 = append(rec1, foo)
 
 		// create one record without the foo field
@@ -503,7 +503,7 @@ func TestTableDelete(t *testing.T) {
 
 		// create two records, one with an additional field
 		rec1 := newRecord()
-		rec1.Add(record.NewInt64Field("fieldc", 40))
+		rec1.Add(document.NewInt64Field("fieldc", 40))
 		rec2 := newRecord()
 
 		key1, err := tb.Insert(rec1)
@@ -543,9 +543,9 @@ func TestTableReplace(t *testing.T) {
 
 		// create two different records
 		rec1 := newRecord()
-		rec2 := record.FieldBuffer([]record.Field{
-			record.NewStringField("fielda", "c"),
-			record.NewStringField("fieldb", "d"),
+		rec2 := document.FieldBuffer([]document.Field{
+			document.NewStringField("fielda", "c"),
+			document.NewStringField("fieldb", "d"),
 		})
 
 		key1, err := tb.Insert(rec1)
@@ -554,9 +554,9 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 
 		// create a third record
-		rec3 := record.FieldBuffer([]record.Field{
-			record.NewStringField("fielda", "e"),
-			record.NewStringField("fieldb", "f"),
+		rec3 := document.FieldBuffer([]document.Field{
+			document.NewStringField("fielda", "e"),
+			document.NewStringField("fieldb", "f"),
 		})
 
 		// replace rec1 with rec3
@@ -605,7 +605,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		require.NoError(t, err)
 
-		err = tb.Iterate(func(_ record.Record) error {
+		err = tb.Iterate(func(_ document.Record) error {
 			return errors.New("should not iterate")
 		})
 
@@ -673,13 +673,13 @@ func TestTableIndexes(t *testing.T) {
 func BenchmarkTableInsert(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			var fields []record.Field
+			var fields []document.Field
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+				fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 			}
 
-			rec := record.FieldBuffer(fields)
+			rec := document.FieldBuffer(fields)
 
 			b.ResetTimer()
 			b.StopTimer()
@@ -704,13 +704,13 @@ func BenchmarkTableScan(b *testing.B) {
 			tb, cleanup := newTestTable(b)
 			defer cleanup()
 
-			var fields []record.Field
+			var fields []document.Field
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, record.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+				fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
 			}
 
-			rec := record.FieldBuffer(fields)
+			rec := document.FieldBuffer(fields)
 
 			for i := 0; i < size; i++ {
 				_, err := tb.Insert(rec)
@@ -719,7 +719,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(func(record.Record) error {
+				tb.Iterate(func(document.Record) error {
 					return nil
 				})
 			}

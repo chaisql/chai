@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/value"
 )
 
@@ -133,7 +133,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		st = st.Limit(limit)
 	}
 
-	st = st.Map(func(r record.Record) (record.Record, error) {
+	st = st.Map(func(r document.Record) (document.Record, error) {
 		return RecordMask{
 			cfg:          cfg,
 			r:            r,
@@ -146,23 +146,23 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 
 type RecordMask struct {
 	cfg          *database.TableConfig
-	r            record.Record
+	r            document.Record
 	resultFields []ResultField
 }
 
-var _ record.Record = RecordMask{}
+var _ document.Record = RecordMask{}
 
-func (r RecordMask) GetField(name string) (record.Field, error) {
+func (r RecordMask) GetField(name string) (document.Field, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == name || rf.Name() == "*" {
 			return r.r.GetField(name)
 		}
 	}
 
-	return record.Field{}, fmt.Errorf("field %q not found", name)
+	return document.Field{}, fmt.Errorf("field %q not found", name)
 }
 
-func (r RecordMask) Iterate(fn func(f record.Field) error) error {
+func (r RecordMask) Iterate(fn func(f document.Field) error) error {
 	stack := EvalStack{
 		Record: r.r,
 		Cfg:    r.cfg,
@@ -179,7 +179,7 @@ func (r RecordMask) Iterate(fn func(f record.Field) error) error {
 }
 
 type ResultField interface {
-	Iterate(stack EvalStack, fn func(fd record.Field) error) error
+	Iterate(stack EvalStack, fn func(fd document.Field) error) error
 	Name() string
 }
 
@@ -189,15 +189,15 @@ func (f FieldSelector) Name() string {
 	return string(f)
 }
 
-func (f FieldSelector) SelectField(r record.Record) (record.Field, error) {
+func (f FieldSelector) SelectField(r document.Record) (document.Field, error) {
 	if r == nil {
-		return record.Field{}, fmt.Errorf("field %q not found", f)
+		return document.Field{}, fmt.Errorf("field %q not found", f)
 	}
 
 	return r.GetField(string(f))
 }
 
-func (f FieldSelector) Iterate(stack EvalStack, fn func(fd record.Field) error) error {
+func (f FieldSelector) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
 	fd, err := f.SelectField(stack.Record)
 	if err != nil {
 		return nil
@@ -227,7 +227,7 @@ func (w Wildcard) Name() string {
 	return "*"
 }
 
-func (w Wildcard) Iterate(stack EvalStack, fn func(fd record.Field) error) error {
+func (w Wildcard) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
 	return stack.Record.Iterate(fn)
 }
 
@@ -237,7 +237,7 @@ func (k KeyFunc) Name() string {
 	return "key()"
 }
 
-func (k KeyFunc) Iterate(stack EvalStack, fn func(fd record.Field) error) error {
+func (k KeyFunc) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
 	if stack.Cfg.PrimaryKeyName != "" {
 		fd, err := stack.Record.GetField(stack.Cfg.PrimaryKeyName)
 		if err != nil {
@@ -246,10 +246,10 @@ func (k KeyFunc) Iterate(stack EvalStack, fn func(fd record.Field) error) error 
 		return fn(fd)
 	}
 
-	return fn(record.Field{
+	return fn(document.Field{
 		Name: "key()",
 		Value: value.Value{
-			Data: stack.Record.(record.Keyer).Key(),
+			Data: stack.Record.(document.Keyer).Key(),
 			Type: value.Int64,
 		},
 	})

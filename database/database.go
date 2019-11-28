@@ -3,8 +3,8 @@ package database
 import (
 	"sync"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/record"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
@@ -90,27 +90,27 @@ type indexOptions struct {
 	Unique    bool
 }
 
-// Field implements the field method of the record.Record interface.
-func (i *indexOptions) GetField(name string) (record.Field, error) {
+// Field implements the field method of the document.Record interface.
+func (i *indexOptions) GetField(name string) (document.Field, error) {
 	switch name {
 	case "IndexName":
-		return record.NewStringField("IndexName", i.IndexName), nil
+		return document.NewStringField("IndexName", i.IndexName), nil
 	case "TableName":
-		return record.NewStringField("TableName", i.TableName), nil
+		return document.NewStringField("TableName", i.TableName), nil
 	case "FieldName":
-		return record.NewStringField("FieldName", i.FieldName), nil
+		return document.NewStringField("FieldName", i.FieldName), nil
 	case "Unique":
-		return record.NewBoolField("Unique", i.Unique), nil
+		return document.NewBoolField("Unique", i.Unique), nil
 	}
 
-	return record.Field{}, errors.New("unknown field")
+	return document.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (i *indexOptions) Iterate(fn func(record.Field) error) error {
+func (i *indexOptions) Iterate(fn func(document.Field) error) error {
 	var err error
-	var f record.Field
+	var f document.Field
 
 	f, _ = i.GetField("IndexName")
 	err = fn(f)
@@ -140,9 +140,9 @@ func (i *indexOptions) Iterate(fn func(record.Field) error) error {
 }
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func (i *indexOptions) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f record.Field) error {
+// It implements the document.Scanner interface.
+func (i *indexOptions) ScanRecord(rec document.Record) error {
+	return rec.Iterate(func(f document.Field) error {
 		var err error
 
 		switch f.Name {

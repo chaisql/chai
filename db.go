@@ -10,7 +10,7 @@ import (
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/parser"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
 // Open creates a Genji database at the given path.
@@ -116,9 +116,9 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 	return pq.Run(db.db, argsToNamedValues(args))
 }
 
-// QueryRecord runs the query and returns the first record.
+// QueryRecord runs the query and returns the first document.
 // If the query returns no error, QueryRecord returns ErrRecordNotFound.
-func (db *DB) QueryRecord(q string, args ...interface{}) (record.Record, error) {
+func (db *DB) QueryRecord(q string, args ...interface{}) (document.Record, error) {
 	res, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (db *DB) QueryRecord(q string, args ...interface{}) (record.Record, error) 
 		return nil, database.ErrRecordNotFound
 	}
 
-	var fb record.FieldBuffer
+	var fb document.FieldBuffer
 	err = fb.ScanRecord(r)
 	if err != nil {
 		return nil, err
@@ -194,9 +194,9 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 	return pq.Exec(tx.Transaction, argsToNamedValues(args), false)
 }
 
-// QueryRecord runs the query and returns the first record.
+// QueryRecord runs the query and returns the first document.
 // If the query returns no error, QueryRecord returns ErrRecordNotFound.
-func (tx *Tx) QueryRecord(q string, args ...interface{}) (record.Record, error) {
+func (tx *Tx) QueryRecord(q string, args ...interface{}) (document.Record, error) {
 	res, err := tx.Query(q, args...)
 	if err != nil {
 		return nil, err

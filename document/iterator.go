@@ -1,4 +1,4 @@
-package record
+package document
 
 import (
 	"encoding/csv"

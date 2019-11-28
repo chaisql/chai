@@ -8,7 +8,7 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
@@ -43,14 +43,14 @@ type queryOptimizer struct {
 	indexes   map[string]database.Index
 }
 
-func (qo *queryOptimizer) optimizeQuery() (record.Stream, error) {
+func (qo *queryOptimizer) optimizeQuery() (document.Stream, error) {
 	qp := qo.buildQueryPlan()
 	if qp.scanTable {
-		return record.NewStream(qo.t), nil
+		return document.NewStream(qo.t), nil
 	}
 
 	if qp.field.isPrimaryKey {
-		return record.NewStream(pkIterator{
+		return document.NewStream(pkIterator{
 			tx:   qo.tx,
 			tb:   qo.t,
 			cfg:  qo.cfg,
@@ -60,7 +60,7 @@ func (qo *queryOptimizer) optimizeQuery() (record.Stream, error) {
 		}), nil
 	}
 
-	return record.NewStream(indexIterator{
+	return document.NewStream(indexIterator{
 		tx:    qo.tx,
 		tb:    qo.t,
 		args:  qo.args,
@@ -178,7 +178,7 @@ type indexIterator struct {
 
 var errStop = errors.New("stop")
 
-func (it indexIterator) Iterate(fn func(r record.Record) error) error {
+func (it indexIterator) Iterate(fn func(r document.Record) error) error {
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -283,7 +283,7 @@ type pkIterator struct {
 	e    Expr
 }
 
-func (it pkIterator) Iterate(fn func(r record.Record) error) error {
+func (it pkIterator) Iterate(fn func(r document.Record) error) error {
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -315,18 +315,18 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 
 			return err
 		}
-		return fn(record.EncodedRecord(val))
+		return fn(document.EncodedRecord(val))
 	case scanner.GT:
 		err = it.tb.Store.AscendGreaterOrEqual(v.Value.Data, func(key, val []byte) error {
 			if bytes.Equal(data, val) {
 				return nil
 			}
 
-			return fn(record.EncodedRecord(val))
+			return fn(document.EncodedRecord(val))
 		})
 	case scanner.GTE:
 		err = it.tb.Store.AscendGreaterOrEqual(data, func(key, val []byte) error {
-			return fn(record.EncodedRecord(val))
+			return fn(document.EncodedRecord(val))
 		})
 	case scanner.LT:
 		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
@@ -334,7 +334,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 				return errStop
 			}
 
-			return fn(record.EncodedRecord(val))
+			return fn(document.EncodedRecord(val))
 		})
 	case scanner.LTE:
 		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
@@ -342,7 +342,7 @@ func (it pkIterator) Iterate(fn func(r record.Record) error) error {
 				return errStop
 			}
 
-			return fn(record.EncodedRecord(val))
+			return fn(document.EncodedRecord(val))
 		})
 	}
 

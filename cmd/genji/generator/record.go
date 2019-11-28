@@ -35,16 +35,16 @@ const recordGetFieldTmpl = `
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-// GetField implements the field method of the record.Record interface.
-func ({{$fl}} *{{$structName}}) GetField(name string) (record.Field, error) {
+// GetField implements the field method of the document.Record interface.
+func ({{$fl}} *{{$structName}}) GetField(name string) (document.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.FieldName}}":
-		return record.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}), nil
+		return document.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}), nil
 	{{- end}}
 	}
 
-	return record.Field{}, errors.New("unknown field")
+	return document.Field{}, errors.New("unknown field")
 }
 {{ end }}
 `
@@ -56,11 +56,11 @@ const recordIterateTmpl = `
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func ({{$fl}} *{{$structName}}) Iterate(fn func(record.Field) error) error {
+func ({{$fl}} *{{$structName}}) Iterate(fn func(document.Field) error) error {
 	var err error
 
 	{{range .Fields}}
-	err = fn(record.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}))
+	err = fn(document.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}))
 	if err != nil {
 		return err
 	}
@@ -77,9 +77,9 @@ const recordScanRecordTmpl = `
 {{- $structName := .Name -}}
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func ({{$fl}} *{{$structName}}) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f record.Field) error {
+// It implements the document.Scanner interface.
+func ({{$fl}} *{{$structName}}) ScanRecord(rec document.Record) error {
+	return rec.Iterate(func(f document.Field) error {
 		var err error
 
 		switch f.Name {
@@ -102,7 +102,7 @@ const recordScanTmpl = `
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
-	rr, ok := src.(record.Record)
+	rr, ok := src.(document.Record)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}

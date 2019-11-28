@@ -5,7 +5,7 @@ import (
 
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
@@ -19,7 +19,7 @@ type Table struct {
 }
 
 type encodedRecordWithKey struct {
-	record.EncodedRecord
+	document.EncodedRecord
 
 	key []byte
 }
@@ -30,7 +30,7 @@ func (e encodedRecordWithKey) Key() []byte {
 
 // Iterate goes through all the records of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t *Table) Iterate(fn func(r record.Record) error) error {
+func (t *Table) Iterate(fn func(r document.Record) error) error {
 	// To avoid unnecessary allocations, we create the slice once and reuse it
 	// at each call of the fn method.
 	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
@@ -48,7 +48,7 @@ func (t *Table) Iterate(fn func(r record.Record) error) error {
 }
 
 // GetRecord returns one record by key.
-func (t *Table) GetRecord(key []byte) (record.Record, error) {
+func (t *Table) GetRecord(key []byte) (document.Record, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
@@ -58,12 +58,12 @@ func (t *Table) GetRecord(key []byte) (record.Record, error) {
 	}
 
 	var r encodedRecordWithKey
-	r.EncodedRecord = record.EncodedRecord(v)
+	r.EncodedRecord = document.EncodedRecord(v)
 	r.key = key
 	return &r, err
 }
 
-func (t *Table) generateKey(r record.Record) ([]byte, error) {
+func (t *Table) generateKey(r document.Record) ([]byte, error) {
 	cfg, err := t.CfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
@@ -102,9 +102,9 @@ func (t *Table) generateKey(r record.Record) ([]byte, error) {
 
 // Insert the record into the table.
 // If a primary key has been specified during the table creation, the field is expected to be present
-// in the given record.
+// in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-func (t *Table) Insert(r record.Record) ([]byte, error) {
+func (t *Table) Insert(r document.Record) ([]byte, error) {
 	key, err := t.generateKey(r)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (t *Table) Insert(r record.Record) ([]byte, error) {
 		return nil, ErrDuplicateRecord
 	}
 
-	v, err := record.Encode(r)
+	v, err := document.Encode(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode record")
 	}
@@ -180,7 +180,7 @@ func (t *Table) Delete(key []byte) error {
 // Replace a record by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key []byte, r record.Record) error {
+func (t *Table) Replace(key []byte, r document.Record) error {
 	indexes, err := t.Indexes()
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (t *Table) Replace(key []byte, r record.Record) error {
 	return t.replace(indexes, key, r)
 }
 
-func (t *Table) replace(indexes map[string]Index, key []byte, r record.Record) error {
+func (t *Table) replace(indexes map[string]Index, key []byte, r document.Record) error {
 	// make sure key exists
 	old, err := t.GetRecord(key)
 	if err != nil {
@@ -210,7 +210,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r record.Record) e
 	}
 
 	// encode new record
-	v, err := record.Encode(r)
+	v, err := document.Encode(r)
 	if err != nil {
 		return errors.Wrap(err, "failed to encode record")
 	}
@@ -263,8 +263,8 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	tableName := []byte(t.name)
 	indexes := make(map[string]Index)
 
-	err = record.NewStream(&tb).
-		Filter(func(r record.Record) (bool, error) {
+	err = document.NewStream(&tb).
+		Filter(func(r document.Record) (bool, error) {
 			f, err := r.GetField("TableName")
 			if err != nil {
 				return false, err
@@ -272,7 +272,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 			return bytes.Equal(f.Data, tableName), nil
 		}).
-		Iterate(func(r record.Record) error {
+		Iterate(func(r document.Record) error {
 			var opts indexOptions
 			err := opts.ScanRecord(r)
 			if err != nil {

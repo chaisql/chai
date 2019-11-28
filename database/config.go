@@ -3,9 +3,10 @@ package database
 import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/value"
 )
+
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
@@ -29,12 +30,12 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 		return err
 	}
 
-	var fb record.FieldBuffer
-	fb.Add(record.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
-	fb.Add(record.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
-	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
+	var fb document.FieldBuffer
+	fb.Add(document.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(document.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
+	fb.Add(document.NewInt64Field("lastKey", cfg.lastKey))
 
-	v, err := record.Encode(&fb)
+	v, err := document.Encode(&fb)
 	if err != nil {
 		return err
 	}
@@ -52,12 +53,12 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 		return err
 	}
 
-	var fb record.FieldBuffer
-	fb.Add(record.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
-	fb.Add(record.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
-	fb.Add(record.NewInt64Field("lastKey", cfg.lastKey))
+	var fb document.FieldBuffer
+	fb.Add(document.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(document.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
+	fb.Add(document.NewInt64Field("lastKey", cfg.lastKey))
 
-	v, err := record.Encode(&fb)
+	v, err := document.Encode(&fb)
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	var cfg TableConfig
 
-	r := record.EncodedRecord(v)
+	r := document.EncodedRecord(v)
 
 	f, err := r.GetField("PrimaryKeyName")
 	if err != nil {
@@ -142,7 +143,7 @@ func (t *indexStore) Insert(cfg indexOptions) error {
 		return err
 	}
 
-	v, err := record.Encode(&cfg)
+	v, err := document.Encode(&cfg)
 	if err != nil {
 		return err
 	}
@@ -161,7 +162,7 @@ func (t *indexStore) Get(indexName string) (*indexOptions, error) {
 	}
 
 	var idxopts indexOptions
-	err = idxopts.ScanRecord(record.EncodedRecord(v))
+	err = idxopts.ScanRecord(document.EncodedRecord(v))
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,7 @@ require (
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/urfave/cli v1.22.1
-	golang.org/x/tools v0.0.0-20191114222411-4191b8cbba09
+	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f
 )
 
 replace github.com/asdine/genji v0.3.0 => ../..

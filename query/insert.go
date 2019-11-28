@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/value"
 )
 
@@ -69,10 +69,10 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 	}
 
 	for _, rec := range stmt.Records {
-		var r record.Record
+		var r document.Record
 
 		switch tp := rec.(type) {
-		case record.Record:
+		case document.Record:
 			r = tp
 		case paramExtractor:
 			v, err := tp.Extract(stack.Params)
@@ -81,12 +81,12 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 			}
 
 			var ok bool
-			r, ok = v.(record.Record)
+			r, ok = v.(document.Record)
 			if !ok {
-				return res, fmt.Errorf("unsupported parameter of type %t, expecting record.Record", v)
+				return res, fmt.Errorf("unsupported parameter of type %t, expecting document.Record", v)
 			}
 		case []KVPair:
-			var fb record.FieldBuffer
+			var fb document.FieldBuffer
 			for _, pair := range tp {
 				v, err := pair.V.Eval(stack)
 				if err != nil {
@@ -97,7 +97,7 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 					return res, errors.New("invalid values")
 				}
 
-				fb.Add(record.Field{Name: pair.K, Value: v.Value.Value})
+				fb.Add(document.Field{Name: pair.K, Value: v.Value.Value})
 			}
 			r = &fb
 		}
@@ -118,7 +118,7 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) (Result,
 
 	// iterate over all of the records (r1, r2, r3, ...)
 	for _, e := range stmt.Values {
-		var fb record.FieldBuffer
+		var fb document.FieldBuffer
 
 		v, err := e.Eval(stack)
 		if err != nil {
@@ -156,7 +156,7 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) (Result,
 			}
 
 			// Assign the value to the field and add it to the record
-			fb.Add(record.Field{
+			fb.Add(document.Field{
 				Name: fieldName,
 				Value: value.Value{
 					Type: lv.Type,

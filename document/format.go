@@ -1,4 +1,4 @@
-package record
+package document
 
 import (
 	"bytes"
@@ -346,7 +346,7 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 }
 
 // An EncodedRecord implements the record interface on top of an encoded representation of a
-// record.
+// document.
 // It is useful to avoid decoding the entire record when only a few fields are needed.
 type EncodedRecord []byte
 

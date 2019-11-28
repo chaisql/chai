@@ -6,39 +6,39 @@ package genji_test
 import (
 	"errors"
 
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
-// GetField implements the field method of the record.Record interface.
-func (u *User) GetField(name string) (record.Field, error) {
+// GetField implements the field method of the document.Record interface.
+func (u *User) GetField(name string) (document.Field, error) {
 	switch name {
 	case "id":
-		return record.NewInt64Field("id", u.ID), nil
+		return document.NewInt64Field("id", u.ID), nil
 	case "name":
-		return record.NewStringField("name", u.Name), nil
+		return document.NewStringField("name", u.Name), nil
 	case "age":
-		return record.NewUint32Field("age", u.Age), nil
+		return document.NewUint32Field("age", u.Age), nil
 	}
 
-	return record.Field{}, errors.New("unknown field")
+	return document.Field{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (u *User) Iterate(fn func(record.Field) error) error {
+func (u *User) Iterate(fn func(document.Field) error) error {
 	var err error
 
-	err = fn(record.NewInt64Field("id", u.ID))
+	err = fn(document.NewInt64Field("id", u.ID))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewStringField("name", u.Name))
+	err = fn(document.NewStringField("name", u.Name))
 	if err != nil {
 		return err
 	}
 
-	err = fn(record.NewUint32Field("age", u.Age))
+	err = fn(document.NewUint32Field("age", u.Age))
 	if err != nil {
 		return err
 	}
@@ -47,9 +47,9 @@ func (u *User) Iterate(fn func(record.Field) error) error {
 }
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
-// It implements the record.Scanner interface.
-func (u *User) ScanRecord(rec record.Record) error {
-	return rec.Iterate(func(f record.Field) error {
+// It implements the document.Scanner interface.
+func (u *User) ScanRecord(rec document.Record) error {
+	return rec.Iterate(func(f document.Field) error {
 		var err error
 
 		switch f.Name {
@@ -67,7 +67,7 @@ func (u *User) ScanRecord(rec record.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (u *User) Scan(src interface{}) error {
-	rr, ok := src.(record.Record)
+	rr, ok := src.(document.Record)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}

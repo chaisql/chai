@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
 // ErrResultClosed is returned when trying to close an already closed result.
@@ -99,7 +99,7 @@ type Statement interface {
 
 // Result of a query.
 type Result struct {
-	record.Stream
+	document.Stream
 	rowsAffected  driver.RowsAffected
 	lastInsertKey []byte
 	tx            *database.Transaction
@@ -148,14 +148,14 @@ func (r *Result) Close() error {
 	return err
 }
 
-func whereClause(e Expr, stack EvalStack) func(r record.Record) (bool, error) {
+func whereClause(e Expr, stack EvalStack) func(r document.Record) (bool, error) {
 	if e == nil {
-		return func(r record.Record) (bool, error) {
+		return func(r document.Record) (bool, error) {
 			return true, nil
 		}
 	}
 
-	return func(r record.Record) (bool, error) {
+	return func(r document.Record) (bool, error) {
 		stack.Record = r
 		v, err := e.Eval(stack)
 		if err != nil {

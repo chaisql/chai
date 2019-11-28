@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +16,7 @@ type rectest struct {
 }
 
 func (rt *rectest) Scan(src interface{}) error {
-	r, ok := src.(record.Record)
+	r, ok := src.(document.Record)
 	if !ok {
 		return errors.New("unable to scan returned data")
 	}
@@ -24,7 +24,7 @@ func (rt *rectest) Scan(src interface{}) error {
 	return rt.ScanRecord(r)
 }
 
-func (rt *rectest) ScanRecord(r record.Record) error {
+func (rt *rectest) ScanRecord(r document.Record) error {
 	f, err := r.GetField("a")
 	if err != nil {
 		return err

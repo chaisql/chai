@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/cmd/genji/generator/testdata"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
@@ -135,7 +135,7 @@ package s
 import (
 	"errors"
 
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 `
 
@@ -182,7 +182,7 @@ func TestGeneratedRecords(t *testing.T) {
 			A: "A", B: 10, C: 11, D: 12,
 		}
 
-		require.Implements(t, (*record.Record)(nil), &r)
+		require.Implements(t, (*document.Record)(nil), &r)
 
 		tests := []struct {
 			name string
@@ -206,7 +206,7 @@ func TestGeneratedRecords(t *testing.T) {
 		}
 
 		var i int
-		err := r.Iterate(func(f record.Field) error {
+		err := r.Iterate(func(f document.Field) error {
 			t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
 				require.NotEmpty(t, f)
 				require.Equal(t, tests[i].name, f.Name)

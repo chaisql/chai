@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
 // DeleteStmt is a DSL that allows creating a full Delete query.
@@ -41,7 +41,7 @@ func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		return res, err
 	}
 
-	st := record.NewStream(t)
+	st := document.NewStream(t)
 	st = st.Filter(whereClause(stmt.WhereExpr, stack)).Limit(deleteBufferSize)
 
 	keys := make([][]byte, deleteBufferSize)
@@ -49,8 +49,8 @@ func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 	for {
 		var i int
 
-		err = st.Iterate(func(r record.Record) error {
-			k, ok := r.(record.Keyer)
+		err = st.Iterate(func(r document.Record) error {
+			k, ok := r.(document.Keyer)
 			if !ok {
 				return errors.New("attempt to delete record without key")
 			}

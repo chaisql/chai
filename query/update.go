@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 )
 
 // UpdateStmt is a DSL that allows creating a full Update query.
@@ -44,16 +44,16 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		return res, err
 	}
 
-	st := record.NewStream(t)
+	st := document.NewStream(t)
 	st = st.Filter(whereClause(stmt.WhereExpr, stack))
 
-	err = st.Iterate(func(r record.Record) error {
-		rk, ok := r.(record.Keyer)
+	err = st.Iterate(func(r document.Record) error {
+		rk, ok := r.(document.Keyer)
 		if !ok {
 			return errors.New("attempt to update record without key")
 		}
 
-		var fb record.FieldBuffer
+		var fb document.FieldBuffer
 		err := fb.ScanRecord(r)
 		if err != nil {
 			return err

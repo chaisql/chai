@@ -13,7 +13,7 @@ import (
 	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/c-bata/go-prompt"
 	"github.com/dgraph-io/badger/v2"
 )
@@ -233,7 +233,7 @@ func (sh *Shell) runQuery(q string) error {
 	}
 
 	defer res.Close()
-	return record.IteratorToJSON(os.Stdout, res)
+	return document.IteratorToJSON(os.Stdout, res)
 }
 
 func (sh *Shell) getDB() (*genji.DB, error) {

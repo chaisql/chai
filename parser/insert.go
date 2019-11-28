@@ -128,7 +128,7 @@ func (p *Parser) parseRecords() ([]interface{}, bool, error) {
 
 	var records []interface{}
 
-	// Parse first (required) record.
+	// Parse first (required) document.
 	// It can either be a param or kv list
 	rec, err := p.parseRecord()
 	if err != nil {

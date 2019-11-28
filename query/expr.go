@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/scanner"
 	"github.com/asdine/genji/value"
 )
@@ -26,7 +26,7 @@ type Expr interface {
 // Any of the members can be nil except the transaction.
 type EvalStack struct {
 	Tx     *database.Transaction
-	Record record.Record
+	Record document.Record
 	Params []driver.NamedValue
 	Cfg    *database.TableConfig
 }

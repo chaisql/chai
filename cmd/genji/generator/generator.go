@@ -173,7 +173,7 @@ func (g *genContext) selectImports() {
 
 	if len(g.Records) > 0 {
 		m["errors"]++
-		m["github.com/asdine/genji/record"]++
+		m["github.com/asdine/genji/document"]++
 	}
 
 	g.Imports = make([]string, 0, len(m))

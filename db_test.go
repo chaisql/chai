@@ -10,7 +10,7 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/engine/memoryengine"
-	"github.com/asdine/genji/record"
+	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -111,7 +111,7 @@ func ExampleTx() {
 	var name string
 	var age uint8
 
-	err = record.Scan(r, &id, &name, &age)
+	err = document.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -146,7 +146,7 @@ func TestQueryRecord(t *testing.T) {
 		var b string
 
 		r, err := db.QueryRecord("SELECT * FROM test")
-		err = record.Scan(r, &a, &b)
+		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
@@ -157,7 +157,7 @@ func TestQueryRecord(t *testing.T) {
 
 		r, err = tx.QueryRecord("SELECT * FROM test")
 		require.NoError(t, err)
-		err = record.Scan(r, &a, &b)
+		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
@@ -219,7 +219,7 @@ func ExampleResult_First() {
 	var name string
 	var age uint8
 
-	err = record.Scan(r, &id, &name, &age)
+	err = document.Scan(r, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -259,7 +259,7 @@ func ExampleResult_Iterate() {
 	}
 	defer result.Close()
 
-	err = result.Iterate(func(r record.Record) error {
+	err = result.Iterate(func(r document.Record) error {
 		// Scan using generated methods
 		var u User
 		err = u.ScanRecord(r)
@@ -274,7 +274,7 @@ func ExampleResult_Iterate() {
 		var name string
 		var age uint8
 
-		err = record.Scan(r, &id, &name, &age)
+		err = document.Scan(r, &id, &name, &age)
 		if err != nil {
 			return err
 		}
@@ -443,7 +443,7 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = record.IteratorToCSV(&buf, st)
+			err = document.IteratorToCSV(&buf, st)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 		})
@@ -504,7 +504,7 @@ func TestInsertStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = record.IteratorToCSV(&buf, st)
+				err = document.IteratorToCSV(&buf, st)
 				require.NoError(t, err)
 				require.Equal(t, test.expected, buf.String())
 			}
@@ -607,7 +607,7 @@ func TestSelectStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = record.IteratorToCSV(&buf, st)
+				err = document.IteratorToCSV(&buf, st)
 				require.NoError(t, err)
 				require.Equal(t, test.expected, buf.String())
 			}
@@ -635,7 +635,7 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = record.IteratorToCSV(&buf, st)
+		err = document.IteratorToCSV(&buf, st)
 		require.NoError(t, err)
 		require.Equal(t, "b,2\nc,3\nd,4\n", buf.String())
 	})
@@ -686,7 +686,7 @@ func TestUpdateStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = record.IteratorToCSV(&buf, st)
+			err = document.IteratorToCSV(&buf, st)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 		})
