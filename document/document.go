@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-// A Record represents a group of fields.
-type Record interface {
+// A Document represents a group of fields.
+type Document interface {
 	// Iterate goes through all the fields of the record and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(fn func(Field) error) error
@@ -29,7 +29,7 @@ type Keyer interface {
 
 // A Scanner can iterate over a record and scan all the fields.
 type Scanner interface {
-	ScanRecord(Record) error
+	ScanRecord(Document) error
 }
 
 // FieldBuffer is slice of fields which implements the Record interface.
@@ -46,7 +46,7 @@ func (fb *FieldBuffer) Add(f Field) {
 }
 
 // ScanRecord copies all the fields of r to the buffer.
-func (fb *FieldBuffer) ScanRecord(r Record) error {
+func (fb *FieldBuffer) ScanRecord(r Document) error {
 	return r.Iterate(func(f Field) error {
 		*fb = append(*fb, f)
 		return nil
@@ -136,13 +136,13 @@ func (fb *FieldBuffer) Swap(i, j int) {
 
 // NewFromMap creates a record from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m map[string]interface{}) Record {
+func NewFromMap(m map[string]interface{}) Document {
 	return mapRecord(m)
 }
 
 type mapRecord map[string]interface{}
 
-var _ Record = (*mapRecord)(nil)
+var _ Document = (*mapRecord)(nil)
 
 func (m mapRecord) Iterate(fn func(Field) error) error {
 	for k, v := range m {
@@ -168,7 +168,7 @@ func (m mapRecord) GetField(name string) (Field, error) {
 }
 
 // Dump is a helper that dumps the name, type and value of each field of a record into the given writer.
-func Dump(w io.Writer, r Record) error {
+func Dump(w io.Writer, r Document) error {
 	return r.Iterate(func(f Field) error {
 		v, err := f.Decode()
 		fmt.Fprintf(w, "%s(%s): %#v\n", f.Name, f.Type, v)
@@ -177,12 +177,12 @@ func Dump(w io.Writer, r Record) error {
 }
 
 // ToJSON encodes r to w in JSON.
-func ToJSON(w io.Writer, r Record) error {
+func ToJSON(w io.Writer, r Document) error {
 	return json.NewEncoder(w).Encode(jsonRecord{r})
 }
 
 type jsonRecord struct {
-	Record
+	Document
 }
 
 func (j jsonRecord) MarshalJSON() ([]byte, error) {
@@ -191,7 +191,7 @@ func (j jsonRecord) MarshalJSON() ([]byte, error) {
 	buf.WriteByte('{')
 
 	var notFirst bool
-	err := j.Record.Iterate(func(f Field) error {
+	err := j.Document.Iterate(func(f Field) error {
 		if notFirst {
 			buf.WriteByte(',')
 		}
@@ -230,7 +230,7 @@ func (j jsonRecord) MarshalJSON() ([]byte, error) {
 }
 
 // ToMap decodes the record into a map. m must be already allocated.
-func ToMap(r Record, m map[string]interface{}) error {
+func ToMap(r Document, m map[string]interface{}) error {
 	err := r.Iterate(func(f Field) error {
 		var err error
 		m[f.Name], err = f.Decode()
@@ -244,7 +244,7 @@ func ToMap(r Record, m map[string]interface{}) error {
 // types supported by Genji.
 // If only one target is provided, the target can also be a Scanner,
 // a map[string]interface{} or a pointer to map[string]interface{}.
-func Scan(r Record, targets ...interface{}) error {
+func Scan(r Document, targets ...interface{}) error {
 	var i int
 
 	if len(targets) == 1 {

@@ -47,7 +47,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 	st := document.NewStream(t)
 	st = st.Filter(whereClause(stmt.WhereExpr, stack))
 
-	err = st.Iterate(func(r document.Record) error {
+	err = st.Iterate(func(r document.Document) error {
 		rk, ok := r.(document.Keyer)
 		if !ok {
 			return errors.New("attempt to update record without key")

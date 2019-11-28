@@ -9,8 +9,8 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -259,7 +259,7 @@ func ExampleResult_Iterate() {
 	}
 	defer result.Close()
 
-	err = result.Iterate(func(r document.Record) error {
+	err = result.Iterate(func(r document.Document) error {
 		// Scan using generated methods
 		var u User
 		err = u.ScanRecord(r)

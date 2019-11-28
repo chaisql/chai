@@ -30,7 +30,7 @@ func (e encodedRecordWithKey) Key() []byte {
 
 // Iterate goes through all the records of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t *Table) Iterate(fn func(r document.Record) error) error {
+func (t *Table) Iterate(fn func(r document.Document) error) error {
 	// To avoid unnecessary allocations, we create the slice once and reuse it
 	// at each call of the fn method.
 	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
@@ -48,7 +48,7 @@ func (t *Table) Iterate(fn func(r document.Record) error) error {
 }
 
 // GetRecord returns one record by key.
-func (t *Table) GetRecord(key []byte) (document.Record, error) {
+func (t *Table) GetRecord(key []byte) (document.Document, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
@@ -63,7 +63,7 @@ func (t *Table) GetRecord(key []byte) (document.Record, error) {
 	return &r, err
 }
 
-func (t *Table) generateKey(r document.Record) ([]byte, error) {
+func (t *Table) generateKey(r document.Document) ([]byte, error) {
 	cfg, err := t.CfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (t *Table) generateKey(r document.Record) ([]byte, error) {
 // If a primary key has been specified during the table creation, the field is expected to be present
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-func (t *Table) Insert(r document.Record) ([]byte, error) {
+func (t *Table) Insert(r document.Document) ([]byte, error) {
 	key, err := t.generateKey(r)
 	if err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func (t *Table) Delete(key []byte) error {
 // Replace a record by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key []byte, r document.Record) error {
+func (t *Table) Replace(key []byte, r document.Document) error {
 	indexes, err := t.Indexes()
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (t *Table) Replace(key []byte, r document.Record) error {
 	return t.replace(indexes, key, r)
 }
 
-func (t *Table) replace(indexes map[string]Index, key []byte, r document.Record) error {
+func (t *Table) replace(indexes map[string]Index, key []byte, r document.Document) error {
 	// make sure key exists
 	old, err := t.GetRecord(key)
 	if err != nil {
@@ -264,7 +264,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	indexes := make(map[string]Index)
 
 	err = document.NewStream(&tb).
-		Filter(func(r document.Record) (bool, error) {
+		Filter(func(r document.Document) (bool, error) {
 			f, err := r.GetField("TableName")
 			if err != nil {
 				return false, err
@@ -272,7 +272,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 			return bytes.Equal(f.Data, tableName), nil
 		}).
-		Iterate(func(r document.Record) error {
+		Iterate(func(r document.Document) error {
 			var opts indexOptions
 			err := opts.ScanRecord(r)
 			if err != nil {

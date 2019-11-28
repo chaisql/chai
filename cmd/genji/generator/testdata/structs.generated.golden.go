@@ -9,7 +9,7 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// GetField implements the field method of the document.Record interface.
+// GetField implements the field method of the document.Document interface.
 func (b *Basic) GetField(name string) (document.Field, error) {
 	switch name {
 	case "a":
@@ -55,7 +55,7 @@ func (b *Basic) Iterate(fn func(document.Field) error) error {
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (b *Basic) ScanRecord(rec document.Record) error {
+func (b *Basic) ScanRecord(rec document.Document) error {
 	return rec.Iterate(func(f document.Field) error {
 		var err error
 
@@ -76,7 +76,7 @@ func (b *Basic) ScanRecord(rec document.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (b *Basic) Scan(src interface{}) error {
-	rr, ok := src.(document.Record)
+	rr, ok := src.(document.Document)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
@@ -84,7 +84,7 @@ func (b *Basic) Scan(src interface{}) error {
 	return b.ScanRecord(rr)
 }
 
-// GetField implements the field method of the document.Record interface.
+// GetField implements the field method of the document.Document interface.
 func (b *basic) GetField(name string) (document.Field, error) {
 	switch name {
 	case "a":
@@ -130,7 +130,7 @@ func (b *basic) Iterate(fn func(document.Field) error) error {
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (b *basic) ScanRecord(rec document.Record) error {
+func (b *basic) ScanRecord(rec document.Document) error {
 	return rec.Iterate(func(f document.Field) error {
 		var err error
 
@@ -151,7 +151,7 @@ func (b *basic) ScanRecord(rec document.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (b *basic) Scan(src interface{}) error {
-	rr, ok := src.(document.Record)
+	rr, ok := src.(document.Document)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
@@ -159,7 +159,7 @@ func (b *basic) Scan(src interface{}) error {
 	return b.ScanRecord(rr)
 }
 
-// GetField implements the field method of the document.Record interface.
+// GetField implements the field method of the document.Document interface.
 func (c *CustomFieldNames) GetField(name string) (document.Field, error) {
 	switch name {
 	case "A":
@@ -205,7 +205,7 @@ func (c *CustomFieldNames) Iterate(fn func(document.Field) error) error {
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (c *CustomFieldNames) ScanRecord(rec document.Record) error {
+func (c *CustomFieldNames) ScanRecord(rec document.Document) error {
 	return rec.Iterate(func(f document.Field) error {
 		var err error
 
@@ -226,7 +226,7 @@ func (c *CustomFieldNames) ScanRecord(rec document.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (c *CustomFieldNames) Scan(src interface{}) error {
-	rr, ok := src.(document.Record)
+	rr, ok := src.(document.Document)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}

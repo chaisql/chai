@@ -9,7 +9,7 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// GetField implements the field method of the document.Record interface.
+// GetField implements the field method of the document.Document interface.
 func (u *User) GetField(name string) (document.Field, error) {
 	switch name {
 	case "id":
@@ -48,7 +48,7 @@ func (u *User) Iterate(fn func(document.Field) error) error {
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (u *User) ScanRecord(rec document.Record) error {
+func (u *User) ScanRecord(rec document.Document) error {
 	return rec.Iterate(func(f document.Field) error {
 		var err error
 
@@ -67,7 +67,7 @@ func (u *User) ScanRecord(rec document.Record) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (u *User) Scan(src interface{}) error {
-	rr, ok := src.(document.Record)
+	rr, ok := src.(document.Document)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}

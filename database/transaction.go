@@ -221,7 +221,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 		return err
 	}
 
-	return tb.Iterate(func(r document.Record) error {
+	return tb.Iterate(func(r document.Document) error {
 		f, err := r.GetField(idx.FieldName)
 		if err != nil {
 			return err
@@ -257,7 +257,7 @@ func (tx Transaction) ReIndexAll() error {
 			return err
 		}
 
-		return tb.Iterate(func(r document.Record) error {
+		return tb.Iterate(func(r document.Document) error {
 			f, err := r.GetField(opts.FieldName)
 			if err != nil {
 				return err

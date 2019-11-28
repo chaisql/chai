@@ -275,7 +275,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(r document.Record) error {
+		err := tb.Iterate(func(r document.Document) error {
 			i++
 			return nil
 		})
@@ -293,7 +293,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(r document.Record) error {
+		err := tb.Iterate(func(r document.Document) error {
 			m[string(r.(document.Keyer).Key())]++
 			return nil
 		})
@@ -314,7 +314,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(_ document.Record) error {
+		err := tb.Iterate(func(_ document.Document) error {
 			i++
 			if i >= 5 {
 				return errors.New("some error")
@@ -605,7 +605,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		require.NoError(t, err)
 
-		err = tb.Iterate(func(_ document.Record) error {
+		err = tb.Iterate(func(_ document.Document) error {
 			return errors.New("should not iterate")
 		})
 
@@ -719,7 +719,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(func(document.Record) error {
+				tb.Iterate(func(document.Document) error {
 					return nil
 				})
 			}

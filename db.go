@@ -5,12 +5,12 @@ import (
 	"database/sql/driver"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/parser"
 	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/document"
 )
 
 // Open creates a Genji database at the given path.
@@ -118,7 +118,7 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 
 // QueryRecord runs the query and returns the first document.
 // If the query returns no error, QueryRecord returns ErrRecordNotFound.
-func (db *DB) QueryRecord(q string, args ...interface{}) (document.Record, error) {
+func (db *DB) QueryRecord(q string, args ...interface{}) (document.Document, error) {
 	res, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 
 // QueryRecord runs the query and returns the first document.
 // If the query returns no error, QueryRecord returns ErrRecordNotFound.
-func (tx *Tx) QueryRecord(q string, args ...interface{}) (document.Record, error) {
+func (tx *Tx) QueryRecord(q string, args ...interface{}) (document.Document, error) {
 	res, err := tx.Query(q, args...)
 	if err != nil {
 		return nil, err

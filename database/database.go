@@ -90,7 +90,7 @@ type indexOptions struct {
 	Unique    bool
 }
 
-// Field implements the field method of the document.Record interface.
+// Field implements the field method of the document.Document interface.
 func (i *indexOptions) GetField(name string) (document.Field, error) {
 	switch name {
 	case "IndexName":
@@ -141,7 +141,7 @@ func (i *indexOptions) Iterate(fn func(document.Field) error) error {
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (i *indexOptions) ScanRecord(rec document.Record) error {
+func (i *indexOptions) ScanRecord(rec document.Document) error {
 	return rec.Iterate(func(f document.Field) error {
 		var err error
 

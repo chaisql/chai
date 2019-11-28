@@ -42,7 +42,7 @@ func Example() {
 		panic(err)
 	}
 
-	// Since the user structure implements the document.Record interface, we can use it with the
+	// Since the user structure implements the document.Document interface, we can use it with the
 	// RECORDS clause.
 	err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
@@ -58,7 +58,7 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(r document.Record) error {
+	err = stream.Iterate(func(r document.Document) error {
 		var id int
 		var name string
 		var age int32
@@ -95,7 +95,7 @@ func Example() {
 	// Apply some transformations
 	err = stream.
 		// Filter all even ids
-		Filter(func(r document.Record) (bool, error) {
+		Filter(func(r document.Document) (bool, error) {
 			f, err := r.GetField("id")
 			if err != nil {
 				return false, err
@@ -104,7 +104,7 @@ func Example() {
 			return id%2 == 0, nil
 		}).
 		// Enrich the records with a new field
-		Map(func(r document.Record) (document.Record, error) {
+		Map(func(r document.Document) (document.Document, error) {
 			var fb document.FieldBuffer
 
 			err := fb.ScanRecord(r)
@@ -116,7 +116,7 @@ func Example() {
 			return &fb, nil
 		}).
 		// Iterate on them
-		Iterate(func(r document.Record) error {
+		Iterate(func(r document.Document) error {
 			return document.Dump(os.Stdout, r)
 		})
 

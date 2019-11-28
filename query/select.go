@@ -133,7 +133,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		st = st.Limit(limit)
 	}
 
-	st = st.Map(func(r document.Record) (document.Record, error) {
+	st = st.Map(func(r document.Document) (document.Document, error) {
 		return RecordMask{
 			cfg:          cfg,
 			r:            r,
@@ -146,11 +146,11 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 
 type RecordMask struct {
 	cfg          *database.TableConfig
-	r            document.Record
+	r            document.Document
 	resultFields []ResultField
 }
 
-var _ document.Record = RecordMask{}
+var _ document.Document = RecordMask{}
 
 func (r RecordMask) GetField(name string) (document.Field, error) {
 	for _, rf := range r.resultFields {
@@ -189,7 +189,7 @@ func (f FieldSelector) Name() string {
 	return string(f)
 }
 
-func (f FieldSelector) SelectField(r document.Record) (document.Field, error) {
+func (f FieldSelector) SelectField(r document.Document) (document.Field, error) {
 	if r == nil {
 		return document.Field{}, fmt.Errorf("field %q not found", f)
 	}

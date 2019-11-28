@@ -182,7 +182,7 @@ func TestGeneratedRecords(t *testing.T) {
 			A: "A", B: 10, C: 11, D: 12,
 		}
 
-		require.Implements(t, (*document.Record)(nil), &r)
+		require.Implements(t, (*document.Document)(nil), &r)
 
 		tests := []struct {
 			name string

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ document.Record = new(document.FieldBuffer)
+var _ document.Document = new(document.FieldBuffer)
 
 func TestFieldBuffer(t *testing.T) {
 	buf := document.NewFieldBuffer(
@@ -175,7 +175,7 @@ func TestNewFromMap(t *testing.T) {
 func TestToJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		r        document.Record
+		r        document.Document
 		expected string
 	}{
 		{
@@ -263,7 +263,7 @@ func TestScan(t *testing.T) {
 
 	t.Run("RecordScanner", func(t *testing.T) {
 		var rs recordScanner
-		rs.fn = func(rr document.Record) error {
+		rs.fn = func(rr document.Document) error {
 			require.Equal(t, r, rr)
 			return nil
 		}
@@ -287,9 +287,9 @@ func TestScan(t *testing.T) {
 }
 
 type recordScanner struct {
-	fn func(r document.Record) error
+	fn func(r document.Document) error
 }
 
-func (rs recordScanner) ScanRecord(r document.Record) error {
+func (rs recordScanner) ScanRecord(r document.Document) error {
 	return rs.fn(r)
 }

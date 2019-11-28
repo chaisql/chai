@@ -54,7 +54,7 @@ res, err := db.Query("SELECT * FROM user WHERE age > ?", 18)
 defer res.Close()
 
 // Iterate over the results
-err = res.Iterate(func(r document.Record) error {
+err = res.Iterate(func(r document.Document) error {
     var id int
     var name string
     var age int32
@@ -81,7 +81,7 @@ err = document.Scan(r, &id, &name, &age)
 // Apply some transformations
 err = res.
     // Filter all even ids
-    Filter(func(r document.Record) (bool, error) {
+    Filter(func(r document.Document) (bool, error) {
         f, err := r.GetField("id")
         ...
         id, err := f.DecodeToInt()
@@ -89,7 +89,7 @@ err = res.
         return id % 2 == 0, nil
     }).
     // Enrich the records with a new field
-    Map(func(r document.Record) (document.Record, error) {
+    Map(func(r document.Document) (document.Document, error) {
         var fb document.FieldBuffer
 
         err := fb.ScanRecord(r)
@@ -98,7 +98,7 @@ err = res.
         return &fb, nil
     }).
     // Iterate on them
-    Iterate(func(r document.Record) error {
+    Iterate(func(r document.Document) error {
         ...
     })
 ```
@@ -124,7 +124,7 @@ res, err := db.QueryRow(...)
 
 ## Code generation
 
-Genji also supports structs as long as they implement the `document.Record` interface for writes and the `document.Scanner` interface for reads.
+Genji also supports structs as long as they implement the `document.Document` interface for writes and the `document.Scanner` interface for reads.
 To simplify implementing these interfaces, Genji provides a command line tool that can generate methods for you.
 
 First, install the Genji command line tool:
@@ -159,7 +159,7 @@ This command generates a file that adds methods to the `User` type.
 // The User type gets new methods that implement some Genji interfaces.
 func (u *User) GetField(name string) (document.Field, error) {}
 func (u *User) Iterate(fn func(document.Field) error) error {}
-func (u *User) ScanRecord(rec document.Record) error {}
+func (u *User) ScanRecord(rec document.Document) error {}
 func (u *User) Scan(src interface{}) error
 ```
 
@@ -193,7 +193,7 @@ var users []User
 res, err := db.Query("SELECT * FROM user")
 defer res.Close()
 
-err = res.Iterate(func(r document.Record) error {
+err = res.Iterate(func(r document.Document) error {
     var u User
     // Use the generated ScanRecord method this time
     err := u.ScanRecord(r)

@@ -178,7 +178,7 @@ type indexIterator struct {
 
 var errStop = errors.New("stop")
 
-func (it indexIterator) Iterate(fn func(r document.Record) error) error {
+func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -283,7 +283,7 @@ type pkIterator struct {
 	e    Expr
 }
 
-func (it pkIterator) Iterate(fn func(r document.Record) error) error {
+func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,

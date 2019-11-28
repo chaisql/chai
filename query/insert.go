@@ -69,10 +69,10 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 	}
 
 	for _, rec := range stmt.Records {
-		var r document.Record
+		var r document.Document
 
 		switch tp := rec.(type) {
-		case document.Record:
+		case document.Document:
 			r = tp
 		case paramExtractor:
 			v, err := tp.Extract(stack.Params)
@@ -81,9 +81,9 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 			}
 
 			var ok bool
-			r, ok = v.(document.Record)
+			r, ok = v.(document.Document)
 			if !ok {
-				return res, fmt.Errorf("unsupported parameter of type %t, expecting document.Record", v)
+				return res, fmt.Errorf("unsupported parameter of type %t, expecting document.Document", v)
 			}
 		case []KVPair:
 			var fb document.FieldBuffer

@@ -22,7 +22,7 @@ func TestIteratorToCSV(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var records []document.Record
+			var records []document.Document
 
 			for i := 0; i < 3; i++ {
 				records = append(records, document.FieldBuffer([]document.Field{

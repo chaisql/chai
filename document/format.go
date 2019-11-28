@@ -229,7 +229,7 @@ func (f *FieldHeader) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Encode takes a record and encodes it using the Format.
-func Encode(r Record) ([]byte, error) {
+func Encode(r Document) ([]byte, error) {
 	var format Format
 
 	var offset uint64

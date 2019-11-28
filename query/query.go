@@ -148,14 +148,14 @@ func (r *Result) Close() error {
 	return err
 }
 
-func whereClause(e Expr, stack EvalStack) func(r document.Record) (bool, error) {
+func whereClause(e Expr, stack EvalStack) func(r document.Document) (bool, error) {
 	if e == nil {
-		return func(r document.Record) (bool, error) {
+		return func(r document.Document) (bool, error) {
 			return true, nil
 		}
 	}
 
-	return func(r document.Record) (bool, error) {
+	return func(r document.Document) (bool, error) {
 		stack.Record = r
 		v, err := e.Eval(stack)
 		if err != nil {

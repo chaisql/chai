@@ -26,7 +26,7 @@ type Expr interface {
 // Any of the members can be nil except the transaction.
 type EvalStack struct {
 	Tx     *database.Transaction
-	Record document.Record
+	Record document.Document
 	Params []driver.NamedValue
 	Cfg    *database.TableConfig
 }

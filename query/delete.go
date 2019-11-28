@@ -49,7 +49,7 @@ func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 	for {
 		var i int
 
-		err = st.Iterate(func(r document.Record) error {
+		err = st.Iterate(func(r document.Document) error {
 			k, ok := r.(document.Keyer)
 			if !ok {
 				return errors.New("attempt to delete record without key")

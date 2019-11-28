@@ -80,7 +80,7 @@ func TestDecodeField(t *testing.T) {
 func TestEncodeDecode(t *testing.T) {
 	tests := []struct {
 		name string
-		r    document.Record
+		r    document.Document
 	}{
 		{
 			"document.FieldBuffer",

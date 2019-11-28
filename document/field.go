@@ -13,7 +13,7 @@ type Field struct {
 	Name string
 
 	// if the field is a nested record, the record is stored in this var
-	nestedRecord Record
+	nestedRecord Document
 }
 
 // NewField creates a field whose type is infered from x.
@@ -146,7 +146,7 @@ func NewNullField(name string) Field {
 	}
 }
 
-func NewObjectField(name string, r Record) Field {
+func NewObjectField(name string, r Document) Field {
 	return Field{
 		Name: name,
 		Value: value.Value{

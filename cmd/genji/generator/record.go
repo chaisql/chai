@@ -35,7 +35,7 @@ const recordGetFieldTmpl = `
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-// GetField implements the field method of the document.Record interface.
+// GetField implements the field method of the document.Document interface.
 func ({{$fl}} *{{$structName}}) GetField(name string) (document.Field, error) {
 	switch name {
 	{{- range .Fields }}
@@ -78,7 +78,7 @@ const recordScanRecordTmpl = `
 
 // ScanRecord extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func ({{$fl}} *{{$structName}}) ScanRecord(rec document.Record) error {
+func ({{$fl}} *{{$structName}}) ScanRecord(rec document.Document) error {
 	return rec.Iterate(func(f document.Field) error {
 		var err error
 
@@ -102,7 +102,7 @@ const recordScanTmpl = `
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
-	rr, ok := src.(document.Record)
+	rr, ok := src.(document.Document)
 	if !ok {
 		return errors.New("unable to scan record from src")
 	}
