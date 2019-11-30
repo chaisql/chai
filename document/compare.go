@@ -52,7 +52,7 @@ func (v Value) IsLesserThanOrEqual(other Value) (bool, error) {
 
 func compare(op operator, l, r Value) (bool, error) {
 	// deal with nil
-	if l.Type == Null || r.Type == Null {
+	if l.Type == NullValue || r.Type == NullValue {
 		switch op {
 		case operatorEq, operatorGte, operatorLte:
 			return l.Type == r.Type, nil
@@ -62,7 +62,7 @@ func compare(op operator, l, r Value) (bool, error) {
 	}
 
 	// if same type, or string and bytes, no conversion needed
-	if l.Type == r.Type || (l.Type == String && r.Type == Bytes) || (r.Type == String && l.Type == Bytes) {
+	if l.Type == r.Type || (l.Type == StringValue && r.Type == BytesValue) || (r.Type == StringValue && l.Type == BytesValue) {
 		var ok bool
 		switch op {
 		case operatorEq:
@@ -83,7 +83,7 @@ func compare(op operator, l, r Value) (bool, error) {
 	// uint64 numbers can be bigger than int64 and thus cannot be converted
 	// to int64 without first checking if they can overflow.
 	// if they do, the result of all the operations is already known
-	if l.Type == Uint64 || r.Type == Uint64 {
+	if l.Type == Uint64Value || r.Type == Uint64Value {
 		lv, err := l.Decode()
 		if err != nil {
 			return false, err
@@ -95,9 +95,9 @@ func compare(op operator, l, r Value) (bool, error) {
 		}
 
 		var ui uint64
-		if l.Type == Uint64 {
+		if l.Type == Uint64Value {
 			ui = lv.(uint64)
-		} else if r.Type == Uint64 {
+		} else if r.Type == Uint64Value {
 			ui = rv.(uint64)
 		}
 		if ui > math.MaxInt64 {
@@ -107,17 +107,17 @@ func compare(op operator, l, r Value) (bool, error) {
 			case operatorGt:
 				fallthrough
 			case operatorGte:
-				return l.Type == Uint64, nil
+				return l.Type == Uint64Value, nil
 			case operatorLt:
-				return r.Type == Uint64, nil
+				return r.Type == Uint64Value, nil
 			case operatorLte:
-				return r.Type == Uint64, nil
+				return r.Type == Uint64Value, nil
 			}
 		}
 	}
 
 	// integer OP integer
-	if IsInteger(l.Type) && IsInteger(r.Type) {
+	if l.Type.IsInteger() && r.Type.IsInteger() {
 		ai, err := l.DecodeToInt64()
 		if err != nil {
 			return false, err
@@ -147,7 +147,7 @@ func compare(op operator, l, r Value) (bool, error) {
 	}
 
 	// number OP number
-	if IsNumber(l.Type) && IsNumber(r.Type) {
+	if l.Type.IsNumber() && r.Type.IsNumber() {
 		af, err := l.DecodeToFloat64()
 		if err != nil {
 			return false, err

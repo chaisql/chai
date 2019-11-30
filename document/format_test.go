@@ -10,11 +10,11 @@ import (
 )
 
 func TestFormat(t *testing.T) {
-	data, err := document.Encode(document.FieldBuffer([]document.Field{
-		document.NewInt64Field("age", 10),
-		document.NewNullField("address"),
-		document.NewStringField("name", "john"),
-	}))
+	data, err := document.Encode(document.NewFieldBuffer().
+		Add("age", document.NewInt64Value(10)).
+		Add("address", document.NewNullValue()).
+		Add("name", document.NewStringValue("john")))
+
 	require.NoError(t, err)
 
 	var f document.Format
@@ -27,53 +27,52 @@ func TestFormat(t *testing.T) {
 	require.EqualValues(t, "address", f.Header.FieldHeaders[0].Name)
 	require.EqualValues(t, 7, f.Header.FieldHeaders[0].NameSize)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Size)
-	require.EqualValues(t, document.Null, f.Header.FieldHeaders[0].Type)
+	require.EqualValues(t, document.NullValue, f.Header.FieldHeaders[0].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Offset)
 
 	require.EqualValues(t, "age", f.Header.FieldHeaders[1].Name)
 	require.EqualValues(t, 3, f.Header.FieldHeaders[1].NameSize)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[1].Size)
-	require.EqualValues(t, document.Int64, f.Header.FieldHeaders[1].Type)
+	require.EqualValues(t, document.Int64Value, f.Header.FieldHeaders[1].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[1].Offset)
 
 	require.EqualValues(t, "name", f.Header.FieldHeaders[2].Name)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[2].NameSize)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[2].Size)
-	require.EqualValues(t, document.String, f.Header.FieldHeaders[2].Type)
+	require.EqualValues(t, document.StringValue, f.Header.FieldHeaders[2].Type)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[2].Offset)
 
 	// ensure using a pointer to FieldBuffer has the same behaviour
-	fb := document.FieldBuffer([]document.Field{
-		document.NewInt64Field("age", 10),
-		document.NewNullField("address"),
-		document.NewStringField("name", "john"),
-	})
-	dataPtr, err := document.Encode(&fb)
+	fb := document.NewFieldBuffer().
+		Add("age", document.NewInt64Value(10)).
+		Add("address", document.NewNullValue()).
+		Add("name", document.NewStringValue("john"))
+
+	dataPtr, err := document.Encode(fb)
 	require.NoError(t, err)
 	require.Equal(t, data, dataPtr)
 }
 
-func TestDecodeField(t *testing.T) {
-	rec := document.FieldBuffer([]document.Field{
-		document.NewInt64Field("age", 10),
-		document.NewNullField("address"),
-		document.NewStringField("name", "john"),
-	})
+func TestDecodeValue(t *testing.T) {
+	doc := document.NewFieldBuffer().
+		Add("age", document.NewInt64Value(10)).
+		Add("address", document.NewNullValue()).
+		Add("name", document.NewStringValue("john"))
 
-	data, err := document.Encode(rec)
+	data, err := document.Encode(doc)
 	require.NoError(t, err)
 
-	f, err := document.DecodeField(data, "address")
+	v, err := document.DecodeValue(data, "age")
 	require.NoError(t, err)
-	require.Equal(t, rec[0], f)
+	require.Equal(t, document.NewInt64Value(10), v)
 
-	f, err = document.DecodeField(data, "age")
+	v, err = document.DecodeValue(data, "address")
 	require.NoError(t, err)
-	require.Equal(t, rec[1], f)
+	require.Equal(t, document.NewNullValue(), v)
 
-	f, err = document.DecodeField(data, "name")
+	v, err = document.DecodeValue(data, "name")
 	require.NoError(t, err)
-	require.Equal(t, rec[2], f)
+	require.Equal(t, document.NewStringValue("john"), v)
 }
 
 func TestEncodeDecode(t *testing.T) {
@@ -83,10 +82,9 @@ func TestEncodeDecode(t *testing.T) {
 	}{
 		{
 			"document.FieldBuffer",
-			document.FieldBuffer([]document.Field{
-				document.NewInt64Field("age", 10),
-				document.NewStringField("name", "john"),
-			}),
+			document.NewFieldBuffer().
+				Add("age", document.NewInt64Value(10)).
+				Add("name", document.NewStringValue("john")),
 		},
 		{
 			"Map",
@@ -96,15 +94,14 @@ func TestEncodeDecode(t *testing.T) {
 			}),
 		},
 		{
-			"Nested Record",
-			document.FieldBuffer([]document.Field{
-				document.NewInt64Field("age", 10),
-				document.NewStringField("name", "john"),
-				document.NewObjectField("address", document.NewFromMap(map[string]interface{}{
+			"Nested Document",
+			document.NewFieldBuffer().
+				Add("age", document.NewInt64Value(10)).
+				Add("name", document.NewStringValue("john")).
+				Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 					"city":    "Ajaccio",
 					"country": "France",
-				})),
-			}),
+				}))),
 		},
 	}
 
@@ -113,7 +110,7 @@ func TestEncodeDecode(t *testing.T) {
 			enc, err := document.Encode(test.r)
 			require.NoError(t, err)
 			var buf1, buf2 bytes.Buffer
-			err = document.ToJSON(&buf1, document.EncodedRecord(enc))
+			err = document.ToJSON(&buf1, document.EncodedDocument(enc))
 			require.NoError(t, err)
 			err = document.ToJSON(&buf2, test.r)
 			require.NoError(t, err)
@@ -122,52 +119,51 @@ func TestEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestEncodedRecord(t *testing.T) {
-	rec := document.FieldBuffer([]document.Field{
-		document.NewInt64Field("age", 10),
-		document.NewStringField("name", "john"),
-		document.NewObjectField("address", document.NewFromMap(map[string]interface{}{
+func TestEncodedDocument(t *testing.T) {
+	doc := document.NewFieldBuffer().
+		Add("age", document.NewInt64Value(10)).
+		Add("name", document.NewStringValue("john")).
+		Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 			"city":    "Ajaccio",
 			"country": "France",
-		})),
-	})
+		})))
 
-	data, err := document.Encode(rec)
+	data, err := document.Encode(doc)
 	require.NoError(t, err)
 
-	ec := document.EncodedRecord(data)
-	f, err := ec.GetValueByName("age")
+	ec := document.EncodedDocument(data)
+	v, err := ec.GetByField("age")
 	require.NoError(t, err)
-	require.Equal(t, document.NewInt64Field("age", 10), f)
-	f, err = ec.GetValueByName("address")
+	require.Equal(t, document.NewInt64Value(10), v)
+	v, err = ec.GetByField("address")
 	require.NoError(t, err)
 	var expected, actual bytes.Buffer
-	err = document.ToJSON(&expected, document.FieldBuffer{document.NewObjectField("address", document.NewFromMap(map[string]interface{}{
+	err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 		"city":    "Ajaccio",
 		"country": "France",
-	}))})
+	}))))
 	require.NoError(t, err)
-	err = document.ToJSON(&actual, document.FieldBuffer{f})
+	err = document.ToJSON(&actual, document.NewFieldBuffer().Add("address", v))
 	require.NoError(t, err)
 	require.JSONEq(t, expected.String(), actual.String())
 
 	var i int
-	err = ec.Iterate(func(f document.Field) error {
-		switch f.Name {
+	err = ec.Iterate(func(f string, v document.Value) error {
+		switch f {
 		case "age":
-			require.Equal(t, document.NewInt64Field("age", 10), f)
+			require.Equal(t, document.NewInt64Value(10), v)
 		case "address":
 			var expected, actual bytes.Buffer
-			err = document.ToJSON(&expected, document.FieldBuffer{document.NewObjectField("address", document.NewFromMap(map[string]interface{}{
+			err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 				"city":    "Ajaccio",
 				"country": "France",
-			}))})
+			}))))
 			require.NoError(t, err)
-			err = document.ToJSON(&actual, document.FieldBuffer{f})
+			err = document.ToJSON(&actual, document.NewFieldBuffer().Add(f, v))
 			require.NoError(t, err)
 			require.JSONEq(t, expected.String(), actual.String())
 		case "name":
-			require.Equal(t, document.NewStringField("name", "john"), f)
+			require.Equal(t, document.NewStringValue("john"), v)
 		}
 		i++
 		return nil
@@ -177,26 +173,26 @@ func TestEncodedRecord(t *testing.T) {
 }
 
 func BenchmarkEncode(b *testing.B) {
-	var fields []document.Field
+	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		document.Encode(document.FieldBuffer(fields))
+		document.Encode(&buf)
 	}
 }
 
 func BenchmarkFormatDecode(b *testing.B) {
-	var fields []document.Field
+	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
 
-	data, err := document.Encode(document.FieldBuffer(fields))
+	data, err := document.Encode(&buf)
 	require.NoError(b, err)
 
 	b.ResetTimer()
@@ -206,35 +202,37 @@ func BenchmarkFormatDecode(b *testing.B) {
 	}
 }
 
-func BenchmarkDecodeField(b *testing.B) {
-	var fields []document.Field
+func BenchmarkDecodeValue(b *testing.B) {
+	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
-	data, err := document.Encode(document.FieldBuffer(fields))
+
+	data, err := document.Encode(&buf)
 	require.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		document.DecodeField(data, "name-99")
+		document.DecodeValue(data, "name-99")
 	}
 }
 
-func BenchmarkEncodedRecord(b *testing.B) {
-	var fields []document.Field
+func BenchmarkEncodedDocument(b *testing.B) {
+	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
-	data, err := document.Encode(document.FieldBuffer(fields))
+
+	data, err := document.Encode(&buf)
 	require.NoError(b, err)
 
-	ec := document.EncodedRecord(data)
+	ec := document.EncodedDocument(data)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ec.Iterate(func(document.Field) error {
+		ec.Iterate(func(string, document.Value) error {
 			return nil
 		})
 	}

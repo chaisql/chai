@@ -112,7 +112,7 @@ func Example() {
 				return nil, err
 			}
 
-			fb.Add(document.NewStringField("group", "admin"))
+			fb.Add(document.NewStringValue("group", "admin"))
 			return &fb, nil
 		}).
 		// Iterate on them

@@ -11,16 +11,21 @@ import (
 var _ document.Document = new(document.FieldBuffer)
 
 func TestFieldBuffer(t *testing.T) {
-	buf := document.NewFieldBuffer(
-		document.NewInt64Field("a", 10),
-		document.NewStringField("b", "hello"),
-	)
+	var buf document.FieldBuffer
+	buf.Add("a", document.NewInt64Value(10))
+	buf.Add("b", document.NewStringValue("hello"))
 
 	t.Run("Iterate", func(t *testing.T) {
 		var i int
-		err := buf.Iterate(func(f document.Field) error {
-			require.NotEmpty(t, f)
-			require.Equal(t, f, buf[i])
+		err := buf.Iterate(func(f string, v document.Value) error {
+			switch i {
+			case 0:
+				require.Equal(t, "a", f)
+				require.Equal(t, document.NewInt64Value(10), v)
+			case 1:
+				require.Equal(t, "b", f)
+				require.Equal(t, document.NewStringValue("hello"), v)
+			}
 			i++
 			return nil
 		})
@@ -30,99 +35,95 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Add", func(t *testing.T) {
 		var buf document.FieldBuffer
+		buf.Add("a", document.NewInt64Value(10))
+		buf.Add("b", document.NewStringValue("hello"))
 
-		buf.Add(document.NewInt64Field("a", 10))
-		buf.Add(document.NewStringField("b", "hello"))
-
-		c := document.NewBoolField("c", true)
-		buf.Add(c)
-		require.Len(t, buf, 3)
-		require.Equal(t, buf[2], c)
+		c := document.NewBoolValue(true)
+		buf.Add("c", c)
+		require.Equal(t, 3, buf.Len())
 	})
 
-	t.Run("ScanRecord", func(t *testing.T) {
-		buf1 := document.NewFieldBuffer(
-			document.NewInt64Field("a", 10),
-			document.NewStringField("b", "hello"),
-		)
+	t.Run("ScanDocument", func(t *testing.T) {
+		var buf1, buf2 document.FieldBuffer
 
-		buf2 := document.NewFieldBuffer(
-			document.NewInt64Field("a", 20),
-			document.NewStringField("b", "bye"),
-			document.NewBoolField("c", true),
-		)
+		buf1.Add("a", document.NewInt64Value(10))
+		buf1.Add("b", document.NewStringValue("hello"))
 
-		err := buf1.ScanRecord(buf2)
+		buf2.Add("a", document.NewInt64Value(20))
+		buf2.Add("b", document.NewStringValue("bye"))
+		buf2.Add("c", document.NewBoolValue(true))
+
+		err := buf1.ScanDocument(buf2)
 		require.NoError(t, err)
 
-		require.Equal(t, document.NewFieldBuffer(
-			document.NewInt64Field("a", 10),
-			document.NewStringField("b", "hello"),
-			document.NewInt64Field("a", 20),
-			document.NewStringField("b", "bye"),
-			document.NewBoolField("c", true),
-		), buf1)
+		var buf document.FieldBuffer
+		buf.Add("a", document.NewInt64Value(10))
+		buf.Add("b", document.NewStringValue("hello"))
+		buf.Add("a", document.NewInt64Value(20))
+		buf.Add("b", document.NewStringValue("bye"))
+		buf.Add("c", document.NewBoolValue(true))
+		require.Equal(t, buf, buf1)
 	})
 
-	t.Run("GetValueByName", func(t *testing.T) {
-		f, err := buf.GetValueByName("a")
+	t.Run("GetByField", func(t *testing.T) {
+		v, err := buf.GetByField("a")
 		require.NoError(t, err)
-		require.Equal(t, document.NewInt64Field("a", 10), f)
+		require.Equal(t, document.NewInt64Value(10), v)
 
-		f, err = buf.GetValueByName("not existing")
+		v, err = buf.GetByField("not existing")
 		require.Error(t, err)
-		require.Zero(t, f)
+		require.Zero(t, v)
 	})
 
 	t.Run("Set", func(t *testing.T) {
-		buf1 := document.NewFieldBuffer(
-			document.NewInt64Field("a", 10),
-			document.NewStringField("b", "hello"),
-		)
+		var buf document.FieldBuffer
+		buf.Add("a", document.NewInt64Value(10))
+		buf.Add("b", document.NewStringValue("hello"))
 
-		buf1.Set(document.NewInt64Field("a", 11))
-		require.Equal(t, document.NewInt64Field("a", 11), buf1[0])
+		buf.Set("a", document.NewFloat64Value(11))
+		v, err := buf.GetByField("a")
+		require.NoError(t, err)
+		require.Equal(t, document.NewFloat64Value(11), v)
 
-		buf1.Set(document.NewInt64Field("c", 12))
-		require.Len(t, buf1, 3)
-		require.Equal(t, document.NewInt64Field("c", 12), buf1[2])
+		buf.Set("c", document.NewInt64Value(12))
+		require.Equal(t, 3, buf.Len())
+		v, err = buf.GetByField("c")
+		require.NoError(t, err)
+		require.Equal(t, document.NewInt64Value(12), v)
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		buf1 := document.NewFieldBuffer(
-			document.NewInt64Field("a", 10),
-			document.NewStringField("b", "hello"),
-		)
+		var buf document.FieldBuffer
+		buf.Add("a", document.NewInt64Value(10))
+		buf.Add("b", document.NewStringValue("hello"))
 
-		err := buf1.Delete("a")
+		err := buf.Delete("a")
 		require.NoError(t, err)
-		require.Len(t, buf1, 1)
-		require.Equal(t, document.NewFieldBuffer(
-			document.NewStringField("b", "hello"),
-		), buf1)
+		require.Equal(t, 1, buf.Len())
+		v, _ := buf.GetByField("b")
+		require.Equal(t, document.NewStringValue("hello"), v)
+		_, err = buf.GetByField("a")
+		require.Error(t, err)
 
-		err = buf1.Delete("b")
+		err = buf.Delete("b")
 		require.NoError(t, err)
-		require.Len(t, buf1, 0)
+		require.Equal(t, 0, buf.Len())
 
-		err = buf1.Delete("b")
+		err = buf.Delete("b")
 		require.Error(t, err)
 	})
 
 	t.Run("Replace", func(t *testing.T) {
-		buf1 := document.NewFieldBuffer(
-			document.NewInt64Field("a", 10),
-			document.NewStringField("b", "hello"),
-		)
+		var buf document.FieldBuffer
+		buf.Add("a", document.NewInt64Value(10))
+		buf.Add("b", document.NewStringValue("hello"))
 
-		err := buf1.Replace("a", document.NewInt64Field("c", 10))
+		err := buf.Replace("a", document.NewBoolValue(true))
 		require.NoError(t, err)
-		require.Equal(t, document.NewFieldBuffer(
-			document.NewInt64Field("c", 10),
-			document.NewStringField("b", "hello"),
-		), buf1)
-
-		err = buf1.Replace("d", document.NewInt64Field("c", 11))
+		v, err := buf.GetByField("a")
+		require.NoError(t, err)
+		require.Equal(t, document.NewBoolValue(true), v)
+		err = buf.Replace("d", document.NewInt64Value(11))
 		require.Error(t, err)
 	})
 }
@@ -139,11 +140,11 @@ func TestNewFromMap(t *testing.T) {
 	t.Run("Iterate", func(t *testing.T) {
 		counter := make(map[string]int)
 
-		err := rec.Iterate(func(f document.Field) error {
-			counter[f.Name]++
-			v, err := f.Decode()
+		err := rec.Iterate(func(f string, v document.Value) error {
+			counter[f]++
+			x, err := v.Decode()
 			require.NoError(t, err)
-			require.Equal(t, m[f.Name], v)
+			require.Equal(t, m[f], x)
 			return nil
 		})
 		require.NoError(t, err)
@@ -154,19 +155,19 @@ func TestNewFromMap(t *testing.T) {
 	})
 
 	t.Run("Field", func(t *testing.T) {
-		f, err := rec.GetValueByName("Name")
+		v, err := rec.GetByField("Name")
 		require.NoError(t, err)
-		require.Equal(t, document.Field{Name: "Name", Value: document.Value{Type: document.String, Data: []byte("foo")}}, f)
+		require.Equal(t, document.Value{Type: document.StringValue, Data: []byte("foo")}, v)
 
-		f, err = rec.GetValueByName("Age")
+		v, err = rec.GetByField("Age")
 		require.NoError(t, err)
-		require.Equal(t, document.Field{Name: "Age", Value: document.Value{Type: document.Int, Data: document.EncodeInt(10)}}, f)
+		require.Equal(t, document.Value{Type: document.IntValue, Data: document.EncodeInt(10)}, v)
 
-		f, err = rec.GetValueByName("NilField")
+		v, err = rec.GetByField("NilField")
 		require.NoError(t, err)
-		require.Equal(t, document.Field{Name: "NilField", Value: document.Value{Type: document.Null}}, f)
+		require.Equal(t, document.Value{Type: document.NullValue}, v)
 
-		_, err = rec.GetValueByName("bar")
+		_, err = rec.GetByField("bar")
 		require.Error(t, err)
 	})
 }
@@ -179,22 +180,20 @@ func TestToJSON(t *testing.T) {
 	}{
 		{
 			"Flat",
-			document.FieldBuffer([]document.Field{
-				document.NewStringField("name", "John"),
-				document.NewUint16Field("age", 10),
-			}),
+			document.NewFieldBuffer().
+				Add("name", document.NewStringValue("John")).
+				Add("age", document.NewUint16Value(10)),
 			`{"name":"John","age":10}` + "\n",
 		},
 		{
 			"Nested",
-			document.FieldBuffer([]document.Field{
-				document.NewStringField("name", "John"),
-				document.NewUint16Field("age", 10),
-				document.NewObjectField("address", document.FieldBuffer([]document.Field{
-					document.NewStringField("city", "Ajaccio"),
-					document.NewStringField("country", "France"),
-				})),
-			}),
+			document.NewFieldBuffer().
+				Add("name", document.NewStringValue("John")).
+				Add("age", document.NewUint16Value(10)).
+				Add("address", document.NewDocumentValue(document.NewFieldBuffer().
+					Add("city", document.NewStringValue("Ajaccio")).
+					Add("country", document.NewStringValue("France")),
+				)),
 			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"}}` + "\n",
 		},
 	}
@@ -211,22 +210,21 @@ func TestToJSON(t *testing.T) {
 }
 
 func TestScan(t *testing.T) {
-	r := document.FieldBuffer([]document.Field{
-		document.NewBytesField("a", []byte("foo")),
-		document.NewStringField("b", "bar"),
-		document.NewBoolField("c", true),
-		document.NewUintField("d", 10),
-		document.NewUint8Field("e", 10),
-		document.NewUint16Field("f", 10),
-		document.NewUint32Field("g", 10),
-		document.NewUint64Field("h", 10),
-		document.NewIntField("i", 10),
-		document.NewInt8Field("j", 10),
-		document.NewInt16Field("k", 10),
-		document.NewInt32Field("l", 10),
-		document.NewInt64Field("m", 10),
-		document.NewFloat64Field("n", 10.5),
-	})
+	r := document.NewFieldBuffer().
+		Add("a", document.NewBytesValue([]byte("foo"))).
+		Add("b", document.NewStringValue("bar")).
+		Add("c", document.NewBoolValue(true)).
+		Add("d", document.NewUintValue(10)).
+		Add("e", document.NewUint8Value(10)).
+		Add("f", document.NewUint16Value(10)).
+		Add("g", document.NewUint32Value(10)).
+		Add("h", document.NewUint64Value(10)).
+		Add("i", document.NewIntValue(10)).
+		Add("j", document.NewInt8Value(10)).
+		Add("k", document.NewInt16Value(10)).
+		Add("l", document.NewInt32Value(10)).
+		Add("m", document.NewInt64Value(10)).
+		Add("n", document.NewFloat64Value(10.5))
 
 	var a []byte
 	var b string
@@ -260,8 +258,8 @@ func TestScan(t *testing.T) {
 	require.Equal(t, m, int64(10))
 	require.Equal(t, n, float64(10.5))
 
-	t.Run("RecordScanner", func(t *testing.T) {
-		var rs recordScanner
+	t.Run("DocumentScanner", func(t *testing.T) {
+		var rs documentScanner
 		rs.fn = func(rr document.Document) error {
 			require.Equal(t, r, rr)
 			return nil
@@ -285,10 +283,10 @@ func TestScan(t *testing.T) {
 	})
 }
 
-type recordScanner struct {
+type documentScanner struct {
 	fn func(r document.Document) error
 }
 
-func (rs recordScanner) ScanRecord(r document.Document) error {
+func (rs documentScanner) ScanDocument(r document.Document) error {
 	return rs.fn(r)
 }

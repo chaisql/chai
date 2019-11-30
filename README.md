@@ -94,7 +94,7 @@ err = res.
 
         err := fb.ScanRecord(r)
         ...
-        fb.Add(document.NewStringField("Group", "admin"))
+        fb.Add(document.NewStringValue("Group", "admin"))
         return &fb, nil
     }).
     // Iterate on them

@@ -94,13 +94,13 @@ type indexOptions struct {
 func (i *indexOptions) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "IndexName":
-		return document.NewStringField("IndexName", i.IndexName), nil
+		return document.NewStringValue("IndexName", i.IndexName), nil
 	case "TableName":
-		return document.NewStringField("TableName", i.TableName), nil
+		return document.NewStringValue("TableName", i.TableName), nil
 	case "FieldName":
-		return document.NewStringField("FieldName", i.FieldName), nil
+		return document.NewStringValue("FieldName", i.FieldName), nil
 	case "Unique":
-		return document.NewBoolField("Unique", i.Unique), nil
+		return document.NewBoolValue("Unique", i.Unique), nil
 	}
 
 	return document.Field{}, errors.New("unknown field")

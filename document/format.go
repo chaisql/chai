@@ -9,7 +9,7 @@ import (
 	"sort"
 )
 
-// Format is an encoding format used to encode and decode records.
+// Format is an encoding format used to encode and decode documents.
 // It is composed of a header and a body.
 // The header defines a list of fields, offsets and relevant metadata.
 // The body contains each fields data one concatenated one after another.
@@ -29,7 +29,7 @@ func (f *Format) Decode(data []byte) error {
 	return nil
 }
 
-// A Header contains a representation of a record's metadata.
+// A Header contains a representation of a document's metadata.
 type Header struct {
 	// Size of the header
 	Size uint64
@@ -226,14 +226,14 @@ func (f *FieldHeader) WriteTo(w io.Writer) (int64, error) {
 	return int64(written), nil
 }
 
-// Encode takes a record and encodes it using the Format.
+// Encode takes a document and encodes it using the Format.
 func Encode(r Document) ([]byte, error) {
 	var format Format
 
 	var offset uint64
 	var dataList [][]byte
 
-	// copy the record into a buffer and sort the record
+	// copy the document into a buffer and sort the document
 	// by field names
 	switch t := r.(type) {
 	case FieldBuffer:
@@ -244,7 +244,7 @@ func Encode(r Document) ([]byte, error) {
 		sort.Sort(t)
 	default:
 		var fb FieldBuffer
-		err := fb.ScanRecord(r)
+		err := fb.ScanDocument(r)
 		if err != nil {
 			return nil, err
 		}
@@ -252,25 +252,27 @@ func Encode(r Document) ([]byte, error) {
 		r = &fb
 	}
 
-	err := r.Iterate(func(f Field) error {
-		if f.Type == Object {
+	err := r.Iterate(func(f string, v Value) error {
+		if v.Type == DocumentValue {
 			var err error
-			f.Data, err = Encode(f.nestedRecord)
-			if err != nil {
-				return err
+			if v.v != nil {
+				v.Data, err = Encode(v.v.(Document))
+				if err != nil {
+					return err
+				}
 			}
 		}
 
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
-			NameSize:   uint64(len(f.Name)),
-			nameString: f.Name,
-			Type:       uint64(f.Type),
-			Size:       uint64(len(f.Data)),
+			NameSize:   uint64(len(f)),
+			nameString: f,
+			Type:       uint64(v.Type),
+			Size:       uint64(len(v.Data)),
 			Offset:     offset,
 		})
 
-		offset += uint64(len(f.Data))
-		dataList = append(dataList, f.Data)
+		offset += uint64(len(v.Data))
+		dataList = append(dataList, v.Data)
 		return nil
 	})
 	if err != nil {
@@ -295,11 +297,11 @@ func Encode(r Document) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// DecodeField reads a single field from data without decoding the entire data.
-func DecodeField(data []byte, fieldName string) (Field, error) {
+// DecodeValue reads a single field from data without decoding the entire data.
+func DecodeValue(data []byte, valueName string) (Value, error) {
 	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
-		return Field{}, errors.New("can't decode data")
+		return Value{}, errors.New("can't decode data")
 	}
 
 	hdata := data[n : n+int(hsize)]
@@ -308,7 +310,7 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 	// skip number of fields
 	_, n = binary.Uvarint(hdata)
 	if n <= 0 {
-		return Field{}, errors.New("can't decode data")
+		return Value{}, errors.New("can't decode data")
 	}
 	hdata = hdata[n:]
 
@@ -316,46 +318,41 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 	for len(hdata) > 0 {
 		n, err := fh.Decode(hdata)
 		if err != nil {
-			return Field{}, err
+			return Value{}, err
 		}
 		hdata = hdata[n:]
 
-		if fieldName == string(fh.Name) {
+		if valueName == string(fh.Name) {
 			data := body[fh.Offset : fh.Offset+fh.Size]
 
-			f := Field{
-				Name: fieldName,
-				Value: Value{
-					Type: Type(fh.Type),
-				},
+			v := Value{
+				Type: ValueType(fh.Type),
 			}
 
-			if f.Type == Object {
-				f.nestedRecord = EncodedRecord(data)
-			} else if len(data) > 0 {
-				// make sure f.Data == nil to ease comparisons
-				f.Data = body[fh.Offset : fh.Offset+fh.Size]
+			if len(data) > 0 {
+				// make sure v.Data == nil to ease comparisons
+				v.Data = body[fh.Offset : fh.Offset+fh.Size]
 			}
-			return f, nil
+			return v, nil
 		}
 	}
 
-	return Field{}, fmt.Errorf("field %s not found", fieldName)
+	return Value{}, fmt.Errorf("field %s not found", valueName)
 }
 
-// An EncodedRecord implements the record interface on top of an encoded representation of a
+// An EncodedDocument implements the Document interface on top of an encoded representation of a
 // document.
-// It is useful to avoid decoding the entire record when only a few fields are needed.
-type EncodedRecord []byte
+// It is useful to avoid decoding the entire document when only a few fields are needed.
+type EncodedDocument []byte
 
-// GetValueByName decodes the selected field.
-func (e EncodedRecord) GetValueByName(name string) (Field, error) {
-	return DecodeField(e, name)
+// GetByField decodes the selected field.
+func (e EncodedDocument) GetByField(field string) (Value, error) {
+	return DecodeValue(e, field)
 }
 
-// Iterate decodes each fields one by one and passes them to fn until the end of the record
+// Iterate decodes each fields one by one and passes them to fn until the end of the document
 // or until fn returns an error.
-func (e EncodedRecord) Iterate(fn func(Field) error) error {
+func (e EncodedDocument) Iterate(fn func(name string, value Value) error) error {
 	var format Format
 	err := format.Decode(e)
 	if err != nil {
@@ -364,19 +361,15 @@ func (e EncodedRecord) Iterate(fn func(Field) error) error {
 
 	for _, fh := range format.Header.FieldHeaders {
 		data := format.Body[fh.Offset : fh.Offset+fh.Size]
-		f := Field{
-			Name: string(fh.Name),
-			Value: Value{
-				Type: Type(fh.Type),
-			},
+		v := Value{
+			Type: ValueType(fh.Type),
 		}
 
-		if f.Type == Object {
-			f.nestedRecord = EncodedRecord(data)
-		} else {
-			f.Data = data
+		if len(data) > 0 {
+			v.Data = data
 		}
-		err = fn(f)
+
+		err = fn(string(fh.Name), v)
 		if err != nil {
 			return err
 		}

@@ -22,19 +22,19 @@ func TestIteratorToCSV(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var records []document.Document
+			var documents []document.Document
 
 			for i := 0; i < 3; i++ {
-				records = append(records, document.FieldBuffer([]document.Field{
-					document.NewStringField("name", fmt.Sprintf("John, %d", i)),
-					document.NewIntField("age", 10+i),
-					document.NewFloat64Field("pi", 3.14*float64(i+1)),
-					document.NewNullField("friends"),
-				}))
+				documents = append(documents, document.NewFieldBuffer().
+					Add("name", document.NewStringValue(fmt.Sprintf("John, %d", i))).
+					Add("age", document.NewIntValue(10+i)).
+					Add("pi", document.NewFloat64Value(3.14*float64(i+1))).
+					Add("friends", document.NewNullValue()),
+				)
 			}
 
 			var buf bytes.Buffer
-			err := document.IteratorToCSV(&buf, document.NewStream(document.NewIterator(records...)))
+			err := document.IteratorToCSV(&buf, document.NewStream(document.NewIterator(documents...)))
 			require.NoError(t, err)
 			require.Equal(t, test.expected, buf.String())
 			require.NoError(t, err)

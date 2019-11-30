@@ -10,21 +10,21 @@ import (
 // ErrStreamClosed is used to indicate that a stream must be closed.
 var ErrStreamClosed = errors.New("stream closed")
 
-// An Iterator can iterate over records.
+// An Iterator can iterate over documents.
 type Iterator interface {
-	// Iterate goes through all the records and calls the given function by passing each one of them.
+	// Iterate goes through all the documents and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(func(r Document) error) error
 }
 
-// NewIterator creates an iterator that iterates over records.
-func NewIterator(records ...Document) Iterator {
-	return recordsIterator(records)
+// NewIterator creates an iterator that iterates over documents.
+func NewIterator(documents ...Document) Iterator {
+	return documentsIterator(documents)
 }
 
-type recordsIterator []Document
+type documentsIterator []Document
 
-func (rr recordsIterator) Iterate(fn func(r Document) error) error {
+func (rr documentsIterator) Iterate(fn func(r Document) error) error {
 	var err error
 
 	for _, r := range rr {
@@ -37,7 +37,7 @@ func (rr recordsIterator) Iterate(fn func(r Document) error) error {
 	return nil
 }
 
-// Stream reads records of an iterator one by one and passes them
+// Stream reads documents of an iterator one by one and passes them
 // through a list of functions for transformation.
 type Stream struct {
 	it Iterator
@@ -51,9 +51,9 @@ func NewStream(it Iterator) Stream {
 
 // Iterate calls the underlying iterator's iterate method.
 // If this stream was created using the Pipe method, it will apply fn
-// to any record passed by the underlying iterator.
-// If fn returns a record, it will be passed to the next stream.
-// If it returns a nil record, the record will be ignored.
+// to any document passed by the underlying iterator.
+// If fn returns a document, it will be passed to the next stream.
+// If it returns a nil document, the document will be ignored.
 // If it returns an error, the stream will be interrupted and that error will bubble up
 // and returned by fn, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
@@ -89,7 +89,7 @@ func (s Stream) Iterate(fn func(r Document) error) error {
 }
 
 // Pipe creates a new Stream who can read its data from s and apply
-// op to every record passed by its Iterate method.
+// op to every document passed by its Iterate method.
 func (s Stream) Pipe(op StreamOperator) Stream {
 	return Stream{
 		it: s,
@@ -97,7 +97,7 @@ func (s Stream) Pipe(op StreamOperator) Stream {
 	}
 }
 
-// Map applies fn to each received record and passes it to the next stream.
+// Map applies fn to each received document and passes it to the next stream.
 // If fn returns an error, the stream is interrupted.
 func (s Stream) Map(fn func(r Document) (Document, error)) Stream {
 	return s.Pipe(func() func(r Document) (Document, error) {
@@ -105,8 +105,8 @@ func (s Stream) Map(fn func(r Document) (Document, error)) Stream {
 	})
 }
 
-// Filter each received record using fn.
-// If fn returns true, the record is kept, otherwise it is skipped.
+// Filter each received document using fn.
+// If fn returns true, the document is kept, otherwise it is skipped.
 // If fn returns an error, the stream is interrupted.
 func (s Stream) Filter(fn func(r Document) (bool, error)) Stream {
 	return s.Pipe(func() func(r Document) (Document, error) {
@@ -125,7 +125,7 @@ func (s Stream) Filter(fn func(r Document) (bool, error)) Stream {
 	})
 }
 
-// Limit interrupts the stream once the number of passed records have reached n.
+// Limit interrupts the stream once the number of passed documents have reached n.
 func (s Stream) Limit(n int) Stream {
 	return s.Pipe(func() func(r Document) (Document, error) {
 		var count int
@@ -141,7 +141,7 @@ func (s Stream) Limit(n int) Stream {
 	})
 }
 
-// Offset ignores n records then passes the subsequent ones to the stream.
+// Offset ignores n documents then passes the subsequent ones to the stream.
 func (s Stream) Offset(n int) Stream {
 	return s.Pipe(func() func(r Document) (Document, error) {
 		var skipped int
@@ -171,7 +171,7 @@ func (s Stream) Append(it Iterator) Stream {
 	return s
 }
 
-// Count counts all the records from the stream.
+// Count counts all the documents from the stream.
 func (s Stream) Count() (int, error) {
 	counter := 0
 
@@ -183,7 +183,7 @@ func (s Stream) Count() (int, error) {
 	return counter, err
 }
 
-// First runs the stream, returns the first record found and closes the stream.
+// First runs the stream, returns the first document found and closes the stream.
 // If the stream is empty, all return values are nil.
 func (s Stream) First() (r Document, err error) {
 	err = s.Iterate(func(rec Document) error {
@@ -199,8 +199,8 @@ func (s Stream) First() (r Document, err error) {
 }
 
 // An StreamOperator is used to modify a stream.
-// If a stream operator returns a record, it will be passed to the next stream.
-// If it returns a nil record, the record will be ignored.
+// If a stream operator returns a document, it will be passed to the next stream.
+// If it returns a nil document, the document will be ignored.
 // If it returns an error, the stream will be interrupted and that error will bubble up
 // and returned by this function, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
@@ -223,7 +223,7 @@ func (m multiIterator) Iterate(fn func(r Document) error) error {
 	return nil
 }
 
-// IteratorToCSV encodes all the records of an iterator to CSV.
+// IteratorToCSV encodes all the documents of an iterator to CSV.
 func IteratorToCSV(w io.Writer, s Iterator) error {
 	cw := csv.NewWriter(w)
 
@@ -231,8 +231,8 @@ func IteratorToCSV(w io.Writer, s Iterator) error {
 	err := s.Iterate(func(r Document) error {
 		line = line[:0]
 
-		err := r.Iterate(func(f Field) error {
-			line = append(line, f.Value.String())
+		err := r.Iterate(func(f string, v Value) error {
+			line = append(line, v.String())
 
 			return nil
 		})
@@ -250,12 +250,12 @@ func IteratorToCSV(w io.Writer, s Iterator) error {
 	return nil
 }
 
-// IteratorToJSON encodes all the records of an iterator to JSON stream.
+// IteratorToJSON encodes all the documents of an iterator to JSON stream.
 func IteratorToJSON(w io.Writer, s Iterator) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 
 	return s.Iterate(func(r Document) error {
-		return enc.Encode(jsonRecord{r})
+		return enc.Encode(jsonDocument{r})
 	})
 }

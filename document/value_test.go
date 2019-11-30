@@ -8,6 +8,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValueString(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    document.Value
+		expected string
+	}{
+		{"bytes", document.NewBytesValue([]byte("bar")), "[98 97 114]"},
+		{"string", document.NewStringValue("bar"), "bar"},
+		{"bool", document.NewBoolValue(true), "true"},
+		{"uint", document.NewUintValue(10), "10"},
+		{"uint8", document.NewUint8Value(10), "10"},
+		{"uint16", document.NewUint16Value(10), "10"},
+		{"uint32", document.NewUint32Value(10), "10"},
+		{"uint64", document.NewUint64Value(10), "10"},
+		{"int", document.NewIntValue(10), "10"},
+		{"int8", document.NewInt8Value(10), "10"},
+		{"int16", document.NewInt16Value(10), "10"},
+		{"int32", document.NewInt32Value(10), "10"},
+		{"int64", document.NewInt64Value(10), "10"},
+		{"float64", document.NewFloat64Value(10.1), "10.1"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.expected, test.value.String())
+		})
+	}
+}
+
 func TestValueEncodeDecode(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -80,7 +109,7 @@ func TestOrdering(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
-	v := document.NewFloat64(3.14)
+	v := document.NewFloat64Value(3.14)
 	price, err := v.Decode()
 	require.NoError(t, err)
 	require.Equal(t, 3.14, price)
@@ -110,7 +139,7 @@ func TestNew(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			v, err := document.New(test.value)
+			v, err := document.NewValue(test.value)
 			require.NoError(t, err)
 			i, err := v.Decode()
 			require.NoError(t, err)
@@ -126,20 +155,20 @@ func TestDecodeToBytes(t *testing.T) {
 		fails    bool
 		expected []byte
 	}{
-		{"bytes", document.NewBytes([]byte("bar")), false, []byte("bar")},
-		{"string", document.NewString("bar"), false, []byte("bar")},
-		{"bool", document.NewBool(true), false, document.NewBool(true).Data},
-		{"uint", document.NewUint(10), false, document.NewUint(10).Data},
-		{"uint8", document.NewUint8(10), false, document.NewUint8(10).Data},
-		{"uint16", document.NewUint16(10), false, document.NewUint16(10).Data},
-		{"uint32", document.NewUint32(10), false, document.NewUint32(10).Data},
-		{"uint64", document.NewUint64(10), false, document.NewUint64(10).Data},
-		{"int", document.NewInt(10), false, document.NewInt(10).Data},
-		{"int8", document.NewInt8(10), false, document.NewInt8(10).Data},
-		{"int16", document.NewInt16(10), false, document.NewInt16(10).Data},
-		{"int32", document.NewInt32(10), false, document.NewInt32(10).Data},
-		{"int64", document.NewInt64(10), false, document.NewInt64(10).Data},
-		{"float64", document.NewFloat64(10.1), false, document.NewFloat64(10.1).Data},
+		{"bytes", document.NewBytesValue([]byte("bar")), false, []byte("bar")},
+		{"string", document.NewStringValue("bar"), false, []byte("bar")},
+		{"bool", document.NewBoolValue(true), false, document.NewBoolValue(true).Data},
+		{"uint", document.NewUintValue(10), false, document.NewUintValue(10).Data},
+		{"uint8", document.NewUint8Value(10), false, document.NewUint8Value(10).Data},
+		{"uint16", document.NewUint16Value(10), false, document.NewUint16Value(10).Data},
+		{"uint32", document.NewUint32Value(10), false, document.NewUint32Value(10).Data},
+		{"uint64", document.NewUint64Value(10), false, document.NewUint64Value(10).Data},
+		{"int", document.NewIntValue(10), false, document.NewIntValue(10).Data},
+		{"int8", document.NewInt8Value(10), false, document.NewInt8Value(10).Data},
+		{"int16", document.NewInt16Value(10), false, document.NewInt16Value(10).Data},
+		{"int32", document.NewInt32Value(10), false, document.NewInt32Value(10).Data},
+		{"int64", document.NewInt64Value(10), false, document.NewInt64Value(10).Data},
+		{"float64", document.NewFloat64Value(10.1), false, document.NewFloat64Value(10.1).Data},
 	}
 
 	for _, test := range tests {
@@ -162,20 +191,20 @@ func TestDecodeToString(t *testing.T) {
 		fails    bool
 		expected string
 	}{
-		{"bytes", document.NewBytes([]byte("bar")), false, "bar"},
-		{"string", document.NewString("bar"), false, "bar"},
-		{"bool", document.NewBool(true), true, ""},
-		{"uint", document.NewUint(10), true, ""},
-		{"uint8", document.NewUint8(10), true, ""},
-		{"uint16", document.NewUint16(10), true, ""},
-		{"uint32", document.NewUint32(10), true, ""},
-		{"uint64", document.NewUint64(10), true, ""},
-		{"int", document.NewInt(10), true, ""},
-		{"int8", document.NewInt8(10), true, ""},
-		{"int16", document.NewInt16(10), true, ""},
-		{"int32", document.NewInt32(10), true, ""},
-		{"int64", document.NewInt64(10), true, ""},
-		{"float64", document.NewFloat64(10.1), true, ""},
+		{"bytes", document.NewBytesValue([]byte("bar")), false, "bar"},
+		{"string", document.NewStringValue("bar"), false, "bar"},
+		{"bool", document.NewBoolValue(true), true, ""},
+		{"uint", document.NewUintValue(10), true, ""},
+		{"uint8", document.NewUint8Value(10), true, ""},
+		{"uint16", document.NewUint16Value(10), true, ""},
+		{"uint32", document.NewUint32Value(10), true, ""},
+		{"uint64", document.NewUint64Value(10), true, ""},
+		{"int", document.NewIntValue(10), true, ""},
+		{"int8", document.NewInt8Value(10), true, ""},
+		{"int16", document.NewInt16Value(10), true, ""},
+		{"int32", document.NewInt32Value(10), true, ""},
+		{"int64", document.NewInt64Value(10), true, ""},
+		{"float64", document.NewFloat64Value(10.1), true, ""},
 	}
 
 	for _, test := range tests {
@@ -198,34 +227,34 @@ func TestDecodeToBool(t *testing.T) {
 		fails    bool
 		expected bool
 	}{
-		{"bytes", document.NewBytes([]byte("bar")), false, true},
-		{"zero bytes", document.NewBytes([]byte("")), false, false},
-		{"string", document.NewString("bar"), false, true},
-		{"zero string", document.NewString(""), false, false},
-		{"bool", document.NewBool(true), false, true},
-		{"zero bool", document.NewBool(false), false, false},
-		{"uint", document.NewUint(10), false, true},
-		{"zero uint", document.NewUint(0), false, false},
-		{"uint8", document.NewUint8(10), false, true},
-		{"zero uint8", document.NewUint8(0), false, false},
-		{"uint16", document.NewUint16(10), false, true},
-		{"zero uint16", document.NewUint16(0), false, false},
-		{"uint32", document.NewUint32(10), false, true},
-		{"zero uint32", document.NewUint32(0), false, false},
-		{"uint64", document.NewUint64(10), false, true},
-		{"zero uint64", document.NewUint64(0), false, false},
-		{"int", document.NewInt(10), false, true},
-		{"zero int", document.NewInt(0), false, false},
-		{"int8", document.NewInt8(10), false, true},
-		{"zero int8", document.NewInt8(0), false, false},
-		{"int16", document.NewInt16(10), false, true},
-		{"zero int16", document.NewInt16(0), false, false},
-		{"int32", document.NewInt32(10), false, true},
-		{"zero int32", document.NewInt32(0), false, false},
-		{"int64", document.NewInt64(10), false, true},
-		{"zero int64", document.NewInt64(0), false, false},
-		{"float64", document.NewFloat64(10.1), false, true},
-		{"zero float64", document.NewFloat64(0), false, false},
+		{"bytes", document.NewBytesValue([]byte("bar")), false, true},
+		{"zero bytes", document.NewBytesValue([]byte("")), false, false},
+		{"string", document.NewStringValue("bar"), false, true},
+		{"zero string", document.NewStringValue(""), false, false},
+		{"bool", document.NewBoolValue(true), false, true},
+		{"zero bool", document.NewBoolValue(false), false, false},
+		{"uint", document.NewUintValue(10), false, true},
+		{"zero uint", document.NewUintValue(0), false, false},
+		{"uint8", document.NewUint8Value(10), false, true},
+		{"zero uint8", document.NewUint8Value(0), false, false},
+		{"uint16", document.NewUint16Value(10), false, true},
+		{"zero uint16", document.NewUint16Value(0), false, false},
+		{"uint32", document.NewUint32Value(10), false, true},
+		{"zero uint32", document.NewUint32Value(0), false, false},
+		{"uint64", document.NewUint64Value(10), false, true},
+		{"zero uint64", document.NewUint64Value(0), false, false},
+		{"int", document.NewIntValue(10), false, true},
+		{"zero int", document.NewIntValue(0), false, false},
+		{"int8", document.NewInt8Value(10), false, true},
+		{"zero int8", document.NewInt8Value(0), false, false},
+		{"int16", document.NewInt16Value(10), false, true},
+		{"zero int16", document.NewInt16Value(0), false, false},
+		{"int32", document.NewInt32Value(10), false, true},
+		{"zero int32", document.NewInt32Value(0), false, false},
+		{"int64", document.NewInt64Value(10), false, true},
+		{"zero int64", document.NewInt64Value(0), false, false},
+		{"float64", document.NewFloat64Value(10.1), false, true},
+		{"zero float64", document.NewFloat64Value(0), false, false},
 	}
 
 	for _, test := range tests {
@@ -248,20 +277,20 @@ func TestDecodeToNumber(t *testing.T) {
 		fails    bool
 		expected int64
 	}{
-		{"bytes", document.NewBytes([]byte("bar")), true, 0},
-		{"string", document.NewString("bar"), true, 0},
-		{"bool", document.NewBool(true), true, 0},
-		{"uint", document.NewUint(10), false, 10},
-		{"uint8", document.NewUint8(10), false, 10},
-		{"uint16", document.NewUint16(10), false, 10},
-		{"uint32", document.NewUint32(10), false, 10},
-		{"uint64", document.NewUint64(10), false, 10},
-		{"int", document.NewInt(10), false, 10},
-		{"int8", document.NewInt8(10), false, 10},
-		{"int16", document.NewInt16(10), false, 10},
-		{"int32", document.NewInt32(10), false, 10},
-		{"int64", document.NewInt64(10), false, 10},
-		{"float64", document.NewFloat64(10), false, 10},
+		{"bytes", document.NewBytesValue([]byte("bar")), true, 0},
+		{"string", document.NewStringValue("bar"), true, 0},
+		{"bool", document.NewBoolValue(true), true, 0},
+		{"uint", document.NewUintValue(10), false, 10},
+		{"uint8", document.NewUint8Value(10), false, 10},
+		{"uint16", document.NewUint16Value(10), false, 10},
+		{"uint32", document.NewUint32Value(10), false, 10},
+		{"uint64", document.NewUint64Value(10), false, 10},
+		{"int", document.NewIntValue(10), false, 10},
+		{"int8", document.NewInt8Value(10), false, 10},
+		{"int16", document.NewInt16Value(10), false, 10},
+		{"int32", document.NewInt32Value(10), false, 10},
+		{"int64", document.NewInt64Value(10), false, 10},
+		{"float64", document.NewFloat64Value(10), false, 10},
 	}
 
 	check := func(t *testing.T, res interface{}, err error, fails bool, expected interface{}) {
@@ -321,9 +350,9 @@ func TestDecodeToNumber(t *testing.T) {
 	}
 
 	t.Run("float64/precision loss", func(t *testing.T) {
-		_, err := document.NewFloat64(10.4).DecodeToUint16()
+		_, err := document.NewFloat64Value(10.4).DecodeToUint16()
 		require.Error(t, err)
-		_, err = document.NewFloat64(10.4).ConvertTo(document.Int32)
+		_, err = document.NewFloat64Value(10.4).ConvertTo(document.Int32Value)
 		require.Error(t, err)
 	})
 }
@@ -331,15 +360,15 @@ func TestDecodeToNumber(t *testing.T) {
 func TestTypeFromGoType(t *testing.T) {
 	tests := []struct {
 		goType   string
-		expected document.Type
+		expected document.ValueType
 	}{
-		{"[]byte", document.Bytes},
-		{"struct", document.Object},
+		{"[]byte", document.BytesValue},
+		{"struct", document.DocumentValue},
 	}
 
 	for _, test := range tests {
 		t.Run(test.goType, func(t *testing.T) {
-			require.Equal(t, test.expected, document.TypeFromGoType(test.goType))
+			require.Equal(t, test.expected, document.NewValueTypeFromGoType(test.goType))
 		})
 	}
 }

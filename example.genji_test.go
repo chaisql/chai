@@ -13,11 +13,11 @@ import (
 func (u *User) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "id":
-		return document.NewInt64Field("id", u.ID), nil
+		return document.NewInt64Value("id", u.ID), nil
 	case "name":
-		return document.NewStringField("name", u.Name), nil
+		return document.NewStringValue("name", u.Name), nil
 	case "age":
-		return document.NewUint32Field("age", u.Age), nil
+		return document.NewUint32Value("age", u.Age), nil
 	}
 
 	return document.Field{}, errors.New("unknown field")
@@ -28,17 +28,17 @@ func (u *User) GetValueByName(name string) (document.Field, error) {
 func (u *User) Iterate(fn func(document.Field) error) error {
 	var err error
 
-	err = fn(document.NewInt64Field("id", u.ID))
+	err = fn(document.NewInt64Value("id", u.ID))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewStringField("name", u.Name))
+	err = fn(document.NewStringValue("name", u.Name))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewUint32Field("age", u.Age))
+	err = fn(document.NewUint32Value("age", u.Age))
 	if err != nil {
 		return err
 	}

@@ -31,9 +31,9 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	}
 
 	var fb document.FieldBuffer
-	fb.Add(document.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
-	fb.Add(document.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
-	fb.Add(document.NewInt64Field("lastKey", cfg.lastKey))
+	fb.Add(document.NewStringValue("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(document.NewUint8Value("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
+	fb.Add(document.NewInt64Value("lastKey", cfg.lastKey))
 
 	v, err := document.Encode(&fb)
 	if err != nil {
@@ -54,9 +54,9 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 	}
 
 	var fb document.FieldBuffer
-	fb.Add(document.NewStringField("PrimaryKeyName", cfg.PrimaryKeyName))
-	fb.Add(document.NewUint8Field("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
-	fb.Add(document.NewInt64Field("lastKey", cfg.lastKey))
+	fb.Add(document.NewStringValue("PrimaryKeyName", cfg.PrimaryKeyName))
+	fb.Add(document.NewUint8Value("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
+	fb.Add(document.NewInt64Value("lastKey", cfg.lastKey))
 
 	v, err := document.Encode(&fb)
 	if err != nil {

@@ -121,8 +121,8 @@ func TestTxReIndex(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			_, err = tb.Insert(document.NewFieldBuffer(
-				document.NewIntField("a", i),
-				document.NewIntField("b", i*10),
+				document.NewIntValue("a", i),
+				document.NewIntValue("b", i*10),
 			))
 			require.NoError(t, err)
 		}
@@ -208,13 +208,13 @@ func TestReIndexAll(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			_, err = tb1.Insert(document.NewFieldBuffer(
-				document.NewIntField("a", i),
-				document.NewIntField("b", i*10),
+				document.NewIntValue("a", i),
+				document.NewIntValue("b", i*10),
 			))
 			require.NoError(t, err)
 			_, err = tb2.Insert(document.NewFieldBuffer(
-				document.NewIntField("a", i),
-				document.NewIntField("b", i*10),
+				document.NewIntValue("a", i),
+				document.NewIntValue("b", i*10),
 			))
 			require.NoError(t, err)
 		}
@@ -263,8 +263,8 @@ func TestReIndexAll(t *testing.T) {
 
 func newRecord() document.FieldBuffer {
 	return document.FieldBuffer([]document.Field{
-		document.NewStringField("fielda", "a"),
-		document.NewStringField("fieldb", "b"),
+		document.NewStringValue("fielda", "a"),
+		document.NewStringValue("fieldb", "b"),
 	})
 }
 
@@ -343,7 +343,7 @@ func TestTableRecord(t *testing.T) {
 
 		// create two records, one with an additional field
 		rec1 := newRecord()
-		rec1.Add(document.NewInt64Field("fieldc", 40))
+		rec1.Add(document.NewInt64Value("fieldc", 40))
 		rec2 := newRecord()
 
 		key1, err := tb.Insert(rec1)
@@ -391,8 +391,8 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		rec := document.NewFieldBuffer(
-			document.NewIntField("foo", 1),
-			document.NewStringField("bar", "baz"),
+			document.NewIntValue("foo", 1),
+			document.NewStringValue("bar", "baz"),
 		)
 
 		// insert
@@ -430,7 +430,7 @@ func TestTableInsert(t *testing.T) {
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
 				rec := document.NewFieldBuffer(
-					document.NewBytesField("foo", test),
+					document.NewBytesValue("foo", test),
 				)
 
 				_, err := tb.Insert(rec)
@@ -458,7 +458,7 @@ func TestTableInsert(t *testing.T) {
 
 		// create one record with the foo field
 		rec1 := newRecord()
-		foo := document.NewFloat64Field("foo", 10)
+		foo := document.NewFloat64Value("foo", 10)
 		rec1 = append(rec1, foo)
 
 		// create one record without the foo field
@@ -503,7 +503,7 @@ func TestTableDelete(t *testing.T) {
 
 		// create two records, one with an additional field
 		rec1 := newRecord()
-		rec1.Add(document.NewInt64Field("fieldc", 40))
+		rec1.Add(document.NewInt64Value("fieldc", 40))
 		rec2 := newRecord()
 
 		key1, err := tb.Insert(rec1)
@@ -544,8 +544,8 @@ func TestTableReplace(t *testing.T) {
 		// create two different records
 		rec1 := newRecord()
 		rec2 := document.FieldBuffer([]document.Field{
-			document.NewStringField("fielda", "c"),
-			document.NewStringField("fieldb", "d"),
+			document.NewStringValue("fielda", "c"),
+			document.NewStringValue("fieldb", "d"),
 		})
 
 		key1, err := tb.Insert(rec1)
@@ -555,8 +555,8 @@ func TestTableReplace(t *testing.T) {
 
 		// create a third record
 		rec3 := document.FieldBuffer([]document.Field{
-			document.NewStringField("fielda", "e"),
-			document.NewStringField("fieldb", "f"),
+			document.NewStringValue("fielda", "e"),
+			document.NewStringValue("fieldb", "f"),
 		})
 
 		// replace rec1 with rec3
@@ -676,7 +676,7 @@ func BenchmarkTableInsert(b *testing.B) {
 			var fields []document.Field
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+				fields = append(fields, document.NewInt64Value(fmt.Sprintf("name-%d", i), i))
 			}
 
 			rec := document.FieldBuffer(fields)
@@ -707,7 +707,7 @@ func BenchmarkTableScan(b *testing.B) {
 			var fields []document.Field
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, document.NewInt64Field(fmt.Sprintf("name-%d", i), i))
+				fields = append(fields, document.NewInt64Value(fmt.Sprintf("name-%d", i), i))
 			}
 
 			rec := document.FieldBuffer(fields)

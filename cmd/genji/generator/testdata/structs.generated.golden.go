@@ -13,13 +13,13 @@ import (
 func (b *Basic) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "a":
-		return document.NewStringField("a", b.A), nil
+		return document.NewStringValue("a", b.A), nil
 	case "b":
-		return document.NewIntField("b", b.B), nil
+		return document.NewIntValue("b", b.B), nil
 	case "c":
-		return document.NewInt32Field("c", b.C), nil
+		return document.NewInt32Value("c", b.C), nil
 	case "d":
-		return document.NewInt32Field("d", b.D), nil
+		return document.NewInt32Value("d", b.D), nil
 	}
 
 	return document.Field{}, errors.New("unknown field")
@@ -30,22 +30,22 @@ func (b *Basic) GetValueByName(name string) (document.Field, error) {
 func (b *Basic) Iterate(fn func(document.Field) error) error {
 	var err error
 
-	err = fn(document.NewStringField("a", b.A))
+	err = fn(document.NewStringValue("a", b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewIntField("b", b.B))
+	err = fn(document.NewIntValue("b", b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Field("c", b.C))
+	err = fn(document.NewInt32Value("c", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Field("d", b.D))
+	err = fn(document.NewInt32Value("d", b.D))
 	if err != nil {
 		return err
 	}
@@ -88,13 +88,13 @@ func (b *Basic) Scan(src interface{}) error {
 func (b *basic) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "a":
-		return document.NewBytesField("a", b.A), nil
+		return document.NewBytesValue("a", b.A), nil
 	case "b":
-		return document.NewUint16Field("b", b.B), nil
+		return document.NewUint16Value("b", b.B), nil
 	case "c":
-		return document.NewFloat64Field("c", b.C), nil
+		return document.NewFloat64Value("c", b.C), nil
 	case "d":
-		return document.NewFloat64Field("d", b.D), nil
+		return document.NewFloat64Value("d", b.D), nil
 	}
 
 	return document.Field{}, errors.New("unknown field")
@@ -105,22 +105,22 @@ func (b *basic) GetValueByName(name string) (document.Field, error) {
 func (b *basic) Iterate(fn func(document.Field) error) error {
 	var err error
 
-	err = fn(document.NewBytesField("a", b.A))
+	err = fn(document.NewBytesValue("a", b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewUint16Field("b", b.B))
+	err = fn(document.NewUint16Value("b", b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewFloat64Field("c", b.C))
+	err = fn(document.NewFloat64Value("c", b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewFloat64Field("d", b.D))
+	err = fn(document.NewFloat64Value("d", b.D))
 	if err != nil {
 		return err
 	}
@@ -163,13 +163,13 @@ func (b *basic) Scan(src interface{}) error {
 func (c *CustomFieldNames) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "A":
-		return document.NewStringField("A", c.A), nil
+		return document.NewStringValue("A", c.A), nil
 	case "b":
-		return document.NewIntField("b", c.B), nil
+		return document.NewIntValue("b", c.B), nil
 	case "c":
-		return document.NewInt32Field("c", c.C), nil
+		return document.NewInt32Value("c", c.C), nil
 	case "d":
-		return document.NewInt32Field("d", c.D), nil
+		return document.NewInt32Value("d", c.D), nil
 	}
 
 	return document.Field{}, errors.New("unknown field")
@@ -180,22 +180,22 @@ func (c *CustomFieldNames) GetValueByName(name string) (document.Field, error) {
 func (c *CustomFieldNames) Iterate(fn func(document.Field) error) error {
 	var err error
 
-	err = fn(document.NewStringField("A", c.A))
+	err = fn(document.NewStringValue("A", c.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewIntField("b", c.B))
+	err = fn(document.NewIntValue("b", c.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Field("c", c.C))
+	err = fn(document.NewInt32Value("c", c.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Field("d", c.D))
+	err = fn(document.NewInt32Value("d", c.D))
 	if err != nil {
 		return err
 	}
