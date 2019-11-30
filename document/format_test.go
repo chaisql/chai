@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,19 +27,19 @@ func TestFormat(t *testing.T) {
 	require.EqualValues(t, "address", f.Header.FieldHeaders[0].Name)
 	require.EqualValues(t, 7, f.Header.FieldHeaders[0].NameSize)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Size)
-	require.EqualValues(t, value.Null, f.Header.FieldHeaders[0].Type)
+	require.EqualValues(t, document.Null, f.Header.FieldHeaders[0].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Offset)
 
 	require.EqualValues(t, "age", f.Header.FieldHeaders[1].Name)
 	require.EqualValues(t, 3, f.Header.FieldHeaders[1].NameSize)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[1].Size)
-	require.EqualValues(t, value.Int64, f.Header.FieldHeaders[1].Type)
+	require.EqualValues(t, document.Int64, f.Header.FieldHeaders[1].Type)
 	require.EqualValues(t, 0, f.Header.FieldHeaders[1].Offset)
 
 	require.EqualValues(t, "name", f.Header.FieldHeaders[2].Name)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[2].NameSize)
 	require.EqualValues(t, 4, f.Header.FieldHeaders[2].Size)
-	require.EqualValues(t, value.String, f.Header.FieldHeaders[2].Type)
+	require.EqualValues(t, document.String, f.Header.FieldHeaders[2].Type)
 	require.EqualValues(t, 8, f.Header.FieldHeaders[2].Offset)
 
 	// ensure using a pointer to FieldBuffer has the same behaviour
@@ -137,10 +136,10 @@ func TestEncodedRecord(t *testing.T) {
 	require.NoError(t, err)
 
 	ec := document.EncodedRecord(data)
-	f, err := ec.GetField("age")
+	f, err := ec.GetValueByName("age")
 	require.NoError(t, err)
 	require.Equal(t, document.NewInt64Field("age", 10), f)
-	f, err = ec.GetField("address")
+	f, err = ec.GetValueByName("address")
 	require.NoError(t, err)
 	var expected, actual bytes.Buffer
 	err = document.ToJSON(&expected, document.FieldBuffer{document.NewObjectField("address", document.NewFromMap(map[string]interface{}{

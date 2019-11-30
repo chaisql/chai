@@ -9,8 +9,8 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// GetField implements the field method of the document.Document interface.
-func (b *Basic) GetField(name string) (document.Field, error) {
+// GetValueByName implements the field method of the document.Document interface.
+func (b *Basic) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "a":
 		return document.NewStringField("a", b.A), nil
@@ -84,8 +84,8 @@ func (b *Basic) Scan(src interface{}) error {
 	return b.ScanRecord(rr)
 }
 
-// GetField implements the field method of the document.Document interface.
-func (b *basic) GetField(name string) (document.Field, error) {
+// GetValueByName implements the field method of the document.Document interface.
+func (b *basic) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "a":
 		return document.NewBytesField("a", b.A), nil
@@ -159,8 +159,8 @@ func (b *basic) Scan(src interface{}) error {
 	return b.ScanRecord(rr)
 }
 
-// GetField implements the field method of the document.Document interface.
-func (c *CustomFieldNames) GetField(name string) (document.Field, error) {
+// GetValueByName implements the field method of the document.Document interface.
+func (c *CustomFieldNames) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "A":
 		return document.NewStringField("A", c.A), nil

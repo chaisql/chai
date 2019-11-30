@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,12 +64,12 @@ func TestFieldBuffer(t *testing.T) {
 		), buf1)
 	})
 
-	t.Run("GetField", func(t *testing.T) {
-		f, err := buf.GetField("a")
+	t.Run("GetValueByName", func(t *testing.T) {
+		f, err := buf.GetValueByName("a")
 		require.NoError(t, err)
 		require.Equal(t, document.NewInt64Field("a", 10), f)
 
-		f, err = buf.GetField("not existing")
+		f, err = buf.GetValueByName("not existing")
 		require.Error(t, err)
 		require.Zero(t, f)
 	})
@@ -155,19 +154,19 @@ func TestNewFromMap(t *testing.T) {
 	})
 
 	t.Run("Field", func(t *testing.T) {
-		f, err := rec.GetField("Name")
+		f, err := rec.GetValueByName("Name")
 		require.NoError(t, err)
-		require.Equal(t, document.Field{Name: "Name", Value: value.Value{Type: value.String, Data: []byte("foo")}}, f)
+		require.Equal(t, document.Field{Name: "Name", Value: document.Value{Type: document.String, Data: []byte("foo")}}, f)
 
-		f, err = rec.GetField("Age")
+		f, err = rec.GetValueByName("Age")
 		require.NoError(t, err)
-		require.Equal(t, document.Field{Name: "Age", Value: value.Value{Type: value.Int, Data: value.EncodeInt(10)}}, f)
+		require.Equal(t, document.Field{Name: "Age", Value: document.Value{Type: document.Int, Data: document.EncodeInt(10)}}, f)
 
-		f, err = rec.GetField("NilField")
+		f, err = rec.GetValueByName("NilField")
 		require.NoError(t, err)
-		require.Equal(t, document.Field{Name: "NilField", Value: value.Value{Type: value.Null}}, f)
+		require.Equal(t, document.Field{Name: "NilField", Value: document.Value{Type: document.Null}}, f)
 
-		_, err = rec.GetField("bar")
+		_, err = rec.GetValueByName("bar")
 		require.Error(t, err)
 	})
 }

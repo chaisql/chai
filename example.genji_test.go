@@ -9,8 +9,8 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// GetField implements the field method of the document.Document interface.
-func (u *User) GetField(name string) (document.Field, error) {
+// GetValueByName implements the field method of the document.Document interface.
+func (u *User) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "id":
 		return document.NewInt64Field("id", u.ID), nil

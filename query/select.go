@@ -152,10 +152,10 @@ type RecordMask struct {
 
 var _ document.Document = RecordMask{}
 
-func (r RecordMask) GetField(name string) (document.Field, error) {
+func (r RecordMask) GetValueByName(name string) (document.Field, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == name || rf.Name() == "*" {
-			return r.r.GetField(name)
+			return r.r.GetValueByName(name)
 		}
 	}
 
@@ -194,7 +194,7 @@ func (f FieldSelector) SelectField(r document.Document) (document.Field, error) 
 		return document.Field{}, fmt.Errorf("field %q not found", f)
 	}
 
-	return r.GetField(string(f))
+	return r.GetValueByName(string(f))
 }
 
 func (f FieldSelector) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
@@ -239,7 +239,7 @@ func (k KeyFunc) Name() string {
 
 func (k KeyFunc) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
 	if stack.Cfg.PrimaryKeyName != "" {
-		fd, err := stack.Record.GetField(stack.Cfg.PrimaryKeyName)
+		fd, err := stack.Record.GetValueByName(stack.Cfg.PrimaryKeyName)
 		if err != nil {
 			return err
 		}

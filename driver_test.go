@@ -25,7 +25,7 @@ func (rt *rectest) Scan(src interface{}) error {
 }
 
 func (rt *rectest) ScanRecord(r document.Document) error {
-	f, err := r.GetField("a")
+	f, err := r.GetValueByName("a")
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func (rt *rectest) ScanRecord(r document.Document) error {
 		return err
 	}
 
-	f, err = r.GetField("b")
+	f, err = r.GetValueByName("b")
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (rt *rectest) ScanRecord(r document.Document) error {
 		return err
 	}
 
-	f, err = r.GetField("c")
+	f, err = r.GetValueByName("c")
 	if err != nil {
 		return err
 	}

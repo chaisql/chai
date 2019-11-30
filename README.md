@@ -82,7 +82,7 @@ err = document.Scan(r, &id, &name, &age)
 err = res.
     // Filter all even ids
     Filter(func(r document.Document) (bool, error) {
-        f, err := r.GetField("id")
+        f, err := r.GetValueByName("id")
         ...
         id, err := f.DecodeToInt()
         ...
@@ -157,7 +157,7 @@ This command generates a file that adds methods to the `User` type.
 // user.genji.go
 
 // The User type gets new methods that implement some Genji interfaces.
-func (u *User) GetField(name string) (document.Field, error) {}
+func (u *User) GetValueByName(name string) (document.Field, error) {}
 func (u *User) Iterate(fn func(document.Field) error) error {}
 func (u *User) ScanRecord(rec document.Document) error {}
 func (u *User) Scan(src interface{}) error

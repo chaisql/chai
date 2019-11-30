@@ -1,28 +1,29 @@
-package value_test
+package document_test
 
 import (
 	"fmt"
 	"math"
 	"testing"
 
-	"github.com/asdine/genji/value"
+	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
+
 
 func TestComparison(t *testing.T) {
 	numericFuncs := []struct {
 		name string
-		fn   func(x interface{}) value.Value
+		fn   func(x interface{}) document.Value
 	}{
-		{"uint8", func(x interface{}) value.Value { return value.NewUint8(uint8(x.(int))) }},
-		{"uint16", func(x interface{}) value.Value { return value.NewUint16(uint16(x.(int))) }},
-		{"uint32", func(x interface{}) value.Value { return value.NewUint32(uint32(x.(int))) }},
-		{"uint64", func(x interface{}) value.Value { return value.NewUint64(uint64(x.(int))) }},
-		{"int8", func(x interface{}) value.Value { return value.NewInt8(int8(x.(int))) }},
-		{"int16", func(x interface{}) value.Value { return value.NewInt16(int16(x.(int))) }},
-		{"int32", func(x interface{}) value.Value { return value.NewInt32(int32(x.(int))) }},
-		{"int64", func(x interface{}) value.Value { return value.NewInt64(int64(x.(int))) }},
-		{"float64", func(x interface{}) value.Value { return value.NewFloat64(float64(x.(int))) }},
+		{"uint8", func(x interface{}) document.Value { return document.NewUint8(uint8(x.(int))) }},
+		{"uint16", func(x interface{}) document.Value { return document.NewUint16(uint16(x.(int))) }},
+		{"uint32", func(x interface{}) document.Value { return document.NewUint32(uint32(x.(int))) }},
+		{"uint64", func(x interface{}) document.Value { return document.NewUint64(uint64(x.(int))) }},
+		{"int8", func(x interface{}) document.Value { return document.NewInt8(int8(x.(int))) }},
+		{"int16", func(x interface{}) document.Value { return document.NewInt16(int16(x.(int))) }},
+		{"int32", func(x interface{}) document.Value { return document.NewInt32(int32(x.(int))) }},
+		{"int64", func(x interface{}) document.Value { return document.NewInt64(int64(x.(int))) }},
+		{"float64", func(x interface{}) document.Value { return document.NewFloat64(float64(x.(int))) }},
 	}
 
 	numericTests := []struct {
@@ -101,17 +102,17 @@ func TestComparison(t *testing.T) {
 
 				switch test.op {
 				case "=":
-					ok, err = numericFuncs[i].fn(test.a).IsEqual(value.NewNull())
+					ok, err = numericFuncs[i].fn(test.a).IsEqual(document.NewNull())
 				case "!=":
-					ok, err = numericFuncs[i].fn(test.a).IsNotEqual(value.NewNull())
+					ok, err = numericFuncs[i].fn(test.a).IsNotEqual(document.NewNull())
 				case ">":
-					ok, err = numericFuncs[i].fn(test.a).IsGreaterThan(value.NewNull())
+					ok, err = numericFuncs[i].fn(test.a).IsGreaterThan(document.NewNull())
 				case ">=":
-					ok, err = numericFuncs[i].fn(test.a).IsGreaterThanOrEqual(value.NewNull())
+					ok, err = numericFuncs[i].fn(test.a).IsGreaterThanOrEqual(document.NewNull())
 				case "<":
-					ok, err = numericFuncs[i].fn(test.a).IsLesserThan(value.NewNull())
+					ok, err = numericFuncs[i].fn(test.a).IsLesserThan(document.NewNull())
 				case "<=":
-					ok, err = numericFuncs[i].fn(test.a).IsLesserThanOrEqual(value.NewNull())
+					ok, err = numericFuncs[i].fn(test.a).IsLesserThanOrEqual(document.NewNull())
 				}
 				require.NoError(t, err)
 				require.Equal(t, test.ok, ok)
@@ -121,10 +122,10 @@ func TestComparison(t *testing.T) {
 
 	textFuncs := []struct {
 		name string
-		fn   func(x interface{}) value.Value
+		fn   func(x interface{}) document.Value
 	}{
-		{"string", func(x interface{}) value.Value { return value.NewString(x.(string)) }},
-		{"bytes", func(x interface{}) value.Value { return value.NewBytes([]byte(x.(string))) }},
+		{"string", func(x interface{}) document.Value { return document.NewString(x.(string)) }},
+		{"bytes", func(x interface{}) document.Value { return document.NewBytes([]byte(x.(string))) }},
 	}
 
 	textTests := []struct {
@@ -202,17 +203,17 @@ func TestComparison(t *testing.T) {
 
 					switch test.op {
 					case "=":
-						ok, err = textFuncs[i].fn(test.a).IsEqual(value.NewNull())
+						ok, err = textFuncs[i].fn(test.a).IsEqual(document.NewNull())
 					case "!=":
-						ok, err = textFuncs[i].fn(test.a).IsNotEqual(value.NewNull())
+						ok, err = textFuncs[i].fn(test.a).IsNotEqual(document.NewNull())
 					case ">":
-						ok, err = textFuncs[i].fn(test.a).IsGreaterThan(value.NewNull())
+						ok, err = textFuncs[i].fn(test.a).IsGreaterThan(document.NewNull())
 					case ">=":
-						ok, err = textFuncs[i].fn(test.a).IsGreaterThanOrEqual(value.NewNull())
+						ok, err = textFuncs[i].fn(test.a).IsGreaterThanOrEqual(document.NewNull())
 					case "<":
-						ok, err = textFuncs[i].fn(test.a).IsLesserThan(value.NewNull())
+						ok, err = textFuncs[i].fn(test.a).IsLesserThan(document.NewNull())
 					case "<=":
-						ok, err = textFuncs[i].fn(test.a).IsLesserThanOrEqual(value.NewNull())
+						ok, err = textFuncs[i].fn(test.a).IsLesserThanOrEqual(document.NewNull())
 					}
 					require.NoError(t, err)
 					require.Equal(t, test.ok, ok)
@@ -266,8 +267,8 @@ func TestComparison(t *testing.T) {
 	}
 
 	t.Run("uint64", func(t *testing.T) {
-		a := value.NewUint64(math.MaxUint64)
-		b := value.NewInt64(10)
+		a := document.NewUint64(math.MaxUint64)
+		b := document.NewInt64(10)
 
 		ok, err := a.IsEqual(b)
 		require.NoError(t, err)
@@ -303,7 +304,7 @@ func TestComparison(t *testing.T) {
 	})
 
 	t.Run("not equal with different types", func(t *testing.T) {
-		ok, err := value.NewInt(1).IsNotEqual(value.NewString("foo"))
+		ok, err := document.NewInt(1).IsNotEqual(document.NewString("foo"))
 		require.NoError(t, err)
 		require.True(t, ok)
 	})

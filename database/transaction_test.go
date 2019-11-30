@@ -354,7 +354,7 @@ func TestTableRecord(t *testing.T) {
 		// fetch rec1 and make sure it returns the right one
 		res, err := tb.GetRecord(key1)
 		require.NoError(t, err)
-		fc, err := res.GetField("fieldc")
+		fc, err := res.GetValueByName("fieldc")
 		require.NoError(t, err)
 		require.Equal(t, rec1[2], fc)
 	})
@@ -522,7 +522,7 @@ func TestTableDelete(t *testing.T) {
 		// make sure it didn't also delete the other one
 		res, err := tb.GetRecord(key2)
 		require.NoError(t, err)
-		_, err = res.GetField("fieldc")
+		_, err = res.GetValueByName("fieldc")
 		require.Error(t, err)
 	})
 }
@@ -566,14 +566,14 @@ func TestTableReplace(t *testing.T) {
 		// make sure it replaced it correctly
 		res, err := tb.GetRecord(key1)
 		require.NoError(t, err)
-		f, err := res.GetField("fielda")
+		f, err := res.GetValueByName("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", string(f.Data))
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetRecord(key2)
 		require.NoError(t, err)
-		f, err = res.GetField("fielda")
+		f, err = res.GetValueByName("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "c", string(f.Data))
 	})

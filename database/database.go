@@ -91,7 +91,7 @@ type indexOptions struct {
 }
 
 // Field implements the field method of the document.Document interface.
-func (i *indexOptions) GetField(name string) (document.Field, error) {
+func (i *indexOptions) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	case "IndexName":
 		return document.NewStringField("IndexName", i.IndexName), nil
@@ -112,25 +112,25 @@ func (i *indexOptions) Iterate(fn func(document.Field) error) error {
 	var err error
 	var f document.Field
 
-	f, _ = i.GetField("IndexName")
+	f, _ = i.GetValueByName("IndexName")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.GetField("TableName")
+	f, _ = i.GetValueByName("TableName")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.GetField("FieldName")
+	f, _ = i.GetValueByName("FieldName")
 	err = fn(f)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.GetField("Unique")
+	f, _ = i.GetValueByName("Unique")
 	err = fn(f)
 	if err != nil {
 		return err

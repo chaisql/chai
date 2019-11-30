@@ -96,7 +96,7 @@ func Example() {
 	err = stream.
 		// Filter all even ids
 		Filter(func(r document.Document) (bool, error) {
-			f, err := r.GetField("id")
+			f, err := r.GetValueByName("id")
 			if err != nil {
 				return false, err
 			}

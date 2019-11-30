@@ -71,7 +71,7 @@ func (t *Table) generateKey(r document.Document) ([]byte, error) {
 
 	var key []byte
 	if cfg.PrimaryKeyName != "" {
-		f, err := r.GetField(cfg.PrimaryKeyName)
+		f, err := r.GetValueByName(cfg.PrimaryKeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,7 @@ func (t *Table) Insert(r document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		f, err := r.GetField(idx.FieldName)
+		f, err := r.GetValueByName(idx.FieldName)
 		if err != nil {
 			f.Value = value.NewNull()
 		}
@@ -163,7 +163,7 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		f, err := r.GetField(idx.FieldName)
+		f, err := r.GetValueByName(idx.FieldName)
 		if err != nil {
 			return err
 		}
@@ -198,7 +198,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r document.Documen
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		f, err := old.GetField(idx.FieldName)
+		f, err := old.GetValueByName(idx.FieldName)
 		if err != nil {
 			return err
 		}
@@ -223,7 +223,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		f, err := r.GetField(idx.FieldName)
+		f, err := r.GetValueByName(idx.FieldName)
 		if err != nil {
 			continue
 		}
@@ -265,7 +265,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 	err = document.NewStream(&tb).
 		Filter(func(r document.Document) (bool, error) {
-			f, err := r.GetField("TableName")
+			f, err := r.GetValueByName("TableName")
 			if err != nil {
 				return false, err
 			}

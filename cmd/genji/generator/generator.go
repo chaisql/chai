@@ -36,7 +36,7 @@ func init() {
 	templates := map[string]string{
 		"records":           recordsTmpl,
 		"record":            recordTmpl,
-		"record-Field":      recordGetFieldTmpl,
+		"record-Field":      recordGetValueByNameTmpl,
 		"record-Iterate":    recordIterateTmpl,
 		"record-ScanRecord": recordScanRecordTmpl,
 		"record-Scan":       recordScanTmpl,

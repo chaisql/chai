@@ -60,7 +60,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		}
 
 		for fname, e := range stmt.Pairs {
-			f, err := fb.GetField(fname)
+			f, err := fb.GetValueByName(fname)
 			if err != nil {
 				continue
 			}

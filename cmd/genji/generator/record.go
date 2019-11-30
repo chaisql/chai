@@ -23,20 +23,20 @@ const recordsTmpl = `
 
 const recordTmpl = `
 {{- define "record" }}
-{{- template "record-GetField" . }}
+{{- template "record-GetValueByName" . }}
 {{- template "record-Iterate" . }}
 {{- template "record-ScanRecord" . }}
 {{- template "record-Scan" . }}
 {{- end }}
 `
 
-const recordGetFieldTmpl = `
-{{ define "record-GetField" }}
+const recordGetValueByNameTmpl = `
+{{ define "record-GetValueByName" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-// GetField implements the field method of the document.Document interface.
-func ({{$fl}} *{{$structName}}) GetField(name string) (document.Field, error) {
+// GetValueByName implements the field method of the document.Document interface.
+func ({{$fl}} *{{$structName}}) GetValueByName(name string) (document.Field, error) {
 	switch name {
 	{{- range .Fields }}
 	case "{{.FieldName}}":

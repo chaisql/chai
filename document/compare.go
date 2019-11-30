@@ -1,4 +1,4 @@
-package value
+package document
 
 import (
 	"bytes"

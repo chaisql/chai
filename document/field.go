@@ -2,13 +2,11 @@ package document
 
 import (
 	"fmt"
-
-	"github.com/asdine/genji/value"
 )
 
 // A Field is a typed information stored in the database.
 type Field struct {
-	value.Value
+	Value
 
 	Name string
 
@@ -18,7 +16,7 @@ type Field struct {
 
 // NewField creates a field whose type is infered from x.
 func NewField(name string, x interface{}) (Field, error) {
-	v, err := value.New(x)
+	v, err := New(x)
 	if err != nil {
 		return Field{}, err
 	}
@@ -30,7 +28,7 @@ func NewField(name string, x interface{}) (Field, error) {
 func NewBytesField(name string, x []byte) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewBytes(x),
+		Value: NewBytes(x),
 	}
 }
 
@@ -38,7 +36,7 @@ func NewBytesField(name string, x []byte) Field {
 func NewStringField(name string, x string) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewString(x),
+		Value: NewString(x),
 	}
 }
 
@@ -46,7 +44,7 @@ func NewStringField(name string, x string) Field {
 func NewBoolField(name string, x bool) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewBool(x),
+		Value: NewBool(x),
 	}
 }
 
@@ -54,7 +52,7 @@ func NewBoolField(name string, x bool) Field {
 func NewUintField(name string, x uint) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewUint(x),
+		Value: NewUint(x),
 	}
 }
 
@@ -62,7 +60,7 @@ func NewUintField(name string, x uint) Field {
 func NewUint8Field(name string, x uint8) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewUint8(x),
+		Value: NewUint8(x),
 	}
 }
 
@@ -70,7 +68,7 @@ func NewUint8Field(name string, x uint8) Field {
 func NewUint16Field(name string, x uint16) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewUint16(x),
+		Value: NewUint16(x),
 	}
 }
 
@@ -78,7 +76,7 @@ func NewUint16Field(name string, x uint16) Field {
 func NewUint32Field(name string, x uint32) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewUint32(x),
+		Value: NewUint32(x),
 	}
 }
 
@@ -86,7 +84,7 @@ func NewUint32Field(name string, x uint32) Field {
 func NewUint64Field(name string, x uint64) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewUint64(x),
+		Value: NewUint64(x),
 	}
 }
 
@@ -94,7 +92,7 @@ func NewUint64Field(name string, x uint64) Field {
 func NewIntField(name string, x int) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewInt(x),
+		Value: NewInt(x),
 	}
 }
 
@@ -102,7 +100,7 @@ func NewIntField(name string, x int) Field {
 func NewInt8Field(name string, x int8) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewInt8(x),
+		Value: NewInt8(x),
 	}
 }
 
@@ -110,7 +108,7 @@ func NewInt8Field(name string, x int8) Field {
 func NewInt16Field(name string, x int16) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewInt16(x),
+		Value: NewInt16(x),
 	}
 }
 
@@ -118,7 +116,7 @@ func NewInt16Field(name string, x int16) Field {
 func NewInt32Field(name string, x int32) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewInt32(x),
+		Value: NewInt32(x),
 	}
 }
 
@@ -126,7 +124,7 @@ func NewInt32Field(name string, x int32) Field {
 func NewInt64Field(name string, x int64) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewInt64(x),
+		Value: NewInt64(x),
 	}
 }
 
@@ -134,7 +132,7 @@ func NewInt64Field(name string, x int64) Field {
 func NewFloat64Field(name string, x float64) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewFloat64(x),
+		Value: NewFloat64(x),
 	}
 }
 
@@ -142,15 +140,15 @@ func NewFloat64Field(name string, x float64) Field {
 func NewNullField(name string) Field {
 	return Field{
 		Name:  name,
-		Value: value.NewNull(),
+		Value: NewNull(),
 	}
 }
 
 func NewObjectField(name string, r Document) Field {
 	return Field{
 		Name: name,
-		Value: value.Value{
-			Type: value.Object,
+		Value: Value{
+			Type: Object,
 		},
 		nestedRecord: r,
 	}
@@ -161,7 +159,7 @@ func (f Field) String() string {
 }
 
 func (f *Field) Decode() (interface{}, error) {
-	if f.Type == value.Object {
+	if f.Type == Object {
 		return f.nestedRecord, nil
 	}
 

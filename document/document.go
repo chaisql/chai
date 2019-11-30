@@ -1,4 +1,25 @@
-// package document defines interfaces, implementations and helpers to manipulate and encode records.
+// Package document defines types to manipulate, encode and compare documents and values.
+//
+// Encoding values
+//
+// Each type is encoded in a way that allows ordering to be preserved. That way, vA < vB,
+// where vA and vB are two unencoded values of the same type, then eA < eB, where eA and eB
+// are the respective encoded values of vA and vB.
+//
+// Comparing values
+//
+// When comparing values, only compatible types can be compared together, otherwise the result
+// of the comparison will always be false.
+// Here is a list of types than can be compared with each other:
+//
+//   any integer	any integer
+//   any integer	float64
+//   float64		float64
+//   string			string
+//   string			bytes
+//   bytes			bytes
+//   bool			bool
+//	 null			null
 package document
 
 import (
@@ -6,7 +27,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/asdine/genji/value"
 	"io"
 	"reflect"
 	"strings"
@@ -17,8 +37,8 @@ type Document interface {
 	// Iterate goes through all the fields of the record and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(fn func(Field) error) error
-	// GetField returns a field by name.
-	GetField(name string) (Field, error)
+	// GetValueByName returns a field by name.
+	GetValueByName(name string) (Field, error)
 }
 
 // A Keyer returns the key identifying records in their storage.
@@ -53,8 +73,8 @@ func (fb *FieldBuffer) ScanRecord(r Document) error {
 	})
 }
 
-// GetField returns a field by name. Returns an error if the field doesn't exists.
-func (fb FieldBuffer) GetField(name string) (Field, error) {
+// GetValueByName returns a field by name. Returns an error if the field doesn't exists.
+func (fb FieldBuffer) GetValueByName(name string) (Field, error) {
 	for _, f := range fb {
 		if f.Name == name {
 			return f, nil
@@ -159,7 +179,7 @@ func (m mapRecord) Iterate(fn func(Field) error) error {
 	return nil
 }
 
-func (m mapRecord) GetField(name string) (Field, error) {
+func (m mapRecord) GetValueByName(name string) (Field, error) {
 	v, ok := m[name]
 	if !ok {
 		return Field{}, fmt.Errorf("field %q not found", name)
@@ -204,7 +224,7 @@ func (j jsonRecord) MarshalJSON() ([]byte, error) {
 		var v interface{}
 		var err error
 
-		if f.Type == value.Object {
+		if f.Type == Object {
 			v = &jsonRecord{f.nestedRecord}
 		} else {
 			v, err = f.Decode()

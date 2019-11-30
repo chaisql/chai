@@ -79,7 +79,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	r := document.EncodedRecord(v)
 
-	f, err := r.GetField("PrimaryKeyName")
+	f, err := r.GetValueByName("PrimaryKeyName")
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err = r.GetField("PrimaryKeyType")
+	f, err = r.GetValueByName("PrimaryKeyType")
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	}
 	cfg.PrimaryKeyType = value.Type(tp)
 
-	f, err = r.GetField("lastKey")
+	f, err = r.GetValueByName("lastKey")
 	if err != nil {
 		return nil, err
 	}

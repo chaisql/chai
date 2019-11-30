@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-
-	"github.com/asdine/genji/value"
 )
 
 // Format is an encoding format used to encode and decode records.
@@ -122,7 +120,7 @@ type FieldHeader struct {
 	NameSize uint64
 	// Name of the field
 	Name []byte
-	// Type of the field, corresponds to the value.Type
+	// Type of the field, corresponds to the Type
 	Type uint64
 	// Size of the data of the field
 	Size uint64
@@ -255,7 +253,7 @@ func Encode(r Document) ([]byte, error) {
 	}
 
 	err := r.Iterate(func(f Field) error {
-		if f.Type == value.Object {
+		if f.Type == Object {
 			var err error
 			f.Data, err = Encode(f.nestedRecord)
 			if err != nil {
@@ -327,12 +325,12 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 
 			f := Field{
 				Name: fieldName,
-				Value: value.Value{
-					Type: value.Type(fh.Type),
+				Value: Value{
+					Type: Type(fh.Type),
 				},
 			}
 
-			if f.Type == value.Object {
+			if f.Type == Object {
 				f.nestedRecord = EncodedRecord(data)
 			} else if len(data) > 0 {
 				// make sure f.Data == nil to ease comparisons
@@ -350,8 +348,8 @@ func DecodeField(data []byte, fieldName string) (Field, error) {
 // It is useful to avoid decoding the entire record when only a few fields are needed.
 type EncodedRecord []byte
 
-// GetField decodes the selected field.
-func (e EncodedRecord) GetField(name string) (Field, error) {
+// GetValueByName decodes the selected field.
+func (e EncodedRecord) GetValueByName(name string) (Field, error) {
 	return DecodeField(e, name)
 }
 
@@ -368,12 +366,12 @@ func (e EncodedRecord) Iterate(fn func(Field) error) error {
 		data := format.Body[fh.Offset : fh.Offset+fh.Size]
 		f := Field{
 			Name: string(fh.Name),
-			Value: value.Value{
-				Type: value.Type(fh.Type),
+			Value: Value{
+				Type: Type(fh.Type),
 			},
 		}
 
-		if f.Type == value.Object {
+		if f.Type == Object {
 			f.nestedRecord = EncodedRecord(data)
 		} else {
 			f.Data = data
