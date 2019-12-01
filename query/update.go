@@ -7,7 +7,11 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/engine"
 )
+
+// updateBufferSize is the size of the buffer used to update documents.
+const updateBufferSize = 100
 
 // UpdateStmt is a DSL that allows creating a full Update query.
 type UpdateStmt struct {
@@ -44,54 +48,95 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		return res, err
 	}
 
+	// replace store implementation by a resumable store, temporarily.
+	resumableStore := storeFromKey{Store: t.Store}
+	t.Store = &resumableStore
+
 	st := document.NewStream(t)
-	st = st.Filter(whereClause(stmt.WhereExpr, stack))
+	st = st.Filter(whereClause(stmt.WhereExpr, stack)).Limit(updateBufferSize)
 
-	err = st.Iterate(func(r document.Document) error {
-		rk, ok := r.(document.Keyer)
-		if !ok {
-			return errors.New("attempt to update record without key")
-		}
+	keys := make([][]byte, updateBufferSize)
+	docs := make([]document.FieldBuffer, updateBufferSize)
 
-		var fb document.FieldBuffer
-		err := fb.ScanDocument(r)
-		if err != nil {
-			return err
-		}
+	for {
+		var i int
 
-		for fname, e := range stmt.Pairs {
-			v, err := fb.GetByField(fname)
-			if err != nil {
-				continue
+		err = st.Iterate(func(r document.Document) error {
+			rk, ok := r.(document.Keyer)
+			if !ok {
+				return errors.New("attempt to update record without key")
 			}
 
-			ev, err := e.Eval(EvalStack{
-				Tx:     tx,
-				Record: r,
-				Params: args,
-			})
+			docs[i].Reset()
+			err := docs[i].ScanDocument(r)
 			if err != nil {
 				return err
 			}
 
-			if ev.IsList {
-				return fmt.Errorf("expected value got list")
+			for fname, e := range stmt.Pairs {
+				v, err := docs[i].GetByField(fname)
+				if err != nil {
+					continue
+				}
+
+				ev, err := e.Eval(EvalStack{
+					Tx:     tx,
+					Record: r,
+					Params: args,
+				})
+				if err != nil {
+					return err
+				}
+
+				if ev.IsList {
+					return fmt.Errorf("expected value got list")
+				}
+
+				v.Type = ev.Value.Type
+				v.Data = ev.Value.Data
+				err = docs[i].Replace(fname, v)
+				if err != nil {
+					return err
+				}
 			}
 
-			v.Type = ev.Value.Type
-			v.Data = ev.Value.Data
-			err = fb.Replace(fname, v)
+			// copy the key and reuse the buffer
+			keys[i] = append(keys[i][0:0], rk.Key()...)
+			i++
+
+			return nil
+		})
+
+		for j := 0; j < i; j++ {
+			err = t.Replace(keys[j], docs[j])
 			if err != nil {
-				return err
+				return res, err
 			}
 		}
 
-		err = t.Replace(rk.Key(), &fb)
-		if err != nil {
-			return err
+		if i < deleteBufferSize {
+			break
 		}
 
-		return nil
-	})
+		resumableStore.key = keys[i-1]
+	}
+
 	return res, err
+}
+
+// storeFromKey implements an engine.Store which iterates from a certain key.
+// it is used to resume iteration.
+type storeFromKey struct {
+	engine.Store
+
+	key []byte
+}
+
+// AscendGreaterOrEqual uses key as pivot if pivot is nil
+func (s *storeFromKey) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error {
+	if len(pivot) == 0 {
+		pivot = s.key
+	}
+
+	return s.Store.AscendGreaterOrEqual(pivot, fn)
 }

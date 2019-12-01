@@ -8,6 +8,9 @@ import (
 	"github.com/asdine/genji/document"
 )
 
+// deleteBufferSize is the size of the buffer used to delete documents.
+const deleteBufferSize = 100
+
 // DeleteStmt is a DSL that allows creating a full Delete query.
 type DeleteStmt struct {
 	TableName string
@@ -18,8 +21,6 @@ type DeleteStmt struct {
 func (stmt DeleteStmt) IsReadOnly() bool {
 	return false
 }
-
-const deleteBufferSize = 100
 
 // Run deletes matching records by batches of deleteBufferSize records.
 // Some engines can't iterate while deleting keys (https://github.com/etcd-io/bbolt/issues/146)
