@@ -55,8 +55,8 @@ func (b *Basic) Iterate(fn func(string, document.Value) error) error {
 
 // ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (b *Basic) ScanDocument(rec document.Document) error {
-	return rec.Iterate(func(f string, v document.Value) error {
+func (b *Basic) ScanDocument(doc document.Document) error {
+	return doc.Iterate(func(f string, v document.Value) error {
 		var err error
 
 		switch f {
@@ -130,8 +130,8 @@ func (b *basic) Iterate(fn func(string, document.Value) error) error {
 
 // ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (b *basic) ScanDocument(rec document.Document) error {
-	return rec.Iterate(func(f string, v document.Value) error {
+func (b *basic) ScanDocument(doc document.Document) error {
+	return doc.Iterate(func(f string, v document.Value) error {
 		var err error
 
 		switch f {
@@ -205,8 +205,8 @@ func (c *CustomFieldNames) Iterate(fn func(string, document.Value) error) error 
 
 // ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (c *CustomFieldNames) ScanDocument(rec document.Document) error {
-	return rec.Iterate(func(f string, v document.Value) error {
+func (c *CustomFieldNames) ScanDocument(doc document.Document) error {
+	return doc.Iterate(func(f string, v document.Value) error {
 		var err error
 
 		switch f {

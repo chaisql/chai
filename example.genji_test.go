@@ -10,8 +10,8 @@ import (
 )
 
 // GetByField implements the field method of the document.Document interface.
-func (u *User) GetByField(name string) (document.Value, error) {
-	switch name {
+func (u *User) GetByField(field string) (document.Value, error) {
+	switch field {
 	case "id":
 		return document.NewInt64Value(u.ID), nil
 	case "name":
@@ -67,10 +67,10 @@ func (u *User) ScanDocument(doc document.Document) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (u *User) Scan(src interface{}) error {
-	rr, ok := src.(document.Document)
+	doc, ok := src.(document.Document)
 	if !ok {
-		return errors.New("unable to scan record from src")
+		return errors.New("unable to scan document from src")
 	}
 
-	return u.ScanDocument(rr)
+	return u.ScanDocument(doc)
 }

@@ -78,8 +78,8 @@ const documentScanDocumentTmpl = `
 
 // ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func ({{$fl}} *{{$structName}}) ScanDocument(rec document.Document) error {
-	return rec.Iterate(func(f string, v document.Value) error {
+func ({{$fl}} *{{$structName}}) ScanDocument(doc document.Document) error {
+	return doc.Iterate(func(f string, v document.Value) error {
 		var err error
 
 		switch f {
