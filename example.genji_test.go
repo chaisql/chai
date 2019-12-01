@@ -9,36 +9,36 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// GetValueByName implements the field method of the document.Document interface.
-func (u *User) GetValueByName(name string) (document.Field, error) {
+// GetByField implements the field method of the document.Document interface.
+func (u *User) GetByField(name string) (document.Value, error) {
 	switch name {
 	case "id":
-		return document.NewInt64Value("id", u.ID), nil
+		return document.NewInt64Value(u.ID), nil
 	case "name":
-		return document.NewStringValue("name", u.Name), nil
+		return document.NewStringValue(u.Name), nil
 	case "age":
-		return document.NewUint32Value("age", u.Age), nil
+		return document.NewUint32Value(u.Age), nil
 	}
 
-	return document.Field{}, errors.New("unknown field")
+	return document.Value{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (u *User) Iterate(fn func(document.Field) error) error {
+func (u *User) Iterate(fn func(string, document.Value) error) error {
 	var err error
 
-	err = fn(document.NewInt64Value("id", u.ID))
+	err = fn("id", document.NewInt64Value(u.ID))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewStringValue("name", u.Name))
+	err = fn("name", document.NewStringValue(u.Name))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewUint32Value("age", u.Age))
+	err = fn("age", document.NewUint32Value(u.Age))
 	if err != nil {
 		return err
 	}
@@ -46,19 +46,19 @@ func (u *User) Iterate(fn func(document.Field) error) error {
 	return nil
 }
 
-// ScanRecord extracts fields from record and assigns them to the struct fields.
+// ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (u *User) ScanRecord(rec document.Document) error {
-	return rec.Iterate(func(f document.Field) error {
+func (u *User) ScanDocument(doc document.Document) error {
+	return doc.Iterate(func(f string, v document.Value) error {
 		var err error
 
-		switch f.Name {
+		switch f {
 		case "id":
-			u.ID, err = f.DecodeToInt64()
+			u.ID, err = v.DecodeToInt64()
 		case "name":
-			u.Name, err = f.DecodeToString()
+			u.Name, err = v.DecodeToString()
 		case "age":
-			u.Age, err = f.DecodeToUint32()
+			u.Age, err = v.DecodeToUint32()
 		}
 		return err
 	})
@@ -72,5 +72,5 @@ func (u *User) Scan(src interface{}) error {
 		return errors.New("unable to scan record from src")
 	}
 
-	return u.ScanRecord(rr)
+	return u.ScanDocument(rr)
 }

@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/scanner"
-	"github.com/asdine/genji/value"
 )
 
 // Parser represents an Genji SQL Parser.
@@ -192,36 +192,36 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		p.orderedParams++
 		return query.PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return query.LiteralValue{Value: value.NewString(lit)}, nil
+		return query.LiteralValue{Value: document.NewStringValue(lit)}, nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return query.LiteralValue{Value: value.NewFloat64(v)}, nil
+		return query.LiteralValue{Value: document.NewFloat64Value(v)}, nil
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
 			// The check for negative numbers is handled somewhere else so this should always be a positive number.
 			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
-				return query.LiteralValue{Value: value.NewUint64(v)}, nil
+				return query.LiteralValue{Value: document.NewUint64Value(v)}, nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
 		switch {
 		case v < math.MaxInt8:
-			return query.LiteralValue{Value: value.NewInt8(int8(v))}, nil
+			return query.LiteralValue{Value: document.NewInt8Value(int8(v))}, nil
 		case v < math.MaxInt16:
-			return query.LiteralValue{Value: value.NewInt16(int16(v))}, nil
+			return query.LiteralValue{Value: document.NewInt16Value(int16(v))}, nil
 		case v < math.MaxInt32:
-			return query.LiteralValue{Value: value.NewInt32(int32(v))}, nil
+			return query.LiteralValue{Value: document.NewInt32Value(int32(v))}, nil
 		}
-		return query.LiteralValue{Value: value.NewInt64(v)}, nil
+		return query.LiteralValue{Value: document.NewInt64Value(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
-		return query.LiteralValue{Value: value.NewBool(tok == scanner.TRUE)}, nil
+		return query.LiteralValue{Value: document.NewBoolValue(tok == scanner.TRUE)}, nil
 	case scanner.NULL:
-		return query.LiteralValue{Value: value.NewNull()}, nil
+		return query.LiteralValue{Value: document.NewNullValue()}, nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
@@ -284,43 +284,43 @@ func (p *Parser) parseParam() (interface{}, error) {
 	}
 }
 
-func (p *Parser) parseType() (value.Type, error) {
+func (p *Parser) parseType() (document.ValueType, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEBYTES:
-		return value.Bytes, nil
+		return document.BytesValue, nil
 	case scanner.TYPESTRING:
-		return value.String, nil
+		return document.StringValue, nil
 	case scanner.TYPEBOOL:
-		return value.Bool, nil
+		return document.BoolValue, nil
 	case scanner.TYPEINT8:
-		return value.Int8, nil
+		return document.Int8Value, nil
 	case scanner.TYPEINT16:
-		return value.Int16, nil
+		return document.Int16Value, nil
 	case scanner.TYPEINT32:
-		return value.Int32, nil
+		return document.Int32Value, nil
 	case scanner.TYPEINT64:
-		return value.Int64, nil
+		return document.Int64Value, nil
 	case scanner.TYPEINT:
-		return value.Int, nil
+		return document.IntValue, nil
 	case scanner.TYPEUINT8:
-		return value.Uint8, nil
+		return document.Uint8Value, nil
 	case scanner.TYPEUINT16:
-		return value.Uint16, nil
+		return document.Uint16Value, nil
 	case scanner.TYPEUINT32:
-		return value.Uint32, nil
+		return document.Uint32Value, nil
 	case scanner.TYPEUINT64:
-		return value.Uint64, nil
+		return document.Uint64Value, nil
 	case scanner.TYPEUINT:
-		return value.Uint, nil
+		return document.UintValue, nil
 	case scanner.TYPEFLOAT64:
-		return value.Float64, nil
+		return document.Float64Value, nil
 	case scanner.TYPEINTEGER:
-		return value.Int, nil
+		return document.IntValue, nil
 	case scanner.TYPENUMERIC:
-		return value.Float64, nil
+		return document.Float64Value, nil
 	case scanner.TYPETEXT:
-		return value.String, nil
+		return document.StringValue, nil
 	}
 
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)

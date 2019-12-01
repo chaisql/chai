@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/value"
+	"github.com/asdine/genji/document"
 )
 
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
@@ -13,7 +13,7 @@ type CreateTableStmt struct {
 	TableName      string
 	IfNotExists    bool
 	PrimaryKeyName string
-	PrimaryKeyType value.Type
+	PrimaryKeyType document.ValueType
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.

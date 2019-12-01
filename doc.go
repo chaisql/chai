@@ -207,9 +207,9 @@ The genji command line can be used as follows to generate the code:
 This will generate a file named user.genji.go containing the following methods
 
   // The User type gets new methods that implement some Genji interfaces.
-  func (u *User) GetValueByName(name string) (document.Field, error) {}
+  func (u *User) GetByField(name string) (document.Field, error) {}
   func (u *User) Iterate(fn func(document.Field) error) error {}
-  func (u *User) ScanRecord(rec document.Document) error {}
+  func (u *User) ScanDocument(rec document.Document) error {}
   func (u *User) Scan(src interface{}) error {}
 
 The User type now implements all the interfaces needed to interact correctly with the database APIs.

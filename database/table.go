@@ -3,10 +3,9 @@ package database
 import (
 	"bytes"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +18,7 @@ type Table struct {
 }
 
 type encodedRecordWithKey struct {
-	document.EncodedRecord
+	document.EncodedDocument
 
 	key []byte
 }
@@ -39,7 +38,7 @@ func (t *Table) Iterate(fn func(r document.Document) error) error {
 	var r encodedRecordWithKey
 
 	return t.Store.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		r.EncodedRecord = v
+		r.EncodedDocument = v
 		r.key = k
 		// r must be passed as pointer, not value, because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
@@ -58,12 +57,12 @@ func (t *Table) GetRecord(key []byte) (document.Document, error) {
 	}
 
 	var r encodedRecordWithKey
-	r.EncodedRecord = document.EncodedRecord(v)
+	r.EncodedDocument = document.EncodedDocument(v)
 	r.key = key
 	return &r, err
 }
 
-func (t *Table) generateKey(r document.Document) ([]byte, error) {
+func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	cfg, err := t.CfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
@@ -71,15 +70,15 @@ func (t *Table) generateKey(r document.Document) ([]byte, error) {
 
 	var key []byte
 	if cfg.PrimaryKeyName != "" {
-		f, err := r.GetValueByName(cfg.PrimaryKeyName)
+		v, err := d.GetByField(cfg.PrimaryKeyName)
 		if err != nil {
 			return nil, err
 		}
-		v, err := f.ConvertTo(cfg.PrimaryKeyType)
+		cv, err := v.ConvertTo(cfg.PrimaryKeyType)
 		if err != nil {
 			return nil, err
 		}
-		return v.Data, nil
+		return cv.Data, nil
 	}
 
 	t.tx.db.mu.Lock()
@@ -91,7 +90,7 @@ func (t *Table) generateKey(r document.Document) ([]byte, error) {
 	}
 
 	cfg.lastKey++
-	key = value.NewInt64(cfg.lastKey).Data
+	key = document.NewInt64Value(cfg.lastKey).Data
 	err = t.CfgStore.Replace(t.name, cfg)
 	if err != nil {
 		return nil, err
@@ -104,8 +103,8 @@ func (t *Table) generateKey(r document.Document) ([]byte, error) {
 // If a primary key has been specified during the table creation, the field is expected to be present
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-func (t *Table) Insert(r document.Document) ([]byte, error) {
-	key, err := t.generateKey(r)
+func (t *Table) Insert(d document.Document) ([]byte, error) {
+	key, err := t.generateKey(d)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +114,7 @@ func (t *Table) Insert(r document.Document) ([]byte, error) {
 		return nil, ErrDuplicateRecord
 	}
 
-	v, err := document.Encode(r)
+	v, err := document.Encode(d)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode record")
 	}
@@ -131,12 +130,12 @@ func (t *Table) Insert(r document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		f, err := r.GetValueByName(idx.FieldName)
+		v, err := d.GetByField(idx.FieldName)
 		if err != nil {
-			f.Value = value.NewNull()
+			v = document.NewNullValue()
 		}
 
-		err = idx.Set(f.Value, key)
+		err = idx.Set(v, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
 				return nil, ErrDuplicateRecord
@@ -163,12 +162,12 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		f, err := r.GetValueByName(idx.FieldName)
+		v, err := r.GetByField(idx.FieldName)
 		if err != nil {
 			return err
 		}
 
-		err = idx.Delete(f.Value, key)
+		err = idx.Delete(v, key)
 		if err != nil {
 			return err
 		}
@@ -198,12 +197,12 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r document.Documen
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		f, err := old.GetValueByName(idx.FieldName)
+		v, err := old.GetByField(idx.FieldName)
 		if err != nil {
 			return err
 		}
 
-		err = idx.Delete(f.Value, key)
+		err = idx.Delete(v, key)
 		if err != nil {
 			return err
 		}
@@ -223,12 +222,12 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		f, err := r.GetValueByName(idx.FieldName)
+		v, err := r.GetByField(idx.FieldName)
 		if err != nil {
 			continue
 		}
 
-		err = idx.Set(f.Value, key)
+		err = idx.Set(v, key)
 		if err != nil {
 			return err
 		}
@@ -265,7 +264,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 	err = document.NewStream(&tb).
 		Filter(func(r document.Document) (bool, error) {
-			f, err := r.GetValueByName("TableName")
+			f, err := r.GetByField("TableName")
 			if err != nil {
 				return false, err
 			}
@@ -274,7 +273,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 		}).
 		Iterate(func(r document.Document) error {
 			var opts indexOptions
-			err := opts.ScanRecord(r)
+			err := opts.ScanDocument(r)
 			if err != nil {
 				return err
 			}

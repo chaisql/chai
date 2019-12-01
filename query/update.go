@@ -54,18 +54,18 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		}
 
 		var fb document.FieldBuffer
-		err := fb.ScanRecord(r)
+		err := fb.ScanDocument(r)
 		if err != nil {
 			return err
 		}
 
 		for fname, e := range stmt.Pairs {
-			f, err := fb.GetValueByName(fname)
+			v, err := fb.GetByField(fname)
 			if err != nil {
 				continue
 			}
 
-			v, err := e.Eval(EvalStack{
+			ev, err := e.Eval(EvalStack{
 				Tx:     tx,
 				Record: r,
 				Params: args,
@@ -74,13 +74,13 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 				return err
 			}
 
-			if v.IsList {
+			if ev.IsList {
 				return fmt.Errorf("expected value got list")
 			}
 
-			f.Type = v.Value.Type
-			f.Data = v.Value.Data
-			err = fb.Replace(f.Name, f)
+			v.Type = ev.Value.Type
+			v.Data = ev.Value.Data
+			err = fb.Replace(fname, v)
 			if err != nil {
 				return err
 			}

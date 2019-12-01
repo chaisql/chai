@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 )
 
 // SelectStmt is a DSL that allows creating a full Select query.
@@ -85,15 +84,15 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 			return res, fmt.Errorf("expected value got list")
 		}
 
-		if v.Value.Type < value.Int {
+		if v.Value.Type < document.IntValue {
 			return res, fmt.Errorf("offset expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		voff, err := v.Value.ConvertTo(value.Int)
+		voff, err := v.Value.ConvertTo(document.IntValue)
 		if err != nil {
 			return res, err
 		}
-		offset, err = value.DecodeInt(voff.Data)
+		offset, err = document.DecodeInt(voff.Data)
 		if err != nil {
 			return res, err
 		}
@@ -109,15 +108,15 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 			return res, fmt.Errorf("expected value got list")
 		}
 
-		if v.Value.Type < value.Int {
+		if v.Value.Type < document.IntValue {
 			return res, fmt.Errorf("limit expression must evaluate to an integer, got %q", v.Value.Type)
 		}
 
-		vlim, err := v.Value.ConvertTo(value.Int)
+		vlim, err := v.Value.ConvertTo(document.IntValue)
 		if err != nil {
 			return res, err
 		}
-		limit, err = value.DecodeInt(vlim.Data)
+		limit, err = document.DecodeInt(vlim.Data)
 		if err != nil {
 			return res, err
 		}
@@ -152,17 +151,17 @@ type RecordMask struct {
 
 var _ document.Document = RecordMask{}
 
-func (r RecordMask) GetValueByName(name string) (document.Field, error) {
+func (r RecordMask) GetByField(name string) (document.Value, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == name || rf.Name() == "*" {
-			return r.r.GetValueByName(name)
+			return r.r.GetByField(name)
 		}
 	}
 
-	return document.Field{}, fmt.Errorf("field %q not found", name)
+	return document.Value{}, fmt.Errorf("field %q not found", name)
 }
 
-func (r RecordMask) Iterate(fn func(f document.Field) error) error {
+func (r RecordMask) Iterate(fn func(f string, v document.Value) error) error {
 	stack := EvalStack{
 		Record: r.r,
 		Cfg:    r.cfg,
@@ -179,7 +178,7 @@ func (r RecordMask) Iterate(fn func(f document.Field) error) error {
 }
 
 type ResultField interface {
-	Iterate(stack EvalStack, fn func(fd document.Field) error) error
+	Iterate(stack EvalStack, fn func(field string, value document.Value) error) error
 	Name() string
 }
 
@@ -189,21 +188,26 @@ func (f FieldSelector) Name() string {
 	return string(f)
 }
 
-func (f FieldSelector) SelectField(r document.Document) (document.Field, error) {
-	if r == nil {
-		return document.Field{}, fmt.Errorf("field %q not found", f)
+func (f FieldSelector) SelectField(d document.Document) (string, document.Value, error) {
+	if d == nil {
+		return "", document.Value{}, fmt.Errorf("field %q not found", f)
 	}
 
-	return r.GetValueByName(string(f))
+	v, err := d.GetByField(string(f))
+	if err != nil {
+		return "", document.Value{}, err
+	}
+
+	return string(f), v, nil
 }
 
-func (f FieldSelector) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
-	fd, err := f.SelectField(stack.Record)
+func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
+	fd, v, err := f.SelectField(stack.Record)
 	if err != nil {
 		return nil
 	}
 
-	return fn(fd)
+	return fn(fd, v)
 }
 
 // Eval extracts the record from the context and selects the right field.
@@ -213,12 +217,12 @@ func (f FieldSelector) Eval(stack EvalStack) (EvalValue, error) {
 		return EvalValue{}, fmt.Errorf("field %q not found", f)
 	}
 
-	fd, err := f.SelectField(stack.Record)
+	_, v, err := f.SelectField(stack.Record)
 	if err != nil {
 		return nilLitteral, nil
 	}
 
-	return newSingleEvalValue(fd.Value), nil
+	return newSingleEvalValue(v), nil
 }
 
 type Wildcard struct{}
@@ -227,7 +231,7 @@ func (w Wildcard) Name() string {
 	return "*"
 }
 
-func (w Wildcard) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
+func (w Wildcard) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	return stack.Record.Iterate(fn)
 }
 
@@ -237,20 +241,17 @@ func (k KeyFunc) Name() string {
 	return "key()"
 }
 
-func (k KeyFunc) Iterate(stack EvalStack, fn func(fd document.Field) error) error {
+func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	if stack.Cfg.PrimaryKeyName != "" {
-		fd, err := stack.Record.GetValueByName(stack.Cfg.PrimaryKeyName)
+		v, err := stack.Record.GetByField(stack.Cfg.PrimaryKeyName)
 		if err != nil {
 			return err
 		}
-		return fn(fd)
+		return fn(stack.Cfg.PrimaryKeyName, v)
 	}
 
-	return fn(document.Field{
-		Name: "key()",
-		Value: value.Value{
-			Data: stack.Record.(document.Keyer).Key(),
-			Type: value.Int64,
-		},
+	return fn("key()", document.Value{
+		Data: stack.Record.(document.Keyer).Key(),
+		Type: document.Int64Value,
 	})
 }

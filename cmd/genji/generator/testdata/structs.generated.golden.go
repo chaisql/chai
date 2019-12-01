@@ -9,43 +9,43 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// GetValueByName implements the field method of the document.Document interface.
-func (b *Basic) GetValueByName(name string) (document.Field, error) {
-	switch name {
+// GetByField implements the field method of the document.Document interface.
+func (b *Basic) GetByField(field string) (document.Value, error) {
+	switch field {
 	case "a":
-		return document.NewStringValue("a", b.A), nil
+		return document.NewStringValue(b.A), nil
 	case "b":
-		return document.NewIntValue("b", b.B), nil
+		return document.NewIntValue(b.B), nil
 	case "c":
-		return document.NewInt32Value("c", b.C), nil
+		return document.NewInt32Value(b.C), nil
 	case "d":
-		return document.NewInt32Value("d", b.D), nil
+		return document.NewInt32Value(b.D), nil
 	}
 
-	return document.Field{}, errors.New("unknown field")
+	return document.Value{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (b *Basic) Iterate(fn func(document.Field) error) error {
+func (b *Basic) Iterate(fn func(string, document.Value) error) error {
 	var err error
 
-	err = fn(document.NewStringValue("a", b.A))
+	err = fn("a", document.NewStringValue(b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewIntValue("b", b.B))
+	err = fn("b", document.NewIntValue(b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Value("c", b.C))
+	err = fn("c", document.NewInt32Value(b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Value("d", b.D))
+	err = fn("d", document.NewInt32Value(b.D))
 	if err != nil {
 		return err
 	}
@@ -53,21 +53,21 @@ func (b *Basic) Iterate(fn func(document.Field) error) error {
 	return nil
 }
 
-// ScanRecord extracts fields from record and assigns them to the struct fields.
+// ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (b *Basic) ScanRecord(rec document.Document) error {
-	return rec.Iterate(func(f document.Field) error {
+func (b *Basic) ScanDocument(rec document.Document) error {
+	return rec.Iterate(func(f string, v document.Value) error {
 		var err error
 
-		switch f.Name {
+		switch f {
 		case "a":
-			b.A, err = f.DecodeToString()
+			b.A, err = v.DecodeToString()
 		case "b":
-			b.B, err = f.DecodeToInt()
+			b.B, err = v.DecodeToInt()
 		case "c":
-			b.C, err = f.DecodeToInt32()
+			b.C, err = v.DecodeToInt32()
 		case "d":
-			b.D, err = f.DecodeToInt32()
+			b.D, err = v.DecodeToInt32()
 		}
 		return err
 	})
@@ -76,51 +76,51 @@ func (b *Basic) ScanRecord(rec document.Document) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (b *Basic) Scan(src interface{}) error {
-	rr, ok := src.(document.Document)
+	doc, ok := src.(document.Document)
 	if !ok {
-		return errors.New("unable to scan record from src")
+		return errors.New("unable to scan document from src")
 	}
 
-	return b.ScanRecord(rr)
+	return b.ScanDocument(doc)
 }
 
-// GetValueByName implements the field method of the document.Document interface.
-func (b *basic) GetValueByName(name string) (document.Field, error) {
-	switch name {
+// GetByField implements the field method of the document.Document interface.
+func (b *basic) GetByField(field string) (document.Value, error) {
+	switch field {
 	case "a":
-		return document.NewBytesValue("a", b.A), nil
+		return document.NewBytesValue(b.A), nil
 	case "b":
-		return document.NewUint16Value("b", b.B), nil
+		return document.NewUint16Value(b.B), nil
 	case "c":
-		return document.NewFloat64Value("c", b.C), nil
+		return document.NewFloat64Value(b.C), nil
 	case "d":
-		return document.NewFloat64Value("d", b.D), nil
+		return document.NewFloat64Value(b.D), nil
 	}
 
-	return document.Field{}, errors.New("unknown field")
+	return document.Value{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (b *basic) Iterate(fn func(document.Field) error) error {
+func (b *basic) Iterate(fn func(string, document.Value) error) error {
 	var err error
 
-	err = fn(document.NewBytesValue("a", b.A))
+	err = fn("a", document.NewBytesValue(b.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewUint16Value("b", b.B))
+	err = fn("b", document.NewUint16Value(b.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewFloat64Value("c", b.C))
+	err = fn("c", document.NewFloat64Value(b.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewFloat64Value("d", b.D))
+	err = fn("d", document.NewFloat64Value(b.D))
 	if err != nil {
 		return err
 	}
@@ -128,21 +128,21 @@ func (b *basic) Iterate(fn func(document.Field) error) error {
 	return nil
 }
 
-// ScanRecord extracts fields from record and assigns them to the struct fields.
+// ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (b *basic) ScanRecord(rec document.Document) error {
-	return rec.Iterate(func(f document.Field) error {
+func (b *basic) ScanDocument(rec document.Document) error {
+	return rec.Iterate(func(f string, v document.Value) error {
 		var err error
 
-		switch f.Name {
+		switch f {
 		case "a":
-			b.A, err = f.DecodeToBytes()
+			b.A, err = v.DecodeToBytes()
 		case "b":
-			b.B, err = f.DecodeToUint16()
+			b.B, err = v.DecodeToUint16()
 		case "c":
-			b.C, err = f.DecodeToFloat64()
+			b.C, err = v.DecodeToFloat64()
 		case "d":
-			b.D, err = f.DecodeToFloat64()
+			b.D, err = v.DecodeToFloat64()
 		}
 		return err
 	})
@@ -151,51 +151,51 @@ func (b *basic) ScanRecord(rec document.Document) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (b *basic) Scan(src interface{}) error {
-	rr, ok := src.(document.Document)
+	doc, ok := src.(document.Document)
 	if !ok {
-		return errors.New("unable to scan record from src")
+		return errors.New("unable to scan document from src")
 	}
 
-	return b.ScanRecord(rr)
+	return b.ScanDocument(doc)
 }
 
-// GetValueByName implements the field method of the document.Document interface.
-func (c *CustomFieldNames) GetValueByName(name string) (document.Field, error) {
-	switch name {
+// GetByField implements the field method of the document.Document interface.
+func (c *CustomFieldNames) GetByField(field string) (document.Value, error) {
+	switch field {
 	case "A":
-		return document.NewStringValue("A", c.A), nil
+		return document.NewStringValue(c.A), nil
 	case "b":
-		return document.NewIntValue("b", c.B), nil
+		return document.NewIntValue(c.B), nil
 	case "c":
-		return document.NewInt32Value("c", c.C), nil
+		return document.NewInt32Value(c.C), nil
 	case "d":
-		return document.NewInt32Value("d", c.D), nil
+		return document.NewInt32Value(c.D), nil
 	}
 
-	return document.Field{}, errors.New("unknown field")
+	return document.Value{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (c *CustomFieldNames) Iterate(fn func(document.Field) error) error {
+func (c *CustomFieldNames) Iterate(fn func(string, document.Value) error) error {
 	var err error
 
-	err = fn(document.NewStringValue("A", c.A))
+	err = fn("A", document.NewStringValue(c.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewIntValue("b", c.B))
+	err = fn("b", document.NewIntValue(c.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Value("c", c.C))
+	err = fn("c", document.NewInt32Value(c.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn(document.NewInt32Value("d", c.D))
+	err = fn("d", document.NewInt32Value(c.D))
 	if err != nil {
 		return err
 	}
@@ -203,21 +203,21 @@ func (c *CustomFieldNames) Iterate(fn func(document.Field) error) error {
 	return nil
 }
 
-// ScanRecord extracts fields from record and assigns them to the struct fields.
+// ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (c *CustomFieldNames) ScanRecord(rec document.Document) error {
-	return rec.Iterate(func(f document.Field) error {
+func (c *CustomFieldNames) ScanDocument(rec document.Document) error {
+	return rec.Iterate(func(f string, v document.Value) error {
 		var err error
 
-		switch f.Name {
+		switch f {
 		case "A":
-			c.A, err = f.DecodeToString()
+			c.A, err = v.DecodeToString()
 		case "b":
-			c.B, err = f.DecodeToInt()
+			c.B, err = v.DecodeToInt()
 		case "c":
-			c.C, err = f.DecodeToInt32()
+			c.C, err = v.DecodeToInt32()
 		case "d":
-			c.D, err = f.DecodeToInt32()
+			c.D, err = v.DecodeToInt32()
 		}
 		return err
 	})
@@ -226,10 +226,10 @@ func (c *CustomFieldNames) ScanRecord(rec document.Document) error {
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func (c *CustomFieldNames) Scan(src interface{}) error {
-	rr, ok := src.(document.Document)
+	doc, ok := src.(document.Document)
 	if !ok {
-		return errors.New("unable to scan record from src")
+		return errors.New("unable to scan document from src")
 	}
 
-	return c.ScanRecord(rr)
+	return c.ScanDocument(doc)
 }

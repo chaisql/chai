@@ -350,7 +350,7 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 			continue
 		}
 
-		f, err := rec.r.GetValueByName(rs.fields[i])
+		f, err := rec.r.GetByField(rs.fields[i])
 		if err != nil {
 			return err
 		}

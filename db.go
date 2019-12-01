@@ -135,7 +135,7 @@ func (db *DB) QueryRecord(q string, args ...interface{}) (document.Document, err
 	}
 
 	var fb document.FieldBuffer
-	err = fb.ScanRecord(r)
+	err = fb.ScanDocument(r)
 	if err != nil {
 		return nil, err
 	}

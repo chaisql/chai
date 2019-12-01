@@ -3,9 +3,9 @@ package database
 import (
 	"strings"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/document"
 	"github.com/pkg/errors"
 )
 
@@ -221,13 +221,13 @@ func (tx Transaction) ReIndex(indexName string) error {
 		return err
 	}
 
-	return tb.Iterate(func(r document.Document) error {
-		f, err := r.GetValueByName(idx.FieldName)
+	return tb.Iterate(func(d document.Document) error {
+		v, err := d.GetByField(idx.FieldName)
 		if err != nil {
 			return err
 		}
 
-		return idx.Set(f.Value, r.(document.Keyer).Key())
+		return idx.Set(v, d.(document.Keyer).Key())
 	})
 }
 
@@ -235,7 +235,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 func (tx Transaction) ReIndexAll() error {
 	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
 		var opts indexOptions
-		err := opts.ScanRecord(document.EncodedRecord(v))
+		err := opts.ScanDocument(document.EncodedDocument(v))
 		if err != nil {
 			return err
 		}
@@ -257,13 +257,13 @@ func (tx Transaction) ReIndexAll() error {
 			return err
 		}
 
-		return tb.Iterate(func(r document.Document) error {
-			f, err := r.GetValueByName(opts.FieldName)
+		return tb.Iterate(func(d document.Document) error {
+			v, err := d.GetByField(opts.FieldName)
 			if err != nil {
 				return err
 			}
 
-			return idx.Set(f.Value, r.(document.Keyer).Key())
+			return idx.Set(v, d.(document.Keyer).Key())
 		})
 	})
 }

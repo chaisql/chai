@@ -100,7 +100,7 @@ func ExampleTx() {
 		panic(err)
 	}
 
-	err = u.ScanRecord(r)
+	err = u.ScanDocument(r)
 	if err != nil {
 		panic(err)
 	}
@@ -207,7 +207,7 @@ func ExampleResult_First() {
 
 	// Scan using generated methods
 	var u User
-	err = u.ScanRecord(r)
+	err = u.ScanDocument(r)
 	if err != nil {
 		panic(err)
 	}
@@ -262,7 +262,7 @@ func ExampleResult_Iterate() {
 	err = result.Iterate(func(r document.Document) error {
 		// Scan using generated methods
 		var u User
-		err = u.ScanRecord(r)
+		err = u.ScanDocument(r)
 		if err != nil {
 			return err
 		}

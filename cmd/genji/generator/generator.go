@@ -25,7 +25,7 @@ import (
 	{{- end }}
 )
 
-{{ template "records" . }}
+{{ template "documents" . }}
 
 {{- end }}
 `
@@ -34,12 +34,12 @@ var t *template.Template
 
 func init() {
 	templates := map[string]string{
-		"records":           recordsTmpl,
-		"record":            recordTmpl,
-		"record-Field":      recordGetValueByNameTmpl,
-		"record-Iterate":    recordIterateTmpl,
-		"record-ScanRecord": recordScanRecordTmpl,
-		"record-Scan":       recordScanTmpl,
+		"documents":             documentsTmpl,
+		"document":              documentTmpl,
+		"document-GetByField":   documentGetByFieldTmpl,
+		"document-Iterate":      documentIterateTmpl,
+		"document-ScanDocument": documentScanDocumentTmpl,
+		"document-Scan":         documentScanTmpl,
 	}
 
 	t = template.Must(template.New("main").Parse(tmpl))
@@ -132,9 +132,9 @@ func readSources(srcs []io.Reader) ([]*ast.File, error) {
 }
 
 type genContext struct {
-	Pkg     string
-	Imports []string
-	Records []recordContext
+	Pkg       string
+	Imports   []string
+	Documents []documentContext
 }
 
 func (g *genContext) readPackage(srcs []*ast.File) error {
@@ -152,10 +152,10 @@ func (g *genContext) readPackage(srcs []*ast.File) error {
 }
 
 func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
-	g.Records = make([]recordContext, len(cfg.Structs))
+	g.Documents = make([]documentContext, len(cfg.Structs))
 	for i := range cfg.Structs {
 		for _, src := range srcs {
-			ok, err := g.Records[i].lookupRecord(src, cfg.Structs[i].Name)
+			ok, err := g.Documents[i].lookupDocument(src, cfg.Structs[i].Name)
 			if err != nil {
 				return err
 			}
@@ -171,7 +171,7 @@ func (g *genContext) readTargets(srcs []*ast.File, cfg *Config) error {
 func (g *genContext) selectImports() {
 	m := make(map[string]int)
 
-	if len(g.Records) > 0 {
+	if len(g.Documents) > 0 {
 		m["errors"]++
 		m["github.com/asdine/genji/document"]++
 	}

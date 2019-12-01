@@ -15,7 +15,6 @@ import (
 
 	"github.com/asdine/genji/cmd/genji/generator/testdata"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 	"github.com/stretchr/testify/require"
 )
 
@@ -186,32 +185,32 @@ func TestGeneratedRecords(t *testing.T) {
 
 		tests := []struct {
 			name string
-			typ  value.Type
+			typ  document.ValueType
 			data []byte
 		}{
-			{"A", value.String, value.EncodeString(r.A)},
-			{"B", value.Int, value.EncodeInt(r.B)},
-			{"C", value.Int32, value.EncodeInt32(r.C)},
-			{"D", value.Int32, value.EncodeInt32(r.D)},
+			{"a", document.StringValue, document.EncodeString(r.A)},
+			{"b", document.IntValue, document.EncodeInt(r.B)},
+			{"c", document.Int32Value, document.EncodeInt32(r.C)},
+			{"d", document.Int32Value, document.EncodeInt32(r.D)},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				f, err := r.GetValueByName(test.name)
+				v, err := r.GetByField(test.name)
 				require.NoError(t, err)
-				require.Equal(t, test.name, f.Name)
-				require.Equal(t, test.typ, f.Type)
-				require.Equal(t, test.data, f.Data)
+				require.Equal(t, test.name, test.name)
+				require.Equal(t, test.typ, v.Type)
+				require.Equal(t, test.data, v.Data)
 			})
 		}
 
 		var i int
-		err := r.Iterate(func(f document.Field) error {
+		err := r.Iterate(func(f string, v document.Value) error {
 			t.Run(fmt.Sprintf("Field-%d", i), func(t *testing.T) {
 				require.NotEmpty(t, f)
-				require.Equal(t, tests[i].name, f.Name)
-				require.Equal(t, tests[i].typ, f.Type)
-				require.Equal(t, tests[i].data, f.Data)
+				require.Equal(t, tests[i].name, f)
+				require.Equal(t, tests[i].typ, v.Type)
+				require.Equal(t, tests[i].data, v.Data)
 			})
 			i++
 			return nil

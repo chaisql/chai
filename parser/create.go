@@ -1,9 +1,9 @@
 package parser
 
 import (
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/query"
 	"github.com/asdine/genji/scanner"
-	"github.com/asdine/genji/value"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
@@ -73,7 +73,7 @@ func (p *Parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
-func (p *Parser) parseTableOptions() (string, value.Type, error) {
+func (p *Parser) parseTableOptions() (string, document.ValueType, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()

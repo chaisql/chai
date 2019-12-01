@@ -10,57 +10,57 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/asdine/genji/value"
+	"github.com/asdine/genji/document"
 )
 
-const recordsTmpl = `
-{{- define "records" }}
-  {{- range .Records }}
-    {{- template "record" . }}
+const documentsTmpl = `
+{{- define "documents" }}
+  {{- range .Documents }}
+    {{- template "document" . }}
   {{- end }}
 {{- end }}
 `
 
-const recordTmpl = `
-{{- define "record" }}
-{{- template "record-GetValueByName" . }}
-{{- template "record-Iterate" . }}
-{{- template "record-ScanRecord" . }}
-{{- template "record-Scan" . }}
+const documentTmpl = `
+{{- define "document" }}
+{{- template "document-GetByField" . }}
+{{- template "document-Iterate" . }}
+{{- template "document-ScanDocument" . }}
+{{- template "document-Scan" . }}
 {{- end }}
 `
 
-const recordGetValueByNameTmpl = `
-{{ define "record-GetValueByName" }}
+const documentGetByFieldTmpl = `
+{{ define "document-GetByField" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-// GetValueByName implements the field method of the document.Document interface.
-func ({{$fl}} *{{$structName}}) GetValueByName(name string) (document.Field, error) {
-	switch name {
+// GetByField implements the field method of the document.Document interface.
+func ({{$fl}} *{{$structName}}) GetByField(field string) (document.Value, error) {
+	switch field {
 	{{- range .Fields }}
 	case "{{.FieldName}}":
-		return document.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}), nil
+		return document.New{{.Type}}Value({{$fl}}.{{.Name}}), nil
 	{{- end}}
 	}
 
-	return document.Field{}, errors.New("unknown field")
+	return document.Value{}, errors.New("unknown field")
 }
 {{ end }}
 `
 
-const recordIterateTmpl = `
-{{ define "record-Iterate" }}
+const documentIterateTmpl = `
+{{ define "document-Iterate" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func ({{$fl}} *{{$structName}}) Iterate(fn func(document.Field) error) error {
+func ({{$fl}} *{{$structName}}) Iterate(fn func(string, document.Value) error) error {
 	var err error
 
 	{{range .Fields}}
-	err = fn(document.New{{.Type}}Field("{{.FieldName}}", {{$fl}}.{{.Name}}))
+	err = fn("{{.FieldName}}", document.New{{.Type}}Value({{$fl}}.{{.Name}}))
 	if err != nil {
 		return err
 	}
@@ -71,21 +71,21 @@ func ({{$fl}} *{{$structName}}) Iterate(fn func(document.Field) error) error {
 {{ end }}
 `
 
-const recordScanRecordTmpl = `
-{{ define "record-ScanRecord" }}
+const documentScanDocumentTmpl = `
+{{ define "document-ScanDocument" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
-// ScanRecord extracts fields from record and assigns them to the struct fields.
+// ScanDocument extracts fields from document and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func ({{$fl}} *{{$structName}}) ScanRecord(rec document.Document) error {
-	return rec.Iterate(func(f document.Field) error {
+func ({{$fl}} *{{$structName}}) ScanDocument(rec document.Document) error {
+	return rec.Iterate(func(f string, v document.Value) error {
 		var err error
 
-		switch f.Name {
+		switch f {
 		{{- range .Fields}}
 		case "{{.FieldName}}":
-		{{$fl}}.{{.Name}}, err = f.DecodeTo{{.Type}}()
+		{{$fl}}.{{.Name}}, err = v.DecodeTo{{.Type}}()
 		{{- end}}
 		}
 		return err
@@ -94,41 +94,41 @@ func ({{$fl}} *{{$structName}}) ScanRecord(rec document.Document) error {
 {{ end }}
 `
 
-const recordScanTmpl = `
-{{ define "record-Scan" }}
+const documentScanTmpl = `
+{{ define "document-Scan" }}
 {{- $fl := .FirstLetter -}}
 {{- $structName := .Name -}}
 
 // Scan extracts fields from src and assigns them to the struct fields.
 // It implements the driver.Scanner interface.
 func ({{$fl}} *{{$structName}}) Scan(src interface{}) error {
-	rr, ok := src.(document.Document)
+	doc, ok := src.(document.Document)
 	if !ok {
-		return errors.New("unable to scan record from src")
+		return errors.New("unable to scan document from src")
 	}
 
-	return {{$fl}}.ScanRecord(rr)
+	return {{$fl}}.ScanDocument(doc)
 }
 {{ end }}
 `
 
-type recordContext struct {
+type documentContext struct {
 	Name   string
-	Fields []recordField
+	Fields []documentField
 }
 
-type recordField struct {
+type documentField struct {
 	// Name of the struct field, as found in the structure
 	Name string
 	// Genji type
 	Type string
 	// Go type
 	GoType string
-	// Name of the field in the encoded record
+	// Name of the field in the encoded document
 	FieldName string
 }
 
-func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error) {
+func (rctx *documentContext) lookupDocument(f *ast.File, target string) (bool, error) {
 	for _, n := range f.Decls {
 		gn, ok := ast.Node(n).(*ast.GenDecl)
 		if !ok || gn.Tok != token.TYPE || len(gn.Specs) == 0 {
@@ -175,14 +175,14 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 				return false, errors.New("embedded fields are not supported")
 			}
 
-			if value.TypeFromGoType(typeName) == 0 {
+			if document.NewValueTypeFromGoType(typeName) == 0 {
 				return false, fmt.Errorf("unsupported type %s", typeName)
 			}
 
 			for _, name := range fd.Names {
-				rctx.Fields = append(rctx.Fields, recordField{
+				rctx.Fields = append(rctx.Fields, documentField{
 					Name:      name.String(),
-					Type:      value.TypeFromGoType(typeName).String(),
+					Type:      document.NewValueTypeFromGoType(typeName).String(),
 					GoType:    typeName,
 					FieldName: strings.ToLower(name.String()),
 				})
@@ -202,15 +202,15 @@ func (rctx *recordContext) lookupRecord(f *ast.File, target string) (bool, error
 	return false, nil
 }
 
-func (rctx *recordContext) IsExported() bool {
+func (rctx *documentContext) IsExported() bool {
 	return unicode.IsUpper(rune(rctx.Name[0]))
 }
 
-func (rctx *recordContext) FirstLetter() string {
+func (rctx *documentContext) FirstLetter() string {
 	return strings.ToLower(rctx.Name[0:1])
 }
 
-func (rctx *recordContext) UnexportedName() string {
+func (rctx *documentContext) UnexportedName() string {
 	if !rctx.IsExported() {
 		return rctx.Name
 	}
@@ -218,7 +218,7 @@ func (rctx *recordContext) UnexportedName() string {
 	return rctx.Unexport(rctx.Name)
 }
 
-func (rctx *recordContext) ExportedName() string {
+func (rctx *documentContext) ExportedName() string {
 	if rctx.IsExported() {
 		return rctx.Name
 	}
@@ -226,7 +226,7 @@ func (rctx *recordContext) ExportedName() string {
 	return rctx.Export(rctx.Name)
 }
 
-func (rctx *recordContext) NameWithPrefix(prefix string) string {
+func (rctx *documentContext) NameWithPrefix(prefix string) string {
 	n := prefix + rctx.ExportedName()
 	if rctx.IsExported() {
 		return rctx.Export(n)
@@ -235,19 +235,19 @@ func (rctx *recordContext) NameWithPrefix(prefix string) string {
 	return rctx.Unexport(n)
 }
 
-func (rctx *recordContext) Export(n string) string {
+func (rctx *documentContext) Export(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToUpper(rune(n[0])))
 	return string(name)
 }
 
-func (rctx *recordContext) Unexport(n string) string {
+func (rctx *documentContext) Unexport(n string) string {
 	name := []byte(n)
 	name[0] = byte(unicode.ToLower(rune(n[0])))
 	return string(name)
 }
 
-func handleGenjiTag(ctx *recordContext, fd *ast.Field) error {
+func handleGenjiTag(ctx *documentContext, fd *ast.Field) error {
 	if len(fd.Names) > 1 {
 		return errors.New("single genji tag for multiple fields not supported")
 	}

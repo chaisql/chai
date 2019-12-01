@@ -7,13 +7,12 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/scanner"
-	"github.com/asdine/genji/value"
 )
 
 var (
-	trueLitteral  = newSingleEvalValue(value.NewBool(true))
-	falseLitteral = newSingleEvalValue(value.NewBool(false))
-	nilLitteral   = newSingleEvalValue(value.NewNull())
+	trueLitteral  = newSingleEvalValue(document.NewBoolValue(true))
+	falseLitteral = newSingleEvalValue(document.NewBoolValue(false))
+	nilLitteral   = newSingleEvalValue(document.NewNullValue())
 )
 
 // An Expr evaluates to a value.
@@ -49,7 +48,7 @@ func (v EvalValue) Truthy() bool {
 	return v.Value.Truthy()
 }
 
-func newSingleEvalValue(v value.Value) EvalValue {
+func newSingleEvalValue(v document.Value) EvalValue {
 	return EvalValue{
 		Value: LiteralValue{
 			Value: v,
@@ -59,89 +58,89 @@ func newSingleEvalValue(v value.Value) EvalValue {
 
 // A LiteralValue represents a litteral value of any type defined by the value package.
 type LiteralValue struct {
-	value.Value
+	document.Value
 }
 
 // BytesValue creates a litteral value of type Bytes.
 func BytesValue(v []byte) LiteralValue {
-	return LiteralValue{value.NewBytes(v)}
+	return LiteralValue{document.NewBytesValue(v)}
 }
 
 // StringValue creates a litteral value of type String.
 func StringValue(v string) LiteralValue {
-	return LiteralValue{value.NewString(v)}
+	return LiteralValue{document.NewStringValue(v)}
 }
 
 // BoolValue creates a litteral value of type Bool.
 func BoolValue(v bool) LiteralValue {
-	return LiteralValue{value.NewBool(v)}
+	return LiteralValue{document.NewBoolValue(v)}
 }
 
 // UintValue creates a litteral value of type Uint.
 func UintValue(v uint) LiteralValue {
-	return LiteralValue{value.NewUint(v)}
+	return LiteralValue{document.NewUintValue(v)}
 }
 
 // Uint8Value creates a litteral value of type Uint8.
 func Uint8Value(v uint8) LiteralValue {
-	return LiteralValue{value.NewUint8(v)}
+	return LiteralValue{document.NewUint8Value(v)}
 }
 
 // Uint16Value creates a litteral value of type Uint16.
 func Uint16Value(v uint16) LiteralValue {
-	return LiteralValue{value.NewUint16(v)}
+	return LiteralValue{document.NewUint16Value(v)}
 }
 
 // Uint32Value creates a litteral value of type Uint32.
 func Uint32Value(v uint32) LiteralValue {
-	return LiteralValue{value.NewUint32(v)}
+	return LiteralValue{document.NewUint32Value(v)}
 }
 
 // Uint64Value creates a litteral value of type Uint64.
 func Uint64Value(v uint64) LiteralValue {
-	return LiteralValue{value.NewUint64(v)}
+	return LiteralValue{document.NewUint64Value(v)}
 }
 
 // IntValue creates a litteral value of type Int.
 func IntValue(v int) LiteralValue {
-	return LiteralValue{value.NewInt(v)}
+	return LiteralValue{document.NewIntValue(v)}
 }
 
 // Int8Value creates a litteral value of type Int8.
 func Int8Value(v int8) LiteralValue {
-	return LiteralValue{value.NewInt8(v)}
+	return LiteralValue{document.NewInt8Value(v)}
 }
 
 // Int16Value creates a litteral value of type Int16.
 func Int16Value(v int16) LiteralValue {
-	return LiteralValue{value.NewInt16(v)}
+	return LiteralValue{document.NewInt16Value(v)}
 }
 
 // Int32Value creates a litteral value of type Int32.
 func Int32Value(v int32) LiteralValue {
-	return LiteralValue{value.NewInt32(v)}
+	return LiteralValue{document.NewInt32Value(v)}
 }
 
 // Int64Value creates a litteral value of type Int64.
 func Int64Value(v int64) LiteralValue {
-	return LiteralValue{value.NewInt64(v)}
+	return LiteralValue{document.NewInt64Value(v)}
 }
 
 // Float64Value creates a litteral value of type Float64.
 func Float64Value(v float64) LiteralValue {
-	return LiteralValue{value.NewFloat64(v)}
+	return LiteralValue{document.NewFloat64Value(v)}
 }
 
 // NullValue creates a litteral value of type Null.
 func NullValue() LiteralValue {
-	return LiteralValue{value.NewNull()}
+	return LiteralValue{document.NewNullValue()}
 }
 
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 // It implements the Value interface.
 func (l LiteralValue) Truthy() bool {
-	return !value.IsZeroValue(l.Type, l.Data)
+	return !l.IsZeroValue()
 }
 
 // Eval returns l. It implements the Expr interface.
@@ -188,7 +187,7 @@ func (p NamedParam) Eval(stack EvalStack) (EvalValue, error) {
 		return nilLitteral, err
 	}
 
-	vl, err := value.New(v)
+	vl, err := document.NewValue(v)
 	if err != nil {
 		return nilLitteral, err
 	}
@@ -214,7 +213,7 @@ func (p PositionalParam) Eval(stack EvalStack) (EvalValue, error) {
 		return nilLitteral, err
 	}
 
-	vl, err := value.New(v)
+	vl, err := document.NewValue(v)
 	if err != nil {
 		return nilLitteral, err
 	}

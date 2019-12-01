@@ -96,7 +96,7 @@ func Example() {
 	err = stream.
 		// Filter all even ids
 		Filter(func(r document.Document) (bool, error) {
-			f, err := r.GetValueByName("id")
+			f, err := r.GetByField("id")
 			if err != nil {
 				return false, err
 			}
@@ -107,12 +107,12 @@ func Example() {
 		Map(func(r document.Document) (document.Document, error) {
 			var fb document.FieldBuffer
 
-			err := fb.ScanRecord(r)
+			err := fb.ScanDocument(r)
 			if err != nil {
 				return nil, err
 			}
 
-			fb.Add(document.NewStringValue("group", "admin"))
+			fb.Add("group", document.NewStringValue("admin"))
 			return &fb, nil
 		}).
 		// Iterate on them

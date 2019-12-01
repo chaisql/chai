@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/asdine/genji"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
-	"github.com/asdine/genji/document"
 	"github.com/c-bata/go-prompt"
 	"github.com/dgraph-io/badger/v2"
 )

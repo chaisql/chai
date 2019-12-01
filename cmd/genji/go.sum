@@ -8,6 +8,7 @@ github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAE
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/asdine/genji v0.3.0 h1:jFksUgFDHIRlxctpp72ZdZeWjD+JRRTqSyvhjN/6/yc=
 github.com/asdine/genji v0.3.0/go.mod h1:Y8Xw6MrnkuKHHCLoz4Kault4YAJaOME+uKy6kxM9ePw=
+github.com/asdine/genji/cmd/genji v0.3.0/go.mod h1:IRSdDWN2jwfr4PiKgOCnUnAo7sAn0vdzjkamcBQav7w=
 github.com/asdine/genji/engine/badgerengine v0.3.0 h1:SWZhArbOIUiJvohD8cw5MBoFC6hpTUrTUVKBHg2pQVM=
 github.com/asdine/genji/engine/badgerengine v0.3.0/go.mod h1:9jigs6YoeyM5P38ddog3iBkWnePD9GC6oSOEmMiMF64=
 github.com/c-bata/go-prompt v0.2.3 h1:jjCS+QhG/sULBhAaBdjb2PlMRVaKXQgn+4yzaauvs2s=

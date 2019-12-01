@@ -5,7 +5,6 @@ import (
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 )
 
@@ -91,47 +90,47 @@ type indexOptions struct {
 }
 
 // Field implements the field method of the document.Document interface.
-func (i *indexOptions) GetValueByName(name string) (document.Field, error) {
+func (i *indexOptions) GetByField(name string) (document.Value, error) {
 	switch name {
 	case "IndexName":
-		return document.NewStringValue("IndexName", i.IndexName), nil
+		return document.NewStringValue(i.IndexName), nil
 	case "TableName":
-		return document.NewStringValue("TableName", i.TableName), nil
+		return document.NewStringValue(i.TableName), nil
 	case "FieldName":
-		return document.NewStringValue("FieldName", i.FieldName), nil
+		return document.NewStringValue(i.FieldName), nil
 	case "Unique":
-		return document.NewBoolValue("Unique", i.Unique), nil
+		return document.NewBoolValue(i.Unique), nil
 	}
 
-	return document.Field{}, errors.New("unknown field")
+	return document.Value{}, errors.New("unknown field")
 }
 
 // Iterate through all the fields one by one and pass each of them to the given function.
 // It the given function returns an error, the iteration is interrupted.
-func (i *indexOptions) Iterate(fn func(document.Field) error) error {
+func (i *indexOptions) Iterate(fn func(string, document.Value) error) error {
 	var err error
-	var f document.Field
+	var v document.Value
 
-	f, _ = i.GetValueByName("IndexName")
-	err = fn(f)
+	v, _ = i.GetByField("IndexName")
+	err = fn("IndexName", v)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.GetValueByName("TableName")
-	err = fn(f)
+	v, _ = i.GetByField("TableName")
+	err = fn("TableName", v)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.GetValueByName("FieldName")
-	err = fn(f)
+	v, _ = i.GetByField("FieldName")
+	err = fn("FieldName", v)
 	if err != nil {
 		return err
 	}
 
-	f, _ = i.GetValueByName("Unique")
-	err = fn(f)
+	v, _ = i.GetByField("Unique")
+	err = fn("Unique", v)
 	if err != nil {
 		return err
 	}
@@ -139,21 +138,21 @@ func (i *indexOptions) Iterate(fn func(document.Field) error) error {
 	return nil
 }
 
-// ScanRecord extracts fields from record and assigns them to the struct fields.
+// ScanDocument extracts fields from record and assigns them to the struct fields.
 // It implements the document.Scanner interface.
-func (i *indexOptions) ScanRecord(rec document.Document) error {
-	return rec.Iterate(func(f document.Field) error {
+func (i *indexOptions) ScanDocument(rec document.Document) error {
+	return rec.Iterate(func(f string, v document.Value) error {
 		var err error
 
-		switch f.Name {
+		switch f {
 		case "IndexName":
-			i.IndexName, err = value.DecodeString(f.Data)
+			i.IndexName, err = document.DecodeString(v.Data)
 		case "TableName":
-			i.TableName, err = value.DecodeString(f.Data)
+			i.TableName, err = document.DecodeString(v.Data)
 		case "FieldName":
-			i.FieldName, err = value.DecodeString(f.Data)
+			i.FieldName, err = document.DecodeString(v.Data)
 		case "Unique":
-			i.Unique, err = value.DecodeBool(f.Data)
+			i.Unique, err = document.DecodeBool(v.Data)
 		}
 		return err
 	})

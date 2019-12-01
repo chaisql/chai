@@ -1,17 +1,15 @@
 package database
 
 import (
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 )
-
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
 	PrimaryKeyName string
-	PrimaryKeyType value.Type
+	PrimaryKeyType document.ValueType
 
 	lastKey int64
 }
@@ -31,9 +29,9 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	}
 
 	var fb document.FieldBuffer
-	fb.Add(document.NewStringValue("PrimaryKeyName", cfg.PrimaryKeyName))
-	fb.Add(document.NewUint8Value("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
-	fb.Add(document.NewInt64Value("lastKey", cfg.lastKey))
+	fb.Add("PrimaryKeyName", document.NewStringValue(cfg.PrimaryKeyName))
+	fb.Add("PrimaryKeyType", document.NewUint8Value(uint8(cfg.PrimaryKeyType)))
+	fb.Add("lastKey", document.NewInt64Value(cfg.lastKey))
 
 	v, err := document.Encode(&fb)
 	if err != nil {
@@ -54,9 +52,9 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 	}
 
 	var fb document.FieldBuffer
-	fb.Add(document.NewStringValue("PrimaryKeyName", cfg.PrimaryKeyName))
-	fb.Add(document.NewUint8Value("PrimaryKeyType", uint8(cfg.PrimaryKeyType)))
-	fb.Add(document.NewInt64Value("lastKey", cfg.lastKey))
+	fb.Add("PrimaryKeyName", document.NewStringValue(cfg.PrimaryKeyName))
+	fb.Add("PrimaryKeyType", document.NewUint8Value(uint8(cfg.PrimaryKeyType)))
+	fb.Add("lastKey", document.NewInt64Value(cfg.lastKey))
 
 	v, err := document.Encode(&fb)
 	if err != nil {
@@ -77,9 +75,9 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	var cfg TableConfig
 
-	r := document.EncodedRecord(v)
+	r := document.EncodedDocument(v)
 
-	f, err := r.GetValueByName("PrimaryKeyName")
+	f, err := r.GetByField("PrimaryKeyName")
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +85,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err = r.GetValueByName("PrimaryKeyType")
+	f, err = r.GetByField("PrimaryKeyType")
 	if err != nil {
 		return nil, err
 	}
@@ -95,9 +93,9 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.PrimaryKeyType = value.Type(tp)
+	cfg.PrimaryKeyType = document.ValueType(tp)
 
-	f, err = r.GetValueByName("lastKey")
+	f, err = r.GetByField("lastKey")
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +160,7 @@ func (t *indexStore) Get(indexName string) (*indexOptions, error) {
 	}
 
 	var idxopts indexOptions
-	err = idxopts.ScanRecord(document.EncodedRecord(v))
+	err = idxopts.ScanDocument(document.EncodedDocument(v))
 	if err != nil {
 		return nil, err
 	}

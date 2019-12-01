@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 )
 
 // InsertStmt is a DSL that allows creating a full Insert query.
@@ -97,7 +96,7 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 					return res, errors.New("invalid values")
 				}
 
-				fb.Add(document.Field{Name: pair.K, Value: v.Value.Value})
+				fb.Add(pair.K, v.Value.Value)
 			}
 			r = &fb
 		}
@@ -156,12 +155,9 @@ func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) (Result,
 			}
 
 			// Assign the value to the field and add it to the record
-			fb.Add(document.Field{
-				Name: fieldName,
-				Value: value.Value{
-					Type: lv.Type,
-					Data: lv.Data,
-				},
+			fb.Add(fieldName, document.Value{
+				Type: lv.Type,
+				Data: lv.Data,
 			})
 		}
 

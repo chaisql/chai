@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/engine/memoryengine"
-	"github.com/asdine/genji/value"
+	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func TestTableConfigStore(t *testing.T) {
 
 	cfg := TableConfig{
 		PrimaryKeyName: "k",
-		PrimaryKeyType: value.Float64,
+		PrimaryKeyType: document.Float64Value,
 		lastKey:        100,
 	}
 

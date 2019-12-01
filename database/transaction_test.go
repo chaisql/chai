@@ -5,10 +5,9 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/value"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -120,10 +119,10 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := 0; i < 10; i++ {
-			_, err = tb.Insert(document.NewFieldBuffer(
-				document.NewIntValue("a", i),
-				document.NewIntValue("b", i*10),
-			))
+			_, err = tb.Insert(document.NewFieldBuffer().
+				Add("a", document.NewIntValue(i)).
+				Add("b", document.NewIntValue(i*10)),
+			)
 			require.NoError(t, err)
 		}
 
@@ -162,8 +161,8 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
-			require.Equal(t, value.NewFloat64(float64(i)), val)
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+			require.Equal(t, document.NewFloat64Value(float64(i)), val)
 			i++
 			return nil
 		})
@@ -174,7 +173,7 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
 			i++
 			return nil
 		})
@@ -207,15 +206,15 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := 0; i < 10; i++ {
-			_, err = tb1.Insert(document.NewFieldBuffer(
-				document.NewIntValue("a", i),
-				document.NewIntValue("b", i*10),
-			))
+			_, err = tb1.Insert(document.NewFieldBuffer().
+				Add("a", document.NewIntValue(i)).
+				Add("b", document.NewIntValue(i*10)),
+			)
 			require.NoError(t, err)
-			_, err = tb2.Insert(document.NewFieldBuffer(
-				document.NewIntValue("a", i),
-				document.NewIntValue("b", i*10),
-			))
+			_, err = tb2.Insert(document.NewFieldBuffer().
+				Add("a", document.NewIntValue(i)).
+				Add("b", document.NewIntValue(i*10)),
+			)
 			require.NoError(t, err)
 		}
 
@@ -239,8 +238,8 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
-			require.Equal(t, value.NewFloat64(float64(i)), val)
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+			require.Equal(t, document.NewFloat64Value(float64(i)), val)
 			i++
 			return nil
 		})
@@ -251,8 +250,8 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(value.Int), func(val value.Value, key []byte) error {
-			require.Equal(t, value.NewFloat64(float64(i)), val)
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+			require.Equal(t, document.NewFloat64Value(float64(i)), val)
 			i++
 			return nil
 		})
@@ -261,11 +260,10 @@ func TestReIndexAll(t *testing.T) {
 	})
 }
 
-func newRecord() document.FieldBuffer {
-	return document.FieldBuffer([]document.Field{
-		document.NewStringValue("fielda", "a"),
-		document.NewStringValue("fieldb", "b"),
-	})
+func newDocument() *document.FieldBuffer {
+	return document.NewFieldBuffer().
+		Add("fielda", document.NewStringValue("a")).
+		Add("fieldb", document.NewStringValue("b"))
 }
 
 // TestTableIterate verifies Iterate behaviour.
@@ -288,7 +286,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		for i := 0; i < 10; i++ {
-			_, err := tb.Insert(newRecord())
+			_, err := tb.Insert(newDocument())
 			require.NoError(t, err)
 		}
 
@@ -309,7 +307,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		for i := 0; i < 10; i++ {
-			_, err := tb.Insert(newRecord())
+			_, err := tb.Insert(newDocument())
 			require.NoError(t, err)
 		}
 
@@ -342,9 +340,10 @@ func TestTableRecord(t *testing.T) {
 		defer cleanup()
 
 		// create two records, one with an additional field
-		rec1 := newRecord()
-		rec1.Add(document.NewInt64Value("fieldc", 40))
-		rec2 := newRecord()
+		rec1 := newDocument()
+		vc := document.NewInt64Value(40)
+		rec1.Add("fieldc", vc)
+		rec2 := newDocument()
 
 		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
@@ -354,9 +353,9 @@ func TestTableRecord(t *testing.T) {
 		// fetch rec1 and make sure it returns the right one
 		res, err := tb.GetRecord(key1)
 		require.NoError(t, err)
-		fc, err := res.GetValueByName("fieldc")
+		fc, err := res.GetByField("fieldc")
 		require.NoError(t, err)
-		require.Equal(t, rec1[2], fc)
+		require.Equal(t, vc, fc)
 	})
 }
 
@@ -366,7 +365,7 @@ func TestTableInsert(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		rec := newRecord()
+		rec := newDocument()
 		key1, err := tb.Insert(rec)
 		require.NoError(t, err)
 		require.NotEmpty(t, key1)
@@ -384,21 +383,20 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableConfig{
 			PrimaryKeyName: "foo",
-			PrimaryKeyType: value.Int32,
+			PrimaryKeyType: document.Int32Value,
 		})
 		require.NoError(t, err)
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		rec := document.NewFieldBuffer(
-			document.NewIntValue("foo", 1),
-			document.NewStringValue("bar", "baz"),
-		)
+		rec := document.NewFieldBuffer().
+			Add("foo", document.NewIntValue(1)).
+			Add("bar", document.NewStringValue("baz"))
 
 		// insert
 		key, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, value.EncodeInt32(1), key)
+		require.Equal(t, document.EncodeInt32(1), key)
 
 		// make sure the record is fetchable using the returned key
 		_, err = tb.GetRecord(key)
@@ -415,7 +413,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableConfig{
 			PrimaryKeyName: "foo",
-			PrimaryKeyType: value.Int,
+			PrimaryKeyType: document.IntValue,
 		})
 		require.NoError(t, err)
 		tb, err := tx.GetTable("test")
@@ -429,9 +427,8 @@ func TestTableInsert(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
-				rec := document.NewFieldBuffer(
-					document.NewBytesValue("foo", test),
-				)
+				rec := document.NewFieldBuffer().
+					Add("foo", document.NewBytesValue(test))
 
 				_, err := tb.Insert(rec)
 				require.Error(t, err)
@@ -457,12 +454,12 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// create one record with the foo field
-		rec1 := newRecord()
-		foo := document.NewFloat64Value("foo", 10)
-		rec1 = append(rec1, foo)
+		rec1 := newDocument()
+		foo := document.NewFloat64Value(10)
+		rec1.Add("foo", foo)
 
 		// create one record without the foo field
-		rec2 := newRecord()
+		rec2 := newDocument()
 
 		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
@@ -470,7 +467,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual(nil, func(val value.Value, k []byte) error {
+		err = idx.AscendGreaterOrEqual(nil, func(val document.Value, k []byte) error {
 			switch count {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
@@ -502,9 +499,9 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 
 		// create two records, one with an additional field
-		rec1 := newRecord()
-		rec1.Add(document.NewInt64Value("fieldc", 40))
-		rec2 := newRecord()
+		rec1 := newDocument()
+		rec1.Add("fieldc", document.NewInt64Value(40))
+		rec2 := newDocument()
 
 		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
@@ -522,7 +519,7 @@ func TestTableDelete(t *testing.T) {
 		// make sure it didn't also delete the other one
 		res, err := tb.GetRecord(key2)
 		require.NoError(t, err)
-		_, err = res.GetValueByName("fieldc")
+		_, err = res.GetByField("fieldc")
 		require.Error(t, err)
 	})
 }
@@ -533,7 +530,7 @@ func TestTableReplace(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		err := tb.Replace([]byte("id"), newRecord())
+		err := tb.Replace([]byte("id"), newDocument())
 		require.Equal(t, database.ErrRecordNotFound, err)
 	})
 
@@ -542,11 +539,10 @@ func TestTableReplace(t *testing.T) {
 		defer cleanup()
 
 		// create two different records
-		rec1 := newRecord()
-		rec2 := document.FieldBuffer([]document.Field{
-			document.NewStringValue("fielda", "c"),
-			document.NewStringValue("fieldb", "d"),
-		})
+		rec1 := newDocument()
+		rec2 := document.NewFieldBuffer().
+			Add("fielda", document.NewStringValue("c")).
+			Add("fieldb", document.NewStringValue("d"))
 
 		key1, err := tb.Insert(rec1)
 		require.NoError(t, err)
@@ -554,10 +550,9 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 
 		// create a third record
-		rec3 := document.FieldBuffer([]document.Field{
-			document.NewStringValue("fielda", "e"),
-			document.NewStringValue("fieldb", "f"),
-		})
+		rec3 := document.NewFieldBuffer().
+			Add("fielda", document.NewStringValue("e")).
+			Add("fieldb", document.NewStringValue("f"))
 
 		// replace rec1 with rec3
 		err = tb.Replace(key1, rec3)
@@ -566,14 +561,14 @@ func TestTableReplace(t *testing.T) {
 		// make sure it replaced it correctly
 		res, err := tb.GetRecord(key1)
 		require.NoError(t, err)
-		f, err := res.GetValueByName("fielda")
+		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", string(f.Data))
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetRecord(key2)
 		require.NoError(t, err)
-		f, err = res.GetValueByName("fielda")
+		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "c", string(f.Data))
 	})
@@ -594,8 +589,8 @@ func TestTableTruncate(t *testing.T) {
 		defer cleanup()
 
 		// create two records
-		rec1 := newRecord()
-		rec2 := newRecord()
+		rec1 := newDocument()
+		rec2 := newDocument()
 
 		_, err := tb.Insert(rec1)
 		require.NoError(t, err)
@@ -673,13 +668,11 @@ func TestTableIndexes(t *testing.T) {
 func BenchmarkTableInsert(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			var fields []document.Field
+			var fb document.FieldBuffer
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, document.NewInt64Value(fmt.Sprintf("name-%d", i), i))
+				fb.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 			}
-
-			rec := document.FieldBuffer(fields)
 
 			b.ResetTimer()
 			b.StopTimer()
@@ -688,7 +681,7 @@ func BenchmarkTableInsert(b *testing.B) {
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
-					tb.Insert(rec)
+					tb.Insert(&fb)
 				}
 				b.StopTimer()
 				cleanup()
@@ -704,16 +697,14 @@ func BenchmarkTableScan(b *testing.B) {
 			tb, cleanup := newTestTable(b)
 			defer cleanup()
 
-			var fields []document.Field
+			var fb document.FieldBuffer
 
 			for i := int64(0); i < 10; i++ {
-				fields = append(fields, document.NewInt64Value(fmt.Sprintf("name-%d", i), i))
+				fb.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 			}
 
-			rec := document.FieldBuffer(fields)
-
 			for i := 0; i < size; i++ {
-				_, err := tb.Insert(rec)
+				_, err := tb.Insert(&fb)
 				require.NoError(b, err)
 			}
 
