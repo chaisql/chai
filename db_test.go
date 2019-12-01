@@ -37,7 +37,7 @@ func ExampleDB_SQLDB() {
 		log.Fatal(err)
 	}
 
-	_, err = dbx.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	_, err = dbx.Exec("INSERT INTO user DOCUMENTS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -243,7 +243,7 @@ func ExampleResult_Iterate() {
 	}
 
 	for i := 1; i <= 10; i++ {
-		err = db.Exec("INSERT INTO user RECORDS ?", &User{
+		err = db.Exec("INSERT INTO user DOCUMENTS ?", &User{
 			ID:   int64(i),
 			Name: fmt.Sprintf("foo%d", i),
 			Age:  uint32(i * 10),
@@ -467,12 +467,12 @@ func TestInsertStmt(t *testing.T) {
 		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, "1,d,e,f\n", []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
 		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', (1, 2, 3))`, true, "", nil},
-		{"Records", "INSERT INTO test RECORDS (a: 'a', b: 2.3, c: 1 = 1)", false, "1,a,2.3,true\n", nil},
-		{"Records / Positional Params", "INSERT INTO test RECORDS (a: ?, b: 2.3, c: ?)", false, "1,a,2.3,true\n", []interface{}{"a", true}},
-		{"Records / Named Params", "INSERT INTO test RECORDS (a: $a, b: 2.3, c: $c)", false, "1,1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Records / List ", "INSERT INTO test RECORDS (a: (1, 2, 3))", true, "", nil},
-		{"Records / strings", `INSERT INTO test RECORDS ('a': 'a', b: 2.3)`, true, "", nil},
-		{"Records / ident value", `INSERT INTO test RECORDS ("a": "a")`, true, "", nil},
+		{"Records", "INSERT INTO test DOCUMENTS (a: 'a', b: 2.3, c: 1 = 1)", false, "1,a,2.3,true\n", nil},
+		{"Records / Positional Params", "INSERT INTO test DOCUMENTS (a: ?, b: 2.3, c: ?)", false, "1,a,2.3,true\n", []interface{}{"a", true}},
+		{"Records / Named Params", "INSERT INTO test DOCUMENTS (a: $a, b: 2.3, c: $c)", false, "1,1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
+		{"Records / List ", "INSERT INTO test DOCUMENTS (a: (1, 2, 3))", true, "", nil},
+		{"Records / strings", `INSERT INTO test DOCUMENTS ('a': 'a', b: 2.3)`, true, "", nil},
+		{"Records / ident value", `INSERT INTO test DOCUMENTS ("a": "a")`, true, "", nil},
 	}
 
 	for _, test := range tests {

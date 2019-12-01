@@ -43,8 +43,8 @@ func Example() {
 	}
 
 	// Since the user structure implements the document.Document interface, we can use it with the
-	// RECORDS clause.
-	err = db.Exec("INSERT INTO user RECORDS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	// DOCUMENTS clause.
+	err = db.Exec("INSERT INTO user DOCUMENTS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
 		panic(err)
 	}

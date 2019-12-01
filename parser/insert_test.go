@@ -34,10 +34,10 @@ func TestParserInsert(t *testing.T) {
 				},
 			}, false},
 
-		{"Records", `INSERT INTO test RECORDS (a: 'a', b: 2.3, "c ": 1 = 1)`,
+		{"Documents", `INSERT INTO test DOCUMENTS (a: 'a', b: 2.3, "c ": 1 = 1)`,
 			query.InsertStmt{
 				TableName: "test",
-				Records: []interface{}{
+				Documents: []interface{}{
 					[]query.KVPair{
 						query.KVPair{K: "a", V: query.StringValue("a")},
 						query.KVPair{K: "b", V: query.Float64Value(2.3)},
@@ -45,10 +45,10 @@ func TestParserInsert(t *testing.T) {
 					},
 				},
 			}, false},
-		{"Records / Multiple", `INSERT INTO test RECORDS ("a": 'a', b: -2.3), (a: 1, d: true)`,
+		{"Documents / Multiple", `INSERT INTO test DOCUMENTS ("a": 'a', b: -2.3), (a: 1, d: true)`,
 			query.InsertStmt{
 				TableName: "test",
-				Records: []interface{}{
+				Documents: []interface{}{
 					[]query.KVPair{
 						query.KVPair{K: "a", V: query.StringValue("a")},
 						query.KVPair{K: "b", V: query.Float64Value(-2.3)},
@@ -56,16 +56,16 @@ func TestParserInsert(t *testing.T) {
 					[]query.KVPair{query.KVPair{K: "a", V: query.Int8Value(1)}, query.KVPair{K: "d", V: query.BoolValue(true)}},
 				},
 			}, false},
-		{"Records / Positional Param", "INSERT INTO test RECORDS ?, ?",
+		{"Documents / Positional Param", "INSERT INTO test DOCUMENTS ?, ?",
 			query.InsertStmt{
 				TableName: "test",
-				Records:   []interface{}{query.PositionalParam(1), query.PositionalParam(2)},
+				Documents: []interface{}{query.PositionalParam(1), query.PositionalParam(2)},
 			},
 			false},
-		{"Records / Named Param", "INSERT INTO test RECORDS $foo, $bar",
+		{"Documents / Named Param", "INSERT INTO test DOCUMENTS $foo, $bar",
 			query.InsertStmt{
 				TableName: "test",
-				Records:   []interface{}{query.NamedParam("foo"), query.NamedParam("bar")},
+				Documents: []interface{}{query.NamedParam("foo"), query.NamedParam("bar")},
 			},
 			false},
 	}

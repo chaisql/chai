@@ -14,7 +14,7 @@ type InsertStmt struct {
 	TableName  string
 	FieldNames []string
 	Values     LiteralExprList
-	Records    []interface{}
+	Documents  []interface{}
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -34,7 +34,7 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		return res, errors.New("missing table name")
 	}
 
-	if stmt.Values == nil && stmt.Records == nil {
+	if stmt.Values == nil && stmt.Documents == nil {
 		return res, errors.New("values and records are empty")
 	}
 
@@ -48,7 +48,7 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		Params: args,
 	}
 
-	if len(stmt.Records) > 0 {
+	if len(stmt.Documents) > 0 {
 		return stmt.insertRecords(t, stack)
 	}
 
@@ -64,10 +64,10 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 	var err error
 
 	if len(stmt.FieldNames) > 0 {
-		return res, errors.New("can't provide a field list with RECORDS clause")
+		return res, errors.New("can't provide a field list with DOCUMENTS clause")
 	}
 
-	for _, rec := range stmt.Records {
+	for _, rec := range stmt.Documents {
 		var r document.Document
 
 		switch tp := rec.(type) {

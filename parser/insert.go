@@ -44,18 +44,18 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, nil
 	}
 
-	// If values was not found, parse RECORDS (r1, r2, r3)
-	records, found, err := p.parseRecords()
+	// If values was not found, parse DOCUMENTS (r1, r2, r3)
+	records, found, err := p.parseDocuments()
 	if err != nil {
 		return stmt, err
 	}
 	if !found {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		p.Unscan()
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "RECORDS"}, pos)
+		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "DOCUMENTS"}, pos)
 	}
 
-	stmt.Records = records
+	stmt.Documents = records
 
 	return stmt, nil
 }
@@ -118,44 +118,44 @@ func (p *Parser) parseValues() ([]query.LiteralExprList, bool, error) {
 	return valuesList, true, nil
 }
 
-// parseValues parses the "RECORDS" clause of the query, if it exists.
-func (p *Parser) parseRecords() ([]interface{}, bool, error) {
-	// Check if the RECORDS token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RECORDS {
+// parseValues parses the "DOCUMENTS" clause of the query, if it exists.
+func (p *Parser) parseDocuments() ([]interface{}, bool, error) {
+	// Check if the DOCUMENTS token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.DOCUMENTS {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	var records []interface{}
+	var documents []interface{}
 
 	// Parse first (required) document.
 	// It can either be a param or kv list
-	rec, err := p.parseRecord()
+	rec, err := p.parseDocument()
 	if err != nil {
 		return nil, false, err
 	}
 
-	records = append(records, rec)
+	documents = append(documents, rec)
 
-	// Parse remaining (optional) records.
+	// Parse remaining (optional) documents.
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
 			break
 		}
 
-		rec, err := p.parseRecord()
+		rec, err := p.parseDocument()
 		if err != nil {
 			return nil, false, err
 		}
 
-		records = append(records, rec)
+		documents = append(documents, rec)
 	}
 
-	return records, true, nil
+	return documents, true, nil
 }
 
-func (p *Parser) parseRecord() (interface{}, error) {
+func (p *Parser) parseDocument() (interface{}, error) {
 	// Parse a param first
 	v, err := p.parseParam()
 	if err != nil {

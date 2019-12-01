@@ -75,6 +75,7 @@ const (
 	CREATE
 	DELETE
 	DESC
+	DOCUMENTS
 	DROP
 	DURATION
 	EXISTS
@@ -94,7 +95,6 @@ const (
 	PRIMARY
 	SELECT
 	SET
-	RECORDS
 	TABLE
 	TO
 	UNIQUE
@@ -169,40 +169,40 @@ var tokens = [...]string{
 	SEMICOLON:   ";",
 	DOT:         ".",
 
-	ALL:      "ALL",
-	ALTER:    "ALTER",
-	AS:       "AS",
-	ASC:      "ASC",
-	BY:       "BY",
-	CREATE:   "CREATE",
-	DELETE:   "DELETE",
-	DESC:     "DESC",
-	DROP:     "DROP",
-	DURATION: "DURATION",
-	EXISTS:   "EXISTS",
-	KEY:      "KEY",
-	FROM:     "FROM",
-	IF:       "IF",
-	IN:       "IN",
-	INDEX:    "INDEX",
-	INSERT:   "INSERT",
-	INTO:     "INTO",
-	LIMIT:    "LIMIT",
-	NOT:      "NOT",
-	OFFSET:   "OFFSET",
-	ON:       "ON",
-	ORDER:    "ORDER",
-	PRIMARY:  "PRIMARY",
-	SELECT:   "SELECT",
-	SET:      "SET",
-	RECORDS:  "RECORDS",
-	TABLE:    "TABLE",
-	TO:       "TO",
-	UNIQUE:   "UNIQUE",
-	UPDATE:   "UPDATE",
-	VALUES:   "VALUES",
-	WITH:     "WITH",
-	WHERE:    "WHERE",
+	ALL:       "ALL",
+	ALTER:     "ALTER",
+	AS:        "AS",
+	ASC:       "ASC",
+	BY:        "BY",
+	CREATE:    "CREATE",
+	DELETE:    "DELETE",
+	DESC:      "DESC",
+	DROP:      "DROP",
+	DURATION:  "DURATION",
+	EXISTS:    "EXISTS",
+	KEY:       "KEY",
+	FROM:      "FROM",
+	IF:        "IF",
+	IN:        "IN",
+	INDEX:     "INDEX",
+	INSERT:    "INSERT",
+	INTO:      "INTO",
+	LIMIT:     "LIMIT",
+	NOT:       "NOT",
+	OFFSET:    "OFFSET",
+	ON:        "ON",
+	ORDER:     "ORDER",
+	PRIMARY:   "PRIMARY",
+	SELECT:    "SELECT",
+	SET:       "SET",
+	DOCUMENTS: "DOCUMENTS",
+	TABLE:     "TABLE",
+	TO:        "TO",
+	UNIQUE:    "UNIQUE",
+	UPDATE:    "UPDATE",
+	VALUES:    "VALUES",
+	WITH:      "WITH",
+	WHERE:     "WHERE",
 
 	TYPEBYTES:   "BYTES",
 	TYPESTRING:  "STRING",

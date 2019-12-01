@@ -97,11 +97,11 @@ Since tables are schemaless, providing a list of field names is mandatory when u
 
   INSERT INTO tableName (fieldNameA, fieldNameB, fieldNameC) VALUES (10, true, "bar"), ("baz", 3.14, -10)
 
-Inserting records is also supported with the RECORDS clause.
+Inserting records is also supported with the DOCUMENTS clause.
 Genji SQL represents records as a set of key value pairs.
-Note that field names are forbidden when using the RECORDS clause.
+Note that field names are forbidden when using the DOCUMENTS clause.
 
-  INSERT INTO tableName RECORDS (fieldNameA: 10, fieldNameB: true, fieldNameC: "bar"), (fieldNameA: "bab", fieldNameD: 3.14)
+  INSERT INTO tableName DOCUMENTS (fieldNameA: 10, fieldNameB: true, fieldNameC: "bar"), (fieldNameA: "bab", fieldNameD: 3.14)
 
 The SELECT statement
 
