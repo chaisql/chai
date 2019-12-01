@@ -54,6 +54,8 @@ func TestScanner_Scan(t *testing.T) {
 		// Misc tokens
 		{s: `(`, tok: scanner.LPAREN},
 		{s: `)`, tok: scanner.RPAREN},
+		{s: `{`, tok: scanner.LBRACKET},
+		{s: `}`, tok: scanner.RBRACKET},
 		{s: `,`, tok: scanner.COMMA},
 		{s: `;`, tok: scanner.SEMICOLON},
 		{s: `.`, tok: scanner.DOT},

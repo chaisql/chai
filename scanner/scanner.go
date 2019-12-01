@@ -133,6 +133,10 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 		return LPAREN, pos, ""
 	case ')':
 		return RPAREN, pos, ""
+	case '{':
+		return LBRACKET, pos, ""
+	case '}':
+		return RBRACKET, pos, ""
 	case ',':
 		return COMMA, pos, ""
 	case ';':

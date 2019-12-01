@@ -59,6 +59,8 @@ const (
 
 	LPAREN      // (
 	RPAREN      // )
+	LBRACKET    // {
+	RBRACKET    // }
 	COMMA       // ,
 	COLON       // :
 	DOUBLECOLON // ::
@@ -163,6 +165,8 @@ var tokens = [...]string{
 
 	LPAREN:      "(",
 	RPAREN:      ")",
+	LBRACKET:    "{",
+	RBRACKET:    "}",
 	COMMA:       ",",
 	COLON:       ":",
 	DOUBLECOLON: "::",
