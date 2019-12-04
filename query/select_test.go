@@ -106,4 +106,25 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "b,2\nc,3\nd,4\n", buf.String())
 	})
+
+	t.Run("with documents", func(t *testing.T) {
+		db, err := genji.New(memoryengine.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test")
+		require.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test VALUES {a: {b: 1}}`)
+		require.NoError(t, err)
+
+		st, err := db.Query("SELECT * FROM test WHERE a = {b: 1}")
+		require.NoError(t, err)
+		defer st.Close()
+
+		var buf bytes.Buffer
+		err = document.IteratorToJSON(&buf, st)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"a": {"b":1}}`, buf.String())
+	})
 }

@@ -9,20 +9,21 @@ import (
 )
 
 var (
-	bytesZeroValue   = NewZeroValue(BytesValue)
-	stringZeroValue  = NewZeroValue(StringValue)
-	boolZeroValue    = NewZeroValue(BoolValue)
-	uintZeroValue    = NewZeroValue(UintValue)
-	uint8ZeroValue   = NewZeroValue(Uint8Value)
-	uint16ZeroValue  = NewZeroValue(Uint16Value)
-	uint32ZeroValue  = NewZeroValue(Uint32Value)
-	uint64ZeroValue  = NewZeroValue(Uint64Value)
-	intZeroValue     = NewZeroValue(IntValue)
-	int8ZeroValue    = NewZeroValue(Int8Value)
-	int16ZeroValue   = NewZeroValue(Int16Value)
-	int32ZeroValue   = NewZeroValue(Int32Value)
-	int64ZeroValue   = NewZeroValue(Int64Value)
-	float64ZeroValue = NewZeroValue(Float64Value)
+	bytesZeroValue    = NewZeroValue(BytesValue)
+	stringZeroValue   = NewZeroValue(StringValue)
+	boolZeroValue     = NewZeroValue(BoolValue)
+	uintZeroValue     = NewZeroValue(UintValue)
+	uint8ZeroValue    = NewZeroValue(Uint8Value)
+	uint16ZeroValue   = NewZeroValue(Uint16Value)
+	uint32ZeroValue   = NewZeroValue(Uint32Value)
+	uint64ZeroValue   = NewZeroValue(Uint64Value)
+	intZeroValue      = NewZeroValue(IntValue)
+	int8ZeroValue     = NewZeroValue(Int8Value)
+	int16ZeroValue    = NewZeroValue(Int16Value)
+	int32ZeroValue    = NewZeroValue(Int32Value)
+	int64ZeroValue    = NewZeroValue(Int64Value)
+	float64ZeroValue  = NewZeroValue(Float64Value)
+	documentZeroValue = NewZeroValue(DocumentValue)
 )
 
 // ValueType represents a value type supported by the database.
@@ -310,9 +311,15 @@ func NewNullValue() Value {
 
 // NewDocumentValue returns a value of type Document.
 func NewDocumentValue(d Document) Value {
+	data, err := Encode(d)
+	if err != nil {
+		panic(err)
+	}
+
 	return Value{
 		Type: DocumentValue,
 		v:    d,
+		Data: data,
 	}
 }
 
@@ -348,6 +355,8 @@ func NewZeroValue(t ValueType) Value {
 		return NewInt64Value(0)
 	case Float64Value:
 		return NewFloat64Value(0)
+	case DocumentValue:
+		return NewDocumentValue(NewFieldBuffer())
 	}
 
 	return Value{}
@@ -413,33 +422,41 @@ func (v Value) String() string {
 
 	switch v.Type {
 	case BytesValue:
-		vv, _ = DecodeBytes(v.Data)
+		vv, _ = v.DecodeToBytes()
 	case StringValue:
-		vv, _ = DecodeString(v.Data)
+		vv, _ = v.DecodeToString()
 	case BoolValue:
-		vv, _ = DecodeBool(v.Data)
+		vv, _ = v.DecodeToBool()
 	case UintValue:
-		vv, _ = DecodeUint(v.Data)
+		vv, _ = v.DecodeToUint()
 	case Uint8Value:
-		vv, _ = DecodeUint8(v.Data)
+		vv, _ = v.DecodeToUint8()
 	case Uint16Value:
-		vv, _ = DecodeUint16(v.Data)
+		vv, _ = v.DecodeToUint16()
 	case Uint32Value:
-		vv, _ = DecodeUint32(v.Data)
+		vv, _ = v.DecodeToUint32()
 	case Uint64Value:
-		vv, _ = DecodeUint64(v.Data)
+		vv, _ = v.DecodeToUint64()
 	case IntValue:
-		vv, _ = DecodeInt(v.Data)
+		vv, _ = v.DecodeToInt()
 	case Int8Value:
-		vv, _ = DecodeInt8(v.Data)
+		vv, _ = v.DecodeToInt8()
 	case Int16Value:
-		vv, _ = DecodeInt16(v.Data)
+		vv, _ = v.DecodeToInt16()
 	case Int32Value:
-		vv, _ = DecodeInt32(v.Data)
+		vv, _ = v.DecodeToInt32()
 	case Int64Value:
-		vv, _ = DecodeInt64(v.Data)
+		vv, _ = v.DecodeToInt64()
 	case Float64Value:
-		vv, _ = DecodeFloat64(v.Data)
+		vv, _ = v.DecodeToFloat64()
+	case DocumentValue:
+		d, _ := v.DecodeToDocument()
+		var buf bytes.Buffer
+		err := ToJSON(&buf, d)
+		if err != nil {
+			panic(err)
+		}
+		return buf.String()
 	case NullValue:
 		return "NULL"
 	}
@@ -867,6 +884,8 @@ func (v Value) IsZeroValue() bool {
 		return bytes.Equal(v.Data, int64ZeroValue.Data)
 	case Float64Value:
 		return bytes.Equal(v.Data, float64ZeroValue.Data)
+	case DocumentValue:
+		return bytes.Equal(v.Data, documentZeroValue.Data)
 	case NullValue:
 		return false
 	}
