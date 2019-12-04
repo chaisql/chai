@@ -14,17 +14,11 @@ type InsertStmt struct {
 	TableName  string
 	FieldNames []string
 	Values     LiteralExprList
-	Documents  []interface{}
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt InsertStmt) IsReadOnly() bool {
 	return false
-}
-
-type KVPair struct {
-	K string
-	V Expr
 }
 
 func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
@@ -34,8 +28,8 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		return res, errors.New("missing table name")
 	}
 
-	if stmt.Values == nil && stmt.Documents == nil {
-		return res, errors.New("values and records are empty")
+	if stmt.Values == nil {
+		return res, errors.New("values are empty")
 	}
 
 	t, err := tx.GetTable(stmt.TableName)
@@ -48,31 +42,27 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		Params: args,
 	}
 
-	if len(stmt.Documents) > 0 {
-		return stmt.insertRecords(t, stack)
+	if len(stmt.FieldNames) > 0 {
+		return stmt.insertExprList(t, stack)
 	}
 
-	return stmt.insertValues(t, stack)
+	return stmt.insertDocuments(t, stack)
 }
 
 type paramExtractor interface {
 	Extract(params []driver.NamedValue) (interface{}, error)
 }
 
-func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result, error) {
+func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Result, error) {
 	var res Result
 	var err error
 
-	if len(stmt.FieldNames) > 0 {
-		return res, errors.New("can't provide a field list with DOCUMENTS clause")
-	}
-
-	for _, rec := range stmt.Documents {
-		var r document.Document
+	for _, rec := range stmt.Values {
+		var d document.Document
 
 		switch tp := rec.(type) {
 		case document.Document:
-			r = tp
+			d = tp
 		case paramExtractor:
 			v, err := tp.Extract(stack.Params)
 			if err != nil {
@@ -80,28 +70,22 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 			}
 
 			var ok bool
-			r, ok = v.(document.Document)
+			d, ok = v.(document.Document)
 			if !ok {
 				return res, fmt.Errorf("unsupported parameter of type %t, expecting document.Document", v)
 			}
-		case []KVPair:
-			var fb document.FieldBuffer
-			for _, pair := range tp {
-				v, err := pair.V.Eval(stack)
-				if err != nil {
-					return res, err
-				}
-
-				if v.IsList {
-					return res, errors.New("invalid values")
-				}
-
-				fb.Add(pair.K, v.Value.Value)
+		case LiteralValue:
+			if tp.Value.Type != document.DocumentValue {
+				return res, fmt.Errorf("values must be a list of documents if field list is empty")
 			}
-			r = &fb
+
+			d, err = tp.Value.DecodeToDocument()
+			if err != nil {
+				return res, err
+			}
 		}
 
-		res.lastInsertKey, err = t.Insert(r)
+		res.lastInsertKey, err = t.Insert(d)
 		if err != nil {
 			return res, err
 		}
@@ -112,10 +96,10 @@ func (stmt InsertStmt) insertRecords(t *database.Table, stack EvalStack) (Result
 	return res, nil
 }
 
-func (stmt InsertStmt) insertValues(t *database.Table, stack EvalStack) (Result, error) {
+func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Result, error) {
 	var res Result
 
-	// iterate over all of the records (r1, r2, r3, ...)
+	// iterate over all of the documents (r1, r2, r3, ...)
 	for _, e := range stmt.Values {
 		var fb document.FieldBuffer
 

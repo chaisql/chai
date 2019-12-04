@@ -136,6 +136,11 @@ func NullValue() LiteralValue {
 	return LiteralValue{document.NewNullValue()}
 }
 
+// DocumentValue creates a litteral value of type Document.
+func DocumentValue(d document.Document) LiteralValue {
+	return LiteralValue{document.NewDocumentValue(d)}
+}
+
 // Truthy returns true if the Data is different than the zero value of
 // the type of s.
 // It implements the Value interface.
@@ -415,4 +420,28 @@ func (op *OrOp) Eval(ctx EvalStack) (EvalValue, error) {
 	}
 
 	return falseLitteral, nil
+}
+
+type KVPair struct {
+	K string
+	V Expr
+}
+
+type KVPairs []KVPair
+
+func (kvp KVPairs) Eval(ctx EvalStack) (EvalValue, error) {
+	var fb document.FieldBuffer
+
+	for _, kv := range kvp {
+		v, err := kv.V.Eval(ctx)
+		if err != nil {
+			return EvalValue{}, err
+		}
+
+		fb.Add(kv.K, v.Value.Value)
+	}
+
+	return EvalValue{
+		Value: DocumentValue(&fb),
+	}, nil
 }

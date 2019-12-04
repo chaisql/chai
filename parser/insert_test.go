@@ -14,8 +14,43 @@ func TestParserInsert(t *testing.T) {
 		expected query.Statement
 		fails    bool
 	}{
-		{"Values / No columns", `INSERT INTO test VALUES ('a', -1, true)`,
-			query.InsertStmt{TableName: "test", Values: query.LiteralExprList{query.LiteralExprList{query.StringValue("a"), query.Int8Value(-1), query.BoolValue(true)}}}, false},
+		{"Documents", `INSERT INTO test VALUES {a: 1, "b": "foo", c: 'bar', d: 1 = 1, e: {f: "baz"}}`,
+			query.InsertStmt{
+				TableName: "test",
+				Values: query.LiteralExprList{
+					query.KVPairs{
+						query.KVPair{K: "a", V: query.Int8Value(1)},
+						query.KVPair{K: "b", V: query.StringValue("foo")},
+						query.KVPair{K: "c", V: query.StringValue("bar")},
+						query.KVPair{K: "d", V: query.Eq(query.Int8Value(1), query.Int8Value(1))},
+						query.KVPair{K: "e", V: query.KVPairs{
+							query.KVPair{K: "f", V: query.StringValue("baz")},
+						}},
+					},
+				}}, false},
+		{"Documents / Multiple", `INSERT INTO test VALUES {"a": 'a', b: -2.3}, {a: 1, d: true}`,
+			query.InsertStmt{
+				TableName: "test",
+				Values: query.LiteralExprList{
+					query.KVPairs{
+						query.KVPair{K: "a", V: query.StringValue("a")},
+						query.KVPair{K: "b", V: query.Float64Value(-2.3)},
+					},
+					query.KVPairs{query.KVPair{K: "a", V: query.Int8Value(1)}, query.KVPair{K: "d", V: query.BoolValue(true)}},
+				},
+			}, false},
+		{"Documents / Positional Param", "INSERT INTO test VALUES ?, ?",
+			query.InsertStmt{
+				TableName: "test",
+				Values:    query.LiteralExprList{query.PositionalParam(1), query.PositionalParam(2)},
+			},
+			false},
+		{"Documents / Named Param", "INSERT INTO test VALUES $foo, $bar",
+			query.InsertStmt{
+				TableName: "test",
+				Values:    query.LiteralExprList{query.NamedParam("foo"), query.NamedParam("bar")},
+			},
+			false},
 		{"Values / With columns", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			query.InsertStmt{
 				TableName:  "test",
@@ -33,41 +68,6 @@ func TestParserInsert(t *testing.T) {
 					query.LiteralExprList{query.StringValue("e"), query.StringValue("f")},
 				},
 			}, false},
-
-		{"Documents", `INSERT INTO test DOCUMENTS (a: 'a', b: 2.3, "c ": 1 = 1)`,
-			query.InsertStmt{
-				TableName: "test",
-				Documents: []interface{}{
-					[]query.KVPair{
-						query.KVPair{K: "a", V: query.StringValue("a")},
-						query.KVPair{K: "b", V: query.Float64Value(2.3)},
-						query.KVPair{K: "c ", V: query.Eq(query.Int8Value(1), query.Int8Value(1))},
-					},
-				},
-			}, false},
-		{"Documents / Multiple", `INSERT INTO test DOCUMENTS ("a": 'a', b: -2.3), (a: 1, d: true)`,
-			query.InsertStmt{
-				TableName: "test",
-				Documents: []interface{}{
-					[]query.KVPair{
-						query.KVPair{K: "a", V: query.StringValue("a")},
-						query.KVPair{K: "b", V: query.Float64Value(-2.3)},
-					},
-					[]query.KVPair{query.KVPair{K: "a", V: query.Int8Value(1)}, query.KVPair{K: "d", V: query.BoolValue(true)}},
-				},
-			}, false},
-		{"Documents / Positional Param", "INSERT INTO test DOCUMENTS ?, ?",
-			query.InsertStmt{
-				TableName: "test",
-				Documents: []interface{}{query.PositionalParam(1), query.PositionalParam(2)},
-			},
-			false},
-		{"Documents / Named Param", "INSERT INTO test DOCUMENTS $foo, $bar",
-			query.InsertStmt{
-				TableName: "test",
-				Documents: []interface{}{query.NamedParam("foo"), query.NamedParam("bar")},
-			},
-			false},
 	}
 
 	for _, test := range tests {

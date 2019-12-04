@@ -32,30 +32,10 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	}
 
 	// Parse VALUES (v1, v2, v3)
-	values, found, err := p.parseValues()
+	stmt.Values, err = p.parseValues()
 	if err != nil {
 		return stmt, err
 	}
-	if found {
-		stmt.Values = make(query.LiteralExprList, len(values))
-		for i, v := range values {
-			stmt.Values[i] = query.LiteralExprList(v)
-		}
-		return stmt, nil
-	}
-
-	// If values was not found, parse DOCUMENTS (r1, r2, r3)
-	records, found, err := p.parseDocuments()
-	if err != nil {
-		return stmt, err
-	}
-	if !found {
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		p.Unscan()
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "DOCUMENTS"}, pos)
-	}
-
-	stmt.Documents = records
 
 	return stmt, nil
 }
@@ -84,21 +64,20 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues() ([]query.LiteralExprList, bool, error) {
+func (p *Parser) parseValues() (query.LiteralExprList, error) {
 	// Check if the VALUES token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
-		p.Unscan()
-		return nil, false, nil
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES"}, pos)
 	}
 
-	var valuesList []query.LiteralExprList
+	var valuesList query.LiteralExprList
 	// Parse first (required) value list.
-	exprs, err := p.parseExprList()
+	d, err := p.parseValue()
 	if err != nil {
-		return nil, true, err
+		return nil, err
 	}
 
-	valuesList = append(valuesList, query.LiteralExprList(exprs))
+	valuesList = append(valuesList, d)
 
 	// Parse remaining (optional) values.
 	for {
@@ -107,150 +86,65 @@ func (p *Parser) parseValues() ([]query.LiteralExprList, bool, error) {
 			break
 		}
 
-		values, err := p.parseExprList()
+		d, err := p.parseValue()
 		if err != nil {
-			return nil, true, err
+			return nil, err
 		}
 
-		valuesList = append(valuesList, query.LiteralExprList(values))
+		valuesList = append(valuesList, d)
 	}
 
-	return valuesList, true, nil
+	return valuesList, nil
 }
 
-// parseValues parses the "DOCUMENTS" clause of the query, if it exists.
-func (p *Parser) parseDocuments() ([]interface{}, bool, error) {
-	// Check if the DOCUMENTS token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.DOCUMENTS {
-		p.Unscan()
-		return nil, false, nil
-	}
-
-	var documents []interface{}
-
-	// Parse first (required) document.
-	// It can either be a param or kv list
-	rec, err := p.parseDocument()
-	if err != nil {
-		return nil, false, err
-	}
-
-	documents = append(documents, rec)
-
-	// Parse remaining (optional) documents.
-	for {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
-			p.Unscan()
-			break
-		}
-
-		rec, err := p.parseDocument()
-		if err != nil {
-			return nil, false, err
-		}
-
-		documents = append(documents, rec)
-	}
-
-	return documents, true, nil
-}
-
-func (p *Parser) parseDocument() (interface{}, error) {
+// parseValue parses either a parameter, a JSON document or a list of expressions.
+func (p *Parser) parseValue() (query.Expr, error) {
 	// Parse a param first
-	v, err := p.parseParam()
+	prm, err := p.parseParam()
 	if err != nil {
-		p.Unscan()
 		return nil, err
 	}
-	if v != nil {
-		return v, nil
+	if prm != nil {
+		return prm, nil
 	}
 
-	// If not a param, it must be a pairlist
+	// If not a param, start over
 	p.Unscan()
 
-	pairs, ok, err := p.parseKVList()
+	// check if it's a json document
+	expr, ok, err := p.parseDocument()
+	if err != nil || ok {
+		return expr, err
+	}
+
+	// if not a document, start over
+	p.Unscan()
+
+	// check if it's an expression list
+	expr, ok, err = p.parseExprList()
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
-		p.Unscan()
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"record"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"expression list or JSON"}, pos)
 	}
 
-	return pairs, nil
+	return expr, nil
 }
 
-// parseKV parses a key-value pair in the form IDENT : Expr.
-func (p *Parser) parseKV() (string, query.Expr, error) {
-	k, err := p.ParseIdent()
-	if err != nil {
-		return "", nil, err
-	}
-
-	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok != scanner.COLON {
-		return "", nil, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
-	}
-
-	expr, err := p.ParseExpr()
-	if err != nil {
-		return "", nil, err
-	}
-
-	return k, expr, nil
-}
-
-// parseKVList parses a list of fields in the form: (k = Expr, k = Expr, ...), if exists
-func (p *Parser) parseKVList() ([]query.KVPair, bool, error) {
+// parseExprList parses a list of expressions in the form: (expr, expr, ...)
+func (p *Parser) parseExprList() (query.Expr, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	// Parse first (required) identifier.
-	k, expr, err := p.parseKV()
-	if err != nil {
-		return nil, true, err
-	}
-
-	pairs := []query.KVPair{query.KVPair{K: k, V: expr}}
-
-	// Parse remaining (optional) identifiers.
-	for {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
-			p.Unscan()
-			break
-		}
-
-		if k, expr, err = p.parseKV(); err != nil {
-			return nil, true, err
-		}
-
-		pairs = append(pairs, query.KVPair{K: k, V: expr})
-	}
-
-	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, true, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
-	}
-
-	return pairs, true, nil
-}
-
-// parseExprList parses a list of expressions in the form: (expr, expr, ...)
-func (p *Parser) parseExprList() ([]query.Expr, error) {
-	// Parse ( token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
-	}
-
 	// Parse first (required) expr.
 	e, err := p.ParseExpr()
 	if err != nil {
-		return nil, err
+		return nil, true, err
 	}
 	exprs := []query.Expr{e}
 
@@ -262,7 +156,7 @@ func (p *Parser) parseExprList() ([]query.Expr, error) {
 		}
 
 		if e, err = p.ParseExpr(); err != nil {
-			return nil, err
+			return nil, true, err
 		}
 
 		exprs = append(exprs, e)
@@ -270,8 +164,8 @@ func (p *Parser) parseExprList() ([]query.Expr, error) {
 
 	// Parse required ) token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		return nil, true, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return exprs, nil
+	return query.LiteralExprList(exprs), true, nil
 }
