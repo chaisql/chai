@@ -83,6 +83,17 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			if err != nil {
 				return res, err
 			}
+		case KVPairs:
+			v, err := tp.Eval(stack)
+			if err != nil {
+				return res, err
+			}
+			d, err = v.Value.Value.DecodeToDocument()
+			if err != nil {
+				return res, err
+			}
+		default:
+			return res, fmt.Errorf("values must be a list of documents if field list is empty")
 		}
 
 		res.lastInsertKey, err = t.Insert(d)
