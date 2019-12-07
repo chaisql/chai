@@ -64,6 +64,10 @@ func compare(op operator, l, r Value) (bool, error) {
 	case l.Type == DocumentValue && r.Type == DocumentValue:
 		return compareDocuments(op, l, r)
 
+	// compare arrays together
+	case l.Type == ArrayValue && r.Type == ArrayValue:
+		return compareArrays(op, l, r)
+
 	// if same type, or string and bytes, no conversion needed
 	case l.Type == r.Type:
 		fallthrough
@@ -220,7 +224,7 @@ func compareDocuments(op operator, l, r Value) (bool, error) {
 		return false, err
 	}
 
-	rd, err := l.DecodeToDocument()
+	rd, err := r.DecodeToDocument()
 	if err != nil {
 		return false, err
 	}
@@ -272,6 +276,46 @@ func compareDocuments(op operator, l, r Value) (bool, error) {
 
 	if err != nil && err != errStop {
 		return false, err
+	}
+
+	return ok, nil
+}
+
+func compareArrays(op operator, l, r Value) (bool, error) {
+	la, err := l.DecodeToArray()
+	if err != nil {
+		return false, err
+	}
+
+	ra, err := r.DecodeToArray()
+	if err != nil {
+		return false, err
+	}
+
+	var ok bool
+	var i, j int
+	for {
+		lv, err := la.GetByIndex(i)
+		if err != nil {
+			break
+		}
+		i++
+
+		rv, err := ra.GetByIndex(j)
+		if err != nil {
+			break
+		}
+		j++
+
+		ok, err = compare(op, lv, rv)
+		if err != nil || op != operatorEq {
+			return ok, err
+		}
+	}
+
+	// if both empty arrays
+	if i == 0 && j == 0 {
+		return true, nil
 	}
 
 	return ok, nil

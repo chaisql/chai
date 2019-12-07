@@ -333,14 +333,35 @@ func TestComparisonArrays(t *testing.T) {
 		{
 			"=",
 			document.NewValueBuffer().
-				Append(document.NewIntValue(1)).
+				Append(document.NewInt64Value(1)).
 				Append(document.NewIntValue(2)),
 			document.NewValueBuffer().
-				Append(document.NewIntValue(1)).
+				Append(document.NewFloat64Value(1)).
 				Append(document.NewIntValue(2)),
 		},
 		{">", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(1))},
+		{">",
+			document.NewValueBuffer().Append(document.NewIntValue(2)),
+			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000))},
+		{">",
+			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
+			document.NewValueBuffer().Append(document.NewIntValue(1))},
 		{"<", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
+		{"<",
+			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000)),
+			document.NewValueBuffer().Append(document.NewIntValue(2))},
+		{"<=", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
+		{"<=",
+			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000)),
+			document.NewValueBuffer().Append(document.NewIntValue(2))},
+		{">=", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(1))},
+		{">=", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(2))},
+		{">=",
+			document.NewValueBuffer().Append(document.NewIntValue(2)),
+			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000))},
+		{">=",
+			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
+			document.NewValueBuffer().Append(document.NewIntValue(1))},
 	}
 
 	for _, test := range tests {
