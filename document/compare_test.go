@@ -282,7 +282,17 @@ func TestComparisonDocuments(t *testing.T) {
 	}{
 		{"=", document.NewFieldBuffer(), document.NewFieldBuffer()},
 		{"=", document.NewFieldBuffer().Add("a", document.NewIntValue(1)), document.NewFieldBuffer().Add("a", document.NewIntValue(1))},
-		{"=", document.NewFieldBuffer().Add("a", document.NewIntValue(1)), document.NewFieldBuffer().Add("a", document.NewIntValue(1))},
+		{
+			"=",
+			document.NewFieldBuffer().
+				Add("a", document.NewIntValue(1)).
+				Add("b", document.NewIntValue(2)),
+			document.NewFieldBuffer().
+				Add("b", document.NewIntValue(2)).
+				Add("a", document.NewIntValue(1)),
+		},
+		{">", document.NewFieldBuffer().Add("a", document.NewIntValue(2)), document.NewFieldBuffer().Add("a", document.NewIntValue(1))},
+		{"<", document.NewFieldBuffer().Add("a", document.NewIntValue(1)), document.NewFieldBuffer().Add("a", document.NewIntValue(2))},
 	}
 
 	for _, test := range tests {

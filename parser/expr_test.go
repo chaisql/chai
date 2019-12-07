@@ -14,31 +14,31 @@ func TestParserExpr(t *testing.T) {
 		s        string
 		expected query.Expr
 	}{
-		{"=", "age = 10", query.Eq(query.FieldSelector("age"), query.Int8Value(10))},
-		{"!=", "age != 10", query.Neq(query.FieldSelector("age"), query.Int8Value(10))},
-		{">", "age > 10", query.Gt(query.FieldSelector("age"), query.Int8Value(10))},
-		{">=", "age >= 10", query.Gte(query.FieldSelector("age"), query.Int8Value(10))},
-		{"<", "age < 10", query.Lt(query.FieldSelector("age"), query.Int8Value(10))},
-		{"<=", "age <= 10", query.Lte(query.FieldSelector("age"), query.Int8Value(10))},
+		{"=", "age = 10", query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
+		{"!=", "age != 10", query.Neq(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
+		{">", "age > 10", query.Gt(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
+		{">=", "age >= 10", query.Gte(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
+		{"<", "age < 10", query.Lt(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
+		{"<=", "age <= 10", query.Lte(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
 		{"AND", "age = 10 AND age <= 11",
 			query.And(
-				query.Eq(query.FieldSelector("age"), query.Int8Value(10)),
-				query.Lte(query.FieldSelector("age"), query.Int8Value(11)),
+				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+				query.Lte(query.FieldSelector([]string{"age"}), query.Int8Value(11)),
 			)},
 		{"OR", "age = 10 OR age = 11",
 			query.Or(
-				query.Eq(query.FieldSelector("age"), query.Int8Value(10)),
-				query.Eq(query.FieldSelector("age"), query.Int8Value(11)),
+				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(11)),
 			)},
 		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
 			query.Or(
 				query.And(
-					query.Gte(query.FieldSelector("age"), query.Int8Value(10)),
-					query.Gt(query.FieldSelector("age"), query.NamedParam("age")),
+					query.Gte(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+					query.Gt(query.FieldSelector([]string{"age"}), query.NamedParam("age")),
 				),
-				query.Lt(query.FieldSelector("age"), query.Float64Value(10.4)),
+				query.Lt(query.FieldSelector([]string{"age"}), query.Float64Value(10.4)),
 			)},
-		{"with NULL", "age > NULL", query.Gt(query.FieldSelector("age"), query.NullValue())},
+		{"with NULL", "age > NULL", query.Gt(query.FieldSelector([]string{"age"}), query.NullValue())},
 	}
 
 	for _, test := range tests {
@@ -57,17 +57,17 @@ func TestParserParams(t *testing.T) {
 		expected query.Expr
 		errored  bool
 	}{
-		{"one positional", "age = ?", query.Eq(query.FieldSelector("age"), query.PositionalParam(1)), false},
+		{"one positional", "age = ?", query.Eq(query.FieldSelector([]string{"age"}), query.PositionalParam(1)), false},
 		{"multiple positional", "age = ? AND age <= ?",
 			query.And(
-				query.Eq(query.FieldSelector("age"), query.PositionalParam(1)),
-				query.Lte(query.FieldSelector("age"), query.PositionalParam(2)),
+				query.Eq(query.FieldSelector([]string{"age"}), query.PositionalParam(1)),
+				query.Lte(query.FieldSelector([]string{"age"}), query.PositionalParam(2)),
 			), false},
-		{"one named", "age = $age", query.Eq(query.FieldSelector("age"), query.NamedParam("age")), false},
+		{"one named", "age = $age", query.Eq(query.FieldSelector([]string{"age"}), query.NamedParam("age")), false},
 		{"multiple named", "age = $foo OR age = $bar",
 			query.Or(
-				query.Eq(query.FieldSelector("age"), query.NamedParam("foo")),
-				query.Eq(query.FieldSelector("age"), query.NamedParam("bar")),
+				query.Eq(query.FieldSelector([]string{"age"}), query.NamedParam("foo")),
+				query.Eq(query.FieldSelector([]string{"age"}), query.NamedParam("bar")),
 			), false},
 		{"mixed", "age >= ? AND age > $foo OR age < ?", nil, true},
 	}

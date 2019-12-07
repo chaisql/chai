@@ -14,7 +14,7 @@ func TestParserDelete(t *testing.T) {
 		expected query.Statement
 	}{
 		{"NoCond", "DELETE FROM test", query.DeleteStmt{TableName: "test"}},
-		{"WithCond", "DELETE FROM test WHERE age = 10", query.DeleteStmt{TableName: "test", WhereExpr: query.Eq(query.FieldSelector("age"), query.Int8Value(10))}},
+		{"WithCond", "DELETE FROM test WHERE age = 10", query.DeleteStmt{TableName: "test", WhereExpr: query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10))}},
 	}
 
 	for _, test := range tests {

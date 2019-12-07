@@ -91,8 +91,14 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
-		p.stat.exprFields = append(p.stat.exprFields, lit)
-		return query.FieldSelector(lit), nil
+		p.Unscan()
+		field, err := p.ParseField()
+		if err != nil {
+			return nil, err
+		}
+		fs := query.FieldSelector(field)
+		p.stat.exprFields = append(p.stat.exprFields, fs.Name())
+		return fs, nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, &ParseError{Message: "missing param name"}
@@ -154,6 +160,7 @@ func (p *Parser) ParseIdent() (string, error) {
 	if tok != scanner.IDENT {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 	}
+
 	return lit, nil
 }
 
@@ -300,12 +307,38 @@ func (p *Parser) parseKV() (query.KVPair, error) {
 
 	// in a json document, any direct reference to an identifier (i.e. `a: "b"`)
 	// must be treated as a string litteral (i.e. `a: 'b'`)
-	if slctor, ok := expr.(query.FieldSelector); ok {
-		expr = query.StringValue(string(slctor))
+	if slctor, ok := expr.(query.FieldSelector); ok && len(slctor) == 1 {
+		expr = query.StringValue(string(slctor[0]))
 	}
 
 	return query.KVPair{
 		K: k,
 		V: expr,
 	}, nil
+}
+
+// ParseField parses a field in the form ident(.ident)*
+func (p *Parser) ParseField() ([]string, error) {
+	var field []string
+	// parse first mandatory ident
+	chunk, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	field = append(field, chunk)
+
+	for {
+		// scan the very next token
+		if tok, _, _ := p.Scan(); tok != scanner.DOT {
+			p.Unscan()
+			return field, nil
+		}
+
+		chunk, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+
+		field = append(field, chunk)
+	}
 }

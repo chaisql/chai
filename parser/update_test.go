@@ -29,7 +29,7 @@ func TestParserUdpate(t *testing.T) {
 					"a": query.Int8Value(1),
 					"b": query.Int8Value(2),
 				},
-				WhereExpr: query.Eq(query.FieldSelector("age"), query.Int8Value(10)),
+				WhereExpr: query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
 			},
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},

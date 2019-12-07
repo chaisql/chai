@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -182,10 +183,10 @@ type ResultField interface {
 	Name() string
 }
 
-type FieldSelector string
+type FieldSelector []string
 
 func (f FieldSelector) Name() string {
-	return string(f)
+	return strings.Join(f, ".")
 }
 
 func (f FieldSelector) SelectField(d document.Document) (string, document.Value, error) {
@@ -193,12 +194,30 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 		return "", document.Value{}, fmt.Errorf("field %q not found", f)
 	}
 
-	v, err := d.GetByField(string(f))
-	if err != nil {
-		return "", document.Value{}, err
+	var v document.Value
+	var err error
+
+	for i, chunk := range f {
+		v, err = d.GetByField(chunk)
+		if err != nil {
+			return "", document.Value{}, err
+		}
+
+		if i+1 == len(f) {
+			break
+		}
+
+		if v.Type != document.DocumentValue {
+			return f.Name(), document.Value{}, fmt.Errorf("field %q not found", f.Name())
+		}
+
+		d, err = v.DecodeToDocument()
+		if err != nil {
+			return "", document.Value{}, err
+		}
 	}
 
-	return string(f), v, nil
+	return f.Name(), v, nil
 }
 
 func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {

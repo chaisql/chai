@@ -87,13 +87,13 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 	p.Unscan()
 
-	// Check if it's an identifier
-	ident, err := p.ParseIdent()
+	// Check if it's a field
+	field, err := p.ParseField()
 	if err != nil {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"ident or string"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"field or string"}, pos)
 	}
 
-	return query.FieldSelector(ident), nil
+	return query.FieldSelector(field), nil
 }
 
 func (p *Parser) parseFrom() (string, error) {

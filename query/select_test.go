@@ -118,13 +118,13 @@ func TestSelectStmt(t *testing.T) {
 		err = db.Exec(`INSERT INTO test VALUES {a: {b: 1}}`)
 		require.NoError(t, err)
 
-		st, err := db.Query("SELECT * FROM test WHERE a = {b: 1}")
+		st, err := db.Query("SELECT *, a.b FROM test WHERE a = {b: 1}")
 		require.NoError(t, err)
 		defer st.Close()
 
 		var buf bytes.Buffer
 		err = document.IteratorToJSON(&buf, st)
 		require.NoError(t, err)
-		require.JSONEq(t, `{"a": {"b":1}}`, buf.String())
+		require.JSONEq(t, `{"a": {"b":1}, "a.b": 1}`, buf.String())
 	})
 }

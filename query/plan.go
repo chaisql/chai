@@ -136,7 +136,7 @@ func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
 	switch cmp.Token {
 	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE:
 	default:
-		return false, "", nil
+		return false, nil, nil
 	}
 
 	lf, leftIsField := cmp.LeftHand().(FieldSelector)
@@ -152,7 +152,7 @@ func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
 		return true, rf, cmp.LeftHand()
 	}
 
-	return false, "", nil
+	return false, nil, nil
 }
 
 func evaluatesToScalarOrParam(e Expr) bool {
