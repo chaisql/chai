@@ -227,7 +227,7 @@ func (f *FieldHeader) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Encode takes a document and encodes it using the Format.
-func Encode(r Document) ([]byte, error) {
+func Encode(d Document) ([]byte, error) {
 	var format Format
 
 	var offset uint64
@@ -235,44 +235,39 @@ func Encode(r Document) ([]byte, error) {
 
 	// copy the document into a buffer and sort the document
 	// by field names
-	switch t := r.(type) {
+	switch t := d.(type) {
 	case FieldBuffer:
 		fb := &t
 		sort.Sort(fb)
-		r = fb
+		d = fb
 	case *FieldBuffer:
 		sort.Sort(t)
 	default:
 		var fb FieldBuffer
-		err := fb.ScanDocument(r)
+		err := fb.ScanDocument(d)
 		if err != nil {
 			return nil, err
 		}
 		sort.Sort(&fb)
-		r = &fb
+		d = &fb
 	}
 
-	err := r.Iterate(func(f string, v Value) error {
-		if v.Type == DocumentValue {
-			var err error
-			if v.v != nil {
-				v.Data, err = Encode(v.v.(Document))
-				if err != nil {
-					return err
-				}
-			}
+	err := d.Iterate(func(f string, v Value) error {
+		data, err := EncodeValue(v)
+		if err != nil {
+			return err
 		}
 
 		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
 			NameSize:   uint64(len(f)),
 			nameString: f,
 			Type:       uint64(v.Type),
-			Size:       uint64(len(v.Data)),
+			Size:       uint64(len(data)),
 			Offset:     offset,
 		})
 
-		offset += uint64(len(v.Data))
-		dataList = append(dataList, v.Data)
+		offset += uint64(len(data))
+		dataList = append(dataList, data)
 		return nil
 	})
 	if err != nil {
@@ -376,4 +371,118 @@ func (e EncodedDocument) Iterate(fn func(name string, value Value) error) error 
 	}
 
 	return nil
+}
+
+type EncodedArray []byte
+
+// Iterate goes through all the values of the array and calls the given function by passing each one of them.
+// If the given function returns an error, the iteration stops.
+func (e EncodedArray) Iterate(fn func(i int, value Value) error) error {
+	var format Format
+	err := format.Decode(e)
+	if err != nil {
+		return err
+	}
+
+	for _, fh := range format.Header.FieldHeaders {
+		data := format.Body[fh.Offset : fh.Offset+fh.Size]
+		v := Value{
+			Type: ValueType(fh.Type),
+		}
+
+		if len(data) > 0 {
+			v.Data = data
+		}
+
+		i, err := DecodeInt64(fh.Name)
+		if err != nil {
+			return err
+		}
+		err = fn(int(i), v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetByIndex returns a value by index of the array.
+func (e EncodedArray) GetByIndex(i int) (Value, error) {
+	return DecodeValue(e, string(EncodeInt64(int64(i))))
+}
+
+func EncodeArray(a Array) ([]byte, error) {
+	var format Format
+
+	var offset uint64
+	var dataList [][]byte
+
+	err := a.Iterate(func(i int, v Value) error {
+		data, err := EncodeValue(v)
+		if err != nil {
+			return err
+		}
+
+		index := EncodeInt64(int64(i))
+
+		format.Header.FieldHeaders = append(format.Header.FieldHeaders, FieldHeader{
+			NameSize: uint64(len(index)),
+			Name:     index,
+			Type:     uint64(v.Type),
+			Size:     uint64(len(data)),
+			Offset:   offset,
+		})
+
+		offset += uint64(len(data))
+		dataList = append(dataList, data)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	_, err = format.Header.WriteTo(&buf)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.Grow(format.Header.BodySize())
+
+	for _, data := range dataList {
+		_, err = buf.Write(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return buf.Bytes(), nil
+}
+
+func EncodeValue(v Value) ([]byte, error) {
+	var err error
+
+	if v.Data != nil {
+		return v.Data, nil
+	}
+
+	switch v.Type {
+	case DocumentValue:
+		if v.v != nil {
+			v.Data, err = Encode(v.v.(Document))
+			if err != nil {
+				return nil, err
+			}
+		}
+	case ArrayValue:
+		if v.v != nil {
+			v.Data, err = EncodeArray(v.v.(Array))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return v.Data, err
 }

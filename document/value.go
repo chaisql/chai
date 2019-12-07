@@ -3,6 +3,7 @@ package document
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -49,6 +50,7 @@ const (
 	NullValue
 
 	DocumentValue
+	ArrayValue
 )
 
 // NewValueTypeFromGoType returns the Type corresponding to the given Go type.
@@ -125,6 +127,8 @@ func (t ValueType) String() string {
 		return "Null"
 	case DocumentValue:
 		return "Document"
+	case ArrayValue:
+		return "Array"
 	}
 
 	return ""
@@ -185,6 +189,8 @@ func NewValue(x interface{}) (Value, error) {
 		return NewFloat64Value(v), nil
 	case nil:
 		return NewNullValue(), nil
+	case Document:
+		return NewDocumentValue(v), nil
 	default:
 		return Value{}, fmt.Errorf("unsupported type %T", x)
 	}
@@ -319,6 +325,20 @@ func NewDocumentValue(d Document) Value {
 	return Value{
 		Type: DocumentValue,
 		v:    d,
+		Data: data,
+	}
+}
+
+// NewArrayValue returns a value of type Array.
+func NewArrayValue(a Array) Value {
+	data, err := EncodeArray(a)
+	if err != nil {
+		panic(err)
+	}
+
+	return Value{
+		Type: ArrayValue,
+		v:    a,
 		Data: data,
 	}
 }
@@ -852,6 +872,20 @@ func (v Value) DecodeToDocument() (Document, error) {
 	return EncodedDocument(v.Data), nil
 }
 
+// DecodeToArray returns an array from the value.
+// It only works if the type of v is ArrayValue.
+func (v Value) DecodeToArray() (Array, error) {
+	if v.Type != ArrayValue {
+		return nil, fmt.Errorf("can't convert %q to array", v.Type)
+	}
+
+	if v.v != nil {
+		return v.v.(Array), nil
+	}
+
+	return EncodedArray(v.Data), nil
+}
+
 // IsZeroValue indicates if the value data is the zero value for the value type.
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() bool {
@@ -891,6 +925,34 @@ func (v Value) IsZeroValue() bool {
 	}
 
 	return false
+}
+
+func (v Value) MarshalJSON() ([]byte, error) {
+	var x interface{}
+	var err error
+
+	switch v.Type {
+	case DocumentValue:
+		d, err := v.DecodeToDocument()
+		if err != nil {
+			return nil, err
+		}
+		x = &jsonDocument{d}
+	case ArrayValue:
+		a, err := v.DecodeToArray()
+		if err != nil {
+			return nil, err
+		}
+		x = &jsonArray{a}
+	default:
+		x, err = v.Decode()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(x)
 }
 
 func decodeAsInt64(v Value) (int64, error) {

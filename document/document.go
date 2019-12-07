@@ -32,7 +32,7 @@ import (
 	"strings"
 )
 
-// A Document represents a group of fields.
+// A Document represents a group of key value pairs.
 type Document interface {
 	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
@@ -205,9 +205,14 @@ func Dump(w io.Writer, r Document) error {
 	})
 }
 
-// ToJSON encodes r to w in JSON.
-func ToJSON(w io.Writer, r Document) error {
-	return json.NewEncoder(w).Encode(jsonDocument{r})
+// ToJSON encodes d to w in JSON.
+func ToJSON(w io.Writer, d Document) error {
+	return json.NewEncoder(w).Encode(jsonDocument{d})
+}
+
+// ArrayToJSON encodes a to w in JSON.
+func ArrayToJSON(w io.Writer, a Array) error {
+	return json.NewEncoder(w).Encode(jsonArray{a})
 }
 
 type jsonDocument struct {
@@ -230,28 +235,12 @@ func (j jsonDocument) MarshalJSON() ([]byte, error) {
 		buf.WriteString(f)
 		buf.WriteString(`":`)
 
-		var x interface{}
-		var err error
-
-		if v.Type == DocumentValue {
-			d, err := v.DecodeToDocument()
-			if err != nil {
-				return err
-			}
-			x = &jsonDocument{d}
-		} else {
-			x, err = v.Decode()
-		}
+		data, err := v.MarshalJSON()
 		if err != nil {
 			return err
 		}
-		mv, err := json.Marshal(x)
-		if err != nil {
-			return err
-		}
-
-		buf.Write(mv)
-		return nil
+		_, err = buf.Write(data)
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -259,6 +248,36 @@ func (j jsonDocument) MarshalJSON() ([]byte, error) {
 
 	buf.WriteByte('}')
 
+	return buf.Bytes(), nil
+}
+
+type jsonArray struct {
+	Array
+}
+
+func (j jsonArray) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteByte('[')
+	var notFirst bool
+	err := j.Array.Iterate(func(i int, v Value) error {
+		if notFirst {
+			buf.WriteByte(',')
+		}
+		notFirst = true
+
+		data, err := v.MarshalJSON()
+		if err != nil {
+			return err
+		}
+
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteByte(']')
 	return buf.Bytes(), nil
 }
 
@@ -419,4 +438,42 @@ func Scan(r Document, targets ...interface{}) error {
 		i++
 		return nil
 	})
+}
+
+// An Array contains a set of values.
+type Array interface {
+	// Iterate goes through all the values of the array and calls the given function by passing each one of them.
+	// If the given function returns an error, the iteration stops.
+	Iterate(fn func(i int, value Value) error) error
+	// GetByIndex returns a value by index of the array.
+	GetByIndex(i int) (Value, error)
+}
+
+type ValueBuffer []Value
+
+func NewValueBuffer() ValueBuffer {
+	return ValueBuffer{}
+}
+
+func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
+	for i, v := range vb {
+		err := fn(i, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
+	if i >= len(vb) {
+		return Value{}, fmt.Errorf("value at index %d not found", i)
+	}
+
+	return vb[i], nil
+}
+
+func (vb ValueBuffer) Append(v Value) ValueBuffer {
+	return append(vb, v)
 }

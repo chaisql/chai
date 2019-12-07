@@ -77,14 +77,16 @@ func TestDecodeValue(t *testing.T) {
 
 func TestEncodeDecode(t *testing.T) {
 	tests := []struct {
-		name string
-		r    document.Document
+		name     string
+		d        document.Document
+		expected string
 	}{
 		{
 			"document.FieldBuffer",
 			document.NewFieldBuffer().
 				Add("age", document.NewInt64Value(10)).
 				Add("name", document.NewStringValue("john")),
+			`{"age": 10, "name": "john"}`,
 		},
 		{
 			"Map",
@@ -92,6 +94,7 @@ func TestEncodeDecode(t *testing.T) {
 				"age":  10,
 				"name": "john",
 			}),
+			`{"age": 10, "name": "john"}`,
 		},
 		{
 			"Nested Document",
@@ -102,19 +105,18 @@ func TestEncodeDecode(t *testing.T) {
 					"city":    "Ajaccio",
 					"country": "France",
 				}))),
+			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}}`,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			enc, err := document.Encode(test.r)
+			enc, err := document.Encode(test.d)
 			require.NoError(t, err)
-			var buf1, buf2 bytes.Buffer
-			err = document.ToJSON(&buf1, document.EncodedDocument(enc))
+			var buf bytes.Buffer
+			err = document.ToJSON(&buf, document.EncodedDocument(enc))
 			require.NoError(t, err)
-			err = document.ToJSON(&buf2, test.r)
-			require.NoError(t, err)
-			require.JSONEq(t, buf2.String(), buf1.String())
+			require.JSONEq(t, test.expected, buf.String())
 		})
 	}
 }
@@ -170,6 +172,42 @@ func TestEncodedDocument(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 3, i)
+}
+
+func TestEncodeArray(t *testing.T) {
+	tests := []struct {
+		name     string
+		a        document.Array
+		expected string
+	}{
+		{
+			"Complex array",
+			document.NewValueBuffer().
+				Append(document.NewInt64Value(10)).
+				Append(document.NewStringValue("john")).
+				Append(document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
+					"city":    "Ajaccio",
+					"country": "France",
+				}))).
+				Append(document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt64Value(11)))),
+			`[10, "john", {"city": "Ajaccio", "country": "France"}, [11]]`,
+		},
+		{
+			"Empty array",
+			document.NewValueBuffer(),
+			`[]`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			data, err := document.EncodeArray(test.a)
+			require.NoError(t, err)
+			var buf bytes.Buffer
+			document.ArrayToJSON(&buf, document.EncodedArray(data))
+			require.JSONEq(t, test.expected, buf.String())
+		})
+	}
 }
 
 func BenchmarkEncode(b *testing.B) {
