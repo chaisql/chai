@@ -36,7 +36,7 @@ func TestParserExpr(t *testing.T) {
 
 		// documents
 		{"empty document", `{}`, query.KVPairs(nil), false},
-		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}}`,
+		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
 			query.KVPairs{
 				query.KVPair{K: "a", V: query.Int8Value(1)},
 				query.KVPair{K: "b", V: query.Float64Value(1)},
@@ -46,6 +46,8 @@ func TestParserExpr(t *testing.T) {
 				query.KVPair{K: "f", V: query.KVPairs{
 					query.KVPair{K: "foo", V: query.StringValue("bar")},
 				}},
+				query.KVPair{K: "g", V: query.FieldSelector([]string{"h", "i", "j"})},
+				query.KVPair{K: "k", V: query.LiteralExprList{query.Int8Value(1), query.Int8Value(2), query.Int8Value(3)}},
 			},
 			false},
 		{"document keys", `{a: 1, "foo bar __&&))": 1}`,
@@ -66,6 +68,30 @@ func TestParserExpr(t *testing.T) {
 		{"bad document keys: dot", `{a.b: 1}`, nil, true},
 		{"bad document keys: space", `{a b: 1}`, nil, true},
 		{"bad document: missing right bracket", `{a: 1`, nil, true},
+
+		// list of expressions
+		{"list with parentheses: empty", "()", query.LiteralExprList(nil), false},
+		{"list with parentheses: values", `(1, true, {a: 1}, a.b.c, (-1), [-1])`,
+			query.LiteralExprList{
+				query.Int8Value(1),
+				query.BoolValue(true),
+				query.KVPairs{query.KVPair{K: "a", V: query.Int8Value(1)}},
+				query.FieldSelector{"a", "b", "c"},
+				query.LiteralExprList{query.Int8Value(-1)},
+				query.LiteralExprList{query.Int8Value(-1)},
+			}, false},
+		{"list with parentheses: missing parenthese", `(1, true, {a: 1}, a.b.c, (-1)`, nil, true},
+		{"list with brackets: empty", "[]", query.LiteralExprList(nil), false},
+		{"list with brackets: values", `[1, true, {a: 1}, a.b.c, (-1), [-1]]`,
+			query.LiteralExprList{
+				query.Int8Value(1),
+				query.BoolValue(true),
+				query.KVPairs{query.KVPair{K: "a", V: query.Int8Value(1)}},
+				query.FieldSelector{"a", "b", "c"},
+				query.LiteralExprList{query.Int8Value(-1)},
+				query.LiteralExprList{query.Int8Value(-1)},
+			}, false},
+		{"list with brackets: missing bracket", `[1, true, {a: 1}, a.b.c, (-1), [-1]`, nil, true},
 
 		// operators
 		{"=", "age = 10", query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},

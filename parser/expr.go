@@ -362,7 +362,8 @@ func (p *Parser) ParseExprList(leftToken, rightToken scanner.Token) (query.Liter
 	// Parse kv pairs.
 	for {
 		if expr, err = p.ParseExpr(); err != nil {
-			return nil, err
+			p.Unscan()
+			break
 		}
 
 		exprList = append(exprList, expr)
