@@ -32,6 +32,14 @@ func TestParserExpr(t *testing.T) {
 		{"+float64", "10.0", query.Float64Value(10), false},
 		{"-float64", "-10.0", query.Float64Value(-10), false},
 
+		// strings
+		{"double quoted string", `"10.0"`, query.StringValue("10.0"), false},
+		{"single quoted string", "'-10.0'", query.StringValue("-10.0"), false},
+
+		// identifiers
+		{"naked ident", `a.b.c`, query.FieldSelector{"a", "b", "c"}, false},
+		{"ident with quotes", "`some ident`.` with`.`  quotes`", query.FieldSelector{"some ident", " with", "  quotes"}, false},
+
 		// documents
 		{"empty document", `{}`, query.KVPairs(nil), false},
 		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
@@ -48,10 +56,11 @@ func TestParserExpr(t *testing.T) {
 				query.KVPair{K: "k", V: query.LiteralExprList{query.Int8Value(1), query.Int8Value(2), query.Int8Value(3)}},
 			},
 			false},
-		{"document keys", `{a: 1, "foo bar __&&))": 1}`,
+		{"document keys", `{a: 1, "foo bar __&&))": 1, 'ola ': 1}`,
 			query.KVPairs{
 				query.KVPair{K: "a", V: query.Int8Value(1)},
 				query.KVPair{K: "foo bar __&&))", V: query.Int8Value(1)},
+				query.KVPair{K: "ola ", V: query.Int8Value(1)},
 			},
 			false},
 		{"document keys: same key", `{a: 1, a: 2, "a": 3}`,
@@ -61,11 +70,11 @@ func TestParserExpr(t *testing.T) {
 				query.KVPair{K: "a", V: query.Int8Value(3)},
 			},
 			false},
-		{"bad document keys: string litteral", `{'a': 1}`, nil, true},
 		{"bad document keys: param", `{?: 1}`, nil, true},
 		{"bad document keys: dot", `{a.b: 1}`, nil, true},
 		{"bad document keys: space", `{a b: 1}`, nil, true},
 		{"bad document: missing right bracket", `{a: 1`, nil, true},
+		{"bad document: missing colon", `{a: 1, 'b'}`, nil, true},
 
 		// list of expressions
 		{"list with parentheses: empty", "()", query.LiteralExprList(nil), false},

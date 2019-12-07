@@ -44,9 +44,11 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 	switch ch0 {
 	case eof:
 		return EOF, pos, ""
-	case '"':
+	case '`':
 		s.r.unread()
 		return s.scanIdent(true)
+	case '"':
+		return s.scanString()
 	case '\'':
 		return s.scanString()
 	case '.':
@@ -219,7 +221,7 @@ func (s *Scanner) scanIdent(lookup bool) (tok Token, pos Pos, lit string) {
 	for {
 		if ch, _ := s.r.read(); ch == eof {
 			break
-		} else if ch == '"' {
+		} else if ch == '`' {
 			tok0, pos0, lit0 := s.scanString()
 			if tok0 == BADSTRING || tok0 == BADESCAPE {
 				return tok0, pos0, lit0
@@ -599,6 +601,8 @@ func ScanString(r io.RuneScanner) (string, error) {
 				_, _ = buf.WriteRune('\\')
 			} else if ch1 == '"' {
 				_, _ = buf.WriteRune('"')
+			} else if ch1 == '`' {
+				_, _ = buf.WriteRune('`')
 			} else if ch1 == '\'' {
 				_, _ = buf.WriteRune('\'')
 			} else {

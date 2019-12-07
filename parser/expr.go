@@ -296,25 +296,24 @@ func (p *Parser) parseDocument() (query.Expr, bool, error) {
 
 // parseKV parses a key-value pair in the form IDENT : Expr.
 func (p *Parser) parseKV() (query.KVPair, error) {
-	k, err := p.ParseIdent()
-	if err != nil {
-		return query.KVPair{}, err
-	}
+	var k string
 
 	tok, pos, lit := p.ScanIgnoreWhitespace()
+	if tok == scanner.IDENT || tok == scanner.STRING {
+		k = lit
+	} else {
+		return query.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{"ident", "string"}, pos)
+	}
+
+	tok, pos, lit = p.ScanIgnoreWhitespace()
 	if tok != scanner.COLON {
+		p.Unscan()
 		return query.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
 	}
 
 	expr, err := p.ParseExpr()
 	if err != nil {
 		return query.KVPair{}, err
-	}
-
-	// in a json document, any direct reference to an identifier (i.e. `a: "b"`)
-	// must be treated as a string litteral (i.e. `a: 'b'`)
-	if slctor, ok := expr.(query.FieldSelector); ok && len(slctor) == 1 {
-		expr = query.StringValue(string(slctor[0]))
 	}
 
 	return query.KVPair{
