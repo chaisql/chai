@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/asdine/genji/query"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,23 +15,75 @@ func TestParserExpr(t *testing.T) {
 		name     string
 		s        string
 		expected query.Expr
+		fails    bool
 	}{
-		{"=", "age = 10", query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
-		{"!=", "age != 10", query.Neq(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
-		{">", "age > 10", query.Gt(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
-		{">=", "age >= 10", query.Gte(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
-		{"<", "age < 10", query.Lt(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
-		{"<=", "age <= 10", query.Lte(query.FieldSelector([]string{"age"}), query.Int8Value(10))},
+		// integers
+		{"+int8", "10", query.Int8Value(10), false},
+		{"-int8", "-10", query.Int8Value(-10), false},
+		{"+int16", "1000", query.Int16Value(1000), false},
+		{"-int16", "-1000", query.Int16Value(-1000), false},
+		{"+int32", "10000000", query.Int32Value(10000000), false},
+		{"-int32", "-10000000", query.Int32Value(-10000000), false},
+		{"+int64", "10000000000", query.Int64Value(10000000000), false},
+		{"-int64", "-10000000000", query.Int64Value(-10000000000), false},
+		{"uint64", "10000000000000000000", query.Uint64Value(10000000000000000000), false},
+		{"negative uint64", "-10000000000000000000", nil, true},
+		{"int too large", "100000000000000000000000000000000000000000000000", nil, true},
+
+		// floats
+		{"+float64", "10.0", query.Float64Value(10), false},
+		{"-float64", "-10.0", query.Float64Value(-10), false},
+
+		// documents
+		{"empty document", `{}`, query.KVPairs(nil), false},
+		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}}`,
+			query.KVPairs{
+				query.KVPair{K: "a", V: query.Int8Value(1)},
+				query.KVPair{K: "b", V: query.Float64Value(1)},
+				query.KVPair{K: "c", V: query.BoolValue(true)},
+				query.KVPair{K: "d", V: query.StringValue("string")},
+				query.KVPair{K: "e", V: query.StringValue("string")},
+				query.KVPair{K: "f", V: query.KVPairs{
+					query.KVPair{K: "foo", V: query.StringValue("bar")},
+				}},
+			},
+			false},
+		{"document keys", `{a: 1, "foo bar __&&))": 1}`,
+			query.KVPairs{
+				query.KVPair{K: "a", V: query.Int8Value(1)},
+				query.KVPair{K: "foo bar __&&))", V: query.Int8Value(1)},
+			},
+			false},
+		{"document keys: same key", `{a: 1, a: 2, "a": 3}`,
+			query.KVPairs{
+				query.KVPair{K: "a", V: query.Int8Value(1)},
+				query.KVPair{K: "a", V: query.Int8Value(2)},
+				query.KVPair{K: "a", V: query.Int8Value(3)},
+			},
+			false},
+		{"bad document keys: string litteral", `{'a': 1}`, nil, true},
+		{"bad document keys: param", `{?: 1}`, nil, true},
+		{"bad document keys: dot", `{a.b: 1}`, nil, true},
+		{"bad document keys: space", `{a b: 1}`, nil, true},
+		{"bad document: missing right bracket", `{a: 1`, nil, true},
+
+		// operators
+		{"=", "age = 10", query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"!=", "age != 10", query.Neq(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{">", "age > 10", query.Gt(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{">=", "age >= 10", query.Gte(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"<", "age < 10", query.Lt(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"<=", "age <= 10", query.Lte(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
 		{"AND", "age = 10 AND age <= 11",
 			query.And(
 				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
 				query.Lte(query.FieldSelector([]string{"age"}), query.Int8Value(11)),
-			)},
+			), false},
 		{"OR", "age = 10 OR age = 11",
 			query.Or(
 				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
 				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(11)),
-			)},
+			), false},
 		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
 			query.Or(
 				query.And(
@@ -37,15 +91,21 @@ func TestParserExpr(t *testing.T) {
 					query.Gt(query.FieldSelector([]string{"age"}), query.NamedParam("age")),
 				),
 				query.Lt(query.FieldSelector([]string{"age"}), query.Float64Value(10.4)),
-			)},
-		{"with NULL", "age > NULL", query.Gt(query.FieldSelector([]string{"age"}), query.NullValue())},
+			), false},
+		{"with NULL", "age > NULL", query.Gt(query.FieldSelector([]string{"age"}), query.NullValue()), false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
-			require.NoError(t, err)
-			require.EqualValues(t, test.expected, ex)
+			if test.fails {
+				if !assert.Error(t, err) {
+					fmt.Println(ex.(query.LiteralValue).String())
+				}
+			} else {
+				require.NoError(t, err)
+				require.EqualValues(t, test.expected, ex)
+			}
 		})
 	}
 }
