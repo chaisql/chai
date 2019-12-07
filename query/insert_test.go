@@ -32,7 +32,7 @@ func TestInsertStmt(t *testing.T) {
 		{"Documents", "INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1}", false, "1,a,2.3,true\n", nil},
 		{"Documents / Positional Params", "INSERT INTO test VALUES {a: ?, b: 2.3, c: ?}", false, "1,a,2.3,true\n", []interface{}{"a", true}},
 		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, "1,1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Documents / List ", "INSERT INTO test VALUES {a: (1, 2, 3)}", true, "", nil},
+		{"Documents / List ", "INSERT INTO test VALUES {a: (1, 2, 3)}", false, "1,\"[1,2,3]\n\"\n", nil},
 		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, true, "", nil},
 		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, "1,b\n", nil},
 	}

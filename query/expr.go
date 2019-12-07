@@ -172,16 +172,18 @@ func (l LiteralExprList) Eval(stack EvalStack) (EvalValue, error) {
 		return nilLitteral, nil
 	}
 
-	var err error
-
-	values := make(LiteralValueList, len(l))
+	values := make(document.ValueBuffer, len(l))
 	for i, e := range l {
-		values[i], err = e.Eval(stack)
+		ev, err := e.Eval(stack)
 		if err != nil {
 			return nilLitteral, err
 		}
+		values[i] = ev.Value.Value
 	}
-	return EvalValue{List: values, IsList: true}, nil
+
+	var ev EvalValue
+	ev.Value.Value = document.NewArrayValue(values)
+	return ev, nil
 }
 
 type NamedParam string
@@ -314,55 +316,19 @@ func (op CmpOp) Eval(ctx EvalStack) (EvalValue, error) {
 }
 
 func (op CmpOp) compare(l, r EvalValue) (bool, error) {
-	if !l.IsList {
-		if !r.IsList {
-			return op.compareLitterals(l.Value, r.Value)
-		}
-		if len(r.List) == 1 {
-			return op.compare(l, r.List[0])
-		}
-
-		return false, fmt.Errorf("can't compare expressions")
-	}
-
-	if r.IsList {
-		// make sure they have the same number of elements
-		if len(l.List) != len(r.List) {
-			return false, fmt.Errorf("comparing %d elements with %d elements", len(l.List), len(r.List))
-		}
-		for i := range l.List {
-			ok, err := op.compare(l.List[i], r.List[i])
-			if err != nil {
-				return ok, err
-			}
-			if !ok {
-				return false, nil
-			}
-		}
-
-		return true, nil
-	}
-	if len(l.List) == 1 {
-		return op.compare(l.List[0], r)
-	}
-
-	return false, fmt.Errorf("can't compare expressions")
-}
-
-func (op CmpOp) compareLitterals(l, r LiteralValue) (bool, error) {
 	switch op.Token {
 	case scanner.EQ:
-		return l.IsEqual(r.Value)
+		return l.Value.IsEqual(r.Value.Value)
 	case scanner.NEQ:
-		return l.IsNotEqual(r.Value)
+		return l.Value.IsNotEqual(r.Value.Value)
 	case scanner.GT:
-		return l.IsGreaterThan(r.Value)
+		return l.Value.IsGreaterThan(r.Value.Value)
 	case scanner.GTE:
-		return l.IsGreaterThanOrEqual(r.Value)
+		return l.Value.IsGreaterThanOrEqual(r.Value.Value)
 	case scanner.LT:
-		return l.IsLesserThan(r.Value)
+		return l.Value.IsLesserThan(r.Value.Value)
 	case scanner.LTE:
-		return l.IsLesserThanOrEqual(r.Value)
+		return l.Value.IsLesserThanOrEqual(r.Value.Value)
 	default:
 		panic(fmt.Sprintf("unknown token %v", op.Token))
 	}

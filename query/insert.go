@@ -121,40 +121,34 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 
 		// each record must be a list of expressions
 		// (e1, e2, e3, ...) or [e1, e2, e2, ....]
-		if !v.IsList {
+		if v.Value.Type != document.ArrayValue {
 			return res, errors.New("invalid values")
 		}
 
-		if len(stmt.FieldNames) != len(v.List) {
-			return res, fmt.Errorf("%d values for %d fields", len(v.List), len(stmt.FieldNames))
+		vlist, err := v.Value.DecodeToArray()
+		if err != nil {
+			return res, err
+		}
+
+		lenv, err := document.ArrayLength(vlist)
+		if err != nil {
+			return res, err
+		}
+
+		if len(stmt.FieldNames) != lenv {
+			return res, fmt.Errorf("%d values for %d fields", lenv, len(stmt.FieldNames))
 		}
 
 		// iterate over each value
-		for i, v := range v.List {
+		vlist.Iterate(func(i int, v document.Value) error {
 			// get the field name
 			fieldName := stmt.FieldNames[i]
 
-			var lv *LiteralValue
-
-			// each value must be either a LitteralValue or a LitteralValueList with exactly
-			// one value
-			if !v.IsList {
-				lv = &v.Value
-			} else {
-				if len(v.List) == 1 {
-					if val := v.List[0]; !val.IsList {
-						lv = &val.Value
-					}
-				}
-				return res, fmt.Errorf("value expected, got list")
-			}
-
 			// Assign the value to the field and add it to the record
-			fb.Add(fieldName, document.Value{
-				Type: lv.Type,
-				Data: lv.Data,
-			})
-		}
+			fb.Add(fieldName, v)
+
+			return nil
+		})
 
 		res.lastInsertKey, err = t.Insert(&fb)
 		if err != nil {
