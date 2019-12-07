@@ -17,6 +17,23 @@ const (
 	operatorLte
 )
 
+func (op operator) String() string {
+	switch op {
+	case operatorEq:
+		return "="
+	case operatorGt:
+		return ">"
+	case operatorGte:
+		return ">="
+	case operatorLt:
+		return "<"
+	case operatorLte:
+		return "<="
+	}
+
+	return ""
+}
+
 // IsEqual returns true if v is equal to the given value.
 func (v Value) IsEqual(other Value) (bool, error) {
 	return compare(operatorEq, v, other)
@@ -294,29 +311,44 @@ func compareArrays(op operator, l, r Value) (bool, error) {
 
 	var ok bool
 	var i, j int
+
 	for {
-		lv, err := la.GetByIndex(i)
-		if err != nil {
+		lv, lerr := la.GetByIndex(i)
+		rv, rerr := ra.GetByIndex(j)
+
+		if lerr == nil {
+			i++
+		}
+		if rerr == nil {
+			j++
+		}
+
+		if lerr != nil || rerr != nil {
 			break
 		}
-		i++
 
-		rv, err := ra.GetByIndex(j)
+		isEq, err := compare(operatorEq, lv, rv)
 		if err != nil {
-			break
+			return false, err
 		}
-		j++
 
-		ok, err = compare(op, lv, rv)
-		if err != nil || op != operatorEq {
-			return ok, err
+		if !isEq && op != operatorEq {
+			fmt.Println(lv, op, rv, ", isEq =", isEq, ", err =", err)
+
+			return compare(op, lv, rv)
 		}
+
+		if !isEq {
+			return false, nil
+		}
+
+		ok = isEq
 	}
 
-	// if both empty arrays
-	if i == 0 && j == 0 {
-		return true, nil
+	if op == operatorEq {
+		return i == j, nil
 	}
 
+	// return last value stored in ok
 	return ok, nil
 }

@@ -339,6 +339,8 @@ func TestComparisonArrays(t *testing.T) {
 				Append(document.NewFloat64Value(1)).
 				Append(document.NewIntValue(2)),
 		},
+		{"!=", document.NewValueBuffer().Append(document.NewInt64Value(1)), document.NewValueBuffer().Append(document.NewInt8Value(5))},
+		{"!=", document.NewValueBuffer().Append(document.NewInt64Value(1)), document.NewValueBuffer().Append(document.NewInt8Value(1)).Append(document.NewInt8Value(1))},
 		{">", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(1))},
 		{">",
 			document.NewValueBuffer().Append(document.NewIntValue(2)),
@@ -346,10 +348,16 @@ func TestComparisonArrays(t *testing.T) {
 		{">",
 			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
 			document.NewValueBuffer().Append(document.NewIntValue(1))},
+		{">",
+			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
+			document.NewValueBuffer().Append(document.NewIntValue(2))},
 		{"<", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
 		{"<",
 			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000)),
 			document.NewValueBuffer().Append(document.NewIntValue(2))},
+		{"<",
+			document.NewValueBuffer().Append(document.NewIntValue(2)),
+			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000))},
 		{"<=", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
 		{"<=",
 			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000)),
@@ -380,6 +388,8 @@ func TestComparisonArrays(t *testing.T) {
 				ok, err = document.NewArrayValue(test.a).IsLesserThan(document.NewArrayValue(test.b))
 			case "<=":
 				ok, err = document.NewArrayValue(test.a).IsLesserThanOrEqual(document.NewArrayValue(test.b))
+			case "!=":
+				ok, err = document.NewArrayValue(test.a).IsNotEqual(document.NewArrayValue(test.b))
 			}
 			require.NoError(t, err)
 			require.True(t, ok)

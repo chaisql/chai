@@ -449,6 +449,20 @@ type Array interface {
 	GetByIndex(i int) (Value, error)
 }
 
+// ArrayLength returns the length of an array.
+func ArrayLength(a Array) (int, error) {
+	if vb, ok := a.(ValueBuffer); ok {
+		return len(vb), nil
+	}
+
+	var len int
+	err := a.Iterate(func(_ int, _ Value) error {
+		len++
+		return nil
+	})
+	return len, err
+}
+
 type ValueBuffer []Value
 
 func NewValueBuffer() ValueBuffer {
