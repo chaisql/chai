@@ -182,10 +182,10 @@ u3 := u1
 u3.ID = 22
 
 // It is possible to let Genji deal with analyzing the structure
-// when inserting a record, using the DOCUMENTS clause
-err := db.Exec(`INSERT INTO user DOCUMENTS ?, ?, ?`, &u1, &u2, &u3)
+// when inserting a record, using the VALUES clause
+err := db.Exec(`INSERT INTO user VALUES ?, ?, ?`, &u1, &u2, &u3)
 // Note that it is also possible to write records by hand
-err := db.Exec(`INSERT INTO user DOCUMENTS ?, (userid: 21, name: 'foo', "age-of-the-user": 40), ?`, &u1, &u3)
+err := db.Exec(`INSERT INTO user VALUES ?, {userid: 21, name: 'foo', "age-of-the-user": 40}, ?`, &u1, &u3)
 
 // Let's select a few users
 var users []User

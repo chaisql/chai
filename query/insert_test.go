@@ -23,17 +23,17 @@ func TestInsertStmt(t *testing.T) {
 		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`, true, ``, nil},
 		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, false, "1,a,b,c\n", nil},
 		{"Values / Ident", `INSERT INTO test (a) VALUES (a)`, true, ``, nil},
-		{"Values / Ident string", `INSERT INTO test (a) VALUES ("a")`, true, ``, nil},
-		{"Values / With fields ident string", `INSERT INTO test (a, "foo bar") VALUES ('c', 'd')`, false, "1,c,d\n", nil},
+		{"Values / Ident string", "INSERT INTO test (a) VALUES (`a`)", true, ``, nil},
+		{"Values / With fields ident string", "INSERT INTO test (a, `foo bar`) VALUES ('c', 'd')", false, "1,c,d\n", nil},
 		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, "1,d,e,f\n", []interface{}{"d", "f"}},
 		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, "1,d,e,f\n", []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
-		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', (1, 2, 3))`, true, "", nil},
+		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', (1, 2, 3))`, false, "1,a,b,\"[1,2,3]\n\"\n", nil},
 		{"Documents", "INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1}", false, "1,a,2.3,true\n", nil},
 		{"Documents / Positional Params", "INSERT INTO test VALUES {a: ?, b: 2.3, c: ?}", false, "1,a,2.3,true\n", []interface{}{"a", true}},
 		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, "1,1,2.3,true\n", []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
 		{"Documents / List ", "INSERT INTO test VALUES {a: (1, 2, 3)}", false, "1,\"[1,2,3]\n\"\n", nil},
-		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, true, "", nil},
+		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, false, "1,a,2.3\n", nil},
 		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, "1,b\n", nil},
 	}
 
@@ -101,7 +101,7 @@ func TestInsertStmt(t *testing.T) {
 		err = db.Exec("CREATE TABLE test")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test ("key()", "key") VALUES (1, 2)`)
+		err = db.Exec("INSERT INTO test (`key()`, `key`) VALUES (1, 2)")
 		require.NoError(t, err)
 	})
 }

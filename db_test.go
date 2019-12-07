@@ -35,7 +35,7 @@ func ExampleDB_SQLDB() {
 		log.Fatal(err)
 	}
 
-	_, err = dbx.Exec("INSERT INTO user DOCUMENTS ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	_, err = dbx.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func ExampleResult_Iterate() {
 	}
 
 	for i := 1; i <= 10; i++ {
-		err = db.Exec("INSERT INTO user DOCUMENTS ?", &User{
+		err = db.Exec("INSERT INTO user VALUES ?", &User{
 			ID:   int64(i),
 			Name: fmt.Sprintf("foo%d", i),
 			Age:  uint32(i * 10),
@@ -251,7 +251,7 @@ func ExampleResult_Iterate() {
 		}
 	}
 
-	result, err := db.Query(`SELECT id, name, age FROM user WHERE "age" >= 18`)
+	result, err := db.Query(`SELECT id, name, age FROM user WHERE age >= 18`)
 	if err != nil {
 		panic(err)
 	}
