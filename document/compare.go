@@ -2,6 +2,7 @@ package document
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 )
 
@@ -51,35 +52,63 @@ func (v Value) IsLesserThanOrEqual(other Value) (bool, error) {
 }
 
 func compare(op operator, l, r Value) (bool, error) {
+	switch {
 	// deal with nil
-	if l.Type == NullValue || r.Type == NullValue {
-		switch op {
-		case operatorEq, operatorGte, operatorLte:
-			return l.Type == r.Type, nil
-		case operatorGt, operatorLt:
-			return false, nil
-		}
-	}
+	case l.Type == NullValue:
+		fallthrough
+	case r.Type == NullValue:
+		return compareWithNull(op, l, r)
 
 	// if same type, or string and bytes, no conversion needed
-	if l.Type == r.Type || (l.Type == StringValue && r.Type == BytesValue) || (r.Type == StringValue && l.Type == BytesValue) {
-		var ok bool
-		switch op {
-		case operatorEq:
-			ok = bytes.Equal(l.Data, r.Data)
-		case operatorGt:
-			ok = bytes.Compare(l.Data, r.Data) > 0
-		case operatorGte:
-			ok = bytes.Compare(l.Data, r.Data) >= 0
-		case operatorLt:
-			ok = bytes.Compare(l.Data, r.Data) < 0
-		case operatorLte:
-			ok = bytes.Compare(l.Data, r.Data) <= 0
-		}
+	case l.Type == r.Type:
+		fallthrough
+	case l.Type == StringValue && r.Type == BytesValue:
+		fallthrough
+	case r.Type == StringValue && l.Type == BytesValue:
+		return compareBytes(op, l, r)
 
-		return ok, nil
+	// integer OP integer
+	case l.Type.IsInteger() && r.Type.IsInteger():
+		return compareIntegers(op, l, r)
+
+	// number OP number
+	case l.Type.IsNumber() && r.Type.IsNumber():
+		return compareNumbers(op, l, r)
 	}
 
+	return false, nil
+}
+
+func compareWithNull(op operator, l, r Value) (bool, error) {
+	switch op {
+	case operatorEq, operatorGte, operatorLte:
+		return l.Type == r.Type, nil
+	case operatorGt, operatorLt:
+		return false, nil
+	}
+
+	return false, fmt.Errorf("unknown operator %v", op)
+}
+
+func compareBytes(op operator, l, r Value) (bool, error) {
+	var ok bool
+	switch op {
+	case operatorEq:
+		ok = bytes.Equal(l.Data, r.Data)
+	case operatorGt:
+		ok = bytes.Compare(l.Data, r.Data) > 0
+	case operatorGte:
+		ok = bytes.Compare(l.Data, r.Data) >= 0
+	case operatorLt:
+		ok = bytes.Compare(l.Data, r.Data) < 0
+	case operatorLte:
+		ok = bytes.Compare(l.Data, r.Data) <= 0
+	}
+
+	return ok, nil
+}
+
+func compareIntegers(op operator, l, r Value) (bool, error) {
 	// uint64 numbers can be bigger than int64 and thus cannot be converted
 	// to int64 without first checking if they can overflow.
 	// if they do, the result of all the operations is already known
@@ -117,64 +146,59 @@ func compare(op operator, l, r Value) (bool, error) {
 	}
 
 	// integer OP integer
-	if l.Type.IsInteger() && r.Type.IsInteger() {
-		ai, err := l.DecodeToInt64()
-		if err != nil {
-			return false, err
-		}
-
-		bi, err := r.DecodeToInt64()
-		if err != nil {
-			return false, err
-		}
-
-		var ok bool
-
-		switch op {
-		case operatorEq:
-			ok = ai == bi
-		case operatorGt:
-			ok = ai > bi
-		case operatorGte:
-			ok = ai >= bi
-		case operatorLt:
-			ok = ai < bi
-		case operatorLte:
-			ok = ai <= bi
-		}
-
-		return ok, nil
+	ai, err := l.DecodeToInt64()
+	if err != nil {
+		return false, err
 	}
 
-	// number OP number
-	if l.Type.IsNumber() && r.Type.IsNumber() {
-		af, err := l.DecodeToFloat64()
-		if err != nil {
-			return false, err
-		}
-
-		bf, err := r.DecodeToFloat64()
-		if err != nil {
-			return false, err
-		}
-
-		var ok bool
-
-		switch op {
-		case operatorEq:
-			ok = af == bf
-		case operatorGt:
-			ok = af > bf
-		case operatorGte:
-			ok = af >= bf
-		case operatorLt:
-			ok = af < bf
-		case operatorLte:
-			ok = af <= bf
-		}
-
-		return ok, nil
+	bi, err := r.DecodeToInt64()
+	if err != nil {
+		return false, err
 	}
 
-	return false, nil
+	var ok bool
+
+	switch op {
+	case operatorEq:
+		ok = ai == bi
+	case operatorGt:
+		ok = ai > bi
+	case operatorGte:
+		ok = ai >= bi
+	case operatorLt:
+		ok = ai < bi
+	case operatorLte:
+		ok = ai <= bi
+	}
+
+	return ok, nil
+}
+
+func compareNumbers(op operator, l, r Value) (bool, error) {
+	af, err := l.DecodeToFloat64()
+	if err != nil {
+		return false, err
+	}
+
+	bf, err := r.DecodeToFloat64()
+	if err != nil {
+		return false, err
+	}
+
+	var ok bool
+
+	switch op {
+	case operatorEq:
+		ok = af == bf
+	case operatorGt:
+		ok = af > bf
+	case operatorGte:
+		ok = af >= bf
+	case operatorLt:
+		ok = af < bf
+	case operatorLte:
+		ok = af <= bf
+	}
+
+	return ok, nil
 }
