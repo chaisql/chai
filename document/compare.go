@@ -2,6 +2,7 @@ package document
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 )
@@ -58,6 +59,10 @@ func compare(op operator, l, r Value) (bool, error) {
 		fallthrough
 	case r.Type == NullValue:
 		return compareWithNull(op, l, r)
+
+	// compare documents together
+	case l.Type == DocumentValue && r.Type == DocumentValue:
+		return compareDocuments(op, l, r)
 
 	// if same type, or string and bytes, no conversion needed
 	case l.Type == r.Type:
@@ -198,6 +203,75 @@ func compareNumbers(op operator, l, r Value) (bool, error) {
 		ok = af < bf
 	case operatorLte:
 		ok = af <= bf
+	}
+
+	return ok, nil
+}
+
+var errStop = errors.New("stop")
+
+func compareDocuments(op operator, l, r Value) (bool, error) {
+	if op != operatorEq {
+		return false, fmt.Errorf("%q operator not supported for document comparison", op)
+	}
+
+	ld, err := l.DecodeToDocument()
+	if err != nil {
+		return false, err
+	}
+
+	rd, err := l.DecodeToDocument()
+	if err != nil {
+		return false, err
+	}
+
+	var lsize, rsize int
+	err = ld.Iterate(func(field string, lv Value) error {
+		lsize++
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	err = rd.Iterate(func(field string, lv Value) error {
+		rsize++
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+
+	if lsize != rsize {
+		return false, nil
+	}
+
+	// if both empty documents
+	if lsize == 0 {
+		return true, nil
+	}
+
+	var ok bool
+
+	err = ld.Iterate(func(field string, lv Value) error {
+		rv, err := rd.GetByField(field)
+		if err != nil {
+			return err
+		}
+
+		ok, err = compare(op, lv, rv)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return errStop
+		}
+
+		return nil
+	})
+
+	if err != nil && err != errStop {
+		return false, err
 	}
 
 	return ok, nil

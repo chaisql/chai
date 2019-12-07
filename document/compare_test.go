@@ -285,14 +285,14 @@ func TestComparisonDocuments(t *testing.T) {
 		{
 			"=",
 			document.NewFieldBuffer().
-				Add("a", document.NewIntValue(1)).
-				Add("b", document.NewIntValue(2)),
+				Add("a", document.NewInt32Value(1)).
+				Add("b", document.NewUint64Value(2)),
 			document.NewFieldBuffer().
-				Add("b", document.NewIntValue(2)).
-				Add("a", document.NewIntValue(1)),
+				Add("b", document.NewFloat64Value(2)).
+				Add("a", document.NewInt8Value(1)),
 		},
-		{">", document.NewFieldBuffer().Add("a", document.NewIntValue(2)), document.NewFieldBuffer().Add("a", document.NewIntValue(1))},
-		{"<", document.NewFieldBuffer().Add("a", document.NewIntValue(1)), document.NewFieldBuffer().Add("a", document.NewIntValue(2))},
+		{">", document.NewFieldBuffer().Add("a", document.NewInt8Value(2)), document.NewFieldBuffer().Add("a", document.NewInt64Value(1))},
+		{"<", document.NewFieldBuffer().Add("a", document.NewFloat64Value(1)), document.NewFieldBuffer().Add("a", document.NewInt8Value(2))},
 	}
 
 	for _, test := range tests {
@@ -303,14 +303,62 @@ func TestComparisonDocuments(t *testing.T) {
 			switch test.op {
 			case "=":
 				ok, err = document.NewDocumentValue(test.a).IsEqual(document.NewDocumentValue(test.b))
+				require.NoError(t, err)
+				require.True(t, ok)
 			case ">":
 				ok, err = document.NewDocumentValue(test.a).IsGreaterThan(document.NewDocumentValue(test.b))
+				require.Error(t, err)
 			case ">=":
 				ok, err = document.NewDocumentValue(test.a).IsGreaterThanOrEqual(document.NewDocumentValue(test.b))
+				require.Error(t, err)
 			case "<":
 				ok, err = document.NewDocumentValue(test.a).IsLesserThan(document.NewDocumentValue(test.b))
+				require.Error(t, err)
 			case "<=":
 				ok, err = document.NewDocumentValue(test.a).IsLesserThanOrEqual(document.NewDocumentValue(test.b))
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestComparisonArrays(t *testing.T) {
+	tests := []struct {
+		op string
+		a  document.Array
+		b  document.Array
+	}{
+		{"=", document.NewValueBuffer(), document.NewValueBuffer()},
+		{"=", document.NewValueBuffer().Append(document.NewInt64Value(1)), document.NewValueBuffer().Append(document.NewInt8Value(1))},
+		{
+			"=",
+			document.NewValueBuffer().
+				Append(document.NewIntValue(1)).
+				Append(document.NewIntValue(2)),
+			document.NewValueBuffer().
+				Append(document.NewIntValue(1)).
+				Append(document.NewIntValue(2)),
+		},
+		{">", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(1))},
+		{"<", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %s %v", test.a, test.op, test.b), func(t *testing.T) {
+			var ok bool
+			var err error
+
+			switch test.op {
+			case "=":
+				ok, err = document.NewArrayValue(test.a).IsEqual(document.NewArrayValue(test.b))
+			case ">":
+				ok, err = document.NewArrayValue(test.a).IsGreaterThan(document.NewArrayValue(test.b))
+			case ">=":
+				ok, err = document.NewArrayValue(test.a).IsGreaterThanOrEqual(document.NewArrayValue(test.b))
+			case "<":
+				ok, err = document.NewArrayValue(test.a).IsLesserThan(document.NewArrayValue(test.b))
+			case "<=":
+				ok, err = document.NewArrayValue(test.a).IsLesserThanOrEqual(document.NewArrayValue(test.b))
 			}
 			require.NoError(t, err)
 			require.True(t, ok)
