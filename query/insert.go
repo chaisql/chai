@@ -119,8 +119,8 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 			return res, err
 		}
 
-		// each record must be a list of values
-		// (e1, e2, e3, ...)
+		// each record must be a list of expressions
+		// (e1, e2, e3, ...) or [e1, e2, e2, ....]
 		if !v.IsList {
 			return res, errors.New("invalid values")
 		}

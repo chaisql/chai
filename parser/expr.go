@@ -126,18 +126,17 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
-			// The check for negative numbers is handled somewhere else so this should always be a positive number.
 			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
 				return query.LiteralValue{Value: document.NewUint64Value(v)}, nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
 		switch {
-		case v < math.MaxInt8:
+		case v >= math.MinInt8 && v <= math.MaxInt8:
 			return query.LiteralValue{Value: document.NewInt8Value(int8(v))}, nil
-		case v < math.MaxInt16:
+		case v >= math.MinInt16 && v <= math.MaxInt16:
 			return query.LiteralValue{Value: document.NewInt16Value(int16(v))}, nil
-		case v < math.MaxInt32:
+		case v >= math.MinInt32 && v <= math.MaxInt32:
 			return query.LiteralValue{Value: document.NewInt32Value(int32(v))}, nil
 		}
 		return query.LiteralValue{Value: document.NewInt64Value(v)}, nil
@@ -149,6 +148,12 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		p.Unscan()
 		e, _, err := p.parseDocument()
 		return e, err
+	case scanner.LSBRACKET:
+		p.Unscan()
+		return p.ParseExprList(scanner.LSBRACKET, scanner.RSBRACKET)
+	case scanner.LPAREN:
+		p.Unscan()
+		return p.ParseExprList(scanner.LPAREN, scanner.RPAREN)
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
@@ -269,7 +274,8 @@ func (p *Parser) parseDocument() (query.Expr, bool, error) {
 	// Parse kv pairs.
 	for {
 		if pair, err = p.parseKV(); err != nil {
-			return nil, true, err
+			p.Unscan()
+			break
 		}
 
 		pairs = append(pairs, pair)
@@ -341,4 +347,36 @@ func (p *Parser) ParseField() ([]string, error) {
 
 		field = append(field, chunk)
 	}
+}
+
+func (p *Parser) ParseExprList(leftToken, rightToken scanner.Token) (query.LiteralExprList, error) {
+	// Parse ( or [ token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != leftToken {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
+	}
+
+	var exprList query.LiteralExprList
+	var expr query.Expr
+	var err error
+
+	// Parse kv pairs.
+	for {
+		if expr, err = p.ParseExpr(); err != nil {
+			return nil, err
+		}
+
+		exprList = append(exprList, expr)
+
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
+	}
+
+	// Parse required ) or ] token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != rightToken {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{rightToken.String()}, pos)
+	}
+
+	return exprList, nil
 }
