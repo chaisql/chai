@@ -14,9 +14,12 @@ func TestIteratorToCSV(t *testing.T) {
 		name     string
 		expected string
 	}{
-		{"OK", `"John, 0",10,3.14,NULL
-"John, 1",11,6.28,NULL
-"John, 2",12,9.42,NULL
+		{"OK", `"John, 0",10,3.14,"[""fred"",""jamie""]
+"
+"John, 1",11,6.28,"[""fred"",""jamie""]
+"
+"John, 2",12,9.42,"[""fred"",""jamie""]
+"
 `},
 	}
 
@@ -29,7 +32,11 @@ func TestIteratorToCSV(t *testing.T) {
 					Add("name", document.NewStringValue(fmt.Sprintf("John, %d", i))).
 					Add("age", document.NewIntValue(10+i)).
 					Add("pi", document.NewFloat64Value(3.14*float64(i+1))).
-					Add("friends", document.NewNullValue()),
+					Add("friends", document.NewArrayValue(
+						document.NewValueBuffer().
+							Append(document.NewStringValue("fred")).
+							Append(document.NewStringValue("jamie")),
+					)),
 				)
 			}
 

@@ -333,8 +333,6 @@ func compareArrays(op operator, l, r Value) (bool, error) {
 		}
 
 		if !isEq && op != operatorEq {
-			fmt.Println(lv, op, rv, ", isEq =", isEq, ", err =", err)
-
 			return compare(op, lv, rv)
 		}
 

@@ -477,6 +477,14 @@ func (v Value) String() string {
 			panic(err)
 		}
 		return buf.String()
+	case ArrayValue:
+		a, _ := v.DecodeToArray()
+		var buf bytes.Buffer
+		err := ArrayToJSON(&buf, a)
+		if err != nil {
+			panic(err)
+		}
+		return buf.String()
 	case NullValue:
 		return "NULL"
 	}

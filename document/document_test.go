@@ -193,8 +193,13 @@ func TestToJSON(t *testing.T) {
 				Add("address", document.NewDocumentValue(document.NewFieldBuffer().
 					Add("city", document.NewStringValue("Ajaccio")).
 					Add("country", document.NewStringValue("France")),
+				)).
+				Add("friends", document.NewArrayValue(
+					document.NewValueBuffer().
+						Append(document.NewStringValue("fred")).
+						Append(document.NewStringValue("jamie")),
 				)),
-			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"}}` + "\n",
+			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"},"friends":["fred","jamie"]}` + "\n",
 		},
 	}
 
