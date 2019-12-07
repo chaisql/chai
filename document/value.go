@@ -436,6 +436,11 @@ func (v Value) Decode() (interface{}, error) {
 	return v.v, nil
 }
 
+// IsTruthy returns whether v is not equal to the zero value of its type.
+func (v Value) IsTruthy() bool {
+	return !v.IsZeroValue()
+}
+
 // String returns a string representation of the value. It implements the fmt.Stringer interface.
 func (v Value) String() string {
 	var vv interface{}

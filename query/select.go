@@ -81,15 +81,11 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 			return res, err
 		}
 
-		if v.IsList {
-			return res, fmt.Errorf("expected value got list")
+		if !v.Type.IsNumber() {
+			return res, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
 		}
 
-		if v.Value.Type < document.IntValue {
-			return res, fmt.Errorf("offset expression must evaluate to an integer, got %q", v.Value.Type)
-		}
-
-		voff, err := v.Value.ConvertTo(document.IntValue)
+		voff, err := v.ConvertTo(document.IntValue)
 		if err != nil {
 			return res, err
 		}
@@ -105,15 +101,11 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 			return res, err
 		}
 
-		if v.IsList {
-			return res, fmt.Errorf("expected value got list")
+		if !v.Type.IsNumber() {
+			return res, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
 		}
 
-		if v.Value.Type < document.IntValue {
-			return res, fmt.Errorf("limit expression must evaluate to an integer, got %q", v.Value.Type)
-		}
-
-		vlim, err := v.Value.ConvertTo(document.IntValue)
+		vlim, err := v.ConvertTo(document.IntValue)
 		if err != nil {
 			return res, err
 		}
@@ -231,9 +223,9 @@ func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Va
 
 // Eval extracts the record from the context and selects the right field.
 // It implements the Expr interface.
-func (f FieldSelector) Eval(stack EvalStack) (EvalValue, error) {
+func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 	if stack.Record == nil {
-		return EvalValue{}, fmt.Errorf("field %q not found", f)
+		return document.Value{}, fmt.Errorf("field %q not found", f)
 	}
 
 	_, v, err := f.SelectField(stack.Record)
@@ -241,7 +233,7 @@ func (f FieldSelector) Eval(stack EvalStack) (EvalValue, error) {
 		return nilLitteral, nil
 	}
 
-	return newSingleEvalValue(v), nil
+	return v, nil
 }
 
 type Wildcard struct{}

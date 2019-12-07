@@ -186,25 +186,21 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 		return err
 	}
 
-	if v.IsList {
-		return errors.New("expression doesn't evaluate to scalar")
-	}
-
 	var data []byte
-	if v.Value.Type.IsNumber() {
-		x, err := v.Value.DecodeToFloat64()
+	if v.Type.IsNumber() {
+		x, err := v.DecodeToFloat64()
 		if err != nil {
 			return err
 		}
 
 		data = document.NewFloat64Value(x).Data
 	} else {
-		data = v.Value.Data
+		data = v.Data
 	}
 
 	switch it.op {
 	case scanner.EQ:
-		err = it.index.AscendGreaterOrEqual(&v.Value.Value, func(val document.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&v, func(val document.Value, key []byte) error {
 			if bytes.Equal(data, val.Data) {
 				r, err := it.tb.GetRecord(key)
 				if err != nil {
@@ -217,7 +213,7 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 			return errStop
 		})
 	case scanner.GT:
-		err = it.index.AscendGreaterOrEqual(&v.Value.Value, func(val document.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&v, func(val document.Value, key []byte) error {
 			if bytes.Equal(data, val.Data) {
 				return nil
 			}
@@ -230,7 +226,7 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 			return fn(r)
 		})
 	case scanner.GTE:
-		err = it.index.AscendGreaterOrEqual(&v.Value.Value, func(val document.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&v, func(val document.Value, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err
@@ -239,7 +235,7 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 			return fn(r)
 		})
 	case scanner.LT:
-		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Value.Type), func(val document.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
 			if bytes.Compare(data, val.Data) <= 0 {
 				return errStop
 			}
@@ -252,7 +248,7 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 			return fn(r)
 		})
 	case scanner.LTE:
-		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Value.Type), func(val document.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
 			if bytes.Compare(data, val.Data) < 0 {
 				return errStop
 			}
@@ -291,13 +287,9 @@ func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 		return err
 	}
 
-	if v.IsList {
-		return errors.New("expression doesn't evaluate to scalar")
-	}
-
-	data := v.Value.Value.Data
-	if v.Value.Type.IsNumber() {
-		vv, err := v.Value.ConvertTo(it.cfg.PrimaryKeyType)
+	data := v.Data
+	if v.Type.IsNumber() {
+		vv, err := v.ConvertTo(it.cfg.PrimaryKeyType)
 		if err != nil {
 			return err
 		}
@@ -316,7 +308,7 @@ func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 		}
 		return fn(document.EncodedDocument(val))
 	case scanner.GT:
-		err = it.tb.Store.AscendGreaterOrEqual(v.Value.Data, func(key, val []byte) error {
+		err = it.tb.Store.AscendGreaterOrEqual(v.Data, func(key, val []byte) error {
 			if bytes.Equal(data, val) {
 				return nil
 			}

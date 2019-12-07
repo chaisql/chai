@@ -3,7 +3,6 @@ package query
 import (
 	"database/sql/driver"
 	"errors"
-	"fmt"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -74,7 +73,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 			}
 
 			for fname, e := range stmt.Pairs {
-				v, err := docs[i].GetByField(fname)
+				_, err := docs[i].GetByField(fname)
 				if err != nil {
 					continue
 				}
@@ -88,13 +87,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 					return err
 				}
 
-				if ev.IsList {
-					return fmt.Errorf("expected value got list")
-				}
-
-				v.Type = ev.Value.Type
-				v.Data = ev.Value.Data
-				err = docs[i].Replace(fname, v)
+				err = docs[i].Replace(fname, ev)
 				if err != nil {
 					return err
 				}

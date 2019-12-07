@@ -1,12 +1,10 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/asdine/genji/query"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -125,9 +123,7 @@ func TestParserExpr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
-				if !assert.Error(t, err) {
-					fmt.Println(ex.(query.LiteralValue).String())
-				}
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 				require.EqualValues(t, test.expected, ex)

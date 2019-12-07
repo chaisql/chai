@@ -115,35 +115,35 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		p.orderedParams++
 		return query.PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return query.LiteralValue{Value: document.NewStringValue(lit)}, nil
+		return query.StringValue(lit), nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return query.LiteralValue{Value: document.NewFloat64Value(v)}, nil
+		return query.Float64Value(v), nil
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
 			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
-				return query.LiteralValue{Value: document.NewUint64Value(v)}, nil
+				return query.Uint64Value(v), nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
 		switch {
 		case v >= math.MinInt8 && v <= math.MaxInt8:
-			return query.LiteralValue{Value: document.NewInt8Value(int8(v))}, nil
+			return query.Int8Value(int8(v)), nil
 		case v >= math.MinInt16 && v <= math.MaxInt16:
-			return query.LiteralValue{Value: document.NewInt16Value(int16(v))}, nil
+			return query.Int16Value(int16(v)), nil
 		case v >= math.MinInt32 && v <= math.MaxInt32:
-			return query.LiteralValue{Value: document.NewInt32Value(int32(v))}, nil
+			return query.Int32Value(int32(v)), nil
 		}
-		return query.LiteralValue{Value: document.NewInt64Value(v)}, nil
+		return query.Int64Value(v), nil
 	case scanner.TRUE, scanner.FALSE:
-		return query.LiteralValue{Value: document.NewBoolValue(tok == scanner.TRUE)}, nil
+		return query.BoolValue(tok == scanner.TRUE), nil
 	case scanner.NULL:
-		return query.LiteralValue{Value: document.NewNullValue()}, nil
+		return query.NullValue(), nil
 	case scanner.LBRACKET:
 		p.Unscan()
 		e, _, err := p.parseDocument()

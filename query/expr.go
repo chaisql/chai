@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	trueLitteral  = newSingleEvalValue(document.NewBoolValue(true))
-	falseLitteral = newSingleEvalValue(document.NewBoolValue(false))
-	nilLitteral   = newSingleEvalValue(document.NewNullValue())
+	trueLitteral  = document.NewBoolValue(true)
+	falseLitteral = document.NewBoolValue(false)
+	nilLitteral   = document.NewNullValue()
 )
 
 // An Expr evaluates to a value.
 type Expr interface {
-	Eval(EvalStack) (EvalValue, error)
+	Eval(EvalStack) (document.Value, error)
 }
 
 // EvalStack contains information about the context in which
@@ -30,176 +30,124 @@ type EvalStack struct {
 	Cfg    *database.TableConfig
 }
 
-// A EvalValue is the result of evaluating an expression.
-type EvalValue struct {
-	Value  LiteralValue
-	List   LiteralValueList
-	IsList bool
-}
-
-// Truthy returns true if the Data is different than the zero value of
-// the type of s.
-// It implements the Value interface.
-func (v EvalValue) Truthy() bool {
-	if v.IsList {
-		return v.List.Truthy()
-	}
-
-	return v.Value.Truthy()
-}
-
-func newSingleEvalValue(v document.Value) EvalValue {
-	return EvalValue{
-		Value: LiteralValue{
-			Value: v,
-		},
-	}
-}
-
 // A LiteralValue represents a litteral value of any type defined by the value package.
-type LiteralValue struct {
-	document.Value
-}
+type LiteralValue document.Value
 
 // BytesValue creates a litteral value of type Bytes.
 func BytesValue(v []byte) LiteralValue {
-	return LiteralValue{document.NewBytesValue(v)}
+	return LiteralValue(document.NewBytesValue(v))
 }
 
 // StringValue creates a litteral value of type String.
 func StringValue(v string) LiteralValue {
-	return LiteralValue{document.NewStringValue(v)}
+	return LiteralValue(document.NewStringValue(v))
 }
 
 // BoolValue creates a litteral value of type Bool.
 func BoolValue(v bool) LiteralValue {
-	return LiteralValue{document.NewBoolValue(v)}
+	return LiteralValue(document.NewBoolValue(v))
 }
 
 // UintValue creates a litteral value of type Uint.
 func UintValue(v uint) LiteralValue {
-	return LiteralValue{document.NewUintValue(v)}
+	return LiteralValue(document.NewUintValue(v))
 }
 
 // Uint8Value creates a litteral value of type Uint8.
 func Uint8Value(v uint8) LiteralValue {
-	return LiteralValue{document.NewUint8Value(v)}
+	return LiteralValue(document.NewUint8Value(v))
 }
 
 // Uint16Value creates a litteral value of type Uint16.
 func Uint16Value(v uint16) LiteralValue {
-	return LiteralValue{document.NewUint16Value(v)}
+	return LiteralValue(document.NewUint16Value(v))
 }
 
 // Uint32Value creates a litteral value of type Uint32.
 func Uint32Value(v uint32) LiteralValue {
-	return LiteralValue{document.NewUint32Value(v)}
+	return LiteralValue(document.NewUint32Value(v))
 }
 
 // Uint64Value creates a litteral value of type Uint64.
 func Uint64Value(v uint64) LiteralValue {
-	return LiteralValue{document.NewUint64Value(v)}
+	return LiteralValue(document.NewUint64Value(v))
 }
 
 // IntValue creates a litteral value of type Int.
 func IntValue(v int) LiteralValue {
-	return LiteralValue{document.NewIntValue(v)}
+	return LiteralValue(document.NewIntValue(v))
 }
 
 // Int8Value creates a litteral value of type Int8.
 func Int8Value(v int8) LiteralValue {
-	return LiteralValue{document.NewInt8Value(v)}
+	return LiteralValue(document.NewInt8Value(v))
 }
 
 // Int16Value creates a litteral value of type Int16.
 func Int16Value(v int16) LiteralValue {
-	return LiteralValue{document.NewInt16Value(v)}
+	return LiteralValue(document.NewInt16Value(v))
 }
 
 // Int32Value creates a litteral value of type Int32.
 func Int32Value(v int32) LiteralValue {
-	return LiteralValue{document.NewInt32Value(v)}
+	return LiteralValue(document.NewInt32Value(v))
 }
 
 // Int64Value creates a litteral value of type Int64.
 func Int64Value(v int64) LiteralValue {
-	return LiteralValue{document.NewInt64Value(v)}
+	return LiteralValue(document.NewInt64Value(v))
 }
 
 // Float64Value creates a litteral value of type Float64.
 func Float64Value(v float64) LiteralValue {
-	return LiteralValue{document.NewFloat64Value(v)}
+	return LiteralValue(document.NewFloat64Value(v))
 }
 
 // NullValue creates a litteral value of type Null.
 func NullValue() LiteralValue {
-	return LiteralValue{document.NewNullValue()}
+	return LiteralValue(document.NewNullValue())
 }
 
 // DocumentValue creates a litteral value of type Document.
 func DocumentValue(d document.Document) LiteralValue {
-	return LiteralValue{document.NewDocumentValue(d)}
-}
-
-// Truthy returns true if the Data is different than the zero value of
-// the type of s.
-// It implements the Value interface.
-func (l LiteralValue) Truthy() bool {
-	return !l.IsZeroValue()
+	return LiteralValue(document.NewDocumentValue(d))
 }
 
 // Eval returns l. It implements the Expr interface.
-func (l LiteralValue) Eval(EvalStack) (EvalValue, error) {
-	return EvalValue{Value: l}, nil
-}
-
-// A LiteralValueList represents a litteral value of any type defined by the value package.
-type LiteralValueList []EvalValue
-
-// Truthy returns true if the Data is different than the zero value of
-// the type of s.
-// It implements the Value interface.
-func (l LiteralValueList) Truthy() bool {
-	return len(l) > 0
+func (l LiteralValue) Eval(EvalStack) (document.Value, error) {
+	return document.Value(l), nil
 }
 
 // LiteralExprList is a list of expressions.
 type LiteralExprList []Expr
 
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
-func (l LiteralExprList) Eval(stack EvalStack) (EvalValue, error) {
+func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 	if len(l) == 0 {
 		return nilLitteral, nil
 	}
 
+	var err error
 	values := make(document.ValueBuffer, len(l))
 	for i, e := range l {
-		ev, err := e.Eval(stack)
+		values[i], err = e.Eval(stack)
 		if err != nil {
 			return nilLitteral, err
 		}
-		values[i] = ev.Value.Value
 	}
 
-	var ev EvalValue
-	ev.Value.Value = document.NewArrayValue(values)
-	return ev, nil
+	return document.NewArrayValue(values), nil
 }
 
 type NamedParam string
 
-func (p NamedParam) Eval(stack EvalStack) (EvalValue, error) {
+func (p NamedParam) Eval(stack EvalStack) (document.Value, error) {
 	v, err := p.Extract(stack.Params)
 	if err != nil {
 		return nilLitteral, err
 	}
 
-	vl, err := document.NewValue(v)
-	if err != nil {
-		return nilLitteral, err
-	}
-
-	return newSingleEvalValue(vl), nil
+	return document.NewValue(v)
 }
 
 func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
@@ -214,18 +162,13 @@ func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
 
 type PositionalParam int
 
-func (p PositionalParam) Eval(stack EvalStack) (EvalValue, error) {
+func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 	v, err := p.Extract(stack.Params)
 	if err != nil {
 		return nilLitteral, err
 	}
 
-	vl, err := document.NewValue(v)
-	if err != nil {
-		return nilLitteral, err
-	}
-
-	return newSingleEvalValue(vl), nil
+	return document.NewValue(v)
 }
 
 func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error) {
@@ -296,7 +239,7 @@ func Lte(a, b Expr) Expr {
 	return CmpOp{SimpleOperator{a, b, scanner.LTE}}
 }
 
-func (op CmpOp) Eval(ctx EvalStack) (EvalValue, error) {
+func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
 	v1, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err
@@ -315,20 +258,20 @@ func (op CmpOp) Eval(ctx EvalStack) (EvalValue, error) {
 	return falseLitteral, err
 }
 
-func (op CmpOp) compare(l, r EvalValue) (bool, error) {
+func (op CmpOp) compare(l, r document.Value) (bool, error) {
 	switch op.Token {
 	case scanner.EQ:
-		return l.Value.IsEqual(r.Value.Value)
+		return l.IsEqual(r)
 	case scanner.NEQ:
-		return l.Value.IsNotEqual(r.Value.Value)
+		return l.IsNotEqual(r)
 	case scanner.GT:
-		return l.Value.IsGreaterThan(r.Value.Value)
+		return l.IsGreaterThan(r)
 	case scanner.GTE:
-		return l.Value.IsGreaterThanOrEqual(r.Value.Value)
+		return l.IsGreaterThanOrEqual(r)
 	case scanner.LT:
-		return l.Value.IsLesserThan(r.Value.Value)
+		return l.IsLesserThan(r)
 	case scanner.LTE:
-		return l.Value.IsLesserThanOrEqual(r.Value.Value)
+		return l.IsLesserThanOrEqual(r)
 	default:
 		panic(fmt.Sprintf("unknown token %v", op.Token))
 	}
@@ -344,14 +287,14 @@ func And(a, b Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (op *AndOp) Eval(ctx EvalStack) (EvalValue, error) {
+func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 	s, err := op.a.Eval(ctx)
-	if err != nil || !s.Truthy() {
+	if err != nil || !s.IsTruthy() {
 		return falseLitteral, err
 	}
 
 	s, err = op.b.Eval(ctx)
-	if err != nil || !s.Truthy() {
+	if err != nil || !s.IsTruthy() {
 		return falseLitteral, err
 	}
 
@@ -368,12 +311,12 @@ func Or(a, b Expr) Expr {
 }
 
 // Eval implements the Expr interface.
-func (op *OrOp) Eval(ctx EvalStack) (EvalValue, error) {
+func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil {
 		return falseLitteral, err
 	}
-	if s.Truthy() {
+	if s.IsTruthy() {
 		return trueLitteral, nil
 	}
 
@@ -381,7 +324,7 @@ func (op *OrOp) Eval(ctx EvalStack) (EvalValue, error) {
 	if err != nil {
 		return falseLitteral, err
 	}
-	if s.Truthy() {
+	if s.IsTruthy() {
 		return trueLitteral, nil
 	}
 
@@ -395,19 +338,17 @@ type KVPair struct {
 
 type KVPairs []KVPair
 
-func (kvp KVPairs) Eval(ctx EvalStack) (EvalValue, error) {
+func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {
 	var fb document.FieldBuffer
 
 	for _, kv := range kvp {
 		v, err := kv.V.Eval(ctx)
 		if err != nil {
-			return EvalValue{}, err
+			return document.Value{}, err
 		}
 
-		fb.Add(kv.K, v.Value.Value)
+		fb.Add(kv.K, v)
 	}
 
-	return EvalValue{
-		Value: DocumentValue(&fb),
-	}, nil
+	return document.NewDocumentValue(&fb), nil
 }

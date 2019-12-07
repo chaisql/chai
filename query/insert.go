@@ -75,11 +75,13 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 				return res, fmt.Errorf("unsupported parameter of type %t, expecting document.Document", v)
 			}
 		case LiteralValue:
-			if tp.Value.Type != document.DocumentValue {
+			v := document.Value(tp)
+
+			if v.Type != document.DocumentValue {
 				return res, fmt.Errorf("values must be a list of documents if field list is empty")
 			}
 
-			d, err = tp.Value.DecodeToDocument()
+			d, err = v.DecodeToDocument()
 			if err != nil {
 				return res, err
 			}
@@ -88,7 +90,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			if err != nil {
 				return res, err
 			}
-			d, err = v.Value.Value.DecodeToDocument()
+			d, err = v.DecodeToDocument()
 			if err != nil {
 				return res, err
 			}
@@ -121,11 +123,11 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 
 		// each record must be a list of expressions
 		// (e1, e2, e3, ...) or [e1, e2, e2, ....]
-		if v.Value.Type != document.ArrayValue {
+		if v.Type != document.ArrayValue {
 			return res, errors.New("invalid values")
 		}
 
-		vlist, err := v.Value.DecodeToArray()
+		vlist, err := v.DecodeToArray()
 		if err != nil {
 			return res, err
 		}
