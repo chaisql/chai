@@ -183,7 +183,7 @@ func (f FieldSelector) Name() string {
 
 func (f FieldSelector) SelectField(d document.Document) (string, document.Value, error) {
 	if d == nil {
-		return "", document.Value{}, document.ErrFieldNotFound
+		return f.Name(), nilLitteral, document.ErrFieldNotFound
 	}
 
 	var v document.Value
@@ -192,7 +192,7 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 	for i, chunk := range f {
 		v, err = d.GetByField(chunk)
 		if err != nil {
-			return "", document.Value{}, err
+			return f.Name(), nilLitteral, err
 		}
 
 		if i+1 == len(f) {
@@ -200,12 +200,12 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 		}
 
 		if v.Type != document.DocumentValue {
-			return f.Name(), document.Value{}, document.ErrFieldNotFound
+			return f.Name(), nilLitteral, document.ErrFieldNotFound
 		}
 
 		d, err = v.DecodeToDocument()
 		if err != nil {
-			return "", document.Value{}, err
+			return f.Name(), nilLitteral, err
 		}
 	}
 
@@ -214,8 +214,8 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 
 func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	fd, v, err := f.SelectField(stack.Record)
-	if err != nil {
-		return nil
+	if err != nil && err != document.ErrFieldNotFound {
+		return err
 	}
 
 	return fn(fd, v)
