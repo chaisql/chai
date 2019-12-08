@@ -87,8 +87,7 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 	p.Unscan()
 
-	// Check if it's a field
-	field, err := p.ParseField()
+	field, err := p.ParseFieldRef()
 	if err != nil {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"field or string"}, pos)
 	}

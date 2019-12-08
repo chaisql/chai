@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/asdine/genji/database"
@@ -187,10 +188,19 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 	}
 
 	var v document.Value
+	var a document.Array
 	var err error
 
 	for i, chunk := range f {
-		v, err = d.GetByField(chunk)
+		if d != nil {
+			v, err = d.GetByField(chunk)
+		} else {
+			idx, err := strconv.Atoi(chunk)
+			if err != nil {
+				return f.Name(), nilLitteral, document.ErrFieldNotFound
+			}
+			v, err = a.GetByIndex(idx)
+		}
 		if err != nil {
 			return f.Name(), nilLitteral, err
 		}
@@ -199,11 +209,17 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 			break
 		}
 
-		if v.Type != document.DocumentValue {
+		d = nil
+		a = nil
+
+		switch v.Type {
+		case document.DocumentValue:
+			d, err = v.DecodeToDocument()
+		case document.ArrayValue:
+			a, err = v.DecodeToArray()
+		default:
 			return f.Name(), nilLitteral, document.ErrFieldNotFound
 		}
-
-		d, err = v.DecodeToDocument()
 		if err != nil {
 			return f.Name(), nilLitteral, err
 		}

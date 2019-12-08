@@ -37,8 +37,12 @@ func TestParserExpr(t *testing.T) {
 		{"single quoted string", "'-10.0'", query.StringValue("-10.0"), false},
 
 		// identifiers
-		{"naked ident", `a.b.c`, query.FieldSelector{"a", "b", "c"}, false},
-		{"ident with quotes", "`some ident`.` with`.`  quotes`", query.FieldSelector{"some ident", " with", "  quotes"}, false},
+		{"simple field ref", `a`, query.FieldSelector{"a"}, false},
+		{"simple field ref with quotes", "`some ident`", query.FieldSelector{"some ident"}, false},
+		{"field ref", `a.b.100.c.1.2.3`, query.FieldSelector{"a", "b", "100", "c", "1", "2", "3"}, false},
+		{"field ref negative", `a.b.-100.c`, nil, true},
+		{"field ref with spaces", `a.  b.100.  c`, nil, true},
+		{"field ref with quotes", "`some ident`.` with`.5.`  quotes`", query.FieldSelector{"some ident", " with", "5", "  quotes"}, false},
 
 		// documents
 		{"empty document", `{}`, query.KVPairs(nil), false},

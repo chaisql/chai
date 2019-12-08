@@ -92,7 +92,7 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	switch tok {
 	case scanner.IDENT:
 		p.Unscan()
-		field, err := p.ParseField()
+		field, err := p.ParseFieldRef()
 		if err != nil {
 			return nil, err
 		}
@@ -322,29 +322,43 @@ func (p *Parser) parseKV() (query.KVPair, error) {
 	}, nil
 }
 
-// ParseField parses a field in the form ident(.ident)*
-func (p *Parser) ParseField() ([]string, error) {
-	var field []string
+// ParseFieldRef parses a field reference in the form ident (.ident|integer)*
+func (p *Parser) ParseFieldRef() ([]string, error) {
+	var fieldRef []string
 	// parse first mandatory ident
 	chunk, err := p.ParseIdent()
 	if err != nil {
 		return nil, err
 	}
-	field = append(field, chunk)
+	fieldRef = append(fieldRef, chunk)
 
 	for {
-		// scan the very next token
-		if tok, _, _ := p.Scan(); tok != scanner.DOT {
+		// scan the very next token.
+		// if can be either a '.' or a number starting with '.'
+		// because the scanner is unable to detect a dot when
+		// it's followed by digits.
+		// Otherwise, unscan and return the fieldRef
+		tok, _, lit := p.Scan()
+		switch tok {
+		case scanner.DOT:
+			// scan the next token for an ident
+			tok, pos, lit := p.Scan()
+			if tok != scanner.IDENT {
+				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
+			}
+			fieldRef = append(fieldRef, lit)
+		case scanner.NUMBER:
+			// if it starts with a dot, it's considered as an array index
+			if lit[0] != '.' {
+				p.Unscan()
+				return fieldRef, nil
+			}
+			lit = lit[1:]
+			fieldRef = append(fieldRef, lit)
+		default:
 			p.Unscan()
-			return field, nil
+			return fieldRef, nil
 		}
-
-		chunk, err = p.ParseIdent()
-		if err != nil {
-			return nil, err
-		}
-
-		field = append(field, chunk)
 	}
 }
 
