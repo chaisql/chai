@@ -2,6 +2,7 @@ package document_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/asdine/genji/document"
@@ -125,6 +126,65 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, document.NewBoolValue(true), v)
 		err = buf.Replace("d", document.NewInt64Value(11))
 		require.Error(t, err)
+	})
+
+	t.Run("UnmarshalJSON", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			data     string
+			expected *document.FieldBuffer
+			fails    bool
+		}{
+			{"empty object", "{}", document.NewFieldBuffer(), false},
+			{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
+				document.NewFieldBuffer().
+					Add("a", document.NewInt8Value(1)).
+					Add("b", document.NewBoolValue(true)).
+					Add("c", document.NewStringValue("hello")).
+					Add("d", document.NewArrayValue(document.NewValueBuffer().
+						Append(document.NewInt8Value(1)).
+						Append(document.NewInt8Value(2)).
+						Append(document.NewInt8Value(3)))).
+					Add("e", document.NewDocumentValue(document.NewFieldBuffer().Add("f", document.NewStringValue("g")))),
+				false},
+			{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", document.NewStringValue("hello ciao")), false},
+			{"+int8 values", `{"a": 1}`, document.NewFieldBuffer().Add("a", document.NewInt8Value(1)), false},
+			{"-int8 values", `{"a": -1}`, document.NewFieldBuffer().Add("a", document.NewInt8Value(-1)), false},
+			{"+int16 values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", document.NewInt16Value(1000)), false},
+			{"-int16 values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", document.NewInt16Value(1000)), false},
+			{"+int32 values", `{"a": 1000000}`, document.NewFieldBuffer().Add("a", document.NewInt32Value(1000000)), false},
+			{"-int32 values", `{"a": 1000000}`, document.NewFieldBuffer().Add("a", document.NewInt32Value(1000000)), false},
+			{"+int64 values", `{"a": 10000000000}`, document.NewFieldBuffer().Add("a", document.NewInt64Value(10000000000)), false},
+			{"-int64 values", `{"a": -10000000000}`, document.NewFieldBuffer().Add("a", document.NewInt64Value(-10000000000)), false},
+			{"uint64 values", `{"a": 10000000000000000000}`, document.NewFieldBuffer().Add("a", document.NewUint64Value(10000000000000000000)), false},
+			{"+float64 values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewFloat64Value(10000000000)), false},
+			{"-float64 values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewFloat64Value(-10000000000)), false},
+			{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", document.NewBoolValue(true)).Add("b", document.NewBoolValue(false)), false},
+			{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", document.NewArrayValue(document.NewValueBuffer())), false},
+			{"nested arrays", `{"a": [[1,  2]]}`, document.NewFieldBuffer().
+				Add("a", document.NewArrayValue(
+					document.NewValueBuffer().
+						Append(document.NewArrayValue(
+							document.NewValueBuffer().
+								Append(document.NewInt8Value(1)).
+								Append(document.NewInt8Value(2)))))), false},
+			{"missing comma", `{"a": 1 "b": 2}`, nil, true},
+			{"missing closing brackets", `{"a": 1, "b": 2`, nil, true},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				var buf document.FieldBuffer
+
+				err := json.Unmarshal([]byte(test.data), &buf)
+				if test.fails {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+					require.Equal(t, *test.expected, buf)
+				}
+			})
+		}
 	})
 }
 

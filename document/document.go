@@ -28,7 +28,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -143,6 +145,145 @@ func (fb *FieldBuffer) Replace(field string, v Value) error {
 
 func (fb FieldBuffer) Len() int {
 	return len(fb.fields)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	t, err := dec.Token()
+	if err == io.EOF {
+		return err
+	}
+
+	// expecting a '{'
+	if d, ok := t.(json.Delim); !ok || d.String() != "{" {
+		return fmt.Errorf("found %q, expected '{'", d.String())
+	}
+
+	for dec.More() {
+		err = fb.parseJSONKV(dec)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (fb *FieldBuffer) parseJSONKV(dec *json.Decoder) error {
+	// parse the key, it must be a string
+	t, err := dec.Token()
+	if err != nil {
+		return err
+	}
+
+	k, ok := t.(string)
+	if !ok {
+		return fmt.Errorf("found %q, expected '{'", t)
+	}
+
+	v, err := fb.parseJSONValue(dec)
+	if err != nil {
+		return err
+	}
+
+	fb.Add(k, v)
+	return nil
+}
+
+func (fb *FieldBuffer) parseJSONValue(dec *json.Decoder) (Value, error) {
+	// ensure the decoder parses numbers as the json.Number type
+	dec.UseNumber()
+
+	// parse the first token to determine which type is it
+	t, err := dec.Token()
+	if err != nil {
+		return Value{}, err
+	}
+
+	switch tt := t.(type) {
+	case string:
+		return NewStringValue(tt), nil
+	case bool:
+		return NewBoolValue(tt), nil
+	case nil:
+		return NewNullValue(), nil
+	case json.Number:
+		i, err := tt.Int64()
+		if err != nil {
+			// if it's too big to fit in an int64, perhaps it can fit in a uint64
+			ui, err := strconv.ParseUint(tt.String(), 10, 64)
+			if err == nil {
+				return NewUint64Value(ui), nil
+			}
+
+			// let's try parsing this as a floating point number
+			f, err := tt.Float64()
+			if err != nil {
+				return Value{}, err
+			}
+
+			return NewFloat64Value(f), nil
+		}
+
+		switch {
+		case i >= math.MinInt8 && i <= math.MaxInt8:
+			return NewInt8Value(int8(i)), nil
+		case i >= math.MinInt16 && i <= math.MaxInt16:
+			return NewInt16Value(int16(i)), nil
+		case i >= math.MinInt32 && i <= math.MaxInt32:
+			return NewInt32Value(int32(i)), nil
+		default:
+			return NewInt64Value(int64(i)), nil
+		}
+	case json.Delim:
+		switch tt {
+		case ']', '}':
+			return Value{}, fmt.Errorf("found %q, expected '{' or '['", tt)
+		case '[':
+			buf := NewValueBuffer()
+			for dec.More() {
+				v, err := fb.parseJSONValue(dec)
+				if err != nil {
+					return Value{}, err
+				}
+				buf = buf.Append(v)
+			}
+
+			// expecting ']'
+			t, err = dec.Token()
+			if err != nil {
+				return Value{}, err
+			}
+			if d, ok := t.(json.Delim); !ok || d != ']' {
+				return Value{}, fmt.Errorf("found %q, expected ']'", tt)
+			}
+
+			return NewArrayValue(buf), nil
+		case '{':
+			buf := NewFieldBuffer()
+			for dec.More() {
+				err := buf.parseJSONKV(dec)
+				if err != nil {
+					return Value{}, err
+				}
+			}
+
+			// expecting '}'
+			t, err = dec.Token()
+			if err != nil {
+				return Value{}, err
+			}
+			if d, ok := t.(json.Delim); !ok || d != '}' {
+				return Value{}, fmt.Errorf("found %q, expected '}'", tt)
+			}
+
+			return NewDocumentValue(buf), nil
+		}
+	}
+
+	return Value{}, nil
 }
 
 // Less reports whether the element with
