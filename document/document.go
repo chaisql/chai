@@ -147,6 +147,11 @@ func (fb FieldBuffer) Len() int {
 	return len(fb.fields)
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonDocument{Document: fb})
+}
+
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -183,7 +188,7 @@ func (fb *FieldBuffer) parseJSONKV(dec *json.Decoder) error {
 		return fmt.Errorf("found %q, expected '{'", t)
 	}
 
-	v, err := fb.parseJSONValue(dec)
+	v, err := parseJSONValue(dec)
 	if err != nil {
 		return err
 	}
@@ -192,7 +197,7 @@ func (fb *FieldBuffer) parseJSONKV(dec *json.Decoder) error {
 	return nil
 }
 
-func (fb *FieldBuffer) parseJSONValue(dec *json.Decoder) (Value, error) {
+func parseJSONValue(dec *json.Decoder) (Value, error) {
 	// ensure the decoder parses numbers as the json.Number type
 	dec.UseNumber()
 
@@ -244,7 +249,7 @@ func (fb *FieldBuffer) parseJSONValue(dec *json.Decoder) (Value, error) {
 		case '[':
 			buf := NewValueBuffer()
 			for dec.More() {
-				v, err := fb.parseJSONValue(dec)
+				v, err := parseJSONValue(dec)
 				if err != nil {
 					return Value{}, err
 				}
@@ -631,4 +636,39 @@ func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
 
 func (vb ValueBuffer) Append(v Value) ValueBuffer {
 	return append(vb, v)
+}
+
+func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	t, err := dec.Token()
+	if err == io.EOF {
+		return err
+	}
+
+	// expecting a '['
+	if d, ok := t.(json.Delim); !ok || d.String() != "[" {
+		return fmt.Errorf("found %q, expected '['", d.String())
+	}
+
+	for dec.More() {
+		v, err := parseJSONValue(dec)
+		if err != nil {
+			return err
+		}
+
+		*vb = vb.Append(v)
+	}
+
+	t, err = dec.Token()
+	if err == io.EOF {
+		return err
+	}
+
+	// expecting a ']'
+	if d, ok := t.(json.Delim); !ok || d.String() != "]" {
+		return fmt.Errorf("found %q, expected ']'", d.String())
+	}
+
+	return nil
 }

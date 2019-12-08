@@ -1,6 +1,7 @@
 package document_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"testing"
@@ -277,22 +278,18 @@ func TestComparisonTextWithNull(t *testing.T) {
 func TestComparisonDocuments(t *testing.T) {
 	tests := []struct {
 		op string
-		a  document.Document
-		b  document.Document
+		a  string
+		b  string
 	}{
-		{"=", document.NewFieldBuffer(), document.NewFieldBuffer()},
-		{"=", document.NewFieldBuffer().Add("a", document.NewIntValue(1)), document.NewFieldBuffer().Add("a", document.NewIntValue(1))},
+		{"=", `{}`, `{}`},
+		{"=", `{"a": 1}`, `{"a": 1}`},
 		{
 			"=",
-			document.NewFieldBuffer().
-				Add("a", document.NewInt32Value(1)).
-				Add("b", document.NewUint64Value(2)),
-			document.NewFieldBuffer().
-				Add("b", document.NewFloat64Value(2)).
-				Add("a", document.NewInt8Value(1)),
+			`{"a": 1, "b": 2}`,
+			`{"b": 2, "a": 1}`,
 		},
-		{">", document.NewFieldBuffer().Add("a", document.NewInt8Value(2)), document.NewFieldBuffer().Add("a", document.NewInt64Value(1))},
-		{"<", document.NewFieldBuffer().Add("a", document.NewFloat64Value(1)), document.NewFieldBuffer().Add("a", document.NewInt8Value(2))},
+		{">", `{"a": 2}`, `{"a": 1}`},
+		{"<", `{"a": 1}`, `{"a": 2}`},
 	}
 
 	for _, test := range tests {
@@ -300,22 +297,26 @@ func TestComparisonDocuments(t *testing.T) {
 			var ok bool
 			var err error
 
+			var d1, d2 document.FieldBuffer
+			require.NoError(t, json.Unmarshal([]byte(test.a), &d1))
+			require.NoError(t, json.Unmarshal([]byte(test.b), &d2))
+
 			switch test.op {
 			case "=":
-				ok, err = document.NewDocumentValue(test.a).IsEqual(document.NewDocumentValue(test.b))
+				ok, err = document.NewDocumentValue(d1).IsEqual(document.NewDocumentValue(d2))
 				require.NoError(t, err)
 				require.True(t, ok)
 			case ">":
-				ok, err = document.NewDocumentValue(test.a).IsGreaterThan(document.NewDocumentValue(test.b))
+				ok, err = document.NewDocumentValue(d1).IsGreaterThan(document.NewDocumentValue(d2))
 				require.Error(t, err)
 			case ">=":
-				ok, err = document.NewDocumentValue(test.a).IsGreaterThanOrEqual(document.NewDocumentValue(test.b))
+				ok, err = document.NewDocumentValue(d1).IsGreaterThanOrEqual(document.NewDocumentValue(d2))
 				require.Error(t, err)
 			case "<":
-				ok, err = document.NewDocumentValue(test.a).IsLesserThan(document.NewDocumentValue(test.b))
+				ok, err = document.NewDocumentValue(d1).IsLesserThan(document.NewDocumentValue(d2))
 				require.Error(t, err)
 			case "<=":
-				ok, err = document.NewDocumentValue(test.a).IsLesserThanOrEqual(document.NewDocumentValue(test.b))
+				ok, err = document.NewDocumentValue(d1).IsLesserThanOrEqual(document.NewDocumentValue(d2))
 				require.Error(t, err)
 			}
 		})
@@ -325,51 +326,27 @@ func TestComparisonDocuments(t *testing.T) {
 func TestComparisonArrays(t *testing.T) {
 	tests := []struct {
 		op string
-		a  document.Array
-		b  document.Array
+		a  string
+		b  string
 	}{
-		{"=", document.NewValueBuffer(), document.NewValueBuffer()},
-		{"=", document.NewValueBuffer().Append(document.NewInt64Value(1)), document.NewValueBuffer().Append(document.NewInt8Value(1))},
-		{
-			"=",
-			document.NewValueBuffer().
-				Append(document.NewInt64Value(1)).
-				Append(document.NewIntValue(2)),
-			document.NewValueBuffer().
-				Append(document.NewFloat64Value(1)).
-				Append(document.NewIntValue(2)),
-		},
-		{"!=", document.NewValueBuffer().Append(document.NewInt64Value(1)), document.NewValueBuffer().Append(document.NewInt8Value(5))},
-		{"!=", document.NewValueBuffer().Append(document.NewInt64Value(1)), document.NewValueBuffer().Append(document.NewInt8Value(1)).Append(document.NewInt8Value(1))},
-		{">", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(1))},
-		{">",
-			document.NewValueBuffer().Append(document.NewIntValue(2)),
-			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000))},
-		{">",
-			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
-			document.NewValueBuffer().Append(document.NewIntValue(1))},
-		{">",
-			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
-			document.NewValueBuffer().Append(document.NewIntValue(2))},
-		{"<", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
-		{"<",
-			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000)),
-			document.NewValueBuffer().Append(document.NewIntValue(2))},
-		{"<",
-			document.NewValueBuffer().Append(document.NewIntValue(2)),
-			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000))},
-		{"<=", document.NewValueBuffer().Append(document.NewIntValue(1)), document.NewValueBuffer().Append(document.NewIntValue(2))},
-		{"<=",
-			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000)),
-			document.NewValueBuffer().Append(document.NewIntValue(2))},
-		{">=", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(1))},
-		{">=", document.NewValueBuffer().Append(document.NewIntValue(2)), document.NewValueBuffer().Append(document.NewIntValue(2))},
-		{">=",
-			document.NewValueBuffer().Append(document.NewIntValue(2)),
-			document.NewValueBuffer().Append(document.NewIntValue(1)).Append(document.NewIntValue(1000))},
-		{">=",
-			document.NewValueBuffer().Append(document.NewIntValue(2)).Append(document.NewIntValue(1000)),
-			document.NewValueBuffer().Append(document.NewIntValue(1))},
+		{"=", `[]`, `[]`},
+		{"=", `[1]`, `[1]`},
+		{"=", `[1.0, 2]`, `[1, 2]`},
+		{"!=", `[1]`, `[5]`},
+		{"!=", `[1]`, `[1, 1]`},
+		{">", `[2]`, `[1]`},
+		{">", `[2]`, `[1, 1000]`},
+		{">", `[2, 1000]`, `[1]`},
+		{">", `[2, 1000]`, `[2]`},
+		{"<", `[1]`, `[2]`},
+		{"<", `[1, 1000]`, `[2]`},
+		{"<", `[2]`, `[2, 1000]`},
+		{"<=", `[1]`, `[2]`},
+		{"<=", `[1, 1000]`, `[2]`},
+		{">=", `[2]`, `[1]`},
+		{">=", `[2]`, `[2]`},
+		{">=", `[2]`, `[1, 1000]`},
+		{">=", `[2, 1000]`, `[1]`},
 	}
 
 	for _, test := range tests {
@@ -377,19 +354,23 @@ func TestComparisonArrays(t *testing.T) {
 			var ok bool
 			var err error
 
+			var a1, a2 document.ValueBuffer
+			require.NoError(t, json.Unmarshal([]byte(test.a), &a1))
+			require.NoError(t, json.Unmarshal([]byte(test.b), &a2))
+
 			switch test.op {
 			case "=":
-				ok, err = document.NewArrayValue(test.a).IsEqual(document.NewArrayValue(test.b))
+				ok, err = document.NewArrayValue(a1).IsEqual(document.NewArrayValue(a2))
 			case ">":
-				ok, err = document.NewArrayValue(test.a).IsGreaterThan(document.NewArrayValue(test.b))
+				ok, err = document.NewArrayValue(a1).IsGreaterThan(document.NewArrayValue(a2))
 			case ">=":
-				ok, err = document.NewArrayValue(test.a).IsGreaterThanOrEqual(document.NewArrayValue(test.b))
+				ok, err = document.NewArrayValue(a1).IsGreaterThanOrEqual(document.NewArrayValue(a2))
 			case "<":
-				ok, err = document.NewArrayValue(test.a).IsLesserThan(document.NewArrayValue(test.b))
+				ok, err = document.NewArrayValue(a1).IsLesserThan(document.NewArrayValue(a2))
 			case "<=":
-				ok, err = document.NewArrayValue(test.a).IsLesserThanOrEqual(document.NewArrayValue(test.b))
+				ok, err = document.NewArrayValue(a1).IsLesserThanOrEqual(document.NewArrayValue(a2))
 			case "!=":
-				ok, err = document.NewArrayValue(test.a).IsNotEqual(document.NewArrayValue(test.b))
+				ok, err = document.NewArrayValue(a1).IsNotEqual(document.NewArrayValue(a2))
 			}
 			require.NoError(t, err)
 			require.True(t, ok)
