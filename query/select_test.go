@@ -37,6 +37,9 @@ func TestSelectStmt(t *testing.T) {
 		{"With key()", "SELECT key(), a FROM test", false, "1,foo1\n2,foo2\n3\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
 		{"With pk in cond, gt", "SELECT * FROM test WHERE k > 0 AND e = 1", false, "foo2,bar1,1,2\n", nil},
 		{"With pk in cond, =", "SELECT * FROM test WHERE k = 2.0 AND e = 1", false, "foo2,bar1,1,2\n", nil},
+		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, "", nil},
+		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, "", nil},
+		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\nfoo3,bar2,3\n", nil},
 	}
 
 	for _, test := range tests {

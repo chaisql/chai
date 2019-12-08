@@ -225,12 +225,12 @@ func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Va
 // It implements the Expr interface.
 func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 	if stack.Record == nil {
-		return document.Value{}, document.ErrFieldNotFound
+		return nilLitteral, document.ErrFieldNotFound
 	}
 
 	_, v, err := f.SelectField(stack.Record)
 	if err != nil {
-		return nilLitteral, nil
+		return nilLitteral, document.ErrFieldNotFound
 	}
 
 	return v, nil

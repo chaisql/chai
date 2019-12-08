@@ -83,7 +83,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 					Record: r,
 					Params: args,
 				})
-				if err != nil {
+				if err != nil && err != document.ErrFieldNotFound {
 					return err
 				}
 

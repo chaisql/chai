@@ -238,11 +238,26 @@ func Lte(a, b Expr) Expr {
 func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
 	v1, err := op.a.Eval(ctx)
 	if err != nil {
+		if err == document.ErrFieldNotFound {
+			if op.Token == scanner.NEQ {
+				return trueLitteral, nil
+			}
+			return falseLitteral, nil
+		}
+
 		return falseLitteral, err
 	}
 
 	v2, err := op.b.Eval(ctx)
 	if err != nil {
+		if err == document.ErrFieldNotFound {
+			if op.Token == scanner.NEQ {
+				return trueLitteral, nil
+			}
+
+			return falseLitteral, nil
+		}
+
 		return falseLitteral, err
 	}
 
