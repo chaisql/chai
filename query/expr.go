@@ -123,10 +123,6 @@ type LiteralExprList []Expr
 
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
-	if len(l) == 0 {
-		return nilLitteral, nil
-	}
-
 	var err error
 	values := make(document.ValueBuffer, len(l))
 	for i, e := range l {

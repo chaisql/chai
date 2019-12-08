@@ -309,7 +309,6 @@ func compareArrays(op operator, l, r Value) (bool, error) {
 		return false, err
 	}
 
-	var ok bool
 	var i, j int
 
 	for {
@@ -339,14 +338,29 @@ func compareArrays(op operator, l, r Value) (bool, error) {
 		if !isEq {
 			return false, nil
 		}
-
-		ok = isEq
 	}
 
-	if op == operatorEq {
-		return i == j, nil
+	switch {
+	case i > j:
+		switch op {
+		case operatorEq, operatorLt, operatorLte:
+			return false, nil
+		default:
+			return true, nil
+		}
+	case i < j:
+		switch op {
+		case operatorEq, operatorGt, operatorGte:
+			return false, nil
+		default:
+			return true, nil
+		}
+	default:
+		switch op {
+		case operatorEq, operatorGte, operatorLte:
+			return true, nil
+		default:
+			return false, nil
+		}
 	}
-
-	// return last value stored in ok
-	return ok, nil
 }
