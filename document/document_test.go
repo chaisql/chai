@@ -72,7 +72,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, document.NewInt64Value(10), v)
 
 		v, err = buf.GetByField("not existing")
-		require.Error(t, err)
+		require.Equal(t, document.ErrFieldNotFound, err)
 		require.Zero(t, v)
 	})
 
@@ -214,7 +214,7 @@ func TestNewFromMap(t *testing.T) {
 		require.Equal(t, counter["NilField"], 1)
 	})
 
-	t.Run("Field", func(t *testing.T) {
+	t.Run("GetByField", func(t *testing.T) {
 		v, err := rec.GetByField("Name")
 		require.NoError(t, err)
 		require.Equal(t, document.Value{Type: document.StringValue, Data: []byte("foo")}, v)
@@ -228,7 +228,7 @@ func TestNewFromMap(t *testing.T) {
 		require.Equal(t, document.Value{Type: document.NullValue}, v)
 
 		_, err = rec.GetByField("bar")
-		require.Error(t, err)
+		require.Equal(t, document.ErrFieldNotFound, err)
 	})
 }
 

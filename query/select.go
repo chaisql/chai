@@ -151,7 +151,7 @@ func (r RecordMask) GetByField(name string) (document.Value, error) {
 		}
 	}
 
-	return document.Value{}, fmt.Errorf("field %q not found", name)
+	return document.Value{}, document.ErrFieldNotFound
 }
 
 func (r RecordMask) Iterate(fn func(f string, v document.Value) error) error {
@@ -183,7 +183,7 @@ func (f FieldSelector) Name() string {
 
 func (f FieldSelector) SelectField(d document.Document) (string, document.Value, error) {
 	if d == nil {
-		return "", document.Value{}, fmt.Errorf("field %q not found", f)
+		return "", document.Value{}, document.ErrFieldNotFound
 	}
 
 	var v document.Value
@@ -200,7 +200,7 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 		}
 
 		if v.Type != document.DocumentValue {
-			return f.Name(), document.Value{}, fmt.Errorf("field %q not found", f.Name())
+			return f.Name(), document.Value{}, document.ErrFieldNotFound
 		}
 
 		d, err = v.DecodeToDocument()
@@ -225,7 +225,7 @@ func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Va
 // It implements the Expr interface.
 func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 	if stack.Record == nil {
-		return document.Value{}, fmt.Errorf("field %q not found", f)
+		return document.Value{}, document.ErrFieldNotFound
 	}
 
 	_, v, err := f.SelectField(stack.Record)

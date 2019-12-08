@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"sort"
 )
@@ -332,7 +331,7 @@ func DecodeValue(data []byte, valueName string) (Value, error) {
 		}
 	}
 
-	return Value{}, fmt.Errorf("field %s not found", valueName)
+	return Value{}, ErrFieldNotFound
 }
 
 // An EncodedDocument implements the Document interface on top of an encoded representation of a

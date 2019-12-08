@@ -34,12 +34,17 @@ import (
 	"strings"
 )
 
+// ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
+// the field wasn't found in the document.
+var ErrFieldNotFound = errors.New("field not found")
+
 // A Document represents a group of key value pairs.
 type Document interface {
 	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(fn func(field string, value Value) error) error
 	// GetByField returns a value by field name.
+	// Must return ErrFieldNotFound if the field doesnt exist.
 	GetByField(field string) (Value, error)
 }
 
@@ -91,7 +96,7 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 		}
 	}
 
-	return Value{}, fmt.Errorf("field %q not found", field)
+	return Value{}, ErrFieldNotFound
 }
 
 // Set replaces a field if it already exists or creates one if not.
@@ -128,7 +133,7 @@ func (fb *FieldBuffer) Delete(field string) error {
 		}
 	}
 
-	return fmt.Errorf("field %q not found", field)
+	return ErrFieldNotFound
 }
 
 // Replace the value of the field by v.
@@ -140,7 +145,7 @@ func (fb *FieldBuffer) Replace(field string, v Value) error {
 		}
 	}
 
-	return fmt.Errorf("field %q not found", field)
+	return ErrFieldNotFound
 }
 
 func (fb FieldBuffer) Len() int {
@@ -337,7 +342,7 @@ func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
 func (m mapDocument) GetByField(field string) (Value, error) {
 	v, ok := m[field]
 	if !ok {
-		return Value{}, fmt.Errorf("field %q not found", field)
+		return Value{}, ErrFieldNotFound
 	}
 	return NewValue(v)
 }
