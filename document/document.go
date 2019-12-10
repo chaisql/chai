@@ -48,6 +48,39 @@ type Document interface {
 	GetByField(field string) (Value, error)
 }
 
+// NewFromMap creates a document from a map.
+// Due to the way maps are designed, iteration order is not guaranteed.
+func NewFromMap(m map[string]interface{}) Document {
+	return mapDocument(m)
+}
+
+type mapDocument map[string]interface{}
+
+var _ Document = (*mapDocument)(nil)
+
+func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
+	for mk, mv := range m {
+		v, err := NewValue(mv)
+		if err != nil {
+			return err
+		}
+
+		err = fn(mk, v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m mapDocument) GetByField(field string) (Value, error) {
+	v, ok := m[field]
+	if !ok {
+		return Value{}, ErrFieldNotFound
+	}
+	return NewValue(v)
+}
+
 // A Keyer returns the key identifying documents in their storage.
 // This is usually implemented by documents read from storages.
 type Keyer interface {
@@ -176,6 +209,16 @@ func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	t, err = dec.Token()
+	if err == io.EOF {
+		return fmt.Errorf("found %q, expected '}'", err)
+	}
+
+	// expecting a '}'
+	if d, ok := t.(json.Delim); !ok || d.String() != "}" {
+		return fmt.Errorf("found %q, expected '}'", d.String())
 	}
 
 	return nil
@@ -314,48 +357,6 @@ func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
 }
 
-// NewFromMap creates a document from a map.
-// Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m map[string]interface{}) Document {
-	return mapDocument(m)
-}
-
-type mapDocument map[string]interface{}
-
-var _ Document = (*mapDocument)(nil)
-
-func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
-	for mk, mv := range m {
-		v, err := NewValue(mv)
-		if err != nil {
-			return err
-		}
-
-		err = fn(mk, v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m mapDocument) GetByField(field string) (Value, error) {
-	v, ok := m[field]
-	if !ok {
-		return Value{}, ErrFieldNotFound
-	}
-	return NewValue(v)
-}
-
-// Dump is a helper that dumps the name, type and value of each field of a document into the given writer.
-func Dump(w io.Writer, r Document) error {
-	return r.Iterate(func(f string, v Value) error {
-		x, err := v.Decode()
-		fmt.Fprintf(w, "%s(%s): %#v\n", f, v.Type, x)
-		return err
-	})
-}
-
 // ToJSON encodes d to w in JSON.
 func ToJSON(w io.Writer, d Document) error {
 	return json.NewEncoder(w).Encode(jsonDocument{d})
@@ -435,9 +436,8 @@ func (j jsonArray) MarshalJSON() ([]byte, error) {
 // ToMap decodes the document into a map. m must be already allocated.
 func ToMap(r Document, m map[string]interface{}) error {
 	err := r.Iterate(func(f string, v Value) error {
-		var err error
-		m[f], err = v.Decode()
-		return err
+		m[f] = v.V
+		return nil
 	})
 
 	return err
@@ -479,105 +479,105 @@ func Scan(r Document, targets ...interface{}) error {
 
 		switch t := targets[i].(type) {
 		case *uint:
-			x, err := v.DecodeToUint()
+			x, err := v.ConvertToUint()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *uint8:
-			x, err := v.DecodeToUint8()
+			x, err := v.ConvertToUint8()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *uint16:
-			x, err := v.DecodeToUint16()
+			x, err := v.ConvertToUint16()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *uint32:
-			x, err := v.DecodeToUint32()
+			x, err := v.ConvertToUint32()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *uint64:
-			x, err := v.DecodeToUint64()
+			x, err := v.ConvertToUint64()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *int:
-			x, err := v.DecodeToInt()
+			x, err := v.ConvertToInt()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *int8:
-			x, err := v.DecodeToInt8()
+			x, err := v.ConvertToInt8()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *int16:
-			x, err := v.DecodeToInt16()
+			x, err := v.ConvertToInt16()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *int32:
-			x, err := v.DecodeToInt32()
+			x, err := v.ConvertToInt32()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *int64:
-			x, err := v.DecodeToInt64()
+			x, err := v.ConvertToInt64()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *float32:
-			x, err := v.DecodeToFloat64()
+			x, err := v.ConvertToFloat64()
 			if err != nil {
 				return err
 			}
 
 			*t = float32(x)
 		case *float64:
-			x, err := v.DecodeToFloat64()
+			x, err := v.ConvertToFloat64()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *string:
-			x, err := v.DecodeToString()
+			x, err := v.ConvertToString()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *[]byte:
-			x, err := v.DecodeToBytes()
+			x, err := v.ConvertToBytes()
 			if err != nil {
 				return err
 			}
 
 			*t = x
 		case *bool:
-			x, err := v.DecodeToBool()
+			x, err := v.ConvertToBool()
 			if err != nil {
 				return err
 			}

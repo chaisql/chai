@@ -136,6 +136,7 @@ func TestFieldBuffer(t *testing.T) {
 			fails    bool
 		}{
 			{"empty object", "{}", document.NewFieldBuffer(), false},
+			{"empty object, missing closing bracket", "{", nil, true},
 			{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
 				document.NewFieldBuffer().
 					Add("a", document.NewInt8Value(1)).
@@ -190,9 +191,9 @@ func TestFieldBuffer(t *testing.T) {
 
 func TestNewFromMap(t *testing.T) {
 	m := map[string]interface{}{
-		"Name":     "foo",
-		"Age":      10,
-		"NilField": nil,
+		"name":     "foo",
+		"age":      10,
+		"nilField": nil,
 	}
 
 	rec := document.NewFromMap(m)
@@ -202,30 +203,33 @@ func TestNewFromMap(t *testing.T) {
 
 		err := rec.Iterate(func(f string, v document.Value) error {
 			counter[f]++
-			x, err := v.Decode()
-			require.NoError(t, err)
-			require.Equal(t, m[f], x)
+			switch f {
+			case "name":
+				require.Equal(t, m[f], string(v.V.([]byte)))
+			default:
+				require.Equal(t, m[f], v.V)
+			}
 			return nil
 		})
 		require.NoError(t, err)
 		require.Len(t, counter, 3)
-		require.Equal(t, counter["Name"], 1)
-		require.Equal(t, counter["Age"], 1)
-		require.Equal(t, counter["NilField"], 1)
+		require.Equal(t, counter["name"], 1)
+		require.Equal(t, counter["age"], 1)
+		require.Equal(t, counter["nilField"], 1)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
-		v, err := rec.GetByField("Name")
+		v, err := rec.GetByField("name")
 		require.NoError(t, err)
-		require.Equal(t, document.Value{Type: document.StringValue, Data: []byte("foo")}, v)
+		require.Equal(t, document.NewStringValue("foo"), v)
 
-		v, err = rec.GetByField("Age")
+		v, err = rec.GetByField("age")
 		require.NoError(t, err)
-		require.Equal(t, document.Value{Type: document.IntValue, Data: document.EncodeInt(10)}, v)
+		require.Equal(t, document.NewIntValue(10), v)
 
-		v, err = rec.GetByField("NilField")
+		v, err = rec.GetByField("nilField")
 		require.NoError(t, err)
-		require.Equal(t, document.Value{Type: document.NullValue}, v)
+		require.Equal(t, document.NewNullValue(), v)
 
 		_, err = rec.GetByField("bar")
 		require.Equal(t, document.ErrFieldNotFound, err)

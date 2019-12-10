@@ -1,4 +1,4 @@
-package document_test
+package encoding
 
 import (
 	"bytes"
@@ -9,68 +9,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFormat(t *testing.T) {
-	data, err := document.Encode(document.NewFieldBuffer().
-		Add("age", document.NewInt64Value(10)).
-		Add("address", document.NewNullValue()).
-		Add("name", document.NewStringValue("john")))
-
-	require.NoError(t, err)
-
-	var f document.Format
-	err = f.Decode(data)
-	require.NoError(t, err)
-	require.Equal(t, len(f.Body), f.Header.BodySize())
-	require.EqualValues(t, 3, f.Header.FieldsCount)
-	require.Len(t, f.Header.FieldHeaders, 3)
-
-	require.EqualValues(t, "address", f.Header.FieldHeaders[0].Name)
-	require.EqualValues(t, 7, f.Header.FieldHeaders[0].NameSize)
-	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Size)
-	require.EqualValues(t, document.NullValue, f.Header.FieldHeaders[0].Type)
-	require.EqualValues(t, 0, f.Header.FieldHeaders[0].Offset)
-
-	require.EqualValues(t, "age", f.Header.FieldHeaders[1].Name)
-	require.EqualValues(t, 3, f.Header.FieldHeaders[1].NameSize)
-	require.EqualValues(t, 8, f.Header.FieldHeaders[1].Size)
-	require.EqualValues(t, document.Int64Value, f.Header.FieldHeaders[1].Type)
-	require.EqualValues(t, 0, f.Header.FieldHeaders[1].Offset)
-
-	require.EqualValues(t, "name", f.Header.FieldHeaders[2].Name)
-	require.EqualValues(t, 4, f.Header.FieldHeaders[2].NameSize)
-	require.EqualValues(t, 4, f.Header.FieldHeaders[2].Size)
-	require.EqualValues(t, document.StringValue, f.Header.FieldHeaders[2].Type)
-	require.EqualValues(t, 8, f.Header.FieldHeaders[2].Offset)
-
-	// ensure using a pointer to FieldBuffer has the same behaviour
-	fb := document.NewFieldBuffer().
-		Add("age", document.NewInt64Value(10)).
-		Add("address", document.NewNullValue()).
-		Add("name", document.NewStringValue("john"))
-
-	dataPtr, err := document.Encode(fb)
-	require.NoError(t, err)
-	require.Equal(t, data, dataPtr)
-}
-
-func TestDecodeValue(t *testing.T) {
+func TestDecodeValueFromDocument(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
 		Add("address", document.NewNullValue()).
 		Add("name", document.NewStringValue("john"))
 
-	data, err := document.Encode(doc)
+	data, err := EncodeDocument(doc)
 	require.NoError(t, err)
 
-	v, err := document.DecodeValue(data, "age")
+	v, err := decodeValueFromDocument(data, "age")
 	require.NoError(t, err)
 	require.Equal(t, document.NewInt64Value(10), v)
 
-	v, err = document.DecodeValue(data, "address")
+	v, err = decodeValueFromDocument(data, "address")
 	require.NoError(t, err)
 	require.Equal(t, document.NewNullValue(), v)
 
-	v, err = document.DecodeValue(data, "name")
+	v, err = decodeValueFromDocument(data, "name")
 	require.NoError(t, err)
 	require.Equal(t, document.NewStringValue("john"), v)
 }
@@ -111,17 +67,17 @@ func TestEncodeDecode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			enc, err := document.Encode(test.d)
+			enc, err := EncodeDocument(test.d)
 			require.NoError(t, err)
 			var buf bytes.Buffer
-			err = document.ToJSON(&buf, document.EncodedDocument(enc))
+			err = document.ToJSON(&buf, DecodeDocument(enc))
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})
 	}
 }
 
-func TestEncodedDocument(t *testing.T) {
+func TestDecodeDocument(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
 		Add("name", document.NewStringValue("john")).
@@ -130,10 +86,10 @@ func TestEncodedDocument(t *testing.T) {
 			"country": "France",
 		})))
 
-	data, err := document.Encode(doc)
+	data, err := EncodeDocument(doc)
 	require.NoError(t, err)
 
-	ec := document.EncodedDocument(data)
+	ec := DecodeDocument(data)
 	v, err := ec.GetByField("age")
 	require.NoError(t, err)
 	require.Equal(t, document.NewInt64Value(10), v)
@@ -201,16 +157,16 @@ func TestEncodeArray(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			data, err := document.EncodeArray(test.a)
+			data, err := EncodeArray(test.a)
 			require.NoError(t, err)
 			var buf bytes.Buffer
-			document.ArrayToJSON(&buf, document.EncodedArray(data))
+			document.ArrayToJSON(&buf, DecodeArray(data))
 			require.JSONEq(t, test.expected, buf.String())
 		})
 	}
 }
 
-func BenchmarkEncode(b *testing.B) {
+func BenchmarkEncodeDocument(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
@@ -219,7 +175,7 @@ func BenchmarkEncode(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		document.Encode(&buf)
+		EncodeDocument(&buf)
 	}
 }
 
@@ -230,12 +186,12 @@ func BenchmarkFormatDecode(b *testing.B) {
 		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
 
-	data, err := document.Encode(&buf)
+	data, err := EncodeDocument(&buf)
 	require.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var f document.Format
+		var f Format
 		f.Decode(data)
 	}
 }
@@ -247,31 +203,102 @@ func BenchmarkDecodeValue(b *testing.B) {
 		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
 
-	data, err := document.Encode(&buf)
+	data, err := EncodeDocument(&buf)
 	require.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		document.DecodeValue(data, "name-99")
+		DecodeDocument(data).GetByField("name-99")
 	}
 }
 
-func BenchmarkEncodedDocument(b *testing.B) {
+func BenchmarkDecodeDocument(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
 		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
 	}
 
-	data, err := document.Encode(&buf)
+	data, err := EncodeDocument(&buf)
 	require.NoError(b, err)
 
-	ec := document.EncodedDocument(data)
+	ec := DecodeDocument(data)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ec.Iterate(func(string, document.Value) error {
 			return nil
+		})
+	}
+}
+
+func TestValueEncodeDecode(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected interface{}
+		enc      func() []byte
+		dec      func([]byte) (interface{}, error)
+	}{
+		{"bytes", []byte("foo"), func() []byte { return EncodeBytes([]byte("foo")) }, func(buf []byte) (interface{}, error) { return DecodeBytes(buf) }},
+		{"string", "bar", func() []byte { return EncodeString("bar") }, func(buf []byte) (interface{}, error) { return DecodeString(buf) }},
+		{"bool", true, func() []byte { return EncodeBool(true) }, func(buf []byte) (interface{}, error) { return DecodeBool(buf) }},
+		{"uint", uint(10), func() []byte { return EncodeUint(10) }, func(buf []byte) (interface{}, error) { return DecodeUint(buf) }},
+		{"uint8", uint8(10), func() []byte { return EncodeUint8(10) }, func(buf []byte) (interface{}, error) { return DecodeUint8(buf) }},
+		{"uint16", uint16(10), func() []byte { return EncodeUint16(10) }, func(buf []byte) (interface{}, error) { return DecodeUint16(buf) }},
+		{"uint32", uint32(10), func() []byte { return EncodeUint32(10) }, func(buf []byte) (interface{}, error) { return DecodeUint32(buf) }},
+		{"uint64", uint64(10), func() []byte { return EncodeUint64(10) }, func(buf []byte) (interface{}, error) { return DecodeUint64(buf) }},
+		{"int", int(-10), func() []byte { return EncodeInt(-10) }, func(buf []byte) (interface{}, error) { return DecodeInt(buf) }},
+		{"int8", int8(-10), func() []byte { return EncodeInt8(-10) }, func(buf []byte) (interface{}, error) { return DecodeInt8(buf) }},
+		{"int16", int16(-10), func() []byte { return EncodeInt16(-10) }, func(buf []byte) (interface{}, error) { return DecodeInt16(buf) }},
+		{"int32", int32(-10), func() []byte { return EncodeInt32(-10) }, func(buf []byte) (interface{}, error) { return DecodeInt32(buf) }},
+		{"int64", int64(-10), func() []byte { return EncodeInt64(-10) }, func(buf []byte) (interface{}, error) { return DecodeInt64(buf) }},
+		{"float64", float64(-3.14), func() []byte { return EncodeFloat64(-3.14) }, func(buf []byte) (interface{}, error) { return DecodeFloat64(buf) }},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			buf := test.enc()
+			actual, err := test.dec(buf)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+const Rng = 1000
+
+func TestOrdering(t *testing.T) {
+	tests := []struct {
+		name     string
+		min, max int
+		enc      func(int) []byte
+	}{
+		{"uint", 0, 1000, func(i int) []byte { return EncodeUint(uint(i)) }},
+		{"uint8", 0, 255, func(i int) []byte { return EncodeUint8(uint8(i)) }},
+		{"uint16", 0, 1000, func(i int) []byte { return EncodeUint16(uint16(i)) }},
+		{"uint32", 0, 1000, func(i int) []byte { return EncodeUint32(uint32(i)) }},
+		{"uint64", 0, 1000, func(i int) []byte { return EncodeUint64(uint64(i)) }},
+		{"int", -1000, 1000, func(i int) []byte { return EncodeInt(i) }},
+		{"int8", -100, 100, func(i int) []byte { return EncodeInt8(int8(i)) }},
+		{"int16", -1000, 1000, func(i int) []byte { return EncodeInt16(int16(i)) }},
+		{"int32", -1000, 1000, func(i int) []byte { return EncodeInt32(int32(i)) }},
+		{"int64", -1000, 1000, func(i int) []byte { return EncodeInt64(int64(i)) }},
+		{"float64", -1000, 1000, func(i int) []byte { return EncodeFloat64(float64(i)) }},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var prev []byte
+			for i := test.min; i < test.max; i++ {
+				cur := test.enc(i)
+				if prev == nil {
+					prev = cur
+					continue
+				}
+
+				require.Equal(t, -1, bytes.Compare(prev, cur))
+				prev = cur
+			}
 		})
 	}
 }

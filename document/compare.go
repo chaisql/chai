@@ -85,8 +85,14 @@ func compare(op operator, l, r Value) (bool, error) {
 	case l.Type == ArrayValue && r.Type == ArrayValue:
 		return compareArrays(op, l, r)
 
-	// if same type, or string and bytes, no conversion needed
-	case l.Type == r.Type:
+	// compare boolean and another value
+	case l.Type == BoolValue || r.Type == BoolValue:
+		return compareWithBool(op, l, r)
+
+	// compare strings and bytes together
+	case l.Type == StringValue && r.Type == StringValue:
+		fallthrough
+	case l.Type == BytesValue && r.Type == BytesValue:
 		fallthrough
 	case l.Type == StringValue && r.Type == BytesValue:
 		fallthrough
@@ -116,19 +122,58 @@ func compareWithNull(op operator, l, r Value) (bool, error) {
 	return false, fmt.Errorf("unknown operator %v", op)
 }
 
-func compareBytes(op operator, l, r Value) (bool, error) {
-	var ok bool
+// when comparing booleans with numbers, true equals 1 and false 0
+// when comparing booleans with other types, the boolean is always smaller.
+func compareWithBool(op operator, l, r Value) (bool, error) {
+	// if comparing a boolean with something other than a number or another bool, always return false.
+	if (!l.Type.IsNumber() && l.Type != BoolValue) || (!r.Type.IsNumber() && r.Type != BoolValue) {
+		return false, nil
+	}
+
+	var a, b bool
+
+	if l.Type == BoolValue {
+		a = l.V.(bool)
+	} else {
+		a = l.IsTruthy()
+	}
+
+	if r.Type == BoolValue {
+		b = r.V.(bool)
+	} else {
+		b = r.IsTruthy()
+	}
+
 	switch op {
 	case operatorEq:
-		ok = bytes.Equal(l.Data, r.Data)
+		return a == b, nil
 	case operatorGt:
-		ok = bytes.Compare(l.Data, r.Data) > 0
+		return a == true && b == false, nil
 	case operatorGte:
-		ok = bytes.Compare(l.Data, r.Data) >= 0
+		return a == b || a == true, nil
 	case operatorLt:
-		ok = bytes.Compare(l.Data, r.Data) < 0
+		return a == false && b == true, nil
 	case operatorLte:
-		ok = bytes.Compare(l.Data, r.Data) <= 0
+		return a == b || a == false, nil
+	}
+
+	return false, fmt.Errorf("unknown operator %v", op)
+}
+
+func compareBytes(op operator, l, r Value) (bool, error) {
+	var ok bool
+
+	switch op {
+	case operatorEq:
+		ok = bytes.Equal(l.V.([]byte), r.V.([]byte))
+	case operatorGt:
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) > 0
+	case operatorGte:
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) >= 0
+	case operatorLt:
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) < 0
+	case operatorLte:
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) <= 0
 	}
 
 	return ok, nil
@@ -139,21 +184,27 @@ func compareIntegers(op operator, l, r Value) (bool, error) {
 	// to int64 without first checking if they can overflow.
 	// if they do, the result of all the operations is already known
 	if l.Type == Uint64Value || r.Type == Uint64Value {
-		lv, err := l.Decode()
-		if err != nil {
-			return false, err
-		}
-
-		rv, err := r.Decode()
-		if err != nil {
-			return false, err
-		}
-
 		var ui uint64
 		if l.Type == Uint64Value {
-			ui = lv.(uint64)
+			ui = l.V.(uint64)
+
+			// check if the other value is also a uint64
+			if r.Type == Uint64Value {
+				switch op {
+				case operatorEq:
+					return ui == r.V.(uint64), nil
+				case operatorGt:
+					return ui > r.V.(uint64), nil
+				case operatorGte:
+					return ui >= r.V.(uint64), nil
+				case operatorLt:
+					return ui < r.V.(uint64), nil
+				case operatorLte:
+					return ui <= r.V.(uint64), nil
+				}
+			}
 		} else if r.Type == Uint64Value {
-			ui = rv.(uint64)
+			ui = r.V.(uint64)
 		}
 		if ui > math.MaxInt64 {
 			switch op {
@@ -172,12 +223,12 @@ func compareIntegers(op operator, l, r Value) (bool, error) {
 	}
 
 	// integer OP integer
-	ai, err := l.DecodeToInt64()
+	ai, err := l.ConvertToInt64()
 	if err != nil {
 		return false, err
 	}
 
-	bi, err := r.DecodeToInt64()
+	bi, err := r.ConvertToInt64()
 	if err != nil {
 		return false, err
 	}
@@ -201,12 +252,12 @@ func compareIntegers(op operator, l, r Value) (bool, error) {
 }
 
 func compareNumbers(op operator, l, r Value) (bool, error) {
-	af, err := l.DecodeToFloat64()
+	af, err := l.ConvertToFloat64()
 	if err != nil {
 		return false, err
 	}
 
-	bf, err := r.DecodeToFloat64()
+	bf, err := r.ConvertToFloat64()
 	if err != nil {
 		return false, err
 	}
@@ -236,12 +287,12 @@ func compareDocuments(op operator, l, r Value) (bool, error) {
 		return false, fmt.Errorf("%q operator not supported for document comparison", op)
 	}
 
-	ld, err := l.DecodeToDocument()
+	ld, err := l.ConvertToDocument()
 	if err != nil {
 		return false, err
 	}
 
-	rd, err := r.DecodeToDocument()
+	rd, err := r.ConvertToDocument()
 	if err != nil {
 		return false, err
 	}
@@ -299,12 +350,12 @@ func compareDocuments(op operator, l, r Value) (bool, error) {
 }
 
 func compareArrays(op operator, l, r Value) (bool, error) {
-	la, err := l.DecodeToArray()
+	la, err := l.ConvertToArray()
 	if err != nil {
 		return false, err
 	}
 
-	ra, err := r.DecodeToArray()
+	ra, err := r.ConvertToArray()
 	if err != nil {
 		return false, err
 	}

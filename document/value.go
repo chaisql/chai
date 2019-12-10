@@ -2,7 +2,6 @@ package document
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -152,8 +151,7 @@ func (t ValueType) IsFloat() bool {
 // A Value stores encoded data alongside its type.
 type Value struct {
 	Type ValueType
-	Data []byte
-	v    interface{}
+	V    interface{}
 }
 
 // NewValue creates a value whose type is infered from x.
@@ -200,7 +198,7 @@ func NewValue(x interface{}) (Value, error) {
 func NewBytesValue(x []byte) Value {
 	return Value{
 		Type: BytesValue,
-		Data: x,
+		V:    x,
 	}
 }
 
@@ -208,7 +206,7 @@ func NewBytesValue(x []byte) Value {
 func NewStringValue(x string) Value {
 	return Value{
 		Type: StringValue,
-		Data: []byte(x),
+		V:    []byte(x),
 	}
 }
 
@@ -216,7 +214,7 @@ func NewStringValue(x string) Value {
 func NewBoolValue(x bool) Value {
 	return Value{
 		Type: BoolValue,
-		Data: EncodeBool(x),
+		V:    x,
 	}
 }
 
@@ -224,7 +222,7 @@ func NewBoolValue(x bool) Value {
 func NewUintValue(x uint) Value {
 	return Value{
 		Type: UintValue,
-		Data: EncodeUint(x),
+		V:    x,
 	}
 }
 
@@ -232,7 +230,7 @@ func NewUintValue(x uint) Value {
 func NewUint8Value(x uint8) Value {
 	return Value{
 		Type: Uint8Value,
-		Data: EncodeUint8(x),
+		V:    x,
 	}
 }
 
@@ -240,7 +238,7 @@ func NewUint8Value(x uint8) Value {
 func NewUint16Value(x uint16) Value {
 	return Value{
 		Type: Uint16Value,
-		Data: EncodeUint16(x),
+		V:    x,
 	}
 }
 
@@ -248,7 +246,7 @@ func NewUint16Value(x uint16) Value {
 func NewUint32Value(x uint32) Value {
 	return Value{
 		Type: Uint32Value,
-		Data: EncodeUint32(x),
+		V:    x,
 	}
 }
 
@@ -256,7 +254,7 @@ func NewUint32Value(x uint32) Value {
 func NewUint64Value(x uint64) Value {
 	return Value{
 		Type: Uint64Value,
-		Data: EncodeUint64(x),
+		V:    x,
 	}
 }
 
@@ -264,7 +262,7 @@ func NewUint64Value(x uint64) Value {
 func NewIntValue(x int) Value {
 	return Value{
 		Type: IntValue,
-		Data: EncodeInt(x),
+		V:    x,
 	}
 }
 
@@ -272,7 +270,7 @@ func NewIntValue(x int) Value {
 func NewInt8Value(x int8) Value {
 	return Value{
 		Type: Int8Value,
-		Data: EncodeInt8(x),
+		V:    x,
 	}
 }
 
@@ -280,7 +278,7 @@ func NewInt8Value(x int8) Value {
 func NewInt16Value(x int16) Value {
 	return Value{
 		Type: Int16Value,
-		Data: EncodeInt16(x),
+		V:    x,
 	}
 }
 
@@ -288,7 +286,7 @@ func NewInt16Value(x int16) Value {
 func NewInt32Value(x int32) Value {
 	return Value{
 		Type: Int32Value,
-		Data: EncodeInt32(x),
+		V:    x,
 	}
 }
 
@@ -296,7 +294,7 @@ func NewInt32Value(x int32) Value {
 func NewInt64Value(x int64) Value {
 	return Value{
 		Type: Int64Value,
-		Data: EncodeInt64(x),
+		V:    x,
 	}
 }
 
@@ -304,7 +302,7 @@ func NewInt64Value(x int64) Value {
 func NewFloat64Value(x float64) Value {
 	return Value{
 		Type: Float64Value,
-		Data: EncodeFloat64(x),
+		V:    x,
 	}
 }
 
@@ -317,29 +315,17 @@ func NewNullValue() Value {
 
 // NewDocumentValue returns a value of type Document.
 func NewDocumentValue(d Document) Value {
-	data, err := Encode(d)
-	if err != nil {
-		panic(err)
-	}
-
 	return Value{
 		Type: DocumentValue,
-		v:    d,
-		Data: data,
+		V:    d,
 	}
 }
 
 // NewArrayValue returns a value of type Array.
 func NewArrayValue(a Array) Value {
-	data, err := EncodeArray(a)
-	if err != nil {
-		panic(err)
-	}
-
 	return Value{
 		Type: ArrayValue,
-		v:    a,
-		Data: data,
+		V:    a,
 	}
 }
 
@@ -382,60 +368,6 @@ func NewZeroValue(t ValueType) Value {
 	return Value{}
 }
 
-func (v *Value) decode() error {
-	var err error
-
-	switch v.Type {
-	case BytesValue:
-		v.v, err = DecodeBytes(v.Data)
-	case StringValue:
-		v.v, err = DecodeString(v.Data)
-	case BoolValue:
-		v.v, err = DecodeBool(v.Data)
-	case UintValue:
-		v.v, err = DecodeUint(v.Data)
-	case Uint8Value:
-		v.v, err = DecodeUint8(v.Data)
-	case Uint16Value:
-		v.v, err = DecodeUint16(v.Data)
-	case Uint32Value:
-		v.v, err = DecodeUint32(v.Data)
-	case Uint64Value:
-		v.v, err = DecodeUint64(v.Data)
-	case IntValue:
-		v.v, err = DecodeInt(v.Data)
-	case Int8Value:
-		v.v, err = DecodeInt8(v.Data)
-	case Int16Value:
-		v.v, err = DecodeInt16(v.Data)
-	case Int32Value:
-		v.v, err = DecodeInt32(v.Data)
-	case Int64Value:
-		v.v, err = DecodeInt64(v.Data)
-	case Float64Value:
-		v.v, err = DecodeFloat64(v.Data)
-	case NullValue:
-		v.v = nil
-	default:
-		return errors.New("unknown type")
-	}
-
-	return err
-}
-
-// Decode a value based on its type, caches it and returns its Go value.
-// If the decoded value is already cached, returns it immediatly.
-func (v Value) Decode() (interface{}, error) {
-	if v.v == nil {
-		err := v.decode()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return v.v, nil
-}
-
 // IsTruthy returns whether v is not equal to the zero value of its type.
 func (v Value) IsTruthy() bool {
 	return !v.IsZeroValue()
@@ -443,58 +375,28 @@ func (v Value) IsTruthy() bool {
 
 // String returns a string representation of the value. It implements the fmt.Stringer interface.
 func (v Value) String() string {
-	var vv interface{}
-
 	switch v.Type {
-	case BytesValue:
-		vv, _ = v.DecodeToBytes()
-	case StringValue:
-		vv, _ = v.DecodeToString()
-	case BoolValue:
-		vv, _ = v.DecodeToBool()
-	case UintValue:
-		vv, _ = v.DecodeToUint()
-	case Uint8Value:
-		vv, _ = v.DecodeToUint8()
-	case Uint16Value:
-		vv, _ = v.DecodeToUint16()
-	case Uint32Value:
-		vv, _ = v.DecodeToUint32()
-	case Uint64Value:
-		vv, _ = v.DecodeToUint64()
-	case IntValue:
-		vv, _ = v.DecodeToInt()
-	case Int8Value:
-		vv, _ = v.DecodeToInt8()
-	case Int16Value:
-		vv, _ = v.DecodeToInt16()
-	case Int32Value:
-		vv, _ = v.DecodeToInt32()
-	case Int64Value:
-		vv, _ = v.DecodeToInt64()
-	case Float64Value:
-		vv, _ = v.DecodeToFloat64()
 	case DocumentValue:
-		d, _ := v.DecodeToDocument()
 		var buf bytes.Buffer
-		err := ToJSON(&buf, d)
+		err := ToJSON(&buf, v.V.(Document))
 		if err != nil {
 			panic(err)
 		}
 		return buf.String()
 	case ArrayValue:
-		a, _ := v.DecodeToArray()
 		var buf bytes.Buffer
-		err := ArrayToJSON(&buf, a)
+		err := ArrayToJSON(&buf, v.V.(Array))
 		if err != nil {
 			panic(err)
 		}
 		return buf.String()
 	case NullValue:
 		return "NULL"
+	case StringValue:
+		return string(v.V.([]byte))
 	}
 
-	return fmt.Sprintf("%v", vv)
+	return fmt.Sprintf("%v", v.V)
 }
 
 // ConvertTo decodes v to the selected type when possible.
@@ -505,434 +407,500 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 
 	switch t {
 	case BytesValue:
-		x, err := v.DecodeToBytes()
+		x, err := v.ConvertToBytes()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: BytesValue,
-			Data: EncodeBytes(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case StringValue:
-		x, err := v.DecodeToString()
+		x, err := v.ConvertToString()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: StringValue,
-			Data: EncodeString(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case BoolValue:
-		x, err := v.DecodeToBool()
+		x, err := v.ConvertToBool()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: BoolValue,
-			Data: EncodeBool(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case UintValue:
-		x, err := v.DecodeToUint()
+		x, err := v.ConvertToUint()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: UintValue,
-			Data: EncodeUint(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Uint8Value:
-		x, err := v.DecodeToUint8()
+		x, err := v.ConvertToUint8()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Uint8Value,
-			Data: EncodeUint8(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Uint16Value:
-		x, err := v.DecodeToUint16()
+		x, err := v.ConvertToUint16()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Uint16Value,
-			Data: EncodeUint16(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Uint32Value:
-		x, err := v.DecodeToUint32()
+		x, err := v.ConvertToUint32()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Uint32Value,
-			Data: EncodeUint32(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Uint64Value:
-		x, err := v.DecodeToUint64()
+		x, err := v.ConvertToUint64()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Uint64Value,
-			Data: EncodeUint64(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case IntValue:
-		x, err := v.DecodeToInt()
+		x, err := v.ConvertToInt()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: IntValue,
-			Data: EncodeInt(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Int8Value:
-		x, err := v.DecodeToInt8()
+		x, err := v.ConvertToInt8()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Int8Value,
-			Data: EncodeInt8(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Int16Value:
-		x, err := v.DecodeToInt16()
+		x, err := v.ConvertToInt16()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Int16Value,
-			Data: EncodeInt16(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Int32Value:
-		x, err := v.DecodeToInt32()
+		x, err := v.ConvertToInt32()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Int32Value,
-			Data: EncodeInt32(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Int64Value:
-		x, err := v.DecodeToInt64()
+		x, err := v.ConvertToInt64()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Int64Value,
-			Data: EncodeInt64(x),
-			v:    x,
+			V:    x,
 		}, nil
 	case Float64Value:
-		x, err := v.DecodeToFloat64()
+		x, err := v.ConvertToFloat64()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
 			Type: Float64Value,
-			Data: EncodeFloat64(x),
-			v:    x,
+			V:    x,
 		}, nil
 	}
 
 	return Value{}, fmt.Errorf("can't convert %q to %q", v.Type, t)
 }
 
-// DecodeToBytes returns v.Data. It's a convenience method to ease code generation.
-func (v Value) DecodeToBytes() ([]byte, error) {
-	return v.Data, nil
-}
-
-// DecodeToString turns a value of type String or Bytes into a string.
-// If fails if it's used with any other type.
-func (v Value) DecodeToString() (string, error) {
-	if v.Type == StringValue {
-		return DecodeString(v.Data)
+// ConvertToBytes returns v.Data. It's a convenience method to ease code generation.
+func (v Value) ConvertToBytes() ([]byte, error) {
+	switch v.Type {
+	case StringValue, BytesValue:
+		return v.V.([]byte), nil
 	}
 
-	if v.Type == BytesValue {
-		return string(v.Data), nil
+	return nil, fmt.Errorf("can't convert %q to bytes", v.Type)
+}
+
+// ConvertToString turns a value of type String or Bytes into a string.
+// If fails if it's used with any other type.
+func (v Value) ConvertToString() (string, error) {
+	switch v.Type {
+	case StringValue, BytesValue:
+		return string(v.V.([]byte)), nil
 	}
 
 	return "", fmt.Errorf("can't convert %q to string", v.Type)
 }
 
-// DecodeToBool returns true if v is truthy, otherwise it returns false.
-func (v Value) DecodeToBool() (bool, error) {
+// ConvertToBool returns true if v is truthy, otherwise it returns false.
+func (v Value) ConvertToBool() (bool, error) {
 	if v.Type == BoolValue {
-		return DecodeBool(v.Data)
+		return v.V.(bool), nil
 	}
 
 	return !v.IsZeroValue(), nil
 }
 
-// DecodeToUint turns any number into a uint.
+// ConvertToUint turns any number into a uint.
 // It doesn't work with other types.
-func (v Value) DecodeToUint() (uint, error) {
+func (v Value) ConvertToUint() (uint, error) {
 	if v.Type == UintValue {
-		return DecodeUint(v.Data)
+		return v.V.(uint), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return uint(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to uint", v.Type)
 }
 
-// DecodeToUint8 turns any number into a uint8.
+// ConvertToUint8 turns any number into a uint8.
 // It doesn't work with other types.
-func (v Value) DecodeToUint8() (uint8, error) {
+func (v Value) ConvertToUint8() (uint8, error) {
 	if v.Type == Uint8Value {
-		return DecodeUint8(v.Data)
+		return v.V.(uint8), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return uint8(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to uint8", v.Type)
 }
 
-// DecodeToUint16 turns any number into a uint16.
+// ConvertToUint16 turns any number into a uint16.
 // It doesn't work with other types.
-func (v Value) DecodeToUint16() (uint16, error) {
+func (v Value) ConvertToUint16() (uint16, error) {
 	if v.Type == Uint16Value {
-		return DecodeUint16(v.Data)
+		return v.V.(uint16), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return uint16(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to uint16", v.Type)
 }
 
-// DecodeToUint32 turns any number into a uint32.
+// ConvertToUint32 turns any number into a uint32.
 // It doesn't work with other types.
-func (v Value) DecodeToUint32() (uint32, error) {
+func (v Value) ConvertToUint32() (uint32, error) {
 	if v.Type == Uint32Value {
-		return DecodeUint32(v.Data)
+		return v.V.(uint32), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return uint32(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to uint32", v.Type)
 }
 
-// DecodeToUint64 turns any number into a uint64.
+// ConvertToUint64 turns any number into a uint64.
 // It doesn't work with other types.
-func (v Value) DecodeToUint64() (uint64, error) {
+func (v Value) ConvertToUint64() (uint64, error) {
 	if v.Type == Uint64Value {
-		return DecodeUint64(v.Data)
+		return v.V.(uint64), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return uint64(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to uint64", v.Type)
 }
 
-// DecodeToInt turns any number into an int.
+// ConvertToInt turns any number into an int.
 // It doesn't work with other types.
-func (v Value) DecodeToInt() (int, error) {
+func (v Value) ConvertToInt() (int, error) {
 	if v.Type == IntValue {
-		return DecodeInt(v.Data)
+		return v.V.(int), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return int(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to Int", v.Type)
 }
 
-// DecodeToInt8 turns any number into an int8.
+// ConvertToInt8 turns any number into an int8.
 // It doesn't work with other types.
-func (v Value) DecodeToInt8() (int8, error) {
+func (v Value) ConvertToInt8() (int8, error) {
 	if v.Type == Int8Value {
-		return DecodeInt8(v.Data)
+		return v.V.(int8), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return int8(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to Int8", v.Type)
 }
 
-// DecodeToInt16 turns any number into an int16.
+// ConvertToInt16 turns any number into an int16.
 // It doesn't work with other types.
-func (v Value) DecodeToInt16() (int16, error) {
+func (v Value) ConvertToInt16() (int16, error) {
 	if v.Type == Int16Value {
-		return DecodeInt16(v.Data)
+		return v.V.(int16), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return int16(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to int16", v.Type)
 }
 
-// DecodeToInt32 turns any number into an int32.
+// ConvertToInt32 turns any number into an int32.
 // It doesn't work with other types.
-func (v Value) DecodeToInt32() (int32, error) {
+func (v Value) ConvertToInt32() (int32, error) {
 	if v.Type == Int32Value {
-		return DecodeInt32(v.Data)
+		return v.V.(int32), nil
 	}
 
 	if v.Type.IsNumber() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return int32(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to int32", v.Type)
 }
 
-// DecodeToInt64 turns any number into an int64.
+// ConvertToInt64 turns any number into an int64.
 // It doesn't work with other types.
-func (v Value) DecodeToInt64() (int64, error) {
+func (v Value) ConvertToInt64() (int64, error) {
 	if v.Type == Int64Value {
-		return DecodeInt64(v.Data)
+		return v.V.(int64), nil
 	}
 
 	if v.Type.IsNumber() {
-		return decodeAsInt64(v)
+		return convertNumberToInt64(v)
+	}
+
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
 	}
 
 	return 0, fmt.Errorf("can't convert %q to int64", v.Type)
 }
 
-// DecodeToFloat64 turns any number into a float64.
+// ConvertToFloat64 turns any number into a float64.
 // It doesn't work with other types.
-func (v Value) DecodeToFloat64() (float64, error) {
+func (v Value) ConvertToFloat64() (float64, error) {
 	if v.Type == Float64Value {
-		return DecodeFloat64(v.Data)
+		return v.V.(float64), nil
 	}
 
 	if v.Type.IsInteger() {
-		x, err := decodeAsInt64(v)
+		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
 		}
 		return float64(x), nil
 	}
 
+	if v.Type == BoolValue {
+		if v.V.(bool) {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+
 	return 0, fmt.Errorf("can't convert %q to float64", v.Type)
 }
 
-// DecodeToDocument returns a document from the value.
+// ConvertToDocument returns a document from the value.
 // It only works if the type of v is DocumentValue.
-func (v Value) DecodeToDocument() (Document, error) {
+func (v Value) ConvertToDocument() (Document, error) {
 	if v.Type != DocumentValue {
 		return nil, fmt.Errorf("can't convert %q to document", v.Type)
 	}
 
-	if v.v != nil {
-		return v.v.(Document), nil
-	}
-
-	return EncodedDocument(v.Data), nil
+	return v.V.(Document), nil
 }
 
-// DecodeToArray returns an array from the value.
+// ConvertToArray returns an array from the value.
 // It only works if the type of v is ArrayValue.
-func (v Value) DecodeToArray() (Array, error) {
+func (v Value) ConvertToArray() (Array, error) {
 	if v.Type != ArrayValue {
 		return nil, fmt.Errorf("can't convert %q to array", v.Type)
 	}
 
-	if v.v != nil {
-		return v.v.(Array), nil
-	}
-
-	return EncodedArray(v.Data), nil
+	return v.V.(Array), nil
 }
 
 // IsZeroValue indicates if the value data is the zero value for the value type.
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() bool {
 	switch v.Type {
-	case BytesValue:
-		return bytes.Equal(v.Data, bytesZeroValue.Data)
-	case StringValue:
-		return bytes.Equal(v.Data, stringZeroValue.Data)
+	case BytesValue, StringValue:
+		return bytes.Compare(v.V.([]byte), bytesZeroValue.V.([]byte)) == 0
 	case BoolValue:
-		return bytes.Equal(v.Data, boolZeroValue.Data)
+		return v.V == boolZeroValue.V
 	case UintValue:
-		return bytes.Equal(v.Data, uintZeroValue.Data)
+		return v.V == uintZeroValue.V
 	case Uint8Value:
-		return bytes.Equal(v.Data, uint8ZeroValue.Data)
+		return v.V == uint8ZeroValue.V
 	case Uint16Value:
-		return bytes.Equal(v.Data, uint16ZeroValue.Data)
+		return v.V == uint16ZeroValue.V
 	case Uint32Value:
-		return bytes.Equal(v.Data, uint32ZeroValue.Data)
+		return v.V == uint32ZeroValue.V
 	case Uint64Value:
-		return bytes.Equal(v.Data, uint64ZeroValue.Data)
+		return v.V == uint64ZeroValue.V
 	case IntValue:
-		return bytes.Equal(v.Data, intZeroValue.Data)
+		return v.V == intZeroValue.V
 	case Int8Value:
-		return bytes.Equal(v.Data, int8ZeroValue.Data)
+		return v.V == int8ZeroValue.V
 	case Int16Value:
-		return bytes.Equal(v.Data, int16ZeroValue.Data)
+		return v.V == int16ZeroValue.V
 	case Int32Value:
-		return bytes.Equal(v.Data, int32ZeroValue.Data)
+		return v.V == int32ZeroValue.V
 	case Int64Value:
-		return bytes.Equal(v.Data, int64ZeroValue.Data)
+		return v.V == int64ZeroValue.V
 	case Float64Value:
-		return bytes.Equal(v.Data, float64ZeroValue.Data)
+		return v.V == float64ZeroValue.V
 	case DocumentValue:
-		return bytes.Equal(v.Data, documentZeroValue.Data)
+		return v.V == documentZeroValue.V
 	case NullValue:
 		return false
 	}
@@ -946,19 +914,25 @@ func (v Value) MarshalJSON() ([]byte, error) {
 
 	switch v.Type {
 	case DocumentValue:
-		d, err := v.DecodeToDocument()
+		d, err := v.ConvertToDocument()
 		if err != nil {
 			return nil, err
 		}
 		x = &jsonDocument{d}
 	case ArrayValue:
-		a, err := v.DecodeToArray()
+		a, err := v.ConvertToArray()
 		if err != nil {
 			return nil, err
 		}
 		x = &jsonArray{a}
+	case StringValue, BytesValue:
+		s, err := v.ConvertToString()
+		if err != nil {
+			return nil, err
+		}
+		x = s
 	default:
-		x, err = v.Decode()
+		x = v.V
 	}
 
 	if err != nil {
@@ -968,276 +942,37 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	return json.Marshal(x)
 }
 
-func decodeAsInt64(v Value) (int64, error) {
+func convertNumberToInt64(v Value) (int64, error) {
 	var i int64
 
 	switch v.Type {
 	case UintValue:
-		x, err := DecodeUint(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(uint))
 	case Uint8Value:
-		x, err := DecodeUint8(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(uint8))
 	case Uint16Value:
-		x, err := DecodeUint16(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(uint16))
 	case Uint32Value:
-		x, err := DecodeUint32(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(uint32))
 	case Uint64Value:
-		x, err := DecodeUint64(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(uint64))
 	case IntValue:
-		x, err := DecodeInt(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(int))
 	case Int8Value:
-		x, err := DecodeInt8(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(int8))
 	case Int16Value:
-		x, err := DecodeInt16(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(int16))
 	case Int32Value:
-		x, err := DecodeInt32(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		i = int64(x)
+		i = int64(v.V.(int32))
 	case Int64Value:
-		return DecodeInt64(v.Data)
+		return v.V.(int64), nil
 	case Float64Value:
-		x, err := DecodeFloat64(v.Data)
-		if err != nil {
-			return 0, err
-		}
-		if math.Trunc(x) != x {
+		f := v.V.(float64)
+		if math.Trunc(f) != f {
 			return 0, errors.New("cannot convert float64 value to integer without loss of precision")
 		}
-		i = int64(x)
+		i = int64(f)
 	}
 
 	return i, nil
-}
-
-// EncodeBytes takes a bytes and returns it.
-// It is present to ease code generation.
-func EncodeBytes(x []byte) []byte {
-	return x
-}
-
-// DecodeBytes takes a byte slice and returns it.
-// It is present to ease code generation.
-func DecodeBytes(buf []byte) ([]byte, error) {
-	return buf, nil
-}
-
-// EncodeString takes a string and returns its binary representation.
-func EncodeString(x string) []byte {
-	return []byte(x)
-}
-
-// DecodeString takes a byte slice and decodes it into a string.
-func DecodeString(buf []byte) (string, error) {
-	return string(buf), nil
-}
-
-// EncodeBool takes a bool and returns its binary representation.
-func EncodeBool(x bool) []byte {
-	if x {
-		return []byte{1}
-	}
-	return []byte{0}
-}
-
-// DecodeBool takes a byte slice and decodes it into a boolean.
-func DecodeBool(buf []byte) (bool, error) {
-	if len(buf) != 1 {
-		return false, errors.New("cannot decode buffer to bool")
-	}
-	return buf[0] == 1, nil
-}
-
-// EncodeUint takes an uint and returns its binary representation.
-func EncodeUint(x uint) []byte {
-	return EncodeUint64(uint64(x))
-}
-
-// DecodeUint takes a byte slice and decodes it into a uint.
-func DecodeUint(buf []byte) (uint, error) {
-	x, err := DecodeUint64(buf)
-	return uint(x), err
-}
-
-// EncodeUint8 takes an uint8 and returns its binary representation.
-func EncodeUint8(x uint8) []byte {
-	return []byte{x}
-}
-
-// DecodeUint8 takes a byte slice and decodes it into a uint8.
-func DecodeUint8(buf []byte) (uint8, error) {
-	if len(buf) == 0 {
-		return 0, errors.New("cannot decode buffer to uint8")
-	}
-
-	return buf[0], nil
-}
-
-// EncodeUint16 takes an uint16 and returns its binary representation.
-func EncodeUint16(x uint16) []byte {
-	var buf [2]byte
-	binary.BigEndian.PutUint16(buf[:], x)
-	return buf[:]
-}
-
-// DecodeUint16 takes a byte slice and decodes it into a uint16.
-func DecodeUint16(buf []byte) (uint16, error) {
-	if len(buf) < 2 {
-		return 0, errors.New("cannot decode buffer to uint16")
-	}
-
-	return binary.BigEndian.Uint16(buf), nil
-}
-
-// EncodeUint32 takes an uint32 and returns its binary representation.
-func EncodeUint32(x uint32) []byte {
-	var buf [4]byte
-	binary.BigEndian.PutUint32(buf[:], x)
-	return buf[:]
-}
-
-// DecodeUint32 takes a byte slice and decodes it into a uint32.
-func DecodeUint32(buf []byte) (uint32, error) {
-	if len(buf) < 4 {
-		return 0, errors.New("cannot decode buffer to uint32")
-	}
-
-	return binary.BigEndian.Uint32(buf), nil
-}
-
-// EncodeUint64 takes an uint64 and returns its binary representation.
-func EncodeUint64(x uint64) []byte {
-	var buf [8]byte
-	binary.BigEndian.PutUint64(buf[:], x)
-	return buf[:]
-}
-
-// DecodeUint64 takes a byte slice and decodes it into a uint64.
-func DecodeUint64(buf []byte) (uint64, error) {
-	if len(buf) < 8 {
-		return 0, errors.New("cannot decode buffer to uint64")
-	}
-
-	return binary.BigEndian.Uint64(buf), nil
-}
-
-// EncodeInt takes an int and returns its binary representation.
-func EncodeInt(x int) []byte {
-	return EncodeInt64(int64(x))
-}
-
-// DecodeInt takes a byte slice and decodes it into an int.
-func DecodeInt(buf []byte) (int, error) {
-	x, err := DecodeInt64(buf)
-	return int(x), err
-}
-
-// EncodeInt8 takes an int8 and returns its binary representation.
-func EncodeInt8(x int8) []byte {
-	return []byte{uint8(x + math.MaxInt8 + 1)}
-}
-
-// DecodeInt8 takes a byte slice and decodes it into an int8.
-func DecodeInt8(buf []byte) (int8, error) {
-	return int8(buf[0] - math.MaxInt8 - 1), nil
-}
-
-// EncodeInt16 takes an int16 and returns its binary representation.
-func EncodeInt16(x int16) []byte {
-	var buf [2]byte
-
-	binary.BigEndian.PutUint16(buf[:], uint16(x)+math.MaxInt16+1)
-	return buf[:]
-}
-
-// DecodeInt16 takes a byte slice and decodes it into an int16.
-func DecodeInt16(buf []byte) (int16, error) {
-	x, err := DecodeUint16(buf)
-	x -= math.MaxInt16 + 1
-	return int16(x), err
-}
-
-// EncodeInt32 takes an int32 and returns its binary representation.
-func EncodeInt32(x int32) []byte {
-	var buf [4]byte
-
-	binary.BigEndian.PutUint32(buf[:], uint32(x)+math.MaxInt32+1)
-	return buf[:]
-}
-
-// DecodeInt32 takes a byte slice and decodes it into an int32.
-func DecodeInt32(buf []byte) (int32, error) {
-	x, err := DecodeUint32(buf)
-	x -= math.MaxInt32 + 1
-	return int32(x), err
-}
-
-// EncodeInt64 takes an int64 and returns its binary representation.
-func EncodeInt64(x int64) []byte {
-	var buf [8]byte
-
-	binary.BigEndian.PutUint64(buf[:], uint64(x)+math.MaxInt64+1)
-	return buf[:]
-}
-
-// DecodeInt64 takes a byte slice and decodes it into an int64.
-func DecodeInt64(buf []byte) (int64, error) {
-	x, err := DecodeUint64(buf)
-	x -= math.MaxInt64 + 1
-	return int64(x), err
-}
-
-// EncodeFloat64 takes an float64 and returns its binary representation.
-func EncodeFloat64(x float64) []byte {
-	fb := math.Float64bits(x)
-	if x >= 0 {
-		fb ^= 1 << 63
-	} else {
-		fb ^= 1<<64 - 1
-	}
-	return EncodeUint64(fb)
-}
-
-// DecodeFloat64 takes a byte slice and decodes it into an float64.
-func DecodeFloat64(buf []byte) (float64, error) {
-	x := binary.BigEndian.Uint64(buf)
-
-	if (x & (1 << 63)) != 0 {
-		x ^= 1 << 63
-	} else {
-		x ^= 1<<64 - 1
-	}
-	return math.Float64frombits(x), nil
 }
