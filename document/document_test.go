@@ -3,9 +3,11 @@ package document_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -578,4 +580,93 @@ type documentScanner struct {
 
 func (ds documentScanner) ScanDocument(d document.Document) error {
 	return ds.fn(d)
+}
+
+type foo struct {
+	A string
+	B int
+	C bool
+	D float64
+}
+
+func (f *foo) Iterate(fn func(field string, value document.Value) error) error {
+	var err error
+
+	err = fn("a", document.NewStringValue(f.A))
+	if err != nil {
+		return err
+	}
+
+	err = fn("b", document.NewIntValue(f.B))
+	if err != nil {
+		return err
+	}
+
+	err = fn("c", document.NewBoolValue(f.C))
+	if err != nil {
+		return err
+	}
+
+	err = fn("d", document.NewFloat64Value(f.D))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *foo) GetByField(field string) (document.Value, error) {
+	switch field {
+	case "a":
+		return document.NewStringValue(f.A), nil
+	case "b":
+		return document.NewIntValue(f.B), nil
+	case "c":
+		return document.NewBoolValue(f.C), nil
+	case "d":
+		return document.NewFloat64Value(f.D), nil
+	}
+
+	return document.Value{}, errors.New("unknown field")
+}
+
+func BenchmarkDocumentIterate(b *testing.B) {
+	f := foo{
+		A: "a",
+		B: 1000,
+		C: true,
+		D: 1e10,
+	}
+
+	d := document.Document(&f)
+	refd, err := document.NewFromStruct(&f)
+	require.NoError(b, err)
+
+	b.Run("Implementation", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			d.Iterate(func(string, document.Value) error {
+				return nil
+			})
+		}
+	})
+
+	b.Run("Reflection", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			refd.Iterate(func(string, document.Value) error {
+				return nil
+			})
+		}
+	})
+
+	b.Run("Encoding/Implementation", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			encoding.EncodeDocument(d)
+		}
+	})
+
+	b.Run("Encoding/Reflection", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			encoding.EncodeDocument(refd)
+		}
+	})
 }
