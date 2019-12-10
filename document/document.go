@@ -81,6 +81,167 @@ func (m mapDocument) GetByField(field string) (Value, error) {
 	return NewValue(v)
 }
 
+// NewFromStruct creates a document from a struct using reflection.
+func NewFromStruct(s interface{}) (Document, error) {
+	ref := reflect.Indirect(reflect.ValueOf(s))
+
+	if !ref.IsValid() || ref.Kind() != reflect.Struct {
+		return nil, errors.New("expected struct or pointer to struct")
+	}
+
+	return structDocument{ref: ref}, nil
+}
+
+// this error is used to skip struct or array fields that are not supported.
+var errUnsupportedType = errors.New("unsupported type")
+
+type structDocument struct {
+	ref reflect.Value
+}
+
+var _ Document = (*structDocument)(nil)
+
+func (s structDocument) Iterate(fn func(f string, v Value) error) error {
+	l := s.ref.NumField()
+
+	tp := s.ref.Type()
+
+	for i := 0; i < l; i++ {
+		sf := tp.Field(i)
+		if sf.Anonymous || sf.PkgPath != "" {
+			continue
+		}
+
+		f := s.ref.Field(i)
+
+		v, err := reflectValueToValue(f)
+		if err == errUnsupportedType {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		err = fn(sf.Name, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s structDocument) GetByField(field string) (Value, error) {
+	tp := s.ref.Type()
+	sf, ok := tp.FieldByName(field)
+	if !ok || sf.Anonymous || sf.PkgPath != "" {
+		return Value{}, ErrFieldNotFound
+	}
+
+	v := s.ref.FieldByName(field)
+	if !v.IsValid() {
+		return Value{}, ErrFieldNotFound
+	}
+
+	return reflectValueToValue(v)
+}
+
+type sliceArray struct {
+	ref reflect.Value
+}
+
+var _ Array = (*sliceArray)(nil)
+
+func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
+	l := s.ref.Len()
+
+	for i := 0; i < l; i++ {
+		f := s.ref.Index(i)
+
+		v, err := reflectValueToValue(f)
+		if err == errUnsupportedType {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		err = fn(i, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s sliceArray) GetByIndex(i int) (Value, error) {
+	if i >= s.ref.Len() {
+		return Value{}, ErrFieldNotFound
+	}
+
+	v := s.ref.Index(i)
+	if !v.IsValid() {
+		return Value{}, ErrFieldNotFound
+	}
+
+	return reflectValueToValue(v)
+}
+
+func reflectValueToValue(v reflect.Value) (Value, error) {
+	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			return NewNullValue(), nil
+		}
+		return reflectValueToValue(reflect.Indirect(v))
+	case reflect.Struct:
+		return NewDocumentValue(&structDocument{ref: v}), nil
+	case reflect.String:
+		return NewStringValue(v.String()), nil
+	case reflect.Slice:
+		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
+			return NewBytesValue(v.Bytes()), nil
+		}
+		if v.IsNil() {
+			return NewNullValue(), nil
+		}
+		return NewArrayValue(&sliceArray{ref: v}), nil
+	case reflect.Array:
+		return NewArrayValue(&sliceArray{ref: v}), nil
+	case reflect.Bool:
+		return NewBoolValue(v.Bool()), nil
+	case reflect.Int8:
+		return NewInt8Value(int8(v.Int())), nil
+	case reflect.Int16:
+		return NewInt16Value(int16(v.Int())), nil
+	case reflect.Int32:
+		return NewInt32Value(int32(v.Int())), nil
+	case reflect.Int64:
+		return NewInt64Value(v.Int()), nil
+	case reflect.Int:
+		return NewIntValue(int(v.Int())), nil
+	case reflect.Uint8:
+		return NewUint8Value(uint8(v.Uint())), nil
+	case reflect.Uint16:
+		return NewUint16Value(uint16(v.Uint())), nil
+	case reflect.Uint32:
+		return NewUint32Value(uint32(v.Uint())), nil
+	case reflect.Uint64:
+		return NewUint64Value(v.Uint()), nil
+	case reflect.Uint:
+		return NewUintValue(uint(v.Uint())), nil
+	case reflect.Float32, reflect.Float64:
+		return NewFloat64Value(v.Float()), nil
+	case reflect.Interface:
+		if v.IsNil() {
+			return NewNullValue(), nil
+		}
+		return reflectValueToValue(v.Elem())
+	}
+	return Value{}, errUnsupportedType
+}
+
 // A Keyer returns the key identifying documents in their storage.
 // This is usually implemented by documents read from storages.
 type Keyer interface {

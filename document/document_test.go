@@ -236,6 +236,226 @@ func TestNewFromMap(t *testing.T) {
 	})
 }
 
+func TestNewFromStruct(t *testing.T) {
+	type group struct {
+		A int
+	}
+
+	type user struct {
+		A []byte
+		B string
+		C bool
+		D uint
+		E uint8
+		F uint16
+		G uint32
+		H uint64
+		I int
+		J int8
+		K int16
+		L int32
+		M int64
+		N float64
+		// structs must be considered as documents
+		O group
+
+		// nil pointers must be considered as Null values
+		// otherwise they must be dereferenced
+		P *int
+		Q *int
+
+		// struct pointers should be considered as documents
+		// if there are nil though, the value must be Null
+		R *group
+		S *group
+
+		T  []int
+		U  []int
+		V  []*int
+		W  []user
+		X  []interface{}
+		Y  [3]int
+		Z  interface{}
+		ZZ interface{}
+
+		// embedded fields are not supported currently, they should be ignored
+		*group
+
+		// unexported fields should be ignored
+		t int
+	}
+
+	u := user{
+		A: []byte("foo"),
+		B: "bar",
+		C: true,
+		D: 1,
+		E: 2,
+		F: 3,
+		G: 4,
+		H: 5,
+		I: 6,
+		J: 7,
+		K: 8,
+		L: 9,
+		M: 10,
+		N: 11.12,
+		Z: 26,
+	}
+
+	q := 5
+	u.Q = &q
+	u.R = new(group)
+	u.T = []int{1, 2, 3}
+	u.V = []*int{&q}
+	u.W = []user{u}
+	u.X = []interface{}{1, "foo"}
+
+	t.Run("Iterate", func(t *testing.T) {
+		doc, err := document.NewFromStruct(u)
+		require.NoError(t, err)
+
+		var counter int
+
+		err = doc.Iterate(func(f string, v document.Value) error {
+			counter++
+			switch f {
+			case "A":
+				require.Equal(t, u.A, v.V.([]byte))
+			case "B":
+				require.Equal(t, u.B, string(v.V.([]byte)))
+			case "C":
+				require.Equal(t, u.C, v.V.(bool))
+			case "D":
+				require.Equal(t, u.D, v.V.(uint))
+			case "E":
+				require.Equal(t, u.E, v.V.(uint8))
+			case "F":
+				require.Equal(t, u.F, v.V.(uint16))
+			case "G":
+				require.Equal(t, u.G, v.V.(uint32))
+			case "H":
+				require.Equal(t, u.H, v.V.(uint64))
+			case "I":
+				require.Equal(t, u.I, v.V.(int))
+			case "J":
+				require.Equal(t, u.J, v.V.(int8))
+			case "K":
+				require.Equal(t, u.K, v.V.(int16))
+			case "L":
+				require.Equal(t, u.L, v.V.(int32))
+			case "M":
+				require.Equal(t, u.M, v.V.(int64))
+			case "N":
+				require.Equal(t, u.N, v.V.(float64))
+			case "O":
+				require.Equal(t, document.DocumentValue, v.Type)
+			case "P":
+				require.Equal(t, document.NullValue, v.Type)
+			case "Q":
+				require.Equal(t, *u.Q, v.V.(int))
+			case "R":
+				require.Equal(t, document.DocumentValue, v.Type)
+			case "S":
+				require.Equal(t, document.NullValue, v.Type)
+			case "T":
+				require.Equal(t, document.ArrayValue, v.Type)
+			case "U":
+				require.Equal(t, document.NullValue, v.Type)
+			case "V":
+				require.Equal(t, document.ArrayValue, v.Type)
+			case "W":
+				require.Equal(t, document.ArrayValue, v.Type)
+			case "X":
+				require.Equal(t, document.ArrayValue, v.Type)
+			case "Y":
+				require.Equal(t, document.ArrayValue, v.Type)
+			case "Z":
+				require.Equal(t, u.Z, v.V.(int))
+			case "ZZ":
+				require.Equal(t, document.NullValue, v.Type)
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 27, counter)
+	})
+
+	t.Run("GetByField", func(t *testing.T) {
+		doc, err := document.NewFromStruct(u)
+		require.NoError(t, err)
+
+		v, err := doc.GetByField("A")
+		require.NoError(t, err)
+		require.Equal(t, u.A, v.V.([]byte))
+		v, err = doc.GetByField("B")
+		require.NoError(t, err)
+		require.Equal(t, u.B, string(v.V.([]byte)))
+		v, err = doc.GetByField("C")
+		require.NoError(t, err)
+		require.Equal(t, u.C, v.V.(bool))
+		v, err = doc.GetByField("D")
+		require.NoError(t, err)
+		require.Equal(t, u.D, v.V.(uint))
+		v, err = doc.GetByField("E")
+		require.NoError(t, err)
+		require.Equal(t, u.E, v.V.(uint8))
+		v, err = doc.GetByField("F")
+		require.NoError(t, err)
+		require.Equal(t, u.F, v.V.(uint16))
+		v, err = doc.GetByField("G")
+		require.NoError(t, err)
+		require.Equal(t, u.G, v.V.(uint32))
+		v, err = doc.GetByField("H")
+		require.NoError(t, err)
+		require.Equal(t, u.H, v.V.(uint64))
+		v, err = doc.GetByField("I")
+		require.NoError(t, err)
+		require.Equal(t, u.I, v.V.(int))
+		v, err = doc.GetByField("J")
+		require.NoError(t, err)
+		require.Equal(t, u.J, v.V.(int8))
+		v, err = doc.GetByField("K")
+		require.NoError(t, err)
+		require.Equal(t, u.K, v.V.(int16))
+		v, err = doc.GetByField("L")
+		require.NoError(t, err)
+		require.Equal(t, u.L, v.V.(int32))
+		v, err = doc.GetByField("M")
+		require.NoError(t, err)
+		require.Equal(t, u.M, v.V.(int64))
+		v, err = doc.GetByField("N")
+		require.NoError(t, err)
+		require.Equal(t, u.N, v.V.(float64))
+
+		v, err = doc.GetByField("O")
+		require.NoError(t, err)
+		d, err := v.ConvertToDocument()
+		require.NoError(t, err)
+		v, err = d.GetByField("A")
+		require.NoError(t, err)
+		require.Equal(t, 0, v.V.(int))
+
+		v, err = doc.GetByField("T")
+		require.NoError(t, err)
+		a, err := v.ConvertToArray()
+		require.NoError(t, err)
+		var count int
+		err = a.Iterate(func(i int, v document.Value) error {
+			count++
+			require.Equal(t, i+1, v.V.(int))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 3, count)
+		v, err = a.GetByIndex(10)
+		require.Equal(t, err, document.ErrFieldNotFound)
+		v, err = a.GetByIndex(1)
+		require.NoError(t, err)
+		require.Equal(t, 2, v.V.(int))
+	})
+}
+
 func TestToJSON(t *testing.T) {
 	tests := []struct {
 		name     string
