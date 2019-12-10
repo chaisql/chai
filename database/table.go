@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/pkg/errors"
@@ -18,7 +19,7 @@ type Table struct {
 }
 
 type encodedRecordWithKey struct {
-	document.EncodedDocument
+	encoding.EncodedDocument
 
 	key []byte
 }
@@ -29,7 +30,7 @@ func (e encodedRecordWithKey) Key() []byte {
 
 // Iterate goes through all the records of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t *Table) Iterate(fn func(r document.Document) error) error {
+func (t *Table) Iterate(fn func(d document.Document) error) error {
 	// To avoid unnecessary allocations, we create the slice once and reuse it
 	// at each call of the fn method.
 	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
@@ -57,7 +58,7 @@ func (t *Table) GetRecord(key []byte) (document.Document, error) {
 	}
 
 	var r encodedRecordWithKey
-	r.EncodedDocument = document.EncodedDocument(v)
+	r.EncodedDocument = encoding.EncodedDocument(v)
 	r.key = key
 	return &r, err
 }
@@ -78,7 +79,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		return cv.Data, nil
+		return encoding.EncodeValue(cv)
 	}
 
 	t.tx.db.mu.Lock()
@@ -90,7 +91,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	}
 
 	cfg.lastKey++
-	key = document.NewInt64Value(cfg.lastKey).Data
+	key = encoding.EncodeInt64(cfg.lastKey)
 	err = t.CfgStore.Replace(t.name, cfg)
 	if err != nil {
 		return nil, err
@@ -114,7 +115,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, ErrDuplicateRecord
 	}
 
-	v, err := document.Encode(d)
+	v, err := encoding.EncodeDocument(d)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode record")
 	}
@@ -179,16 +180,16 @@ func (t *Table) Delete(key []byte) error {
 // Replace a record by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key []byte, r document.Document) error {
+func (t *Table) Replace(key []byte, d document.Document) error {
 	indexes, err := t.Indexes()
 	if err != nil {
 		return err
 	}
 
-	return t.replace(indexes, key, r)
+	return t.replace(indexes, key, d)
 }
 
-func (t *Table) replace(indexes map[string]Index, key []byte, r document.Document) error {
+func (t *Table) replace(indexes map[string]Index, key []byte, d document.Document) error {
 	// make sure key exists
 	old, err := t.GetRecord(key)
 	if err != nil {
@@ -209,7 +210,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r document.Documen
 	}
 
 	// encode new record
-	v, err := document.Encode(r)
+	v, err := encoding.EncodeDocument(d)
 	if err != nil {
 		return errors.Wrap(err, "failed to encode record")
 	}
@@ -222,7 +223,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, r document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := r.GetByField(idx.FieldName)
+		v, err := d.GetByField(idx.FieldName)
 		if err != nil {
 			continue
 		}
@@ -263,17 +264,22 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	indexes := make(map[string]Index)
 
 	err = document.NewStream(&tb).
-		Filter(func(r document.Document) (bool, error) {
-			f, err := r.GetByField("TableName")
+		Filter(func(d document.Document) (bool, error) {
+			v, err := d.GetByField("TableName")
 			if err != nil {
 				return false, err
 			}
 
-			return bytes.Equal(f.Data, tableName), nil
+			b, err := v.ConvertToBytes()
+			if err != nil {
+				return false, err
+			}
+
+			return bytes.Equal(b, tableName), nil
 		}).
-		Iterate(func(r document.Document) error {
+		Iterate(func(d document.Document) error {
 			var opts indexOptions
-			err := opts.ScanDocument(r)
+			err := opts.ScanDocument(d)
 			if err != nil {
 				return err
 			}

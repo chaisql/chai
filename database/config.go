@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 )
@@ -33,7 +34,7 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	fb.Add("PrimaryKeyType", document.NewUint8Value(uint8(cfg.PrimaryKeyType)))
 	fb.Add("lastKey", document.NewInt64Value(cfg.lastKey))
 
-	v, err := document.Encode(&fb)
+	v, err := encoding.EncodeDocument(&fb)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 	fb.Add("PrimaryKeyType", document.NewUint8Value(uint8(cfg.PrimaryKeyType)))
 	fb.Add("lastKey", document.NewInt64Value(cfg.lastKey))
 
-	v, err := document.Encode(&fb)
+	v, err := encoding.EncodeDocument(&fb)
 	if err != nil {
 		return err
 	}
@@ -75,13 +76,13 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	var cfg TableConfig
 
-	r := document.EncodedDocument(v)
+	r := encoding.EncodedDocument(v)
 
 	f, err := r.GetByField("PrimaryKeyName")
 	if err != nil {
 		return nil, err
 	}
-	cfg.PrimaryKeyName, err = f.DecodeToString()
+	cfg.PrimaryKeyName, err = f.ConvertToString()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +90,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	tp, err := f.DecodeToUint8()
+	tp, err := f.ConvertToUint8()
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.lastKey, err = f.DecodeToInt64()
+	cfg.lastKey, err = f.ConvertToInt64()
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +142,7 @@ func (t *indexStore) Insert(cfg indexOptions) error {
 		return err
 	}
 
-	v, err := document.Encode(&cfg)
+	v, err := encoding.EncodeDocument(&cfg)
 	if err != nil {
 		return err
 	}
@@ -160,7 +161,7 @@ func (t *indexStore) Get(indexName string) (*indexOptions, error) {
 	}
 
 	var idxopts indexOptions
-	err = idxopts.ScanDocument(document.EncodedDocument(v))
+	err = idxopts.ScanDocument(encoding.EncodedDocument(v))
 	if err != nil {
 		return nil, err
 	}

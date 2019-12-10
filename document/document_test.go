@@ -328,12 +328,12 @@ func TestScan(t *testing.T) {
 	require.Equal(t, n, float64(10.5))
 
 	t.Run("DocumentScanner", func(t *testing.T) {
-		var rs documentScanner
-		rs.fn = func(rr document.Document) error {
-			require.Equal(t, r, rr)
+		var ds documentScanner
+		ds.fn = func(d document.Document) error {
+			require.Equal(t, r, d)
 			return nil
 		}
-		err := document.Scan(r, &rs)
+		err := document.Scan(r, &ds)
 		require.NoError(t, err)
 	})
 
@@ -353,9 +353,9 @@ func TestScan(t *testing.T) {
 }
 
 type documentScanner struct {
-	fn func(r document.Document) error
+	fn func(d document.Document) error
 }
 
-func (rs documentScanner) ScanDocument(r document.Document) error {
-	return rs.fn(r)
+func (ds documentScanner) ScanDocument(d document.Document) error {
+	return ds.fn(d)
 }

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/pkg/errors"
@@ -235,7 +236,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 func (tx Transaction) ReIndexAll() error {
 	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
 		var opts indexOptions
-		err := opts.ScanDocument(document.EncodedDocument(v))
+		err := opts.ScanDocument(encoding.EncodedDocument(v))
 		if err != nil {
 			return err
 		}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 )
 
@@ -66,15 +67,30 @@ type Index interface {
 	// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the beginning.
-	AscendGreaterOrEqual(pivot *document.Value, fn func(val document.Value, key []byte) error) error
+	AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error
 
 	// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
-	DescendLessOrEqual(pivot *document.Value, fn func(val document.Value, key []byte) error) error
+	DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error
 
 	// Truncate deletes all the index data.
 	Truncate() error
+}
+
+// New creates an index with the given store and options.
+func New(tx engine.Transaction, opts Options) Index {
+	if opts.Unique {
+		return &uniqueIndex{
+			tx:   tx,
+			opts: opts,
+		}
+	}
+
+	return &listIndex{
+		tx:   tx,
+		opts: opts,
+	}
 }
 
 func buildIndexName(name string, t Type) string {
@@ -98,23 +114,17 @@ type Options struct {
 	FieldName string
 }
 
-// EmptyPivot returns a pivot that starts at the beginning of any indexed values compatible with the given type.
-func EmptyPivot(t document.ValueType) *document.Value {
-	return &document.Value{Type: t}
+type Pivot struct {
+	Value document.Value
+	empty bool
 }
 
-// New creates an index with the given store and options.
-func New(tx engine.Transaction, opts Options) Index {
-	if opts.Unique {
-		return &uniqueIndex{
-			tx:   tx,
-			opts: opts,
-		}
-	}
-
-	return &listIndex{
-		tx:   tx,
-		opts: opts,
+// EmptyPivot returns a pivot that starts at the beginning of any indexed values compatible with the given type.
+func EmptyPivot(t document.ValueType) *Pivot {
+	v := document.NewZeroValue(t)
+	return &Pivot{
+		Value: v,
+		empty: true,
 	}
 }
 
@@ -132,7 +142,7 @@ func (i *listIndex) Set(val document.Value, key []byte) error {
 		return err
 	}
 
-	v, err := encodeFieldToIndexValue(&val)
+	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -146,7 +156,7 @@ func (i *listIndex) Set(val document.Value, key []byte) error {
 }
 
 func (i *listIndex) Delete(val document.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(&val)
+	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -164,7 +174,7 @@ func (i *listIndex) Delete(val document.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
-func (i *listIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val document.Value, key []byte) error) error {
+func (i *listIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Null; t <= Bytes; t++ {
@@ -193,7 +203,7 @@ func (i *listIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val docu
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -201,14 +211,17 @@ func (i *listIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val docu
 		return nil
 	}
 
-	v, err := encodeFieldToIndexValue(pivot)
-	if err != nil {
-		return err
+	var data []byte
+	if !pivot.empty {
+		data, err = encodeFieldToIndexValue(pivot.Value)
+		if err != nil {
+			return err
+		}
 	}
 
-	return st.AscendGreaterOrEqual(v, func(k, v []byte) error {
+	return st.AscendGreaterOrEqual(data, func(k, v []byte) error {
 		idx := bytes.LastIndexByte(k, Separator)
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), k[:idx])
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
 		if err != nil {
 			return err
 		}
@@ -217,7 +230,7 @@ func (i *listIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val docu
 	})
 }
 
-func (i *listIndex) DescendLessOrEqual(pivot *document.Value, fn func(val document.Value, key []byte) error) error {
+func (i *listIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Bytes; t >= Null; t-- {
@@ -246,7 +259,7 @@ func (i *listIndex) DescendLessOrEqual(pivot *document.Value, fn func(val docume
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -254,19 +267,22 @@ func (i *listIndex) DescendLessOrEqual(pivot *document.Value, fn func(val docume
 		return nil
 	}
 
-	v, err := encodeFieldToIndexValue(pivot)
-	if err != nil {
-		return err
+	var data []byte
+	if !pivot.empty {
+		data, err = encodeFieldToIndexValue(pivot.Value)
+		if err != nil {
+			return err
+		}
 	}
 
-	if len(v) > 0 {
+	if len(data) > 0 {
 		// ensure the pivot is bigger than the requested value so it doesn't get skipped.
-		v = append(v, Separator, 0xFF)
+		data = append(data, Separator, 0xFF)
 	}
 
-	return st.DescendLessOrEqual(v, func(k, v []byte) error {
+	return st.DescendLessOrEqual(data, func(k, v []byte) error {
 		idx := bytes.LastIndexByte(k, Separator)
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), k[:idx])
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
 		if err != nil {
 			return err
 		}
@@ -298,7 +314,7 @@ type uniqueIndex struct {
 // Set associates a value with exactly one key.
 // If the association already exists, it returns an error.
 func (i *uniqueIndex) Set(val document.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(&val)
+	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -325,7 +341,7 @@ func (i *uniqueIndex) Set(val document.Value, key []byte) error {
 }
 
 func (i *uniqueIndex) Delete(val document.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(&val)
+	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -343,7 +359,7 @@ func (i *uniqueIndex) Delete(val document.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
-func (i *uniqueIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val document.Value, key []byte) error) error {
+func (i *uniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Null; t <= Bytes; t++ {
@@ -371,7 +387,7 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val do
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -379,18 +395,21 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val do
 		return nil
 	}
 
-	v, err := encodeFieldToIndexValue(pivot)
-	if err != nil {
-		return err
+	var data []byte
+	if !pivot.empty {
+		data, err = encodeFieldToIndexValue(pivot.Value)
+		if err != nil {
+			return err
+		}
 	}
 
-	buf := make([]byte, 0, len(v)+2)
-	buf = append(buf, uint8(NewTypeFromValueType(pivot.Type)))
+	buf := make([]byte, 0, len(data)+2)
+	buf = append(buf, uint8(NewTypeFromValueType(pivot.Value.Type)))
 	buf = append(buf, Separator)
-	buf = append(buf, v...)
+	buf = append(buf, data...)
 
 	return st.AscendGreaterOrEqual(buf, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv[2:])
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), vv[2:])
 		if err != nil {
 			return err
 		}
@@ -399,7 +418,7 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *document.Value, fn func(val do
 	})
 }
 
-func (i *uniqueIndex) DescendLessOrEqual(pivot *document.Value, fn func(val document.Value, key []byte) error) error {
+func (i *uniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Bytes; t >= Null; t-- {
@@ -427,7 +446,7 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot *document.Value, fn func(val docu
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
 	if err != nil {
 		return err
 	}
@@ -435,19 +454,22 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot *document.Value, fn func(val docu
 		return nil
 	}
 
-	v, err := encodeFieldToIndexValue(pivot)
-	if err != nil {
-		return err
+	var data []byte
+	if !pivot.empty {
+		data, err = encodeFieldToIndexValue(pivot.Value)
+		if err != nil {
+			return err
+		}
 	}
 
-	buf := make([]byte, 0, len(v)+3)
-	buf = append(buf, uint8(NewTypeFromValueType(pivot.Type)))
+	buf := make([]byte, 0, len(data)+3)
+	buf = append(buf, uint8(NewTypeFromValueType(pivot.Value.Type)))
 	buf = append(buf, Separator)
-	buf = append(buf, v...)
+	buf = append(buf, data...)
 	buf = append(buf, 0xFF)
 
 	return st.DescendLessOrEqual(buf, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Type), vv[2:])
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), vv[2:])
 		if err != nil {
 			return err
 		}
@@ -470,29 +492,31 @@ func (i *uniqueIndex) Truncate() error {
 	return dropStore(i.tx, Bool, i.opts)
 }
 
-func encodeFieldToIndexValue(val *document.Value) ([]byte, error) {
-	if len(val.Data) > 0 && val.Type.IsNumber() && val.Type != document.Float64Value {
-		x, err := val.DecodeToFloat64()
+func encodeFieldToIndexValue(val document.Value) ([]byte, error) {
+	if val.V != nil && val.Type.IsNumber() && val.Type != document.Float64Value {
+		x, err := val.ConvertToFloat64()
 		if err != nil {
 			return nil, err
 		}
 
-		return document.NewFloat64Value(x).Data, nil
+		return encoding.EncodeFloat64(x), nil
 	}
 
-	return val.Data, nil
+	return encoding.EncodeValue(val)
 }
 
 func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 	switch t {
 	case Null:
-		return document.Value{Type: document.NullValue}, nil
+		return document.NewNullValue(), nil
 	case Bytes:
-		return document.Value{Type: document.BytesValue, Data: data}, nil
+		return document.NewBytesValue(data), nil
 	case Float:
-		return document.Value{Type: document.Float64Value, Data: data}, nil
+		f, err := encoding.DecodeFloat64(data)
+		return document.NewFloat64Value(f), err
 	case Bool:
-		return document.Value{Type: document.BoolValue, Data: data}, nil
+		b, err := encoding.DecodeBool(data)
+		return document.NewBoolValue(b), err
 	}
 
 	return document.Value{}, fmt.Errorf("unknown index type %d", t)

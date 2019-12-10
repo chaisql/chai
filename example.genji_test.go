@@ -54,11 +54,11 @@ func (u *User) ScanDocument(doc document.Document) error {
 
 		switch f {
 		case "id":
-			u.ID, err = v.DecodeToInt64()
+			u.ID, err = v.ConvertToInt64()
 		case "name":
-			u.Name, err = v.DecodeToString()
+			u.Name, err = v.ConvertToString()
 		case "age":
-			u.Age, err = v.DecodeToUint32()
+			u.Age, err = v.ConvertToUint32()
 		}
 		return err
 	})

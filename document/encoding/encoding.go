@@ -279,7 +279,7 @@ func EncodeDocument(d document.Document) ([]byte, error) {
 // DecodeDocument takes a byte slice and returns a lazily decoded document.
 // If buf is malformed, an error will be returned when calling one of the document method.
 func DecodeDocument(buf []byte) document.Document {
-	return encodedDocument(buf)
+	return EncodedDocument(buf)
 }
 
 func EncodeValue(v document.Value) ([]byte, error) {
@@ -387,19 +387,19 @@ func EncodeValue(v document.Value) ([]byte, error) {
 	return nil, errors.New("unknown type")
 }
 
-// An encodedDocument implements the Document interface on top of an encoded representation of a
+// An EncodedDocument implements the Document interface on top of an encoded representation of a
 // document.
 // It is useful to avoid decoding the entire document when only a few fields are needed.
-type encodedDocument []byte
+type EncodedDocument []byte
 
 // GetByField decodes the selected field.
-func (e encodedDocument) GetByField(field string) (document.Value, error) {
+func (e EncodedDocument) GetByField(field string) (document.Value, error) {
 	return decodeValueFromDocument(e, field)
 }
 
 // Iterate decodes each fields one by one and passes them to fn until the end of the document
 // or until fn returns an error.
-func (e encodedDocument) Iterate(fn func(name string, value document.Value) error) error {
+func (e EncodedDocument) Iterate(fn func(name string, value document.Value) error) error {
 	var format Format
 	err := format.Decode(e)
 	if err != nil {
@@ -421,11 +421,11 @@ func (e encodedDocument) Iterate(fn func(name string, value document.Value) erro
 	return nil
 }
 
-type encodedArray []byte
+type EncodedArray []byte
 
 // Iterate goes through all the values of the array and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (e encodedArray) Iterate(fn func(i int, value document.Value) error) error {
+func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error {
 	var format Format
 	err := format.Decode(e)
 	if err != nil {
@@ -452,7 +452,7 @@ func (e encodedArray) Iterate(fn func(i int, value document.Value) error) error 
 }
 
 // GetByIndex returns a value by index of the array.
-func (e encodedArray) GetByIndex(i int) (document.Value, error) {
+func (e EncodedArray) GetByIndex(i int) (document.Value, error) {
 	return decodeValueFromDocument(e, string(EncodeInt64(int64(i))))
 }
 
@@ -539,15 +539,15 @@ func EncodeArray(a document.Array) ([]byte, error) {
 // DecodeArray takes a byte slice and returns a lazily decoded array.
 // If buf is malformed, an error will be returned when calling one of the array method.
 func DecodeArray(buf []byte) document.Array {
-	return encodedArray(buf)
+	return EncodedArray(buf)
 }
 
 func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	switch t {
 	case document.DocumentValue:
-		return document.NewDocumentValue(encodedDocument(data)), nil
+		return document.NewDocumentValue(EncodedDocument(data)), nil
 	case document.ArrayValue:
-		return document.NewArrayValue(encodedArray(data)), nil
+		return document.NewArrayValue(EncodedArray(data)), nil
 	case document.BytesValue:
 		x, err := DecodeBytes(data)
 		if err != nil {

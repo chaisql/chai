@@ -290,12 +290,12 @@ func (rs *recordStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(r document.Document) error {
+	err := rs.res.Iterate(func(d document.Document) error {
 		select {
 		case <-ctx.Done():
 			return errStop
 		case rs.c <- rec{
-			r: r.(query.RecordMask),
+			r: d.(query.RecordMask),
 		}:
 
 			select {
@@ -355,10 +355,7 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 			return err
 		}
 
-		dest[i], err = f.Decode()
-		if err != nil {
-			return err
-		}
+		dest[i] = f.V
 	}
 
 	return nil

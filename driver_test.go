@@ -24,30 +24,30 @@ func (rt *rectest) Scan(src interface{}) error {
 	return rt.ScanDocument(r)
 }
 
-func (rt *rectest) ScanDocument(r document.Document) error {
-	f, err := r.GetByField("a")
+func (rt *rectest) ScanDocument(d document.Document) error {
+	f, err := d.GetByField("a")
 	if err != nil {
 		return err
 	}
-	rt.a, err = f.DecodeToInt()
-	if err != nil {
-		return err
-	}
-
-	f, err = r.GetByField("b")
-	if err != nil {
-		return err
-	}
-	rt.b, err = f.DecodeToInt()
+	rt.a, err = f.ConvertToInt()
 	if err != nil {
 		return err
 	}
 
-	f, err = r.GetByField("c")
+	f, err = d.GetByField("b")
 	if err != nil {
 		return err
 	}
-	rt.c, err = f.DecodeToInt()
+	rt.b, err = f.ConvertToInt()
+	if err != nil {
+		return err
+	}
+
+	f, err = d.GetByField("c")
+	if err != nil {
+		return err
+	}
+	rt.c, err = f.ConvertToInt()
 	if err != nil {
 		return err
 	}

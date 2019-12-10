@@ -85,7 +85,7 @@ func ({{$fl}} *{{$structName}}) ScanDocument(doc document.Document) error {
 		switch f {
 		{{- range .Fields}}
 		case "{{.FieldName}}":
-		{{$fl}}.{{.Name}}, err = v.DecodeTo{{.Type}}()
+		{{$fl}}.{{.Name}}, err = v.ConvertTo{{.Type}}()
 		{{- end}}
 		}
 		return err

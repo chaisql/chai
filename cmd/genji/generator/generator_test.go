@@ -186,12 +186,12 @@ func TestGeneratedRecords(t *testing.T) {
 		tests := []struct {
 			name string
 			typ  document.ValueType
-			data []byte
+			v    interface{}
 		}{
-			{"a", document.StringValue, document.EncodeString(r.A)},
-			{"b", document.IntValue, document.EncodeInt(r.B)},
-			{"c", document.Int32Value, document.EncodeInt32(r.C)},
-			{"d", document.Int32Value, document.EncodeInt32(r.D)},
+			{"a", document.StringValue, []byte(r.A)},
+			{"b", document.IntValue, r.B},
+			{"c", document.Int32Value, r.C},
+			{"d", document.Int32Value, r.D},
 		}
 
 		for _, test := range tests {
@@ -200,7 +200,7 @@ func TestGeneratedRecords(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, test.name, test.name)
 				require.Equal(t, test.typ, v.Type)
-				require.Equal(t, test.data, v.Data)
+				require.Equal(t, test.v, v.V)
 			})
 		}
 
@@ -210,7 +210,7 @@ func TestGeneratedRecords(t *testing.T) {
 				require.NotEmpty(t, f)
 				require.Equal(t, tests[i].name, f)
 				require.Equal(t, tests[i].typ, v.Type)
-				require.Equal(t, tests[i].data, v.Data)
+				require.Equal(t, tests[i].v, v.V)
 			})
 			i++
 			return nil

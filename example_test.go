@@ -58,12 +58,12 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(r document.Document) error {
+	err = stream.Iterate(func(d document.Document) error {
 		var id int
 		var name string
 		var age int32
 
-		err = document.Scan(r, &id, &name, &age)
+		err = document.Scan(d, &id, &name, &age)
 		if err != nil {
 			return err
 		}
@@ -95,16 +95,16 @@ func Example() {
 	// Apply some transformations
 	err = stream.
 		// Filter all even ids
-		Filter(func(r document.Document) (bool, error) {
+		Filter(func(d document.Document) (bool, error) {
 			f, err := r.GetByField("id")
 			if err != nil {
 				return false, err
 			}
-			id, err := f.DecodeToInt()
+			id, err := f.ConvertToInt()
 			return id%2 == 0, nil
 		}).
 		// Enrich the records with a new field
-		Map(func(r document.Document) (document.Document, error) {
+		Map(func(d document.Document) (document.Document, error) {
 			var fb document.FieldBuffer
 
 			err := fb.ScanDocument(r)
@@ -116,8 +116,8 @@ func Example() {
 			return &fb, nil
 		}).
 		// Iterate on them
-		Iterate(func(r document.Document) error {
-			return document.Dump(os.Stdout, r)
+		Iterate(func(d document.Document) error {
+			return document.ToJSON(os.Stdout, r)
 		})
 
 	if err != nil {
@@ -128,12 +128,6 @@ func Example() {
 	// 10 foo 15
 	// 2 baz 0
 	// Count: 2
-	// id(Int): 10
-	// name(String): "foo"
-	// age(Int): 15
-	// group(String): "admin"
-	// id(Int64): 2
-	// name(String): "baz"
-	// age(Uint32): 0x0
-	// group(String): "admin"
+	// {"id":10,"name":"foo","age":15}
+	// {"id":10,"name":"foo","age":15}
 }

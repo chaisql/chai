@@ -54,7 +54,7 @@ res, err := db.Query("SELECT * FROM user WHERE age > ?", 18)
 defer res.Close()
 
 // Iterate over the results
-err = res.Iterate(func(r document.Document) error {
+err = res.Iterate(func(d document.Document) error {
     var id int
     var name string
     var age int32
@@ -81,7 +81,7 @@ err = document.Scan(r, &id, &name, &age)
 // Apply some transformations
 err = res.
     // Filter all even ids
-    Filter(func(r document.Document) (bool, error) {
+    Filter(func(d document.Document) (bool, error) {
         f, err := r.GetByField("id")
         ...
         id, err := f.DecodeToInt()
@@ -89,7 +89,7 @@ err = res.
         return id % 2 == 0, nil
     }).
     // Enrich the records with a new field
-    Map(func(r document.Document) (document.Document, error) {
+    Map(func(d document.Document) (document.Document, error) {
         var fb document.FieldBuffer
 
         err := fb.ScanDocument(r)
@@ -98,7 +98,7 @@ err = res.
         return &fb, nil
     }).
     // Iterate on them
-    Iterate(func(r document.Document) error {
+    Iterate(func(d document.Document) error {
         ...
     })
 ```
@@ -193,7 +193,7 @@ var users []User
 res, err := db.Query("SELECT * FROM user")
 defer res.Close()
 
-err = res.Iterate(func(r document.Document) error {
+err = res.Iterate(func(d document.Document) error {
     var u User
     // Use the generated ScanDocument method this time
     err := u.ScanDocument(r)

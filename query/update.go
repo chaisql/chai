@@ -60,14 +60,14 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 	for {
 		var i int
 
-		err = st.Iterate(func(r document.Document) error {
-			rk, ok := r.(document.Keyer)
+		err = st.Iterate(func(d document.Document) error {
+			rk, ok := d.(document.Keyer)
 			if !ok {
 				return errors.New("attempt to update record without key")
 			}
 
 			docs[i].Reset()
-			err := docs[i].ScanDocument(r)
+			err := docs[i].ScanDocument(d)
 			if err != nil {
 				return err
 			}
@@ -80,7 +80,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 
 				ev, err := e.Eval(EvalStack{
 					Tx:     tx,
-					Record: r,
+					Record: d,
 					Params: args,
 				})
 				if err != nil && err != document.ErrFieldNotFound {

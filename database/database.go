@@ -146,13 +146,13 @@ func (i *indexOptions) ScanDocument(rec document.Document) error {
 
 		switch f {
 		case "IndexName":
-			i.IndexName, err = document.DecodeString(v.Data)
+			i.IndexName, err = v.ConvertToString()
 		case "TableName":
-			i.TableName, err = document.DecodeString(v.Data)
+			i.TableName, err = v.ConvertToString()
 		case "FieldName":
-			i.FieldName, err = document.DecodeString(v.Data)
+			i.FieldName, err = v.ConvertToString()
 		case "Unique":
-			i.Unique, err = document.DecodeBool(v.Data)
+			i.Unique, err = v.ConvertToBool()
 		}
 		return err
 	})

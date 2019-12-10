@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
 	"github.com/pkg/errors"
@@ -273,7 +274,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(r document.Document) error {
+		err := tb.Iterate(func(d document.Document) error {
 			i++
 			return nil
 		})
@@ -291,8 +292,8 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(r document.Document) error {
-			m[string(r.(document.Keyer).Key())]++
+		err := tb.Iterate(func(d document.Document) error {
+			m[string(d.(document.Keyer).Key())]++
 			return nil
 		})
 		require.NoError(t, err)
@@ -396,7 +397,7 @@ func TestTableInsert(t *testing.T) {
 		// insert
 		key, err := tb.Insert(rec)
 		require.NoError(t, err)
-		require.Equal(t, document.EncodeInt32(1), key)
+		require.Equal(t, encoding.EncodeInt32(1), key)
 
 		// make sure the record is fetchable using the returned key
 		_, err = tb.GetRecord(key)
@@ -563,14 +564,14 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
-		require.Equal(t, "e", string(f.Data))
+		require.Equal(t, "e", string(f.V.([]byte)))
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetRecord(key2)
 		require.NoError(t, err)
 		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
-		require.Equal(t, "c", string(f.Data))
+		require.Equal(t, "c", string(f.V.([]byte)))
 	})
 }
 

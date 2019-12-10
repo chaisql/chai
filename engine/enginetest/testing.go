@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/engine"
 	"github.com/stretchr/testify/require"
 )
 

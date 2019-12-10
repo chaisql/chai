@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,7 +62,7 @@ func TestIndexDelete(t *testing.T) {
 
 		pivot := document.NewIntValue(10)
 		i := 0
-		err := idx.AscendGreaterOrEqual(&pivot, func(val document.Value, key []byte) error {
+		err := idx.AscendGreaterOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, key []byte) error {
 			if i == 0 {
 				require.Equal(t, document.NewFloat64Value(10), val)
 				require.Equal(t, "other-key", string(key))
@@ -143,7 +143,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				name  string
 				val   func(i int) document.Value
 				t     index.Type
-				pivot *document.Value
+				pivot *index.Pivot
 			}{
 				{"floats", func(i int) document.Value { return document.NewInt32Value(int32(i)) }, index.Float, index.EmptyPivot(document.Int32Value)},
 				{"bytes", func(i int) document.Value { return document.NewStringValue(string([]byte{byte(i)})) }, index.Bytes, index.EmptyPivot(document.StringValue)},
@@ -192,7 +192,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			var i uint8
 			var count int
 			pivot := document.NewStringValue("C")
-			err := idx.AscendGreaterOrEqual(&pivot, func(val document.Value, rid []byte) error {
+			err := idx.AscendGreaterOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, rid []byte) error {
 				require.Equal(t, document.NewBytesValue([]byte{'C' + i}), val)
 				require.Equal(t, []byte{'c' + i}, rid)
 
@@ -267,9 +267,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 			var i uint8 = 8
 			var count int
-			err := idx.DescendLessOrEqual(index.EmptyPivot(document.Int32Value), func(val document.Value, rid []byte) error {
+			err := idx.DescendLessOrEqual(index.EmptyPivot(document.Int32Value), func(val document.Value, key []byte) error {
 				require.Equal(t, document.NewFloat64Value(float64(i)), val)
-				require.Equal(t, []byte{'a' + i}, rid)
+				require.Equal(t, []byte{'a' + i}, key)
 
 				i -= 2
 				count++
@@ -290,7 +290,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			var i byte = 0
 			var count int
 			pivot := document.NewStringValue("F")
-			err := idx.DescendLessOrEqual(&pivot, func(val document.Value, rid []byte) error {
+			err := idx.DescendLessOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, rid []byte) error {
 				require.Equal(t, document.NewBytesValue([]byte{'F' - i}), val)
 				require.Equal(t, []byte{'f' - i}, rid)
 

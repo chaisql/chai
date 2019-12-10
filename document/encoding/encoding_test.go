@@ -196,7 +196,7 @@ func BenchmarkFormatDecode(b *testing.B) {
 	}
 }
 
-func BenchmarkDecodeValue(b *testing.B) {
+func BenchmarkGetByField(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {

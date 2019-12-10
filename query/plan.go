@@ -7,6 +7,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/scanner"
@@ -177,7 +178,7 @@ type indexIterator struct {
 
 var errStop = errors.New("stop")
 
-func (it indexIterator) Iterate(fn func(r document.Document) error) error {
+func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -186,22 +187,22 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 		return err
 	}
 
-	var data []byte
 	if v.Type.IsNumber() {
-		x, err := v.DecodeToFloat64()
+		v, err = v.ConvertTo(document.Float64Value)
 		if err != nil {
 			return err
 		}
-
-		data = document.NewFloat64Value(x).Data
-	} else {
-		data = v.Data
 	}
 
 	switch it.op {
 	case scanner.EQ:
-		err = it.index.AscendGreaterOrEqual(&v, func(val document.Value, key []byte) error {
-			if bytes.Equal(data, val.Data) {
+		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
+			ok, err := v.IsEqual(val)
+			if err != nil {
+				return err
+			}
+
+			if ok {
 				r, err := it.tb.GetRecord(key)
 				if err != nil {
 					return err
@@ -213,8 +214,13 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 			return errStop
 		})
 	case scanner.GT:
-		err = it.index.AscendGreaterOrEqual(&v, func(val document.Value, key []byte) error {
-			if bytes.Equal(data, val.Data) {
+		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
+			ok, err := v.IsEqual(val)
+			if err != nil {
+				return err
+			}
+
+			if ok {
 				return nil
 			}
 
@@ -226,7 +232,7 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 			return fn(r)
 		})
 	case scanner.GTE:
-		err = it.index.AscendGreaterOrEqual(&v, func(val document.Value, key []byte) error {
+		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
 			r, err := it.tb.GetRecord(key)
 			if err != nil {
 				return err
@@ -236,7 +242,12 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 		})
 	case scanner.LT:
 		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
-			if bytes.Compare(data, val.Data) <= 0 {
+			ok, err := v.IsLesserThanOrEqual(val)
+			if err != nil {
+				return err
+			}
+
+			if ok {
 				return errStop
 			}
 
@@ -249,7 +260,12 @@ func (it indexIterator) Iterate(fn func(r document.Document) error) error {
 		})
 	case scanner.LTE:
 		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
-			if bytes.Compare(data, val.Data) < 0 {
+			ok, err := v.IsLesserThan(val)
+			if err != nil {
+				return err
+			}
+
+			if ok {
 				return errStop
 			}
 
@@ -278,7 +294,7 @@ type pkIterator struct {
 	e    Expr
 }
 
-func (it pkIterator) Iterate(fn func(r document.Document) error) error {
+func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -287,13 +303,16 @@ func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 		return err
 	}
 
-	data := v.Data
 	if v.Type.IsNumber() {
-		vv, err := v.ConvertTo(it.cfg.PrimaryKeyType)
+		v, err = v.ConvertTo(it.cfg.PrimaryKeyType)
 		if err != nil {
 			return err
 		}
-		data = vv.Data
+	}
+
+	data, err := encoding.EncodeValue(v)
+	if err != nil {
+		return err
 	}
 
 	switch it.op {
@@ -306,18 +325,18 @@ func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 
 			return err
 		}
-		return fn(document.EncodedDocument(val))
+		return fn(encoding.EncodedDocument(val))
 	case scanner.GT:
-		err = it.tb.Store.AscendGreaterOrEqual(v.Data, func(key, val []byte) error {
+		err = it.tb.Store.AscendGreaterOrEqual(data, func(key, val []byte) error {
 			if bytes.Equal(data, val) {
 				return nil
 			}
 
-			return fn(document.EncodedDocument(val))
+			return fn(encoding.EncodedDocument(val))
 		})
 	case scanner.GTE:
 		err = it.tb.Store.AscendGreaterOrEqual(data, func(key, val []byte) error {
-			return fn(document.EncodedDocument(val))
+			return fn(encoding.EncodedDocument(val))
 		})
 	case scanner.LT:
 		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
@@ -325,7 +344,7 @@ func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 				return errStop
 			}
 
-			return fn(document.EncodedDocument(val))
+			return fn(encoding.EncodedDocument(val))
 		})
 	case scanner.LTE:
 		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
@@ -333,7 +352,7 @@ func (it pkIterator) Iterate(fn func(r document.Document) error) error {
 				return errStop
 			}
 
-			return fn(document.EncodedDocument(val))
+			return fn(encoding.EncodedDocument(val))
 		})
 	}
 

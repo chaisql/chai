@@ -61,13 +61,13 @@ func (b *Basic) ScanDocument(doc document.Document) error {
 
 		switch f {
 		case "a":
-			b.A, err = v.DecodeToString()
+			b.A, err = v.ConvertToString()
 		case "b":
-			b.B, err = v.DecodeToInt()
+			b.B, err = v.ConvertToInt()
 		case "c":
-			b.C, err = v.DecodeToInt32()
+			b.C, err = v.ConvertToInt32()
 		case "d":
-			b.D, err = v.DecodeToInt32()
+			b.D, err = v.ConvertToInt32()
 		}
 		return err
 	})
@@ -136,13 +136,13 @@ func (b *basic) ScanDocument(doc document.Document) error {
 
 		switch f {
 		case "a":
-			b.A, err = v.DecodeToBytes()
+			b.A, err = v.ConvertToBytes()
 		case "b":
-			b.B, err = v.DecodeToUint16()
+			b.B, err = v.ConvertToUint16()
 		case "c":
-			b.C, err = v.DecodeToFloat64()
+			b.C, err = v.ConvertToFloat64()
 		case "d":
-			b.D, err = v.DecodeToFloat64()
+			b.D, err = v.ConvertToFloat64()
 		}
 		return err
 	})
@@ -211,13 +211,13 @@ func (c *CustomFieldNames) ScanDocument(doc document.Document) error {
 
 		switch f {
 		case "A":
-			c.A, err = v.DecodeToString()
+			c.A, err = v.ConvertToString()
 		case "b":
-			c.B, err = v.DecodeToInt()
+			c.B, err = v.ConvertToInt()
 		case "c":
-			c.C, err = v.DecodeToInt32()
+			c.C, err = v.ConvertToInt32()
 		case "d":
-			c.D, err = v.DecodeToInt32()
+			c.D, err = v.ConvertToInt32()
 		}
 		return err
 	})

@@ -257,10 +257,10 @@ func ExampleResult_Iterate() {
 	}
 	defer result.Close()
 
-	err = result.Iterate(func(r document.Document) error {
+	err = result.Iterate(func(d document.Document) error {
 		// Scan using generated methods
 		var u User
-		err = u.ScanDocument(r)
+		err = u.ScanDocument(d)
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ func ExampleResult_Iterate() {
 		var name string
 		var age uint8
 
-		err = document.Scan(r, &id, &name, &age)
+		err = document.Scan(d, &id, &name, &age)
 		if err != nil {
 			return err
 		}

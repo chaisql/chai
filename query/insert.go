@@ -81,7 +81,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 				return res, fmt.Errorf("values must be a list of documents if field list is empty")
 			}
 
-			d, err = v.DecodeToDocument()
+			d, err = v.ConvertToDocument()
 			if err != nil {
 				return res, err
 			}
@@ -90,7 +90,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			if err != nil {
 				return res, err
 			}
-			d, err = v.DecodeToDocument()
+			d, err = v.ConvertToDocument()
 			if err != nil {
 				return res, err
 			}
@@ -127,7 +127,7 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 			return res, errors.New("invalid values")
 		}
 
-		vlist, err := v.DecodeToArray()
+		vlist, err := v.ConvertToArray()
 		if err != nil {
 			return res, err
 		}

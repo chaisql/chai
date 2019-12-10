@@ -9,6 +9,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 )
 
 // SelectStmt is a DSL that allows creating a full Select query.
@@ -90,7 +91,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		if err != nil {
 			return res, err
 		}
-		offset, err = document.DecodeInt(voff.Data)
+		offset, err = voff.ConvertToInt()
 		if err != nil {
 			return res, err
 		}
@@ -110,7 +111,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		if err != nil {
 			return res, err
 		}
-		limit, err = document.DecodeInt(vlim.Data)
+		limit, err = vlim.ConvertToInt()
 		if err != nil {
 			return res, err
 		}
@@ -126,10 +127,10 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		st = st.Limit(limit)
 	}
 
-	st = st.Map(func(r document.Document) (document.Document, error) {
+	st = st.Map(func(d document.Document) (document.Document, error) {
 		return RecordMask{
 			cfg:          cfg,
-			r:            r,
+			r:            d,
 			resultFields: stmt.Selectors,
 		}, nil
 	})
@@ -214,9 +215,9 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 
 		switch v.Type {
 		case document.DocumentValue:
-			d, err = v.DecodeToDocument()
+			d, err = v.ConvertToDocument()
 		case document.ArrayValue:
-			a, err = v.DecodeToArray()
+			a, err = v.ConvertToArray()
 		default:
 			return f.Name(), nilLitteral, document.ErrFieldNotFound
 		}
@@ -277,8 +278,10 @@ func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) e
 		return fn(stack.Cfg.PrimaryKeyName, v)
 	}
 
-	return fn("key()", document.Value{
-		Data: stack.Record.(document.Keyer).Key(),
-		Type: document.Int64Value,
-	})
+	v, err := encoding.DecodeValue(document.Int64Value, stack.Record.(document.Keyer).Key())
+	if err != nil {
+		return err
+	}
+
+	return fn("key()", v)
 }
