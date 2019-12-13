@@ -236,7 +236,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 func (tx Transaction) ReIndexAll() error {
 	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
 		var opts indexOptions
-		err := opts.ScanDocument(encoding.EncodedDocument(v))
+		err := document.StructScan(encoding.EncodedDocument(v), &opts)
 		if err != nil {
 			return err
 		}

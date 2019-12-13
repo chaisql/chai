@@ -90,8 +90,8 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	cfg.lastKey++
-	key = encoding.EncodeInt64(cfg.lastKey)
+	cfg.LastKey++
+	key = encoding.EncodeInt64(cfg.LastKey)
 	err = t.CfgStore.Replace(t.name, cfg)
 	if err != nil {
 		return nil, err
@@ -265,7 +265,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 	err = document.NewStream(&tb).
 		Filter(func(d document.Document) (bool, error) {
-			v, err := d.GetByField("TableName")
+			v, err := d.GetByField("tablename")
 			if err != nil {
 				return false, err
 			}
@@ -279,7 +279,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 		}).
 		Iterate(func(d document.Document) error {
 			var opts indexOptions
-			err := opts.ScanDocument(d)
+			err := document.StructScan(d, &opts)
 			if err != nil {
 				return err
 			}

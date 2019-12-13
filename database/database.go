@@ -3,9 +3,7 @@ package database
 import (
 	"sync"
 
-	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
-	"github.com/pkg/errors"
 )
 
 type Database struct {
@@ -87,73 +85,4 @@ type indexOptions struct {
 	TableName string
 	FieldName string
 	Unique    bool
-}
-
-// Field implements the field method of the document.Document interface.
-func (i *indexOptions) GetByField(name string) (document.Value, error) {
-	switch name {
-	case "IndexName":
-		return document.NewStringValue(i.IndexName), nil
-	case "TableName":
-		return document.NewStringValue(i.TableName), nil
-	case "FieldName":
-		return document.NewStringValue(i.FieldName), nil
-	case "Unique":
-		return document.NewBoolValue(i.Unique), nil
-	}
-
-	return document.Value{}, errors.New("unknown field")
-}
-
-// Iterate through all the fields one by one and pass each of them to the given function.
-// It the given function returns an error, the iteration is interrupted.
-func (i *indexOptions) Iterate(fn func(string, document.Value) error) error {
-	var err error
-	var v document.Value
-
-	v, _ = i.GetByField("IndexName")
-	err = fn("IndexName", v)
-	if err != nil {
-		return err
-	}
-
-	v, _ = i.GetByField("TableName")
-	err = fn("TableName", v)
-	if err != nil {
-		return err
-	}
-
-	v, _ = i.GetByField("FieldName")
-	err = fn("FieldName", v)
-	if err != nil {
-		return err
-	}
-
-	v, _ = i.GetByField("Unique")
-	err = fn("Unique", v)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ScanDocument extracts fields from record and assigns them to the struct fields.
-// It implements the document.Scanner interface.
-func (i *indexOptions) ScanDocument(rec document.Document) error {
-	return rec.Iterate(func(f string, v document.Value) error {
-		var err error
-
-		switch f {
-		case "IndexName":
-			i.IndexName, err = v.ConvertToString()
-		case "TableName":
-			i.TableName, err = v.ConvertToString()
-		case "FieldName":
-			i.FieldName, err = v.ConvertToString()
-		case "Unique":
-			i.Unique, err = v.ConvertToBool()
-		}
-		return err
-	})
 }

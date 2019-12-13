@@ -12,7 +12,7 @@ type TableConfig struct {
 	PrimaryKeyName string
 	PrimaryKeyType document.ValueType
 
-	lastKey int64
+	LastKey int64
 }
 
 type tableConfigStore struct {
@@ -29,12 +29,12 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 		return err
 	}
 
-	var fb document.FieldBuffer
-	fb.Add("PrimaryKeyName", document.NewStringValue(cfg.PrimaryKeyName))
-	fb.Add("PrimaryKeyType", document.NewUint8Value(uint8(cfg.PrimaryKeyType)))
-	fb.Add("lastKey", document.NewInt64Value(cfg.lastKey))
+	doc, err := document.NewFromStruct(cfg)
+	if err != nil {
+		return err
+	}
 
-	v, err := encoding.EncodeDocument(&fb)
+	v, err := encoding.EncodeDocument(doc)
 	if err != nil {
 		return err
 	}
@@ -52,12 +52,12 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 		return err
 	}
 
-	var fb document.FieldBuffer
-	fb.Add("PrimaryKeyName", document.NewStringValue(cfg.PrimaryKeyName))
-	fb.Add("PrimaryKeyType", document.NewUint8Value(uint8(cfg.PrimaryKeyType)))
-	fb.Add("lastKey", document.NewInt64Value(cfg.lastKey))
+	doc, err := document.NewFromStruct(cfg)
+	if err != nil {
+		return err
+	}
 
-	v, err := encoding.EncodeDocument(&fb)
+	v, err := encoding.EncodeDocument(doc)
 	if err != nil {
 		return err
 	}
@@ -76,31 +76,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 
 	var cfg TableConfig
 
-	r := encoding.EncodedDocument(v)
-
-	f, err := r.GetByField("PrimaryKeyName")
-	if err != nil {
-		return nil, err
-	}
-	cfg.PrimaryKeyName, err = f.ConvertToString()
-	if err != nil {
-		return nil, err
-	}
-	f, err = r.GetByField("PrimaryKeyType")
-	if err != nil {
-		return nil, err
-	}
-	tp, err := f.ConvertToUint8()
-	if err != nil {
-		return nil, err
-	}
-	cfg.PrimaryKeyType = document.ValueType(tp)
-
-	f, err = r.GetByField("lastKey")
-	if err != nil {
-		return nil, err
-	}
-	cfg.lastKey, err = f.ConvertToInt64()
+	err = document.StructScan(encoding.EncodedDocument(v), &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +118,12 @@ func (t *indexStore) Insert(cfg indexOptions) error {
 		return err
 	}
 
-	v, err := encoding.EncodeDocument(&cfg)
+	doc, err := document.NewFromStruct(&cfg)
+	if err != nil {
+		return err
+	}
+
+	v, err := encoding.EncodeDocument(doc)
 	if err != nil {
 		return err
 	}
@@ -161,7 +142,7 @@ func (t *indexStore) Get(indexName string) (*indexOptions, error) {
 	}
 
 	var idxopts indexOptions
-	err = idxopts.ScanDocument(encoding.EncodedDocument(v))
+	err = document.StructScan(encoding.EncodedDocument(v), &idxopts)
 	if err != nil {
 		return nil, err
 	}
