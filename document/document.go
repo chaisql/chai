@@ -122,7 +122,14 @@ func (s structDocument) Iterate(fn func(f string, v Value) error) error {
 			return err
 		}
 
-		err = fn(strings.ToLower(sf.Name), v)
+		var name string
+		if gtag, ok := sf.Tag.Lookup("genji"); ok {
+			name = gtag
+		} else {
+			name = strings.ToLower(sf.Name)
+		}
+
+		err = fn(name, v)
 		if err != nil {
 			return err
 		}

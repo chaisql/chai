@@ -57,8 +57,13 @@ func structScan(d Document, ref reflect.Value) error {
 	l := sref.NumField()
 	for i := 0; i < l; i++ {
 		f := sref.Field(i)
-
-		name := strings.ToLower(stp.Field(i).Name)
+		sf := stp.Field(i)
+		var name string
+		if gtag, ok := sf.Tag.Lookup("genji"); ok {
+			name = gtag
+		} else {
+			name = strings.ToLower(sf.Name)
+		}
 		v, err := d.GetByField(name)
 		if err == ErrFieldNotFound {
 			continue
