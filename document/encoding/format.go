@@ -109,7 +109,7 @@ func (h *Header) WriteTo(w io.Writer) (int64, error) {
 		return 0, err
 	}
 
-	return buf.WriteTo(w)
+	return io.Copy(w, &buf)
 }
 
 // FieldHeader represents the metadata of a field.

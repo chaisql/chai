@@ -501,7 +501,7 @@ func TestToJSON(t *testing.T) {
 }
 
 func TestScan(t *testing.T) {
-	r := document.NewFieldBuffer().
+	doc := document.NewFieldBuffer().
 		Add("a", document.NewBytesValue([]byte("foo"))).
 		Add("b", document.NewStringValue("bar")).
 		Add("c", document.NewBoolValue(true)).
@@ -515,7 +515,36 @@ func TestScan(t *testing.T) {
 		Add("k", document.NewInt16Value(10)).
 		Add("l", document.NewInt32Value(10)).
 		Add("m", document.NewInt64Value(10)).
-		Add("n", document.NewFloat64Value(10.5))
+		Add("n", document.NewFloat64Value(10.5)).
+		Add("o", document.NewArrayValue(
+			document.NewValueBuffer().
+				Append(document.NewBoolValue(true)),
+		)).
+		Add("p", document.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo", document.NewStringValue("foo")).
+				Add("bar", document.NewStringValue("bar")),
+		)).
+		Add("q", document.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo", document.NewStringValue("foo")).
+				Add("bar", document.NewStringValue("bar")),
+		)).
+		Add("r", document.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo", document.NewStringValue("foo")).
+				Add("bar", document.NewStringValue("bar")),
+		)).
+		Add("s", document.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo", document.NewStringValue("foo")).
+				Add("bar", document.NewStringValue("bar")),
+		))
+
+	type foo struct {
+		Foo string
+		Bar *string
+	}
 
 	var a []byte
 	var b string
@@ -531,8 +560,13 @@ func TestScan(t *testing.T) {
 	var l int32
 	var m int64
 	var n float64
+	var o []bool
+	var p foo
+	var q *foo = new(foo)
+	var r *foo
+	var s map[string]string
 
-	err := document.Scan(r, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n)
+	err := document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r, &s)
 	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -548,29 +582,35 @@ func TestScan(t *testing.T) {
 	require.Equal(t, l, int32(10))
 	require.Equal(t, m, int64(10))
 	require.Equal(t, n, float64(10.5))
+	require.Equal(t, o, []bool{true})
+	bar := "bar"
+	require.Equal(t, foo{Foo: "foo", Bar: &bar}, p)
+	require.Equal(t, &foo{Foo: "foo", Bar: &bar}, q)
+	require.Equal(t, &foo{Foo: "foo", Bar: &bar}, r)
+	require.Equal(t, map[string]string{"foo": "foo", "bar": "bar"}, s)
 
 	t.Run("DocumentScanner", func(t *testing.T) {
 		var ds documentScanner
 		ds.fn = func(d document.Document) error {
-			require.Equal(t, r, d)
+			require.Equal(t, doc, d)
 			return nil
 		}
-		err := document.Scan(r, &ds)
+		err := document.StructScan(doc, &ds)
 		require.NoError(t, err)
 	})
 
 	t.Run("Map", func(t *testing.T) {
 		m := make(map[string]interface{})
-		err := document.Scan(r, m)
+		err := document.MapScan(doc, m)
 		require.NoError(t, err)
-		require.Len(t, m, 14)
+		require.Len(t, m, 19)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
-		err := document.Scan(r, &m)
+		err := document.MapScan(doc, &m)
 		require.NoError(t, err)
-		require.Len(t, m, 14)
+		require.Len(t, m, 19)
 	})
 }
 

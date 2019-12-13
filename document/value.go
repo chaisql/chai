@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 )
 
 var (
@@ -940,6 +941,10 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(x)
+}
+
+func (v Value) Scan(t interface{}) error {
+	return scanValue(v, reflect.ValueOf(t))
 }
 
 func convertNumberToInt64(v Value) (int64, error) {

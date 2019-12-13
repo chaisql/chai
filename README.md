@@ -59,7 +59,7 @@ err = res.Iterate(func(d document.Document) error {
     var name string
     var age int32
 
-    err = document.Scan(r, &id, &name, &age)
+    err = document.Scan(d, &id, &name, &age)
     if err != nil {
         return err
     }
