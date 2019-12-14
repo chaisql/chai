@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
-	"sort"
 
 	"github.com/asdine/genji/document"
 )
@@ -216,25 +215,6 @@ func EncodeDocument(d document.Document) ([]byte, error) {
 
 	var offset uint64
 	var dataList [][]byte
-
-	// copy the document into a buffer and sort the document
-	// by field names
-	switch t := d.(type) {
-	case document.FieldBuffer:
-		fb := &t
-		sort.Sort(fb)
-		d = fb
-	case *document.FieldBuffer:
-		sort.Sort(t)
-	default:
-		var fb document.FieldBuffer
-		err := fb.ScanDocument(d)
-		if err != nil {
-			return nil, err
-		}
-		sort.Sort(&fb)
-		d = &fb
-	}
 
 	err := d.Iterate(func(f string, v document.Value) error {
 		data, err := EncodeValue(v)

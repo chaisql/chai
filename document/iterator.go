@@ -14,7 +14,7 @@ var ErrStreamClosed = errors.New("stream closed")
 type Iterator interface {
 	// Iterate goes through all the documents and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(func(r Document) error) error
+	Iterate(func(d Document) error) error
 }
 
 // NewIterator creates an iterator that iterates over documents.
@@ -24,11 +24,11 @@ func NewIterator(documents ...Document) Iterator {
 
 type documentsIterator []Document
 
-func (rr documentsIterator) Iterate(fn func(r Document) error) error {
+func (rr documentsIterator) Iterate(fn func(d Document) error) error {
 	var err error
 
-	for _, r := range rr {
-		err = fn(r)
+	for _, d := range rr {
+		err = fn(d)
 		if err != nil {
 			return err
 		}
@@ -58,7 +58,7 @@ func NewStream(it Iterator) Stream {
 // and returned by fn, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
 // It implements the Iterator interface.
-func (s Stream) Iterate(fn func(r Document) error) error {
+func (s Stream) Iterate(fn func(d Document) error) error {
 	if s.it == nil {
 		return nil
 	}
@@ -69,17 +69,17 @@ func (s Stream) Iterate(fn func(r Document) error) error {
 
 	opFn := s.op()
 
-	err := s.it.Iterate(func(r Document) error {
-		r, err := opFn(r)
+	err := s.it.Iterate(func(d Document) error {
+		d, err := opFn(d)
 		if err != nil {
 			return err
 		}
 
-		if r == nil {
+		if d == nil {
 			return nil
 		}
 
-		return fn(r)
+		return fn(d)
 	})
 	if err != ErrStreamClosed {
 		return err
@@ -99,8 +99,8 @@ func (s Stream) Pipe(op StreamOperator) Stream {
 
 // Map applies fn to each received document and passes it to the next stream.
 // If fn returns an error, the stream is interrupted.
-func (s Stream) Map(fn func(r Document) (Document, error)) Stream {
-	return s.Pipe(func() func(r Document) (Document, error) {
+func (s Stream) Map(fn func(d Document) (Document, error)) Stream {
+	return s.Pipe(func() func(d Document) (Document, error) {
 		return fn
 	})
 }
@@ -108,10 +108,10 @@ func (s Stream) Map(fn func(r Document) (Document, error)) Stream {
 // Filter each received document using fn.
 // If fn returns true, the document is kept, otherwise it is skipped.
 // If fn returns an error, the stream is interrupted.
-func (s Stream) Filter(fn func(r Document) (bool, error)) Stream {
-	return s.Pipe(func() func(r Document) (Document, error) {
-		return func(r Document) (Document, error) {
-			ok, err := fn(r)
+func (s Stream) Filter(fn func(d Document) (bool, error)) Stream {
+	return s.Pipe(func() func(d Document) (Document, error) {
+		return func(d Document) (Document, error) {
+			ok, err := fn(d)
 			if err != nil {
 				return nil, err
 			}
@@ -120,20 +120,20 @@ func (s Stream) Filter(fn func(r Document) (bool, error)) Stream {
 				return nil, nil
 			}
 
-			return r, nil
+			return d, nil
 		}
 	})
 }
 
 // Limit interrupts the stream once the number of passed documents have reached n.
 func (s Stream) Limit(n int) Stream {
-	return s.Pipe(func() func(r Document) (Document, error) {
+	return s.Pipe(func() func(d Document) (Document, error) {
 		var count int
 
-		return func(r Document) (Document, error) {
+		return func(d Document) (Document, error) {
 			if count < n {
 				count++
-				return r, nil
+				return d, nil
 			}
 
 			return nil, ErrStreamClosed
@@ -143,16 +143,16 @@ func (s Stream) Limit(n int) Stream {
 
 // Offset ignores n documents then passes the subsequent ones to the stream.
 func (s Stream) Offset(n int) Stream {
-	return s.Pipe(func() func(r Document) (Document, error) {
+	return s.Pipe(func() func(d Document) (Document, error) {
 		var skipped int
 
-		return func(r Document) (Document, error) {
+		return func(d Document) (Document, error) {
 			if skipped < n {
 				skipped++
 				return nil, nil
 			}
 
-			return r, nil
+			return d, nil
 		}
 	})
 }
@@ -175,7 +175,7 @@ func (s Stream) Append(it Iterator) Stream {
 func (s Stream) Count() (int, error) {
 	counter := 0
 
-	err := s.Iterate(func(r Document) error {
+	err := s.Iterate(func(d Document) error {
 		counter++
 		return nil
 	})
@@ -185,9 +185,9 @@ func (s Stream) Count() (int, error) {
 
 // First runs the stream, returns the first document found and closes the stream.
 // If the stream is empty, all return values are nil.
-func (s Stream) First() (r Document, err error) {
+func (s Stream) First() (d Document, err error) {
 	err = s.Iterate(func(rec Document) error {
-		r = rec
+		d = rec
 		return ErrStreamClosed
 	})
 
@@ -206,13 +206,13 @@ func (s Stream) First() (r Document, err error) {
 // the Iterate method will stop the iteration and return nil.
 // Stream operators can be reused, and thus, any state or side effect should be kept within the operator closure
 // unless the nature of the operator prevents that.
-type StreamOperator func() func(r Document) (Document, error)
+type StreamOperator func() func(d Document) (Document, error)
 
 type multiIterator struct {
 	iterators []Iterator
 }
 
-func (m multiIterator) Iterate(fn func(r Document) error) error {
+func (m multiIterator) Iterate(fn func(d Document) error) error {
 	for _, it := range m.iterators {
 		err := it.Iterate(fn)
 		if err != nil {
@@ -228,10 +228,10 @@ func IteratorToCSV(w io.Writer, s Iterator) error {
 	cw := csv.NewWriter(w)
 
 	var line []string
-	err := s.Iterate(func(r Document) error {
+	err := s.Iterate(func(d Document) error {
 		line = line[:0]
 
-		err := r.Iterate(func(f string, v Value) error {
+		err := d.Iterate(func(f string, v Value) error {
 			line = append(line, v.String())
 
 			return nil
@@ -255,7 +255,7 @@ func IteratorToJSON(w io.Writer, s Iterator) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 
-	return s.Iterate(func(r Document) error {
-		return enc.Encode(jsonDocument{r})
+	return s.Iterate(func(d Document) error {
+		return enc.Encode(jsonDocument{d})
 	})
 }
