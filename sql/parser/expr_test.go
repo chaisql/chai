@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/sql/query"
 	"github.com/stretchr/testify/require"
 )
 

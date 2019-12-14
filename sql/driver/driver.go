@@ -11,8 +11,8 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/parser"
-	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/sql/parser"
+	"github.com/asdine/genji/sql/query"
 )
 
 func init() {

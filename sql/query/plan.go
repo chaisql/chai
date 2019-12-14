@@ -10,7 +10,7 @@ import (
 	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 type queryPlan struct {

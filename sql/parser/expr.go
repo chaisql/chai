@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 type operator interface {

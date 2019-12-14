@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/sql/query"
 	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
 )

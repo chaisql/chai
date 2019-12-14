@@ -6,7 +6,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 var (

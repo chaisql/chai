@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/asdine/genji/query"
-	"github.com/asdine/genji/scanner"
+	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 // Parser represents an Genji SQL Parser.

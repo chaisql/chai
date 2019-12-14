@@ -9,8 +9,8 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
-	"github.com/asdine/genji/parser"
-	"github.com/asdine/genji/query"
+	"github.com/asdine/genji/sql/parser"
+	"github.com/asdine/genji/sql/query"
 )
 
 // Open creates a Genji database at the given path.
