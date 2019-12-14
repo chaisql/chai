@@ -72,7 +72,10 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			var ok bool
 			d, ok = v.(document.Document)
 			if !ok {
-				return res, fmt.Errorf("unsupported parameter of type %t, expecting document.Document", v)
+				d, err = document.NewFromStruct(v)
+				if err != nil {
+					return res, err
+				}
 			}
 		case LiteralValue:
 			v := document.Value(tp)

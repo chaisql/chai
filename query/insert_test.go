@@ -104,4 +104,29 @@ func TestInsertStmt(t *testing.T) {
 		err = db.Exec("INSERT INTO test (`key()`, `key`) VALUES (1, 2)")
 		require.NoError(t, err)
 	})
+
+	t.Run("with struct param", func(t *testing.T) {
+		db, err := genji.New(memoryengine.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test")
+		require.NoError(t, err)
+
+		type foo struct {
+			A string
+			B string `genji:"b-b"`
+		}
+
+		err = db.Exec("INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
+		require.NoError(t, err)
+		res, err := db.Query("SELECT * FROM test")
+		defer res.Close()
+
+		require.NoError(t, err)
+		var buf bytes.Buffer
+		err = document.IteratorToJSON(&buf, res)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"a": "a", "b-b": "b"}`, buf.String())
+	})
 }
