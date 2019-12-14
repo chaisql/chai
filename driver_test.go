@@ -3,57 +3,19 @@ package genji
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 
-	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
 	"github.com/stretchr/testify/require"
 )
 
 type rectest struct {
-	a, b, c int
+	A int
+	B []int
+	C struct{ Foo string }
 }
 
-func (rt *rectest) Scan(src interface{}) error {
-	r, ok := src.(document.Document)
-	if !ok {
-		return errors.New("unable to scan returned data")
-	}
-
-	return rt.ScanDocument(r)
-}
-
-func (rt *rectest) ScanDocument(d document.Document) error {
-	f, err := d.GetByField("a")
-	if err != nil {
-		return err
-	}
-	rt.a, err = f.ConvertToInt()
-	if err != nil {
-		return err
-	}
-
-	f, err = d.GetByField("b")
-	if err != nil {
-		return err
-	}
-	rt.b, err = f.ConvertToInt()
-	if err != nil {
-		return err
-	}
-
-	f, err = d.GetByField("c")
-	if err != nil {
-		return err
-	}
-	rt.c, err = f.ConvertToInt()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+type foo struct{ Foo string }
 
 func TestDriver(t *testing.T) {
 	db, err := sql.Open("genji", ":memory:")
@@ -67,7 +29,7 @@ func TestDriver(t *testing.T) {
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
-		res, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i+1, i+2, i+3)
+		res, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i, []int{i + 1, i + 2, i + 3}, &foo{Foo: "bar"})
 		require.NoError(t, err)
 		n, err = res.RowsAffected()
 		require.NoError(t, err)
@@ -82,9 +44,9 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rectest
 		for rows.Next() {
-			err = rows.Scan(&rt)
+			err = rows.Scan(Scanner(&rt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
 			count++
 		}
 
@@ -98,12 +60,13 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var a, c int
+		var a int
+		var c foo
 		for rows.Next() {
-			err = rows.Scan(&a, &c)
+			err = rows.Scan(&a, Scanner(&c))
 			require.NoError(t, err)
-			require.Equal(t, count+1, a)
-			require.Equal(t, count+3, c)
+			require.Equal(t, count, a)
+			require.Equal(t, foo{Foo: "bar"}, c)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -116,15 +79,16 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var a, c int
+		var a int
+		var c foo
 		var rt1, rt2 rectest
 		for rows.Next() {
-			err = rows.Scan(&a, &rt1, &c, &rt2)
+			err = rows.Scan(&a, Scanner(&rt1), Scanner(&c), Scanner(&rt2))
 			require.NoError(t, err)
-			require.Equal(t, count+1, a)
-			require.Equal(t, count+3, c)
-			require.Equal(t, rt1, rectest{count + 1, count + 2, count + 3})
-			require.Equal(t, rt2, rectest{count + 1, count + 2, count + 3})
+			require.Equal(t, count, a)
+			require.Equal(t, foo{Foo: "bar"}, c)
+			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt1)
+			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt2)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -132,7 +96,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Params", func(t *testing.T) {
-		rows, err := db.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, 6)
+		rows, err := db.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, []int{6, 7, 8})
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -177,9 +141,9 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rectest
 		for rows.Next() {
-			err = rows.Scan(&rt)
+			err = rows.Scan(Scanner(&rt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -189,7 +153,7 @@ func TestDriver(t *testing.T) {
 	t.Run("Multiple queries", func(t *testing.T) {
 		rows, err := db.Query(`
 			SELECT * FROM test;;;
-			INSERT INTO test (a, b, c) VALUES (11, 12, 13);
+			INSERT INTO test (a, b, c) VALUES (10, [11, 12, 13], {foo: "bar"});
 			SELECT * FROM test;
 		`)
 		require.NoError(t, err)
@@ -198,9 +162,9 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rectest
 		for rows.Next() {
-			err = rows.Scan(&rt)
+			err = rows.Scan(Scanner(&rt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -214,7 +178,7 @@ func TestDriver(t *testing.T) {
 
 		rows, err := tx.Query(`
 			SELECT * FROM test;;;
-			INSERT INTO test (a, b, c) VALUES (12, 13, 14);
+			INSERT INTO test (a, b, c) VALUES (11, [12, 13, 14], {foo: "bar"});
 			SELECT * FROM test;
 		`)
 		require.NoError(t, err)
@@ -223,9 +187,9 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rectest
 		for rows.Next() {
-			err = rows.Scan(&rt)
+			err = rows.Scan(Scanner(&rt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count + 1, count + 2, count + 3}, rt)
+			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
 			count++
 		}
 		require.NoError(t, rows.Err())

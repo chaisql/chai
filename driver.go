@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 
@@ -152,7 +153,7 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return nil, errors.New("not implemented")
 }
 
-// CheckNamedValue has the same behaviour as driver.DefaultParamaterConverter, except that
+// CheckNamedValue has the same behaviour as driver.DefaultParameterConverter, except that
 // it allows document.Documents to be passed as parameters.
 // It implements the driver.NamedValueChecker interface.
 func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
@@ -165,8 +166,13 @@ func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
 	}
 
 	var err error
-	nv.Value, err = driver.DefaultParameterConverter.ConvertValue(nv.Value)
-	return err
+	val, err := driver.DefaultParameterConverter.ConvertValue(nv.Value)
+	if err == nil {
+		nv.Value = val
+		return nil
+	}
+
+	return nil
 }
 
 // ExecContext executes a query that doesn't return rows, such
@@ -359,4 +365,23 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 	}
 
 	return nil
+}
+
+type valueScanner struct {
+	v interface{}
+}
+
+func (v valueScanner) Scan(src interface{}) error {
+	switch t := src.(type) {
+	case document.Document:
+		return document.StructScan(t, v.v)
+	case document.Value:
+		return document.ScanValue(t, src)
+	}
+
+	return fmt.Errorf("unable to scan value of type %T", src)
+}
+
+func Scanner(x interface{}) sql.Scanner {
+	return valueScanner{x}
 }

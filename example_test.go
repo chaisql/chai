@@ -42,15 +42,14 @@ func Example() {
 		panic(err)
 	}
 
-	// Since the user structure implements the document.Document interface, we can use it with the
-	// VALUES clause.
+	// Structs can be used to describe a document
 	err = db.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
 	if err != nil {
 		panic(err)
 	}
 
 	// Query some records
-	stream, err := db.Query("SELECT id, name, age FROM user WHERE id > ?", 1)
+	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
 	}
