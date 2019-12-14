@@ -187,6 +187,10 @@ func mapScan(d Document, ref reflect.Value) error {
 	})
 }
 
+func ScanValue(v Value, t interface{}) error {
+	return scanValue(v, reflect.ValueOf(t))
+}
+
 func scanValue(v Value, ref reflect.Value) error {
 	if !ref.IsValid() {
 		return fmt.Errorf("unsupported type %s", ref.Type().String())
