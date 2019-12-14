@@ -140,12 +140,28 @@ func (s structDocument) Iterate(fn func(f string, v Value) error) error {
 
 func (s structDocument) GetByField(field string) (Value, error) {
 	tp := s.ref.Type()
-	sf, ok := tp.FieldByName(field)
+
+	var sf reflect.StructField
+	var ok bool
+
+	ln := tp.NumField()
+	for i := 0; i < ln; i++ {
+		sf = tp.Field(i)
+		if gtag, found := sf.Tag.Lookup("genji"); found && gtag == field {
+			ok = true
+			break
+		}
+		if strings.ToLower(sf.Name) == field {
+			ok = true
+			break
+		}
+	}
+
 	if !ok || sf.Anonymous || sf.PkgPath != "" {
 		return Value{}, ErrFieldNotFound
 	}
 
-	v := s.ref.FieldByName(field)
+	v := s.ref.FieldByName(sf.Name)
 	if !v.IsValid() {
 		return Value{}, ErrFieldNotFound
 	}
@@ -552,13 +568,4 @@ func (j jsonArray) MarshalJSON() ([]byte, error) {
 	}
 	buf.WriteByte(']')
 	return buf.Bytes(), nil
-}
-
-// An Array contains a set of values.
-type Array interface {
-	// Iterate goes through all the values of the array and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(i int, value Value) error) error
-	// GetByIndex returns a value by index of the array.
-	GetByIndex(i int) (Value, error)
 }
