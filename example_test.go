@@ -1,7 +1,5 @@
 package genji_test
 
-//go:generate genji gen -s User -f example_test.go
-
 import (
 	"fmt"
 	"os"
