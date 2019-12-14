@@ -19,27 +19,27 @@ func TestSelectStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", "SELECT * FROM test", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\nfoo3,bar2,3\n", nil},
-		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "foo1,bar1,baz1,1,foo1,bar1,baz1,1,foo1\nfoo2,bar1,1,2,foo2,bar1,1,2,foo2\nfoo3,bar2,3,foo3,bar2,3,NULL\n", nil},
+		{"No cond", "SELECT * FROM test", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n3,foo3,bar2\n", nil},
+		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "1,foo1,bar1,baz1,1,foo1,bar1,baz1,foo1\n2,foo2,bar1,1,2,foo2,bar1,1,foo2\n3,foo3,bar2,3,foo3,bar2,NULL\n", nil},
 		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2,NULL\nNULL,NULL\n", nil},
-		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\n", nil},
-		{"With neq cond", "SELECT * FROM test WHERE a != 'foo1'", false, "foo2,bar1,1,2\nfoo3,bar2,3\n", nil},
+		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
+		{"With neq cond", "SELECT * FROM test WHERE a != 'foo1'", false, "2,foo2,bar1,1\n3,foo3,bar2\n", nil},
 		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
-		{"With lt cond", "SELECT * FROM test WHERE a < 'zzzzz'", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\n", nil},
-		{"With lte cond", "SELECT * FROM test WHERE a <= 'foo3'", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\n", nil},
-		{"With field comparison", "SELECT * FROM test WHERE b < a", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\n", nil},
-		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "foo1,bar1,baz1,1\n", nil},
-		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "foo2,bar1,1,2,2\n", nil},
-		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "foo2,bar1,1,2\n", nil},
+		{"With lt cond", "SELECT * FROM test WHERE a < 'zzzzz'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
+		{"With lte cond", "SELECT * FROM test WHERE a <= 'foo3'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
+		{"With field comparison", "SELECT * FROM test WHERE b < a", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
+		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "1,foo1,bar1,baz1\n", nil},
+		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "2,foo2,bar1,1,2\n", nil},
+		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "2,foo2,bar1,1\n", nil},
 		{"With offset then limit", "SELECT * FROM test WHERE b = 'bar1' OFFSET 1 LIMIT 1", true, "", nil},
-		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "foo1,bar1,baz1,1\nfoo3,bar2,3\n", []interface{}{"foo1", "foo3"}},
-		{"With named params", "SELECT * FROM test WHERE a = $a OR d = $d", false, "foo1,bar1,baz1,1\nfoo3,bar2,3\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
+		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", []interface{}{"foo1", "foo3"}},
+		{"With named params", "SELECT * FROM test WHERE a = $a OR d = $d", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
 		{"With key()", "SELECT key(), a FROM test", false, "1,foo1\n2,foo2\n3,NULL\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
-		{"With pk in cond, gt", "SELECT * FROM test WHERE k > 0 AND e = 1", false, "foo2,bar1,1,2\n", nil},
-		{"With pk in cond, =", "SELECT * FROM test WHERE k = 2.0 AND e = 1", false, "foo2,bar1,1,2\n", nil},
+		{"With pk in cond, gt", "SELECT * FROM test WHERE k > 0 AND e = 1", false, "2,foo2,bar1,1\n", nil},
+		{"With pk in cond, =", "SELECT * FROM test WHERE k = 2.0 AND e = 1", false, "2,foo2,bar1,1\n", nil},
 		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, "", nil},
 		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, "", nil},
-		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, "foo1,bar1,baz1,1\nfoo2,bar1,1,2\nfoo3,bar2,3\n", nil},
+		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n3,foo3,bar2\n", nil},
 	}
 
 	for _, test := range tests {
@@ -107,7 +107,7 @@ func TestSelectStmt(t *testing.T) {
 		var buf bytes.Buffer
 		err = document.IteratorToCSV(&buf, st)
 		require.NoError(t, err)
-		require.Equal(t, "b,2\nc,3\nd,4\n", buf.String())
+		require.Equal(t, "2,b\n3,c\n4,d\n", buf.String())
 	})
 
 	t.Run("with documents", func(t *testing.T) {

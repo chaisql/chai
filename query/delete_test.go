@@ -19,7 +19,7 @@ func TestDeleteStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No cond", `DELETE FROM test`, false, "", nil},
-		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, "bar2,foo3,bar3\n", nil},
+		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, "foo3,bar2,bar3\n", nil},
 		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "", nil},
 	}
 
