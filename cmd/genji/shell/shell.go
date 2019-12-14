@@ -3,6 +3,7 @@ package shell
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -256,7 +257,33 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 		os.Exit(2)
 	}
 
+	err = sh.runPipedInput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(2)
+	}
+
 	return sh.db, nil
+}
+
+func (sh *Shell) runPipedInput() error {
+	// Check if there is any input being piped in from the terminal
+	stat, _ := os.Stdin.Stat()
+	m := stat.Mode()
+
+	if (m&os.ModeNamedPipe) == 0 /*cat a.txt| prog*/ && !m.IsRegular() /*prog < a.txt*/ { // No input from terminal
+		return nil
+	}
+	data, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("Unable to read piped input: %w", err)
+	}
+	err = sh.db.Exec(string(data))
+	if err != nil {
+		return fmt.Errorf("Unable to execute provided sql statements: %w", err)
+	}
+
+	return nil
 }
 
 func (sh *Shell) changelivePrefix() (string, bool) {
