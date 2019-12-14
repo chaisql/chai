@@ -105,11 +105,17 @@ func sliceScan(a Array, ref reflect.Value) error {
 		return err
 	}
 
-	if k == reflect.Array && ref.Len() < al {
+	sref := reflect.Indirect(ref)
+
+	// if array, make sure it is big enough
+	if k == reflect.Array && sref.Len() < al {
 		return errors.New("array length too small")
 	}
 
-	sref := reflect.Indirect(ref)
+	// if slice, reduce its length to 0 to overwrite the buffer
+	if k == reflect.Slice {
+		sref.SetLen(0)
+	}
 
 	stp := sref.Type()
 

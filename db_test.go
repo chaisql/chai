@@ -48,7 +48,7 @@ func ExampleDB_SQLDB() {
 
 	for rows.Next() {
 		var u User
-		err = rows.Scan(&u)
+		err = rows.Scan(genji.Scanner(&u))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,19 +86,13 @@ func ExampleTx() {
 		log.Fatal(err)
 	}
 
-	result, err := tx.Query("SELECT id, name, age FROM user WHERE name = ?", "foo")
+	d, err := tx.QueryRecord("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
-	defer result.Close()
 
 	var u User
-	r, err := result.First()
-	if err != nil {
-		panic(err)
-	}
-
-	err = u.ScanDocument(r)
+	err = document.StructScan(d, &u)
 	if err != nil {
 		panic(err)
 	}
@@ -109,7 +103,7 @@ func ExampleTx() {
 	var name string
 	var age uint8
 
-	err = document.Scan(r, &id, &name, &age)
+	err = document.Scan(d, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -198,14 +192,14 @@ func ExampleResult_First() {
 	}
 	defer result.Close()
 
-	r, err := result.First()
+	d, err := result.First()
 	if err != nil {
 		panic(err)
 	}
 
 	// Scan using generated methods
 	var u User
-	err = u.ScanDocument(r)
+	err = document.StructScan(d, &u)
 	if err != nil {
 		panic(err)
 	}
@@ -217,7 +211,7 @@ func ExampleResult_First() {
 	var name string
 	var age uint8
 
-	err = document.Scan(r, &id, &name, &age)
+	err = document.Scan(d, &id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -260,7 +254,7 @@ func ExampleResult_Iterate() {
 	err = result.Iterate(func(d document.Document) error {
 		// Scan using generated methods
 		var u User
-		err = u.ScanDocument(d)
+		err = document.StructScan(d, &u)
 		if err != nil {
 			return err
 		}

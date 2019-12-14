@@ -190,9 +190,21 @@ func NewValue(x interface{}) (Value, error) {
 		return NewNullValue(), nil
 	case Document:
 		return NewDocumentValue(v), nil
-	default:
-		return Value{}, fmt.Errorf("unsupported type %T", x)
 	}
+
+	ref := reflect.Indirect(reflect.ValueOf(x))
+	switch ref.Kind() {
+	case reflect.Struct:
+		doc, err := NewFromStruct(x)
+		if err != nil {
+			return Value{}, err
+		}
+		return NewDocumentValue(doc), nil
+	case reflect.Slice, reflect.Array:
+		return NewArrayValue(&sliceArray{ref}), nil
+	}
+
+	return Value{}, fmt.Errorf("unsupported type %T", x)
 }
 
 // NewBytesValue encodes x and returns a value.

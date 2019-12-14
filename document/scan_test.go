@@ -119,6 +119,26 @@ func TestScan(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, m, 19)
 	})
+
+	t.Run("Small Slice", func(t *testing.T) {
+		s := make([]int, 1)
+		arr := document.NewValueBuffer().Append(document.NewInt16Value(1)).Append(document.NewInt16Value(2))
+		err := document.SliceScan(arr, &s)
+		require.NoError(t, err)
+		require.Len(t, s, 2)
+		require.Equal(t, []int{1, 2}, s)
+	})
+
+	t.Run("Slice overwrite", func(t *testing.T) {
+		s := make([]int, 1)
+		arr := document.NewValueBuffer().Append(document.NewInt16Value(1)).Append(document.NewInt16Value(2))
+		err := document.SliceScan(arr, &s)
+		require.NoError(t, err)
+		err = document.SliceScan(arr, &s)
+		require.NoError(t, err)
+		require.Len(t, s, 2)
+		require.Equal(t, []int{1, 2}, s)
+	})
 }
 
 type documentScanner struct {

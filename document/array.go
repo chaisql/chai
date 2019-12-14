@@ -8,6 +8,15 @@ import (
 	"reflect"
 )
 
+// An Array contains a set of values.
+type Array interface {
+	// Iterate goes through all the values of the array and calls the given function by passing each one of them.
+	// If the given function returns an error, the iteration stops.
+	Iterate(fn func(i int, value Value) error) error
+	// GetByIndex returns a value by index of the array.
+	GetByIndex(i int) (Value, error)
+}
+
 // ArrayLength returns the length of an array.
 func ArrayLength(a Array) (int, error) {
 	if vb, ok := a.(ValueBuffer); ok {
