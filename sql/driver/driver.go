@@ -1,4 +1,4 @@
-package genji
+package driver
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/asdine/genji"
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/parser"
 	"github.com/asdine/genji/query"
@@ -23,7 +24,7 @@ func init() {
 type sqlDriver struct{}
 
 func (d sqlDriver) Open(name string) (driver.Conn, error) {
-	db, err := Open(name)
+	db, err := genji.Open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -33,10 +34,10 @@ func (d sqlDriver) Open(name string) (driver.Conn, error) {
 
 // proxyDriver is used to turn an existing DB into a driver.Driver.
 type proxyDriver struct {
-	db *DB
+	db *genji.DB
 }
 
-func newDriver(db *DB) driver.Driver {
+func newDriver(db *genji.DB) driver.Driver {
 	return proxyDriver{
 		db: db,
 	}
@@ -50,7 +51,7 @@ type proxyConnector struct {
 	driver driver.Driver
 }
 
-func newProxyConnector(db *DB) driver.Connector {
+func newProxyConnector(db *genji.DB) driver.Connector {
 	return proxyConnector{
 		driver: newDriver(db),
 	}
@@ -67,8 +68,8 @@ func (c proxyConnector) Driver() driver.Driver {
 // conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db            *DB
-	tx            *Tx
+	db            *genji.DB
+	tx            *genji.Tx
 	nonPromotable bool
 }
 
@@ -138,8 +139,8 @@ func (c *conn) Rollback() error {
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	db            *DB
-	tx            *Tx
+	db            *genji.DB
+	tx            *genji.Tx
 	q             query.Query
 	nonPromotable bool
 }
@@ -192,7 +193,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	if s.tx != nil {
 		res, err = s.q.Exec(s.tx.Transaction, args, s.nonPromotable)
 	} else {
-		res, err = s.q.Run(s.db.db, args)
+		res, err = s.q.Run(s.db.DB, args)
 	}
 
 	if err != nil {
@@ -226,7 +227,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	if s.tx != nil {
 		res, err = s.q.Exec(s.tx.Transaction, args, s.nonPromotable)
 	} else {
-		res, err = s.q.Run(s.db.db, args)
+		res, err = s.q.Run(s.db.DB, args)
 	}
 
 	if err != nil {

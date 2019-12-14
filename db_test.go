@@ -12,57 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ExampleDB_SQLDB() {
-	db, err := genji.New(memoryengine.NewEngine())
-	if err != nil {
-		log.Fatal(err)
-	}
-	dbx := db.SQLDB()
-	defer db.Close()
-
-	_, err = dbx.Exec("CREATE TABLE IF NOT EXISTS user")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = dbx.Exec("CREATE INDEX IF NOT EXISTS idx_user_name ON user (name)")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = dbx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = dbx.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	rows, err := dbx.Query("SELECT * FROM user WHERE name = ?", "bar")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var u User
-		err = rows.Scan(genji.Scanner(&u))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(u)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Output: {1 bar 100}
-}
-
 func ExampleTx() {
 	db, err := genji.New(memoryengine.NewEngine())
 	if err != nil {

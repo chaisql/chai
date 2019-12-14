@@ -107,7 +107,7 @@ err = res.
 
 ```go
 // import Genji as a blank import
-import _ "github.com/asdine/genji"
+import _ "github.com/asdine/genji/sql/driver"
 
 // Create a sql/database DB instance
 db, err := sql.Open("genji", "my.db")

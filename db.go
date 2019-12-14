@@ -35,7 +35,7 @@ func Open(path string) (*DB, error) {
 
 // DB represents a collection of tables stored in the underlying engine.
 type DB struct {
-	db *database.Database
+	DB *database.Database
 }
 
 // New initializes the DB using the given engine.
@@ -46,19 +46,19 @@ func New(ng engine.Engine) (*DB, error) {
 	}
 
 	return &DB{
-		db: db,
+		DB: db,
 	}, nil
 }
 
 // Close the database.
 func (db *DB) Close() error {
-	return db.db.Close()
+	return db.DB.Close()
 }
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.db.Begin(writable)
+	tx, err := db.DB.Begin(writable)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 		return nil, err
 	}
 
-	return pq.Run(db.db, argsToNamedValues(args))
+	return pq.Run(db.DB, argsToNamedValues(args))
 }
 
 // QueryRecord runs the query and returns the first document.
@@ -168,11 +168,6 @@ func (db *DB) UpdateTable(tableName string, fn func(*Tx, *database.Table) error)
 
 		return fn(tx, tb)
 	})
-}
-
-// SQLDB returns a sql.DB wrapping this database.
-func (db *DB) SQLDB() *sql.DB {
-	return sql.OpenDB(newProxyConnector(db))
 }
 
 // Tx represents a database transaction. It provides methods for managing the
