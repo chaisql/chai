@@ -1,6 +1,7 @@
 package document
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -221,4 +222,41 @@ func parseJSONArray(dec *json.Decoder, currToken json.Token, buf *ValueBuffer) e
 	}
 
 	return nil
+}
+
+// IteratorToJSON encodes all the documents of an iterator to JSON stream.
+func IteratorToJSON(w io.Writer, s Iterator) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+
+	return s.Iterate(func(d Document) error {
+		return enc.Encode(jsonDocument{d})
+	})
+}
+
+// IteratorToJSONArray encodes all the documents of an iterator to a JSON array.
+func IteratorToJSONArray(w io.Writer, s Iterator) error {
+	buf := bufio.NewWriter(w)
+
+	buf.WriteByte('[')
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+
+	first := true
+	err := s.Iterate(func(d Document) error {
+		if !first {
+			buf.WriteByte(',')
+		} else {
+			first = false
+		}
+
+		return ToJSON(buf, d)
+	})
+	if err != nil {
+		return err
+	}
+
+	buf.WriteByte(']')
+	return buf.Flush()
 }

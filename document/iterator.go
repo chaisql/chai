@@ -2,7 +2,6 @@ package document
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"errors"
 	"io"
 )
@@ -248,14 +247,4 @@ func IteratorToCSV(w io.Writer, s Iterator) error {
 
 	cw.Flush()
 	return nil
-}
-
-// IteratorToJSON encodes all the documents of an iterator to JSON stream.
-func IteratorToJSON(w io.Writer, s Iterator) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-
-	return s.Iterate(func(d Document) error {
-		return enc.Encode(jsonDocument{d})
-	})
 }
