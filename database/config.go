@@ -108,7 +108,7 @@ type indexStore struct {
 	st engine.Store
 }
 
-func (t *indexStore) Insert(cfg indexOptions) error {
+func (t *indexStore) Insert(cfg IndexOptions) error {
 	key := []byte(buildIndexName(cfg.IndexName))
 	_, err := t.st.Get(key)
 	if err == nil {
@@ -131,7 +131,7 @@ func (t *indexStore) Insert(cfg indexOptions) error {
 	return t.st.Put(key, v)
 }
 
-func (t *indexStore) Get(indexName string) (*indexOptions, error) {
+func (t *indexStore) Get(indexName string) (*IndexOptions, error) {
 	key := []byte(buildIndexName(indexName))
 	v, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
@@ -141,7 +141,7 @@ func (t *indexStore) Get(indexName string) (*indexOptions, error) {
 		return nil, err
 	}
 
-	var idxopts indexOptions
+	var idxopts IndexOptions
 	err = document.StructScan(encoding.EncodedDocument(v), &idxopts)
 	if err != nil {
 		return nil, err

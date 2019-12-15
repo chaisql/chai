@@ -6,7 +6,6 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/index"
 )
 
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
@@ -79,7 +78,7 @@ func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []driver.NamedVal
 		return res, errors.New("missing field name")
 	}
 
-	err := tx.CreateIndex(index.Options{
+	err := tx.CreateIndex(database.IndexOptions{
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,

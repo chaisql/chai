@@ -79,10 +79,3 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 
 	return &tx, nil
 }
-
-type indexOptions struct {
-	IndexName string
-	TableName string
-	FieldName string
-	Unique    bool
-}

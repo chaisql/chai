@@ -147,22 +147,25 @@ func buildIndexName(name string) string {
 	return b.String()
 }
 
+// IndexOptions holds the configuration of an index.
+type IndexOptions struct {
+	// If set to true, values will be associated with at most one key. False by default.
+	Unique bool
+
+	IndexName string
+	TableName string
+	FieldName string
+}
+
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Transaction) CreateIndex(opts index.Options) error {
+func (tx Transaction) CreateIndex(opts IndexOptions) error {
 	_, err := tx.GetTable(opts.TableName)
 	if err != nil {
 		return err
 	}
 
-	idxOpts := indexOptions{
-		IndexName: opts.IndexName,
-		TableName: opts.TableName,
-		FieldName: opts.FieldName,
-		Unique:    opts.Unique,
-	}
-
-	return tx.indexStore.Insert(idxOpts)
+	return tx.indexStore.Insert(opts)
 }
 
 // GetIndex returns an index by name.
@@ -235,7 +238,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (tx Transaction) ReIndexAll() error {
 	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		var opts indexOptions
+		var opts IndexOptions
 		err := document.StructScan(encoding.EncodedDocument(v), &opts)
 		if err != nil {
 			return err

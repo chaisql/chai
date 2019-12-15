@@ -278,7 +278,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 			return bytes.Equal(b, tableName), nil
 		}).
 		Iterate(func(d document.Document) error {
-			var opts indexOptions
+			var opts IndexOptions
 			err := document.StructScan(d, &opts)
 			if err != nil {
 				return err
