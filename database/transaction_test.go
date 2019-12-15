@@ -82,6 +82,43 @@ func TestTxCreateIndex(t *testing.T) {
 	})
 }
 
+func TestTxDropTable(t *testing.T) {
+	t.Run("Should drop a table and its indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(database.IndexOptions{
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
+		})
+		require.NoError(t, err)
+
+		err = tx.DropTable("test")
+		require.NoError(t, err)
+
+		_, err = tx.GetTable("test")
+		require.Error(t, err)
+
+		err = tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(database.IndexOptions{
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("Should fail if it doesn't exist", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.DropTable("foo")
+		require.Equal(t, database.ErrTableNotFound, err)
+	})
+}
+
 func TestTxDropIndex(t *testing.T) {
 	t.Run("Should drop an index", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)

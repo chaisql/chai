@@ -106,7 +106,20 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 
 // DropTable deletes a table from the database.
 func (tx Transaction) DropTable(name string) error {
-	err := tx.tcfgStore.Delete(name)
+	err := tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+		var opts IndexOptions
+		err := document.StructScan(encoding.EncodedDocument(v), &opts)
+		if err != nil {
+			return err
+		}
+
+		return tx.DropIndex(opts.IndexName)
+	})
+	if err != nil {
+		return err
+	}
+
+	err = tx.tcfgStore.Delete(name)
 	if err != nil {
 		return err
 	}
