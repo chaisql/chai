@@ -13,8 +13,8 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "Genji"
-	app.Usage = "Toolkit for the Genji database"
-	app.Version = "v0.3.0"
+	app.Usage = "Shell for the Genji database"
+	app.Version = "v0.4.0"
 	app.EnableBashCompletion = true
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
@@ -24,43 +24,6 @@ func main() {
 		cli.BoolFlag{
 			Name:  "badger",
 			Usage: "use badger engine",
-		},
-	}
-
-	app.Commands = []cli.Command{
-		{
-			Name:    "generate",
-			Aliases: []string{"gen"},
-			Usage:   "scan a structure and generate methods implementing various Genji interfaces",
-			Flags: []cli.Flag{
-				cli.StringSliceFlag{
-					Name:     "f",
-					Required: true,
-					Usage:    "paths of the files to parse",
-				},
-				cli.StringSliceFlag{
-					Name:     "s",
-					Required: true,
-					Usage:    "names of the source structures",
-				},
-				cli.StringFlag{
-					Name:  "output, o",
-					Usage: "name of the generated file",
-				},
-			},
-			Action: func(c *cli.Context) error {
-				files := c.StringSlice("f")
-				structs := c.StringSlice("s")
-				if len(files) == 0 {
-					return cli.NewExitError("missing files", 2)
-				}
-
-				if len(structs) == 0 {
-					return cli.NewExitError("missing structs", 2)
-				}
-
-				return generate(c.StringSlice("f"), c.StringSlice("s"), c.String("o"))
-			},
 		},
 	}
 

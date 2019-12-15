@@ -556,13 +556,9 @@ func BenchmarkDocumentIterate(b *testing.B) {
 		D: 1e10,
 	}
 
-	d := document.Document(&f)
-	refd, err := document.NewFromStruct(&f)
-	require.NoError(b, err)
-
 	b.Run("Implementation", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			d.Iterate(func(string, document.Value) error {
+			f.Iterate(func(string, document.Value) error {
 				return nil
 			})
 		}
@@ -570,6 +566,7 @@ func BenchmarkDocumentIterate(b *testing.B) {
 
 	b.Run("Reflection", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
+			refd, _ := document.NewFromStruct(&f)
 			refd.Iterate(func(string, document.Value) error {
 				return nil
 			})
@@ -578,13 +575,20 @@ func BenchmarkDocumentIterate(b *testing.B) {
 
 	b.Run("Encoding/Implementation", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			encoding.EncodeDocument(d)
+			encoding.EncodeDocument(&f)
 		}
 	})
 
 	b.Run("Encoding/Reflection", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
+			refd, _ := document.NewFromStruct(&f)
 			encoding.EncodeDocument(refd)
+		}
+	})
+
+	b.Run("Encoding/JSON", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			json.Marshal(&f)
 		}
 	})
 }
