@@ -175,13 +175,15 @@ func (tx Transaction) GetIndex(name string) (*Index, error) {
 		return nil, err
 	}
 
+	var idx index.Index
+	if opts.Unique {
+		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
+	} else {
+		idx = index.NewListIndex(tx.tx, opts.IndexName)
+	}
+
 	return &Index{
-		Index: index.New(tx.tx, index.Options{
-			IndexName: opts.IndexName,
-			TableName: opts.TableName,
-			FieldName: opts.FieldName,
-			Unique:    opts.Unique,
-		}),
+		Index:     idx,
 		IndexName: opts.IndexName,
 		TableName: opts.TableName,
 		FieldName: opts.FieldName,
@@ -200,12 +202,14 @@ func (tx Transaction) DropIndex(name string) error {
 		return err
 	}
 
-	return index.New(tx.tx, index.Options{
-		IndexName: opts.IndexName,
-		TableName: opts.TableName,
-		FieldName: opts.FieldName,
-		Unique:    opts.Unique,
-	}).Truncate()
+	var idx index.Index
+	if opts.Unique {
+		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
+	} else {
+		idx = index.NewListIndex(tx.tx, opts.IndexName)
+	}
+
+	return idx.Truncate()
 }
 
 // ReIndex truncates and recreates selected index from scratch.
@@ -244,12 +248,12 @@ func (tx Transaction) ReIndexAll() error {
 			return err
 		}
 
-		idx := index.New(tx.tx, index.Options{
-			IndexName: opts.IndexName,
-			TableName: opts.TableName,
-			FieldName: opts.FieldName,
-			Unique:    opts.Unique,
-		})
+		var idx index.Index
+		if opts.Unique {
+			idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
+		} else {
+			idx = index.NewListIndex(tx.tx, opts.IndexName)
+		}
 
 		tb, err := tx.GetTable(opts.TableName)
 		if err != nil {

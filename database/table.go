@@ -284,13 +284,15 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				return err
 			}
 
+			var idx index.Index
+			if opts.Unique {
+				idx = index.NewUniqueIndex(t.tx.tx, opts.IndexName)
+			} else {
+				idx = index.NewListIndex(t.tx.tx, opts.IndexName)
+			}
+
 			indexes[opts.FieldName] = Index{
-				Index: index.New(t.tx.tx, index.Options{
-					IndexName: opts.IndexName,
-					TableName: opts.TableName,
-					FieldName: opts.FieldName,
-					Unique:    opts.Unique,
-				}),
+				Index:     idx,
 				IndexName: opts.IndexName,
 				TableName: opts.TableName,
 				FieldName: opts.FieldName,

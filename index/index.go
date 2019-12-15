@@ -78,18 +78,19 @@ type Index interface {
 	Truncate() error
 }
 
-// New creates an index with the given store and options.
-func New(tx engine.Transaction, opts Options) Index {
-	if opts.Unique {
-		return &uniqueIndex{
-			tx:   tx,
-			opts: opts,
-		}
-	}
-
-	return &listIndex{
+// NewListIndex creates an index that associates a value with a list of keys.
+func NewListIndex(tx engine.Transaction, idxName string) *ListIndex {
+	return &ListIndex{
 		tx:   tx,
-		opts: opts,
+		name: idxName,
+	}
+}
+
+// NewUniqueIndex creates an index that associates a value with a exactly one key.
+func NewUniqueIndex(tx engine.Transaction, idxName string) *UniqueIndex {
+	return &UniqueIndex{
+		tx:   tx,
+		name: idxName,
 	}
 }
 
@@ -102,16 +103,6 @@ func buildIndexName(name string, t Type) string {
 	b.WriteByte(byte(t))
 
 	return b.String()
-}
-
-// Options of the index.
-type Options struct {
-	// If set to true, values will be associated with at most one key. False by default.
-	Unique bool
-
-	IndexName string
-	TableName string
-	FieldName string
 }
 
 type Pivot struct {
@@ -128,16 +119,16 @@ func EmptyPivot(t document.ValueType) *Pivot {
 	}
 }
 
-// listIndex is an implementation that associates a value with a list of keys.
-type listIndex struct {
+// ListIndex is an implementation that associates a value with a list of keys.
+type ListIndex struct {
 	tx   engine.Transaction
-	opts Options
+	name string
 }
 
 // Set associates a value with a key. It is possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
-func (i *listIndex) Set(val document.Value, key []byte) error {
-	st, err := getOrCreateStore(i.tx, val.Type, i.opts)
+func (i *ListIndex) Set(val document.Value, key []byte) error {
+	st, err := getOrCreateStore(i.tx, val.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -155,13 +146,13 @@ func (i *listIndex) Set(val document.Value, key []byte) error {
 	return st.Put(buf, nil)
 }
 
-func (i *listIndex) Delete(val document.Value, key []byte) error {
+func (i *ListIndex) Delete(val document.Value, key []byte) error {
 	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, val.Type, i.opts)
+	st, err := getOrCreateStore(i.tx, val.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -174,11 +165,11 @@ func (i *listIndex) Delete(val document.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
-func (i *listIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Null; t <= Bytes; t++ {
-			st, err := getStore(i.tx, t, i.opts)
+			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
 			}
@@ -203,7 +194,7 @@ func (i *listIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
 	if err != nil {
 		return err
 	}
@@ -230,11 +221,11 @@ func (i *listIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 	})
 }
 
-func (i *listIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Bytes; t >= Null; t-- {
-			st, err := getStore(i.tx, t, i.opts)
+			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
 			}
@@ -259,7 +250,7 @@ func (i *listIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
 	if err != nil {
 		return err
 	}
@@ -291,35 +282,35 @@ func (i *listIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 	})
 }
 
-func (i *listIndex) Truncate() error {
-	err := dropStore(i.tx, Float, i.opts)
+func (i *ListIndex) Truncate() error {
+	err := dropStore(i.tx, Float, i.name)
 	if err != nil {
 		return err
 	}
 
-	err = dropStore(i.tx, Bytes, i.opts)
+	err = dropStore(i.tx, Bytes, i.name)
 	if err != nil {
 		return err
 	}
 
-	return dropStore(i.tx, Bool, i.opts)
+	return dropStore(i.tx, Bool, i.name)
 }
 
-// uniqueIndex is an implementation that associates a value with a exactly one key.
-type uniqueIndex struct {
+// UniqueIndex is an implementation that associates a value with a exactly one key.
+type UniqueIndex struct {
 	tx   engine.Transaction
-	opts Options
+	name string
 }
 
 // Set associates a value with exactly one key.
 // If the association already exists, it returns an error.
-func (i *uniqueIndex) Set(val document.Value, key []byte) error {
+func (i *UniqueIndex) Set(val document.Value, key []byte) error {
 	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, val.Type, i.opts)
+	st, err := getOrCreateStore(i.tx, val.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -340,13 +331,13 @@ func (i *uniqueIndex) Set(val document.Value, key []byte) error {
 	return st.Put(buf, key)
 }
 
-func (i *uniqueIndex) Delete(val document.Value, key []byte) error {
+func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
 	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, val.Type, i.opts)
+	st, err := getOrCreateStore(i.tx, val.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -359,11 +350,11 @@ func (i *uniqueIndex) Delete(val document.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
-func (i *uniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Null; t <= Bytes; t++ {
-			st, err := getStore(i.tx, t, i.opts)
+			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
 			}
@@ -387,7 +378,7 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
 	if err != nil {
 		return err
 	}
@@ -418,11 +409,11 @@ func (i *uniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 	})
 }
 
-func (i *uniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
 		for t := Bytes; t >= Null; t-- {
-			st, err := getStore(i.tx, t, i.opts)
+			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
 			}
@@ -446,7 +437,7 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.opts)
+	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
 	if err != nil {
 		return err
 	}
@@ -478,18 +469,18 @@ func (i *uniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 	})
 }
 
-func (i *uniqueIndex) Truncate() error {
-	err := dropStore(i.tx, Float, i.opts)
+func (i *UniqueIndex) Truncate() error {
+	err := dropStore(i.tx, Float, i.name)
 	if err != nil {
 		return err
 	}
 
-	err = dropStore(i.tx, Bytes, i.opts)
+	err = dropStore(i.tx, Bytes, i.name)
 	if err != nil {
 		return err
 	}
 
-	return dropStore(i.tx, Bool, i.opts)
+	return dropStore(i.tx, Bool, i.name)
 }
 
 func encodeFieldToIndexValue(val document.Value) ([]byte, error) {
@@ -522,8 +513,8 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 	return document.Value{}, fmt.Errorf("unknown index type %d", t)
 }
 
-func getOrCreateStore(tx engine.Transaction, t document.ValueType, opts Options) (engine.Store, error) {
-	idxName := buildIndexName(opts.IndexName, NewTypeFromValueType(t))
+func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) (engine.Store, error) {
+	idxName := buildIndexName(name, NewTypeFromValueType(t))
 	st, err := tx.Store(idxName)
 	if err == nil {
 		return st, nil
@@ -541,8 +532,8 @@ func getOrCreateStore(tx engine.Transaction, t document.ValueType, opts Options)
 	return tx.Store(idxName)
 }
 
-func getStore(tx engine.Transaction, t Type, opts Options) (engine.Store, error) {
-	idxName := buildIndexName(opts.IndexName, t)
+func getStore(tx engine.Transaction, t Type, name string) (engine.Store, error) {
+	idxName := buildIndexName(name, t)
 	st, err := tx.Store(idxName)
 	if err == nil || err == engine.ErrStoreNotFound {
 		return st, nil
@@ -551,8 +542,8 @@ func getStore(tx engine.Transaction, t Type, opts Options) (engine.Store, error)
 	return nil, err
 }
 
-func dropStore(tx engine.Transaction, t Type, opts Options) error {
-	idxName := buildIndexName(opts.IndexName, t)
+func dropStore(tx engine.Transaction, t Type, name string) error {
+	idxName := buildIndexName(name, t)
 	_, err := tx.Store(idxName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
