@@ -51,7 +51,7 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []driver.NamedVal
 type CreateIndexStmt struct {
 	IndexName   string
 	TableName   string
-	FieldName   string
+	Path        document.ValuePath
 	IfNotExists bool
 	Unique      bool
 }
@@ -74,15 +74,15 @@ func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []driver.NamedVal
 		return res, errors.New("missing index name")
 	}
 
-	if stmt.FieldName == "" {
-		return res, errors.New("missing field name")
+	if len(stmt.Path) == 0 {
+		return res, errors.New("missing path")
 	}
 
 	err := tx.CreateIndex(database.IndexOptions{
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,
-		FieldName: stmt.FieldName,
+		Path:      stmt.Path,
 	})
 	if stmt.IfNotExists && err == database.ErrIndexAlreadyExists {
 		err = nil

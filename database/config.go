@@ -100,7 +100,7 @@ type Index struct {
 
 	IndexName string
 	TableName string
-	FieldName string
+	Path      document.ValuePath
 	Unique    bool
 }
 

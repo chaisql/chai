@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
 	"github.com/asdine/genji/sql/scanner"
 )
@@ -88,6 +89,47 @@ func (p *Parser) parseCondition() (query.Expr, error) {
 	}
 
 	return expr, nil
+}
+
+// parsePathList parses a list of paths in the form: (path, path, ...), if exists
+func (p *Parser) parsePathList() ([]document.ValuePath, error) {
+	// Parse ( token.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
+		p.Unscan()
+		return nil, nil
+	}
+
+	var paths []document.ValuePath
+	var err error
+	var vp document.ValuePath
+	// Parse first (required) path.
+	if vp, err = p.ParseFieldRef(); err != nil {
+		return nil, err
+	}
+
+	paths = append(paths, vp)
+
+	// Parse remaining (optional) paths.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
+
+		vp, err := p.ParseFieldRef()
+		if err != nil {
+			return nil, err
+		}
+
+		paths = append(paths, vp)
+	}
+
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return paths, nil
 }
 
 // Scan returns the next token from the underlying scanner.

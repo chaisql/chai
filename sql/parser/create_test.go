@@ -3,8 +3,8 @@ package parser
 import (
 	"testing"
 
-	"github.com/asdine/genji/sql/query"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/query"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,9 +41,9 @@ func TestParserCreateIndex(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", FieldName: "foo"}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", FieldName: "foo", IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", FieldName: "foo", IfNotExists: true, Unique: true}, false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.NewValuePath("foo")}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar.1)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.NewValuePath("foo.bar.1"), IfNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo.3.baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.NewValuePath("foo.3.baz"), IfNotExists: true, Unique: true}, false},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
 		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}

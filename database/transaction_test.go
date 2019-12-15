@@ -45,7 +45,7 @@ func TestTxCreateIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
 		idx, err := tx.GetIndex("idxFoo")
@@ -61,12 +61,12 @@ func TestTxCreateIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.Equal(t, database.ErrIndexAlreadyExists, err)
 	})
@@ -76,7 +76,7 @@ func TestTxCreateIndex(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.Equal(t, database.ErrTableNotFound, err)
 	})
@@ -91,7 +91,7 @@ func TestTxDropIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
 
@@ -130,13 +130,13 @@ func TestTxReIndex(t *testing.T) {
 		err = tx.CreateIndex(database.IndexOptions{
 			IndexName: "a",
 			TableName: "test",
-			FieldName: "a",
+			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexOptions{
 			IndexName: "b",
 			TableName: "test",
-			FieldName: "b",
+			Path:      document.NewValuePath("b"),
 		})
 		require.NoError(t, err)
 
@@ -222,13 +222,13 @@ func TestReIndexAll(t *testing.T) {
 		err = tx.CreateIndex(database.IndexOptions{
 			IndexName: "t1a",
 			TableName: "test1",
-			FieldName: "a",
+			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexOptions{
 			IndexName: "t2a",
 			TableName: "test2",
-			FieldName: "a",
+			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
 
@@ -445,7 +445,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxFoo", TableName: "test", FieldName: "foo",
+			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
 		idx, err := tx.GetIndex("idxFoo")
@@ -635,21 +635,21 @@ func TestTableIndexes(t *testing.T) {
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
-			FieldName: "a",
+			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexOptions{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
-			FieldName: "b",
+			Path:      document.NewValuePath("b"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexOptions{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",
-			FieldName: "a",
+			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
 
@@ -742,7 +742,7 @@ func TestTxListTables(t *testing.T) {
 		err = tx.CreateIndex(database.IndexOptions{
 			IndexName: "idxa",
 			TableName: "a",
-			FieldName: "foo",
+			Path:      document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
 

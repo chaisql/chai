@@ -131,7 +131,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		v, err := d.GetByField(idx.FieldName)
+		v, err := idx.Path.GetValue(d)
 		if err != nil {
 			v = document.NewNullValue()
 		}
@@ -163,7 +163,7 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		v, err := r.GetByField(idx.FieldName)
+		v, err := idx.Path.GetValue(r)
 		if err != nil {
 			return err
 		}
@@ -198,7 +198,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		v, err := old.GetByField(idx.FieldName)
+		v, err := idx.Path.GetValue(old)
 		if err != nil {
 			return err
 		}
@@ -223,7 +223,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := d.GetByField(idx.FieldName)
+		v, err := idx.Path.GetValue(d)
 		if err != nil {
 			continue
 		}
@@ -291,11 +291,11 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				idx = index.NewListIndex(t.tx.tx, opts.IndexName)
 			}
 
-			indexes[opts.FieldName] = Index{
+			indexes[opts.Path.String()] = Index{
 				Index:     idx,
 				IndexName: opts.IndexName,
 				TableName: opts.TableName,
-				FieldName: opts.FieldName,
+				Path:      opts.Path,
 				Unique:    opts.Unique,
 			}
 

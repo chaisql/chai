@@ -150,20 +150,20 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		return stmt, err
 	}
 
-	fields, ok, err := p.parseFieldList()
+	paths, err := p.parsePathList()
 	if err != nil {
 		return stmt, err
 	}
-	if !ok {
+	if len(paths) == 0 {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 	}
 
-	if len(fields) != 1 {
-		return stmt, &ParseError{Message: "indexes on more than one field not supported"}
+	if len(paths) != 1 {
+		return stmt, &ParseError{Message: "indexes on more than one field are not supported"}
 	}
 
-	stmt.FieldName = fields[0]
+	stmt.Path = paths[0]
 
 	return stmt, nil
 }

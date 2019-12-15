@@ -154,7 +154,7 @@ type IndexOptions struct {
 
 	IndexName string
 	TableName string
-	FieldName string
+	Path      document.ValuePath
 }
 
 // CreateIndex creates an index with the given name.
@@ -186,7 +186,7 @@ func (tx Transaction) GetIndex(name string) (*Index, error) {
 		Index:     idx,
 		IndexName: opts.IndexName,
 		TableName: opts.TableName,
-		FieldName: opts.FieldName,
+		Path:      opts.Path,
 		Unique:    opts.Unique,
 	}, nil
 }
@@ -230,7 +230,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 	}
 
 	return tb.Iterate(func(d document.Document) error {
-		v, err := d.GetByField(idx.FieldName)
+		v, err := idx.Path.GetValue(d)
 		if err != nil {
 			return err
 		}
@@ -266,7 +266,7 @@ func (tx Transaction) ReIndexAll() error {
 		}
 
 		return tb.Iterate(func(d document.Document) error {
-			v, err := d.GetByField(opts.FieldName)
+			v, err := opts.Path.GetValue(d)
 			if err != nil {
 				return err
 			}
