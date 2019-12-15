@@ -60,6 +60,10 @@ func structScan(d Document, ref reflect.Value) error {
 		sf := stp.Field(i)
 		var name string
 		if gtag, ok := sf.Tag.Lookup("genji"); ok {
+			if gtag == "-" {
+				continue
+			}
+
 			name = gtag
 		} else {
 			name = strings.ToLower(sf.Name)

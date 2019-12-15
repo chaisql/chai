@@ -40,7 +40,9 @@ func TestScan(t *testing.T) {
 		Add("r", document.NewDocumentValue(
 			document.NewFieldBuffer().
 				Add("foo", document.NewStringValue("foo")).
-				Add("bar", document.NewStringValue("bar")),
+				Add("bar", document.NewStringValue("bar")).
+				Add("baz", document.NewStringValue("baz")).
+				Add("-", document.NewStringValue("bat")),
 		)).
 		Add("s", document.NewDocumentValue(
 			document.NewFieldBuffer().
@@ -51,6 +53,7 @@ func TestScan(t *testing.T) {
 	type foo struct {
 		Foo string
 		Pub *string `genji:"bar"`
+		Baz *string `genji:"-"`
 	}
 
 	var a []byte
