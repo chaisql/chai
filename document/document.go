@@ -28,6 +28,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -352,4 +353,81 @@ func (fb *FieldBuffer) Swap(i, j int) {
 // Reset the buffer.
 func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
+}
+
+// A ValuePath represents the path to a particular value within a document.
+type ValuePath []string
+
+func NewValuePath(p string) ValuePath {
+	return strings.Split(p, ".")
+}
+
+func (p ValuePath) String() string {
+	return strings.Join(p, ".")
+}
+
+// GetValue from a document.
+func (p ValuePath) GetValue(d Document) (Value, error) {
+	return p.getValueFromDocument(d)
+}
+
+func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
+	if len(p) == 0 {
+		return Value{}, errors.New("empty valuepath")
+	}
+
+	v, err := d.GetByField(p[0])
+	if err != nil {
+		return Value{}, err
+	}
+
+	return p.getValueFromValue(v)
+}
+
+func (p ValuePath) getValueFromArray(a Array) (Value, error) {
+	if len(p) == 0 {
+		return Value{}, errors.New("empty valuepath")
+	}
+
+	i, err := strconv.Atoi(p[0])
+	if err != nil {
+		return Value{}, err
+	}
+
+	v, err := a.GetByIndex(i)
+	if err != nil {
+		return Value{}, err
+	}
+
+	return p.getValueFromValue(v)
+}
+
+func (p ValuePath) getValueFromValue(v Value) (Value, error) {
+	if len(p) == 1 {
+		return v, nil
+	}
+
+	switch v.Type {
+	case DocumentValue:
+		if len(p) == 1 {
+			return v, nil
+		}
+
+		d, err := v.ConvertToDocument()
+		if err != nil {
+			return Value{}, err
+		}
+
+		return p[1:].getValueFromDocument(d)
+	case ArrayValue:
+
+		a, err := v.ConvertToArray()
+		if err != nil {
+			return Value{}, err
+		}
+
+		return p[1:].getValueFromArray(a)
+	}
+
+	return Value{}, ErrFieldNotFound
 }

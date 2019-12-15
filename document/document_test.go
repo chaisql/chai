@@ -510,6 +510,44 @@ func (f *foo) GetByField(field string) (document.Value, error) {
 	return document.Value{}, errors.New("unknown field")
 }
 
+func TestValuePath(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   string
+		path   string
+		result string
+		fails  bool
+	}{
+		{"empty path", `{"a": 1}`, ``, ``, true},
+		{"root", `{"a": {"b": [1, 2, 3]}}`, `a`, `{"b": [1, 2, 3]}`, false},
+		{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, `[1, 2, 3]`, false},
+		{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b.1`, `2`, false},
+		{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b.1000`, ``, true},
+		{"number field", `{"a": {"0": [1, 2, 3]}}`, `a.0`, `[1, 2, 3]`, false},
+		{"letter index", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, ``, true},
+		{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, ``, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var buf document.FieldBuffer
+
+			err := json.Unmarshal([]byte(test.data), &buf)
+			require.NoError(t, err)
+			p := document.NewValuePath(test.path)
+			v, err := p.GetValue(&buf)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				res, err := json.Marshal(v)
+				require.NoError(t, err)
+				require.JSONEq(t, test.result, string(res))
+			}
+		})
+	}
+}
+
 func BenchmarkDocumentIterate(b *testing.B) {
 	f := foo{
 		A: "a",
