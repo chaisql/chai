@@ -279,6 +279,8 @@ func TestNewFromStruct(t *testing.T) {
 		Z  interface{}
 		ZZ interface{}
 
+		AA int `genji:"-"` // ignored
+
 		// embedded fields are not supported currently, they should be ignored
 		*group
 
@@ -287,21 +289,22 @@ func TestNewFromStruct(t *testing.T) {
 	}
 
 	u := user{
-		A: []byte("foo"),
-		B: "bar",
-		C: true,
-		D: 1,
-		E: 2,
-		F: 3,
-		G: 4,
-		H: 5,
-		I: 6,
-		J: 7,
-		K: 8,
-		L: 9,
-		M: 10,
-		N: 11.12,
-		Z: 26,
+		A:  []byte("foo"),
+		B:  "bar",
+		C:  true,
+		D:  1,
+		E:  2,
+		F:  3,
+		G:  4,
+		H:  5,
+		I:  6,
+		J:  7,
+		K:  8,
+		L:  9,
+		M:  10,
+		N:  11.12,
+		Z:  26,
+		AA: 27,
 	}
 
 	q := 5

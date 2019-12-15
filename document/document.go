@@ -110,6 +110,17 @@ func (s structDocument) Iterate(fn func(f string, v Value) error) error {
 			continue
 		}
 
+		var name string
+		if gtag, ok := sf.Tag.Lookup("genji"); ok {
+			if gtag == "-" {
+				continue
+			}
+
+			name = gtag
+		} else {
+			name = strings.ToLower(sf.Name)
+		}
+
 		f := s.ref.Field(i)
 
 		v, err := reflectValueToValue(f)
@@ -118,13 +129,6 @@ func (s structDocument) Iterate(fn func(f string, v Value) error) error {
 		}
 		if err != nil {
 			return err
-		}
-
-		var name string
-		if gtag, ok := sf.Tag.Lookup("genji"); ok {
-			name = gtag
-		} else {
-			name = strings.ToLower(sf.Name)
 		}
 
 		err = fn(name, v)
