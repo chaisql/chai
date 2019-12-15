@@ -68,31 +68,7 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// expecting a '['
-	if d, ok := t.(json.Delim); !ok || d.String() != "[" {
-		return fmt.Errorf("found %q, expected '['", d.String())
-	}
-
-	for dec.More() {
-		v, err := parseJSONValue(dec)
-		if err != nil {
-			return err
-		}
-
-		*vb = vb.Append(v)
-	}
-
-	t, err = dec.Token()
-	if err == io.EOF {
-		return err
-	}
-
-	// expecting a ']'
-	if d, ok := t.(json.Delim); !ok || d.String() != "]" {
-		return fmt.Errorf("found %q, expected ']'", d.String())
-	}
-
-	return nil
+	return parseJSONArray(dec, t, vb)
 }
 
 type sliceArray struct {
