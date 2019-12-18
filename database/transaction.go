@@ -23,7 +23,7 @@ var (
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
 	db         *Database
-	tx         engine.Transaction
+	Tx         engine.Transaction
 	writable   bool
 	tcfgStore  *tableConfigStore
 	indexStore *indexStore
@@ -31,12 +31,12 @@ type Transaction struct {
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
-	return tx.tx.Rollback()
+	return tx.Tx.Rollback()
 }
 
 // Commit the transaction.
 func (tx *Transaction) Commit() error {
-	return tx.tx.Commit()
+	return tx.Tx.Commit()
 }
 
 // Writable indicates if the transaction is writable or not.
@@ -76,7 +76,7 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 		return err
 	}
 
-	err = tx.tx.CreateStore(name)
+	err = tx.Tx.CreateStore(name)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create table %q", name)
 	}
@@ -91,7 +91,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	s, err := tx.tx.Store(name)
+	s, err := tx.Tx.Store(name)
 	if err != nil {
 		return nil, err
 	}
@@ -124,12 +124,12 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
-	return tx.tx.DropStore(name)
+	return tx.Tx.DropStore(name)
 }
 
 // ListTables lists all the tables.
 func (tx Transaction) ListTables() ([]string, error) {
-	stores, err := tx.tx.ListStores("")
+	stores, err := tx.Tx.ListStores("")
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +190,9 @@ func (tx Transaction) GetIndex(name string) (*Index, error) {
 
 	var idx index.Index
 	if opts.Unique {
-		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
+		idx = index.NewUniqueIndex(tx.Tx, opts.IndexName)
 	} else {
-		idx = index.NewListIndex(tx.tx, opts.IndexName)
+		idx = index.NewListIndex(tx.Tx, opts.IndexName)
 	}
 
 	return &Index{
@@ -217,9 +217,9 @@ func (tx Transaction) DropIndex(name string) error {
 
 	var idx index.Index
 	if opts.Unique {
-		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
+		idx = index.NewUniqueIndex(tx.Tx, opts.IndexName)
 	} else {
-		idx = index.NewListIndex(tx.tx, opts.IndexName)
+		idx = index.NewListIndex(tx.Tx, opts.IndexName)
 	}
 
 	return idx.Truncate()
@@ -263,9 +263,9 @@ func (tx Transaction) ReIndexAll() error {
 
 		var idx index.Index
 		if opts.Unique {
-			idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
+			idx = index.NewUniqueIndex(tx.Tx, opts.IndexName)
 		} else {
-			idx = index.NewListIndex(tx.tx, opts.IndexName)
+			idx = index.NewListIndex(tx.Tx, opts.IndexName)
 		}
 
 		tb, err := tx.GetTable(opts.TableName)
@@ -290,7 +290,7 @@ func (tx Transaction) ReIndexAll() error {
 }
 
 func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {
-	st, err := tx.tx.Store(tableConfigStoreName)
+	st, err := tx.Tx.Store(tableConfigStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {
-	st, err := tx.tx.Store(indexStoreName)
+	st, err := tx.Tx.Store(indexStoreName)
 	if err != nil {
 		return nil, err
 	}

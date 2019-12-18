@@ -249,7 +249,7 @@ func (t *Table) TableName() string {
 
 // Indexes returns a map of all the indexes of a table.
 func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.tx.Store(indexStoreName)
+	s, err := t.tx.Tx.Store(indexStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -286,9 +286,9 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 			var idx index.Index
 			if opts.Unique {
-				idx = index.NewUniqueIndex(t.tx.tx, opts.IndexName)
+				idx = index.NewUniqueIndex(t.tx.Tx, opts.IndexName)
 			} else {
-				idx = index.NewListIndex(t.tx.tx, opts.IndexName)
+				idx = index.NewListIndex(t.tx.Tx, opts.IndexName)
 			}
 
 			indexes[opts.Path.String()] = Index{

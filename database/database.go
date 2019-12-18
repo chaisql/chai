@@ -63,7 +63,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 
 	tx := Transaction{
 		db:       db,
-		tx:       ntx,
+		Tx:       ntx,
 		writable: writable,
 	}
 
