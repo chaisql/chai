@@ -29,11 +29,19 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 		return stmt, err
 	}
 
+	// Parse order by: "ORDER BY fieldRef [ASC|DESC]?"
+	stmt.OrderBy, stmt.OrderByDirection, err = p.parseOrderBy()
+	if err != nil {
+		return stmt, err
+	}
+
+	// Parse limit: "LIMIT EXPR"
 	stmt.LimitExpr, err = p.parseLimit()
 	if err != nil {
 		return stmt, err
 	}
 
+	// Parse offset: "OFFSET EXPR"
 	stmt.OffsetExpr, err = p.parseOffset()
 	if err != nil {
 		return stmt, err
@@ -102,6 +110,33 @@ func (p *Parser) parseFrom() (string, error) {
 
 	// Parse table name
 	return p.ParseIdent()
+}
+
+func (p *Parser) parseOrderBy() (query.FieldSelector, scanner.Token, error) {
+	// parse ORDER token
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.ORDER {
+		p.Unscan()
+		return nil, 0, nil
+	}
+
+	// parse BY token
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.BY {
+		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"BY"}, pos)
+	}
+
+	// parse field reference
+	ref, err := p.ParseFieldRef()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// parse optional ASC or DESC
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.ASC || tok == scanner.DESC {
+		return query.FieldSelector(ref), tok, nil
+	}
+	p.Unscan()
+
+	return query.FieldSelector(ref), 0, nil
 }
 
 func (p *Parser) parseLimit() (query.Expr, error) {

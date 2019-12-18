@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/scanner"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,6 +35,29 @@ func TestParserSelect(t *testing.T) {
 				TableName: "test",
 				Selectors: []query.ResultField{query.Wildcard{}},
 				WhereExpr: query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+			}, false},
+		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
+			query.SelectStmt{
+				TableName: "test",
+				Selectors: []query.ResultField{query.Wildcard{}},
+				WhereExpr: query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+				OrderBy:   []string{"a", "b", "c"},
+			}, false},
+		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
+			query.SelectStmt{
+				TableName:        "test",
+				Selectors:        []query.ResultField{query.Wildcard{}},
+				WhereExpr:        query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+				OrderBy:          []string{"a", "b", "c"},
+				OrderByDirection: scanner.ASC,
+			}, false},
+		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
+			query.SelectStmt{
+				TableName:        "test",
+				Selectors:        []query.ResultField{query.Wildcard{}},
+				WhereExpr:        query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+				OrderBy:          []string{"a", "b", "c"},
+				OrderByDirection: scanner.DESC,
 			}, false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			query.SelectStmt{
