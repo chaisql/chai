@@ -104,6 +104,7 @@ type Result struct {
 	lastInsertKey []byte
 	tx            *database.Transaction
 	closed        bool
+	cleanup       func() error
 }
 
 // LastInsertId is not supported and returns an error.
@@ -129,14 +130,21 @@ func (r Result) RowsAffected() (int64, error) {
 // After closing the result, Stream is not supposed to be used.
 // If the result stream was already closed, it returns
 // ErrResultClosed.
-func (r *Result) Close() error {
+func (r *Result) Close() (err error) {
 	if r.closed {
 		return ErrResultClosed
 	}
 
 	r.closed = true
 
-	var err error
+	if r.cleanup != nil {
+		err = r.cleanup()
+		if err != nil {
+			r.tx.Rollback()
+			return err
+		}
+	}
+
 	if r.tx != nil {
 		if r.tx.Writable() {
 			err = r.tx.Commit()

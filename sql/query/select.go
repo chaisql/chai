@@ -10,15 +10,18 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/document/encoding"
+	"github.com/asdine/genji/sql/scanner"
 )
 
 // SelectStmt is a DSL that allows creating a full Select query.
 type SelectStmt struct {
-	TableName  string
-	WhereExpr  Expr
-	OffsetExpr Expr
-	LimitExpr  Expr
-	Selectors  []ResultField
+	TableName        string
+	WhereExpr        Expr
+	OrderBy          FieldSelector
+	OrderByDirection scanner.Token
+	OffsetExpr       Expr
+	LimitExpr        Expr
+	Selectors        []ResultField
 }
 
 // IsReadOnly always returns true. It implements the Statement interface.
@@ -56,15 +59,17 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	}
 
 	qo := queryOptimizer{
-		tx:        tx,
-		t:         t,
-		whereExpr: stmt.WhereExpr,
-		args:      args,
-		cfg:       cfg,
-		indexes:   indexes,
+		tx:               tx,
+		t:                t,
+		whereExpr:        stmt.WhereExpr,
+		args:             args,
+		cfg:              cfg,
+		indexes:          indexes,
+		orderBy:          stmt.OrderBy,
+		orderByDirection: stmt.OrderByDirection,
 	}
 
-	st, err := qo.optimizeQuery()
+	st, cleanup, err := qo.optimizeQuery()
 	if err != nil {
 		return res, err
 	}
@@ -135,7 +140,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		}, nil
 	})
 
-	return Result{Stream: st}, nil
+	return Result{Stream: st, cleanup: cleanup}, nil
 }
 
 type RecordMask struct {

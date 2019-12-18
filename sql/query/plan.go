@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -16,6 +18,7 @@ import (
 type queryPlan struct {
 	scanTable bool
 	field     *queryPlanField
+	sorted    bool
 }
 
 type queryPlanField struct {
@@ -35,39 +38,49 @@ func newQueryOptimizer(tx *database.Transaction, t *database.Table) queryOptimiz
 
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
-	tx        *database.Transaction
-	t         *database.Table
-	whereExpr Expr
-	args      []driver.NamedValue
-	cfg       *database.TableConfig
-	indexes   map[string]database.Index
+	tx               *database.Transaction
+	t                *database.Table
+	whereExpr        Expr
+	args             []driver.NamedValue
+	cfg              *database.TableConfig
+	indexes          map[string]database.Index
+	orderBy          FieldSelector
+	orderByDirection scanner.Token
 }
 
-func (qo *queryOptimizer) optimizeQuery() (document.Stream, error) {
+func (qo *queryOptimizer) optimizeQuery() (st document.Stream, cleanup func() error, err error) {
 	qp := qo.buildQueryPlan()
-	if qp.scanTable {
-		return document.NewStream(qo.t), nil
+
+	switch {
+	case qp.scanTable:
+		st = document.NewStream(qo.t)
+	case qp.field.isPrimaryKey:
+		st = document.NewStream(pkIterator{
+			tx:               qo.tx,
+			tb:               qo.t,
+			cfg:              qo.cfg,
+			args:             qo.args,
+			op:               qp.field.op,
+			e:                qp.field.e,
+			orderByDirection: qo.orderByDirection,
+		})
+	default:
+		st = document.NewStream(indexIterator{
+			tx:               qo.tx,
+			tb:               qo.t,
+			args:             qo.args,
+			op:               qp.field.op,
+			e:                qp.field.e,
+			index:            qo.indexes[qp.field.indexedField.Name()],
+			orderByDirection: qo.orderByDirection,
+		})
 	}
 
-	if qp.field.isPrimaryKey {
-		return document.NewStream(pkIterator{
-			tx:   qo.tx,
-			tb:   qo.t,
-			cfg:  qo.cfg,
-			args: qo.args,
-			op:   qp.field.op,
-			e:    qp.field.e,
-		}), nil
+	if len(qo.orderBy) != 0 && !qp.sorted {
+		st, cleanup, err = sortIterator(qo.tx, st, document.ValuePath(qo.orderBy), qo.orderByDirection)
 	}
 
-	return document.NewStream(indexIterator{
-		tx:    qo.tx,
-		tb:    qo.t,
-		args:  qo.args,
-		op:    qp.field.op,
-		e:     qp.field.e,
-		index: qo.indexes[qp.field.indexedField.Name()],
-	}), nil
+	return
 }
 
 func (qo *queryOptimizer) buildQueryPlan() queryPlan {
@@ -75,12 +88,29 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 
 	qp.field = qo.analyseExpr(qo.whereExpr)
 	if qp.field == nil {
+		if len(qo.orderBy) != 0 {
+			_, ok := qo.indexes[qo.orderBy.Name()]
+			if ok || qo.cfg.PrimaryKeyName == qo.orderBy.Name() {
+				qp.field = &queryPlanField{
+					indexedField: qo.orderBy,
+					isPrimaryKey: qo.cfg.PrimaryKeyName == qo.orderBy.Name(),
+				}
+				qp.sorted = true
+
+				return qp
+			}
+		}
+
 		qp.scanTable = true
 	}
 
 	return qp
 }
 
+// analyseExpr is a recursive function that scans each node the e Expr tree.
+// If it contains a comparison operator, it checks if this operator and its operands
+// can benefit from using an index. This check is done in the cmpOpCanUseIndex function.
+// If it contains an AND operator it checks if one of the operands can use an index.
 func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
 	switch t := e.(type) {
 	case CmpOp:
@@ -168,17 +198,44 @@ func evaluatesToScalarOrParam(e Expr) bool {
 }
 
 type indexIterator struct {
-	tx    *database.Transaction
-	tb    *database.Table
-	args  []driver.NamedValue
-	index index.Index
-	op    scanner.Token
-	e     Expr
+	tx               *database.Transaction
+	tb               *database.Table
+	args             []driver.NamedValue
+	index            index.Index
+	op               scanner.Token
+	e                Expr
+	orderByDirection scanner.Token
 }
 
 var errStop = errors.New("stop")
 
 func (it indexIterator) Iterate(fn func(d document.Document) error) error {
+	if it.e == nil {
+		var err error
+
+		if it.orderByDirection == scanner.DESC {
+			err = it.index.DescendLessOrEqual(nil, func(val document.Value, key []byte) error {
+				r, err := it.tb.GetRecord(key)
+				if err != nil {
+					return err
+				}
+
+				return fn(r)
+			})
+		} else {
+			err = it.index.AscendGreaterOrEqual(nil, func(val document.Value, key []byte) error {
+				r, err := it.tb.GetRecord(key)
+				if err != nil {
+					return err
+				}
+
+				return fn(r)
+			})
+		}
+
+		return err
+	}
+
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -286,15 +343,32 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 }
 
 type pkIterator struct {
-	tx   *database.Transaction
-	tb   *database.Table
-	cfg  *database.TableConfig
-	args []driver.NamedValue
-	op   scanner.Token
-	e    Expr
+	tx               *database.Transaction
+	tb               *database.Table
+	cfg              *database.TableConfig
+	args             []driver.NamedValue
+	op               scanner.Token
+	e                Expr
+	orderByDirection scanner.Token
 }
 
 func (it pkIterator) Iterate(fn func(d document.Document) error) error {
+	if it.e == nil {
+		var err error
+
+		if it.orderByDirection == scanner.DESC {
+			err = it.tb.Store.DescendLessOrEqual(nil, func(k []byte, v []byte) error {
+				return fn(encoding.EncodedDocument(v))
+			})
+		} else {
+			err = it.tb.Store.AscendGreaterOrEqual(nil, func(k []byte, v []byte) error {
+				return fn(encoding.EncodedDocument(v))
+			})
+		}
+
+		return err
+	}
+
 	v, err := it.e.Eval(EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
@@ -361,4 +435,58 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	}
 
 	return nil
+}
+
+func sortIterator(tx *database.Transaction, it document.Iterator, path document.ValuePath, direction scanner.Token) (st document.Stream, cleanup func() error, err error) {
+	err = tx.Promote()
+	if err != nil {
+		return
+	}
+
+	tempIdxName := fmt.Sprintf("__genji.temp_%d", time.Now().UTC().UnixNano())
+	idx := index.NewListIndex(tx.Tx, tempIdxName)
+
+	err = it.Iterate(func(d document.Document) error {
+		v, err := path.GetValue(d)
+		if err != nil && err != document.ErrFieldNotFound {
+			return err
+		}
+
+		if err == document.ErrFieldNotFound {
+			v = document.NewNullValue()
+		}
+
+		data, err := encoding.EncodeDocument(d)
+		if err != nil {
+			return err
+		}
+
+		return idx.Set(v, data)
+	})
+	if err != nil {
+		idx.Truncate()
+		return
+	}
+
+	st = document.NewStream(&sortedIterator{idx, direction})
+	cleanup = idx.Truncate
+
+	return
+}
+
+type sortedIterator struct {
+	idx       index.Index
+	direction scanner.Token
+}
+
+func (s *sortedIterator) Iterate(fn func(d document.Document) error) error {
+	if s.direction == scanner.DESC {
+		return s.idx.DescendLessOrEqual(nil, func(_ document.Value, data []byte) error {
+			return fn(encoding.EncodedDocument(data))
+		})
+	}
+
+	return s.idx.AscendGreaterOrEqual(nil, func(_ document.Value, data []byte) error {
+		return fn(encoding.EncodedDocument(data))
+	})
 }
