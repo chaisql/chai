@@ -211,6 +211,10 @@ func DecodeFloat64(buf []byte) (float64, error) {
 
 // EncodeDocument takes a document and encodes it using the encoding.Format type.
 func EncodeDocument(d document.Document) ([]byte, error) {
+	if ec, ok := d.(EncodedDocument); ok {
+		return ec, nil
+	}
+
 	var format Format
 
 	var offset uint64
