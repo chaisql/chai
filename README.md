@@ -48,7 +48,7 @@ err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 12, "Foo3", 2
 ...
 err = tx.Commit()
 
-// Query some records
+// Query some documents
 res, err := db.Query("SELECT * FROM user WHERE age > ?", 18)
 // always close the result when you're done with it
 defer res.Close()
@@ -71,7 +71,7 @@ err = res.Iterate(func(d document.Document) error {
 // Count results
 count, err := res.Count()
 
-// Get first record from the results
+// Get first document from the results
 r, err := res.First()
 var id int
 var name string
@@ -88,7 +88,7 @@ err = res.
         ...
         return id % 2 == 0, nil
     }).
-    // Enrich the records with a new field
+    // Enrich the documents with a new field
     Map(func(d document.Document) (document.Document, error) {
         var fb document.FieldBuffer
 
@@ -159,7 +159,7 @@ This command generates a file that adds methods to the `User` type.
 // The User type gets new methods that implement some Genji interfaces.
 func (u *User) GetByField(name string) (document.Field, error) {}
 func (u *User) Iterate(fn func(document.Field) error) error {}
-func (u *User) ScanDocument(rec document.Document) error {}
+func (u *User) ScanDocument(d document.Document) error {}
 func (u *User) Scan(src interface{}) error
 ```
 
@@ -182,9 +182,9 @@ u3 := u1
 u3.ID = 22
 
 // It is possible to let Genji deal with analyzing the structure
-// when inserting a record, using the VALUES clause
+// when inserting a document, using the VALUES clause
 err := db.Exec(`INSERT INTO user VALUES ?, ?, ?`, &u1, &u2, &u3)
-// Note that it is also possible to write records by hand
+// Note that it is also possible to write documents by hand
 err := db.Exec(`INSERT INTO user VALUES ?, {userid: 21, name: 'foo', "age-of-the-user": 40}, ?`, &u1, &u3)
 
 // Let's select a few users

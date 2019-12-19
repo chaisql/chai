@@ -57,10 +57,10 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 	var res Result
 	var err error
 
-	for _, rec := range stmt.Values {
+	for _, doc := range stmt.Values {
 		var d document.Document
 
-		switch tp := rec.(type) {
+		switch tp := doc.(type) {
 		case document.Document:
 			d = tp
 		case paramExtractor:
@@ -124,7 +124,7 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 			return res, err
 		}
 
-		// each record must be a list of expressions
+		// each document must be a list of expressions
 		// (e1, e2, e3, ...) or [e1, e2, e2, ....]
 		if v.Type != document.ArrayValue {
 			return res, errors.New("invalid values")
@@ -149,7 +149,7 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 			// get the field name
 			fieldName := stmt.FieldNames[i]
 
-			// Assign the value to the field and add it to the record
+			// Assign the value to the field and add it to the document
 			fb.Add(fieldName, v)
 
 			return nil

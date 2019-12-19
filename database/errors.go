@@ -19,10 +19,10 @@ var (
 	// same name as an existing one.
 	ErrIndexAlreadyExists = errors.New("index already exists")
 
-	// ErrRecordNotFound is returned when no record is associated with the provided key.
-	ErrRecordNotFound = errors.New("record not found")
+	// ErrDocumentNotFound is returned when no document is associated with the provided key.
+	ErrDocumentNotFound = errors.New("document not found")
 
-	// ErrDuplicateRecord is returned when another record is already associated with a given key, primary key,
+	// ErrDuplicateDocument is returned when another document is already associated with a given key, primary key,
 	// or if there is a unique index violation.
-	ErrDuplicateRecord = errors.New("duplicate record")
+	ErrDuplicateDocument = errors.New("duplicate document")
 )

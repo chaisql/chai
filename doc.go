@@ -20,19 +20,19 @@ Data stored in Genji being schemaless, the usual SQL triplet "column", "row", "t
 for the vocabulary of this library. Also, Genji is a database written in Go for Go, and its primary goal
 is to map structures and maps to tables, though it's not limited to that.
 
-That's why the triplet "field", "record" and "table" was chosen.
+That's why the triplet "field", "document" and "table" was chosen.
 
 A field is a piece of information that has a type, content, and a name.
 The field is equivalent to the SQL column, though it might contain nested fields in the future.
 
-A record is a group of fields. It is an interface that can be implemented manually or by using Genji's code generation.
-This is equivalent to the SQL row. It is managed by the record package, which also provides ways to encode and decode records.
+A document is a group of fields. It is an interface that can be implemented manually or by using Genji's code generation.
+This is equivalent to the SQL row. It is managed by the document package, which also provides ways to encode and decode documents.
 
-A table is an abstraction on top of K-V stores that can read and write records.
+A table is an abstraction on top of K-V stores that can read and write documents.
 This is equivalent to the SQL table.
 
-A stream can read data from a table, record by record, and apply transformations, filter them, etc.
-See the record package for more information.
+A stream can read data from a table, document by document, and apply transformations, filter them, etc.
+See the document package for more information.
 
 These are the basic building blocks of the Genji database.
 
@@ -97,8 +97,8 @@ Since tables are schemaless, providing a list of field names is mandatory when u
 
   INSERT INTO tableName (fieldNameA, fieldNameB, fieldNameC) VALUES (10, true, "bar"), ("baz", 3.14, -10)
 
-Inserting records is also supported with the VALUES clause.
-Genji SQL represents records as a set of key value pairs.
+Inserting documents is also supported with the VALUES clause.
+Genji SQL represents documents as a set of key value pairs.
 Note that field names are forbidden when using the VALUES clause.
 
   INSERT INTO tableName VALUES (fieldNameA: 10, fieldNameB: true, fieldNameC: "bar"), (fieldNameA: "bab", fieldNameD: 3.14)
@@ -188,7 +188,7 @@ Note that combining both named and positional parameters is forbidden.
 
 Struct support and code generation
 
-Genji also supports structures for reading and writing records, but because Genji doesn't use reflection, these structures must implement a couple of interface
+Genji also supports structures for reading and writing documents, but because Genji doesn't use reflection, these structures must implement a couple of interface
 to be able to interat with Genji properly.
 In order to simplify these implementation, Genji provides a command line code generator that can be used with the go:generate command.
 
@@ -209,7 +209,7 @@ This will generate a file named user.genji.go containing the following methods
   // The User type gets new methods that implement some Genji interfaces.
   func (u *User) GetByField(name string) (document.Field, error) {}
   func (u *User) Iterate(fn func(document.Field) error) error {}
-  func (u *User) ScanDocument(rec document.Document) error {}
+  func (u *User) ScanDocument(d document.Document) error {}
   func (u *User) Scan(src interface{}) error {}
 
 The User type now implements all the interfaces needed to interact correctly with the database APIs.

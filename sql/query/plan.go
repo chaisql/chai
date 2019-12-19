@@ -240,7 +240,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 
 		if it.orderByDirection == scanner.DESC {
 			err = it.index.DescendLessOrEqual(nil, func(val document.Value, key []byte) error {
-				r, err := it.tb.GetRecord(key)
+				r, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err
 				}
@@ -249,7 +249,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 			})
 		} else {
 			err = it.index.AscendGreaterOrEqual(nil, func(val document.Value, key []byte) error {
-				r, err := it.tb.GetRecord(key)
+				r, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err
 				}
@@ -285,7 +285,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 			}
 
 			if ok {
-				r, err := it.tb.GetRecord(key)
+				r, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err
 				}
@@ -306,7 +306,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 				return nil
 			}
 
-			r, err := it.tb.GetRecord(key)
+			r, err := it.tb.GetDocument(key)
 			if err != nil {
 				return err
 			}
@@ -315,7 +315,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 		})
 	case scanner.GTE:
 		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
-			r, err := it.tb.GetRecord(key)
+			r, err := it.tb.GetDocument(key)
 			if err != nil {
 				return err
 			}
@@ -333,7 +333,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 				return errStop
 			}
 
-			r, err := it.tb.GetRecord(key)
+			r, err := it.tb.GetDocument(key)
 			if err != nil {
 				return err
 			}
@@ -351,7 +351,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 				return errStop
 			}
 
-			r, err := it.tb.GetRecord(key)
+			r, err := it.tb.GetDocument(key)
 			if err != nil {
 				return err
 			}

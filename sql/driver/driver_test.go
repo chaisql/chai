@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type rectest struct {
+type doctest struct {
 	A int
 	B []int
 	C struct{ Foo string }
@@ -42,11 +42,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var rt rectest
+		var dt doctest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(Scanner(&dt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt)
 			count++
 		}
 
@@ -81,14 +81,14 @@ func TestDriver(t *testing.T) {
 		var count int
 		var a int
 		var c foo
-		var rt1, rt2 rectest
+		var dt1, dt2 doctest
 		for rows.Next() {
-			err = rows.Scan(&a, Scanner(&rt1), Scanner(&c), Scanner(&rt2))
+			err = rows.Scan(&a, Scanner(&dt1), Scanner(&c), Scanner(&dt2))
 			require.NoError(t, err)
 			require.Equal(t, count, a)
 			require.Equal(t, foo{Foo: "bar"}, c)
-			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt1)
-			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt2)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt1)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt2)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -139,11 +139,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var rt rectest
+		var dt doctest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(Scanner(&dt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -160,11 +160,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var rt rectest
+		var dt doctest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(Scanner(&dt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -185,11 +185,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var rt rectest
+		var dt doctest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(Scanner(&dt))
 			require.NoError(t, err)
-			require.Equal(t, rectest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, rt)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt)
 			count++
 		}
 		require.NoError(t, rows.Err())

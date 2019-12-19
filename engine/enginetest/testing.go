@@ -492,7 +492,7 @@ func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
 
 // TestStoreAscendGreaterOrEqual verifies AscendGreaterOrEqual behaviour.
 func TestStoreAscendGreaterOrEqual(t *testing.T, builder Builder) {
-	t.Run("Should not fail with no records", func(t *testing.T) {
+	t.Run("Should not fail with no documents", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -505,7 +505,7 @@ func TestStoreAscendGreaterOrEqual(t *testing.T, builder Builder) {
 		require.Zero(t, i)
 	})
 
-	t.Run("With no pivot, should iterate over all records in order", func(t *testing.T) {
+	t.Run("With no pivot, should iterate over all documents in order", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -527,7 +527,7 @@ func TestStoreAscendGreaterOrEqual(t *testing.T, builder Builder) {
 		require.Equal(t, count, 10)
 	})
 
-	t.Run("With pivot, should iterate over some records in order", func(t *testing.T) {
+	t.Run("With pivot, should iterate over some documents in order", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -594,7 +594,7 @@ func TestStoreAscendGreaterOrEqual(t *testing.T, builder Builder) {
 
 // TestStoreDescendLessOrEqual verifies DescendLessOrEqual behaviour.
 func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
-	t.Run("Should not fail with no records", func(t *testing.T) {
+	t.Run("Should not fail with no documents", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -607,7 +607,7 @@ func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
 		require.Zero(t, i)
 	})
 
-	t.Run("With no pivot, should iterate over all records in reverse order", func(t *testing.T) {
+	t.Run("With no pivot, should iterate over all documents in reverse order", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -629,7 +629,7 @@ func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
 		require.Equal(t, 10, count)
 	})
 
-	t.Run("With pivot, should iterate over some records in reverse order", func(t *testing.T) {
+	t.Run("With pivot, should iterate over some documents in reverse order", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -786,7 +786,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		require.Equal(t, engine.ErrKeyNotFound, err)
 	})
 
-	t.Run("Should delete the right record", func(t *testing.T) {
+	t.Run("Should delete the right document", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 

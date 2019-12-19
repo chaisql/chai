@@ -197,12 +197,12 @@ func TestNewFromMap(t *testing.T) {
 		"nilField": nil,
 	}
 
-	rec := document.NewFromMap(m)
+	doc := document.NewFromMap(m)
 
 	t.Run("Iterate", func(t *testing.T) {
 		counter := make(map[string]int)
 
-		err := rec.Iterate(func(f string, v document.Value) error {
+		err := doc.Iterate(func(f string, v document.Value) error {
 			counter[f]++
 			switch f {
 			case "name":
@@ -220,19 +220,19 @@ func TestNewFromMap(t *testing.T) {
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
-		v, err := rec.GetByField("name")
+		v, err := doc.GetByField("name")
 		require.NoError(t, err)
 		require.Equal(t, document.NewStringValue("foo"), v)
 
-		v, err = rec.GetByField("age")
+		v, err = doc.GetByField("age")
 		require.NoError(t, err)
 		require.Equal(t, document.NewIntValue(10), v)
 
-		v, err = rec.GetByField("nilField")
+		v, err = doc.GetByField("nilField")
 		require.NoError(t, err)
 		require.Equal(t, document.NewNullValue(), v)
 
-		_, err = rec.GetByField("bar")
+		_, err = doc.GetByField("bar")
 		require.Equal(t, document.ErrFieldNotFound, err)
 	})
 }

@@ -63,7 +63,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		err = st.Iterate(func(d document.Document) error {
 			rk, ok := d.(document.Keyer)
 			if !ok {
-				return errors.New("attempt to update record without key")
+				return errors.New("attempt to update document without key")
 			}
 
 			docs[i].Reset()
@@ -79,9 +79,9 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 				}
 
 				ev, err := e.Eval(EvalStack{
-					Tx:     tx,
-					Record: d,
-					Params: args,
+					Tx:       tx,
+					Document: d,
+					Params:   args,
 				})
 				if err != nil && err != document.ErrFieldNotFound {
 					return err

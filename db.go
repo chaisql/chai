@@ -116,9 +116,9 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 	return pq.Run(db.DB, argsToNamedValues(args))
 }
 
-// QueryRecord runs the query and returns the first document.
-// If the query returns no error, QueryRecord returns ErrRecordNotFound.
-func (db *DB) QueryRecord(q string, args ...interface{}) (document.Document, error) {
+// QueryDocument runs the query and returns the first document.
+// If the query returns no error, QueryDocument returns ErrDocumentNotFound.
+func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, error) {
 	res, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (db *DB) QueryRecord(q string, args ...interface{}) (document.Document, err
 	}
 
 	if r == nil {
-		return nil, database.ErrRecordNotFound
+		return nil, database.ErrDocumentNotFound
 	}
 
 	var fb document.FieldBuffer
@@ -189,9 +189,9 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 	return pq.Exec(tx.Transaction, argsToNamedValues(args), false)
 }
 
-// QueryRecord runs the query and returns the first document.
-// If the query returns no error, QueryRecord returns ErrRecordNotFound.
-func (tx *Tx) QueryRecord(q string, args ...interface{}) (document.Document, error) {
+// QueryDocument runs the query and returns the first document.
+// If the query returns no error, QueryDocument returns ErrDocumentNotFound.
+func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, error) {
 	res, err := tx.Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func (tx *Tx) QueryRecord(q string, args ...interface{}) (document.Document, err
 		return nil, err
 	}
 	if r == nil {
-		return nil, database.ErrRecordNotFound
+		return nil, database.ErrDocumentNotFound
 	}
 
 	return r, nil

@@ -117,7 +117,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	}
 
 	st = st.Map(func(d document.Document) (document.Document, error) {
-		return RecordMask{
+		return DocumentMask{
 			cfg:          qo.cfg,
 			r:            d,
 			resultFields: stmt.Selectors,
@@ -127,15 +127,15 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	return Result{Stream: st}, nil
 }
 
-type RecordMask struct {
+type DocumentMask struct {
 	cfg          *database.TableConfig
 	r            document.Document
 	resultFields []ResultField
 }
 
-var _ document.Document = RecordMask{}
+var _ document.Document = DocumentMask{}
 
-func (r RecordMask) GetByField(name string) (document.Value, error) {
+func (r DocumentMask) GetByField(name string) (document.Value, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == name || rf.Name() == "*" {
 			return r.r.GetByField(name)
@@ -145,10 +145,10 @@ func (r RecordMask) GetByField(name string) (document.Value, error) {
 	return document.Value{}, document.ErrFieldNotFound
 }
 
-func (r RecordMask) Iterate(fn func(f string, v document.Value) error) error {
+func (r DocumentMask) Iterate(fn func(f string, v document.Value) error) error {
 	stack := EvalStack{
-		Record: r.r,
-		Cfg:    r.cfg,
+		Document: r.r,
+		Cfg:      r.cfg,
 	}
 
 	for _, rf := range r.resultFields {
@@ -219,7 +219,7 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 }
 
 func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
-	fd, v, err := f.SelectField(stack.Record)
+	fd, v, err := f.SelectField(stack.Document)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -227,14 +227,14 @@ func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Va
 	return fn(fd, v)
 }
 
-// Eval extracts the record from the context and selects the right field.
+// Eval extracts the document from the context and selects the right field.
 // It implements the Expr interface.
 func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
-	if stack.Record == nil {
+	if stack.Document == nil {
 		return nilLitteral, document.ErrFieldNotFound
 	}
 
-	_, v, err := f.SelectField(stack.Record)
+	_, v, err := f.SelectField(stack.Document)
 	if err != nil {
 		return nilLitteral, document.ErrFieldNotFound
 	}
@@ -249,7 +249,7 @@ func (w Wildcard) Name() string {
 }
 
 func (w Wildcard) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
-	return stack.Record.Iterate(fn)
+	return stack.Document.Iterate(fn)
 }
 
 type KeyFunc struct{}
@@ -260,14 +260,14 @@ func (k KeyFunc) Name() string {
 
 func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	if stack.Cfg.PrimaryKeyName != "" {
-		v, err := stack.Record.GetByField(stack.Cfg.PrimaryKeyName)
+		v, err := stack.Document.GetByField(stack.Cfg.PrimaryKeyName)
 		if err != nil {
 			return err
 		}
 		return fn(stack.Cfg.PrimaryKeyName, v)
 	}
 
-	v, err := encoding.DecodeValue(document.Int64Value, stack.Record.(document.Keyer).Key())
+	v, err := encoding.DecodeValue(document.Int64Value, stack.Document.(document.Keyer).Key())
 	if err != nil {
 		return err
 	}

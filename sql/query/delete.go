@@ -22,11 +22,11 @@ func (stmt DeleteStmt) IsReadOnly() bool {
 	return false
 }
 
-// Run deletes matching records by batches of deleteBufferSize records.
+// Run deletes matching documents by batches of deleteBufferSize documents.
 // Some engines can't iterate while deleting keys (https://github.com/etcd-io/bbolt/issues/146)
 // and some can't create more than one iterator per read-write transaction (https://github.com/dgraph-io/badger/issues/1093).
-// To deal with these limitations, Run will iterate on a limited number of records, copy the keys
-// to a buffer and delete them after the iteration is complete, and it will do that until there is no record
+// To deal with these limitations, Run will iterate on a limited number of documents, copy the keys
+// to a buffer and delete them after the iteration is complete, and it will do that until there is no document
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
 func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
@@ -53,7 +53,7 @@ func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 		err = st.Iterate(func(d document.Document) error {
 			k, ok := d.(document.Keyer)
 			if !ok {
-				return errors.New("attempt to delete record without key")
+				return errors.New("attempt to delete document without key")
 			}
 			// copy the key and reuse the buffer
 			keys[i] = append(keys[i][0:0], k.Key()...)

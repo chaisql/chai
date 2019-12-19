@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// A Table represents a collection of records.
+// A Table represents a collection of documents.
 type Table struct {
 	tx       *Transaction
 	Store    engine.Store
@@ -18,17 +18,17 @@ type Table struct {
 	CfgStore *tableConfigStore
 }
 
-type encodedRecordWithKey struct {
+type encodedDocumentWithKey struct {
 	encoding.EncodedDocument
 
 	key []byte
 }
 
-func (e encodedRecordWithKey) Key() []byte {
+func (e encodedDocumentWithKey) Key() []byte {
 	return e.key
 }
 
-// Iterate goes through all the records of the table and calls the given function by passing each one of them.
+// Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (t *Table) Iterate(fn func(d document.Document) error) error {
 	// To avoid unnecessary allocations, we create the slice once and reuse it
@@ -36,31 +36,31 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
 	// we can assume that it's thread safe.
 	// TODO(asdine) Add a mutex if proven necessary
-	var r encodedRecordWithKey
+	var d encodedDocumentWithKey
 
 	return t.Store.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		r.EncodedDocument = v
-		r.key = k
+		d.EncodedDocument = v
+		d.key = k
 		// r must be passed as pointer, not value, because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
-		return fn(&r)
+		return fn(&d)
 	})
 }
 
-// GetRecord returns one record by key.
-func (t *Table) GetRecord(key []byte) (document.Document, error) {
+// GetDocument returns one document by key.
+func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
-			return nil, ErrRecordNotFound
+			return nil, ErrDocumentNotFound
 		}
-		return nil, errors.Wrapf(err, "failed to fetch record %q", key)
+		return nil, errors.Wrapf(err, "failed to fetch document %q", key)
 	}
 
-	var r encodedRecordWithKey
-	r.EncodedDocument = encoding.EncodedDocument(v)
-	r.key = key
-	return &r, err
+	var d encodedDocumentWithKey
+	d.EncodedDocument = encoding.EncodedDocument(v)
+	d.key = key
+	return &d, err
 }
 
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
@@ -100,7 +100,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	return key, nil
 }
 
-// Insert the record into the table.
+// Insert the document into the table.
 // If a primary key has been specified during the table creation, the field is expected to be present
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
@@ -112,12 +112,12 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 
 	_, err = t.Store.Get(key)
 	if err == nil {
-		return nil, ErrDuplicateRecord
+		return nil, ErrDuplicateDocument
 	}
 
 	v, err := encoding.EncodeDocument(d)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode record")
+		return nil, errors.Wrap(err, "failed to encode document")
 	}
 
 	err = t.Store.Put(key, v)
@@ -139,7 +139,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		err = idx.Set(v, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
-				return nil, ErrDuplicateRecord
+				return nil, ErrDuplicateDocument
 			}
 
 			return nil, err
@@ -149,10 +149,10 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	return key, nil
 }
 
-// Delete a record by key.
+// Delete a document by key.
 // Indexes are automatically updated.
 func (t *Table) Delete(key []byte) error {
-	r, err := t.GetRecord(key)
+	r, err := t.GetDocument(key)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (t *Table) Delete(key []byte) error {
 	return t.Store.Delete(key)
 }
 
-// Replace a record by key.
+// Replace a document by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
 func (t *Table) Replace(key []byte, d document.Document) error {
@@ -191,7 +191,7 @@ func (t *Table) Replace(key []byte, d document.Document) error {
 
 func (t *Table) replace(indexes map[string]Index, key []byte, d document.Document) error {
 	// make sure key exists
-	old, err := t.GetRecord(key)
+	old, err := t.GetDocument(key)
 	if err != nil {
 		return err
 	}
@@ -209,13 +209,13 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 		}
 	}
 
-	// encode new record
+	// encode new document
 	v, err := encoding.EncodeDocument(d)
 	if err != nil {
-		return errors.Wrap(err, "failed to encode record")
+		return errors.Wrap(err, "failed to encode document")
 	}
 
-	// replace old record with new record
+	// replace old document with new document
 	err = t.Store.Put(key, v)
 	if err != nil {
 		return err
@@ -237,7 +237,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 	return err
 }
 
-// Truncate deletes all the records from the table.
+// Truncate deletes all the documents from the table.
 func (t *Table) Truncate() error {
 	return t.Store.Truncate()
 }

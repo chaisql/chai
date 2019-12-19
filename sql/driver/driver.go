@@ -259,35 +259,35 @@ func (s stmt) Close() error {
 
 var errStop = errors.New("stop")
 
-type recordStream struct {
+type documentStream struct {
 	res      *query.Result
 	cancelFn func()
-	c        chan rec
+	c        chan doc
 	wg       sync.WaitGroup
 	fields   []string
 }
 
-type rec struct {
-	r   query.RecordMask
+type doc struct {
+	d   query.DocumentMask
 	err error
 }
 
-func newRecordStream(res *query.Result) *recordStream {
+func newRecordStream(res *query.Result) *documentStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	records := recordStream{
+	ds := documentStream{
 		res:      res,
 		cancelFn: cancel,
-		c:        make(chan rec),
+		c:        make(chan doc),
 	}
-	records.wg.Add(1)
+	ds.wg.Add(1)
 
-	go records.iterate(ctx)
+	go ds.iterate(ctx)
 
-	return &records
+	return &ds
 }
 
-func (rs *recordStream) iterate(ctx context.Context) {
+func (rs *documentStream) iterate(ctx context.Context) {
 	defer rs.wg.Done()
 	defer close(rs.c)
 
@@ -301,8 +301,8 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return errStop
-		case rs.c <- rec{
-			r: d.(query.RecordMask),
+		case rs.c <- doc{
+			d: d.(query.DocumentMask),
 		}:
 
 			select {
@@ -319,7 +319,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		return
 	}
 	if err != nil {
-		rs.c <- rec{
+		rs.c <- doc{
 			err: err,
 		}
 		return
@@ -327,37 +327,36 @@ func (rs *recordStream) iterate(ctx context.Context) {
 }
 
 // Columns returns the fields selected by the SELECT statement.
-// If the wildcard was used, it returns one column named "record".
-func (rs *recordStream) Columns() []string {
+func (rs *documentStream) Columns() []string {
 	return rs.fields
 }
 
 // Close closes the rows iterator.
-func (rs *recordStream) Close() error {
+func (rs *documentStream) Close() error {
 	rs.cancelFn()
 	return rs.res.Close()
 }
 
-func (rs *recordStream) Next(dest []driver.Value) error {
-	rs.c <- rec{}
+func (rs *documentStream) Next(dest []driver.Value) error {
+	rs.c <- doc{}
 
-	rec, ok := <-rs.c
+	doc, ok := <-rs.c
 	if !ok {
 		return io.EOF
 	}
 
-	if rec.err != nil {
-		return rec.err
+	if doc.err != nil {
+		return doc.err
 	}
 
 	for i := range rs.fields {
 		if rs.fields[i] == "*" {
-			dest[i] = rec.r
+			dest[i] = doc.d
 
 			continue
 		}
 
-		f, err := rec.r.GetByField(rs.fields[i])
+		f, err := doc.d.GetByField(rs.fields[i])
 		if err != nil {
 			return err
 		}

@@ -146,7 +146,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.Equal(t, 0, i)
 		})
 
-		t.Run(text+"With typed empty pivot, should iterate over all records of the pivot type in order", func(t *testing.T) {
+		t.Run(text+"With typed empty pivot, should iterate over all documents of the pivot type in order", func(t *testing.T) {
 			tests := []struct {
 				name  string
 				val   func(i int) document.Value
@@ -189,7 +189,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			}
 		})
 
-		t.Run(text+"With pivot, should iterate over some records in order", func(t *testing.T) {
+		t.Run(text+"With pivot, should iterate over some documents in order", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
@@ -212,7 +212,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.Equal(t, 4, count)
 		})
 
-		t.Run(text+"With no pivot, should iterate over all records in order, regardless of their type", func(t *testing.T) {
+		t.Run(text+"With no pivot, should iterate over all documents in order, regardless of their type", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
@@ -265,7 +265,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			require.Equal(t, 0, i)
 		})
 
-		t.Run(text+"With empty typed pivot, should iterate over all records of the same type in reverse order", func(t *testing.T) {
+		t.Run(text+"With empty typed pivot, should iterate over all documents of the same type in reverse order", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
@@ -287,7 +287,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			require.Equal(t, 5, count)
 		})
 
-		t.Run(text+"With pivot, should iterate over some records in order", func(t *testing.T) {
+		t.Run(text+"With pivot, should iterate over some documents in order", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
@@ -310,7 +310,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			require.Equal(t, 6, count)
 		})
 
-		t.Run(text+"With no pivot, should iterate over all records in reverse order, regardless of their type", func(t *testing.T) {
+		t.Run(text+"With no pivot, should iterate over all documents in reverse order, regardless of their type", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 

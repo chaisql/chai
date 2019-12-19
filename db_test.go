@@ -35,7 +35,7 @@ func ExampleTx() {
 		log.Fatal(err)
 	}
 
-	d, err := tx.QueryRecord("SELECT id, name, age FROM user WHERE name = ?", "foo")
+	d, err := tx.QueryDocument("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +68,7 @@ func ExampleTx() {
 	// 10 foo 15
 }
 
-func TestQueryRecord(t *testing.T) {
+func TestQueryDocument(t *testing.T) {
 	db, err := genji.New(memoryengine.NewEngine())
 	require.NoError(t, err)
 
@@ -82,11 +82,11 @@ func TestQueryRecord(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, tx.Commit())
 
-	t.Run("Should return the first record", func(t *testing.T) {
+	t.Run("Should return the first document", func(t *testing.T) {
 		var a int
 		var b string
 
-		r, err := db.QueryRecord("SELECT * FROM test")
+		r, err := db.QueryDocument("SELECT * FROM test")
 		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
@@ -96,7 +96,7 @@ func TestQueryRecord(t *testing.T) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		r, err = tx.QueryRecord("SELECT * FROM test")
+		r, err = tx.QueryDocument("SELECT * FROM test")
 		require.NoError(t, err)
 		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
@@ -104,16 +104,16 @@ func TestQueryRecord(t *testing.T) {
 		require.Equal(t, "foo", b)
 	})
 
-	t.Run("Should return an error if no record", func(t *testing.T) {
-		r, err := db.QueryRecord("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, database.ErrRecordNotFound, err)
+	t.Run("Should return an error if no document", func(t *testing.T) {
+		r, err := db.QueryDocument("SELECT * FROM test WHERE a > 100")
+		require.Equal(t, database.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		require.NoError(t, err)
 		defer tx.Rollback()
-		r, err = tx.QueryRecord("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, database.ErrRecordNotFound, err)
+		r, err = tx.QueryDocument("SELECT * FROM test WHERE a > 100")
+		require.Equal(t, database.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 	})
 }

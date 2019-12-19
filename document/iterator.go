@@ -185,8 +185,8 @@ func (s Stream) Count() (int, error) {
 // First runs the stream, returns the first document found and closes the stream.
 // If the stream is empty, all return values are nil.
 func (s Stream) First() (d Document, err error) {
-	err = s.Iterate(func(rec Document) error {
-		d = rec
+	err = s.Iterate(func(doc Document) error {
+		d = doc
 		return ErrStreamClosed
 	})
 

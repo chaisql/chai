@@ -24,10 +24,10 @@ type Expr interface {
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
 type EvalStack struct {
-	Tx     *database.Transaction
-	Record document.Document
-	Params []driver.NamedValue
-	Cfg    *database.TableConfig
+	Tx       *database.Transaction
+	Document document.Document
+	Params   []driver.NamedValue
+	Cfg      *database.TableConfig
 }
 
 // A LiteralValue represents a litteral value of any type defined by the value package.

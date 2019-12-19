@@ -155,7 +155,7 @@ func whereClause(e Expr, stack EvalStack) func(d document.Document) (bool, error
 	}
 
 	return func(d document.Document) (bool, error) {
-		stack.Record = d
+		stack.Document = d
 		v, err := e.Eval(stack)
 		if err != nil {
 			return false, err

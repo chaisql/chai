@@ -306,7 +306,7 @@ func newDocument() *document.FieldBuffer {
 
 // TestTableIterate verifies Iterate behaviour.
 func TestTableIterate(t *testing.T) {
-	t.Run("Should not fail with no records", func(t *testing.T) {
+	t.Run("Should not fail with no documents", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
@@ -319,7 +319,7 @@ func TestTableIterate(t *testing.T) {
 		require.Zero(t, i)
 	})
 
-	t.Run("Should iterate over all records", func(t *testing.T) {
+	t.Run("Should iterate over all documents", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
@@ -362,34 +362,34 @@ func TestTableIterate(t *testing.T) {
 	})
 }
 
-// TestTableRecord verifies Record behaviour.
-func TestTableRecord(t *testing.T) {
+// TestTableDocument verifies Document behaviour.
+func TestTableDocument(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		r, err := tb.GetRecord([]byte("id"))
-		require.Equal(t, database.ErrRecordNotFound, err)
+		r, err := tb.GetDocument([]byte("id"))
+		require.Equal(t, database.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 	})
 
-	t.Run("Should return the right record", func(t *testing.T) {
+	t.Run("Should return the right document", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two records, one with an additional field
-		rec1 := newDocument()
+		// create two documents, one with an additional field
+		doc1 := newDocument()
 		vc := document.NewInt64Value(40)
-		rec1.Add("fieldc", vc)
-		rec2 := newDocument()
+		doc1.Add("fieldc", vc)
+		doc2 := newDocument()
 
-		key1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		_, err = tb.Insert(rec2)
+		_, err = tb.Insert(doc2)
 		require.NoError(t, err)
 
-		// fetch rec1 and make sure it returns the right one
-		res, err := tb.GetRecord(key1)
+		// fetch doc1 and make sure it returns the right one
+		res, err := tb.GetDocument(key1)
 		require.NoError(t, err)
 		fc, err := res.GetByField("fieldc")
 		require.NoError(t, err)
@@ -403,12 +403,12 @@ func TestTableInsert(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		rec := newDocument()
-		key1, err := tb.Insert(rec)
+		doc := newDocument()
+		key1, err := tb.Insert(doc)
 		require.NoError(t, err)
 		require.NotEmpty(t, key1)
 
-		key2, err := tb.Insert(rec)
+		key2, err := tb.Insert(doc)
 		require.NoError(t, err)
 		require.NotEmpty(t, key2)
 
@@ -427,25 +427,25 @@ func TestTableInsert(t *testing.T) {
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		rec := document.NewFieldBuffer().
+		doc := document.NewFieldBuffer().
 			Add("foo", document.NewIntValue(1)).
 			Add("bar", document.NewStringValue("baz"))
 
 		// insert
-		key, err := tb.Insert(rec)
+		key, err := tb.Insert(doc)
 		require.NoError(t, err)
 		require.Equal(t, encoding.EncodeInt32(1), key)
 
-		// make sure the record is fetchable using the returned key
-		_, err = tb.GetRecord(key)
+		// make sure the document is fetchable using the returned key
+		_, err = tb.GetDocument(key)
 		require.NoError(t, err)
 
 		// insert again
-		key, err = tb.Insert(rec)
-		require.Equal(t, database.ErrDuplicateRecord, err)
+		key, err = tb.Insert(doc)
+		require.Equal(t, database.ErrDuplicateDocument, err)
 	})
 
-	t.Run("Should fail if Pk not found in record or empty", func(t *testing.T) {
+	t.Run("Should fail if Pk not found in document or empty", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
@@ -465,10 +465,10 @@ func TestTableInsert(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
-				rec := document.NewFieldBuffer().
+				doc := document.NewFieldBuffer().
 					Add("foo", document.NewBytesValue(test))
 
-				_, err := tb.Insert(rec)
+				_, err := tb.Insert(doc)
 				require.Error(t, err)
 			})
 		}
@@ -491,17 +491,17 @@ func TestTableInsert(t *testing.T) {
 		tb, err := tx.GetTable("test")
 		require.NoError(t, err)
 
-		// create one record with the foo field
-		rec1 := newDocument()
+		// create one document with the foo field
+		doc1 := newDocument()
 		foo := document.NewFloat64Value(10)
-		rec1.Add("foo", foo)
+		doc1.Add("foo", foo)
 
-		// create one record without the foo field
-		rec2 := newDocument()
+		// create one document without the foo field
+		doc2 := newDocument()
 
-		key1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		key2, err := tb.Insert(rec2)
+		key2, err := tb.Insert(doc2)
 		require.NoError(t, err)
 
 		var count int
@@ -529,33 +529,33 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Delete([]byte("id"))
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, database.ErrDocumentNotFound, err)
 	})
 
-	t.Run("Should delete the right record", func(t *testing.T) {
+	t.Run("Should delete the right document", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two records, one with an additional field
-		rec1 := newDocument()
-		rec1.Add("fieldc", document.NewInt64Value(40))
-		rec2 := newDocument()
+		// create two documents, one with an additional field
+		doc1 := newDocument()
+		doc1.Add("fieldc", document.NewInt64Value(40))
+		doc2 := newDocument()
 
-		key1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		key2, err := tb.Insert(rec2)
+		key2, err := tb.Insert(doc2)
 		require.NoError(t, err)
 
-		// delete the record
+		// delete the document
 		err = tb.Delete([]byte(key1))
 		require.NoError(t, err)
 
 		// try again, should fail
 		err = tb.Delete([]byte(key1))
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, database.ErrDocumentNotFound, err)
 
 		// make sure it didn't also delete the other one
-		res, err := tb.GetRecord(key2)
+		res, err := tb.GetDocument(key2)
 		require.NoError(t, err)
 		_, err = res.GetByField("fieldc")
 		require.Error(t, err)
@@ -569,42 +569,42 @@ func TestTableReplace(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Replace([]byte("id"), newDocument())
-		require.Equal(t, database.ErrRecordNotFound, err)
+		require.Equal(t, database.ErrDocumentNotFound, err)
 	})
 
-	t.Run("Should replace the right record", func(t *testing.T) {
+	t.Run("Should replace the right document", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two different records
-		rec1 := newDocument()
-		rec2 := document.NewFieldBuffer().
+		// create two different documents
+		doc1 := newDocument()
+		doc2 := document.NewFieldBuffer().
 			Add("fielda", document.NewStringValue("c")).
 			Add("fieldb", document.NewStringValue("d"))
 
-		key1, err := tb.Insert(rec1)
+		key1, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		key2, err := tb.Insert(rec2)
+		key2, err := tb.Insert(doc2)
 		require.NoError(t, err)
 
-		// create a third record
-		rec3 := document.NewFieldBuffer().
+		// create a third document
+		doc3 := document.NewFieldBuffer().
 			Add("fielda", document.NewStringValue("e")).
 			Add("fieldb", document.NewStringValue("f"))
 
-		// replace rec1 with rec3
-		err = tb.Replace(key1, rec3)
+		// replace doc1 with doc3
+		err = tb.Replace(key1, doc3)
 		require.NoError(t, err)
 
-		// make sure it replaced it correctly
-		res, err := tb.GetRecord(key1)
+		// make sure it replaced it cordoctly
+		res, err := tb.GetDocument(key1)
 		require.NoError(t, err)
 		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", string(f.V.([]byte)))
 
 		// make sure it didn't also replace the other one
-		res, err = tb.GetRecord(key2)
+		res, err = tb.GetDocument(key2)
 		require.NoError(t, err)
 		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
@@ -626,13 +626,13 @@ func TestTableTruncate(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two records
-		rec1 := newDocument()
-		rec2 := newDocument()
+		// create two documents
+		doc1 := newDocument()
+		doc2 := newDocument()
 
-		_, err := tb.Insert(rec1)
+		_, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		_, err = tb.Insert(rec2)
+		_, err = tb.Insert(doc2)
 		require.NoError(t, err)
 
 		err = tb.Truncate()

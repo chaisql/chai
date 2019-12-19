@@ -46,7 +46,7 @@ func Example() {
 		panic(err)
 	}
 
-	// Query some records
+	// Query some documents
 	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
@@ -76,7 +76,7 @@ func Example() {
 	}
 	fmt.Println("Count:", count)
 
-	// Get first record from the results
+	// Get first document from the results
 	r, err := stream.First()
 	if err != nil {
 		panic(err)
@@ -100,7 +100,7 @@ func Example() {
 			id, err := f.ConvertToInt()
 			return id%2 == 0, nil
 		}).
-		// Enrich the records with a new field
+		// Enrich the documents with a new field
 		Map(func(d document.Document) (document.Document, error) {
 			var fb document.FieldBuffer
 
