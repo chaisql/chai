@@ -104,7 +104,6 @@ type Result struct {
 	lastInsertKey []byte
 	tx            *database.Transaction
 	closed        bool
-	cleanup       func() error
 }
 
 // LastInsertId is not supported and returns an error.
@@ -136,14 +135,6 @@ func (r *Result) Close() (err error) {
 	}
 
 	r.closed = true
-
-	if r.cleanup != nil {
-		err = r.cleanup()
-		if err != nil {
-			r.tx.Rollback()
-			return err
-		}
-	}
 
 	if r.tx != nil {
 		if r.tx.Writable() {

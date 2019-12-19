@@ -43,35 +43,8 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		return res, errors.New("missing table selector")
 	}
 
-	t, err := tx.GetTable(stmt.TableName)
-	if err != nil {
-		return res, err
-	}
-
-	indexes, err := t.Indexes()
-	if err != nil {
-		return res, err
-	}
-
-	cfg, err := t.CfgStore.Get(t.TableName())
-	if err != nil {
-		return res, err
-	}
-
-	qo := queryOptimizer{
-		tx:               tx,
-		t:                t,
-		whereExpr:        stmt.WhereExpr,
-		args:             args,
-		cfg:              cfg,
-		indexes:          indexes,
-		orderBy:          stmt.OrderBy,
-		orderByDirection: stmt.OrderByDirection,
-	}
-
-	st, cleanup, err := qo.optimizeQuery()
-	if err != nil {
-		return res, err
+	if stmt.OrderByDirection != scanner.DESC {
+		stmt.OrderByDirection = scanner.ASC
 	}
 
 	offset := -1
@@ -122,7 +95,18 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 		}
 	}
 
-	st = st.Filter(whereClause(stmt.WhereExpr, stack))
+	qo, err := newQueryOptimizer(tx, stmt.TableName)
+	qo.whereExpr = stmt.WhereExpr
+	qo.args = args
+	qo.orderBy = stmt.OrderBy
+	qo.orderByDirection = stmt.OrderByDirection
+	qo.limit = limit
+	qo.offset = offset
+
+	st, err := qo.optimizeQuery()
+	if err != nil {
+		return res, err
+	}
 
 	if offset > 0 {
 		st = st.Offset(offset)
@@ -134,13 +118,13 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 
 	st = st.Map(func(d document.Document) (document.Document, error) {
 		return RecordMask{
-			cfg:          cfg,
+			cfg:          qo.cfg,
 			r:            d,
 			resultFields: stmt.Selectors,
 		}, nil
 	})
 
-	return Result{Stream: st, cleanup: cleanup}, nil
+	return Result{Stream: st}, nil
 }
 
 type RecordMask struct {

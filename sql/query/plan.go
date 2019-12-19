@@ -2,10 +2,9 @@ package query
 
 import (
 	"bytes"
+	"container/heap"
 	"database/sql/driver"
 	"errors"
-	"fmt"
-	"time"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -29,26 +28,47 @@ type queryPlanField struct {
 	isPrimaryKey bool
 }
 
-func newQueryOptimizer(tx *database.Transaction, t *database.Table) queryOptimizer {
-	return queryOptimizer{
-		tx: tx,
-		t:  t,
+func newQueryOptimizer(tx *database.Transaction, tableName string) (qo queryOptimizer, err error) {
+	t, err := tx.GetTable(tableName)
+	if err != nil {
+		return
 	}
+
+	indexes, err := t.Indexes()
+	if err != nil {
+		return
+	}
+
+	cfg, err := t.CfgStore.Get(t.TableName())
+	if err != nil {
+		return
+	}
+
+	return queryOptimizer{
+		tx:        tx,
+		t:         t,
+		tableName: tableName,
+		cfg:       cfg,
+		indexes:   indexes,
+	}, nil
 }
 
 // queryOptimizer is a really dumb query optimizer. gotta start somewhere. please don't be mad at me.
 type queryOptimizer struct {
 	tx               *database.Transaction
 	t                *database.Table
+	tableName        string
 	whereExpr        Expr
 	args             []driver.NamedValue
 	cfg              *database.TableConfig
 	indexes          map[string]database.Index
 	orderBy          FieldSelector
 	orderByDirection scanner.Token
+	limit            int
+	offset           int
 }
 
-func (qo *queryOptimizer) optimizeQuery() (st document.Stream, cleanup func() error, err error) {
+func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 	qp := qo.buildQueryPlan()
 
 	switch {
@@ -76,8 +96,13 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, cleanup func() er
 		})
 	}
 
+	st = st.Filter(whereClause(qo.whereExpr, EvalStack{
+		Tx:     qo.tx,
+		Params: qo.args,
+	}))
+
 	if len(qo.orderBy) != 0 && !qp.sorted {
-		st, cleanup, err = sortIterator(qo.tx, st, document.ValuePath(qo.orderBy), qo.orderByDirection)
+		st, err = qo.sortIterator(st)
 	}
 
 	return
@@ -437,23 +462,49 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	return nil
 }
 
-func sortIterator(tx *database.Transaction, it document.Iterator, path document.ValuePath, direction scanner.Token) (st document.Stream, cleanup func() error, err error) {
-	err = tx.Promote()
-	if err != nil {
-		return
+// sortIterator operates a partial sort on the iterator using a heap.
+// This ensures a O(n+klog n) time complexity
+// with k being the limit of the query, or the sum of the limit + offset, when both offset and limit are used.
+// if there are no limit or offsets, k = n, the number of elements in the table.
+// If the sorting is in ascending order, a min-heap will be used
+// otherwise a max-heap will be used instead.
+// Once the heap is filled entirely with the content of the table a stream is returned.
+// During iteration, the stream will pop the k-smallest or k-largest elements, depending on
+// the chosen sorting order (ASC or DESC).
+// This function is not memory efficient as it's loading the entire table in memory before
+// returning the k-smallest or k-largest elements.
+func (qo *queryOptimizer) sortIterator(it document.Iterator) (st document.Stream, err error) {
+	k := 0
+	if qo.limit != -1 {
+		k += qo.limit
+		if qo.offset != -1 {
+			k += qo.offset
+		}
 	}
 
-	tempIdxName := fmt.Sprintf("__genji.temp_%d", time.Now().UTC().UnixNano())
-	idx := index.NewListIndex(tx.Tx, tempIdxName)
+	path := document.ValuePath(qo.orderBy)
+
+	var h heap.Interface
+	if qo.orderByDirection == scanner.ASC {
+		h = new(minHeap)
+	} else {
+		h = new(maxHeap)
+	}
+
+	heap.Init(h)
 
 	err = it.Iterate(func(d document.Document) error {
 		v, err := path.GetValue(d)
 		if err != nil && err != document.ErrFieldNotFound {
 			return err
 		}
-
 		if err == document.ErrFieldNotFound {
 			v = document.NewNullValue()
+		}
+
+		value, err := encoding.EncodeValue(v)
+		if err != nil {
+			return err
 		}
 
 		data, err := encoding.EncodeDocument(d)
@@ -461,32 +512,65 @@ func sortIterator(tx *database.Transaction, it document.Iterator, path document.
 			return err
 		}
 
-		return idx.Set(v, data)
+		heap.Push(h, heapNode{
+			value: value,
+			data:  data,
+		})
+
+		return nil
 	})
 	if err != nil {
-		idx.Truncate()
 		return
 	}
 
-	st = document.NewStream(&sortedIterator{idx, direction})
-	cleanup = idx.Truncate
+	st = document.NewStream(&sortedIterator{h, k})
 
 	return
 }
 
 type sortedIterator struct {
-	idx       index.Index
-	direction scanner.Token
+	h heap.Interface
+	k int
 }
 
 func (s *sortedIterator) Iterate(fn func(d document.Document) error) error {
-	if s.direction == scanner.DESC {
-		return s.idx.DescendLessOrEqual(nil, func(_ document.Value, data []byte) error {
-			return fn(encoding.EncodedDocument(data))
-		})
+	i := 0
+	for s.h.Len() > 0 && (s.k == 0 || i < s.k) {
+		err := fn(encoding.EncodedDocument(heap.Pop(s.h).(heapNode).data))
+		if err != nil {
+			return err
+		}
+		i++
 	}
 
-	return s.idx.AscendGreaterOrEqual(nil, func(_ document.Value, data []byte) error {
-		return fn(encoding.EncodedDocument(data))
-	})
+	return nil
 }
+
+type heapNode struct {
+	value []byte
+	data  []byte
+}
+
+type minHeap []heapNode
+
+func (h minHeap) Len() int           { return len(h) }
+func (h minHeap) Less(i, j int) bool { return bytes.Compare(h[i].value, h[j].value) < 0 }
+func (h minHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *minHeap) Push(x interface{}) {
+	*h = append(*h, x.(heapNode))
+}
+
+func (h *minHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+type maxHeap struct {
+	minHeap
+}
+
+func (h maxHeap) Less(i, j int) bool { return bytes.Compare(h.minHeap[i].value, h.minHeap[j].value) > 0 }
