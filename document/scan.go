@@ -180,7 +180,7 @@ func mapScan(d Document, ref reflect.Value) error {
 		return fmt.Errorf("unsupported type %s", ref.Type().String())
 	}
 
-	if ref.IsZero() {
+	if ref.IsNil() {
 		ref.Set(reflect.MakeMap(ref.Type()))
 	}
 
@@ -206,7 +206,7 @@ func scanValue(v Value, ref reflect.Value) error {
 		return fmt.Errorf("unsupported type %s", ref.Type().String())
 	}
 
-	if ref.IsZero() && ref.Type().Kind() == reflect.Ptr {
+	if ref.Type().Kind() == reflect.Ptr && ref.IsNil() {
 		ref.Set(reflect.New(ref.Type().Elem()))
 	}
 
@@ -217,7 +217,7 @@ func scanValue(v Value, ref reflect.Value) error {
 	// or create one
 	// then dereference
 	if ref.Kind() == reflect.Ptr {
-		if ref.IsZero() {
+		if ref.IsNil() {
 			ref.Set(reflect.New(ref.Type().Elem()))
 		}
 
