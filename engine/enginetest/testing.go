@@ -859,10 +859,28 @@ func TestQueries(t *testing.T, builder Builder) {
 			SELECT * FROM test;
 		`)
 		require.NoError(t, err)
-		defer st.Close()
 		n, err := st.Count()
 		require.NoError(t, err)
 		require.Equal(t, 4, n)
+		err = st.Close()
+		require.NoError(t, err)
+
+		t.Run("ORDER BY", func(t *testing.T) {
+			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
+			require.NoError(t, err)
+			defer st.Close()
+
+			var i int
+			err = st.Iterate(func(d document.Document) error {
+				var a int
+				err := document.Scan(d, &a)
+				require.NoError(t, err)
+				require.Equal(t, 4-i, a)
+				i++
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("INSERT", func(t *testing.T) {
