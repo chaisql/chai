@@ -15,7 +15,12 @@ type Table struct {
 	tx       *Transaction
 	Store    engine.Store
 	name     string
-	CfgStore *tableConfigStore
+	cfgStore *tableConfigStore
+}
+
+// Config of the table.
+func (t *Table) Config() (*TableConfig, error) {
+	return t.cfgStore.Get(t.name)
 }
 
 type encodedDocumentWithKey struct {
@@ -64,7 +69,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 }
 
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
-	cfg, err := t.CfgStore.Get(t.name)
+	cfg, err := t.cfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
@@ -85,19 +90,48 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	t.tx.db.mu.Lock()
 	defer t.tx.db.mu.Unlock()
 
-	cfg, err = t.CfgStore.Get(t.name)
+	cfg, err = t.cfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg.LastKey++
 	key = encoding.EncodeInt64(cfg.LastKey)
-	err = t.CfgStore.Replace(t.name, cfg)
+	err = t.cfgStore.Replace(t.name, cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return key, nil
+}
+
+func (t *Table) validateConstraints(d document.Document) (document.Document, error) {
+	cfg, err := t.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cfg.FieldConstraints) == 0 {
+		return d, nil
+	}
+
+	var fb document.FieldBuffer
+
+	err = d.Iterate(func(field string, v document.Value) error {
+		for _, fc := range cfg.FieldConstraints {
+			if fc.Name == field {
+				v, err = v.ConvertTo(fc.Type)
+				if err != nil {
+					return err
+				}
+				break
+			}
+		}
+		fb.Add(field, v)
+		return nil
+	})
+
+	return &fb, err
 }
 
 // Insert the document into the table.
@@ -113,6 +147,11 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	_, err = t.Store.Get(key)
 	if err == nil {
 		return nil, ErrDuplicateDocument
+	}
+
+	d, err = t.validateConstraints(d)
+	if err != nil {
+		return nil, err
 	}
 
 	v, err := encoding.EncodeDocument(d)

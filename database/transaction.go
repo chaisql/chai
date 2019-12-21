@@ -100,7 +100,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 		tx:       &tx,
 		Store:    s,
 		name:     name,
-		CfgStore: tx.tcfgStore,
+		cfgStore: tx.tcfgStore,
 	}, nil
 }
 

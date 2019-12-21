@@ -520,6 +520,43 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 	})
+
+	t.Run("Should convert the fields if FieldsConstraints are specified", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", &database.TableConfig{
+			FieldConstraints: []database.FieldConstraint{
+				{"foo", document.Int32Value},
+				{"bar", document.Uint8Value},
+			},
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewIntValue(1)).
+			Add("bar", document.NewFloat64Value(10)).
+			Add("baz", document.NewStringValue("baaaaz"))
+
+		// insert
+		key, err := tb.Insert(doc)
+		require.NoError(t, err)
+
+		// make sure the fields have been converted to the right types
+		d, err := tb.GetDocument(key)
+		require.NoError(t, err)
+		v, err := d.GetByField("foo")
+		require.NoError(t, err)
+		require.Equal(t, document.NewInt32Value(1), v)
+		v, err = d.GetByField("bar")
+		require.NoError(t, err)
+		require.Equal(t, document.NewUint8Value(10), v)
+		v, err = d.GetByField("baz")
+		require.NoError(t, err)
+		require.Equal(t, document.NewStringValue("baaaaz"), v)
+	})
 }
 
 // TestTableDelete verifies Delete behaviour.

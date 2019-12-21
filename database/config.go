@@ -9,10 +9,17 @@ import (
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
-	PrimaryKeyName string
-	PrimaryKeyType document.ValueType
+	PrimaryKeyName   string
+	PrimaryKeyType   document.ValueType
+	FieldConstraints []FieldConstraint
 
 	LastKey int64
+}
+
+// FieldConstraint describes constraints on a particular field.
+type FieldConstraint struct {
+	Name string
+	Type document.ValueType
 }
 
 type tableConfigStore struct {
