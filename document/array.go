@@ -31,12 +31,15 @@ func ArrayLength(a Array) (int, error) {
 	return len, err
 }
 
+// ValueBuffer is an array that holds values in memory.
 type ValueBuffer []Value
 
-func NewValueBuffer() ValueBuffer {
-	return ValueBuffer{}
+// NewValueBuffer creates a buffer of values.
+func NewValueBuffer(values ...Value) ValueBuffer {
+	return ValueBuffer(values)
 }
 
+// Iterate over all the values of the buffer. It implements the Array interface.
 func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
 	for i, v := range vb {
 		err := fn(i, v)
@@ -48,6 +51,7 @@ func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
 	return nil
 }
 
+// GetByIndex returns a value set at the given index. If the index is out of range it returns an error.
 func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
 	if i >= len(vb) {
 		return Value{}, fmt.Errorf("value at index %d not found", i)
@@ -58,6 +62,54 @@ func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
 
 func (vb ValueBuffer) Append(v Value) ValueBuffer {
 	return append(vb, v)
+}
+
+// ScanArray copies all the values of a to the buffer.
+func (vb *ValueBuffer) ScanArray(a Array) error {
+	return a.Iterate(func(i int, v Value) error {
+		*vb = append(*vb, v)
+		return nil
+	})
+}
+
+func (vb *ValueBuffer) Clone(a Array) error {
+	err := vb.ScanArray(a)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range *vb {
+		switch v.Type {
+		case DocumentValue:
+			var buf FieldBuffer
+			err = buf.Clone(v.V.(Document))
+			if err != nil {
+				return err
+			}
+
+			*vb = vb.Append(NewDocumentValue(&buf))
+		case ArrayValue:
+			var buf ValueBuffer
+			err = buf.Clone(v.V.(Array))
+			if err != nil {
+				return err
+			}
+
+			*vb = vb.Append(NewArrayValue(&buf))
+		}
+	}
+
+	return nil
+}
+
+// Replace the value of the index by v.
+func (vb *ValueBuffer) Replace(index int, v Value) error {
+	if len(*vb) <= index {
+		return ErrFieldNotFound
+	}
+
+	(*vb)[index] = v
+	return nil
 }
 
 func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
