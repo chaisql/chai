@@ -76,6 +76,7 @@ func TestConvertToBytes(t *testing.T) {
 	}{
 		{"bytes", document.NewBytesValue([]byte("bar")), false, []byte("bar")},
 		{"string", document.NewStringValue("bar"), false, []byte("bar")},
+		{"null", document.NewNullValue(), false, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
 		{"uint", document.NewUintValue(10), true, nil},
 		{"uint8", document.NewUint8Value(10), true, nil},
@@ -112,6 +113,7 @@ func TestConvertToString(t *testing.T) {
 	}{
 		{"bytes", document.NewBytesValue([]byte("bar")), false, "bar"},
 		{"string", document.NewStringValue("bar"), false, "bar"},
+		{"null", document.NewNullValue(), false, ""},
 		{"bool", document.NewBoolValue(true), true, ""},
 		{"uint", document.NewUintValue(10), true, ""},
 		{"uint8", document.NewUint8Value(10), true, ""},
@@ -150,6 +152,7 @@ func TestConvertToBool(t *testing.T) {
 		{"zero bytes", document.NewBytesValue([]byte("")), false, false},
 		{"string", document.NewStringValue("bar"), false, true},
 		{"zero string", document.NewStringValue(""), false, false},
+		{"null", document.NewNullValue(), false, false},
 		{"bool", document.NewBoolValue(true), false, true},
 		{"zero bool", document.NewBoolValue(false), false, false},
 		{"uint", document.NewUintValue(10), false, true},
@@ -210,6 +213,7 @@ func TestConvertToNumber(t *testing.T) {
 		{"int32", document.NewInt32Value(10), false, 10},
 		{"int64", document.NewInt64Value(10), false, 10},
 		{"float64", document.NewFloat64Value(10), false, 10},
+		{"null", document.NewNullValue(), false, 0},
 	}
 
 	check := func(t *testing.T, res interface{}, err error, fails bool, expected interface{}) {
@@ -274,6 +278,82 @@ func TestConvertToNumber(t *testing.T) {
 		_, err = document.NewFloat64Value(10.4).ConvertTo(document.Int32Value)
 		require.Error(t, err)
 	})
+}
+
+func TestConvertToDocument(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        document.Value
+		fails    bool
+		expected document.Document
+	}{
+		{"null", document.NewNullValue(), false, document.NewFieldBuffer()},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10))), false, document.NewFieldBuffer().Add("a", document.NewInt16Value(10))},
+		{"bytes", document.NewBytesValue([]byte("bar")), true, nil},
+		{"string", document.NewStringValue("bar"), true, nil},
+		{"bool", document.NewBoolValue(true), true, nil},
+		{"uint", document.NewUintValue(10), true, nil},
+		{"uint8", document.NewUint8Value(10), true, nil},
+		{"uint16", document.NewUint16Value(10), true, nil},
+		{"uint32", document.NewUint32Value(10), true, nil},
+		{"uint64", document.NewUint64Value(10), true, nil},
+		{"int", document.NewIntValue(10), true, nil},
+		{"int8", document.NewInt8Value(10), true, nil},
+		{"int16", document.NewInt16Value(10), true, nil},
+		{"int32", document.NewInt32Value(10), true, nil},
+		{"int64", document.NewInt64Value(10), true, nil},
+		{"float64", document.NewFloat64Value(10), true, nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.ConvertToDocument()
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
+
+func TestConvertToArray(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        document.Value
+		fails    bool
+		expected document.Array
+	}{
+		{"null", document.NewNullValue(), false, document.NewValueBuffer()},
+		{"document", document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt16Value(10))), false, document.NewValueBuffer().Append(document.NewInt16Value(10))},
+		{"bytes", document.NewBytesValue([]byte("bar")), true, nil},
+		{"string", document.NewStringValue("bar"), true, nil},
+		{"bool", document.NewBoolValue(true), true, nil},
+		{"uint", document.NewUintValue(10), true, nil},
+		{"uint8", document.NewUint8Value(10), true, nil},
+		{"uint16", document.NewUint16Value(10), true, nil},
+		{"uint32", document.NewUint32Value(10), true, nil},
+		{"uint64", document.NewUint64Value(10), true, nil},
+		{"int", document.NewIntValue(10), true, nil},
+		{"int8", document.NewInt8Value(10), true, nil},
+		{"int16", document.NewInt16Value(10), true, nil},
+		{"int32", document.NewInt32Value(10), true, nil},
+		{"int64", document.NewInt64Value(10), true, nil},
+		{"float64", document.NewFloat64Value(10), true, nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.ConvertToArray()
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
 }
 
 func TestTypeFromGoType(t *testing.T) {

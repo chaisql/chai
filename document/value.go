@@ -557,6 +557,10 @@ func (v Value) ConvertToBytes() ([]byte, error) {
 		return v.V.([]byte), nil
 	}
 
+	if v.Type == NullValue {
+		return nil, nil
+	}
+
 	return nil, fmt.Errorf("can't convert %q to bytes", v.Type)
 }
 
@@ -568,6 +572,10 @@ func (v Value) ConvertToString() (string, error) {
 		return string(v.V.([]byte)), nil
 	}
 
+	if v.Type == NullValue {
+		return "", nil
+	}
+
 	return "", fmt.Errorf("can't convert %q to string", v.Type)
 }
 
@@ -575,6 +583,10 @@ func (v Value) ConvertToString() (string, error) {
 func (v Value) ConvertToBool() (bool, error) {
 	if v.Type == BoolValue {
 		return v.V.(bool), nil
+	}
+
+	if v.Type == NullValue {
+		return false, nil
 	}
 
 	return !v.IsZeroValue(), nil
@@ -585,6 +597,10 @@ func (v Value) ConvertToBool() (bool, error) {
 func (v Value) ConvertToUint() (uint, error) {
 	if v.Type == UintValue {
 		return v.V.(uint), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
 	}
 
 	if v.Type.IsNumber() {
@@ -613,6 +629,10 @@ func (v Value) ConvertToUint8() (uint8, error) {
 		return v.V.(uint8), nil
 	}
 
+	if v.Type == NullValue {
+		return 0, nil
+	}
+
 	if v.Type.IsNumber() {
 		x, err := convertNumberToInt64(v)
 		if err != nil {
@@ -637,6 +657,10 @@ func (v Value) ConvertToUint8() (uint8, error) {
 func (v Value) ConvertToUint16() (uint16, error) {
 	if v.Type == Uint16Value {
 		return v.V.(uint16), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
 	}
 
 	if v.Type.IsNumber() {
@@ -665,6 +689,10 @@ func (v Value) ConvertToUint32() (uint32, error) {
 		return v.V.(uint32), nil
 	}
 
+	if v.Type == NullValue {
+		return 0, nil
+	}
+
 	if v.Type.IsNumber() {
 		x, err := convertNumberToInt64(v)
 		if err != nil {
@@ -689,6 +717,10 @@ func (v Value) ConvertToUint32() (uint32, error) {
 func (v Value) ConvertToUint64() (uint64, error) {
 	if v.Type == Uint64Value {
 		return v.V.(uint64), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
 	}
 
 	if v.Type.IsNumber() {
@@ -717,6 +749,10 @@ func (v Value) ConvertToInt() (int, error) {
 		return v.V.(int), nil
 	}
 
+	if v.Type == NullValue {
+		return 0, nil
+	}
+
 	if v.Type.IsNumber() {
 		x, err := convertNumberToInt64(v)
 		if err != nil {
@@ -741,6 +777,10 @@ func (v Value) ConvertToInt() (int, error) {
 func (v Value) ConvertToInt8() (int8, error) {
 	if v.Type == Int8Value {
 		return v.V.(int8), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
 	}
 
 	if v.Type.IsNumber() {
@@ -769,6 +809,10 @@ func (v Value) ConvertToInt16() (int16, error) {
 		return v.V.(int16), nil
 	}
 
+	if v.Type == NullValue {
+		return 0, nil
+	}
+
 	if v.Type.IsNumber() {
 		x, err := convertNumberToInt64(v)
 		if err != nil {
@@ -793,6 +837,10 @@ func (v Value) ConvertToInt16() (int16, error) {
 func (v Value) ConvertToInt32() (int32, error) {
 	if v.Type == Int32Value {
 		return v.V.(int32), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
 	}
 
 	if v.Type.IsNumber() {
@@ -821,6 +869,10 @@ func (v Value) ConvertToInt64() (int64, error) {
 		return v.V.(int64), nil
 	}
 
+	if v.Type == NullValue {
+		return 0, nil
+	}
+
 	if v.Type.IsNumber() {
 		return convertNumberToInt64(v)
 	}
@@ -841,6 +893,10 @@ func (v Value) ConvertToInt64() (int64, error) {
 func (v Value) ConvertToFloat64() (float64, error) {
 	if v.Type == Float64Value {
 		return v.V.(float64), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
 	}
 
 	if v.Type.IsInteger() {
@@ -865,6 +921,10 @@ func (v Value) ConvertToFloat64() (float64, error) {
 // ConvertToDocument returns a document from the value.
 // It only works if the type of v is DocumentValue.
 func (v Value) ConvertToDocument() (Document, error) {
+	if v.Type == NullValue {
+		return NewFieldBuffer(), nil
+	}
+
 	if v.Type != DocumentValue {
 		return nil, fmt.Errorf("can't convert %q to document", v.Type)
 	}
@@ -875,6 +935,10 @@ func (v Value) ConvertToDocument() (Document, error) {
 // ConvertToArray returns an array from the value.
 // It only works if the type of v is ArrayValue.
 func (v Value) ConvertToArray() (Array, error) {
+	if v.Type == NullValue {
+		return NewValueBuffer(), nil
+	}
+
 	if v.Type != ArrayValue {
 		return nil, fmt.Errorf("can't convert %q to array", v.Type)
 	}
