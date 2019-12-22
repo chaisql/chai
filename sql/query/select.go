@@ -96,6 +96,9 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	}
 
 	qo, err := newQueryOptimizer(tx, stmt.TableName)
+	if err != nil {
+		return res, err
+	}
 	qo.whereExpr = stmt.WhereExpr
 	qo.args = args
 	qo.orderBy = stmt.OrderBy

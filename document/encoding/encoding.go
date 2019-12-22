@@ -1,3 +1,10 @@
+// Package encoding provides types and functions to encode and decode documents and values.
+//
+// Encoding values
+//
+// Each type is encoded in a way that allows ordering to be preserved. That way, if vA < vB,
+// where vA and vB are two unencoded values of the same type, then eA < eB, where eA and eB
+// are the respective encoded values of vA and vB.
 package encoding
 
 import (

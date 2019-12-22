@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 
 	"github.com/asdine/genji/document"
@@ -78,6 +79,9 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	var key []byte
 	if len(cfg.PrimaryKey.Path) != 0 {
 		v, err := cfg.PrimaryKey.Path.GetValue(d)
+		if err == document.ErrFieldNotFound {
+			return nil, fmt.Errorf("missing primary key at path %q", cfg.PrimaryKey.Path)
+		}
 		if err != nil {
 			return nil, err
 		}

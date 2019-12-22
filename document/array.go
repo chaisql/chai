@@ -3,10 +3,14 @@ package document
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"reflect"
 )
+
+// ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
+// the index wasn't found in the array.
+var ErrValueNotFound = errors.New("value not found")
 
 // An Array contains a set of values.
 type Array interface {
@@ -54,7 +58,7 @@ func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
 // GetByIndex returns a value set at the given index. If the index is out of range it returns an error.
 func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
 	if i >= len(vb) {
-		return Value{}, fmt.Errorf("value at index %d not found", i)
+		return Value{}, ErrValueNotFound
 	}
 
 	return vb[i], nil

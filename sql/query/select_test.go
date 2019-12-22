@@ -156,4 +156,13 @@ func TestSelectStmt(t *testing.T) {
 		call("SELECT a.1 FROM test", `{"a.1": null}`, `{"a.1": null}`, `{"a.1": 2}`)
 		call("SELECT a.2.1 FROM test", `{"a.2.1": null}`, `{"a.2.1": null}`, `{"a.2.1": 9}`)
 	})
+
+	t.Run("table not found", func(t *testing.T) {
+		db, err := genji.New(memoryengine.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("SELECT * FROM foo")
+		require.Error(t, err)
+	})
 }

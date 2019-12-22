@@ -1,10 +1,4 @@
-// Package document defines types to manipulate, encode and compare documents and values.
-//
-// Encoding values
-//
-// Each type is encoded in a way that allows ordering to be preserved. That way, vA < vB,
-// where vA and vB are two unencoded values of the same type, then eA < eB, where eA and eB
-// are the respective encoded values of vA and vB.
+// Package document defines types to manipulate and compare documents and values.
 //
 // Comparing values
 //
@@ -12,14 +6,14 @@
 // of the comparison will always be false.
 // Here is a list of types than can be compared with each other:
 //
-//   any integer	any integer
-//   any integer	float64
-//   float64		float64
+//   any integer			any integer
+//   any integer			float64
+//   float64			float64
 //   string			string
 //   string			bytes
 //   bytes			bytes
 //   bool			bool
-//	 null			null
+//   null			null
 package document
 
 import (
@@ -252,7 +246,7 @@ func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
 	return fb
 }
 
-// ScanDocument copies all the fields of r to the buffer.
+// ScanDocument copies all the fields of d to the buffer.
 func (fb *FieldBuffer) ScanDocument(d Document) error {
 	return d.Iterate(func(f string, v Value) error {
 		fb.Add(f, v)
@@ -371,19 +365,6 @@ func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 	}
 
 	return parseJSONDocument(dec, t, fb)
-}
-
-// Less reports whether the element with
-// index i should sort before the element with index j.
-// It implements the sort.Interface interface.
-func (fb FieldBuffer) Less(i, j int) bool {
-	return strings.Compare(fb.fields[i].Field, fb.fields[j].Field) < 0
-}
-
-// Swap swaps the elements with indexes i and j.
-// It implements the sort.Interface interface.
-func (fb *FieldBuffer) Swap(i, j int) {
-	fb.fields[i], fb.fields[j] = fb.fields[j], fb.fields[i]
 }
 
 // Reset the buffer.
