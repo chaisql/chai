@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"strconv"
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/document/encoding"
@@ -75,16 +76,13 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	}
 
 	var key []byte
-	if cfg.PrimaryKeyName != "" {
-		v, err := d.GetByField(cfg.PrimaryKeyName)
+	if len(cfg.PrimaryKey.Path) != 0 {
+		v, err := cfg.PrimaryKey.Path.GetValue(d)
 		if err != nil {
 			return nil, err
 		}
-		cv, err := v.ConvertTo(cfg.PrimaryKeyType)
-		if err != nil {
-			return nil, err
-		}
-		return encoding.EncodeValue(cv)
+
+		return encoding.EncodeValue(v)
 	}
 
 	t.tx.db.mu.Lock()
@@ -105,33 +103,116 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	return key, nil
 }
 
+func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
+	if len(p) == 0 {
+		return document.Value{}, errors.New("empty path")
+	}
+
+	if len(p) == 1 {
+		return document.NewDocumentValue(d), nil
+	}
+
+	return p[:len(p)-1].GetValue(d)
+}
+
+// validateConstraints check the table configuration for constraints and validates the document
+// against them. If the types defined by the constraints are different than the ones found in
+// the document, the fields are converted to these types when possible. if the conversion
+// fails, an error is returned.
 func (t *Table) validateConstraints(d document.Document) (document.Document, error) {
 	cfg, err := t.Config()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(cfg.FieldConstraints) == 0 {
+	if len(cfg.FieldConstraints) == 0 && len(cfg.PrimaryKey.Path) == 0 {
 		return d, nil
 	}
 
 	var fb document.FieldBuffer
 
-	err = d.Iterate(func(field string, v document.Value) error {
-		for _, fc := range cfg.FieldConstraints {
-			if fc.Name == field {
-				v, err = v.ConvertTo(fc.Type)
-				if err != nil {
-					return err
-				}
-				break
-			}
+	// make sure the document tree is full of document.FieldBuffer or document.ValueBuffer
+	// so we can modify them and convert field types.
+	err = fb.Clone(d)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cfg.PrimaryKey.Path) != 0 {
+		err = validateConstraint(&fb, cfg.PrimaryKey)
+		if err != nil {
+			return nil, err
 		}
-		fb.Add(field, v)
-		return nil
-	})
+	}
+
+	for _, fc := range cfg.FieldConstraints {
+		err := validateConstraint(&fb, fc)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &fb, err
+}
+
+func validateConstraint(d document.Document, c FieldConstraint) error {
+	// get the parent buffer
+	parent, err := getParentValue(d, c.Path)
+	if err != nil {
+		return err
+	}
+
+	switch parent.Type {
+	case document.DocumentValue:
+		// if it's a document, we can assume it's a FieldBuffer
+		buf := parent.V.(*document.FieldBuffer)
+
+		// the field to modify if the last chunk of the path
+		field := c.Path[len(c.Path)-1]
+
+		v, err := buf.GetByField(field)
+		// if the field is not found we simply skip it,
+		// if not we convert it and replace it in the buffer
+		if err == nil {
+			v, err = v.ConvertTo(c.Type)
+			if err != nil {
+				return err
+			}
+
+			err = buf.Replace(field, v)
+			if err != nil {
+				return err
+			}
+		}
+	case document.ArrayValue:
+		// if it's an array, we can assume it's a ValueBuffer
+		buf := parent.V.(*document.ValueBuffer)
+
+		// the index to modify if the last chunk of the path
+		index, err := strconv.Atoi(c.Path[len(c.Path)-1])
+		// if there is an error, then the path must refer to a document and not an array,
+		// we simply skip
+		if err != nil {
+			return nil
+		}
+
+		v, err := buf.GetByIndex(index)
+		// if the field is not found we simply skip it,
+		// if not we convert it and replace it in the buffer
+		if err == nil {
+			v, err = v.ConvertTo(c.Type)
+			if err != nil {
+				return err
+			}
+
+			err = buf.Replace(index, v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Insert the document into the table.
@@ -139,6 +220,11 @@ func (t *Table) validateConstraints(d document.Document) (document.Document, err
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 func (t *Table) Insert(d document.Document) ([]byte, error) {
+	d, err := t.validateConstraints(d)
+	if err != nil {
+		return nil, err
+	}
+
 	key, err := t.generateKey(d)
 	if err != nil {
 		return nil, err
@@ -147,11 +233,6 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	_, err = t.Store.Get(key)
 	if err == nil {
 		return nil, ErrDuplicateDocument
-	}
-
-	d, err = t.validateConstraints(d)
-	if err != nil {
-		return nil, err
 	}
 
 	v, err := encoding.EncodeDocument(d)

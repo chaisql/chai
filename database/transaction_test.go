@@ -420,8 +420,10 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableConfig{
-			PrimaryKeyName: "foo",
-			PrimaryKeyType: document.Int32Value,
+			PrimaryKey: database.FieldConstraint{
+				Path: []string{"foo"},
+				Type: document.Int32Value,
+			},
 		})
 		require.NoError(t, err)
 		tb, err := tx.GetTable("test")
@@ -450,8 +452,10 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableConfig{
-			PrimaryKeyName: "foo",
-			PrimaryKeyType: document.IntValue,
+			PrimaryKey: database.FieldConstraint{
+				Path: []string{"foo"},
+				Type: document.IntValue,
+			},
 		})
 		require.NoError(t, err)
 		tb, err := tx.GetTable("test")
@@ -527,8 +531,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
-				{"foo", document.Int32Value},
-				{"bar", document.Uint8Value},
+				{[]string{"foo"}, document.Int32Value},
+				{[]string{"bar"}, document.Uint8Value},
 			},
 		})
 		require.NoError(t, err)

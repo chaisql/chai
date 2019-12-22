@@ -24,9 +24,11 @@ func TestTableConfigStore(t *testing.T) {
 	tcs := tableConfigStore{st}
 
 	cfg := TableConfig{
-		PrimaryKeyName: "k",
-		PrimaryKeyType: document.Float64Value,
-		LastKey:        100,
+		PrimaryKey: FieldConstraint{
+			Path: []string{"k"},
+			Type: document.Float64Value,
+		},
+		LastKey: 100,
 	}
 
 	// inserting one should work

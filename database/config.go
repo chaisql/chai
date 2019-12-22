@@ -9,8 +9,7 @@ import (
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
-	PrimaryKeyName   string
-	PrimaryKeyType   document.ValueType
+	PrimaryKey       FieldConstraint
 	FieldConstraints []FieldConstraint
 
 	LastKey int64
@@ -18,7 +17,7 @@ type TableConfig struct {
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Name string
+	Path document.ValuePath
 	Type document.ValueType
 }
 
