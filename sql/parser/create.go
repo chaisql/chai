@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/sql/query"
 	"github.com/asdine/genji/sql/scanner"
 )
@@ -44,8 +44,8 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 		return stmt, err
 	}
 
-	// parse primary key
-	stmt.PrimaryKeyName, stmt.PrimaryKeyType, err = p.parseTableOptions()
+	// parse table config
+	err = p.parseTableConfig(&stmt.Config)
 	if err != nil {
 		return stmt, err
 	}
@@ -73,39 +73,57 @@ func (p *Parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
-func (p *Parser) parseTableOptions() (string, document.ValueType, error) {
+func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
-		return "", 0, nil
+		return nil
 	}
 
-	keyName, err := p.ParseIdent()
-	if err != nil {
-		return "", 0, err
-	}
+	var err error
 
-	tp, err := p.parseType()
-	if err != nil {
-		return "", 0, err
-	}
+	// Parse constraints.
+	for {
+		var fc database.FieldConstraint
 
-	// Parse "PRIMARY"
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.PRIMARY {
-		return "", 0, newParseError(scanner.Tokstr(tok, lit), []string{"PRIMARY", "KEY"}, pos)
-	}
+		fc.Path, err = p.ParseFieldRef()
+		if err != nil {
+			p.Unscan()
+			break
+		}
 
-	// Parse "KEY"
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
-		return "", 0, newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+		fc.Type, err = p.parseType()
+		if err != nil {
+			return err
+		}
+
+		// Parse "PRIMARY"
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.PRIMARY {
+			// Parse "KEY"
+			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+			}
+			if len(cfg.PrimaryKey.Path) != 0 {
+				return &ParseError{Message: "only one primary key is allowed"}
+			}
+			cfg.PrimaryKey = fc
+		} else {
+			p.Unscan()
+			cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
+		}
+
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
 	}
 
 	// Parse required ) token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return "", 0, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		return newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return keyName, tp, nil
+	return nil
 }
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.

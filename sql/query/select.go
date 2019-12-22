@@ -259,12 +259,12 @@ func (k KeyFunc) Name() string {
 }
 
 func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
-	if stack.Cfg.PrimaryKeyName != "" {
-		v, err := stack.Document.GetByField(stack.Cfg.PrimaryKeyName)
+	if len(stack.Cfg.PrimaryKey.Path) != 0 {
+		v, err := stack.Cfg.PrimaryKey.Path.GetValue(stack.Document)
 		if err != nil {
 			return err
 		}
-		return fn(stack.Cfg.PrimaryKeyName, v)
+		return fn(stack.Cfg.PrimaryKey.Path.String(), v)
 	}
 
 	v, err := encoding.DecodeValue(document.Int64Value, stack.Document.(document.Keyer).Key())

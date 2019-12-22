@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,24 @@ func TestParserCreateTable(t *testing.T) {
 	}{
 		{"Basic", "CREATE TABLE test", query.CreateTableStmt{TableName: "test"}, false},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", query.CreateTableStmt{TableName: "test", IfNotExists: true}, false},
-		{"With primary key", "CREATE TABLE test(foo INT PRIMARY KEY)", query.CreateTableStmt{TableName: "test", PrimaryKeyName: "foo", PrimaryKeyType: document.IntValue}, false},
+		{"With primary key", "CREATE TABLE test(foo INT PRIMARY KEY)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.IntValue},
+				},
+			}, false},
+		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar UINT16, baz.4.1.bat STRING)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.IntValue},
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"bar"}, Type: document.Uint16Value},
+						{Path: []string{"baz", "4", "1", "bat"}, Type: document.StringValue},
+					},
+				},
+			}, false},
 	}
 
 	for _, test := range tests {

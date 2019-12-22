@@ -10,10 +10,9 @@ import (
 
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
 type CreateTableStmt struct {
-	TableName      string
-	IfNotExists    bool
-	PrimaryKeyName string
-	PrimaryKeyType document.ValueType
+	TableName   string
+	IfNotExists bool
+	Config      database.TableConfig
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -30,15 +29,7 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []driver.NamedVal
 		return res, errors.New("missing table name")
 	}
 
-	var cfg *database.TableConfig
-
-	if stmt.PrimaryKeyName != "" {
-		cfg = new(database.TableConfig)
-		cfg.PrimaryKeyName = stmt.PrimaryKeyName
-		cfg.PrimaryKeyType = stmt.PrimaryKeyType
-	}
-
-	err := tx.CreateTable(stmt.TableName, cfg)
+	err := tx.CreateTable(stmt.TableName, &stmt.Config)
 	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
 		err = nil
 	}

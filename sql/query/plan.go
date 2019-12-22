@@ -39,7 +39,7 @@ func newQueryOptimizer(tx *database.Transaction, tableName string) (qo queryOpti
 		return
 	}
 
-	cfg, err := t.CfgStore.Get(t.TableName())
+	cfg, err := t.Config()
 	if err != nil {
 		return
 	}
@@ -115,10 +115,10 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 	if qp.field == nil {
 		if len(qo.orderBy) != 0 {
 			_, ok := qo.indexes[qo.orderBy.Name()]
-			if ok || qo.cfg.PrimaryKeyName == qo.orderBy.Name() {
+			if ok || qo.cfg.PrimaryKey.Path.String() == qo.orderBy.Name() {
 				qp.field = &queryPlanField{
 					indexedField: qo.orderBy,
-					isPrimaryKey: qo.cfg.PrimaryKeyName == qo.orderBy.Name(),
+					isPrimaryKey: qo.cfg.PrimaryKey.Path.String() == qo.orderBy.Name(),
 				}
 				qp.sorted = true
 
@@ -154,7 +154,7 @@ func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
 			}
 		}
 
-		if qo.cfg.PrimaryKeyName == fs.Name() {
+		if qo.cfg.PrimaryKey.Path.String() == fs.Name() {
 			return &queryPlanField{
 				indexedField: fs,
 				op:           t.Token,
@@ -403,7 +403,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	}
 
 	if v.Type.IsNumber() {
-		v, err = v.ConvertTo(it.cfg.PrimaryKeyType)
+		v, err = v.ConvertTo(it.cfg.PrimaryKey.Type)
 		if err != nil {
 			return err
 		}
