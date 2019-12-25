@@ -5,6 +5,7 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
@@ -20,6 +21,7 @@ func TestCreateTable(t *testing.T) {
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", false},
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
 		{"With primary key", "CREATE TABLE test(foo STRING PRIMARY KEY)", false},
+		{"With field constraints key", "CREATE TABLE test(foo.a.1.2 STRING, bar.4.0.bat int8)", false},
 	}
 
 	for _, test := range tests {
@@ -41,6 +43,35 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+
+	t.Run("constraints", func(t *testing.T) {
+		db, err := genji.New(memoryengine.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test(foo.bar.1.hello bytes PRIMARY KEY, foo.a.1.2 STRING, bar.4.0.bat int8)")
+		require.NoError(t, err)
+
+		err = db.ViewTable("test", func(_ *genji.Tx, tb *database.Table) error {
+			cfg, err := tb.Config()
+			if err != nil {
+				return err
+			}
+
+			require.Equal(t, &database.TableConfig{
+				PrimaryKey: database.FieldConstraint{
+					Path: []string{"foo", "bar", "1", "hello"},
+					Type: document.BytesValue,
+				},
+				FieldConstraints: []database.FieldConstraint{
+					{Path: []string{"foo", "a", "1", "2"}, Type: document.StringValue},
+					{Path: []string{"bar", "4", "0", "bat"}, Type: document.Int8Value},
+				},
+			}, cfg)
+			return nil
+		})
+		require.NoError(t, err)
+	})
 }
 
 func TestCreateIndex(t *testing.T) {
