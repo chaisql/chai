@@ -327,6 +327,12 @@ func TestTxListTables(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		// insert some data to make sure indexes are actually created by the engine
+		ta, err := tx.GetTable("a")
+		require.NoError(t, err)
+		_, err = ta.Insert(document.NewFieldBuffer().Add("foo", document.NewBoolValue(true)))
+		require.NoError(t, err)
+
 		list, err := tx.ListTables()
 		require.NoError(t, err)
 		require.Len(t, list, 2)

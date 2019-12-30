@@ -11,10 +11,11 @@ import (
 	"github.com/asdine/genji/engine"
 )
 
-// Prefixes and separators used to name the index stores.
 const (
-	IndexPrefix      = "i"
-	Separator   byte = 0x1E
+	// StorePrefix is the prefix used to name the index store.
+	StorePrefix = "i" + string(separator)
+
+	separator byte = 0x1E
 )
 
 // Type of the index. Values are stored in different sub indexes depending on their types.
@@ -96,10 +97,9 @@ func NewUniqueIndex(tx engine.Transaction, idxName string) *UniqueIndex {
 
 func buildIndexName(name string, t Type) string {
 	var b strings.Builder
-	b.WriteString(IndexPrefix)
-	b.WriteByte(Separator)
+	b.WriteString(StorePrefix)
 	b.WriteString(name)
-	b.WriteByte(Separator)
+	b.WriteByte(separator)
 	b.WriteByte(byte(t))
 
 	return b.String()
@@ -140,7 +140,7 @@ func (i *ListIndex) Set(val document.Value, key []byte) error {
 
 	buf := make([]byte, 0, len(v)+len(key)+1)
 	buf = append(buf, v...)
-	buf = append(buf, Separator)
+	buf = append(buf, separator)
 	buf = append(buf, key...)
 
 	return st.Put(buf, nil)
@@ -159,7 +159,7 @@ func (i *ListIndex) Delete(val document.Value, key []byte) error {
 
 	buf := make([]byte, 0, len(v)+len(key)+1)
 	buf = append(buf, v...)
-	buf = append(buf, Separator)
+	buf = append(buf, separator)
 	buf = append(buf, key...)
 
 	return st.Delete(buf)
@@ -178,7 +178,7 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 			}
 
 			err = st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-				idx := bytes.LastIndexByte(k, Separator)
+				idx := bytes.LastIndexByte(k, separator)
 				f, err := decodeIndexValueToField(t, k[:idx])
 				if err != nil {
 					return err
@@ -211,7 +211,7 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 	}
 
 	return st.AscendGreaterOrEqual(data, func(k, v []byte) error {
-		idx := bytes.LastIndexByte(k, Separator)
+		idx := bytes.LastIndexByte(k, separator)
 		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
 		if err != nil {
 			return err
@@ -234,7 +234,7 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 			}
 
 			err = st.DescendLessOrEqual(nil, func(k, v []byte) error {
-				idx := bytes.LastIndexByte(k, Separator)
+				idx := bytes.LastIndexByte(k, separator)
 				f, err := decodeIndexValueToField(t, k[:idx])
 				if err != nil {
 					return err
@@ -268,11 +268,11 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 
 	if len(data) > 0 {
 		// ensure the pivot is bigger than the requested value so it doesn't get skipped.
-		data = append(data, Separator, 0xFF)
+		data = append(data, separator, 0xFF)
 	}
 
 	return st.DescendLessOrEqual(data, func(k, v []byte) error {
-		idx := bytes.LastIndexByte(k, Separator)
+		idx := bytes.LastIndexByte(k, separator)
 		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
 		if err != nil {
 			return err
@@ -317,7 +317,7 @@ func (i *UniqueIndex) Set(val document.Value, key []byte) error {
 
 	buf := make([]byte, 0, len(v)+2)
 	buf = append(buf, uint8(NewTypeFromValueType(val.Type)))
-	buf = append(buf, Separator)
+	buf = append(buf, separator)
 	buf = append(buf, v...)
 
 	_, err = st.Get(buf)
@@ -344,7 +344,7 @@ func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
 
 	buf := make([]byte, 0, len(v)+2)
 	buf = append(buf, uint8(NewTypeFromValueType(val.Type)))
-	buf = append(buf, Separator)
+	buf = append(buf, separator)
 	buf = append(buf, v...)
 
 	return st.Delete(buf)
@@ -396,7 +396,7 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 
 	buf := make([]byte, 0, len(data)+2)
 	buf = append(buf, uint8(NewTypeFromValueType(pivot.Value.Type)))
-	buf = append(buf, Separator)
+	buf = append(buf, separator)
 	buf = append(buf, data...)
 
 	return st.AscendGreaterOrEqual(buf, func(vv []byte, key []byte) error {
@@ -455,7 +455,7 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 
 	buf := make([]byte, 0, len(data)+3)
 	buf = append(buf, uint8(NewTypeFromValueType(pivot.Value.Type)))
-	buf = append(buf, Separator)
+	buf = append(buf, separator)
 	buf = append(buf, data...)
 	buf = append(buf, 0xFF)
 

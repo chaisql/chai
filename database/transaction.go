@@ -11,10 +11,8 @@ import (
 )
 
 var (
-	separator            byte = 0x1F
-	tableConfigStoreName      = "__genji.tables"
-	indexStoreName            = "__genji.indexes"
-	indexPrefix               = "i"
+	tableConfigStoreName = "__genji.tables"
+	indexStoreName       = "__genji.indexes"
 )
 
 // Transaction represents a database transaction. It provides methods for managing the
@@ -135,13 +133,12 @@ func (tx Transaction) ListTables() ([]string, error) {
 	}
 
 	tables := make([]string, 0, len(stores))
-	idxPrefix := indexPrefix + string([]byte{separator})
 
 	for _, st := range stores {
 		if st == indexStoreName || st == tableConfigStoreName {
 			continue
 		}
-		if strings.HasPrefix(st, idxPrefix) {
+		if strings.HasPrefix(st, index.StorePrefix) {
 			continue
 		}
 
@@ -149,15 +146,6 @@ func (tx Transaction) ListTables() ([]string, error) {
 	}
 
 	return tables, nil
-}
-
-func buildIndexName(name string) string {
-	var b strings.Builder
-	b.WriteString(indexPrefix)
-	b.WriteByte(separator)
-	b.WriteString(name)
-
-	return b.String()
 }
 
 // IndexConfig holds the configuration of an index.

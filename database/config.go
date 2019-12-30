@@ -115,7 +115,7 @@ type indexStore struct {
 }
 
 func (t *indexStore) Insert(cfg IndexConfig) error {
-	key := []byte(buildIndexName(cfg.IndexName))
+	key := []byte(cfg.IndexName)
 	_, err := t.st.Get(key)
 	if err == nil {
 		return ErrIndexAlreadyExists
@@ -138,7 +138,7 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 }
 
 func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
-	key := []byte(buildIndexName(indexName))
+	key := []byte(indexName)
 	v, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
 		return nil, ErrIndexNotFound
@@ -157,7 +157,7 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 }
 
 func (t *indexStore) Delete(indexName string) error {
-	key := []byte(buildIndexName(indexName))
+	key := []byte(indexName)
 	err := t.st.Delete(key)
 	if err == engine.ErrKeyNotFound {
 		return ErrIndexNotFound
