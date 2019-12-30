@@ -14,6 +14,7 @@ import (
 	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/boltengine"
 	"github.com/asdine/genji/engine/memoryengine"
+	"github.com/asdine/genji/sql/parser"
 	"github.com/c-bata/go-prompt"
 	"github.com/dgraph-io/badger/v2"
 )
@@ -292,20 +293,22 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
-var suggestions = []prompt.Suggest{
-	{Text: "CREATE"},
-	{Text: "TABLE"},
-	{Text: "SELECT"},
-	{Text: "INSERT"},
-	{Text: "UPDATE"},
-	{Text: "DELETE"},
-}
-
 func completer(in prompt.Document) []prompt.Suggest {
-	w := in.GetWordBeforeCursor()
-	if w == "" {
-		return []prompt.Suggest{}
+	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery()
+	if err != nil {
+		expected := err.(*parser.ParseError).Expected
+		suggestions := make([]prompt.Suggest, len(expected))
+		for i, e := range expected {
+			suggestions[i].Text = e
+		}
+
+		w := in.GetWordBeforeCursor()
+		if w == "" {
+			return suggestions
+		}
+
+		return prompt.FilterHasPrefix(suggestions, w, true)
 	}
 
-	return prompt.FilterHasPrefix(suggestions, w, true)
+	return []prompt.Suggest{}
 }

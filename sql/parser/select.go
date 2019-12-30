@@ -97,7 +97,7 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 
 	field, err := p.ParseFieldRef()
 	if err != nil {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"field or string"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"field path"}, pos)
 	}
 
 	return query.FieldSelector(field), nil
