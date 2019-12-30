@@ -69,7 +69,7 @@ func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []driver.NamedVal
 		return res, errors.New("missing path")
 	}
 
-	err := tx.CreateIndex(database.IndexOptions{
+	err := tx.CreateIndex(database.IndexConfig{
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,

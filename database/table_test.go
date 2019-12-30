@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestTableIterate verifies Iterate behaviour.
 func TestTableIterate(t *testing.T) {
 	t.Run("Should not fail with no documents", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
@@ -68,8 +69,8 @@ func TestTableIterate(t *testing.T) {
 	})
 }
 
-// TestTableDocument verifies Document behaviour.
-func TestTableDocument(t *testing.T) {
+// TestTableGetDocument verifies GetDocument behaviour.
+func TestTableGetDocument(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -221,7 +222,7 @@ func TestTableInsert(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
@@ -445,21 +446,21 @@ func TestTableIndexes(t *testing.T) {
 		err = tx.CreateTable("test2", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
 			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
 			Path:      document.NewValuePath("b"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",
@@ -532,37 +533,4 @@ func BenchmarkTableScan(b *testing.B) {
 			b.StopTimer()
 		})
 	}
-}
-
-func TestTxListTables(t *testing.T) {
-	t.Run("Should succeed if not tables", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		list, err := tx.ListTables()
-		require.NoError(t, err)
-		require.Len(t, list, 0)
-	})
-
-	t.Run("Should return the right tables", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		err := tx.CreateTable("a", nil)
-		require.NoError(t, err)
-		err = tx.CreateTable("b", nil)
-		require.NoError(t, err)
-
-		err = tx.CreateIndex(database.IndexOptions{
-			IndexName: "idxa",
-			TableName: "a",
-			Path:      document.NewValuePath("foo"),
-		})
-		require.NoError(t, err)
-
-		list, err := tx.ListTables()
-		require.NoError(t, err)
-		require.Len(t, list, 2)
-		require.Equal(t, []string{"a", "b"}, list)
-	})
 }

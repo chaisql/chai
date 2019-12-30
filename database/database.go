@@ -1,3 +1,4 @@
+// Package database provides database primitives such as tables, transactions and indexes.
 package database
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/asdine/genji/engine"
 )
 
+// A Database manages a list of tables in an engine.
 type Database struct {
 	ng engine.Engine
 

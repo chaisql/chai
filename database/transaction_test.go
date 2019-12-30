@@ -41,7 +41,7 @@ func TestTxCreateIndex(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
@@ -57,12 +57,12 @@ func TestTxCreateIndex(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.Equal(t, database.ErrIndexAlreadyExists, err)
@@ -72,7 +72,7 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateIndex(database.IndexOptions{
+		err := tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.Equal(t, database.ErrTableNotFound, err)
@@ -87,7 +87,7 @@ func TestTxDropTable(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestTxDropTable(t *testing.T) {
 		err = tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
@@ -124,7 +124,7 @@ func TestTxDropIndex(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
 		require.NoError(t, err)
@@ -161,13 +161,13 @@ func TestTxReIndex(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "a",
 			TableName: "test",
 			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "b",
 			TableName: "test",
 			Path:      document.NewValuePath("b"),
@@ -253,13 +253,13 @@ func TestReIndexAll(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "t1a",
 			TableName: "test1",
 			Path:      document.NewValuePath("a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexOptions{
+		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "t2a",
 			TableName: "test2",
 			Path:      document.NewValuePath("a"),
@@ -301,4 +301,35 @@ func newDocument() *document.FieldBuffer {
 		Add("fieldb", document.NewStringValue("b"))
 }
 
-// TestTableIterate verifies Iterate behaviour.
+func TestTxListTables(t *testing.T) {
+	t.Run("Should succeed if no tables", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		list, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, list, 0)
+	})
+
+	t.Run("Should return the right tables", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("a", nil)
+		require.NoError(t, err)
+		err = tx.CreateTable("b", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(database.IndexConfig{
+			IndexName: "name",
+			TableName: "a",
+			Path:      document.NewValuePath("foo"),
+		})
+		require.NoError(t, err)
+
+		list, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, list, 2)
+		require.Equal(t, []string{"a", "b"}, list)
+	})
+}

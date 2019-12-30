@@ -107,7 +107,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 // DropTable deletes a table from the database.
 func (tx Transaction) DropTable(name string) error {
 	err := tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		var opts IndexOptions
+		var opts IndexConfig
 		err := document.StructScan(encoding.EncodedDocument(v), &opts)
 		if err != nil {
 			return err
@@ -160,8 +160,8 @@ func buildIndexName(name string) string {
 	return b.String()
 }
 
-// IndexOptions holds the configuration of an index.
-type IndexOptions struct {
+// IndexConfig holds the configuration of an index.
+type IndexConfig struct {
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
 
@@ -172,7 +172,7 @@ type IndexOptions struct {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Transaction) CreateIndex(opts IndexOptions) error {
+func (tx Transaction) CreateIndex(opts IndexConfig) error {
 	_, err := tx.GetTable(opts.TableName)
 	if err != nil {
 		return err
@@ -255,7 +255,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (tx Transaction) ReIndexAll() error {
 	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		var opts IndexOptions
+		var opts IndexConfig
 		err := document.StructScan(encoding.EncodedDocument(v), &opts)
 		if err != nil {
 			return err
