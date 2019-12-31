@@ -9,9 +9,13 @@ import (
 )
 
 type User struct {
-	ID   int64
-	Name string
-	Age  uint32
+	ID      int64
+	Name    string
+	Age     uint32
+	Address struct {
+		City    string
+		ZipCode string
+	}
 }
 
 func Example() {
@@ -40,8 +44,14 @@ func Example() {
 		panic(err)
 	}
 
+	// Insert some data using document notation
+	err = db.Exec(`INSERT INTO user VALUES {id: 12, "name": "bar", age: ?, address: {city: "Lyon", zipcode: "69001"}}`, 16)
+	if err != nil {
+		panic(err)
+	}
+
 	// Structs can be used to describe a document
-	err = db.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	err = db.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "baz", Age: 100}, &User{ID: 2, Name: "bat"})
 	if err != nil {
 		panic(err)
 	}
@@ -56,18 +66,19 @@ func Example() {
 
 	// Iterate over the results
 	err = stream.Iterate(func(d document.Document) error {
-		var id int
-		var name string
-		var age int32
+		var u User
 
-		err = document.Scan(d, &id, &name, &age)
+		err = document.StructScan(d, &u)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(id, name, age)
+		fmt.Println(u)
 		return nil
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	// Count results
 	count, err := stream.Count()
@@ -89,7 +100,7 @@ func Example() {
 		panic(err)
 	}
 
-	// Apply some transformations
+	// Apply some manual transformations
 	err = stream.
 		// Filter all even ids
 		Filter(func(d document.Document) (bool, error) {
@@ -98,7 +109,7 @@ func Example() {
 				return false, err
 			}
 			id, err := v.ConvertToInt()
-			return id%2 == 0, nil
+			return id%2 == 0, err
 		}).
 		// Enrich the documents with a new field
 		Map(func(d document.Document) (document.Document, error) {
@@ -122,9 +133,11 @@ func Example() {
 	}
 
 	// Output:
-	// 10 foo 15
-	// 2 baz 0
-	// Count: 2
+	// {10 foo 15 { }}
+	// {12 bar 16 {Lyon 69001}}
+	// {2 bat 0 { }}
+	// Count: 3
 	// {"id":10,"name":"foo","age":15,"group":"admin"}
-	// {"id":2,"name":"baz","age":0,"group":"admin"}
+	// {"id":12,"name":"bar","age":16,"address":{"city":"Lyon","zipcode":"69001"},"group":"admin"}
+	// {"id":2,"name":"bat","age":0,"address":{"city":"","zipcode":""},"group":"admin"}
 }

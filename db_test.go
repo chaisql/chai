@@ -64,7 +64,7 @@ func ExampleTx() {
 		panic(err)
 	}
 
-	// Output: {10 foo 15}
+	// Output: {10 foo 15 { }}
 	// 10 foo 15
 }
 
@@ -167,7 +167,7 @@ func ExampleResult_First() {
 
 	fmt.Println(id, name, age)
 
-	// Output: {10 foo 15}
+	// Output: {10 foo 15 { }}
 	// 10 foo 15
 }
 
@@ -227,22 +227,22 @@ func ExampleResult_Iterate() {
 		panic(err)
 	}
 
-	// Output: {2 foo2 20}
+	// Output: {2 foo2 20 { }}
 	// 2 foo2 20
-	// {3 foo3 30}
+	// {3 foo3 30 { }}
 	// 3 foo3 30
-	// {4 foo4 40}
+	// {4 foo4 40 { }}
 	// 4 foo4 40
-	// {5 foo5 50}
+	// {5 foo5 50 { }}
 	// 5 foo5 50
-	// {6 foo6 60}
+	// {6 foo6 60 { }}
 	// 6 foo6 60
-	// {7 foo7 70}
+	// {7 foo7 70 { }}
 	// 7 foo7 70
-	// {8 foo8 80}
+	// {8 foo8 80 { }}
 	// 8 foo8 80
-	// {9 foo9 90}
+	// {9 foo9 90 { }}
 	// 9 foo9 90
-	// {10 foo10 100}
+	// {10 foo10 100 { }}
 	// 10 foo10 100
 }
