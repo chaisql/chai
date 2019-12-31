@@ -19,7 +19,7 @@ func TestDeleteStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No cond", `DELETE FROM test`, false, "", nil},
-		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, "foo3,bar2,bar3\n", nil},
+		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `{"d": "foo3", "b": "bar2", "e": "bar3"}`, nil},
 		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "", nil},
 	}
 
@@ -50,9 +50,13 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = document.IteratorToCSV(&buf, st)
+			err = document.IteratorToJSON(&buf, st)
 			require.NoError(t, err)
-			require.Equal(t, test.expected, buf.String())
+			if len(test.expected) == 0 {
+				require.Equal(t, 0, buf.Len())
+			} else {
+				require.JSONEq(t, test.expected, buf.String())
+			}
 		})
 	}
 }

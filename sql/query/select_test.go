@@ -19,40 +19,40 @@ func TestSelectStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", "SELECT * FROM test", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n3,foo3,bar2\n", nil},
-		{"Multiple wildcards cond", "SELECT *, *, a FROM test", false, "1,foo1,bar1,baz1,1,foo1,bar1,baz1,foo1\n2,foo2,bar1,1,2,foo2,bar1,1,foo2\n3,foo3,bar2,3,foo3,bar2,NULL\n", nil},
-		{"With fields", "SELECT a, c FROM test", false, "foo1,baz1\nfoo2,NULL\nNULL,NULL\n", nil},
-		{"With eq cond", "SELECT * FROM test WHERE b = 'bar1'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With neq cond", "SELECT * FROM test WHERE a != 'foo1'", false, "2,foo2,bar1,1\n3,foo3,bar2\n", nil},
-		{"With gt cond", "SELECT * FROM test WHERE b > 'bar1'", false, "", nil},
-		{"With lt cond", "SELECT * FROM test WHERE a < 'zzzzz'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With lte cond", "SELECT * FROM test WHERE a <= 'foo3'", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With field comparison", "SELECT * FROM test WHERE b < a", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With order by", "SELECT * FROM test ORDER BY a", false, "3,foo3,bar2\n1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With order by asc", "SELECT * FROM test ORDER BY a ASC", false, "3,foo3,bar2\n1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With order by asc with limit 2", "SELECT * FROM test ORDER BY a LIMIT 2", false, "3,foo3,bar2\n1,foo1,bar1,baz1\n", nil},
-		{"With order by asc with limit 1", "SELECT * FROM test ORDER BY a LIMIT 1", false, "3,foo3,bar2\n", nil},
-		{"With order by asc with offset", "SELECT * FROM test ORDER BY a OFFSET 1", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n", nil},
-		{"With order by asc with limit offset", "SELECT * FROM test ORDER BY a LIMIT 1 OFFSET 1", false, "1,foo1,bar1,baz1\n", nil},
-		{"With order by desc", "SELECT * FROM test ORDER BY a DESC", false, "2,foo2,bar1,1\n1,foo1,bar1,baz1\n3,foo3,bar2\n", nil},
-		{"With order by desc with limit", "SELECT * FROM test ORDER BY a DESC LIMIT 2", false, "2,foo2,bar1,1\n1,foo1,bar1,baz1\n", nil},
-		{"With order by desc with offset", "SELECT * FROM test ORDER BY a DESC OFFSET 1", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", nil},
-		{"With order by desc with limit offset", "SELECT * FROM test ORDER  BY a DESC LIMIT 1 OFFSET 1", false, "1,foo1,bar1,baz1\n", nil},
-		{"With order by pk asc", "SELECT * FROM test ORDER BY k ASC", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n3,foo3,bar2\n", nil},
-		{"With order by pk desc", "SELECT * FROM test ORDER BY k DESC", false, "3,foo3,bar2\n2,foo2,bar1,1\n1,foo1,bar1,baz1\n", nil},
-		{"With order by and where", "SELECT * FROM test WHERE a != 'foo2' ORDER BY a DESC LIMIT 1", false, "1,foo1,bar1,baz1\n", nil},
-		{"With limit", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1", false, "1,foo1,bar1,baz1\n", nil},
-		{"With offset", "SELECT *, key() FROM test WHERE b = 'bar1' OFFSET 1", false, "2,foo2,bar1,1,2\n", nil},
-		{"With limit then offset", "SELECT * FROM test WHERE b = 'bar1' LIMIT 1 OFFSET 1", false, "2,foo2,bar1,1\n", nil},
-		{"With offset then limit", "SELECT * FROM test WHERE b = 'bar1' OFFSET 1 LIMIT 1", true, "", nil},
-		{"With positional params", "SELECT * FROM test WHERE a = ? OR d = ?", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", []interface{}{"foo1", "foo3"}},
-		{"With named params", "SELECT * FROM test WHERE a = $a OR d = $d", false, "1,foo1,bar1,baz1\n3,foo3,bar2\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
-		{"With key()", "SELECT key(), a FROM test", false, "1,foo1\n2,foo2\n3,NULL\n", []interface{}{sql.Named("a", "foo1"), sql.Named("d", "foo3")}},
-		{"With pk in cond, gt", "SELECT * FROM test WHERE k > 0 AND e = 1", false, "2,foo2,bar1,1\n", nil},
-		{"With pk in cond, =", "SELECT * FROM test WHERE k = 2.0 AND e = 1", false, "2,foo2,bar1,1\n", nil},
-		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, "", nil},
-		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, "", nil},
-		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, "1,foo1,bar1,baz1\n2,foo2,bar1,1\n3,foo3,bar2\n", nil},
+		{"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
+		{"Multiple wildcards cond", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","k":1,"color":"red","size":10,"shape":"square","color":"red"},{"k":2,"color":"blue","size":10,"weight":1,"k":2,"color":"blue","size":10,"weight":1,"color":"blue"},{"k":3,"height":100,"weight":20,"k":3,"height":100,"weight":20,"color":null}]`, nil},
+		{"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
+		{"With eq cond", "SELECT * FROM test WHERE size = 10", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With neq cond", "SELECT * FROM test WHERE color != 'red'", false, `[{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
+		{"With gt cond", "SELECT * FROM test WHERE size > 10", false, `[]`, nil},
+		{"With lt cond", "SELECT * FROM test WHERE size < 15", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With lte cond", "SELECT * FROM test WHERE color <= 'salmon' ORDER BY k ASC", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With field comparison", "SELECT * FROM test WHERE color < shape", false, `[{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With order by", "SELECT * FROM test ORDER BY color", false, `[{"k":3,"height":100,"weight":20},{"k":2,"color":"blue","size":10,"weight":1},{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With order by asc", "SELECT * FROM test ORDER BY color ASC", false, `[{"k":3,"height":100,"weight":20},{"k":2,"color":"blue","size":10,"weight":1},{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With order by asc with limit 2", "SELECT * FROM test ORDER BY color LIMIT 2", false, `[{"k":3,"height":100,"weight":20},{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With order by asc with limit 1", "SELECT * FROM test ORDER BY color LIMIT 1", false, `[{"k":3,"height":100,"weight":20}]`, nil},
+		{"With order by asc with offset", "SELECT * FROM test ORDER BY color OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"weight":1},{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With order by asc with limit offset", "SELECT * FROM test ORDER BY color LIMIT 1 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With order by desc", "SELECT * FROM test ORDER BY color DESC", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
+		{"With order by desc with limit", "SELECT * FROM test ORDER BY color DESC LIMIT 2", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With order by desc with offset", "SELECT * FROM test ORDER BY color DESC OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
+		{"With order by desc with limit offset", "SELECT * FROM test ORDER BY color DESC LIMIT 1 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"weight":1}]`, nil},
+		{"With order by pk asc", "SELECT * FROM test ORDER BY k ASC", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
+		{"With order by pk desc", "SELECT * FROM test ORDER BY k DESC", false, `[{"k":3,"height":100,"weight":20},{"k":2,"color":"blue","size":10,"weight":1},{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With order by and where", "SELECT * FROM test WHERE color != 'blue' ORDER BY color DESC LIMIT 1", false, `[{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With limit", "SELECT * FROM test WHERE size = 10 LIMIT 1", false, `[{"k":1,"color":"red","size":10,"shape":"square"}]`, nil},
+		{"With offset", "SELECT *, key() FROM test WHERE size = 10 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"weight":1,"k":2}]`, nil},
+		{"With limit then offset", "SELECT * FROM test WHERE size = 10 LIMIT 1 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"weight":1,"k":2}]`, nil},
+		{"With offset then limit", "SELECT * FROM test WHERE size = 10 OFFSET 1 LIMIT 1", true, "", nil},
+		{"With positional params", "SELECT * FROM test WHERE color = ? OR height = ?", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":3,"height":100,"weight":20}]`, []interface{}{"red", 100}},
+		{"With named params", "SELECT * FROM test WHERE color = $a OR height = $d", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":3,"height":100,"weight":20}]`, []interface{}{sql.Named("a", "red"), sql.Named("d", 100)}},
+		{"With key()", "SELECT key(), color FROM test", false, `[{"k":1,"color":"red"},{"k":2,"color":"blue"},{"k":3,"color":null}]`, []interface{}{sql.Named("a", "red"), sql.Named("d", 100)}},
+		{"With pk in cond, gt", "SELECT * FROM test WHERE k > 0 AND weight = 1", false, `[{"k":2,"color":"blue","size":10,"weight":1,"k":2}]`, nil},
+		{"With pk in cond, =", "SELECT * FROM test WHERE k = 2.0 AND weight = 1", false, `[{"k":2,"color":"blue","size":10,"weight":1,"k":2}]`, nil},
+		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, `[]`, nil},
+		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, `[]`, nil},
+		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
 	}
 
 	for _, test := range tests {
@@ -66,19 +66,19 @@ func TestSelectStmt(t *testing.T) {
 				require.NoError(t, err)
 				if withIndexes {
 					err = db.Exec(`
-						CREATE INDEX idx_a ON test (a);
-						CREATE INDEX idx_b ON test (b);
-						CREATE INDEX idx_c ON test (c);
-						CREATE INDEX idx_d ON test (d);
+						CREATE INDEX idx_color ON test (color);
+						CREATE INDEX idx_size ON test (size);
+						CREATE INDEX idx_shape ON test (shape);
+						CREATE INDEX idx_height ON test (height);
 					`)
 					require.NoError(t, err)
 				}
 
-				err = db.Exec("INSERT INTO test (k, a, b, c) VALUES (1, 'foo1', 'bar1', 'baz1')")
+				err = db.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (k, a, b, e) VALUES (2, 'foo2', 'bar1', 1)")
+				err = db.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 1)")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (k, d, e) VALUES (3, 'foo3', 'bar2')")
+				err = db.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 20)")
 				require.NoError(t, err)
 
 				st, err := db.Query(test.query, test.params...)
@@ -90,9 +90,9 @@ func TestSelectStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = document.IteratorToCSV(&buf, st)
+				err = document.IteratorToJSONArray(&buf, st)
 				require.NoError(t, err)
-				require.Equal(t, test.expected, buf.String())
+				require.JSONEq(t, test.expected, buf.String())
 			}
 		}
 		t.Run("No Index/"+test.name, testFn(false))
@@ -118,9 +118,9 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = document.IteratorToCSV(&buf, st)
+		err = document.IteratorToJSONArray(&buf, st)
 		require.NoError(t, err)
-		require.Equal(t, "2,b\n3,c\n4,d\n", buf.String())
+		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
 	})
 
 	t.Run("with documents", func(t *testing.T) {

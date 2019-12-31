@@ -915,13 +915,9 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
-		err = document.IteratorToCSV(&buf, st)
+		err = document.IteratorToJSONArray(&buf, st)
 		require.NoError(t, err)
-		require.Equal(t, `5
-5
-5
-5
-`, buf.String())
+		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 	})
 
 	t.Run("DELETE", func(t *testing.T) {
@@ -1019,13 +1015,9 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
-			err = document.IteratorToCSV(&buf, st)
+			err = document.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
-			require.Equal(t, `5
-5
-5
-5
-`, buf.String())
+			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 			return nil
 		})
 		require.NoError(t, err)

@@ -19,14 +19,14 @@ func TestUpdateStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", `UPDATE test SET a = 'boo'`, false, "boo,bar1,baz1\nboo,bar2\nfoo3,bar3\n", nil},
-		{"No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, "boo,bar1,baz1\nboo,bar2\nfoo3,bar3\n", nil},
-		{"No cond / with multiple idents", `UPDATE test SET a = c`, false, "baz1,bar1,baz1\nNULL,bar2\nfoo3,bar3\n", nil},
+		{"No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"No cond / with multiple idents", `UPDATE test SET a = c`, false, `[{"a":"baz1","b":"bar1","c":"baz1"},{"a":null,"b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
 		{"No cond / with string", `UPDATE test SET 'a' = 'boo'`, true, "", nil},
-		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE a = 'foo2'", false, "foo1,bar1,baz1\n1,2\nfoo3,bar3\n", nil},
-		{"Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, "foo1,bar1,baz1\nfoo2,bar2\nfoo3,bar3\n", nil},
-		{"Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, "a,b,baz1\nfoo2,bar2\nfoo3,bar3\n", []interface{}{"a", "b", "foo1"}},
-		{"Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, "a,b,baz1\nfoo2,bar2\nfoo3,bar3\n", []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
+		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":1,"b":2},{"d":"foo3","e":"bar3"}]`, nil},
+		{"Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, []interface{}{"a", "b", "foo1"}},
+		{"Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
 	}
 
 	for _, test := range tests {
@@ -56,9 +56,10 @@ func TestUpdateStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = document.IteratorToCSV(&buf, st)
+
+			err = document.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
-			require.Equal(t, test.expected, buf.String())
+			require.JSONEq(t, test.expected, buf.String())
 		})
 	}
 }

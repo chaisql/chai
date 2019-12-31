@@ -1,9 +1,7 @@
 package document
 
 import (
-	"encoding/csv"
 	"errors"
-	"io"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.
@@ -219,32 +217,5 @@ func (m multiIterator) Iterate(fn func(d Document) error) error {
 		}
 	}
 
-	return nil
-}
-
-// IteratorToCSV encodes all the documents of an iterator to CSV.
-func IteratorToCSV(w io.Writer, s Iterator) error {
-	cw := csv.NewWriter(w)
-
-	var line []string
-	err := s.Iterate(func(d Document) error {
-		line = line[:0]
-
-		err := d.Iterate(func(f string, v Value) error {
-			line = append(line, v.String())
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		return cw.Write(line)
-	})
-	if err != nil {
-		return err
-	}
-
-	cw.Flush()
 	return nil
 }
