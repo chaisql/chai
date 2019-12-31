@@ -22,14 +22,14 @@ func Example() {
 	}
 	defer db.Close()
 
-	// Create a table. Genji tables are schemaless, you don't need to specify a schema.
-	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
+	// Create a table. Genji tables are schemaless by default, you don't need to specify a schema.
+	err = db.Exec("CREATE TABLE user")
 	if err != nil {
 		panic(err)
 	}
 
 	// Create an index.
-	err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_name ON user (name)")
+	err = db.Exec("CREATE INDEX idx_user_name ON user (name)")
 	if err != nil {
 		panic(err)
 	}
@@ -77,14 +77,14 @@ func Example() {
 	fmt.Println("Count:", count)
 
 	// Get first document from the results
-	r, err := stream.First()
+	d, err := stream.First()
 	if err != nil {
 		panic(err)
 	}
-	var id int
-	var name string
-	var age int32
-	err = document.Scan(r, &id, &name, &age)
+
+	// Scan into a struct
+	var u User
+	err = document.StructScan(d, &u)
 	if err != nil {
 		panic(err)
 	}
@@ -93,18 +93,18 @@ func Example() {
 	err = stream.
 		// Filter all even ids
 		Filter(func(d document.Document) (bool, error) {
-			f, err := r.GetByField("id")
+			v, err := d.GetByField("id")
 			if err != nil {
 				return false, err
 			}
-			id, err := f.ConvertToInt()
+			id, err := v.ConvertToInt()
 			return id%2 == 0, nil
 		}).
 		// Enrich the documents with a new field
 		Map(func(d document.Document) (document.Document, error) {
 			var fb document.FieldBuffer
 
-			err := fb.ScanDocument(r)
+			err := fb.ScanDocument(d)
 			if err != nil {
 				return nil, err
 			}
@@ -114,7 +114,7 @@ func Example() {
 		}).
 		// Iterate on them
 		Iterate(func(d document.Document) error {
-			return document.ToJSON(os.Stdout, r)
+			return document.ToJSON(os.Stdout, d)
 		})
 
 	if err != nil {
@@ -125,6 +125,6 @@ func Example() {
 	// 10 foo 15
 	// 2 baz 0
 	// Count: 2
-	// {"id":10,"name":"foo","age":15}
-	// {"id":10,"name":"foo","age":15}
+	// {"id":10,"name":"foo","age":15,"group":"admin"}
+	// {"id":2,"name":"baz","age":0,"group":"admin"}
 }
