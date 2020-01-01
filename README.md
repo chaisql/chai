@@ -99,8 +99,8 @@ defer res.Close()
 
 // Iterate over the results
 err = res.Iterate(func(d document.Document) error {
-    // When querying an explicit list of fields, you ucan use the Scan function to scan them
-    // in order. Note that the types don't have to match exactly the types stored in the the table
+    // When querying an explicit list of fields, you can use the Scan function to scan them
+    // in order. Note that the types don't have to match exactly the types stored in the table
     // as long as they are compatible.
     var id int
     var name string
@@ -141,21 +141,13 @@ err = res.Iterate(func(d document.Document) error {
 count, err := res.Count()
 
 // Get first document from the results using the First method of the stream
-r, err := res.First()
-var id int
-var name string
-var age int32
-var address struct{
-    City    string
-    ZipCode string
-}
-err = document.Scan(r, &id, &name, &age, &address)
+d, err := res.First()
 
 // Apply some transformations
 err = res.
     // Filter all even ids
     Filter(func(d document.Document) (bool, error) {
-        f, err := r.GetByField("id")
+        f, err := d.GetByField("id")
         ...
         id, err := f.DecodeToInt()
         ...
