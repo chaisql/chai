@@ -346,6 +346,7 @@ func (fb *FieldBuffer) Copy(d Document) error {
 	return nil
 }
 
+// Len of the buffer.
 func (fb FieldBuffer) Len() int {
 	return len(fb.fields)
 }
@@ -375,10 +376,14 @@ func (fb *FieldBuffer) Reset() {
 // A ValuePath represents the path to a particular value within a document.
 type ValuePath []string
 
+// NewValuePath takes a string representation of a value path and returns a ValuePath.
+// It assumes the separator is a dot.
 func NewValuePath(p string) ValuePath {
 	return strings.Split(p, ".")
 }
 
+// String joins all the chunks of the path using the dot separator.
+// It implements the Stringer interface.
 func (p ValuePath) String() string {
 	return strings.Join(p, ".")
 }

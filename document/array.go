@@ -119,6 +119,7 @@ func (vb *ValueBuffer) Replace(index int, v Value) error {
 	return nil
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface.
 func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 

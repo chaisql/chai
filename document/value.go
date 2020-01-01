@@ -985,6 +985,7 @@ func (v Value) IsZeroValue() bool {
 	return false
 }
 
+// MarshalJSON implements the json.Marshaler interface.
 func (v Value) MarshalJSON() ([]byte, error) {
 	var x interface{}
 	var err error
@@ -1019,6 +1020,7 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	return json.Marshal(x)
 }
 
+// Scan v into t.
 func (v Value) Scan(t interface{}) error {
 	return scanValue(v, reflect.ValueOf(t))
 }

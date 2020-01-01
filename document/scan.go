@@ -33,6 +33,15 @@ func Scan(d Document, targets ...interface{}) error {
 	})
 }
 
+// StructScan scans d into t. t is expected to be a pointer to a struct.
+//
+// By default, each struct field name is lowercased and the document's GetByField method
+// is called with that name. If there is a match, the value is converted to the struct
+// field type when possible, otherwise an error is returned.
+// The decoding of each struct field can be customized by the format string stored
+// under the "genji" key stored in the struct field's tag.
+// The content of the format string is used instead of the struct field name and passed
+// to the GetByField method.
 func StructScan(d Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
@@ -89,6 +98,14 @@ func structScan(d Document, ref reflect.Value) error {
 	return nil
 }
 
+// SliceScan scans a document array into a slice or fixed size array. t must be a pointer
+// to a valid slice or array.
+//
+// It t is a slice pointer and its capacity is too low, a new slice will be allocated.
+// Otherwise, its length is set to 0 so that its content is overrided.
+//
+// If t is an array pointer, its capacity must be bigger than the length of a, otherwise an error is
+// returned.
 func SliceScan(a Array, t interface{}) error {
 	return sliceScan(a, reflect.ValueOf(t))
 }
@@ -118,7 +135,11 @@ func sliceScan(a Array, ref reflect.Value) error {
 
 	// if slice, reduce its length to 0 to overwrite the buffer
 	if k == reflect.Slice {
-		sref.SetLen(0)
+		if sref.Cap() < al {
+			sref.Set(reflect.MakeSlice(tp.Elem(), 0, al))
+		} else {
+			sref.SetLen(0)
+		}
 	}
 
 	stp := sref.Type()
@@ -197,6 +218,7 @@ func mapScan(d Document, ref reflect.Value) error {
 	})
 }
 
+// ScanValue scans v into t.
 func ScanValue(v Value, t interface{}) error {
 	return scanValue(v, reflect.ValueOf(t))
 }
