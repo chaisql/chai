@@ -12,7 +12,7 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 	var err error
 
 	// Parse table name
-	stmt.TableName, err = p.ParseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -64,7 +64,7 @@ func (p *Parser) parseSetClause() (map[string]query.Expr, error) {
 		}
 
 		// Scan the expr for the value.
-		expr, err := p.ParseExpr()
+		expr, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}

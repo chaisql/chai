@@ -39,7 +39,7 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.ParseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -86,7 +86,7 @@ func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
 	for {
 		var fc database.FieldConstraint
 
-		fc.Path, err = p.ParseFieldRef()
+		fc.Path, err = p.parseFieldRef()
 		if err != nil {
 			p.Unscan()
 			break
@@ -152,7 +152,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	// Parse index name
-	stmt.IndexName, err = p.ParseIdent()
+	stmt.IndexName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -163,7 +163,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.ParseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}

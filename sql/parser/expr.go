@@ -18,8 +18,8 @@ type operator interface {
 	SetRightHandExpr(query.Expr)
 }
 
-// ParseExpr parses an expression.
-func (p *Parser) ParseExpr() (query.Expr, error) {
+// parseExpr parses an expression.
+func (p *Parser) parseExpr() (query.Expr, error) {
 	var err error
 	// Dummy root node.
 	var root operator = &query.CmpOp{}
@@ -92,7 +92,7 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	switch tok {
 	case scanner.IDENT:
 		p.Unscan()
-		field, err := p.ParseFieldRef()
+		field, err := p.parseFieldRef()
 		if err != nil {
 			return nil, err
 		}
@@ -150,17 +150,17 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		return e, err
 	case scanner.LSBRACKET:
 		p.Unscan()
-		return p.ParseExprList(scanner.LSBRACKET, scanner.RSBRACKET)
+		return p.parseExprList(scanner.LSBRACKET, scanner.RSBRACKET)
 	case scanner.LPAREN:
 		p.Unscan()
-		return p.ParseExprList(scanner.LPAREN, scanner.RPAREN)
+		return p.parseExprList(scanner.LPAREN, scanner.RPAREN)
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
 }
 
-// ParseIdent parses an identifier.
-func (p *Parser) ParseIdent() (string, error) {
+// parseIdent parses an identifier.
+func (p *Parser) parseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok != scanner.IDENT {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
@@ -169,10 +169,10 @@ func (p *Parser) ParseIdent() (string, error) {
 	return lit, nil
 }
 
-// ParseIdentList parses a comma delimited list of identifiers.
-func (p *Parser) ParseIdentList() ([]string, error) {
+// parseIdentList parses a comma delimited list of identifiers.
+func (p *Parser) parseIdentList() ([]string, error) {
 	// Parse first (required) identifier.
-	ident, err := p.ParseIdent()
+	ident, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (p *Parser) ParseIdentList() ([]string, error) {
 			return idents, nil
 		}
 
-		if ident, err = p.ParseIdent(); err != nil {
+		if ident, err = p.parseIdent(); err != nil {
 			return nil, err
 		}
 
@@ -311,7 +311,7 @@ func (p *Parser) parseKV() (query.KVPair, error) {
 		return query.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
 	}
 
-	expr, err := p.ParseExpr()
+	expr, err := p.parseExpr()
 	if err != nil {
 		return query.KVPair{}, err
 	}
@@ -322,11 +322,11 @@ func (p *Parser) parseKV() (query.KVPair, error) {
 	}, nil
 }
 
-// ParseFieldRef parses a field reference in the form ident (.ident|integer)*
-func (p *Parser) ParseFieldRef() ([]string, error) {
+// parseFieldRef parses a field reference in the form ident (.ident|integer)*
+func (p *Parser) parseFieldRef() ([]string, error) {
 	var fieldRef []string
 	// parse first mandatory ident
-	chunk, err := p.ParseIdent()
+	chunk, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func (p *Parser) ParseFieldRef() ([]string, error) {
 	}
 }
 
-func (p *Parser) ParseExprList(leftToken, rightToken scanner.Token) (query.LiteralExprList, error) {
+func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (query.LiteralExprList, error) {
 	// Parse ( or [ token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != leftToken {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
@@ -374,7 +374,7 @@ func (p *Parser) ParseExprList(leftToken, rightToken scanner.Token) (query.Liter
 
 	// Parse expressions.
 	for {
-		if expr, err = p.ParseExpr(); err != nil {
+		if expr, err = p.parseExpr(); err != nil {
 			p.Unscan()
 			break
 		}

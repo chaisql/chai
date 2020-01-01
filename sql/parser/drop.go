@@ -37,7 +37,7 @@ func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.ParseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -63,7 +63,7 @@ func (p *Parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
 	}
 
 	// Parse index name
-	stmt.IndexName, err = p.ParseIdent()
+	stmt.IndexName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}

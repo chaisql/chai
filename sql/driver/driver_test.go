@@ -74,18 +74,21 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Multiple fields and wildcards", func(t *testing.T) {
-		rows, err := db.Query("SELECT a, *, c, * FROM test")
+		rows, err := db.Query("SELECT a, a, *, b, c, * FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
 
 		var count int
 		var a int
+		var aa int
+		var b []float32
 		var c foo
 		var dt1, dt2 doctest
 		for rows.Next() {
-			err = rows.Scan(&a, Scanner(&dt1), Scanner(&c), Scanner(&dt2))
+			err = rows.Scan(&a, Scanner(&aa), Scanner(&dt1), Scanner(&b), Scanner(&c), Scanner(&dt2))
 			require.NoError(t, err)
 			require.Equal(t, count, a)
+			require.Equal(t, []float32{float32(count + 1), float32(count + 2), float32(count + 3)}, b)
 			require.Equal(t, foo{Foo: "bar"}, c)
 			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt1)
 			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt2)

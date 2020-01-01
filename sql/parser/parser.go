@@ -83,7 +83,7 @@ func (p *Parser) parseCondition() (query.Expr, error) {
 	}
 
 	// Scan the identifier for the source.
-	expr, err := p.ParseExpr()
+	expr, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (p *Parser) parsePathList() ([]document.ValuePath, error) {
 	var err error
 	var vp document.ValuePath
 	// Parse first (required) path.
-	if vp, err = p.ParseFieldRef(); err != nil {
+	if vp, err = p.parseFieldRef(); err != nil {
 		return nil, err
 	}
 
@@ -116,7 +116,7 @@ func (p *Parser) parsePathList() ([]document.ValuePath, error) {
 			break
 		}
 
-		vp, err := p.ParseFieldRef()
+		vp, err := p.parseFieldRef()
 		if err != nil {
 			return nil, err
 		}

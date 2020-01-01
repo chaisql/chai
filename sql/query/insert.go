@@ -21,6 +21,8 @@ func (stmt InsertStmt) IsReadOnly() bool {
 	return false
 }
 
+// Run the Insert statement in the given transaction.
+// It implements the Statement interface.
 func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
@@ -50,7 +52,7 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 }
 
 type paramExtractor interface {
-	Extract(params []driver.NamedValue) (interface{}, error)
+	extract(params []driver.NamedValue) (interface{}, error)
 }
 
 func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Result, error) {
@@ -64,7 +66,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 		case document.Document:
 			d = tp
 		case paramExtractor:
-			v, err := tp.Extract(stack.Params)
+			v, err := tp.extract(stack.Params)
 			if err != nil {
 				return res, err
 			}

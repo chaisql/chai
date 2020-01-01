@@ -120,7 +120,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	}
 
 	st = st.Map(func(d document.Document) (document.Document, error) {
-		return DocumentMask{
+		return documentMask{
 			cfg:          qo.cfg,
 			r:            d,
 			resultFields: stmt.Selectors,
@@ -130,15 +130,15 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 	return Result{Stream: st}, nil
 }
 
-type DocumentMask struct {
+type documentMask struct {
 	cfg          *database.TableConfig
 	r            document.Document
 	resultFields []ResultField
 }
 
-var _ document.Document = DocumentMask{}
+var _ document.Document = documentMask{}
 
-func (r DocumentMask) GetByField(name string) (document.Value, error) {
+func (r documentMask) GetByField(name string) (document.Value, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == name || rf.Name() == "*" {
 			return r.r.GetByField(name)
@@ -148,7 +148,7 @@ func (r DocumentMask) GetByField(name string) (document.Value, error) {
 	return document.Value{}, document.ErrFieldNotFound
 }
 
-func (r DocumentMask) Iterate(fn func(f string, v document.Value) error) error {
+func (r documentMask) Iterate(fn func(f string, v document.Value) error) error {
 	stack := EvalStack{
 		Document: r.r,
 		Cfg:      r.cfg,
@@ -164,18 +164,21 @@ func (r DocumentMask) Iterate(fn func(f string, v document.Value) error) error {
 	return nil
 }
 
+// A ResultField is a field that will be part of the result document that will be returned at the end of a Select statement.
 type ResultField interface {
 	Iterate(stack EvalStack, fn func(field string, value document.Value) error) error
 	Name() string
 }
 
+// A FieldSelector is a ResultField that extracts a field from a document at a given path.
 type FieldSelector []string
 
+// Name joins the chunks of the path of the field selector using the dot separator.
 func (f FieldSelector) Name() string {
 	return strings.Join(f, ".")
 }
 
-func (f FieldSelector) SelectField(d document.Document) (string, document.Value, error) {
+func (f FieldSelector) selectField(d document.Document) (string, document.Value, error) {
 	if d == nil {
 		return f.Name(), nilLitteral, document.ErrFieldNotFound
 	}
@@ -221,8 +224,9 @@ func (f FieldSelector) SelectField(d document.Document) (string, document.Value,
 	return f.Name(), v, nil
 }
 
+// Iterate select the field from the document and calls fn once with this field.
 func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
-	fd, v, err := f.SelectField(stack.Document)
+	fd, v, err := f.selectField(stack.Document)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -237,7 +241,7 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		return nilLitteral, document.ErrFieldNotFound
 	}
 
-	_, v, err := f.SelectField(stack.Document)
+	_, v, err := f.selectField(stack.Document)
 	if err != nil {
 		return nilLitteral, document.ErrFieldNotFound
 	}
@@ -245,22 +249,28 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 	return v, nil
 }
 
+// A Wildcard is a ResultField that iterates over all the fields of a document.
 type Wildcard struct{}
 
+// Name returns the "*" character.
 func (w Wildcard) Name() string {
 	return "*"
 }
 
+// Iterate call the document iterate method.
 func (w Wildcard) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	return stack.Document.Iterate(fn)
 }
 
+// KeyFunc is a function that returns the primary key corresponding to the current document.
 type KeyFunc struct{}
 
+// Name returns "key()".
 func (k KeyFunc) Name() string {
 	return "key()"
 }
 
+// Iterate identifies the primary key for the document and calls fn with it.
 func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	if len(stack.Cfg.PrimaryKey.Path) != 0 {
 		v, err := stack.Cfg.PrimaryKey.Path.GetValue(stack.Document)
@@ -275,5 +285,5 @@ func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) e
 		return err
 	}
 
-	return fn("key()", v)
+	return fn(k.Name(), v)
 }

@@ -17,7 +17,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.ParseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -51,7 +51,7 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 	// Parse field list.
 	var fields []string
 	var err error
-	if fields, err = p.ParseIdentList(); err != nil {
+	if fields, err = p.parseIdentList(); err != nil {
 		return nil, false, err
 	}
 
@@ -121,51 +121,15 @@ func (p *Parser) parseValue() (query.Expr, error) {
 	p.Unscan()
 
 	// check if it's an expression list
-	expr, ok, err = p.parseExprList()
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"expression list or JSON"}, pos)
 	}
+	p.Unscan()
+	expr, err = p.parseExprList(scanner.LPAREN, scanner.RPAREN)
+	if err != nil {
+		return nil, err
+	}
 
 	return expr, nil
-}
-
-// parseExprList parses a list of expressions in the form: (expr, expr, ...)
-func (p *Parser) parseExprList() (query.Expr, bool, error) {
-	// Parse ( token.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		p.Unscan()
-		return nil, false, nil
-	}
-
-	// Parse first (required) expr.
-	e, err := p.ParseExpr()
-	if err != nil {
-		return nil, true, err
-	}
-	exprs := []query.Expr{e}
-
-	// Parse remaining (optional) exprs.
-	for {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
-			p.Unscan()
-			break
-		}
-
-		if e, err = p.ParseExpr(); err != nil {
-			return nil, true, err
-		}
-
-		exprs = append(exprs, e)
-	}
-
-	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, true, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
-	}
-
-	return query.LiteralExprList(exprs), true, nil
 }

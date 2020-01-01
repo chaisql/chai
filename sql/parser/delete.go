@@ -17,7 +17,7 @@ func (p *Parser) parseDeleteStatement() (query.DeleteStmt, error) {
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.ParseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}

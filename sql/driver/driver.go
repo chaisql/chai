@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 
@@ -268,7 +267,7 @@ type documentStream struct {
 }
 
 type doc struct {
-	d   query.DocumentMask
+	d   document.Document
 	err error
 }
 
@@ -302,7 +301,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 		case <-ctx.Done():
 			return errStop
 		case rs.c <- doc{
-			d: d.(query.DocumentMask),
+			d: d,
 		}:
 
 			select {
@@ -375,13 +374,22 @@ func (v valueScanner) Scan(src interface{}) error {
 	switch t := src.(type) {
 	case document.Document:
 		return document.StructScan(t, v.v)
+	case document.Array:
+		return document.SliceScan(t, v.v)
 	case document.Value:
 		return document.ScanValue(t, src)
 	}
 
-	return fmt.Errorf("unable to scan value of type %T", src)
+	vv, err := document.NewValue(src)
+	if err != nil {
+		return err
+	}
+
+	return document.ScanValue(vv, &src)
 }
 
+// Scanner turns a variable into a sql.Scanner.
+// x must be a pointer to a valid variable.
 func Scanner(x interface{}) sql.Scanner {
 	return valueScanner{x}
 }

@@ -135,10 +135,13 @@ func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 	return document.NewArrayValue(values), nil
 }
 
+// NamedParam is an expression which represents the name of a parameter.
 type NamedParam string
 
+// Eval looks up for the parameters in the stack for the one that has the same name as p
+// and returns the value.
 func (p NamedParam) Eval(stack EvalStack) (document.Value, error) {
-	v, err := p.Extract(stack.Params)
+	v, err := p.extract(stack.Params)
 	if err != nil {
 		return nilLitteral, err
 	}
@@ -146,7 +149,7 @@ func (p NamedParam) Eval(stack EvalStack) (document.Value, error) {
 	return document.NewValue(v)
 }
 
-func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
+func (p NamedParam) extract(params []driver.NamedValue) (interface{}, error) {
 	for _, nv := range params {
 		if nv.Name == string(p) {
 			return nv.Value, nil
@@ -156,10 +159,13 @@ func (p NamedParam) Extract(params []driver.NamedValue) (interface{}, error) {
 	return nil, fmt.Errorf("param %s not found", p)
 }
 
+// PositionalParam is an expression which represents the position of a parameter.
 type PositionalParam int
 
+// Eval looks up for the parameters in the stack for the one that is has the same position as p
+// and returns the value.
 func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
-	v, err := p.Extract(stack.Params)
+	v, err := p.extract(stack.Params)
 	if err != nil {
 		return nilLitteral, err
 	}
@@ -167,7 +173,7 @@ func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 	return document.NewValue(v)
 }
 
-func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error) {
+func (p PositionalParam) extract(params []driver.NamedValue) (interface{}, error) {
 	idx := int(p - 1)
 	if idx >= len(params) {
 		return nil, fmt.Errorf("can't find param number %d", p)
@@ -176,65 +182,68 @@ func (p PositionalParam) Extract(params []driver.NamedValue) (interface{}, error
 	return params[idx].Value, nil
 }
 
-type SimpleOperator struct {
+type simpleOperator struct {
 	a, b  Expr
 	Token scanner.Token
 }
 
-func (op SimpleOperator) Precedence() int {
+func (op simpleOperator) Precedence() int {
 	return op.Token.Precedence()
 }
 
-func (op SimpleOperator) LeftHand() Expr {
+func (op simpleOperator) LeftHand() Expr {
 	return op.a
 }
 
-func (op SimpleOperator) RightHand() Expr {
+func (op simpleOperator) RightHand() Expr {
 	return op.b
 }
 
-func (op *SimpleOperator) SetLeftHandExpr(a Expr) {
+func (op *simpleOperator) SetLeftHandExpr(a Expr) {
 	op.a = a
 }
 
-func (op *SimpleOperator) SetRightHandExpr(b Expr) {
+func (op *simpleOperator) SetRightHandExpr(b Expr) {
 	op.b = b
 }
 
+// A CmpOp is a comparison operator.
 type CmpOp struct {
-	SimpleOperator
+	simpleOperator
 }
 
 // Eq creates an expression that returns true if a equals b.
-func Eq(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.EQ}}
+func Eq(a, b Expr) CmpOp {
+	return CmpOp{simpleOperator{a, b, scanner.EQ}}
 }
 
 // Neq creates an expression that returns true if a equals b.
-func Neq(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.NEQ}}
+func Neq(a, b Expr) CmpOp {
+	return CmpOp{simpleOperator{a, b, scanner.NEQ}}
 }
 
 // Gt creates an expression that returns true if a is greater than b.
-func Gt(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.GT}}
+func Gt(a, b Expr) CmpOp {
+	return CmpOp{simpleOperator{a, b, scanner.GT}}
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
-func Gte(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.GTE}}
+func Gte(a, b Expr) CmpOp {
+	return CmpOp{simpleOperator{a, b, scanner.GTE}}
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
-func Lt(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.LT}}
+func Lt(a, b Expr) CmpOp {
+	return CmpOp{simpleOperator{a, b, scanner.LT}}
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
-func Lte(a, b Expr) Expr {
-	return CmpOp{SimpleOperator{a, b, scanner.LTE}}
+func Lte(a, b Expr) CmpOp {
+	return CmpOp{simpleOperator{a, b, scanner.LTE}}
 }
 
+// Eval compares a and b together using the operator specified when constructing the CmpOp
+// and returns the result of the comparison.
 func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
 	v1, err := op.a.Eval(ctx)
 	if err != nil {
@@ -288,16 +297,18 @@ func (op CmpOp) compare(l, r document.Value) (bool, error) {
 	}
 }
 
+// AndOp is the And operator.
 type AndOp struct {
-	SimpleOperator
+	simpleOperator
 }
 
 // And creates an expression that evaluates a And b And returns true if both are truthy.
-func And(a, b Expr) Expr {
-	return &AndOp{SimpleOperator{a, b, scanner.AND}}
+func And(a, b Expr) *AndOp {
+	return &AndOp{simpleOperator{a, b, scanner.AND}}
 }
 
-// Eval implements the Expr interface.
+// Eval implements the Expr interface. It evaluates a and b and returns true if both evalutate
+// to true.
 func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil || !s.IsTruthy() {
@@ -312,16 +323,18 @@ func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 	return trueLitteral, nil
 }
 
+// OrOp is the And operator.
 type OrOp struct {
-	SimpleOperator
+	simpleOperator
 }
 
 // Or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy Or false if falsy.
 func Or(a, b Expr) Expr {
-	return &OrOp{SimpleOperator{a, b, scanner.OR}}
+	return &OrOp{simpleOperator{a, b, scanner.OR}}
 }
 
-// Eval implements the Expr interface.
+// Eval implements the Expr interface. It evaluates a and b and returns true if a or b evalutate
+// to true.
 func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	s, err := op.a.Eval(ctx)
 	if err != nil {
@@ -342,13 +355,16 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	return falseLitteral, nil
 }
 
+// KVPair associates an identifier with an expression.
 type KVPair struct {
 	K string
 	V Expr
 }
 
+// KVPairs is a list of KVPair.
 type KVPairs []KVPair
 
+// Eval turns a list of KVPairs into a document.
 func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {
 	var fb document.FieldBuffer
 

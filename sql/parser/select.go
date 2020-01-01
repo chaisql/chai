@@ -95,7 +95,7 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 	p.Unscan()
 
-	field, err := p.ParseFieldRef()
+	field, err := p.parseFieldRef()
 	if err != nil {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"field path"}, pos)
 	}
@@ -109,7 +109,7 @@ func (p *Parser) parseFrom() (string, error) {
 	}
 
 	// Parse table name
-	return p.ParseIdent()
+	return p.parseIdent()
 }
 
 func (p *Parser) parseOrderBy() (query.FieldSelector, scanner.Token, error) {
@@ -125,7 +125,7 @@ func (p *Parser) parseOrderBy() (query.FieldSelector, scanner.Token, error) {
 	}
 
 	// parse field reference
-	ref, err := p.ParseFieldRef()
+	ref, err := p.parseFieldRef()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -146,7 +146,7 @@ func (p *Parser) parseLimit() (query.Expr, error) {
 		return nil, nil
 	}
 
-	return p.ParseExpr()
+	return p.parseExpr()
 }
 
 func (p *Parser) parseOffset() (query.Expr, error) {
@@ -156,5 +156,5 @@ func (p *Parser) parseOffset() (query.Expr, error) {
 		return nil, nil
 	}
 
-	return p.ParseExpr()
+	return p.parseExpr()
 }
