@@ -105,6 +105,8 @@ func buildIndexName(name string, t Type) string {
 	return b.String()
 }
 
+// A Pivot is a value that is used to seek for a particular value in an index.
+// A Pivot is typed and can only be used to seek for values of the same type.
 type Pivot struct {
 	Value document.Value
 	empty bool
@@ -146,6 +148,7 @@ func (i *ListIndex) Set(val document.Value, key []byte) error {
 	return st.Put(buf, nil)
 }
 
+// Delete all the references to the key from the index.
 func (i *ListIndex) Delete(val document.Value, key []byte) error {
 	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
@@ -165,6 +168,9 @@ func (i *ListIndex) Delete(val document.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
+// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
+// If the given function returns an error, the iteration stops and returns that error.
+// If the pivot is nil, starts from the beginning.
 func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
@@ -221,6 +227,9 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 	})
 }
 
+// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
+// If the given function returns an error, the iteration stops and returns that error.
+// If the pivot is nil, starts from the end.
 func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
@@ -282,6 +291,7 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 	})
 }
 
+// Truncate deletes all the index data.
 func (i *ListIndex) Truncate() error {
 	err := dropStore(i.tx, Float, i.name)
 	if err != nil {
@@ -331,6 +341,7 @@ func (i *UniqueIndex) Set(val document.Value, key []byte) error {
 	return st.Put(buf, key)
 }
 
+// Delete all the references to the key from the index.
 func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
 	v, err := encodeFieldToIndexValue(val)
 	if err != nil {
@@ -350,6 +361,9 @@ func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
 	return st.Delete(buf)
 }
 
+// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
+// If the given function returns an error, the iteration stops and returns that error.
+// If the pivot is nil, starts from the beginning.
 func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
@@ -409,6 +423,9 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 	})
 }
 
+// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
+// If the given function returns an error, the iteration stops and returns that error.
+// If the pivot is nil, starts from the end.
 func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
@@ -469,6 +486,7 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 	})
 }
 
+// Truncate deletes all the index data.
 func (i *UniqueIndex) Truncate() error {
 	err := dropStore(i.tx, Float, i.name)
 	if err != nil {

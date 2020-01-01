@@ -276,7 +276,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 // Delete a document by key.
 // Indexes are automatically updated.
 func (t *Table) Delete(key []byte) error {
-	r, err := t.GetDocument(key)
+	d, err := t.GetDocument(key)
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Path.GetValue(r)
+		v, err := idx.Path.GetValue(d)
 		if err != nil {
 			return err
 		}
