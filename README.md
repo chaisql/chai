@@ -4,9 +4,9 @@
 [![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is an embedded SQL database build on top of key-value stores. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
+Genji is a document-oriented, embedded SQL database. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
 
-Genji tables are schemaless and can be manipulated using SQL queries. Genji is also compatible with the `database/sql` package.
+Genji is also compatible with the `database/sql` package.
 
 ## Installation
 
@@ -31,7 +31,7 @@ if err != nil {
 // Don't forget to close the database when you're done
 defer db.Close()
 
-// Create a table. Genji tables are schemaless, you don't need to specify a schema.
+// Create a table. Genji tables are schemaless, you don't need to specify a schema if not needed.
 err = db.Exec("CREATE TABLE user")
 
 // Create an index.
@@ -39,7 +39,51 @@ err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
 
 // Insert some data
 err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
-err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 11, "Foo2", 20)
+
+// Supported values can go from simple integers to richer data types like lists or documents
+err = db.Exec(`
+    INSERT INTO user (id, name, age, address, friends)
+    VALUES (
+        11,
+        'Foo2',
+        20,
+        {"city": "Lyon", "zipcode": "69001"},
+        ["foo", "bar", "baz"]
+    )`)
+
+// It is also possible to insert values using document notation, which is a JSON-like notation with support for expressions.
+err = db.Exec(`
+    INSERT INTO user
+    VALUES {
+        id: 11,
+        name: 'Foo2',
+        "age": 20,
+        "address": {"city": "Lyon", "zipcode": "69001"},
+        "friends": ["foo", "bar", "baz"],
+        single: 1 AND 1
+    }`)
+
+// Or even to use structures
+type User struct {
+    ID              uint
+    Name            []byte
+    TheAgeOfTheUser float64 `genji:"age"`
+    Address         struct {
+        City    string
+        ZipCode string
+    }
+}
+
+// Let's create a user
+u := User{
+    ID: 20,
+    Name: "foo",
+    TheAgeOfTheUser: 40,
+}
+u.Address.City = "Lyon"
+u.Address.ZipCode = "69001"
+
+err := db.Exec(`INSERT INTO user VALUES ?`, &u)
 
 // Use a transaction
 tx, err := db.Begin(true)
@@ -49,34 +93,63 @@ err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 12, "Foo3", 2
 err = tx.Commit()
 
 // Query some documents
-res, err := db.Query("SELECT * FROM user WHERE age > ?", 18)
+res, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
 // always close the result when you're done with it
 defer res.Close()
 
 // Iterate over the results
 err = res.Iterate(func(d document.Document) error {
+    // When querying an explicit list of fields, you ucan use the Scan function to scan them
+    // in order. Note that the types don't have to match exactly the types stored in the the table
+    // as long as they are compatible.
     var id int
     var name string
     var age int32
+    var address struct{
+        City string
+        ZipCode string
+    }
 
-    err = document.Scan(d, &id, &name, &age)
+    err = document.Scan(d, &id, &name, &age, &address)
     if err != nil {
         return err
     }
 
-    fmt.Println(id, name, age)
+    fmt.Println(id, name, age, address)
+
+    // It is also possible to scan the results into a structure
+    var u User
+    err = document.StructScan(d, &user)
+    if err != nil {
+        return err
+    }
+
+    fmt.Println(u)
+
+    // Or scan into a map
+    var m map[string]interface{}
+    err = document.MapScan(d, &m)
+    if err != nil {
+        return err
+    }
+
+    fmt.Println(m)
     return nil
 })
 
 // Count results
 count, err := res.Count()
 
-// Get first document from the results
+// Get first document from the results using the First method of the stream
 r, err := res.First()
 var id int
 var name string
 var age int32
-err = document.Scan(r, &id, &name, &age)
+var address struct{
+    City    string
+    ZipCode string
+}
+err = document.Scan(r, &id, &name, &age, &address)
 
 // Apply some transformations
 err = res.
@@ -94,7 +167,7 @@ err = res.
 
         err := fb.ScanDocument(r)
         ...
-        fb.Add(document.NewStringValue("Group", "admin"))
+        fb.Add(document.NewStringValue("group", "admin"))
         return &fb, nil
     }).
     // Iterate on them
@@ -120,90 +193,6 @@ defer db.Close()
 res, err := db.ExecContext(...)
 res, err := db.Query(...)
 res, err := db.QueryRow(...)
-```
-
-## Code generation
-
-Genji also supports structs as long as they implement the `document.Document` interface for writes and the `document.Scanner` interface for reads.
-To simplify implementing these interfaces, Genji provides a command line tool that can generate methods for you.
-
-First, install the Genji command line tool:
-
-```bash
-go get github.com/asdine/genji/cmd/genji
-```
-
-Declare a structure. Note that, even though struct tags are defined, Genji **doesn't use reflection** for these structures.
-
-```go
-// user.go
-
-type User struct {
-    ID int64
-    Name string
-    Age int `genji:"age-of-the-user"`
-}
-```
-
-Generate code to make that structure compatible with Genji.
-
-```bash
-genji gen -f user.go -s User
-```
-
-This command generates a file that adds methods to the `User` type.
-
-```go
-// user.genji.go
-
-// The User type gets new methods that implement some Genji interfaces.
-func (u *User) GetByField(name string) (document.Field, error) {}
-func (u *User) Iterate(fn func(document.Field) error) error {}
-func (u *User) ScanDocument(d document.Document) error {}
-func (u *User) Scan(src interface{}) error
-```
-
-Also, it will create mapping between struct fields and their corresponding `document.Field`. For that, it will apply the `strings.ToLower` function on the struct field name, unless the `genji` tag was specified for that field. If so, it will use the name found in the tag.
-
-### Example
-
-```go
-// Let's create a user
-u1 := User{
-    ID: 20,
-    Name: "foo",
-    Age: 40,
-}
-
-// Let's create a few other ones
-u2 := u1
-u2.ID = 21
-u3 := u1
-u3.ID = 22
-
-// It is possible to let Genji deal with analyzing the structure
-// when inserting a document, using the VALUES clause
-err := db.Exec(`INSERT INTO user VALUES ?, ?, ?`, &u1, &u2, &u3)
-// Note that it is also possible to write documents by hand
-err := db.Exec(`INSERT INTO user VALUES ?, {userid: 21, name: 'foo', "age-of-the-user": 40}, ?`, &u1, &u3)
-
-// Let's select a few users
-var users []User
-
-res, err := db.Query("SELECT * FROM user")
-defer res.Close()
-
-err = res.Iterate(func(d document.Document) error {
-    var u User
-    // Use the generated ScanDocument method this time
-    err := u.ScanDocument(r)
-    if err != nil {
-        return err
-    }
-
-    users = append(users, u)
-    return nil
-})
 ```
 
 ## Engines
@@ -280,7 +269,7 @@ func main() {
 
 ## Genji shell
 
-Besides generating code, the genji command line provides an SQL shell that can be used to create, modify and consult Genji databases.
+The genji command line provides an SQL shell that can be used to create, modify and consult Genji databases.
 
 Make sure the Genji command line is installed:
 
