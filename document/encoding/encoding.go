@@ -273,6 +273,7 @@ func DecodeDocument(buf []byte) document.Document {
 	return EncodedDocument(buf)
 }
 
+// EncodeValue encodes any value to a binary representation.
 func EncodeValue(v document.Value) ([]byte, error) {
 	switch v.Type {
 	case document.DocumentValue:
@@ -378,7 +379,7 @@ func EncodeValue(v document.Value) ([]byte, error) {
 	return nil, errors.New("unknown type")
 }
 
-// An EncodedDocument implements the Document interface on top of an encoded representation of a
+// An EncodedDocument implements the document.Document interface on top of an encoded representation of a
 // document.
 // It is useful to avoid decoding the entire document when only a few fields are needed.
 type EncodedDocument []byte
@@ -412,6 +413,9 @@ func (e EncodedDocument) Iterate(fn func(name string, value document.Value) erro
 	return nil
 }
 
+// An EncodedArray implements the document.Array interface on top of an encoded representation of an
+// array.
+// It is useful to avoid decoding the entire array when only a few values are needed.
 type EncodedArray []byte
 
 // Iterate goes through all the values of the array and calls the given function by passing each one of them.
@@ -479,6 +483,7 @@ func decodeValueFromDocument(data []byte, field string) (document.Value, error) 
 	return document.Value{}, document.ErrFieldNotFound
 }
 
+// EncodeArray encodes a into its binary representation.
 func EncodeArray(a document.Array) ([]byte, error) {
 	var format Format
 
@@ -533,6 +538,7 @@ func DecodeArray(buf []byte) document.Array {
 	return EncodedArray(buf)
 }
 
+// DecodeValue takes some encoded data and decodes it to the target type t.
 func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	switch t {
 	case document.DocumentValue:
