@@ -64,6 +64,7 @@ func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
 	return vb[i], nil
 }
 
+// Append a value to the buffer and return a new buffer.
 func (vb ValueBuffer) Append(v Value) ValueBuffer {
 	return append(vb, v)
 }
@@ -76,7 +77,9 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-func (vb *ValueBuffer) Clone(a Array) error {
+// Copy deep copies all the values from the given array.
+// If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
+func (vb *ValueBuffer) Copy(a Array) error {
 	err := vb.ScanArray(a)
 	if err != nil {
 		return err
@@ -86,7 +89,7 @@ func (vb *ValueBuffer) Clone(a Array) error {
 		switch v.Type {
 		case DocumentValue:
 			var buf FieldBuffer
-			err = buf.Clone(v.V.(Document))
+			err = buf.Copy(v.V.(Document))
 			if err != nil {
 				return err
 			}
@@ -94,7 +97,7 @@ func (vb *ValueBuffer) Clone(a Array) error {
 			*vb = vb.Append(NewDocumentValue(&buf))
 		case ArrayValue:
 			var buf ValueBuffer
-			err = buf.Clone(v.V.(Array))
+			err = buf.Copy(v.V.(Array))
 			if err != nil {
 				return err
 			}

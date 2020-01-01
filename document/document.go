@@ -314,9 +314,9 @@ func (fb *FieldBuffer) Replace(field string, v Value) error {
 	return ErrFieldNotFound
 }
 
-// Clone deep copies every value of the document to the buffer.
+// Copy deep copies every value of the document to the buffer.
 // If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
-func (fb *FieldBuffer) Clone(d Document) error {
+func (fb *FieldBuffer) Copy(d Document) error {
 	err := fb.ScanDocument(d)
 	if err != nil {
 		return err
@@ -326,7 +326,7 @@ func (fb *FieldBuffer) Clone(d Document) error {
 		switch f.Value.Type {
 		case DocumentValue:
 			var buf FieldBuffer
-			err = buf.Clone(f.Value.V.(Document))
+			err = buf.Copy(f.Value.V.(Document))
 			if err != nil {
 				return err
 			}
@@ -334,7 +334,7 @@ func (fb *FieldBuffer) Clone(d Document) error {
 			fb.fields[i].Value = NewDocumentValue(&buf)
 		case ArrayValue:
 			var buf ValueBuffer
-			err = buf.Clone(f.Value.V.(Array))
+			err = buf.Copy(f.Value.V.(Array))
 			if err != nil {
 				return err
 			}

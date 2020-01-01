@@ -137,7 +137,7 @@ func (t *Table) validateConstraints(d document.Document) (document.Document, err
 
 	// make sure the document tree is full of document.FieldBuffer or document.ValueBuffer
 	// so we can modify them and convert field types.
-	err = fb.Clone(d)
+	err = fb.Copy(d)
 	if err != nil {
 		return nil, err
 	}
