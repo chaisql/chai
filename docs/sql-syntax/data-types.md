@@ -17,14 +17,16 @@
 
 ## Variable size data types
 
-| Name    | Description                                                                                |
-| :------ | :----------------------------------------------------------------------------------------- |
-| int     | Signed integer which takes 1, 2, 4 or 8 bytes depending on the size of the stored number   |
-| uint    | Unsigned integer which takes 1, 2, 4 or 8 bytes depending on the size of the stored number |
-| integer | Alias for `int`                                                                            |
-| string  | Variable size UTF-8 encoded string                                                         |
-| bytes   | Variable size blob of data                                                                 |
-| text    | Alias for `string`                                                                         |
+| Name     | Description                                                                                |
+| :------- | :----------------------------------------------------------------------------------------- |
+| int      | Signed integer which takes 1, 2, 4 or 8 bytes depending on the size of the stored number   |
+| uint     | Unsigned integer which takes 1, 2, 4 or 8 bytes depending on the size of the stored number |
+| integer  | Alias for `int`                                                                            |
+| string   | Variable size UTF-8 encoded string                                                         |
+| bytes    | Variable size blob of data                                                                 |
+| text     | Alias for `string`                                                                         |
+| array    | Array of values of any type                                                                |
+| document | Object that contains pairs that associate a string field to a value of any type            |
 
 ## Conversion
 
@@ -50,3 +52,21 @@
 | bool        | float64          | yes                                            |
 | bool        | string           | no                                             |
 | bool        | bytes            | no                                             |
+
+## Documents
+
+Genji stores records as documents. A document is an object that contains pairs that associate a string field to a value of any type.
+Genji documents are often represented as JSON objects, though they support far more types.
+
+Here is a JSON representation of the structure of a document:
+
+```js
+{
+    field1: value1,
+    field2: value2,
+    field3: value3,
+    ...
+}
+```
+
+Each field name must be a string, but values can be of any type, including another document.

@@ -11,6 +11,3 @@
 {% page-ref page="create-index.md" %}
 
 {% page-ref page="drop-index.md" %}
-
-
-
