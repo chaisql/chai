@@ -533,7 +533,7 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 
 func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) (engine.Store, error) {
 	idxName := buildIndexName(name, NewTypeFromValueType(t))
-	st, err := tx.Store(idxName)
+	st, err := tx.GetStore(idxName)
 	if err == nil {
 		return st, nil
 	}
@@ -547,12 +547,12 @@ func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) 
 		return nil, err
 	}
 
-	return tx.Store(idxName)
+	return tx.GetStore(idxName)
 }
 
 func getStore(tx engine.Transaction, t Type, name string) (engine.Store, error) {
 	idxName := buildIndexName(name, t)
-	st, err := tx.Store(idxName)
+	st, err := tx.GetStore(idxName)
 	if err == nil || err == engine.ErrStoreNotFound {
 		return st, nil
 	}
@@ -562,7 +562,7 @@ func getStore(tx engine.Transaction, t Type, name string) (engine.Store, error) 
 
 func dropStore(tx engine.Transaction, t Type, name string) error {
 	idxName := buildIndexName(name, t)
-	_, err := tx.Store(idxName)
+	_, err := tx.GetStore(idxName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
 	}

@@ -69,8 +69,8 @@ func (t *Transaction) Commit() error {
 	return t.tx.Commit()
 }
 
-// Store returns a store by name. The store uses a Bolt bucket.
-func (t *Transaction) Store(name string) (engine.Store, error) {
+// GetStore returns a store by name. The store uses a Bolt bucket.
+func (t *Transaction) GetStore(name string) (engine.Store, error) {
 	bname := []byte(name)
 	b := t.tx.Bucket(bname)
 	if b == nil {

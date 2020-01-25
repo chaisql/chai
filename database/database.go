@@ -26,7 +26,7 @@ func New(ng engine.Engine) (*Database, error) {
 	}
 	defer ntx.Rollback()
 
-	_, err = ntx.Store(tableConfigStoreName)
+	_, err = ntx.GetStore(tableConfigStoreName)
 	if err == engine.ErrStoreNotFound {
 		err = ntx.CreateStore(tableConfigStoreName)
 	}
@@ -34,7 +34,7 @@ func New(ng engine.Engine) (*Database, error) {
 		return nil, err
 	}
 
-	_, err = ntx.Store(indexStoreName)
+	_, err = ntx.GetStore(indexStoreName)
 	if err == engine.ErrStoreNotFound {
 		err = ntx.CreateStore(indexStoreName)
 	}

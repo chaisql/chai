@@ -3,7 +3,9 @@ module github.com/asdine/genji/engine/badgerengine
 go 1.13
 
 require (
-	github.com/asdine/genji v0.4.0
+	github.com/asdine/genji v0.5.0
 	github.com/dgraph-io/badger/v2 v2.0.0
 	github.com/stretchr/testify v1.4.0
 )
+
+replace github.com/asdine/genji v0.5.0 => ../../

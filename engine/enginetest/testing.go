@@ -141,7 +141,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		defer tx.Rollback()
 
 		// fetch the store and the index
-		st, err := tx.Store("store1")
+		st, err := tx.GetStore("store1")
 		require.NoError(t, err)
 
 		tests := []struct {
@@ -178,7 +178,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				"CreateStore",
 				nil,
 				func(tx engine.Transaction, err *error) { *err = tx.CreateStore("store") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Store("store") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.GetStore("store") },
 			},
 			{
 				"DropStore",
@@ -190,12 +190,12 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				"StorePut",
 				func(tx engine.Transaction) error { return tx.CreateStore("store") },
 				func(tx engine.Transaction, err *error) {
-					st, er := tx.Store("store")
+					st, er := tx.GetStore("store")
 					require.NoError(t, er)
 					require.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
 				},
 				func(tx engine.Transaction, err *error) {
-					st, er := tx.Store("store")
+					st, er := tx.GetStore("store")
 					require.NoError(t, er)
 					_, *err = st.Get([]byte("foo"))
 				},
@@ -286,7 +286,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			{
 				"CreateStore",
 				func(tx engine.Transaction, err *error) { *err = tx.CreateStore("store") },
-				func(tx engine.Transaction, err *error) { _, *err = tx.Store("store") },
+				func(tx engine.Transaction, err *error) { _, *err = tx.GetStore("store") },
 			},
 		}
 
@@ -322,7 +322,7 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 		err = tx.CreateStore("store")
 		require.NoError(t, err)
 
-		st, err := tx.Store("store")
+		st, err := tx.GetStore("store")
 		require.NoError(t, err)
 		require.NotNil(t, st)
 	})
@@ -352,7 +352,7 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		_, err = tx.Store("store")
+		_, err = tx.GetStore("store")
 		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 
@@ -372,11 +372,11 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// fetch first store
-		sta, err := tx.Store("storea")
+		sta, err := tx.GetStore("storea")
 		require.NoError(t, err)
 
 		// fetch second store
-		stb, err := tx.Store("storeb")
+		stb, err := tx.GetStore("storeb")
 		require.NoError(t, err)
 
 		// insert data in first store
@@ -410,7 +410,7 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		err = tx.DropStore("store")
 		require.NoError(t, err)
 
-		_, err = tx.Store("store")
+		_, err = tx.GetStore("store")
 		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 
@@ -482,7 +482,7 @@ func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
 	require.NoError(t, err)
 	err = tx.CreateStore("test")
 	require.NoError(t, err)
-	st, err := tx.Store("test")
+	st, err := tx.GetStore("test")
 	require.NoError(t, err)
 	return st, func() {
 		tx.Rollback()

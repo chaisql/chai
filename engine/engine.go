@@ -46,7 +46,7 @@ type Transaction interface {
 	// If the transaction was already rolled back or commited, an error is returned.
 	Commit() error
 	// Fetch a store by name. If the store doesn't exist, it returns the ErrStoreNotFound error.
-	Store(name string) (Store, error)
+	GetStore(name string) (Store, error)
 	// Create a store with the given name. If the store already exists, it returns ErrStoreAlreadyExists.
 	CreateStore(name string) error
 	// Drop a store by name. If the store doesn't exist, it returns ErrStoreNotFound.

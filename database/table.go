@@ -373,7 +373,7 @@ func (t *Table) TableName() string {
 
 // Indexes returns a map of all the indexes of a table.
 func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.Tx.Store(indexStoreName)
+	s, err := t.tx.Tx.GetStore(indexStoreName)
 	if err != nil {
 		return nil, err
 	}

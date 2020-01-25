@@ -94,8 +94,8 @@ func buildStorePrefixKey(name string) []byte {
 	return prefix
 }
 
-// Store returns a store by name.
-func (t *Transaction) Store(name string) (engine.Store, error) {
+// GetStore returns a store by name.
+func (t *Transaction) GetStore(name string) (engine.Store, error) {
 	key := buildStoreKey(name)
 
 	_, err := t.tx.Get(key)
@@ -142,7 +142,7 @@ func (t *Transaction) DropStore(name string) error {
 		return engine.ErrTransactionReadOnly
 	}
 
-	s, err := t.Store(name)
+	s, err := t.GetStore(name)
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ func TestTableConfigStore(t *testing.T) {
 
 	err = tx.CreateStore("foo")
 	require.NoError(t, err)
-	st, err := tx.Store("foo")
+	st, err := tx.GetStore("foo")
 	require.NoError(t, err)
 
 	tcs := tableConfigStore{st}

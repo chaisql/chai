@@ -100,7 +100,7 @@ func (tx *transaction) Commit() error {
 	return nil
 }
 
-func (tx *transaction) Store(name string) (engine.Store, error) {
+func (tx *transaction) GetStore(name string) (engine.Store, error) {
 	tr, ok := tx.ng.stores[name]
 	if !ok {
 		return nil, engine.ErrStoreNotFound
@@ -127,7 +127,7 @@ func (tx *transaction) CreateStore(name string) error {
 		return engine.ErrTransactionReadOnly
 	}
 
-	_, err := tx.Store(name)
+	_, err := tx.GetStore(name)
 	if err == nil {
 		return engine.ErrStoreAlreadyExists
 	}

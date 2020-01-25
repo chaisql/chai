@@ -89,7 +89,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	s, err := tx.Tx.Store(name)
+	s, err := tx.Tx.GetStore(name)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func (tx Transaction) ReIndexAll() error {
 }
 
 func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {
-	st, err := tx.Tx.Store(tableConfigStoreName)
+	st, err := tx.Tx.GetStore(tableConfigStoreName)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +288,7 @@ func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {
-	st, err := tx.Tx.Store(indexStoreName)
+	st, err := tx.Tx.GetStore(indexStoreName)
 	if err != nil {
 		return nil, err
 	}
