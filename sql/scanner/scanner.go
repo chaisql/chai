@@ -24,7 +24,7 @@ func NewScanner(r io.Reader) *Scanner {
 // Scan returns the next token and position from the underlying reader.
 // Also returns the literal text read for strings, numbers, and duration tokens
 // since these token types can have different literal representations.
-func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
+func (s *Scanner) Scan() TokenInfo {
 	// Read next code point.
 	ch0, pos := s.r.read()
 
@@ -43,7 +43,7 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 	// Otherwise parse individual characters.
 	switch ch0 {
 	case eof:
-		return EOF, pos, ""
+		return TokenInfo{EOF, pos, ""}
 	case '`':
 		s.r.unread()
 		return s.scanIdent(true)
@@ -57,109 +57,109 @@ func (s *Scanner) Scan() (tok Token, pos Pos, lit string) {
 		if isDigit(ch1) {
 			return s.scanNumber()
 		}
-		return DOT, pos, ""
+		return TokenInfo{DOT, pos, ""}
 	case '$':
-		tok, _, lit = s.scanIdent(false)
-		if tok != IDENT {
-			return tok, pos, "$" + lit
+		ti := s.scanIdent(false)
+		if ti.Tok != IDENT {
+			return TokenInfo{ti.Tok, pos, "$" + ti.Lit}
 		}
-		return NAMEDPARAM, pos, "$" + lit
+		return TokenInfo{NAMEDPARAM, pos, "$" + ti.Lit}
 	case '?':
-		return POSITIONALPARAM, pos, ""
+		return TokenInfo{POSITIONALPARAM, pos, ""}
 	case '+':
-		return ADD, pos, ""
+		return TokenInfo{ADD, pos, ""}
 	case '-':
 		ch1, _ := s.r.read()
 		if ch1 == '-' {
 			s.skipUntilNewline()
-			return COMMENT, pos, ""
+			return TokenInfo{COMMENT, pos, ""}
 		}
 		if isDigit(ch1) {
 			s.r.unread()
 			return s.scanNumber()
 		}
 		s.r.unread()
-		return SUB, pos, ""
+		return TokenInfo{SUB, pos, ""}
 	case '*':
-		return MUL, pos, ""
+		return TokenInfo{MUL, pos, ""}
 	case '/':
 		ch1, _ := s.r.read()
 		if ch1 == '*' {
 			if err := s.skipUntilEndComment(); err != nil {
-				return ILLEGAL, pos, ""
+				return TokenInfo{ILLEGAL, pos, ""}
 			}
-			return COMMENT, pos, ""
+			return TokenInfo{COMMENT, pos, ""}
 		}
 		s.r.unread()
-		return DIV, pos, ""
+		return TokenInfo{DIV, pos, ""}
 	case '%':
-		return MOD, pos, ""
+		return TokenInfo{MOD, pos, ""}
 	case '&':
-		return BITWISEAND, pos, ""
+		return TokenInfo{BITWISEAND, pos, ""}
 	case '|':
-		return BITWISEOR, pos, ""
+		return TokenInfo{BITWISEOR, pos, ""}
 	case '^':
-		return BITWISEXOR, pos, ""
+		return TokenInfo{BITWISEXOR, pos, ""}
 	case '=':
 		ch1, _ := s.r.read()
 		if ch1 == '~' {
-			return EQREGEX, pos, ""
+			return TokenInfo{EQREGEX, pos, ""}
 		}
 		if ch1 == '=' {
-			return EQ, pos, ""
+			return TokenInfo{EQ, pos, ""}
 		}
 		s.r.unread()
-		return EQ, pos, ""
+		return TokenInfo{EQ, pos, ""}
 	case '!':
 		if ch1, _ := s.r.read(); ch1 == '=' {
-			return NEQ, pos, ""
+			return TokenInfo{NEQ, pos, ""}
 		} else if ch1 == '~' {
-			return NEQREGEX, pos, ""
+			return TokenInfo{NEQREGEX, pos, ""}
 		}
 		s.r.unread()
 	case '>':
 		if ch1, _ := s.r.read(); ch1 == '=' {
-			return GTE, pos, ""
+			return TokenInfo{GTE, pos, ""}
 		}
 		s.r.unread()
-		return GT, pos, ""
+		return TokenInfo{GT, pos, ""}
 	case '<':
 		if ch1, _ := s.r.read(); ch1 == '=' {
-			return LTE, pos, ""
+			return TokenInfo{LTE, pos, ""}
 		} else if ch1 == '>' {
-			return NEQ, pos, ""
+			return TokenInfo{NEQ, pos, ""}
 		}
 		s.r.unread()
-		return LT, pos, ""
+		return TokenInfo{LT, pos, ""}
 	case '(':
-		return LPAREN, pos, ""
+		return TokenInfo{LPAREN, pos, ""}
 	case ')':
-		return RPAREN, pos, ""
+		return TokenInfo{RPAREN, pos, ""}
 	case '{':
-		return LBRACKET, pos, ""
+		return TokenInfo{LBRACKET, pos, ""}
 	case '}':
-		return RBRACKET, pos, ""
+		return TokenInfo{RBRACKET, pos, ""}
 	case '[':
-		return LSBRACKET, pos, ""
+		return TokenInfo{LSBRACKET, pos, ""}
 	case ']':
-		return RSBRACKET, pos, ""
+		return TokenInfo{RSBRACKET, pos, ""}
 	case ',':
-		return COMMA, pos, ""
+		return TokenInfo{COMMA, pos, ""}
 	case ';':
-		return SEMICOLON, pos, ""
+		return TokenInfo{SEMICOLON, pos, ""}
 	case ':':
 		if ch1, _ := s.r.read(); ch1 == ':' {
-			return DOUBLECOLON, pos, ""
+			return TokenInfo{DOUBLECOLON, pos, ""}
 		}
 		s.r.unread()
-		return COLON, pos, ""
+		return TokenInfo{COLON, pos, ""}
 	}
 
-	return ILLEGAL, pos, string(ch0)
+	return TokenInfo{ILLEGAL, pos, string(ch0)}
 }
 
 // scanWhitespace consumes the current rune and all contiguous whitespace.
-func (s *Scanner) scanWhitespace() (tok Token, pos Pos, lit string) {
+func (s *Scanner) scanWhitespace() TokenInfo {
 	// Create a buffer and read the current character into it.
 	var buf bytes.Buffer
 	ch, pos := s.r.curr()
@@ -179,7 +179,7 @@ func (s *Scanner) scanWhitespace() (tok Token, pos Pos, lit string) {
 		}
 	}
 
-	return WS, pos, buf.String()
+	return TokenInfo{WS, pos, buf.String()}
 }
 
 // skipUntilNewline skips characters until it reaches a newline.
@@ -212,9 +212,9 @@ func (s *Scanner) skipUntilEndComment() error {
 	}
 }
 
-func (s *Scanner) scanIdent(lookup bool) (tok Token, pos Pos, lit string) {
+func (s *Scanner) scanIdent(lookup bool) TokenInfo {
 	// Save the starting position of the identifier.
-	_, pos = s.r.read()
+	_, pos := s.r.read()
 	s.r.unread()
 
 	var buf bytes.Buffer
@@ -222,11 +222,11 @@ func (s *Scanner) scanIdent(lookup bool) (tok Token, pos Pos, lit string) {
 		if ch, _ := s.r.read(); ch == eof {
 			break
 		} else if ch == '`' {
-			tok0, pos0, lit0 := s.scanString()
-			if tok0 == BADSTRING || tok0 == BADESCAPE {
-				return tok0, pos0, lit0
+			ti0 := s.scanString()
+			if ti0.Tok == BADSTRING || ti0.Tok == BADESCAPE {
+				return ti0
 			}
-			return IDENT, pos, lit0
+			return TokenInfo{IDENT, pos, ti0.Lit}
 		} else if isIdentChar(ch) {
 			s.r.unread()
 			buf.WriteString(ScanBareIdent(s.r))
@@ -235,37 +235,36 @@ func (s *Scanner) scanIdent(lookup bool) (tok Token, pos Pos, lit string) {
 			break
 		}
 	}
-	lit = buf.String()
+	lit := buf.String()
 
 	// If the literal matches a keyword then return that keyword.
 	if lookup {
-		if tok = Lookup(lit); tok != IDENT {
-			return tok, pos, ""
+		if tok := Lookup(lit); tok != IDENT {
+			return TokenInfo{tok, pos, ""}
 		}
 	}
-	return IDENT, pos, lit
+	return TokenInfo{IDENT, pos, lit}
 }
 
 // scanString consumes a contiguous string of non-quote characters.
 // Quote characters can be consumed if they're first escaped with a backslash.
-func (s *Scanner) scanString() (tok Token, pos Pos, lit string) {
+func (s *Scanner) scanString() TokenInfo {
 	s.r.unread()
-	_, pos = s.r.curr()
+	_, pos := s.r.curr()
 
-	var err error
-	lit, err = ScanString(s.r)
+	lit, err := ScanString(s.r)
 	if err == errBadString {
-		return BADSTRING, pos, lit
+		return TokenInfo{BADSTRING, pos, lit}
 	} else if err == errBadEscape {
 		_, pos = s.r.curr()
-		return BADESCAPE, pos, lit
+		return TokenInfo{BADESCAPE, pos, lit}
 	}
-	return STRING, pos, lit
+	return TokenInfo{STRING, pos, lit}
 }
 
 // ScanRegex consumes a token to find escapes
-func (s *Scanner) ScanRegex() (tok Token, pos Pos, lit string) {
-	_, pos = s.r.curr()
+func (s *Scanner) ScanRegex() TokenInfo {
+	_, pos := s.r.curr()
 
 	// Start & end sentinels.
 	start, end := '/', '/'
@@ -276,15 +275,15 @@ func (s *Scanner) ScanRegex() (tok Token, pos Pos, lit string) {
 
 	if err == errBadEscape {
 		_, pos = s.r.curr()
-		return BADESCAPE, pos, lit
+		return TokenInfo{BADESCAPE, pos, ""}
 	} else if err != nil {
-		return BADREGEX, pos, lit
+		return TokenInfo{BADREGEX, pos, ""}
 	}
-	return REGEX, pos, string(b)
+	return TokenInfo{REGEX, pos, string(b)}
 }
 
 // scanNumber consumes anything that looks like the start of a number.
-func (s *Scanner) scanNumber() (tok Token, pos Pos, lit string) {
+func (s *Scanner) scanNumber() TokenInfo {
 	var buf bytes.Buffer
 
 	// Check if the initial rune is a ".".
@@ -294,7 +293,7 @@ func (s *Scanner) scanNumber() (tok Token, pos Pos, lit string) {
 		ch1, _ := s.r.read()
 		s.r.unread()
 		if !isDigit(ch1) {
-			return ILLEGAL, pos, "."
+			return TokenInfo{ILLEGAL, pos, "."}
 		}
 
 		// Unread the full stop so we can read it later.
@@ -346,12 +345,12 @@ func (s *Scanner) scanNumber() (tok Token, pos Pos, lit string) {
 					break
 				}
 			}
-			return DURATIONVAL, pos, buf.String()
+			return TokenInfo{DURATIONVAL, pos, buf.String()}
 		}
 		s.r.unread()
-		return INTEGER, pos, buf.String()
+		return TokenInfo{INTEGER, pos, buf.String()}
 	}
-	return NUMBER, pos, buf.String()
+	return TokenInfo{NUMBER, pos, buf.String()}
 }
 
 // scanDigits consumes a contiguous series of digits.
@@ -389,11 +388,7 @@ type BufScanner struct {
 	s   *Scanner
 	i   int // buffer index
 	n   int // buffer size
-	buf [3]struct {
-		tok Token
-		pos Pos
-		lit string
-	}
+	buf [3]TokenInfo
 }
 
 // NewBufScanner returns a new buffered scanner for a reader.
@@ -402,17 +397,17 @@ func NewBufScanner(r io.Reader) *BufScanner {
 }
 
 // Scan reads the next token from the scanner.
-func (s *BufScanner) Scan() (tok Token, pos Pos, lit string) {
+func (s *BufScanner) Scan() TokenInfo {
 	return s.scanFunc(s.s.Scan)
 }
 
 // ScanRegex reads a regex token from the scanner.
-func (s *BufScanner) ScanRegex() (tok Token, pos Pos, lit string) {
+func (s *BufScanner) ScanRegex() TokenInfo {
 	return s.scanFunc(s.s.ScanRegex)
 }
 
 // scanFunc uses the provided function to scan the next token.
-func (s *BufScanner) scanFunc(scan func() (Token, Pos, string)) (tok Token, pos Pos, lit string) {
+func (s *BufScanner) scanFunc(scan func() TokenInfo) TokenInfo {
 	// If we have unread tokens then read them off the buffer first.
 	if s.n > 0 {
 		s.n--
@@ -421,8 +416,7 @@ func (s *BufScanner) scanFunc(scan func() (Token, Pos, string)) (tok Token, pos 
 
 	// Move buffer position forward and save the token.
 	s.i = (s.i + 1) % len(s.buf)
-	buf := &s.buf[s.i]
-	buf.tok, buf.pos, buf.lit = scan()
+	s.buf[s.i] = scan()
 
 	return s.curr()
 }
@@ -431,9 +425,8 @@ func (s *BufScanner) scanFunc(scan func() (Token, Pos, string)) (tok Token, pos 
 func (s *BufScanner) Unscan() { s.n++ }
 
 // curr returns the last read token.
-func (s *BufScanner) curr() (tok Token, pos Pos, lit string) {
-	buf := &s.buf[(s.i-s.n+len(s.buf))%len(s.buf)]
-	return buf.tok, buf.pos, buf.lit
+func (s *BufScanner) curr() TokenInfo {
+	return s.buf[(s.i-s.n+len(s.buf))%len(s.buf)]
 }
 
 // reader represents a buffered rune reader used by the scanner.
@@ -639,4 +632,11 @@ func ScanBareIdent(r io.RuneScanner) string {
 // IsRegexOp returns true if the operator accepts a regex operand.
 func IsRegexOp(t Token) bool {
 	return (t == EQREGEX || t == NEQREGEX)
+}
+
+// TokenInfo holds information about a token.
+type TokenInfo struct {
+	Tok Token
+	Pos Pos
+	Lit string
 }

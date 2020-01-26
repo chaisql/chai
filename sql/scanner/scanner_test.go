@@ -123,15 +123,12 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `10x`, tok: scanner.DURATIONVAL, lit: `10x`}, // non-duration unit, but scanned as a duration value
 
 		// Keywords
-		{s: `ALL`, tok: scanner.ALL},
-		{s: `ALTER`, tok: scanner.ALTER},
 		{s: `AS`, tok: scanner.AS},
 		{s: `ASC`, tok: scanner.ASC},
 		{s: `BY`, tok: scanner.BY},
 		{s: `DELETE`, tok: scanner.DELETE},
 		{s: `DESC`, tok: scanner.DESC},
 		{s: `DROP`, tok: scanner.DROP},
-		{s: `DURATION`, tok: scanner.DURATION},
 		{s: `FROM`, tok: scanner.FROM},
 		{s: `INSERT`, tok: scanner.INSERT},
 		{s: `INTO`, tok: scanner.INTO},
@@ -166,41 +163,36 @@ func TestScanner_Scan(t *testing.T) {
 
 	for i, tt := range tests {
 		s := scanner.NewScanner(strings.NewReader(tt.s))
-		tok, pos, lit := s.Scan()
-		if tt.tok != tok {
-			t.Errorf("%d. %q token mismatch: exp=%q got=%q <%q>", i, tt.s, tt.tok, tok, lit)
-		} else if tt.pos.Line != pos.Line || tt.pos.Char != pos.Char {
-			t.Errorf("%d. %q pos mismatch: exp=%#v got=%#v", i, tt.s, tt.pos, pos)
-		} else if tt.lit != lit {
-			t.Errorf("%d. %q literal mismatch: exp=%q got=%q", i, tt.s, tt.lit, lit)
+		ti := s.Scan()
+		if tt.tok != ti.Tok {
+			t.Errorf("%d. %q token mismatch: exp=%q got=%q <%q>", i, tt.s, tt.tok, ti.Tok, ti.Lit)
+		} else if tt.pos.Line != ti.Pos.Line || tt.pos.Char != ti.Pos.Char {
+			t.Errorf("%d. %q pos mismatch: exp=%#v got=%#v", i, tt.s, tt.pos, ti.Pos)
+		} else if tt.lit != ti.Lit {
+			t.Errorf("%d. %q literal mismatch: exp=%q got=%q", i, tt.s, tt.lit, ti.Lit)
 		}
 	}
 }
 
 // Ensure the scanner can scan a series of tokens correctly.
 func TestScanner_Scan_Multi(t *testing.T) {
-	type result struct {
-		tok scanner.Token
-		pos scanner.Pos
-		lit string
-	}
-	exp := []result{
-		{tok: scanner.SELECT, pos: scanner.Pos{Line: 0, Char: 0}, lit: ""},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 6}, lit: " "},
-		{tok: scanner.IDENT, pos: scanner.Pos{Line: 0, Char: 7}, lit: "value"},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 12}, lit: " "},
-		{tok: scanner.FROM, pos: scanner.Pos{Line: 0, Char: 13}, lit: ""},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 17}, lit: " "},
-		{tok: scanner.IDENT, pos: scanner.Pos{Line: 0, Char: 18}, lit: "myseries"},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 26}, lit: " "},
-		{tok: scanner.WHERE, pos: scanner.Pos{Line: 0, Char: 27}, lit: ""},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 32}, lit: " "},
-		{tok: scanner.IDENT, pos: scanner.Pos{Line: 0, Char: 33}, lit: "a"},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 34}, lit: " "},
-		{tok: scanner.EQ, pos: scanner.Pos{Line: 0, Char: 35}, lit: ""},
-		{tok: scanner.WS, pos: scanner.Pos{Line: 0, Char: 36}, lit: " "},
-		{tok: scanner.STRING, pos: scanner.Pos{Line: 0, Char: 36}, lit: "b"},
-		{tok: scanner.EOF, pos: scanner.Pos{Line: 0, Char: 40}, lit: ""},
+	exp := []scanner.TokenInfo{
+		{Tok: scanner.SELECT, Pos: scanner.Pos{Line: 0, Char: 0}, Lit: ""},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 6}, Lit: " "},
+		{Tok: scanner.IDENT, Pos: scanner.Pos{Line: 0, Char: 7}, Lit: "value"},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 12}, Lit: " "},
+		{Tok: scanner.FROM, Pos: scanner.Pos{Line: 0, Char: 13}, Lit: ""},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 17}, Lit: " "},
+		{Tok: scanner.IDENT, Pos: scanner.Pos{Line: 0, Char: 18}, Lit: "myseries"},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 26}, Lit: " "},
+		{Tok: scanner.WHERE, Pos: scanner.Pos{Line: 0, Char: 27}, Lit: ""},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 32}, Lit: " "},
+		{Tok: scanner.IDENT, Pos: scanner.Pos{Line: 0, Char: 33}, Lit: "a"},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 34}, Lit: " "},
+		{Tok: scanner.EQ, Pos: scanner.Pos{Line: 0, Char: 35}, Lit: ""},
+		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 36}, Lit: " "},
+		{Tok: scanner.STRING, Pos: scanner.Pos{Line: 0, Char: 36}, Lit: "b"},
+		{Tok: scanner.EOF, Pos: scanner.Pos{Line: 0, Char: 40}, Lit: ""},
 	}
 
 	// Create a scanner.
@@ -208,11 +200,11 @@ func TestScanner_Scan_Multi(t *testing.T) {
 	s := scanner.NewScanner(strings.NewReader(v))
 
 	// Continually scan until we reach the end.
-	var act []result
+	var act []scanner.TokenInfo
 	for {
-		tok, pos, lit := s.Scan()
-		act = append(act, result{tok, pos, lit})
-		if tok == scanner.EOF {
+		ti := s.Scan()
+		act = append(act, ti)
+		if ti.Tok == scanner.EOF {
 			break
 		}
 	}
@@ -285,12 +277,12 @@ func TestScanRegex(t *testing.T) {
 
 	for i, tt := range tests {
 		s := scanner.NewScanner(strings.NewReader(tt.in))
-		tok, _, lit := s.ScanRegex()
-		if tok != tt.tok {
-			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.tok.String(), tok.String())
+		ti := s.ScanRegex()
+		if ti.Tok != tt.tok {
+			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.tok.String(), ti.Tok.String())
 		}
-		if lit != tt.lit {
-			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.lit, lit)
+		if ti.Lit != tt.lit {
+			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.lit, ti.Lit)
 		}
 	}
 }
