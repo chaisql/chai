@@ -97,7 +97,6 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 			return nil, err
 		}
 		fs := query.FieldSelector(field)
-		p.stat.exprFields = append(p.stat.exprFields, fs.Name())
 		return fs, nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
@@ -332,6 +331,7 @@ func (p *Parser) parseFieldRef() ([]string, error) {
 	}
 	fieldRef = append(fieldRef, chunk)
 
+LOOP:
 	for {
 		// scan the very next token.
 		// if can be either a '.' or a number starting with '.'
@@ -357,9 +357,11 @@ func (p *Parser) parseFieldRef() ([]string, error) {
 			fieldRef = append(fieldRef, lit)
 		default:
 			p.Unscan()
-			return fieldRef, nil
+			break LOOP
 		}
 	}
+
+	return fieldRef, nil
 }
 
 func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (query.LiteralExprList, error) {

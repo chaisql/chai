@@ -4,8 +4,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -170,83 +168,26 @@ type ResultField interface {
 	Name() string
 }
 
-// A FieldSelector is a ResultField that extracts a field from a document at a given path.
-type FieldSelector []string
+// ResultFieldExpr turns any expression into a ResultField.
+type ResultFieldExpr struct {
+	Expr
 
-// Name joins the chunks of the path of the field selector using the dot separator.
-func (f FieldSelector) Name() string {
-	return strings.Join(f, ".")
+	ExprName string
 }
 
-func (f FieldSelector) selectField(d document.Document) (string, document.Value, error) {
-	if d == nil {
-		return f.Name(), nilLitteral, document.ErrFieldNotFound
-	}
-
-	var v document.Value
-	var a document.Array
-	var err error
-
-	for i, chunk := range f {
-		if d != nil {
-			v, err = d.GetByField(chunk)
-		} else {
-			idx, err := strconv.Atoi(chunk)
-			if err != nil {
-				return f.Name(), nilLitteral, document.ErrFieldNotFound
-			}
-			v, err = a.GetByIndex(idx)
-		}
-		if err != nil {
-			return f.Name(), nilLitteral, err
-		}
-
-		if i+1 == len(f) {
-			break
-		}
-
-		d = nil
-		a = nil
-
-		switch v.Type {
-		case document.DocumentValue:
-			d, err = v.ConvertToDocument()
-		case document.ArrayValue:
-			a, err = v.ConvertToArray()
-		default:
-			return f.Name(), nilLitteral, document.ErrFieldNotFound
-		}
-		if err != nil {
-			return f.Name(), nilLitteral, err
-		}
-	}
-
-	return f.Name(), v, nil
+// Name returns the raw expression.
+func (r ResultFieldExpr) Name() string {
+	return r.ExprName
 }
 
-// Iterate select the field from the document and calls fn once with this field.
-func (f FieldSelector) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
-	fd, v, err := f.selectField(stack.Document)
+// Iterate evaluates Expr and calls fn once with the result.
+func (r ResultFieldExpr) Iterate(stack EvalStack, fn func(field string, value document.Value) error) error {
+	v, err := r.Expr.Eval(stack)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
 
-	return fn(fd, v)
-}
-
-// Eval extracts the document from the context and selects the right field.
-// It implements the Expr interface.
-func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
-	if stack.Document == nil {
-		return nilLitteral, document.ErrFieldNotFound
-	}
-
-	_, v, err := f.selectField(stack.Document)
-	if err != nil {
-		return nilLitteral, document.ErrFieldNotFound
-	}
-
-	return v, nil
+	return fn(r.ExprName, v)
 }
 
 // A Wildcard is a ResultField that iterates over all the fields of a document.

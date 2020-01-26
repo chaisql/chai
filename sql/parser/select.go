@@ -83,7 +83,7 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	p.Unscan()
 
 	// Check if it's the key() function
-	tok, pos, lit := p.ScanIgnoreWhitespace()
+	tok, _, _ := p.ScanIgnoreWhitespace()
 	if tok == scanner.KEY {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.LPAREN {
 			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
@@ -95,12 +95,12 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 	p.Unscan()
 
-	field, err := p.parseFieldRef()
+	e, err := p.parseExpr()
 	if err != nil {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"field path"}, pos)
+		return nil, err
 	}
 
-	return query.FieldSelector(field), nil
+	return query.ResultFieldExpr{Expr: e}, nil
 }
 
 func (p *Parser) parseFrom() (string, error) {

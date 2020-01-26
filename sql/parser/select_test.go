@@ -22,12 +22,12 @@ func TestParserSelect(t *testing.T) {
 			}, false},
 		{"WithFields", "SELECT a, b FROM test",
 			query.SelectStmt{
-				Selectors: []query.ResultField{query.FieldSelector([]string{"a"}), query.FieldSelector([]string{"b"})},
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"})}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"})}},
 				TableName: "test",
 			}, false},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
 			query.SelectStmt{
-				Selectors: []query.ResultField{query.FieldSelector([]string{"a"}), query.FieldSelector([]string{"b"}), query.Wildcard{}},
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"})}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"})}, query.Wildcard{}},
 				TableName: "test",
 			}, false},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",

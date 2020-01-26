@@ -15,7 +15,6 @@ type Parser struct {
 	s             *scanner.BufScanner
 	orderedParams int
 	namedParams   int
-	stat          parserStat
 }
 
 // NewParser returns a new instance of Parser.
@@ -148,12 +147,6 @@ func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 
 // Unscan pushes the previously read token back onto the buffer.
 func (p *Parser) Unscan() { p.s.Unscan() }
-
-// parserStat carries contextual information
-// discovered while parsing queries.
-type parserStat struct {
-	exprFields []string
-}
 
 // ParseError represents an error that occurred during parsing.
 type ParseError struct {
