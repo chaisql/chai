@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -15,6 +16,7 @@ type Parser struct {
 	s             *scanner.BufScanner
 	orderedParams int
 	namedParams   int
+	buf           *bytes.Buffer
 }
 
 // NewParser returns a new instance of Parser.
@@ -82,7 +84,7 @@ func (p *Parser) parseCondition() (query.Expr, error) {
 	}
 
 	// Scan the identifier for the source.
-	expr, err := p.parseExpr()
+	expr, _, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +134,15 @@ func (p *Parser) parsePathList() ([]document.ValuePath, error) {
 }
 
 // Scan returns the next token from the underlying scanner.
-func (p *Parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
+func (p *Parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) {
+	ti := p.s.Scan()
+	if p.buf != nil {
+		p.buf.WriteString(ti.Raw)
+	}
+
+	tok, pos, lit = ti.Tok, ti.Pos, ti.Lit
+	return
+}
 
 // ScanIgnoreWhitespace scans the next non-whitespace and non-comment token.
 func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit string) {
@@ -146,7 +156,13 @@ func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 }
 
 // Unscan pushes the previously read token back onto the buffer.
-func (p *Parser) Unscan() { p.s.Unscan() }
+func (p *Parser) Unscan() {
+	if p.buf != nil {
+		ti := p.s.Curr()
+		p.buf.Truncate(p.buf.Len() - len(ti.Raw))
+	}
+	p.s.Unscan()
+}
 
 // ParseError represents an error that occurred during parsing.
 type ParseError struct {

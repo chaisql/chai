@@ -64,7 +64,7 @@ func (p *Parser) parseSetClause() (map[string]query.Expr, error) {
 		}
 
 		// Scan the expr for the value.
-		expr, err := p.parseExpr()
+		expr, _, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}

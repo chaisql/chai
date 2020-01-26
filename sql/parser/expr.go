@@ -1,9 +1,11 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
@@ -19,7 +21,14 @@ type operator interface {
 }
 
 // parseExpr parses an expression.
-func (p *Parser) parseExpr() (query.Expr, error) {
+func (p *Parser) parseExpr() (query.Expr, string, error) {
+	// enable the expression buffer to store the literal representation
+	// of the parsed expression
+	if p.buf == nil {
+		p.buf = new(bytes.Buffer)
+		defer func() { p.buf = nil }()
+	}
+
 	var err error
 	// Dummy root node.
 	var root operator = &query.CmpOp{}
@@ -28,7 +37,7 @@ func (p *Parser) parseExpr() (query.Expr, error) {
 	// This variable will always be the root of the expression tree.
 	e, err := p.parseUnaryExpr()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	root.SetRightHandExpr(e)
 
@@ -38,13 +47,13 @@ func (p *Parser) parseExpr() (query.Expr, error) {
 		op, _, _ := p.ScanIgnoreWhitespace()
 		if !op.IsOperator() {
 			p.Unscan()
-			return root.RightHand(), nil
+			return root.RightHand(), strings.TrimSpace(p.buf.String()), nil
 		}
 
 		var rhs query.Expr
 
 		if rhs, err = p.parseUnaryExpr(); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
 		// Find the right spot in the tree to add the new expression by
@@ -310,7 +319,7 @@ func (p *Parser) parseKV() (query.KVPair, error) {
 		return query.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
 	}
 
-	expr, err := p.parseExpr()
+	expr, _, err := p.parseExpr()
 	if err != nil {
 		return query.KVPair{}, err
 	}
@@ -376,7 +385,7 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (query.Liter
 
 	// Parse expressions.
 	for {
-		if expr, err = p.parseExpr(); err != nil {
+		if expr, _, err = p.parseExpr(); err != nil {
 			p.Unscan()
 			break
 		}

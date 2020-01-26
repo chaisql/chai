@@ -22,12 +22,17 @@ func TestParserSelect(t *testing.T) {
 			}, false},
 		{"WithFields", "SELECT a, b FROM test",
 			query.SelectStmt{
-				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"})}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"})}},
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"}), ExprName: "a"}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"}), ExprName: "b"}},
 				TableName: "test",
 			}, false},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
 			query.SelectStmt{
-				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"})}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"})}, query.Wildcard{}},
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"}), ExprName: "a"}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"}), ExprName: "b"}, query.Wildcard{}},
+				TableName: "test",
+			}, false},
+		{"WithExpr", "SELECT a    > 1 FROM test",
+			query.SelectStmt{
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.Gt(query.FieldSelector([]string{"a"}), query.Int8Value(1)), ExprName: "a    > 1"}},
 				TableName: "test",
 			}, false},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",

@@ -95,12 +95,12 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 	p.Unscan()
 
-	e, err := p.parseExpr()
+	e, lit, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
 
-	return query.ResultFieldExpr{Expr: e}, nil
+	return query.ResultFieldExpr{Expr: e, ExprName: lit}, nil
 }
 
 func (p *Parser) parseFrom() (string, error) {
@@ -146,7 +146,8 @@ func (p *Parser) parseLimit() (query.Expr, error) {
 		return nil, nil
 	}
 
-	return p.parseExpr()
+	e, _, err := p.parseExpr()
+	return e, err
 }
 
 func (p *Parser) parseOffset() (query.Expr, error) {
@@ -156,5 +157,6 @@ func (p *Parser) parseOffset() (query.Expr, error) {
 		return nil, nil
 	}
 
-	return p.parseExpr()
+	e, _, err := p.parseExpr()
+	return e, err
 }
