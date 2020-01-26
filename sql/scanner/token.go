@@ -71,8 +71,6 @@ const (
 
 	keywordBeg
 	// ALL and the following are Genji SQL Keywords
-	ALL
-	ALTER
 	AS
 	ASC
 	BY
@@ -80,13 +78,10 @@ const (
 	DELETE
 	DESC
 	DROP
-	DURATION
 	EXISTS
 	FROM
 	IF
-	IN
 	INDEX
-	INF
 	INSERT
 	INTO
 	KEY
@@ -103,7 +98,6 @@ const (
 	UNIQUE
 	UPDATE
 	VALUES
-	WITH
 	WHERE
 
 	TYPEBYTES
@@ -176,39 +170,34 @@ var tokens = [...]string{
 	SEMICOLON:   ";",
 	DOT:         ".",
 
-	ALL:      "ALL",
-	ALTER:    "ALTER",
-	AS:       "AS",
-	ASC:      "ASC",
-	BY:       "BY",
-	CREATE:   "CREATE",
-	DELETE:   "DELETE",
-	DESC:     "DESC",
-	DROP:     "DROP",
-	DURATION: "DURATION",
-	EXISTS:   "EXISTS",
-	KEY:      "KEY",
-	FROM:     "FROM",
-	IF:       "IF",
-	IN:       "IN",
-	INDEX:    "INDEX",
-	INSERT:   "INSERT",
-	INTO:     "INTO",
-	LIMIT:    "LIMIT",
-	NOT:      "NOT",
-	OFFSET:   "OFFSET",
-	ON:       "ON",
-	ORDER:    "ORDER",
-	PRIMARY:  "PRIMARY",
-	SELECT:   "SELECT",
-	SET:      "SET",
-	TABLE:    "TABLE",
-	TO:       "TO",
-	UNIQUE:   "UNIQUE",
-	UPDATE:   "UPDATE",
-	VALUES:   "VALUES",
-	WITH:     "WITH",
-	WHERE:    "WHERE",
+	AS:      "AS",
+	ASC:     "ASC",
+	BY:      "BY",
+	CREATE:  "CREATE",
+	DELETE:  "DELETE",
+	DESC:    "DESC",
+	DROP:    "DROP",
+	EXISTS:  "EXISTS",
+	KEY:     "KEY",
+	FROM:    "FROM",
+	IF:      "IF",
+	INDEX:   "INDEX",
+	INSERT:  "INSERT",
+	INTO:    "INTO",
+	LIMIT:   "LIMIT",
+	NOT:     "NOT",
+	OFFSET:  "OFFSET",
+	ON:      "ON",
+	ORDER:   "ORDER",
+	PRIMARY: "PRIMARY",
+	SELECT:  "SELECT",
+	SET:     "SET",
+	TABLE:   "TABLE",
+	TO:      "TO",
+	UNIQUE:  "UNIQUE",
+	UPDATE:  "UPDATE",
+	VALUES:  "VALUES",
+	WHERE:   "WHERE",
 
 	TYPEBYTES:   "BYTES",
 	TYPESTRING:  "STRING",
