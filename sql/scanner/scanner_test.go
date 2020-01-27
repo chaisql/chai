@@ -127,6 +127,8 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `AS`, tok: scanner.AS, raw: `AS`},
 		{s: `ASC`, tok: scanner.ASC, raw: `ASC`},
 		{s: `BY`, tok: scanner.BY, raw: `BY`},
+		{s: `CAST`, tok: scanner.CAST, raw: `CAST`},
+		{s: `CREATE`, tok: scanner.CREATE, raw: `CREATE`},
 		{s: `DELETE`, tok: scanner.DELETE, raw: `DELETE`},
 		{s: `DESC`, tok: scanner.DESC, raw: `DESC`},
 		{s: `DROP`, tok: scanner.DROP, raw: `DROP`},

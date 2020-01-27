@@ -74,6 +74,7 @@ const (
 	AS
 	ASC
 	BY
+	CAST
 	CREATE
 	DELETE
 	DESC
@@ -174,6 +175,7 @@ var tokens = [...]string{
 	ASC:     "ASC",
 	BY:      "BY",
 	CREATE:  "CREATE",
+	CAST:    "CAST",
 	DELETE:  "DELETE",
 	DESC:    "DESC",
 	DROP:    "DROP",
