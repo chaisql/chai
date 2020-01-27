@@ -25,6 +25,11 @@ func TestParserSelect(t *testing.T) {
 				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"}), ExprName: "a"}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"}), ExprName: "b"}},
 				TableName: "test",
 			}, false},
+		{"WithAlias", "SELECT a AS A, b FROM test",
+			query.SelectStmt{
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"}), ExprName: "A"}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"}), ExprName: "b"}},
+				TableName: "test",
+			}, false},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
 			query.SelectStmt{
 				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.FieldSelector([]string{"a"}), ExprName: "a"}, query.ResultFieldExpr{Expr: query.FieldSelector([]string{"b"}), ExprName: "b"}, query.Wildcard{}},

@@ -87,7 +87,20 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 		return nil, err
 	}
 
-	return query.ResultFieldExpr{Expr: e, ExprName: lit}, nil
+	rf := query.ResultFieldExpr{Expr: e, ExprName: lit}
+
+	// Check if the AS token exists.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
+		rf.ExprName, err = p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+
+		return rf, nil
+	}
+	p.Unscan()
+
+	return rf, nil
 }
 
 func (p *Parser) parseFrom() (string, error) {
