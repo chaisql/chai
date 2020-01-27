@@ -143,9 +143,9 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
-			// The literal may be too large to fit into an int64. If it is, use an unsigned integer.
-			if v, err := strconv.ParseUint(lit, 10, 64); err == nil {
-				return query.Uint64Value(v), nil
+			// The literal may be too large to fit into an int64, parse as Float64
+			if v, err := strconv.ParseFloat(lit, 64); err == nil {
+				return query.Float64Value(v), nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}

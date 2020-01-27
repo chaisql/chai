@@ -25,9 +25,9 @@ func TestParserExpr(t *testing.T) {
 		{"-int32", "-10000000", query.Int32Value(-10000000), false},
 		{"+int64", "10000000000", query.Int64Value(10000000000), false},
 		{"-int64", "-10000000000", query.Int64Value(-10000000000), false},
-		{"uint64", "10000000000000000000", query.Uint64Value(10000000000000000000), false},
-		{"negative uint64", "-10000000000000000000", nil, true},
-		{"int too large", "100000000000000000000000000000000000000000000000", nil, true},
+		{"> max int64 -> float64", "10000000000000000000", query.Float64Value(10000000000000000000), false},
+		{"< min int64 -> float64", "-10000000000000000000", query.Float64Value(-10000000000000000000), false},
+		{"very large int", "100000000000000000000000000000000000000000000000", query.Float64Value(100000000000000000000000000000000000000000000000), false},
 
 		// floats
 		{"+float64", "10.0", query.Float64Value(10), false},
