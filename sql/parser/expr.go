@@ -99,6 +99,9 @@ func opToExpr(op scanner.Token, lhs, rhs query.Expr) query.Expr {
 func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
+	case scanner.CAST:
+		p.Unscan()
+		return p.parseCastExpression()
 	case scanner.IDENT:
 		// if the next token is a left parenthesis, this is a function
 		if tok1, _, _ := p.Scan(); tok1 == scanner.LPAREN {
@@ -450,4 +453,41 @@ func (p *Parser) parseFunction() (query.Expr, error) {
 			return query.GetFunc(fname, exprs...)
 		}
 	}
+}
+
+// parseCastExpression parses a string of the form CAST(expr AS type).
+func (p *Parser) parseCastExpression() (query.Expr, error) {
+	// Parse required CAST token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.CAST {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"CAST"}, pos)
+	}
+
+	// Parse required ( token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+	}
+
+	// parse required expression.
+	expr, _, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse required AS token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.AS {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"AS"}, pos)
+	}
+
+	// Parse require typename.
+	tp, err := p.parseType()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return query.Cast{Expr: expr, ConvertTo: tp}, nil
 }

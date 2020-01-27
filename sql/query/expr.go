@@ -474,3 +474,20 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 
 	return encoding.DecodeValue(document.Int64Value, ctx.Document.(document.Keyer).Key())
 }
+
+// Cast represents the CAST expression.
+// It returns the primary key of the current document.
+type Cast struct {
+	Expr      Expr
+	ConvertTo document.ValueType
+}
+
+// Eval returns the primary key of the current document.
+func (c Cast) Eval(ctx EvalStack) (document.Value, error) {
+	v, err := c.Expr.Eval(ctx)
+	if err != nil {
+		return v, err
+	}
+
+	return v.ConvertTo(c.ConvertTo)
+}

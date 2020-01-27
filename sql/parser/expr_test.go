@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
 	"github.com/stretchr/testify/require"
 )
@@ -131,6 +132,7 @@ func TestParserExpr(t *testing.T) {
 			), false},
 		{"with NULL", "age > NULL", query.Gt(query.FieldSelector([]string{"age"}), query.NullValue()), false},
 		{"pk() function", "pk()", &query.PKFunc{}, false},
+		{"CAST", "CAST(a.b.1.0 AS TEXT)", query.Cast{Expr: query.FieldSelector([]string{"a", "b", "1", "0"}), ConvertTo: document.StringValue}, false},
 	}
 
 	for _, test := range tests {
