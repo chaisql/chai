@@ -1,6 +1,8 @@
 package document_test
 
 import (
+	"fmt"
+	"math"
 	"testing"
 
 	"github.com/asdine/genji/document"
@@ -277,6 +279,45 @@ func TestConvertToNumber(t *testing.T) {
 		require.Error(t, err)
 		_, err = document.NewFloat64Value(10.4).ConvertTo(document.Int32Value)
 		require.Error(t, err)
+	})
+
+	t.Run("uints/negative numbers", func(t *testing.T) {
+		_, err := document.NewInt16Value(-10).ConvertToUint()
+		require.Error(t, err)
+		_, err = document.NewInt16Value(-10).ConvertToUint8()
+		require.Error(t, err)
+		_, err = document.NewInt16Value(-10).ConvertToUint16()
+		require.Error(t, err)
+		_, err = document.NewInt16Value(-10).ConvertToUint32()
+		require.Error(t, err)
+		_, err = document.NewInt16Value(-10).ConvertToUint64()
+		require.Error(t, err)
+		_, err = document.NewFloat64Value(-10).ConvertTo(document.Uint32Value)
+		require.Error(t, err)
+	})
+
+	t.Run("ints/overflow", func(t *testing.T) {
+		tests := []struct {
+			from, to document.ValueType
+			x        interface{}
+		}{
+			{document.UintValue, document.IntValue, uint(math.MaxUint64)},
+			{document.Uint8Value, document.Int8Value, uint8(math.MaxUint8)},
+			{document.Uint16Value, document.Int16Value, uint16(math.MaxUint16)},
+			{document.Uint32Value, document.Int32Value, uint32(math.MaxUint32)},
+			{document.Uint64Value, document.Int64Value, uint64(math.MaxUint64)},
+			{document.Float64Value, document.Int64Value, float64(math.MaxFloat64)},
+			{document.Int16Value, document.Int8Value, int16(math.MaxInt16)},
+			{document.Int32Value, document.Int16Value, int32(math.MaxInt32)},
+			{document.Int64Value, document.Int32Value, int64(math.MaxInt64)},
+		}
+
+		for _, test := range tests {
+			t.Run(fmt.Sprintf("%s/%s", test.from, test.to), func(t *testing.T) {
+				_, err := document.Value{Type: test.from, V: test.x}.ConvertTo(test.to)
+				require.Error(t, err)
+			})
+		}
 	})
 }
 

@@ -604,7 +604,7 @@ func (v Value) ConvertToUint() (uint, error) {
 	}
 
 	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
+		x, err := convertNumberToUint64(v)
 		if err != nil {
 			return 0, err
 		}
@@ -634,7 +634,7 @@ func (v Value) ConvertToUint8() (uint8, error) {
 	}
 
 	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
+		x, err := convertNumberToUint64(v)
 		if err != nil {
 			return 0, err
 		}
@@ -664,7 +664,7 @@ func (v Value) ConvertToUint16() (uint16, error) {
 	}
 
 	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
+		x, err := convertNumberToUint64(v)
 		if err != nil {
 			return 0, err
 		}
@@ -694,7 +694,7 @@ func (v Value) ConvertToUint32() (uint32, error) {
 	}
 
 	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
+		x, err := convertNumberToUint64(v)
 		if err != nil {
 			return 0, err
 		}
@@ -724,11 +724,11 @@ func (v Value) ConvertToUint64() (uint64, error) {
 	}
 
 	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
+		x, err := convertNumberToUint64(v)
 		if err != nil {
 			return 0, err
 		}
-		return uint64(x), nil
+		return x, nil
 	}
 
 	if v.Type == BoolValue {
@@ -788,6 +788,9 @@ func (v Value) ConvertToInt8() (int8, error) {
 		if err != nil {
 			return 0, err
 		}
+		if x > math.MaxInt8 {
+			return 0, fmt.Errorf("cannot convert %s to int8 without overflowing", v.Type)
+		}
 		return int8(x), nil
 	}
 
@@ -818,6 +821,9 @@ func (v Value) ConvertToInt16() (int16, error) {
 		if err != nil {
 			return 0, err
 		}
+		if x > math.MaxInt16 {
+			return 0, fmt.Errorf("cannot convert %s to int16 without overflowing", v.Type)
+		}
 		return int16(x), nil
 	}
 
@@ -847,6 +853,9 @@ func (v Value) ConvertToInt32() (int32, error) {
 		x, err := convertNumberToInt64(v)
 		if err != nil {
 			return 0, err
+		}
+		if x > math.MaxInt32 {
+			return 0, fmt.Errorf("cannot convert %s to int32 without overflowing", v.Type)
 		}
 		return int32(x), nil
 	}
@@ -1030,7 +1039,11 @@ func convertNumberToInt64(v Value) (int64, error) {
 
 	switch v.Type {
 	case UintValue:
-		i = int64(v.V.(uint))
+		x := v.V.(uint)
+		if x > math.MaxInt64 {
+			return i, errors.New("cannot convert uint to integer without overflowing")
+		}
+		i = int64(x)
 	case Uint8Value:
 		i = int64(v.V.(uint8))
 	case Uint16Value:
@@ -1038,7 +1051,11 @@ func convertNumberToInt64(v Value) (int64, error) {
 	case Uint32Value:
 		i = int64(v.V.(uint32))
 	case Uint64Value:
-		i = int64(v.V.(uint64))
+		x := v.V.(uint64)
+		if x > math.MaxInt64 {
+			return i, errors.New("cannot convert uint64 to integer without overflowing")
+		}
+		i = int64(x)
 	case IntValue:
 		i = int64(v.V.(int))
 	case Int8Value:
@@ -1051,10 +1068,71 @@ func convertNumberToInt64(v Value) (int64, error) {
 		return v.V.(int64), nil
 	case Float64Value:
 		f := v.V.(float64)
+		if f > math.MaxInt64 {
+			return i, errors.New("cannot convert float64 to integer without overflowing")
+		}
 		if math.Trunc(f) != f {
 			return 0, errors.New("cannot convert float64 value to integer without loss of precision")
 		}
 		i = int64(f)
+	}
+
+	return i, nil
+}
+
+func convertNumberToUint64(v Value) (uint64, error) {
+	var i uint64
+
+	switch v.Type {
+	case UintValue:
+		i = uint64(v.V.(uint))
+	case Uint8Value:
+		i = uint64(v.V.(uint8))
+	case Uint16Value:
+		i = uint64(v.V.(uint16))
+	case Uint32Value:
+		i = uint64(v.V.(uint32))
+	case Uint64Value:
+		i = v.V.(uint64)
+	case IntValue:
+		x := v.V.(int)
+		if x < 0 {
+			return i, errors.New("cannot convert negative int value to unsigned integer without loss")
+		}
+		i = uint64(x)
+	case Int8Value:
+		x := v.V.(int8)
+		if x < 0 {
+			return i, errors.New("cannot convert negative int8 value to unsigned integer without loss")
+		}
+		i = uint64(x)
+	case Int16Value:
+		x := v.V.(int16)
+		if x < 0 {
+			return i, errors.New("cannot convert negative int16 value to unsigned integer without loss")
+		}
+		i = uint64(x)
+	case Int32Value:
+		x := v.V.(int32)
+		if x < 0 {
+			return i, errors.New("cannot convert negative int32 value to unsigned integer without loss")
+		}
+		i = uint64(x)
+	case Int64Value:
+		x := v.V.(int64)
+		if x < 0 {
+			return i, errors.New("cannot convert negative int64 value to unsigned integer without loss")
+		}
+		i = uint64(x)
+	case Float64Value:
+		f := v.V.(float64)
+		if f < 0 {
+			return i, errors.New("cannot convert negative float64 value to unsigned integer without loss")
+		}
+		if math.Trunc(f) != f {
+			return 0, errors.New("cannot convert float64 value to unsigned integer without loss of precision")
+		}
+		i = uint64(f)
 	}
 
 	return i, nil
