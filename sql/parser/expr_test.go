@@ -130,6 +130,7 @@ func TestParserExpr(t *testing.T) {
 				query.Lt(query.FieldSelector([]string{"age"}), query.Float64Value(10.4)),
 			), false},
 		{"with NULL", "age > NULL", query.Gt(query.FieldSelector([]string{"age"}), query.NullValue()), false},
+		{"pk() function", "pk()", &query.PKFunc{}, false},
 	}
 
 	for _, test := range tests {

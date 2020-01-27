@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -201,30 +200,4 @@ func (w Wildcard) Name() string {
 // Iterate call the document iterate method.
 func (w Wildcard) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
 	return stack.Document.Iterate(fn)
-}
-
-// KeyFunc is a function that returns the primary key corresponding to the current document.
-type KeyFunc struct{}
-
-// Name returns "key()".
-func (k KeyFunc) Name() string {
-	return "key()"
-}
-
-// Iterate identifies the primary key for the document and calls fn with it.
-func (k KeyFunc) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
-	if len(stack.Cfg.PrimaryKey.Path) != 0 {
-		v, err := stack.Cfg.PrimaryKey.Path.GetValue(stack.Document)
-		if err != nil {
-			return err
-		}
-		return fn(stack.Cfg.PrimaryKey.Path.String(), v)
-	}
-
-	v, err := encoding.DecodeValue(document.Int64Value, stack.Document.(document.Keyer).Key())
-	if err != nil {
-		return err
-	}
-
-	return fn(k.Name(), v)
 }

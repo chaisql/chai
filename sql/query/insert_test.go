@@ -21,20 +21,20 @@ func TestInsertStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`, true, ``, nil},
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, false, `{"key()":1,"a":"a","b":"b","c":"c"}`, nil},
+		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, false, `{"pk()":1,"a":"a","b":"b","c":"c"}`, nil},
 		{"Values / Ident", `INSERT INTO test (a) VALUES (a)`, true, ``, nil},
 		{"Values / Ident string", "INSERT INTO test (a) VALUES (`a`)", true, ``, nil},
-		{"Values / With fields ident string", "INSERT INTO test (a, `foo bar`) VALUES ('c', 'd')", false, `{"key()":1,"a":"c","foo bar":"d"}`, nil},
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `{"key()":1,"a":"d","b":"e","c":"f"}`, []interface{}{"d", "f"}},
-		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `{"key()":1,"a":"d","b":"e","c":"f"}`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
+		{"Values / With fields ident string", "INSERT INTO test (a, `foo bar`) VALUES ('c', 'd')", false, `{"pk()":1,"a":"c","foo bar":"d"}`, nil},
+		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `{"pk()":1,"a":"d","b":"e","c":"f"}`, []interface{}{"d", "f"}},
+		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `{"pk()":1,"a":"d","b":"e","c":"f"}`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
-		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', (1, 2, 3))`, false, `{"key()":1,"a":"a","b":"b","c":[1,2,3]}`, nil},
-		{"Documents", "INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1}", false, `{"key()":1,"a":"a","b":2.3,"c":true}`, nil},
-		{"Documents / Positional Params", "INSERT INTO test VALUES {a: ?, b: 2.3, c: ?}", false, `{"key()":1,"a":"a","b":2.3,"c":true}`, []interface{}{"a", true}},
-		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `{"key()":1,"a":1,"b":2.3,"c":true}`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Documents / List ", "INSERT INTO test VALUES {a: (1, 2, 3)}", false, `{"key()":1,"a":[1,2,3]}`, nil},
-		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, false, `{"key()":1,"a":"a","b":2.3}`, nil},
-		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, `{"key()":1,"a":"b"}`, nil},
+		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', (1, 2, 3))`, false, `{"pk()":1,"a":"a","b":"b","c":[1,2,3]}`, nil},
+		{"Documents", "INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1}", false, `{"pk()":1,"a":"a","b":2.3,"c":true}`, nil},
+		{"Documents / Positional Params", "INSERT INTO test VALUES {a: ?, b: 2.3, c: ?}", false, `{"pk()":1,"a":"a","b":2.3,"c":true}`, []interface{}{"a", true}},
+		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `{"pk()":1,"a":1,"b":2.3,"c":true}`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
+		{"Documents / List ", "INSERT INTO test VALUES {a: (1, 2, 3)}", false, `{"pk()":1,"a":[1,2,3]}`, nil},
+		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, false, `{"pk()":1,"a":"a","b":2.3}`, nil},
+		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, `{"pk()":1,"a":"b"}`, nil},
 	}
 
 	for _, test := range tests {
@@ -61,7 +61,7 @@ func TestInsertStmt(t *testing.T) {
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query("SELECT key(), * FROM test")
+				st, err := db.Query("SELECT pk(), * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 
@@ -101,7 +101,7 @@ func TestInsertStmt(t *testing.T) {
 		err = db.Exec("CREATE TABLE test")
 		require.NoError(t, err)
 
-		err = db.Exec("INSERT INTO test (`key()`, `key`) VALUES (1, 2)")
+		err = db.Exec("INSERT INTO test (`pk()`, `key`) VALUES (1, 2)")
 		require.NoError(t, err)
 	})
 

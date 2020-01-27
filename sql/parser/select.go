@@ -82,19 +82,6 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 	p.Unscan()
 
-	// Check if it's the key() function
-	tok, _, _ := p.ScanIgnoreWhitespace()
-	if tok == scanner.KEY {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.LPAREN {
-			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-				return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
-			}
-
-			return query.KeyFunc{}, nil
-		}
-	}
-	p.Unscan()
-
 	e, lit, err := p.parseExpr()
 	if err != nil {
 		return nil, err

@@ -8,6 +8,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -440,4 +441,36 @@ func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return document.NewDocumentValue(&fb), nil
+}
+
+var functions = map[string]func(args ...Expr) (Expr, error){
+	"pk": func(args ...Expr) (Expr, error) {
+		if len(args) != 0 {
+			return nil, fmt.Errorf("pk() takes no arguments")
+		}
+		return new(PKFunc), nil
+	},
+}
+
+// GetFunc return a function expression by name.
+func GetFunc(name string, args ...Expr) (Expr, error) {
+	fn, ok := functions[name]
+	if !ok {
+		return nil, fmt.Errorf("no such function: %q", name)
+	}
+
+	return fn(args...)
+}
+
+// PKFunc represents the pk() function.
+// It returns the primary key of the current document.
+type PKFunc struct{}
+
+// Eval returns the primary key of the current document.
+func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if len(ctx.Cfg.PrimaryKey.Path) != 0 {
+		return ctx.Cfg.PrimaryKey.Path.GetValue(ctx.Document)
+	}
+
+	return encoding.DecodeValue(document.Int64Value, ctx.Document.(document.Keyer).Key())
 }

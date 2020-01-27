@@ -100,6 +100,13 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.IDENT:
+		// if the next token is a left parenthesis, this is a function
+		if tok1, _, _ := p.Scan(); tok1 == scanner.LPAREN {
+			p.Unscan()
+			p.Unscan()
+			return p.parseFunction()
+		}
+		p.Unscan()
 		p.Unscan()
 		field, err := p.parseFieldRef()
 		if err != nil {
@@ -404,4 +411,43 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (query.Liter
 	}
 
 	return exprList, nil
+}
+
+// parseFunction parses a function call.
+// a function is an identifier followed by a parenthesis,
+// an optional coma-separated list of expressions and a closing parenthesis.
+func (p *Parser) parseFunction() (query.Expr, error) {
+	// Parse function name.
+	fname, err := p.parseIdent()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse required ( token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+	}
+
+	// Check if the function is called without arguments.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {
+		return query.GetFunc(fname)
+	}
+	p.Unscan()
+
+	var exprs []query.Expr
+
+	// Parse expressions.
+	for {
+		expr, _, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+
+		exprs = append(exprs, expr)
+
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			return query.GetFunc(fname, exprs...)
+		}
+	}
 }
