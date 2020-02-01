@@ -75,6 +75,34 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 	case qp.scanTable:
 		st = document.NewStream(qo.t)
 	case qp.field.isPrimaryKey:
+		if qp.field.e == nil {
+			st = document.NewStream(pkIterator{
+				tx:               qo.tx,
+				tb:               qo.t,
+				cfg:              qo.cfg,
+				args:             qo.args,
+				op:               qp.field.op,
+				e:                qp.field.e,
+				orderByDirection: qo.orderByDirection,
+			})
+			break
+		}
+
+		var v document.Value
+		v, err = qp.field.e.Eval(EvalStack{
+			Tx:     qo.tx,
+			Params: qo.args,
+		})
+		if err != nil {
+			return
+		}
+
+		v, err := v.ConvertTo(qo.cfg.PrimaryKey.Type)
+		if err != nil {
+			st = document.NewStream(qo.t)
+			break
+		}
+
 		st = document.NewStream(pkIterator{
 			tx:               qo.tx,
 			tb:               qo.t,
@@ -83,6 +111,7 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 			op:               qp.field.op,
 			e:                qp.field.e,
 			orderByDirection: qo.orderByDirection,
+			evalValue:        v,
 		})
 	default:
 		st = document.NewStream(indexIterator{
@@ -375,6 +404,7 @@ type pkIterator struct {
 	op               scanner.Token
 	e                Expr
 	orderByDirection scanner.Token
+	evalValue        document.Value
 }
 
 func (it pkIterator) Iterate(fn func(d document.Document) error) error {
@@ -394,22 +424,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 		return err
 	}
 
-	v, err := it.e.Eval(EvalStack{
-		Tx:     it.tx,
-		Params: it.args,
-	})
-	if err != nil {
-		return err
-	}
-
-	if v.Type.IsNumber() {
-		v, err = v.ConvertTo(it.cfg.PrimaryKey.Type)
-		if err != nil {
-			return err
-		}
-	}
-
-	data, err := encoding.EncodeValue(v)
+	data, err := encoding.EncodeValue(it.evalValue)
 	if err != nil {
 		return err
 	}
