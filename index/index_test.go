@@ -98,7 +98,7 @@ func TestIndexDelete(t *testing.T) {
 		require.NoError(t, idx.Delete(document.NewIntValue(11), []byte("key2")))
 
 		i := 0
-		err := idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+		err := idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int64Value), func(val document.Value, key []byte) error {
 			switch i {
 			case 0:
 				require.Equal(t, document.NewFloat64Value(10), val)

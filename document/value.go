@@ -13,7 +13,6 @@ var (
 	bytesZeroValue    = NewZeroValue(BytesValue)
 	stringZeroValue   = NewZeroValue(StringValue)
 	boolZeroValue     = NewZeroValue(BoolValue)
-	intZeroValue      = NewZeroValue(IntValue)
 	int8ZeroValue     = NewZeroValue(Int8Value)
 	int16ZeroValue    = NewZeroValue(Int16Value)
 	int32ZeroValue    = NewZeroValue(Int32Value)
@@ -30,7 +29,6 @@ const (
 	BytesValue ValueType = iota + 1
 	StringValue
 	BoolValue
-	IntValue
 	Int8Value
 	Int16Value
 	Int32Value
@@ -43,36 +41,6 @@ const (
 	ArrayValue
 )
 
-// NewValueTypeFromGoType returns the Type corresponding to the given Go type.
-func NewValueTypeFromGoType(tp string) ValueType {
-	switch tp {
-	case "[]byte":
-		return BytesValue
-	case "string":
-		return StringValue
-	case "bool":
-		return BoolValue
-	case "int":
-		return IntValue
-	case "int8":
-		return Int8Value
-	case "int16":
-		return Int16Value
-	case "int32":
-		return Int32Value
-	case "int64":
-		return Int64Value
-	case "float64":
-		return Float64Value
-	case "nil":
-		return NullValue
-	case "struct":
-		return DocumentValue
-	}
-
-	return 0
-}
-
 func (t ValueType) String() string {
 	switch t {
 	case BytesValue:
@@ -81,8 +49,6 @@ func (t ValueType) String() string {
 		return "String"
 	case BoolValue:
 		return "Bool"
-	case IntValue:
-		return "Int"
 	case Int8Value:
 		return "Int8"
 	case Int16Value:
@@ -111,7 +77,7 @@ func (t ValueType) IsNumber() bool {
 
 // IsInteger returns true if t is a signed or unsigned integer of any size.
 func (t ValueType) IsInteger() bool {
-	return t >= IntValue && t <= Int64Value
+	return t >= Int8Value && t <= Int64Value
 }
 
 // IsFloat returns true if t is either a Float32 or Float64.
@@ -137,13 +103,31 @@ func NewValue(x interface{}) (Value, error) {
 	case int:
 		return NewIntValue(v), nil
 	case int8:
-		return NewInt8Value(v), nil
+		return NewIntValue(int(v)), nil
 	case int16:
-		return NewInt16Value(v), nil
+		return NewIntValue(int(v)), nil
 	case int32:
-		return NewInt32Value(v), nil
+		return NewIntValue(int(v)), nil
 	case int64:
-		return NewInt64Value(v), nil
+		return NewIntValue(int(v)), nil
+	case uint:
+		if v <= math.MaxInt64 {
+			return NewIntValue(int(v)), nil
+		}
+
+		return NewFloat64Value(float64(v)), nil
+	case uint8:
+		return NewIntValue(int(v)), nil
+	case uint16:
+		return NewIntValue(int(v)), nil
+	case uint32:
+		return NewIntValue(int(v)), nil
+	case uint64:
+		if v <= math.MaxInt64 {
+			return NewIntValue(int(v)), nil
+		}
+
+		return NewFloat64Value(float64(v)), nil
 	case float64:
 		return NewFloat64Value(v), nil
 	case nil:
@@ -191,12 +175,10 @@ func NewBoolValue(x bool) Value {
 	}
 }
 
-// NewIntValue encodes x and returns a value.
+// NewIntValue encodes x and returns a value whose type depends on the
+// magnitude of x.
 func NewIntValue(x int) Value {
-	return Value{
-		Type: IntValue,
-		V:    x,
-	}
+	return intToValue(int64(x))
 }
 
 // NewInt8Value encodes x and returns a value.
@@ -262,6 +244,19 @@ func NewArrayValue(a Array) Value {
 	}
 }
 
+func intToValue(x int64) Value {
+	switch {
+	case x <= math.MaxInt8:
+		return NewInt8Value(int8(x))
+	case x <= math.MaxInt16:
+		return NewInt16Value(int16(x))
+	case x <= math.MaxInt32:
+		return NewInt32Value(int32(x))
+	}
+
+	return NewInt64Value(x)
+}
+
 // NewZeroValue returns a value whose value is equal to the Go zero value
 // of the selected type.
 func NewZeroValue(t ValueType) Value {
@@ -272,8 +267,6 @@ func NewZeroValue(t ValueType) Value {
 		return NewStringValue("")
 	case BoolValue:
 		return NewBoolValue(false)
-	case IntValue:
-		return NewIntValue(0)
 	case Int8Value:
 		return NewInt8Value(0)
 	case Int16Value:
@@ -356,41 +349,42 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 			Type: BoolValue,
 			V:    x,
 		}, nil
-	case IntValue:
-		x, err := v.ConvertToInt()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: IntValue,
-			V:    x,
-		}, nil
 	case Int8Value:
-		x, err := v.ConvertToInt8()
+		x, err := v.ConvertToInt64()
 		if err != nil {
 			return Value{}, err
 		}
+		if x > math.MaxInt8 {
+			return Value{}, fmt.Errorf("cannot convert %s to int8: out of range", v.Type)
+		}
+
 		return Value{
 			Type: Int8Value,
-			V:    x,
+			V:    int8(x),
 		}, nil
 	case Int16Value:
-		x, err := v.ConvertToInt16()
+		x, err := v.ConvertToInt64()
 		if err != nil {
 			return Value{}, err
+		}
+		if x > math.MaxInt16 {
+			return Value{}, fmt.Errorf("cannot convert %s to int16: out of range", v.Type)
 		}
 		return Value{
 			Type: Int16Value,
-			V:    x,
+			V:    int16(x),
 		}, nil
 	case Int32Value:
-		x, err := v.ConvertToInt32()
+		x, err := v.ConvertToInt64()
 		if err != nil {
 			return Value{}, err
 		}
+		if x > math.MaxInt32 {
+			return Value{}, fmt.Errorf("cannot convert %s to int32: out of range", v.Type)
+		}
 		return Value{
 			Type: Int32Value,
-			V:    x,
+			V:    int32(x),
 		}, nil
 	case Int64Value:
 		x, err := v.ConvertToInt64()
@@ -455,135 +449,6 @@ func (v Value) ConvertToBool() (bool, error) {
 	}
 
 	return !v.IsZeroValue(), nil
-}
-
-// ConvertToInt turns any number into an int.
-// It doesn't work with other types.
-func (v Value) ConvertToInt() (int, error) {
-	if v.Type == IntValue {
-		return v.V.(int), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
-		if err != nil {
-			return 0, err
-		}
-		return int(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to Int", v.Type)
-}
-
-// ConvertToInt8 turns any number into an int8.
-// It doesn't work with other types.
-func (v Value) ConvertToInt8() (int8, error) {
-	if v.Type == Int8Value {
-		return v.V.(int8), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
-		if err != nil {
-			return 0, err
-		}
-		if x > math.MaxInt8 {
-			return 0, fmt.Errorf("cannot convert %s to int8 without overflowing", v.Type)
-		}
-		return int8(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to Int8", v.Type)
-}
-
-// ConvertToInt16 turns any number into an int16.
-// It doesn't work with other types.
-func (v Value) ConvertToInt16() (int16, error) {
-	if v.Type == Int16Value {
-		return v.V.(int16), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
-		if err != nil {
-			return 0, err
-		}
-		if x > math.MaxInt16 {
-			return 0, fmt.Errorf("cannot convert %s to int16 without overflowing", v.Type)
-		}
-		return int16(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to int16", v.Type)
-}
-
-// ConvertToInt32 turns any number into an int32.
-// It doesn't work with other types.
-func (v Value) ConvertToInt32() (int32, error) {
-	if v.Type == Int32Value {
-		return v.V.(int32), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToInt64(v)
-		if err != nil {
-			return 0, err
-		}
-		if x > math.MaxInt32 {
-			return 0, fmt.Errorf("cannot convert %s to int32 without overflowing", v.Type)
-		}
-		return int32(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to int32", v.Type)
 }
 
 // ConvertToInt64 turns any number into an int64.
@@ -678,8 +543,6 @@ func (v Value) IsZeroValue() bool {
 		return bytes.Compare(v.V.([]byte), bytesZeroValue.V.([]byte)) == 0
 	case BoolValue:
 		return v.V == boolZeroValue.V
-	case IntValue:
-		return v.V == intZeroValue.V
 	case Int8Value:
 		return v.V == int8ZeroValue.V
 	case Int16Value:
@@ -738,8 +601,6 @@ func convertNumberToInt64(v Value) (int64, error) {
 	var i int64
 
 	switch v.Type {
-	case IntValue:
-		i = int64(v.V.(int))
 	case Int8Value:
 		i = int64(v.V.(int8))
 	case Int16Value:

@@ -191,7 +191,7 @@ func TestTableInsert(t *testing.T) {
 		err := tx.CreateTable("test", &database.TableConfig{
 			PrimaryKey: database.FieldConstraint{
 				Path: []string{"foo"},
-				Type: document.IntValue,
+				Type: document.Int32Value,
 			},
 		})
 		require.NoError(t, err)

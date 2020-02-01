@@ -62,14 +62,11 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 			return res, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
 		}
 
-		voff, err := v.ConvertTo(document.IntValue)
+		voff, err := v.ConvertToInt64()
 		if err != nil {
 			return res, err
 		}
-		offset, err = voff.ConvertToInt()
-		if err != nil {
-			return res, err
-		}
+		offset = int(voff)
 	}
 
 	if stmt.LimitExpr != nil {
@@ -82,14 +79,11 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) 
 			return res, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
 		}
 
-		vlim, err := v.ConvertTo(document.IntValue)
+		vlim, err := v.ConvertToInt64()
 		if err != nil {
 			return res, err
 		}
-		limit, err = vlim.ConvertToInt()
-		if err != nil {
-			return res, err
-		}
+		limit = int(vlim)
 	}
 
 	qo, err := newQueryOptimizer(tx, stmt.TableName)

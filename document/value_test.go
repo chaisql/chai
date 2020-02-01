@@ -35,31 +35,32 @@ func TestValueString(t *testing.T) {
 
 func TestNewValue(t *testing.T) {
 	tests := []struct {
-		name  string
-		value interface{}
+		name            string
+		value, expected interface{}
 	}{
-		{"bytes", []byte("bar")},
-		{"string", []byte("bar")},
-		{"bool", true},
-		{"uint", uint(10)},
-		{"uint8", uint8(10)},
-		{"uint16", uint16(10)},
-		{"uint32", uint32(10)},
-		{"uint64", uint64(10)},
-		{"int", int(10)},
-		{"int8", int8(10)},
-		{"int16", int16(10)},
-		{"int32", int32(10)},
-		{"int64", int64(10)},
-		{"float64", 10.1},
-		{"nil", nil},
+		{"bytes", []byte("bar"), []byte("bar")},
+		{"string", "bar", []byte("bar")},
+		{"bool", true, true},
+		{"uint", uint(10), int8(10)},
+		{"uint8", uint8(10), int8(10)},
+		{"uint16", uint16(10), int8(10)},
+		{"uint16 big", uint16(500), int16(500)},
+		{"uint32", uint32(10), int8(10)},
+		{"uint64", uint64(10), int8(10)},
+		{"int", int(10), int8(10)},
+		{"int8", int8(10), int8(10)},
+		{"int16", int16(10), int8(10)},
+		{"int32", int32(10), int8(10)},
+		{"int64", int64(10), int8(10)},
+		{"float64", 10.1, float64(10.1)},
+		{"nil", nil, nil},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v, err := document.NewValue(test.value)
 			require.NoError(t, err)
-			require.Equal(t, test.value, v.V)
+			require.Equal(t, test.expected, v.V)
 		})
 	}
 }
@@ -198,22 +199,6 @@ func TestConvertToNumber(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name+" to int", func(t *testing.T) {
-			res, err := test.v.ConvertToInt()
-			check(t, res, err, test.fails, int(test.expected))
-		})
-		t.Run(test.name+" to int8", func(t *testing.T) {
-			res, err := test.v.ConvertToInt8()
-			check(t, res, err, test.fails, int8(test.expected))
-		})
-		t.Run(test.name+" to int16", func(t *testing.T) {
-			res, err := test.v.ConvertToInt16()
-			check(t, res, err, test.fails, int16(test.expected))
-		})
-		t.Run(test.name+" to int32", func(t *testing.T) {
-			res, err := test.v.ConvertToInt32()
-			check(t, res, err, test.fails, int32(test.expected))
-		})
 		t.Run(test.name+" to int64", func(t *testing.T) {
 			res, err := test.v.ConvertToInt64()
 			check(t, res, err, test.fails, int64(test.expected))
@@ -225,7 +210,7 @@ func TestConvertToNumber(t *testing.T) {
 	}
 
 	t.Run("float64/precision loss", func(t *testing.T) {
-		_, err := document.NewFloat64Value(10.4).ConvertToInt16()
+		_, err := document.NewFloat64Value(10.4).ConvertToInt64()
 		require.Error(t, err)
 		_, err = document.NewFloat64Value(10.4).ConvertTo(document.Int32Value)
 		require.Error(t, err)
@@ -313,22 +298,6 @@ func TestConvertToArray(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
-		})
-	}
-}
-
-func TestTypeFromGoType(t *testing.T) {
-	tests := []struct {
-		goType   string
-		expected document.ValueType
-	}{
-		{"[]byte", document.BytesValue},
-		{"struct", document.DocumentValue},
-	}
-
-	for _, test := range tests {
-		t.Run(test.goType, func(t *testing.T) {
-			require.Equal(t, test.expected, document.NewValueTypeFromGoType(test.goType))
 		})
 	}
 }

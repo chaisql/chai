@@ -108,7 +108,7 @@ func Example() {
 			if err != nil {
 				return false, err
 			}
-			id, err := v.ConvertToInt()
+			id, err := v.ConvertToInt64()
 			return id%2 == 0, err
 		}).
 		// Enrich the documents with a new field

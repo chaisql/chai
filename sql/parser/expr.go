@@ -250,15 +250,9 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		return document.Int16Value, nil
 	case scanner.TYPEINT32:
 		return document.Int32Value, nil
-	case scanner.TYPEINT64:
+	case scanner.TYPEINT64, scanner.TYPEINT, scanner.TYPEINTEGER:
 		return document.Int64Value, nil
-	case scanner.TYPEINT:
-		return document.IntValue, nil
-	case scanner.TYPEFLOAT64:
-		return document.Float64Value, nil
-	case scanner.TYPEINTEGER:
-		return document.IntValue, nil
-	case scanner.TYPENUMERIC:
+	case scanner.TYPEFLOAT64, scanner.TYPENUMERIC:
 		return document.Float64Value, nil
 	case scanner.TYPETEXT:
 		return document.StringValue, nil

@@ -190,29 +190,15 @@ func reflectValueToValue(v reflect.Value) (Value, error) {
 		return NewArrayValue(&sliceArray{ref: v}), nil
 	case reflect.Bool:
 		return NewBoolValue(v.Bool()), nil
-	case reflect.Int8:
-		return NewInt8Value(int8(v.Int())), nil
-	case reflect.Int16:
-		return NewInt16Value(int16(v.Int())), nil
-	case reflect.Int32:
-		return NewInt32Value(int32(v.Int())), nil
-	case reflect.Int64:
-		return NewInt64Value(v.Int()), nil
-	case reflect.Int:
-		return NewIntValue(int(v.Int())), nil
-	case reflect.Uint8:
-		return NewInt16Value(int16(v.Uint())), nil
-	case reflect.Uint16:
-		return NewInt32Value(int32(v.Uint())), nil
-	case reflect.Uint32:
-		return NewInt64Value(int64(v.Uint())), nil
-	case reflect.Uint64, reflect.Uint:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return intToValue(v.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		x := v.Uint()
 		if x > math.MaxInt64 {
 			return Value{}, fmt.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
 		}
 
-		return NewInt64Value(int64(x)), nil
+		return intToValue(int64(x)), nil
 	case reflect.Float32, reflect.Float64:
 		return NewFloat64Value(v.Float()), nil
 	case reflect.Interface:

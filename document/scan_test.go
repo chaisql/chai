@@ -98,14 +98,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
 		require.NoError(t, err)
-		require.Len(t, m, 19)
+		require.Len(t, m, 14)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
 		require.NoError(t, err)
-		require.Len(t, m, 19)
+		require.Len(t, m, 14)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {

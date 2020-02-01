@@ -196,7 +196,7 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int64Value), func(val document.Value, key []byte) error {
 			require.Equal(t, document.NewFloat64Value(float64(i)), val)
 			i++
 			return nil
@@ -208,7 +208,7 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int64Value), func(val document.Value, key []byte) error {
 			i++
 			return nil
 		})
@@ -273,7 +273,7 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int64Value), func(val document.Value, key []byte) error {
 			require.Equal(t, document.NewFloat64Value(float64(i)), val)
 			i++
 			return nil
@@ -285,7 +285,7 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntValue), func(val document.Value, key []byte) error {
+		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int64Value), func(val document.Value, key []byte) error {
 			require.Equal(t, document.NewFloat64Value(float64(i)), val)
 			i++
 			return nil
