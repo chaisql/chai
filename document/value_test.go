@@ -15,7 +15,7 @@ func TestValueString(t *testing.T) {
 		value    document.Value
 		expected string
 	}{
-		{"bytes", document.NewBytesValue([]byte("bar")), "[98 97 114]"},
+		{"bytes", document.NewBlobValue([]byte("bar")), "[98 97 114]"},
 		{"string", document.NewTextValue("bar"), "bar"},
 		{"bool", document.NewBoolValue(true), "true"},
 		{"int", document.NewIntValue(10), "10"},
@@ -65,14 +65,14 @@ func TestNewValue(t *testing.T) {
 	}
 }
 
-func TestConvertToBytes(t *testing.T) {
+func TestConvertToBlob(t *testing.T) {
 	tests := []struct {
 		name     string
 		v        document.Value
 		fails    bool
 		expected []byte
 	}{
-		{"bytes", document.NewBytesValue([]byte("bar")), false, []byte("bar")},
+		{"bytes", document.NewBlobValue([]byte("bar")), false, []byte("bar")},
 		{"string", document.NewTextValue("bar"), false, []byte("bar")},
 		{"null", document.NewNullValue(), false, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
@@ -86,7 +86,7 @@ func TestConvertToBytes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.ConvertToBytes()
+			res, err := test.v.ConvertToBlob()
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -104,7 +104,7 @@ func TestConvertToText(t *testing.T) {
 		fails    bool
 		expected string
 	}{
-		{"bytes", document.NewBytesValue([]byte("bar")), false, "bar"},
+		{"bytes", document.NewBlobValue([]byte("bar")), false, "bar"},
 		{"string", document.NewTextValue("bar"), false, "bar"},
 		{"null", document.NewNullValue(), false, ""},
 		{"bool", document.NewBoolValue(true), true, ""},
@@ -136,8 +136,8 @@ func TestConvertToBool(t *testing.T) {
 		fails    bool
 		expected bool
 	}{
-		{"bytes", document.NewBytesValue([]byte("bar")), false, true},
-		{"zero bytes", document.NewBytesValue([]byte("")), false, false},
+		{"bytes", document.NewBlobValue([]byte("bar")), false, true},
+		{"zero bytes", document.NewBlobValue([]byte("")), false, false},
 		{"string", document.NewTextValue("bar"), false, true},
 		{"zero string", document.NewTextValue(""), false, false},
 		{"null", document.NewNullValue(), false, false},
@@ -177,7 +177,7 @@ func TestConvertToNumber(t *testing.T) {
 		fails    bool
 		expected int64
 	}{
-		{"bytes", document.NewBytesValue([]byte("bar")), true, 0},
+		{"bytes", document.NewBlobValue([]byte("bar")), true, 0},
 		{"string", document.NewTextValue("bar"), true, 0},
 		{"bool", document.NewBoolValue(true), false, 1},
 		{"int", document.NewIntValue(10), false, 10},
@@ -245,7 +245,7 @@ func TestConvertToDocument(t *testing.T) {
 	}{
 		{"null", document.NewNullValue(), false, document.NewFieldBuffer()},
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10))), false, document.NewFieldBuffer().Add("a", document.NewInt16Value(10))},
-		{"bytes", document.NewBytesValue([]byte("bar")), true, nil},
+		{"bytes", document.NewBlobValue([]byte("bar")), true, nil},
 		{"string", document.NewTextValue("bar"), true, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
 		{"int", document.NewIntValue(10), true, nil},
@@ -278,7 +278,7 @@ func TestConvertToArray(t *testing.T) {
 	}{
 		{"null", document.NewNullValue(), false, document.NewValueBuffer()},
 		{"document", document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt16Value(10))), false, document.NewValueBuffer().Append(document.NewInt16Value(10))},
-		{"bytes", document.NewBytesValue([]byte("bar")), true, nil},
+		{"bytes", document.NewBlobValue([]byte("bar")), true, nil},
 		{"string", document.NewTextValue("bar"), true, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
 		{"int", document.NewIntValue(10), true, nil},

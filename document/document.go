@@ -180,7 +180,7 @@ func reflectValueToValue(v reflect.Value) (Value, error) {
 		return NewTextValue(v.String()), nil
 	case reflect.Slice:
 		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
-			return NewBytesValue(v.Bytes()), nil
+			return NewBlobValue(v.Bytes()), nil
 		}
 		if v.IsNil() {
 			return NewNullValue(), nil

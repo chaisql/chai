@@ -61,7 +61,7 @@ func TestCreateTable(t *testing.T) {
 			require.Equal(t, &database.TableConfig{
 				PrimaryKey: database.FieldConstraint{
 					Path: []string{"foo", "bar", "1", "hello"},
-					Type: document.BytesValue,
+					Type: document.BlobValue,
 				},
 				FieldConstraints: []database.FieldConstraint{
 					{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue},

@@ -91,11 +91,11 @@ func compare(op operator, l, r Value) (bool, error) {
 	// compare strings and bytes together
 	case l.Type == TextValue && r.Type == TextValue:
 		fallthrough
-	case l.Type == BytesValue && r.Type == BytesValue:
+	case l.Type == BlobValue && r.Type == BlobValue:
 		fallthrough
-	case l.Type == TextValue && r.Type == BytesValue:
+	case l.Type == TextValue && r.Type == BlobValue:
 		fallthrough
-	case r.Type == TextValue && l.Type == BytesValue:
+	case r.Type == TextValue && l.Type == BlobValue:
 		return compareBytes(op, l, r)
 
 	// integer OP integer

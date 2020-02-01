@@ -36,9 +36,9 @@ type EvalStack struct {
 // A LiteralValue represents a litteral value of any type defined by the value package.
 type LiteralValue document.Value
 
-// BytesValue creates a litteral value of type Bytes.
-func BytesValue(v []byte) LiteralValue {
-	return LiteralValue(document.NewBytesValue(v))
+// BlobValue creates a litteral value of type Blob.
+func BlobValue(v []byte) LiteralValue {
+	return LiteralValue(document.NewBlobValue(v))
 }
 
 // TextValue creates a litteral value of type Text.

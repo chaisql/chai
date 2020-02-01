@@ -16,15 +16,15 @@ import (
 	"github.com/asdine/genji/document"
 )
 
-// EncodeBytes takes a bytes and returns it.
+// EncodeBlob takes a blob and returns it.
 // It is present to ease code generation.
-func EncodeBytes(x []byte) []byte {
+func EncodeBlob(x []byte) []byte {
 	return x
 }
 
-// DecodeBytes takes a byte slice and returns it.
+// DecodeBlob takes a byte slice and returns it.
 // It is present to ease code generation.
-func DecodeBytes(buf []byte) ([]byte, error) {
+func DecodeBlob(buf []byte) ([]byte, error) {
 	return buf, nil
 }
 
@@ -288,12 +288,12 @@ func EncodeValue(v document.Value) ([]byte, error) {
 			return nil, err
 		}
 		return EncodeArray(a)
-	case document.BytesValue:
-		x, err := v.ConvertToBytes()
+	case document.BlobValue:
+		x, err := v.ConvertToBlob()
 		if err != nil {
 			return nil, err
 		}
-		return EncodeBytes(x), nil
+		return EncodeBlob(x), nil
 	case document.TextValue:
 		x, err := v.ConvertToText()
 		if err != nil {
@@ -489,12 +489,12 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 		return document.NewDocumentValue(EncodedDocument(data)), nil
 	case document.ArrayValue:
 		return document.NewArrayValue(EncodedArray(data)), nil
-	case document.BytesValue:
-		x, err := DecodeBytes(data)
+	case document.BlobValue:
+		x, err := DecodeBlob(data)
 		if err != nil {
 			return document.Value{}, err
 		}
-		return document.NewBytesValue(x), nil
+		return document.NewBlobValue(x), nil
 	case document.TextValue:
 		x, err := DecodeText(data)
 		if err != nil {

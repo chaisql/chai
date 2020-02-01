@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	bytesZeroValue    = NewZeroValue(BytesValue)
+	blobZeroValue     = NewZeroValue(BlobValue)
 	textZeroValue     = NewZeroValue(TextValue)
 	boolZeroValue     = NewZeroValue(BoolValue)
 	int8ZeroValue     = NewZeroValue(Int8Value)
@@ -26,7 +26,7 @@ type ValueType uint8
 
 // List of supported value types.
 const (
-	BytesValue ValueType = iota + 1
+	BlobValue ValueType = iota + 1
 	TextValue
 	BoolValue
 	Int8Value
@@ -43,8 +43,8 @@ const (
 
 func (t ValueType) String() string {
 	switch t {
-	case BytesValue:
-		return "bytes"
+	case BlobValue:
+		return "blob"
 	case TextValue:
 		return "text"
 	case BoolValue:
@@ -95,7 +95,7 @@ type Value struct {
 func NewValue(x interface{}) (Value, error) {
 	switch v := x.(type) {
 	case []byte:
-		return NewBytesValue(v), nil
+		return NewBlobValue(v), nil
 	case string:
 		return NewTextValue(v), nil
 	case bool:
@@ -151,10 +151,10 @@ func NewValue(x interface{}) (Value, error) {
 	return Value{}, fmt.Errorf("unsupported type %T", x)
 }
 
-// NewBytesValue encodes x and returns a value.
-func NewBytesValue(x []byte) Value {
+// NewBlobValue encodes x and returns a value.
+func NewBlobValue(x []byte) Value {
 	return Value{
-		Type: BytesValue,
+		Type: BlobValue,
 		V:    x,
 	}
 }
@@ -261,8 +261,8 @@ func intToValue(x int64) Value {
 // of the selected type.
 func NewZeroValue(t ValueType) Value {
 	switch t {
-	case BytesValue:
-		return NewBytesValue(nil)
+	case BlobValue:
+		return NewBlobValue(nil)
 	case TextValue:
 		return NewTextValue("")
 	case BoolValue:
@@ -322,13 +322,13 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 	}
 
 	switch t {
-	case BytesValue:
-		x, err := v.ConvertToBytes()
+	case BlobValue:
+		x, err := v.ConvertToBlob()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
-			Type: BytesValue,
+			Type: BlobValue,
 			V:    x,
 		}, nil
 	case TextValue:
@@ -409,10 +409,11 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 	return Value{}, fmt.Errorf("can't convert %q to %q", v.Type, t)
 }
 
-// ConvertToBytes returns v.Data. It's a convenience method to ease code generation.
-func (v Value) ConvertToBytes() ([]byte, error) {
+// ConvertToBlob converts a value of type Text or Blob to a slice of bytes.
+// If fails if it's used with any other type.
+func (v Value) ConvertToBlob() ([]byte, error) {
 	switch v.Type {
-	case TextValue, BytesValue:
+	case TextValue, BlobValue:
 		return v.V.([]byte), nil
 	}
 
@@ -423,11 +424,11 @@ func (v Value) ConvertToBytes() ([]byte, error) {
 	return nil, fmt.Errorf("can't convert %q to bytes", v.Type)
 }
 
-// ConvertToText turns a value of type Text or Bytes into a string.
+// ConvertToText turns a value of type Text or Blob into a string.
 // If fails if it's used with any other type.
 func (v Value) ConvertToText() (string, error) {
 	switch v.Type {
-	case TextValue, BytesValue:
+	case TextValue, BlobValue:
 		return string(v.V.([]byte)), nil
 	}
 
@@ -539,8 +540,8 @@ func (v Value) ConvertToArray() (Array, error) {
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() bool {
 	switch v.Type {
-	case BytesValue, TextValue:
-		return bytes.Compare(v.V.([]byte), bytesZeroValue.V.([]byte)) == 0
+	case BlobValue, TextValue:
+		return bytes.Compare(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
 	case BoolValue:
 		return v.V == boolZeroValue.V
 	case Int8Value:
@@ -579,7 +580,7 @@ func (v Value) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 		x = &jsonArray{a}
-	case TextValue, BytesValue:
+	case TextValue, BlobValue:
 		s, err := v.ConvertToText()
 		if err != nil {
 			return nil, err

@@ -173,7 +173,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						case index.Float:
 							require.Equal(t, document.NewFloat64Value(float64(i)), val)
 						case index.Bytes:
-							require.Equal(t, document.NewBytesValue([]byte{i}), val)
+							require.Equal(t, document.NewBlobValue([]byte{i}), val)
 						case index.Bool:
 							require.Equal(t, document.NewBoolValue(i > 0), val)
 						}
@@ -201,7 +201,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			var count int
 			pivot := document.NewTextValue("C")
 			err := idx.AscendGreaterOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, rid []byte) error {
-				require.Equal(t, document.NewBytesValue([]byte{'C' + i}), val)
+				require.Equal(t, document.NewBlobValue([]byte{'C' + i}), val)
 				require.Equal(t, []byte{'c' + i}, rid)
 
 				i += 2
@@ -229,8 +229,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					require.Equal(t, document.NewFloat64Value(float64(floats)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(floats)}, rid)
 					floats++
-				case document.BytesValue:
-					require.Equal(t, document.NewBytesValue([]byte(strconv.Itoa(int(bytes)))), val)
+				case document.BlobValue:
+					require.Equal(t, document.NewBlobValue([]byte(strconv.Itoa(int(bytes)))), val)
 					require.Equal(t, []byte{'s', 'a' + byte(bytes)}, rid)
 					bytes++
 				default:
@@ -299,7 +299,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			var count int
 			pivot := document.NewTextValue("F")
 			err := idx.DescendLessOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, rid []byte) error {
-				require.Equal(t, document.NewBytesValue([]byte{'F' - i}), val)
+				require.Equal(t, document.NewBlobValue([]byte{'F' - i}), val)
 				require.Equal(t, []byte{'f' - i}, rid)
 
 				i++
@@ -327,8 +327,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					require.Equal(t, document.NewFloat64Value(float64(floats)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(floats)}, rid)
 					floats--
-				case document.BytesValue:
-					require.Equal(t, document.NewBytesValue([]byte(strconv.Itoa(int(bytes)))), val)
+				case document.BlobValue:
+					require.Equal(t, document.NewBlobValue([]byte(strconv.Itoa(int(bytes)))), val)
 					require.Equal(t, []byte{'s', 'a' + byte(bytes)}, rid)
 					bytes--
 				default:
@@ -358,7 +358,7 @@ func BenchmarkIndexSet(b *testing.B) {
 				b.StartTimer()
 				for j := 0; j < size; j++ {
 					k := []byte(fmt.Sprintf("name-%d", j))
-					idx.Set(document.NewBytesValue(k), k)
+					idx.Set(document.NewBlobValue(k), k)
 				}
 				b.StopTimer()
 				cleanup()

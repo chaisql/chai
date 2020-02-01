@@ -239,7 +239,7 @@ func TestValueEncodeDecode(t *testing.T) {
 		enc      func() []byte
 		dec      func([]byte) (interface{}, error)
 	}{
-		{"bytes", []byte("foo"), func() []byte { return EncodeBytes([]byte("foo")) }, func(buf []byte) (interface{}, error) { return DecodeBytes(buf) }},
+		{"bytes", []byte("foo"), func() []byte { return EncodeBlob([]byte("foo")) }, func(buf []byte) (interface{}, error) { return DecodeBlob(buf) }},
 		{"string", "bar", func() []byte { return EncodeText("bar") }, func(buf []byte) (interface{}, error) { return DecodeText(buf) }},
 		{"bool", true, func() []byte { return EncodeBool(true) }, func(buf []byte) (interface{}, error) { return DecodeBool(buf) }},
 		{"uint", uint(10), func() []byte { return EncodeUint(10) }, func(buf []byte) (interface{}, error) { return DecodeUint(buf) }},

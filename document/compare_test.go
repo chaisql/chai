@@ -25,7 +25,7 @@ var textFuncs = []struct {
 	fn   func(x interface{}) document.Value
 }{
 	{"string", func(x interface{}) document.Value { return document.NewTextValue(x.(string)) }},
-	{"bytes", func(x interface{}) document.Value { return document.NewBytesValue([]byte(x.(string))) }},
+	{"bytes", func(x interface{}) document.Value { return document.NewBlobValue([]byte(x.(string))) }},
 }
 
 func TestComparisonNumbers(t *testing.T) {

@@ -239,7 +239,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEBYTES:
-		return document.BytesValue, nil
+		return document.BlobValue, nil
 	case scanner.TYPESTRING:
 		return document.TextValue, nil
 	case scanner.TYPEBOOL:

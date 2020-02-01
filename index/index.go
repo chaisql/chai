@@ -21,7 +21,7 @@ const (
 // Type of the index. Values are stored in different sub indexes depending on their types.
 // They are automatically converted to one of the following types:
 //
-// Strings and Bytes values are stored in Bytes indexes.
+// Text and Blob values are stored in Bytes indexes.
 // Signed, unsigned integers, and floats are stored in Float indexes.
 // Booleans are stores in Bool indexes.
 type Type byte
@@ -40,7 +40,7 @@ func NewTypeFromValueType(t document.ValueType) Type {
 		return Float
 	}
 
-	if t == document.TextValue || t == document.BytesValue {
+	if t == document.TextValue || t == document.BlobValue {
 		return Bytes
 	}
 
@@ -519,7 +519,7 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 	case Null:
 		return document.NewNullValue(), nil
 	case Bytes:
-		return document.NewBytesValue(data), nil
+		return document.NewBlobValue(data), nil
 	case Float:
 		f, err := encoding.DecodeFloat64(data)
 		return document.NewFloat64Value(f), err

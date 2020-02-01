@@ -9,7 +9,7 @@ import (
 
 func TestScan(t *testing.T) {
 	doc := document.NewFieldBuffer().
-		Add("a", document.NewBytesValue([]byte("foo"))).
+		Add("a", document.NewBlobValue([]byte("foo"))).
 		Add("b", document.NewTextValue("bar")).
 		Add("c", document.NewBoolValue(true)).
 		Add("d", document.NewIntValue(10)).

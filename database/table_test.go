@@ -207,7 +207,7 @@ func TestTableInsert(t *testing.T) {
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
 				doc := document.NewFieldBuffer().
-					Add("foo", document.NewBytesValue(test))
+					Add("foo", document.NewBlobValue(test))
 
 				_, err := tb.Insert(doc)
 				require.Error(t, err)
