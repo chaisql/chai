@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math"
 )
 
 type operator uint8
@@ -180,48 +179,6 @@ func compareBytes(op operator, l, r Value) (bool, error) {
 }
 
 func compareIntegers(op operator, l, r Value) (bool, error) {
-	// uint64 numbers can be bigger than int64 and thus cannot be converted
-	// to int64 without first checking if they can overflow.
-	// if they do, the result of all the operations is already known
-	if l.Type == Uint64Value || r.Type == Uint64Value {
-		var ui uint64
-		if l.Type == Uint64Value {
-			ui = l.V.(uint64)
-
-			// check if the other value is also a uint64
-			if r.Type == Uint64Value {
-				switch op {
-				case operatorEq:
-					return ui == r.V.(uint64), nil
-				case operatorGt:
-					return ui > r.V.(uint64), nil
-				case operatorGte:
-					return ui >= r.V.(uint64), nil
-				case operatorLt:
-					return ui < r.V.(uint64), nil
-				case operatorLte:
-					return ui <= r.V.(uint64), nil
-				}
-			}
-		} else if r.Type == Uint64Value {
-			ui = r.V.(uint64)
-		}
-		if ui > math.MaxInt64 {
-			switch op {
-			case operatorEq:
-				return false, nil
-			case operatorGt:
-				fallthrough
-			case operatorGte:
-				return l.Type == Uint64Value, nil
-			case operatorLt:
-				return r.Type == Uint64Value, nil
-			case operatorLte:
-				return r.Type == Uint64Value, nil
-			}
-		}
-	}
-
 	// integer OP integer
 	ai, err := l.ConvertToInt64()
 	if err != nil {

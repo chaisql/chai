@@ -3,7 +3,6 @@ package document_test
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"testing"
 
 	"github.com/asdine/genji/document"
@@ -14,10 +13,6 @@ var numericFuncs = []struct {
 	name string
 	fn   func(x interface{}) document.Value
 }{
-	{"uint8", func(x interface{}) document.Value { return document.NewUint8Value(uint8(x.(int))) }},
-	{"uint16", func(x interface{}) document.Value { return document.NewUint16Value(uint16(x.(int))) }},
-	{"uint32", func(x interface{}) document.Value { return document.NewUint32Value(uint32(x.(int))) }},
-	{"uint64", func(x interface{}) document.Value { return document.NewUint64Value(uint64(x.(int))) }},
 	{"int8", func(x interface{}) document.Value { return document.NewInt8Value(int8(x.(int))) }},
 	{"int16", func(x interface{}) document.Value { return document.NewInt16Value(int16(x.(int))) }},
 	{"int32", func(x interface{}) document.Value { return document.NewInt32Value(int32(x.(int))) }},
@@ -84,43 +79,6 @@ func TestComparisonNumbers(t *testing.T) {
 			}
 		}
 	}
-
-	t.Run("uint64", func(t *testing.T) {
-		a := document.NewUint64Value(math.MaxUint64)
-		b := document.NewInt64Value(10)
-
-		ok, err := a.IsEqual(b)
-		require.NoError(t, err)
-		require.False(t, ok)
-
-		ok, err = a.IsEqual(a)
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		ok, err = a.IsNotEqual(b)
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		ok, err = a.IsNotEqual(a)
-		require.NoError(t, err)
-		require.False(t, ok)
-
-		ok, err = a.IsGreaterThan(b)
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		ok, err = b.IsGreaterThan(a)
-		require.NoError(t, err)
-		require.False(t, ok)
-
-		ok, err = a.IsLesserThanOrEqual(b)
-		require.NoError(t, err)
-		require.False(t, ok)
-
-		ok, err = b.IsLesserThanOrEqual(a)
-		require.NoError(t, err)
-		require.True(t, ok)
-	})
 }
 
 func TestComparisonNumbersWithNull(t *testing.T) {

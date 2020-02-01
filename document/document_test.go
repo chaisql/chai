@@ -158,7 +158,6 @@ func TestFieldBuffer(t *testing.T) {
 			{"-int32 values", `{"a": 1000000}`, document.NewFieldBuffer().Add("a", document.NewInt32Value(1000000)), false},
 			{"+int64 values", `{"a": 10000000000}`, document.NewFieldBuffer().Add("a", document.NewInt64Value(10000000000)), false},
 			{"-int64 values", `{"a": -10000000000}`, document.NewFieldBuffer().Add("a", document.NewInt64Value(-10000000000)), false},
-			{"uint64 values", `{"a": 10000000000000000000}`, document.NewFieldBuffer().Add("a", document.NewUint64Value(10000000000000000000)), false},
 			{"+float64 values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewFloat64Value(10000000000)), false},
 			{"-float64 values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewFloat64Value(-10000000000)), false},
 			{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", document.NewBoolValue(true)).Add("b", document.NewBoolValue(false)), false},
@@ -331,25 +330,25 @@ func TestNewFromStruct(t *testing.T) {
 				require.Equal(t, u.C, v.V.(bool))
 			case 3:
 				require.Equal(t, "la-reponse-d", f)
-				require.Equal(t, u.D, v.V.(uint))
+				require.Equal(t, u.D, v.V.(int8))
 			case 4:
-				require.Equal(t, u.E, v.V.(uint8))
+				require.Equal(t, u.E, v.V.(int8))
 			case 5:
-				require.Equal(t, u.F, v.V.(uint16))
+				require.Equal(t, u.F, v.V.(int8))
 			case 6:
-				require.Equal(t, u.G, v.V.(uint32))
+				require.Equal(t, u.G, v.V.(int8))
 			case 7:
-				require.Equal(t, u.H, v.V.(uint64))
+				require.Equal(t, u.H, v.V.(int8))
 			case 8:
-				require.Equal(t, u.I, v.V.(int))
+				require.Equal(t, u.I, v.V.(int8))
 			case 9:
 				require.Equal(t, u.J, v.V.(int8))
 			case 10:
-				require.Equal(t, u.K, v.V.(int16))
+				require.Equal(t, u.K, v.V.(int8))
 			case 11:
-				require.Equal(t, u.L, v.V.(int32))
+				require.Equal(t, u.L, v.V.(int8))
 			case 12:
-				require.Equal(t, u.M, v.V.(int64))
+				require.Equal(t, u.M, v.V.(int8))
 			case 13:
 				require.Equal(t, u.N, v.V.(float64))
 			case 14:

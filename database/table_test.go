@@ -161,7 +161,7 @@ func TestTableInsert(t *testing.T) {
 		err := tx.CreateTable("test", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
 				{Path: []string{"foo"}, Type: document.ArrayValue},
-				{Path: []string{"foo", "0"}, Type: document.Uint32Value},
+				{Path: []string{"foo", "0"}, Type: document.Int32Value},
 			},
 		})
 		require.NoError(t, err)
@@ -181,7 +181,7 @@ func TestTableInsert(t *testing.T) {
 
 		v, err := document.ValuePath([]string{"foo", "0"}).GetValue(d)
 		require.NoError(t, err)
-		require.Equal(t, document.NewUint32Value(100), v)
+		require.Equal(t, document.NewInt32Value(100), v)
 	})
 
 	t.Run("Should fail if Pk not found in document or empty", func(t *testing.T) {
@@ -269,7 +269,7 @@ func TestTableInsert(t *testing.T) {
 		err := tx.CreateTable("test", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo"}, document.Int32Value},
-				{[]string{"bar"}, document.Uint8Value},
+				{[]string{"bar"}, document.Int8Value},
 			},
 		})
 		require.NoError(t, err)
@@ -293,7 +293,7 @@ func TestTableInsert(t *testing.T) {
 		require.Equal(t, document.NewInt32Value(1), v)
 		v, err = d.GetByField("bar")
 		require.NoError(t, err)
-		require.Equal(t, document.NewUint8Value(10), v)
+		require.Equal(t, document.NewInt8Value(10), v)
 		v, err = d.GetByField("baz")
 		require.NoError(t, err)
 		require.Equal(t, document.NewStringValue("baaaaz"), v)

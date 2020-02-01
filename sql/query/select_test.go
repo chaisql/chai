@@ -105,7 +105,7 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test (foo UINT8 PRIMARY KEY)")
+		err = db.Exec("CREATE TABLE test (foo INT8 PRIMARY KEY)")
 		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)

@@ -12,39 +12,34 @@ func TestScan(t *testing.T) {
 		Add("a", document.NewBytesValue([]byte("foo"))).
 		Add("b", document.NewStringValue("bar")).
 		Add("c", document.NewBoolValue(true)).
-		Add("d", document.NewUintValue(10)).
-		Add("e", document.NewUint8Value(10)).
-		Add("f", document.NewUint16Value(10)).
-		Add("g", document.NewUint32Value(10)).
-		Add("h", document.NewUint64Value(10)).
-		Add("i", document.NewIntValue(10)).
-		Add("j", document.NewInt8Value(10)).
-		Add("k", document.NewInt16Value(10)).
-		Add("l", document.NewInt32Value(10)).
-		Add("m", document.NewInt64Value(10)).
-		Add("n", document.NewFloat64Value(10.5)).
-		Add("o", document.NewArrayValue(
+		Add("d", document.NewIntValue(10)).
+		Add("e", document.NewInt8Value(10)).
+		Add("f", document.NewInt16Value(10)).
+		Add("g", document.NewInt32Value(10)).
+		Add("h", document.NewInt64Value(10)).
+		Add("i", document.NewFloat64Value(10.5)).
+		Add("j", document.NewArrayValue(
 			document.NewValueBuffer().
 				Append(document.NewBoolValue(true)),
 		)).
-		Add("p", document.NewDocumentValue(
+		Add("k", document.NewDocumentValue(
 			document.NewFieldBuffer().
 				Add("foo", document.NewStringValue("foo")).
 				Add("bar", document.NewStringValue("bar")),
 		)).
-		Add("q", document.NewDocumentValue(
+		Add("l", document.NewDocumentValue(
 			document.NewFieldBuffer().
 				Add("foo", document.NewStringValue("foo")).
 				Add("bar", document.NewStringValue("bar")),
 		)).
-		Add("r", document.NewDocumentValue(
+		Add("m", document.NewDocumentValue(
 			document.NewFieldBuffer().
 				Add("foo", document.NewStringValue("foo")).
 				Add("bar", document.NewStringValue("bar")).
 				Add("baz", document.NewStringValue("baz")).
 				Add("-", document.NewStringValue("bat")),
 		)).
-		Add("s", document.NewDocumentValue(
+		Add("n", document.NewDocumentValue(
 			document.NewFieldBuffer().
 				Add("foo", document.NewStringValue("foo")).
 				Add("bar", document.NewStringValue("bar")),
@@ -59,45 +54,35 @@ func TestScan(t *testing.T) {
 	var a []byte
 	var b string
 	var c bool
-	var d uint
-	var e uint8
-	var f uint16
-	var g uint32
-	var h uint64
-	var i int
-	var j int8
-	var k int16
-	var l int32
-	var m int64
-	var n float64
-	var o []bool
-	var p foo
-	var q *foo = new(foo)
-	var r *foo
-	var s map[string]string
+	var d int
+	var e int8
+	var f int16
+	var g int32
+	var h int64
+	var i float64
+	var j []bool
+	var k foo
+	var l *foo = new(foo)
+	var m *foo
+	var n map[string]string
 
-	err := document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r, &s)
+	err := document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n)
 	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
 	require.Equal(t, c, true)
-	require.Equal(t, d, uint(10))
-	require.Equal(t, e, uint8(10))
-	require.Equal(t, f, uint16(10))
-	require.Equal(t, g, uint32(10))
-	require.Equal(t, h, uint64(10))
-	require.Equal(t, i, int(10))
-	require.Equal(t, j, int8(10))
-	require.Equal(t, k, int16(10))
-	require.Equal(t, l, int32(10))
-	require.Equal(t, m, int64(10))
-	require.Equal(t, n, float64(10.5))
-	require.Equal(t, o, []bool{true})
+	require.Equal(t, d, int(10))
+	require.Equal(t, e, int8(10))
+	require.Equal(t, f, int16(10))
+	require.Equal(t, g, int32(10))
+	require.Equal(t, h, int64(10))
+	require.Equal(t, i, float64(10.5))
+	require.Equal(t, j, []bool{true})
 	bar := "bar"
-	require.Equal(t, foo{Foo: "foo", Pub: &bar}, p)
-	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, q)
-	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, r)
-	require.Equal(t, map[string]string{"foo": "foo", "bar": "bar"}, s)
+	require.Equal(t, foo{Foo: "foo", Pub: &bar}, k)
+	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, l)
+	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, m)
+	require.Equal(t, map[string]string{"foo": "foo", "bar": "bar"}, n)
 
 	t.Run("DocumentScanner", func(t *testing.T) {
 		var ds documentScanner

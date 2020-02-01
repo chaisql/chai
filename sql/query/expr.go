@@ -51,31 +51,6 @@ func BoolValue(v bool) LiteralValue {
 	return LiteralValue(document.NewBoolValue(v))
 }
 
-// UintValue creates a litteral value of type Uint.
-func UintValue(v uint) LiteralValue {
-	return LiteralValue(document.NewUintValue(v))
-}
-
-// Uint8Value creates a litteral value of type Uint8.
-func Uint8Value(v uint8) LiteralValue {
-	return LiteralValue(document.NewUint8Value(v))
-}
-
-// Uint16Value creates a litteral value of type Uint16.
-func Uint16Value(v uint16) LiteralValue {
-	return LiteralValue(document.NewUint16Value(v))
-}
-
-// Uint32Value creates a litteral value of type Uint32.
-func Uint32Value(v uint32) LiteralValue {
-	return LiteralValue(document.NewUint32Value(v))
-}
-
-// Uint64Value creates a litteral value of type Uint64.
-func Uint64Value(v uint64) LiteralValue {
-	return LiteralValue(document.NewUint64Value(v))
-}
-
 // IntValue creates a litteral value of type Int.
 func IntValue(v int) LiteralValue {
 	return LiteralValue(document.NewIntValue(v))

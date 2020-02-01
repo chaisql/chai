@@ -25,13 +25,13 @@ func TestParserCreateTable(t *testing.T) {
 					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.IntValue},
 				},
 			}, false},
-		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar UINT16, baz.4.1.bat STRING)",
+		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar INT16, baz.4.1.bat STRING)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Config: database.TableConfig{
 					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.IntValue},
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"bar"}, Type: document.Uint16Value},
+						{Path: []string{"bar"}, Type: document.Int16Value},
 						{Path: []string{"baz", "4", "1", "bat"}, Type: document.StringValue},
 					},
 				},

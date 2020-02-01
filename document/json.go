@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strconv"
 )
 
 // ToJSON encodes d to w in JSON.
@@ -106,13 +105,7 @@ func parseJSONValue(dec *json.Decoder) (Value, error) {
 	case json.Number:
 		i, err := tt.Int64()
 		if err != nil {
-			// if it's too big to fit in an int64, perhaps it can fit in a uint64
-			ui, err := strconv.ParseUint(tt.String(), 10, 64)
-			if err == nil {
-				return NewUint64Value(ui), nil
-			}
-
-			// let's try parsing this as a floating point number
+			// if it's too big to fit in an int64, let's try parsing this as a floating point number
 			f, err := tt.Float64()
 			if err != nil {
 				return Value{}, err

@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -199,15 +201,18 @@ func reflectValueToValue(v reflect.Value) (Value, error) {
 	case reflect.Int:
 		return NewIntValue(int(v.Int())), nil
 	case reflect.Uint8:
-		return NewUint8Value(uint8(v.Uint())), nil
+		return NewInt16Value(int16(v.Uint())), nil
 	case reflect.Uint16:
-		return NewUint16Value(uint16(v.Uint())), nil
+		return NewInt32Value(int32(v.Uint())), nil
 	case reflect.Uint32:
-		return NewUint32Value(uint32(v.Uint())), nil
-	case reflect.Uint64:
-		return NewUint64Value(v.Uint()), nil
-	case reflect.Uint:
-		return NewUintValue(uint(v.Uint())), nil
+		return NewInt64Value(int64(v.Uint())), nil
+	case reflect.Uint64, reflect.Uint:
+		x := v.Uint()
+		if x > math.MaxInt64 {
+			return Value{}, fmt.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
+		}
+
+		return NewInt64Value(int64(x)), nil
 	case reflect.Float32, reflect.Float64:
 		return NewFloat64Value(v.Float()), nil
 	case reflect.Interface:

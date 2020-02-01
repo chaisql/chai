@@ -13,11 +13,6 @@ var (
 	bytesZeroValue    = NewZeroValue(BytesValue)
 	stringZeroValue   = NewZeroValue(StringValue)
 	boolZeroValue     = NewZeroValue(BoolValue)
-	uintZeroValue     = NewZeroValue(UintValue)
-	uint8ZeroValue    = NewZeroValue(Uint8Value)
-	uint16ZeroValue   = NewZeroValue(Uint16Value)
-	uint32ZeroValue   = NewZeroValue(Uint32Value)
-	uint64ZeroValue   = NewZeroValue(Uint64Value)
 	intZeroValue      = NewZeroValue(IntValue)
 	int8ZeroValue     = NewZeroValue(Int8Value)
 	int16ZeroValue    = NewZeroValue(Int16Value)
@@ -35,11 +30,6 @@ const (
 	BytesValue ValueType = iota + 1
 	StringValue
 	BoolValue
-	UintValue
-	Uint8Value
-	Uint16Value
-	Uint32Value
-	Uint64Value
 	IntValue
 	Int8Value
 	Int16Value
@@ -62,16 +52,6 @@ func NewValueTypeFromGoType(tp string) ValueType {
 		return StringValue
 	case "bool":
 		return BoolValue
-	case "uint":
-		return UintValue
-	case "uint8":
-		return Uint8Value
-	case "uint16":
-		return Uint16Value
-	case "uint32":
-		return Uint32Value
-	case "uint64":
-		return Uint64Value
 	case "int":
 		return IntValue
 	case "int8":
@@ -101,16 +81,6 @@ func (t ValueType) String() string {
 		return "String"
 	case BoolValue:
 		return "Bool"
-	case UintValue:
-		return "Uint"
-	case Uint8Value:
-		return "Uint8"
-	case Uint16Value:
-		return "Uint16"
-	case Uint32Value:
-		return "Uint32"
-	case Uint64Value:
-		return "Uint64"
 	case IntValue:
 		return "Int"
 	case Int8Value:
@@ -141,7 +111,7 @@ func (t ValueType) IsNumber() bool {
 
 // IsInteger returns true if t is a signed or unsigned integer of any size.
 func (t ValueType) IsInteger() bool {
-	return t >= UintValue && t <= Int64Value
+	return t >= IntValue && t <= Int64Value
 }
 
 // IsFloat returns true if t is either a Float32 or Float64.
@@ -164,16 +134,6 @@ func NewValue(x interface{}) (Value, error) {
 		return NewStringValue(v), nil
 	case bool:
 		return NewBoolValue(v), nil
-	case uint:
-		return NewUintValue(v), nil
-	case uint8:
-		return NewUint8Value(v), nil
-	case uint16:
-		return NewUint16Value(v), nil
-	case uint32:
-		return NewUint32Value(v), nil
-	case uint64:
-		return NewUint64Value(v), nil
 	case int:
 		return NewIntValue(v), nil
 	case int8:
@@ -227,46 +187,6 @@ func NewStringValue(x string) Value {
 func NewBoolValue(x bool) Value {
 	return Value{
 		Type: BoolValue,
-		V:    x,
-	}
-}
-
-// NewUintValue encodes x and returns a value.
-func NewUintValue(x uint) Value {
-	return Value{
-		Type: UintValue,
-		V:    x,
-	}
-}
-
-// NewUint8Value encodes x and returns a value.
-func NewUint8Value(x uint8) Value {
-	return Value{
-		Type: Uint8Value,
-		V:    x,
-	}
-}
-
-// NewUint16Value encodes x and returns a value.
-func NewUint16Value(x uint16) Value {
-	return Value{
-		Type: Uint16Value,
-		V:    x,
-	}
-}
-
-// NewUint32Value encodes x and returns a value.
-func NewUint32Value(x uint32) Value {
-	return Value{
-		Type: Uint32Value,
-		V:    x,
-	}
-}
-
-// NewUint64Value encodes x and returns a value.
-func NewUint64Value(x uint64) Value {
-	return Value{
-		Type: Uint64Value,
 		V:    x,
 	}
 }
@@ -352,16 +272,6 @@ func NewZeroValue(t ValueType) Value {
 		return NewStringValue("")
 	case BoolValue:
 		return NewBoolValue(false)
-	case UintValue:
-		return NewUintValue(0)
-	case Uint8Value:
-		return NewUint8Value(0)
-	case Uint16Value:
-		return NewUint16Value(0)
-	case Uint32Value:
-		return NewUint32Value(0)
-	case Uint64Value:
-		return NewUint64Value(0)
 	case IntValue:
 		return NewIntValue(0)
 	case Int8Value:
@@ -444,51 +354,6 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		}
 		return Value{
 			Type: BoolValue,
-			V:    x,
-		}, nil
-	case UintValue:
-		x, err := v.ConvertToUint()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: UintValue,
-			V:    x,
-		}, nil
-	case Uint8Value:
-		x, err := v.ConvertToUint8()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: Uint8Value,
-			V:    x,
-		}, nil
-	case Uint16Value:
-		x, err := v.ConvertToUint16()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: Uint16Value,
-			V:    x,
-		}, nil
-	case Uint32Value:
-		x, err := v.ConvertToUint32()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: Uint32Value,
-			V:    x,
-		}, nil
-	case Uint64Value:
-		x, err := v.ConvertToUint64()
-		if err != nil {
-			return Value{}, err
-		}
-		return Value{
-			Type: Uint64Value,
 			V:    x,
 		}, nil
 	case IntValue:
@@ -590,156 +455,6 @@ func (v Value) ConvertToBool() (bool, error) {
 	}
 
 	return !v.IsZeroValue(), nil
-}
-
-// ConvertToUint turns any number into a uint.
-// It doesn't work with other types.
-func (v Value) ConvertToUint() (uint, error) {
-	if v.Type == UintValue {
-		return v.V.(uint), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToUint64(v)
-		if err != nil {
-			return 0, err
-		}
-		return uint(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to uint", v.Type)
-}
-
-// ConvertToUint8 turns any number into a uint8.
-// It doesn't work with other types.
-func (v Value) ConvertToUint8() (uint8, error) {
-	if v.Type == Uint8Value {
-		return v.V.(uint8), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToUint64(v)
-		if err != nil {
-			return 0, err
-		}
-		return uint8(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to uint8", v.Type)
-}
-
-// ConvertToUint16 turns any number into a uint16.
-// It doesn't work with other types.
-func (v Value) ConvertToUint16() (uint16, error) {
-	if v.Type == Uint16Value {
-		return v.V.(uint16), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToUint64(v)
-		if err != nil {
-			return 0, err
-		}
-		return uint16(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to uint16", v.Type)
-}
-
-// ConvertToUint32 turns any number into a uint32.
-// It doesn't work with other types.
-func (v Value) ConvertToUint32() (uint32, error) {
-	if v.Type == Uint32Value {
-		return v.V.(uint32), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToUint64(v)
-		if err != nil {
-			return 0, err
-		}
-		return uint32(x), nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to uint32", v.Type)
-}
-
-// ConvertToUint64 turns any number into a uint64.
-// It doesn't work with other types.
-func (v Value) ConvertToUint64() (uint64, error) {
-	if v.Type == Uint64Value {
-		return v.V.(uint64), nil
-	}
-
-	if v.Type == NullValue {
-		return 0, nil
-	}
-
-	if v.Type.IsNumber() {
-		x, err := convertNumberToUint64(v)
-		if err != nil {
-			return 0, err
-		}
-		return x, nil
-	}
-
-	if v.Type == BoolValue {
-		if v.V.(bool) {
-			return 1, nil
-		}
-
-		return 0, nil
-	}
-
-	return 0, fmt.Errorf("can't convert %q to uint64", v.Type)
 }
 
 // ConvertToInt turns any number into an int.
@@ -963,16 +678,6 @@ func (v Value) IsZeroValue() bool {
 		return bytes.Compare(v.V.([]byte), bytesZeroValue.V.([]byte)) == 0
 	case BoolValue:
 		return v.V == boolZeroValue.V
-	case UintValue:
-		return v.V == uintZeroValue.V
-	case Uint8Value:
-		return v.V == uint8ZeroValue.V
-	case Uint16Value:
-		return v.V == uint16ZeroValue.V
-	case Uint32Value:
-		return v.V == uint32ZeroValue.V
-	case Uint64Value:
-		return v.V == uint64ZeroValue.V
 	case IntValue:
 		return v.V == intZeroValue.V
 	case Int8Value:
@@ -997,7 +702,6 @@ func (v Value) IsZeroValue() bool {
 // MarshalJSON implements the json.Marshaler interface.
 func (v Value) MarshalJSON() ([]byte, error) {
 	var x interface{}
-	var err error
 
 	switch v.Type {
 	case DocumentValue:
@@ -1022,10 +726,6 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		x = v.V
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	return json.Marshal(x)
 }
 
@@ -1038,24 +738,6 @@ func convertNumberToInt64(v Value) (int64, error) {
 	var i int64
 
 	switch v.Type {
-	case UintValue:
-		x := v.V.(uint)
-		if x > math.MaxInt64 {
-			return i, errors.New("cannot convert uint to integer without overflowing")
-		}
-		i = int64(x)
-	case Uint8Value:
-		i = int64(v.V.(uint8))
-	case Uint16Value:
-		i = int64(v.V.(uint16))
-	case Uint32Value:
-		i = int64(v.V.(uint32))
-	case Uint64Value:
-		x := v.V.(uint64)
-		if x > math.MaxInt64 {
-			return i, errors.New("cannot convert uint64 to integer without overflowing")
-		}
-		i = int64(x)
 	case IntValue:
 		i = int64(v.V.(int))
 	case Int8Value:
@@ -1075,64 +757,6 @@ func convertNumberToInt64(v Value) (int64, error) {
 			return 0, errors.New("cannot convert float64 value to integer without loss of precision")
 		}
 		i = int64(f)
-	}
-
-	return i, nil
-}
-
-func convertNumberToUint64(v Value) (uint64, error) {
-	var i uint64
-
-	switch v.Type {
-	case UintValue:
-		i = uint64(v.V.(uint))
-	case Uint8Value:
-		i = uint64(v.V.(uint8))
-	case Uint16Value:
-		i = uint64(v.V.(uint16))
-	case Uint32Value:
-		i = uint64(v.V.(uint32))
-	case Uint64Value:
-		i = v.V.(uint64)
-	case IntValue:
-		x := v.V.(int)
-		if x < 0 {
-			return i, errors.New("cannot convert negative int value to unsigned integer without loss")
-		}
-		i = uint64(x)
-	case Int8Value:
-		x := v.V.(int8)
-		if x < 0 {
-			return i, errors.New("cannot convert negative int8 value to unsigned integer without loss")
-		}
-		i = uint64(x)
-	case Int16Value:
-		x := v.V.(int16)
-		if x < 0 {
-			return i, errors.New("cannot convert negative int16 value to unsigned integer without loss")
-		}
-		i = uint64(x)
-	case Int32Value:
-		x := v.V.(int32)
-		if x < 0 {
-			return i, errors.New("cannot convert negative int32 value to unsigned integer without loss")
-		}
-		i = uint64(x)
-	case Int64Value:
-		x := v.V.(int64)
-		if x < 0 {
-			return i, errors.New("cannot convert negative int64 value to unsigned integer without loss")
-		}
-		i = uint64(x)
-	case Float64Value:
-		f := v.V.(float64)
-		if f < 0 {
-			return i, errors.New("cannot convert negative float64 value to unsigned integer without loss")
-		}
-		if math.Trunc(f) != f {
-			return 0, errors.New("cannot convert float64 value to unsigned integer without loss of precision")
-		}
-		i = uint64(f)
 	}
 
 	return i, nil

@@ -262,11 +262,14 @@ func scanValue(v Value, ref reflect.Value) error {
 		ref.SetBool(x)
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		x, err := v.ConvertToUint64()
+		x, err := v.ConvertToInt64()
 		if err != nil {
 			return err
 		}
-		ref.SetUint(x)
+		if x < 0 {
+			return fmt.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
+		}
+		ref.SetUint(uint64(x))
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		x, err := v.ConvertToInt64()

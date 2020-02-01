@@ -306,36 +306,6 @@ func EncodeValue(v document.Value) ([]byte, error) {
 			return nil, err
 		}
 		return EncodeBool(x), nil
-	case document.UintValue:
-		x, err := v.ConvertToUint()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeUint(x), nil
-	case document.Uint8Value:
-		x, err := v.ConvertToUint8()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeUint8(x), nil
-	case document.Uint16Value:
-		x, err := v.ConvertToUint16()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeUint16(x), nil
-	case document.Uint32Value:
-		x, err := v.ConvertToUint32()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeUint32(x), nil
-	case document.Uint64Value:
-		x, err := v.ConvertToUint64()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeUint64(x), nil
 	case document.IntValue:
 		x, err := v.ConvertToInt()
 		if err != nil {
@@ -563,36 +533,6 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewBoolValue(x), nil
-	case document.UintValue:
-		x, err := DecodeUint(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewUintValue(x), nil
-	case document.Uint8Value:
-		x, err := DecodeUint8(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewUint8Value(x), nil
-	case document.Uint16Value:
-		x, err := DecodeUint16(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewUint16Value(x), nil
-	case document.Uint32Value:
-		x, err := DecodeUint32(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewUint32Value(x), nil
-	case document.Uint64Value:
-		x, err := DecodeUint64(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewUint64Value(x), nil
 	case document.IntValue:
 		x, err := DecodeInt(data)
 		if err != nil {

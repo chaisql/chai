@@ -20,14 +20,14 @@ func TestToJSON(t *testing.T) {
 			"Flat",
 			document.NewFieldBuffer().
 				Add("name", document.NewStringValue("John")).
-				Add("age", document.NewUint16Value(10)),
+				Add("age", document.NewInt16Value(10)),
 			`{"name":"John","age":10}` + "\n",
 		},
 		{
 			"Nested",
 			document.NewFieldBuffer().
 				Add("name", document.NewStringValue("John")).
-				Add("age", document.NewUint16Value(10)).
+				Add("age", document.NewInt16Value(10)).
 				Add("address", document.NewDocumentValue(document.NewFieldBuffer().
 					Add("city", document.NewStringValue("Ajaccio")).
 					Add("country", document.NewStringValue("France")),
