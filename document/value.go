@@ -598,6 +598,63 @@ func (v Value) Scan(t interface{}) error {
 	return scanValue(v, reflect.ValueOf(t))
 }
 
+// Add u to v and return the result.
+// Only numeric values and booleans can be added together.
+func (v Value) Add(u Value) (res Value, err error) {
+	if v.Type == NullValue || u.Type == NullValue {
+		return NewNullValue(), nil
+	}
+
+	if v.Type == BoolValue {
+		v, err = v.ConvertTo(Int64Value)
+		if err != nil {
+			return
+		}
+	}
+
+	if u.Type == BoolValue {
+		u, err = u.ConvertTo(Int64Value)
+		if err != nil {
+			return
+		}
+	}
+
+	if v.Type.IsFloat() || u.Type.IsFloat() {
+		var xv, xu float64
+
+		xv, err = v.ConvertToFloat64()
+		if err != nil {
+			return
+		}
+
+		xu, err = u.ConvertToFloat64()
+		if err != nil {
+			return
+		}
+
+		return NewFloat64Value(xu + xv), nil
+	}
+
+	if v.Type.IsInteger() || u.Type.IsInteger() {
+		var xv, xu int64
+
+		xv, err = v.ConvertToInt64()
+		if err != nil {
+			return
+		}
+
+		xu, err = u.ConvertToInt64()
+		if err != nil {
+			return
+		}
+
+		return NewIntValue(int(xu + xv)), nil
+	}
+
+	err = fmt.Errorf("cannot add value of type %s to value of type %s", v.Type, u.Type)
+	return
+}
+
 func convertNumberToInt64(v Value) (int64, error) {
 	var i int64
 

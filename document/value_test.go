@@ -301,3 +301,35 @@ func TestConvertToArray(t *testing.T) {
 		})
 	}
 }
+
+func TestValueAdd(t *testing.T) {
+	tests := []struct {
+		name           string
+		v, u, expected document.Value
+		fails          bool
+	}{
+		{"null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
+		{"null+int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
+		{"bool(true)+bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(2), false},
+		{"bool(true)+bool(false)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(2), false},
+		{"bool(true)+int8(-10)", document.NewBoolValue(true), document.NewInt8Value(-10), document.NewInt8Value(-9), false},
+		{"int8(-10)+int8(10)", document.NewInt8Value(-10), document.NewInt8Value(10), document.NewInt8Value(0), false},
+		{"int8(120)+int8(120)", document.NewInt8Value(120), document.NewInt8Value(120), document.NewInt16Value(240), false},
+		{"int8(120)+float64(120)", document.NewInt8Value(120), document.NewFloat64Value(120), document.NewFloat64Value(240), false},
+		{"int8(120)+float64(120.1)", document.NewInt8Value(120), document.NewFloat64Value(120.1), document.NewFloat64Value(240.1), false},
+		{"int8(120)+text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
+		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.Add(test.u)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
