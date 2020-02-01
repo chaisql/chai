@@ -401,3 +401,36 @@ func TestValueMult(t *testing.T) {
 		})
 	}
 }
+
+func TestValueDiv(t *testing.T) {
+	tests := []struct {
+		name           string
+		v, u, expected document.Value
+		fails          bool
+	}{
+		{"null/null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
+		{"null/int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
+		{"bool(true)/bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(1), false},
+		{"bool(true)/bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewNullValue(), false},
+		{"int8(10)/int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewNullValue(), false},
+		{"int8(10)/float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewNullValue(), false},
+		{"int8(10)/int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(1), false},
+		{"int8(10)/int8(8)", document.NewInt8Value(10), document.NewInt8Value(8), document.NewInt8Value(1), false},
+		{"int8(10)/float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewFloat64Value(1.25), false},
+		{"int64(max)/float64(max)", document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64), document.NewFloat64Value(1), false},
+		{"int8(120)/text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
+		{"text('120')/text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.Div(test.u)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
