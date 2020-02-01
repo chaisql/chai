@@ -391,7 +391,7 @@ func TestValueMult(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.Mult(test.u)
+			res, err := test.v.Mul(test.u)
 			if test.fails {
 				require.Error(t, err)
 			} else {

@@ -245,6 +245,20 @@ func (op *simpleOperator) SetRightHandExpr(b Expr) {
 	op.b = b
 }
 
+func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, error) {
+	va, err := op.a.Eval(ctx)
+	if err != nil {
+		return nilLitteral, nilLitteral, err
+	}
+
+	vb, err := op.b.Eval(ctx)
+	if err != nil {
+		return nilLitteral, nilLitteral, err
+	}
+
+	return va, vb, nil
+}
+
 // A CmpOp is a comparison operator.
 type CmpOp struct {
 	simpleOperator
@@ -391,6 +405,78 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return falseLitteral, nil
+}
+
+type addOp struct {
+	simpleOperator
+}
+
+// Add creates an expression thats evalutes to the result of a + b.
+func Add(a, b Expr) Expr {
+	return &addOp{simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op addOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.Add(b)
+}
+
+type subOp struct {
+	simpleOperator
+}
+
+// Sub creates an expression thats evalutes to the result of a - b.
+func Sub(a, b Expr) Expr {
+	return &subOp{simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op subOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.Sub(b)
+}
+
+type mulOp struct {
+	simpleOperator
+}
+
+// Mul creates an expression thats evalutes to the result of a * b.
+func Mul(a, b Expr) Expr {
+	return &mulOp{simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op mulOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.Mul(b)
+}
+
+type divOp struct {
+	simpleOperator
+}
+
+// Div creates an expression thats evalutes to the result of a / b.
+func Div(a, b Expr) Expr {
+	return &divOp{simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op divOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.Div(b)
 }
 
 // KVPair associates an identifier with an expression.

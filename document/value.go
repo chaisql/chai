@@ -610,9 +610,9 @@ func (v Value) Sub(u Value) (res Value, err error) {
 	return calculateValues(v, u, '-')
 }
 
-// Mult calculates v * u and returns the result.
+// Mul calculates v * u and returns the result.
 // Only numeric values and booleans can be calculated together.
-func (v Value) Mult(u Value) (res Value, err error) {
+func (v Value) Mul(u Value) (res Value, err error) {
 	return calculateValues(v, u, '*')
 }
 

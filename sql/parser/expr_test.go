@@ -112,6 +112,10 @@ func TestParserExpr(t *testing.T) {
 		{">=", "age >= 10", query.Gte(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
 		{"<", "age < 10", query.Lt(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
 		{"<=", "age <= 10", query.Lte(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"+", "age + 10", query.Add(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"-", "age - 10", query.Sub(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"*", "age * 10", query.Mul(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
+		{"/", "age / 10", query.Div(query.FieldSelector([]string{"age"}), query.Int8Value(10)), false},
 		{"AND", "age = 10 AND age <= 11",
 			query.And(
 				query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
