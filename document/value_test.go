@@ -308,7 +308,7 @@ func TestValueAdd(t *testing.T) {
 		v, u, expected document.Value
 		fails          bool
 	}{
-		{"null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
+		{"null+null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
 		{"null+int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
 		{"bool(true)+bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(2), false},
 		{"bool(true)+bool(false)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(2), false},
@@ -317,6 +317,8 @@ func TestValueAdd(t *testing.T) {
 		{"int8(120)+int8(120)", document.NewInt8Value(120), document.NewInt8Value(120), document.NewInt16Value(240), false},
 		{"int8(120)+float64(120)", document.NewInt8Value(120), document.NewFloat64Value(120), document.NewFloat64Value(240), false},
 		{"int8(120)+float64(120.1)", document.NewInt8Value(120), document.NewFloat64Value(120.1), document.NewFloat64Value(240.1), false},
+		{"int64(max)+int8(10)", document.NewInt64Value(math.MaxInt64), document.NewIntValue(10), document.NewFloat64Value(math.MaxInt64 + 10), false},
+		{"int64(-max)+int8(-10)", document.NewInt64Value(math.MinInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MinInt64 - 10), false},
 		{"int8(120)+text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
 		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
 	}

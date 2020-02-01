@@ -648,7 +648,14 @@ func (v Value) Add(u Value) (res Value, err error) {
 			return
 		}
 
-		return NewIntValue(int(xu + xv)), nil
+		xr := xv + xu
+		// if there is an integer overflow
+		// convert to float
+		if (xr > xv) != (xu > 0) {
+			return NewFloat64Value(float64(xu) + float64(xv)), nil
+		}
+
+		return NewIntValue(int(xr)), nil
 	}
 
 	err = fmt.Errorf("cannot add value of type %s to value of type %s", v.Type, u.Type)
