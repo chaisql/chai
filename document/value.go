@@ -601,64 +601,90 @@ func (v Value) Scan(t interface{}) error {
 // Add u to v and return the result.
 // Only numeric values and booleans can be added together.
 func (v Value) Add(u Value) (res Value, err error) {
-	if v.Type == NullValue || u.Type == NullValue {
+	return calculateValues(v, u, '+')
+}
+
+// Sub calculates v - u and returns the result.
+// Only numeric values and booleans can be calculated together.
+func (v Value) Sub(u Value) (res Value, err error) {
+	return calculateValues(v, u, '-')
+}
+
+func calculateValues(a, b Value, operator byte) (res Value, err error) {
+	if a.Type == NullValue || b.Type == NullValue {
 		return NewNullValue(), nil
 	}
 
-	if v.Type == BoolValue {
-		v, err = v.ConvertTo(Int64Value)
+	if a.Type == BoolValue {
+		a, err = a.ConvertTo(Int64Value)
 		if err != nil {
 			return
 		}
 	}
 
-	if u.Type == BoolValue {
-		u, err = u.ConvertTo(Int64Value)
+	if b.Type == BoolValue {
+		b, err = b.ConvertTo(Int64Value)
 		if err != nil {
 			return
 		}
 	}
 
-	if v.Type.IsFloat() || u.Type.IsFloat() {
+	if a.Type.IsFloat() || b.Type.IsFloat() {
 		var xv, xu float64
 
-		xv, err = v.ConvertToFloat64()
+		xv, err = a.ConvertToFloat64()
 		if err != nil {
 			return
 		}
 
-		xu, err = u.ConvertToFloat64()
+		xu, err = b.ConvertToFloat64()
 		if err != nil {
 			return
 		}
 
-		return NewFloat64Value(xu + xv), nil
+		switch operator {
+		case '+':
+			return NewFloat64Value(xu + xv), nil
+		case '-':
+			return NewFloat64Value(xv - xu), nil
+		default:
+			panic(fmt.Sprintf("unknown operator %c", operator))
+		}
 	}
 
-	if v.Type.IsInteger() || u.Type.IsInteger() {
-		var xv, xu int64
+	if a.Type.IsInteger() || b.Type.IsInteger() {
+		var xa, xb int64
 
-		xv, err = v.ConvertToInt64()
+		xa, err = a.ConvertToInt64()
 		if err != nil {
 			return
 		}
 
-		xu, err = u.ConvertToInt64()
+		xb, err = b.ConvertToInt64()
 		if err != nil {
 			return
 		}
 
-		xr := xv + xu
-		// if there is an integer overflow
-		// convert to float
-		if (xr > xv) != (xu > 0) {
-			return NewFloat64Value(float64(xu) + float64(xv)), nil
-		}
+		var xr int64
 
-		return NewIntValue(int(xr)), nil
+		switch operator {
+		case '-':
+			xb = -xb
+			fallthrough
+		case '+':
+			xr = xa + xb
+			// if there is an integer overflow
+			// convert to float
+			if (xr > xa) != (xb > 0) {
+				return NewFloat64Value(float64(xa) + float64(xb)), nil
+			}
+			return NewIntValue(int(xr)), nil
+		default:
+			panic(fmt.Sprintf("unknown operator %c", operator))
+		}
 	}
 
-	err = fmt.Errorf("cannot add value of type %s to value of type %s", v.Type, u.Type)
+	err = fmt.Errorf("cannot add value of type %s to value of type %s", a.Type, b.Type)
 	return
 }
 
