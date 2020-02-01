@@ -13,7 +13,7 @@ func TestDecodeValueFromDocument(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
 		Add("address", document.NewNullValue()).
-		Add("name", document.NewStringValue("john"))
+		Add("name", document.NewTextValue("john"))
 
 	data, err := EncodeDocument(doc)
 	require.NoError(t, err)
@@ -28,7 +28,7 @@ func TestDecodeValueFromDocument(t *testing.T) {
 
 	v, err = decodeValueFromDocument(data, "name")
 	require.NoError(t, err)
-	require.Equal(t, document.NewStringValue("john"), v)
+	require.Equal(t, document.NewTextValue("john"), v)
 }
 
 func TestEncodeDecode(t *testing.T) {
@@ -41,7 +41,7 @@ func TestEncodeDecode(t *testing.T) {
 			"document.FieldBuffer",
 			document.NewFieldBuffer().
 				Add("age", document.NewInt64Value(10)).
-				Add("name", document.NewStringValue("john")),
+				Add("name", document.NewTextValue("john")),
 			`{"age": 10, "name": "john"}`,
 		},
 		{
@@ -56,7 +56,7 @@ func TestEncodeDecode(t *testing.T) {
 			"Nested Document",
 			document.NewFieldBuffer().
 				Add("age", document.NewInt64Value(10)).
-				Add("name", document.NewStringValue("john")).
+				Add("name", document.NewTextValue("john")).
 				Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 					"city":    "Ajaccio",
 					"country": "France",
@@ -80,7 +80,7 @@ func TestEncodeDecode(t *testing.T) {
 func TestDecodeDocument(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
-		Add("name", document.NewStringValue("john")).
+		Add("name", document.NewTextValue("john")).
 		Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 			"city":    "Ajaccio",
 			"country": "France",
@@ -121,7 +121,7 @@ func TestDecodeDocument(t *testing.T) {
 			require.NoError(t, err)
 			require.JSONEq(t, expected.String(), actual.String())
 		case "name":
-			require.Equal(t, document.NewStringValue("john"), v)
+			require.Equal(t, document.NewTextValue("john"), v)
 		}
 		i++
 		return nil
@@ -140,7 +140,7 @@ func TestEncodeArray(t *testing.T) {
 			"Complex array",
 			document.NewValueBuffer().
 				Append(document.NewInt64Value(10)).
-				Append(document.NewStringValue("john")).
+				Append(document.NewTextValue("john")).
 				Append(document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
 					"city":    "Ajaccio",
 					"country": "France",
@@ -240,7 +240,7 @@ func TestValueEncodeDecode(t *testing.T) {
 		dec      func([]byte) (interface{}, error)
 	}{
 		{"bytes", []byte("foo"), func() []byte { return EncodeBytes([]byte("foo")) }, func(buf []byte) (interface{}, error) { return DecodeBytes(buf) }},
-		{"string", "bar", func() []byte { return EncodeString("bar") }, func(buf []byte) (interface{}, error) { return DecodeString(buf) }},
+		{"string", "bar", func() []byte { return EncodeText("bar") }, func(buf []byte) (interface{}, error) { return DecodeText(buf) }},
 		{"bool", true, func() []byte { return EncodeBool(true) }, func(buf []byte) (interface{}, error) { return DecodeBool(buf) }},
 		{"uint", uint(10), func() []byte { return EncodeUint(10) }, func(buf []byte) (interface{}, error) { return DecodeUint(buf) }},
 		{"uint8", uint8(10), func() []byte { return EncodeUint8(10) }, func(buf []byte) (interface{}, error) { return DecodeUint8(buf) }},

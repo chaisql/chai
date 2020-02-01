@@ -297,8 +297,8 @@ func TestReIndexAll(t *testing.T) {
 
 func newDocument() *document.FieldBuffer {
 	return document.NewFieldBuffer().
-		Add("fielda", document.NewStringValue("a")).
-		Add("fieldb", document.NewStringValue("b"))
+		Add("fielda", document.NewTextValue("a")).
+		Add("fieldb", document.NewTextValue("b"))
 }
 
 func TestTxListTables(t *testing.T) {

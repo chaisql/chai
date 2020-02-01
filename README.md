@@ -159,7 +159,7 @@ err = res.
 
         err := fb.ScanDocument(r)
         ...
-        fb.Add(document.NewStringValue("group", "admin"))
+        fb.Add(document.NewTextValue("group", "admin"))
         return &fb, nil
     }).
     // Iterate on them

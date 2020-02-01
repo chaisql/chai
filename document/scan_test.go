@@ -10,7 +10,7 @@ import (
 func TestScan(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("a", document.NewBytesValue([]byte("foo"))).
-		Add("b", document.NewStringValue("bar")).
+		Add("b", document.NewTextValue("bar")).
 		Add("c", document.NewBoolValue(true)).
 		Add("d", document.NewIntValue(10)).
 		Add("e", document.NewInt8Value(10)).
@@ -24,25 +24,25 @@ func TestScan(t *testing.T) {
 		)).
 		Add("k", document.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewStringValue("foo")).
-				Add("bar", document.NewStringValue("bar")),
+				Add("foo", document.NewTextValue("foo")).
+				Add("bar", document.NewTextValue("bar")),
 		)).
 		Add("l", document.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewStringValue("foo")).
-				Add("bar", document.NewStringValue("bar")),
+				Add("foo", document.NewTextValue("foo")).
+				Add("bar", document.NewTextValue("bar")),
 		)).
 		Add("m", document.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewStringValue("foo")).
-				Add("bar", document.NewStringValue("bar")).
-				Add("baz", document.NewStringValue("baz")).
-				Add("-", document.NewStringValue("bat")),
+				Add("foo", document.NewTextValue("foo")).
+				Add("bar", document.NewTextValue("bar")).
+				Add("baz", document.NewTextValue("baz")).
+				Add("-", document.NewTextValue("bat")),
 		)).
 		Add("n", document.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewStringValue("foo")).
-				Add("bar", document.NewStringValue("bar")),
+				Add("foo", document.NewTextValue("foo")).
+				Add("bar", document.NewTextValue("bar")),
 		))
 
 	type foo struct {

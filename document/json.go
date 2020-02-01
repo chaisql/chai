@@ -97,7 +97,7 @@ func parseJSONValue(dec *json.Decoder) (Value, error) {
 
 	switch tt := t.(type) {
 	case string:
-		return NewStringValue(tt), nil
+		return NewTextValue(tt), nil
 	case bool:
 		return NewBoolValue(tt), nil
 	case nil:

@@ -11,7 +11,7 @@ import (
 
 var (
 	bytesZeroValue    = NewZeroValue(BytesValue)
-	stringZeroValue   = NewZeroValue(StringValue)
+	textZeroValue     = NewZeroValue(TextValue)
 	boolZeroValue     = NewZeroValue(BoolValue)
 	int8ZeroValue     = NewZeroValue(Int8Value)
 	int16ZeroValue    = NewZeroValue(Int16Value)
@@ -27,7 +27,7 @@ type ValueType uint8
 // List of supported value types.
 const (
 	BytesValue ValueType = iota + 1
-	StringValue
+	TextValue
 	BoolValue
 	Int8Value
 	Int16Value
@@ -44,27 +44,27 @@ const (
 func (t ValueType) String() string {
 	switch t {
 	case BytesValue:
-		return "Bytes"
-	case StringValue:
-		return "String"
+		return "bytes"
+	case TextValue:
+		return "text"
 	case BoolValue:
-		return "Bool"
+		return "bool"
 	case Int8Value:
-		return "Int8"
+		return "int8"
 	case Int16Value:
-		return "Int16"
+		return "int16"
 	case Int32Value:
-		return "Int32"
+		return "int32"
 	case Int64Value:
-		return "Int64"
+		return "int64"
 	case Float64Value:
-		return "Float64"
+		return "float64"
 	case NullValue:
-		return "Null"
+		return "null"
 	case DocumentValue:
-		return "Document"
+		return "document"
 	case ArrayValue:
-		return "Array"
+		return "array"
 	}
 
 	return ""
@@ -97,7 +97,7 @@ func NewValue(x interface{}) (Value, error) {
 	case []byte:
 		return NewBytesValue(v), nil
 	case string:
-		return NewStringValue(v), nil
+		return NewTextValue(v), nil
 	case bool:
 		return NewBoolValue(v), nil
 	case int:
@@ -159,10 +159,10 @@ func NewBytesValue(x []byte) Value {
 	}
 }
 
-// NewStringValue encodes x and returns a value.
-func NewStringValue(x string) Value {
+// NewTextValue encodes x and returns a value.
+func NewTextValue(x string) Value {
 	return Value{
-		Type: StringValue,
+		Type: TextValue,
 		V:    []byte(x),
 	}
 }
@@ -263,8 +263,8 @@ func NewZeroValue(t ValueType) Value {
 	switch t {
 	case BytesValue:
 		return NewBytesValue(nil)
-	case StringValue:
-		return NewStringValue("")
+	case TextValue:
+		return NewTextValue("")
 	case BoolValue:
 		return NewBoolValue(false)
 	case Int8Value:
@@ -308,7 +308,7 @@ func (v Value) String() string {
 		return buf.String()
 	case NullValue:
 		return "NULL"
-	case StringValue:
+	case TextValue:
 		return string(v.V.([]byte))
 	}
 
@@ -331,13 +331,13 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 			Type: BytesValue,
 			V:    x,
 		}, nil
-	case StringValue:
-		x, err := v.ConvertToString()
+	case TextValue:
+		x, err := v.ConvertToText()
 		if err != nil {
 			return Value{}, err
 		}
 		return Value{
-			Type: StringValue,
+			Type: TextValue,
 			V:    x,
 		}, nil
 	case BoolValue:
@@ -412,7 +412,7 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 // ConvertToBytes returns v.Data. It's a convenience method to ease code generation.
 func (v Value) ConvertToBytes() ([]byte, error) {
 	switch v.Type {
-	case StringValue, BytesValue:
+	case TextValue, BytesValue:
 		return v.V.([]byte), nil
 	}
 
@@ -423,11 +423,11 @@ func (v Value) ConvertToBytes() ([]byte, error) {
 	return nil, fmt.Errorf("can't convert %q to bytes", v.Type)
 }
 
-// ConvertToString turns a value of type String or Bytes into a string.
+// ConvertToText turns a value of type Text or Bytes into a string.
 // If fails if it's used with any other type.
-func (v Value) ConvertToString() (string, error) {
+func (v Value) ConvertToText() (string, error) {
 	switch v.Type {
-	case StringValue, BytesValue:
+	case TextValue, BytesValue:
 		return string(v.V.([]byte)), nil
 	}
 
@@ -539,7 +539,7 @@ func (v Value) ConvertToArray() (Array, error) {
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() bool {
 	switch v.Type {
-	case BytesValue, StringValue:
+	case BytesValue, TextValue:
 		return bytes.Compare(v.V.([]byte), bytesZeroValue.V.([]byte)) == 0
 	case BoolValue:
 		return v.V == boolZeroValue.V
@@ -579,8 +579,8 @@ func (v Value) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 		x = &jsonArray{a}
-	case StringValue, BytesValue:
-		s, err := v.ConvertToString()
+	case TextValue, BytesValue:
+		s, err := v.ConvertToText()
 		if err != nil {
 			return nil, err
 		}

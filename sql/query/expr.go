@@ -41,9 +41,9 @@ func BytesValue(v []byte) LiteralValue {
 	return LiteralValue(document.NewBytesValue(v))
 }
 
-// StringValue creates a litteral value of type String.
-func StringValue(v string) LiteralValue {
-	return LiteralValue(document.NewStringValue(v))
+// TextValue creates a litteral value of type Text.
+func TextValue(v string) LiteralValue {
+	return LiteralValue(document.NewTextValue(v))
 }
 
 // BoolValue creates a litteral value of type Bool.

@@ -32,7 +32,7 @@ func TestParserCreateTable(t *testing.T) {
 					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.Int64Value},
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"bar"}, Type: document.Int16Value},
-						{Path: []string{"baz", "4", "1", "bat"}, Type: document.StringValue},
+						{Path: []string{"baz", "4", "1", "bat"}, Type: document.TextValue},
 					},
 				},
 			}, false},

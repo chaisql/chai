@@ -19,23 +19,23 @@ func TestToJSON(t *testing.T) {
 		{
 			"Flat",
 			document.NewFieldBuffer().
-				Add("name", document.NewStringValue("John")).
+				Add("name", document.NewTextValue("John")).
 				Add("age", document.NewInt16Value(10)),
 			`{"name":"John","age":10}` + "\n",
 		},
 		{
 			"Nested",
 			document.NewFieldBuffer().
-				Add("name", document.NewStringValue("John")).
+				Add("name", document.NewTextValue("John")).
 				Add("age", document.NewInt16Value(10)).
 				Add("address", document.NewDocumentValue(document.NewFieldBuffer().
-					Add("city", document.NewStringValue("Ajaccio")).
-					Add("country", document.NewStringValue("France")),
+					Add("city", document.NewTextValue("Ajaccio")).
+					Add("country", document.NewTextValue("France")),
 				)).
 				Add("friends", document.NewArrayValue(
 					document.NewValueBuffer().
-						Append(document.NewStringValue("fred")).
-						Append(document.NewStringValue("jamie")),
+						Append(document.NewTextValue("fred")).
+						Append(document.NewTextValue("jamie")),
 				)),
 			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"},"friends":["fred","jamie"]}` + "\n",
 		},

@@ -124,7 +124,7 @@ func TestIndexDelete(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
-			require.Error(t, idx.Delete(document.NewStringValue("foo"), []byte("foo")))
+			require.Error(t, idx.Delete(document.NewTextValue("foo"), []byte("foo")))
 		})
 	}
 }
@@ -154,7 +154,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				pivot *index.Pivot
 			}{
 				{"floats", func(i int) document.Value { return document.NewInt32Value(int32(i)) }, index.Float, index.EmptyPivot(document.Int32Value)},
-				{"bytes", func(i int) document.Value { return document.NewStringValue(string([]byte{byte(i)})) }, index.Bytes, index.EmptyPivot(document.StringValue)},
+				{"bytes", func(i int) document.Value { return document.NewTextValue(string([]byte{byte(i)})) }, index.Bytes, index.EmptyPivot(document.TextValue)},
 			}
 
 			for _, test := range tests {
@@ -194,12 +194,12 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			defer cleanup()
 
 			for i := byte(0); i < 10; i += 2 {
-				require.NoError(t, idx.Set(document.NewStringValue(string([]byte{'A' + i})), []byte{'a' + i}))
+				require.NoError(t, idx.Set(document.NewTextValue(string([]byte{'A' + i})), []byte{'a' + i}))
 			}
 
 			var i uint8
 			var count int
-			pivot := document.NewStringValue("C")
+			pivot := document.NewTextValue("C")
 			err := idx.AscendGreaterOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, rid []byte) error {
 				require.Equal(t, document.NewBytesValue([]byte{'C' + i}), val)
 				require.Equal(t, []byte{'c' + i}, rid)
@@ -218,7 +218,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 			for i := 0; i < 10; i++ {
 				require.NoError(t, idx.Set(document.NewIntValue(i), []byte{'i', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewStringValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
 			}
 
 			var floats, bytes int
@@ -292,12 +292,12 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			defer cleanup()
 
 			for i := byte(0); i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewStringValue(string([]byte{'A' + i})), []byte{'a' + i}))
+				require.NoError(t, idx.Set(document.NewTextValue(string([]byte{'A' + i})), []byte{'a' + i}))
 			}
 
 			var i byte = 0
 			var count int
-			pivot := document.NewStringValue("F")
+			pivot := document.NewTextValue("F")
 			err := idx.DescendLessOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, rid []byte) error {
 				require.Equal(t, document.NewBytesValue([]byte{'F' - i}), val)
 				require.Equal(t, []byte{'f' - i}, rid)
@@ -316,7 +316,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 			for i := 0; i < 10; i++ {
 				require.NoError(t, idx.Set(document.NewIntValue(i), []byte{'i', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewStringValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
 			}
 
 			var floats, bytes int = 9, 9
@@ -376,12 +376,12 @@ func BenchmarkIndexIteration(b *testing.B) {
 
 			for i := 0; i < size; i++ {
 				k := []byte(fmt.Sprintf("name-%d", i))
-				idx.Set(document.NewStringValue(string(k)), k)
+				idx.Set(document.NewTextValue(string(k)), k)
 			}
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				idx.AscendGreaterOrEqual(index.EmptyPivot(document.StringValue), func(_ document.Value, _ []byte) error {
+				idx.AscendGreaterOrEqual(index.EmptyPivot(document.TextValue), func(_ document.Value, _ []byte) error {
 					return nil
 				})
 			}

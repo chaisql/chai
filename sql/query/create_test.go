@@ -64,7 +64,7 @@ func TestCreateTable(t *testing.T) {
 					Type: document.BytesValue,
 				},
 				FieldConstraints: []database.FieldConstraint{
-					{Path: []string{"foo", "a", "1", "2"}, Type: document.StringValue},
+					{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue},
 					{Path: []string{"bar", "4", "0", "bat"}, Type: document.Int8Value},
 				},
 			}, cfg)

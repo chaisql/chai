@@ -279,7 +279,7 @@ func TestTableInsert(t *testing.T) {
 		doc := document.NewFieldBuffer().
 			Add("foo", document.NewIntValue(1)).
 			Add("bar", document.NewFloat64Value(10)).
-			Add("baz", document.NewStringValue("baaaaz"))
+			Add("baz", document.NewTextValue("baaaaz"))
 
 		// insert
 		key, err := tb.Insert(doc)
@@ -296,7 +296,7 @@ func TestTableInsert(t *testing.T) {
 		require.Equal(t, document.NewInt8Value(10), v)
 		v, err = d.GetByField("baz")
 		require.NoError(t, err)
-		require.Equal(t, document.NewStringValue("baaaaz"), v)
+		require.Equal(t, document.NewTextValue("baaaaz"), v)
 	})
 }
 
@@ -357,8 +357,8 @@ func TestTableReplace(t *testing.T) {
 		// create two different documents
 		doc1 := newDocument()
 		doc2 := document.NewFieldBuffer().
-			Add("fielda", document.NewStringValue("c")).
-			Add("fieldb", document.NewStringValue("d"))
+			Add("fielda", document.NewTextValue("c")).
+			Add("fieldb", document.NewTextValue("d"))
 
 		key1, err := tb.Insert(doc1)
 		require.NoError(t, err)
@@ -367,8 +367,8 @@ func TestTableReplace(t *testing.T) {
 
 		// create a third document
 		doc3 := document.NewFieldBuffer().
-			Add("fielda", document.NewStringValue("e")).
-			Add("fieldb", document.NewStringValue("f"))
+			Add("fielda", document.NewTextValue("e")).
+			Add("fieldb", document.NewTextValue("f"))
 
 		// replace doc1 with doc3
 		err = tb.Replace(key1, doc3)

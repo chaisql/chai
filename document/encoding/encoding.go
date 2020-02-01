@@ -28,13 +28,13 @@ func DecodeBytes(buf []byte) ([]byte, error) {
 	return buf, nil
 }
 
-// EncodeString takes a string and returns its binary representation.
-func EncodeString(x string) []byte {
+// EncodeText takes a string and returns its binary representation.
+func EncodeText(x string) []byte {
 	return []byte(x)
 }
 
-// DecodeString takes a byte slice and decodes it into a string.
-func DecodeString(buf []byte) (string, error) {
+// DecodeText takes a byte slice and decodes it into a string.
+func DecodeText(buf []byte) (string, error) {
 	return string(buf), nil
 }
 
@@ -294,12 +294,12 @@ func EncodeValue(v document.Value) ([]byte, error) {
 			return nil, err
 		}
 		return EncodeBytes(x), nil
-	case document.StringValue:
-		x, err := v.ConvertToString()
+	case document.TextValue:
+		x, err := v.ConvertToText()
 		if err != nil {
 			return nil, err
 		}
-		return EncodeString(x), nil
+		return EncodeText(x), nil
 	case document.BoolValue:
 		x, err := v.ConvertToBool()
 		if err != nil {
@@ -495,12 +495,12 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewBytesValue(x), nil
-	case document.StringValue:
-		x, err := DecodeString(data)
+	case document.TextValue:
+		x, err := DecodeText(data)
 		if err != nil {
 			return document.Value{}, err
 		}
-		return document.NewStringValue(x), nil
+		return document.NewTextValue(x), nil
 	case document.BoolValue:
 		x, err := DecodeBool(data)
 		if err != nil {

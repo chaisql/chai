@@ -248,7 +248,7 @@ func scanValue(v Value, ref reflect.Value) error {
 
 	switch ref.Kind() {
 	case reflect.String:
-		x, err := v.ConvertToString()
+		x, err := v.ConvertToText()
 		if err != nil {
 			return err
 		}

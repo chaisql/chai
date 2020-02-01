@@ -34,8 +34,8 @@ func TestParserExpr(t *testing.T) {
 		{"-float64", "-10.0", query.Float64Value(-10), false},
 
 		// strings
-		{"double quoted string", `"10.0"`, query.StringValue("10.0"), false},
-		{"single quoted string", "'-10.0'", query.StringValue("-10.0"), false},
+		{"double quoted string", `"10.0"`, query.TextValue("10.0"), false},
+		{"single quoted string", "'-10.0'", query.TextValue("-10.0"), false},
 
 		// identifiers
 		{"simple field ref", `a`, query.FieldSelector{"a"}, false},
@@ -52,10 +52,10 @@ func TestParserExpr(t *testing.T) {
 				query.KVPair{K: "a", V: query.Int8Value(1)},
 				query.KVPair{K: "b", V: query.Float64Value(1)},
 				query.KVPair{K: "c", V: query.BoolValue(true)},
-				query.KVPair{K: "d", V: query.StringValue("string")},
-				query.KVPair{K: "e", V: query.StringValue("string")},
+				query.KVPair{K: "d", V: query.TextValue("string")},
+				query.KVPair{K: "e", V: query.TextValue("string")},
 				query.KVPair{K: "f", V: query.KVPairs{
-					query.KVPair{K: "foo", V: query.StringValue("bar")},
+					query.KVPair{K: "foo", V: query.TextValue("bar")},
 				}},
 				query.KVPair{K: "g", V: query.FieldSelector([]string{"h", "i", "j"})},
 				query.KVPair{K: "k", V: query.LiteralExprList{query.Int8Value(1), query.Int8Value(2), query.Int8Value(3)}},
@@ -132,7 +132,7 @@ func TestParserExpr(t *testing.T) {
 			), false},
 		{"with NULL", "age > NULL", query.Gt(query.FieldSelector([]string{"age"}), query.NullValue()), false},
 		{"pk() function", "pk()", &query.PKFunc{}, false},
-		{"CAST", "CAST(a.b.1.0 AS TEXT)", query.Cast{Expr: query.FieldSelector([]string{"a", "b", "1", "0"}), ConvertTo: document.StringValue}, false},
+		{"CAST", "CAST(a.b.1.0 AS TEXT)", query.Cast{Expr: query.FieldSelector([]string{"a", "b", "1", "0"}), ConvertTo: document.TextValue}, false},
 	}
 
 	for _, test := range tests {

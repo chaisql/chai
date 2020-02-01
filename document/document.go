@@ -177,7 +177,7 @@ func reflectValueToValue(v reflect.Value) (Value, error) {
 	case reflect.Struct:
 		return NewDocumentValue(&structDocument{ref: v}), nil
 	case reflect.String:
-		return NewStringValue(v.String()), nil
+		return NewTextValue(v.String()), nil
 	case reflect.Slice:
 		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
 			return NewBytesValue(v.Bytes()), nil

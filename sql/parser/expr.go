@@ -133,7 +133,7 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		p.orderedParams++
 		return query.PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return query.StringValue(lit), nil
+		return query.TextValue(lit), nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
@@ -241,7 +241,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 	case scanner.TYPEBYTES:
 		return document.BytesValue, nil
 	case scanner.TYPESTRING:
-		return document.StringValue, nil
+		return document.TextValue, nil
 	case scanner.TYPEBOOL:
 		return document.BoolValue, nil
 	case scanner.TYPEINT8:
@@ -255,7 +255,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 	case scanner.TYPEFLOAT64, scanner.TYPENUMERIC:
 		return document.Float64Value, nil
 	case scanner.TYPETEXT:
-		return document.StringValue, nil
+		return document.TextValue, nil
 	}
 
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)

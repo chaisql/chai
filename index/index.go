@@ -40,7 +40,7 @@ func NewTypeFromValueType(t document.ValueType) Type {
 		return Float
 	}
 
-	if t == document.StringValue || t == document.BytesValue {
+	if t == document.TextValue || t == document.BytesValue {
 		return Bytes
 	}
 

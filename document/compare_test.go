@@ -24,7 +24,7 @@ var textFuncs = []struct {
 	name string
 	fn   func(x interface{}) document.Value
 }{
-	{"string", func(x interface{}) document.Value { return document.NewStringValue(x.(string)) }},
+	{"string", func(x interface{}) document.Value { return document.NewTextValue(x.(string)) }},
 	{"bytes", func(x interface{}) document.Value { return document.NewBytesValue([]byte(x.(string))) }},
 }
 
@@ -410,7 +410,7 @@ func TestComparisonDifferentTypes(t *testing.T) {
 	}
 
 	t.Run("not equal with different types", func(t *testing.T) {
-		ok, err := document.NewIntValue(1).IsNotEqual(document.NewStringValue("foo"))
+		ok, err := document.NewIntValue(1).IsNotEqual(document.NewTextValue("foo"))
 		require.NoError(t, err)
 		require.True(t, ok)
 	})

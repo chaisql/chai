@@ -89,13 +89,13 @@ func compare(op operator, l, r Value) (bool, error) {
 		return compareWithBool(op, l, r)
 
 	// compare strings and bytes together
-	case l.Type == StringValue && r.Type == StringValue:
+	case l.Type == TextValue && r.Type == TextValue:
 		fallthrough
 	case l.Type == BytesValue && r.Type == BytesValue:
 		fallthrough
-	case l.Type == StringValue && r.Type == BytesValue:
+	case l.Type == TextValue && r.Type == BytesValue:
 		fallthrough
-	case r.Type == StringValue && l.Type == BytesValue:
+	case r.Type == TextValue && l.Type == BytesValue:
 		return compareBytes(op, l, r)
 
 	// integer OP integer

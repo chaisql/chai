@@ -20,11 +20,11 @@ func TestParserInsert(t *testing.T) {
 				Values: query.LiteralExprList{
 					query.KVPairs{
 						query.KVPair{K: "a", V: query.Int8Value(1)},
-						query.KVPair{K: "b", V: query.StringValue("foo")},
-						query.KVPair{K: "c", V: query.StringValue("bar")},
+						query.KVPair{K: "b", V: query.TextValue("foo")},
+						query.KVPair{K: "c", V: query.TextValue("bar")},
 						query.KVPair{K: "d", V: query.Eq(query.Int8Value(1), query.Int8Value(1))},
 						query.KVPair{K: "e", V: query.KVPairs{
-							query.KVPair{K: "f", V: query.StringValue("baz")},
+							query.KVPair{K: "f", V: query.TextValue("baz")},
 						}},
 					},
 				}}, false},
@@ -33,7 +33,7 @@ func TestParserInsert(t *testing.T) {
 				TableName: "test",
 				Values: query.LiteralExprList{
 					query.KVPairs{
-						query.KVPair{K: "a", V: query.StringValue("a")},
+						query.KVPair{K: "a", V: query.TextValue("a")},
 						query.KVPair{K: "b", V: query.Float64Value(-2.3)},
 					},
 					query.KVPairs{query.KVPair{K: "a", V: query.Int8Value(1)}, query.KVPair{K: "d", V: query.BoolValue(true)}},
@@ -56,7 +56,7 @@ func TestParserInsert(t *testing.T) {
 				TableName:  "test",
 				FieldNames: []string{"a", "b"},
 				Values: query.LiteralExprList{
-					query.LiteralExprList{query.StringValue("c"), query.StringValue("d"), query.StringValue("e")},
+					query.LiteralExprList{query.TextValue("c"), query.TextValue("d"), query.TextValue("e")},
 				},
 			}, false},
 		{"Values / Multiple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
@@ -64,8 +64,8 @@ func TestParserInsert(t *testing.T) {
 				TableName:  "test",
 				FieldNames: []string{"a", "b"},
 				Values: query.LiteralExprList{
-					query.LiteralExprList{query.StringValue("c"), query.StringValue("d")},
-					query.LiteralExprList{query.StringValue("e"), query.StringValue("f")},
+					query.LiteralExprList{query.TextValue("c"), query.TextValue("d")},
+					query.LiteralExprList{query.TextValue("e"), query.TextValue("f")},
 				},
 			}, false},
 	}
