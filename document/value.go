@@ -610,6 +610,12 @@ func (v Value) Sub(u Value) (res Value, err error) {
 	return calculateValues(v, u, '-')
 }
 
+// Mult calculates v * u and returns the result.
+// Only numeric values and booleans can be calculated together.
+func (v Value) Mult(u Value) (res Value, err error) {
+	return calculateValues(v, u, '*')
+}
+
 func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	if a.Type == NullValue || b.Type == NullValue {
 		return NewNullValue(), nil
@@ -630,23 +636,25 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	}
 
 	if a.Type.IsFloat() || b.Type.IsFloat() {
-		var xv, xu float64
+		var xa, xb float64
 
-		xv, err = a.ConvertToFloat64()
+		xa, err = a.ConvertToFloat64()
 		if err != nil {
 			return
 		}
 
-		xu, err = b.ConvertToFloat64()
+		xb, err = b.ConvertToFloat64()
 		if err != nil {
 			return
 		}
 
 		switch operator {
 		case '+':
-			return NewFloat64Value(xu + xv), nil
+			return NewFloat64Value(xa + xb), nil
 		case '-':
-			return NewFloat64Value(xv - xu), nil
+			return NewFloat64Value(xa - xb), nil
+		case '*':
+			return NewFloat64Value(xa * xb), nil
 		default:
 			panic(fmt.Sprintf("unknown operator %c", operator))
 		}
@@ -679,6 +687,21 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 				return NewFloat64Value(float64(xa) + float64(xb)), nil
 			}
 			return NewIntValue(int(xr)), nil
+		case '*':
+			if xa == 0 || xb == 0 {
+				return NewIntValue(0), nil
+			}
+
+			xr = xa * xb
+			// if there is no integer overflow
+			// return an int otherwise
+			// convert to float
+			if (xr < 0) == ((xa < 0) != (xb < 0)) {
+				if xr/xb == xa {
+					return NewIntValue(int(xr)), nil
+				}
+			}
+			return NewFloat64Value(float64(xa) * float64(xb)), nil
 		default:
 			panic(fmt.Sprintf("unknown operator %c", operator))
 		}
