@@ -623,6 +623,13 @@ func (v Value) Div(u Value) (res Value, err error) {
 	return calculateValues(v, u, '/')
 }
 
+// Mod calculates v / u and returns the result.
+// Only numeric values and booleans can be calculated together.
+// If both v and u are integers, the result will be an integer.
+func (v Value) Mod(u Value) (res Value, err error) {
+	return calculateValues(v, u, '%')
+}
+
 func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	if a.Type == NullValue || b.Type == NullValue {
 		return NewNullValue(), nil
@@ -668,6 +675,13 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 			}
 
 			return NewFloat64Value(xa / xb), nil
+		case '%':
+			if xb == 0 {
+				return NewNullValue(), nil
+			}
+
+			ia, ib := int64(xa), int64(xb)
+			return NewFloat64Value(float64(ia % ib)), nil
 		default:
 			panic(fmt.Sprintf("unknown operator %c", operator))
 		}
@@ -721,6 +735,12 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 			}
 
 			return NewIntValue(int(xa / xb)), nil
+		case '%':
+			if xb == 0 {
+				return NewNullValue(), nil
+			}
+
+			return NewIntValue(int(xa % xb)), nil
 		default:
 			panic(fmt.Sprintf("unknown operator %c", operator))
 		}
