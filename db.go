@@ -7,10 +7,11 @@ import (
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/asdine/genji/engine/boltengine"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/asdine/genji/sql/parser"
 	"github.com/asdine/genji/sql/query"
+	"github.com/dgraph-io/badger/v2"
 )
 
 // Open creates a Genji database at the given path.
@@ -22,7 +23,7 @@ func Open(path string) (*DB, error) {
 
 	switch path {
 	case ":memory:":
-		ng = memoryengine.NewEngine()
+		ng, err = badgerengine.NewEngine(badger.DefaultOptions("").WithInMemory(true))
 	default:
 		ng, err = boltengine.NewEngine(path, 0660, nil)
 	}
