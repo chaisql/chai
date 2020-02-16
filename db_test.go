@@ -8,12 +8,11 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
 func ExampleTx() {
-	db, err := genji.New(memoryengine.NewEngine())
+	db, err := genji.Open(":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +68,7 @@ func ExampleTx() {
 }
 
 func TestQueryDocument(t *testing.T) {
-	db, err := genji.New(memoryengine.NewEngine())
+	db, err := genji.Open(":memory:")
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)

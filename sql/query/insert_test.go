@@ -8,7 +8,6 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +39,7 @@ func TestInsertStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.New(memoryengine.NewEngine())
+				db, err := genji.Open(":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -77,7 +76,7 @@ func TestInsertStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -94,7 +93,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with shadowing", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -106,7 +105,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with struct param", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 

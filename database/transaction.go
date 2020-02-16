@@ -242,39 +242,24 @@ func (tx Transaction) ReIndex(indexName string) error {
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (tx Transaction) ReIndexAll() error {
-	return tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		var opts IndexConfig
-		err := document.StructScan(encoding.EncodedDocument(v), &opts)
-		if err != nil {
-			return err
-		}
+	var indexes []string
 
-		var idx index.Index
-		if opts.Unique {
-			idx = index.NewUniqueIndex(tx.Tx, opts.IndexName)
-		} else {
-			idx = index.NewListIndex(tx.Tx, opts.IndexName)
-		}
-
-		tb, err := tx.GetTable(opts.TableName)
-		if err != nil {
-			return err
-		}
-
-		err = idx.Truncate()
-		if err != nil {
-			return err
-		}
-
-		return tb.Iterate(func(d document.Document) error {
-			v, err := opts.Path.GetValue(d)
-			if err != nil {
-				return err
-			}
-
-			return idx.Set(v, d.(document.Keyer).Key())
-		})
+	err := tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+		indexes = append(indexes, string(k))
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	for _, indexName := range indexes {
+		err = tx.ReIndex(indexName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {

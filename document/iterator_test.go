@@ -6,11 +6,10 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
 )
 
 func ExampleStream_First() {
-	db, err := genji.New(memoryengine.NewEngine())
+	db, err := genji.Open(":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,7 +62,7 @@ func ExampleStream_Iterate() {
 		}
 	}
 
-	db, err := genji.New(memoryengine.NewEngine())
+	db, err := genji.Open(":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}

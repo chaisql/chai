@@ -6,7 +6,6 @@ import (
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +25,7 @@ func TestCreateTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.New(memoryengine.NewEngine())
+			db, err := genji.Open(":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -45,7 +44,7 @@ func TestCreateTable(t *testing.T) {
 	}
 
 	t.Run("constraints", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -89,7 +88,7 @@ func TestCreateIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.New(memoryengine.NewEngine())
+			db, err := genji.Open(":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 

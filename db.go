@@ -23,7 +23,7 @@ func Open(path string) (*DB, error) {
 
 	switch path {
 	case ":memory:":
-		ng, err = badgerengine.NewEngine(badger.DefaultOptions("").WithInMemory(true))
+		ng, err = badgerengine.NewEngine(badger.DefaultOptions("").WithInMemory(true).WithLogger(nil))
 	default:
 		ng, err = boltengine.NewEngine(path, 0660, nil)
 	}

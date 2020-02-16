@@ -7,7 +7,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,7 +66,7 @@ func TestSelectStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.New(memoryengine.NewEngine())
+				db, err := genji.Open(":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -109,7 +108,7 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -133,7 +132,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("with documents", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -167,7 +166,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("table not found", func(t *testing.T) {
-		db, err := genji.New(memoryengine.NewEngine())
+		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 

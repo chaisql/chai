@@ -6,7 +6,6 @@ import (
 
 	"github.com/asdine/genji"
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +24,7 @@ func TestDeleteStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.New(memoryengine.NewEngine())
+			db, err := genji.Open(":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
