@@ -3,6 +3,7 @@ module github.com/asdine/genji
 go 1.13
 
 require (
+	github.com/dgraph-io/badger/v2 v2.0.1
 	github.com/etcd-io/bbolt v1.3.3
 	github.com/google/btree v1.0.0
 	github.com/pkg/errors v0.8.1
