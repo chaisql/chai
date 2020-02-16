@@ -15,6 +15,10 @@ func TestParserSelect(t *testing.T) {
 		expected query.Statement
 		mustFail bool
 	}{
+		{"NoTable", "SELECT 1",
+			query.SelectStmt{
+				Selectors: []query.ResultField{query.ResultFieldExpr{Expr: query.Int8Value(1), ExprName: "1"}},
+			}, false},
 		{"NoCond", "SELECT * FROM test",
 			query.SelectStmt{
 				Selectors: []query.ResultField{query.Wildcard{}},

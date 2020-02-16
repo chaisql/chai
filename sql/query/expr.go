@@ -2,6 +2,7 @@ package query
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -171,10 +172,6 @@ func (f FieldSelector) Name() string {
 // Eval extracts the document from the context and selects the right field.
 // It implements the Expr interface.
 func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
-	if stack.Document == nil {
-		return nilLitteral, document.ErrFieldNotFound
-	}
-
 	if stack.Document == nil {
 		return nilLitteral, document.ErrFieldNotFound
 	}
@@ -529,6 +526,10 @@ type PKFunc struct{}
 
 // Eval returns the primary key of the current document.
 func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if ctx.Cfg == nil {
+		return document.Value{}, errors.New("no table specified")
+	}
+
 	if len(ctx.Cfg.PrimaryKey.Path) != 0 {
 		return ctx.Cfg.PrimaryKey.Path.GetValue(ctx.Document)
 	}

@@ -19,6 +19,10 @@ func TestSelectStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
+		{"No table", "SELECT 1 + 1", false, `[{"1 + 1":2}]`, nil},
+		{"No table, function", "SELECT pk()", true, ``, nil},
+		{"No table, function", "SELECT a", false, `[{"a": null}]`, nil},
+		{"No table, function", "SELECT *", true, ``, nil},
 		{"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":1},{"k":3,"height":100,"weight":20}]`, nil},
 		{"Multiple wildcards cond", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","k":1,"color":"red","size":10,"shape":"square","color":"red"},{"k":2,"color":"blue","size":10,"weight":1,"k":2,"color":"blue","size":10,"weight":1,"color":"blue"},{"k":3,"height":100,"weight":20,"k":3,"height":100,"weight":20,"color":null}]`, nil},
 		{"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
@@ -87,12 +91,12 @@ func TestSelectStmt(t *testing.T) {
 				require.NoError(t, err)
 
 				st, err := db.Query(test.query, test.params...)
+				defer st.Close()
 				if test.fails {
 					require.Error(t, err)
 					return
 				}
 				require.NoError(t, err)
-				defer st.Close()
 
 				var buf bytes.Buffer
 				err = document.IteratorToJSONArray(&buf, st)

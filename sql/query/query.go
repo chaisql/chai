@@ -130,6 +130,10 @@ func (r Result) RowsAffected() (int64, error) {
 // If the result stream was already closed, it returns
 // ErrResultClosed.
 func (r *Result) Close() (err error) {
+	if r == nil {
+		return nil
+	}
+
 	if r.closed {
 		return ErrResultClosed
 	}

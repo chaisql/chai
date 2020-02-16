@@ -36,8 +36,26 @@ func (stmt SelectStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
 	var res Result
 
+	// if there is no table name specified, evaluate the expression immediatly and return
+	// a stream with the result.
 	if stmt.TableName == "" {
-		return res, errors.New("missing table selector")
+		if len(stmt.Selectors) == 0 {
+			return res, errors.New("missing table selector")
+		}
+
+		d := documentMask{
+			resultFields: stmt.Selectors,
+		}
+		var fb document.FieldBuffer
+		err := d.Iterate(func(f string, v document.Value) error {
+			fb.Add(f, v)
+			return nil
+		})
+		if err != nil {
+			return Result{}, err
+		}
+
+		return Result{Stream: document.NewStream(document.NewIterator(fb))}, nil
 	}
 
 	if stmt.OrderByDirection != scanner.DESC {
@@ -193,5 +211,9 @@ func (w Wildcard) Name() string {
 
 // Iterate call the document iterate method.
 func (w Wildcard) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
+	if stack.Document == nil {
+		return errors.New("no table specified")
+	}
+
 	return stack.Document.Iterate(fn)
 }

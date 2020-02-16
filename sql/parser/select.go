@@ -18,8 +18,9 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 	}
 
 	// Parse "FROM".
-	stmt.TableName, err = p.parseFrom()
-	if err != nil {
+	var found bool
+	stmt.TableName, found, err = p.parseFrom()
+	if err != nil || !found {
 		return stmt, err
 	}
 
@@ -103,13 +104,15 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	return rf, nil
 }
 
-func (p *Parser) parseFrom() (string, error) {
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
-		return "", newParseError(scanner.Tokstr(tok, lit), []string{"FROM"}, pos)
+func (p *Parser) parseFrom() (string, bool, error) {
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
+		p.Unscan()
+		return "", false, nil
 	}
 
 	// Parse table name
-	return p.parseIdent()
+	ident, err := p.parseIdent()
+	return ident, true, err
 }
 
 func (p *Parser) parseOrderBy() (query.FieldSelector, scanner.Token, error) {
