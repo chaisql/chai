@@ -251,9 +251,7 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 	case "bolt":
 		ng, err = boltengine.NewEngine(sh.opts.DBPath, 0660, nil)
 	case "badger":
-		opts := badger.DefaultOptions(sh.opts.DBPath)
-		opts.Logger = nil
-		ng, err = badgerengine.NewEngine(opts)
+		ng, err = badgerengine.NewEngine(badger.DefaultOptions(sh.opts.DBPath).WithLogger(nil))
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
