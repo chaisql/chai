@@ -7,17 +7,19 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"time"
 )
 
 var (
-	blobZeroValue    = NewZeroValue(BlobValue)
-	textZeroValue    = NewZeroValue(TextValue)
-	boolZeroValue    = NewZeroValue(BoolValue)
-	int8ZeroValue    = NewZeroValue(Int8Value)
-	int16ZeroValue   = NewZeroValue(Int16Value)
-	int32ZeroValue   = NewZeroValue(Int32Value)
-	int64ZeroValue   = NewZeroValue(Int64Value)
-	float64ZeroValue = NewZeroValue(Float64Value)
+	blobZeroValue     = NewZeroValue(BlobValue)
+	textZeroValue     = NewZeroValue(TextValue)
+	boolZeroValue     = NewZeroValue(BoolValue)
+	int8ZeroValue     = NewZeroValue(Int8Value)
+	int16ZeroValue    = NewZeroValue(Int16Value)
+	int32ZeroValue    = NewZeroValue(Int32Value)
+	int64ZeroValue    = NewZeroValue(Int64Value)
+	float64ZeroValue  = NewZeroValue(Float64Value)
+	durationZeroValue = NewZeroValue(DurationValue)
 )
 
 // ValueType represents a value type supported by the database.
@@ -38,6 +40,8 @@ const (
 
 	DocumentValue
 	ArrayValue
+
+	DurationValue
 )
 
 func (t ValueType) String() string {
@@ -64,6 +68,8 @@ func (t ValueType) String() string {
 		return "document"
 	case ArrayValue:
 		return "array"
+	case DurationValue:
+		return "duration"
 	}
 
 	return ""
@@ -71,12 +77,12 @@ func (t ValueType) String() string {
 
 // IsNumber returns true if t is either an integer of a float.
 func (t ValueType) IsNumber() bool {
-	return t.IsInteger() || t.IsFloat()
+	return t.IsInteger() || t.IsFloat() || t == DurationValue
 }
 
 // IsInteger returns true if t is a signed or unsigned integer of any size.
 func (t ValueType) IsInteger() bool {
-	return t >= Int8Value && t <= Int64Value
+	return t >= Int8Value && t <= Int64Value || t == DurationValue
 }
 
 // IsFloat returns true if t is either a Float32 or Float64.
@@ -93,6 +99,8 @@ type Value struct {
 // NewValue creates a value whose type is infered from x.
 func NewValue(x interface{}) (Value, error) {
 	switch v := x.(type) {
+	case time.Duration:
+		return NewDurationValue(v), nil
 	case []byte:
 		return NewBlobValue(v), nil
 	case string:
@@ -133,6 +141,8 @@ func NewValue(x interface{}) (Value, error) {
 		return NewNullValue(), nil
 	case Document:
 		return NewDocumentValue(v), nil
+	case Array:
+		return NewArrayValue(v), nil
 	}
 
 	ref := reflect.Indirect(reflect.ValueOf(x))
@@ -235,6 +245,14 @@ func NewDocumentValue(d Document) Value {
 	}
 }
 
+// NewDurationValue returns a value of type Duration.
+func NewDurationValue(d time.Duration) Value {
+	return Value{
+		Type: DurationValue,
+		V:    d,
+	}
+}
+
 // NewArrayValue returns a value of type Array.
 func NewArrayValue(a Array) Value {
 	return Value{
@@ -245,11 +263,11 @@ func NewArrayValue(a Array) Value {
 
 func intToValue(x int64) Value {
 	switch {
-	case x <= math.MaxInt8:
+	case x <= math.MaxInt8 && x >= math.MinInt8:
 		return NewInt8Value(int8(x))
-	case x <= math.MaxInt16:
+	case x <= math.MaxInt16 && x >= math.MinInt16:
 		return NewInt16Value(int16(x))
-	case x <= math.MaxInt32:
+	case x <= math.MaxInt32 && x >= math.MinInt32:
 		return NewInt32Value(int32(x))
 	}
 
@@ -280,6 +298,8 @@ func NewZeroValue(t ValueType) Value {
 		return NewDocumentValue(NewFieldBuffer())
 	case ArrayValue:
 		return NewArrayValue(NewValueBuffer())
+	case DurationValue:
+		return NewDurationValue(0)
 	}
 
 	return Value{}
@@ -403,6 +423,15 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		}
 		return Value{
 			Type: Float64Value,
+			V:    x,
+		}, nil
+	case DurationValue:
+		x, err := v.ConvertToDuration()
+		if err != nil {
+			return Value{}, err
+		}
+		return Value{
+			Type: DurationValue,
 			V:    x,
 		}, nil
 	}
@@ -537,6 +566,21 @@ func (v Value) ConvertToArray() (Array, error) {
 	return v.V.(Array), nil
 }
 
+// ConvertToDuration turns any number into a time.Duration.
+// It doesn't work with other types.
+func (v Value) ConvertToDuration() (time.Duration, error) {
+	if v.Type == DurationValue {
+		return v.V.(time.Duration), nil
+	}
+
+	if v.Type == NullValue {
+		return 0, nil
+	}
+
+	x, err := v.ConvertToInt64()
+	return time.Duration(x), err
+}
+
 // IsZeroValue indicates if the value data is the zero value for the value type.
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() bool {
@@ -555,6 +599,8 @@ func (v Value) IsZeroValue() bool {
 		return v.V == int64ZeroValue.V
 	case Float64Value:
 		return v.V == float64ZeroValue.V
+	case DurationValue:
+		return v.V == durationZeroValue.V
 	}
 
 	return false
@@ -646,101 +692,20 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		}
 	}
 
+	if a.Type == DurationValue && b.Type == DurationValue {
+		res, err = calculateIntegers(a, b, operator)
+		if err != nil {
+			return
+		}
+		return res.ConvertTo(DurationValue)
+	}
+
 	if a.Type.IsFloat() || b.Type.IsFloat() {
-		var xa, xb float64
-
-		xa, err = a.ConvertToFloat64()
-		if err != nil {
-			return
-		}
-
-		xb, err = b.ConvertToFloat64()
-		if err != nil {
-			return
-		}
-
-		switch operator {
-		case '+':
-			return NewFloat64Value(xa + xb), nil
-		case '-':
-			return NewFloat64Value(xa - xb), nil
-		case '*':
-			return NewFloat64Value(xa * xb), nil
-		case '/':
-			if xb == 0 {
-				return NewNullValue(), nil
-			}
-
-			return NewFloat64Value(xa / xb), nil
-		case '%':
-			if xb == 0 {
-				return NewNullValue(), nil
-			}
-
-			ia, ib := int64(xa), int64(xb)
-			return NewFloat64Value(float64(ia % ib)), nil
-		default:
-			panic(fmt.Sprintf("unknown operator %c", operator))
-		}
+		return calculateFloats(a, b, operator)
 	}
 
 	if a.Type.IsInteger() || b.Type.IsInteger() {
-		var xa, xb int64
-
-		xa, err = a.ConvertToInt64()
-		if err != nil {
-			return
-		}
-
-		xb, err = b.ConvertToInt64()
-		if err != nil {
-			return
-		}
-
-		var xr int64
-
-		switch operator {
-		case '-':
-			xb = -xb
-			fallthrough
-		case '+':
-			xr = xa + xb
-			// if there is an integer overflow
-			// convert to float
-			if (xr > xa) != (xb > 0) {
-				return NewFloat64Value(float64(xa) + float64(xb)), nil
-			}
-			return NewIntValue(int(xr)), nil
-		case '*':
-			if xa == 0 || xb == 0 {
-				return NewIntValue(0), nil
-			}
-
-			xr = xa * xb
-			// if there is no integer overflow
-			// return an int otherwise
-			// convert to float
-			if (xr < 0) == ((xa < 0) != (xb < 0)) {
-				if xr/xb == xa {
-					return NewIntValue(int(xr)), nil
-				}
-			}
-			return NewFloat64Value(float64(xa) * float64(xb)), nil
-		case '/':
-			if xb == 0 {
-				return NewNullValue(), nil
-			}
-
-			return NewIntValue(int(xa / xb)), nil
-		case '%':
-			if xb == 0 {
-				return NewNullValue(), nil
-			}
-
-			return NewIntValue(int(xa % xb)), nil
-		default:
-			panic(fmt.Sprintf("unknown operator %c", operator))
-		}
+		return calculateIntegers(a, b, operator)
 	}
 
 	err = fmt.Errorf("cannot add value of type %s to value of type %s", a.Type, b.Type)
@@ -768,7 +733,106 @@ func convertNumberToInt64(v Value) (int64, error) {
 			return 0, errors.New("cannot convert float64 value to integer without loss of precision")
 		}
 		i = int64(f)
+	case DurationValue:
+		return int64(v.V.(time.Duration)), nil
 	}
 
 	return i, nil
+}
+
+func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
+	var xa, xb int64
+
+	xa, err = a.ConvertToInt64()
+	if err != nil {
+		return
+	}
+
+	xb, err = b.ConvertToInt64()
+	if err != nil {
+		return
+	}
+
+	var xr int64
+
+	switch operator {
+	case '-':
+		xb = -xb
+		fallthrough
+	case '+':
+		xr = xa + xb
+		// if there is an integer overflow
+		// convert to float
+		if (xr > xa) != (xb > 0) {
+			return NewFloat64Value(float64(xa) + float64(xb)), nil
+		}
+		return NewIntValue(int(xr)), nil
+	case '*':
+		if xa == 0 || xb == 0 {
+			return NewIntValue(0), nil
+		}
+
+		xr = xa * xb
+		// if there is no integer overflow
+		// return an int otherwise
+		// convert to float
+		if (xr < 0) == ((xa < 0) != (xb < 0)) {
+			if xr/xb == xa {
+				return NewIntValue(int(xr)), nil
+			}
+		}
+		return NewFloat64Value(float64(xa) * float64(xb)), nil
+	case '/':
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewIntValue(int(xa / xb)), nil
+	case '%':
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewIntValue(int(xa % xb)), nil
+	default:
+		panic(fmt.Sprintf("unknown operator %c", operator))
+	}
+}
+
+func calculateFloats(a, b Value, operator byte) (res Value, err error) {
+	var xa, xb float64
+
+	xa, err = a.ConvertToFloat64()
+	if err != nil {
+		return
+	}
+
+	xb, err = b.ConvertToFloat64()
+	if err != nil {
+		return
+	}
+
+	switch operator {
+	case '+':
+		return NewFloat64Value(xa + xb), nil
+	case '-':
+		return NewFloat64Value(xa - xb), nil
+	case '*':
+		return NewFloat64Value(xa * xb), nil
+	case '/':
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewFloat64Value(xa / xb), nil
+	case '%':
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		ia, ib := int64(xa), int64(xb)
+		return NewFloat64Value(float64(ia % ib)), nil
+	default:
+		panic(fmt.Sprintf("unknown operator %c", operator))
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
@@ -24,6 +25,9 @@ func TestValueString(t *testing.T) {
 		{"int32", document.NewInt32Value(10), "10"},
 		{"int64", document.NewInt64Value(10), "10"},
 		{"float64", document.NewFloat64Value(10.1), "10.1"},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), "{\"a\":10}\n"},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), "[10]\n"},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), "10ns"},
 	}
 
 	for _, test := range tests {
@@ -34,6 +38,11 @@ func TestValueString(t *testing.T) {
 }
 
 func TestNewValue(t *testing.T) {
+	type st struct {
+		A int
+		B string
+	}
+
 	tests := []struct {
 		name            string
 		value, expected interface{}
@@ -54,6 +63,9 @@ func TestNewValue(t *testing.T) {
 		{"int64", int64(10), int8(10)},
 		{"float64", 10.1, float64(10.1)},
 		{"nil", nil, nil},
+		{"document", document.NewFieldBuffer().Add("a", document.NewIntValue(10)), document.NewFieldBuffer().Add("a", document.NewIntValue(10))},
+		{"array", document.NewValueBuffer(document.NewIntValue(10)), document.NewValueBuffer(document.NewIntValue(10))},
+		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
 	}
 
 	for _, test := range tests {
@@ -82,6 +94,9 @@ func TestConvertToBlob(t *testing.T) {
 		{"int32", document.NewInt32Value(10), true, nil},
 		{"int64", document.NewInt64Value(10), true, nil},
 		{"float64", document.NewFloat64Value(10.1), true, nil},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, nil},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, nil},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, nil},
 	}
 
 	for _, test := range tests {
@@ -114,6 +129,9 @@ func TestConvertToText(t *testing.T) {
 		{"int32", document.NewInt32Value(10), true, ""},
 		{"int64", document.NewInt64Value(10), true, ""},
 		{"float64", document.NewFloat64Value(10.1), true, ""},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, ""},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, ""},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, ""},
 	}
 
 	for _, test := range tests {
@@ -159,6 +177,8 @@ func TestConvertToBool(t *testing.T) {
 		{"zero document", document.NewDocumentValue(document.NewFieldBuffer()), false, true},
 		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewInt16Value(1))), false, true},
 		{"zero array", document.NewArrayValue(document.NewValueBuffer()), false, true},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), false, true},
+		{"zero duration", document.NewDurationValue(0), false, false},
 	}
 
 	for _, test := range tests {
@@ -191,6 +211,9 @@ func TestConvertToNumber(t *testing.T) {
 		{"int64", document.NewInt64Value(10), false, 10},
 		{"float64", document.NewFloat64Value(10), false, 10},
 		{"null", document.NewNullValue(), false, 0},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, 0},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, 0},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), false, 10},
 	}
 
 	check := func(t *testing.T, res interface{}, err error, fails bool, expected interface{}) {
@@ -258,6 +281,8 @@ func TestConvertToDocument(t *testing.T) {
 		{"int32", document.NewInt32Value(10), true, nil},
 		{"int64", document.NewInt64Value(10), true, nil},
 		{"float64", document.NewFloat64Value(10), true, nil},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, nil},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, nil},
 	}
 
 	for _, test := range tests {
@@ -281,7 +306,7 @@ func TestConvertToArray(t *testing.T) {
 		expected document.Array
 	}{
 		{"null", document.NewNullValue(), false, document.NewValueBuffer()},
-		{"document", document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt16Value(10))), false, document.NewValueBuffer().Append(document.NewInt16Value(10))},
+		{"array", document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt16Value(10))), false, document.NewValueBuffer().Append(document.NewInt16Value(10))},
 		{"bytes", document.NewBlobValue([]byte("bar")), true, nil},
 		{"string", document.NewTextValue("bar"), true, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
@@ -291,6 +316,8 @@ func TestConvertToArray(t *testing.T) {
 		{"int32", document.NewInt32Value(10), true, nil},
 		{"int64", document.NewInt64Value(10), true, nil},
 		{"float64", document.NewFloat64Value(10), true, nil},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, nil},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, nil},
 	}
 
 	for _, test := range tests {
@@ -325,6 +352,9 @@ func TestValueAdd(t *testing.T) {
 		{"int64(min)+int8(-10)", document.NewInt64Value(math.MinInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MinInt64 - 10), false},
 		{"int8(120)+text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
 		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+		{"document+document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
+		{"array+array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"duration(1ns)+duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond + time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -359,6 +389,9 @@ func TestValueSub(t *testing.T) {
 		{"int64(max)-int8(-10)", document.NewInt64Value(math.MaxInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MaxInt64 + 10), false},
 		{"int8(120)-text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
 		{"text('120')-text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+		{"document-document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
+		{"array-array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"duration(1ns)-duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond - time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -391,6 +424,9 @@ func TestValueMult(t *testing.T) {
 		{"int64(max)*int64(max)", document.NewInt64Value(math.MaxInt64), document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64 * math.MaxInt64), false},
 		{"int8(120)*text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
 		{"text('120')*text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+		{"document*document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
+		{"array*array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"duration(10ns)*duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond * time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -424,6 +460,9 @@ func TestValueDiv(t *testing.T) {
 		{"int64(maxint)/float64(maxint)", document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64), document.NewFloat64Value(1), false},
 		{"int8(120)/text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
 		{"text('120')/text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+		{"document/document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
+		{"array/array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"duration(10ns)/duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond / time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -459,6 +498,9 @@ func TestValueMod(t *testing.T) {
 		{"int64(100)%float64(> maxint)", document.NewInt8Value(100), document.NewFloat64Value(math.MaxInt64 + 1000), document.NewFloat64Value(100), false},
 		{"int8(120)%text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.Value{}, true},
 		{"text('120')%text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+		{"document%document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
+		{"array%array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"duration(10ns)%duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond % time.Millisecond), false},
 	}
 
 	for _, test := range tests {
