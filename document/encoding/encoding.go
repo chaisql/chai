@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"time"
 
 	"github.com/asdine/genji/document"
 )
@@ -316,6 +317,8 @@ func EncodeValue(v document.Value) ([]byte, error) {
 		return EncodeInt64(v.V.(int64)), nil
 	case document.Float64Value:
 		return EncodeFloat64(v.V.(float64)), nil
+	case document.DurationValue:
+		return EncodeInt64(int64(v.V.(time.Duration))), nil
 	case document.NullValue:
 		return nil, nil
 	}
@@ -537,6 +540,12 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewFloat64Value(x), nil
+	case document.DurationValue:
+		x, err := DecodeInt64(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewDurationValue(time.Duration(x)), nil
 	case document.NullValue:
 		return document.NewNullValue(), nil
 	}

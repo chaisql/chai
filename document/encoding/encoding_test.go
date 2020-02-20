@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/asdine/genji/document"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,8 @@ func TestDecodeValueFromDocument(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
 		Add("address", document.NewNullValue()).
-		Add("name", document.NewTextValue("john"))
+		Add("name", document.NewTextValue("john")).
+		Add("d", document.NewDurationValue(10*time.Nanosecond))
 
 	data, err := EncodeDocument(doc)
 	require.NoError(t, err)
@@ -29,6 +31,10 @@ func TestDecodeValueFromDocument(t *testing.T) {
 	v, err = decodeValueFromDocument(data, "name")
 	require.NoError(t, err)
 	require.Equal(t, document.NewTextValue("john"), v)
+
+	v, err = decodeValueFromDocument(data, "d")
+	require.NoError(t, err)
+	require.Equal(t, document.NewDurationValue(10*time.Nanosecond), v)
 }
 
 func TestEncodeDecode(t *testing.T) {
