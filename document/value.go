@@ -10,15 +10,14 @@ import (
 )
 
 var (
-	blobZeroValue     = NewZeroValue(BlobValue)
-	textZeroValue     = NewZeroValue(TextValue)
-	boolZeroValue     = NewZeroValue(BoolValue)
-	int8ZeroValue     = NewZeroValue(Int8Value)
-	int16ZeroValue    = NewZeroValue(Int16Value)
-	int32ZeroValue    = NewZeroValue(Int32Value)
-	int64ZeroValue    = NewZeroValue(Int64Value)
-	float64ZeroValue  = NewZeroValue(Float64Value)
-	documentZeroValue = NewZeroValue(DocumentValue)
+	blobZeroValue    = NewZeroValue(BlobValue)
+	textZeroValue    = NewZeroValue(TextValue)
+	boolZeroValue    = NewZeroValue(BoolValue)
+	int8ZeroValue    = NewZeroValue(Int8Value)
+	int16ZeroValue   = NewZeroValue(Int16Value)
+	int32ZeroValue   = NewZeroValue(Int32Value)
+	int64ZeroValue   = NewZeroValue(Int64Value)
+	float64ZeroValue = NewZeroValue(Float64Value)
 )
 
 // ValueType represents a value type supported by the database.
@@ -279,6 +278,8 @@ func NewZeroValue(t ValueType) Value {
 		return NewFloat64Value(0)
 	case DocumentValue:
 		return NewDocumentValue(NewFieldBuffer())
+	case ArrayValue:
+		return NewArrayValue(NewValueBuffer())
 	}
 
 	return Value{}
@@ -554,10 +555,6 @@ func (v Value) IsZeroValue() bool {
 		return v.V == int64ZeroValue.V
 	case Float64Value:
 		return v.V == float64ZeroValue.V
-	case DocumentValue:
-		return v.V == documentZeroValue.V
-	case NullValue:
-		return false
 	}
 
 	return false

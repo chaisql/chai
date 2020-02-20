@@ -155,6 +155,10 @@ func TestConvertToBool(t *testing.T) {
 		{"zero int64", document.NewInt64Value(0), false, false},
 		{"float64", document.NewFloat64Value(10.1), false, true},
 		{"zero float64", document.NewFloat64Value(0), false, false},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewBoolValue(true))), false, true},
+		{"zero document", document.NewDocumentValue(document.NewFieldBuffer()), false, true},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewInt16Value(1))), false, true},
+		{"zero array", document.NewArrayValue(document.NewValueBuffer()), false, true},
 	}
 
 	for _, test := range tests {
