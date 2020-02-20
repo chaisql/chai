@@ -19,10 +19,10 @@ func TestParserInsert(t *testing.T) {
 				TableName: "test",
 				Values: query.LiteralExprList{
 					query.KVPairs{
-						query.KVPair{K: "a", V: query.Int8Value(1)},
+						query.KVPair{K: "a", V: query.IntValue(1)},
 						query.KVPair{K: "b", V: query.TextValue("foo")},
 						query.KVPair{K: "c", V: query.TextValue("bar")},
-						query.KVPair{K: "d", V: query.Eq(query.Int8Value(1), query.Int8Value(1))},
+						query.KVPair{K: "d", V: query.Eq(query.IntValue(1), query.IntValue(1))},
 						query.KVPair{K: "e", V: query.KVPairs{
 							query.KVPair{K: "f", V: query.TextValue("baz")},
 						}},
@@ -36,7 +36,7 @@ func TestParserInsert(t *testing.T) {
 						query.KVPair{K: "a", V: query.TextValue("a")},
 						query.KVPair{K: "b", V: query.Float64Value(-2.3)},
 					},
-					query.KVPairs{query.KVPair{K: "a", V: query.Int8Value(1)}, query.KVPair{K: "d", V: query.BoolValue(true)}},
+					query.KVPairs{query.KVPair{K: "a", V: query.IntValue(1)}, query.KVPair{K: "d", V: query.BoolValue(true)}},
 				},
 			}, false},
 		{"Documents / Positional Param", "INSERT INTO test VALUES ?, ?",

@@ -3,7 +3,6 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
@@ -157,15 +156,7 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		switch {
-		case v >= math.MinInt8 && v <= math.MaxInt8:
-			return query.Int8Value(int8(v)), nil
-		case v >= math.MinInt16 && v <= math.MaxInt16:
-			return query.Int16Value(int16(v)), nil
-		case v >= math.MinInt32 && v <= math.MaxInt32:
-			return query.Int32Value(int32(v)), nil
-		}
-		return query.Int64Value(v), nil
+		return query.IntValue(int(v)), nil
 	case scanner.TRUE, scanner.FALSE:
 		return query.BoolValue(tok == scanner.TRUE), nil
 	case scanner.NULL:

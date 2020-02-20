@@ -18,7 +18,7 @@ func TestParserUdpate(t *testing.T) {
 			query.UpdateStmt{
 				TableName: "test",
 				Pairs: map[string]query.Expr{
-					"a": query.Int8Value(1),
+					"a": query.IntValue(1),
 				},
 			},
 			false},
@@ -26,10 +26,10 @@ func TestParserUdpate(t *testing.T) {
 			query.UpdateStmt{
 				TableName: "test",
 				Pairs: map[string]query.Expr{
-					"a": query.Int8Value(1),
-					"b": query.Int8Value(2),
+					"a": query.IntValue(1),
+					"b": query.IntValue(2),
 				},
-				WhereExpr: query.Eq(query.FieldSelector([]string{"age"}), query.Int8Value(10)),
+				WhereExpr: query.Eq(query.FieldSelector([]string{"age"}), query.IntValue(10)),
 			},
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},

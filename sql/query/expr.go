@@ -57,26 +57,6 @@ func IntValue(v int) LiteralValue {
 	return LiteralValue(document.NewIntValue(v))
 }
 
-// Int8Value creates a litteral value of type Int8.
-func Int8Value(v int8) LiteralValue {
-	return LiteralValue(document.NewInt8Value(v))
-}
-
-// Int16Value creates a litteral value of type Int16.
-func Int16Value(v int16) LiteralValue {
-	return LiteralValue(document.NewInt16Value(v))
-}
-
-// Int32Value creates a litteral value of type Int32.
-func Int32Value(v int32) LiteralValue {
-	return LiteralValue(document.NewInt32Value(v))
-}
-
-// Int64Value creates a litteral value of type Int64.
-func Int64Value(v int64) LiteralValue {
-	return LiteralValue(document.NewInt64Value(v))
-}
-
 // Float64Value creates a litteral value of type Float64.
 func Float64Value(v float64) LiteralValue {
 	return LiteralValue(document.NewFloat64Value(v))
