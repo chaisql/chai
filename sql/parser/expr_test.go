@@ -3,6 +3,7 @@ package parser
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
@@ -32,6 +33,11 @@ func TestParserExpr(t *testing.T) {
 		// floats
 		{"+float64", "10.0", query.Float64Value(10), false},
 		{"-float64", "-10.0", query.Float64Value(-10), false},
+
+		// durations
+		{"+duration", "150ms", query.DurationValue(150 * time.Millisecond), false},
+		{"-duration", "-150ms", query.DurationValue(-150 * time.Millisecond), false},
+		{"bad duration", "-150xs", query.DurationValue(0), true},
 
 		// strings
 		{"double quoted string", `"10.0"`, query.TextValue("10.0"), false},

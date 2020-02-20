@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -60,6 +61,11 @@ func IntValue(v int) LiteralValue {
 // Float64Value creates a litteral value of type Float64.
 func Float64Value(v float64) LiteralValue {
 	return LiteralValue(document.NewFloat64Value(v))
+}
+
+// DurationValue creates a litteral value of type Duration.
+func DurationValue(v time.Duration) LiteralValue {
+	return LiteralValue(document.NewDurationValue(v))
 }
 
 // NullValue creates a litteral value of type Null.

@@ -577,6 +577,14 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 		return 0, nil
 	}
 
+	if v.Type == TextValue {
+		d, err := time.ParseDuration(string(v.V.([]byte)))
+		if err != nil {
+			return 0, fmt.Errorf("can't convert %q to duration: %v", v.V, err)
+		}
+		return d, nil
+	}
+
 	x, err := v.ConvertToInt64()
 	return time.Duration(x), err
 }

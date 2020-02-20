@@ -263,6 +263,41 @@ func TestConvertToNumber(t *testing.T) {
 	})
 }
 
+func TestConvertToDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        document.Value
+		fails    bool
+		expected time.Duration
+	}{
+		{"bytes", document.NewBlobValue([]byte("bar")), true, 0},
+		{"string", document.NewTextValue("1ms"), false, 1000000},
+		{"bad string", document.NewTextValue("foo"), true, 0},
+		{"bool", document.NewBoolValue(true), false, 1},
+		{"int", document.NewIntValue(10), false, 10},
+		{"int8", document.NewInt8Value(10), false, 10},
+		{"int16", document.NewInt16Value(10), false, 10},
+		{"int32", document.NewInt32Value(10), false, 10},
+		{"int64", document.NewInt64Value(10), false, 10},
+		{"float64", document.NewFloat64Value(10), false, 10},
+		{"null", document.NewNullValue(), false, 0},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, 0},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.ConvertToDuration()
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
+
 func TestConvertToDocument(t *testing.T) {
 	tests := []struct {
 		name     string

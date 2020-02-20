@@ -381,7 +381,7 @@ func (s *Scanner) scanNumber() TokenInfo {
 					break
 				}
 			}
-			return TokenInfo{DURATIONVAL, pos, buf.String(), s.unbuffer()}
+			return TokenInfo{DURATION, pos, buf.String(), s.unbuffer()}
 		}
 		s.unread()
 		return TokenInfo{INTEGER, pos, buf.String(), s.unbuffer()}

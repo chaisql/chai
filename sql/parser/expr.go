@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
@@ -40,7 +41,7 @@ func (p *Parser) parseExpr() (query.Expr, string, error) {
 	}
 	root.SetRightHandExpr(e)
 
-	// Loop over operations and unary exprs and build a tree based on precendence.
+	// Loop over operations and unary exprs and build a tree based on precedence.
 	for {
 		// If the next token is NOT an operator then return the expression.
 		op, _, _ := p.ScanIgnoreWhitespace()
@@ -161,6 +162,12 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		return query.BoolValue(tok == scanner.TRUE), nil
 	case scanner.NULL:
 		return query.NullValue(), nil
+	case scanner.DURATION:
+		d, err := time.ParseDuration(lit)
+		if err != nil {
+			return nil, &ParseError{Message: "unable to parse duration", Pos: pos}
+		}
+		return query.DurationValue(d), nil
 	case scanner.LBRACKET:
 		p.Unscan()
 		e, _, err := p.parseDocument()
@@ -255,6 +262,8 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		return document.Float64Value, nil
 	case scanner.TYPETEXT:
 		return document.TextValue, nil
+	case scanner.TYPEDURATION:
+		return document.DurationValue, nil
 	}
 
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)

@@ -113,15 +113,15 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `-10.3`, tok: scanner.NUMBER, lit: `-10.3`, raw: `-10.3`},
 
 		// Durations
-		{s: `10u`, tok: scanner.DURATIONVAL, lit: `10u`, raw: `10u`},
-		{s: `10µ`, tok: scanner.DURATIONVAL, lit: `10µ`, raw: `10µ`},
-		{s: `10ms`, tok: scanner.DURATIONVAL, lit: `10ms`, raw: `10ms`},
-		{s: `1s`, tok: scanner.DURATIONVAL, lit: `1s`, raw: `1s`},
-		{s: `10m`, tok: scanner.DURATIONVAL, lit: `10m`, raw: `10m`},
-		{s: `10h`, tok: scanner.DURATIONVAL, lit: `10h`, raw: `10h`},
-		{s: `10d`, tok: scanner.DURATIONVAL, lit: `10d`, raw: `10d`},
-		{s: `10w`, tok: scanner.DURATIONVAL, lit: `10w`, raw: `10w`},
-		{s: `10x`, tok: scanner.DURATIONVAL, lit: `10x`, raw: `10x`}, // non-duration unit, but scanned as a duration value
+		{s: `10u`, tok: scanner.DURATION, lit: `10u`, raw: `10u`},
+		{s: `10µ`, tok: scanner.DURATION, lit: `10µ`, raw: `10µ`},
+		{s: `10ms`, tok: scanner.DURATION, lit: `10ms`, raw: `10ms`},
+		{s: `1s`, tok: scanner.DURATION, lit: `1s`, raw: `1s`},
+		{s: `10m`, tok: scanner.DURATION, lit: `10m`, raw: `10m`},
+		{s: `10h`, tok: scanner.DURATION, lit: `10h`, raw: `10h`},
+		{s: `10d`, tok: scanner.DURATION, lit: `10d`, raw: `10d`},
+		{s: `10w`, tok: scanner.DURATION, lit: `10w`, raw: `10w`},
+		{s: `10x`, tok: scanner.DURATION, lit: `10x`, raw: `10x`}, // non-duration unit, but scanned as a duration value
 
 		// Keywords
 		{s: `AS`, tok: scanner.AS, raw: `AS`},
