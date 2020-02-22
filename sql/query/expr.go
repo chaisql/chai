@@ -244,37 +244,42 @@ func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, e
 
 // A CmpOp is a comparison operator.
 type CmpOp struct {
-	simpleOperator
+	*simpleOperator
+}
+
+// NewCmpOp creates a comparison operator.
+func NewCmpOp(a, b Expr, t scanner.Token) CmpOp {
+	return CmpOp{&simpleOperator{a, b, t}}
 }
 
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) CmpOp {
-	return CmpOp{simpleOperator{a, b, scanner.EQ}}
+	return CmpOp{&simpleOperator{a, b, scanner.EQ}}
 }
 
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) CmpOp {
-	return CmpOp{simpleOperator{a, b, scanner.NEQ}}
+	return CmpOp{&simpleOperator{a, b, scanner.NEQ}}
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) CmpOp {
-	return CmpOp{simpleOperator{a, b, scanner.GT}}
+	return CmpOp{&simpleOperator{a, b, scanner.GT}}
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) CmpOp {
-	return CmpOp{simpleOperator{a, b, scanner.GTE}}
+	return CmpOp{&simpleOperator{a, b, scanner.GTE}}
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) CmpOp {
-	return CmpOp{simpleOperator{a, b, scanner.LT}}
+	return CmpOp{&simpleOperator{a, b, scanner.LT}}
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) CmpOp {
-	return CmpOp{simpleOperator{a, b, scanner.LTE}}
+	return CmpOp{&simpleOperator{a, b, scanner.LTE}}
 }
 
 // Eval compares a and b together using the operator specified when constructing the CmpOp

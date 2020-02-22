@@ -31,7 +31,7 @@ func (p *Parser) parseExpr() (query.Expr, string, error) {
 
 	var err error
 	// Dummy root node.
-	var root operator = &query.CmpOp{}
+	var root operator = query.NewCmpOp(nil, nil, 0)
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.

@@ -122,6 +122,13 @@ func TestParserExpr(t *testing.T) {
 		{"-", "age - 10", query.Sub(query.FieldSelector([]string{"age"}), query.IntValue(10)), false},
 		{"*", "age * 10", query.Mul(query.FieldSelector([]string{"age"}), query.IntValue(10)), false},
 		{"/", "age / 10", query.Div(query.FieldSelector([]string{"age"}), query.IntValue(10)), false},
+		{"precedence", "4 > 1 + 2", query.Gt(
+			query.IntValue(4),
+			query.Add(
+				query.IntValue(1),
+				query.IntValue(2),
+			),
+		), false},
 		{"AND", "age = 10 AND age <= 11",
 			query.And(
 				query.Eq(query.FieldSelector([]string{"age"}), query.IntValue(10)),
