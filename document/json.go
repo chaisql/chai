@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 )
 
 // ToJSON encodes d to w in JSON.
@@ -65,9 +66,8 @@ func (j jsonDocument) MarshalJSON() ([]byte, error) {
 		}
 		notFirst = true
 
-		buf.WriteByte('"')
-		buf.WriteString(f)
-		buf.WriteString(`":`)
+		buf.WriteString(strconv.Quote(f))
+		buf.WriteRune(':')
 
 		data, err := v.MarshalJSON()
 		if err != nil {

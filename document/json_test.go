@@ -20,8 +20,9 @@ func TestToJSON(t *testing.T) {
 			"Flat",
 			document.NewFieldBuffer().
 				Add("name", document.NewTextValue("John")).
-				Add("age", document.NewInt16Value(10)),
-			`{"name":"John","age":10}` + "\n",
+				Add("age", document.NewInt16Value(10)).
+				Add(`"something with" quotes`, document.NewInt16Value(10)),
+			`{"name":"John","age":10,"\"something with\" quotes":10}` + "\n",
 		},
 		{
 			"Nested",
