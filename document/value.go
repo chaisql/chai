@@ -688,6 +688,20 @@ func (v Value) BitwiseAnd(u Value) (res Value, err error) {
 	return calculateValues(v, u, '&')
 }
 
+// BitwiseOr calculates v | u and returns the result.
+// Only numeric values and booleans can be calculated together.
+// If both v and u are integers, the result will be an integer.
+func (v Value) BitwiseOr(u Value) (res Value, err error) {
+	return calculateValues(v, u, '|')
+}
+
+// BitwiseXor calculates v ^ u and returns the result.
+// Only numeric values and booleans can be calculated together.
+// If both v and u are integers, the result will be an integer.
+func (v Value) BitwiseXor(u Value) (res Value, err error) {
+	return calculateValues(v, u, '^')
+}
+
 func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	if a.Type == NullValue || b.Type == NullValue {
 		return NewNullValue(), nil
@@ -712,9 +726,10 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		if err != nil {
 			return
 		}
-		if operator != '&' {
+		if operator != '&' && operator != '|' && operator != '^' {
 			return res.ConvertTo(DurationValue)
 		}
+
 		return
 	}
 
@@ -814,6 +829,10 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 		return NewIntValue(int(xa % xb)), nil
 	case '&':
 		return NewIntValue(int(xa & xb)), nil
+	case '|':
+		return NewIntValue(int(xa | xb)), nil
+	case '^':
+		return NewIntValue(int(xa ^ xb)), nil
 	default:
 		panic(fmt.Sprintf("unknown operator %c", operator))
 	}
@@ -855,6 +874,12 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 	case '&':
 		ia, ib := int64(xa), int64(xb)
 		return NewIntValue(int(ia & ib)), nil
+	case '|':
+		ia, ib := int64(xa), int64(xb)
+		return NewIntValue(int(ia | ib)), nil
+	case '^':
+		ia, ib := int64(xa), int64(xb)
+		return NewIntValue(int(ia ^ ib)), nil
 	default:
 		panic(fmt.Sprintf("unknown operator %c", operator))
 	}

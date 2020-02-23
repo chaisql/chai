@@ -503,6 +503,42 @@ func (op bitwiseAndOp) Eval(ctx EvalStack) (document.Value, error) {
 	return a.BitwiseAnd(b)
 }
 
+type bitwiseOrOp struct {
+	*simpleOperator
+}
+
+// BitwiseOr creates an expression thats evaluates to the result of a & b.
+func BitwiseOr(a, b Expr) Expr {
+	return &bitwiseOrOp{&simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op bitwiseOrOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.BitwiseOr(b)
+}
+
+type bitwiseXorOp struct {
+	*simpleOperator
+}
+
+// BitwiseXor creates an expression thats evaluates to the result of a & b.
+func BitwiseXor(a, b Expr) Expr {
+	return &bitwiseXorOp{&simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op bitwiseXorOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.BitwiseXor(b)
+}
+
 // KVPair associates an identifier with an expression.
 type KVPair struct {
 	K string
