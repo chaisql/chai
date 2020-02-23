@@ -339,12 +339,12 @@ func (op CmpOp) compare(l, r document.Value) (bool, error) {
 
 // AndOp is the And operator.
 type AndOp struct {
-	simpleOperator
+	*simpleOperator
 }
 
 // And creates an expression that evaluates a And b And returns true if both are truthy.
 func And(a, b Expr) *AndOp {
-	return &AndOp{simpleOperator{a, b, scanner.AND}}
+	return &AndOp{&simpleOperator{a, b, scanner.AND}}
 }
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if both evalutate
@@ -365,12 +365,12 @@ func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 
 // OrOp is the And operator.
 type OrOp struct {
-	simpleOperator
+	*simpleOperator
 }
 
 // Or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy Or false if falsy.
 func Or(a, b Expr) Expr {
-	return &OrOp{simpleOperator{a, b, scanner.OR}}
+	return &OrOp{&simpleOperator{a, b, scanner.OR}}
 }
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if a or b evalutate
@@ -396,12 +396,12 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 }
 
 type addOp struct {
-	simpleOperator
+	*simpleOperator
 }
 
 // Add creates an expression thats evalutes to the result of a + b.
 func Add(a, b Expr) Expr {
-	return &addOp{simpleOperator{a, b, scanner.ADD}}
+	return &addOp{&simpleOperator{a, b, scanner.ADD}}
 }
 
 func (op addOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -414,12 +414,12 @@ func (op addOp) Eval(ctx EvalStack) (document.Value, error) {
 }
 
 type subOp struct {
-	simpleOperator
+	*simpleOperator
 }
 
 // Sub creates an expression thats evalutes to the result of a - b.
 func Sub(a, b Expr) Expr {
-	return &subOp{simpleOperator{a, b, scanner.ADD}}
+	return &subOp{&simpleOperator{a, b, scanner.SUB}}
 }
 
 func (op subOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -432,12 +432,12 @@ func (op subOp) Eval(ctx EvalStack) (document.Value, error) {
 }
 
 type mulOp struct {
-	simpleOperator
+	*simpleOperator
 }
 
 // Mul creates an expression thats evalutes to the result of a * b.
 func Mul(a, b Expr) Expr {
-	return &mulOp{simpleOperator{a, b, scanner.ADD}}
+	return &mulOp{&simpleOperator{a, b, scanner.MUL}}
 }
 
 func (op mulOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -450,12 +450,12 @@ func (op mulOp) Eval(ctx EvalStack) (document.Value, error) {
 }
 
 type divOp struct {
-	simpleOperator
+	*simpleOperator
 }
 
 // Div creates an expression thats evalutes to the result of a / b.
 func Div(a, b Expr) Expr {
-	return &divOp{simpleOperator{a, b, scanner.ADD}}
+	return &divOp{&simpleOperator{a, b, scanner.DIV}}
 }
 
 func (op divOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -465,6 +465,24 @@ func (op divOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return a.Div(b)
+}
+
+type modOp struct {
+	*simpleOperator
+}
+
+// Mod creates an expression thats evalutes to the result of a % b.
+func Mod(a, b Expr) Expr {
+	return &modOp{&simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op modOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.Mod(b)
 }
 
 // KVPair associates an identifier with an expression.
