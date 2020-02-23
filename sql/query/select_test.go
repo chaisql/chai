@@ -22,6 +22,7 @@ func TestSelectStmt(t *testing.T) {
 		{"No table, Mult", "SELECT 2 * 3", false, `[{"2 * 3":6}]`, nil},
 		{"No table, Div", "SELECT 10 / 6", false, `[{"10 / 6":1}]`, nil},
 		{"No table, Mod", "SELECT 10 % 6", false, `[{"10 % 6":4}]`, nil},
+		{"No table, BitwiseAnd", "SELECT 10 & 6", false, `[{"10 & 6":2}]`, nil},
 		{"No table, function", "SELECT pk()", true, ``, nil},
 		{"No table, function", "SELECT a", false, `[{"a": null}]`, nil},
 		{"No table, function", "SELECT *", true, ``, nil},

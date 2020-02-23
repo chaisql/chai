@@ -399,7 +399,7 @@ type addOp struct {
 	*simpleOperator
 }
 
-// Add creates an expression thats evalutes to the result of a + b.
+// Add creates an expression thats evaluates to the result of a + b.
 func Add(a, b Expr) Expr {
 	return &addOp{&simpleOperator{a, b, scanner.ADD}}
 }
@@ -417,7 +417,7 @@ type subOp struct {
 	*simpleOperator
 }
 
-// Sub creates an expression thats evalutes to the result of a - b.
+// Sub creates an expression thats evaluates to the result of a - b.
 func Sub(a, b Expr) Expr {
 	return &subOp{&simpleOperator{a, b, scanner.SUB}}
 }
@@ -435,7 +435,7 @@ type mulOp struct {
 	*simpleOperator
 }
 
-// Mul creates an expression thats evalutes to the result of a * b.
+// Mul creates an expression thats evaluates to the result of a * b.
 func Mul(a, b Expr) Expr {
 	return &mulOp{&simpleOperator{a, b, scanner.MUL}}
 }
@@ -453,7 +453,7 @@ type divOp struct {
 	*simpleOperator
 }
 
-// Div creates an expression thats evalutes to the result of a / b.
+// Div creates an expression thats evaluates to the result of a / b.
 func Div(a, b Expr) Expr {
 	return &divOp{&simpleOperator{a, b, scanner.DIV}}
 }
@@ -471,9 +471,9 @@ type modOp struct {
 	*simpleOperator
 }
 
-// Mod creates an expression thats evalutes to the result of a % b.
+// Mod creates an expression thats evaluates to the result of a % b.
 func Mod(a, b Expr) Expr {
-	return &modOp{&simpleOperator{a, b, scanner.ADD}}
+	return &modOp{&simpleOperator{a, b, scanner.MOD}}
 }
 
 func (op modOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -483,6 +483,24 @@ func (op modOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return a.Mod(b)
+}
+
+type bitwiseAndOp struct {
+	*simpleOperator
+}
+
+// BitwiseAnd creates an expression thats evaluates to the result of a & b.
+func BitwiseAnd(a, b Expr) Expr {
+	return &bitwiseAndOp{&simpleOperator{a, b, scanner.ADD}}
+}
+
+func (op bitwiseAndOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	return a.BitwiseAnd(b)
 }
 
 // KVPair associates an identifier with an expression.

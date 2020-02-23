@@ -100,6 +100,8 @@ func opToExpr(op scanner.Token, lhs, rhs query.Expr) query.Expr {
 		return query.Div(lhs, rhs)
 	case scanner.MOD:
 		return query.Mod(lhs, rhs)
+	case scanner.BITWISEAND:
+		return query.BitwiseAnd(lhs, rhs)
 	}
 
 	panic(fmt.Sprintf("unknown operator %q", op))

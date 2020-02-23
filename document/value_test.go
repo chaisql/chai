@@ -550,3 +550,38 @@ func TestValueMod(t *testing.T) {
 		})
 	}
 }
+
+func TestValueBitwiseAnd(t *testing.T) {
+	tests := []struct {
+		name           string
+		v, u, expected document.Value
+		fails          bool
+	}{
+		{"null&null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
+		{"null&int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
+		{"bool(true)&bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(1), false},
+		{"bool(true)&bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewInt8Value(0), false},
+		{"int8(10)&int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewInt8Value(0), false},
+		{"float64(10.5)&float64(3.2)", document.NewFloat64Value(10.5), document.NewFloat64Value(3.2), document.NewInt8Value(2), false},
+		{"int8(10)&float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewInt8Value(0), false},
+		{"int8(10)&int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(10), false},
+		{"int8(10)&int8(8)", document.NewInt8Value(10), document.NewInt8Value(8), document.NewInt8Value(8), false},
+		{"int8(10)&float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewInt8Value(8), false},
+		{"text('120')&text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
+		{"document&document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
+		{"array&array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"duration(10ns)&duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(8), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := test.v.BitwiseAnd(test.u)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
