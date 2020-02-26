@@ -26,7 +26,7 @@ func Scan(d Document, targets ...interface{}) error {
 
 		ref := reflect.ValueOf(target)
 		if !ref.IsValid() {
-			return fmt.Errorf("unsupported type %T", target)
+			return &ErrUnsupportedType{target}
 		}
 
 		return scanValue(v, ref)
@@ -182,7 +182,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 func MapScan(d Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 	if !ref.IsValid() {
-		return fmt.Errorf("unsupported type %s", ref.Type().String())
+		return &ErrUnsupportedType{ref}
 	}
 
 	if ref.Kind() == reflect.Ptr {
@@ -190,7 +190,7 @@ func MapScan(d Document, t interface{}) error {
 	}
 
 	if ref.Kind() != reflect.Map {
-		return fmt.Errorf("unsupported type %s", ref.Type().String())
+		return &ErrUnsupportedType{ref}
 	}
 
 	return mapScan(d, ref)
@@ -198,7 +198,7 @@ func MapScan(d Document, t interface{}) error {
 
 func mapScan(d Document, ref reflect.Value) error {
 	if ref.Type().Key().Kind() != reflect.String {
-		return fmt.Errorf("unsupported type %s", ref.Type().String())
+		return &ErrUnsupportedType{ref}
 	}
 
 	if ref.IsNil() {
@@ -225,7 +225,7 @@ func ScanValue(v Value, t interface{}) error {
 
 func scanValue(v Value, ref reflect.Value) error {
 	if !ref.IsValid() {
-		return fmt.Errorf("unsupported type %s", ref.Type().String())
+		return &ErrUnsupportedType{ref}
 	}
 
 	if ref.Type().Kind() == reflect.Ptr && ref.IsNil() {
@@ -319,5 +319,5 @@ func scanValue(v Value, ref reflect.Value) error {
 		return nil
 	}
 
-	return fmt.Errorf("unsupported type %s", ref.Type().String())
+	return &ErrUnsupportedType{ref}
 }
