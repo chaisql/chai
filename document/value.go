@@ -22,6 +22,15 @@ var (
 	durationZeroValue = NewZeroValue(DurationValue)
 )
 
+// this error is used to skip struct or array fields that are not supported.
+type ErrUnsupportedType struct {
+	Value interface{}
+}
+
+func (e *ErrUnsupportedType) Error() string {
+	return fmt.Sprintf("unsupported type %T", e.Value)
+}
+
 // ValueType represents a value type supported by the database.
 type ValueType uint8
 
@@ -98,45 +107,10 @@ type Value struct {
 
 // NewValue creates a value whose type is infered from x.
 func NewValue(x interface{}) (Value, error) {
+	// Attempt exact matches first:
 	switch v := x.(type) {
 	case time.Duration:
 		return NewDurationValue(v), nil
-	case []byte:
-		return NewBlobValue(v), nil
-	case string:
-		return NewTextValue(v), nil
-	case bool:
-		return NewBoolValue(v), nil
-	case int:
-		return NewIntValue(v), nil
-	case int8:
-		return NewIntValue(int(v)), nil
-	case int16:
-		return NewIntValue(int(v)), nil
-	case int32:
-		return NewIntValue(int(v)), nil
-	case int64:
-		return NewIntValue(int(v)), nil
-	case uint:
-		if v <= math.MaxInt64 {
-			return NewIntValue(int(v)), nil
-		}
-
-		return NewFloat64Value(float64(v)), nil
-	case uint8:
-		return NewIntValue(int(v)), nil
-	case uint16:
-		return NewIntValue(int(v)), nil
-	case uint32:
-		return NewIntValue(int(v)), nil
-	case uint64:
-		if v <= math.MaxInt64 {
-			return NewIntValue(int(v)), nil
-		}
-
-		return NewFloat64Value(float64(v)), nil
-	case float64:
-		return NewFloat64Value(v), nil
 	case nil:
 		return NewNullValue(), nil
 	case Document:
@@ -145,19 +119,53 @@ func NewValue(x interface{}) (Value, error) {
 		return NewArrayValue(v), nil
 	}
 
-	ref := reflect.Indirect(reflect.ValueOf(x))
-	switch ref.Kind() {
+	// Compare by kind to detect type definitions over built-in types.
+	v := reflect.ValueOf(x)
+	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			return NewNullValue(), nil
+		}
+		return NewValue(reflect.Indirect(v).Interface())
+	case reflect.Bool:
+		return NewBoolValue(v.Bool()), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return intToValue(v.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		x := v.Uint()
+		if x > math.MaxInt64 {
+			return Value{}, fmt.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
+		}
+		return intToValue(int64(x)), nil
+	case reflect.Float32, reflect.Float64:
+		return NewFloat64Value(v.Float()), nil
+	case reflect.String:
+		return NewTextValue(v.String()), nil
+	case reflect.Interface:
+		if v.IsNil() {
+			return NewNullValue(), nil
+		}
+		return NewValue(v.Elem().Interface())
 	case reflect.Struct:
 		doc, err := NewFromStruct(x)
 		if err != nil {
 			return Value{}, err
 		}
 		return NewDocumentValue(doc), nil
-	case reflect.Slice, reflect.Array:
-		return NewArrayValue(&sliceArray{ref}), nil
+	case reflect.Array:
+		return NewArrayValue(&sliceArray{v}), nil
+	case reflect.Slice:
+		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
+			return NewBlobValue(v.Bytes()), nil
+		}
+		if v.IsNil() {
+			return NewNullValue(), nil
+		}
+		return NewArrayValue(&sliceArray{ref: v}), nil
+
 	}
 
-	return Value{}, fmt.Errorf("unsupported type %T", x)
+	return Value{}, &ErrUnsupportedType{x}
 }
 
 // NewBlobValue encodes x and returns a value.

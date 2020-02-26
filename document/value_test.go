@@ -42,6 +42,18 @@ func TestNewValue(t *testing.T) {
 		A int
 		B string
 	}
+	type myBytes []byte
+	type myString string
+	type myBool bool
+	type myUint uint
+	type myUint16 uint16
+	type myUint32 uint32
+	type myUint64 uint64
+	type myInt int
+	type myInt8 int8
+	type myInt16 int16
+	type myInt64 int64
+	type myFloat64 float64
 
 	tests := []struct {
 		name            string
@@ -66,6 +78,17 @@ func TestNewValue(t *testing.T) {
 		{"document", document.NewFieldBuffer().Add("a", document.NewIntValue(10)), document.NewFieldBuffer().Add("a", document.NewIntValue(10))},
 		{"array", document.NewValueBuffer(document.NewIntValue(10)), document.NewValueBuffer(document.NewIntValue(10))},
 		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
+		{"bytes", myBytes("bar"), []byte("bar")},
+		{"string", myString("bar"), []byte("bar")},
+		{"myUint", myUint(10), int8(10)},
+		{"myUint16", myUint16(500), int16(500)},
+		{"myUint32", myUint32(90000), int32(90000)},
+		{"myUint64", myUint64(100), int8(100)},
+		{"myInt", myInt(7), int8(7)},
+		{"myInt8", myInt8(3), int8(3)},
+		{"myInt16", myInt16(500), int16(500)},
+		{"myInt64", myInt64(10), int8(10)},
+		{"myFloat64", myFloat64(10.1), float64(10.1)},
 	}
 
 	for _, test := range tests {

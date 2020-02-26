@@ -143,11 +143,11 @@ func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
 	for i := 0; i < l; i++ {
 		f := s.ref.Index(i)
 
-		v, err := reflectValueToValue(f)
-		if err == errUnsupportedType {
-			continue
-		}
+		v, err := NewValue(f.Interface())
 		if err != nil {
+			if err.(*ErrUnsupportedType) != nil {
+				continue
+			}
 			return err
 		}
 
@@ -170,5 +170,5 @@ func (s sliceArray) GetByIndex(i int) (Value, error) {
 		return Value{}, ErrFieldNotFound
 	}
 
-	return reflectValueToValue(v)
+	return NewValue(v.Interface())
 }
