@@ -20,9 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -86,9 +84,6 @@ func NewFromStruct(s interface{}) (Document, error) {
 	return structDocument{ref: ref}, nil
 }
 
-// this error is used to skip struct or array fields that are not supported.
-var errUnsupportedType = errors.New("unsupported type")
-
 type structDocument struct {
 	ref reflect.Value
 }
@@ -119,11 +114,11 @@ func (s structDocument) Iterate(fn func(f string, v Value) error) error {
 
 		f := s.ref.Field(i)
 
-		v, err := reflectValueToValue(f)
-		if err == errUnsupportedType {
-			continue
-		}
+		v, err := NewValue(f.Interface())
 		if err != nil {
+			if err.(*ErrUnsupportedType) != nil {
+				continue
+			}
 			return err
 		}
 
@@ -164,50 +159,7 @@ func (s structDocument) GetByField(field string) (Value, error) {
 		return Value{}, ErrFieldNotFound
 	}
 
-	return reflectValueToValue(v)
-}
-
-func reflectValueToValue(v reflect.Value) (Value, error) {
-	switch v.Kind() {
-	case reflect.Ptr:
-		if v.IsNil() {
-			return NewNullValue(), nil
-		}
-		return reflectValueToValue(reflect.Indirect(v))
-	case reflect.Struct:
-		return NewDocumentValue(&structDocument{ref: v}), nil
-	case reflect.String:
-		return NewTextValue(v.String()), nil
-	case reflect.Slice:
-		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
-			return NewBlobValue(v.Bytes()), nil
-		}
-		if v.IsNil() {
-			return NewNullValue(), nil
-		}
-		return NewArrayValue(&sliceArray{ref: v}), nil
-	case reflect.Array:
-		return NewArrayValue(&sliceArray{ref: v}), nil
-	case reflect.Bool:
-		return NewBoolValue(v.Bool()), nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return intToValue(v.Int()), nil
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		x := v.Uint()
-		if x > math.MaxInt64 {
-			return Value{}, fmt.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
-		}
-
-		return intToValue(int64(x)), nil
-	case reflect.Float32, reflect.Float64:
-		return NewFloat64Value(v.Float()), nil
-	case reflect.Interface:
-		if v.IsNil() {
-			return NewNullValue(), nil
-		}
-		return reflectValueToValue(v.Elem())
-	}
-	return Value{}, errUnsupportedType
+	return NewValue(v.Interface())
 }
 
 // A Keyer returns the key identifying documents in their storage.
