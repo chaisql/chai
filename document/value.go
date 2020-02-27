@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -708,6 +710,53 @@ func (v Value) BitwiseOr(u Value) (res Value, err error) {
 // If both v and u are integers, the result will be an integer.
 func (v Value) BitwiseXor(u Value) (res Value, err error) {
 	return calculateValues(v, u, '^')
+}
+
+// Compare compares two values performing best-effort comparisons
+// Returns > 0 if this value can be considered bigger
+// Returns < 0 if this value can be considered smaller
+// Returns 0 if values can be considered equal
+func (v Value) Compare(u Value) int {
+	if v.Type == NullValue && u.Type == NullValue {
+		return 0
+	}
+	// Null is always less than non-null
+	if v.Type == NullValue {
+		return -1
+	}
+	if u.Type == NullValue {
+		return 1
+	}
+
+	un := v.Type.IsNumber() || v.Type == BoolValue
+	vn := u.Type.IsNumber() || u.Type == BoolValue
+
+	// if any of the values is a number, perform a best effort numeric comparison
+	if un || vn {
+		var vf float64
+		var uf float64
+		if un {
+			vf, _ = v.ConvertToFloat64()
+		} else {
+			vf, _ = strconv.ParseFloat(v.String(), 64)
+		}
+		if vn {
+			uf, _ = u.ConvertToFloat64()
+		} else {
+			uf, _ = strconv.ParseFloat(u.String(), 64)
+		}
+		return int(vf - uf)
+	}
+
+	// compare byte arrays and strings
+	if (v.Type == TextValue || v.Type == BlobValue) && (u.Type == TextValue || u.Type == BlobValue) {
+		bv, _ := v.ConvertToBlob()
+		bu, _ := u.ConvertToBlob()
+		return bytes.Compare(bv, bu)
+	}
+
+	// if all else fails, compare string representation of values
+	return strings.Compare(v.String(), u.String())
 }
 
 func calculateValues(a, b Value, operator byte) (res Value, err error) {
