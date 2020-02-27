@@ -675,3 +675,68 @@ func TestValueBitwiseXor(t *testing.T) {
 		})
 	}
 }
+
+type CompareTest struct {
+	name     string
+	v, u     document.Value
+	expected int
+}
+
+func TestValueCompare(t *testing.T) {
+	tests := []CompareTest{
+		{"null,null", document.NewNullValue(), document.NewNullValue(), 0},
+		{"null,int8", document.NewNullValue(), document.NewInt8Value(0), -1},
+		{"int8,null", document.NewInt8Value(0), document.NewNullValue(), 1},
+	}
+
+	// cartesian computes a cartesian product, generating all possible combinations of the passed arrays
+	cartesian := func(vals ...[]document.Value) {
+		for _, x := range vals {
+			for _, y := range vals {
+				for i := 0; i < 2; i++ {
+					for j := 0; j < 2; j++ {
+						if j == 1 && i == 1 {
+							continue
+						}
+						v := x[i]
+						u := y[j]
+						signum := int((int64(i-j) >> 63) | int64(uint64(j-i)>>63))
+						tests = append(tests, CompareTest{
+							name:     fmt.Sprintf("%s(%s)%s%s(%s)", v.Type, v, []string{"<", "=", ">"}[signum+1], u.Type, u),
+							v:        v,
+							u:        u,
+							expected: signum,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// sample numeric values. Values at index [0] are known to be less than values at index [1]
+	int8s := []document.Value{document.NewInt8Value(0), document.NewInt8Value(1)}
+	int16s := []document.Value{document.NewInt16Value(0), document.NewInt16Value(1)}
+	int32s := []document.Value{document.NewInt32Value(0), document.NewInt32Value(1)}
+	int64s := []document.Value{document.NewInt64Value(0), document.NewInt64Value(1)}
+	float64s := []document.Value{document.NewFloat64Value(0), document.NewFloat64Value(1)}
+	bools := []document.Value{document.NewBoolValue(false), document.NewBoolValue(true)}
+	texts := []document.Value{document.NewTextValue("0"), document.NewTextValue("1")}
+
+	// generate a batch of tests mixing everything with everything
+	cartesian(int8s, int16s, int32s, int64s, float64s, bools, texts)
+
+	// Sample blob and text values. Values at index [0] are known to be less than values at index [1]
+	texts = []document.Value{document.NewTextValue("ABC"), document.NewTextValue("CDE")}
+	blobs := []document.Value{document.NewBlobValue([]byte{65, 66, 67}), document.NewBlobValue([]byte{68, 69, 70})}
+
+	// generate another batch of tests mixing everything with everything
+	cartesian(texts, blobs)
+
+	// Run the tests
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res := test.v.Compare(test.u)
+			require.Equal(t, test.expected, int((int64(res)>>63)|int64(uint64(-res)>>63)))
+		})
+	}
+}
