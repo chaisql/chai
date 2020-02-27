@@ -517,7 +517,7 @@ func (qo *queryOptimizer) sortIterator(it document.Iterator) (st document.Stream
 			v = document.NewNullValue()
 		}
 
-		value, err := encoding.EncodeValue(v)
+		value, err := index.EncodeFieldToIndexValue(v)
 		if err != nil {
 			return err
 		}

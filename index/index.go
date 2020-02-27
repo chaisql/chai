@@ -135,7 +135,7 @@ func (i *ListIndex) Set(val document.Value, key []byte) error {
 		return err
 	}
 
-	v, err := encodeFieldToIndexValue(val)
+	v, err := EncodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (i *ListIndex) Set(val document.Value, key []byte) error {
 
 // Delete all the references to the key from the index.
 func (i *ListIndex) Delete(val document.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(val)
+	v, err := EncodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 
 	var data []byte
 	if !pivot.empty {
-		data, err = encodeFieldToIndexValue(pivot.Value)
+		data, err = EncodeFieldToIndexValue(pivot.Value)
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 
 	var data []byte
 	if !pivot.empty {
-		data, err = encodeFieldToIndexValue(pivot.Value)
+		data, err = EncodeFieldToIndexValue(pivot.Value)
 		if err != nil {
 			return err
 		}
@@ -315,7 +315,7 @@ type UniqueIndex struct {
 // Set associates a value with exactly one key.
 // If the association already exists, it returns an error.
 func (i *UniqueIndex) Set(val document.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(val)
+	v, err := EncodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func (i *UniqueIndex) Set(val document.Value, key []byte) error {
 
 // Delete all the references to the key from the index.
 func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
-	v, err := encodeFieldToIndexValue(val)
+	v, err := EncodeFieldToIndexValue(val)
 	if err != nil {
 		return err
 	}
@@ -402,7 +402,7 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 
 	var data []byte
 	if !pivot.empty {
-		data, err = encodeFieldToIndexValue(pivot.Value)
+		data, err = EncodeFieldToIndexValue(pivot.Value)
 		if err != nil {
 			return err
 		}
@@ -464,7 +464,7 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 
 	var data []byte
 	if !pivot.empty {
-		data, err = encodeFieldToIndexValue(pivot.Value)
+		data, err = EncodeFieldToIndexValue(pivot.Value)
 		if err != nil {
 			return err
 		}
@@ -501,7 +501,9 @@ func (i *UniqueIndex) Truncate() error {
 	return dropStore(i.tx, Bool, i.name)
 }
 
-func encodeFieldToIndexValue(val document.Value) ([]byte, error) {
+// EncodeFieldToIndexValue returns a byte array that represents the value in such
+// a way that can be compared for ordering and indexing
+func EncodeFieldToIndexValue(val document.Value) ([]byte, error) {
 	if val.V != nil && val.Type.IsNumber() && val.Type != document.Float64Value {
 		x, err := val.ConvertToFloat64()
 		if err != nil {
