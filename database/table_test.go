@@ -268,8 +268,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
-				{[]string{"foo"}, document.Int32Value},
-				{[]string{"bar"}, document.Int8Value},
+				{[]string{"foo"}, document.Int32Value, false},
+				{[]string{"bar"}, document.Int8Value, false},
 			},
 		})
 		require.NoError(t, err)
@@ -297,6 +297,67 @@ func TestTableInsert(t *testing.T) {
 		v, err = d.GetByField("baz")
 		require.NoError(t, err)
 		require.Equal(t, document.NewTextValue("baaaaz"), v)
+	})
+
+	t.Run("Should fail if there is a not null field constraint on a document field and the field is null", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test1", &database.TableConfig{
+			FieldConstraints: []database.FieldConstraint{
+				{[]string{"foo"}, 0, true},
+			},
+		})
+		require.NoError(t, err)
+		tb1, err := tx.GetTable("test1")
+		require.NoError(t, err)
+
+		err = tx.CreateTable("test2", &database.TableConfig{
+			FieldConstraints: []database.FieldConstraint{
+				{[]string{"foo"}, document.Int32Value, true},
+			},
+		})
+		require.NoError(t, err)
+		tb2, err := tx.GetTable("test2")
+		require.NoError(t, err)
+
+		// insert with empty foo field
+		_, err = tb1.Insert(document.NewFieldBuffer().
+			Add("bar", document.NewFloat64Value(1)))
+		require.Error(t, err)
+		_, err = tb1.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewFloat64Value(1)))
+		require.NoError(t, err)
+
+		_, err = tb2.Insert(document.NewFieldBuffer().
+			Add("bar", document.NewFloat64Value(1)))
+		require.Error(t, err)
+		_, err = tb2.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewFloat64Value(1)))
+		require.NoError(t, err)
+	})
+
+	t.Run("Should fail if there is a not null field constraint on an array value and the value is null", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test1", &database.TableConfig{
+			FieldConstraints: []database.FieldConstraint{
+				{[]string{"foo", "1"}, 0, true},
+			},
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test1")
+		require.NoError(t, err)
+
+		// insert table with only one value
+		_, err = tb.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewArrayValue(document.NewValueBuffer().Append(document.NewIntValue(1)))))
+		require.Error(t, err)
+		_, err = tb.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewArrayValue(document.NewValueBuffer().
+				Append(document.NewIntValue(1)).Append(document.NewIntValue(2)))))
+		require.NoError(t, err)
 	})
 }
 

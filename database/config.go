@@ -17,8 +17,9 @@ type TableConfig struct {
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Path document.ValuePath
-	Type document.ValueType
+	Path    document.ValuePath
+	Type    document.ValueType
+	NotNull bool
 }
 
 type tableConfigStore struct {

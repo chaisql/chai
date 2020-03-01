@@ -171,22 +171,36 @@ func validateConstraint(d document.Document, c FieldConstraint) error {
 		// if it's a document, we can assume it's a FieldBuffer
 		buf := parent.V.(*document.FieldBuffer)
 
-		// the field to modify if the last chunk of the path
+		// the field to modify is the last chunk of the path
 		field := c.Path[len(c.Path)-1]
 
 		v, err := buf.GetByField(field)
-		// if the field is not found we simply skip it,
-		// if not we convert it and replace it in the buffer
-		if err == nil {
-			v, err = v.ConvertTo(c.Type)
-			if err != nil {
-				return err
+		// if the field is not found we make sure it is not required,
+		if err != nil {
+			if err == document.ErrFieldNotFound {
+				if c.NotNull {
+					return fmt.Errorf("field %q is required and must be not null", c.Path)
+				}
+
+				return nil
 			}
 
-			err = buf.Replace(field, v)
-			if err != nil {
-				return err
-			}
+			return err
+		}
+
+		// if not we convert it and replace it in the buffer
+		if c.Type == 0 {
+			return nil
+		}
+
+		v, err = v.ConvertTo(c.Type)
+		if err != nil {
+			return err
+		}
+
+		err = buf.Replace(field, v)
+		if err != nil {
+			return err
 		}
 	case document.ArrayValue:
 		// if it's an array, we can assume it's a ValueBuffer
@@ -201,18 +215,32 @@ func validateConstraint(d document.Document, c FieldConstraint) error {
 		}
 
 		v, err := buf.GetByIndex(index)
-		// if the field is not found we simply skip it,
-		// if not we convert it and replace it in the buffer
-		if err == nil {
-			v, err = v.ConvertTo(c.Type)
-			if err != nil {
-				return err
+		// if the value is not found we make sure it is not required,
+		if err != nil {
+			if err == document.ErrValueNotFound {
+				if c.NotNull {
+					return fmt.Errorf("value %q is required and must be not null", c.Path)
+				}
+
+				return nil
 			}
 
-			err = buf.Replace(index, v)
-			if err != nil {
-				return err
-			}
+			return err
+		}
+
+		// if not we convert it and replace it in the buffer
+		if c.Type == 0 {
+			return nil
+		}
+
+		v, err = v.ConvertTo(c.Type)
+		if err != nil {
+			return err
+		}
+
+		err = buf.Replace(index, v)
+		if err != nil {
+			return err
 		}
 	}
 
