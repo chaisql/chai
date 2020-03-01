@@ -249,32 +249,33 @@ func (p *Parser) parseParam() (query.Expr, error) {
 	}
 }
 
-func (p *Parser) parseType() (document.ValueType, error) {
-	tok, pos, lit := p.ScanIgnoreWhitespace()
+func (p *Parser) parseType() document.ValueType {
+	tok, _, _ := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEBYTES:
-		return document.BlobValue, nil
+		return document.BlobValue
 	case scanner.TYPESTRING:
-		return document.TextValue, nil
+		return document.TextValue
 	case scanner.TYPEBOOL:
-		return document.BoolValue, nil
+		return document.BoolValue
 	case scanner.TYPEINT8:
-		return document.Int8Value, nil
+		return document.Int8Value
 	case scanner.TYPEINT16:
-		return document.Int16Value, nil
+		return document.Int16Value
 	case scanner.TYPEINT32:
-		return document.Int32Value, nil
+		return document.Int32Value
 	case scanner.TYPEINT64, scanner.TYPEINT, scanner.TYPEINTEGER:
-		return document.Int64Value, nil
+		return document.Int64Value
 	case scanner.TYPEFLOAT64, scanner.TYPENUMERIC:
-		return document.Float64Value, nil
+		return document.Float64Value
 	case scanner.TYPETEXT:
-		return document.TextValue, nil
+		return document.TextValue
 	case scanner.TYPEDURATION:
-		return document.DurationValue, nil
+		return document.DurationValue
 	}
 
-	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
+	p.Unscan()
+	return 0
 }
 
 // parseDocument parses a document
@@ -479,9 +480,11 @@ func (p *Parser) parseCastExpression() (query.Expr, error) {
 	}
 
 	// Parse require typename.
-	tp, err := p.parseType()
-	if err != nil {
-		return nil, err
+	tp := p.parseType()
+	if tp == 0 {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		p.Unscan()
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 	}
 
 	// Parse required ) token.

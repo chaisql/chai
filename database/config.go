@@ -9,17 +9,29 @@ import (
 
 // TableConfig holds the configuration of a table
 type TableConfig struct {
-	PrimaryKey       FieldConstraint
 	FieldConstraints []FieldConstraint
 
 	LastKey int64
 }
 
+// GetPrimaryKey returns the field constraint of the primary key.
+// Returns nil if there is no primary key.
+func (t TableConfig) GetPrimaryKey() *FieldConstraint {
+	for _, f := range t.FieldConstraints {
+		if f.IsPrimaryKey {
+			return &f
+		}
+	}
+
+	return nil
+}
+
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Path    document.ValuePath
-	Type    document.ValueType
-	NotNull bool
+	Path         document.ValuePath
+	Type         document.ValueType
+	IsPrimaryKey bool
+	IsNotNull    bool
 }
 
 type tableConfigStore struct {

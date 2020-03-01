@@ -20,7 +20,8 @@ func TestCreateTable(t *testing.T) {
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", false},
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
 		{"With primary key", "CREATE TABLE test(foo STRING PRIMARY KEY)", false},
-		{"With field constraints key", "CREATE TABLE test(foo.a.1.2 STRING, bar.4.0.bat int8)", false},
+		{"With field constraints", "CREATE TABLE test(foo.a.1.2 STRING primary key, bar.4.0.bat int8 not null, baz not null)", false},
+		{"With no constraints", "CREATE TABLE test(a, b)", false},
 	}
 
 	for _, test := range tests {
@@ -58,11 +59,8 @@ func TestCreateTable(t *testing.T) {
 			}
 
 			require.Equal(t, &database.TableConfig{
-				PrimaryKey: database.FieldConstraint{
-					Path: []string{"foo", "bar", "1", "hello"},
-					Type: document.BlobValue,
-				},
 				FieldConstraints: []database.FieldConstraint{
+					{Path: []string{"foo", "bar", "1", "hello"}, Type: document.BlobValue, IsPrimaryKey: true},
 					{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue},
 					{Path: []string{"bar", "4", "0", "bat"}, Type: document.Int8Value},
 				},

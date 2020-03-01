@@ -22,20 +22,73 @@ func TestParserCreateTable(t *testing.T) {
 			query.CreateTableStmt{
 				TableName: "test",
 				Config: database.TableConfig{
-					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.Int64Value},
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true},
+					},
 				},
 			}, false},
-		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar INT16, baz.4.1.bat STRING)",
+		{"With primary key twice", "CREATE TABLE test(foo PRIMARY KEY PRIMARY KEY)",
+			query.CreateTableStmt{}, true},
+		{"With type", "CREATE TABLE test(foo INT)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Config: database.TableConfig{
-					PrimaryKey: database.FieldConstraint{Path: []string{"foo"}, Type: document.Int64Value},
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"bar"}, Type: document.Int16Value},
+						{Path: []string{"foo"}, Type: document.Int64Value},
+					},
+				},
+			}, false},
+		{"With not null", "CREATE TABLE test(foo NOT NULL)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"foo"}, IsNotNull: true},
+					},
+				},
+			}, false},
+		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)",
+			query.CreateTableStmt{}, true},
+		{"With type and not null", "CREATE TABLE test(foo INT NOT NULL)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"foo"}, Type: document.Int64Value, IsNotNull: true},
+					},
+				},
+			}, false},
+		{"With not null and primary key", "CREATE TABLE test(foo INT NOT NULL PRIMARY KEY)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true, IsNotNull: true},
+					},
+				},
+			}, false},
+		{"With primary key and not null", "CREATE TABLE test(foo INT PRIMARY KEY NOT NULL)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true, IsNotNull: true},
+					},
+				},
+			}, false},
+		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar INT16 NOT NULL, baz.4.1.bat STRING)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true},
+						{Path: []string{"bar"}, Type: document.Int16Value, IsNotNull: true},
 						{Path: []string{"baz", "4", "1", "bat"}, Type: document.TextValue},
 					},
 				},
 			}, false},
+		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
+			query.CreateTableStmt{}, true},
 	}
 
 	for _, test := range tests {

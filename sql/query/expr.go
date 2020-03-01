@@ -593,8 +593,9 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 		return document.Value{}, errors.New("no table specified")
 	}
 
-	if len(ctx.Cfg.PrimaryKey.Path) != 0 {
-		return ctx.Cfg.PrimaryKey.Path.GetValue(ctx.Document)
+	pk := ctx.Cfg.GetPrimaryKey()
+	if pk != nil {
+		return pk.Path.GetValue(ctx.Document)
 	}
 
 	return encoding.DecodeValue(document.Int64Value, ctx.Document.(document.Keyer).Key())

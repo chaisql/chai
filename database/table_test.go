@@ -127,9 +127,8 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableConfig{
-			PrimaryKey: database.FieldConstraint{
-				Path: []string{"foo", "a", "1"},
-				Type: document.Int32Value,
+			FieldConstraints: []database.FieldConstraint{
+				{Path: []string{"foo", "a", "1"}, Type: document.Int32Value, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -189,9 +188,8 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableConfig{
-			PrimaryKey: database.FieldConstraint{
-				Path: []string{"foo"},
-				Type: document.Int32Value,
+			FieldConstraints: []database.FieldConstraint{
+				{Path: []string{"foo"}, Type: document.Int32Value, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -268,8 +266,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
-				{[]string{"foo"}, document.Int32Value, false},
-				{[]string{"bar"}, document.Int8Value, false},
+				{[]string{"foo"}, document.Int32Value, false, false},
+				{[]string{"bar"}, document.Int8Value, false, false},
 			},
 		})
 		require.NoError(t, err)
@@ -305,7 +303,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test1", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
-				{[]string{"foo"}, 0, true},
+				{[]string{"foo"}, 0, false, true},
 			},
 		})
 		require.NoError(t, err)
@@ -314,7 +312,7 @@ func TestTableInsert(t *testing.T) {
 
 		err = tx.CreateTable("test2", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
-				{[]string{"foo"}, document.Int32Value, true},
+				{[]string{"foo"}, document.Int32Value, false, true},
 			},
 		})
 		require.NoError(t, err)
@@ -343,7 +341,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test1", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
-				{[]string{"foo", "1"}, 0, true},
+				{[]string{"foo", "1"}, 0, false, true},
 			},
 		})
 		require.NoError(t, err)

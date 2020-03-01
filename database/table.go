@@ -77,10 +77,10 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	}
 
 	var key []byte
-	if len(cfg.PrimaryKey.Path) != 0 {
-		v, err := cfg.PrimaryKey.Path.GetValue(d)
+	if pk := cfg.GetPrimaryKey(); pk != nil {
+		v, err := pk.Path.GetValue(d)
 		if err == document.ErrFieldNotFound {
-			return nil, fmt.Errorf("missing primary key at path %q", cfg.PrimaryKey.Path)
+			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
 		}
 		if err != nil {
 			return nil, err
@@ -129,7 +129,9 @@ func (t *Table) validateConstraints(d document.Document) (document.Document, err
 		return nil, err
 	}
 
-	if len(cfg.FieldConstraints) == 0 && len(cfg.PrimaryKey.Path) == 0 {
+	pk := cfg.GetPrimaryKey()
+
+	if len(cfg.FieldConstraints) == 0 && pk == nil {
 		return d, nil
 	}
 
@@ -142,15 +144,15 @@ func (t *Table) validateConstraints(d document.Document) (document.Document, err
 		return nil, err
 	}
 
-	if len(cfg.PrimaryKey.Path) != 0 {
-		err = validateConstraint(&fb, cfg.PrimaryKey)
+	if pk != nil {
+		err = validateConstraint(&fb, pk)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	for _, fc := range cfg.FieldConstraints {
-		err := validateConstraint(&fb, fc)
+		err := validateConstraint(&fb, &fc)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +161,7 @@ func (t *Table) validateConstraints(d document.Document) (document.Document, err
 	return &fb, err
 }
 
-func validateConstraint(d document.Document, c FieldConstraint) error {
+func validateConstraint(d document.Document, c *FieldConstraint) error {
 	// get the parent buffer
 	parent, err := getParentValue(d, c.Path)
 	if err != nil {
@@ -178,7 +180,7 @@ func validateConstraint(d document.Document, c FieldConstraint) error {
 		// if the field is not found we make sure it is not required,
 		if err != nil {
 			if err == document.ErrFieldNotFound {
-				if c.NotNull {
+				if c.IsNotNull {
 					return fmt.Errorf("field %q is required and must be not null", c.Path)
 				}
 
@@ -189,6 +191,8 @@ func validateConstraint(d document.Document, c FieldConstraint) error {
 		}
 
 		// if not we convert it and replace it in the buffer
+
+		// if no type was provided, no need to convert though
 		if c.Type == 0 {
 			return nil
 		}
@@ -218,7 +222,7 @@ func validateConstraint(d document.Document, c FieldConstraint) error {
 		// if the value is not found we make sure it is not required,
 		if err != nil {
 			if err == document.ErrValueNotFound {
-				if c.NotNull {
+				if c.IsNotNull {
 					return fmt.Errorf("value %q is required and must be not null", c.Path)
 				}
 

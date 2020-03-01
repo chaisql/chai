@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/sql/query"
 	"github.com/asdine/genji/sql/scanner"
@@ -92,25 +94,14 @@ func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
 			break
 		}
 
-		fc.Type, err = p.parseType()
+		fc.Type = p.parseType()
+
+		err = p.parseFieldConstraint(&fc)
 		if err != nil {
 			return err
 		}
 
-		// Parse "PRIMARY"
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.PRIMARY {
-			// Parse "KEY"
-			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
-			}
-			if len(cfg.PrimaryKey.Path) != 0 {
-				return &ParseError{Message: "only one primary key is allowed"}
-			}
-			cfg.PrimaryKey = fc
-		} else {
-			p.Unscan()
-			cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
-		}
+		cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
@@ -123,7 +114,53 @@ func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
 		return newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
+	// ensure only one primary key
+	var pkCount int
+	for _, fc := range cfg.FieldConstraints {
+		if fc.IsPrimaryKey {
+			pkCount++
+		}
+	}
+	if pkCount > 1 {
+		return &ParseError{Message: fmt.Sprintf("only one primary key is allowed, got %d", pkCount)}
+	}
+
 	return nil
+}
+
+func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
+	for {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		switch tok {
+		case scanner.PRIMARY:
+			// Parse "KEY"
+			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+			}
+
+			// if it's already a primary key we return an error
+			if fc.IsPrimaryKey {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+			}
+
+			fc.IsPrimaryKey = true
+		case scanner.NOT:
+			// Parse "NULL"
+			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.NULL {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"NULL"}, pos)
+			}
+
+			// if it's already not null we return an error
+			if fc.IsNotNull {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+			}
+
+			fc.IsNotNull = true
+		default:
+			p.Unscan()
+			return nil
+		}
+	}
 }
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
