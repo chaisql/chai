@@ -26,7 +26,7 @@ func Scan(d Document, targets ...interface{}) error {
 
 		ref := reflect.ValueOf(target)
 		if !ref.IsValid() {
-			return &ErrUnsupportedType{target}
+			return &ErrUnsupportedType{target, fmt.Sprintf("Parameter %d is not valid", i)}
 		}
 
 		return scanValue(v, ref)
@@ -85,12 +85,7 @@ func structScan(d Document, ref reflect.Value) error {
 			return err
 		}
 
-		if f.Type().Kind() == reflect.Ptr {
-			err = scanValue(v, f)
-		} else {
-			err = scanValue(v, f)
-		}
-		if err != nil {
+		if err := scanValue(v, f); err != nil {
 			return err
 		}
 	}
@@ -182,7 +177,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 func MapScan(d Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 	if !ref.IsValid() {
-		return &ErrUnsupportedType{ref}
+		return &ErrUnsupportedType{ref, "t must be a valid reference"}
 	}
 
 	if ref.Kind() == reflect.Ptr {
@@ -190,7 +185,7 @@ func MapScan(d Document, t interface{}) error {
 	}
 
 	if ref.Kind() != reflect.Map {
-		return &ErrUnsupportedType{ref}
+		return &ErrUnsupportedType{ref, "t is not a map"}
 	}
 
 	return mapScan(d, ref)
@@ -198,7 +193,7 @@ func MapScan(d Document, t interface{}) error {
 
 func mapScan(d Document, ref reflect.Value) error {
 	if ref.Type().Key().Kind() != reflect.String {
-		return &ErrUnsupportedType{ref}
+		return &ErrUnsupportedType{ref, "map key must be a string"}
 	}
 
 	if ref.IsNil() {
@@ -225,7 +220,7 @@ func ScanValue(v Value, t interface{}) error {
 
 func scanValue(v Value, ref reflect.Value) error {
 	if !ref.IsValid() {
-		return &ErrUnsupportedType{ref}
+		return &ErrUnsupportedType{ref, "parameter is not a valid reference"}
 	}
 
 	if ref.Type().Kind() == reflect.Ptr && ref.IsNil() {
@@ -319,5 +314,5 @@ func scanValue(v Value, ref reflect.Value) error {
 		return nil
 	}
 
-	return &ErrUnsupportedType{ref}
+	return &ErrUnsupportedType{ref, "Invalid type"}
 }

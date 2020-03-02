@@ -27,10 +27,11 @@ var (
 // this error is used to skip struct or array fields that are not supported.
 type ErrUnsupportedType struct {
 	Value interface{}
+	Msg   string
 }
 
 func (e *ErrUnsupportedType) Error() string {
-	return fmt.Sprintf("unsupported type %T", e.Value)
+	return fmt.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
 }
 
 // ValueType represents a value type supported by the database.
@@ -164,10 +165,16 @@ func NewValue(x interface{}) (Value, error) {
 			return NewNullValue(), nil
 		}
 		return NewArrayValue(&sliceArray{ref: v}), nil
+	case reflect.Map:
+		doc, err := NewFromMap(x)
+		if err != nil {
+			return Value{}, err
+		}
+		return NewDocumentValue(doc), nil
 
 	}
 
-	return Value{}, &ErrUnsupportedType{x}
+	return Value{}, &ErrUnsupportedType{x, ""}
 }
 
 // NewBlobValue encodes x and returns a value.
