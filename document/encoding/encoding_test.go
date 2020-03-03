@@ -38,6 +38,18 @@ func TestDecodeValueFromDocument(t *testing.T) {
 }
 
 func TestEncodeDecode(t *testing.T) {
+	userMapDoc, err := document.NewFromMap(map[string]interface{}{
+		"age":  10,
+		"name": "john",
+	})
+	require.NoError(t, err)
+
+	addressMapDoc, err := document.NewFromMap(map[string]string{
+		"city":    "Ajaccio",
+		"country": "France",
+	})
+	require.NoError(t, err)
+
 	tests := []struct {
 		name     string
 		d        document.Document
@@ -52,10 +64,7 @@ func TestEncodeDecode(t *testing.T) {
 		},
 		{
 			"Map",
-			document.NewFromMap(map[string]interface{}{
-				"age":  10,
-				"name": "john",
-			}),
+			userMapDoc,
 			`{"age": 10, "name": "john"}`,
 		},
 		{
@@ -63,10 +72,7 @@ func TestEncodeDecode(t *testing.T) {
 			document.NewFieldBuffer().
 				Add("age", document.NewInt64Value(10)).
 				Add("name", document.NewTextValue("john")).
-				Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
-					"city":    "Ajaccio",
-					"country": "France",
-				}))),
+				Add("address", document.NewDocumentValue(addressMapDoc)),
 			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}}`,
 		},
 	}
@@ -84,13 +90,16 @@ func TestEncodeDecode(t *testing.T) {
 }
 
 func TestDecodeDocument(t *testing.T) {
+	mapDoc, err := document.NewFromMap(map[string]string{
+		"city":    "Ajaccio",
+		"country": "France",
+	})
+	require.NoError(t, err)
+
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
 		Add("name", document.NewTextValue("john")).
-		Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
-			"city":    "Ajaccio",
-			"country": "France",
-		})))
+		Add("address", document.NewDocumentValue(mapDoc))
 
 	data, err := EncodeDocument(doc)
 	require.NoError(t, err)
@@ -102,10 +111,7 @@ func TestDecodeDocument(t *testing.T) {
 	v, err = ec.GetByField("address")
 	require.NoError(t, err)
 	var expected, actual bytes.Buffer
-	err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
-		"city":    "Ajaccio",
-		"country": "France",
-	}))))
+	err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
 	require.NoError(t, err)
 	err = document.ToJSON(&actual, document.NewFieldBuffer().Add("address", v))
 	require.NoError(t, err)
@@ -118,10 +124,7 @@ func TestDecodeDocument(t *testing.T) {
 			require.Equal(t, document.NewInt64Value(10), v)
 		case "address":
 			var expected, actual bytes.Buffer
-			err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
-				"city":    "Ajaccio",
-				"country": "France",
-			}))))
+			err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
 			require.NoError(t, err)
 			err = document.ToJSON(&actual, document.NewFieldBuffer().Add(f, v))
 			require.NoError(t, err)
@@ -137,6 +140,12 @@ func TestDecodeDocument(t *testing.T) {
 }
 
 func TestEncodeArray(t *testing.T) {
+	mapDoc, err := document.NewFromMap(map[string]string{
+		"city":    "Ajaccio",
+		"country": "France",
+	})
+	require.NoError(t, err)
+
 	tests := []struct {
 		name     string
 		a        document.Array
@@ -147,10 +156,7 @@ func TestEncodeArray(t *testing.T) {
 			document.NewValueBuffer().
 				Append(document.NewInt64Value(10)).
 				Append(document.NewTextValue("john")).
-				Append(document.NewDocumentValue(document.NewFromMap(map[string]interface{}{
-					"city":    "Ajaccio",
-					"country": "France",
-				}))).
+				Append(document.NewDocumentValue(mapDoc)).
 				Append(document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt64Value(11)))),
 			`[10, "john", {"city": "Ajaccio", "country": "France"}, [11]]`,
 		},
