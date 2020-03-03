@@ -42,22 +42,29 @@ type Document interface {
 
 // NewFromMap creates a document from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m map[string]interface{}) Document {
-	return mapDocument(m)
+func NewFromMap(m interface{}) (Document, error) {
+	M := reflect.ValueOf(m)
+	if M.Kind() != reflect.Map || M.Type().Key().Kind() != reflect.String {
+		return nil, &ErrUnsupportedType{m, "parameter must be a map with a string key"}
+	}
+	return mapDocument(M), nil
 }
 
-type mapDocument map[string]interface{}
+type mapDocument reflect.Value
 
 var _ Document = (*mapDocument)(nil)
 
 func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
-	for mk, mv := range m {
-		v, err := NewValue(mv)
+	M := reflect.Value(m)
+	it := M.MapRange()
+
+	for it.Next() {
+		v, err := NewValue(it.Value().Interface())
 		if err != nil {
 			return err
 		}
 
-		err = fn(mk, v)
+		err = fn(it.Key().String(), v)
 		if err != nil {
 			return err
 		}
@@ -66,11 +73,12 @@ func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
 }
 
 func (m mapDocument) GetByField(field string) (Value, error) {
-	v, ok := m[field]
-	if !ok {
+	M := reflect.Value(m)
+	v := M.MapIndex(reflect.ValueOf(field))
+	if v == (reflect.Value{}) {
 		return Value{}, ErrFieldNotFound
 	}
-	return NewValue(v)
+	return NewValue(v.Interface())
 }
 
 // NewFromStruct creates a document from a struct using reflection.
@@ -97,7 +105,7 @@ func (s structDocument) Iterate(fn func(f string, v Value) error) error {
 
 	for i := 0; i < l; i++ {
 		sf := tp.Field(i)
-		if sf.Anonymous || sf.PkgPath != "" {
+		if sf.PkgPath != "" {
 			continue
 		}
 
@@ -150,7 +158,7 @@ func (s structDocument) GetByField(field string) (Value, error) {
 		}
 	}
 
-	if !ok || sf.Anonymous || sf.PkgPath != "" {
+	if !ok || sf.PkgPath != "" {
 		return Value{}, ErrFieldNotFound
 	}
 
