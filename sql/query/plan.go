@@ -145,7 +145,7 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 		if len(qo.orderBy) != 0 {
 			_, ok := qo.indexes[qo.orderBy.Name()]
 			pk := qo.cfg.GetPrimaryKey()
-			if ok || pk.Path.String() == qo.orderBy.Name() {
+			if ok || (pk != nil && pk.Path.String() == qo.orderBy.Name()) {
 				qp.field = &queryPlanField{
 					indexedField: qo.orderBy,
 					isPrimaryKey: pk.Path.String() == qo.orderBy.Name(),
@@ -184,7 +184,8 @@ func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
 			}
 		}
 
-		if qo.cfg.GetPrimaryKey().Path.String() == fs.Name() {
+		pk := qo.cfg.GetPrimaryKey()
+		if pk != nil && pk.Path.String() == fs.Name() {
 			return &queryPlanField{
 				indexedField: fs,
 				op:           t.Token,
