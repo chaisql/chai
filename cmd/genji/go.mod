@@ -11,5 +11,3 @@ require (
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 // indirect
 	github.com/urfave/cli v1.22.1
 )
-
-replace github.com/asdine/genji v0.5.0 => ../../
