@@ -4,31 +4,6 @@ linkTitle = "Genji"
 
 +++
 
-<!-- <section class="row td-cover-block td-cover-block--height-full js-td-cover td-overlay -bg-ghostwhite">
-	<div class="container td-overlay__inner">
-		<div class="row">
-			<div class="col-12">
-				<div class="text-center">
-					<h1 class="display-1 mt-0 mt-md-5 pb-4">Genji</h1>
-					<p class="display-4 font-weight-normal mb-0">A <u class="text-underline">Document-oriented</u>, <u
-							class="text-underline">Embedded</u>, <u class="text-underline">SQL</u>
-						database</p>
-					<div class="pt-3 lead">
-						<div class="mx-auto">
-							<a class="btn btn-lg btn-primary mr-3 mb-4" href="{{< relref "/docs" >}}">
-								Docs <i class="fas fa-arrow-alt-circle-right ml-2"></i>
-							</a>
-							<a class="btn btn-lg btn-secondary mr-3 mb-4" href="https://github.com/asdine/genji">
-								Github <i class="fab fa-github ml-2 "></i>
-							</a>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</section> -->
-
 {{< blocks/cover title="Genji" image_anchor="top" height="full" color="ghostwhite" >}}
 <div class="mx-auto">
 	<p class="display-4 font-weight-normal mb-5">
@@ -41,5 +16,24 @@ linkTitle = "Genji"
 	<a class="btn btn-lg btn-secondary mr-3 mb-4" href="https://github.com/asdine/genji">
 		Download <i class="fab fa-github ml-2 "></i>
 	</a>
+	{{< blocks/link-down color="info" >}}
 </div>
 {{< /blocks/cover >}}
+
+{{< blocks/section color="primary" >}}
+
+{{% blocks/feature icon="fas fa-database" title="The power of SQL with documents" %}}
+Run powerful SQL queries on rich documents without limits
+{{% /blocks/feature %}}
+
+{{% blocks/feature icon="fa-border-style" title="Optional schema constraints" %}}
+Create schemaless tables or specify constraints on selected fields of every documents
+{{% /blocks/feature %}}
+
+{{% blocks/feature icon="fas fa-rocket" title="Optimize for your workload" %}}
+Store data on disk or in-memory, use a B-Tree or an LSM tree. Choose the right engine that covers your needs or create
+one
+{{% /blocks/feature %}}
+
+
+{{< /blocks/section >}}
