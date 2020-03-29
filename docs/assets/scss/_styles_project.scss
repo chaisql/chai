@@ -1,0 +1,45 @@
+// Global
+
+.td-content {
+    // color: #4a5568;
+    color: $gray-700;
+
+    h1, h2, h3, h4, h5 {
+        color: $gray-800;
+        font-weight: normal;
+    }
+}
+
+// Home
+.text-underline {
+    text-decoration: none;
+    border-bottom: 2px solid;
+}
+
+// Search
+.td-search-input {
+    background: $whitesmoke !important;
+    color: $ghostwhite;
+}
+
+// Navbar
+.td-navbar-cover {
+    background: $ghostwhite;
+}
+
+.td-navbar.navbar-light {
+    background: $ghostwhite;
+    border-bottom: 1px solid $whitesmoke;
+
+    .td-search-input {
+        background: $whitesmoke;
+
+        @include placeholder {
+            color: $navbar-light-color;
+        }
+    }
+}
+
+.td-overlay--dark::after {
+    background: none;
+}
