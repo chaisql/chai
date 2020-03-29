@@ -1,8 +1,10 @@
 ---
-description: Define a new table
+title: "CREATE TABLE"
+date: 2020-03-29T17:54:36+04:00
+weight: 4
+description: >
+  Define a new table
 ---
-
-# CREATE TABLE
 
 ## Synopsis
 

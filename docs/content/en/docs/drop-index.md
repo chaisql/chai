@@ -1,8 +1,10 @@
 ---
-description: Remove an index and all of its content
+title: "DROP INDEX"
+date: 2020-03-29T17:56:36+04:00
+weight: 7
+description: >
+  Remove an index and all of its content
 ---
-
-# DROP INDEX
 
 ## Synopsis
 

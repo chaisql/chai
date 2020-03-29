@@ -1,4 +1,10 @@
-# Data types
+---
+title: "Data Types"
+date: 2020-03-29T17:44:36+04:00
+weight: 2
+description: >
+  This chapter describes the list of data types
+---
 
 ## Fixed size data types
 
