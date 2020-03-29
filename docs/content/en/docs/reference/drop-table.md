@@ -1,7 +1,7 @@
 ---
 title: "DROP TABLE"
 date: 2020-03-29T17:55:36+04:00
-weight: 5
+weight: 40
 description: >
   Remove a table and all of its content
 ---

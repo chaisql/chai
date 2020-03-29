@@ -1,7 +1,7 @@
 ---
 title: "CREATE INDEX"
 date: 2020-03-29T17:54:36+04:00
-weight: 6
+weight: 10
 description: >
   Define a new index
 ---

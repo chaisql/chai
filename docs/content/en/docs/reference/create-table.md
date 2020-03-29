@@ -1,7 +1,7 @@
 ---
 title: "CREATE TABLE"
 date: 2020-03-29T17:54:36+04:00
-weight: 4
+weight: 20
 description: >
   Define a new table
 ---

@@ -1,7 +1,7 @@
 ---
 title: "SELECT"
 date: 2020-03-29T17:57:36+04:00
-weight: 8
+weight: 50
 description: >
   Select data from a table
 ---
