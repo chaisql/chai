@@ -1,5 +1,6 @@
 {{ $cover := .HasShortcode "blocks/cover" }}
-<nav class="js-navbar-scroll navbar navbar-expand navbar-light flex-column flex-md-row td-navbar">
+<nav
+	class="js-navbar-scroll navbar navbar-expand navbar-light flex-column flex-md-row td-navbar {{ if $cover }}td-navbar-home{{ end }}">
 	<a class="navbar-brand" href="{{ .Site.Home.RelPermalink }}">
 		<span
 			class="navbar-logo">{{ if .Site.Params.ui.navbar_logo }}{{ with resources.Get "icons/logo.svg" }}{{ ( . | minify).Content | safeHTML }}{{ end }}{{ end }}</span><span

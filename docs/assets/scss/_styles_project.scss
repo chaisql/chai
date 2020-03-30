@@ -23,13 +23,14 @@
 }
 
 // Navbar
-.td-navbar-cover {
-    background: $ghostwhite;
-}
-
 .td-navbar.navbar-light {
-    background: $ghostwhite;
+    background: $white;
     border-bottom: 1px solid $whitesmoke;
+
+    &.td-navbar-home {
+        background: $ghostwhite;
+        border-bottom: none;
+    }
 
     .td-search-input {
         background: $whitesmoke;
@@ -42,4 +43,11 @@
 
 .td-overlay--dark::after {
     background: none;
+}
+
+// Sidebar
+
+.td-sidebar {
+    background: $white;
+    border-right: 1px solid $whitesmoke;
 }
