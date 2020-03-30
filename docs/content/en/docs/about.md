@@ -41,4 +41,5 @@ Genji's main concepts are not new and semantics have been chosen to match as muc
 Follow these docs for more information:
 
 * [Getting started]({{< relref "/docs/getting-started" >}})
+* [Data definition]({{< relref "/docs/data-definition/_index.md" >}})
 * [SQL Syntax]({{< relref "/docs/sql-syntax" >}})

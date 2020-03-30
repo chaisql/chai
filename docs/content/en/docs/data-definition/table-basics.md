@@ -1,6 +1,8 @@
 ---
 title: "Table Basics"
 date: 2020-03-30T20:27:04+04:00
+description: >
+    How to create and remove tables
 ---
 
 Though Genji stores its data in tables, there is no concept of rows or columns. A Genji table is simply a collection of documents.
