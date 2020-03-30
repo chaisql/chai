@@ -1,6 +1,6 @@
 module github.com/asdine/genji
 
-go 1.13
+go 1.14
 
 require (
 	github.com/dgraph-io/badger/v2 v2.0.1
