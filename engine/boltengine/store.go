@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/asdine/genji/engine"
-	bolt "github.com/etcd-io/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 // A Store is an implementation of the engine.Store interface using a bucket.

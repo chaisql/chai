@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/asdine/genji/engine"
-	bolt "github.com/etcd-io/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 const (
