@@ -8,3 +8,7 @@ menu:
 ---
 
 Genji is a document-oriented, embedded, SQL database written in Go.
+
+{{% pageinfo %}}
+Genji and this documentation are works in progress.
+{{% /pageinfo %}}

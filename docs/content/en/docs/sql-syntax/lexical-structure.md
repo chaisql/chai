@@ -8,7 +8,7 @@ description: >
 
 ## Identifiers
 
-Identifiers are sequence of characters which refer to table names, field names and index names.
+Identifiers are a sequence of characters that refer to table names, field names and index names.
 
 Identifiers may be unquoted or surrounded by backquotes. Depending on that, different rules may apply.
 
@@ -32,7 +32,7 @@ Identifiers may be unquoted or surrounded by backquotes. Depending on that, diff
         <p></p>
         <ul>
           <li>May contain any unicode character, other than the new line character (i.e. <code>\n</code>)</li>
-          <li>May contain escaped <code>`</code> character (i.e. <code>\`</code>)</li>
+          <li>May contain escaped <code> `</code> character (i.e. <code>\` </code>)</li>
         </ul>
       </td>
     </tr>
@@ -61,7 +61,7 @@ foo
 
 ### Integers
 
-An integer is a sequence of characters that only contain digits. They may start with a `+` or `-`sign.
+An integer is a sequence of characters that only contain digits. They may start with a `+` or `-` sign.
 
 ```sql
 123456789
@@ -73,11 +73,11 @@ An integer is a sequence of characters that only contain digits. They may start 
 
 A float is a sequence of characters that contains three parts:
 
-- a sequence of digits
-- a decimal point \(i.e. `.`\)
-- a sequence of digits
+* a sequence of digits
+* a decimal point \(i.e. `.`\)
+* a sequence of digits
 
-They may start with a `+`or a `-`sign.
+They may start with a `+` or a `-` sign.
 
 ```sql
 123.456
@@ -102,8 +102,8 @@ FALse
 
 An array is any sequence of character that starts and ends with either:
 
-- `(` and `)`
-- `[` and `]`
+* `(` and `)`
+* `[` and `]`
 
 and that contains a coma-separated list of expressions.
 
@@ -118,16 +118,16 @@ Each pair associates an identifier with an expression, both separated by a colon
 
 ```js
 {
-  foo: 1,
-  bar: "hello",
-  baz: true AND false,
-  "long field": {
-    a: 10
-  }
+    foo: 1,
+    bar: "hello",
+    baz: true AND false,
+    "long field": {
+        a: 10
+    }
 }
 ```
 
-In a document, the identifiers are refered to as **fields**.
+In a document, the identifiers are referred to as **fields**.
 In the example above, the document has four top-level fields (`foo`, `bar`, `baz` and `long field`) and one nested field `a`.
 
 ## Dot notation
@@ -138,28 +138,28 @@ Given the following document:
 
 ```js
 {
-  "name": "Foo",
-  "address": {
-    "city": "Lyon",
-    "zipcode": "69001"
-  },
-  "friends": [
-    {
-      "name": "Bar",
-      "address": {
-        "city": "Paris",
-        "zipcode": "75001"
-      }
+    "name": "Foo",
+    "address": {
+        "city": "Lyon",
+        "zipcode": "69001"
     },
-    {
-      "name": "Baz",
-      "address": {
-        "city": "Ajaccio",
-        "zipcode": "20000"
+    "friends": [
+      {
+        "name": "Bar",
+        "address": {
+            "city": "Paris",
+            "zipcode": "75001"
+        }
       },
-      "favorite game": "ffix"
-    }
-  ]
+        {
+          "name": "Baz",
+          "address": {
+              "city": "Ajaccio",
+              "zipcode": "20000"
+          },
+          "favorite game": "ffix"
+        }
+    ]
 }
 ```
 
@@ -169,15 +169,15 @@ _Example_: `name` will evaluate to `"Foo"`.
 
 To access a nested field, concatenate all the fields with the `.` character.
 
-_Examples_: `address.city` will evaluate to `"Lyon"`
+_Examples_: `address.city` will evaluate to `"Lyon"` 
 
 To access an element of an array, use the index of the element
 
 _Examples_:
 
-- `friends.0` will evaluate to `{"name": "Bar","address": {"city":"Paris","zipcode": "75001"}}`
-- `friends.1.name` will evaluate to `"Baz"`
-- `friends.1."favorite game"` will evaluate to `"ffix"`
+* `friends.0` will evaluate to `{"name": "Bar","address": {"city":"Paris","zipcode": "75001"}}`
+* `friends.1.name` will evaluate to `"Baz"`
+* `friends.1."favorite game"` will evaluate to `"ffix"`
 
 ## Expressions
 
@@ -192,8 +192,8 @@ Example:
 
 An expression can be found in two forms:
 
-- unary: meaning it contains only one component
-- binary: meaning it contains two expressions, or operands, and one operator. i.e. `<expr> <operator> <expr>`
+* unary: meaning it contains only one component
+* binary: meaning it contains two expressions, or operands, and one operator.i.e. `<expr> <operator> <expr>`
 
 Example:
 
@@ -230,12 +230,12 @@ Currently, Genji only supports comparison operators:
 
 | Name | Description                                                                                                                      |
 | :--- | :------------------------------------------------------------------------------------------------------------------------------- |
-| =    | Evaluates to `true` if operands are equal, otherwise returns `false`                                                             |
-| !=   | Evaluates to `true` if operands are not equal, otherwise returns `false`                                                         |
-| >    | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false`             |
+| =    | Evaluates to `true` if operands are equal, otherwise returns `false` |
+| !=   | Evaluates to `true` if operands are not equal, otherwise returns `false` |
+| >    | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false` |
 | >=   | Evaluates to `true` if the left-side expression is greater than or equal to the right-side expression, otherwise returns `false` |
-| <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false`                |
-| <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false`    |
+| <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false` |
+| <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false` |
 
 Examples:
 
