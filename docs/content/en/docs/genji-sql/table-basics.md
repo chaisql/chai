@@ -1,6 +1,7 @@
 ---
 title: "Table Basics"
 date: 2020-03-30T20:27:04+04:00
+weight: 10
 description: >
     How to create and remove tables
 ---

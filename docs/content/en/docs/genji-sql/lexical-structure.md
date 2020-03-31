@@ -1,7 +1,7 @@
 ---
 title: "Lexical Structure"
 date: 2020-03-29T17:48:51+04:00
-weight: 2
+weight: 30
 description: >
     Describes of how SQL components are parsed by Genji.
 ---
