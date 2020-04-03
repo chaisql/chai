@@ -6,26 +6,7 @@ description: >
     Describes of how SQL components are parsed by Genji.
 ---
 
-Whenever Genji receives a query, it will be parsed according to the following rules and transformed into components Genji can understand. 
-
-## Identifiers
-
-Identifiers are a sequence of characters that refer to table names, field names and index names.
-
-Identifiers may be unquoted or surrounded by backquotes. Depending on that, different rules may apply.
-
-| Unquoted identifiers | Identifiers surrounded by backquotes |
-| ---|--- | 
-| Must begin with an uppercase or lowercase ASCII character or an underscore | May contain any unicode character, other than the new line character (i.e. `\n`) |
-| May contain only ASCII letters, digits and underscore | May contain escaped `"` character (i.e. `\"`) |
-
-
-```text
-foo
-_foo_123_
-`頂きます (*｀▽´)_旦~~`
-`foo \` bar`
-```
+Whenever Genji receives a query, it will be parsed according to the following rules and transformed into components Genji can understand.
 
 ## Literals
 
@@ -86,7 +67,7 @@ An array is any sequence of character that starts and ends with either:
 * `(` and `)`
 * `[` and `]`
 
-and that contains a coma-separated list of expressions.
+and that contains a coma-separated list of [expressions]({{< relref "/docs/genji-sql/expressions" >}}).
 
 ```python
 [1.5, "hello", 1 > 10, [true, -10], {foo: "bar"}]
@@ -95,7 +76,7 @@ and that contains a coma-separated list of expressions.
 ### Documents
 
 A document is any sequence of character that starts and ends with `{` and `}` and that contains a list of pairs.
-Each pair associates an identifier with an expression, both separated by a colon. Each pair must be separated by a coma.
+Each pair associates an identifier with an [expression]({{< relref "/docs/genji-sql/expressions" >}}), both separated by a colon. Each pair must be separated by a coma.
 
 ```js
 {
@@ -111,3 +92,32 @@ Each pair associates an identifier with an expression, both separated by a colon
 In a document, the identifiers are referred to as **fields**.
 In the example above, the document has four top-level fields (`foo`, `bar`, `baz` and `long field`) and one nested field `a`.
 
+## Identifiers
+
+Identifiers are a sequence of characters that refer to table names, field names and index names.
+
+Identifiers may be unquoted or surrounded by backquotes. Depending on that, different rules may apply.
+
+| Unquoted identifiers | Identifiers surrounded by backquotes |
+| ---|--- |
+| Must begin with an uppercase or lowercase ASCII character or an underscore | May contain any unicode character, other than the new line character (i.e. `\n`) |
+| May contain only ASCII letters, digits and underscore | May contain escaped `"` character (i.e. `\"`) |
+
+```text
+foo
+_foo_123_
+`頂きます (*｀▽´)_旦~~`
+`foo \` bar`
+```
+
+## Dot notation
+
+The [dot notation]({{< relref "/docs/genji-sql/documents" >}}#dot-notation) is any sequence of characters that one or more [identifiers](#identifiers) separated by dots.
+
+```text
+foo
+foo.bar
+foo."bar baz".0.bat
+```
+
+Depending on the context, a single identifier with no dot will be parsed an identifier or as dot notation.

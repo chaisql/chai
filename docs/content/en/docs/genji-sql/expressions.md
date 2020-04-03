@@ -6,8 +6,6 @@ description: >
     How expression are evaluated, compared, etc.
 ---
 
-## Expressions
-
 Expressions are components that can be evaluated to a value.
 
 Example:
@@ -37,17 +35,38 @@ age >= 18
 
 Here is a list of expressions supported by Genji.
 
-### Literal expressions
+## Literal expressions
 
-Any [literal](#literals) evaluates to itself
+Any [literal]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) evaluates to the closest compatible [type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types.
 
-```python
-1
--> 1
+### Strings
 
-"hello"
--> "hello"
-```
+[Strings]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) are evaluated to the [`text` type]({{< relref "/docs/genji-sql/data-types" >}}#variable-size-data-types), which are utf-8 encoded.
+
+### Integers
+
+[Integers]({{< relref "/docs/genji-sql/lexical-structure" >}}#integers) are evaluated into the smallest [integer type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types) that can contain the value.
+
+Example:
+
+* `10` will be evaluated to an `int8`, because is it bigger than -128 and smaller than 127
+* `-500` will be evaluated to an `int16`, because it is smaller than -128 but bigger than -32768
+
+If an integer is bigger than the maximum `int64` value or smaller than the minimum `int64` value, it will be evaluated as a `float64`.
+
+### Floats
+
+[Floats]({{< relref "/docs/genji-sql/lexical-structure" >}}#floats) are evaluated into the [`float64` type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types).
+
+### Booleans
+
+[Booleans]({{< relref "/docs/genji-sql/lexical-structure" >}}#booleans) are evaluated into the [`bool` type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types).
+
+### Dot notation
+
+[Dot notation]({{< relref "/docs/genji-sql/lexical-structure" >}}#dot-notation) are evaluated into the value they refer to.
+They are used to select a value from a [document]({{< relref "/docs/genji-sql/documents" >}}).
+Their type will depend on the type of the value extracted from the document.
 
 ### Operators
 

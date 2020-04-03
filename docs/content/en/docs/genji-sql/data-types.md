@@ -47,7 +47,7 @@ In Genji, *Null* is treated as both a value and a type. It represents the absenc
 Whenever Genji needs to manipulate data of different types, depending on the situation it will rely on either:
 
 * **explicit conversion**: The source type and destination type are clearly identified. Ex: When inserting data to field with a constraint or when doing a `CAST`.
-* **implicit conversion**: Two values of different types need to be compared or used by an operator during the evaluation of an [expression]({{< relref "/docs/genji-sql/dwdwdwd" >}})
+* **implicit conversion**: Two values of different types need to be compared or used by an operator during the evaluation of an [expression]({{< relref "/docs/genji-sql/expressions.md" >}})
 
 ### Explicit conversion
 

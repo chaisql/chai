@@ -79,7 +79,7 @@ Given the following document:
 }
 ```
 
-Accessing a top-level field can be achieved by simply refering to its name.
+Accessing a top-level field can be achieved by simply referring to its name.
 
 _Example_: `name` will evaluate to `"Foo"`.
 
