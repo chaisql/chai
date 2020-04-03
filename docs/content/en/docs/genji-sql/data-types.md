@@ -34,13 +34,28 @@ There are basically two kinds of data types:
 | array | Array of values of any type |
 | document | Object that contains pairs that associate a string field to a value of any type |
 
+## The case of Null
+
+In Genji, *Null* is treated as both a value and a type. It represents the absence of data, and is returned in various cases:
+
+* when selecting a field that doesn't exists
+* when selecting a field whose value is null
+* as the result of the evaluation of an expression
+
 ## Conversion
 
-Whenever Genji needs to manipulate data of different types, it tries to do an implicit conversion.
-However, not all types can be converted to one another and when Genji tries to do, it returns an error.
+Whenever Genji needs to manipulate data of different types, depending on the situation it will rely on either:
+
+* **explicit conversion**: The source type and destination type are clearly identified. Ex: When inserting data to field with a constraint or when doing a `CAST`.
+* **implicit conversion**: Two values of different types need to be compared or used by an operator during the evaluation of an [expression]({{< relref "/docs/genji-sql/dwdwdwd" >}})
+
+### Explicit conversion
+
+Explicit conversion is used when we want to convert a value of a *source* type into a *target* type.
+However, Genji types are not all compatible with one another, and when a user tries to convert them, Genji returns an error.
 Here is a table describing type compatibility.
 
-| Source type | Destination type | Converted                                      |
+| Source type | Target type | Converted                                      |
 | ---------- | --------------- | --------------------------------------------- |
 | any integer | float64          | yes                                            |
 | any integer | text           | no                                             |
@@ -62,5 +77,10 @@ Here is a table describing type compatibility.
 | bool        | float64          | yes                                            |
 | bool        | text           | no                                             |
 | bool        | blob            | no                                             |
+| null | any type | yes, the zero value of the type |
 
 Arrays and documents cannot be converted to any other values.
+
+### Implicit conversion
+
+Implicit conversion usually takes place during the evaluation of an expression. Different rules may apply depending on the expression kind. Comparing values, evaluating literals, using arithmeric operators, all have their own set of implicit conversion rules.
