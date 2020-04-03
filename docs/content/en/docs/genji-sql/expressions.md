@@ -37,15 +37,15 @@ Here is a list of expressions supported by Genji.
 
 ## Literal expressions
 
-Any [literal]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) evaluates to the closest compatible [type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types.
+Any [literal]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) evaluates to the closest compatible [type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types).
 
 ### Strings
 
-[Strings]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) are evaluated to the [`text` type]({{< relref "/docs/genji-sql/data-types" >}}#variable-size-data-types), which are utf-8 encoded.
+[Strings]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) are evaluated to the [`text`]({{< relref "/docs/genji-sql/data-types" >}}#variable-size-data-types) type, which are utf-8 encoded.
 
 ### Integers
 
-[Integers]({{< relref "/docs/genji-sql/lexical-structure" >}}#integers) are evaluated into the smallest [integer type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types) that can contain the value.
+[Integers]({{< relref "/docs/genji-sql/lexical-structure" >}}#integers) are evaluated into the smallest [integer]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types) type that can contain the value.
 
 Example:
 
@@ -56,11 +56,11 @@ If an integer is bigger than the maximum `int64` value or smaller than the minim
 
 ### Floats
 
-[Floats]({{< relref "/docs/genji-sql/lexical-structure" >}}#floats) are evaluated into the [`float64` type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types).
+[Floats]({{< relref "/docs/genji-sql/lexical-structure" >}}#floats) are evaluated into the [`float64`]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types) type.
 
 ### Booleans
 
-[Booleans]({{< relref "/docs/genji-sql/lexical-structure" >}}#booleans) are evaluated into the [`bool` type]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types).
+[Booleans]({{< relref "/docs/genji-sql/lexical-structure" >}}#booleans) are evaluated into the [`bool`]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types) type.
 
 ### Dot notation
 

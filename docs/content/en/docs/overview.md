@@ -14,7 +14,7 @@ It combines the power of **SQL** with the versatility of **documents** to provid
 
 Here is a list of Genji's main features:
 
-* **Optional schemas**: Genji tables are schemaless by default, but it is possible to add constraints on any field to ensure the coherence of data within a table.
+* **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
 * **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
 * **Transaction support**: Read-only and read/write transactions are supported by default.
 * **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON *dot notation*.
