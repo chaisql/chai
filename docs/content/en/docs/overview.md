@@ -18,7 +18,7 @@ Here is a list of Genji's main features:
 * **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
 * **Transaction support**: Read-only and read/write transactions are supported by default.
 * **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON *dot notation*.
-* **Easy to learn, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
+* **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
 
 ## Concepts
 
