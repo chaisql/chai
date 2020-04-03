@@ -6,38 +6,19 @@ description: >
     Describes of how SQL components are parsed by Genji.
 ---
 
+Whenever Genji receives a query, it will be parsed according to the following rules and transformed into components Genji can understand. 
+
 ## Identifiers
 
 Identifiers are a sequence of characters that refer to table names, field names and index names.
 
 Identifiers may be unquoted or surrounded by backquotes. Depending on that, different rules may apply.
 
-<table>
-  <thead>
-    <tr>
-      <th style="text-align:left">Unquoted identifiers</th>
-      <th style="text-align:left">Identifiers surrounded by backquotes </th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left">
-        <p></p>
-        <ul>
-          <li>Must begin with an uppercase or lowercase ASCII character or an underscore</li>
-          <li>May contain only ASCII letters, digits and underscore</li>
-        </ul>
-      </td>
-      <td style="text-align:left">
-        <p></p>
-        <ul>
-          <li>May contain any unicode character, other than the new line character (i.e. <code>\n</code>)</li>
-          <li>May contain escaped <code> `</code> character (i.e. <code>\` </code>)</li>
-        </ul>
-      </td>
-    </tr>
-  </tbody>
-</table>
+| Unquoted identifiers | Identifiers surrounded by backquotes |
+| ---|--- | 
+| Must begin with an uppercase or lowercase ASCII character or an underscore | May contain any unicode character, other than the new line character (i.e. `\n`) |
+| May contain only ASCII letters, digits and underscore | May contain escaped `"` character (i.e. `\"`) |
+
 
 ```text
 foo
@@ -130,121 +111,3 @@ Each pair associates an identifier with an expression, both separated by a colon
 In a document, the identifiers are referred to as **fields**.
 In the example above, the document has four top-level fields (`foo`, `bar`, `baz` and `long field`) and one nested field `a`.
 
-## Dot notation
-
-The _dot notation_ is a way to refer to fields of a document or elements of an array.
-
-Given the following document:
-
-```js
-{
-    "name": "Foo",
-    "address": {
-        "city": "Lyon",
-        "zipcode": "69001"
-    },
-    "friends": [
-      {
-        "name": "Bar",
-        "address": {
-            "city": "Paris",
-            "zipcode": "75001"
-        }
-      },
-        {
-          "name": "Baz",
-          "address": {
-              "city": "Ajaccio",
-              "zipcode": "20000"
-          },
-          "favorite game": "ffix"
-        }
-    ]
-}
-```
-
-Accessing a top-level field can be achieved by simply refering to its name.
-
-_Example_: `name` will evaluate to `"Foo"`.
-
-To access a nested field, concatenate all the fields with the `.` character.
-
-_Examples_: `address.city` will evaluate to `"Lyon"` 
-
-To access an element of an array, use the index of the element
-
-_Examples_:
-
-* `friends.0` will evaluate to `{"name": "Bar","address": {"city":"Paris","zipcode": "75001"}}`
-* `friends.1.name` will evaluate to `"Baz"`
-* `friends.1."favorite game"` will evaluate to `"ffix"`
-
-## Expressions
-
-Expressions are components that can be evaluated to a value.
-
-Example:
-
-```python
-1 + 1
--> 2
-```
-
-An expression can be found in two forms:
-
-* unary: meaning it contains only one component
-* binary: meaning it contains two expressions, or operands, and one operator.i.e. `<expr> <operator> <expr>`
-
-Example:
-
-```sql
-/* Unary expressions */
-1
-name
-"foo"
-
-/* Binary expressions */
-age >= 18
-1 AND 0
-```
-
-Here is a list of expressions supported by Genji.
-
-### Literal expressions
-
-Any [literal](#literals) evaluates to itself
-
-```python
-1
--> 1
-
-"hello"
--> "hello"
-```
-
-### Operators
-
-Genji provides a list of operators that can be used to compute operations with expressions.
-
-Currently, Genji only supports comparison operators:
-
-| Name | Description                                                                                                                      |
-| :--- | :------------------------------------------------------------------------------------------------------------------------------- |
-| =    | Evaluates to `true` if operands are equal, otherwise returns `false` |
-| !=   | Evaluates to `true` if operands are not equal, otherwise returns `false` |
-| >    | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false` |
-| >=   | Evaluates to `true` if the left-side expression is greater than or equal to the right-side expression, otherwise returns `false` |
-| <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false` |
-| <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false` |
-
-Examples:
-
-```python
-1 = 1
--> true
-
-1 > 2.5
--> false
-```
-
-Comparison between type is described in [this page](data-types.md#conversion).

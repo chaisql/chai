@@ -48,35 +48,49 @@ Field names can be any string, with only one exception: they cannot be empty.
 
 ## Dot notation
 
-To access an element of a document or an array, Genji uses the *dot notation*.
+The _dot notation_ is a way to refer to fields of a document or elements of an array.
 
-For accessing a top-level field of a document, simply write its name. If the name contains [spaces or special characters]({{< relref "/docs/genji-sql/lexical-structure.md" >}}), enclose it with backquotes:
+Given the following document:
 
-```sql
-foo
-`foo bar`
+```js
+{
+    "name": "Foo",
+    "address": {
+        "city": "Lyon",
+        "zipcode": "69001"
+    },
+    "friends": [
+      {
+        "name": "Bar",
+        "address": {
+            "city": "Paris",
+            "zipcode": "75001"
+        }
+      },
+        {
+          "name": "Baz",
+          "address": {
+              "city": "Ajaccio",
+              "zipcode": "20000"
+          },
+          "favorite game": "FF IX"
+        }
+    ]
+}
 ```
 
-For accessing a field of a nested document, concatenate both field names with a dot `.`:
+Accessing a top-level field can be achieved by simply refering to its name.
 
-```sql
-foo.bar
-`foo bar`.baz
-foo.`bar baz`
-`foo bar`.`baz bat`
-foo.bar.baz
-```
+_Example_: `name` will evaluate to `"Foo"`.
 
-For accessing the value of an array, concatenate the field name whose value is an array with a dot and the numeric index.
+To access a nested field, concatenate all the fields with the `.` character.
 
-```sql
-foo.0 /* accessing the first element of an array foo */
-foo.5
-`foo bar`.3
-```
+_Examples_: `address.city` will evaluate to `"Lyon"` 
 
-For accessing a deeply nested value, combine for approaches:
+To access an element of an array, use the index of the element
 
-```sql
-foo.bar.4.`baz bat`.3
-```
+_Examples_:
+
+* `friends.0` will evaluate to `{"name": "Bar","address": {"city":"Paris","zipcode": "75001"}}`
+* `friends.1.name` will evaluate to `"Baz"`
+* `friends.1."favorite game"` will evaluate to `"ffix"`
