@@ -68,13 +68,15 @@ If an integer is bigger than the maximum `int64` value or smaller than the minim
 They are used to select a value from a [document]({{< relref "/docs/genji-sql/documents" >}}).
 Their type will depend on the type of the value extracted from the document.
 
-### Operators
+## Operators
 
 Genji provides a list of operators that can be used to compute operations with expressions.
+Operators are binary expressions, meaning they always take exactly two operands.
+It is possible though to combine multiple operators to create an [evaluation tree](#evaluation-tree-and-precedence).
 
-#### Comparison operators
+### Comparison operators
 
-These operators are used to compare values and evaluate to a boolean. If the types of the operands are different, they are converted before being evaluated.
+These operators are used to compare values and evaluate to a boolean.
 
 | Name| Description |
 | --- | --- |
@@ -95,9 +97,114 @@ Examples:
 -> false
 ```
 
-#### Converting numbers
+#### Conversion during comparison
 
-Let `a` and `b` two numbers.
+Prior to comparison, an implicit conversion is operated for the operands to be of the same type.
+Not all types can be compared together. When two incompatible types are compared, the comparison always returns `false`.
 
-1. If one of them is a `float64`, the other one is converted to `float64`
-2. If one of them 
+Example:
+
+```python
+1 > "hello"
+-> false
+```
+
+```python
+1 < "hello"
+-> false
+```
+
+The comparison follows a list of rules that are executed in order:
+
+* If one of the operands is NULL, use the [Comparing with NULL](#comparing-with-null) rule
+* If both operands are documents, use the [Comparing documents](#comparing-documents) rule
+* If both operands are arrays, use the [Comparing arrays](#comparing-arrays) rule
+* If one of the operands is a boolean, use the [Comparing with boolean](#comparing-with-a-boolean) rule
+* If one of the operands is a text or blob, use the [Comparing with text or blob] rule
+* If both operands are integers, use the [Comparing integers] rule
+* If both operands are numbers (integer or float), use the [Comparing numbers] rule
+
+In any other case, return `false`.
+
+#### Comparing with NULL
+
+Any comparison with NULL will return `false`, except in the following cases:
+
+* `NULL = NULL`
+* `NULL >= NULL`
+* `NULL <= NULL`
+* Using the `!=` operator with a value other than NULL will return `true`. (Ex: `1 != null`, `foo != NULL`, etc.)
+
+#### Comparing documents
+
+Only the `=` operator is supported when comparing documents.
+
+A document is equal to another document if all of the following conditions are verified:
+
+* it has the same number of fields
+* all the fields of the first document are present in the other document
+* every field of the first document is equal to the same field in the other document
+
+#### Comparing arrays
+
+Each elements of both arrays are compared one by one, index by index, until they are found not equal. The comparison is then determined by the result of the comparison between these two values.
+
+```python
+[1, 2, 3] > [1, 1 + 1, 1]
+-> true
+```
+
+Let's break down the example above:
+
+1. Index 0: `1` and `1` are equal, the comparison continues
+2. Index 1: `2` and `1 + 1` are equal, the comparison continues
+3. Index 2: `3` is greater then `1`, the comparison stops and the first array is considered greater than the second one
+
+Two empty arrays are considered equal:
+
+```python
+[] = []
+-> true
+```
+
+The size of arrays doesn't matter, unless all the elements of the smallest one are equal to the other one. In that case the biggest array is considered greater.
+
+```python
+[3] > [1, 100000]
+-> true
+
+[1, 2] < [1, 2, 3]
+-> true
+```
+
+#### Comparing with a boolean
+
+When comparing booleans together, there is a simple rule: `true` is greater than `false`.
+
+```python
+true > false
+-> true
+
+false < true
+-> true
+```
+
+If an operand is a boolean, but the other one is not, the other operand will be converted to a boolean, following these rules:
+
+* `TEXT`: a non empty text is equal to `true`, otherwise `false`
+* `BLOB`: a non empty blob is equal to `true`, otherwise `false`
+* any number: if the number is different than 0, convert to `true`, otherwise `false`
+* document: if the document contains at least one field, convert to `true`, otherwise `false`
+* array: if the array contains at least one value, convert to `true`, otherwise `false`
+
+Examples:
+
+```python
+"foo" > false
+-> true
+
+"" = {} = [] = 0 = false
+-> true
+```
+
+### Evaluation tree and precedence
