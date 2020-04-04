@@ -871,7 +871,7 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 
 		xr = xa * xb
 		// if there is no integer overflow
-		// return an int otherwise
+		// return an int, otherwise
 		// convert to float
 		if (xr < 0) == ((xa < 0) != (xb < 0)) {
 			if xr/xb == xa {

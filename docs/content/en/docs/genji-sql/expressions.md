@@ -120,9 +120,9 @@ The comparison follows a list of rules that are executed in order:
 * If both operands are documents, use the [Comparing documents](#comparing-documents) rule
 * If both operands are arrays, use the [Comparing arrays](#comparing-arrays) rule
 * If one of the operands is a boolean, use the [Comparing with boolean](#comparing-with-a-boolean) rule
-* If one of the operands is a text or blob, use the [Comparing with text or blob] rule
-* If both operands are integers, use the [Comparing integers] rule
-* If both operands are numbers (integer or float), use the [Comparing numbers] rule
+* If both operands are either text or blob, compare them byte per byte
+* If both operands are integers, compare them together
+* If both operands are numbers (integer or float), convert them to 64 float then compare them together.
 
 In any other case, return `false`.
 
@@ -144,6 +144,14 @@ A document is equal to another document if all of the following conditions are v
 * it has the same number of fields
 * all the fields of the first document are present in the other document
 * every field of the first document is equal to the same field in the other document
+
+```python
+{a: 1, b: 2} = {b: 2, a: 1}
+-> true
+
+{} = {}
+-> true
+```
 
 #### Comparing arrays
 
@@ -191,8 +199,8 @@ false < true
 
 If an operand is a boolean, but the other one is not, the other operand will be converted to a boolean, following these rules:
 
-* `TEXT`: a non empty text is equal to `true`, otherwise `false`
-* `BLOB`: a non empty blob is equal to `true`, otherwise `false`
+* `TEXT`: a non-empty text is equal to `true`, otherwise `false`
+* `BLOB`: a non-empty blob is equal to `true`, otherwise `false`
 * any number: if the number is different than 0, convert to `true`, otherwise `false`
 * document: if the document contains at least one field, convert to `true`, otherwise `false`
 * array: if the array contains at least one value, convert to `true`, otherwise `false`
@@ -206,5 +214,49 @@ Examples:
 "" = {} = [] = 0 = false
 -> true
 ```
+
+### Arithmetic operators
+
+| Name| Description |
+| --- | --- |
+| +    | Adding two values |
+| -   | Substracting two values |
+| *    | Multiplying two values |
+| /   | Dividing two values |
+| %    | Find the remainder after division of one number by another |
+
+Arithmetic operations are supported only for the following types:
+
+* `integer`
+* `int8`, `int16`, `int32`, `int64`
+* `float64`
+* `duration`
+* `bool`
+
+#### The case of NULL
+
+Any arithmetic operation with one of the operand being `NULL` returns `NULL`.
+
+```python
+NULL + 1
+-> NULL
+
+5 * 10 - NULL
+-> NULL
+```
+
+#### Conversion rules
+
+When running an arithmetic operation on two values of different types, an implicit conversion occurs, following this set of rules:
+
+* if one of the operands is a boolean, convert to an integer
+* if one of the operands is a float, convert the other one to float
+
+#### Return type and overflow
+
+The type of the result of an operation doesn't necessarily match the type of the operands.
+
+* The result of a float operation will always return a float
+* The result of an integer operation will return the smallest integer type that can hold the return value, unless the return value is bigger than the maximum value of 64-bit integer. In that case, the return type will be a float
 
 ### Evaluation tree and precedence
