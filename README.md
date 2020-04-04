@@ -1,12 +1,32 @@
-# Genji
+<h1 align="center"> Genji </h1>
+<p align="center">
+  <a href="https://genji.dev">
+    <img alt="Genji" title="Genji" src="https://raw.githubusercontent.com/asdine/genji/master/docs/assets/icons/logo.svg?sanitize=true" width="100">
+  </a>
+</p>
+
+<p align="center">
+  Document-oriented, embedded, SQL database
+</p>
+
+## Introduction
 
 [![Build Status](https://travis-ci.org/asdine/genji.svg)](https://travis-ci.org/asdine/genji)
-[![GoDoc](https://godoc.org/github.com/asdine/genji?status.svg)](https://godoc.org/github.com/asdine/genji)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/asdine/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is a document-oriented, embedded SQL database. It supports various engines that write data on-disk, like [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger), or in memory.
+Genji is a schemaless database that allows running SQL queries on documents.
 
-Genji is also compatible with the `database/sql` package.
+Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc](https://pkg.go.dev/github.com/asdine/genji) and the [usage example](#usage) in the README to get started quickly.
+
+## Features
+
+* **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
+* **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
+* **Transaction support**: Read-only and read/write transactions are supported by default.
+* **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON *dot notation*.
+* **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
+* **Compatible** with the `database/sql` package
 
 ## Installation
 
