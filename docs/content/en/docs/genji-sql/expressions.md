@@ -248,6 +248,13 @@ NULL + 1
 -> NULL
 ```
 
+#### Division rules
+
+The division obeys a few rules depending on the types of the operands:
+
+* Dividing two integers, always result in an integer
+* Dividing by zero, returns `NULL`
+
 #### Conversion rules
 
 When running an arithmetic operation on two values of different types, an implicit conversion occurs, following this set of rules:
@@ -263,3 +270,40 @@ The type of the result of an operation doesn't necessarily match the type of the
 * The result of an integer operation will return the smallest integer type that can hold the return value, unless the return value is bigger than the maximum value of 64-bit integer. In that case, the return type will be a float
 
 ### Evaluation tree and precedence
+
+When parsed, an expression is turned into an evaluation tree so it is possible to combine operators to form complex expressions.
+The order in which these expressions are executed depends on the priority of the operator.
+
+Here is the list of operators ordered by ascending precedence. Operators with higher precedence are executed before the ones with lower precedence
+
+* `OR`
+* `AND`
+* `=`, `!=`, `<`, `<=`, `>`, `>=`
+* `+`, `-`, `|`, `^`
+* `*`, `/`, `%`, `&`
+
+Example:
+
+```sql
+3 + 4 * 2 > 10 AND 2 - 2 = false
+-> true
+```
+
+This expression can be represented as the following tree:
+
+```text
+.
+└── AND
+    ├── >
+    │   ├── +
+    │   │   ├── 3
+    │   │   └── *
+    │   │       ├── 4
+    │   │       └── 2
+    │   └── 10
+    └── -
+        ├── 2
+        └── 2
+```
+
+The deepest branches will be executed first, recursively until reaching the root.
