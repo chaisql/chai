@@ -9,6 +9,16 @@
   Document-oriented, embedded, SQL database
 </p>
 
+## Table of contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Engines](#engines)
+- [Genji shell](#genji-shell)
+- [Contributing](#contributing)
+
 ## Introduction
 
 [![Build Status](https://travis-ci.org/asdine/genji.svg)](https://travis-ci.org/asdine/genji)
@@ -23,12 +33,12 @@ Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc]
 
 ## Features
 
-* **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
-* **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
-* **Transaction support**: Read-only and read/write transactions are supported by default.
-* **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON *dot notation*.
-* **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
-* **Compatible** with the `database/sql` package
+- **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
+- **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
+- **Transaction support**: Read-only and read/write transactions are supported by default.
+- **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON *dot notation*.
+- **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
+- **Compatible** with the `database/sql` package
 
 ## Installation
 
@@ -303,3 +313,15 @@ genji my.db
 # Opening a Badger database:
 genji --badger pathToData
 ```
+
+## Contributing
+
+Contributions are welcome!
+
+- Feedback
+- Feature ideas
+- Bug reports
+- Pull Requests
+- Anything that comes to mind to improve Genji!
+
+If you have any doubt, join the [Gophers Slack channel](https://gophers.slack.com/messages/CKPCYQFE0) or open an [issue](https://github.com/asdine/genji/issues/new).
