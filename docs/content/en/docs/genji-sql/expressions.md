@@ -74,6 +74,17 @@ Genji provides a list of operators that can be used to compute operations with e
 Operators are binary expressions, meaning they always take exactly two operands.
 It is possible though to combine multiple operators to create an [evaluation tree](#evaluation-tree-and-precedence).
 
+### Logical operators
+
+Logical operators are operators that return a boolean under certain conditions.
+
+| Name| Description |
+| --- | --- |
+| `AND` | Evaluates to `true` if both operands are *truthy* |
+| `OR` | Evaluates to `true` if either the left operand or the right are *truthy* |
+
+An expression is *truthy* if it evaluates to a non zero-value of its type.
+
 ### Comparison operators
 
 These operators are used to compare values and evaluate to a boolean.
