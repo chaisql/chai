@@ -60,6 +60,25 @@ tRUe
 FALse
 ```
 
+### Durations
+
+A duration is any sequence of character that starts with an [integer](#integers) and ends with one of the following unit:
+
+* `ns` for nanoseconds (0.000000001 seconds)
+* `us` or `µs` for microseconds (0.000001 seconds)
+* `ms` for microseconds (0.001 seconds)
+* `s` for seconds
+* `m` for minutes
+* `h` for hours
+* `d` for days
+* `w` for weeks
+
+```sql
+1ms
+40ns
+6w
+```
+
 ### Arrays
 
 An array is any sequence of character that starts and ends with either:

@@ -27,14 +27,15 @@ There are basically two kinds of data types:
 
 | Name | Description |
 | --- | --- |
-| integer | Alias for `int` |
 | int | Signed integer which takes 1, 2, 4 or 8 bytes depending on the size of the stored number |
+| integer | Alias for `int` |
+| duration | Represents a length of time in nanoseconds. Stored as an integer |
 | blob | Variable size blob of data |
 | text | Variable size UTF-8 encoded string |
 | array | Array of values of any type |
 | document | Object that contains pairs that associate a string field to a value of any type |
 
-## The case of Null
+## The case of NULL
 
 In Genji, *Null* is treated as both a value and a type. It represents the absence of data, and is returned in various cases:
 
@@ -83,4 +84,4 @@ Arrays and documents cannot be converted to any other values.
 
 ### Implicit conversion
 
-Implicit conversion usually takes place during the evaluation of an expression. Different rules may apply depending on the expression kind. Comparing values, evaluating literals, using arithmeric operators, all have their own set of implicit conversion rules.
+Implicit conversion usually takes place during the evaluation of an [expression]({{< relref "/docs/genji-sql/expressions" >}}). Different rules may apply depending on the expression kind. Comparing values, evaluating literals, using arithmetic operators, all have their own set of implicit conversion rules.
