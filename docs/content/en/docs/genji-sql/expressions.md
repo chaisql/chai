@@ -219,11 +219,14 @@ Examples:
 
 | Name| Description |
 | --- | --- |
-| +    | Adding two values |
-| -   | Substracting two values |
-| *    | Multiplying two values |
-| /   | Dividing two values |
-| %    | Find the remainder after division of one number by another |
+| `+`     | Adding two values |
+| `-`   | Substracting two values |
+| `*`    | Multiplying two values |
+| `/`   | Dividing two values |
+| `%`    | Find the remainder after division of one number by another |
+| `&`    | Bitwise AND |
+| `|`    | Bitwise OR |
+| `^`    | Bitwise XOR |
 
 Arithmetic operations are supported only for the following types:
 
