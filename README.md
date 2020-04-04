@@ -19,6 +19,8 @@ Genji is a schemaless database that allows running SQL queries on documents.
 
 Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc](https://pkg.go.dev/github.com/asdine/genji) and the [usage example](#usage) in the README to get started quickly.
 
+> :warning: **Genji's API is still unstable**: Database compatibility is not guaranteed before reaching v1.0.0
+
 ## Features
 
 * **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
