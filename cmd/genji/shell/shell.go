@@ -294,7 +294,11 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 func completer(in prompt.Document) []prompt.Suggest {
 	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery()
 	if err != nil {
-		expected := err.(*parser.ParseError).Expected
+		e, ok := err.(*parser.ParseError)
+		if !ok {
+			return []prompt.Suggest{}
+		}
+		expected := e.Expected
 		suggestions := make([]prompt.Suggest, len(expected))
 		for i, e := range expected {
 			suggestions[i].Text = e
