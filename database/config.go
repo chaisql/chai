@@ -137,12 +137,7 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 		return err
 	}
 
-	doc, err := document.NewFromStruct(&cfg)
-	if err != nil {
-		return err
-	}
-
-	v, err := encoding.EncodeDocument(doc)
+	v, err := encoding.EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}

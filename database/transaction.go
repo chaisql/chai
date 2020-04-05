@@ -176,6 +176,23 @@ type IndexConfig struct {
 	Path      document.ValuePath
 }
 
+// ToDocument creates a document from an IndexConfig.
+func (i *IndexConfig) ToDocument() document.Document {
+	buf := document.NewFieldBuffer()
+
+	buf.Add("unique", document.NewBoolValue(i.Unique))
+	buf.Add("indexname", document.NewTextValue(i.IndexName))
+	buf.Add("tablename", document.NewTextValue(i.TableName))
+
+	abuf := document.NewValueBuffer()
+	for _, path := range i.Path {
+		abuf = abuf.Append(document.NewTextValue(path))
+	}
+
+	buf.Add("path", document.NewArrayValue(abuf))
+	return buf
+}
+
 // ScanDocument implements the document.Scanner interface.
 func (i *IndexConfig) ScanDocument(d document.Document) error {
 	v, err := d.GetByField("unique")
