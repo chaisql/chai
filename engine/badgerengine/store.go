@@ -165,6 +165,7 @@ func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
 		prefix:      prefix,
 		it:          it,
 		reverse:     cfg.Reverse,
+		item:        Item{prefix: prefix},
 	}
 }
 
@@ -188,9 +189,12 @@ func (it *Iterator) Seek(pivot []byte) {
 	it.it.Seek(seek)
 }
 
-func (it *Iterator) Next() bool {
-	it.it.Next()
+func (it *Iterator) Valid() bool {
 	return it.it.ValidForPrefix(it.prefix)
+}
+
+func (it *Iterator) Next() {
+	it.it.Next()
 }
 
 func (it *Iterator) Item() engine.Item {
@@ -199,14 +203,18 @@ func (it *Iterator) Item() engine.Item {
 	return &it.item
 }
 
-func (it *Iterator) Close() {}
+func (it *Iterator) Close() error {
+	it.it.Close()
+	return nil
+}
 
 type Item struct {
-	item *badger.Item
+	item   *badger.Item
+	prefix []byte
 }
 
 func (i *Item) Key() []byte {
-	return i.item.Key()
+	return bytes.TrimPrefix(i.item.Key(), i.prefix)
 }
 
 func (i *Item) ValueCopy(buf []byte) ([]byte, error) {

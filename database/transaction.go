@@ -104,15 +104,32 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 
 // DropTable deletes a table from the database.
 func (tx Transaction) DropTable(name string) error {
-	err := tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
+
+	var buf encoding.EncodedDocument
+	var err error
+	for it.Seek(nil); it.Valid(); it.Next() {
+		item := it.Item()
 		var opts IndexConfig
-		err := document.StructScan(encoding.EncodedDocument(v), &opts)
+		buf, err = item.ValueCopy(buf)
 		if err != nil {
+			it.Close()
 			return err
 		}
 
-		return tx.DropIndex(opts.IndexName)
-	})
+		err = document.StructScan(&buf, &opts)
+		if err != nil {
+			it.Close()
+			return err
+		}
+
+		err = tx.DropIndex(opts.IndexName)
+		if err != nil {
+			it.Close()
+			return err
+		}
+	}
+	err = it.Close()
 	if err != nil {
 		return err
 	}
@@ -244,10 +261,11 @@ func (tx Transaction) ReIndex(indexName string) error {
 func (tx Transaction) ReIndexAll() error {
 	var indexes []string
 
-	err := tx.indexStore.st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		indexes = append(indexes, string(k))
-		return nil
-	})
+	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
+	for it.Seek(nil); it.Valid(); it.Next() {
+		indexes = append(indexes, string(it.Item().Key()))
+	}
+	err := it.Close()
 	if err != nil {
 		return err
 	}

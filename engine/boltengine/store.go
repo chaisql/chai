@@ -140,9 +140,12 @@ func (it *Iterator) Seek(pivot []byte) {
 	}
 }
 
-func (it *Iterator) Next() bool {
-	it.item.k, it.item.v = it.c.Next()
+func (it *Iterator) Valid() bool {
 	return it.item.k != nil
+}
+
+func (it *Iterator) Next() {
+	it.item.k, it.item.v = it.c.Next()
 }
 
 func (it *Iterator) Item() engine.Item {
@@ -153,7 +156,7 @@ func (it *Iterator) Item() engine.Item {
 	return &it.item
 }
 
-func (it *Iterator) Close() {}
+func (it *Iterator) Close() error { return nil }
 
 type Item struct {
 	k, v []byte

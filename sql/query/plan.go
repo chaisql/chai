@@ -413,17 +413,22 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	if it.e == nil {
 		var err error
 
-		if it.orderByDirection == scanner.DESC {
-			err = it.tb.Store.DescendLessOrEqual(nil, func(k []byte, v []byte) error {
-				return fn(encoding.EncodedDocument(v))
-			})
-		} else {
-			err = it.tb.Store.AscendGreaterOrEqual(nil, func(k []byte, v []byte) error {
-				return fn(encoding.EncodedDocument(v))
-			})
+		var d encoding.EncodedDocument
+		it := it.tb.Store.NewIterator(engine.IteratorConfig{Reverse: it.orderByDirection == scanner.DESC})
+		defer it.Close()
+
+		for it.Seek(nil); it.Valid(); it.Next() {
+			d, err = it.Item().ValueCopy(d)
+			if err != nil {
+				return err
+			}
+			err = fn(&d)
+			if err != nil {
+				return err
+			}
 		}
 
-		return err
+		return nil
 	}
 
 	data, err := encoding.EncodeValue(it.evalValue)
@@ -443,37 +448,78 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 		}
 		return fn(encoding.EncodedDocument(val))
 	case scanner.GT:
-		err = it.tb.Store.AscendGreaterOrEqual(data, func(key, val []byte) error {
-			if bytes.Equal(data, val) {
+		var d encoding.EncodedDocument
+		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek(data); it.Valid(); it.Next() {
+			d, err = it.Item().ValueCopy(d)
+			if err != nil {
+				return err
+			}
+			if bytes.Equal(data, d) {
 				return nil
 			}
 
-			return fn(encoding.EncodedDocument(val))
-		})
+			err = fn(&d)
+			if err != nil {
+				return err
+			}
+		}
 	case scanner.GTE:
-		err = it.tb.Store.AscendGreaterOrEqual(data, func(key, val []byte) error {
-			return fn(encoding.EncodedDocument(val))
-		})
+		var d encoding.EncodedDocument
+		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek(data); it.Valid(); it.Next() {
+			d, err = it.Item().ValueCopy(d)
+			if err != nil {
+				return err
+			}
+
+			err = fn(&d)
+			if err != nil {
+				return err
+			}
+		}
 	case scanner.LT:
-		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
-			if bytes.Compare(data, val) <= 0 {
-				return errStop
+		var d encoding.EncodedDocument
+		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek(nil); it.Valid(); it.Next() {
+			d, err = it.Item().ValueCopy(d)
+			if err != nil {
+				return err
+			}
+			if bytes.Compare(data, d) <= 0 {
+				break
 			}
 
-			return fn(encoding.EncodedDocument(val))
-		})
+			err = fn(&d)
+			if err != nil {
+				return err
+			}
+		}
 	case scanner.LTE:
-		err = it.tb.Store.AscendGreaterOrEqual(nil, func(key, val []byte) error {
-			if bytes.Compare(data, val) < 0 {
-				return errStop
+		var d encoding.EncodedDocument
+		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek(nil); it.Valid(); it.Next() {
+			d, err = it.Item().ValueCopy(d)
+			if err != nil {
+				return err
+			}
+			if bytes.Compare(data, d) < 0 {
+				break
 			}
 
-			return fn(encoding.EncodedDocument(val))
-		})
-	}
-
-	if err != nil && err != errStop {
-		return err
+			err = fn(&d)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

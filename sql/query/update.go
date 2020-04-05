@@ -6,6 +6,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 )
 
@@ -48,10 +49,9 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 	}
 
 	// replace store implementation by a resumable store, temporarily.
-	resumableStore := storeFromKey{Store: t.Store}
-	t.Store = &resumableStore
+	rit := resumableIterator{store: t.Store}
 
-	st := document.NewStream(t)
+	st := document.NewStream(&rit)
 	st = st.Filter(whereClause(stmt.WhereExpr, stack)).Limit(updateBufferSize)
 
 	keys := make([][]byte, updateBufferSize)
@@ -111,7 +111,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 			break
 		}
 
-		resumableStore.key = keys[i-1]
+		rit.curKey = keys[i-1]
 	}
 
 	return res, err
@@ -119,17 +119,44 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 
 // storeFromKey implements an engine.Store which iterates from a certain key.
 // it is used to resume iteration.
-type storeFromKey struct {
-	engine.Store
+type resumableIterator struct {
+	store engine.Store
+
+	curKey []byte
+}
+
+// AscendGreaterOrEqual uses key as pivot if pivot is nil
+func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
+	var d encodedDocumentWithKey
+	var err error
+
+	it := u.store.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	for it.Seek(u.curKey); it.Valid(); it.Next() {
+		item := it.Item()
+
+		d.key = item.Key()
+		d.EncodedDocument, err = item.ValueCopy(d.EncodedDocument)
+		if err != nil {
+			return err
+		}
+
+		err = fn(&d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type encodedDocumentWithKey struct {
+	encoding.EncodedDocument
 
 	key []byte
 }
 
-// AscendGreaterOrEqual uses key as pivot if pivot is nil
-func (s *storeFromKey) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error {
-	if len(pivot) == 0 {
-		pivot = s.key
-	}
-
-	return s.Store.AscendGreaterOrEqual(pivot, fn)
+func (e encodedDocumentWithKey) Key() []byte {
+	return e.key
 }
