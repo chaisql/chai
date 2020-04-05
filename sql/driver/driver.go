@@ -190,9 +190,9 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, args, s.nonPromotable)
+		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args), s.nonPromotable)
 	} else {
-		res, err = s.q.Run(s.db.DB, args)
+		res, err = s.q.Run(s.db.DB, driverNamedValueToParams(args))
 	}
 
 	if err != nil {
@@ -202,7 +202,23 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	// s.q.Run might return a stream if the last Statement is a Select,
 	// make sure the result is closed before returning so any transaction
 	// created by s.q.Run is closed.
-	return res, res.Close()
+	return result{res}, res.Close()
+}
+
+type result struct {
+	*query.Result
+}
+
+// LastInsertId is not supported and returns an error.
+// Use LastInsertKey instead.
+func (r result) LastInsertId() (int64, error) {
+	return driver.RowsAffected(r.Result.RowsAffected).LastInsertId()
+}
+
+// RowsAffected returns the number of rows affected by the
+// query.
+func (r result) RowsAffected() (int64, error) {
+	return driver.RowsAffected(r.Result.RowsAffected).RowsAffected()
 }
 
 func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
@@ -224,9 +240,9 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, args, s.nonPromotable)
+		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args), s.nonPromotable)
 	} else {
-		res, err = s.q.Run(s.db.DB, args)
+		res, err = s.q.Run(s.db.DB, driverNamedValueToParams(args))
 	}
 
 	if err != nil {
@@ -249,6 +265,16 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	}
 
 	return rs, nil
+}
+
+func driverNamedValueToParams(args []driver.NamedValue) []query.Param {
+	params := make([]query.Param, len(args))
+	for i, arg := range args {
+		params[i].Name = arg.Name
+		params[i].Value = arg.Value
+	}
+
+	return params
 }
 
 // Close does nothing.

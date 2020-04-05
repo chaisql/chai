@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji/database"
@@ -22,7 +21,7 @@ func (stmt CreateTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateTableStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt CreateTableStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -54,7 +53,7 @@ func (stmt CreateIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {

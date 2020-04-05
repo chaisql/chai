@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 	"fmt"
 
@@ -28,12 +27,12 @@ func (stmt SelectStmt) IsReadOnly() bool {
 
 // Run the Select statement in the given transaction.
 // It implements the Statement interface.
-func (stmt SelectStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt SelectStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
 	return stmt.exec(tx, args)
 }
 
 // Exec the Select query within tx.
-func (stmt SelectStmt) exec(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt SelectStmt) exec(tx *database.Transaction, args []Param) (Result, error) {
 	var res Result
 
 	// if there is no table name specified, evaluate the expression immediatly and return

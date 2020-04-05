@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 	"fmt"
 
@@ -23,7 +22,7 @@ func (stmt InsertStmt) IsReadOnly() bool {
 
 // Run the Insert statement in the given transaction.
 // It implements the Statement interface.
-func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt InsertStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -52,7 +51,7 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []driver.NamedValue) (
 }
 
 type paramExtractor interface {
-	extract(params []driver.NamedValue) (interface{}, error)
+	extract(params []Param) (interface{}, error)
 }
 
 func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Result, error) {
@@ -103,12 +102,12 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			return res, fmt.Errorf("values must be a list of documents if field list is empty")
 		}
 
-		res.lastInsertKey, err = t.Insert(d)
+		res.LastInsertKey, err = t.Insert(d)
 		if err != nil {
 			return res, err
 		}
 
-		res.rowsAffected++
+		res.RowsAffected++
 	}
 
 	return res, nil
@@ -157,12 +156,12 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Resul
 			return nil
 		})
 
-		res.lastInsertKey, err = t.Insert(&fb)
+		res.LastInsertKey, err = t.Insert(&fb)
 		if err != nil {
 			return res, err
 		}
 
-		res.rowsAffected++
+		res.RowsAffected++
 	}
 
 	return res, nil
