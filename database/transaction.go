@@ -118,7 +118,7 @@ func (tx Transaction) DropTable(name string) error {
 			return err
 		}
 
-		err = document.StructScan(&buf, &opts)
+		err = opts.ScanDocument(&buf)
 		if err != nil {
 			it.Close()
 			return err
@@ -174,6 +174,55 @@ type IndexConfig struct {
 	IndexName string
 	TableName string
 	Path      document.ValuePath
+}
+
+// ScanDocument implements the document.Scanner interface.
+func (i *IndexConfig) ScanDocument(d document.Document) error {
+	v, err := d.GetByField("unique")
+	if err != nil {
+		return err
+	}
+	i.Unique, err = v.ConvertToBool()
+	if err != nil {
+		return err
+	}
+
+	v, err = d.GetByField("indexname")
+	if err != nil {
+		return err
+	}
+	i.IndexName, err = v.ConvertToText()
+	if err != nil {
+		return err
+	}
+
+	v, err = d.GetByField("tablename")
+	if err != nil {
+		return err
+	}
+	i.TableName, err = v.ConvertToText()
+	if err != nil {
+		return err
+	}
+
+	v, err = d.GetByField("path")
+	if err != nil {
+		return err
+	}
+	ar, err := v.ConvertToArray()
+	if err != nil {
+		return err
+	}
+
+	return ar.Iterate(func(_ int, value document.Value) error {
+		p, err := value.ConvertToText()
+		if err != nil {
+			return err
+		}
+
+		i.Path = append(i.Path, p)
+		return nil
+	})
 }
 
 // CreateIndex creates an index with the given name.
