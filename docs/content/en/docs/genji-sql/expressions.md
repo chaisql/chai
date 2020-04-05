@@ -62,6 +62,14 @@ If an integer is bigger than the maximum `int64` value or smaller than the minim
 
 [Booleans]({{< relref "/docs/genji-sql/lexical-structure" >}}#booleans) are evaluated into the [`bool`]({{< relref "/docs/genji-sql/data-types" >}}#fixed-size-data-types) type.
 
+### Arrays
+
+[Arrays]({{< relref "/docs/genji-sql/lexical-structure" >}}#arrays) are evaluated into the [`array`]({{< relref "/docs/genji-sql/data-types" >}}#variable-size-data-types) type.
+
+### Documents
+
+[Documents]({{< relref "/docs/genji-sql/lexical-structure" >}}#documents) are evaluated into the [`document`]({{< relref "/docs/genji-sql/data-types" >}}#variable-size-data-types) type.
+
 ### Dot notation
 
 [Dot notation]({{< relref "/docs/genji-sql/lexical-structure" >}}#dot-notation) are evaluated into the value they refer to.

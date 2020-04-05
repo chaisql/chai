@@ -111,6 +111,8 @@ Each pair associates an identifier with an [expression]({{< relref "/docs/genji-
 In a document, the identifiers are referred to as **fields**.
 In the example above, the document has four top-level fields (`foo`, `bar`, `baz` and `long field`) and one nested field `a`.
 
+Note that any JSON object is a valid document.
+
 ## Identifiers
 
 Identifiers are a sequence of characters that refer to table names, field names and index names.
