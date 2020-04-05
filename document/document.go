@@ -1,27 +1,8 @@
 // Package document defines types to manipulate and compare documents and values.
-//
-// Comparing values
-//
-// When comparing values, only compatible types can be compared together, otherwise the result
-// of the comparison will always be false.
-// Here is a list of types than can be compared with each other:
-//
-//   any integer			any integer
-//   any integer			float64
-//   float64			float64
-//   string			string
-//   string			bytes
-//   bytes			bytes
-//   bool			bool
-//   null			null
 package document
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -38,136 +19,6 @@ type Document interface {
 	// GetByField returns a value by field name.
 	// Must return ErrFieldNotFound if the field doesnt exist.
 	GetByField(field string) (Value, error)
-}
-
-// NewFromMap creates a document from a map.
-// Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m interface{}) (Document, error) {
-	M := reflect.ValueOf(m)
-	if M.Kind() != reflect.Map || M.Type().Key().Kind() != reflect.String {
-		return nil, &ErrUnsupportedType{m, "parameter must be a map with a string key"}
-	}
-	return mapDocument(M), nil
-}
-
-type mapDocument reflect.Value
-
-var _ Document = (*mapDocument)(nil)
-
-func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
-	M := reflect.Value(m)
-	it := M.MapRange()
-
-	for it.Next() {
-		v, err := NewValue(it.Value().Interface())
-		if err != nil {
-			return err
-		}
-
-		err = fn(it.Key().String(), v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m mapDocument) GetByField(field string) (Value, error) {
-	M := reflect.Value(m)
-	v := M.MapIndex(reflect.ValueOf(field))
-	if v == (reflect.Value{}) {
-		return Value{}, ErrFieldNotFound
-	}
-	return NewValue(v.Interface())
-}
-
-// NewFromStruct creates a document from a struct using reflection.
-func NewFromStruct(s interface{}) (Document, error) {
-	ref := reflect.Indirect(reflect.ValueOf(s))
-
-	if !ref.IsValid() || ref.Kind() != reflect.Struct {
-		return nil, errors.New("expected struct or pointer to struct")
-	}
-
-	return structDocument{ref: ref}, nil
-}
-
-type structDocument struct {
-	ref reflect.Value
-}
-
-var _ Document = (*structDocument)(nil)
-
-func (s structDocument) Iterate(fn func(f string, v Value) error) error {
-	l := s.ref.NumField()
-
-	tp := s.ref.Type()
-
-	for i := 0; i < l; i++ {
-		sf := tp.Field(i)
-		if sf.PkgPath != "" {
-			continue
-		}
-
-		var name string
-		if gtag, ok := sf.Tag.Lookup("genji"); ok {
-			if gtag == "-" {
-				continue
-			}
-
-			name = gtag
-		} else {
-			name = strings.ToLower(sf.Name)
-		}
-
-		f := s.ref.Field(i)
-
-		v, err := NewValue(f.Interface())
-		if err != nil {
-			if err.(*ErrUnsupportedType) != nil {
-				continue
-			}
-			return err
-		}
-
-		err = fn(name, v)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s structDocument) GetByField(field string) (Value, error) {
-	tp := s.ref.Type()
-
-	var sf reflect.StructField
-	var ok bool
-
-	ln := tp.NumField()
-	for i := 0; i < ln; i++ {
-		sf = tp.Field(i)
-		if gtag, found := sf.Tag.Lookup("genji"); found && gtag == field {
-			ok = true
-			break
-		}
-		if strings.ToLower(sf.Name) == field {
-			ok = true
-			break
-		}
-	}
-
-	if !ok || sf.PkgPath != "" {
-		return Value{}, ErrFieldNotFound
-	}
-
-	v := s.ref.FieldByName(sf.Name)
-	if !v.IsValid() {
-		return Value{}, ErrFieldNotFound
-	}
-
-	return NewValue(v.Interface())
 }
 
 // A Keyer returns the key identifying documents in their storage.
@@ -300,23 +151,6 @@ func (fb *FieldBuffer) Copy(d Document) error {
 // Len of the buffer.
 func (fb FieldBuffer) Len() int {
 	return len(fb.fields)
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(jsonDocument{Document: fb})
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface.
-func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-
-	t, err := dec.Token()
-	if err == io.EOF {
-		return err
-	}
-
-	return parseJSONDocument(dec, t, fb)
 }
 
 // Reset the buffer.

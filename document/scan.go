@@ -1,3 +1,5 @@
+// +build !wasm
+
 package document
 
 import (
@@ -315,4 +317,9 @@ func scanValue(v Value, ref reflect.Value) error {
 	}
 
 	return &ErrUnsupportedType{ref, "Invalid type"}
+}
+
+// Scan v into t.
+func (v Value) Scan(t interface{}) error {
+	return scanValue(v, reflect.ValueOf(t))
 }
