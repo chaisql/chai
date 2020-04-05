@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/pkg/errors"
 )
 
 // A Table represents a collection of documents.
@@ -75,7 +75,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 		if err == engine.ErrKeyNotFound {
 			return nil, ErrDocumentNotFound
 		}
-		return nil, errors.Wrapf(err, "failed to fetch document %q", key)
+		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
 	var d encodedDocumentWithKey
@@ -287,7 +287,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 
 	v, err := encoding.EncodeDocument(d)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode document")
+		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
 
 	err = t.Store.Put(key, v)
@@ -382,7 +382,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 	// encode new document
 	v, err := encoding.EncodeDocument(d)
 	if err != nil {
-		return errors.Wrap(err, "failed to encode document")
+		return fmt.Errorf("failed to encode document: %w", err)
 	}
 
 	// replace old document with new document

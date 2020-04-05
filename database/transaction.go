@@ -1,13 +1,14 @@
 package database
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -76,7 +77,7 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 
 	err = tx.Tx.CreateStore(name)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create table %q", name)
+		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
 
 	return nil
