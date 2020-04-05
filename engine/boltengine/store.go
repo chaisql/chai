@@ -159,10 +159,10 @@ type Item struct {
 	k, v []byte
 }
 
-func (i *Item) Key(buf []byte) []byte {
-	return append(buf, i.k...)
+func (i *Item) Key() []byte {
+	return i.k
 }
 
-func (i *Item) Value(buf []byte) []byte {
-	return append(buf, i.v...)
+func (i *Item) ValueCopy(buf []byte) ([]byte, error) {
+	return append(buf[:0], i.v...), nil
 }

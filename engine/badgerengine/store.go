@@ -151,3 +151,64 @@ func (s *Store) Truncate() error {
 
 	return nil
 }
+
+func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+	prefix := buildKey(s.prefix, nil)
+
+	opt := badger.DefaultIteratorOptions
+	opt.Prefix = prefix
+	opt.Reverse = cfg.Reverse
+	it := s.tx.NewIterator(opt)
+
+	return &Iterator{
+		storePrefix: s.prefix,
+		prefix:      prefix,
+		it:          it,
+		reverse:     cfg.Reverse,
+	}
+}
+
+type Iterator struct {
+	prefix      []byte
+	storePrefix []byte
+	it          *badger.Iterator
+	reverse     bool
+	item        Item
+}
+
+func (it *Iterator) Seek(pivot []byte) {
+	var seek []byte
+
+	if !it.reverse {
+		seek = buildKey(it.storePrefix, pivot)
+	} else {
+		seek = buildKey(it.storePrefix, append(pivot, 0xFF))
+	}
+
+	it.it.Seek(seek)
+}
+
+func (it *Iterator) Next() bool {
+	it.it.Next()
+	return it.it.ValidForPrefix(it.prefix)
+}
+
+func (it *Iterator) Item() engine.Item {
+	it.item.item = it.it.Item()
+
+	return &it.item
+}
+
+func (it *Iterator) Close() {}
+
+type Item struct {
+	item *badger.Item
+}
+
+func (i *Item) Key() []byte {
+	return i.item.Key()
+}
+
+func (i *Item) ValueCopy(buf []byte) ([]byte, error) {
+	return i.item.ValueCopy(buf)
+}
