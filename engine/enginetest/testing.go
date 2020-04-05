@@ -4,7 +4,6 @@ package enginetest
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -35,8 +34,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Transaction/CreateStore", TestTransactionCreateStore},
 		{"Transaction/DropStore", TestTransactionDropStore},
 		{"Transaction/ListStores", TestTransactionListStores},
-		{"Store/AscendGreaterOrEqual", TestStoreAscendGreaterOrEqual},
-		{"Store/DescendLessOrEqual", TestStoreDescendLessOrEqual},
+		{"Store/Iterator", TestStoreIterator},
 		{"Store/Put", TestStorePut},
 		{"Store/Get", TestStoreGet},
 		{"Store/Delete", TestStoreDelete},
@@ -490,19 +488,28 @@ func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
 	}
 }
 
-// TestStoreAscendGreaterOrEqual verifies AscendGreaterOrEqual behaviour.
-func TestStoreAscendGreaterOrEqual(t *testing.T, builder Builder) {
+// TestStoreIterator verifies Iterator behaviour.
+func TestStoreIterator(t *testing.T, builder Builder) {
 	t.Run("Should not fail with no documents", func(t *testing.T) {
-		st, cleanup := storeBuilder(t, builder)
-		defer cleanup()
+		fn := func(t *testing.T, reverse bool) {
+			st, cleanup := storeBuilder(t, builder)
+			defer cleanup()
 
-		i := 0
-		err := st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-			i++
-			return nil
+			it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
+			defer it.Close()
+			i := 0
+
+			for it.Seek(nil); it.Valid(); it.Next() {
+				i++
+			}
+			require.Zero(t, i)
+		}
+		t.Run("Reverse: false", func(t *testing.T) {
+			fn(t, false)
 		})
-		require.NoError(t, err)
-		require.Zero(t, i)
+		t.Run("Reverse: true", func(t *testing.T) {
+			fn(t, true)
+		})
 	})
 
 	t.Run("With no pivot, should iterate over all documents in order", func(t *testing.T) {
@@ -516,95 +523,20 @@ func TestStoreAscendGreaterOrEqual(t *testing.T, builder Builder) {
 
 		var i uint8 = 1
 		var count int
-		err := st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+		it := st.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek(nil); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, _ := item.ValueCopy(nil)
 			require.Equal(t, []byte{i}, k)
 			require.Equal(t, []byte{i + 20}, v)
 			i++
 			count++
-			return nil
-		})
-		require.NoError(t, err)
+		}
+
 		require.Equal(t, count, 10)
-	})
-
-	t.Run("With pivot, should iterate over some documents in order", func(t *testing.T) {
-		st, cleanup := storeBuilder(t, builder)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			require.NoError(t, err)
-		}
-
-		var i uint8 = 4
-		var count int
-		err := st.AscendGreaterOrEqual([]byte{i}, func(k, v []byte) error {
-			require.Equal(t, []byte{i}, k)
-			require.Equal(t, []byte{i + 20}, v)
-			i++
-			count++
-			return nil
-		})
-		require.NoError(t, err)
-		require.Equal(t, 7, count)
-	})
-
-	t.Run("If pivot not found, should start from the next item", func(t *testing.T) {
-		st, cleanup := storeBuilder(t, builder)
-		defer cleanup()
-
-		err := st.Put([]byte{1}, []byte{1})
-		require.NoError(t, err)
-
-		err = st.Put([]byte{3}, []byte{3})
-		require.NoError(t, err)
-
-		called := false
-		err = st.AscendGreaterOrEqual([]byte{2}, func(k, v []byte) error {
-			require.Equal(t, []byte{3}, k)
-			require.Equal(t, []byte{3}, v)
-			called = true
-			return nil
-		})
-		require.NoError(t, err)
-		require.True(t, called)
-	})
-
-	t.Run("Should stop if fn returns an error", func(t *testing.T) {
-		st, cleanup := storeBuilder(t, builder)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i)})
-			require.NoError(t, err)
-		}
-
-		i := 0
-		err := st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-			i++
-			if i >= 5 {
-				return errors.New("some error")
-			}
-			return nil
-		})
-		require.EqualError(t, err, "some error")
-		require.Equal(t, 5, i)
-	})
-}
-
-// TestStoreDescendLessOrEqual verifies DescendLessOrEqual behaviour.
-func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
-	t.Run("Should not fail with no documents", func(t *testing.T) {
-		st, cleanup := storeBuilder(t, builder)
-		defer cleanup()
-
-		i := 0
-		err := st.DescendLessOrEqual(nil, func(k, v []byte) error {
-			i++
-			return nil
-		})
-		require.NoError(t, err)
-		require.Zero(t, i)
 	})
 
 	t.Run("With no pivot, should iterate over all documents in reverse order", func(t *testing.T) {
@@ -618,15 +550,45 @@ func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
 
 		var i uint8 = 10
 		var count int
-		err := st.DescendLessOrEqual(nil, func(k, v []byte) error {
+		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		defer it.Close()
+
+		for it.Seek(nil); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, _ := item.ValueCopy(nil)
 			require.Equal(t, []byte{i}, k)
 			require.Equal(t, []byte{i + 20}, v)
 			i--
 			count++
-			return nil
-		})
-		require.NoError(t, err)
+		}
 		require.Equal(t, 10, count)
+	})
+
+	t.Run("With pivot, should iterate over some documents in order", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		for i := 1; i <= 10; i++ {
+			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
+			require.NoError(t, err)
+		}
+
+		var i uint8 = 4
+		var count int
+		it := st.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek([]byte{i}); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, _ := item.ValueCopy(nil)
+			require.Equal(t, []byte{i}, k)
+			require.Equal(t, []byte{i + 20}, v)
+			i++
+			count++
+		}
+		require.Equal(t, 7, count)
 	})
 
 	t.Run("With pivot, should iterate over some documents in reverse order", func(t *testing.T) {
@@ -640,18 +602,22 @@ func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
 
 		var i uint8 = 4
 		var count int
-		err := st.DescendLessOrEqual([]byte{i}, func(k, v []byte) error {
+		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		defer it.Close()
+
+		for it.Seek([]byte{i}); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, _ := item.ValueCopy(nil)
 			require.Equal(t, []byte{i}, k)
 			require.Equal(t, []byte{i + 20}, v)
 			i--
 			count++
-			return nil
-		})
-		require.NoError(t, err)
+		}
 		require.Equal(t, 4, count)
 	})
 
-	t.Run("If pivot not found, should start from the previous item", func(t *testing.T) {
+	t.Run("If pivot not found, should start from the next item", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
@@ -662,35 +628,44 @@ func TestStoreDescendLessOrEqual(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		called := false
-		err = st.DescendLessOrEqual([]byte{2}, func(k, v []byte) error {
-			require.Equal(t, []byte{1}, k)
-			require.Equal(t, []byte{1}, v)
+		it := st.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+
+		for it.Seek([]byte{2}); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, _ := item.ValueCopy(nil)
+			require.Equal(t, []byte{3}, k)
+			require.Equal(t, []byte{3}, v)
 			called = true
-			return nil
-		})
-		require.NoError(t, err)
+		}
+
 		require.True(t, called)
 	})
 
-	t.Run("Should stop if fn returns an error", func(t *testing.T) {
+	t.Run("With reverse true, if pivot not found, should start from the previous item", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i)})
-			require.NoError(t, err)
-		}
+		err := st.Put([]byte{1}, []byte{1})
+		require.NoError(t, err)
 
-		i := 0
-		err := st.DescendLessOrEqual(nil, func(k, v []byte) error {
-			i++
-			if i >= 5 {
-				return errors.New("some error")
-			}
-			return nil
-		})
-		require.EqualError(t, err, "some error")
-		require.Equal(t, 5, i)
+		err = st.Put([]byte{3}, []byte{3})
+		require.NoError(t, err)
+
+		called := false
+		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		defer it.Close()
+
+		for it.Seek([]byte{2}); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			v, _ := item.ValueCopy(nil)
+			require.Equal(t, []byte{1}, k)
+			require.Equal(t, []byte{1}, v)
+			called = true
+		}
+		require.True(t, called)
 	})
 }
 
@@ -836,10 +811,10 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		err = st.Truncate()
 		require.NoError(t, err)
 
-		err = st.AscendGreaterOrEqual(nil, func(_, _ []byte) error {
-			return errors.New("should not iterate")
-		})
-		require.NoError(t, err)
+		it := st.NewIterator(engine.IteratorConfig{})
+		defer it.Close()
+		it.Seek(nil)
+		require.False(t, it.Valid())
 	})
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/asdine/genji/engine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,9 +52,9 @@ func BenchmarkStoreScan(b *testing.B, builder Builder) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				st.AscendGreaterOrEqual(nil, func(_, _ []byte) error {
-					return nil
-				})
+				it := st.NewIterator(engine.IteratorConfig{})
+				for it.Seek(nil); it.Valid(); it.Next() {
+				}
 			}
 			b.StopTimer()
 		})
