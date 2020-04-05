@@ -204,7 +204,6 @@ func NewValue(x interface{}) (Value, error) {
 			return Value{}, err
 		}
 		return NewDocumentValue(doc), nil
-
 	}
 
 	return Value{}, &ErrUnsupportedType{x, ""}

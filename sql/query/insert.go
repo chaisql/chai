@@ -65,18 +65,9 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 		case document.Document:
 			d = tp
 		case paramExtractor:
-			v, err := tp.extract(stack.Params)
+			d, err = extractDocumentFromParamExtractor(tp, stack.Params)
 			if err != nil {
 				return res, err
-			}
-
-			var ok bool
-			d, ok = v.(document.Document)
-			if !ok {
-				d, err = document.NewFromStruct(v)
-				if err != nil {
-					return res, err
-				}
 			}
 		case LiteralValue:
 			v := document.Value(tp)
