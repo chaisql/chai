@@ -68,14 +68,6 @@ type Store interface {
 	Delete(k []byte) error
 	// Truncate deletes all the key value pairs from the store.
 	Truncate() error
-	// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
-	// If the given function returns an error, the iteration stops and returns that error.
-	// If the pivot is nil, starts from the beginning.
-	AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error
-	// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
-	// If the given function returns an error, the iteration stops and returns that error.
-	// If the pivot is nil, starts from the end.
-	DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error
 	// NewIterator creates an iterator with the given config.
 	NewIterator(IteratorConfig) Iterator
 }
@@ -90,12 +82,14 @@ type Iterator interface {
 	// Seek moves the iterator to the selected key. If the key doesn't exist, it must move to the
 	// next smallest key greater than k.
 	Seek(k []byte)
-	// Next moves the iterator to the next item. If there are no items left it must return false.
-	Next() bool
+	// Next moves the iterator to the next item.
+	Next()
+	// Valid returns whether the iterator is positioned on a valid item or not.
+	Valid() bool
 	// Item returns the current item.
 	Item() Item
 	// Close releases the resources associated with the iterator.
-	Close()
+	Close() error
 }
 
 // An Item represents a key-value pair.

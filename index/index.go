@@ -183,15 +183,24 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 				continue
 			}
 
-			err = st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
+			it := st.NewIterator(engine.IteratorConfig{})
+			for it.Seek(nil); it.Valid(); it.Next() {
+				item := it.Item()
+				k := item.Key()
 				idx := bytes.LastIndexByte(k, separator)
 				f, err := decodeIndexValueToField(t, k[:idx])
 				if err != nil {
+					it.Close()
 					return err
 				}
 
-				return fn(f, k[idx+1:])
-			})
+				err = fn(f, k[idx+1:])
+				if err != nil {
+					it.Close()
+					return err
+				}
+			}
+			err = it.Close()
 			if err != nil {
 				return err
 			}
@@ -216,15 +225,26 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 		}
 	}
 
-	return st.AscendGreaterOrEqual(data, func(k, v []byte) error {
+	it := st.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	for it.Seek(data); it.Valid(); it.Next() {
+		item := it.Item()
+		k := item.Key()
+
 		idx := bytes.LastIndexByte(k, separator)
 		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
 		if err != nil {
 			return err
 		}
 
-		return fn(f, k[idx+1:])
-	})
+		err = fn(f, k[idx+1:])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
@@ -242,18 +262,31 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 				continue
 			}
 
-			err = st.DescendLessOrEqual(nil, func(k, v []byte) error {
+			it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+
+			for it.Seek(nil); it.Valid(); it.Next() {
+				item := it.Item()
+				k := item.Key()
+
 				idx := bytes.LastIndexByte(k, separator)
 				f, err := decodeIndexValueToField(t, k[:idx])
 				if err != nil {
+					it.Close()
 					return err
 				}
 
-				return fn(f, k[idx+1:])
-			})
+				err = fn(f, k[idx+1:])
+				if err != nil {
+					it.Close()
+					return err
+				}
+			}
+
+			err = it.Close()
 			if err != nil {
 				return err
 			}
+
 		}
 
 		return nil
@@ -280,15 +313,26 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 		data = append(data, separator, 0xFF)
 	}
 
-	return st.DescendLessOrEqual(data, func(k, v []byte) error {
+	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+	defer it.Close()
+
+	for it.Seek(data); it.Valid(); it.Next() {
+		item := it.Item()
+		k := item.Key()
+
 		idx := bytes.LastIndexByte(k, separator)
 		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
 		if err != nil {
 			return err
 		}
 
-		return fn(f, k[idx+1:])
-	})
+		err = fn(f, k[idx+1:])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Truncate deletes all the index data.
@@ -376,14 +420,29 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 				continue
 			}
 
-			err = st.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-				f, err := decodeIndexValueToField(t, k[2:])
+			it := st.NewIterator(engine.IteratorConfig{})
+
+			var v []byte
+			for it.Seek(nil); it.Valid(); it.Next() {
+				item := it.Item()
+				f, err := decodeIndexValueToField(t, item.Key()[2:])
 				if err != nil {
+					it.Close()
 					return err
 				}
 
-				return fn(f, v)
-			})
+				v, err = item.ValueCopy(v[:0])
+				if err != nil {
+					it.Close()
+					return err
+				}
+				err = fn(f, v)
+				if err != nil {
+					it.Close()
+					return err
+				}
+			}
+			err = it.Close()
 			if err != nil {
 				return err
 			}
@@ -408,19 +467,35 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 		}
 	}
 
-	buf := make([]byte, 0, len(data)+2)
-	buf = append(buf, uint8(NewTypeFromValueType(pivot.Value.Type)))
-	buf = append(buf, separator)
-	buf = append(buf, data...)
+	seek := make([]byte, 0, len(data)+2)
+	seek = append(seek, uint8(NewTypeFromValueType(pivot.Value.Type)))
+	seek = append(seek, separator)
+	seek = append(seek, data...)
 
-	return st.AscendGreaterOrEqual(buf, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), vv[2:])
+	it := st.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	var pk []byte
+	for it.Seek(seek); it.Valid(); it.Next() {
+		item := it.Item()
+
+		pk, err = item.ValueCopy(pk[:0])
 		if err != nil {
 			return err
 		}
 
-		return fn(f, key)
-	})
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), item.Key()[2:])
+		if err != nil {
+			return err
+		}
+
+		err = fn(f, pk)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
@@ -438,14 +513,31 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 				continue
 			}
 
-			err = st.DescendLessOrEqual(nil, func(k, v []byte) error {
-				f, err := decodeIndexValueToField(t, k[2:])
+			it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+
+			var v []byte
+			for it.Seek(nil); it.Valid(); it.Next() {
+				item := it.Item()
+
+				f, err := decodeIndexValueToField(t, item.Key()[2:])
 				if err != nil {
+					it.Close()
 					return err
 				}
 
-				return fn(f, v)
-			})
+				v, err = item.ValueCopy(v[:0])
+				if err != nil {
+					it.Close()
+					return err
+				}
+
+				err = fn(f, v)
+				if err != nil {
+					it.Close()
+					return err
+				}
+			}
+			err = it.Close()
 			if err != nil {
 				return err
 			}
@@ -470,20 +562,36 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 		}
 	}
 
-	buf := make([]byte, 0, len(data)+3)
-	buf = append(buf, uint8(NewTypeFromValueType(pivot.Value.Type)))
-	buf = append(buf, separator)
-	buf = append(buf, data...)
-	buf = append(buf, 0xFF)
+	seek := make([]byte, 0, len(data)+3)
+	seek = append(seek, uint8(NewTypeFromValueType(pivot.Value.Type)))
+	seek = append(seek, separator)
+	seek = append(seek, data...)
+	seek = append(seek, 0xFF)
 
-	return st.DescendLessOrEqual(buf, func(vv []byte, key []byte) error {
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), vv[2:])
+	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+	defer it.Close()
+
+	var pk []byte
+	for it.Seek(seek); it.Valid(); it.Next() {
+		item := it.Item()
+
+		pk, err = item.ValueCopy(pk[:0])
 		if err != nil {
 			return err
 		}
 
-		return fn(f, key)
-	})
+		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), item.Key()[2:])
+		if err != nil {
+			return err
+		}
+
+		err = fn(f, pk)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Truncate deletes all the index data.

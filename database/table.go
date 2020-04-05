@@ -45,13 +45,27 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 	// TODO(asdine) Add a mutex if proven necessary
 	var d encodedDocumentWithKey
 
-	return t.Store.AscendGreaterOrEqual(nil, func(k, v []byte) error {
-		d.EncodedDocument = v
-		d.key = k
+	it := t.Store.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	var err error
+	for it.Seek(nil); it.Valid(); it.Next() {
+		item := it.Item()
+		d.EncodedDocument, err = item.ValueCopy(d.EncodedDocument[:0])
+		if err != nil {
+			return err
+		}
+
+		d.key = item.Key()
 		// r must be passed as pointer, not value, because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
-		return fn(&d)
-	})
+		err = fn(&d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // GetDocument returns one document by key.
