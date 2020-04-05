@@ -1,9 +1,6 @@
 package genji
 
 import (
-	"database/sql"
-	"database/sql/driver"
-
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/engine"
@@ -91,7 +88,7 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 		return nil, err
 	}
 
-	return pq.Run(db.DB, argsToNamedValues(args))
+	return pq.Run(db.DB, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
@@ -164,7 +161,7 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 		return nil, err
 	}
 
-	return pq.Exec(tx.Transaction, argsToNamedValues(args), false)
+	return pq.Exec(tx.Transaction, argsToParams(args), false)
 }
 
 // QueryDocument runs the query and returns the first document.
@@ -195,27 +192,4 @@ func (tx *Tx) Exec(q string, args ...interface{}) error {
 	}
 
 	return res.Close()
-}
-
-func argsToNamedValues(args []interface{}) []driver.NamedValue {
-	nv := make([]driver.NamedValue, len(args))
-	for i := range args {
-		switch t := args[i].(type) {
-		case sql.NamedArg:
-			nv[i].Name = t.Name
-			nv[i].Value = t.Value
-		case *sql.NamedArg:
-			nv[i].Name = t.Name
-			nv[i].Value = t.Value
-		case driver.NamedValue:
-			nv[i] = t
-		case *driver.NamedValue:
-			nv[i] = *t
-		default:
-			nv[i].Ordinal = i + 1
-			nv[i].Value = args[i]
-		}
-	}
-
-	return nv
 }
