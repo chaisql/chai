@@ -100,10 +100,11 @@ type Iterator interface {
 
 // An Item represents a key-value pair.
 type Item interface {
-	// Key copies the key to the given byte slice and returns it.
+	// Key returns the key of the item.
+	// The key is only guaranteed to be valid until the next call to the Next method of
+	// the iterator.
+	Key() []byte
+	// ValueCopy copies the key to the given byte slice returns it.
 	// If the slice is not big enough, it must create a new one and return it.
-	Key([]byte) []byte
-	// Value copies the key to the given byte slice returns it.
-	// If the slice is not big enough, it must create a new one and return it.
-	Value([]byte) []byte
+	ValueCopy([]byte) ([]byte, error)
 }
