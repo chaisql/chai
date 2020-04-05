@@ -76,6 +76,13 @@ type Store interface {
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
 	DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error
+	// NewIterator creates an iterator with the given config.
+	NewIterator(IteratorConfig) Iterator
+}
+
+// IteratorConfig is used to configure an iterator upon creation.
+type IteratorConfig struct {
+	Reverse bool
 }
 
 // An Iterator iterates on keys of a store in lexicographic order.
@@ -83,8 +90,10 @@ type Iterator interface {
 	// Seek moves the iterator to the selected key. If the key doesn't exist, it must move to the
 	// next smallest key greater than k.
 	Seek(k []byte)
-	// Next moves the iterator to the next item.
-	Next() Item
+	// Next moves the iterator to the next item. If there are no items left it must return false.
+	Next() bool
+	// Item returns the current item.
+	Item() Item
 	// Close releases the resources associated with the iterator.
 	Close()
 }
@@ -96,5 +105,5 @@ type Item interface {
 	Key([]byte) []byte
 	// Value copies the key to the given byte slice returns it.
 	// If the slice is not big enough, it must create a new one and return it.
-	Value([]byte) error
+	Value([]byte) []byte
 }

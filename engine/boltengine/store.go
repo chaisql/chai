@@ -107,3 +107,62 @@ func (s *Store) Truncate() error {
 	_, err = s.tx.CreateBucket(s.name)
 	return err
 }
+
+func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+	return &Iterator{
+		c:       s.bucket.Cursor(),
+		reverse: cfg.Reverse,
+	}
+}
+
+type Iterator struct {
+	c       *bolt.Cursor
+	reverse bool
+	item    Item
+}
+
+func (it *Iterator) Seek(pivot []byte) {
+	if !it.reverse {
+		it.item.k, it.item.v = it.c.Seek(pivot)
+		return
+	}
+
+	if len(pivot) == 0 {
+		it.item.k, it.item.v = it.c.Last()
+		return
+	}
+
+	it.item.k, it.item.v = it.c.Seek(pivot)
+	if it.item.k != nil {
+		for bytes.Compare(it.item.k, pivot) > 0 {
+			it.item.k, it.item.v = it.c.Prev()
+		}
+	}
+}
+
+func (it *Iterator) Next() bool {
+	it.item.k, it.item.v = it.c.Next()
+	return it.item.k != nil
+}
+
+func (it *Iterator) Item() engine.Item {
+	if it.item.k == nil {
+		return nil
+	}
+
+	return &it.item
+}
+
+func (it *Iterator) Close() {}
+
+type Item struct {
+	k, v []byte
+}
+
+func (i *Item) Key(buf []byte) []byte {
+	return append(buf, i.k...)
+}
+
+func (i *Item) Value(buf []byte) []byte {
+	return append(buf, i.v...)
+}
