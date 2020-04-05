@@ -145,7 +145,11 @@ func (it *Iterator) Valid() bool {
 }
 
 func (it *Iterator) Next() {
-	it.item.k, it.item.v = it.c.Next()
+	if it.reverse {
+		it.item.k, it.item.v = it.c.Prev()
+	} else {
+		it.item.k, it.item.v = it.c.Next()
+	}
 }
 
 func (it *Iterator) Item() engine.Item {
