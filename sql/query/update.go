@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji/database"
@@ -27,7 +26,7 @@ func (stmt UpdateStmt) IsReadOnly() bool {
 
 // Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt UpdateStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt UpdateStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {

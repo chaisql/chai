@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 	"fmt"
 	"strconv"
@@ -31,7 +30,7 @@ type Expr interface {
 type EvalStack struct {
 	Tx       *database.Transaction
 	Document document.Document
-	Params   []driver.NamedValue
+	Params   []Param
 	Cfg      *database.TableConfig
 }
 
@@ -114,7 +113,7 @@ func (p NamedParam) Eval(stack EvalStack) (document.Value, error) {
 	return document.NewValue(v)
 }
 
-func (p NamedParam) extract(params []driver.NamedValue) (interface{}, error) {
+func (p NamedParam) extract(params []Param) (interface{}, error) {
 	for _, nv := range params {
 		if nv.Name == string(p) {
 			return nv.Value, nil
@@ -138,7 +137,7 @@ func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 	return document.NewValue(v)
 }
 
-func (p PositionalParam) extract(params []driver.NamedValue) (interface{}, error) {
+func (p PositionalParam) extract(params []Param) (interface{}, error) {
 	idx := int(p - 1)
 	if idx >= len(params) {
 		return nil, fmt.Errorf("can't find param number %d", p)

@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji/database"
@@ -29,7 +28,7 @@ func (stmt DeleteStmt) IsReadOnly() bool {
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no document
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (stmt DeleteStmt) Run(tx *database.Transaction, args []driver.NamedValue) (Result, error) {
+func (stmt DeleteStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
 	var res Result
 	if stmt.TableName == "" {
 		return res, errors.New("missing table name")

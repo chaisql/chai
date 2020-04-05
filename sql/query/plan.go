@@ -3,7 +3,6 @@ package query
 import (
 	"bytes"
 	"container/heap"
-	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji/database"
@@ -59,7 +58,7 @@ type queryOptimizer struct {
 	t                *database.Table
 	tableName        string
 	whereExpr        Expr
-	args             []driver.NamedValue
+	args             []Param
 	cfg              *database.TableConfig
 	indexes          map[string]database.Index
 	orderBy          FieldSelector
@@ -256,7 +255,7 @@ func evaluatesToScalarOrParam(e Expr) bool {
 type indexIterator struct {
 	tx               *database.Transaction
 	tb               *database.Table
-	args             []driver.NamedValue
+	args             []Param
 	index            index.Index
 	op               scanner.Token
 	e                Expr
@@ -402,7 +401,7 @@ type pkIterator struct {
 	tx               *database.Transaction
 	tb               *database.Table
 	cfg              *database.TableConfig
-	args             []driver.NamedValue
+	args             []Param
 	op               scanner.Token
 	e                Expr
 	orderByDirection scanner.Token

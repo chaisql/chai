@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql/driver"
 	"errors"
 
 	"github.com/asdine/genji/database"
@@ -19,7 +18,7 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *database.Database, args []driver.NamedValue) (*Result, error) {
+func (q Query) Run(db *database.Database, args []Param) (*Result, error) {
 	var res Result
 	var tx *database.Transaction
 	var err error
@@ -63,7 +62,7 @@ func (q Query) Run(db *database.Database, args []driver.NamedValue) (*Result, er
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q Query) Exec(tx *database.Transaction, args []driver.NamedValue, forceReadOnly bool) (*Result, error) {
+func (q Query) Exec(tx *database.Transaction, args []Param, forceReadOnly bool) (*Result, error) {
 	var res Result
 	var err error
 
@@ -93,36 +92,26 @@ func New(statements ...Statement) Query {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*database.Transaction, []driver.NamedValue) (Result, error)
+	Run(*database.Transaction, []Param) (Result, error)
 	IsReadOnly() bool
+}
+
+// A Param represents a parameter passed by the user to the statement.
+type Param struct {
+	// Name of the param
+	Name string
+
+	// Value is the parameter value.
+	Value interface{}
 }
 
 // Result of a query.
 type Result struct {
 	document.Stream
-	rowsAffected  driver.RowsAffected
-	lastInsertKey []byte
+	RowsAffected  int64
+	LastInsertKey []byte
 	tx            *database.Transaction
 	closed        bool
-}
-
-// LastInsertId is not supported and returns an error.
-// Use LastInsertKey instead.
-func (r Result) LastInsertId() (int64, error) {
-	return r.rowsAffected.LastInsertId()
-}
-
-// LastInsertKey returns the database's auto-generated key
-// after, for example, an INSERT into a table with primary
-// key.
-func (r Result) LastInsertKey() ([]byte, error) {
-	return r.lastInsertKey, nil
-}
-
-// RowsAffected returns the number of rows affected by the
-// query.
-func (r Result) RowsAffected() (int64, error) {
-	return r.rowsAffected.RowsAffected()
 }
 
 // Close the result stream.
