@@ -47,52 +47,6 @@ func (s *Store) Delete(k []byte) error {
 	return s.bucket.Delete(k)
 }
 
-// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
-// If the given function returns an error, the iteration stops and returns that error.
-// If the pivot is nil, starts from the beginning.
-func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error {
-	c := s.bucket.Cursor()
-	for k, v := c.Seek(pivot); k != nil; k, v = c.Next() {
-		err := fn(k, v)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
-// If the given function returns an error, the iteration stops and returns that error.
-// If the pivot is nil, starts from the end.
-func (s *Store) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
-	var k, v []byte
-
-	c := s.bucket.Cursor()
-	if len(pivot) == 0 {
-		k, v = c.Last()
-	} else {
-		k, v = c.Seek(pivot)
-		if k == nil {
-			k, v = c.Last()
-		} else {
-			for bytes.Compare(k, pivot) > 0 {
-				k, v = c.Prev()
-			}
-		}
-	}
-
-	for k != nil {
-		err := fn(k, v)
-		if err != nil {
-			return err
-		}
-		k, v = c.Prev()
-	}
-
-	return nil
-}
-
 // Truncate deletes all the records of the store.
 func (s *Store) Truncate() error {
 	if !s.bucket.Writable() {
@@ -108,20 +62,21 @@ func (s *Store) Truncate() error {
 	return err
 }
 
+// NewIterator uses the bucket cursor.
 func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
-	return &Iterator{
+	return &iterator{
 		c:       s.bucket.Cursor(),
 		reverse: cfg.Reverse,
 	}
 }
 
-type Iterator struct {
+type iterator struct {
 	c       *bolt.Cursor
 	reverse bool
-	item    Item
+	item    boltItem
 }
 
-func (it *Iterator) Seek(pivot []byte) {
+func (it *iterator) Seek(pivot []byte) {
 	if !it.reverse {
 		it.item.k, it.item.v = it.c.Seek(pivot)
 		return
@@ -140,11 +95,11 @@ func (it *Iterator) Seek(pivot []byte) {
 	}
 }
 
-func (it *Iterator) Valid() bool {
+func (it *iterator) Valid() bool {
 	return it.item.k != nil
 }
 
-func (it *Iterator) Next() {
+func (it *iterator) Next() {
 	if it.reverse {
 		it.item.k, it.item.v = it.c.Prev()
 	} else {
@@ -152,7 +107,7 @@ func (it *Iterator) Next() {
 	}
 }
 
-func (it *Iterator) Item() engine.Item {
+func (it *iterator) Item() engine.Item {
 	if it.item.k == nil {
 		return nil
 	}
@@ -160,16 +115,16 @@ func (it *Iterator) Item() engine.Item {
 	return &it.item
 }
 
-func (it *Iterator) Close() error { return nil }
+func (it *iterator) Close() error { return nil }
 
-type Item struct {
+type boltItem struct {
 	k, v []byte
 }
 
-func (i *Item) Key() []byte {
+func (i *boltItem) Key() []byte {
 	return i.k
 }
 
-func (i *Item) ValueCopy(buf []byte) ([]byte, error) {
+func (i *boltItem) ValueCopy(buf []byte) ([]byte, error) {
 	return append(buf[:0], i.v...), nil
 }
