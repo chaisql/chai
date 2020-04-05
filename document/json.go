@@ -1,3 +1,5 @@
+// +build !wasm
+
 package document
 
 import (
@@ -8,7 +10,93 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"strings"
 )
+
+// MarshalJSON implements the json.Marshaler interface.
+func (v Value) MarshalJSON() ([]byte, error) {
+	var x interface{}
+
+	switch v.Type {
+	case DocumentValue:
+		d, err := v.ConvertToDocument()
+		if err != nil {
+			return nil, err
+		}
+		x = &jsonDocument{d}
+	case ArrayValue:
+		a, err := v.ConvertToArray()
+		if err != nil {
+			return nil, err
+		}
+		x = &jsonArray{a}
+	case TextValue, BlobValue:
+		s, err := v.ConvertToText()
+		if err != nil {
+			return nil, err
+		}
+		x = s
+	default:
+		x = v.V
+	}
+
+	return json.Marshal(x)
+}
+
+// String returns a string representation of the value. It implements the fmt.Stringer interface.
+func (v Value) String() string {
+	switch v.Type {
+	case DocumentValue:
+		var buf bytes.Buffer
+		err := ToJSON(&buf, v.V.(Document))
+		if err != nil {
+			panic(err)
+		}
+		return buf.String()
+	case ArrayValue:
+		var buf bytes.Buffer
+		err := ArrayToJSON(&buf, v.V.(Array))
+		if err != nil {
+			panic(err)
+		}
+		return buf.String()
+	case NullValue:
+		return "NULL"
+	case TextValue:
+		return string(v.V.([]byte))
+	}
+
+	return fmt.Sprintf("%v", v.V)
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonDocument{Document: fb})
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	t, err := dec.Token()
+	if err == io.EOF {
+		return err
+	}
+
+	return parseJSONDocument(dec, t, fb)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	t, err := dec.Token()
+	if err == io.EOF {
+		return err
+	}
+
+	return parseJSONArray(dec, t, vb)
+}
 
 // ToJSON encodes d to w in JSON.
 func ToJSON(w io.Writer, d Document) error {
@@ -252,4 +340,51 @@ func IteratorToJSONArray(w io.Writer, s Iterator) error {
 
 	buf.WriteByte(']')
 	return buf.Flush()
+}
+
+// Compare compares two values performing best-effort comparisons
+// Returns > 0 if this value can be considered bigger
+// Returns < 0 if this value can be considered smaller
+// Returns 0 if values can be considered equal
+func (v Value) Compare(u Value) int {
+	if v.Type == NullValue && u.Type == NullValue {
+		return 0
+	}
+	// Null is always less than non-null
+	if v.Type == NullValue {
+		return -1
+	}
+	if u.Type == NullValue {
+		return 1
+	}
+
+	un := v.Type.IsNumber() || v.Type == BoolValue
+	vn := u.Type.IsNumber() || u.Type == BoolValue
+
+	// if any of the values is a number, perform a best effort numeric comparison
+	if un || vn {
+		var vf float64
+		var uf float64
+		if un {
+			vf, _ = v.ConvertToFloat64()
+		} else {
+			vf, _ = strconv.ParseFloat(v.String(), 64)
+		}
+		if vn {
+			uf, _ = u.ConvertToFloat64()
+		} else {
+			uf, _ = strconv.ParseFloat(u.String(), 64)
+		}
+		return int(vf - uf)
+	}
+
+	// compare byte arrays and strings
+	if (v.Type == TextValue || v.Type == BlobValue) && (u.Type == TextValue || u.Type == BlobValue) {
+		bv, _ := v.ConvertToBlob()
+		bu, _ := u.ConvertToBlob()
+		return bytes.Compare(bv, bu)
+	}
+
+	// if all else fails, compare string representation of values
+	return strings.Compare(v.String(), u.String())
 }

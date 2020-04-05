@@ -1,11 +1,7 @@
 package document
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io"
-	"reflect"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
@@ -117,58 +113,4 @@ func (vb *ValueBuffer) Replace(index int, v Value) error {
 
 	(*vb)[index] = v
 	return nil
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface.
-func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-
-	t, err := dec.Token()
-	if err == io.EOF {
-		return err
-	}
-
-	return parseJSONArray(dec, t, vb)
-}
-
-type sliceArray struct {
-	ref reflect.Value
-}
-
-var _ Array = (*sliceArray)(nil)
-
-func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
-	l := s.ref.Len()
-
-	for i := 0; i < l; i++ {
-		f := s.ref.Index(i)
-
-		v, err := NewValue(f.Interface())
-		if err != nil {
-			if err.(*ErrUnsupportedType) != nil {
-				continue
-			}
-			return err
-		}
-
-		err = fn(i, v)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s sliceArray) GetByIndex(i int) (Value, error) {
-	if i >= s.ref.Len() {
-		return Value{}, ErrFieldNotFound
-	}
-
-	v := s.ref.Index(i)
-	if !v.IsValid() {
-		return Value{}, ErrFieldNotFound
-	}
-
-	return NewValue(v.Interface())
 }
