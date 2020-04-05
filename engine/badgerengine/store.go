@@ -70,63 +70,6 @@ func (s *Store) Delete(k []byte) error {
 	return s.tx.Delete(key)
 }
 
-// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
-// If the given function returns an error, the iteration stops and returns that error.
-// If the pivot is nil, starts from the beginning.
-func (s *Store) AscendGreaterOrEqual(pivot []byte, fn func(k, v []byte) error) error {
-	prefix := buildKey(s.prefix, nil)
-
-	opt := badger.DefaultIteratorOptions
-	opt.Prefix = prefix
-	it := s.tx.NewIterator(opt)
-	defer it.Close()
-
-	seek := buildKey(s.prefix, pivot)
-	for it.Seek(seek); it.ValidForPrefix(prefix); it.Next() {
-		item := it.Item()
-
-		err := item.Value(func(v []byte) error {
-			return fn(bytes.TrimPrefix(item.Key(), prefix), v)
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
-// If the given function returns an error, the iteration stops and returns that error.
-// If the pivot is nil, starts from the end.
-func (s *Store) DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error {
-	prefix := buildKey(s.prefix, nil)
-
-	opt := badger.DefaultIteratorOptions
-	opt.Reverse = true
-	opt.Prefix = prefix
-	it := s.tx.NewIterator(opt)
-	defer it.Close()
-
-	seek := buildKey(s.prefix, append(pivot, 0xFF))
-
-	for it.Seek(seek); it.ValidForPrefix(prefix); it.Next() {
-		item := it.Item()
-
-		v, err := item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-
-		err = fn(bytes.TrimPrefix(item.KeyCopy(nil), prefix), v)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // Truncate deletes all the records of the store.
 func (s *Store) Truncate() error {
 	if !s.writable {
@@ -152,6 +95,8 @@ func (s *Store) Truncate() error {
 	return nil
 }
 
+// NewIterator uses a Badger iterator with default options.
+// Only one iterator is allowed per read-write transaction.
 func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
 	prefix := buildKey(s.prefix, nil)
 
@@ -160,24 +105,24 @@ func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
 	opt.Reverse = cfg.Reverse
 	it := s.tx.NewIterator(opt)
 
-	return &Iterator{
+	return &iterator{
 		storePrefix: s.prefix,
 		prefix:      prefix,
 		it:          it,
 		reverse:     cfg.Reverse,
-		item:        Item{prefix: prefix},
+		item:        badgerItem{prefix: prefix},
 	}
 }
 
-type Iterator struct {
+type iterator struct {
 	prefix      []byte
 	storePrefix []byte
 	it          *badger.Iterator
 	reverse     bool
-	item        Item
+	item        badgerItem
 }
 
-func (it *Iterator) Seek(pivot []byte) {
+func (it *iterator) Seek(pivot []byte) {
 	var seek []byte
 
 	if !it.reverse {
@@ -189,34 +134,34 @@ func (it *Iterator) Seek(pivot []byte) {
 	it.it.Seek(seek)
 }
 
-func (it *Iterator) Valid() bool {
+func (it *iterator) Valid() bool {
 	return it.it.ValidForPrefix(it.prefix)
 }
 
-func (it *Iterator) Next() {
+func (it *iterator) Next() {
 	it.it.Next()
 }
 
-func (it *Iterator) Item() engine.Item {
+func (it *iterator) Item() engine.Item {
 	it.item.item = it.it.Item()
 
 	return &it.item
 }
 
-func (it *Iterator) Close() error {
+func (it *iterator) Close() error {
 	it.it.Close()
 	return nil
 }
 
-type Item struct {
+type badgerItem struct {
 	item   *badger.Item
 	prefix []byte
 }
 
-func (i *Item) Key() []byte {
+func (i *badgerItem) Key() []byte {
 	return bytes.TrimPrefix(i.item.Key(), i.prefix)
 }
 
-func (i *Item) ValueCopy(buf []byte) ([]byte, error) {
+func (i *badgerItem) ValueCopy(buf []byte) ([]byte, error) {
 	return i.item.ValueCopy(buf)
 }
