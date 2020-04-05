@@ -449,7 +449,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 		}).
 		Iterate(func(d document.Document) error {
 			var opts IndexConfig
-			err := document.StructScan(d, &opts)
+			err := opts.ScanDocument(d)
 			if err != nil {
 				return err
 			}
