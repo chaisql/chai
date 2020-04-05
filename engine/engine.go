@@ -77,3 +77,24 @@ type Store interface {
 	// If the pivot is nil, starts from the end.
 	DescendLessOrEqual(pivot []byte, fn func(k, v []byte) error) error
 }
+
+// An Iterator iterates on keys of a store in lexicographic order.
+type Iterator interface {
+	// Seek moves the iterator to the selected key. If the key doesn't exist, it must move to the
+	// next smallest key greater than k.
+	Seek(k []byte)
+	// Next moves the iterator to the next item.
+	Next() Item
+	// Close releases the resources associated with the iterator.
+	Close()
+}
+
+// An Item represents a key-value pair.
+type Item interface {
+	// Key copies the key to the given byte slice and returns it.
+	// If the slice is not big enough, it must create a new one and return it.
+	Key([]byte) []byte
+	// Value copies the key to the given byte slice returns it.
+	// If the slice is not big enough, it must create a new one and return it.
+	Value([]byte) error
+}
