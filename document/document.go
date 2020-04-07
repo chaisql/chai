@@ -81,7 +81,7 @@ func (fb *FieldBuffer) Set(f string, v Value) {
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (fb FieldBuffer) Iterate(fn func(f string, v Value) error) error {
+func (fb FieldBuffer) Iterate(fn func(field string, value Value) error) error {
 	for _, fv := range fb.fields {
 		err := fn(fv.Field, fv.Value)
 		if err != nil {
