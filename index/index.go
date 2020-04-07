@@ -226,7 +226,10 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 	}
 
 	it := st.NewIterator(engine.IteratorConfig{})
-	defer it.Close()
+	// https://github.com/tinygo-org/tinygo/issues/1033
+	defer func() {
+		it.Close()
+	}()
 
 	for it.Seek(data); it.Valid(); it.Next() {
 		item := it.Item()
@@ -314,7 +317,10 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 	}
 
 	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
-	defer it.Close()
+	// https://github.com/tinygo-org/tinygo/issues/1033
+	defer func() {
+		it.Close()
+	}()
 
 	for it.Seek(data); it.Valid(); it.Next() {
 		item := it.Item()
@@ -473,7 +479,10 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 	seek = append(seek, data...)
 
 	it := st.NewIterator(engine.IteratorConfig{})
-	defer it.Close()
+	// https://github.com/tinygo-org/tinygo/issues/1033
+	defer func() {
+		it.Close()
+	}()
 
 	var pk []byte
 	for it.Seek(seek); it.Valid(); it.Next() {
@@ -569,7 +578,10 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 	seek = append(seek, 0xFF)
 
 	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
-	defer it.Close()
+	// https://github.com/tinygo-org/tinygo/issues/1033
+	defer func() {
+		it.Close()
+	}()
 
 	var pk []byte
 	for it.Seek(seek); it.Valid(); it.Next() {
