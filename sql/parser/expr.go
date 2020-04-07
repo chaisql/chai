@@ -157,7 +157,7 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		}
 		return query.Float64Value(v), nil
 	case scanner.INTEGER:
-		v, err := strconv.ParseInt(lit, 10, 64)
+		v, err := strconv.Atoi(lit)
 		if err != nil {
 			// The literal may be too large to fit into an int64, parse as Float64
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {

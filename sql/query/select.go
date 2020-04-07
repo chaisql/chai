@@ -209,7 +209,7 @@ func (w Wildcard) Name() string {
 }
 
 // Iterate call the document iterate method.
-func (w Wildcard) Iterate(stack EvalStack, fn func(fd string, v document.Value) error) error {
+func (w Wildcard) Iterate(stack EvalStack, fn func(field string, value document.Value) error) error {
 	if stack.Document == nil {
 		return errors.New("no table specified")
 	}
