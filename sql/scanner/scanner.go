@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -16,11 +15,6 @@ import (
 type Scanner struct {
 	r   *reader
 	buf bytes.Buffer
-}
-
-// NewScanner returns a new instance of Scanner.
-func NewScanner(r io.Reader) *Scanner {
-	return &Scanner{r: &reader{r: bufio.NewReaderSize(r, 128)}}
 }
 
 func (s *Scanner) read() (ch rune, pos Pos) {
