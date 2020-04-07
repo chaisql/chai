@@ -415,7 +415,9 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 
 		var d encoding.EncodedDocument
 		it := it.tb.Store.NewIterator(engine.IteratorConfig{Reverse: it.orderByDirection == scanner.DESC})
-		defer it.Close()
+		defer func() {
+			it.Close()
+		}()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
 			d, err = it.Item().ValueCopy(d)
@@ -450,7 +452,9 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	case scanner.GT:
 		var d encoding.EncodedDocument
 		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer it.Close()
+		defer func() {
+			it.Close()
+		}()
 
 		for it.Seek(data); it.Valid(); it.Next() {
 			d, err = it.Item().ValueCopy(d)
@@ -469,7 +473,9 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	case scanner.GTE:
 		var d encoding.EncodedDocument
 		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer it.Close()
+		defer func() {
+			it.Close()
+		}()
 
 		for it.Seek(data); it.Valid(); it.Next() {
 			d, err = it.Item().ValueCopy(d)
@@ -485,7 +491,9 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	case scanner.LT:
 		var d encoding.EncodedDocument
 		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer it.Close()
+		defer func() {
+			it.Close()
+		}()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
 			d, err = it.Item().ValueCopy(d)
@@ -504,7 +512,9 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	case scanner.LTE:
 		var d encoding.EncodedDocument
 		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer it.Close()
+		defer func() {
+			it.Close()
+		}()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
 			d, err = it.Item().ValueCopy(d)
