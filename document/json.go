@@ -11,6 +11,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/asdine/genji/pkg/bytesutil"
 )
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -382,7 +384,7 @@ func (v Value) Compare(u Value) int {
 	if (v.Type == TextValue || v.Type == BlobValue) && (u.Type == TextValue || u.Type == BlobValue) {
 		bv, _ := v.ConvertToBlob()
 		bu, _ := u.ConvertToBlob()
-		return bytes.Compare(bv, bu)
+		return bytesutil.CompareBytes(bv, bu)
 	}
 
 	// if all else fails, compare string representation of values

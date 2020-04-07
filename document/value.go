@@ -1,11 +1,12 @@
 package document
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math"
 	"time"
+
+	"github.com/asdine/genji/pkg/bytesutil"
 )
 
 var (
@@ -512,7 +513,7 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 func (v Value) IsZeroValue() bool {
 	switch v.Type {
 	case BlobValue, TextValue:
-		return bytes.Compare(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
+		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
 	case BoolValue:
 		return v.V == boolZeroValue.V
 	case Int8Value:

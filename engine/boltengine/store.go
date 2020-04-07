@@ -1,9 +1,8 @@
 package boltengine
 
 import (
-	"bytes"
-
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/pkg/bytesutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -89,7 +88,7 @@ func (it *iterator) Seek(pivot []byte) {
 
 	it.item.k, it.item.v = it.c.Seek(pivot)
 	if it.item.k != nil {
-		for bytes.Compare(it.item.k, pivot) > 0 {
+		for bytesutil.CompareBytes(it.item.k, pivot) > 0 {
 			it.item.k, it.item.v = it.c.Prev()
 		}
 	}

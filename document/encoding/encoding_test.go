@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/pkg/bytesutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -308,7 +309,7 @@ func TestOrdering(t *testing.T) {
 					continue
 				}
 
-				require.Equal(t, -1, bytes.Compare(prev, cur))
+				require.Equal(t, -1, bytesutil.CompareBytes(prev, cur))
 				prev = cur
 			}
 		})
