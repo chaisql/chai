@@ -25,7 +25,7 @@ type mapDocument reflect.Value
 
 var _ Document = (*mapDocument)(nil)
 
-func (m mapDocument) Iterate(fn func(f string, v Value) error) error {
+func (m mapDocument) Iterate(fn func(field string, value Value) error) error {
 	M := reflect.Value(m)
 	it := M.MapRange()
 
@@ -69,7 +69,7 @@ type structDocument struct {
 
 var _ Document = (*structDocument)(nil)
 
-func (s structDocument) Iterate(fn func(f string, v Value) error) error {
+func (s structDocument) Iterate(fn func(field string, value Value) error) error {
 	l := s.ref.NumField()
 
 	tp := s.ref.Type()

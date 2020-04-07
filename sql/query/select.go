@@ -146,17 +146,17 @@ type documentMask struct {
 
 var _ document.Document = documentMask{}
 
-func (r documentMask) GetByField(name string) (document.Value, error) {
+func (r documentMask) GetByField(field string) (document.Value, error) {
 	for _, rf := range r.resultFields {
-		if rf.Name() == name || rf.Name() == "*" {
-			return r.r.GetByField(name)
+		if rf.Name() == field || rf.Name() == "*" {
+			return r.r.GetByField(field)
 		}
 	}
 
 	return document.Value{}, document.ErrFieldNotFound
 }
 
-func (r documentMask) Iterate(fn func(f string, v document.Value) error) error {
+func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
 	stack := EvalStack{
 		Document: r.r,
 		Cfg:      r.cfg,

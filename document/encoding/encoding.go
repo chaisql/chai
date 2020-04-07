@@ -338,7 +338,7 @@ func (e EncodedDocument) GetByField(field string) (document.Value, error) {
 
 // Iterate decodes each fields one by one and passes them to fn until the end of the document
 // or until fn returns an error.
-func (e EncodedDocument) Iterate(fn func(name string, value document.Value) error) error {
+func (e EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
 	var format Format
 	err := format.Decode(e)
 	if err != nil {
