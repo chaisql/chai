@@ -214,16 +214,6 @@ var tokens = [...]string{
 
 var keywords map[string]Token
 
-func init() {
-	keywords = make(map[string]Token)
-	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
-		keywords[strings.ToLower(tokens[tok])] = tok
-	}
-	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL} {
-		keywords[strings.ToLower(tokens[tok])] = tok
-	}
-}
-
 // String returns the string representation of the token.
 func (tok Token) String() string {
 	if tok >= 0 && tok < Token(len(tokens)) {
