@@ -10,6 +10,7 @@ import (
 	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/pkg/bytesutil"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -491,7 +492,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 			if err != nil {
 				return err
 			}
-			if bytes.Compare(data, d) <= 0 {
+			if bytesutil.CompareBytes(data, d) <= 0 {
 				break
 			}
 
@@ -510,7 +511,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 			if err != nil {
 				return err
 			}
-			if bytes.Compare(data, d) < 0 {
+			if bytesutil.CompareBytes(data, d) < 0 {
 				break
 			}
 
@@ -616,7 +617,7 @@ type heapNode struct {
 type minHeap []heapNode
 
 func (h minHeap) Len() int           { return len(h) }
-func (h minHeap) Less(i, j int) bool { return bytes.Compare(h[i].value, h[j].value) < 0 }
+func (h minHeap) Less(i, j int) bool { return bytesutil.CompareBytes(h[i].value, h[j].value) < 0 }
 func (h minHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 
 func (h *minHeap) Push(x interface{}) {
@@ -636,5 +637,5 @@ type maxHeap struct {
 }
 
 func (h maxHeap) Less(i, j int) bool {
-	return bytes.Compare(h.minHeap[i].value, h.minHeap[j].value) > 0
+	return bytesutil.CompareBytes(h.minHeap[i].value, h.minHeap[j].value) > 0
 }
