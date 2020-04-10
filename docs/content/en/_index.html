@@ -6,9 +6,9 @@ linkTitle = "Genji"
 
 {{< blocks/cover title="Genji" image_anchor="top" height="full" color="ghostwhite" >}}
 <div class="mx-auto">
-	<p class="display-4 font-weight-normal mb-5">
+	<h2 class="display-4 font-weight-normal mb-5">
 		A Document-oriented, Embedded, SQL database
-	</p>
+	</h2>
 	<a class="btn btn-lg btn-primary mr-3 mb-4" href="{{< relref "/docs" >}}">
 		Learn More <i class="fas fa-arrow-alt-circle-right ml-2"></i>
 	</a>
@@ -20,6 +20,24 @@ linkTitle = "Genji"
 {{< /blocks/cover >}}
 
 {{< blocks/section color="primary" >}}
+
+<h2 class="m-auto">What is Genji?</h2>
+
+<div class="mt-4">
+	<p class="m-auto text-center w-75 lead">Genji is an embedded database written in Go that aims to simplify dealing
+		with data
+		in
+		the
+		modern
+		world.
+		It combines the power of <strong>SQL</strong> with the versatility of <strong>documents</strong> to provide a
+		maximum of flexibility with no compromise.
+	</p>
+</div>
+
+{{< /blocks/section >}}
+
+{{< blocks/section color="secondary" >}}
 
 {{% blocks/feature icon="fas fa-database" title="The power of SQL with documents" %}}
 Run powerful SQL queries on rich documents without limits
@@ -33,6 +51,5 @@ Create schemaless tables or specify constraints on selected fields of every docu
 Store data on disk or in-memory, use a B-Tree or an LSM tree. Choose the right engine that covers your needs or create
 one
 {{% /blocks/feature %}}
-
 
 {{< /blocks/section >}}
