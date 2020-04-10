@@ -3,7 +3,7 @@ title: "Updating Documents"
 date: 2020-04-05T11:37:36+04:00
 weight: 60
 description: >
-    How to use the UPDATE statement to update documents in a table
+    How to use the UPDATE statement to modify documents in a table
 ---
 
 The `UPDATE` statement makes it possible to update one or more documents in a table.
