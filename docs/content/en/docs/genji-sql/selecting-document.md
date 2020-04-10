@@ -34,8 +34,11 @@ INSERT INTO users (name, nen, abilities) VALUES
 
 Selecting all users goes like this:
 
+```sql
+SELECT * FROM users;
+```
+
 ```json
-=> SELECT * FROM users;
 {
     "name": "Gon",
     "age": 13,
@@ -65,15 +68,18 @@ Selecting all users goes like this:
 Let's break it down:
 
 - `SELECT`: Run the SELECT command
-- `*`: This is the *projection*, it indicates how to build the documents returned by the result of the query. Here we are using a special projection called the *wildcard*, which is a way to tell Genji to simply project all of the fields of each document.
+- `*`: This is the *projection*, it indicates how to build the documents returned by the result of the query. Here, we are using a special projection called the *wildcard*, which is a way to tell Genji to simply project all of the fields of each document.
 - `FROM users`: Indicates from which table we want to query the data.
 
 ## Understanding projections
 
 Now, let's query only the name and age of each user:
 
+```sql
+SELECT name, age FROM users;
+```
+
 ```json
-=> SELECT name, age FROM users;
 {
     "name": "Gon",
     "age": 13,
@@ -90,7 +96,7 @@ Now, let's query only the name and age of each user:
 
 The result contains three documents, all of them have a `name` and `age` fields.
 
-A projection guarantees that all the documents returned by the query will contain the selected fields, even if the original documents don't have that information. In our example, the `Hisoka` doesn't have an `age` field, so its projected value is `null`.
+A projection guarantees that all the documents returned by the query will contain the selected fields, even if the original documents don't have that information. In our example, the `Hisoka` document doesn't have an `age` field, so its projected value is `null`.
 The only exception is for the `*` wildcard, which projects all the fields of the original document.
 
 ## Querying nested fields
@@ -98,7 +104,10 @@ The only exception is for the `*` wildcard, which projects all the fields of the
 Let's determine who is the father of our users:
 
 ```sql
-=> SELECT name, parent.father FROM users;
+SELECT name, parent.father FROM users;
+```
+
+```json
 {
     "name": "Gon",
     "parents.father": "Ging Freecs"
@@ -117,8 +126,11 @@ In this example, we used the [dot notation]({{< relref "/docs/genji-sql/document
 
 Let's add the information about the first ability they master:
 
+```sql
+SELECT name, parent.father, abilities.0 FROM users;
+```
+
 ```json
-=> SELECT name, parent.father, abilities.0 FROM users;
 {
     "name": "Gon",
     "parents.father": "Ging Freecs",
@@ -142,8 +154,11 @@ Let's add the information about the first ability they master:
 
 The result of the query above contains fields named `parents.father` and `abilities.0`, which isn't that great. Let's rename them to more clean names:
 
+```sql
+SELECT name, parent.father AS father, abilities.0 AS main_skill FROM users;
+```
+
 ```json
-=> SELECT name, parent.father AS father, abilities.0 AS main_skill FROM users;
 {
     "name": "Gon",
     "father": "Ging Freecs",
@@ -168,8 +183,11 @@ The `AS` clause allows creating *aliases* to rename projected fields.
 Until now, we always performed our queries on every document of the table.
 Let's only query those whose `nen` field is `Transmutation`.
 
+```sql
+SELECT name FROM users WHERE nen = 'Transmutation';
+```
+
 ```json
-=> SELECT name FROM users WHERE nen = 'Transmutation';
 {
     "name": "Kirua"
 }
@@ -185,8 +203,11 @@ The `WHERE` clause allows filtering the documents returned. To do that, it evalu
 - if the result of the evaluation is *truthy*, the document is selected
 - if the result of the evaluation is *falsy*, the document is filtered out
 
+```sql
+SELECT name, age FROM users WHERE age < 14;
+```
+
 ```json
-=> SELECT name, age FROM users WHERE age < 14;
 {
     "name": "Gon",
     "age": 13
@@ -202,8 +223,11 @@ In this example, only Gon satisfies the query:
 
 The order in which results are returned can be controlled, using the `ORDER BY` clause
 
+```sql
+SELECT name, age FROM users ORDER BY age;
+```
+
 ```json
-=> SELECT name, age FROM users ORDER BY age;
 {
     "name": "Hisoka",
     "age": null
@@ -236,11 +260,19 @@ Then, Gon and Kirua have an `age` field which is an `INTEGER`, there are compare
 
 The direction can be controlled by using `ASC` or `DESC` clauses.
 
-```json
-=> SELECT name, age FROM users ORDER BY age ASC;
-// returns the same results as above
+```sql
+SELECT name, age FROM users ORDER BY age ASC;
+```
 
-=> SELECT name, age FROM users ORDER BY age DESC;
+```json
+// returns the same results as above
+```
+
+```sql
+SELECT name, age FROM users ORDER BY age DESC;
+```
+
+```json
 {
     "name": "Kirua",
     "age": 14
@@ -259,8 +291,11 @@ The direction can be controlled by using `ASC` or `DESC` clauses.
 
 The `LIMIT` clause is executed after `WHERE` and `ORDER BY` and allows controlling the number of final results.
 
+```sql
+SELECT name FROM users WHERE nen = 'Transmutation' ORDER BY age DESC LIMIT 1;
+```
+
 ```json
-=> SELECT name FROM users WHERE nen = 'Transmutation' ORDER BY age DESC LIMIT 1;
 {
     "name": "Hisoka"
 }
@@ -270,8 +305,11 @@ The `LIMIT` clause is executed after `WHERE` and `ORDER BY` and allows controlli
 
 It is also possible to skip results, using the `OFFSET` clause. It is executed after the `WHERE` and `ORDER BY` clauses, but right before `LIMIT`.
 
+```sql
+SELECT name FROM users ORDER BY name LIMIT 2 OFFSET 1;
+```
+
 ```json
-=> SELECT name FROM users ORDER BY name LIMIT 2 OFFSET 1;
 {
     "name": "Hisoka"
 }
@@ -291,7 +329,10 @@ When a document is inserted without an explicit primary key, an implicit one is 
 To select them, we can use the `pk()` function.
 
 ```sql
-=> SELECT pk(), name FROM users;
+SELECT pk(), name FROM users;
+```
+
+```json
 {
     "name": "Gon",
     "pk()": 1
