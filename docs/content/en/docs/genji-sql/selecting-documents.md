@@ -1,5 +1,5 @@
 ---
-title: "Selecting Document"
+title: "Selecting Documents"
 date: 2020-04-10T08:57:17+04:00
 weight: 70
 description: >
