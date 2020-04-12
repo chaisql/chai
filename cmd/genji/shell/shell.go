@@ -217,6 +217,8 @@ func (sh *Shell) runCommand(cmd string) error {
 			return err
 		}
 		return runTablesCmd(db)
+	case ".exit":
+		os.Exit(0)
 	}
 
 	return fmt.Errorf("unknown command %q", cmd)
