@@ -14,7 +14,6 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Genji"
 	app.Usage = "Shell for the Genji database"
-	app.Version = "v0.4.0"
 	app.EnableBashCompletion = true
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
