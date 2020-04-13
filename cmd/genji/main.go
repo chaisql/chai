@@ -17,11 +17,11 @@ func main() {
 	app.Version = "v0.4.0"
 	app.EnableBashCompletion = true
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "bolt",
 			Usage: "use bolt engine",
 		},
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "badger",
 			Usage: "use badger engine",
 		},
