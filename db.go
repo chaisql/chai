@@ -95,7 +95,7 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 }
 
 // QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns ErrDocumentNotFound.
+// If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
 func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, error) {
 	res, err := db.Query(q, args...)
 	if err != nil {
@@ -168,7 +168,7 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 }
 
 // QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns ErrDocumentNotFound.
+// If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
 func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, error) {
 	res, err := tx.Query(q, args...)
 	if err != nil {
