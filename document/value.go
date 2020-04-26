@@ -261,34 +261,30 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		return v, nil
 	}
 
+	// Null values always remain null.
+	if v.Type == NullValue {
+		return v, nil
+	}
+
 	switch t {
 	case BlobValue:
 		x, err := v.ConvertToBlob()
 		if err != nil {
 			return Value{}, err
 		}
-		return Value{
-			Type: BlobValue,
-			V:    x,
-		}, nil
+		return NewBlobValue(x), nil
 	case TextValue:
 		x, err := v.ConvertToText()
 		if err != nil {
 			return Value{}, err
 		}
-		return Value{
-			Type: TextValue,
-			V:    x,
-		}, nil
+		return NewTextValue(x), nil
 	case BoolValue:
 		x, err := v.ConvertToBool()
 		if err != nil {
 			return Value{}, err
 		}
-		return Value{
-			Type: BoolValue,
-			V:    x,
-		}, nil
+		return NewBoolValue(x), nil
 	case Int8Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
@@ -298,10 +294,7 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 			return Value{}, fmt.Errorf("cannot convert %s to int8: out of range", v.Type)
 		}
 
-		return Value{
-			Type: Int8Value,
-			V:    int8(x),
-		}, nil
+		return NewInt8Value(int8(x)), nil
 	case Int16Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
@@ -310,10 +303,7 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		if x > math.MaxInt16 {
 			return Value{}, fmt.Errorf("cannot convert %s to int16: out of range", v.Type)
 		}
-		return Value{
-			Type: Int16Value,
-			V:    int16(x),
-		}, nil
+		return NewInt16Value(int16(x)), nil
 	case Int32Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
@@ -322,37 +312,25 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		if x > math.MaxInt32 {
 			return Value{}, fmt.Errorf("cannot convert %s to int32: out of range", v.Type)
 		}
-		return Value{
-			Type: Int32Value,
-			V:    int32(x),
-		}, nil
+		return NewInt32Value(int32(x)), nil
 	case Int64Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
 			return Value{}, err
 		}
-		return Value{
-			Type: Int64Value,
-			V:    x,
-		}, nil
+		return NewInt64Value(x), nil
 	case Float64Value:
 		x, err := v.ConvertToFloat64()
 		if err != nil {
 			return Value{}, err
 		}
-		return Value{
-			Type: Float64Value,
-			V:    x,
-		}, nil
+		return NewFloat64Value(x), nil
 	case DurationValue:
 		x, err := v.ConvertToDuration()
 		if err != nil {
 			return Value{}, err
 		}
-		return Value{
-			Type: DurationValue,
-			V:    x,
-		}, nil
+		return NewDurationValue(x), nil
 	}
 
 	return Value{}, fmt.Errorf("can't convert %q to %q", v.Type, t)

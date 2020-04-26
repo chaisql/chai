@@ -16,6 +16,7 @@ func TestValueString(t *testing.T) {
 		value    document.Value
 		expected string
 	}{
+		{"null", document.NewNullValue(), "NULL"},
 		{"bytes", document.NewBlobValue([]byte("bar")), "[98 97 114]"},
 		{"string", document.NewTextValue("bar"), "bar"},
 		{"bool", document.NewBoolValue(true), "true"},
@@ -74,7 +75,7 @@ func TestNewValue(t *testing.T) {
 		{"int32", int32(10), int8(10)},
 		{"int64", int64(10), int8(10)},
 		{"float64", 10.1, float64(10.1)},
-		{"nil", nil, nil},
+		{"null", nil, nil},
 		{"document", document.NewFieldBuffer().Add("a", document.NewIntValue(10)), document.NewFieldBuffer().Add("a", document.NewIntValue(10))},
 		{"array", document.NewValueBuffer(document.NewIntValue(10)), document.NewValueBuffer(document.NewIntValue(10))},
 		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
@@ -105,11 +106,11 @@ func TestConvertToBlob(t *testing.T) {
 		name     string
 		v        document.Value
 		fails    bool
-		expected []byte
+		expected interface{}
 	}{
+		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), false, []byte("bar")},
 		{"string", document.NewTextValue("bar"), false, []byte("bar")},
-		{"null", document.NewNullValue(), false, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
 		{"int", document.NewIntValue(10), true, nil},
 		{"int8", document.NewInt8Value(10), true, nil},
@@ -124,12 +125,12 @@ func TestConvertToBlob(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.ConvertToBlob()
+			res, err := test.v.ConvertTo(document.BlobValue)
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.expected, res)
+				require.Equal(t, test.expected, res.V)
 			}
 		})
 	}
@@ -140,31 +141,31 @@ func TestConvertToText(t *testing.T) {
 		name     string
 		v        document.Value
 		fails    bool
-		expected string
+		expected interface{}
 	}{
-		{"bytes", document.NewBlobValue([]byte("bar")), false, "bar"},
-		{"string", document.NewTextValue("bar"), false, "bar"},
-		{"null", document.NewNullValue(), false, ""},
-		{"bool", document.NewBoolValue(true), true, ""},
-		{"int", document.NewIntValue(10), true, ""},
-		{"int8", document.NewInt8Value(10), true, ""},
-		{"int16", document.NewInt16Value(10), true, ""},
-		{"int32", document.NewInt32Value(10), true, ""},
-		{"int64", document.NewInt64Value(10), true, ""},
-		{"float64", document.NewFloat64Value(10.1), true, ""},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, ""},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, ""},
-		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, ""},
+		{"null", document.NewNullValue(), false, nil},
+		{"bytes", document.NewBlobValue([]byte("bar")), false, []byte("bar")},
+		{"string", document.NewTextValue("bar"), false, []byte("bar")},
+		{"bool", document.NewBoolValue(true), true, []byte{}},
+		{"int", document.NewIntValue(10), true, []byte{}},
+		{"int8", document.NewInt8Value(10), true, []byte{}},
+		{"int16", document.NewInt16Value(10), true, []byte{}},
+		{"int32", document.NewInt32Value(10), true, []byte{}},
+		{"int64", document.NewInt64Value(10), true, []byte{}},
+		{"float64", document.NewFloat64Value(10.1), true, []byte{}},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, []byte{}},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, []byte{}},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, []byte{}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.ConvertToText()
+			res, err := test.v.ConvertTo(document.TextValue)
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.expected, res)
+				require.Equal(t, test.expected, res.V)
 			}
 		})
 	}
@@ -175,13 +176,13 @@ func TestConvertToBool(t *testing.T) {
 		name     string
 		v        document.Value
 		fails    bool
-		expected bool
+		expected interface{}
 	}{
+		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), false, true},
 		{"zero bytes", document.NewBlobValue([]byte("")), false, false},
 		{"string", document.NewTextValue("bar"), false, true},
 		{"zero string", document.NewTextValue(""), false, false},
-		{"null", document.NewNullValue(), false, false},
 		{"bool", document.NewBoolValue(true), false, true},
 		{"zero bool", document.NewBoolValue(false), false, false},
 		{"int", document.NewIntValue(10), false, true},
@@ -206,12 +207,12 @@ func TestConvertToBool(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.ConvertToBool()
+			res, err := test.v.ConvertTo(document.BoolValue)
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.expected, res)
+				require.Equal(t, test.expected, res.V)
 			}
 		})
 	}
@@ -222,8 +223,9 @@ func TestConvertToNumber(t *testing.T) {
 		name     string
 		v        document.Value
 		fails    bool
-		expected int64
+		expected interface{}
 	}{
+		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), true, 0},
 		{"string", document.NewTextValue("bar"), true, 0},
 		{"bool", document.NewBoolValue(true), false, 1},
@@ -233,34 +235,41 @@ func TestConvertToNumber(t *testing.T) {
 		{"int32", document.NewInt32Value(10), false, 10},
 		{"int64", document.NewInt64Value(10), false, 10},
 		{"float64", document.NewFloat64Value(10), false, 10},
-		{"null", document.NewNullValue(), false, 0},
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, 0},
 		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, 0},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), false, 10},
 	}
 
-	check := func(t *testing.T, res interface{}, err error, fails bool, expected interface{}) {
+	check := func(t *testing.T, res document.Value, err error, fails bool, expected interface{}) {
 		if fails {
 			require.Error(t, err)
 		} else {
 			require.NoError(t, err)
-			require.Equal(t, expected, res)
+			require.Equal(t, expected, res.V)
 		}
 	}
 
 	for _, test := range tests {
 		t.Run(test.name+" to int64", func(t *testing.T) {
-			res, err := test.v.ConvertToInt64()
-			check(t, res, err, test.fails, int64(test.expected))
+			res, err := test.v.ConvertTo(document.Int64Value)
+			expected := test.expected
+			if expected != nil {
+				expected = int64(expected.(int))
+			}
+			check(t, res, err, test.fails, expected)
 		})
 		t.Run(test.name+" to float64", func(t *testing.T) {
-			res, err := test.v.ConvertToFloat64()
-			check(t, res, err, test.fails, float64(test.expected))
+			res, err := test.v.ConvertTo(document.Float64Value)
+			expected := test.expected
+			if expected != nil {
+				expected = float64(expected.(int))
+			}
+			check(t, res, err, test.fails, expected)
 		})
 	}
 
 	t.Run("float64/precision loss", func(t *testing.T) {
-		_, err := document.NewFloat64Value(10.4).ConvertToInt64()
+		_, err := document.NewFloat64Value(10.4).ConvertTo(document.Int64Value)
 		require.Error(t, err)
 		_, err = document.NewFloat64Value(10.4).ConvertTo(document.Int32Value)
 		require.Error(t, err)
@@ -291,31 +300,31 @@ func TestConvertToDuration(t *testing.T) {
 		name     string
 		v        document.Value
 		fails    bool
-		expected time.Duration
+		expected interface{}
 	}{
+		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), true, 0},
-		{"string", document.NewTextValue("1ms"), false, 1000000},
+		{"string", document.NewTextValue("1ms"), false, time.Millisecond},
 		{"bad string", document.NewTextValue("foo"), true, 0},
-		{"bool", document.NewBoolValue(true), false, 1},
-		{"int", document.NewIntValue(10), false, 10},
-		{"int8", document.NewInt8Value(10), false, 10},
-		{"int16", document.NewInt16Value(10), false, 10},
-		{"int32", document.NewInt32Value(10), false, 10},
-		{"int64", document.NewInt64Value(10), false, 10},
-		{"float64", document.NewFloat64Value(10), false, 10},
-		{"null", document.NewNullValue(), false, 0},
+		{"bool", document.NewBoolValue(true), false, time.Nanosecond},
+		{"int", document.NewIntValue(10), false, 10 * time.Nanosecond},
+		{"int8", document.NewInt8Value(10), false, 10 * time.Nanosecond},
+		{"int16", document.NewInt16Value(10), false, 10 * time.Nanosecond},
+		{"int32", document.NewInt32Value(10), false, 10 * time.Nanosecond},
+		{"int64", document.NewInt64Value(10), false, 10 * time.Nanosecond},
+		{"float64", document.NewFloat64Value(10), false, 10 * time.Nanosecond},
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, 0},
 		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, 0},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.ConvertToDuration()
+			res, err := test.v.ConvertTo(document.DurationValue)
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.expected, res)
+				require.Equal(t, test.expected, res.V)
 			}
 		})
 	}
@@ -326,26 +335,26 @@ func TestConvertToDocument(t *testing.T) {
 		name     string
 		v        document.Value
 		fails    bool
-		expected document.Document
+		expected document.Value
 	}{
-		{"null", document.NewNullValue(), false, document.NewFieldBuffer()},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10))), false, document.NewFieldBuffer().Add("a", document.NewInt16Value(10))},
-		{"bytes", document.NewBlobValue([]byte("bar")), true, nil},
-		{"string", document.NewTextValue("bar"), true, nil},
-		{"bool", document.NewBoolValue(true), true, nil},
-		{"int", document.NewIntValue(10), true, nil},
-		{"int8", document.NewInt8Value(10), true, nil},
-		{"int16", document.NewInt16Value(10), true, nil},
-		{"int32", document.NewInt32Value(10), true, nil},
-		{"int64", document.NewInt64Value(10), true, nil},
-		{"float64", document.NewFloat64Value(10), true, nil},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, nil},
-		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, nil},
+		{"null", document.NewNullValue(), false, document.NewNullValue()},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10))), false, document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10)))},
+		{"bytes", document.NewBlobValue([]byte("bar")), true, document.Value{}},
+		{"string", document.NewTextValue("bar"), true, document.Value{}},
+		{"bool", document.NewBoolValue(true), true, document.Value{}},
+		{"int", document.NewIntValue(10), true, document.Value{}},
+		{"int8", document.NewInt8Value(10), true, document.Value{}},
+		{"int16", document.NewInt16Value(10), true, document.Value{}},
+		{"int32", document.NewInt32Value(10), true, document.Value{}},
+		{"int64", document.NewInt64Value(10), true, document.Value{}},
+		{"float64", document.NewFloat64Value(10), true, document.Value{}},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, document.Value{}},
+		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, document.Value{}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.ConvertToDocument()
+			res, err := test.v.ConvertTo(document.DocumentValue)
 			if test.fails {
 				require.Error(t, err)
 			} else {
