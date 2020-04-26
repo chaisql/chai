@@ -297,10 +297,11 @@ func TestTableInsert(t *testing.T) {
 		require.Equal(t, document.NewTextValue("baaaaz"), v)
 	})
 
-	t.Run("Should fail if there is a not null field constraint on a document field and the field is null", func(t *testing.T) {
+	t.Run("Should fail if there is a not null field constraint on a document field and the field is null or missing", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
+		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo"}, 0, false, true},
@@ -310,6 +311,7 @@ func TestTableInsert(t *testing.T) {
 		tb1, err := tx.GetTable("test1")
 		require.NoError(t, err)
 
+		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableConfig{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo"}, document.Int32Value, false, true},
@@ -319,17 +321,32 @@ func TestTableInsert(t *testing.T) {
 		tb2, err := tx.GetTable("test2")
 		require.NoError(t, err)
 
-		// insert with empty foo field
+		// insert with empty foo field should fail
 		_, err = tb1.Insert(document.NewFieldBuffer().
 			Add("bar", document.NewFloat64Value(1)))
 		require.Error(t, err)
+
+		// insert with null foo field should fail
+		_, err = tb1.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewNullValue()))
+		require.Error(t, err)
+
+		// otherwise it should work
 		_, err = tb1.Insert(document.NewFieldBuffer().
 			Add("foo", document.NewFloat64Value(1)))
 		require.NoError(t, err)
 
+		// insert with empty foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("bar", document.NewFloat64Value(1)))
 		require.Error(t, err)
+
+		// insert with null foo field should fail
+		_, err = tb2.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewNullValue()))
+		require.Error(t, err)
+
+		// otherwise it should work
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("foo", document.NewFloat64Value(1)))
 		require.NoError(t, err)

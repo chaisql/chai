@@ -191,7 +191,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		field := c.Path[len(c.Path)-1]
 
 		v, err := buf.GetByField(field)
-		// if the field is not found we make sure it is not required,
+		// if the field is not found we make sure it is not required
 		if err != nil {
 			if err == document.ErrFieldNotFound {
 				if c.IsNotNull {
@@ -202,6 +202,10 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			}
 
 			return err
+		}
+		// if the field is null we make sure it is not required
+		if v.Type == document.NullValue && c.IsNotNull {
+			return fmt.Errorf("field %q is required and must be not null", c.Path)
 		}
 
 		// if not we convert it and replace it in the buffer
