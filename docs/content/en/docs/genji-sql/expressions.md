@@ -135,6 +135,7 @@ These operators are used to compare values and evaluate to a boolean.
 | >=   | Evaluates to `true` if the left-side expression is greater than or equal to the right-side expression, otherwise returns `false` |
 | <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false`                |
 | <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false`    |
+| IN   | Evaluates to `true` if the left-side expression is equal to one of the values of the right-side array                            |
 
 Examples:
 
@@ -144,6 +145,9 @@ Examples:
 
 1 > 2.5
 -> false
+
+3 IN [1, 2, 3]
+-> true
 ```
 
 #### Conversion during comparison
