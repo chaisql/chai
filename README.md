@@ -36,7 +36,7 @@ Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc]
 - **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
 - **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
 - **Transaction support**: Read-only and read/write transactions are supported by default.
-- **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON *dot notation*.
+- **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON _dot notation_.
 - **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
 - **Compatible** with the `database/sql` package
 
@@ -223,7 +223,7 @@ res, err := db.QueryRow(...)
 
 Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) and in-memory.
 
-### Use the BoltDB engine
+### Using the BoltDB engine
 
 ```go
 import (
@@ -238,7 +238,7 @@ func main() {
 }
 ```
 
-### Use the memory engine
+### Using the memory engine
 
 ```go
 import (
@@ -256,15 +256,7 @@ func main() {
 }
 ```
 
-### Use the Badger engine
-
-The Badger engine must be installed first
-
-```sh
-go get github.com/asdine/genji/engine/badgerengine
-```
-
-Then, it can be instantiated using the `genji.New` function:
+### Using the Badger engine
 
 ```go
 import (
@@ -272,12 +264,12 @@ import (
 
     "github.com/asdine/genji"
     "github.com/asdine/genji/engine/badgerengine"
-    "github.com/dgraph-io/badger"
+    "github.com/dgraph-io/badger/v2"
 )
 
 func main() {
     // Create a badger engine
-    ng, err := badgerengine.NewEngine(badger.DefaultOptions("mydb")))
+    ng, err := badgerengine.NewEngine(badger.DefaultOptions("mydb"))
     if err != nil {
         log.Fatal(err)
     }
