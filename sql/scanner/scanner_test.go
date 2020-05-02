@@ -43,6 +43,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `OR`, tok: scanner.OR, raw: `OR`},
 		{s: `or`, tok: scanner.OR, raw: `or`},
 
+		// Comparison operators
 		{s: `=`, tok: scanner.EQ, raw: `=`},
 		{s: `==`, tok: scanner.EQ, raw: `==`},
 		{s: `<>`, tok: scanner.NEQ, raw: `<>`},
@@ -51,6 +52,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `<=`, tok: scanner.LTE, raw: `<=`},
 		{s: `>`, tok: scanner.GT, raw: `>`},
 		{s: `>=`, tok: scanner.GTE, raw: `>=`},
+		{s: `IN`, tok: scanner.IN, raw: `IN`},
 
 		// Misc tokens
 		{s: `(`, tok: scanner.LPAREN, raw: `(`},
