@@ -5,6 +5,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/query/expr"
 )
 
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
@@ -21,7 +22,7 @@ func (stmt CreateTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateTableStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -53,7 +54,7 @@ func (stmt CreateIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -115,7 +116,7 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	return ident, true, err
 }
 
-func (p *Parser) parseOrderBy() (query.FieldSelector, scanner.Token, error) {
+func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
 	// parse ORDER token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.ORDER {
 		p.Unscan()
@@ -135,14 +136,14 @@ func (p *Parser) parseOrderBy() (query.FieldSelector, scanner.Token, error) {
 
 	// parse optional ASC or DESC
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.ASC || tok == scanner.DESC {
-		return query.FieldSelector(ref), tok, nil
+		return expr.FieldSelector(ref), tok, nil
 	}
 	p.Unscan()
 
-	return query.FieldSelector(ref), 0, nil
+	return expr.FieldSelector(ref), 0, nil
 }
 
-func (p *Parser) parseLimit() (query.Expr, error) {
+func (p *Parser) parseLimit() (expr.Expr, error) {
 	// parse LIMIT token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
 		p.Unscan()
@@ -153,7 +154,7 @@ func (p *Parser) parseLimit() (query.Expr, error) {
 	return e, err
 }
 
-func (p *Parser) parseOffset() (query.Expr, error) {
+func (p *Parser) parseOffset() (expr.Expr, error) {
 	// parse OFFSET token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
 		p.Unscan()

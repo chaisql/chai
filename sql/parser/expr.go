@@ -8,20 +8,20 @@ import (
 	"time"
 
 	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
 type operator interface {
 	Precedence() int
-	LeftHand() query.Expr
-	RightHand() query.Expr
-	SetLeftHandExpr(query.Expr)
-	SetRightHandExpr(query.Expr)
+	LeftHand() expr.Expr
+	RightHand() expr.Expr
+	SetLeftHandExpr(expr.Expr)
+	SetRightHandExpr(expr.Expr)
 }
 
 // parseExpr parses an expression.
-func (p *Parser) parseExpr() (query.Expr, string, error) {
+func (p *Parser) parseExpr() (expr.Expr, string, error) {
 	// enable the expression buffer to store the literal representation
 	// of the parsed expression
 	if p.buf == nil {
@@ -31,7 +31,7 @@ func (p *Parser) parseExpr() (query.Expr, string, error) {
 
 	var err error
 	// Dummy root node.
-	var root operator = query.NewCmpOp(nil, nil, 0)
+	var root operator = expr.NewCmpOp(nil, nil, 0)
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
@@ -50,7 +50,7 @@ func (p *Parser) parseExpr() (query.Expr, string, error) {
 			return root.RightHand(), strings.TrimSpace(p.buf.String()), nil
 		}
 
-		var rhs query.Expr
+		var rhs expr.Expr
 
 		if rhs, err = p.parseUnaryExpr(); err != nil {
 			return nil, "", err
@@ -72,47 +72,49 @@ func (p *Parser) parseExpr() (query.Expr, string, error) {
 	}
 }
 
-func opToExpr(op scanner.Token, lhs, rhs query.Expr) query.Expr {
+func opToExpr(op scanner.Token, lhs, rhs expr.Expr) expr.Expr {
 	switch op {
 	case scanner.EQ:
-		return query.Eq(lhs, rhs)
+		return expr.Eq(lhs, rhs)
 	case scanner.NEQ:
-		return query.Neq(lhs, rhs)
+		return expr.Neq(lhs, rhs)
 	case scanner.GT:
-		return query.Gt(lhs, rhs)
+		return expr.Gt(lhs, rhs)
 	case scanner.GTE:
-		return query.Gte(lhs, rhs)
+		return expr.Gte(lhs, rhs)
 	case scanner.LT:
-		return query.Lt(lhs, rhs)
+		return expr.Lt(lhs, rhs)
 	case scanner.LTE:
-		return query.Lte(lhs, rhs)
+		return expr.Lte(lhs, rhs)
 	case scanner.AND:
-		return query.And(lhs, rhs)
+		return expr.And(lhs, rhs)
 	case scanner.OR:
-		return query.Or(lhs, rhs)
+		return expr.Or(lhs, rhs)
 	case scanner.ADD:
-		return query.Add(lhs, rhs)
+		return expr.Add(lhs, rhs)
 	case scanner.SUB:
-		return query.Sub(lhs, rhs)
+		return expr.Sub(lhs, rhs)
 	case scanner.MUL:
-		return query.Mul(lhs, rhs)
+		return expr.Mul(lhs, rhs)
 	case scanner.DIV:
-		return query.Div(lhs, rhs)
+		return expr.Div(lhs, rhs)
 	case scanner.MOD:
-		return query.Mod(lhs, rhs)
+		return expr.Mod(lhs, rhs)
 	case scanner.BITWISEAND:
-		return query.BitwiseAnd(lhs, rhs)
+		return expr.BitwiseAnd(lhs, rhs)
 	case scanner.BITWISEOR:
-		return query.BitwiseOr(lhs, rhs)
+		return expr.BitwiseOr(lhs, rhs)
 	case scanner.BITWISEXOR:
-		return query.BitwiseXor(lhs, rhs)
+		return expr.BitwiseXor(lhs, rhs)
+	case scanner.IN:
+		return expr.In(lhs, rhs)
 	}
 
 	panic(fmt.Sprintf("unknown operator %q", op))
 }
 
 // parseUnaryExpr parses an non-binary expression.
-func (p *Parser) parseUnaryExpr() (query.Expr, error) {
+func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.CAST:
@@ -131,7 +133,7 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		fs := query.FieldSelector(field)
+		fs := expr.FieldSelector(field)
 		return fs, nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
@@ -141,41 +143,41 @@ func (p *Parser) parseUnaryExpr() (query.Expr, error) {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.namedParams++
-		return query.NamedParam(lit[1:]), nil
+		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
-		return query.PositionalParam(p.orderedParams), nil
+		return expr.PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return query.TextValue(lit), nil
+		return expr.TextValue(lit), nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return query.Float64Value(v), nil
+		return expr.Float64Value(v), nil
 	case scanner.INTEGER:
 		v, err := strconv.Atoi(lit)
 		if err != nil {
 			// The literal may be too large to fit into an int64, parse as Float64
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {
-				return query.Float64Value(v), nil
+				return expr.Float64Value(v), nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		return query.IntValue(int(v)), nil
+		return expr.IntValue(int(v)), nil
 	case scanner.TRUE, scanner.FALSE:
-		return query.BoolValue(tok == scanner.TRUE), nil
+		return expr.BoolValue(tok == scanner.TRUE), nil
 	case scanner.NULL:
-		return query.NullValue(), nil
+		return expr.NullValue(), nil
 	case scanner.DURATION:
 		d, err := time.ParseDuration(lit)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse duration", Pos: pos}
 		}
-		return query.DurationValue(d), nil
+		return expr.DurationValue(d), nil
 	case scanner.LBRACKET:
 		p.Unscan()
 		e, _, err := p.parseDocument()
@@ -226,7 +228,7 @@ func (p *Parser) parseIdentList() ([]string, error) {
 }
 
 // parseParam parses a positional or named param.
-func (p *Parser) parseParam() (query.Expr, error) {
+func (p *Parser) parseParam() (expr.Expr, error) {
 	tok, _, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.NAMEDPARAM:
@@ -237,13 +239,13 @@ func (p *Parser) parseParam() (query.Expr, error) {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.namedParams++
-		return query.NamedParam(lit[1:]), nil
+		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
 			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
-		return query.PositionalParam(p.orderedParams), nil
+		return expr.PositionalParam(p.orderedParams), nil
 	default:
 		return nil, nil
 	}
@@ -279,15 +281,15 @@ func (p *Parser) parseType() document.ValueType {
 }
 
 // parseDocument parses a document
-func (p *Parser) parseDocument() (query.Expr, bool, error) {
+func (p *Parser) parseDocument() (expr.Expr, bool, error) {
 	// Parse { token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
 		p.Unscan()
 		return nil, false, nil
 	}
 
-	var pairs query.KVPairs
-	var pair query.KVPair
+	var pairs expr.KVPairs
+	var pair expr.KVPair
 	var err error
 
 	// Parse kv pairs.
@@ -314,30 +316,30 @@ func (p *Parser) parseDocument() (query.Expr, bool, error) {
 }
 
 // parseKV parses a key-value pair in the form IDENT : Expr.
-func (p *Parser) parseKV() (query.KVPair, error) {
+func (p *Parser) parseKV() (expr.KVPair, error) {
 	var k string
 
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok == scanner.IDENT || tok == scanner.STRING {
 		k = lit
 	} else {
-		return query.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{"ident", "string"}, pos)
+		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{"ident", "string"}, pos)
 	}
 
 	tok, pos, lit = p.ScanIgnoreWhitespace()
 	if tok != scanner.COLON {
 		p.Unscan()
-		return query.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
+		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
 	}
 
-	expr, _, err := p.parseExpr()
+	e, _, err := p.parseExpr()
 	if err != nil {
-		return query.KVPair{}, err
+		return expr.KVPair{}, err
 	}
 
-	return query.KVPair{
+	return expr.KVPair{
 		K: k,
-		V: expr,
+		V: e,
 	}, nil
 }
 
@@ -384,14 +386,14 @@ LOOP:
 	return fieldRef, nil
 }
 
-func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (query.LiteralExprList, error) {
+func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.LiteralExprList, error) {
 	// Parse ( or [ token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != leftToken {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
 	}
 
-	var exprList query.LiteralExprList
-	var expr query.Expr
+	var exprList expr.LiteralExprList
+	var expr expr.Expr
 	var err error
 
 	// Parse expressions.
@@ -420,7 +422,7 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (query.Liter
 // parseFunction parses a function call.
 // a function is an identifier followed by a parenthesis,
 // an optional coma-separated list of expressions and a closing parenthesis.
-func (p *Parser) parseFunction() (query.Expr, error) {
+func (p *Parser) parseFunction() (expr.Expr, error) {
 	// Parse function name.
 	fname, err := p.parseIdent()
 	if err != nil {
@@ -434,30 +436,30 @@ func (p *Parser) parseFunction() (query.Expr, error) {
 
 	// Check if the function is called without arguments.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {
-		return query.GetFunc(fname)
+		return expr.GetFunc(fname)
 	}
 	p.Unscan()
 
-	var exprs []query.Expr
+	var exprs []expr.Expr
 
 	// Parse expressions.
 	for {
-		expr, _, err := p.parseExpr()
+		e, _, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}
 
-		exprs = append(exprs, expr)
+		exprs = append(exprs, e)
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
-			return query.GetFunc(fname, exprs...)
+			return expr.GetFunc(fname, exprs...)
 		}
 	}
 }
 
 // parseCastExpression parses a string of the form CAST(expr AS type).
-func (p *Parser) parseCastExpression() (query.Expr, error) {
+func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	// Parse required CAST token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.CAST {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"CAST"}, pos)
@@ -469,7 +471,7 @@ func (p *Parser) parseCastExpression() (query.Expr, error) {
 	}
 
 	// parse required expression.
-	expr, _, err := p.parseExpr()
+	e, _, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -492,5 +494,5 @@ func (p *Parser) parseCastExpression() (query.Expr, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return query.Cast{Expr: expr, ConvertTo: tp}, nil
+	return expr.Cast{Expr: e, ConvertTo: tp}, nil
 }

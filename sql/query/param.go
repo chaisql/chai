@@ -2,9 +2,12 @@
 
 package query
 
-import "github.com/asdine/genji/document"
+import (
+	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/query/expr"
+)
 
-func extractDocumentFromParamExtractor(pe paramExtractor, params []Param) (document.Document, error) {
+func extractDocumentFromParamExtractor(pe paramExtractor, params []expr.Param) (document.Document, error) {
 	v, err := pe.extract(params)
 	if err != nil {
 		return nil, err

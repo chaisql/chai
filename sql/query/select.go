@@ -6,17 +6,18 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
 // SelectStmt is a DSL that allows creating a full Select query.
 type SelectStmt struct {
 	TableName        string
-	WhereExpr        Expr
-	OrderBy          FieldSelector
+	WhereExpr        expr.Expr
+	OrderBy          expr.FieldSelector
 	OrderByDirection scanner.Token
-	OffsetExpr       Expr
-	LimitExpr        Expr
+	OffsetExpr       expr.Expr
+	LimitExpr        expr.Expr
 	Selectors        []ResultField
 }
 
@@ -27,12 +28,12 @@ func (stmt SelectStmt) IsReadOnly() bool {
 
 // Run the Select statement in the given transaction.
 // It implements the Statement interface.
-func (stmt SelectStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt SelectStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	return stmt.exec(tx, args)
 }
 
 // Exec the Select query within tx.
-func (stmt SelectStmt) exec(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt SelectStmt) exec(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	// if there is no table name specified, evaluate the expression immediatly and return
@@ -64,7 +65,7 @@ func (stmt SelectStmt) exec(tx *database.Transaction, args []Param) (Result, err
 	offset := -1
 	limit := -1
 
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -157,7 +158,7 @@ func (r documentMask) GetByField(field string) (document.Value, error) {
 }
 
 func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Document: r.r,
 		Cfg:      r.cfg,
 	}
@@ -174,13 +175,13 @@ func (r documentMask) Iterate(fn func(field string, value document.Value) error)
 
 // A ResultField is a field that will be part of the result document that will be returned at the end of a Select statement.
 type ResultField interface {
-	Iterate(stack EvalStack, fn func(field string, value document.Value) error) error
+	Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error
 	Name() string
 }
 
 // ResultFieldExpr turns any expression into a ResultField.
 type ResultFieldExpr struct {
-	Expr
+	expr.Expr
 
 	ExprName string
 }
@@ -191,9 +192,9 @@ func (r ResultFieldExpr) Name() string {
 }
 
 // Iterate evaluates Expr and calls fn once with the result.
-func (r ResultFieldExpr) Iterate(stack EvalStack, fn func(field string, value document.Value) error) error {
+func (r ResultFieldExpr) Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error {
 	v, err := r.Expr.Eval(stack)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil {
 		return err
 	}
 
@@ -209,7 +210,7 @@ func (w Wildcard) Name() string {
 }
 
 // Iterate call the document iterate method.
-func (w Wildcard) Iterate(stack EvalStack, fn func(field string, value document.Value) error) error {
+func (w Wildcard) Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error {
 	if stack.Document == nil {
 		return errors.New("no table specified")
 	}

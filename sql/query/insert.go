@@ -6,13 +6,14 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/query/expr"
 )
 
 // InsertStmt is a DSL that allows creating a full Insert query.
 type InsertStmt struct {
 	TableName  string
 	FieldNames []string
-	Values     LiteralExprList
+	Values     expr.LiteralExprList
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -22,7 +23,7 @@ func (stmt InsertStmt) IsReadOnly() bool {
 
 // Run the Insert statement in the given transaction.
 // It implements the Statement interface.
-func (stmt InsertStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt InsertStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -38,7 +39,7 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []Param) (Result, erro
 		return res, err
 	}
 
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -51,10 +52,10 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []Param) (Result, erro
 }
 
 type paramExtractor interface {
-	extract(params []Param) (interface{}, error)
+	extract(params []expr.Param) (interface{}, error)
 }
 
-func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Result, error) {
+func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) (Result, error) {
 	var res Result
 	var err error
 
@@ -69,7 +70,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			if err != nil {
 				return res, err
 			}
-		case LiteralValue:
+		case expr.LiteralValue:
 			v := document.Value(tp)
 
 			if v.Type != document.DocumentValue {
@@ -80,7 +81,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 			if err != nil {
 				return res, err
 			}
-		case KVPairs:
+		case expr.KVPairs:
 			v, err := tp.Eval(stack)
 			if err != nil {
 				return res, err
@@ -104,7 +105,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack EvalStack) (Resu
 	return res, nil
 }
 
-func (stmt InsertStmt) insertExprList(t *database.Table, stack EvalStack) (Result, error) {
+func (stmt InsertStmt) insertExprList(t *database.Table, stack expr.EvalStack) (Result, error) {
 	var res Result
 
 	// iterate over all of the documents (r1, r2, r3, ...)

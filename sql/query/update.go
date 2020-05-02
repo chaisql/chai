@@ -7,6 +7,7 @@ import (
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/document/encoding"
 	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/sql/query/expr"
 )
 
 // updateBufferSize is the size of the buffer used to update documents.
@@ -15,8 +16,8 @@ const updateBufferSize = 100
 // UpdateStmt is a DSL that allows creating a full Update query.
 type UpdateStmt struct {
 	TableName string
-	Pairs     map[string]Expr
-	WhereExpr Expr
+	Pairs     map[string]expr.Expr
+	WhereExpr expr.Expr
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -26,7 +27,7 @@ func (stmt UpdateStmt) IsReadOnly() bool {
 
 // Run runs the Update table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt UpdateStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -37,7 +38,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []Param) (Result, erro
 		return res, errors.New("Set method not called")
 	}
 
-	stack := EvalStack{
+	stack := expr.EvalStack{
 		Tx:     tx,
 		Params: args,
 	}
@@ -77,7 +78,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []Param) (Result, erro
 					continue
 				}
 
-				ev, err := e.Eval(EvalStack{
+				ev, err := e.Eval(expr.EvalStack{
 					Tx:       tx,
 					Document: d,
 					Params:   args,

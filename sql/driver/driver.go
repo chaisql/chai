@@ -12,6 +12,7 @@ import (
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/parser"
 	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/query/expr"
 )
 
 func init() {
@@ -267,8 +268,8 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	return rs, nil
 }
 
-func driverNamedValueToParams(args []driver.NamedValue) []query.Param {
-	params := make([]query.Param, len(args))
+func driverNamedValueToParams(args []driver.NamedValue) []expr.Param {
+	params := make([]expr.Param, len(args))
 	for i, arg := range args {
 		params[i].Name = arg.Name
 		params[i].Value = arg.Value

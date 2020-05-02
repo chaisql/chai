@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -64,13 +65,13 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues() (query.LiteralExprList, error) {
+func (p *Parser) parseValues() (expr.LiteralExprList, error) {
 	// Check if the VALUES token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES"}, pos)
 	}
 
-	var valuesList query.LiteralExprList
+	var valuesList expr.LiteralExprList
 	// Parse first (required) value list.
 	d, err := p.parseValue()
 	if err != nil {
@@ -98,7 +99,7 @@ func (p *Parser) parseValues() (query.LiteralExprList, error) {
 }
 
 // parseValue parses either a parameter, a JSON document or a list of expressions.
-func (p *Parser) parseValue() (query.Expr, error) {
+func (p *Parser) parseValue() (expr.Expr, error) {
 	// Parse a param first
 	prm, err := p.parseParam()
 	if err != nil {
