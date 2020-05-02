@@ -3,7 +3,7 @@ title: "Expressions"
 date: 2020-04-03T12:36:25+04:00
 weight: 40
 description: >
-    How expression are evaluated, compared, etc.
+  How expression are evaluated, compared, etc.
 ---
 
 Expressions are components that can be evaluated to a value.
@@ -17,8 +17,8 @@ Example:
 
 An expression can be found in two forms:
 
-* **unary**: meaning it contains only one component
-* **binary**: meaning it contains two expressions, or *operands*, and one *operator*. i.e. `<expr> <operator> <expr>`
+- **unary**: meaning it contains only one component
+- **binary**: meaning it contains two expressions, or _operands_, and one _operator_. i.e. `<expr> <operator> <expr>`
 
 Example:
 
@@ -49,8 +49,8 @@ Any [literal]({{< relref "/docs/genji-sql/lexical-structure" >}}#literals) evalu
 
 Example:
 
-* `10` will be evaluated to an `int8`, because is it bigger than -128 and smaller than 127
-* `-500` will be evaluated to an `int16`, because it is smaller than -128 but bigger than -32768
+- `10` will be evaluated to an `int8`, because is it bigger than -128 and smaller than 127
+- `-500` will be evaluated to an `int16`, because it is smaller than -128 but bigger than -32768
 
 If an integer is bigger than the maximum `int64` value or smaller than the minimum `int64` value, it will be evaluated as a `float64`.
 
@@ -72,9 +72,39 @@ If an integer is bigger than the maximum `int64` value or smaller than the minim
 
 ### Dot notation
 
-[Dot notation]({{< relref "/docs/genji-sql/lexical-structure" >}}#dot-notation) are evaluated into the value they refer to.
+[Dot notations]({{< relref "/docs/genji-sql/lexical-structure" >}}#dot-notation) are evaluated into the value they refer to.
 They are used to select a value from a [document]({{< relref "/docs/genji-sql/documents" >}}).
 Their type will depend on the type of the value extracted from the document.
+
+Given the following document:
+
+```js
+{
+    "recipes": 10,
+    "cooking-time": {
+        "eggs": [3, 6, 9]
+    },
+}
+```
+
+Here are examples on how dot notation is evaluated:
+
+```python
+recipes
+-> 10
+
+`cooking-time`
+->  {
+        "eggs": [
+            3,
+            6,
+            9
+        ]
+    }
+
+`cooking-time`.eggs.2
+-> 9
+```
 
 ## Operators
 
@@ -86,25 +116,25 @@ It is possible though to combine multiple operators to create an [evaluation tre
 
 Logical operators are operators that return a boolean under certain conditions.
 
-| Name| Description |
-| --- | --- |
-| `AND` | Evaluates to `true` if both operands are *truthy* |
-| `OR` | Evaluates to `true` if either the left operand or the right are *truthy* |
+| Name  | Description                                                              |
+| ----- | ------------------------------------------------------------------------ |
+| `AND` | Evaluates to `true` if both operands are _truthy_                        |
+| `OR`  | Evaluates to `true` if either the left operand or the right are _truthy_ |
 
-An expression is *truthy* if it evaluates to a non zero-value of its type.
+An expression is _truthy_ if it evaluates to a non zero-value of its type.
 
 ### Comparison operators
 
 These operators are used to compare values and evaluate to a boolean.
 
-| Name| Description |
-| --- | --- |
-| =    | Evaluates to `true` if operands are equal, otherwise returns `false` |
-| !=   | Evaluates to `true` if operands are not equal, otherwise returns `false` |
-| >    | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false` |
+| Name | Description                                                                                                                      |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------- |
+| =    | Evaluates to `true` if operands are equal, otherwise returns `false`                                                             |
+| !=   | Evaluates to `true` if operands are not equal, otherwise returns `false`                                                         |
+| >    | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false`             |
 | >=   | Evaluates to `true` if the left-side expression is greater than or equal to the right-side expression, otherwise returns `false` |
-| <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false` |
-| <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false` |
+| <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false`                |
+| <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false`    |
 
 Examples:
 
@@ -135,13 +165,13 @@ Example:
 
 The comparison follows a list of rules that are executed in order:
 
-* If one of the operands is NULL, use the [Comparing with NULL](#comparing-with-null) rule
-* If both operands are documents, use the [Comparing documents](#comparing-documents) rule
-* If both operands are arrays, use the [Comparing arrays](#comparing-arrays) rule
-* If one of the operands is a boolean, use the [Comparing with boolean](#comparing-with-a-boolean) rule
-* If both operands are either text or blob, compare them byte per byte
-* If both operands are integers, compare them together
-* If both operands are numbers (integer or float), convert them to 64 float then compare them together.
+- If one of the operands is NULL, use the [Comparing with NULL](#comparing-with-null) rule
+- If both operands are documents, use the [Comparing documents](#comparing-documents) rule
+- If both operands are arrays, use the [Comparing arrays](#comparing-arrays) rule
+- If one of the operands is a boolean, use the [Comparing with boolean](#comparing-with-a-boolean) rule
+- If both operands are either text or blob, compare them byte per byte
+- If both operands are integers, compare them together
+- If both operands are numbers (integer or float), convert them to 64 float then compare them together.
 
 In any other case, return `false`.
 
@@ -149,10 +179,10 @@ In any other case, return `false`.
 
 Any comparison with NULL will return `false`, except in the following cases:
 
-* `NULL = NULL`
-* `NULL >= NULL`
-* `NULL <= NULL`
-* Using the `!=` operator with a value other than NULL will return `true`. (Ex: `1 != null`, `foo != NULL`, etc.)
+- `NULL = NULL`
+- `NULL >= NULL`
+- `NULL <= NULL`
+- Using the `!=` operator with a value other than NULL will return `true`. (Ex: `1 != null`, `foo != NULL`, etc.)
 
 #### Comparing documents
 
@@ -160,9 +190,9 @@ Only the `=` operator is supported when comparing documents.
 
 A document is equal to another document if all of the following conditions are verified:
 
-* it has the same number of fields
-* all the fields of the first document are present in the other document
-* every field of the first document is equal to the same field in the other document
+- it has the same number of fields
+- all the fields of the first document are present in the other document
+- every field of the first document is equal to the same field in the other document
 
 ```python
 {a: 1, b: 2} = {b: 2, a: 1}
@@ -218,11 +248,11 @@ false < true
 
 If an operand is a boolean, but the other one is not, the other operand will be converted to a boolean, following these rules:
 
-* `TEXT`: a non-empty text is equal to `true`, otherwise `false`
-* `BLOB`: a non-empty blob is equal to `true`, otherwise `false`
-* any number: if the number is different than 0, convert to `true`, otherwise `false`
-* document: if the document contains at least one field, convert to `true`, otherwise `false`
-* array: if the array contains at least one value, convert to `true`, otherwise `false`
+- `TEXT`: a non-empty text is equal to `true`, otherwise `false`
+- `BLOB`: a non-empty blob is equal to `true`, otherwise `false`
+- any number: if the number is different than 0, convert to `true`, otherwise `false`
+- document: if the document contains at least one field, convert to `true`, otherwise `false`
+- array: if the array contains at least one value, convert to `true`, otherwise `false`
 
 Examples:
 
@@ -236,24 +266,24 @@ Examples:
 
 ### Arithmetic operators
 
-| Name| Description |
-| --- | --- |
-| `+`     | Adding two values |
-| `-`   | Substracting two values |
-| `*`    | Multiplying two values |
-| `/`   | Dividing two values |
-| `%`    | Find the remainder after division of one number by another |
-| `&`    | Bitwise AND |
-| `|`    | Bitwise OR |
-| `^`    | Bitwise XOR |
+| Name | Description                                                |
+| ---- | ---------------------------------------------------------- |
+| `+`  | Adding two values                                          |
+| `-`  | Substracting two values                                    |
+| `*`  | Multiplying two values                                     |
+| `/`  | Dividing two values                                        |
+| `%`  | Find the remainder after division of one number by another |
+| `&`  | Bitwise AND                                                |
+| `|`  | Bitwise OR                                                 |
+| `^`  | Bitwise XOR                                                |
 
 Arithmetic operations are supported only for the following types:
 
-* `integer`
-* `int8`, `int16`, `int32`, `int64`
-* `float64`
-* `duration`
-* `bool`
+- `integer`
+- `int8`, `int16`, `int32`, `int64`
+- `float64`
+- `duration`
+- `bool`
 
 #### The case of NULL
 
@@ -271,22 +301,22 @@ NULL + 1
 
 The division obeys a few rules depending on the types of the operands:
 
-* Dividing two integers, always result in an integer
-* Dividing by zero, returns `NULL`
+- Dividing two integers, always result in an integer
+- Dividing by zero, returns `NULL`
 
 #### Conversion rules
 
 When running an arithmetic operation on two values of different types, an implicit conversion occurs, following this set of rules:
 
-* if one of the operands is a boolean, convert to an integer
-* if one of the operands is a float, convert the other one to float
+- if one of the operands is a boolean, convert to an integer
+- if one of the operands is a float, convert the other one to float
 
 #### Return type and overflow
 
 The type of the result of an operation doesn't necessarily match the type of the operands.
 
-* The result of a float operation will always return a float
-* The result of an integer operation will return the smallest integer type that can hold the return value, unless the return value is bigger than the maximum value of 64-bit integer. In that case, the return type will be a float
+- The result of a float operation will always return a float
+- The result of an integer operation will return the smallest integer type that can hold the return value, unless the return value is bigger than the maximum value of 64-bit integer. In that case, the return type will be a float
 
 ### Evaluation tree and precedence
 
@@ -295,11 +325,11 @@ The order in which these expressions are executed depends on the priority of the
 
 Here is the list of operators ordered by ascending precedence. Operators with higher precedence are executed before the ones with lower precedence
 
-* `OR`
-* `AND`
-* `=`, `!=`, `<`, `<=`, `>`, `>=`
-* `+`, `-`, `|`, `^`
-* `*`, `/`, `%`, `&`
+- `OR`
+- `AND`
+- `=`, `!=`, `<`, `<=`, `>`, `>=`
+- `+`, `-`, `|`, `^`
+- `*`, `/`, `%`, `&`
 
 Example:
 
