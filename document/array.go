@@ -31,6 +31,30 @@ func ArrayLength(a Array) (int, error) {
 	return len, err
 }
 
+// ArrayContains iterates over a and returns whether v is equal to one of its values.
+func ArrayContains(a Array, v Value) (bool, error) {
+	var found bool
+
+	err := a.Iterate(func(i int, vv Value) error {
+		ok, err := vv.IsEqual(v)
+		if err != nil {
+			return err
+		}
+		if ok {
+			found = true
+			return errStop
+		}
+
+		return nil
+	})
+
+	if err != nil && err != errStop {
+		return false, err
+	}
+
+	return found, nil
+}
+
 // ValueBuffer is an array that holds values in memory.
 type ValueBuffer []Value
 
