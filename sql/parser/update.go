@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -33,13 +34,13 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 }
 
 // parseSetClause parses the "SET" clause of the query.
-func (p *Parser) parseSetClause() (map[string]query.Expr, error) {
+func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 	// Check if the SET token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.SET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SET"}, pos)
 	}
 
-	pairs := make(map[string]query.Expr)
+	pairs := make(map[string]expr.Expr)
 
 	firstPair := true
 	for {

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/asdine/genji/database"
+	"github.com/asdine/genji/sql/query/expr"
 )
 
 // DropTableStmt is a DSL that allows creating a DROP TABLE query.
@@ -19,7 +20,7 @@ func (stmt DropTableStmt) IsReadOnly() bool {
 
 // Run runs the DropTable statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropTableStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt DropTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -47,7 +48,7 @@ func (stmt DropIndexStmt) IsReadOnly() bool {
 
 // Run runs the DropIndex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropIndexStmt) Run(tx *database.Transaction, args []Param) (Result, error) {
+func (stmt DropIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.IndexName == "" {

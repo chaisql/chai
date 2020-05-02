@@ -1,0 +1,124 @@
+package expr
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/scanner"
+)
+
+// A CmpOp is a comparison operator.
+type CmpOp struct {
+	*simpleOperator
+}
+
+// NewCmpOp creates a comparison operator.
+func NewCmpOp(a, b Expr, t scanner.Token) CmpOp {
+	return CmpOp{&simpleOperator{a, b, t}}
+}
+
+// Eq creates an expression that returns true if a equals b.
+func Eq(a, b Expr) CmpOp {
+	return CmpOp{&simpleOperator{a, b, scanner.EQ}}
+}
+
+// Neq creates an expression that returns true if a equals b.
+func Neq(a, b Expr) CmpOp {
+	return CmpOp{&simpleOperator{a, b, scanner.NEQ}}
+}
+
+// Gt creates an expression that returns true if a is greater than b.
+func Gt(a, b Expr) CmpOp {
+	return CmpOp{&simpleOperator{a, b, scanner.GT}}
+}
+
+// Gte creates an expression that returns true if a is greater than or equal to b.
+func Gte(a, b Expr) CmpOp {
+	return CmpOp{&simpleOperator{a, b, scanner.GTE}}
+}
+
+// Lt creates an expression that returns true if a is lesser than b.
+func Lt(a, b Expr) CmpOp {
+	return CmpOp{&simpleOperator{a, b, scanner.LT}}
+}
+
+// Lte creates an expression that returns true if a is lesser than or equal to b.
+func Lte(a, b Expr) CmpOp {
+	return CmpOp{&simpleOperator{a, b, scanner.LTE}}
+}
+
+// Eval compares a and b together using the operator specified when constructing the CmpOp
+// and returns the result of the comparison.
+// Comparing with NULL always evaluates to NULL.
+func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
+	v1, v2, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return falseLitteral, err
+	}
+
+	if v1.Type == document.NullValue || v2.Type == document.NullValue {
+		return nilLitteral, nil
+	}
+
+	ok, err := op.compare(v1, v2)
+	if ok {
+		return trueLitteral, err
+	}
+
+	return falseLitteral, err
+}
+
+func (op CmpOp) compare(l, r document.Value) (bool, error) {
+	switch op.Token {
+	case scanner.EQ:
+		return l.IsEqual(r)
+	case scanner.NEQ:
+		return l.IsNotEqual(r)
+	case scanner.GT:
+		return l.IsGreaterThan(r)
+	case scanner.GTE:
+		return l.IsGreaterThanOrEqual(r)
+	case scanner.LT:
+		return l.IsLesserThan(r)
+	case scanner.LTE:
+		return l.IsLesserThanOrEqual(r)
+	default:
+		panic(fmt.Sprintf("unknown token %v", op.Token))
+	}
+}
+
+type inOp struct {
+	*simpleOperator
+}
+
+// In creates an expression that evaluates to the result of a IN b.
+func In(a, b Expr) Expr {
+	return &inOp{&simpleOperator{a, b, scanner.IN}}
+}
+
+func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	if b.Type != document.ArrayValue {
+		return nilLitteral, errors.New("right-hand operand must evaluate to an array")
+	}
+
+	arr, err := b.ConvertToArray()
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	ok, err := document.ArrayContains(arr, a)
+	if err != nil {
+		return nilLitteral, err
+	}
+
+	if ok {
+		return trueLitteral, nil
+	}
+	return falseLitteral, nil
+}

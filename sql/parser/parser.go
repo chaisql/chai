@@ -8,6 +8,7 @@ import (
 
 	"github.com/asdine/genji/document"
 	"github.com/asdine/genji/sql/query"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -76,7 +77,7 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
-func (p *Parser) parseCondition() (query.Expr, error) {
+func (p *Parser) parseCondition() (expr.Expr, error) {
 	// Check if the WHERE token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WHERE {
 		p.Unscan()

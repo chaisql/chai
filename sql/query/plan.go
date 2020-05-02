@@ -11,6 +11,7 @@ import (
 	"github.com/asdine/genji/engine"
 	"github.com/asdine/genji/index"
 	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/asdine/genji/sql/query/expr"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -21,9 +22,9 @@ type queryPlan struct {
 }
 
 type queryPlanField struct {
-	indexedField FieldSelector
+	indexedField expr.FieldSelector
 	op           scanner.Token
-	e            Expr
+	e            expr.Expr
 	uniqueIndex  bool
 	isPrimaryKey bool
 }
@@ -58,11 +59,11 @@ type queryOptimizer struct {
 	tx               *database.Transaction
 	t                *database.Table
 	tableName        string
-	whereExpr        Expr
-	args             []Param
+	whereExpr        expr.Expr
+	args             []expr.Param
 	cfg              *database.TableConfig
 	indexes          map[string]database.Index
-	orderBy          FieldSelector
+	orderBy          expr.FieldSelector
 	orderByDirection scanner.Token
 	limit            int
 	offset           int
@@ -89,7 +90,7 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 		}
 
 		var v document.Value
-		v, err = qp.field.e.Eval(EvalStack{
+		v, err = qp.field.e.Eval(expr.EvalStack{
 			Tx:     qo.tx,
 			Params: qo.args,
 		})
@@ -125,7 +126,7 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 		})
 	}
 
-	st = st.Filter(whereClause(qo.whereExpr, EvalStack{
+	st = st.Filter(whereClause(qo.whereExpr, expr.EvalStack{
 		Tx:     qo.tx,
 		Params: qo.args,
 	}))
@@ -166,9 +167,9 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 // If it contains a comparison operator, it checks if this operator and its operands
 // can benefit from using an index. This check is done in the cmpOpCanUseIndex function.
 // If it contains an AND operator it checks if one of the operands can use an index.
-func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
+func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 	switch t := e.(type) {
-	case CmpOp:
+	case expr.CmpOp:
 		ok, fs, e := cmpOpCanUseIndex(&t)
 		if !ok || !evaluatesToScalarOrParam(e) {
 			return nil
@@ -197,7 +198,7 @@ func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
 
 		return nil
 
-	case *AndOp:
+	case *expr.AndOp:
 		nodeL := qo.analyseExpr(t.LeftHand())
 		nodeR := qo.analyseExpr(t.LeftHand())
 
@@ -219,15 +220,15 @@ func (qo *queryOptimizer) analyseExpr(e Expr) *queryPlanField {
 	return nil
 }
 
-func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
+func cmpOpCanUseIndex(cmp *expr.CmpOp) (bool, expr.FieldSelector, expr.Expr) {
 	switch cmp.Token {
 	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE:
 	default:
 		return false, nil, nil
 	}
 
-	lf, leftIsField := cmp.LeftHand().(FieldSelector)
-	rf, rightIsField := cmp.RightHand().(FieldSelector)
+	lf, leftIsField := cmp.LeftHand().(expr.FieldSelector)
+	rf, rightIsField := cmp.RightHand().(expr.FieldSelector)
 
 	// field OP expr
 	if leftIsField && !rightIsField {
@@ -242,11 +243,11 @@ func cmpOpCanUseIndex(cmp *CmpOp) (bool, FieldSelector, Expr) {
 	return false, nil, nil
 }
 
-func evaluatesToScalarOrParam(e Expr) bool {
+func evaluatesToScalarOrParam(e expr.Expr) bool {
 	switch e.(type) {
-	case LiteralValue:
+	case expr.LiteralValue:
 		return true
-	case NamedParam, PositionalParam:
+	case expr.NamedParam, expr.PositionalParam:
 		return true
 	}
 
@@ -256,10 +257,10 @@ func evaluatesToScalarOrParam(e Expr) bool {
 type indexIterator struct {
 	tx               *database.Transaction
 	tb               *database.Table
-	args             []Param
+	args             []expr.Param
 	index            index.Index
 	op               scanner.Token
-	e                Expr
+	e                expr.Expr
 	orderByDirection scanner.Token
 }
 
@@ -292,7 +293,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 		return err
 	}
 
-	v, err := it.e.Eval(EvalStack{
+	v, err := it.e.Eval(expr.EvalStack{
 		Tx:     it.tx,
 		Params: it.args,
 	})
@@ -402,9 +403,9 @@ type pkIterator struct {
 	tx               *database.Transaction
 	tb               *database.Table
 	cfg              *database.TableConfig
-	args             []Param
+	args             []expr.Param
 	op               scanner.Token
-	e                Expr
+	e                expr.Expr
 	orderByDirection scanner.Token
 	evalValue        document.Value
 }

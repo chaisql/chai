@@ -5,6 +5,7 @@ import (
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/sql/query/expr"
 )
 
 // ErrResultClosed is returned when trying to close an already closed result.
@@ -18,7 +19,7 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *database.Database, args []Param) (*Result, error) {
+func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 	var res Result
 	var tx *database.Transaction
 	var err error
@@ -62,7 +63,7 @@ func (q Query) Run(db *database.Database, args []Param) (*Result, error) {
 
 // Exec the query within the given transaction. If the one of the statements requires a read-write
 // transaction and tx is not, tx will get promoted.
-func (q Query) Exec(tx *database.Transaction, args []Param, forceReadOnly bool) (*Result, error) {
+func (q Query) Exec(tx *database.Transaction, args []expr.Param, forceReadOnly bool) (*Result, error) {
 	var res Result
 	var err error
 
@@ -92,17 +93,8 @@ func New(statements ...Statement) Query {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*database.Transaction, []Param) (Result, error)
+	Run(*database.Transaction, []expr.Param) (Result, error)
 	IsReadOnly() bool
-}
-
-// A Param represents a parameter passed by the user to the statement.
-type Param struct {
-	// Name of the param
-	Name string
-
-	// Value is the parameter value.
-	Value interface{}
 }
 
 // Result of a query.
@@ -140,7 +132,7 @@ func (r *Result) Close() (err error) {
 	return err
 }
 
-func whereClause(e Expr, stack EvalStack) func(d document.Document) (bool, error) {
+func whereClause(e expr.Expr, stack expr.EvalStack) func(d document.Document) (bool, error) {
 	if e == nil {
 		return func(d document.Document) (bool, error) {
 			return true, nil
