@@ -55,6 +55,7 @@ const (
 	LTE      // <=
 	GT       // >
 	GTE      // >=
+	IN       // IN
 	operatorEnd
 
 	LPAREN      // (
@@ -154,6 +155,7 @@ var tokens = [...]string{
 	LTE:      "<=",
 	GT:       ">",
 	GTE:      ">=",
+	IN:       "IN",
 
 	LPAREN:      "(",
 	RPAREN:      ")",
@@ -214,6 +216,16 @@ var tokens = [...]string{
 
 var keywords map[string]Token
 
+func initKeywords() {
+	keywords = make(map[string]Token)
+	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
+		keywords[strings.ToLower(tokens[tok])] = tok
+	}
+	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN} {
+		keywords[strings.ToLower(tokens[tok])] = tok
+	}
+}
+
 // String returns the string representation of the token.
 func (tok Token) String() string {
 	if tok >= 0 && tok < Token(len(tokens)) {
@@ -229,12 +241,14 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case EQ, NEQ, EQREGEX, NEQREGEX, LT, LTE, GT, GTE:
+	case IN:
 		return 3
-	case ADD, SUB, BITWISEOR, BITWISEXOR:
+	case EQ, NEQ, EQREGEX, NEQREGEX, LT, LTE, GT, GTE:
 		return 4
-	case MUL, DIV, MOD, BITWISEAND:
+	case ADD, SUB, BITWISEOR, BITWISEXOR:
 		return 5
+	case MUL, DIV, MOD, BITWISEAND:
+		return 6
 	}
 	return 0
 }
