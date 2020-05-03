@@ -23,7 +23,7 @@ type NamedParam string
 func (p NamedParam) Eval(stack EvalStack) (document.Value, error) {
 	v, err := p.extract(stack.Params)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return document.NewValue(v)
@@ -47,7 +47,7 @@ type PositionalParam int
 func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 	v, err := p.extract(stack.Params)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return document.NewValue(v)

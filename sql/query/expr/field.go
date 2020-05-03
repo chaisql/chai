@@ -19,7 +19,7 @@ func (f FieldSelector) Name() string {
 // It implements the Expr interface.
 func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 	if stack.Document == nil {
-		return nilLitteral, document.ErrFieldNotFound
+		return nullLitteral, document.ErrFieldNotFound
 	}
 
 	var v document.Value
@@ -32,15 +32,15 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		} else {
 			idx, err := strconv.Atoi(chunk)
 			if err != nil {
-				return nilLitteral, nil
+				return nullLitteral, nil
 			}
 			v, err = a.GetByIndex(idx)
 		}
 		if err == document.ErrFieldNotFound {
-			return nilLitteral, nil
+			return nullLitteral, nil
 		}
 		if err != nil {
-			return nilLitteral, err
+			return nullLitteral, err
 		}
 
 		if i+1 == len(f) {
@@ -56,10 +56,10 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		case document.ArrayValue:
 			a, err = v.ConvertToArray()
 		default:
-			return nilLitteral, nil
+			return nullLitteral, nil
 		}
 		if err != nil {
-			return nilLitteral, err
+			return nullLitteral, err
 		}
 	}
 

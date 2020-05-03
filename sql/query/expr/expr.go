@@ -9,7 +9,7 @@ import (
 var (
 	trueLitteral  = document.NewBoolValue(true)
 	falseLitteral = document.NewBoolValue(false)
-	nilLitteral   = document.NewNullValue()
+	nullLitteral  = document.NewNullValue()
 )
 
 // An Expr evaluates to a value.
@@ -55,12 +55,12 @@ func (op *simpleOperator) SetRightHandExpr(b Expr) {
 func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, error) {
 	va, err := op.a.Eval(ctx)
 	if err != nil {
-		return nilLitteral, nilLitteral, err
+		return nullLitteral, nullLitteral, err
 	}
 
 	vb, err := op.b.Eval(ctx)
 	if err != nil {
-		return nilLitteral, nilLitteral, err
+		return nullLitteral, nullLitteral, err
 	}
 
 	return va, vb, nil
