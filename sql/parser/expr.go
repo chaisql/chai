@@ -20,8 +20,8 @@ type operator interface {
 	SetRightHandExpr(expr.Expr)
 }
 
-// parseExpr parses an expression.
-func (p *Parser) parseExpr() (expr.Expr, string, error) {
+// ParseExpr parses an expression.
+func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	// enable the expression buffer to store the literal representation
 	// of the parsed expression
 	if p.buf == nil {
@@ -29,13 +29,12 @@ func (p *Parser) parseExpr() (expr.Expr, string, error) {
 		defer func() { p.buf = nil }()
 	}
 
-	var err error
 	// Dummy root node.
 	var root operator = expr.NewCmpOp(nil, nil, 0)
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
-	e, err := p.parseUnaryExpr()
+	e, err = p.parseUnaryExpr()
 	if err != nil {
 		return nil, "", err
 	}
@@ -332,7 +331,7 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
 	}
 
-	e, _, err := p.parseExpr()
+	e, _, err := p.ParseExpr()
 	if err != nil {
 		return expr.KVPair{}, err
 	}
@@ -398,7 +397,7 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.Litera
 
 	// Parse expressions.
 	for {
-		if expr, _, err = p.parseExpr(); err != nil {
+		if expr, _, err = p.ParseExpr(); err != nil {
 			p.Unscan()
 			break
 		}
@@ -444,7 +443,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 
 	// Parse expressions.
 	for {
-		e, _, err := p.parseExpr()
+		e, _, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -471,7 +470,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// parse required expression.
-	e, _, err := p.parseExpr()
+	e, _, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
