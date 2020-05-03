@@ -17,7 +17,7 @@ func Add(a, b Expr) Expr {
 func (op addOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.Add(b)
@@ -35,7 +35,7 @@ func Sub(a, b Expr) Expr {
 func (op subOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.Sub(b)
@@ -53,7 +53,7 @@ func Mul(a, b Expr) Expr {
 func (op mulOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.Mul(b)
@@ -71,7 +71,7 @@ func Div(a, b Expr) Expr {
 func (op divOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.Div(b)
@@ -89,7 +89,7 @@ func Mod(a, b Expr) Expr {
 func (op modOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.Mod(b)
@@ -107,7 +107,7 @@ func BitwiseAnd(a, b Expr) Expr {
 func (op bitwiseAndOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.BitwiseAnd(b)
@@ -125,7 +125,7 @@ func BitwiseOr(a, b Expr) Expr {
 func (op bitwiseOrOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.BitwiseOr(b)
@@ -143,7 +143,7 @@ func BitwiseXor(a, b Expr) Expr {
 func (op bitwiseXorOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	return a.BitwiseXor(b)

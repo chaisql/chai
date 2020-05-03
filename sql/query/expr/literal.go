@@ -64,7 +64,7 @@ func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 	for i, e := range l {
 		values[i], err = e.Eval(stack)
 		if err != nil {
-			return nilLitteral, err
+			return nullLitteral, err
 		}
 	}
 

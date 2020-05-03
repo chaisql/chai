@@ -1,7 +1,6 @@
 package expr
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/asdine/genji/document"
@@ -58,7 +57,7 @@ func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	if v1.Type == document.NullValue || v2.Type == document.NullValue {
-		return nilLitteral, nil
+		return nullLitteral, nil
 	}
 
 	ok, err := op.compare(v1, v2)
@@ -100,21 +99,25 @@ func In(a, b Expr) Expr {
 func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(ctx)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
+	}
+
+	if a.Type == document.NullValue || b.Type == document.NullValue {
+		return nullLitteral, nil
 	}
 
 	if b.Type != document.ArrayValue {
-		return nilLitteral, errors.New("right-hand operand must evaluate to an array")
+		return falseLitteral, nil
 	}
 
 	arr, err := b.ConvertToArray()
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	ok, err := document.ArrayContains(arr, a)
 	if err != nil {
-		return nilLitteral, err
+		return nullLitteral, err
 	}
 
 	if ok {
