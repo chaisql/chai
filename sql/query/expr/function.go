@@ -46,7 +46,6 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 }
 
 // Cast represents the CAST expression.
-// It returns the primary key of the current document.
 type Cast struct {
 	Expr      Expr
 	ConvertTo document.ValueType
