@@ -53,6 +53,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `>`, tok: scanner.GT, raw: `>`},
 		{s: `>=`, tok: scanner.GTE, raw: `>=`},
 		{s: `IN`, tok: scanner.IN, raw: `IN`},
+		{s: `IS`, tok: scanner.IS, raw: `IS`},
 
 		// Misc tokens
 		{s: `(`, tok: scanner.LPAREN, raw: `(`},
