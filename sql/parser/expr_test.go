@@ -125,6 +125,8 @@ func TestParserExpr(t *testing.T) {
 		{"%", "age % 10", expr.Mod(expr.FieldSelector([]string{"age"}), expr.IntValue(10)), false},
 		{"&", "age & 10", expr.BitwiseAnd(expr.FieldSelector([]string{"age"}), expr.IntValue(10)), false},
 		{"IN", "age IN ages", expr.In(expr.FieldSelector([]string{"age"}), expr.FieldSelector([]string{"ages"})), false},
+		{"IS", "age IS NULL", expr.Is(expr.FieldSelector([]string{"age"}), expr.NullValue()), false},
+		{"IS NOT", "age IS NOT NULL", expr.IsNot(expr.FieldSelector([]string{"age"}), expr.NullValue()), false},
 		{"precedence", "4 > 1 + 2", expr.Gt(
 			expr.IntValue(4),
 			expr.Add(
