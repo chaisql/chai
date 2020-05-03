@@ -56,6 +56,7 @@ const (
 	GT       // >
 	GTE      // >=
 	IN       // IN
+	IS       // IS
 	operatorEnd
 
 	LPAREN      // (
@@ -156,6 +157,7 @@ var tokens = [...]string{
 	GT:       ">",
 	GTE:      ">=",
 	IN:       "IN",
+	IS:       "IS",
 
 	LPAREN:      "(",
 	RPAREN:      ")",
@@ -221,7 +223,7 @@ func initKeywords() {
 	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
-	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN} {
+	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN, IS} {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
 }
