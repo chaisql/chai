@@ -127,16 +127,17 @@ An expression is _truthy_ if it evaluates to a non zero-value of its type.
 
 These operators are used to compare values and evaluate to a boolean.
 
-| Name | Description                                                                                                                      |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------- |
-| =    | Evaluates to `true` if operands are equal, otherwise returns `false`                                                             |
-| !=   | Evaluates to `true` if operands are not equal, otherwise returns `false`                                                         |
-| >    | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false`             |
-| >=   | Evaluates to `true` if the left-side expression is greater than or equal to the right-side expression, otherwise returns `false` |
-| <    | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false`                |
-| <=   | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false`    |
-| IN   | Evaluates to `true` if the left-side expression is equal to one of the values of the right-side array                            |
-| IS   | Has the same behaviour as `=` except that it returns `true` if both operands are `NULL`                                          |
+| Name   | Description                                                                                                                      |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| =      | Evaluates to `true` if operands are equal, otherwise returns `false`                                                             |
+| !=     | Evaluates to `true` if operands are not equal, otherwise returns `false`                                                         |
+| >      | Evaluates to `true` if the left-side expression is greater than the right-side expression, otherwise returns `false`             |
+| >=     | Evaluates to `true` if the left-side expression is greater than or equal to the right-side expression, otherwise returns `false` |
+| <      | Evaluates to `true` if the left-side expression is less than the right-side expression, otherwise returns `false`                |
+| <=     | Evaluates to `true` if the left-side expression is less than or equal to the right-side expression, otherwise returns `false`    |
+| IN     | Evaluates to `true` if the left-side expression is equal to one of the values of the right-side array                            |
+| IS     | Has the same behaviour as `=` except that it returns `true` if both operands are `NULL`                                          |
+| IS NOT | Has the same behaviour as `!=` except that it supports comparing with `NULL`                                                     |
 
 Examples:
 
