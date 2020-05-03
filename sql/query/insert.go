@@ -51,47 +51,22 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 	return stmt.insertDocuments(t, stack)
 }
 
-type paramExtractor interface {
-	extract(params []expr.Param) (interface{}, error)
-}
-
 func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) (Result, error) {
 	var res Result
-	var err error
 
-	for _, doc := range stmt.Values {
-		var d document.Document
+	for _, e := range stmt.Values {
+		v, err := e.Eval(stack)
+		if err != nil {
+			return res, err
+		}
 
-		switch tp := doc.(type) {
-		case document.Document:
-			d = tp
-		case paramExtractor:
-			d, err = extractDocumentFromParamExtractor(tp, stack.Params)
-			if err != nil {
-				return res, err
-			}
-		case expr.LiteralValue:
-			v := document.Value(tp)
+		if v.Type != document.DocumentValue {
+			return res, errors.New("values must be a list of documents if field list is empty")
+		}
 
-			if v.Type != document.DocumentValue {
-				return res, fmt.Errorf("values must be a list of documents if field list is empty")
-			}
-
-			d, err = v.ConvertToDocument()
-			if err != nil {
-				return res, err
-			}
-		case expr.KVPairs:
-			v, err := tp.Eval(stack)
-			if err != nil {
-				return res, err
-			}
-			d, err = v.ConvertToDocument()
-			if err != nil {
-				return res, err
-			}
-		default:
-			return res, fmt.Errorf("values must be a list of documents if field list is empty")
+		d, err := v.ConvertToDocument()
+		if err != nil {
+			return res, err
 		}
 
 		res.LastInsertKey, err = t.Insert(d)

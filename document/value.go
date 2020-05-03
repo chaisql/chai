@@ -252,6 +252,10 @@ func NewZeroValue(t ValueType) Value {
 
 // IsTruthy returns whether v is not equal to the zero value of its type.
 func (v Value) IsTruthy() bool {
+	if v.Type == NullValue {
+		return false
+	}
+
 	return !v.IsZeroValue()
 }
 
