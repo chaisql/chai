@@ -43,8 +43,11 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	// Loop over operations and unary exprs and build a tree based on precedence.
 	for {
 		// If the next token is NOT an operator then return the expression.
-		op, tok, ok := p.parseOperator()
-		if !ok {
+		op, tok, err := p.parseOperator()
+		if err != nil {
+			return nil, "", err
+		}
+		if tok == 0 {
 			return root.RightHand(), strings.TrimSpace(p.buf.String()), nil
 		}
 
@@ -70,54 +73,59 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	}
 }
 
-func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, bool) {
+func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, error) {
 	op, _, _ := p.ScanIgnoreWhitespace()
-	if !op.IsOperator() {
+	if !op.IsOperator() && op != scanner.NOT {
 		p.Unscan()
-		return nil, 0, false
+		return nil, 0, nil
 	}
 
 	switch op {
 	case scanner.EQ:
-		return expr.Eq, op, true
+		return expr.Eq, op, nil
 	case scanner.NEQ:
-		return expr.Neq, op, true
+		return expr.Neq, op, nil
 	case scanner.GT:
-		return expr.Gt, op, true
+		return expr.Gt, op, nil
 	case scanner.GTE:
-		return expr.Gte, op, true
+		return expr.Gte, op, nil
 	case scanner.LT:
-		return expr.Lt, op, true
+		return expr.Lt, op, nil
 	case scanner.LTE:
-		return expr.Lte, op, true
+		return expr.Lte, op, nil
 	case scanner.AND:
-		return expr.And, op, true
+		return expr.And, op, nil
 	case scanner.OR:
-		return expr.Or, op, true
+		return expr.Or, op, nil
 	case scanner.ADD:
-		return expr.Add, op, true
+		return expr.Add, op, nil
 	case scanner.SUB:
-		return expr.Sub, op, true
+		return expr.Sub, op, nil
 	case scanner.MUL:
-		return expr.Mul, op, true
+		return expr.Mul, op, nil
 	case scanner.DIV:
-		return expr.Div, op, true
+		return expr.Div, op, nil
 	case scanner.MOD:
-		return expr.Mod, op, true
+		return expr.Mod, op, nil
 	case scanner.BITWISEAND:
-		return expr.BitwiseAnd, op, true
+		return expr.BitwiseAnd, op, nil
 	case scanner.BITWISEOR:
-		return expr.BitwiseOr, op, true
+		return expr.BitwiseOr, op, nil
 	case scanner.BITWISEXOR:
-		return expr.BitwiseXor, op, true
+		return expr.BitwiseXor, op, nil
 	case scanner.IN:
-		return expr.In, op, true
+		return expr.In, op, nil
 	case scanner.IS:
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.NOT {
-			return expr.IsNot, op, true
+			return expr.IsNot, op, nil
 		}
 		p.Unscan()
-		return expr.Is, op, true
+		return expr.Is, op, nil
+	case scanner.NOT:
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.IN {
+			return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN"}, pos)
+		}
+		return expr.NotIn, op, nil
 	}
 
 	panic(fmt.Sprintf("unknown operator %q", op))

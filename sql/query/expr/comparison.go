@@ -126,6 +126,29 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 	return falseLitteral, nil
 }
 
+type notInOp struct {
+	Expr
+}
+
+// NotIn creates an expression that evaluates to the result of a NOT IN b.
+func NotIn(a, b Expr) Expr {
+	return &notInOp{In(a, b)}
+}
+
+func (op notInOp) Eval(ctx EvalStack) (document.Value, error) {
+	v, err := op.Expr.Eval(ctx)
+	if err != nil {
+		return v, err
+	}
+	if v == trueLitteral {
+		return falseLitteral, nil
+	}
+	if v == falseLitteral {
+		return trueLitteral, nil
+	}
+	return v, nil
+}
+
 type isOp struct {
 	*simpleOperator
 }
