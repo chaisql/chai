@@ -64,6 +64,30 @@ func TestComparisonINExpr(t *testing.T) {
 	}
 }
 
+func TestComparisonNOTINExpr(t *testing.T) {
+	tests := []struct {
+		expr  string
+		res   document.Value
+		fails bool
+	}{
+		{"1 NOT IN []", document.NewBoolValue(true), false},
+		{"1 NOT IN [1, 2, 3]", document.NewBoolValue(false), false},
+		{"1 NOT IN [2, 3]", document.NewBoolValue(true), false},
+		{"[1] NOT IN [1, 2, 3]", document.NewBoolValue(true), false},
+		{"[1] NOT IN [[1], [2], [3]]", document.NewBoolValue(false), false},
+		{"1 NOT IN {}", document.NewBoolValue(true), false},
+		{"[1, 2] NOT IN 1", document.NewBoolValue(true), false},
+		{"1 NOT IN NULL", nullLitteral, false},
+		{"NULL NOT IN [1, 2, NULL]", nullLitteral, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.expr, func(t *testing.T) {
+			testExpr(t, test.expr, stackWithDoc, test.res, test.fails)
+		})
+	}
+}
+
 func TestComparisonISExpr(t *testing.T) {
 	tests := []struct {
 		expr  string
