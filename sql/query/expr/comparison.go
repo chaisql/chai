@@ -125,3 +125,29 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 	return falseLitteral, nil
 }
+
+type isOp struct {
+	*simpleOperator
+}
+
+// Is creates an expression that evaluates to the result of a IS b.
+func Is(a, b Expr) Expr {
+	return &isOp{&simpleOperator{a, b, scanner.IN}}
+}
+
+func (op isOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nullLitteral, err
+	}
+
+	ok, err := a.IsEqual(b)
+	if err != nil {
+		return nullLitteral, err
+	}
+	if ok {
+		return trueLitteral, nil
+	}
+
+	return falseLitteral, nil
+}

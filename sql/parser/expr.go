@@ -107,6 +107,8 @@ func opToExpr(op scanner.Token, lhs, rhs expr.Expr) expr.Expr {
 		return expr.BitwiseXor(lhs, rhs)
 	case scanner.IN:
 		return expr.In(lhs, rhs)
+	case scanner.IS:
+		return expr.Is(lhs, rhs)
 	}
 
 	panic(fmt.Sprintf("unknown operator %q", op))
