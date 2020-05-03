@@ -18,32 +18,32 @@ func NewCmpOp(a, b Expr, t scanner.Token) CmpOp {
 }
 
 // Eq creates an expression that returns true if a equals b.
-func Eq(a, b Expr) CmpOp {
+func Eq(a, b Expr) Expr {
 	return CmpOp{&simpleOperator{a, b, scanner.EQ}}
 }
 
 // Neq creates an expression that returns true if a equals b.
-func Neq(a, b Expr) CmpOp {
+func Neq(a, b Expr) Expr {
 	return CmpOp{&simpleOperator{a, b, scanner.NEQ}}
 }
 
 // Gt creates an expression that returns true if a is greater than b.
-func Gt(a, b Expr) CmpOp {
+func Gt(a, b Expr) Expr {
 	return CmpOp{&simpleOperator{a, b, scanner.GT}}
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
-func Gte(a, b Expr) CmpOp {
+func Gte(a, b Expr) Expr {
 	return CmpOp{&simpleOperator{a, b, scanner.GTE}}
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
-func Lt(a, b Expr) CmpOp {
+func Lt(a, b Expr) Expr {
 	return CmpOp{&simpleOperator{a, b, scanner.LT}}
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
-func Lte(a, b Expr) CmpOp {
+func Lte(a, b Expr) Expr {
 	return CmpOp{&simpleOperator{a, b, scanner.LTE}}
 }
 
@@ -142,6 +142,32 @@ func (op isOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	ok, err := a.IsEqual(b)
+	if err != nil {
+		return nullLitteral, err
+	}
+	if ok {
+		return trueLitteral, nil
+	}
+
+	return falseLitteral, nil
+}
+
+type isNotOp struct {
+	*simpleOperator
+}
+
+// IsNot creates an expression that evaluates to the result of a IS NOT b.
+func IsNot(a, b Expr) Expr {
+	return &isNotOp{&simpleOperator{a, b, scanner.IN}}
+}
+
+func (op isNotOp) Eval(ctx EvalStack) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(ctx)
+	if err != nil {
+		return nullLitteral, err
+	}
+
+	ok, err := a.IsNotEqual(b)
 	if err != nil {
 		return nullLitteral, err
 	}

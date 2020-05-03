@@ -11,7 +11,7 @@ type AndOp struct {
 }
 
 // And creates an expression that evaluates a And b And returns true if both are truthy.
-func And(a, b Expr) *AndOp {
+func And(a, b Expr) Expr {
 	return &AndOp{&simpleOperator{a, b, scanner.AND}}
 }
 

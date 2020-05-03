@@ -84,6 +84,26 @@ func TestComparisonISExpr(t *testing.T) {
 	}
 }
 
+func TestComparisonISNOTExpr(t *testing.T) {
+	tests := []struct {
+		expr  string
+		res   document.Value
+		fails bool
+	}{
+		{"1 IS NOT 1", document.NewBoolValue(false), false},
+		{"1 IS NOT 2", document.NewBoolValue(true), false},
+		{"1 IS NOT NULL", document.NewBoolValue(true), false},
+		{"NULL IS NOT NULL", document.NewBoolValue(false), false},
+		{"NULL IS NOT 1", document.NewBoolValue(true), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.expr, func(t *testing.T) {
+			testExpr(t, test.expr, stackWithDoc, test.res, test.fails)
+		})
+	}
+}
+
 func TestComparisonExprNodocument(t *testing.T) {
 	tests := []struct {
 		expr  string
@@ -98,6 +118,7 @@ func TestComparisonExprNodocument(t *testing.T) {
 		{"1 <= a", nullLitteral, true},
 		{"1 IN [a]", nullLitteral, true},
 		{"1 IS a", nullLitteral, true},
+		{"1 IS NOT a", nullLitteral, true},
 	}
 
 	for _, test := range tests {

@@ -43,9 +43,8 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	// Loop over operations and unary exprs and build a tree based on precedence.
 	for {
 		// If the next token is NOT an operator then return the expression.
-		op, _, _ := p.ScanIgnoreWhitespace()
-		if !op.IsOperator() {
-			p.Unscan()
+		op, tok, ok := p.parseOperator()
+		if !ok {
 			return root.RightHand(), strings.TrimSpace(p.buf.String()), nil
 		}
 
@@ -61,9 +60,9 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 		// precedence >= the operator being added.
 		for node := root.(operator); ; {
 			p, ok := node.RightHand().(operator)
-			if !ok || p.Precedence() >= op.Precedence() {
+			if !ok || p.Precedence() >= tok.Precedence() {
 				// Add the new expression here and break.
-				node.SetRightHandExpr(opToExpr(op, node.RightHand(), rhs))
+				node.SetRightHandExpr(op(node.RightHand(), rhs))
 				break
 			}
 			node = p
@@ -71,44 +70,54 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	}
 }
 
-func opToExpr(op scanner.Token, lhs, rhs expr.Expr) expr.Expr {
+func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, bool) {
+	op, _, _ := p.ScanIgnoreWhitespace()
+	if !op.IsOperator() {
+		p.Unscan()
+		return nil, 0, false
+	}
+
 	switch op {
 	case scanner.EQ:
-		return expr.Eq(lhs, rhs)
+		return expr.Eq, op, true
 	case scanner.NEQ:
-		return expr.Neq(lhs, rhs)
+		return expr.Neq, op, true
 	case scanner.GT:
-		return expr.Gt(lhs, rhs)
+		return expr.Gt, op, true
 	case scanner.GTE:
-		return expr.Gte(lhs, rhs)
+		return expr.Gte, op, true
 	case scanner.LT:
-		return expr.Lt(lhs, rhs)
+		return expr.Lt, op, true
 	case scanner.LTE:
-		return expr.Lte(lhs, rhs)
+		return expr.Lte, op, true
 	case scanner.AND:
-		return expr.And(lhs, rhs)
+		return expr.And, op, true
 	case scanner.OR:
-		return expr.Or(lhs, rhs)
+		return expr.Or, op, true
 	case scanner.ADD:
-		return expr.Add(lhs, rhs)
+		return expr.Add, op, true
 	case scanner.SUB:
-		return expr.Sub(lhs, rhs)
+		return expr.Sub, op, true
 	case scanner.MUL:
-		return expr.Mul(lhs, rhs)
+		return expr.Mul, op, true
 	case scanner.DIV:
-		return expr.Div(lhs, rhs)
+		return expr.Div, op, true
 	case scanner.MOD:
-		return expr.Mod(lhs, rhs)
+		return expr.Mod, op, true
 	case scanner.BITWISEAND:
-		return expr.BitwiseAnd(lhs, rhs)
+		return expr.BitwiseAnd, op, true
 	case scanner.BITWISEOR:
-		return expr.BitwiseOr(lhs, rhs)
+		return expr.BitwiseOr, op, true
 	case scanner.BITWISEXOR:
-		return expr.BitwiseXor(lhs, rhs)
+		return expr.BitwiseXor, op, true
 	case scanner.IN:
-		return expr.In(lhs, rhs)
+		return expr.In, op, true
 	case scanner.IS:
-		return expr.Is(lhs, rhs)
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.NOT {
+			return expr.IsNot, op, true
+		}
+		p.Unscan()
+		return expr.Is, op, true
 	}
 
 	panic(fmt.Sprintf("unknown operator %q", op))
