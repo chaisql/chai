@@ -168,9 +168,14 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 // can benefit from using an index. This check is done in the cmpOpCanUseIndex function.
 // If it contains an AND operator it checks if one of the operands can use an index.
 func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
-	switch t := e.(type) {
-	case expr.CmpOp:
-		ok, fs, e := cmpOpCanUseIndex(&t)
+	op, ok := e.(expr.Operator)
+	if !ok {
+		return nil
+	}
+
+	switch {
+	case expr.IsComparisonOperator(op):
+		ok, fs, e := cmpOpCanUseIndex(op)
 		if !ok || !evaluatesToScalarOrParam(e) {
 			return nil
 		}
@@ -179,7 +184,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 		if ok {
 			return &queryPlanField{
 				indexedField: fs,
-				op:           t.Token,
+				op:           op.Token(),
 				e:            e,
 				uniqueIndex:  idx.Unique,
 			}
@@ -189,7 +194,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 		if pk != nil && pk.Path.String() == fs.Name() {
 			return &queryPlanField{
 				indexedField: fs,
-				op:           t.Token,
+				op:           op.Token(),
 				e:            e,
 				uniqueIndex:  true,
 				isPrimaryKey: true,
@@ -198,9 +203,9 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 
 		return nil
 
-	case *expr.AndOp:
-		nodeL := qo.analyseExpr(t.LeftHand())
-		nodeR := qo.analyseExpr(t.LeftHand())
+	case expr.IsAndOperator(op):
+		nodeL := qo.analyseExpr(op.LeftHand())
+		nodeR := qo.analyseExpr(op.LeftHand())
 
 		if nodeL == nil && nodeR == nil {
 			return nil
@@ -220,24 +225,18 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 	return nil
 }
 
-func cmpOpCanUseIndex(cmp *expr.CmpOp) (bool, expr.FieldSelector, expr.Expr) {
-	switch cmp.Token {
-	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE:
-	default:
-		return false, nil, nil
-	}
-
-	lf, leftIsField := cmp.LeftHand().(expr.FieldSelector)
-	rf, rightIsField := cmp.RightHand().(expr.FieldSelector)
+func cmpOpCanUseIndex(op expr.Operator) (bool, expr.FieldSelector, expr.Expr) {
+	lf, leftIsField := op.LeftHand().(expr.FieldSelector)
+	rf, rightIsField := op.RightHand().(expr.FieldSelector)
 
 	// field OP expr
 	if leftIsField && !rightIsField {
-		return true, lf, cmp.RightHand()
+		return true, lf, op.RightHand()
 	}
 
 	// expr OP field
 	if rightIsField && !leftIsField {
-		return true, rf, cmp.LeftHand()
+		return true, rf, op.LeftHand()
 	}
 
 	return false, nil, nil

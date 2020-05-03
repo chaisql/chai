@@ -7,50 +7,50 @@ import (
 	"github.com/asdine/genji/sql/scanner"
 )
 
-// A CmpOp is a comparison operator.
-type CmpOp struct {
+// A cmpOp is a comparison operator.
+type cmpOp struct {
 	*simpleOperator
 }
 
-// NewCmpOp creates a comparison operator.
-func NewCmpOp(a, b Expr, t scanner.Token) CmpOp {
-	return CmpOp{&simpleOperator{a, b, t}}
+// newCmpOp creates a comparison operator.
+func newCmpOp(a, b Expr, t scanner.Token) Operator {
+	return cmpOp{&simpleOperator{a, b, t}}
 }
 
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
-	return CmpOp{&simpleOperator{a, b, scanner.EQ}}
+	return cmpOp{&simpleOperator{a, b, scanner.EQ}}
 }
 
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) Expr {
-	return CmpOp{&simpleOperator{a, b, scanner.NEQ}}
+	return cmpOp{&simpleOperator{a, b, scanner.NEQ}}
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) Expr {
-	return CmpOp{&simpleOperator{a, b, scanner.GT}}
+	return cmpOp{&simpleOperator{a, b, scanner.GT}}
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
-	return CmpOp{&simpleOperator{a, b, scanner.GTE}}
+	return cmpOp{&simpleOperator{a, b, scanner.GTE}}
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) Expr {
-	return CmpOp{&simpleOperator{a, b, scanner.LT}}
+	return cmpOp{&simpleOperator{a, b, scanner.LT}}
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
-	return CmpOp{&simpleOperator{a, b, scanner.LTE}}
+	return cmpOp{&simpleOperator{a, b, scanner.LTE}}
 }
 
 // Eval compares a and b together using the operator specified when constructing the CmpOp
 // and returns the result of the comparison.
 // Comparing with NULL always evaluates to NULL.
-func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
+func (op cmpOp) Eval(ctx EvalStack) (document.Value, error) {
 	v1, v2, err := op.simpleOperator.eval(ctx)
 	if err != nil {
 		return falseLitteral, err
@@ -68,8 +68,8 @@ func (op CmpOp) Eval(ctx EvalStack) (document.Value, error) {
 	return falseLitteral, err
 }
 
-func (op CmpOp) compare(l, r document.Value) (bool, error) {
-	switch op.Token {
+func (op cmpOp) compare(l, r document.Value) (bool, error) {
+	switch op.Tok {
 	case scanner.EQ:
 		return l.IsEqual(r)
 	case scanner.NEQ:
@@ -83,8 +83,27 @@ func (op CmpOp) compare(l, r document.Value) (bool, error) {
 	case scanner.LTE:
 		return l.IsLesserThanOrEqual(r)
 	default:
-		panic(fmt.Sprintf("unknown token %v", op.Token))
+		panic(fmt.Sprintf("unknown token %v", op.Tok))
 	}
+}
+
+// IsComparisonOperator returns true if e is one of
+// =, !=, >, >=, <, <=, IS, IS NOT, IN, or NOT IN operators.
+func IsComparisonOperator(op Operator) bool {
+	_, ok := op.(*cmpOp)
+	return ok
+}
+
+// IsAndOperator reports if e is the AND operator.
+func IsAndOperator(op Operator) bool {
+	_, ok := op.(*AndOp)
+	return ok
+}
+
+// IsOrOperator reports if e is the OR operator.
+func IsOrOperator(e Expr) bool {
+	_, ok := e.(*OrOp)
+	return ok
 }
 
 type inOp struct {

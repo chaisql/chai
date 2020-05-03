@@ -12,13 +12,17 @@ import (
 	"github.com/asdine/genji/sql/scanner"
 )
 
-type operator interface {
-	Precedence() int
-	LeftHand() expr.Expr
-	RightHand() expr.Expr
-	SetLeftHandExpr(expr.Expr)
-	SetRightHandExpr(expr.Expr)
+type dummyOperator struct {
+	leftHand, rightHand expr.Expr
 }
+
+func (d *dummyOperator) Token() scanner.Token                        { panic("not implemented") }
+func (d *dummyOperator) Eval(expr.EvalStack) (document.Value, error) { panic("not implemented") }
+func (d *dummyOperator) Precedence() int                             { panic("not implemented") }
+func (d *dummyOperator) LeftHand() expr.Expr                         { panic("not implemented") }
+func (d *dummyOperator) RightHand() expr.Expr                        { return d.rightHand }
+func (d *dummyOperator) SetLeftHandExpr(e expr.Expr)                 { panic("not implemented") }
+func (d *dummyOperator) SetRightHandExpr(e expr.Expr)                { d.rightHand = e }
 
 // ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
@@ -30,7 +34,7 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	}
 
 	// Dummy root node.
-	var root operator = expr.NewCmpOp(nil, nil, 0)
+	var root expr.Operator = new(dummyOperator)
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
@@ -61,8 +65,8 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 		// descending the RHS of the expression tree until we reach the last
 		// BinaryExpr or a BinaryExpr whose RHS has an operator with
 		// precedence >= the operator being added.
-		for node := root.(operator); ; {
-			p, ok := node.RightHand().(operator)
+		for node := root.(expr.Operator); ; {
+			p, ok := node.RightHand().(expr.Operator)
 			if !ok || p.Precedence() >= tok.Precedence() {
 				// Add the new expression here and break.
 				node.SetRightHandExpr(op(node.RightHand(), rhs))

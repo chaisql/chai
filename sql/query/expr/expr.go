@@ -29,11 +29,11 @@ type EvalStack struct {
 
 type simpleOperator struct {
 	a, b  Expr
-	Token scanner.Token
+	Tok scanner.Token
 }
 
 func (op simpleOperator) Precedence() int {
-	return op.Token.Precedence()
+	return op.Tok.Precedence()
 }
 
 func (op simpleOperator) LeftHand() Expr {
@@ -52,6 +52,10 @@ func (op *simpleOperator) SetRightHandExpr(b Expr) {
 	op.b = b
 }
 
+func (op *simpleOperator) Token() scanner.Token {
+	return op.Tok
+}
+
 func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, error) {
 	va, err := op.a.Eval(ctx)
 	if err != nil {
@@ -64,4 +68,17 @@ func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, e
 	}
 
 	return va, vb, nil
+}
+
+// An Operator is a binary expression that
+// takes two operands and executes an operation on them.
+type Operator interface {
+	Expr
+
+	Precedence() int
+	LeftHand() Expr
+	RightHand() Expr
+	SetLeftHandExpr(Expr)
+	SetRightHandExpr(Expr)
+	Token() scanner.Token
 }
