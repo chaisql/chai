@@ -157,7 +157,7 @@ func TestParserExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, lit, err := NewParser(strings.NewReader(test.s)).parseExpr()
+			ex, lit, err := NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -193,7 +193,7 @@ func TestParserParams(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, lit, err := NewParser(strings.NewReader(test.s)).parseExpr()
+			ex, lit, err := NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
 				require.Error(t, err)
 			} else {

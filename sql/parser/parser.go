@@ -85,7 +85,7 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 	}
 
 	// Scan the identifier for the source.
-	expr, _, err := p.parseExpr()
+	expr, _, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
