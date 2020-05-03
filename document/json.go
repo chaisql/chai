@@ -15,6 +15,16 @@ import (
 	"github.com/asdine/genji/pkg/bytesutil"
 )
 
+// NewFromJSON creates a document from a JSON object.
+func NewFromJSON(data []byte) (Document, error) {
+	var fb FieldBuffer
+	err := fb.UnmarshalJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	return &fb, nil
+}
+
 // MarshalJSON implements the json.Marshaler interface.
 func (v Value) MarshalJSON() ([]byte, error) {
 	var x interface{}

@@ -30,15 +30,17 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		if stack.Document != nil {
 			v, err = stack.Document.GetByField(chunk)
 		} else {
-			idx, err := strconv.Atoi(chunk)
+			var idx int
+			idx, err = strconv.Atoi(chunk)
 			if err != nil {
 				return nullLitteral, nil
 			}
 			v, err = a.GetByIndex(idx)
 		}
-		if err == document.ErrFieldNotFound {
+		if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
 			return nullLitteral, nil
 		}
+
 		if err != nil {
 			return nullLitteral, err
 		}
