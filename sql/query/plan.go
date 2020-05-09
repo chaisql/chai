@@ -1,7 +1,6 @@
 package query
 
 import (
-	"bytes"
 	"container/heap"
 	"errors"
 
@@ -23,7 +22,7 @@ type queryPlan struct {
 
 type queryPlanField struct {
 	indexedField expr.FieldSelector
-	op           scanner.Token
+	op           expr.Operator
 	e            expr.Expr
 	uniqueIndex  bool
 	isPrimaryKey bool
@@ -77,15 +76,20 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 		st = document.NewStream(qo.t)
 	case qp.field.isPrimaryKey:
 		if qp.field.e == nil {
-			st = document.NewStream(pkIterator{
+			pkit := pkIterator{
 				tx:               qo.tx,
 				tb:               qo.t,
 				cfg:              qo.cfg,
 				args:             qo.args,
-				op:               qp.field.op,
 				e:                qp.field.e,
 				orderByDirection: qo.orderByDirection,
-			})
+			}
+
+			if qp.field.op != nil {
+				pkit.pkop, _ = qp.field.op.(pkIteratorOperator)
+			}
+
+			st = document.NewStream(pkit)
 			break
 		}
 
@@ -104,26 +108,36 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 			break
 		}
 
-		st = document.NewStream(pkIterator{
+		pkit := pkIterator{
 			tx:               qo.tx,
 			tb:               qo.t,
 			cfg:              qo.cfg,
 			args:             qo.args,
-			op:               qp.field.op,
 			e:                qp.field.e,
 			orderByDirection: qo.orderByDirection,
 			evalValue:        v,
-		})
+		}
+
+		if qp.field.op != nil {
+			pkit.pkop, _ = qp.field.op.(pkIteratorOperator)
+		}
+
+		st = document.NewStream(pkit)
 	default:
-		st = document.NewStream(indexIterator{
+		idxit := indexIterator{
 			tx:               qo.tx,
 			tb:               qo.t,
 			args:             qo.args,
-			op:               qp.field.op,
 			e:                qp.field.e,
 			index:            qo.indexes[qp.field.indexedField.Name()],
 			orderByDirection: qo.orderByDirection,
-		})
+		}
+
+		if qp.field.op != nil {
+			idxit.iop, _ = qp.field.op.(indexIteratorOperator)
+		}
+
+		st = document.NewStream(idxit)
 	}
 
 	st = st.Filter(whereClause(qo.whereExpr, expr.EvalStack{
@@ -163,6 +177,10 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 	return qp
 }
 
+type indexIteratorOperator interface {
+	IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
+}
+
 // analyseExpr is a recursive function that scans each node the e Expr tree.
 // If it contains a comparison operator, it checks if this operator and its operands
 // can benefit from using an index. This check is done in the cmpOpCanUseIndex function.
@@ -173,8 +191,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 		return nil
 	}
 
-	switch {
-	case expr.IsComparisonOperator(op):
+	if _, ok := op.(indexIteratorOperator); ok {
 		ok, fs, e := cmpOpCanUseIndex(op)
 		if !ok || !evaluatesToScalarOrParam(e) {
 			return nil
@@ -184,7 +201,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 		if ok {
 			return &queryPlanField{
 				indexedField: fs,
-				op:           op.Token(),
+				op:           op,
 				e:            e,
 				uniqueIndex:  idx.Unique,
 			}
@@ -194,7 +211,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 		if pk != nil && pk.Path.String() == fs.Name() {
 			return &queryPlanField{
 				indexedField: fs,
-				op:           op.Token(),
+				op:           op,
 				e:            e,
 				uniqueIndex:  true,
 				isPrimaryKey: true,
@@ -202,8 +219,9 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 		}
 
 		return nil
+	}
 
-	case expr.IsAndOperator(op):
+	if expr.IsAndOperator(op) {
 		nodeL := qo.analyseExpr(op.LeftHand())
 		nodeR := qo.analyseExpr(op.LeftHand())
 
@@ -258,7 +276,7 @@ type indexIterator struct {
 	tb               *database.Table
 	args             []expr.Param
 	index            index.Index
-	op               scanner.Token
+	iop              indexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token
 }
@@ -307,95 +325,11 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 		}
 	}
 
-	switch it.op {
-	case scanner.EQ:
-		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
-			ok, err := v.IsEqual(val)
-			if err != nil {
-				return err
-			}
+	return it.iop.IterateIndex(it.index, it.tb, v, fn)
+}
 
-			if ok {
-				r, err := it.tb.GetDocument(key)
-				if err != nil {
-					return err
-				}
-
-				return fn(r)
-			}
-
-			return errStop
-		})
-	case scanner.GT:
-		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
-			ok, err := v.IsEqual(val)
-			if err != nil {
-				return err
-			}
-
-			if ok {
-				return nil
-			}
-
-			r, err := it.tb.GetDocument(key)
-			if err != nil {
-				return err
-			}
-
-			return fn(r)
-		})
-	case scanner.GTE:
-		err = it.index.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
-			r, err := it.tb.GetDocument(key)
-			if err != nil {
-				return err
-			}
-
-			return fn(r)
-		})
-	case scanner.LT:
-		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
-			ok, err := v.IsLesserThanOrEqual(val)
-			if err != nil {
-				return err
-			}
-
-			if ok {
-				return errStop
-			}
-
-			r, err := it.tb.GetDocument(key)
-			if err != nil {
-				return err
-			}
-
-			return fn(r)
-		})
-	case scanner.LTE:
-		err = it.index.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
-			ok, err := v.IsLesserThan(val)
-			if err != nil {
-				return err
-			}
-
-			if ok {
-				return errStop
-			}
-
-			r, err := it.tb.GetDocument(key)
-			if err != nil {
-				return err
-			}
-
-			return fn(r)
-		})
-	}
-
-	if err != nil && err != errStop {
-		return err
-	}
-
-	return nil
+type pkIteratorOperator interface {
+	IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error
 }
 
 type pkIterator struct {
@@ -403,8 +337,8 @@ type pkIterator struct {
 	tb               *database.Table
 	cfg              *database.TableConfig
 	args             []expr.Param
-	op               scanner.Token
 	e                expr.Expr
+	pkop             pkIteratorOperator
 	orderByDirection scanner.Token
 	evalValue        document.Value
 }
@@ -438,101 +372,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 		return err
 	}
 
-	switch it.op {
-	case scanner.EQ:
-		val, err := it.tb.Store.Get(data)
-		if err != nil {
-			if err == engine.ErrKeyNotFound {
-				return nil
-			}
-
-			return err
-		}
-		return fn(encoding.EncodedDocument(val))
-	case scanner.GT:
-		var d encoding.EncodedDocument
-		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer func() {
-			it.Close()
-		}()
-
-		for it.Seek(data); it.Valid(); it.Next() {
-			d, err = it.Item().ValueCopy(d)
-			if err != nil {
-				return err
-			}
-			if bytes.Equal(data, d) {
-				return nil
-			}
-
-			err = fn(&d)
-			if err != nil {
-				return err
-			}
-		}
-	case scanner.GTE:
-		var d encoding.EncodedDocument
-		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer func() {
-			it.Close()
-		}()
-
-		for it.Seek(data); it.Valid(); it.Next() {
-			d, err = it.Item().ValueCopy(d)
-			if err != nil {
-				return err
-			}
-
-			err = fn(&d)
-			if err != nil {
-				return err
-			}
-		}
-	case scanner.LT:
-		var d encoding.EncodedDocument
-		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer func() {
-			it.Close()
-		}()
-
-		for it.Seek(nil); it.Valid(); it.Next() {
-			d, err = it.Item().ValueCopy(d)
-			if err != nil {
-				return err
-			}
-			if bytesutil.CompareBytes(data, d) <= 0 {
-				break
-			}
-
-			err = fn(&d)
-			if err != nil {
-				return err
-			}
-		}
-	case scanner.LTE:
-		var d encoding.EncodedDocument
-		it := it.tb.Store.NewIterator(engine.IteratorConfig{})
-		defer func() {
-			it.Close()
-		}()
-
-		for it.Seek(nil); it.Valid(); it.Next() {
-			d, err = it.Item().ValueCopy(d)
-			if err != nil {
-				return err
-			}
-			if bytesutil.CompareBytes(data, d) < 0 {
-				break
-			}
-
-			err = fn(&d)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return it.pkop.IteratePK(it.tb, data, fn)
 }
 
 // sortIterator operates a partial sort on the iterator using a heap.

@@ -1,9 +1,16 @@
 package expr
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 
+	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
+	"github.com/asdine/genji/document/encoding"
+	"github.com/asdine/genji/engine"
+	"github.com/asdine/genji/index"
+	"github.com/asdine/genji/pkg/bytesutil"
 	"github.com/asdine/genji/sql/scanner"
 )
 
@@ -13,38 +20,297 @@ type cmpOp struct {
 }
 
 // newCmpOp creates a comparison operator.
-func newCmpOp(a, b Expr, t scanner.Token) Operator {
-	return cmpOp{&simpleOperator{a, b, t}}
+func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
+	return &cmpOp{&simpleOperator{a, b, t}}
+}
+
+type eqOp struct {
+	*cmpOp
 }
 
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
-	return cmpOp{&simpleOperator{a, b, scanner.EQ}}
+	return eqOp{newCmpOp(a, b, scanner.EQ)}
+}
+
+var errStop = errors.New("errStop")
+
+func (op eqOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
+		ok, err := v.IsEqual(val)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			r, err := tb.GetDocument(key)
+			if err != nil {
+				return err
+			}
+
+			return fn(r)
+		}
+
+		return errStop
+	})
+
+	if err != nil && err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+func (op eqOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+	val, err := tb.Store.Get(data)
+	if err != nil {
+		if err == engine.ErrKeyNotFound {
+			return nil
+		}
+
+		return err
+	}
+	return fn(encoding.EncodedDocument(val))
+}
+
+type neqOp struct {
+	*cmpOp
 }
 
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) Expr {
-	return cmpOp{&simpleOperator{a, b, scanner.NEQ}}
+	return neqOp{newCmpOp(a, b, scanner.NEQ)}
+}
+
+type gtOp struct {
+	*cmpOp
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) Expr {
-	return cmpOp{&simpleOperator{a, b, scanner.GT}}
+	return gtOp{newCmpOp(a, b, scanner.GT)}
+}
+
+func (op gtOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
+		ok, err := v.IsEqual(val)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			return nil
+		}
+
+		r, err := tb.GetDocument(key)
+		if err != nil {
+			return err
+		}
+
+		return fn(r)
+	})
+
+	if err != nil && err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+func (op gtOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+	var d encoding.EncodedDocument
+	var err error
+	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	for it.Seek(data); it.Valid(); it.Next() {
+		d, err = it.Item().ValueCopy(d)
+		if err != nil {
+			return err
+		}
+		if bytes.Equal(data, d) {
+			return nil
+		}
+
+		err = fn(&d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type gteOp struct {
+	*cmpOp
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
-	return cmpOp{&simpleOperator{a, b, scanner.GTE}}
+	return gteOp{newCmpOp(a, b, scanner.GTE)}
+}
+
+func (op gteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
+		r, err := tb.GetDocument(key)
+		if err != nil {
+			return err
+		}
+
+		return fn(r)
+	})
+
+	if err != nil && err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+func (op gteOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+	var d encoding.EncodedDocument
+	var err error
+	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	defer func() {
+		it.Close()
+	}()
+
+	for it.Seek(data); it.Valid(); it.Next() {
+		d, err = it.Item().ValueCopy(d)
+		if err != nil {
+			return err
+		}
+
+		err = fn(&d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type ltOp struct {
+	*cmpOp
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) Expr {
-	return cmpOp{&simpleOperator{a, b, scanner.LT}}
+	return ltOp{newCmpOp(a, b, scanner.LT)}
+}
+
+func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
+		ok, err := v.IsLesserThanOrEqual(val)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			return errStop
+		}
+
+		r, err := tb.GetDocument(key)
+		if err != nil {
+			return err
+		}
+
+		return fn(r)
+	})
+
+	if err != nil && err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+func (op ltOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+	var d encoding.EncodedDocument
+	var err error
+	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	defer func() {
+		it.Close()
+	}()
+
+	for it.Seek(nil); it.Valid(); it.Next() {
+		d, err = it.Item().ValueCopy(d)
+		if err != nil {
+			return err
+		}
+		if bytesutil.CompareBytes(data, d) <= 0 {
+			break
+		}
+
+		err = fn(&d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type lteOp struct {
+	*cmpOp
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
-	return cmpOp{&simpleOperator{a, b, scanner.LTE}}
+	return lteOp{newCmpOp(a, b, scanner.LTE)}
+}
+
+func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
+		ok, err := v.IsLesserThan(val)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			return errStop
+		}
+
+		r, err := tb.GetDocument(key)
+		if err != nil {
+			return err
+		}
+
+		return fn(r)
+	})
+
+	if err != nil && err != errStop {
+		return err
+	}
+
+	return nil
+}
+
+func (op lteOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+	var d encoding.EncodedDocument
+	var err error
+
+	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	defer func() {
+		it.Close()
+	}()
+
+	for it.Seek(nil); it.Valid(); it.Next() {
+		d, err = it.Item().ValueCopy(d)
+		if err != nil {
+			return err
+		}
+		if bytesutil.CompareBytes(data, d) < 0 {
+			break
+		}
+
+		err = fn(&d)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Eval compares a and b together using the operator specified when constructing the CmpOp
