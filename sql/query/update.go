@@ -73,11 +73,6 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 			}
 
 			for fname, e := range stmt.Pairs {
-				_, err := docs[i].GetByField(fname)
-				if err != nil {
-					continue
-				}
-
 				ev, err := e.Eval(expr.EvalStack{
 					Tx:       tx,
 					Document: d,
@@ -87,9 +82,16 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 					return err
 				}
 
-				err = docs[i].Replace(fname, ev)
-				if err != nil {
-					return err
+				_, err = docs[i].GetByField(fname)
+				switch err {
+				case nil:
+					// If no error, it means that the field already exists
+					// and it should be replaced.
+					_ = docs[i].Replace(fname, ev)
+				case document.ErrFieldNotFound:
+					// If the field doesn't exist,
+					// it should be added to the document.
+					docs[i].Set(fname, ev)
 				}
 			}
 
