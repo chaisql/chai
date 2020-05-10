@@ -378,7 +378,7 @@ type inOp struct {
 
 // In creates an expression that evaluates to the result of a IN b.
 func In(a, b Expr) Expr {
-	return &inOp{&simpleOperator{a, b, scanner.IN}}
+	return inOp{&simpleOperator{a, b, scanner.IN}}
 }
 
 func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -409,6 +409,22 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 		return trueLitteral, nil
 	}
 	return falseLitteral, nil
+}
+
+func (op inOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	if v.Type != document.ArrayValue {
+		panic(fmt.Sprintf("unexpected type %s in IN index iterator", v.Type))
+	}
+
+	a, err := v.ConvertToArray()
+	if err != nil {
+		return err
+	}
+
+	var eq eqOp
+	return a.Iterate(func(i int, value document.Value) error {
+		return eq.IterateIndex(idx, tb, value, fn)
+	})
 }
 
 type notInOp struct {

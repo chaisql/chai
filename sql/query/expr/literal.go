@@ -49,6 +49,11 @@ func DocumentValue(d document.Document) LiteralValue {
 	return LiteralValue(document.NewDocumentValue(d))
 }
 
+// ArrayValue creates a litteral value of type Array.
+func ArrayValue(a document.Array) LiteralValue {
+	return LiteralValue(document.NewArrayValue(a))
+}
+
 // Eval returns l. It implements the Expr interface.
 func (l LiteralValue) Eval(EvalStack) (document.Value, error) {
 	return document.Value(l), nil

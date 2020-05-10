@@ -193,7 +193,11 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 
 	if _, ok := op.(indexIteratorOperator); ok {
 		ok, fs, e := cmpOpCanUseIndex(op)
-		if !ok || !evaluatesToScalarOrParam(e) {
+		if !ok {
+			return nil
+		}
+		ok, e = evaluatesToScalarOrParam(e)
+		if !ok {
 			return nil
 		}
 
@@ -260,15 +264,27 @@ func cmpOpCanUseIndex(op expr.Operator) (bool, expr.FieldSelector, expr.Expr) {
 	return false, nil, nil
 }
 
-func evaluatesToScalarOrParam(e expr.Expr) bool {
+func evaluatesToScalarOrParam(e expr.Expr) (ok bool, newExpr expr.Expr) {
 	switch e.(type) {
 	case expr.LiteralValue:
-		return true
+		return true, e
 	case expr.NamedParam, expr.PositionalParam:
-		return true
+		return true, e
+	case expr.LiteralExprList:
+		v, err := e.Eval(expr.EvalStack{})
+		if err != nil {
+			return false, e
+		}
+
+		a, err := v.ConvertToArray()
+		if err != nil {
+			return false, e
+		}
+
+		return true, expr.ArrayValue(a)
 	}
 
-	return false
+	return false, e
 }
 
 type indexIterator struct {
