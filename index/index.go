@@ -32,20 +32,23 @@ const (
 	Bool
 	Float
 	Bytes
+	Array
+	Document
 )
 
 // NewTypeFromValueType returns the right index type associated with t.
 func NewTypeFromValueType(t document.ValueType) Type {
-	if t.IsNumber() {
+	switch {
+	case t.IsNumber():
 		return Float
-	}
-
-	if t == document.TextValue || t == document.BlobValue {
+	case t == document.TextValue || t == document.BlobValue:
 		return Bytes
-	}
-
-	if t == document.BoolValue {
+	case t == document.BoolValue:
 		return Bool
+	case t == document.ArrayValue:
+		return Array
+	case t == document.DocumentValue:
+		return Document
 	}
 
 	return Null
@@ -648,6 +651,10 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 	case Bool:
 		b, err := encoding.DecodeBool(data)
 		return document.NewBoolValue(b), err
+	case Array:
+		return document.NewArrayValue(encoding.DecodeArray(data)), nil
+	case Document:
+		return document.NewDocumentValue(encoding.DecodeDocument(data)), nil
 	}
 
 	return document.Value{}, fmt.Errorf("unknown index type %d", t)
