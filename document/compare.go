@@ -73,9 +73,7 @@ func (v Value) IsLesserThanOrEqual(other Value) (bool, error) {
 func compare(op operator, l, r Value) (bool, error) {
 	switch {
 	// deal with nil
-	case l.Type == NullValue:
-		fallthrough
-	case r.Type == NullValue:
+	case l.Type == NullValue || r.Type == NullValue:
 		return compareWithNull(op, l, r)
 
 	// compare documents together
@@ -243,7 +241,7 @@ var errStop = errors.New("stop")
 
 func compareDocuments(op operator, l, r Value) (bool, error) {
 	if op != operatorEq {
-		return false, fmt.Errorf("%q operator not supported for document comparison", op)
+		return false, nil
 	}
 
 	ld, err := l.ConvertToDocument()

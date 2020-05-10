@@ -268,16 +268,20 @@ func TestComparisonDocuments(t *testing.T) {
 				require.True(t, ok)
 			case ">":
 				ok, err = document.NewDocumentValue(d1).IsGreaterThan(document.NewDocumentValue(d2))
-				require.Error(t, err)
+				require.NoError(t, err)
+				require.False(t, ok)
 			case ">=":
 				ok, err = document.NewDocumentValue(d1).IsGreaterThanOrEqual(document.NewDocumentValue(d2))
-				require.Error(t, err)
+				require.NoError(t, err)
+				require.False(t, ok)
 			case "<":
 				ok, err = document.NewDocumentValue(d1).IsLesserThan(document.NewDocumentValue(d2))
-				require.Error(t, err)
+				require.NoError(t, err)
+				require.False(t, ok)
 			case "<=":
 				ok, err = document.NewDocumentValue(d1).IsLesserThanOrEqual(document.NewDocumentValue(d2))
-				require.Error(t, err)
+				require.NoError(t, err)
+				require.False(t, ok)
 			}
 		})
 	}

@@ -98,6 +98,11 @@ func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 	return parseJSONDocument(dec, t, fb)
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (vb *ValueBuffer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonArray{Array: vb})
+}
+
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(data))

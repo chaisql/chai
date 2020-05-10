@@ -2,6 +2,7 @@ package document
 
 import (
 	"errors"
+	"sort"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
@@ -137,4 +138,78 @@ func (vb *ValueBuffer) Replace(index int, v Value) error {
 
 	(*vb)[index] = v
 	return nil
+}
+
+type sortableArray struct {
+	vb  ValueBuffer
+	err error
+}
+
+func (a sortableArray) Len() int {
+	return len(a.vb)
+}
+
+func (a *sortableArray) Swap(i, j int) { a.vb[i], a.vb[j] = a.vb[j], a.vb[i] }
+
+var typeSortOrder = map[ValueType]int{
+	NullValue:     0,
+	BoolValue:     1,
+	Float64Value:  2,
+	TextValue:     3,
+	ArrayValue:    4,
+	DocumentValue: 5,
+}
+
+func (a *sortableArray) Less(i, j int) (ok bool) {
+	it, jt := a.vb[i].Type, a.vb[j].Type
+	if it == jt {
+		ok, a.err = a.vb[i].IsLesserThan(a.vb[j])
+		return
+	}
+
+	switch {
+	case it.IsNumber():
+		it = Float64Value
+	case it == BlobValue:
+		it = TextValue
+	}
+
+	switch {
+	case jt.IsNumber():
+		jt = Float64Value
+	case jt == BlobValue:
+		jt = TextValue
+	}
+
+	if typeSortOrder[it] == typeSortOrder[jt] {
+		ok, a.err = a.vb[i].IsLesserThan(a.vb[j])
+		return
+	}
+
+	return typeSortOrder[it]-typeSortOrder[jt] < 0
+}
+
+// SortArray creates a new sorted array.
+// Types are sorted in the following ascending order:
+//   - NULL
+//   - Booleans
+//   - Numbers
+//   - Text / Blob
+//   - Arrays
+//   - Documents
+// It doesn't sort nested arrays.
+func SortArray(a Array) (Array, error) {
+	var s sortableArray
+	err := s.vb.ScanArray(a)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Sort(&s)
+
+	if s.err != nil {
+		return nil, err
+	}
+
+	return &s.vb, nil
 }
