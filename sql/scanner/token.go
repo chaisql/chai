@@ -99,6 +99,7 @@ const (
 	TABLE
 	TO
 	UNIQUE
+	UNSET
 	UPDATE
 	VALUES
 	WHERE
@@ -197,6 +198,7 @@ var tokens = [...]string{
 	TABLE:   "TABLE",
 	TO:      "TO",
 	UNIQUE:  "UNIQUE",
+	UNSET:   "UNSET",
 	UPDATE:  "UPDATE",
 	VALUES:  "VALUES",
 	WHERE:   "WHERE",

@@ -142,7 +142,10 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `OFFSET`, tok: scanner.OFFSET, raw: `OFFSET`},
 		{s: `ORDER`, tok: scanner.ORDER, raw: `ORDER`},
 		{s: `SELECT`, tok: scanner.SELECT, raw: `SELECT`},
+		{s: `SET`, tok: scanner.SET, raw: `SET`},
 		{s: `TO`, tok: scanner.TO, raw: `TO`},
+		{s: `UPDATE`, tok: scanner.UPDATE, raw: `UPDATE`},
+		{s: `UNSET`, tok: scanner.UNSET, raw: `UNSET`},
 		{s: `VALUES`, tok: scanner.VALUES, raw: `VALUES`},
 		{s: `WHERE`, tok: scanner.WHERE, raw: `WHERE`},
 		{s: `seLECT`, tok: scanner.SELECT, raw: `seLECT`}, // case insensitive
