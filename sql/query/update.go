@@ -16,7 +16,16 @@ const updateBufferSize = 100
 // UpdateStmt is a DSL that allows creating a full Update query.
 type UpdateStmt struct {
 	TableName string
-	Pairs     map[string]expr.Expr
+
+	// Pairs is used along with the Set clause. It holds
+	// each field with its corresponding value that
+	// should be set in the document.
+	Pairs map[string]expr.Expr
+
+	// Fields is used along with the Unset clause. It holds
+	// each field that should be unset from the document.
+	Fields []string
+
 	WhereExpr expr.Expr
 }
 
