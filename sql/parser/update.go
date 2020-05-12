@@ -18,8 +18,16 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 		return stmt, err
 	}
 
-	// Parse assignment: "SET field = EXPR".
-	stmt.Pairs, err = p.parseSetClause()
+	// Parse clause: SET or UNSET.
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.SET:
+		stmt.Pairs, err = p.parseSetClause()
+	case scanner.UNSET:
+		stmt.Fields, err = p.parseUnsetClause()
+	default:
+		err = newParseError(scanner.Tokstr(tok, lit), []string{"SET", "UNSET"}, pos)
+	}
 	if err != nil {
 		return stmt, err
 	}
@@ -35,11 +43,6 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 
 // parseSetClause parses the "SET" clause of the query.
 func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
-	// Check if the SET token exists.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.SET {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SET"}, pos)
-	}
-
 	pairs := make(map[string]expr.Expr)
 
 	firstPair := true
@@ -75,4 +78,30 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 	}
 
 	return pairs, nil
+}
+
+func (p *Parser) parseUnsetClause() ([]string, error) {
+	var fields []string
+
+	firstField := true
+	for {
+		if !firstField {
+			// Scan for a comma.
+			tok, _, _ := p.ScanIgnoreWhitespace()
+			if tok != scanner.COMMA {
+				p.Unscan()
+				break
+			}
+		}
+
+		// Scan the identifier for the field to unset.
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		if tok != scanner.IDENT {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+		}
+		fields = append(fields, lit)
+
+		firstField = false
+	}
+	return fields, nil
 }

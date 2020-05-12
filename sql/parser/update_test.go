@@ -15,7 +15,7 @@ func TestParserUdpate(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"No cond", "UPDATE test SET a = 1",
+		{"SET/No cond", "UPDATE test SET a = 1",
 			query.UpdateStmt{
 				TableName: "test",
 				Pairs: map[string]expr.Expr{
@@ -23,13 +23,26 @@ func TestParserUdpate(t *testing.T) {
 				},
 			},
 			false},
-		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
+		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			query.UpdateStmt{
 				TableName: "test",
 				Pairs: map[string]expr.Expr{
 					"a": expr.IntValue(1),
 					"b": expr.IntValue(2),
 				},
+				WhereExpr: expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+			},
+			false},
+		{"UNSET/No cond", "UPDATE test UNSET a",
+			query.UpdateStmt{
+				TableName: "test",
+				Fields:    []string{"a"},
+			},
+			false},
+		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
+			query.UpdateStmt{
+				TableName: "test",
+				Fields:    []string{"a", "b"},
 				WhereExpr: expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
 			},
 			false},
