@@ -43,13 +43,10 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 		return res, errors.New("missing table name")
 	}
 
-	if len(stmt.Pairs) == 0 {
-		return res, errors.New("Set method not called")
-	}
-
-	stack := expr.EvalStack{
-		Tx:     tx,
-		Params: args,
+	isSet := len(stmt.Pairs) != 0
+	isUnset := len(stmt.Fields) != 0
+	if !isSet && !isUnset {
+		return res, errors.New("neither Set or Unset method called")
 	}
 
 	t, err := tx.GetTable(stmt.TableName)
@@ -59,6 +56,11 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 
 	// replace store implementation by a resumable store, temporarily.
 	rit := resumableIterator{store: t.Store}
+
+	stack := expr.EvalStack{
+		Tx:     tx,
+		Params: args,
+	}
 
 	st := document.NewStream(&rit)
 	st = st.Filter(whereClause(stmt.WhereExpr, stack)).Limit(updateBufferSize)
@@ -81,27 +83,14 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 				return err
 			}
 
-			for fname, e := range stmt.Pairs {
-				ev, err := e.Eval(expr.EvalStack{
-					Tx:       tx,
-					Document: d,
-					Params:   args,
-				})
-				if err != nil && err != document.ErrFieldNotFound {
+			switch {
+			case isSet:
+				err = stmt.set(&docs[i], tx, args)
+				if err != nil {
 					return err
 				}
-
-				_, err = docs[i].GetByField(fname)
-				switch err {
-				case nil:
-					// If no error, it means that the field already exists
-					// and it should be replaced.
-					_ = docs[i].Replace(fname, ev)
-				case document.ErrFieldNotFound:
-					// If the field doesn't exist,
-					// it should be added to the document.
-					docs[i].Set(fname, ev)
-				}
+			case isUnset:
+				stmt.unset(&docs[i])
 			}
 
 			// copy the key and reuse the buffer
@@ -126,6 +115,48 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 	}
 
 	return res, err
+}
+
+// set executes the Set clause.
+func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, args []expr.Param) error {
+	for fname, e := range stmt.Pairs {
+		ev, err := e.Eval(expr.EvalStack{
+			Tx:       tx,
+			Document: d,
+			Params:   args,
+		})
+		if err != nil && err != document.ErrFieldNotFound {
+			return err
+		}
+
+		_, err = d.GetByField(fname)
+		switch err {
+		case nil:
+			// If no error, it means that the field already exists
+			// and it should be replaced.
+			_ = d.Replace(fname, ev)
+		case document.ErrFieldNotFound:
+			// If the field doesn't exist,
+			// it should be added to the document.
+			d.Set(fname, ev)
+		}
+	}
+	return nil
+}
+
+// unset executes the Unset clause.
+func (stmt UpdateStmt) unset(d *document.FieldBuffer) {
+	for _, f := range stmt.Fields {
+		_, err := d.GetByField(f)
+		if err != nil {
+			// The field doesn't exist, we process the next one.
+			continue
+		}
+
+		// The only error eventually returned by Delete is ErrFieldNotFound,
+		// it can be skipped.
+		_ = d.Delete(f)
+	}
 }
 
 // storeFromKey implements an engine.Store which iterates from a certain key.

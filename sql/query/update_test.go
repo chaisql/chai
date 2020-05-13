@@ -18,16 +18,27 @@ func TestUpdateStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"foo3","e":"bar3"}]`, nil},
-		{"No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"foo3","e":"bar3"}]`, nil},
-		{"No cond / with multiple idents", `UPDATE test SET a = c`, false, `[{"a":"baz1","b":"bar1","c":"baz1"},{"a":null,"b":"bar2"},{"a":null,"d":"foo3","e":"bar3"}]`, nil},
-		{"No cond / with missing field", "UPDATE test SET f = 'boo'", false, `[{"a":"foo1","b":"bar1","c":"baz1","f":"boo"},{"a":"foo2","b":"bar2","f":"boo"},{"d":"foo3","e":"bar3","f":"boo"}]`, nil},
-		{"No cond / with string", `UPDATE test SET 'a' = 'boo'`, true, "", nil},
-		{"With cond", "UPDATE test SET a = 1, b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":1,"b":2},{"d":"foo3","e":"bar3"}]`, nil},
-		{"With cond / with missing field", "UPDATE test SET f = 'boo' WHERE d = 'foo3'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3","f":"boo"}]`, nil},
-		{"Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
-		{"Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, []interface{}{"a", "b", "foo1"}},
-		{"Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
+		// Test without any clause.
+		{"No clause", `UPDATE test`, true, "", nil},
+
+		// SET tests.
+		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"foo3","e":"bar3"}]`, nil},
+		{"SET / No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"foo3","e":"bar3"}]`, nil},
+		{"SET / No cond / with multiple idents", `UPDATE test SET a = c`, false, `[{"a":"baz1","b":"bar1","c":"baz1"},{"a":null,"b":"bar2"},{"a":null,"d":"foo3","e":"bar3"}]`, nil},
+		{"SET / No cond / with missing field", "UPDATE test SET f = 'boo'", false, `[{"a":"foo1","b":"bar1","c":"baz1","f":"boo"},{"a":"foo2","b":"bar2","f":"boo"},{"d":"foo3","e":"bar3","f":"boo"}]`, nil},
+		{"SET / No cond / with string", `UPDATE test SET 'a' = 'boo'`, true, "", nil},
+		{"SET / With cond", "UPDATE test SET a = 1, b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":1,"b":2},{"d":"foo3","e":"bar3"}]`, nil},
+		{"SET / With cond / with missing field", "UPDATE test SET f = 'boo' WHERE d = 'foo3'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3","f":"boo"}]`, nil},
+		{"SET / Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"SET / Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, []interface{}{"a", "b", "foo1"}},
+		{"SET / Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
+
+		// UNSET tests.
+		{"UNSET / No cond", `UPDATE test UNSET a`, false, `[{"b":"bar1","c":"baz1"},{"b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"UNSET / No cond / with ident string", "UPDATE test UNSET `a`", false, `[{"b":"bar1","c":"baz1"},{"b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"UNSET / No cond / with missing field", "UPDATE test UNSET f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
+		{"UNSET / No cond / with string", `UPDATE test UNSET 'a'`, true, "", nil},
+		{"UNSET / With cond", `UPDATE test UNSET a WHERE a = 'foo2'`, false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"b":"bar2"},{"d":"foo3","e":"bar3"}]`, nil},
 	}
 
 	for _, test := range tests {
