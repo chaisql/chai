@@ -102,10 +102,15 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 			return
 		}
 
-		v, err := v.ConvertTo(qo.cfg.GetPrimaryKey().Type)
-		if err != nil {
-			st = document.NewStream(qo.t)
-			break
+		// for all operators except IN, we require the exact same type
+		// otherwise we operate a scan table.
+		if !expr.IsInOperator(qp.field.op) {
+			v, err = v.ConvertTo(qo.cfg.GetPrimaryKey().Type)
+			if err != nil {
+				err = nil
+				st = document.NewStream(qo.t)
+				break
+			}
 		}
 
 		pkit := pkIterator{
@@ -345,7 +350,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 }
 
 type pkIteratorOperator interface {
-	IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error
+	IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error
 }
 
 type pkIterator struct {
@@ -383,12 +388,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 		return nil
 	}
 
-	data, err := encoding.EncodeValue(it.evalValue)
-	if err != nil {
-		return err
-	}
-
-	return it.pkop.IteratePK(it.tb, data, fn)
+	return it.pkop.IteratePK(it.tb, it.evalValue, it.cfg.GetPrimaryKey().Type, fn)
 }
 
 // sortIterator operates a partial sort on the iterator using a heap.

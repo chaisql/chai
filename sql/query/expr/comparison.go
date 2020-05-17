@@ -61,7 +61,17 @@ func (op eqOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 	return nil
 }
 
-func (op eqOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+	v, err := v.ConvertTo(pkType)
+	if err != nil {
+		return nil
+	}
+
+	data, err := encoding.EncodeValue(v)
+	if err != nil {
+		return err
+	}
+
 	val, err := tb.Store.Get(data)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
@@ -117,9 +127,19 @@ func (op gtOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 	return nil
 }
 
-func (op gtOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+	v, err := v.ConvertTo(pkType)
+	if err != nil {
+		return err
+	}
+
 	var d encoding.EncodedDocument
-	var err error
+
+	data, err := encoding.EncodeValue(v)
+	if err != nil {
+		return err
+	}
+
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
@@ -167,13 +187,21 @@ func (op gteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Val
 	return nil
 }
 
-func (op gteOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+	v, err := v.ConvertTo(pkType)
+	if err != nil {
+		return err
+	}
+
 	var d encoding.EncodedDocument
-	var err error
+
+	data, err := encoding.EncodeValue(v)
+	if err != nil {
+		return err
+	}
+
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
 	for it.Seek(data); it.Valid(); it.Next() {
 		d, err = it.Item().ValueCopy(d)
@@ -225,13 +253,21 @@ func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 	return nil
 }
 
-func (op ltOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+	v, err := v.ConvertTo(pkType)
+	if err != nil {
+		return err
+	}
+
 	var d encoding.EncodedDocument
-	var err error
+
+	data, err := encoding.EncodeValue(v)
+	if err != nil {
+		return err
+	}
+
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
 	for it.Seek(nil); it.Valid(); it.Next() {
 		d, err = it.Item().ValueCopy(d)
@@ -286,14 +322,21 @@ func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Val
 	return nil
 }
 
-func (op lteOp) IteratePK(tb *database.Table, data []byte, fn func(d document.Document) error) error {
+func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+	v, err := v.ConvertTo(pkType)
+	if err != nil {
+		return err
+	}
+
 	var d encoding.EncodedDocument
-	var err error
+
+	data, err := encoding.EncodeValue(v)
+	if err != nil {
+		return err
+	}
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
 	for it.Seek(nil); it.Valid(); it.Next() {
 		d, err = it.Item().ValueCopy(d)
@@ -372,6 +415,12 @@ func IsOrOperator(e Expr) bool {
 	return ok
 }
 
+// IsInOperator reports if e is the IN operator.
+func IsInOperator(e Expr) bool {
+	_, ok := e.(inOp)
+	return ok
+}
+
 type inOp struct {
 	*simpleOperator
 }
@@ -413,7 +462,7 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 
 func (op inOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	if v.Type != document.ArrayValue {
-		panic(fmt.Sprintf("unexpected type %s in IN index iterator", v.Type))
+		return errors.New("IN operator takes an array")
 	}
 
 	a, err := v.ConvertToArray()
@@ -424,6 +473,42 @@ func (op inOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 	var eq eqOp
 	return a.Iterate(func(i int, value document.Value) error {
 		return eq.IterateIndex(idx, tb, value, fn)
+	})
+}
+
+// IteratePK implements the query.pkIterator interface. It expects v to be an array,
+// iterates over it, and for each value, gets it from the underlying store of tb.
+func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+	if v.Type != document.ArrayValue {
+		return errors.New("IN operator takes an array")
+	}
+
+	var d encoding.EncodedDocument
+	arr, err := v.ConvertToArray()
+	if err != nil {
+		return err
+	}
+
+	return arr.Iterate(func(i int, value document.Value) error {
+		val, err := value.ConvertTo(pkType)
+		if err != nil {
+			return nil
+		}
+
+		data, err := encoding.EncodeValue(val)
+		if err != nil {
+			return err
+		}
+
+		d, err = tb.Store.Get(data)
+		if err != nil {
+			if err == engine.ErrKeyNotFound {
+				return nil
+			}
+
+			return err
+		}
+		return fn(d)
 	})
 }
 
