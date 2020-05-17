@@ -186,4 +186,25 @@ func TestSelectStmt(t *testing.T) {
 		err = db.Exec("SELECT * FROM foo")
 		require.Error(t, err)
 	})
+
+	t.Run("with order by and indexes", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test; CREATE INDEX idx_foo ON test(foo);")
+		require.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test (foo) VALUES (1), ('hello'), (2), (true)`)
+		require.NoError(t, err)
+
+		st, err := db.Query("SELECT * FROM test ORDER BY foo")
+		require.NoError(t, err)
+		defer st.Close()
+
+		var buf bytes.Buffer
+		err = document.IteratorToJSONArray(&buf, st)
+		require.NoError(t, err)
+		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
+	})
 }

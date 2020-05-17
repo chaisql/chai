@@ -168,7 +168,7 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 			if ok || (pk != nil && pk.Path.String() == qo.orderBy.Name()) {
 				qp.field = &queryPlanField{
 					indexedField: qo.orderBy,
-					isPrimaryKey: pk.Path.String() == qo.orderBy.Name(),
+					isPrimaryKey: pk != nil && pk.Path.String() == qo.orderBy.Name(),
 				}
 				qp.sorted = true
 
