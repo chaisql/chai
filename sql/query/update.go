@@ -2,6 +2,7 @@ package query
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/asdine/genji/database"
 	"github.com/asdine/genji/document"
@@ -17,14 +18,14 @@ const updateBufferSize = 100
 type UpdateStmt struct {
 	TableName string
 
-	// Pairs is used along with the Set clause. It holds
+	// SetPairs is used along with the Set clause. It holds
 	// each field with its corresponding value that
 	// should be set in the document.
-	Pairs map[string]expr.Expr
+	SetPairs map[string]expr.Expr
 
-	// Fields is used along with the Unset clause. It holds
+	// UnsetFields is used along with the Unset clause. It holds
 	// each field that should be unset from the document.
-	Fields []string
+	UnsetFields []string
 
 	WhereExpr expr.Expr
 }
@@ -43,8 +44,8 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 		return res, errors.New("missing table name")
 	}
 
-	isSet := len(stmt.Pairs) != 0
-	isUnset := len(stmt.Fields) != 0
+	isSet := len(stmt.SetPairs) != 0
+	isUnset := len(stmt.UnsetFields) != 0
 	if !isSet && !isUnset {
 		return res, errors.New("neither Set or Unset method called")
 	}
@@ -90,7 +91,10 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 					return err
 				}
 			case isUnset:
-				stmt.unset(&docs[i])
+				err = stmt.unset(&docs[i], t)
+				if err != nil {
+					return err
+				}
 			}
 
 			// copy the key and reuse the buffer
@@ -119,7 +123,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 
 // set executes the Set clause.
 func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, args []expr.Param) error {
-	for fname, e := range stmt.Pairs {
+	for fname, e := range stmt.SetPairs {
 		ev, err := e.Eval(expr.EvalStack{
 			Tx:       tx,
 			Document: d,
@@ -145,8 +149,8 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 }
 
 // unset executes the Unset clause.
-func (stmt UpdateStmt) unset(d *document.FieldBuffer) {
-	for _, f := range stmt.Fields {
+func (stmt UpdateStmt) unset(d *document.FieldBuffer, t *database.Table) error {
+	for _, f := range stmt.UnsetFields {
 		_, err := d.GetByField(f)
 		if err != nil {
 			// The field doesn't exist, we process the next one.
@@ -155,8 +159,18 @@ func (stmt UpdateStmt) unset(d *document.FieldBuffer) {
 
 		// The only error eventually returned by Delete is ErrFieldNotFound,
 		// it can be skipped.
-		_ = d.Delete(f)
+		err = d.Delete(f)
+		if err != nil {
+			return err
+		}
 	}
+
+	_, err := t.ValidateConstraints(d)
+	if err != nil {
+		return fmt.Errorf("cannot unset: %v", err)
+	}
+
+	return nil
 }
 
 // storeFromKey implements an engine.Store which iterates from a certain key.

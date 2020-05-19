@@ -22,9 +22,9 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SET:
-		stmt.Pairs, err = p.parseSetClause()
+		stmt.SetPairs, err = p.parseSetClause()
 	case scanner.UNSET:
-		stmt.Fields, err = p.parseUnsetClause()
+		stmt.UnsetFields, err = p.parseUnsetClause()
 	default:
 		err = newParseError(scanner.Tokstr(tok, lit), []string{"SET", "UNSET"}, pos)
 	}
