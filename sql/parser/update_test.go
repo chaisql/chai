@@ -18,7 +18,7 @@ func TestParserUdpate(t *testing.T) {
 		{"SET/No cond", "UPDATE test SET a = 1",
 			query.UpdateStmt{
 				TableName: "test",
-				Pairs: map[string]expr.Expr{
+				SetPairs: map[string]expr.Expr{
 					"a": expr.IntValue(1),
 				},
 			},
@@ -26,7 +26,7 @@ func TestParserUdpate(t *testing.T) {
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			query.UpdateStmt{
 				TableName: "test",
-				Pairs: map[string]expr.Expr{
+				SetPairs: map[string]expr.Expr{
 					"a": expr.IntValue(1),
 					"b": expr.IntValue(2),
 				},
@@ -35,15 +35,15 @@ func TestParserUdpate(t *testing.T) {
 			false},
 		{"UNSET/No cond", "UPDATE test UNSET a",
 			query.UpdateStmt{
-				TableName: "test",
-				Fields:    []string{"a"},
+				TableName:   "test",
+				UnsetFields: []string{"a"},
 			},
 			false},
 		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
 			query.UpdateStmt{
-				TableName: "test",
-				Fields:    []string{"a", "b"},
-				WhereExpr: expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+				TableName:   "test",
+				UnsetFields: []string{"a", "b"},
+				WhereExpr:   expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
 			},
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},

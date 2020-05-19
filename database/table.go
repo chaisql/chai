@@ -133,11 +133,11 @@ func getParentValue(d document.Document, p document.ValuePath) (document.Value, 
 	return p[:len(p)-1].GetValue(d)
 }
 
-// validateConstraints check the table configuration for constraints and validates the document
+// ValidateConstraints check the table configuration for constraints and validates the document
 // against them. If the types defined by the constraints are different than the ones found in
 // the document, the fields are converted to these types when possible. if the conversion
 // fails, an error is returned.
-func (t *Table) validateConstraints(d document.Document) (document.Document, error) {
+func (t *Table) ValidateConstraints(d document.Document) (document.Document, error) {
 	cfg, err := t.Config()
 	if err != nil {
 		return nil, err
@@ -274,7 +274,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 func (t *Table) Insert(d document.Document) ([]byte, error) {
-	d, err := t.validateConstraints(d)
+	d, err := t.ValidateConstraints(d)
 	if err != nil {
 		return nil, err
 	}
