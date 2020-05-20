@@ -157,8 +157,6 @@ func (stmt UpdateStmt) unset(d *document.FieldBuffer, t *database.Table) error {
 			continue
 		}
 
-		// The only error eventually returned by Delete is ErrFieldNotFound,
-		// it can be skipped.
 		err = d.Delete(f)
 		if err != nil {
 			return err
