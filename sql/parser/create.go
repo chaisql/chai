@@ -3,9 +3,9 @@ package parser
 import (
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/sql/query"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.

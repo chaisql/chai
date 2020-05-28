@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
 

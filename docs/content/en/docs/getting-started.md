@@ -15,13 +15,13 @@ Genji requires at least Go 1.12.
 
 To install the Genji database, run this command:
 
-``` bash
-go get github.com/asdine/genji
+```bash
+go get github.com/genjidb/genji
 ```
 
 ## Golang API documentation
 
-To learn how to embed Genji in your Go code, follow the instructions in the [Go package documentation](https://pkg.go.dev/github.com/asdine/genji@v0.5.0?tab=doc).
+To learn how to embed Genji in your Go code, follow the instructions in the [Go package documentation](https://pkg.go.dev/github.com/genjidb/genji@v0.5.0?tab=doc).
 
 ## Try it out!
 
@@ -29,13 +29,13 @@ To try Genji without writing code, you can use the Genji command-line shell.
 
 First, install it:
 
-``` bash
-go get github.com/asdine/genji/cmd/genji
+```bash
+go get github.com/genjidb/genji/cmd/genji
 ```
 
 To open an in-memory database, simply type:
 
-``` bash
+```bash
 genji
 ```
 
@@ -47,7 +47,7 @@ It is also possible to create an on-disk database, using either [BoltDB](https:/
 
 Run the `genji` command followed by the name of the database file of your choice.
 
-``` bash
+```bash
 genji my.db
 ```
 
@@ -55,7 +55,7 @@ genji my.db
 
 Run the following command by replacing `pathToDBDir` by the directory of your choice.
 
-``` bash
+```bash
 genji --badger pathToDBDir
 ```
 

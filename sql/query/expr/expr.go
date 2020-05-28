@@ -1,9 +1,9 @@
 package expr
 
 import (
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 var (
@@ -28,8 +28,8 @@ type EvalStack struct {
 }
 
 type simpleOperator struct {
-	a, b  Expr
-	Tok scanner.Token
+	a, b Expr
+	Tok  scanner.Token
 }
 
 func (op simpleOperator) Precedence() int {

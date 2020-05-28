@@ -3,8 +3,8 @@ package expr_test
 import (
 	"testing"
 
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/query/expr"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query/expr"
 )
 
 func TestPkExpr(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/engine/badgerengine"
 )
 
 func Example() {

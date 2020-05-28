@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/asdine/genji/engine"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji/engine"
 )
 
 // A Store is an implementation of the engine.Store interface.

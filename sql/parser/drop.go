@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/asdine/genji/sql/query"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 // parseDropStatement parses a drop string and returns a Statement AST object.

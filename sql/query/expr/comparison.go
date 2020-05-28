@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/document/encoding"
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/index"
-	"github.com/asdine/genji/pkg/bytesutil"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/index"
+	"github.com/genjidb/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 // A cmpOp is a comparison operator.

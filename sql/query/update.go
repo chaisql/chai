@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/document/encoding"
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/sql/query/expr"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/sql/query/expr"
 )
 
 // updateBufferSize is the size of the buffer used to update documents.

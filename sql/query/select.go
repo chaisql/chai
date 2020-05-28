@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/query/expr"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 // SelectStmt is a DSL that allows creating a full Select query.

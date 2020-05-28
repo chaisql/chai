@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	"github.com/asdine/genji/sql/query/expr"
+	"github.com/genjidb/genji/sql/query/expr"
 )
 
 func argsToParams(args []interface{}) []expr.Param {

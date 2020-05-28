@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/asdine/genji/sql/driver"
+	"github.com/genjidb/genji/sql/driver"
 )
 
 type User struct {

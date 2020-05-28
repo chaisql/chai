@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/asdine/genji/cmd/genji/shell"
+	"github.com/genjidb/genji/cmd/genji/shell"
 	"github.com/urfave/cli"
 )
 

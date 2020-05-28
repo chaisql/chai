@@ -3,8 +3,8 @@ package database
 import (
 	"testing"
 
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine/memoryengine"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 

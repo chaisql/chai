@@ -1,7 +1,7 @@
 package genji
 
 import (
-	"github.com/asdine/genji/sql/query"
+	"github.com/genjidb/genji/sql/query"
 )
 
 func argsToParams(args []interface{}) []query.Param {

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji/document"
 )
 
 // A FieldSelector is a ResultField that extracts a field from a document at a given path.

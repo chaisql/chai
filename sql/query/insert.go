@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/query/expr"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query/expr"
 )
 
 // InsertStmt is a DSL that allows creating a full Insert query.

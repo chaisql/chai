@@ -47,7 +47,7 @@ anchor = "smart"
 [[menu.main]]
 name = "GitHub"
 weight = 50
-url = "https://github.com/asdine/genji/"
+url = "https://github.com/genjidb/genji/"
 
 [services]
 [services.googleAnalytics]
@@ -96,7 +96,7 @@ version = "0.0"
 url_latest_version = "https://genji.dev"
 
 # Repository configuration (URLs for in-page links to opening issues and suggesting changes)
-github_repo = "https://github.com/asdine/genji"
+github_repo = "https://github.com/genjidb/genji"
 
 # Specify a value here if your content directory is not in your repo's root directory
 github_subdir = "docs"
@@ -130,8 +130,8 @@ footer_about_disable = true
 [params.ui.feedback]
 enable = true
 # The responses that the user sees after clicking "yes" (the page was helpful) or "no" (the page was not helpful).
-yes = 'Glad to hear it! Please <a href="https://github.com/asdine/genji/issues/new">tell us how we can improve</a>.'
-no = 'Sorry to hear that. Please <a href="https://github.com/asdine/genji/issues/new">tell us how we can improve</a>.'
+yes = 'Glad to hear it! Please <a href="https://github.com/genjidb/genji/issues/new">tell us how we can improve</a>.'
+no = 'Sorry to hear that. Please <a href="https://github.com/genjidb/genji/issues/new">tell us how we can improve</a>.'
 
 [params.links]
 # End user relevant links. These will show up on left side of footer and in the community page if you have one.
@@ -144,7 +144,7 @@ no = 'Sorry to hear that. Please <a href="https://github.com/asdine/genji/issues
         desc = "Follow me on Twitter to get the latest news!"
 [[params.links.developer]]
 	name = "GitHub"
-	url = "https://github.com/asdine/genji"
+	url = "https://github.com/genjidb/genji"
 	icon = "fab fa-github"
         desc = "Development takes place here!"
 [[params.links.developer]]

@@ -3,8 +3,8 @@ package parser
 import (
 	"testing"
 
-	"github.com/asdine/genji/sql/query"
-	"github.com/asdine/genji/sql/query/expr"
+	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/stretchr/testify/require"
 )
 

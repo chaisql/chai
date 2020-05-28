@@ -3,7 +3,7 @@ package engineutil
 import (
 	"fmt"
 
-	"github.com/asdine/genji/engine"
+	"github.com/genjidb/genji/engine"
 )
 
 func DumpEngine(e engine.Engine) error {

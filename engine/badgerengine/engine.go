@@ -4,8 +4,8 @@ package badgerengine
 import (
 	"bytes"
 
-	"github.com/asdine/genji/engine"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji/engine"
 )
 
 const (

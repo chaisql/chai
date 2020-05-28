@@ -6,10 +6,10 @@ import (
 	"path"
 	"testing"
 
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/badgerengine"
-	"github.com/asdine/genji/engine/enginetest"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/engine/enginetest"
 	"github.com/stretchr/testify/require"
 )
 

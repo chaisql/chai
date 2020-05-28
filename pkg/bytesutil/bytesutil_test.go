@@ -3,7 +3,7 @@ package bytesutil_test
 import (
 	"testing"
 
-	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 var compareTests = []struct {

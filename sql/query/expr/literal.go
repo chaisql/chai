@@ -3,7 +3,7 @@ package expr
 import (
 	"time"
 
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji/document"
 )
 
 // A LiteralValue represents a litteral value of any type defined by the value package.

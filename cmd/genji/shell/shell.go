@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/badgerengine"
-	"github.com/asdine/genji/engine/boltengine"
-	"github.com/asdine/genji/engine/memoryengine"
-	"github.com/asdine/genji/sql/parser"
 	"github.com/c-bata/go-prompt"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/engine/boltengine"
+	"github.com/genjidb/genji/engine/memoryengine"
+	"github.com/genjidb/genji/sql/parser"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/asdine/genji/engine"
+	"github.com/genjidb/genji/engine"
 	"github.com/stretchr/testify/require"
 )
 

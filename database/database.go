@@ -4,7 +4,7 @@ package database
 import (
 	"sync"
 
-	"github.com/asdine/genji/engine"
+	"github.com/genjidb/genji/engine"
 )
 
 // A Database manages a list of tables in an engine.

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
 )
 
 type User struct {

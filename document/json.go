@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 // NewFromJSON creates a document from a JSON object.

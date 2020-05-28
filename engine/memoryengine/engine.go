@@ -1,9 +1,9 @@
 package memoryengine
 
 import (
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/badgerengine"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
 )
 
 // NewEngine creates a badger engine which stores data in memory.

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/document/encoding"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
 	"github.com/stretchr/testify/require"
 )
 

@@ -3,7 +3,7 @@ package expr
 import (
 	"fmt"
 
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji/document"
 )
 
 // A Param represents a parameter passed by the user to the statement.

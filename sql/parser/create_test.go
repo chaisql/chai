@@ -3,9 +3,9 @@ package parser
 import (
 	"testing"
 
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/query"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query"
 	"github.com/stretchr/testify/require"
 )
 

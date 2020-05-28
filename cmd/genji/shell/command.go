@@ -3,7 +3,7 @@ package shell
 import (
 	"fmt"
 
-	"github.com/asdine/genji"
+	"github.com/genjidb/genji"
 )
 
 func runTablesCmd(db *genji.DB) error {

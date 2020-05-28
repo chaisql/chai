@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"os"
 
-	"github.com/asdine/genji/engine"
+	"github.com/genjidb/genji/engine"
 	bolt "go.etcd.io/bbolt"
 )
 

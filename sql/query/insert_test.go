@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
 

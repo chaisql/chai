@@ -1,8 +1,8 @@
 package index
 
 import (
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
 )
 
 // UniqueIndex is an implementation that associates a value with a exactly one key.

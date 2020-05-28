@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/document/encoding"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
 )
 
 var functions = map[string]func(args ...Expr) (Expr, error){

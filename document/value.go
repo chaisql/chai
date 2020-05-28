@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 var (

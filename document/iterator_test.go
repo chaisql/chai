@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/asdine/genji"
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
 )
 
 func ExampleStream_First() {

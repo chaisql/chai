@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 type operator uint8

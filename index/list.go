@@ -3,8 +3,8 @@ package index
 import (
 	"bytes"
 
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
 )
 
 // ListIndex is an implementation that associates a value with a list of keys.

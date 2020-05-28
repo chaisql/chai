@@ -1,8 +1,8 @@
 package boltengine
 
 import (
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/pkg/bytesutil"
 	bolt "go.etcd.io/bbolt"
 )
 

@@ -1,8 +1,8 @@
 package expr
 
 import (
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 // AndOp is the And operator.

@@ -14,7 +14,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/asdine/genji/document"
+	"github.com/genjidb/genji/document"
 )
 
 // EncodeBlob takes a blob and returns it.

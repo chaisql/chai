@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/pkg/bytesutil"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/pkg/bytesutil"
 	"github.com/stretchr/testify/require"
 )
 

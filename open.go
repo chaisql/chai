@@ -3,10 +3,10 @@
 package genji
 
 import (
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/engine/badgerengine"
-	"github.com/asdine/genji/engine/boltengine"
 	"github.com/dgraph-io/badger/v2"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/engine/boltengine"
 )
 
 // Open creates a Genji database at the given path.

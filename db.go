@@ -1,11 +1,11 @@
 package genji
 
 import (
-	"github.com/asdine/genji/database"
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/sql/parser"
-	"github.com/asdine/genji/sql/query"
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/sql/query"
 )
 
 // DB represents a collection of tables stored in the underlying engine.

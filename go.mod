@@ -1,4 +1,4 @@
-module github.com/asdine/genji
+module github.com/genjidb/genji
 
 go 1.14
 

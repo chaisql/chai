@@ -1,10 +1,10 @@
 package database
 
 import (
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/document/encoding"
-	"github.com/asdine/genji/engine"
-	"github.com/asdine/genji/index"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/index"
 )
 
 // TableConfig holds the configuration of a table

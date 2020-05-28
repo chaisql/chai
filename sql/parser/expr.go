@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/asdine/genji/document"
-	"github.com/asdine/genji/sql/query/expr"
-	"github.com/asdine/genji/sql/scanner"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 type dummyOperator struct {
