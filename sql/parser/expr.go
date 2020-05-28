@@ -296,6 +296,12 @@ func (p *Parser) parseType() document.ValueType {
 		return document.TextValue
 	case scanner.TYPEDURATION:
 		return document.DurationValue
+	case scanner.TYPEARRAY:
+		return document.ArrayValue
+	case scanner.TYPEBLOB:
+		return document.BlobValue
+	case scanner.TYPEDOCUMENT:
+		return document.DocumentValue
 	}
 
 	p.Unscan()

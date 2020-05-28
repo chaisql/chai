@@ -89,6 +89,37 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
 			query.CreateTableStmt{}, true},
+		{"With all supported fixed size data types",
+			"CREATE TABLE test(i8 int8, i16 int16, i32 int32, i64 int64, f64 float64, b bool)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"i8"}, Type: document.Int8Value},
+						{Path: []string{"i16"}, Type: document.Int16Value},
+						{Path: []string{"i32"}, Type: document.Int32Value},
+						{Path: []string{"i64"}, Type: document.Int64Value},
+						{Path: []string{"f64"}, Type: document.Float64Value},
+						{Path: []string{"b"}, Type: document.BoolValue},
+					},
+				},
+			}, false},
+		{"With all supported variable size data types",
+			"CREATE TABLE test(i int, ig integer, du duration, b blob, t text, a array, d document)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Config: database.TableConfig{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: []string{"i"}, Type: document.Int64Value},
+						{Path: []string{"ig"}, Type: document.Int64Value},
+						{Path: []string{"du"}, Type: document.DurationValue},
+						{Path: []string{"b"}, Type: document.BlobValue},
+						{Path: []string{"t"}, Type: document.TextValue},
+						{Path: []string{"a"}, Type: document.ArrayValue},
+						{Path: []string{"d"}, Type: document.DocumentValue},
+					},
+				},
+			}, false},
 	}
 
 	for _, test := range tests {
