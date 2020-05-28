@@ -10,15 +10,17 @@ import (
 )
 
 var (
+	arrayZeroValue    = NewZeroValue(ArrayValue)
 	blobZeroValue     = NewZeroValue(BlobValue)
-	textZeroValue     = NewZeroValue(TextValue)
 	boolZeroValue     = NewZeroValue(BoolValue)
+	documentZeroValue = NewZeroValue(DocumentValue)
+	durationZeroValue = NewZeroValue(DurationValue)
+	float64ZeroValue  = NewZeroValue(Float64Value)
 	int8ZeroValue     = NewZeroValue(Int8Value)
 	int16ZeroValue    = NewZeroValue(Int16Value)
 	int32ZeroValue    = NewZeroValue(Int32Value)
 	int64ZeroValue    = NewZeroValue(Int64Value)
-	float64ZeroValue  = NewZeroValue(Float64Value)
-	durationZeroValue = NewZeroValue(DurationValue)
+	textZeroValue     = NewZeroValue(TextValue)
 )
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
