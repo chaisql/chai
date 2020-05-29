@@ -128,4 +128,53 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, `{"a": "a", "b-b": "b"}`, buf.String())
 	})
+
+	t.Run("with types constraints", func(t *testing.T) {
+		// This test ensures that we can insert data into every supported types.
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test(
+			i8 int8, i16 int16, i32 int32, i64 int64, f64 float64, b bool,
+			i int, ig integer, n numeric, du duration, bb blob, byt bytes,
+			t text, s string, a array, d document
+		)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`
+			INSERT INTO test
+			VALUES {
+				i8: 100, i16: 1000, i32: 10000,	i64: 10000000000, f64: 21.21, b: true,
+				i: 1000, ig: 1000, n: 21.21, du: 127ns, bb: "blobValue", byt: "bytesValue",
+				t: "text", s: "string", a: [1, "foo", true], d: {"foo": "bar"}
+			}`)
+		require.NoError(t, err)
+
+		res, err := db.Query("SELECT * FROM test")
+		defer res.Close()
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		err = document.IteratorToJSON(&buf, res)
+		require.NoError(t, err)
+		require.JSONEq(t, `{
+			"i8": 100,
+			"i16": 1000,
+			"i32": 10000,
+			"i64": 10000000000,
+			"f64": 21.21,
+			"b": true,
+			"i": 1000,
+			"ig": 1000,
+			"n": 21.21,
+			"du": 127,
+			"bb": "blobValue",
+			"byt": "bytesValue",
+			"t": "text",
+			"s": "string",
+			"a": [1, "foo", true],
+			"d": {"foo": "bar"}
+		  }`, buf.String())
+	})
 }
