@@ -276,12 +276,20 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 func (p *Parser) parseType() document.ValueType {
 	tok, _, _ := p.ScanIgnoreWhitespace()
 	switch tok {
-	case scanner.TYPEBYTES:
+	case scanner.TYPEARRAY:
+		return document.ArrayValue
+	case scanner.TYPEBLOB:
 		return document.BlobValue
-	case scanner.TYPESTRING:
-		return document.TextValue
 	case scanner.TYPEBOOL:
 		return document.BoolValue
+	case scanner.TYPEBYTES:
+		return document.BlobValue
+	case scanner.TYPEDOCUMENT:
+		return document.DocumentValue
+	case scanner.TYPEDURATION:
+		return document.DurationValue
+	case scanner.TYPEFLOAT64, scanner.TYPENUMERIC:
+		return document.Float64Value
 	case scanner.TYPEINT8:
 		return document.Int8Value
 	case scanner.TYPEINT16:
@@ -290,18 +298,10 @@ func (p *Parser) parseType() document.ValueType {
 		return document.Int32Value
 	case scanner.TYPEINT64, scanner.TYPEINT, scanner.TYPEINTEGER:
 		return document.Int64Value
-	case scanner.TYPEFLOAT64, scanner.TYPENUMERIC:
-		return document.Float64Value
+	case scanner.TYPESTRING:
+		return document.TextValue
 	case scanner.TYPETEXT:
 		return document.TextValue
-	case scanner.TYPEDURATION:
-		return document.DurationValue
-	case scanner.TYPEARRAY:
-		return document.ArrayValue
-	case scanner.TYPEBLOB:
-		return document.BlobValue
-	case scanner.TYPEDOCUMENT:
-		return document.DocumentValue
 	}
 
 	p.Unscan()
