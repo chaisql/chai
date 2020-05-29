@@ -105,16 +105,19 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With all supported variable size data types",
-			"CREATE TABLE test(i int, ig integer, du duration, b blob, t text, a array, d document)",
+			"CREATE TABLE test(i int, ig integer, n numeric, du duration, b blob, byt bytes, t text, s string, a array, d document)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Config: database.TableConfig{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"i"}, Type: document.Int64Value},
 						{Path: []string{"ig"}, Type: document.Int64Value},
+						{Path: []string{"n"}, Type: document.Float64Value},
 						{Path: []string{"du"}, Type: document.DurationValue},
 						{Path: []string{"b"}, Type: document.BlobValue},
+						{Path: []string{"byt"}, Type: document.BlobValue},
 						{Path: []string{"t"}, Type: document.TextValue},
+						{Path: []string{"s"}, Type: document.TextValue},
 						{Path: []string{"a"}, Type: document.ArrayValue},
 						{Path: []string{"d"}, Type: document.DocumentValue},
 					},
