@@ -178,26 +178,30 @@ type selectConfig struct {
 }
 
 // ToTree turns the statement into an expression tree.
-func (stmt selectConfig) ToTree() *tree.Tree {
-	t := tree.NewInputNode("table", stmt.TableName)
-
-	if stmt.WhereExpr != nil {
-		t = tree.NewSelectionNode(t, stmt.WhereExpr)
+func (cfg selectConfig) ToTree() *tree.Tree {
+	if cfg.TableName == "" {
+		return tree.New(tree.NewProjectionNode(nil, cfg.ProjectionExprs))
 	}
 
-	if stmt.OrderBy != nil {
-		t = tree.NewSortNode(t, stmt.OrderBy, stmt.OrderByDirection)
+	t := tree.NewInputNode("table", cfg.TableName)
+
+	if cfg.WhereExpr != nil {
+		t = tree.NewSelectionNode(t, cfg.WhereExpr)
 	}
 
-	if stmt.OffsetExpr != nil {
-		t = tree.NewSkipNode(t, stmt.OffsetExpr)
+	if cfg.OrderBy != nil {
+		t = tree.NewSortNode(t, cfg.OrderBy, cfg.OrderByDirection)
 	}
 
-	if stmt.LimitExpr != nil {
-		t = tree.NewLimitNode(t, stmt.LimitExpr)
+	if cfg.OffsetExpr != nil {
+		t = tree.NewSkipNode(t, cfg.OffsetExpr)
 	}
 
-	t = tree.NewProjectionNode(t, stmt.ProjectionExprs)
+	if cfg.LimitExpr != nil {
+		t = tree.NewLimitNode(t, cfg.LimitExpr)
+	}
+
+	t = tree.NewProjectionNode(t, cfg.ProjectionExprs)
 
 	return &tree.Tree{Root: t}
 }
