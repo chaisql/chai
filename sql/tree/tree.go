@@ -33,6 +33,9 @@ const (
 	Skip
 	// Sort is an operation that sorts a stream of document according to a given field and a direction.
 	Sort
+	// Set is an operation that adds or replaces a field for every document of the stream.
+	Set
+	// Unset is an operation that removes a field from every document of a stream
 )
 
 // A Tree describes the flow of a stream of documents.
@@ -163,21 +166,25 @@ func NewDeletionNode(n Node) Node {
 
 type replacementNode struct {
 	node
+
+	tableName string
 }
 
 // NewReplacementNode creates a node that stores every document of a stream
 // in their respective table and primary keys.
-func NewReplacementNode(n Node) Node {
+func NewReplacementNode(n Node, tableName string) Node {
 	return &replacementNode{
 		node: node{
 			op:   Replacement,
 			left: n,
 		},
+		tableName: tableName,
 	}
 }
 
 type limitNode struct {
 	node
+
 	limitExpr expr.Expr
 }
 
@@ -210,6 +217,7 @@ func NewSkipNode(n Node, skipExpr expr.Expr) Node {
 
 type sortNode struct {
 	node
+
 	sortField expr.FieldSelector
 	direction scanner.Token
 }
@@ -224,5 +232,41 @@ func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) 
 		},
 		sortField: sortField,
 		direction: direction,
+	}
+}
+
+type setNode struct {
+	node
+
+	field document.ValuePath
+	e     expr.Expr
+}
+
+// NewSetNode creates a node that adds or replaces a field for every document of the stream.
+func NewSetNode(n Node, field document.ValuePath, e expr.Expr) Node {
+	return &setNode{
+		node: node{
+			op:   Set,
+			left: n,
+		},
+		field: field,
+		e:     e,
+	}
+}
+
+type unsetNode struct {
+	node
+
+	field document.ValuePath
+}
+
+// NewUnsetNode creates a node that adds or replaces a field for every document of the stream.
+func NewUnsetNode(n Node, field document.ValuePath) Node {
+	return &unsetNode{
+		node: node{
+			op:   Set,
+			left: n,
+		},
+		field: field,
 	}
 }
