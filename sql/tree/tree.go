@@ -151,16 +151,19 @@ func NewRenameNode(n Node, field document.ValuePath, alias string) Node {
 
 type deletionNode struct {
 	node
+
+	tableName string
 }
 
 // NewDeletionNode creates a node that delete every document of a stream
 // from their respective table.
-func NewDeletionNode(n Node) Node {
+func NewDeletionNode(n Node, tableName string) Node {
 	return &deletionNode{
 		node: node{
 			op:   Deletion,
 			left: n,
 		},
+		tableName: tableName,
 	}
 }
 
