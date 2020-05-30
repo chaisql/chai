@@ -41,6 +41,11 @@ type Tree struct {
 	Root Node
 }
 
+// New creates a new tree with n as root.
+func New(n Node) *Tree {
+	return &Tree{Root: n}
+}
+
 // A Node represents an operation on the stream.
 type Node interface {
 	Operation() Operation
