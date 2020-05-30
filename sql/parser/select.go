@@ -4,52 +4,53 @@ import (
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/sql/tree"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
-	var stmt query.SelectStmt
+func (p *Parser) parseSelectStatement() (*tree.Tree, error) {
+	var cfg selectConfig
 	var err error
 
 	// Parse field list or query.Wildcard
-	stmt.Selectors, err = p.parseResultFields()
+	cfg.ProjectionExprs, err = p.parseResultFields()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse "FROM".
 	var found bool
-	stmt.TableName, found, err = p.parseFrom()
+	cfg.TableName, found, err = p.parseFrom()
 	if err != nil || !found {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse condition: "WHERE EXPR".
-	stmt.WhereExpr, err = p.parseCondition()
+	cfg.WhereExpr, err = p.parseCondition()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse order by: "ORDER BY fieldRef [ASC|DESC]?"
-	stmt.OrderBy, stmt.OrderByDirection, err = p.parseOrderBy()
+	cfg.OrderBy, cfg.OrderByDirection, err = p.parseOrderBy()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse limit: "LIMIT EXPR"
-	stmt.LimitExpr, err = p.parseLimit()
+	cfg.LimitExpr, err = p.parseLimit()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse offset: "OFFSET EXPR"
-	stmt.OffsetExpr, err = p.parseOffset()
+	cfg.OffsetExpr, err = p.parseOffset()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
-	return stmt, nil
+	return cfg.ToTree(), nil
 }
 
 // parseResultFields parses the list of result fields.
@@ -163,4 +164,40 @@ func (p *Parser) parseOffset() (expr.Expr, error) {
 
 	e, _, err := p.ParseExpr()
 	return e, err
+}
+
+// selectConfig holds SELECT configuration.
+type selectConfig struct {
+	TableName        string
+	WhereExpr        expr.Expr
+	OrderBy          expr.FieldSelector
+	OrderByDirection scanner.Token
+	OffsetExpr       expr.Expr
+	LimitExpr        expr.Expr
+	ProjectionExprs  []query.ResultField
+}
+
+// ToTree turns the statement into an expression tree.
+func (stmt selectConfig) ToTree() *tree.Tree {
+	t := tree.NewInputNode("table", stmt.TableName)
+
+	if stmt.WhereExpr != nil {
+		t = tree.NewSelectionNode(t, stmt.WhereExpr)
+	}
+
+	if stmt.OrderBy != nil {
+		t = tree.NewSortNode(t, stmt.OrderBy, stmt.OrderByDirection)
+	}
+
+	if stmt.OffsetExpr != nil {
+		t = tree.NewSkipNode(t, stmt.OffsetExpr)
+	}
+
+	if stmt.LimitExpr != nil {
+		t = tree.NewLimitNode(t, stmt.LimitExpr)
+	}
+
+	t = tree.NewProjectionNode(t, stmt.ProjectionExprs)
+
+	return &tree.Tree{Root: t}
 }
