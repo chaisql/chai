@@ -24,6 +24,11 @@ const (
 	Deletion
 	// Replacement is an operation that stores every document of a stream in their respective keys.
 	Replacement
+	// Limit is an operation that only allows a certain number of documents to be processed
+	// by the stream.
+	Limit
+	// Skip is an operation that ignores a certain number of documents.
+	Skip
 )
 
 // A Tree describes the flow of a stream of documents.
@@ -96,18 +101,19 @@ func NewSelectionNode(n Node, cond expr.Expr) Node {
 type projectionNode struct {
 	node
 
-	fields []document.ValuePath
+	expressions []expr.Expr
 }
 
-// NewProjectionNode creates a node that selects a list of fields from each document
-// of the stream.
-func NewProjectionNode(n Node, fields []document.ValuePath) Node {
+// NewProjectionNode creates a node that uses the given expressions to create a new document
+// for each document of the stream. Each expression can extract fields from the incoming
+// document, call functions, execute arithmetic operations. etc.
+func NewProjectionNode(n Node, expressions []expr.Expr) Node {
 	return &projectionNode{
 		node: node{
 			op:   Projection,
 			left: n,
 		},
-		fields: fields,
+		expressions: expressions,
 	}
 }
 
@@ -158,5 +164,37 @@ func NewReplacementNode(n Node) Node {
 			op:   Replacement,
 			left: n,
 		},
+	}
+}
+
+type limitNode struct {
+	node
+	limit int
+}
+
+// NewLimitNode creates a node that limits the number of documents processed by the stream.
+func NewLimitNode(n Node, limit int) Node {
+	return &limitNode{
+		node: node{
+			op:   Limit,
+			left: n,
+		},
+		limit: limit,
+	}
+}
+
+type skipNode struct {
+	node
+	skip int
+}
+
+// NewSkipNode creates a node that skips a certain number of documents from the stream.
+func NewSkipNode(n Node, skip int) Node {
+	return &skipNode{
+		node: node{
+			op:   Limit,
+			left: n,
+		},
+		skip: skip,
 	}
 }
