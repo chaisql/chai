@@ -5,7 +5,9 @@ package tree
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 // An Operation can manipulate and transform a stream of data.
@@ -29,6 +31,8 @@ const (
 	Limit
 	// Skip is an operation that ignores a certain number of documents.
 	Skip
+	// Sort is an operation that sorts a stream of document according to a given field and a direction.
+	Sort
 )
 
 // A Tree describes the flow of a stream of documents.
@@ -101,13 +105,13 @@ func NewSelectionNode(n Node, cond expr.Expr) Node {
 type projectionNode struct {
 	node
 
-	expressions []expr.Expr
+	expressions []query.ResultField
 }
 
 // NewProjectionNode creates a node that uses the given expressions to create a new document
 // for each document of the stream. Each expression can extract fields from the incoming
 // document, call functions, execute arithmetic operations. etc.
-func NewProjectionNode(n Node, expressions []expr.Expr) Node {
+func NewProjectionNode(n Node, expressions []query.ResultField) Node {
 	return &projectionNode{
 		node: node{
 			op:   Projection,
@@ -169,32 +173,51 @@ func NewReplacementNode(n Node) Node {
 
 type limitNode struct {
 	node
-	limit int
+	limitExpr expr.Expr
 }
 
 // NewLimitNode creates a node that limits the number of documents processed by the stream.
-func NewLimitNode(n Node, limit int) Node {
+func NewLimitNode(n Node, limitExpr expr.Expr) Node {
 	return &limitNode{
 		node: node{
 			op:   Limit,
 			left: n,
 		},
-		limit: limit,
+		limitExpr: limitExpr,
 	}
 }
 
 type skipNode struct {
 	node
-	skip int
+	skipExpr expr.Expr
 }
 
 // NewSkipNode creates a node that skips a certain number of documents from the stream.
-func NewSkipNode(n Node, skip int) Node {
+func NewSkipNode(n Node, skipExpr expr.Expr) Node {
 	return &skipNode{
 		node: node{
 			op:   Limit,
 			left: n,
 		},
-		skip: skip,
+		skipExpr: skipExpr,
+	}
+}
+
+type sortNode struct {
+	node
+	sortField expr.FieldSelector
+	direction scanner.Token
+}
+
+// NewSortNode creates a node that sorts a stream according to a given
+// document field and a sort direction.
+func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) Node {
+	return &sortNode{
+		node: node{
+			op:   Sort,
+			left: n,
+		},
+		sortField: sortField,
+		direction: direction,
 	}
 }
