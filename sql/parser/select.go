@@ -22,8 +22,11 @@ func (p *Parser) parseSelectStatement() (*tree.Tree, error) {
 	// Parse "FROM".
 	var found bool
 	cfg.TableName, found, err = p.parseFrom()
-	if err != nil || !found {
+	if err != nil {
 		return nil, err
+	}
+	if !found {
+		return cfg.ToTree(), nil
 	}
 
 	// Parse condition: "WHERE EXPR".

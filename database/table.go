@@ -355,6 +355,11 @@ func (t *Table) Delete(key []byte) error {
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
 func (t *Table) Replace(key []byte, d document.Document) error {
+	d, err := t.ValidateConstraints(d)
+	if err != nil {
+		return err
+	}
+
 	indexes, err := t.Indexes()
 	if err != nil {
 		return err

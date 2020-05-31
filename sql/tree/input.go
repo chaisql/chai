@@ -27,13 +27,18 @@ func NewTableInputNode(tableName string) Node {
 	}
 }
 
-func (i *tableInputNode) ToStream(tx *database.Transaction, params []expr.Param) (document.Stream, error) {
-	tb, err := tx.GetTable(i.tableName)
+func (i *tableInputNode) toStream(_ document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	tb, err := stack.Tx.GetTable(i.tableName)
 	if err != nil {
-		return document.Stream{}, err
+		return document.Stream{}, stack, err
 	}
 
-	return document.NewStream(tb), nil
+	stack.Cfg, err = tb.Config()
+	if err != nil {
+		return document.Stream{}, stack, err
+	}
+
+	return document.NewStream(tb), stack, nil
 }
 
 type indexInputNode struct {
@@ -60,24 +65,29 @@ func newIndexInputNode(tableName, indexName string, iop indexIteratorOperator, f
 	}
 }
 
-func (i *indexInputNode) ToStream(tx *database.Transaction, params []expr.Param) (document.Stream, error) {
-	tb, err := tx.GetTable(i.tableName)
+func (i *indexInputNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	tb, err := stack.Tx.GetTable(i.tableName)
 	if err != nil {
-		return document.Stream{}, err
+		return document.Stream{}, stack, err
 	}
 
-	idx, err := tx.GetIndex(i.indexName)
+	stack.Cfg, err = tb.Config()
 	if err != nil {
-		return document.Stream{}, err
+		return document.Stream{}, stack, err
+	}
+
+	idx, err := stack.Tx.GetIndex(i.indexName)
+	if err != nil {
+		return document.Stream{}, stack, err
 	}
 
 	return document.NewStream(&indexIterator{
-		tx:     tx,
+		tx:     stack.Tx,
 		tb:     tb,
-		params: params,
+		params: stack.Params,
 		index:  idx,
 		e:      i.e,
-	}), nil
+	}), stack, nil
 }
 
 type indexIteratorOperator interface {

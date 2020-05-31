@@ -4,10 +4,11 @@
 package tree
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 // An Operation can manipulate and transform a stream of data.
@@ -56,6 +57,18 @@ type Node interface {
 	Right() Node
 }
 
+type operationNode interface {
+	toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error)
+}
+
+type inputNode interface {
+	buildStream(stack expr.EvalStack) (document.Stream, expr.EvalStack, error)
+}
+
+type outputNode interface {
+	toResult(st document.Stream, stack expr.EvalStack) (query.Result, error)
+}
+
 type node struct {
 	op          Operation
 	left, right Node
@@ -80,7 +93,7 @@ type selectionNode struct {
 }
 
 // NewSelectionNode creates a node that filters documents of a stream, according to
-// the condition expression.
+// the expression condition.
 func NewSelectionNode(n Node, cond expr.Expr) Node {
 	return &selectionNode{
 		node: node{
@@ -91,79 +104,20 @@ func NewSelectionNode(n Node, cond expr.Expr) Node {
 	}
 }
 
-type projectionNode struct {
-	node
-
-	expressions []query.ResultField
-}
-
-// NewProjectionNode creates a node that uses the given expressions to create a new document
-// for each document of the stream. Each expression can extract fields from the incoming
-// document, call functions, execute arithmetic operations. etc.
-func NewProjectionNode(n Node, expressions []query.ResultField) Node {
-	return &projectionNode{
-		node: node{
-			op:   Projection,
-			left: n,
-		},
-		expressions: expressions,
+func (n *selectionNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	if n.cond == nil {
+		return st, stack, nil
 	}
-}
 
-type renameNode struct {
-	node
+	return st.Filter(func(d document.Document) (bool, error) {
+		stack.Document = d
+		v, err := n.cond.Eval(stack)
+		if err != nil {
+			return false, err
+		}
 
-	field document.ValuePath
-	alias string
-}
-
-// NewRenameNode creates a node that renames each field from every document of
-// a stream into the chosen alias.
-func NewRenameNode(n Node, field document.ValuePath, alias string) Node {
-	return &renameNode{
-		node: node{
-			op:   Rename,
-			left: n,
-		},
-		field: field,
-		alias: alias,
-	}
-}
-
-type deletionNode struct {
-	node
-
-	tableName string
-}
-
-// NewDeletionNode creates a node that delete every document of a stream
-// from their respective table.
-func NewDeletionNode(n Node, tableName string) Node {
-	return &deletionNode{
-		node: node{
-			op:   Deletion,
-			left: n,
-		},
-		tableName: tableName,
-	}
-}
-
-type replacementNode struct {
-	node
-
-	tableName string
-}
-
-// NewReplacementNode creates a node that stores every document of a stream
-// in their respective table and primary keys.
-func NewReplacementNode(n Node, tableName string) Node {
-	return &replacementNode{
-		node: node{
-			op:   Replacement,
-			left: n,
-		},
-		tableName: tableName,
-	}
+		return v.IsTruthy(), nil
+	}), stack, nil
 }
 
 type limitNode struct {
@@ -183,51 +137,67 @@ func NewLimitNode(n Node, limitExpr expr.Expr) Node {
 	}
 }
 
-type skipNode struct {
-	node
-	skipExpr expr.Expr
+func (n *limitNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	v, err := n.limitExpr.Eval(stack)
+	if err != nil {
+		return st, stack, err
+	}
+
+	if !v.Type.IsNumber() {
+		return st, stack, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+	}
+
+	limit, err := v.ConvertToInt64()
+	if err != nil {
+		return st, stack, err
+	}
+
+	return st.Limit(int(limit)), stack, nil
 }
 
-// NewSkipNode creates a node that skips a certain number of documents from the stream.
-func NewSkipNode(n Node, skipExpr expr.Expr) Node {
-	return &skipNode{
+type offsetNode struct {
+	node
+	offsetExpr expr.Expr
+}
+
+// NewOffsetNode creates a node that skips a certain number of documents from the stream.
+func NewOffsetNode(n Node, skipExpr expr.Expr) Node {
+	return &offsetNode{
 		node: node{
 			op:   Limit,
 			left: n,
 		},
-		skipExpr: skipExpr,
+		offsetExpr: skipExpr,
 	}
 }
 
-type sortNode struct {
-	node
-
-	sortField expr.FieldSelector
-	direction scanner.Token
-}
-
-// NewSortNode creates a node that sorts a stream according to a given
-// document field and a sort direction.
-func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) Node {
-	return &sortNode{
-		node: node{
-			op:   Sort,
-			left: n,
-		},
-		sortField: sortField,
-		direction: direction,
+func (n *offsetNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	v, err := n.offsetExpr.Eval(stack)
+	if err != nil {
+		return st, stack, err
 	}
+
+	if !v.Type.IsNumber() {
+		return st, stack, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+	}
+
+	offset, err := v.ConvertToInt64()
+	if err != nil {
+		return st, stack, err
+	}
+
+	return st.Offset(int(offset)), stack, nil
 }
 
 type setNode struct {
 	node
 
-	field document.ValuePath
+	field string
 	e     expr.Expr
 }
 
 // NewSetNode creates a node that adds or replaces a field for every document of the stream.
-func NewSetNode(n Node, field document.ValuePath, e expr.Expr) Node {
+func NewSetNode(n Node, field string, e expr.Expr) Node {
 	return &setNode{
 		node: node{
 			op:   Set,
@@ -238,14 +208,48 @@ func NewSetNode(n Node, field document.ValuePath, e expr.Expr) Node {
 	}
 }
 
+func (n *setNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	var fb document.FieldBuffer
+
+	return st.Map(func(d document.Document) (document.Document, error) {
+		stack.Document = d
+		ev, err := n.e.Eval(stack)
+		if err != nil && err != document.ErrFieldNotFound {
+			return nil, err
+		}
+
+		fb.Reset()
+
+		err = fb.ScanDocument(d)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = fb.GetByField(n.field)
+
+		switch err {
+		case nil:
+			// If no error, it means that the field already exists
+			// and it should be replaced.
+			_ = fb.Replace(n.field, ev)
+		case document.ErrFieldNotFound:
+			// If the field doesn't exist,
+			// it should be added to the document.
+			fb.Set(n.field, ev)
+		}
+
+		return &fb, nil
+	}), stack, nil
+}
+
 type unsetNode struct {
 	node
 
-	field document.ValuePath
+	field string
 }
 
 // NewUnsetNode creates a node that adds or replaces a field for every document of the stream.
-func NewUnsetNode(n Node, field document.ValuePath) Node {
+func NewUnsetNode(n Node, field string) Node {
 	return &unsetNode{
 		node: node{
 			op:   Set,
@@ -253,4 +257,33 @@ func NewUnsetNode(n Node, field document.ValuePath) Node {
 		},
 		field: field,
 	}
+}
+
+func (n *unsetNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+	var fb document.FieldBuffer
+
+	return st.Map(func(d document.Document) (document.Document, error) {
+		fb.Reset()
+
+		_, err := d.GetByField(n.field)
+		if err != nil {
+			if err != document.ErrFieldNotFound {
+				return nil, err
+			}
+
+			return d, nil
+		}
+
+		err = fb.ScanDocument(d)
+		if err != nil {
+			return nil, err
+		}
+
+		err = fb.Delete(n.field)
+		if err != nil {
+			return nil, err
+		}
+
+		return &fb, nil
+	}), stack, nil
 }

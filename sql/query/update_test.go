@@ -24,10 +24,11 @@ func TestUpdateStmt(t *testing.T) {
 		// SET tests.
 		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"bar3","e":"baz3"}]`, nil},
 		{"SET / No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"bar3","e":"baz3"}]`, nil},
-		{"SET / No cond / with multiple idents", `UPDATE test SET a = c`, false, `[{"a":"baz1","b":"bar1","c":"baz1"},{"a":null,"b":"bar2"},{"a":null,"d":"bar3","e":"baz3"}]`, nil},
+		{"SET / No cond / with multiple idents and constraint", `UPDATE test SET a = c`, true, ``, nil},
+		{"SET / No cond / with multiple idents", `UPDATE test SET b = c`, false, `[{"a":"foo1","b":"baz1","c":"baz1"},{"a":"foo2","b":null},{"a":"foo3","b":null,"d":"bar3","e":"baz3"}]`, nil},
 		{"SET / No cond / with missing field", "UPDATE test SET f = 'boo'", false, `[{"a":"foo1","b":"bar1","c":"baz1","f":"boo"},{"a":"foo2","b":"bar2","f":"boo"},{"a":"foo3","d":"bar3","e":"baz3","f":"boo"}]`, nil},
 		{"SET / No cond / with string", `UPDATE test SET 'a' = 'boo'`, true, "", nil},
-		{"SET / With cond", "UPDATE test SET a = 1, b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":1,"b":2},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
+		{"SET / With cond", "UPDATE test SET a = 'FOO2', b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"FOO2","b":2},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
 		{"SET / With cond / with missing field", "UPDATE test SET f = 'boo' WHERE d = 'bar3'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3","f":"boo"}]`, nil},
 		{"SET / Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
 		{"SET / Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, []interface{}{"a", "b", "foo1"}},

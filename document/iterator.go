@@ -46,6 +46,11 @@ func NewStream(it Iterator) Stream {
 	return Stream{it: it}
 }
 
+// IsEmpty returns whether the stream doesn't contain any iterator.
+func (s Stream) IsEmpty() bool {
+	return s.it == nil
+}
+
 // Iterate calls the underlying iterator's iterate method.
 // If this stream was created using the Pipe method, it will apply fn
 // to any document passed by the underlying iterator.
