@@ -10,7 +10,7 @@ import (
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
 func (p *Parser) parseSelectStatement() (*tree.Tree, error) {
-	var cfg selectConfig
+	var cfg tree.SelectConfig
 	var err error
 
 	// Parse field list or query.Wildcard
@@ -164,44 +164,4 @@ func (p *Parser) parseOffset() (expr.Expr, error) {
 
 	e, _, err := p.ParseExpr()
 	return e, err
-}
-
-// selectConfig holds SELECT configuration.
-type selectConfig struct {
-	TableName        string
-	WhereExpr        expr.Expr
-	OrderBy          expr.FieldSelector
-	OrderByDirection scanner.Token
-	OffsetExpr       expr.Expr
-	LimitExpr        expr.Expr
-	ProjectionExprs  []query.ResultField
-}
-
-// ToTree turns the statement into an expression tree.
-func (cfg selectConfig) ToTree() *tree.Tree {
-	if cfg.TableName == "" {
-		return tree.New(tree.NewProjectionNode(nil, cfg.ProjectionExprs))
-	}
-
-	t := tree.NewInputNode("table", cfg.TableName)
-
-	if cfg.WhereExpr != nil {
-		t = tree.NewSelectionNode(t, cfg.WhereExpr)
-	}
-
-	if cfg.OrderBy != nil {
-		t = tree.NewSortNode(t, cfg.OrderBy, cfg.OrderByDirection)
-	}
-
-	if cfg.OffsetExpr != nil {
-		t = tree.NewSkipNode(t, cfg.OffsetExpr)
-	}
-
-	if cfg.LimitExpr != nil {
-		t = tree.NewLimitNode(t, cfg.LimitExpr)
-	}
-
-	t = tree.NewProjectionNode(t, cfg.ProjectionExprs)
-
-	return &tree.Tree{Root: t}
 }
