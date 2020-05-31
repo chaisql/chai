@@ -44,6 +44,7 @@ func Length(d Document) (int, error) {
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
 type FieldBuffer struct {
 	fields []fieldValue
+	key    []byte
 }
 
 // NewFieldBuffer creates a FieldBuffer.
@@ -64,6 +65,10 @@ func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
 
 // ScanDocument copies all the fields of d to the buffer.
 func (fb *FieldBuffer) ScanDocument(d Document) error {
+	if k, ok := d.(Keyer); ok {
+		fb.key = k.Key()
+	}
+
 	return d.Iterate(func(f string, v Value) error {
 		fb.Add(f, v)
 		return nil
@@ -170,6 +175,11 @@ func (fb FieldBuffer) Len() int {
 // Reset the buffer.
 func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
+}
+
+// Key of the document if any.
+func (fb *FieldBuffer) Key() []byte {
+	return fb.key
 }
 
 // A ValuePath represents the path to a particular value within a document.

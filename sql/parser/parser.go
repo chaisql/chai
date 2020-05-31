@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/sql/tree"
 )
 
 // Parser represents an Genji SQL Parser.
@@ -58,11 +59,23 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SELECT:
-		return p.parseSelectStatement()
+		t, err := p.parseSelectStatement()
+		if err != nil {
+			return nil, err
+		}
+		return tree.NewStatement(t), nil
 	case scanner.DELETE:
-		return p.parseDeleteStatement()
+		t, err := p.parseDeleteStatement()
+		if err != nil {
+			return nil, err
+		}
+		return tree.NewStatement(t), nil
 	case scanner.UPDATE:
-		return p.parseUpdateStatement()
+		t, err := p.parseUpdateStatement()
+		if err != nil {
+			return nil, err
+		}
+		return tree.NewStatement(t), nil
 	case scanner.INSERT:
 		return p.parseInsertStatement()
 	case scanner.CREATE:

@@ -392,7 +392,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 }
 
 // sortIterator operates a partial sort on the iterator using a heap.
-// This ensures a O(n+klog n) time complexity
+// This ensures a O(n+k log n) time complexity
 // with k being the limit of the query, or the sum of the limit + offset, when both offset and limit are used.
 // if there are no limit or offsets, k = n, the number of elements in the table.
 // If the sorting is in ascending order, a min-heap will be used

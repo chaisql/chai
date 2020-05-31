@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -24,7 +23,7 @@ func (cfg SelectConfig) ToTree() *Tree {
 		return New(NewProjectionNode(nil, cfg.ProjectionExprs))
 	}
 
-	t := NewInputNode("table", cfg.TableName)
+	t := NewTableInputNode(cfg.TableName)
 
 	if cfg.WhereExpr != nil {
 		t = NewSelectionNode(t, cfg.WhereExpr)
@@ -35,7 +34,7 @@ func (cfg SelectConfig) ToTree() *Tree {
 	}
 
 	if cfg.OffsetExpr != nil {
-		t = NewSkipNode(t, cfg.OffsetExpr)
+		t = NewOffsetNode(t, cfg.OffsetExpr)
 	}
 
 	if cfg.LimitExpr != nil {
@@ -65,7 +64,7 @@ type UpdateConfig struct {
 
 // ToTree turns the statement into an expression tree.
 func (cfg UpdateConfig) ToTree() *Tree {
-	t := NewInputNode("table", cfg.TableName)
+	t := NewTableInputNode(cfg.TableName)
 
 	if cfg.WhereExpr != nil {
 		t = NewSelectionNode(t, cfg.WhereExpr)
@@ -73,11 +72,11 @@ func (cfg UpdateConfig) ToTree() *Tree {
 
 	if cfg.SetPairs != nil {
 		for name, expr := range cfg.SetPairs {
-			t = NewSetNode(t, document.NewValuePath(name), expr)
+			t = NewSetNode(t, name, expr)
 		}
 	} else if cfg.UnsetFields != nil {
 		for _, name := range cfg.UnsetFields {
-			t = NewUnsetNode(t, document.NewValuePath(name))
+			t = NewUnsetNode(t, name)
 		}
 	}
 
@@ -94,7 +93,7 @@ type DeleteConfig struct {
 
 // ToTree turns the statement into an expression tree.
 func (cfg DeleteConfig) ToTree() *Tree {
-	t := NewInputNode("table", cfg.TableName)
+	t := NewTableInputNode(cfg.TableName)
 
 	if cfg.WhereExpr != nil {
 		t = NewSelectionNode(t, cfg.WhereExpr)

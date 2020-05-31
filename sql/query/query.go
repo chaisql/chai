@@ -56,7 +56,7 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 
 	// the returned result will now own the transaction.
 	// its Close method is expected to be called.
-	res.tx = tx
+	res.Tx = tx
 
 	return &res, nil
 }
@@ -102,7 +102,7 @@ type Result struct {
 	document.Stream
 	RowsAffected  int64
 	LastInsertKey []byte
-	tx            *database.Transaction
+	Tx            *database.Transaction
 	closed        bool
 }
 
@@ -121,11 +121,11 @@ func (r *Result) Close() (err error) {
 
 	r.closed = true
 
-	if r.tx != nil {
-		if r.tx.Writable() {
-			err = r.tx.Commit()
+	if r.Tx != nil {
+		if r.Tx.Writable() {
+			err = r.Tx.Commit()
 		} else {
-			err = r.tx.Rollback()
+			err = r.Tx.Rollback()
 		}
 	}
 
