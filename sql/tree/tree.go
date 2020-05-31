@@ -73,25 +73,6 @@ func (n *node) Right() Node {
 	return n.right
 }
 
-type inputNode struct {
-	node
-
-	inputType string
-	inputName string
-}
-
-// NewInputNode creates a node that can be used to read documents.
-// It describes the kind of input, which can be either a table or an index.
-func NewInputNode(inputType, inputName string) Node {
-	return &inputNode{
-		node: node{
-			op: Input,
-		},
-		inputType: inputType,
-		inputName: inputName,
-	}
-}
-
 type selectionNode struct {
 	node
 
