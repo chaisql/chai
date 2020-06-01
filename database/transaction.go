@@ -47,7 +47,7 @@ func (tx *Transaction) Writable() bool {
 // It returns an error if the current transaction is already writable.
 func (tx *Transaction) Promote() error {
 	if tx.writable {
-		return errors.New("can't promote a writable transaction")
+		return errors.New("cannot promote a writable transaction")
 	}
 
 	err := tx.Rollback()

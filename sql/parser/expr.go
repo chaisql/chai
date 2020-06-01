@@ -162,13 +162,13 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 			return nil, &ParseError{Message: "missing param name"}
 		}
 		if p.orderedParams > 0 {
-			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
 		}
 		p.namedParams++
 		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
-			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
 		return expr.PositionalParam(p.orderedParams), nil
@@ -258,13 +258,13 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 			return nil, &ParseError{Message: "missing param name"}
 		}
 		if p.orderedParams > 0 {
-			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
 		}
 		p.namedParams++
 		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
-			return nil, &ParseError{Message: "can't mix positional arguments with named arguments"}
+			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
 		}
 		p.orderedParams++
 		return expr.PositionalParam(p.orderedParams), nil

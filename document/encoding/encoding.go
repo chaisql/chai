@@ -401,7 +401,7 @@ func (e EncodedArray) GetByIndex(i int) (document.Value, error) {
 func decodeValueFromDocument(data []byte, field string) (document.Value, error) {
 	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
-		return document.Value{}, errors.New("can't decode data")
+		return document.Value{}, errors.New("cannot decode data")
 	}
 
 	hdata := data[n : n+int(hsize)]
@@ -410,7 +410,7 @@ func decodeValueFromDocument(data []byte, field string) (document.Value, error) 
 	// skip number of fields
 	_, n = binary.Uvarint(hdata)
 	if n <= 0 {
-		return document.Value{}, errors.New("can't decode data")
+		return document.Value{}, errors.New("cannot decode data")
 	}
 	hdata = hdata[n:]
 

@@ -56,7 +56,7 @@ func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 func (p PositionalParam) extract(params []Param) (interface{}, error) {
 	idx := int(p - 1)
 	if idx >= len(params) {
-		return nil, fmt.Errorf("can't find param number %d", p)
+		return nil, fmt.Errorf("cannot find param number %d", p)
 	}
 
 	return params[idx].Value, nil
