@@ -177,4 +177,21 @@ func TestInsertStmt(t *testing.T) {
 			"d": {"foo": "bar"}
 		  }`, buf.String())
 	})
+
+	t.Run("with error for non respected constraints", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test(foo text NOT NULL, bar array)`)
+		require.NoError(t, err)
+
+		// Missing required field value.
+		err = db.Exec(`INSERT INTO test VALUES {bar: ["baz1", "baz2"]}`)
+		require.EqualError(t, err, `field "foo" is required and must be not null`)
+
+		// Trying to insert an int into an array field.
+		err = db.Exec(`INSERT INTO test VALUES {foo: "yo", bar: 42}`)
+		require.EqualError(t, err, `can't convert "int8" to "array"`)
+	})
 }
