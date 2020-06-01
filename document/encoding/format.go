@@ -43,7 +43,7 @@ func (h *Header) Decode(data []byte) (int, error) {
 
 	h.Size, n = binary.Uvarint(data)
 	if n <= 0 {
-		return 0, errors.New("can't decode data")
+		return 0, errors.New("cannot decode data")
 	}
 
 	hdata := data[n : n+int(h.Size)]
@@ -51,7 +51,7 @@ func (h *Header) Decode(data []byte) (int, error) {
 
 	h.FieldsCount, n = binary.Uvarint(hdata)
 	if n <= 0 {
-		return 0, errors.New("can't decode data")
+		return 0, errors.New("cannot decode data")
 	}
 	hdata = hdata[n:]
 
@@ -137,7 +137,7 @@ func (f *FieldHeader) Decode(data []byte) (int, error) {
 	// name size
 	f.NameSize, n = binary.Uvarint(data)
 	if n <= 0 {
-		return 0, errors.New("can't decode data")
+		return 0, errors.New("cannot decode data")
 	}
 	data = data[n:]
 	read += n
@@ -150,7 +150,7 @@ func (f *FieldHeader) Decode(data []byte) (int, error) {
 	// type
 	f.Type, n = binary.Uvarint(data)
 	if n <= 0 {
-		return 0, errors.New("can't decode data")
+		return 0, errors.New("cannot decode data")
 	}
 	data = data[n:]
 	read += n
@@ -158,7 +158,7 @@ func (f *FieldHeader) Decode(data []byte) (int, error) {
 	// size
 	f.Size, n = binary.Uvarint(data)
 	if n <= 0 {
-		return 0, errors.New("can't decode data")
+		return 0, errors.New("cannot decode data")
 	}
 	data = data[n:]
 	read += n
@@ -166,7 +166,7 @@ func (f *FieldHeader) Decode(data []byte) (int, error) {
 	// offset
 	f.Offset, n = binary.Uvarint(data)
 	if n <= 0 {
-		return 0, errors.New("can't decode data")
+		return 0, errors.New("cannot decode data")
 	}
 	data = data[n:]
 	read += n

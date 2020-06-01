@@ -292,35 +292,35 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 	case Int8Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
-			return Value{}, err
+			return Value{}, fmt.Errorf("cannot convert %q to int8: %w", v.Type, err)
 		}
 		if x > math.MaxInt8 {
-			return Value{}, fmt.Errorf("cannot convert %s to int8: out of range", v.Type)
+			return Value{}, fmt.Errorf("cannot convert %q to int8: out of range", v.Type)
 		}
 
 		return NewInt8Value(int8(x)), nil
 	case Int16Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
-			return Value{}, err
+			return Value{}, fmt.Errorf("cannot convert %q to int16: %w", v.Type, err)
 		}
 		if x > math.MaxInt16 {
-			return Value{}, fmt.Errorf("cannot convert %s to int16: out of range", v.Type)
+			return Value{}, fmt.Errorf("cannot convert %q to int16: out of range", v.Type)
 		}
 		return NewInt16Value(int16(x)), nil
 	case Int32Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
-			return Value{}, err
+			return Value{}, fmt.Errorf("cannot convert %q to int32: %w", v.Type, err)
 		}
 		if x > math.MaxInt32 {
-			return Value{}, fmt.Errorf("cannot convert %s to int32: out of range", v.Type)
+			return Value{}, fmt.Errorf("cannot convert %q to int32: out of range", v.Type)
 		}
 		return NewInt32Value(int32(x)), nil
 	case Int64Value:
 		x, err := v.ConvertToInt64()
 		if err != nil {
-			return Value{}, err
+			return Value{}, fmt.Errorf("cannot convert %q to int64: %w", v.Type, err)
 		}
 		return NewInt64Value(x), nil
 	case Float64Value:
@@ -337,7 +337,7 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		return NewDurationValue(x), nil
 	}
 
-	return Value{}, fmt.Errorf("can't convert %q to %q", v.Type, t)
+	return Value{}, fmt.Errorf("cannot convert %q to %s", v.Type, t)
 }
 
 // ConvertToBlob converts a value of type Text or Blob to a slice of bytes.
@@ -352,7 +352,7 @@ func (v Value) ConvertToBlob() ([]byte, error) {
 		return nil, nil
 	}
 
-	return nil, fmt.Errorf("can't convert %q to bytes", v.Type)
+	return nil, fmt.Errorf("cannot convert %q to bytes", v.Type)
 }
 
 // ConvertToText turns a value of type Text or Blob into a string.
@@ -367,7 +367,7 @@ func (v Value) ConvertToText() (string, error) {
 		return "", nil
 	}
 
-	return "", fmt.Errorf("can't convert %q to string", v.Type)
+	return "", fmt.Errorf("cannot convert %q to string", v.Type)
 }
 
 // ConvertToBool returns true if v is truthy, otherwise it returns false.
@@ -406,7 +406,7 @@ func (v Value) ConvertToInt64() (int64, error) {
 		return 0, nil
 	}
 
-	return 0, fmt.Errorf("can't convert %q to int64", v.Type)
+	return 0, fmt.Errorf("type %q incompatible with integer", v.Type)
 }
 
 // ConvertToFloat64 turns any number into a float64.
@@ -436,7 +436,7 @@ func (v Value) ConvertToFloat64() (float64, error) {
 		return 0, nil
 	}
 
-	return 0, fmt.Errorf("can't convert %q to float64", v.Type)
+	return 0, fmt.Errorf("cannot convert %q to float64", v.Type)
 }
 
 // ConvertToDocument returns a document from the value.
@@ -447,7 +447,7 @@ func (v Value) ConvertToDocument() (Document, error) {
 	}
 
 	if v.Type != DocumentValue {
-		return nil, fmt.Errorf("can't convert %q to document", v.Type)
+		return nil, fmt.Errorf("cannot convert %q to document", v.Type)
 	}
 
 	return v.V.(Document), nil
@@ -461,7 +461,7 @@ func (v Value) ConvertToArray() (Array, error) {
 	}
 
 	if v.Type != ArrayValue {
-		return nil, fmt.Errorf("can't convert %q to array", v.Type)
+		return nil, fmt.Errorf("cannot convert %q to array", v.Type)
 	}
 
 	return v.V.(Array), nil
@@ -481,7 +481,7 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 	if v.Type == TextValue {
 		d, err := time.ParseDuration(string(v.V.([]byte)))
 		if err != nil {
-			return 0, fmt.Errorf("can't convert %q to duration: %v", v.V, err)
+			return 0, fmt.Errorf("cannot convert %q to duration: %v", v.V, err)
 		}
 		return d, nil
 	}
@@ -607,7 +607,7 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		return calculateIntegers(a, b, operator)
 	}
 
-	err = fmt.Errorf("cannot add value of type %s to value of type %s", a.Type, b.Type)
+	err = fmt.Errorf("cannot add value of type %q to value of type %q", a.Type, b.Type)
 	return
 }
 
