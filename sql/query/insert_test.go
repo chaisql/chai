@@ -3,6 +3,7 @@ package query_test
 import (
 	"bytes"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -178,20 +179,92 @@ func TestInsertStmt(t *testing.T) {
 		  }`, buf.String())
 	})
 
-	t.Run("with error for non respected constraints", func(t *testing.T) {
+	t.Run("with tests that require an error", func(t *testing.T) {
+		tests := []struct {
+			name            string
+			fieldConstraint string
+			value           string
+			expectedErr     string
+		}{
+			{"not null without type constraint", "NOT NULL", `{}`, `field "a" is required and must be not null`},
+
+			{"array", "ARRAY", `{a: "[1,2,3]"}`, `cannot convert "text" to "array"`},
+			{"array / not null with type constraint", "ARRAY NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`, `cannot convert "int8" to "array"`},
+
+			{"blob", "BLOB", `{a: true}`, `cannot convert "bool" to "bytes"`},
+			{"blob / not null with type constraint", "BLOB NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`, `cannot convert "int8" to "bytes"`},
+
+			{"bool / not null with type constraint", "BOOL NOT NULL", `{}`, `field "a" is required and must be not null`},
+
+			{"bytes", "BYTES", `{a: [1,2,3]}`, `cannot convert "array" to "bytes"`},
+			{"bytes / not null with type constraint", "BYTES NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`, `cannot convert "int8" to "bytes"`},
+
+			{"document", "DOCUMENT", `{a: "foo"}`, `cannot convert "text" to "document"`},
+			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`, `cannot convert "bool" to "document"`},
+
+			{"duration", "DURATION", `{a: "foo"}`, `cannot convert "foo" to "duration": time: invalid duration foo`},
+			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`, `type "array" incompatible with "integer"`},
+
+			{"float64", "FLOAT64", `{a: "foo"}`, `cannot convert "text" to "float64"`},
+			{"float64 / not null with type constraint", "FLOAT64 NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"float64 / not null with non-respected type constraint ", "FLOAT64 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "float64"`},
+
+			{"int", "INT", `{a: "foo"}`, `cannot convert "text" to "int64": type "text" incompatible with "integer"`},
+			{"int / not null with type constraint", "INT NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"int / not null with non-respected type constraint ", "INT NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int64": type "array" incompatible with "integer"`},
+
+			{"integer", "INTEGER", `{a: "foo"}`, `cannot convert "text" to "int64": type "text" incompatible with "integer"`},
+			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int64": type "array" incompatible with "integer"`},
+
+			{"int8", "INT8", `{a: "foo"}`, `cannot convert "text" to "int8": type "text" incompatible with "integer"`},
+			{"int8 / not null with type constraint", "INT8 NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"int8 / not null with non-respected type constraint ", "INT8 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int8": type "array" incompatible with "integer"`},
+
+			{"int16", "INT16", `{a: "foo"}`, `cannot convert "text" to "int16": type "text" incompatible with "integer"`},
+			{"int16 / not null with type constraint", "INT16 NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"int16 / not null with non-respected type constraint ", "INT16 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int16": type "array" incompatible with "integer"`},
+
+			{"int32", "INT32", `{a: "foo"}`, `cannot convert "text" to "int32": type "text" incompatible with "integer"`},
+			{"int32 / not null with type constraint", "INT32 NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"int32 / not null with non-respected type constraint ", "INT32 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int32": type "array" incompatible with "integer"`},
+
+			{"int64", "INT64", `{a: "foo"}`, `cannot convert "text" to "int64": type "text" incompatible with "integer"`},
+			{"int64 / not null with type constraint", "INT64 NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"int64 / not null with non-respected type constraint ", "INT64 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int64": type "array" incompatible with "integer"`},
+
+			{"numeric", "NUMERIC", `{a: "foo"}`, `cannot convert "text" to "float64"`},
+			{"numeric / not null with type constraint", "NUMERIC NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"numeric / not null with non-respected type constraint ", "NUMERIC NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "float64"`},
+
+			{"string", "STRING", `{a: [1,2,3]}`, `cannot convert "array" to "string"`},
+			{"string / not null with type constraint", "STRING NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"string / not null with non-respected type constraint ", "STRING NOT NULL", `{a: 420}`, `cannot convert "int16" to "string"`},
+
+			{"text", "TEXT", `{a: [1,2,3]}`, `cannot convert "array" to "string"`},
+			{"text / not null with type constraint", "TEXT NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"text / not null with non-respected type constraint ", "TEXT NOT NULL", `{a: 42}`, `cannot convert "int8" to "string"`},
+		}
+
 		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE TABLE test(foo text NOT NULL, bar array)`)
-		require.NoError(t, err)
+		for i, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				q := fmt.Sprintf("CREATE TABLE test%d (a %s)", i, test.fieldConstraint)
+				err := db.Exec(q)
+				require.NoError(t, err)
 
-		// Missing required field value.
-		err = db.Exec(`INSERT INTO test VALUES {bar: ["baz1", "baz2"]}`)
-		require.EqualError(t, err, `field "foo" is required and must be not null`)
-
-		// Trying to insert an int into an array field.
-		err = db.Exec(`INSERT INTO test VALUES {foo: "yo", bar: 42}`)
-		require.EqualError(t, err, `can't convert "int8" to "array"`)
+				q = fmt.Sprintf("INSERT INTO test%d VALUES %s", i, test.value)
+				err = db.Exec(q)
+				require.EqualError(t, err, test.expectedErr)
+			})
+		}
 	})
 }
