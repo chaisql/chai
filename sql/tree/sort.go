@@ -3,6 +3,7 @@ package tree
 import (
 	"container/heap"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/index"
@@ -17,6 +18,8 @@ type sortNode struct {
 	sortField expr.FieldSelector
 	direction scanner.Token
 }
+
+var _ operationNode = (*sortNode)(nil)
 
 // NewSortNode creates a node that sorts a stream according to a given
 // document field and a sort direction.
@@ -35,12 +38,16 @@ func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) 
 	}
 }
 
-func (n *sortNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+func (n *sortNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	return
+}
+
+func (n *sortNode) toStream(st document.Stream) (document.Stream, error) {
 	return document.NewStream(&sortIterator{
 		st:        st,
 		sortField: n.sortField,
 		direction: n.direction,
-	}), stack, nil
+	}), nil
 }
 
 type sortIterator struct {

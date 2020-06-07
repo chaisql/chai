@@ -1,55 +1,36 @@
 package tree
 
-import "github.com/genjidb/genji/database"
+import (
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/sql/query/expr"
+)
 
 // Bind updates every node that refers to a database ressource.
-func Bind(t *Tree, tx *database.Transaction) error {
+func Bind(t *Tree, tx *database.Transaction, params []expr.Param) error {
 	if t.Root != nil {
-		return bindNode(t.Root, tx)
+		return bindNode(t.Root, tx, params)
 	}
 
 	return nil
 }
 
-func bindNode(n Node, tx *database.Transaction) error {
+func bindNode(n Node, tx *database.Transaction, params []expr.Param) error {
 	var err error
 
-	switch op := n.(type) {
-	case *tableInputNode:
-		op.table, err = tx.GetTable(op.tableName)
-		if err != nil {
-			return err
-		}
-	case *indexInputNode:
-		op.table, err = tx.GetTable(op.tableName)
-		if err != nil {
-			return err
-		}
-		op.index, err = tx.GetIndex(op.indexName)
-		if err != nil {
-			return err
-		}
-	case *replacementNode:
-		op.table, err = tx.GetTable(op.tableName)
-		if err != nil {
-			return err
-		}
-	case *deletionNode:
-		op.table, err = tx.GetTable(op.tableName)
-		if err != nil {
-			return err
-		}
+	err = n.Bind(tx, params)
+	if err != nil {
+		return err
 	}
 
 	if n.Left() != nil {
-		err = bindNode(n.Left(), tx)
+		err = bindNode(n.Left(), tx, params)
 		if err != nil {
 			return err
 		}
 	}
 
 	if n.Right() != nil {
-		err = bindNode(n.Right(), tx)
+		err = bindNode(n.Right(), tx, params)
 		if err != nil {
 			return err
 		}

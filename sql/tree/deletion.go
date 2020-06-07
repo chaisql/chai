@@ -19,6 +19,8 @@ type deletionNode struct {
 	table     *database.Table
 }
 
+var _ outputNode = (*deletionNode)(nil)
+
 // NewDeletionNode creates a node that delete every document of a stream
 // from their respective table.
 func NewDeletionNode(n Node, tableName string) Node {
@@ -31,6 +33,11 @@ func NewDeletionNode(n Node, tableName string) Node {
 	}
 }
 
+func (n *deletionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.table, err = tx.GetTable(n.tableName)
+	return
+}
+
 // toResult deletes matching documents by batches of deleteBufferSize documents.
 // Some engines can't iterate while deleting keys (https://github.com/etcd-io/bbolt/issues/146)
 // and some can't create more than one iterator per read-write transaction (https://github.com/dgraph-io/badger/issues/1093).
@@ -38,7 +45,7 @@ func NewDeletionNode(n Node, tableName string) Node {
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no document
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (n *deletionNode) toResult(st document.Stream, stack expr.EvalStack) (res query.Result, err error) {
+func (n *deletionNode) toResult(st document.Stream) (res query.Result, err error) {
 	st = st.Limit(deleteBufferSize)
 
 	keys := make([][]byte, deleteBufferSize)

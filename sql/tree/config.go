@@ -20,7 +20,7 @@ type SelectConfig struct {
 // ToTree turns the statement into an expression tree.
 func (cfg SelectConfig) ToTree() *Tree {
 	if cfg.TableName == "" {
-		return New(NewProjectionNode(nil, cfg.ProjectionExprs))
+		return New(NewProjectionNode(nil, cfg.ProjectionExprs, ""))
 	}
 
 	t := NewTableInputNode(cfg.TableName)
@@ -41,7 +41,7 @@ func (cfg SelectConfig) ToTree() *Tree {
 		t = NewLimitNode(t, cfg.LimitExpr)
 	}
 
-	t = NewProjectionNode(t, cfg.ProjectionExprs)
+	t = NewProjectionNode(t, cfg.ProjectionExprs, cfg.TableName)
 
 	return &Tree{Root: t}
 }
