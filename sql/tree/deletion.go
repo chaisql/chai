@@ -3,6 +3,7 @@ package tree
 import (
 	"errors"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -15,6 +16,7 @@ type deletionNode struct {
 	node
 
 	tableName string
+	table     *database.Table
 }
 
 // NewDeletionNode creates a node that delete every document of a stream
@@ -37,11 +39,6 @@ func NewDeletionNode(n Node, tableName string) Node {
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
 func (n *deletionNode) toResult(st document.Stream, stack expr.EvalStack) (res query.Result, err error) {
-	tb, err := stack.Tx.GetTable(n.tableName)
-	if err != nil {
-		return
-	}
-
 	st = st.Limit(deleteBufferSize)
 
 	keys := make([][]byte, deleteBufferSize)
@@ -66,7 +63,7 @@ func (n *deletionNode) toResult(st document.Stream, stack expr.EvalStack) (res q
 		keys = keys[:i]
 
 		for _, key := range keys {
-			err = tb.Delete(key)
+			err = n.table.Delete(key)
 			if err != nil {
 				return res, err
 			}

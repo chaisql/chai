@@ -3,6 +3,7 @@ package tree
 import (
 	"errors"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
@@ -17,6 +18,7 @@ type replacementNode struct {
 	node
 
 	tableName string
+	table     *database.Table
 }
 
 // NewReplacementNode creates a node that stores every document of a stream
@@ -38,13 +40,8 @@ func NewReplacementNode(n Node, tableName string) Node {
 // left to replace.
 // Increasing replaceBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
 func (n *replacementNode) toResult(st document.Stream, stack expr.EvalStack) (res query.Result, err error) {
-	tb, err := stack.Tx.GetTable(n.tableName)
-	if err != nil {
-		return res, err
-	}
-
 	// replace store implementation by a resumable store, temporarily.
-	rit := resumableIterator{store: tb.Store}
+	rit := resumableIterator{store: n.table.Store}
 
 	st = st.Limit(replaceBufferSize)
 
@@ -74,7 +71,7 @@ func (n *replacementNode) toResult(st document.Stream, stack expr.EvalStack) (re
 		})
 
 		for j := 0; j < i; j++ {
-			err = tb.Replace(keys[j], docs[j])
+			err = n.table.Replace(keys[j], docs[j])
 			if err != nil {
 				return res, err
 			}
