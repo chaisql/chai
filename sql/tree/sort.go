@@ -16,7 +16,6 @@ type sortNode struct {
 
 	sortField expr.FieldSelector
 	direction scanner.Token
-	st        document.Stream
 }
 
 // NewSortNode creates a node that sorts a stream according to a given
@@ -37,11 +36,36 @@ func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) 
 }
 
 func (n *sortNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
-	n.st = st
-	return document.NewStream(n), stack, nil
+	return document.NewStream(&sortIterator{
+		st:        st,
+		sortField: n.sortField,
+		direction: n.direction,
+	}), stack, nil
 }
 
-// toStream operates a partial sort on the iterator using a heap.
+type sortIterator struct {
+	st        document.Stream
+	sortField expr.FieldSelector
+	direction scanner.Token
+}
+
+func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
+	h, err := it.sortStream(it.st)
+	if err != nil {
+		return err
+	}
+
+	for h.Len() > 0 {
+		err := fn(encoding.EncodedDocument(heap.Pop(h).(heapNode).data))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// sortStream operates a partial sort on the iterator using a heap.
 // This ensures a O(k+n log n) time complexity, where k is the sum of
 // OFFSET + LIMIT clauses, if provided, otherwise k = n.
 // If the sorting is in ascending order, a min-heap will be used
@@ -51,11 +75,11 @@ func (n *sortNode) toStream(st document.Stream, stack expr.EvalStack) (document.
 // the chosen sorting order (ASC or DESC).
 // This function is not memory efficient as it's loading the entire table in memory before
 // returning the k-smallest or k-largest elements.
-func (n *sortNode) sortStream(st document.Stream) (heap.Interface, error) {
-	path := document.ValuePath(n.sortField)
+func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
+	path := document.ValuePath(it.sortField)
 
 	var h heap.Interface
-	if n.direction == scanner.ASC {
+	if it.direction == scanner.ASC {
 		h = new(minHeap)
 	} else {
 		h = new(maxHeap)
@@ -89,22 +113,6 @@ func (n *sortNode) sortStream(st document.Stream) (heap.Interface, error) {
 
 		return nil
 	})
-}
-
-func (n *sortNode) Iterate(fn func(d document.Document) error) error {
-	h, err := n.sortStream(n.st)
-	if err != nil {
-		return err
-	}
-
-	for h.Len() > 0 {
-		err := fn(encoding.EncodedDocument(heap.Pop(h).(heapNode).data))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 type heapNode struct {

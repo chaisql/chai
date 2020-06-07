@@ -14,6 +14,7 @@ type tableInputNode struct {
 	node
 
 	tableName string
+	table     *database.Table
 }
 
 // NewTableInputNode creates an input node that can be used to read documents
@@ -27,18 +28,8 @@ func NewTableInputNode(tableName string) Node {
 	}
 }
 
-func (i *tableInputNode) toStream(_ document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
-	tb, err := stack.Tx.GetTable(i.tableName)
-	if err != nil {
-		return document.Stream{}, stack, err
-	}
-
-	stack.Cfg, err = tb.Config()
-	if err != nil {
-		return document.Stream{}, stack, err
-	}
-
-	return document.NewStream(tb), stack, nil
+func (i *tableInputNode) buildStream(stack expr.EvalStack) (document.Stream, error) {
+	return document.NewStream(i.table), nil
 }
 
 type indexInputNode struct {
@@ -46,6 +37,8 @@ type indexInputNode struct {
 
 	tableName        string
 	indexName        string
+	table            *database.Table
+	index            index.Index
 	iop              indexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token
@@ -65,29 +58,14 @@ func newIndexInputNode(tableName, indexName string, iop indexIteratorOperator, f
 	}
 }
 
-func (i *indexInputNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
-	tb, err := stack.Tx.GetTable(i.tableName)
-	if err != nil {
-		return document.Stream{}, stack, err
-	}
-
-	stack.Cfg, err = tb.Config()
-	if err != nil {
-		return document.Stream{}, stack, err
-	}
-
-	idx, err := stack.Tx.GetIndex(i.indexName)
-	if err != nil {
-		return document.Stream{}, stack, err
-	}
-
+func (i *indexInputNode) buildStream(stack expr.EvalStack) (document.Stream, error) {
 	return document.NewStream(&indexIterator{
 		tx:     stack.Tx,
-		tb:     tb,
+		tb:     i.table,
 		params: stack.Params,
-		index:  idx,
+		index:  i.index,
 		e:      i.e,
-	}), stack, nil
+	}), nil
 }
 
 type indexIteratorOperator interface {
