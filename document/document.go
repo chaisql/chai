@@ -67,8 +67,73 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
+// treatArrayValue update the value of array at the given index.
+func treatArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
+	var buf ValueBuffer
+	err := vlist.Iterate(func(i int, va Value) error {
+		if index == i {
+			buf = buf.Append(v)
+			return nil
+		}
+		buf = buf.Append(va)
+		return nil
+	})
+	return buf, err
+}
+
+// SetDotNotation allow dot notation and replace value at the given index.
+func (fb *FieldBuffer) SetDotNotation(fname string, v Value) {
+	vPath := NewValuePath(fname)
+	index, strconvErr := strconv.Atoi(vPath[1])
+	for i, f := range fb.fields {
+		//if the fields don't match
+		if strings.Compare(f.Field, vPath[0]) != 0 {
+			continue
+		}
+
+		switch f.Value.Type {
+		case DocumentValue:
+			//No index for document Type (field.integer)
+			if strconvErr == nil {
+				return
+			}
+
+			var buf FieldBuffer
+			var b1 *FieldBuffer
+			err := buf.Copy(f.Value.V.(Document))
+			if err != nil {
+				return
+			}
+
+			//May be another way to do it
+			_ = buf.Delete(vPath[1])
+			b1 = &buf
+			b1 = b1.Add(vPath[1], v)
+			fb.fields[i].Value = NewDocumentValue(&buf)
+
+		case ArrayValue:
+			vlist, _ := f.Value.ConvertToArray()
+			//the position of the index (fieldname.index)
+
+			buf, err := treatArrayValue(vlist, v, index)
+			if err == nil {
+				fb.fields[i].Value = NewArrayValue(&buf)
+				return
+			}
+		}
+	}
+
+	return
+}
+
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(f string, v Value) {
+	//check the dot notation
+	if isDotPath(f) {
+		fb.SetDotNotation(f, v)
+		return
+	}
+
 	for i := range fb.fields {
 		if fb.fields[i].Field == f {
 			fb.fields[i].Value = v
@@ -106,6 +171,12 @@ func (fb *FieldBuffer) Delete(field string) error {
 
 // Replace the value of the field by v.
 func (fb *FieldBuffer) Replace(field string, v Value) error {
+	//check if there is a dot notation
+	if strings.Contains(field, ".") {
+		fb.SetDotNotation(field, v)
+		return nil
+	}
+
 	for i := range fb.fields {
 		if fb.fields[i].Field == field {
 			fb.fields[i].Value = v
@@ -165,6 +236,11 @@ type ValuePath []string
 // It assumes the separator is a dot.
 func NewValuePath(p string) ValuePath {
 	return strings.Split(p, ".")
+}
+
+//isDotPath verify if the path contains a dot
+func isDotPath(p string) bool {
+	return strings.Contains(p, ".")
 }
 
 // String joins all the chunks of the path using the dot separator.
