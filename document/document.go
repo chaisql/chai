@@ -95,7 +95,7 @@ func (fb *FieldBuffer) SetDotNotation(fname string, v Value) {
 		case DocumentValue:
 			var buf FieldBuffer
 			var b1 *FieldBuffer
-			// Cannot make .
+			// Cannot make field.integer on a document
 			if strconvErr == nil {
 				return
 			}
