@@ -21,6 +21,8 @@ type replacementNode struct {
 	table     *database.Table
 }
 
+var _ outputNode = (*replacementNode)(nil)
+
 // NewReplacementNode creates a node that stores every document of a stream
 // in their respective table and primary keys.
 func NewReplacementNode(n Node, tableName string) Node {
@@ -33,13 +35,18 @@ func NewReplacementNode(n Node, tableName string) Node {
 	}
 }
 
+func (n *replacementNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.table, err = tx.GetTable(n.tableName)
+	return
+}
+
 // toResult replaces matching documents by batches of replaceBufferSize documents.
 // Some engines can't create more than one iterator per read-write transaction (https://github.com/dgraph-io/badger/issues/1093).
 // To deal with these limitations, Run will iterate on a limited number of documents, copy the keys
 // to a buffer and replace them after the iteration is complete, and it will do that until there is no document
 // left to replace.
 // Increasing replaceBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (n *replacementNode) toResult(st document.Stream, stack expr.EvalStack) (res query.Result, err error) {
+func (n *replacementNode) toResult(st document.Stream) (res query.Result, err error) {
 	// replace store implementation by a resumable store, temporarily.
 	rit := resumableIterator{store: n.table.Store}
 

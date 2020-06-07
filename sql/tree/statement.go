@@ -14,35 +14,34 @@ func NewStatement(t *Tree) query.Statement {
 	return &treeStatement{t: t}
 }
 
-func treeToResult(t *Tree, stack expr.EvalStack) (query.Result, error) {
+func treeToResult(t *Tree) (query.Result, error) {
 	var st document.Stream
 	var err error
 
 	if t.Root.Left() != nil {
-		st, stack, err = nodeToStream(t.Root.Left(), stack)
+		st, err = nodeToStream(t.Root.Left())
 		if err != nil {
 			return query.Result{}, err
 		}
 	}
 
-	return t.Root.(outputNode).toResult(st, stack)
+	return t.Root.(outputNode).toResult(st)
 }
 
-func nodeToStream(n Node, stack expr.EvalStack) (st document.Stream, newStack expr.EvalStack, err error) {
+func nodeToStream(n Node) (st document.Stream, err error) {
 	l := n.Left()
 	if l != nil {
-		st, newStack, err = nodeToStream(l, stack)
+		st, err = nodeToStream(l)
 		if err != nil {
 			return
 		}
-		stack = newStack
 	}
 
 	switch t := n.(type) {
 	case inputNode:
-		st, newStack, err = t.buildStream(stack)
+		st, err = t.buildStream()
 	case operationNode:
-		st, newStack, err = t.toStream(st, stack)
+		st, err = t.toStream(st)
 	default:
 		panic(fmt.Sprintf("incorrect node type %#v", n))
 	}
@@ -55,12 +54,12 @@ type treeStatement struct {
 }
 
 func (s treeStatement) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
-	stack := expr.EvalStack{
-		Tx:     tx,
-		Params: params,
+	err := Bind(s.t, tx, params)
+	if err != nil {
+		return query.Result{}, err
 	}
 
-	return treeToResult(s.t, stack)
+	return treeToResult(s.t)
 }
 
 func (s treeStatement) IsReadOnly() bool {

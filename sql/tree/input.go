@@ -17,6 +17,8 @@ type tableInputNode struct {
 	table     *database.Table
 }
 
+var _ inputNode = (*tableInputNode)(nil)
+
 // NewTableInputNode creates an input node that can be used to read documents
 // from a table.
 func NewTableInputNode(tableName string) Node {
@@ -28,21 +30,31 @@ func NewTableInputNode(tableName string) Node {
 	}
 }
 
-func (i *tableInputNode) buildStream(stack expr.EvalStack) (document.Stream, error) {
-	return document.NewStream(i.table), nil
+func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.table, err = tx.GetTable(n.tableName)
+	return
+}
+
+func (n *tableInputNode) buildStream() (document.Stream, error) {
+	return document.NewStream(n.table), nil
 }
 
 type indexInputNode struct {
 	node
 
-	tableName        string
-	indexName        string
+	tableName string
+	indexName string
+
+	tx               *database.Transaction
+	params           []expr.Param
 	table            *database.Table
 	index            index.Index
 	iop              indexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token
 }
+
+var _ inputNode = (*indexInputNode)(nil)
 
 // newIndexInputNode creates a node that can be used to read documents using an index.
 func newIndexInputNode(tableName, indexName string, iop indexIteratorOperator, filter expr.Expr, orderByDirection scanner.Token) Node {
@@ -58,13 +70,29 @@ func newIndexInputNode(tableName, indexName string, iop indexIteratorOperator, f
 	}
 }
 
-func (i *indexInputNode) buildStream(stack expr.EvalStack) (document.Stream, error) {
+func (n *indexInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.table, err = tx.GetTable(n.tableName)
+	if err != nil {
+		return
+	}
+
+	n.index, err = tx.GetIndex(n.indexName)
+	if err != nil {
+		return
+	}
+
+	n.tx = tx
+	n.params = params
+	return
+}
+
+func (n *indexInputNode) buildStream() (document.Stream, error) {
 	return document.NewStream(&indexIterator{
-		tx:     stack.Tx,
-		tb:     i.table,
-		params: stack.Params,
-		index:  i.index,
-		e:      i.e,
+		tx:     n.tx,
+		tb:     n.table,
+		params: n.params,
+		index:  n.index,
+		e:      n.e,
 	}), nil
 }
 

@@ -6,6 +6,7 @@ package tree
 import (
 	"fmt"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -55,18 +56,25 @@ type Node interface {
 	Operation() Operation
 	Left() Node
 	Right() Node
-}
-
-type operationNode interface {
-	toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error)
+	Bind(tx *database.Transaction, params []expr.Param) error
 }
 
 type inputNode interface {
-	buildStream(stack expr.EvalStack) (document.Stream, expr.EvalStack, error)
+	Node
+
+	buildStream() (document.Stream, error)
+}
+
+type operationNode interface {
+	Node
+
+	toStream(st document.Stream) (document.Stream, error)
 }
 
 type outputNode interface {
-	toResult(st document.Stream, stack expr.EvalStack) (query.Result, error)
+	Node
+
+	toResult(st document.Stream) (query.Result, error)
 }
 
 type node struct {
@@ -89,8 +97,12 @@ func (n *node) Right() Node {
 type selectionNode struct {
 	node
 
-	cond expr.Expr
+	cond   expr.Expr
+	tx     *database.Transaction
+	params []expr.Param
 }
+
+var _ operationNode = (*selectionNode)(nil)
 
 // NewSelectionNode creates a node that filters documents of a stream, according to
 // the expression condition.
@@ -104,9 +116,20 @@ func NewSelectionNode(n Node, cond expr.Expr) Node {
 	}
 }
 
-func (n *selectionNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+func (n *selectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.tx = tx
+	n.params = params
+	return
+}
+
+func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 	if n.cond == nil {
-		return st, stack, nil
+		return st, nil
+	}
+
+	stack := expr.EvalStack{
+		Tx:     n.tx,
+		Params: n.params,
 	}
 
 	return st.Filter(func(d document.Document) (bool, error) {
@@ -117,14 +140,18 @@ func (n *selectionNode) toStream(st document.Stream, stack expr.EvalStack) (docu
 		}
 
 		return v.IsTruthy(), nil
-	}), stack, nil
+	}), nil
 }
 
 type limitNode struct {
 	node
 
 	limitExpr expr.Expr
+	tx        *database.Transaction
+	params    []expr.Param
 }
+
+var _ operationNode = (*limitNode)(nil)
 
 // NewLimitNode creates a node that limits the number of documents processed by the stream.
 func NewLimitNode(n Node, limitExpr expr.Expr) Node {
@@ -137,28 +164,44 @@ func NewLimitNode(n Node, limitExpr expr.Expr) Node {
 	}
 }
 
-func (n *limitNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+func (n *limitNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.tx = tx
+	n.params = params
+	return
+}
+
+func (n *limitNode) toStream(st document.Stream) (document.Stream, error) {
+	stack := expr.EvalStack{
+		Tx:     n.tx,
+		Params: n.params,
+	}
+
 	v, err := n.limitExpr.Eval(stack)
 	if err != nil {
-		return st, stack, err
+		return st, err
 	}
 
 	if !v.Type.IsNumber() {
-		return st, stack, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+		return st, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
 	}
 
 	limit, err := v.ConvertToInt64()
 	if err != nil {
-		return st, stack, err
+		return st, err
 	}
 
-	return st.Limit(int(limit)), stack, nil
+	return st.Limit(int(limit)), nil
 }
 
 type offsetNode struct {
 	node
 	offsetExpr expr.Expr
+
+	tx     *database.Transaction
+	params []expr.Param
 }
+
+var _ operationNode = (*offsetNode)(nil)
 
 // NewOffsetNode creates a node that skips a certain number of documents from the stream.
 func NewOffsetNode(n Node, skipExpr expr.Expr) Node {
@@ -171,22 +214,33 @@ func NewOffsetNode(n Node, skipExpr expr.Expr) Node {
 	}
 }
 
-func (n *offsetNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+func (n *offsetNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.tx = tx
+	n.params = params
+	return
+}
+
+func (n *offsetNode) toStream(st document.Stream) (document.Stream, error) {
+	stack := expr.EvalStack{
+		Tx:     n.tx,
+		Params: n.params,
+	}
+
 	v, err := n.offsetExpr.Eval(stack)
 	if err != nil {
-		return st, stack, err
+		return st, err
 	}
 
 	if !v.Type.IsNumber() {
-		return st, stack, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+		return st, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
 	}
 
 	offset, err := v.ConvertToInt64()
 	if err != nil {
-		return st, stack, err
+		return st, err
 	}
 
-	return st.Offset(int(offset)), stack, nil
+	return st.Offset(int(offset)), nil
 }
 
 type setNode struct {
@@ -194,7 +248,12 @@ type setNode struct {
 
 	field string
 	e     expr.Expr
+
+	tx     *database.Transaction
+	params []expr.Param
 }
+
+var _ operationNode = (*setNode)(nil)
 
 // NewSetNode creates a node that adds or replaces a field for every document of the stream.
 func NewSetNode(n Node, field string, e expr.Expr) Node {
@@ -208,8 +267,19 @@ func NewSetNode(n Node, field string, e expr.Expr) Node {
 	}
 }
 
-func (n *setNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+func (n *setNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.tx = tx
+	n.params = params
+	return
+}
+
+func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 	var fb document.FieldBuffer
+
+	stack := expr.EvalStack{
+		Tx:     n.tx,
+		Params: n.params,
+	}
 
 	return st.Map(func(d document.Document) (document.Document, error) {
 		stack.Document = d
@@ -239,7 +309,7 @@ func (n *setNode) toStream(st document.Stream, stack expr.EvalStack) (document.S
 		}
 
 		return &fb, nil
-	}), stack, nil
+	}), nil
 }
 
 type unsetNode struct {
@@ -247,6 +317,8 @@ type unsetNode struct {
 
 	field string
 }
+
+var _ operationNode = (*unsetNode)(nil)
 
 // NewUnsetNode creates a node that adds or replaces a field for every document of the stream.
 func NewUnsetNode(n Node, field string) Node {
@@ -259,7 +331,11 @@ func NewUnsetNode(n Node, field string) Node {
 	}
 }
 
-func (n *unsetNode) toStream(st document.Stream, stack expr.EvalStack) (document.Stream, expr.EvalStack, error) {
+func (n *unsetNode) Bind(tx *database.Transaction, params []expr.Param) error {
+	return nil
+}
+
+func (n *unsetNode) toStream(st document.Stream) (document.Stream, error) {
 	var fb document.FieldBuffer
 
 	return st.Map(func(d document.Document) (document.Document, error) {
@@ -285,5 +361,5 @@ func (n *unsetNode) toStream(st document.Stream, stack expr.EvalStack) (document
 		}
 
 		return &fb, nil
-	}), stack, nil
+	}), nil
 }
