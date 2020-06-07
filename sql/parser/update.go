@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -60,6 +62,15 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		if tok != scanner.IDENT {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+		}
+
+		p.Unscan()
+		ref, err := p.parseFieldRef()
+		if err != nil {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+		}
+		if len(ref) > 1 {
+			lit = strings.Join(ref, ".")
 		}
 
 		// Scan the eq sign

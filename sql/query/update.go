@@ -54,7 +54,6 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 	if err != nil {
 		return res, err
 	}
-
 	// replace store implementation by a resumable store, temporarily.
 	rit := resumableIterator{store: t.Store}
 
@@ -74,10 +73,10 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 
 		err = st.Iterate(func(d document.Document) error {
 			rk, ok := d.(document.Keyer)
+
 			if !ok {
 				return errors.New("attempt to update document without key")
 			}
-
 			docs[i].Reset()
 			err := docs[i].ScanDocument(d)
 			if err != nil {
@@ -133,7 +132,8 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 			return err
 		}
 
-		_, err = d.GetByField(fname)
+		valuePath := document.NewValuePath(fname)
+		_, err = d.GetByField(valuePath[0])
 		switch err {
 		case nil:
 			// If no error, it means that the field already exists

@@ -3,6 +3,7 @@ package document
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -78,6 +79,7 @@ func treatArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
 		buf = buf.Append(va)
 		return nil
 	})
+
 	return buf, err
 }
 
@@ -86,20 +88,18 @@ func (fb *FieldBuffer) SetDotNotation(fname string, v Value) {
 	vPath := NewValuePath(fname)
 	index, strconvErr := strconv.Atoi(vPath[1])
 	for i, f := range fb.fields {
-		//if the fields don't match
-		if strings.Compare(f.Field, vPath[0]) != 0 {
+		if f.Field != vPath[0] {
 			continue
 		}
-
 		switch f.Value.Type {
 		case DocumentValue:
-			//No index for document Type (field.integer)
+			var buf FieldBuffer
+			var b1 *FieldBuffer
+			// Cannot make .
 			if strconvErr == nil {
 				return
 			}
 
-			var buf FieldBuffer
-			var b1 *FieldBuffer
 			err := buf.Copy(f.Value.V.(Document))
 			if err != nil {
 				return
@@ -113,8 +113,8 @@ func (fb *FieldBuffer) SetDotNotation(fname string, v Value) {
 
 		case ArrayValue:
 			vlist, _ := f.Value.ConvertToArray()
-			//the position of the index (fieldname.index)
 
+			//the position of the index (fieldname.index)
 			buf, err := treatArrayValue(vlist, v, index)
 			if err == nil {
 				fb.fields[i].Value = NewArrayValue(&buf)
@@ -140,7 +140,6 @@ func (fb *FieldBuffer) Set(f string, v Value) {
 			return
 		}
 	}
-
 	fb.Add(f, v)
 }
 
@@ -183,6 +182,8 @@ func (fb *FieldBuffer) Replace(field string, v Value) error {
 			return nil
 		}
 	}
+
+	fmt.Println(ErrFieldNotFound)
 
 	return ErrFieldNotFound
 }
