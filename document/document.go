@@ -3,7 +3,6 @@ package document
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -182,8 +181,6 @@ func (fb *FieldBuffer) Replace(field string, v Value) error {
 			return nil
 		}
 	}
-
-	fmt.Println(ErrFieldNotFound)
 
 	return ErrFieldNotFound
 }
