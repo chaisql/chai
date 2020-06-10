@@ -68,7 +68,7 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 }
 
 // treatArrayValue update the value of array at the given index.
-func treatArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
+func setArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
 	var buf ValueBuffer
 	err := vlist.Iterate(func(i int, va Value) error {
 		if index == i {
