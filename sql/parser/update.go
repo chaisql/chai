@@ -45,8 +45,7 @@ func (p *Parser) parseUpdateStatement() (query.UpdateStmt, error) {
 
 // parseSetClause parses the "SET" clause of the query.
 func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
-	pairs := make(map[string]expr.Expr)
-
+	setPairs := make(map[string]expr.Expr)
 	firstPair := true
 	for {
 		if !firstPair {
@@ -69,9 +68,6 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 		if err != nil {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 		}
-		if len(ref) > 1 {
-			lit = strings.Join(ref, ".")
-		}
 
 		// Scan the eq sign
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EQ {
@@ -83,12 +79,11 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs[lit] = expr
-
+		req := strings.Join(ref, ".")
+		setPairs[req] = expr
 		firstPair = false
 	}
-
-	return pairs, nil
+	return setPairs, nil
 }
 
 func (p *Parser) parseUnsetClause() ([]string, error) {

@@ -22,7 +22,6 @@ type UpdateStmt struct {
 	// each field with its corresponding value that
 	// should be set in the document.
 	SetPairs map[string]expr.Expr
-
 	// UnsetFields is used along with the Unset clause. It holds
 	// each field that should be unset from the document.
 	UnsetFields []string
@@ -122,6 +121,7 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 
 // set executes the Set clause.
 func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, args []expr.Param) error {
+
 	for fname, e := range stmt.SetPairs {
 		ev, err := e.Eval(expr.EvalStack{
 			Tx:       tx,
@@ -133,17 +133,10 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 		}
 
 		valuePath := document.NewValuePath(fname)
-		_, err = d.GetByField(valuePath[0])
-		switch err {
-		case nil:
-			// If no error, it means that the field already exists
-			// and it should be replaced.
-			_ = d.Replace(fname, ev)
-		case document.ErrFieldNotFound:
-			// If the field doesn't exist,
-			// it should be added to the document.
-			d.Set(fname, ev)
-		}
+		field := valuePath.GetFirstStringFromValuePath()
+		_, err = d.GetByField(field)
+		d.Set(valuePath, ev)
+
 	}
 	return nil
 }

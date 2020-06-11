@@ -3,6 +3,7 @@ package document
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -67,8 +68,8 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
-// treatArrayValue update the value of array at the given index.
-func treatArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
+// setArrayValue update the value of array at the given index.
+func setArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
 	var buf ValueBuffer
 	err := vlist.Iterate(func(i int, va Value) error {
 		if index == i {
@@ -82,64 +83,100 @@ func treatArrayValue(vlist Array, v Value, index int) (ValueBuffer, error) {
 	return buf, err
 }
 
+func setDocumentValue(d Document, value Value, p ValuePath) (FieldBuffer, error) {
+	var buf FieldBuffer
+	index := len(p) - 1
+	fmt.Printf("func: set Doc Value == %v\n", value)
+
+	err := d.Iterate(func(field string, va Value) error {
+		fmt.Printf("Iterate => field == %s Value == %v\n", field, va)
+		if va.Type == DocumentValue {
+			v, err := d.GetByField(field)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Iterate => v == %v\n", v)
+		}
+		if p[index] == field {
+			fmt.Printf("path[index] == %s and value %v\n", p[index], value)
+			buf.Add(field, value)
+		} else {
+			fmt.Printf("Add field == %s and va %v\n", field, va)
+			buf.Add(field, va)
+		}
+		return nil
+	})
+
+	return buf, err
+}
+
 // SetDotNotation allow dot notation and replace value at the given index.
-func (fb *FieldBuffer) SetDotNotation(fname string, v Value) {
-	vPath := NewValuePath(fname)
-	index, strconvErr := strconv.Atoi(vPath[1])
+func (fb *FieldBuffer) SetDotNotation(fname ValuePath, value Value) error {
+
 	for i, f := range fb.fields {
-		if f.Field != vPath[0] {
+
+		if f.Field != fname[0] {
 			continue
 		}
 		switch f.Value.Type {
 		case DocumentValue:
 			var buf FieldBuffer
-			var b1 *FieldBuffer
-			// Cannot make field.integer on a document
-			if strconvErr == nil {
-				return
-			}
-
+			d, _ := f.Value.ConvertToDocument()
 			err := buf.Copy(f.Value.V.(Document))
 			if err != nil {
-				return
+				return err
 			}
-
 			//May be another way to do it
-			_ = buf.Delete(vPath[1])
-			b1 = &buf
-			b1 = b1.Add(vPath[1], v)
-			fb.fields[i].Value = NewDocumentValue(&buf)
+			for _, fpath := range fname {
+				v, err := d.GetByField(fpath)
+				if err == nil {
+					fmt.Println(err)
+					doc, _ := v.ConvertToDocument()
+					b1, errDoc := setDocumentValue(doc, value, fname)
+					if errDoc == nil {
+						buf.Delete(fpath)
+						valueF := NewDocumentValue(b1)
+						buf.Add(fpath, valueF)
+					}
+				}
 
+			}
+			fb.fields[i].Value = NewDocumentValue(&buf)
 		case ArrayValue:
 			vlist, _ := f.Value.ConvertToArray()
-
+			fmt.Println(vlist)
 			//the position of the index (fieldname.index)
-			buf, err := treatArrayValue(vlist, v, index)
+			/*buf, err := setArrayValue(vlist, v, index)
 			if err == nil {
 				fb.fields[i].Value = NewArrayValue(&buf)
-				return
-			}
+				return err
+			}*/
 		}
 	}
 
-	return
+	/*INSERT INTO client (prenom, nom, ville, age)
+	// contact: { phone: { type: "cell", number: "111-222-3333" } }
+	*/
+	return nil
 }
 
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(f string, v Value) {
+func (fb *FieldBuffer) Set(f ValuePath, v Value) error {
 	//check the dot notation
-	if isDotPath(f) {
-		fb.SetDotNotation(f, v)
-		return
+	err := fb.SetDotNotation(f, v)
+	if err != nil {
+		return err
 	}
+	return nil
 
-	for i := range fb.fields {
+	/*for i := range fb.fields {
 		if fb.fields[i].Field == f {
 			fb.fields[i].Value = v
-			return
+			return nil
 		}
-	}
-	fb.Add(f, v)
+	}*/
+	//fb.Add(f, v)
+
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
@@ -170,10 +207,6 @@ func (fb *FieldBuffer) Delete(field string) error {
 // Replace the value of the field by v.
 func (fb *FieldBuffer) Replace(field string, v Value) error {
 	//check if there is a dot notation
-	if strings.Contains(field, ".") {
-		fb.SetDotNotation(field, v)
-		return nil
-	}
 
 	for i := range fb.fields {
 		if fb.fields[i].Field == field {
@@ -239,6 +272,11 @@ func NewValuePath(p string) ValuePath {
 //isDotPath verify if the path contains a dot
 func isDotPath(p string) bool {
 	return strings.Contains(p, ".")
+}
+
+// GetFirstStringFromValuePath return the first string element of the valuePath
+func (p ValuePath) GetFirstStringFromValuePath() string {
+	return p[0]
 }
 
 // String joins all the chunks of the path using the dot separator.
