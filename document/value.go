@@ -522,6 +522,12 @@ func (v Value) IsZeroValue() (bool, error) {
 			return false, err
 		}
 		isZeroValue = len == 0
+	case DocumentValue:
+		len, err := Length(v.V.(Document))
+		if err != nil {
+			return false, err
+		}
+		isZeroValue = len == 0
 	}
 
 	return isZeroValue, nil

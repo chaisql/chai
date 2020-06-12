@@ -27,6 +27,20 @@ type Keyer interface {
 	Key() []byte
 }
 
+// Length returns the length of a document.
+func Length(d Document) (int, error) {
+	if fb, ok := d.(FieldBuffer); ok {
+		return fb.Len(), nil
+	}
+
+	var len int
+	err := d.Iterate(func(_ string, _ Value) error {
+		len++
+		return nil
+	})
+	return len, err
+}
+
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
 type FieldBuffer struct {
 	fields []fieldValue
