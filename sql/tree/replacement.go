@@ -35,6 +35,15 @@ func NewReplacementNode(n Node, tableName string) Node {
 	}
 }
 
+func (n *replacementNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*replacementNode)
+	return n.tableName == on.tableName
+}
+
 func (n *replacementNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	n.table, err = tx.GetTable(n.tableName)
 	return

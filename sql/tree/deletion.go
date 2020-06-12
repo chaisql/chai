@@ -33,6 +33,15 @@ func NewDeletionNode(n Node, tableName string) Node {
 	}
 }
 
+func (n *deletionNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*deletionNode)
+	return n.tableName == on.tableName
+}
+
 func (n *deletionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	n.table, err = tx.GetTable(n.tableName)
 	return
