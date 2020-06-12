@@ -190,7 +190,7 @@ func setArrayValue(f string, toSet bool) {
 
 }
 
-func (fb *FieldBuffer) setDocumentValue(value Value, f string, reqValue Value, index int) (Value, error) {
+func (fb *FieldBuffer) setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
 	fmt.Printf("field in req %s and Value in req %v\n", f, reqValue)
 	d, err := value.ConvertToDocument()
 	if err != nil {
@@ -216,31 +216,25 @@ func (fb *FieldBuffer) setDocumentValue(value Value, f string, reqValue Value, i
 }
 
 // SetUpdate
-func (fb *FieldBuffer) SetUpdate(p ValuePath, value Value, t ValueType, index int) error {
+func (fb *FieldBuffer) SetDocument(d Document, p ValuePath, value Value) (FieldBuffer, error) {
 	last := len(p) - 1
 	var fbuf FieldBuffer
-	err := fbuf.Copy(fb.fields[index].Value.V.(Document))
+	err := fbuf.Copy(d)
 	if err != nil {
-		return err
-	}
-	fmt.Println("in Value := ", fb.fields[index].Value)
-	d, err := fb.fields[index].Value.ConvertToDocument()
-	if err != nil {
-		fmt.Println(err)
-		return err
+		return fbuf, err
 	}
 
 	for i := 1; i < last; i++ {
 		v, err := d.GetByField(p[i])
 		if err != nil {
-			return err
+			return fbuf, err
 		}
 		switch v.Type {
 		case DocumentValue:
-			v, err = fb.setDocumentValue(v, p[last], value, index)
+			v, err = fb.setDocumentValue(v, p[last], value)
 			if err != nil {
 				fmt.Println(err)
-				return err
+				return fbuf, err
 			}
 			fbuf.Delete(p[i])
 			fbuf.Add(p[i], v)
@@ -249,19 +243,8 @@ func (fb *FieldBuffer) SetUpdate(p ValuePath, value Value, t ValueType, index in
 		}
 
 	}
-	switch fb.fields[index].Value.Type {
-	case DocumentValue:
-		fb.fields[index].Value = NewDocumentValue(fbuf)
-	}
-	/*var vbuf ValueBuffer
-	for i, p := range vpath {
-		if i == last {
-			setChange = true
-		}
-		//setArrayValue(p, setChange)
-	}*/
 
-	return nil
+	return fbuf, nil
 }
 
 // Set replaces a field if it already exists or creates one if not.
@@ -273,9 +256,13 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 		}
 		switch field.Value.Type {
 		case DocumentValue:
-			fmt.Printf("i of frang %d && field %v\n", i, fb.fields[i].Value)
-			fmt.Printf("Document == f.Value.Type %v and field.Value %v and field Name: %s\n", field.Value.Type, field.Value, field.Field)
-			fb.SetUpdate(p, value, field.Value.Type, i)
+			d, err := fb.fields[i].Value.ConvertToDocument()
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			fbuf, err := fb.SetDocument(d, p, value)
+			fb.fields[i].Value = NewDocumentValue(fbuf)
 		case ArrayValue:
 
 		}
