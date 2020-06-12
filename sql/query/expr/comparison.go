@@ -399,8 +399,13 @@ func (op cmpOp) compare(l, r document.Value) (bool, error) {
 // IsComparisonOperator returns true if e is one of
 // =, !=, >, >=, <, <=, IS, IS NOT, IN, or NOT IN operators.
 func IsComparisonOperator(op Operator) bool {
-	_, ok := op.(*cmpOp)
-	return ok
+	switch op.(type) {
+	case eqOp, neqOp, gtOp, gteOp, ltOp, lteOp,
+		isOp, isNotOp, inOp, notInOp:
+		return true
+	}
+
+	return false
 }
 
 // IsAndOperator reports if e is the AND operator.
@@ -513,16 +518,16 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 }
 
 type notInOp struct {
-	Expr
+	inOp
 }
 
 // NotIn creates an expression that evaluates to the result of a NOT IN b.
 func NotIn(a, b Expr) Expr {
-	return &notInOp{In(a, b)}
+	return &notInOp{inOp{&simpleOperator{a, b, scanner.IN}}}
 }
 
 func (op notInOp) Eval(ctx EvalStack) (document.Value, error) {
-	v, err := op.Expr.Eval(ctx)
+	v, err := op.inOp.Eval(ctx)
 	if err != nil {
 		return v, err
 	}

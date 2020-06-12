@@ -9,6 +9,17 @@ import (
 // A LiteralValue represents a litteral value of any type defined by the value package.
 type LiteralValue document.Value
 
+// Equal compares this expression with the other expression and returns
+// true if they are equal.
+func (p LiteralValue) Equal(other Expr) bool {
+	o, ok := other.(LiteralValue)
+	if !ok {
+		return false
+	}
+	ok, err := document.Value(p).IsEqual(document.Value(o))
+	return ok && err == nil
+}
+
 // BlobValue creates a litteral value of type Blob.
 func BlobValue(v []byte) LiteralValue {
 	return LiteralValue(document.NewBlobValue(v))
@@ -62,6 +73,26 @@ func (l LiteralValue) Eval(EvalStack) (document.Value, error) {
 // LiteralExprList is a list of expressions.
 type LiteralExprList []Expr
 
+// Equal compares this expression with the other expression and returns
+// true if they are equal.
+func (l LiteralExprList) Equal(other Expr) bool {
+	o, ok := other.(LiteralExprList)
+	if !ok {
+		return false
+	}
+	if len(l) != len(o) {
+		return false
+	}
+
+	for i := range l {
+		if !l[i].Equal(o[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 	var err error
@@ -84,6 +115,29 @@ type KVPair struct {
 
 // KVPairs is a list of KVPair.
 type KVPairs []KVPair
+
+// Equal compares this expression with the other expression and returns
+// true if they are equal.
+func (kvp KVPairs) Equal(other Expr) bool {
+	o, ok := other.(KVPairs)
+	if !ok {
+		return false
+	}
+	if len(kvp) != len(o) {
+		return false
+	}
+
+	for i := range kvp {
+		if kvp[i].K != o[i].K {
+			return false
+		}
+		if !kvp[i].V.Equal(o[i].V) {
+			return false
+		}
+	}
+
+	return true
+}
 
 // Eval turns a list of KVPairs into a document.
 func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {

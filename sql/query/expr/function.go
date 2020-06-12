@@ -45,6 +45,13 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 	return encoding.DecodeValue(document.Int64Value, ctx.Document.(document.Keyer).Key())
 }
 
+// Equal compares this expression with the other expression and returns
+// true if they are equal.
+func (k PKFunc) Equal(other Expr) bool {
+	_, ok := other.(PKFunc)
+	return ok
+}
+
 // Cast represents the CAST expression.
 type Cast struct {
 	Expr      Expr
@@ -59,4 +66,27 @@ func (c Cast) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return v.ConvertTo(c.ConvertTo)
+}
+
+// Equal compares this expression with the other expression and returns
+// true if they are equal.
+func (c Cast) Equal(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(Cast)
+	if !ok {
+		return false
+	}
+
+	if c.ConvertTo != o.ConvertTo {
+		return false
+	}
+
+	if c.Expr != nil {
+		return c.Expr.Equal(o.Expr)
+	}
+
+	return o.Expr != nil
 }
