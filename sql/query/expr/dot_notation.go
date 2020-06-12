@@ -67,3 +67,28 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 
 	return v, nil
 }
+
+// Equal compares this expression with the other expression and returns
+// true if they are equal.
+func (f FieldSelector) Equal(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(FieldSelector)
+	if !ok {
+		return false
+	}
+
+	if len(f) != len(o) {
+		return false
+	}
+
+	for i := range f {
+		if f[i] != o[i] {
+			return false
+		}
+	}
+
+	return true
+}

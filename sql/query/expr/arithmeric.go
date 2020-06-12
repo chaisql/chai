@@ -5,6 +5,18 @@ import (
 	"github.com/genjidb/genji/sql/scanner"
 )
 
+// IsArithmeticOperator returns true if e is one of
+// +, -, *, /, %, &, |, or ^ operators.
+func IsArithmeticOperator(op Operator) bool {
+	switch op.(type) {
+	case *addOp, *subOp, *mulOp, *divOp, *modOp,
+		*bitwiseAndOp, *bitwiseOrOp, *bitwiseXorOp:
+		return true
+	}
+
+	return false
+}
+
 type addOp struct {
 	*simpleOperator
 }
@@ -101,7 +113,7 @@ type bitwiseAndOp struct {
 
 // BitwiseAnd creates an expression thats evaluates to the result of a & b.
 func BitwiseAnd(a, b Expr) Expr {
-	return &bitwiseAndOp{&simpleOperator{a, b, scanner.ADD}}
+	return &bitwiseAndOp{&simpleOperator{a, b, scanner.BITWISEAND}}
 }
 
 func (op bitwiseAndOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -119,7 +131,7 @@ type bitwiseOrOp struct {
 
 // BitwiseOr creates an expression thats evaluates to the result of a & b.
 func BitwiseOr(a, b Expr) Expr {
-	return &bitwiseOrOp{&simpleOperator{a, b, scanner.ADD}}
+	return &bitwiseOrOp{&simpleOperator{a, b, scanner.BITWISEOR}}
 }
 
 func (op bitwiseOrOp) Eval(ctx EvalStack) (document.Value, error) {
@@ -137,7 +149,7 @@ type bitwiseXorOp struct {
 
 // BitwiseXor creates an expression thats evaluates to the result of a & b.
 func BitwiseXor(a, b Expr) Expr {
-	return &bitwiseXorOp{&simpleOperator{a, b, scanner.ADD}}
+	return &bitwiseXorOp{&simpleOperator{a, b, scanner.BITWISEXOR}}
 }
 
 func (op bitwiseXorOp) Eval(ctx EvalStack) (document.Value, error) {
