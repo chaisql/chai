@@ -30,6 +30,15 @@ func NewTableInputNode(tableName string) Node {
 	}
 }
 
+func (n *tableInputNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*tableInputNode)
+	return n.tableName == on.tableName
+}
+
 func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	n.table, err = tx.GetTable(n.tableName)
 	return
@@ -68,6 +77,15 @@ func newIndexInputNode(tableName, indexName string, iop indexIteratorOperator, f
 		e:                filter,
 		orderByDirection: orderByDirection,
 	}
+}
+
+func (n *indexInputNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*indexInputNode)
+	return n.tableName == on.tableName && n.indexName == on.indexName
 }
 
 func (n *indexInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {

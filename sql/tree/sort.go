@@ -38,6 +38,15 @@ func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) 
 	}
 }
 
+func (n *sortNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*sortNode)
+	return n.sortField.Equal(on.sortField) && n.direction == on.direction
+}
+
 func (n *sortNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	return
 }

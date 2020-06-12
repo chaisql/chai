@@ -56,6 +56,9 @@ type Node interface {
 	Operation() Operation
 	Left() Node
 	Right() Node
+	SetLeft(Node)
+	SetRight(Node)
+	Equal(Node) bool
 	Bind(tx *database.Transaction, params []expr.Param) error
 }
 
@@ -94,6 +97,46 @@ func (n *node) Right() Node {
 	return n.right
 }
 
+func (n *node) SetLeft(ln Node) {
+	n.left = ln
+}
+
+func (n *node) SetRight(rn Node) {
+	n.right = rn
+}
+
+func (n *node) Equal(other Node) bool {
+	if n == nil {
+		return other == nil
+	}
+
+	if other == nil {
+		return false
+	}
+
+	if n.op != other.Operation() {
+		return false
+	}
+
+	if n.left == nil {
+		if other.Left() != nil {
+			return false
+		}
+	} else if !n.left.Equal(other.Left()) {
+		return false
+	}
+
+	if n.right == nil {
+		if other.Right() != nil {
+			return false
+		}
+	} else if !n.right.Equal(other.Right()) {
+		return false
+	}
+
+	return true
+}
+
 type selectionNode struct {
 	node
 
@@ -114,6 +157,14 @@ func NewSelectionNode(n Node, cond expr.Expr) Node {
 		},
 		cond: cond,
 	}
+}
+
+func (n *selectionNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	return n.cond.Equal(other.(*selectionNode).cond)
 }
 
 func (n *selectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
@@ -164,6 +215,14 @@ func NewLimitNode(n Node, limitExpr expr.Expr) Node {
 	}
 }
 
+func (n *limitNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	return n.limitExpr.Equal(other.(*limitNode).limitExpr)
+}
+
 func (n *limitNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	n.params = params
@@ -212,6 +271,14 @@ func NewOffsetNode(n Node, skipExpr expr.Expr) Node {
 		},
 		offsetExpr: skipExpr,
 	}
+}
+
+func (n *offsetNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	return n.offsetExpr.Equal(other.(*offsetNode).offsetExpr)
 }
 
 func (n *offsetNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
@@ -265,6 +332,15 @@ func NewSetNode(n Node, field string, e expr.Expr) Node {
 		field: field,
 		e:     e,
 	}
+}
+
+func (n *setNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*setNode)
+	return n.field == on.field && n.e.Equal(on.e)
 }
 
 func (n *setNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
@@ -329,6 +405,15 @@ func NewUnsetNode(n Node, field string) Node {
 		},
 		field: field,
 	}
+}
+
+func (n *unsetNode) Equal(other Node) bool {
+	if !n.node.Equal(other) {
+		return false
+	}
+
+	on := other.(*unsetNode)
+	return n.field == on.field
 }
 
 func (n *unsetNode) Bind(tx *database.Transaction, params []expr.Param) error {

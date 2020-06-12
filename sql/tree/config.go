@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -14,7 +13,7 @@ type SelectConfig struct {
 	OrderByDirection scanner.Token
 	OffsetExpr       expr.Expr
 	LimitExpr        expr.Expr
-	ProjectionExprs  []query.ResultField
+	ProjectionExprs  []ResultField
 }
 
 // ToTree turns the statement into an expression tree.
