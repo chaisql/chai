@@ -253,12 +253,13 @@ func NewZeroValue(t ValueType) Value {
 }
 
 // IsTruthy returns whether v is not equal to the zero value of its type.
-func (v Value) IsTruthy() bool {
+func (v Value) IsTruthy() (bool, error) {
 	if v.Type == NullValue {
-		return false
+		return false, nil
 	}
 
-	return !v.IsZeroValue()
+	b, err := v.IsZeroValue()
+	return !b, err
 }
 
 // ConvertTo decodes v to the selected type when possible.
@@ -382,7 +383,8 @@ func (v Value) ConvertToBool() (bool, error) {
 		return false, nil
 	}
 
-	return !v.IsZeroValue(), nil
+	b, err := v.IsZeroValue()
+	return !b, err
 }
 
 // ConvertToInt64 turns any number into an int64.
@@ -494,27 +496,35 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 
 // IsZeroValue indicates if the value data is the zero value for the value type.
 // This function doesn't perform any allocation.
-func (v Value) IsZeroValue() bool {
+func (v Value) IsZeroValue() (bool, error) {
+	var isZeroValue bool
+
 	switch v.Type {
 	case BlobValue, TextValue:
-		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
+		isZeroValue = bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
 	case BoolValue:
-		return v.V == boolZeroValue.V
+		isZeroValue = v.V == boolZeroValue.V
 	case Int8Value:
-		return v.V == int8ZeroValue.V
+		isZeroValue = v.V == int8ZeroValue.V
 	case Int16Value:
-		return v.V == int16ZeroValue.V
+		isZeroValue = v.V == int16ZeroValue.V
 	case Int32Value:
-		return v.V == int32ZeroValue.V
+		isZeroValue = v.V == int32ZeroValue.V
 	case Int64Value:
-		return v.V == int64ZeroValue.V
+		isZeroValue = v.V == int64ZeroValue.V
 	case Float64Value:
-		return v.V == float64ZeroValue.V
+		isZeroValue = v.V == float64ZeroValue.V
 	case DurationValue:
-		return v.V == durationZeroValue.V
+		isZeroValue = v.V == durationZeroValue.V
+	case ArrayValue:
+		len, err := ArrayLength(v.V.(Array))
+		if err != nil {
+			return false, err
+		}
+		isZeroValue = len == 0
 	}
 
-	return false
+	return isZeroValue, nil
 }
 
 // Add u to v and return the result.

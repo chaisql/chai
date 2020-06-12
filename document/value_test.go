@@ -200,7 +200,7 @@ func TestConvertToBool(t *testing.T) {
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewBoolValue(true))), false, true},
 		{"zero document", document.NewDocumentValue(document.NewFieldBuffer()), false, true},
 		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewInt16Value(1))), false, true},
-		{"zero array", document.NewArrayValue(document.NewValueBuffer()), false, true},
+		{"zero array", document.NewArrayValue(document.NewValueBuffer()), false, false},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), false, true},
 		{"zero duration", document.NewDurationValue(0), false, false},
 	}
