@@ -29,7 +29,7 @@ type Keyer interface {
 
 // Length returns the length of a document.
 func Length(d Document) (int, error) {
-	if fb, ok := d.(FieldBuffer); ok {
+	if fb, ok := d.(*FieldBuffer); ok {
 		return fb.Len(), nil
 	}
 
