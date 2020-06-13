@@ -42,8 +42,8 @@ func (p *Parser) parseUpdateStatement() (*planner.Tree, error) {
 }
 
 // parseSetClause parses the "SET" clause of the query.
-func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
-	pairs := make(map[string]expr.Expr)
+func (p *Parser) parseSetClause() ([]updateSetPair, error) {
+	var pairs []updateSetPair
 
 	firstPair := true
 	for {
@@ -72,7 +72,7 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs[lit] = expr
+		pairs = append(pairs, updateSetPair{lit, expr})
 
 		firstPair = false
 	}
@@ -113,13 +113,18 @@ type updateConfig struct {
 	// SetPairs is used along with the Set clause. It holds
 	// each field with its corresponding value that
 	// should be set in the document.
-	SetPairs map[string]expr.Expr
+	SetPairs []updateSetPair
 
 	// UnsetFields is used along with the Unset clause. It holds
 	// each field that should be unset from the document.
 	UnsetFields []string
 
 	WhereExpr expr.Expr
+}
+
+type updateSetPair struct {
+	field string
+	e     expr.Expr
 }
 
 // ToTree turns the statement into an expression tree.
@@ -131,8 +136,8 @@ func (cfg updateConfig) ToTree() *planner.Tree {
 	}
 
 	if cfg.SetPairs != nil {
-		for name, expr := range cfg.SetPairs {
-			t = planner.NewSetNode(t, name, expr)
+		for _, pair := range cfg.SetPairs {
+			t = planner.NewSetNode(t, pair.field, pair.e)
 		}
 	} else if cfg.UnsetFields != nil {
 		for _, name := range cfg.UnsetFields {

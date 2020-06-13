@@ -2,7 +2,6 @@ package parser
 
 import (
 	"github.com/genjidb/genji/sql/planner"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -57,13 +56,13 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 }
 
 // parseResultFields parses the list of result fields.
-func (p *Parser) parseResultFields() ([]query.ResultField, error) {
+func (p *Parser) parseResultFields() ([]planner.ResultField, error) {
 	// Parse first (required) result field.
 	rf, err := p.parseResultField()
 	if err != nil {
 		return nil, err
 	}
-	rfields := []query.ResultField{rf}
+	rfields := []planner.ResultField{rf}
 
 	// Parse remaining (optional) result fields.
 	for {
@@ -81,10 +80,10 @@ func (p *Parser) parseResultFields() ([]query.ResultField, error) {
 }
 
 // parseResultField parses the list of result fields.
-func (p *Parser) parseResultField() (query.ResultField, error) {
+func (p *Parser) parseResultField() (planner.ResultField, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return query.Wildcard{}, nil
+		return planner.Wildcard{}, nil
 	}
 	p.Unscan()
 
@@ -93,7 +92,7 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 		return nil, err
 	}
 
-	rf := query.ResultFieldExpr{Expr: e, ExprName: lit}
+	rf := planner.ResultFieldExpr{Expr: e, ExprName: lit}
 
 	// Check if the AS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {

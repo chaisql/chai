@@ -3,48 +3,69 @@ package parser
 import (
 	"testing"
 
-	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/stretchr/testify/require"
 )
 
-func TestParserUdpate(t *testing.T) {
+func TestParserUpdate(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected *planner.Tree
 		errored  bool
 	}{
 		{"SET/No cond", "UPDATE test SET a = 1",
-			query.UpdateStmt{
-				TableName: "test",
-				SetPairs: map[string]expr.Expr{
-					"a": expr.IntValue(1),
-				},
-			},
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewTableInputNode("test"),
+						"a", expr.IntValue(1),
+					),
+					"test",
+				)),
 			false},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
-			query.UpdateStmt{
-				TableName: "test",
-				SetPairs: map[string]expr.Expr{
-					"a": expr.IntValue(1),
-					"b": expr.IntValue(2),
-				},
-				WhereExpr: expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
-			},
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewSetNode(
+							planner.NewSelectionNode(
+								planner.NewTableInputNode("test"),
+								expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							),
+							"a", expr.IntValue(1),
+						),
+						"b", expr.IntValue(2),
+					),
+					"test",
+				)),
 			false},
 		{"UNSET/No cond", "UPDATE test UNSET a",
-			query.UpdateStmt{
-				TableName:   "test",
-				UnsetFields: []string{"a"},
-			},
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewUnsetNode(
+						planner.NewTableInputNode("test"),
+						"a",
+					),
+					"test",
+				)),
 			false},
 		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
-			query.UpdateStmt{
-				TableName:   "test",
-				UnsetFields: []string{"a", "b"},
-				WhereExpr:   expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
-			},
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewUnsetNode(
+						planner.NewUnsetNode(
+							planner.NewSelectionNode(
+								planner.NewTableInputNode("test"),
+								expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							),
+							"a",
+						),
+						"b",
+					),
+					"test",
+				)),
 			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},
 		{"No SET", "UPDATE test WHERE age = 10", nil, true},
@@ -62,7 +83,7 @@ func TestParserUdpate(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, test.expected, q.Statements[0])
+			require.EqualValues(t, planner.NewStatement(test.expected), q.Statements[0])
 		})
 	}
 }
