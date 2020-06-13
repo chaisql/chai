@@ -1,16 +1,16 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
-	"github.com/genjidb/genji/sql/tree"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (*tree.Tree, error) {
-	var cfg tree.SelectConfig
+func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
+	var cfg selectConfig
 	var err error
 
 	// Parse field list or query.Wildcard
@@ -167,4 +167,44 @@ func (p *Parser) parseOffset() (expr.Expr, error) {
 
 	e, _, err := p.ParseExpr()
 	return e, err
+}
+
+// SelectConfig holds SELECT configuration.
+type selectConfig struct {
+	TableName        string
+	WhereExpr        expr.Expr
+	OrderBy          expr.FieldSelector
+	OrderByDirection scanner.Token
+	OffsetExpr       expr.Expr
+	LimitExpr        expr.Expr
+	ProjectionExprs  []planner.ResultField
+}
+
+// ToTree turns the statement into an expression tree.
+func (cfg selectConfig) ToTree() *planner.Tree {
+	if cfg.TableName == "" {
+		return planner.NewTree(planner.NewProjectionNode(nil, cfg.ProjectionExprs, ""))
+	}
+
+	t := planner.NewTableInputNode(cfg.TableName)
+
+	if cfg.WhereExpr != nil {
+		t = planner.NewSelectionNode(t, cfg.WhereExpr)
+	}
+
+	if cfg.OrderBy != nil {
+		t = planner.NewSortNode(t, cfg.OrderBy, cfg.OrderByDirection)
+	}
+
+	if cfg.OffsetExpr != nil {
+		t = planner.NewOffsetNode(t, cfg.OffsetExpr)
+	}
+
+	if cfg.LimitExpr != nil {
+		t = planner.NewLimitNode(t, cfg.LimitExpr)
+	}
+
+	t = planner.NewProjectionNode(t, cfg.ProjectionExprs, cfg.TableName)
+
+	return &planner.Tree{Root: t}
 }
