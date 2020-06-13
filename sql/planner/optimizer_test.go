@@ -1,4 +1,4 @@
-package tree
+package planner
 
 import (
 	"testing"
@@ -81,7 +81,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := splitANDConditionRule(New(test.root))
+			res, err := splitANDConditionRule(NewTree(test.root))
 			require.NoError(t, err)
 			require.True(t, res.Root.Equal(test.expected))
 		})
@@ -160,7 +160,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := precalculateExprRule(New(NewSelectionNode(NewTableInputNode("foo"), test.e)))
+			res, err := precalculateExprRule(NewTree(NewSelectionNode(NewTableInputNode("foo"), test.e)))
 			require.NoError(t, err)
 			require.True(t, res.Root.Equal(NewSelectionNode(NewTableInputNode("foo"), test.expected)))
 		})
@@ -191,7 +191,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := removeUnnecessarySelectionNodesRule(New(test.root))
+			res, err := removeUnnecessarySelectionNodesRule(NewTree(test.root))
 			require.NoError(t, err)
 			if test.expected != nil {
 				require.True(t, test.expected.Equal(res.Root))

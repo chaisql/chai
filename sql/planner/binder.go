@@ -1,4 +1,4 @@
-package tree
+package planner
 
 import (
 	"github.com/genjidb/genji/database"

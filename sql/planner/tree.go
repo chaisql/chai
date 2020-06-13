@@ -1,7 +1,9 @@
-// Package tree provides types to describe the lifecycle of a query.
-// Each tree represents a stream of documents that gets transformed by operations,
-// following rules of relational algebra.
-package tree
+// Package planner provides types to describe and manage the lifecycle of a query.
+// A query is represented as a tree, which itself represents a stream of documents.
+// Each node of the tree is an operation that transforms that stream, following rules
+// of relational algebra.
+// Once a tree is created, it can be optimized by a list of rules.
+package planner
 
 import (
 	"fmt"
@@ -12,7 +14,7 @@ import (
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
-// An Operation can manipulate and transform a stream of data.
+// An Operation can manipulate and transform a stream of documents.
 type Operation int
 
 const (
@@ -38,6 +40,7 @@ const (
 	// Set is an operation that adds or replaces a field for every document of the stream.
 	Set
 	// Unset is an operation that removes a field from every document of a stream
+	Unset
 )
 
 // A Tree describes the flow of a stream of documents.
@@ -46,8 +49,8 @@ type Tree struct {
 	Root Node
 }
 
-// New creates a new tree with n as root.
-func New(n Node) *Tree {
+// NewTree creates a new tree with n as root.
+func NewTree(n Node) *Tree {
 	return &Tree{Root: n}
 }
 
@@ -400,7 +403,7 @@ var _ operationNode = (*unsetNode)(nil)
 func NewUnsetNode(n Node, field string) Node {
 	return &unsetNode{
 		node: node{
-			op:   Set,
+			op:   Unset,
 			left: n,
 		},
 		field: field,
