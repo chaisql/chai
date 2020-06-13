@@ -1,15 +1,15 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
-	"github.com/genjidb/genji/sql/tree"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (*tree.Tree, error) {
-	var cfg tree.UpdateConfig
+func (p *Parser) parseUpdateStatement() (*planner.Tree, error) {
+	var cfg updateConfig
 	var err error
 
 	// Parse table name
@@ -104,4 +104,43 @@ func (p *Parser) parseUnsetClause() ([]string, error) {
 		firstField = false
 	}
 	return fields, nil
+}
+
+// UpdateConfig holds UPDATE configuration.
+type updateConfig struct {
+	TableName string
+
+	// SetPairs is used along with the Set clause. It holds
+	// each field with its corresponding value that
+	// should be set in the document.
+	SetPairs map[string]expr.Expr
+
+	// UnsetFields is used along with the Unset clause. It holds
+	// each field that should be unset from the document.
+	UnsetFields []string
+
+	WhereExpr expr.Expr
+}
+
+// ToTree turns the statement into an expression tree.
+func (cfg updateConfig) ToTree() *planner.Tree {
+	t := planner.NewTableInputNode(cfg.TableName)
+
+	if cfg.WhereExpr != nil {
+		t = planner.NewSelectionNode(t, cfg.WhereExpr)
+	}
+
+	if cfg.SetPairs != nil {
+		for name, expr := range cfg.SetPairs {
+			t = planner.NewSetNode(t, name, expr)
+		}
+	} else if cfg.UnsetFields != nil {
+		for _, name := range cfg.UnsetFields {
+			t = planner.NewUnsetNode(t, name)
+		}
+	}
+
+	t = planner.NewReplacementNode(t, cfg.TableName)
+
+	return &planner.Tree{Root: t}
 }

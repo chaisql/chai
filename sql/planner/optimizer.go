@@ -11,7 +11,11 @@ var optimizerRules = []func(t *Tree) (*Tree, error){
 	removeUnnecessarySelectionNodesRule,
 }
 
-func optimizer(t *Tree) (*Tree, error) {
+// Optimize takes a tree, applies a list of optimization rules
+// and returns an optimized tree.
+// Depending on the rule, the tree may be modified in place or
+// replaced by a new one.
+func Optimize(t *Tree) (*Tree, error) {
 	var err error
 
 	for _, rule := range optimizerRules {
@@ -26,6 +30,15 @@ func optimizer(t *Tree) (*Tree, error) {
 
 // splitANDConditionRule splits any selection node whose condition
 // is one or more AND operators into one or more selection nodes.
+// The condition won't be split if the expression tree contains an OR
+// operation.
+// Example:
+//   this:
+//     σ(a > 2 AND b != 3 AND c < 2)
+//   becomes this:
+//     σ(a > 2)
+//     σ(b != 3)
+//     σ(c < 2)
 func splitANDConditionRule(t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
@@ -34,8 +47,12 @@ func splitANDConditionRule(t *Tree) (*Tree, error) {
 		if n.Operation() == Selection {
 			cond := n.(*selectionNode).cond
 			if cond != nil {
+				// The AND operator has one of the lowest precedence,
+				// only OR has a lower precedence,
+				// which means that if AND is used without OR, it will be at
+				// the top of the expression tree.
 				if op, ok := cond.(expr.Operator); ok && expr.IsAndOperator(op) {
-					exprs := splitANDCondition(cond)
+					exprs := splitANDExpr(cond)
 
 					cur := n.Left()
 					i := len(exprs) - 1
@@ -63,11 +80,12 @@ func splitANDConditionRule(t *Tree) (*Tree, error) {
 	return t, nil
 }
 
-func splitANDCondition(cond expr.Expr) (exprs []expr.Expr) {
+// splitANDExpr takes an expression and splits it by AND operator.
+func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 	op, ok := cond.(expr.Operator)
 	if ok && expr.IsAndOperator(op) {
-		exprs = append(exprs, splitANDCondition(op.LeftHand())...)
-		exprs = append(exprs, splitANDCondition(op.RightHand())...)
+		exprs = append(exprs, splitANDExpr(op.LeftHand())...)
+		exprs = append(exprs, splitANDExpr(op.RightHand())...)
 		return
 	}
 
