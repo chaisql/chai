@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
-	"github.com/genjidb/genji/sql/tree"
 )
 
 // Parser represents an Genji SQL Parser.
@@ -63,19 +63,19 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		return tree.NewStatement(t), nil
+		return planner.NewStatement(t), nil
 	case scanner.DELETE:
 		t, err := p.parseDeleteStatement()
 		if err != nil {
 			return nil, err
 		}
-		return tree.NewStatement(t), nil
+		return planner.NewStatement(t), nil
 	case scanner.UPDATE:
 		t, err := p.parseUpdateStatement()
 		if err != nil {
 			return nil, err
 		}
-		return tree.NewStatement(t), nil
+		return planner.NewStatement(t), nil
 	case scanner.INSERT:
 		return p.parseInsertStatement()
 	case scanner.CREATE:

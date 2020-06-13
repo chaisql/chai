@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/stretchr/testify/require"
 )
@@ -12,10 +12,18 @@ func TestParserDelete(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected *planner.Tree
 	}{
-		{"NoCond", "DELETE FROM test", query.DeleteStmt{TableName: "test"}},
-		{"WithCond", "DELETE FROM test WHERE age = 10", query.DeleteStmt{TableName: "test", WhereExpr: expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10))}},
+		{"NoCond", "DELETE FROM test",
+			planner.NewTree(planner.NewDeletionNode(
+				planner.NewTableInputNode("test"),
+				"test"))},
+		{"WithCond", "DELETE FROM test WHERE age = 10",
+			planner.NewTree(planner.NewDeletionNode(
+				planner.NewSelectionNode(
+					planner.NewTableInputNode("test"),
+					expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10))),
+				"test"))},
 	}
 
 	for _, test := range tests {
@@ -23,7 +31,7 @@ func TestParserDelete(t *testing.T) {
 			q, err := ParseQuery(test.s)
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, test.expected, q.Statements[0])
+			require.EqualValues(t, planner.NewStatement(test.expected), q.Statements[0])
 		})
 	}
 }
