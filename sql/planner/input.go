@@ -1,4 +1,4 @@
-package tree
+package planner
 
 import (
 	"errors"

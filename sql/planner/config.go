@@ -1,4 +1,4 @@
-package tree
+package planner
 
 import (
 	"github.com/genjidb/genji/sql/query/expr"
@@ -19,7 +19,7 @@ type SelectConfig struct {
 // ToTree turns the statement into an expression tree.
 func (cfg SelectConfig) ToTree() *Tree {
 	if cfg.TableName == "" {
-		return New(NewProjectionNode(nil, cfg.ProjectionExprs, ""))
+		return NewTree(NewProjectionNode(nil, cfg.ProjectionExprs, ""))
 	}
 
 	t := NewTableInputNode(cfg.TableName)
