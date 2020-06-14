@@ -1,14 +1,18 @@
 package planner
 
 import (
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 var optimizerRules = []func(t *Tree) (*Tree, error){
 	splitANDConditionRule,
 	precalculateExprRule,
 	removeUnnecessarySelectionNodesRule,
+	useIndexBasedOnSelectionNodeRule,
 }
 
 // Optimize takes a tree, applies a list of optimization rules
@@ -234,4 +238,169 @@ func removeUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 	}
 
 	return t, nil
+}
+
+// useIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
+// operator that satisfies the following criterias:
+// - implements the indexIteratorOperator interface
+// - one of its operands is a field selector that is indexed
+// - the other operand is a literal value or a parameter
+// If found, it will replace the input node by an indexInputNode using this index.
+func useIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
+	n := t.Root
+	var prev Node
+	var inputNode Node
+
+	// first we lookup for the input node
+	for n != nil {
+		if n.Operation() == Input {
+			inputNode = n
+			break
+		}
+
+		n = n.Left()
+	}
+
+	if inputNode == nil {
+		return t, nil
+	}
+
+	// then we get the table indexes. here we will assume that at this point
+	// inputNodes can only be instances of tableInputNode.
+	inpn := inputNode.(*tableInputNode)
+	indexes, err := inpn.table.Indexes()
+	if err != nil {
+		return nil, err
+	}
+
+	type candidate struct {
+		prevNode, nextNode Node
+		in                 *indexInputNode
+	}
+
+	var candidates []candidate
+
+	// look for all selection nodes that satisfy our requirements
+	for n != nil {
+		if n.Operation() == Selection {
+			sn := n.(*selectionNode)
+			indexedNode := selectionNodeValidForIndex(sn, inpn.tableName, indexes)
+			if indexedNode != nil {
+				candidates = append(candidates, candidate{
+					prevNode: prev,
+					nextNode: n.Left(),
+					in:       indexedNode,
+				})
+			}
+		}
+
+		prev = n
+		n = n.Left()
+	}
+
+	// determine which index is the most interesting and replace it in the tree.
+	// we will assume that unique indexes are more interesting than list indexes
+	// because they usually have less elements.
+	var selectedCandidate *candidate
+
+	for i, candidate := range candidates {
+		if selectedCandidate == nil {
+			selectedCandidate = &candidates[i]
+			continue
+		}
+
+		if _, ok := candidate.in.index.(*index.UniqueIndex); ok {
+			selectedCandidate = &candidates[i]
+		}
+	}
+
+	if selectedCandidate == nil {
+		return t, nil
+	}
+
+	// we make sure the new IndexInputNode is bound
+	if err := selectedCandidate.in.Bind(inpn.tx, inpn.params); err != nil {
+		return nil, err
+	}
+
+	// we remove the selection node from the tree
+	selectedCandidate.prevNode.SetLeft(selectedCandidate.nextNode)
+
+	// we lookup again for the input node and the node that is right before.
+	for n != nil {
+		if n.Operation() == Input {
+			break
+		}
+
+		prev = n
+		n = n.Left()
+	}
+
+	// we replace the table input node by the selected indexInputNode
+	prev.SetLeft(selectedCandidate.in)
+
+	return t, nil
+}
+
+func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map[string]database.Index) *indexInputNode {
+	if sn.cond == nil {
+		return nil
+	}
+
+	// the root of the condition must be an operator
+	op, ok := sn.cond.(expr.Operator)
+	if !ok {
+		return nil
+	}
+
+	iop, ok := op.(indexIteratorOperator)
+	if !ok {
+		return nil
+	}
+
+	// determine if the operator can benefit from an index
+	ok, field, e := opCanUseIndex(op)
+	if !ok {
+		return nil
+	}
+
+	// analyse the other operand to make sure it's a literal or a param
+	if !isLiteralOrParam(e) {
+		return nil
+	}
+
+	idxName := field.Name()
+	// now, we look if an index exists for that field
+	_, ok = indexes[idxName]
+	if !ok {
+		return nil
+	}
+
+	return newIndexInputNode(tableName, idxName, iop, e, scanner.ASC).(*indexInputNode)
+}
+
+func opCanUseIndex(op expr.Operator) (bool, expr.FieldSelector, expr.Expr) {
+	lf, leftIsField := op.LeftHand().(expr.FieldSelector)
+	rf, rightIsField := op.RightHand().(expr.FieldSelector)
+
+	// field OP expr
+	if leftIsField && !rightIsField {
+		return true, lf, op.RightHand()
+	}
+
+	// expr OP field
+	if rightIsField && !leftIsField {
+		return true, rf, op.LeftHand()
+	}
+
+	return false, nil, nil
+}
+
+func isLiteralOrParam(e expr.Expr) (ok bool) {
+	switch e.(type) {
+	case expr.LiteralValue, expr.NamedParam, expr.PositionalParam:
+		return true
+	}
+
+	return false
 }
