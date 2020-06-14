@@ -53,11 +53,11 @@ func (n *projectionNode) Equal(other Node) bool {
 	for i := range n.expressions {
 		switch t := n.expressions[i].(type) {
 		case Wildcard:
-			if _, ok := on.expressions[i].(query.Wildcard); !ok {
+			if _, ok := on.expressions[i].(Wildcard); !ok {
 				return false
 			}
 		case ResultFieldExpr:
-			rf, ok := on.expressions[i].(query.ResultFieldExpr)
+			rf, ok := on.expressions[i].(ResultFieldExpr)
 			if !ok {
 				return false
 			}
