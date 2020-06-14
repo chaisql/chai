@@ -15,6 +15,8 @@ type tableInputNode struct {
 
 	tableName string
 	table     *database.Table
+	tx        *database.Transaction
+	params    []expr.Param
 }
 
 var _ inputNode = (*tableInputNode)(nil)
@@ -40,6 +42,8 @@ func (n *tableInputNode) Equal(other Node) bool {
 }
 
 func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.tx = tx
+	n.params = params
 	n.table, err = tx.GetTable(n.tableName)
 	return
 }
@@ -89,14 +93,18 @@ func (n *indexInputNode) Equal(other Node) bool {
 }
 
 func (n *indexInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
-	n.table, err = tx.GetTable(n.tableName)
-	if err != nil {
-		return
+	if n.table == nil {
+		n.table, err = tx.GetTable(n.tableName)
+		if err != nil {
+			return
+		}
 	}
 
-	n.index, err = tx.GetIndex(n.indexName)
-	if err != nil {
-		return
+	if n.index == nil {
+		n.index, err = tx.GetIndex(n.indexName)
+		if err != nil {
+			return
+		}
 	}
 
 	n.tx = tx
