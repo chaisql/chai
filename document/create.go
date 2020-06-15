@@ -52,6 +52,12 @@ func (m mapDocument) GetByField(field string) (Value, error) {
 	return NewValue(v.Interface())
 }
 
+// IsEmpty returns true if the map is empty.
+func (m mapDocument) IsEmpty() bool {
+	M := reflect.Value(m)
+	return M.Len() == 0
+}
+
 // NewFromStruct creates a document from a struct using reflection.
 func NewFromStruct(s interface{}) (Document, error) {
 	ref := reflect.Indirect(reflect.ValueOf(s))
@@ -139,6 +145,11 @@ func (s structDocument) GetByField(field string) (Value, error) {
 	}
 
 	return NewValue(v.Interface())
+}
+
+// IsEmpty returns true if the struct is empty.
+func (s structDocument) IsEmpty() bool {
+	return s.ref.NumField() == 0
 }
 
 // NewValue creates a value whose type is infered from x.

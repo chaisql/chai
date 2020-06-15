@@ -517,17 +517,16 @@ func (v Value) IsZeroValue() (bool, error) {
 	case DurationValue:
 		isZeroValue = v.V == durationZeroValue.V
 	case ArrayValue:
-		len, err := ArrayLength(v.V.(Array))
-		if err != nil {
-			return false, err
+		// The zero value of an array is an empty array.
+		// Thus, if GetByIndex(0) returns the ErrValueNotFound
+		// it means that the array is empty.
+		_, err := v.V.(Array).GetByIndex(0)
+		if err != nil && err == ErrValueNotFound {
+			return true, nil
 		}
-		isZeroValue = len == 0
+		return false, err
 	case DocumentValue:
-		len, err := Length(v.V.(Document))
-		if err != nil {
-			return false, err
-		}
-		isZeroValue = len == 0
+		return v.V.(Document).IsEmpty(), nil
 	}
 
 	return isZeroValue, nil

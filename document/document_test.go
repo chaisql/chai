@@ -522,6 +522,10 @@ func (f *foo) GetByField(field string) (document.Value, error) {
 	return document.Value{}, errors.New("unknown field")
 }
 
+func (f *foo) IsEmpty() bool {
+	return false
+}
+
 func TestValuePath(t *testing.T) {
 	tests := []struct {
 		name   string

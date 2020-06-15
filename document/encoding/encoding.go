@@ -360,6 +360,11 @@ func (e EncodedDocument) Iterate(fn func(field string, value document.Value) err
 	return nil
 }
 
+// IsEmpty returns true if e is empty.
+func (e EncodedDocument) IsEmpty() bool {
+	return len(e) == 0
+}
+
 // An EncodedArray implements the document.Array interface on top of an encoded representation of an
 // array.
 // It is useful to avoid decoding the entire array when only a few values are needed.
