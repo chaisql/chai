@@ -22,3 +22,7 @@ profile.*
 
 # Databases
 *.db
+
+# ide
+*.idea
+*.code-

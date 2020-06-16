@@ -14,6 +14,7 @@ func (p *Parser) parseSelectStatement() (query.SelectStmt, error) {
 
 	// Parse field list or query.Wildcard
 	stmt.Selectors, err = p.parseResultFields()
+
 	if err != nil {
 		return stmt, err
 	}
@@ -63,7 +64,13 @@ func (p *Parser) parseResultFields() ([]query.ResultField, error) {
 
 	// Parse remaining (optional) result fields.
 	for {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+		tok, _, _ := p.ScanIgnoreWhitespace()
+		if tok != scanner.COMMA {
+			p.Unscan()
+			return rfields, nil
+		}
+		tok, _, _ = p.ScanIgnoreWhitespace()
+		if tok != scanner.DOT {
 			p.Unscan()
 			return rfields, nil
 		}
@@ -90,7 +97,6 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 	}
 
 	rf := query.ResultFieldExpr{Expr: e, ExprName: lit}
-
 	// Check if the AS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
 		rf.ExprName, err = p.parseIdent()
@@ -100,6 +106,7 @@ func (p *Parser) parseResultField() (query.ResultField, error) {
 
 		return rf, nil
 	}
+
 	p.Unscan()
 
 	return rf, nil

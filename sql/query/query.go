@@ -23,7 +23,6 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 	var res Result
 	var tx *database.Transaction
 	var err error
-
 	for _, stmt := range q.Statements {
 		// it there is an opened transaction but there are still statements
 		// to be executed, close the current transaction.
