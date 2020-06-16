@@ -25,6 +25,8 @@ func (s *Scanner) read() (ch rune, pos Pos) {
 	return
 }
 
+// ReadRune reads a single UTF-8 encoded Unicode character.
+// It returns io.EOF error if it can't read any more.
 func (s *Scanner) ReadRune() (ch rune, size int, err error) {
 	ch, _ = s.read()
 	if ch == eof {

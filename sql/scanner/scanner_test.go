@@ -127,6 +127,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `10x`, tok: scanner.DURATION, lit: `10x`, raw: `10x`}, // non-duration unit, but scanned as a duration value
 
 		// Keywords
+		{s: `ALTER`, tok: scanner.ALTER, raw: `ALTER`},
 		{s: `AS`, tok: scanner.AS, raw: `AS`},
 		{s: `ASC`, tok: scanner.ASC, raw: `ASC`},
 		{s: `BY`, tok: scanner.BY, raw: `BY`},
@@ -142,6 +143,8 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `LIMIT`, tok: scanner.LIMIT, raw: `LIMIT`},
 		{s: `OFFSET`, tok: scanner.OFFSET, raw: `OFFSET`},
 		{s: `ORDER`, tok: scanner.ORDER, raw: `ORDER`},
+		{s: `PRIMARY`, tok: scanner.PRIMARY, raw: `PRIMARY`},
+		{s: `RENAME`, tok: scanner.RENAME, raw: `RENAME`},
 		{s: `SELECT`, tok: scanner.SELECT, raw: `SELECT`},
 		{s: `SET`, tok: scanner.SET, raw: `SET`},
 		{s: `TO`, tok: scanner.TO, raw: `TO`},
