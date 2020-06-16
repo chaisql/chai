@@ -211,7 +211,7 @@ func Lenght(a Array) int {
 	len := 0
 
 	_ = a.Iterate(func(i int, va Value) error {
-		len = i
+		len++
 		return nil
 	})
 	return len
@@ -230,11 +230,21 @@ func setArray(arr Value, path ValuePath, value Value) (ValueBuffer, error) {
 		fmt.Printf("idx := %d and err := %s\n", idx, err)
 		if err != nil {
 			continue
+		} else {
+			index = idx
 		}
-		index = idx
+
 	}
+
+	if index == size {
+		return vbuf, errors.New("index out of bounds")
+	}
+	fmt.Printf("size of array %d and idx %d\n", size, index)
+
 	for i := 0; i < size; i++ {
+		fmt.Printf("i == %d idx %d and size %d\n", i, index, size)
 		v, _ := d.GetByIndex(i)
+		fmt.Printf("%s\n", v)
 		switch v.Type {
 		case DocumentValue:
 			va, err := setDocumentValue(v, path[last], value)
@@ -245,6 +255,7 @@ func setArray(arr Value, path ValuePath, value Value) (ValueBuffer, error) {
 			vbuf = vbuf.Append(va)
 		default:
 			if i == index {
+				fmt.Printf("I == INDEX\n")
 				vf, _ := setArrayValue(v, index, value)
 				fmt.Println(vf)
 				vbuf = vbuf.Append(vf)
@@ -280,6 +291,16 @@ func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
 	return NewDocumentValue(fbuf), nil
 }
 
+// SizeOfDoc return the size of Document.
+func SizeOfDoc(d Document) int {
+	var i int = 0
+	d.Iterate(func(field string, v Value) error {
+		i++
+		return nil
+	})
+	return i
+}
+
 // SetDocument set a document
 func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (FieldBuffer, error) {
 	last := len(path) - 1
@@ -302,13 +323,13 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 				}
 				fmt.Printf("REPLACE \n")
 				fbuf.Add(p, va)
-				return fbuf, nil
+			} else {
+				fmt.Printf("RECURS \n")
+				buf, _ := fb.SetDocument(d, path[i+1:], value)
+				vf := NewDocumentValue(buf)
+				fbuf.Add(p, vf)
 			}
 
-			fmt.Printf("RECURS \n")
-			buf, _ := fb.SetDocument(d, path[i+1:], value)
-			vf := NewDocumentValue(buf)
-			fbuf.Add(p, vf)
 		case ArrayValue:
 			fmt.Printf("Array Value  p := %s\n", path[i:])
 			va, err := setArray(v, path[i:], value)
@@ -320,9 +341,6 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 		case TextValue:
 			fmt.Printf("in SET DOC VALUE TXT v := %s and value %s and path %s\n", v, value, p)
 			fbuf.Add(p, value)
-			return fbuf, nil
-
-		default:
 
 		}
 
@@ -344,14 +362,18 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 				fmt.Println(err)
 				return err
 			}
-			va, _ := d.GetByField(p[0])
-			fb.Replace(field.Field, va)
 			fbuf, err := fb.SetDocument(d, p[1:], value)
 			vf := NewDocumentValue(fbuf)
 			fmt.Println(vf)
 			fb.Replace(field.Field, vf)
 			return nil
 		case ArrayValue:
+
+			vbuf, _ := setArray(field.Value, p[1:], value)
+			vf := NewArrayValue(&vbuf)
+			fmt.Println(vf)
+			fb.Replace(field.Field, vf)
+			return nil
 		}
 	}
 	fb.Replace(p[0], value)
