@@ -25,4 +25,6 @@ profile.*
 
 # ide
 *.idea
-*.code-
+*.code*
+*.code*
+.idea/*
