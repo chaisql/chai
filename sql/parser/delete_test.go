@@ -31,7 +31,7 @@ func TestParserDelete(t *testing.T) {
 			q, err := ParseQuery(test.s)
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, planner.NewStatement(test.expected), q.Statements[0])
+			require.EqualValues(t, test.expected, q.Statements[0])
 		})
 	}
 }

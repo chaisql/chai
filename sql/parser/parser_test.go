@@ -16,23 +16,19 @@ func TestParserMultiStatement(t *testing.T) {
 	}{
 		{"OnlyCommas", ";;;", nil},
 		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []query.Statement{
-			planner.NewStatement(
-				planner.NewTree(
-					planner.NewProjectionNode(
-						planner.NewTableInputNode("foo"),
-						[]planner.ResultField{
-							planner.Wildcard{},
-						},
-						"foo",
-					),
+			planner.NewTree(
+				planner.NewProjectionNode(
+					planner.NewTableInputNode("foo"),
+					[]planner.ResultField{
+						planner.Wildcard{},
+					},
+					"foo",
 				),
 			),
-			planner.NewStatement(
-				planner.NewTree(
-					planner.NewDeletionNode(
-						planner.NewTableInputNode("foo"),
-						"foo",
-					),
+			planner.NewTree(
+				planner.NewDeletionNode(
+					planner.NewTableInputNode("foo"),
+					"foo",
 				),
 			),
 		}},
