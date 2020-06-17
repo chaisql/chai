@@ -22,17 +22,6 @@ func newTestDB(t testing.TB) (*database.Transaction, func()) {
 	}
 }
 
-func newTestTable(t testing.TB) (*database.Table, func()) {
-	tx, fn := newTestDB(t)
-
-	err := tx.CreateTable("test", nil)
-	require.NoError(t, err)
-	tb, err := tx.GetTable("test")
-	require.NoError(t, err)
-
-	return tb, fn
-}
-
 func TestTxCreateIndex(t *testing.T) {
 	t.Run("Should create an index and return it", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)

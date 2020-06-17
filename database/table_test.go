@@ -11,6 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newTestTable(t testing.TB) (*database.Table, func()) {
+	tx, fn := newTestDB(t)
+
+	err := tx.CreateTable("test", nil)
+	require.NoError(t, err)
+	tb, err := tx.GetTable("test")
+	require.NoError(t, err)
+
+	return tb, fn
+}
+
 // TestTableIterate verifies Iterate behaviour.
 func TestTableIterate(t *testing.T) {
 	t.Run("Should not fail with no documents", func(t *testing.T) {
