@@ -253,12 +253,13 @@ func NewZeroValue(t ValueType) Value {
 }
 
 // IsTruthy returns whether v is not equal to the zero value of its type.
-func (v Value) IsTruthy() bool {
+func (v Value) IsTruthy() (bool, error) {
 	if v.Type == NullValue {
-		return false
+		return false, nil
 	}
 
-	return !v.IsZeroValue()
+	b, err := v.IsZeroValue()
+	return !b, err
 }
 
 // ConvertTo decodes v to the selected type when possible.
@@ -382,7 +383,8 @@ func (v Value) ConvertToBool() (bool, error) {
 		return false, nil
 	}
 
-	return !v.IsZeroValue(), nil
+	b, err := v.IsZeroValue()
+	return !b, err
 }
 
 // ConvertToInt64 turns any number into an int64.
@@ -494,27 +496,53 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 
 // IsZeroValue indicates if the value data is the zero value for the value type.
 // This function doesn't perform any allocation.
-func (v Value) IsZeroValue() bool {
+func (v Value) IsZeroValue() (bool, error) {
 	switch v.Type {
 	case BlobValue, TextValue:
-		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
+		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
 	case BoolValue:
-		return v.V == boolZeroValue.V
+		return v.V == boolZeroValue.V, nil
 	case Int8Value:
-		return v.V == int8ZeroValue.V
+		return v.V == int8ZeroValue.V, nil
 	case Int16Value:
-		return v.V == int16ZeroValue.V
+		return v.V == int16ZeroValue.V, nil
 	case Int32Value:
-		return v.V == int32ZeroValue.V
+		return v.V == int32ZeroValue.V, nil
 	case Int64Value:
-		return v.V == int64ZeroValue.V
+		return v.V == int64ZeroValue.V, nil
 	case Float64Value:
-		return v.V == float64ZeroValue.V
+		return v.V == float64ZeroValue.V, nil
 	case DurationValue:
-		return v.V == durationZeroValue.V
+		return v.V == durationZeroValue.V, nil
+	case ArrayValue:
+		// The zero value of an array is an empty array.
+		// Thus, if GetByIndex(0) returns the ErrValueNotFound
+		// it means that the array is empty.
+		_, err := v.V.(Array).GetByIndex(0)
+		if err == ErrValueNotFound {
+			return true, nil
+		}
+		return false, err
+	case DocumentValue:
+		err := v.V.(Document).Iterate(func(_ string, _ Value) error {
+			// We return an error in the first iteration to stop it.
+			return errStop
+		})
+		if err == nil {
+			// If err is nil, it means that we didn't iterate,
+			// thus the document is empty.
+			return true, nil
+		}
+		if err == errStop {
+			// If err is errStop, it means that we iterate
+			// at least once, thus the document is not empty.
+			return false, nil
+		}
+		// An unexpecting error occurs, let's return it!
+		return false, err
 	}
 
-	return false
+	return false, nil
 }
 
 // Add u to v and return the result.

@@ -146,6 +146,6 @@ func whereClause(e expr.Expr, stack expr.EvalStack) func(d document.Document) (b
 			return false, err
 		}
 
-		return v.IsTruthy(), nil
+		return v.IsTruthy()
 	}
 }

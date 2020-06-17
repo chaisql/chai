@@ -15,16 +15,24 @@ func And(a, b Expr) Expr {
 	return &AndOp{&simpleOperator{a, b, scanner.AND}}
 }
 
-// Eval implements the Expr interface. It evaluates a and b and returns true if both evalutate
+// Eval implements the Expr interface. It evaluates a and b and returns true if both evaluate
 // to true.
 func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 	s, err := op.a.Eval(ctx)
-	if err != nil || !s.IsTruthy() {
+	if err != nil {
+		return falseLitteral, err
+	}
+	isTruthy, err := s.IsTruthy()
+	if !isTruthy || err != nil {
 		return falseLitteral, err
 	}
 
 	s, err = op.b.Eval(ctx)
-	if err != nil || !s.IsTruthy() {
+	if err != nil {
+		return falseLitteral, err
+	}
+	isTruthy, err = s.IsTruthy()
+	if !isTruthy || err != nil {
 		return falseLitteral, err
 	}
 
@@ -48,7 +56,11 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	if err != nil {
 		return falseLitteral, err
 	}
-	if s.IsTruthy() {
+	isTruthy, err := s.IsTruthy()
+	if err != nil {
+		return falseLitteral, err
+	}
+	if isTruthy {
 		return trueLitteral, nil
 	}
 
@@ -56,7 +68,11 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	if err != nil {
 		return falseLitteral, err
 	}
-	if s.IsTruthy() {
+	isTruthy, err = s.IsTruthy()
+	if err != nil {
+		return falseLitteral, err
+	}
+	if isTruthy {
 		return trueLitteral, nil
 	}
 

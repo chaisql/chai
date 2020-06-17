@@ -131,16 +131,13 @@ func compareWithBool(op operator, l, r Value) (bool, error) {
 
 	var a, b bool
 
-	if l.Type == BoolValue {
-		a = l.V.(bool)
-	} else {
-		a = l.IsTruthy()
+	a, err := l.IsTruthy()
+	if err != nil {
+		return false, err
 	}
-
-	if r.Type == BoolValue {
-		b = r.V.(bool)
-	} else {
-		b = r.IsTruthy()
+	b, err = r.IsTruthy()
+	if err != nil {
+		return false, err
 	}
 
 	switch op {
