@@ -82,6 +82,7 @@ const (
 	DESC
 	DROP
 	EXISTS
+	EXPLAIN
 	FROM
 	IF
 	INDEX
@@ -185,6 +186,7 @@ var tokens = [...]string{
 	DESC:    "DESC",
 	DROP:    "DROP",
 	EXISTS:  "EXISTS",
+	EXPLAIN: "EXPLAIN",
 	KEY:     "KEY",
 	FROM:    "FROM",
 	IF:      "IF",
