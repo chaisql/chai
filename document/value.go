@@ -521,7 +521,7 @@ func (v Value) IsZeroValue() (bool, error) {
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
 		// it means that the array is empty.
 		_, err := v.V.(Array).GetByIndex(0)
-		if err != nil && err == ErrValueNotFound {
+		if err == ErrValueNotFound {
 			return true, nil
 		}
 		return false, err
