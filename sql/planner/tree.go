@@ -62,6 +62,11 @@ func (t *Tree) Run(tx *database.Transaction, params []expr.Param) (query.Result,
 		return query.Result{}, err
 	}
 
+	t, err = Optimize(t)
+	if err != nil {
+		return query.Result{}, err
+	}
+
 	return t.execute()
 }
 

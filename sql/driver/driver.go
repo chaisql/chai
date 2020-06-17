@@ -156,7 +156,7 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 // CheckNamedValue has the same behaviour as driver.DefaultParameterConverter, except that
-// it allows document.Documents to be passed as parameters.
+// it allows document.Document to be passed as parameters.
 // It implements the driver.NamedValueChecker interface.
 func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
 	if _, ok := nv.Value.(document.Document); ok {

@@ -119,6 +119,7 @@ func (n *indexInputNode) buildStream() (document.Stream, error) {
 		params: n.params,
 		index:  n.index,
 		e:      n.e,
+		iop:    n.iop,
 	}), nil
 }
 
