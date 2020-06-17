@@ -221,6 +221,11 @@ func (tx Transaction) DropIndex(name string) error {
 	return idx.Truncate()
 }
 
+// ListIndexes lists all indexes.
+func (tx Transaction) ListIndexes() ([]*IndexConfig, error) {
+	return tx.indexStore.ListAll()
+}
+
 // ReIndex truncates and recreates selected index from scratch.
 func (tx Transaction) ReIndex(indexName string) error {
 	idx, err := tx.GetIndex(indexName)
