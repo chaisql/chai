@@ -384,7 +384,11 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 			vf := NewArrayValue(&vbuf)
 			fb.Replace(field.Field, vf)
 			return nil
+		default:
+			fmt.Println("in default SET func ", field)
+			fb.Replace(field.Field, value)
 		}
+
 	}
 	return nil
 
