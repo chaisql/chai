@@ -217,28 +217,34 @@ func Lenght(a Array) int {
 	return len
 }
 
+// ArrayFindIndex
+func (path ValuePath) findIndexInPath() (int, error) {
+	var err error
+	for _, p := range path {
+		index, err := strconv.Atoi(p)
+		if err == nil {
+			return index, nil
+		}
+	}
+	return 0, err
+}
+
 func setArray(arr Value, path ValuePath, value Value) (ValueBuffer, error) {
 	d, _ := arr.ConvertToArray()
 	size := Lenght(d)
 	fmt.Println(arr)
 	last := len(path) - 1
 	var vbuf ValueBuffer
-	var index int
-	for _, p := range path {
-		fmt.Printf("p := %s\n", p)
-		idx, err := strconv.Atoi(p)
-		fmt.Printf("idx := %d and err := %s\n", idx, err)
-		if err != nil {
-			continue
-		} else {
-			index = idx
-		}
 
+	index, err := path.findIndexInPath()
+	if err != nil {
+		return vbuf, err
 	}
 
 	if index == size {
 		return vbuf, errors.New("index out of bounds")
 	}
+
 	fmt.Printf("size of array %d and idx %d\n", size, index)
 
 	for i := 0; i < size; i++ {
@@ -247,25 +253,22 @@ func setArray(arr Value, path ValuePath, value Value) (ValueBuffer, error) {
 		fmt.Printf("%s\n", v)
 		switch v.Type {
 		case DocumentValue:
-			va, err := setDocumentValue(v, path[last], value)
-			if err != nil {
-				fmt.Println(err)
-				return vbuf, err
-			}
-			vbuf = vbuf.Append(va)
-		default:
 			if i == index {
-				fmt.Printf("I == INDEX\n")
-				vf, _ := setArrayValue(v, index, value)
-				fmt.Println(vf)
-				vbuf = vbuf.Append(vf)
+				va, err := setDocumentValue(v, path[last], value)
+				if err != nil {
+					fmt.Println(err)
+					return vbuf, err
+				}
+				vbuf = vbuf.Append(va)
 			} else {
 				vbuf = vbuf.Append(v)
 			}
-
 		}
 	}
-
+	vf, _ := setArrayValue(arr, index, value)
+	fmt.Println("HERE := ", vf)
+	vbuf = vbuf.Append(vf)
+	fmt.Println("VBUF = ", vbuf)
 	return vbuf, nil
 }
 
@@ -311,6 +314,7 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 		fmt.Printf("in SET DOC %s, i == %d and last == %d\n", v, i, last)
 		fmt.Printf("Type := %s and path %s\n", v.Type, path)
 		if err != nil {
+			fmt.Println("ERROR ", err)
 			return fbuf, err
 		}
 		switch v.Type {
@@ -323,12 +327,12 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 				}
 				fmt.Printf("REPLACE \n")
 				fbuf.Add(p, va)
-			} else {
-				fmt.Printf("RECURS \n")
-				buf, _ := fb.SetDocument(d, path[i+1:], value)
-				vf := NewDocumentValue(buf)
-				fbuf.Add(p, vf)
+				return fbuf, nil
 			}
+			fmt.Printf("RECURS \n")
+			buf, _ := fb.SetDocument(d, path[i+1:], value)
+			vf := NewDocumentValue(buf)
+			fbuf.Add(p, vf)
 
 		case ArrayValue:
 			fmt.Printf("Array Value  p := %s\n", path[i:])
@@ -336,7 +340,7 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 			fmt.Println(err)
 			fmt.Printf("Array Value befor AADD index %d and path %s and va %s\n", i, p, va)
 			vf := NewArrayValue(&va)
-			fbuf.Add(p, vf)
+			fbuf.Replace(p, vf)
 
 		case TextValue:
 			fmt.Printf("in SET DOC VALUE TXT v := %s and value %s and path %s\n", v, value, p)
@@ -363,20 +367,25 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 				return err
 			}
 			fbuf, err := fb.SetDocument(d, p[1:], value)
+			if err != nil {
+				return err
+			}
 			vf := NewDocumentValue(fbuf)
-			fmt.Println(vf)
+			fmt.Println("SET func", vf)
 			fb.Replace(field.Field, vf)
 			return nil
 		case ArrayValue:
 
-			vbuf, _ := setArray(field.Value, p[1:], value)
+			vbuf, err := setArray(field.Value, p[1:], value)
+			if err != nil {
+				return err
+			}
+			fmt.Println("in SET func ", vbuf)
 			vf := NewArrayValue(&vbuf)
-			fmt.Println(vf)
 			fb.Replace(field.Field, vf)
 			return nil
 		}
 	}
-	fb.Replace(p[0], value)
 	return nil
 
 }
