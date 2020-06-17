@@ -124,7 +124,7 @@ func (tx Transaction) DropTable(name string) error {
 			return err
 		}
 
-		// Remove only indexes associated to the target table.
+		// Remove only indexes associated with the target table.
 		if opts.TableName != name {
 			continue
 		}
