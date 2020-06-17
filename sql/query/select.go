@@ -173,11 +173,6 @@ func (r documentMask) Iterate(fn func(field string, value document.Value) error)
 	return nil
 }
 
-// IsEmpty returns true if there is no results.
-func (r documentMask) IsEmpty() bool {
-	return len(r.resultFields) == 0
-}
-
 // A ResultField is a field that will be part of the result document that will be returned at the end of a Select statement.
 type ResultField interface {
 	Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error

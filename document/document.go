@@ -19,9 +19,6 @@ type Document interface {
 	// GetByField returns a value by field name.
 	// Must return ErrFieldNotFound if the field doesnt exist.
 	GetByField(field string) (Value, error)
-	// IsEmpty returns true if the document is empty.
-	// Otherwise, it returns false.
-	IsEmpty() bool
 }
 
 // A Keyer returns the key identifying documents in their storage.
@@ -173,11 +170,6 @@ func (fb FieldBuffer) Len() int {
 // Reset the buffer.
 func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
-}
-
-// IsEmpty returns true if the buffer is empty.
-func (fb FieldBuffer) IsEmpty() bool {
-	return len(fb.fields) == 0
 }
 
 // A ValuePath represents the path to a particular value within a document.

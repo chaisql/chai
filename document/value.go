@@ -497,25 +497,23 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 // IsZeroValue indicates if the value data is the zero value for the value type.
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() (bool, error) {
-	var isZeroValue bool
-
 	switch v.Type {
 	case BlobValue, TextValue:
-		isZeroValue = bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0
+		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
 	case BoolValue:
-		isZeroValue = v.V == boolZeroValue.V
+		return v.V == boolZeroValue.V, nil
 	case Int8Value:
-		isZeroValue = v.V == int8ZeroValue.V
+		return v.V == int8ZeroValue.V, nil
 	case Int16Value:
-		isZeroValue = v.V == int16ZeroValue.V
+		return v.V == int16ZeroValue.V, nil
 	case Int32Value:
-		isZeroValue = v.V == int32ZeroValue.V
+		return v.V == int32ZeroValue.V, nil
 	case Int64Value:
-		isZeroValue = v.V == int64ZeroValue.V
+		return v.V == int64ZeroValue.V, nil
 	case Float64Value:
-		isZeroValue = v.V == float64ZeroValue.V
+		return v.V == float64ZeroValue.V, nil
 	case DurationValue:
-		isZeroValue = v.V == durationZeroValue.V
+		return v.V == durationZeroValue.V, nil
 	case ArrayValue:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
@@ -526,10 +524,25 @@ func (v Value) IsZeroValue() (bool, error) {
 		}
 		return false, err
 	case DocumentValue:
-		return v.V.(Document).IsEmpty(), nil
+		err := v.V.(Document).Iterate(func(_ string, _ Value) error {
+			// We return an error in the first iteration to stop it.
+			return errStop
+		})
+		if err == nil {
+			// If err is nil, it means that we didn't iterate,
+			// thus the document is empty.
+			return true, nil
+		}
+		if err == errStop {
+			// If err is errStop, it means that we iterate
+			// at least once, thus the document is not empty.
+			return false, nil
+		}
+		// An unexpecting error occurs, let's return it!
+		return false, err
 	}
 
-	return isZeroValue, nil
+	return false, nil
 }
 
 // Add u to v and return the result.
