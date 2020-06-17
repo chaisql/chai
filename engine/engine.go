@@ -98,7 +98,7 @@ type Item interface {
 	// The key is only guaranteed to be valid until the next call to the Next method of
 	// the iterator.
 	Key() []byte
-	// ValueCopy copies the key to the given byte slice returns it.
+	// ValueCopy copies the key to the given byte slice and returns it.
 	// If the slice is not big enough, it must create a new one and return it.
 	ValueCopy([]byte) ([]byte, error)
 }
