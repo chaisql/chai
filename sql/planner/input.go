@@ -62,15 +62,15 @@ type indexInputNode struct {
 	params           []expr.Param
 	table            *database.Table
 	index            index.Index
-	iop              indexIteratorOperator
+	iop              IndexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token
 }
 
 var _ inputNode = (*indexInputNode)(nil)
 
-// newIndexInputNode creates a node that can be used to read documents using an index.
-func newIndexInputNode(tableName, indexName string, iop indexIteratorOperator, filter expr.Expr, orderByDirection scanner.Token) Node {
+// NewIndexInputNode creates a node that can be used to read documents using an index.
+func NewIndexInputNode(tableName, indexName string, iop IndexIteratorOperator, filter expr.Expr, orderByDirection scanner.Token) Node {
 	return &indexInputNode{
 		node: node{
 			op: Input,
@@ -122,7 +122,9 @@ func (n *indexInputNode) buildStream() (document.Stream, error) {
 	}), nil
 }
 
-type indexIteratorOperator interface {
+// IndexIteratorOperator is an operator that can be used
+// as an input node.
+type IndexIteratorOperator interface {
 	IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
 }
 
@@ -131,7 +133,7 @@ type indexIterator struct {
 	tb               *database.Table
 	params           []expr.Param
 	index            index.Index
-	iop              indexIteratorOperator
+	iop              IndexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token
 }

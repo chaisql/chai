@@ -9,10 +9,10 @@ import (
 )
 
 var optimizerRules = []func(t *Tree) (*Tree, error){
-	splitANDConditionRule,
-	precalculateExprRule,
-	removeUnnecessarySelectionNodesRule,
-	useIndexBasedOnSelectionNodeRule,
+	SplitANDConditionRule,
+	PrecalculateExprRule,
+	RemoveUnnecessarySelectionNodesRule,
+	UseIndexBasedOnSelectionNodeRule,
 }
 
 // Optimize takes a tree, applies a list of optimization rules
@@ -32,7 +32,7 @@ func Optimize(t *Tree) (*Tree, error) {
 	return t, nil
 }
 
-// splitANDConditionRule splits any selection node whose condition
+// SplitANDConditionRule splits any selection node whose condition
 // is one or more AND operators into one or more selection nodes.
 // The condition won't be split if the expression tree contains an OR
 // operation.
@@ -43,7 +43,7 @@ func Optimize(t *Tree) (*Tree, error) {
 //     σ(a > 2)
 //     σ(b != 3)
 //     σ(c < 2)
-func splitANDConditionRule(t *Tree) (*Tree, error) {
+func SplitANDConditionRule(t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
 
@@ -97,14 +97,14 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 	return
 }
 
-// precalculateExprRule evaluates any constant sub-expression that can be evaluated
+// PrecalculateExprRule evaluates any constant sub-expression that can be evaluated
 // before running the query and replaces it by the result of the evaluation.
 // The result of constant sub-expressions, like "3 + 4", is always the same and thus
 // can be precalculated.
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func precalculateExprRule(t *Tree) (*Tree, error) {
+func PrecalculateExprRule(t *Tree) (*Tree, error) {
 	n := t.Root
 
 	for n != nil {
@@ -205,11 +205,11 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 	return e
 }
 
-// removeUnnecessarySelectionNodesRule removes any selection node whose
+// RemoveUnnecessarySelectionNodesRule removes any selection node whose
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func removeUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
+func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
 
@@ -240,13 +240,13 @@ func removeUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 	return t, nil
 }
 
-// useIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
+// UseIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
 // operator that satisfies the following criterias:
 // - implements the indexIteratorOperator interface
 // - one of its operands is a field selector that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
-func useIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
+func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
 	var inputNode Node
@@ -280,6 +280,7 @@ func useIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 
 	var candidates []candidate
 
+	n = t.Root
 	// look for all selection nodes that satisfy our requirements
 	for n != nil {
 		if n.Operation() == Selection {
@@ -309,7 +310,8 @@ func useIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 			continue
 		}
 
-		if _, ok := candidate.in.index.(*index.UniqueIndex); ok {
+		idx := candidate.in.index.(database.Index)
+		if _, ok := idx.Index.(*index.UniqueIndex); ok {
 			selectedCandidate = &candidates[i]
 		}
 	}
@@ -324,8 +326,14 @@ func useIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 	}
 
 	// we remove the selection node from the tree
-	selectedCandidate.prevNode.SetLeft(selectedCandidate.nextNode)
+	if selectedCandidate.prevNode == nil {
+		t.Root = selectedCandidate.nextNode
+	} else {
+		selectedCandidate.prevNode.SetLeft(selectedCandidate.nextNode)
+	}
 
+	n = t.Root
+	prev = nil
 	// we lookup again for the input node and the node that is right before.
 	for n != nil {
 		if n.Operation() == Input {
@@ -337,7 +345,11 @@ func useIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 	}
 
 	// we replace the table input node by the selected indexInputNode
-	prev.SetLeft(selectedCandidate.in)
+	if prev == nil {
+		t.Root = selectedCandidate.in
+	} else {
+		prev.SetLeft(selectedCandidate.in)
+	}
 
 	return t, nil
 }
@@ -353,7 +365,7 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 		return nil
 	}
 
-	iop, ok := op.(indexIteratorOperator)
+	iop, ok := op.(IndexIteratorOperator)
 	if !ok {
 		return nil
 	}
@@ -369,14 +381,16 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 		return nil
 	}
 
-	idxName := field.Name()
 	// now, we look if an index exists for that field
-	_, ok = indexes[idxName]
+	idx, ok := indexes[field.Name()]
 	if !ok {
 		return nil
 	}
 
-	return newIndexInputNode(tableName, idxName, iop, e, scanner.ASC).(*indexInputNode)
+	in := NewIndexInputNode(tableName, idx.IndexName, iop, e, scanner.ASC).(*indexInputNode)
+	in.index = idx
+
+	return in
 }
 
 func opCanUseIndex(op expr.Operator) (bool, expr.FieldSelector, expr.Expr) {
