@@ -124,6 +124,11 @@ func (tx Transaction) DropTable(name string) error {
 			return err
 		}
 
+		// Remove only indexes associated to the target table.
+		if opts.TableName != name {
+			continue
+		}
+
 		err = tx.DropIndex(opts.IndexName)
 		if err != nil {
 			it.Close()
