@@ -79,19 +79,37 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Set", func(t *testing.T) {
 		var buf document.FieldBuffer
+		var vbuf document.ValueBuffer
+
+		vbuf.Append(document.NewInt64Value(1))
+		vbuf.Append(document.NewInt64Value(0))
+		vbuf.Append(document.NewInt64Value(0))
+
 		buf.Add("a", document.NewInt64Value(10))
 		buf.Add("b", document.NewTextValue("hello"))
 
-		buf.Set("a", document.NewFloat64Value(11))
+		buf.Set(document.NewValuePath("a"), document.NewFloat64Value(11))
 		v, err := buf.GetByField("a")
 		require.NoError(t, err)
 		require.Equal(t, document.NewFloat64Value(11), v)
 
-		buf.Set("c", document.NewInt64Value(12))
+		buf.Set(document.NewValuePath("c"), document.NewInt64Value(12))
 		require.Equal(t, 3, buf.Len())
 		v, err = buf.GetByField("c")
 		require.NoError(t, err)
 		require.Equal(t, document.NewInt64Value(12), v)
+
+		buf.Add("d", document.NewArrayValue(vbuf))
+
+		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
+		require.Equal(t, 4, buf.Len())
+		vb, err := buf.GetByField("d")
+		require.NoError(t, err)
+		arr, err := vb.ConvertToArray()
+		require.NoError(t, err)
+		v, err = arr.GetByIndex(2)
+		require.NoError(t, err)
+		require.Equal(t, document.NewInt64Value(9), v)
 	})
 
 	t.Run("Delete", func(t *testing.T) {

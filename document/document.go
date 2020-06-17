@@ -387,9 +387,11 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 		default:
 			fmt.Println("in default SET func ", field)
 			fb.Replace(field.Field, value)
+			return nil
 		}
-
 	}
+	fb.Add(p[0], value)
+
 	return nil
 
 }
