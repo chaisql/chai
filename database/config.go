@@ -321,6 +321,37 @@ func (t *indexStore) Delete(indexName string) error {
 	return err
 }
 
+func (t *indexStore) ListAll() ([]*IndexConfig, error) {
+	var idxList []*IndexConfig
+	it := t.st.NewIterator(engine.IteratorConfig{})
+
+	var buf encoding.EncodedDocument
+	var err error
+	for it.Seek(nil); it.Valid(); it.Next() {
+		item := it.Item()
+		var opts IndexConfig
+		buf, err = item.ValueCopy(buf)
+		if err != nil {
+			it.Close()
+			return nil, err
+		}
+
+		err = opts.ScanDocument(&buf)
+		if err != nil {
+			it.Close()
+			return nil, err
+		}
+
+		idxList = append(idxList, &opts)
+	}
+	err = it.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return idxList, nil
+}
+
 func arrayToValuePath(v document.Value) (document.ValuePath, error) {
 	ar, err := v.ConvertToArray()
 	if err != nil {

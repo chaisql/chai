@@ -124,6 +124,11 @@ func (tx Transaction) DropTable(name string) error {
 			return err
 		}
 
+		// Remove only indexes associated with the target table.
+		if opts.TableName != name {
+			continue
+		}
+
 		err = tx.DropIndex(opts.IndexName)
 		if err != nil {
 			it.Close()
@@ -219,6 +224,11 @@ func (tx Transaction) DropIndex(name string) error {
 	}
 
 	return idx.Truncate()
+}
+
+// ListIndexes lists all indexes.
+func (tx Transaction) ListIndexes() ([]*IndexConfig, error) {
+	return tx.indexStore.ListAll()
 }
 
 // ReIndex truncates and recreates selected index from scratch.
