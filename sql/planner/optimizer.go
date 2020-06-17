@@ -49,7 +49,8 @@ func SplitANDConditionRule(t *Tree) (*Tree, error) {
 
 	for n != nil {
 		if n.Operation() == Selection {
-			cond := n.(*selectionNode).cond
+			sn := n.(*selectionNode)
+			cond := sn.cond
 			if cond != nil {
 				// The AND operator has one of the lowest precedence,
 				// only OR has a lower precedence,
@@ -63,6 +64,10 @@ func SplitANDConditionRule(t *Tree) (*Tree, error) {
 					var newNode Node
 					for i >= 0 {
 						newNode = NewSelectionNode(cur, exprs[i])
+						err := newNode.Bind(sn.tx, sn.params)
+						if err != nil {
+							return nil, err
+						}
 						cur = newNode
 
 						i--
@@ -310,6 +315,8 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 			continue
 		}
 
+		// if the candidate's related index is a unique index,
+		// select it.
 		idx := candidate.in.index.(database.Index)
 		if _, ok := idx.Index.(*index.UniqueIndex); ok {
 			selectedCandidate = &candidates[i]
