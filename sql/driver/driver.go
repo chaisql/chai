@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 )
@@ -257,11 +258,15 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
-	slct, ok := lastStmt.(query.SelectStmt)
-	if ok && len(slct.Selectors) > 0 {
-		rs.fields = make([]string, len(slct.Selectors))
-		for i := range slct.Selectors {
-			rs.fields[i] = slct.Selectors[i].Name()
+	tree, ok := lastStmt.(*planner.Tree)
+	if !ok {
+		return rs, nil
+	}
+
+	if pn, ok := tree.Root.(*planner.ProjectionNode); ok && len(pn.Expressions) > 0 {
+		rs.fields = make([]string, len(pn.Expressions))
+		for i := range pn.Expressions {
+			rs.fields[i] = pn.Expressions[i].Name()
 		}
 	}
 

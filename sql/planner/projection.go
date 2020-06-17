@@ -9,55 +9,60 @@ import (
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
-type projectionNode struct {
+// A ProjectionNode is a node that uses the given expressions to create a new document
+// for each document of the stream. Each expression can extract fields from the incoming
+// document, call functions, execute arithmetic operations. etc.
+type ProjectionNode struct {
 	node
 
-	expressions []ResultField
+	Expressions []ResultField
 	tableName   string
 
 	cfg *database.TableConfig
 	tx  *database.Transaction
 }
 
-var _ outputNode = (*projectionNode)(nil)
-var _ operationNode = (*projectionNode)(nil)
+var _ outputNode = (*ProjectionNode)(nil)
+var _ operationNode = (*ProjectionNode)(nil)
 
 // NewProjectionNode creates a node that uses the given expressions to create a new document
 // for each document of the stream. Each expression can extract fields from the incoming
 // document, call functions, execute arithmetic operations. etc.
 func NewProjectionNode(n Node, expressions []ResultField, tableName string) Node {
-	return &projectionNode{
+	return &ProjectionNode{
 		node: node{
 			op:   Projection,
 			left: n,
 		},
-		expressions: expressions,
+		Expressions: expressions,
 		tableName:   tableName,
 	}
 }
 
-func (n *projectionNode) Equal(other Node) bool {
+// Equal returns true if other is a *ProjectionNode and contains the
+// same information.
+func (n *ProjectionNode) Equal(other Node) bool {
 	if !n.node.Equal(other) {
 		return false
 	}
 
-	on := other.(*projectionNode)
+	on := other.(*ProjectionNode)
 	if n.tableName != on.tableName {
 		return false
 	}
 
-	if len(n.expressions) != len(on.expressions) {
+	if len(n.Expressions) != len(on.Expressions) {
 		return false
 	}
 
-	for i := range n.expressions {
-		switch t := n.expressions[i].(type) {
+	for i := range n.Expressions {
+		switch t := n.Expressions[i].(type) {
 		case Wildcard:
-			if _, ok := on.expressions[i].(Wildcard); !ok {
+			if _, ok := on.Expressions[i].(Wildcard); !ok {
 				return false
 			}
 		case ResultFieldExpr:
-			rf, ok := on.expressions[i].(ResultFieldExpr)
+			rf, ok := on.Expressions[i].(ResultFieldExpr)
 			if !ok {
 				return false
 			}
@@ -75,7 +80,8 @@ func (n *projectionNode) Equal(other Node) bool {
 	return true
 }
 
-func (n *projectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+// Bind database resources to this node.
+func (n *ProjectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	if n.tableName == "" {
 		return
@@ -90,10 +96,10 @@ func (n *projectionNode) Bind(tx *database.Transaction, params []expr.Param) (er
 	return
 }
 
-func (n *projectionNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 	if st.IsEmpty() {
 		d := documentMask{
-			resultFields: n.expressions,
+			resultFields: n.Expressions,
 		}
 		var fb document.FieldBuffer
 		err := fb.ScanDocument(d)
@@ -108,18 +114,17 @@ func (n *projectionNode) toStream(st document.Stream) (document.Stream, error) {
 		return documentMask{
 			cfg:          n.cfg,
 			r:            d,
-			resultFields: n.expressions,
+			resultFields: n.Expressions,
 		}, nil
 	}), nil
 }
 
-func (n *projectionNode) toResult(st document.Stream) (res query.Result, err error) {
+func (n *ProjectionNode) toResult(st document.Stream) (res query.Result, err error) {
 	st, err = n.toStream(st)
 	if err != nil {
 		return
 	}
 
-	res.Tx = n.tx
 	res.Stream = st
 	return
 }

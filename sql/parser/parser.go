@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -59,23 +58,11 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SELECT:
-		t, err := p.parseSelectStatement()
-		if err != nil {
-			return nil, err
-		}
-		return planner.NewStatement(t), nil
+		return p.parseSelectStatement()
 	case scanner.DELETE:
-		t, err := p.parseDeleteStatement()
-		if err != nil {
-			return nil, err
-		}
-		return planner.NewStatement(t), nil
+		return p.parseDeleteStatement()
 	case scanner.UPDATE:
-		t, err := p.parseUpdateStatement()
-		if err != nil {
-			return nil, err
-		}
-		return planner.NewStatement(t), nil
+		return p.parseUpdateStatement()
 	case scanner.INSERT:
 		return p.parseInsertStatement()
 	case scanner.CREATE:

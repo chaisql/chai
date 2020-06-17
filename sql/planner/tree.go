@@ -54,6 +54,57 @@ func NewTree(n Node) *Tree {
 	return &Tree{Root: n}
 }
 
+// Run implements the query.Statement interface.
+// It binds the tree to the database resources and executes it.
+func (t *Tree) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
+	err := Bind(t, tx, params)
+	if err != nil {
+		return query.Result{}, err
+	}
+
+	return t.execute()
+}
+
+func (t *Tree) execute() (query.Result, error) {
+	var st document.Stream
+	var err error
+
+	if t.Root.Left() != nil {
+		st, err = nodeToStream(t.Root.Left())
+		if err != nil {
+			return query.Result{}, err
+		}
+	}
+
+	return t.Root.(outputNode).toResult(st)
+}
+
+// IsReadOnly implements the query.Statement interface.
+func (t *Tree) IsReadOnly() bool {
+	return false
+}
+
+func nodeToStream(n Node) (st document.Stream, err error) {
+	l := n.Left()
+	if l != nil {
+		st, err = nodeToStream(l)
+		if err != nil {
+			return
+		}
+	}
+
+	switch t := n.(type) {
+	case inputNode:
+		st, err = t.buildStream()
+	case operationNode:
+		st, err = t.toStream(st)
+	default:
+		panic(fmt.Sprintf("incorrect node type %#v", n))
+	}
+
+	return
+}
+
 // A Node represents an operation on the stream.
 type Node interface {
 	Operation() Operation
