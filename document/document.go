@@ -186,12 +186,12 @@ func (fb *FieldBuffer) SetDotNotation(fname ValuePath, value Value) error {
 	return nil
 }*/
 
-func setArrayValue(value Value, index int, reqValue Value) (Value, error) {
+func setArrayValue(value Value, index int, reqValue Value) (ValueBuffer, error) {
 	list, _ := value.ConvertToArray()
 	var vbuf ValueBuffer
 
 	err := list.Iterate(func(i int, va Value) error {
-		fmt.Printf("ITER: i := %d and value va := %s\n", i, va)
+		fmt.Printf("ITER: i := %d and value va := %s & index %d\n", i, va, index)
 		if i == index {
 			vbuf = vbuf.Append(reqValue)
 		} else {
@@ -200,10 +200,10 @@ func setArrayValue(value Value, index int, reqValue Value) (Value, error) {
 		return nil
 	})
 	if err != nil {
-		return NewZeroValue(ArrayValue), err
+		return vbuf, err
 	}
 
-	return NewArrayValue(&vbuf), nil
+	return vbuf, nil
 }
 
 // Lenght return size of array
@@ -229,24 +229,31 @@ func (path ValuePath) findIndexInPath() (int, error) {
 	return 0, err
 }
 
-func setArray(arr Value, path ValuePath, value Value) (ValueBuffer, error) {
+// IndexValidator check if the index is not out of range
+func IndexValidator(path ValuePath, a Array) error {
+	fmt.Println("In array function")
+	size := Lenght(a)
+	index, err := path.findIndexInPath()
+	if err != nil {
+		fmt.Println("Err := ", a)
+		return err
+	}
+
+	if index >= size {
+		fmt.Printf("index %d && size %d\n", index, size)
+		fmt.Println("Err := ", a)
+		return errors.New("index out of bounds")
+	}
+	return nil
+}
+
+func setArray(arr Value, path ValuePath, value Value) (Value, error) {
 	d, _ := arr.ConvertToArray()
 	size := Lenght(d)
 	fmt.Println(arr)
 	last := len(path) - 1
 	var vbuf ValueBuffer
-
-	index, err := path.findIndexInPath()
-	if err != nil {
-		return vbuf, err
-	}
-
-	if index == size {
-		return vbuf, errors.New("index out of bounds")
-	}
-
-	fmt.Printf("size of array %d and idx %d\n", size, index)
-
+	index, _ := path.findIndexInPath()
 	for i := 0; i < size; i++ {
 		fmt.Printf("i == %d idx %d and size %d\n", i, index, size)
 		v, _ := d.GetByIndex(i)
@@ -256,20 +263,19 @@ func setArray(arr Value, path ValuePath, value Value) (ValueBuffer, error) {
 			if i == index {
 				va, err := setDocumentValue(v, path[last], value)
 				if err != nil {
+					vbuf = vbuf.Append(va)
 					fmt.Println(err)
-					return vbuf, err
+					return NewArrayValue(vbuf), err
 				}
-				vbuf = vbuf.Append(va)
+
 			} else {
 				vbuf = vbuf.Append(v)
 			}
 		}
 	}
+
 	vf, _ := setArrayValue(arr, index, value)
-	fmt.Println("HERE := ", vf)
-	vbuf = vbuf.Append(vf)
-	fmt.Println("VBUF = ", vbuf)
-	return vbuf, nil
+	return NewArrayValue(vf), nil
 }
 
 func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
@@ -309,12 +315,11 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 	last := len(path) - 1
 	var fbuf FieldBuffer
 
-	for i, p := range path {
+	for i := 0; i < len(path); i++ {
 		v, err := d.GetByField(path[i])
 		fmt.Printf("in SET DOC %s, i == %d and last == %d\n", v, i, last)
 		fmt.Printf("Type := %s and path %s\n", v.Type, path)
 		if err != nil {
-			fmt.Println("ERROR ", err)
 			return fbuf, err
 		}
 		switch v.Type {
@@ -326,25 +331,24 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 					return fbuf, err
 				}
 				fmt.Printf("REPLACE \n")
-				fbuf.Add(p, va)
+				fbuf.Add(path[i], va)
 				return fbuf, nil
 			}
 			fmt.Printf("RECURS \n")
 			buf, _ := fb.SetDocument(d, path[i+1:], value)
 			vf := NewDocumentValue(buf)
-			fbuf.Add(p, vf)
+			fbuf.Add(path[i], vf)
 
 		case ArrayValue:
 			fmt.Printf("Array Value  p := %s\n", path[i:])
 			va, err := setArray(v, path[i:], value)
 			fmt.Println(err)
-			fmt.Printf("Array Value befor AADD index %d and path %s and va %s\n", i, p, va)
-			vf := NewArrayValue(&va)
-			fbuf.Replace(p, vf)
+			fmt.Printf("Array Value befor AADD index %d and path %s and va %s\n", i, path[i], va)
+			fbuf.Replace(path[i], va)
 
 		case TextValue:
-			fmt.Printf("in SET DOC VALUE TXT v := %s and value %s and path %s\n", v, value, p)
-			fbuf.Add(p, value)
+			fmt.Printf("in SET DOC VALUE TXT v := %s and value %s and path %s\n", v, value, path[i])
+			fbuf.Add(path[i], value)
 
 		}
 
@@ -356,7 +360,7 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Fie
 func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 	//check the dot notation
 	for _, field := range fb.fields {
-		if field.Field != p[0] {
+		if p[0] != field.Field {
 			continue
 		}
 		switch field.Value.Type {
@@ -371,27 +375,28 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 				return err
 			}
 			vf := NewDocumentValue(fbuf)
-			fmt.Println("SET func", vf)
 			fb.Replace(field.Field, vf)
 			return nil
 		case ArrayValue:
-
-			vbuf, err := setArray(field.Value, p[1:], value)
+			x := field.Value
+			arr, _ := x.ConvertToArray()
+			err := IndexValidator(p, arr)
 			if err != nil {
-				return err
+				fb.Replace(field.Field, x)
+				return errors.New("out of range")
+			} else {
+				va, _ := setArray(field.Value, p[1:], value)
+				fmt.Println("va == ", va, va.Type)
+				fb.Replace(field.Field, va)
 			}
-			fmt.Println("in SET func ", vbuf)
-			vf := NewArrayValue(&vbuf)
-			fb.Replace(field.Field, vf)
 			return nil
 		default:
-			fmt.Println("in default SET func ", field)
 			fb.Replace(field.Field, value)
 			return nil
 		}
 	}
-	fb.Add(p[0], value)
 
+	fb.Add(p[0], value)
 	return nil
 
 }
@@ -423,8 +428,6 @@ func (fb *FieldBuffer) Delete(field string) error {
 
 // Replace the value of the field by v.
 func (fb *FieldBuffer) Replace(field string, v Value) error {
-	//check if there is a dot notation
-
 	for i := range fb.fields {
 		if fb.fields[i].Field == field {
 			fb.fields[i].Value = v
@@ -484,11 +487,6 @@ type ValuePath []string
 // It assumes the separator is a dot.
 func NewValuePath(p string) ValuePath {
 	return strings.Split(p, ".")
-}
-
-//isDotPath verify if the path contains a dot
-func isDotPath(p string) bool {
-	return strings.Contains(p, ".")
 }
 
 // GetFirstStringFromValuePath return the first string element of the valuePath

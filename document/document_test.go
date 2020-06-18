@@ -3,6 +3,7 @@ package document_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -107,6 +108,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		arr, err := vb.ConvertToArray()
 		require.NoError(t, err)
+		fmt.Println("array", arr)
 		v, err = arr.GetByIndex(2)
 		require.NoError(t, err)
 		require.Equal(t, document.NewInt64Value(9), v)

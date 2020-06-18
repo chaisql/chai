@@ -121,7 +121,6 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 
 // set executes the Set clause.
 func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, args []expr.Param) error {
-
 	for fname, e := range stmt.SetPairs {
 		ev, err := e.Eval(expr.EvalStack{
 			Tx:       tx,
@@ -132,11 +131,8 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 			return err
 		}
 
-		valuePath := document.NewValuePath(fname)
-		field := valuePath.GetFirstStringFromValuePath()
-		_, err = d.GetByField(field)
-		d.Set(valuePath, ev)
-
+		path := document.NewValuePath(fname)
+		_ = d.Set(path, ev)
 	}
 	return nil
 }
