@@ -224,7 +224,11 @@ func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 			if sn.cond != nil {
 				if lit, ok := sn.cond.(expr.LiteralValue); ok {
 					// if the expr is falsy, we return an empty tree
-					if !document.Value(lit).IsTruthy() {
+					ok, err := document.Value(lit).IsTruthy()
+					if err != nil {
+						return nil, err
+					}
+					if !ok {
 						return &Tree{}, nil
 					}
 					// if the expr is truthy, we remove the node from the tree

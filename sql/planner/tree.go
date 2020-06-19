@@ -249,7 +249,11 @@ func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 			return false, err
 		}
 
-		return v.IsTruthy(), nil
+		ok, err := v.IsTruthy()
+		if err != nil {
+			return false, err
+		}
+		return ok, nil
 	}), nil
 }
 
