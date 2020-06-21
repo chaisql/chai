@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -37,6 +39,11 @@ func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return trueLitteral, nil
+}
+
+// String implements the fmt.Stringer interface.
+func (op *AndOp) String() string {
+	return fmt.Sprintf("%v AND %v", op.a, op.b)
 }
 
 // OrOp is the And operator.
@@ -77,4 +84,9 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return falseLitteral, nil
+}
+
+// String implements the fmt.Stringer interface.
+func (op *OrOp) String() string {
+	return fmt.Sprintf("%v OR %v", op.a, op.b)
 }

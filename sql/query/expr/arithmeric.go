@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -35,6 +37,10 @@ func (op addOp) Eval(ctx EvalStack) (document.Value, error) {
 	return a.Add(b)
 }
 
+func (op addOp) String() string {
+	return fmt.Sprintf("%v + %v", op.a, op.b)
+}
+
 type subOp struct {
 	*simpleOperator
 }
@@ -51,6 +57,10 @@ func (op subOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return a.Sub(b)
+}
+
+func (op subOp) String() string {
+	return fmt.Sprintf("%v - %v", op.a, op.b)
 }
 
 type mulOp struct {
@@ -71,6 +81,10 @@ func (op mulOp) Eval(ctx EvalStack) (document.Value, error) {
 	return a.Mul(b)
 }
 
+func (op mulOp) String() string {
+	return fmt.Sprintf("%v * %v", op.a, op.b)
+}
+
 type divOp struct {
 	*simpleOperator
 }
@@ -87,6 +101,10 @@ func (op divOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return a.Div(b)
+}
+
+func (op divOp) String() string {
+	return fmt.Sprintf("%v / %v", op.a, op.b)
 }
 
 type modOp struct {
@@ -107,6 +125,10 @@ func (op modOp) Eval(ctx EvalStack) (document.Value, error) {
 	return a.Mod(b)
 }
 
+func (op modOp) String() string {
+	return fmt.Sprintf("%v %% %v", op.a, op.b)
+}
+
 type bitwiseAndOp struct {
 	*simpleOperator
 }
@@ -123,6 +145,10 @@ func (op bitwiseAndOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return a.BitwiseAnd(b)
+}
+
+func (op bitwiseAndOp) String() string {
+	return fmt.Sprintf("%v & %v", op.a, op.b)
 }
 
 type bitwiseOrOp struct {
@@ -143,6 +169,10 @@ func (op bitwiseOrOp) Eval(ctx EvalStack) (document.Value, error) {
 	return a.BitwiseOr(b)
 }
 
+func (op bitwiseOrOp) String() string {
+	return fmt.Sprintf("%v | %v", op.a, op.b)
+}
+
 type bitwiseXorOp struct {
 	*simpleOperator
 }
@@ -159,4 +189,8 @@ func (op bitwiseXorOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return a.BitwiseXor(b)
+}
+
+func (op bitwiseXorOp) String() string {
+	return fmt.Sprintf("%v ^ %v", op.a, op.b)
 }

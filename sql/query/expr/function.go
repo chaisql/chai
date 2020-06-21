@@ -52,6 +52,10 @@ func (k PKFunc) IsEqual(other Expr) bool {
 	return ok
 }
 
+func (k PKFunc) String() string {
+	return "pk()"
+}
+
 // Cast represents the CAST expression.
 type Cast struct {
 	Expr      Expr
@@ -89,4 +93,8 @@ func (c Cast) IsEqual(other Expr) bool {
 	}
 
 	return o.Expr != nil
+}
+
+func (c Cast) String() string {
+	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.ConvertTo)
 }

@@ -75,7 +75,7 @@ func (v Value) String() string {
 	case NullValue:
 		return "NULL"
 	case TextValue:
-		return string(v.V.([]byte))
+		return strconv.Quote(string(v.V.([]byte)))
 	}
 
 	return fmt.Sprintf("%v", v.V)

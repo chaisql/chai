@@ -83,6 +83,10 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 	return fn(encoding.EncodedDocument(val))
 }
 
+func (op eqOp) String() string {
+	return fmt.Sprintf("%v = %v", op.a, op.b)
+}
+
 type neqOp struct {
 	*cmpOp
 }
@@ -90,6 +94,10 @@ type neqOp struct {
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) Expr {
 	return neqOp{newCmpOp(a, b, scanner.NEQ)}
+}
+
+func (op neqOp) String() string {
+	return fmt.Sprintf("%v != %v", op.a, op.b)
 }
 
 type gtOp struct {
@@ -161,6 +169,10 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 	return nil
 }
 
+func (op gtOp) String() string {
+	return fmt.Sprintf("%v > %v", op.a, op.b)
+}
+
 type gteOp struct {
 	*cmpOp
 }
@@ -216,6 +228,10 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 	}
 
 	return nil
+}
+
+func (op gteOp) String() string {
+	return fmt.Sprintf("%v >= %v", op.a, op.b)
 }
 
 type ltOp struct {
@@ -287,6 +303,10 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 	return nil
 }
 
+func (op ltOp) String() string {
+	return fmt.Sprintf("%v < %v", op.a, op.b)
+}
+
 type lteOp struct {
 	*cmpOp
 }
@@ -354,6 +374,10 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 	}
 
 	return nil
+}
+
+func (op lteOp) String() string {
+	return fmt.Sprintf("%v <= %v", op.a, op.b)
 }
 
 // Eval compares a and b together using the operator specified when constructing the CmpOp
@@ -517,6 +541,10 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 	})
 }
 
+func (op inOp) String() string {
+	return fmt.Sprintf("%v IN %v", op.a, op.b)
+}
+
 type notInOp struct {
 	inOp
 }
@@ -538,6 +566,10 @@ func (op notInOp) Eval(ctx EvalStack) (document.Value, error) {
 		return trueLitteral, nil
 	}
 	return v, nil
+}
+
+func (op notInOp) String() string {
+	return fmt.Sprintf("%v NOT IN %v", op.a, op.b)
 }
 
 type isOp struct {
@@ -566,6 +598,10 @@ func (op isOp) Eval(ctx EvalStack) (document.Value, error) {
 	return falseLitteral, nil
 }
 
+func (op isOp) String() string {
+	return fmt.Sprintf("%v IS %v", op.a, op.b)
+}
+
 type isNotOp struct {
 	*simpleOperator
 }
@@ -590,4 +626,8 @@ func (op isNotOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return falseLitteral, nil
+}
+
+func (op isNotOp) String() string {
+	return fmt.Sprintf("%v IS NOT %v", op.a, op.b)
 }

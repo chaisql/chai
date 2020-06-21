@@ -92,3 +92,7 @@ func (f FieldSelector) IsEqual(other Expr) bool {
 
 	return true
 }
+
+func (f FieldSelector) String() string {
+	return f.Name()
+}
