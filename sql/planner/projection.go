@@ -39,10 +39,10 @@ func NewProjectionNode(n Node, expressions []ResultField, tableName string) Node
 	}
 }
 
-// Equal returns true if other is a *ProjectionNode and contains the
+// IsEqual returns true if other is a *ProjectionNode and contains the
 // same information.
-func (n *ProjectionNode) Equal(other Node) bool {
-	if !n.node.Equal(other) {
+func (n *ProjectionNode) IsEqual(other Node) bool {
+	if !n.node.IsEqual(other) {
 		return false
 	}
 
@@ -71,7 +71,7 @@ func (n *ProjectionNode) Equal(other Node) bool {
 				return false
 			}
 
-			if !t.Expr.Equal(rf.Expr) {
+			if !expr.Equal(t.Expr, rf.Expr) {
 				return false
 			}
 		}

@@ -45,9 +45,9 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 	return encoding.DecodeValue(document.Int64Value, ctx.Document.(document.Keyer).Key())
 }
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (k PKFunc) Equal(other Expr) bool {
+func (k PKFunc) IsEqual(other Expr) bool {
 	_, ok := other.(PKFunc)
 	return ok
 }
@@ -68,9 +68,9 @@ func (c Cast) Eval(ctx EvalStack) (document.Value, error) {
 	return v.ConvertTo(c.ConvertTo)
 }
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c Cast) Equal(other Expr) bool {
+func (c Cast) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -85,7 +85,7 @@ func (c Cast) Equal(other Expr) bool {
 	}
 
 	if c.Expr != nil {
-		return c.Expr.Equal(o.Expr)
+		return Equal(c.Expr, o.Expr)
 	}
 
 	return o.Expr != nil

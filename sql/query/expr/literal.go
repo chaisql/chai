@@ -9,14 +9,14 @@ import (
 // A LiteralValue represents a litteral value of any type defined by the value package.
 type LiteralValue document.Value
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (p LiteralValue) Equal(other Expr) bool {
+func (v LiteralValue) IsEqual(other Expr) bool {
 	o, ok := other.(LiteralValue)
 	if !ok {
 		return false
 	}
-	ok, err := document.Value(p).IsEqual(document.Value(o))
+	ok, err := document.Value(v).IsEqual(document.Value(o))
 	return ok && err == nil
 }
 
@@ -66,16 +66,16 @@ func ArrayValue(a document.Array) LiteralValue {
 }
 
 // Eval returns l. It implements the Expr interface.
-func (l LiteralValue) Eval(EvalStack) (document.Value, error) {
-	return document.Value(l), nil
+func (v LiteralValue) Eval(EvalStack) (document.Value, error) {
+	return document.Value(v), nil
 }
 
 // LiteralExprList is a list of expressions.
 type LiteralExprList []Expr
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (l LiteralExprList) Equal(other Expr) bool {
+func (l LiteralExprList) IsEqual(other Expr) bool {
 	o, ok := other.(LiteralExprList)
 	if !ok {
 		return false
@@ -85,7 +85,7 @@ func (l LiteralExprList) Equal(other Expr) bool {
 	}
 
 	for i := range l {
-		if !l[i].Equal(o[i]) {
+		if !Equal(l[i], o[i]) {
 			return false
 		}
 	}
@@ -116,9 +116,9 @@ type KVPair struct {
 // KVPairs is a list of KVPair.
 type KVPairs []KVPair
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (kvp KVPairs) Equal(other Expr) bool {
+func (kvp KVPairs) IsEqual(other Expr) bool {
 	o, ok := other.(KVPairs)
 	if !ok {
 		return false
@@ -131,7 +131,7 @@ func (kvp KVPairs) Equal(other Expr) bool {
 		if kvp[i].K != o[i].K {
 			return false
 		}
-		if !kvp[i].V.Equal(o[i].V) {
+		if !Equal(kvp[i].V, o[i].V) {
 			return false
 		}
 	}

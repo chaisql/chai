@@ -33,8 +33,8 @@ func NewDeletionNode(n Node, tableName string) Node {
 	}
 }
 
-func (n *deletionNode) Equal(other Node) bool {
-	if !n.node.Equal(other) {
+func (n *deletionNode) IsEqual(other Node) bool {
+	if !n.node.IsEqual(other) {
 		return false
 	}
 

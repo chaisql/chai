@@ -15,7 +15,26 @@ var (
 // An Expr evaluates to a value.
 type Expr interface {
 	Eval(EvalStack) (document.Value, error)
-	Equal(Expr) bool
+}
+
+type isEqualer interface {
+	IsEqual(Expr) bool
+}
+
+// Equal reports whether a and b are equal by first calling
+// if they have an IsEqual method with this signature:
+//   IsEqual(Expr) bool
+// If not, it returns whether a and b values are equal.
+func Equal(a, b Expr) bool {
+	if aa, ok := a.(isEqualer); ok {
+		return aa.IsEqual(b)
+	}
+
+	if bb, ok := b.(isEqualer); ok {
+		return bb.IsEqual(a)
+	}
+
+	return a == b
 }
 
 // EvalStack contains information about the context in which
@@ -73,7 +92,7 @@ func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, e
 
 // Equal compares this expression with the other expression and returns
 // true if they are equal.
-func (op *simpleOperator) Equal(other Expr) bool {
+func (op *simpleOperator) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -84,8 +103,8 @@ func (op *simpleOperator) Equal(other Expr) bool {
 	}
 
 	return op.Tok == oop.Token() &&
-		op.a.Equal(oop.LeftHand()) &&
-		op.b.Equal(oop.RightHand())
+		Equal(op.a, oop.LeftHand()) &&
+		Equal(op.b, oop.RightHand())
 }
 
 // An Operator is a binary expression that

@@ -68,9 +68,9 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 	return v, nil
 }
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (f FieldSelector) Equal(other Expr) bool {
+func (f FieldSelector) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}

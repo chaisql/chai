@@ -35,8 +35,8 @@ func NewReplacementNode(n Node, tableName string) Node {
 	}
 }
 
-func (n *replacementNode) Equal(other Node) bool {
-	if !n.node.Equal(other) {
+func (n *replacementNode) IsEqual(other Node) bool {
+	if !n.node.IsEqual(other) {
 		return false
 	}
 
