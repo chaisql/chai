@@ -32,8 +32,8 @@ func NewTableInputNode(tableName string) Node {
 	}
 }
 
-func (n *tableInputNode) Equal(other Node) bool {
-	if !n.node.Equal(other) {
+func (n *tableInputNode) IsEqual(other Node) bool {
+	if !n.node.IsEqual(other) {
 		return false
 	}
 
@@ -83,8 +83,8 @@ func NewIndexInputNode(tableName, indexName string, iop IndexIteratorOperator, f
 	}
 }
 
-func (n *indexInputNode) Equal(other Node) bool {
-	if !n.node.Equal(other) {
+func (n *indexInputNode) IsEqual(other Node) bool {
+	if !n.node.IsEqual(other) {
 		return false
 	}
 

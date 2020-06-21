@@ -39,9 +39,9 @@ func (p NamedParam) extract(params []Param) (interface{}, error) {
 	return nil, fmt.Errorf("param %s not found", p)
 }
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (p NamedParam) Equal(other Expr) bool {
+func (p NamedParam) IsEqual(other Expr) bool {
 	o, ok := other.(NamedParam)
 	return ok && p == o
 }
@@ -60,9 +60,9 @@ func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 	return document.NewValue(v)
 }
 
-// Equal compares this expression with the other expression and returns
+// IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (p PositionalParam) Equal(other Expr) bool {
+func (p PositionalParam) IsEqual(other Expr) bool {
 	o, ok := other.(PositionalParam)
 	return ok && p == o
 }
