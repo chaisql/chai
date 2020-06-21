@@ -2,6 +2,7 @@ package planner
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -101,6 +102,10 @@ func (n *replacementNode) toResult(st document.Stream) (res query.Result, err er
 	}
 
 	return res, err
+}
+
+func (n *replacementNode) String() string {
+	return fmt.Sprintf("Replace(%s)", n.tableName)
 }
 
 // storeFromKey implements an engine.Store which iterates from a certain key.

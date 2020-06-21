@@ -259,6 +259,10 @@ func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 	}), nil
 }
 
+func (n *selectionNode) String() string {
+	return fmt.Sprintf("σ(cond: %s)", n.cond)
+}
+
 type limitNode struct {
 	node
 
@@ -298,6 +302,10 @@ func (n *limitNode) toStream(st document.Stream) (document.Stream, error) {
 	return st.Limit(n.limit), nil
 }
 
+func (n *limitNode) String() string {
+	return fmt.Sprintf("Limit(%d)", n.limit)
+}
+
 type offsetNode struct {
 	node
 	offset int
@@ -325,6 +333,10 @@ func (n *offsetNode) IsEqual(other Node) bool {
 	}
 
 	return n.offset == other.(*offsetNode).offset
+}
+
+func (n *offsetNode) String() string {
+	return fmt.Sprintf("Offset(%d)", n.offset)
 }
 
 func (n *offsetNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
@@ -374,6 +386,10 @@ func (n *setNode) Bind(tx *database.Transaction, params []expr.Param) (err error
 	n.tx = tx
 	n.params = params
 	return
+}
+
+func (n *setNode) String() string {
+	return fmt.Sprintf("Set(%s = %s)", n.field, n.e)
 }
 
 func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
@@ -474,4 +490,8 @@ func (n *unsetNode) toStream(st document.Stream) (document.Stream, error) {
 
 		return &fb, nil
 	}), nil
+}
+
+func (n *unsetNode) String() string {
+	return fmt.Sprintf("Unset(%s)", n.field)
 }

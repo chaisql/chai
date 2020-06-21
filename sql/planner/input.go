@@ -2,6 +2,7 @@ package planner
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -46,6 +47,10 @@ func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (er
 	n.params = params
 	n.table, err = tx.GetTable(n.tableName)
 	return
+}
+
+func (n *tableInputNode) String() string {
+	return fmt.Sprintf("Table(%q)", n.tableName)
 }
 
 func (n *tableInputNode) buildStream() (document.Stream, error) {
@@ -121,6 +126,10 @@ func (n *indexInputNode) buildStream() (document.Stream, error) {
 		e:      n.e,
 		iop:    n.iop,
 	}), nil
+}
+
+func (n *indexInputNode) String() string {
+	return fmt.Sprintf("Index(%q)", n.indexName)
 }
 
 // IndexIteratorOperator is an operator that can be used
