@@ -26,8 +26,8 @@ func TestValueString(t *testing.T) {
 		{"int32", document.NewInt32Value(10), "10"},
 		{"int64", document.NewInt64Value(10), "10"},
 		{"float64", document.NewFloat64Value(10.1), "10.1"},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), "{\"a\":10}\n"},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), "[10]\n"},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), "{\"a\": 10}"},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), "[10]"},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), "10ns"},
 	}
 

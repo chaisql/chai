@@ -35,13 +35,13 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		x = &jsonDocument{d}
+		return jsonDocument{d}.MarshalJSON()
 	case ArrayValue:
 		a, err := v.ConvertToArray()
 		if err != nil {
 			return nil, err
 		}
-		x = &jsonArray{a}
+		return jsonArray{a}.MarshalJSON()
 	case TextValue, BlobValue:
 		s, err := v.ConvertToText()
 		if err != nil {
@@ -52,38 +52,39 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		x = v.V
 	}
 
-	return json.Marshal(x)
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(x)
+	if err != nil {
+		return nil, err
+	}
+
+	if buf.Bytes()[buf.Len()-1] == '\n' {
+		return buf.Bytes()[:buf.Len()-1], nil
+	}
+
+	return buf.Bytes(), nil
 }
 
 // String returns a string representation of the value. It implements the fmt.Stringer interface.
 func (v Value) String() string {
 	switch v.Type {
-	case DocumentValue:
-		var buf bytes.Buffer
-		err := ToJSON(&buf, v.V.(Document))
-		if err != nil {
-			panic(err)
-		}
-		return buf.String()
-	case ArrayValue:
-		var buf bytes.Buffer
-		err := ArrayToJSON(&buf, v.V.(Array))
-		if err != nil {
-			panic(err)
-		}
-		return buf.String()
 	case NullValue:
 		return "NULL"
 	case TextValue:
 		return strconv.Quote(string(v.V.([]byte)))
+	case BlobValue, DurationValue:
+		return fmt.Sprintf("%v", v.V)
 	}
 
-	return fmt.Sprintf("%v", v.V)
+	d, _ := v.MarshalJSON()
+	return string(d)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
 func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(jsonDocument{Document: fb})
+	return jsonDocument{Document: fb}.MarshalJSON()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -100,7 +101,7 @@ func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (vb *ValueBuffer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(jsonArray{Array: vb})
+	return jsonArray{Array: vb}.MarshalJSON()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -117,12 +118,24 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 
 // ToJSON encodes d to w in JSON.
 func ToJSON(w io.Writer, d Document) error {
-	return json.NewEncoder(w).Encode(jsonDocument{d})
+	buf, err := jsonDocument{d}.MarshalJSON()
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buf)
+	return err
 }
 
 // ArrayToJSON encodes a to w in JSON.
 func ArrayToJSON(w io.Writer, a Array) error {
-	return json.NewEncoder(w).Encode(jsonArray{a})
+	buf, err := jsonArray{a}.MarshalJSON()
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buf)
+	return err
 }
 
 type jsonArray struct {
@@ -136,7 +149,7 @@ func (j jsonArray) MarshalJSON() ([]byte, error) {
 	var notFirst bool
 	err := j.Array.Iterate(func(i int, v Value) error {
 		if notFirst {
-			buf.WriteByte(',')
+			buf.WriteString(", ")
 		}
 		notFirst = true
 
@@ -167,12 +180,12 @@ func (j jsonDocument) MarshalJSON() ([]byte, error) {
 	var notFirst bool
 	err := j.Document.Iterate(func(f string, v Value) error {
 		if notFirst {
-			buf.WriteByte(',')
+			buf.WriteString(", ")
 		}
 		notFirst = true
 
 		buf.WriteString(strconv.Quote(f))
-		buf.WriteRune(':')
+		buf.WriteString(": ")
 
 		data, err := v.MarshalJSON()
 		if err != nil {
@@ -325,6 +338,7 @@ func parseJSONArray(dec *json.Decoder, currToken json.Token, buf *ValueBuffer) e
 // IteratorToJSON encodes all the documents of an iterator to JSON stream.
 func IteratorToJSON(w io.Writer, s Iterator) error {
 	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
 	return s.Iterate(func(d Document) error {
