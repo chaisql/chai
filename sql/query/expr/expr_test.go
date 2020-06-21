@@ -1,6 +1,7 @@
 package expr_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -47,5 +48,40 @@ func testExpr(t testing.TB, exprStr string, stack expr.EvalStack, want document.
 	} else {
 		require.NoError(t, err)
 		require.Equal(t, want, res)
+	}
+}
+
+func TestString(t *testing.T) {
+	var operands = []string{
+		`10.4`,
+		"true",
+		"500",
+		`foo.bar.1`,
+		`"hello"`,
+		`[1, 2, "foo"]`,
+		`{"a": "foo", "b": 10}`,
+		"pk()",
+		"CAST(10 AS int64)",
+	}
+
+	var operators = []string{
+		"=", ">", ">=", "<", "<=",
+		"+", "-", "*", "/", "%", "&", "|", "^",
+		"AND", "OR",
+	}
+
+	testFn := func(s string, want string) {
+		e, _, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
+		require.NoError(t, err)
+		require.Equal(t, want, fmt.Sprintf("%v", e))
+	}
+
+	for _, op := range operands {
+		testFn(op, op)
+	}
+
+	for _, op := range operators {
+		want := fmt.Sprintf("10.4 %s foo.bar.1", op)
+		testFn(want, want)
 	}
 }

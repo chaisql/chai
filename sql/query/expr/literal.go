@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/genjidb/genji/document"
@@ -18,6 +20,10 @@ func (v LiteralValue) IsEqual(other Expr) bool {
 	}
 	ok, err := document.Value(v).IsEqual(document.Value(o))
 	return ok && err == nil
+}
+
+func (v LiteralValue) String() string {
+	return document.Value(v).String()
 }
 
 // BlobValue creates a litteral value of type Blob.
@@ -93,6 +99,22 @@ func (l LiteralExprList) IsEqual(other Expr) bool {
 	return true
 }
 
+// String implements the fmt.Stringer interface.
+func (l LiteralExprList) String() string {
+	var b strings.Builder
+
+	b.WriteRune('[')
+	for i, e := range l {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(fmt.Sprintf("%v", e))
+	}
+	b.WriteRune(']')
+
+	return b.String()
+}
+
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 	var err error
@@ -111,6 +133,10 @@ func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 type KVPair struct {
 	K string
 	V Expr
+}
+
+func (p KVPair) String() string {
+	return fmt.Sprintf("%q: %v", p.K, p.V)
 }
 
 // KVPairs is a list of KVPair.
@@ -153,4 +179,20 @@ func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	return document.NewDocumentValue(&fb), nil
+}
+
+// String implements the fmt.Stringer interface.
+func (kvp KVPairs) String() string {
+	var b strings.Builder
+
+	b.WriteRune('{')
+	for i, p := range kvp {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(fmt.Sprintf("%s", p))
+	}
+	b.WriteRune('}')
+
+	return b.String()
 }

@@ -46,6 +46,11 @@ func (p NamedParam) IsEqual(other Expr) bool {
 	return ok && p == o
 }
 
+// String implements the fmt.Stringer interface.
+func (p NamedParam) String() string {
+	return fmt.Sprintf("$%s", string(p))
+}
+
 // PositionalParam is an expression which represents the position of a parameter.
 type PositionalParam int
 
@@ -65,6 +70,11 @@ func (p PositionalParam) Eval(stack EvalStack) (document.Value, error) {
 func (p PositionalParam) IsEqual(other Expr) bool {
 	o, ok := other.(PositionalParam)
 	return ok && p == o
+}
+
+// String implements the fmt.Stringer interface.
+func (p PositionalParam) String() string {
+	return "?"
 }
 
 func (p PositionalParam) extract(params []Param) (interface{}, error) {

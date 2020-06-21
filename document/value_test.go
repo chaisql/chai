@@ -18,7 +18,7 @@ func TestValueString(t *testing.T) {
 	}{
 		{"null", document.NewNullValue(), "NULL"},
 		{"bytes", document.NewBlobValue([]byte("bar")), "[98 97 114]"},
-		{"string", document.NewTextValue("bar"), "bar"},
+		{"string", document.NewTextValue("bar"), "\"bar\""},
 		{"bool", document.NewBoolValue(true), "true"},
 		{"int", document.NewIntValue(10), "10"},
 		{"int8", document.NewInt8Value(10), "10"},
@@ -729,13 +729,12 @@ func TestValueCompare(t *testing.T) {
 	int64s := []document.Value{document.NewInt64Value(0), document.NewInt64Value(1)}
 	float64s := []document.Value{document.NewFloat64Value(0), document.NewFloat64Value(1)}
 	bools := []document.Value{document.NewBoolValue(false), document.NewBoolValue(true)}
-	texts := []document.Value{document.NewTextValue("0"), document.NewTextValue("1")}
 
 	// generate a batch of tests mixing everything with everything
-	cartesian(int8s, int16s, int32s, int64s, float64s, bools, texts)
+	cartesian(int8s, int16s, int32s, int64s, float64s, bools)
 
 	// Sample blob and text values. Values at index [0] are known to be less than values at index [1]
-	texts = []document.Value{document.NewTextValue("ABC"), document.NewTextValue("CDE")}
+	texts := []document.Value{document.NewTextValue("ABC"), document.NewTextValue("CDE")}
 	blobs := []document.Value{document.NewBlobValue([]byte{65, 66, 67}), document.NewBlobValue([]byte{68, 69, 70})}
 
 	// generate another batch of tests mixing everything with everything
