@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -25,7 +27,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 	if !found {
-		return cfg.ToTree(), nil
+		return cfg.ToTree()
 	}
 
 	// Parse condition: "WHERE EXPR".
@@ -52,7 +54,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 
-	return cfg.ToTree(), nil
+	return cfg.ToTree()
 }
 
 // parseResultFields parses the list of result fields.
@@ -180,9 +182,9 @@ type selectConfig struct {
 }
 
 // ToTree turns the statement into an expression tree.
-func (cfg selectConfig) ToTree() *planner.Tree {
+func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 	if cfg.TableName == "" {
-		return planner.NewTree(planner.NewProjectionNode(nil, cfg.ProjectionExprs, ""))
+		return planner.NewTree(planner.NewProjectionNode(nil, cfg.ProjectionExprs, "")), nil
 	}
 
 	t := planner.NewTableInputNode(cfg.TableName)
@@ -196,14 +198,42 @@ func (cfg selectConfig) ToTree() *planner.Tree {
 	}
 
 	if cfg.OffsetExpr != nil {
-		t = planner.NewOffsetNode(t, cfg.OffsetExpr)
+		v, err := cfg.OffsetExpr.Eval(expr.EvalStack{})
+		if err != nil {
+			return nil, err
+		}
+
+		if !v.Type.IsNumber() {
+			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+		}
+
+		offset, err := v.ConvertToInt64()
+		if err != nil {
+			return nil, err
+		}
+
+		t = planner.NewOffsetNode(t, int(offset))
 	}
 
 	if cfg.LimitExpr != nil {
-		t = planner.NewLimitNode(t, cfg.LimitExpr)
+		v, err := cfg.LimitExpr.Eval(expr.EvalStack{})
+		if err != nil {
+			return nil, err
+		}
+
+		if !v.Type.IsNumber() {
+			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+		}
+
+		limit, err := v.ConvertToInt64()
+		if err != nil {
+			return nil, err
+		}
+
+		t = planner.NewLimitNode(t, int(limit))
 	}
 
 	t = planner.NewProjectionNode(t, cfg.ProjectionExprs, cfg.TableName)
 
-	return &planner.Tree{Root: t}
+	return &planner.Tree{Root: t}, nil
 }
