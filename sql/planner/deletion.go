@@ -2,6 +2,7 @@ package planner
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -91,4 +92,8 @@ func (n *deletionNode) toResult(st document.Stream) (res query.Result, err error
 	}
 
 	return res, nil
+}
+
+func (n *deletionNode) String() string {
+	return fmt.Sprintf("Delete(%s)", n.tableName)
 }

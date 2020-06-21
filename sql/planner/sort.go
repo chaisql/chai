@@ -2,6 +2,7 @@ package planner
 
 import (
 	"container/heap"
+	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -57,6 +58,15 @@ func (n *sortNode) toStream(st document.Stream) (document.Stream, error) {
 		sortField: n.sortField,
 		direction: n.direction,
 	}), nil
+}
+
+func (n *sortNode) String() string {
+	dir := "ASC"
+	if n.direction == scanner.DESC {
+		dir = "DESC"
+	}
+
+	return fmt.Sprintf("Sort(%s %s)", n.sortField, dir)
 }
 
 type sortIterator struct {

@@ -2,6 +2,8 @@ package planner
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -125,6 +127,19 @@ func (n *ProjectionNode) toResult(st document.Stream) (res query.Result, err err
 
 	res.Stream = st
 	return
+}
+
+func (n *ProjectionNode) String() string {
+	var b strings.Builder
+
+	for i, ex := range n.Expressions {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(fmt.Sprintf("%v", ex))
+	}
+
+	return fmt.Sprintf("∏(%s)", b.String())
 }
 
 type documentMask struct {
