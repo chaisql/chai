@@ -204,12 +204,20 @@ func (r ResultFieldExpr) Iterate(stack expr.EvalStack, fn func(field string, val
 	return fn(r.ExprName, v)
 }
 
+func (r ResultFieldExpr) String() string {
+	return fmt.Sprintf("%s", r.Expr)
+}
+
 // A Wildcard is a ResultField that iterates over all the fields of a document.
 type Wildcard struct{}
 
 // Name returns the "*" character.
 func (w Wildcard) Name() string {
 	return "*"
+}
+
+func (w Wildcard) String() string {
+	return w.Name()
 }
 
 // Iterate call the document iterate method.
