@@ -2,7 +2,6 @@ package query
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -60,10 +59,6 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) 
 			return res, err
 		}
 
-		if v.Type != document.DocumentValue {
-			return res, errors.New("values must be a list of documents if field list is empty")
-		}
-
 		d, err := v.ConvertToDocument()
 		if err != nil {
 			return res, err
@@ -94,22 +89,9 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack expr.EvalStack) (
 
 		// each document must be a list of expressions
 		// (e1, e2, e3, ...) or [e1, e2, e2, ....]
-		if v.Type != document.ArrayValue {
-			return res, errors.New("invalid values")
-		}
-
 		vlist, err := v.ConvertToArray()
 		if err != nil {
 			return res, err
-		}
-
-		lenv, err := document.ArrayLength(vlist)
-		if err != nil {
-			return res, err
-		}
-
-		if len(stmt.FieldNames) != lenv {
-			return res, fmt.Errorf("%d values for %d fields", lenv, len(stmt.FieldNames))
 		}
 
 		// iterate over each value
