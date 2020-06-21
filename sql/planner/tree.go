@@ -260,21 +260,21 @@ func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 type limitNode struct {
 	node
 
-	limitExpr expr.Expr
-	tx        *database.Transaction
-	params    []expr.Param
+	limit  int
+	tx     *database.Transaction
+	params []expr.Param
 }
 
 var _ operationNode = (*limitNode)(nil)
 
 // NewLimitNode creates a node that limits the number of documents processed by the stream.
-func NewLimitNode(n Node, limitExpr expr.Expr) Node {
+func NewLimitNode(n Node, limit int) Node {
 	return &limitNode{
 		node: node{
 			op:   Limit,
 			left: n,
 		},
-		limitExpr: limitExpr,
+		limit: limit,
 	}
 }
 
@@ -283,7 +283,7 @@ func (n *limitNode) Equal(other Node) bool {
 		return false
 	}
 
-	return n.limitExpr.Equal(other.(*limitNode).limitExpr)
+	return n.limit == other.(*limitNode).limit
 }
 
 func (n *limitNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
@@ -293,31 +293,12 @@ func (n *limitNode) Bind(tx *database.Transaction, params []expr.Param) (err err
 }
 
 func (n *limitNode) toStream(st document.Stream) (document.Stream, error) {
-	stack := expr.EvalStack{
-		Tx:     n.tx,
-		Params: n.params,
-	}
-
-	v, err := n.limitExpr.Eval(stack)
-	if err != nil {
-		return st, err
-	}
-
-	if !v.Type.IsNumber() {
-		return st, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
-	}
-
-	limit, err := v.ConvertToInt64()
-	if err != nil {
-		return st, err
-	}
-
-	return st.Limit(int(limit)), nil
+	return st.Limit(n.limit), nil
 }
 
 type offsetNode struct {
 	node
-	offsetExpr expr.Expr
+	offset int
 
 	tx     *database.Transaction
 	params []expr.Param
@@ -326,13 +307,13 @@ type offsetNode struct {
 var _ operationNode = (*offsetNode)(nil)
 
 // NewOffsetNode creates a node that skips a certain number of documents from the stream.
-func NewOffsetNode(n Node, skipExpr expr.Expr) Node {
+func NewOffsetNode(n Node, offset int) Node {
 	return &offsetNode{
 		node: node{
 			op:   Limit,
 			left: n,
 		},
-		offsetExpr: skipExpr,
+		offset: offset,
 	}
 }
 
@@ -341,7 +322,7 @@ func (n *offsetNode) Equal(other Node) bool {
 		return false
 	}
 
-	return n.offsetExpr.Equal(other.(*offsetNode).offsetExpr)
+	return n.offset == other.(*offsetNode).offset
 }
 
 func (n *offsetNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
@@ -351,26 +332,7 @@ func (n *offsetNode) Bind(tx *database.Transaction, params []expr.Param) (err er
 }
 
 func (n *offsetNode) toStream(st document.Stream) (document.Stream, error) {
-	stack := expr.EvalStack{
-		Tx:     n.tx,
-		Params: n.params,
-	}
-
-	v, err := n.offsetExpr.Eval(stack)
-	if err != nil {
-		return st, err
-	}
-
-	if !v.Type.IsNumber() {
-		return st, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
-	}
-
-	offset, err := v.ConvertToInt64()
-	if err != nil {
-		return st, err
-	}
-
-	return st.Offset(int(offset)), nil
+	return st.Offset(n.offset), nil
 }
 
 type setNode struct {

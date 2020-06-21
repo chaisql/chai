@@ -43,14 +43,14 @@ func TestSplitANDConditionRule(t *testing.T) {
 						expr.BoolValue(true),
 						expr.BoolValue(false),
 					),
-				), expr.BoolValue(true)),
+				), 1),
 			planner.NewLimitNode(
 				planner.NewSelectionNode(
 					planner.NewSelectionNode(
 						planner.NewTableInputNode("foo"),
 						expr.BoolValue(false)),
 					expr.BoolValue(true),
-				), expr.BoolValue(true)),
+				), 1),
 		},
 		{
 			"multi and",
@@ -66,7 +66,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 							expr.IntValue(4),
 						),
 					),
-				), expr.IntValue(10)),
+				), 10),
 			planner.NewLimitNode(
 				planner.NewSelectionNode(
 					planner.NewSelectionNode(
@@ -77,7 +77,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 							expr.IntValue(3)),
 						expr.IntValue(2)),
 					expr.IntValue(1)),
-				expr.IntValue(10),
+				10,
 			),
 		},
 	}
