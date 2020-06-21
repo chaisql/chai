@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -36,11 +38,22 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	}
 
 	// Parse VALUES (v1, v2, v3)
-	stmt.Values, err = p.parseValues(valueParser)
+	values, err := p.parseValues(valueParser)
 	if err != nil {
 		return stmt, err
 	}
 
+	// ensure the length of field list is the same as the length of values
+	if withFields {
+		for _, l := range values {
+			el := l.(expr.LiteralExprList)
+			if len(el) != len(stmt.FieldNames) {
+				return stmt, fmt.Errorf("%d values for %d fields", len(el), len(stmt.FieldNames))
+			}
+		}
+	}
+
+	stmt.Values = values
 	return stmt, nil
 }
 

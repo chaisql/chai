@@ -52,14 +52,16 @@ func TestParserInsert(t *testing.T) {
 				Values:    expr.LiteralExprList{expr.NamedParam("foo"), expr.NamedParam("bar")},
 			},
 			false},
-		{"Values / With fields", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
+		{"Values / With fields", "INSERT INTO test (a, b) VALUES ('c', 'd')",
 			query.InsertStmt{
 				TableName:  "test",
 				FieldNames: []string{"a", "b"},
 				Values: expr.LiteralExprList{
-					expr.LiteralExprList{expr.TextValue("c"), expr.TextValue("d"), expr.TextValue("e")},
+					expr.LiteralExprList{expr.TextValue("c"), expr.TextValue("d")},
 				},
 			}, false},
+		{"Values / With too many values", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
+			nil, true},
 		{"Values / Multiple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
 			query.InsertStmt{
 				TableName:  "test",
