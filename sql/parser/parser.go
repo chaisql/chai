@@ -69,6 +69,8 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 		return p.parseCreateStatement()
 	case scanner.DROP:
 		return p.parseDropStatement()
+	case scanner.EXPLAIN:
+		return p.parseExplainStatement()
 	}
 
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{
