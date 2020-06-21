@@ -86,6 +86,30 @@ func (t *Tree) execute() (query.Result, error) {
 	return t.Root.(outputNode).toResult(st)
 }
 
+func (t *Tree) String() string {
+	n := t.Root
+
+	if n == nil {
+		return ""
+	}
+
+	return nodeToString(t.Root)
+}
+
+func nodeToString(n Node) string {
+	var s string
+
+	if n.Left() != nil {
+		s = nodeToString(n.Left())
+	}
+
+	if s == "" {
+		return fmt.Sprintf("%v", n)
+	}
+
+	return fmt.Sprintf("%s -> %v", s, n)
+}
+
 // IsReadOnly implements the query.Statement interface.
 func (t *Tree) IsReadOnly() bool {
 	return false

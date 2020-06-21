@@ -50,7 +50,7 @@ func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (er
 }
 
 func (n *tableInputNode) String() string {
-	return fmt.Sprintf("Table(%q)", n.tableName)
+	return fmt.Sprintf("Table(%s)", n.tableName)
 }
 
 func (n *tableInputNode) buildStream() (document.Stream, error) {
@@ -129,7 +129,7 @@ func (n *indexInputNode) buildStream() (document.Stream, error) {
 }
 
 func (n *indexInputNode) String() string {
-	return fmt.Sprintf("Index(%q)", n.indexName)
+	return fmt.Sprintf("Index(%s)", n.indexName)
 }
 
 // IndexIteratorOperator is an operator that can be used
