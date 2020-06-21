@@ -14,6 +14,8 @@ import (
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
+//go:generate stringer -type=Operation
+
 // An Operation can manipulate and transform a stream of documents.
 type Operation int
 
