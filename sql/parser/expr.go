@@ -203,7 +203,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		return expr.DurationValue(d), nil
 	case scanner.LBRACKET:
 		p.Unscan()
-		e, _, err := p.parseDocument()
+		e, err := p.parseDocument()
 		return e, err
 	case scanner.LSBRACKET:
 		p.Unscan()
@@ -310,11 +310,10 @@ func (p *Parser) parseType() document.ValueType {
 }
 
 // parseDocument parses a document
-func (p *Parser) parseDocument() (expr.Expr, bool, error) {
+func (p *Parser) parseDocument() (expr.Expr, error) {
 	// Parse { token.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
-		p.Unscan()
-		return nil, false, nil
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"{"}, pos)
 	}
 
 	var pairs expr.KVPairs
@@ -338,10 +337,10 @@ func (p *Parser) parseDocument() (expr.Expr, bool, error) {
 
 	// Parse required } token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RBRACKET {
-		return nil, true, newParseError(scanner.Tokstr(tok, lit), []string{"}"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"}"}, pos)
 	}
 
-	return pairs, true, nil
+	return pairs, nil
 }
 
 // parseKV parses a key-value pair in the form IDENT : Expr.

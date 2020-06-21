@@ -23,17 +23,20 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, err
 	}
 
+	valueParser := p.parseParamOrDocument
+
 	// Parse field list: (a, b, c)
-	fields, ok, err := p.parseFieldList()
+	fields, withFields, err := p.parseFieldList()
 	if err != nil {
 		return stmt, err
 	}
-	if ok {
+	if withFields {
+		valueParser = p.parseParamOrExprList
 		stmt.FieldNames = fields
 	}
 
 	// Parse VALUES (v1, v2, v3)
-	stmt.Values, err = p.parseValues()
+	stmt.Values, err = p.parseValues(valueParser)
 	if err != nil {
 		return stmt, err
 	}
@@ -65,7 +68,7 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues() (expr.LiteralExprList, error) {
+func (p *Parser) parseValues(valueParser func() (expr.Expr, error)) (expr.LiteralExprList, error) {
 	// Check if the VALUES token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES"}, pos)
@@ -73,7 +76,7 @@ func (p *Parser) parseValues() (expr.LiteralExprList, error) {
 
 	var valuesList expr.LiteralExprList
 	// Parse first (required) value list.
-	d, err := p.parseValue()
+	d, err := valueParser()
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +90,7 @@ func (p *Parser) parseValues() (expr.LiteralExprList, error) {
 			break
 		}
 
-		d, err := p.parseValue()
+		d, err := valueParser()
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +101,8 @@ func (p *Parser) parseValues() (expr.LiteralExprList, error) {
 	return valuesList, nil
 }
 
-// parseValue parses either a parameter, a JSON document or a list of expressions.
-func (p *Parser) parseValue() (expr.Expr, error) {
+// parseParamOrDocument parses either a parameter or a document.
+func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 	// Parse a param first
 	prm, err := p.parseParam()
 	if err != nil {
@@ -112,25 +115,24 @@ func (p *Parser) parseValue() (expr.Expr, error) {
 	// If not a param, start over
 	p.Unscan()
 
-	// check if it's a json document
-	expr, ok, err := p.parseDocument()
-	if err != nil || ok {
-		return expr, err
-	}
+	// Expect a document
+	return p.parseDocument()
+}
 
-	// if not a document, start over
-	p.Unscan()
-
-	// check if it's an expression list
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"expression list or JSON"}, pos)
-	}
-	p.Unscan()
-	expr, err = p.parseExprList(scanner.LPAREN, scanner.RPAREN)
+// parseParamOrExprList parses either a parameter or a list of expressions.
+func (p *Parser) parseParamOrExprList() (expr.Expr, error) {
+	// Parse a param first
+	prm, err := p.parseParam()
 	if err != nil {
 		return nil, err
 	}
+	if prm != nil {
+		return prm, nil
+	}
 
-	return expr, nil
+	// If not a param, start over
+	p.Unscan()
+
+	// expect an expression list
+	return p.parseExprList(scanner.LPAREN, scanner.RPAREN)
 }
