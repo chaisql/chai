@@ -159,12 +159,12 @@ func TestEncodeArray(t *testing.T) {
 				Append(document.NewTextValue("john")).
 				Append(document.NewDocumentValue(mapDoc)).
 				Append(document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt64Value(11)))),
-			`[10, "john", {"city": "Ajaccio", "country": "France"}, [11]]`,
+			`[10, "john", {"city": "Ajaccio", "country": "France"}, [11]]` + "\n",
 		},
 		{
 			"Empty array",
 			document.NewValueBuffer(),
-			`[]`,
+			"[]\n",
 		},
 	}
 

@@ -137,7 +137,7 @@ func Example() {
 	// {12 bar 16 {Lyon 69001}}
 	// {2 bat 0 { }}
 	// Count: 3
-	// {"id":10,"name":"foo","age":15,"group":"admin"}
-	// {"id":12,"name":"bar","age":16,"address":{"city":"Lyon","zipcode":"69001"},"group":"admin"}
-	// {"id":2,"name":"bat","age":0,"address":{"city":"","zipcode":""},"group":"admin"}
+	// {"id": 10, "name": "foo", "age": 15, "group": "admin"}
+	// {"id": 12, "name": "bar", "age": 16, "address": {"city": "Lyon", "zipcode": "69001"}, "group": "admin"}
+	// {"id": 2, "name": "bat", "age": 0, "address": {"city": "", "zipcode": ""}, "group": "admin"}
 }

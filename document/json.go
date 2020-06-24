@@ -127,6 +127,11 @@ func ToJSON(w io.Writer, d Document) error {
 	}
 
 	_, err = w.Write(buf)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte{'\n'})
 	return err
 }
 
@@ -138,6 +143,11 @@ func ArrayToJSON(w io.Writer, a Array) error {
 	}
 
 	_, err = w.Write(buf)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte{'\n'})
 	return err
 }
 
