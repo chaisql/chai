@@ -129,7 +129,7 @@ type bitwiseOrOp struct {
 	*simpleOperator
 }
 
-// BitwiseOr creates an expression thats evaluates to the result of a & b.
+// BitwiseOr creates an expression thats evaluates to the result of a | b.
 func BitwiseOr(a, b Expr) Expr {
 	return &bitwiseOrOp{&simpleOperator{a, b, scanner.BITWISEOR}}
 }
@@ -147,7 +147,7 @@ type bitwiseXorOp struct {
 	*simpleOperator
 }
 
-// BitwiseXor creates an expression thats evaluates to the result of a & b.
+// BitwiseXor creates an expression thats evaluates to the result of a ^ b.
 func BitwiseXor(a, b Expr) Expr {
 	return &bitwiseXorOp{&simpleOperator{a, b, scanner.BITWISEXOR}}
 }

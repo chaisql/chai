@@ -21,7 +21,7 @@ type isEqualer interface {
 	IsEqual(Expr) bool
 }
 
-// Equal reports whether a and b are equal by first calling
+// Equal reports whether a and b are equal by first calling IsEqual
 // if they have an IsEqual method with this signature:
 //   IsEqual(Expr) bool
 // If not, it returns whether a and b values are equal.
