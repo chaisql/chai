@@ -53,6 +53,11 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
+	// json.Marshal uses HTML escaping by default
+	// which causes characters like > to be transformed
+	// into \u003c.
+	// to disable that we need to use json.Encoder instead
+	// and call SetEscapeHTML with false.
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	err := enc.Encode(x)
@@ -60,11 +65,9 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 
-	if buf.Bytes()[buf.Len()-1] == '\n' {
-		return buf.Bytes()[:buf.Len()-1], nil
-	}
-
-	return buf.Bytes(), nil
+	// json.Encoder always terminates each value with a newline,
+	// we need to remove it.
+	return buf.Bytes()[:buf.Len()-1], nil
 }
 
 // String returns a string representation of the value. It implements the fmt.Stringer interface.
