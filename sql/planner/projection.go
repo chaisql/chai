@@ -25,9 +25,7 @@ type ProjectionNode struct {
 var _ outputNode = (*ProjectionNode)(nil)
 var _ operationNode = (*ProjectionNode)(nil)
 
-// NewProjectionNode creates a node that uses the given expressions to create a new document
-// for each document of the stream. Each expression can extract fields from the incoming
-// document, call functions, execute arithmetic operations. etc.
+// NewProjectionNode creates a ProjectionNode.
 func NewProjectionNode(n Node, expressions []ResultField, tableName string) Node {
 	return &ProjectionNode{
 		node: node{
