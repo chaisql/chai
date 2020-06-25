@@ -40,47 +40,6 @@ func NewProjectionNode(n Node, expressions []ResultField, tableName string) Node
 	}
 }
 
-// IsEqual returns true if other is a *ProjectionNode and contains the
-// same information.
-func (n *ProjectionNode) IsEqual(other Node) bool {
-	if !n.node.IsEqual(other) {
-		return false
-	}
-
-	on := other.(*ProjectionNode)
-	if n.tableName != on.tableName {
-		return false
-	}
-
-	if len(n.Expressions) != len(on.Expressions) {
-		return false
-	}
-
-	for i := range n.Expressions {
-		switch t := n.Expressions[i].(type) {
-		case Wildcard:
-			if _, ok := on.Expressions[i].(Wildcard); !ok {
-				return false
-			}
-		case ResultFieldExpr:
-			rf, ok := on.Expressions[i].(ResultFieldExpr)
-			if !ok {
-				return false
-			}
-
-			if t.ExprName != rf.ExprName {
-				return false
-			}
-
-			if !expr.Equal(t.Expr, rf.Expr) {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
 // Bind database resources to this node.
 func (n *ProjectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx

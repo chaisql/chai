@@ -86,7 +86,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.SplitANDConditionRule(planner.NewTree(test.root))
 			require.NoError(t, err)
-			require.True(t, res.Root.IsEqual(test.expected))
+			require.Equal(t, res.String(), planner.NewTree(test.expected).String())
 		})
 	}
 }
@@ -165,7 +165,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.PrecalculateExprRule(planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.e)))
 			require.NoError(t, err)
-			require.True(t, res.Root.IsEqual(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.expected)))
+			require.Equal(t, res.String(), planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.expected)).String())
 		})
 	}
 }
@@ -197,7 +197,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 			res, err := planner.RemoveUnnecessarySelectionNodesRule(planner.NewTree(test.root))
 			require.NoError(t, err)
 			if test.expected != nil {
-				require.True(t, test.expected.IsEqual(res.Root))
+				require.Equal(t, planner.NewTree(test.expected).String(), res.String())
 			} else {
 				require.Equal(t, test.expected, res.Root)
 			}
@@ -367,7 +367,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			res, err := planner.UseIndexBasedOnSelectionNodeRule(planner.NewTree(test.root))
 			require.NoError(t, err)
 			if test.expected != nil {
-				require.True(t, test.expected.IsEqual(res.Root))
+				require.Equal(t, planner.NewTree(test.expected).String(), res.String())
 			} else {
 				require.Equal(t, res.Root, res.Root)
 			}
