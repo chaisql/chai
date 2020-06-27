@@ -360,6 +360,18 @@ func (e EncodedDocument) Iterate(fn func(field string, value document.Value) err
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (e EncodedDocument) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	err := document.ToJSON(&buf, e)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
 // An EncodedArray implements the document.Array interface on top of an encoded representation of an
 // array.
 // It is useful to avoid decoding the entire array when only a few values are needed.
@@ -396,6 +408,18 @@ func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error 
 // GetByIndex returns a value by index of the array.
 func (e EncodedArray) GetByIndex(i int) (document.Value, error) {
 	return decodeValueFromDocument(e, string(EncodeInt64(int64(i))))
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (e EncodedArray) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	err := document.ArrayToJSON(&buf, e)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func decodeValueFromDocument(data []byte, field string) (document.Value, error) {

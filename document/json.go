@@ -18,7 +18,7 @@ import (
 // NewFromJSON creates a document from a JSON object.
 func NewFromJSON(data []byte) (Document, error) {
 	var fb FieldBuffer
-	err := fb.UnmarshalJSON(data)
+	err := json.Unmarshal(data, &fb)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (v Value) String() string {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
-	return jsonDocument{Document: fb}.MarshalJSON()
+	return json.Marshal(jsonDocument{Document: fb})
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -104,7 +104,7 @@ func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (vb *ValueBuffer) MarshalJSON() ([]byte, error) {
-	return jsonArray{Array: vb}.MarshalJSON()
+	return json.Marshal(jsonArray{Array: vb})
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -119,6 +119,16 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 	return parseJSONArray(dec, t, vb)
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (m mapDocument) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonDocument{Document: m})
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (m structDocument) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonDocument{Document: m})
+}
+
 // ToJSON encodes d to w in JSON.
 func ToJSON(w io.Writer, d Document) error {
 	buf, err := jsonDocument{d}.MarshalJSON()
@@ -127,11 +137,6 @@ func ToJSON(w io.Writer, d Document) error {
 	}
 
 	_, err = w.Write(buf)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write([]byte{'\n'})
 	return err
 }
 
@@ -143,11 +148,6 @@ func ArrayToJSON(w io.Writer, a Array) error {
 	}
 
 	_, err = w.Write(buf)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write([]byte{'\n'})
 	return err
 }
 
@@ -365,13 +365,10 @@ func IteratorToJSONArray(w io.Writer, s Iterator) error {
 
 	buf.WriteByte('[')
 
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-
 	first := true
 	err := s.Iterate(func(d Document) error {
 		if !first {
-			buf.WriteByte(',')
+			buf.WriteString(", ")
 		} else {
 			first = false
 		}

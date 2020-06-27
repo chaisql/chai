@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -174,6 +175,18 @@ func (r documentMask) Iterate(fn func(field string, value document.Value) error)
 	}
 
 	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (r documentMask) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	err := document.ToJSON(&buf, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 // A ResultField is a field that will be part of the result document that will be returned at the end of a Select statement.
