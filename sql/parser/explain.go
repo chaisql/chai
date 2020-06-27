@@ -6,8 +6,8 @@ import (
 	"github.com/genjidb/genji/sql/scanner"
 )
 
-// parseDropStatement parses a drop string and returns a Statement AST object.
-// This function assumes the DROP token has already been consumed.
+// parseExplainStatement parses any statement and returns an ExplainStmt object.
+// This function assumes the EXPLAIN token has already been consumed.
 func (p *Parser) parseExplainStatement() (query.Statement, error) {
 	// ensure we don't have multiple EXPLAIN keywords
 	tok, pos, lit := p.ScanIgnoreWhitespace()
