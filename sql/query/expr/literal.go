@@ -22,6 +22,7 @@ func (v LiteralValue) IsEqual(other Expr) bool {
 	return ok && err == nil
 }
 
+// String implements the fmt.Stringer interface.
 func (v LiteralValue) String() string {
 	return document.Value(v).String()
 }
@@ -135,6 +136,7 @@ type KVPair struct {
 	V Expr
 }
 
+// String implements the fmt.Stringer interface.
 func (p KVPair) String() string {
 	return fmt.Sprintf("%q: %v", p.K, p.V)
 }
