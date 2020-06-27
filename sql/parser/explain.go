@@ -12,7 +12,7 @@ func (p *Parser) parseExplainStatement() (query.Statement, error) {
 	// ensure we don't have multiple EXPLAIN keywords
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok == scanner.EXPLAIN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SELECT", "UPDATE", "DELETE"}, pos)
 	}
 	p.Unscan()
 
