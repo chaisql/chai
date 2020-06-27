@@ -22,7 +22,7 @@ func TestToJSON(t *testing.T) {
 				Add("name", document.NewTextValue("John")).
 				Add("age", document.NewInt16Value(10)).
 				Add(`"something with" quotes`, document.NewInt16Value(10)),
-			`{"name": "John", "age": 10, "\"something with\" quotes": 10}` + "\n",
+			`{"name": "John", "age": 10, "\"something with\" quotes": 10}`,
 		},
 		{
 			"Nested",
@@ -38,7 +38,7 @@ func TestToJSON(t *testing.T) {
 						Append(document.NewTextValue("fred")).
 						Append(document.NewTextValue("jamie")),
 				)),
-			`{"name": "John", "age": 10, "address": {"city": "Ajaccio", "country": "France"}, "friends": ["fred", "jamie"]}` + "\n",
+			`{"name": "John", "age": 10, "address": {"city": "Ajaccio", "country": "France"}, "friends": ["fred", "jamie"]}`,
 		},
 	}
 
@@ -66,5 +66,5 @@ func TestIteratorToJSONArray(t *testing.T) {
 	var buf bytes.Buffer
 	err := document.IteratorToJSONArray(&buf, it)
 	require.NoError(t, err)
-	require.JSONEq(t, `[{"a": 0}, {"a": 1}, {"a": 2}]`, buf.String())
+	require.Equal(t, `[{"a": 0}, {"a": 1}, {"a": 2}]`, buf.String())
 }
