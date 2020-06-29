@@ -252,10 +252,6 @@ func SizeOfDoc(d Document) int {
 	return i
 }
 
-func errorManager(err error) (Value, error) {
-
-}
-
 // SetDocument set a document
 func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) (Value, error) {
 	last := len(path) - 1
@@ -284,15 +280,9 @@ func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) 
 					return NewZeroValue(DocumentValue), err
 				}
 				fmt.Printf("return va %v\n", v)
-				return va, nil
+				return v, nil
 			}
-<<<<<<< HEAD
-
 			buf, _ := fb.SetDocument(va, path[i+1:], reqValue)
-=======
-			buf, _ := fb.SetDocument(v, path[i+1:], value)
-
->>>>>>> parent of 3036ab4... add error manager, more tests
 			return buf, nil
 		case ArrayValue:
 			fmt.Printf("Array Value  p := %s\n", path[i:])
@@ -301,7 +291,7 @@ func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) 
 				fmt.Printf("error in array %s\n", err)
 				return va, err
 			}
-			fmt.Printf("Array Value befor AADD and va type %s and va %s\n", v.Type, va)
+			fmt.Printf("Array Value befor AADD and va type %s and va %s\n", v.Type, v)
 			return v, nil
 		case TextValue:
 			return value, nil
@@ -327,8 +317,8 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 				fmt.Printf("return error =>> %s\n", err)
 				return err
 			}
-			vv, err := setDocumentValue(field.Value, p[1], va)
-			fb.Replace(field.Field, vv)
+			fmt.Printf("returned va =>> %v\n", va)
+			fb.Replace(field.Field, va)
 			return nil
 		case ArrayValue:
 			arr, _ := field.Value.ConvertToArray()
@@ -346,7 +336,7 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 			return nil
 		}
 	}
-
+	fmt.Println("Call fb.ADD")
 	fb.Add(p[0], value)
 	return nil
 
