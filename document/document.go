@@ -243,10 +243,6 @@ func SizeOfDoc(d Document) int {
 	return i
 }
 
-func errorManager(err error) (Value, error) {
-
-}
-
 // SetDocument set a document
 func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, value Value) (Value, error) {
 	last := len(path) - 1
@@ -275,8 +271,8 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, value Value) (Value,
 				fmt.Printf("return va %v\n", va)
 				return va, nil
 			}
-			buf, _ := fb.SetDocument(v, path[i+1:], value)
 
+			buf, _ := fb.SetDocument(v, path[i+1:], value)
 			return buf, nil
 		case ArrayValue:
 			var vbuf ValueBuffer
