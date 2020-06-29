@@ -252,6 +252,10 @@ func SizeOfDoc(d Document) int {
 	return i
 }
 
+func errorManager(err error) (Value, error) {
+
+}
+
 // SetDocument set a document
 func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) (Value, error) {
 	last := len(path) - 1
@@ -282,8 +286,13 @@ func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) 
 				fmt.Printf("return va %v\n", v)
 				return va, nil
 			}
+<<<<<<< HEAD
 
 			buf, _ := fb.SetDocument(va, path[i+1:], reqValue)
+=======
+			buf, _ := fb.SetDocument(v, path[i+1:], value)
+
+>>>>>>> parent of 3036ab4... add error manager, more tests
 			return buf, nil
 		case ArrayValue:
 			fmt.Printf("Array Value  p := %s\n", path[i:])
