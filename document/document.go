@@ -10,7 +10,11 @@ import (
 
 // ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
 // the field wasn't found in the document.
-var ErrFieldNotFound = errors.New("field not found")
+var (
+	ErrFieldNotFound = errors.New("field not found")
+	ErrShortNotation = errors.New("Short Notation")
+	ErrCreateField   = errors.New("field must be created")
+)
 
 // A Document represents a group of key value pairs.
 type Document interface {
@@ -69,10 +73,6 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
-var (
-	errShortNotation = errors.New("Short Notation")
-)
-
 func setArrayValue(value Value, index int, reqValue Value) (ValueBuffer, error) {
 	array, _ := value.ConvertToArray()
 	var vbuf ValueBuffer
@@ -116,6 +116,25 @@ func (path ValuePath) findIndexInPath() (int, error) {
 	}
 
 	return 0, err
+}
+
+// FieldValidator iterate over the path
+func FieldValidator(d Document, path ValuePath) error {
+	last := len(path) - 1
+	for i, p := range path {
+		v, err := d.GetByField(p)
+		fmt.Printf("i == %d && last == %d\n", i, last)
+		if err != nil {
+			if i == last {
+				return ErrCreateField
+			}
+			return ErrFieldNotFound
+		}
+		if v.Type == ArrayValue {
+			return nil
+		}
+	}
+	return nil
 }
 
 // IndexValidator check if the index is not out of range
@@ -224,24 +243,27 @@ func SizeOfDoc(d Document) int {
 	return i
 }
 
+func errorManager(err error) (Value, error) {
+
+}
+
 // SetDocument set a document
-func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Value, error) {
+func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, value Value) (Value, error) {
 	last := len(path) - 1
-	var fbuf FieldBuffer
+	d, _ := v.ConvertToDocument()
+	err := FieldValidator(d, path)
+	switch err {
+	case ErrCreateField:
+		var fbuf FieldBuffer
+		fbuf.Copy(d)
+		fbuf.Add(path[last], value)
+		return NewDocumentValue(fbuf), err
+	case ErrFieldNotFound:
+		return v, err
+	}
 
 	for i := 0; i < len(path); i++ {
-		v, err := d.GetByField(path[i])
-		fmt.Printf("in SET DOC %s, i == %d and last == %d\n", v, i, last)
-		fmt.Printf("Type := %s and path %s and value %v\n", v.Type, path[i], v)
-		if err != nil {
-			if i == last {
-				fbuf.Copy(d)
-				fbuf.Add(path[i], value)
-				fmt.Printf("Type := %s and path %s and value %v\n", v.Type, path, NewDocumentValue(fbuf))
-				return NewDocumentValue(fbuf), err
-			}
-			return NewZeroValue(DocumentValue), err
-		}
+		v, _ := d.GetByField(path[i])
 		switch v.Type {
 		case DocumentValue:
 			if i == last || last == 1 {
@@ -253,8 +275,7 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Val
 				fmt.Printf("return va %v\n", va)
 				return va, nil
 			}
-			fmt.Printf("RECURS %s\n", path[i+1:])
-			buf, _ := fb.SetDocument(d, path[i+1:], value)
+			buf, _ := fb.SetDocument(v, path[i+1:], value)
 
 			return buf, nil
 		case ArrayValue:
@@ -287,9 +308,8 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 		}
 		switch field.Value.Type {
 		case DocumentValue:
-			d, err := field.Value.ConvertToDocument()
 
-			va, err := fb.SetDocument(d, p[1:], value)
+			va, err := fb.SetDocument(field.Value, p[1:], value)
 			if err != nil {
 				fb.Replace(field.Field, va)
 				fmt.Printf("return error =>> %s\n", err)
