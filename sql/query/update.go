@@ -119,8 +119,25 @@ func (stmt UpdateStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 	return res, err
 }
 
+// parseError check if there is no error in the request
+func (stmt UpdateStmt) parseError(d *document.FieldBuffer) error {
+	fmt.Println(stmt.SetPairs)
+	for fname := range stmt.SetPairs {
+		fmt.Printf("fname== %s\n", fname)
+		path := document.NewValuePath(fname)
+		err := document.FieldValidator(d, path)
+		if err != nil {
+			fmt.Println("RETURN error in PARSE")
+			return err
+		}
+		fmt.Println("RETURN in PARSE")
+	}
+	return nil
+}
+
 // set executes the Set clause.
 func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, args []expr.Param) error {
+
 	for fname, e := range stmt.SetPairs {
 		ev, err := e.Eval(expr.EvalStack{
 			Tx:       tx,
@@ -133,6 +150,7 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 
 		path := document.NewValuePath(fname)
 		_ = d.Set(path, ev)
+
 	}
 	return nil
 }
