@@ -184,6 +184,7 @@ func setArray(arr Value, path ValuePath, value Value) (Value, error) {
 	var vbuf ValueBuffer
 	index, err := IndexValidator(path, d)
 	if err != nil {
+		fmt.Printf("error in array %s\n", err)
 		return arr, err
 	}
 	fmt.Printf("validate index ==  %d\n", index)
@@ -308,8 +309,6 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Val
 
 			return v, nil
 		case TextValue:
-			v, _ := setDocumentValue(v, path[last], value)
-			fmt.Printf("txt setted %v and value\n", v)
 			return value, nil
 		}
 
@@ -320,8 +319,9 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Val
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 	//check the dot notation
-	for _, field := range fb.fields {
-		if p[0] != field.Field {
+	for i, field := range fb.fields {
+		fmt.Printf("field == %s and fb[i] :: %v\n", field.Field, fb.fields[i].Value)
+		if p[0] != field.Field && field.Value.Type != ArrayValue {
 			continue
 		}
 		switch field.Value.Type {
@@ -343,8 +343,19 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 			fb.Replace(field.Field, vv)
 			return nil
 		case ArrayValue:
-			arr, _ := field.Value.ConvertToArray()
-			_, err := IndexValidator(p[1:], arr)
+			fmt.Printf("p size %d\n", len(p))
+			if len(p) == 1 {
+				var buf FieldBuffer
+				buf.Add(field.Field, field.Value)
+				buf.Add(p[0], value)
+				v := NewDocumentValue(buf)
+				fmt.Printf("value of array %v\n", v)
+				fb.fields[i].Value = v
+
+				return nil
+			}
+			arr, err := field.Value.ConvertToArray()
+			_, err = IndexValidator(p[1:], arr)
 			fmt.Printf("error in before if array set %s\n", err)
 			if err != nil {
 				return errors.New("out of range")
@@ -395,6 +406,7 @@ func (fb *FieldBuffer) Delete(field string) error {
 // Replace the value of the field by v.
 func (fb *FieldBuffer) Replace(field string, v Value) error {
 	for i := range fb.fields {
+		fmt.Printf("array to change %v\n", fb.fields[i].Value)
 		if fb.fields[i].Field == field {
 			fb.fields[i].Value = v
 			return nil
