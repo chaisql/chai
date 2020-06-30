@@ -122,6 +122,7 @@ func (path ValuePath) findIndexInPath() (int, error) {
 // FieldValidator iterate over the path
 func FieldValidator(d Document, path ValuePath) error {
 	last := len(path) - 1
+	fmt.Printf("last == %d\n", last)
 	if last == 1 {
 		return ErrValueNotSet
 	}
@@ -255,8 +256,9 @@ func SizeOfDoc(d Document) int {
 // SetDocument set a document
 func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) (Value, error) {
 	last := len(path) - 1
+	//set it in Set function before calling SetDocument
 	d, _ := value.ConvertToDocument()
-	err := FieldValidator(d, path)
+	err := FieldValidator(d, path[1:])
 	switch err {
 	case ErrCreateField:
 		var fbuf FieldBuffer
@@ -264,6 +266,7 @@ func (fb *FieldBuffer) SetDocument(value Value, path ValuePath, reqValue Value) 
 		fbuf.Add(path[last], reqValue)
 		return NewDocumentValue(fbuf), err
 	case ErrValueNotSet:
+		fmt.Printf("Err == %\n", ErrValueNotSet)
 		break
 	case ErrFieldNotFound:
 		return value, err
