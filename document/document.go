@@ -52,7 +52,6 @@ func NewFieldBuffer() *FieldBuffer {
 
 // Add a field to the buffer.
 func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
-	fmt.Println(fb.fields)
 	fb.fields = append(fb.fields, fieldValue{field, v})
 	return fb
 }
@@ -98,17 +97,6 @@ func setArrayValue(value Value, index int, reqValue Value) (ValueBuffer, error) 
 	}
 
 	return vbuf, nil
-}
-
-// Lenght return size of array
-func Lenght(a Array) int {
-	len := 0
-
-	_ = a.Iterate(func(i int, va Value) error {
-		len++
-		return nil
-	})
-	return len
 }
 
 // ArrayFindIndex
@@ -186,7 +174,7 @@ func IndexValidator(path ValuePath, a Array) (int, error) {
 
 func setArray(arr Value, path ValuePath, value Value) (Value, error) {
 	d, _ := arr.ConvertToArray()
-	size := Lenght(d)
+	size, err := ArrayLength(d)
 	fmt.Printf("in set Array == %v and path == %s and size %d\n", arr, path, size)
 	last := path.lastIndexOfPath()
 	var vbuf ValueBuffer
@@ -324,10 +312,26 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Val
 	return NewZeroValue(DocumentValue), nil
 }
 
+// AddFieldToArray add a field in unique of document
+func (fb *FieldBuffer) AddFieldToArray(value Value, field string, ReqField string, reqValue Value) error {
+	var b ValueBuffer
+	err := b.Copy(value.V.(Array))
+	if err != nil {
+		fb.Add(field, NewArrayValue(&b))
+		fb.Delete(field)
+		return err
+	}
+	fb.Add(field, NewArrayValue(&b))
+	fb.Add(ReqField, reqValue)
+	fb.Delete(field)
+	return nil
+}
+
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 	//check the dot notation
 	for i, field := range fb.fields {
+		fmt.Printf("field[i] == %v && i == %d\n", fb.fields[i], i)
 		if p[0] != field.Field && field.Value.Type != ArrayValue {
 			continue
 		}
@@ -349,18 +353,16 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 			fb.Replace(field.Field, vv)
 			return nil
 		case ArrayValue:
-			fmt.Printf("field == %v and p size %d\n", fb.fields[i], len(p))
+			fmt.Printf("field == %v and field.Value %v\n", fb.fields[i], (field.Value))
 			if len(p) == 1 {
-				var b ValueBuffer
-				b.Copy(field.Value.V.(Array))
-				fb.Add(field.Field, NewArrayValue(&b))
-				fb.Delete(field.Field)
-				fb.Add(p[0], value)
-				return nil
+				if i == 0 {
+					return fb.AddFieldToArray(field.Value, field.Field, p[0], value)
+				}
+				break
 			}
-			arr, err := field.Value.ConvertToArray()
-			index, err := IndexValidator(p, arr)
-			fmt.Printf("err %s && index == %d\n", err, index)
+
+			arr, _ := field.Value.ConvertToArray()
+			_, err := IndexValidator(p, arr)
 			if err != nil {
 				//	var buf FieldBuffer
 				fmt.Printf("err %s and buf == %v\n", err, fb.fields)
@@ -398,9 +400,7 @@ func (fb FieldBuffer) Iterate(fn func(field string, value Value) error) error {
 // Delete a field from the buffer.
 func (fb *FieldBuffer) Delete(field string) error {
 	for i := range fb.fields {
-		fmt.Printf("field to delete == %s\n", fb.fields[i].Field)
 		if fb.fields[i].Field == field {
-			fmt.Printf("field going to be deleted == %s, leng of fb %d\n", fb.fields[i].Field, fb.Len())
 			fb.fields = append(fb.fields[0:i], fb.fields[i+1:]...)
 			return nil
 		}

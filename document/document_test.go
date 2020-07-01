@@ -127,10 +127,14 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, document.NewInt64Value(12), v)
 
 		buf.Add("d", document.NewArrayValue(vbuf))
+		buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
+		vb, err = buf.GetByField("max")
+		require.Equal(t, vb, document.NewInt64Value(99))
+		require.NoError(t, err)
 		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
-
 		vb, err = buf.GetByField("d")
 		require.NoError(t, err)
+
 		arr, err := vb.ConvertToArray()
 		require.NoError(t, err)
 		size, err := document.ArrayLength(arr)
@@ -144,8 +148,6 @@ func TestFieldBuffer(t *testing.T) {
 
 		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
 		require.Error(t, err, errors.New("index out of bounds"))
-		err = buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
-		require.NoError(t, err)
 
 		buf.Reset()
 		buf1.Reset()
