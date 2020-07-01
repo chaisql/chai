@@ -113,14 +113,16 @@ func Lenght(a Array) int {
 // ArrayFindIndex
 func (path ValuePath) findIndexInPath() (int, error) {
 	var err error
+	var index int
+	index = -1
 	for _, p := range path {
-		index, err := strconv.Atoi(p)
+		index, err = strconv.Atoi(p)
 		if err == nil {
 			return index, nil
 		}
-	}
 
-	return 0, err
+	}
+	return index, err
 }
 
 // lastIndexOfPath return the last index of path.
@@ -169,8 +171,8 @@ func IndexValidator(path ValuePath, a Array) (int, error) {
 
 	index, err := path.findIndexInPath()
 	if err != nil {
-		fmt.Println("Err := ", a)
-		return 0, err
+		fmt.Printf("Err := %s\n", err)
+		return -1, err
 	}
 
 	if index >= size {
@@ -234,20 +236,20 @@ func setArray(arr Value, path ValuePath, value Value) (Value, error) {
 }
 
 func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
-	fmt.Printf("field in req %s and Value in req %v\n", f, reqValue)
+	//	fmt.Printf("field in req %s and Value in req %v\n", f, reqValue)
 	d, err := value.ConvertToDocument()
 	if err != nil {
-		fmt.Printf("error to convert %s\n", err)
+		//	fmt.Printf("error to convert %s\n", err)
 		return NewZeroValue(DocumentValue), err
 	}
 
 	var fbuf FieldBuffer
 	err = d.Iterate(func(field string, va Value) error {
 		if f == field {
-			fmt.Printf("field %s and Value %v\n", field, reqValue)
+			//	fmt.Printf("field %s and Value %v\n", field, reqValue)
 			fbuf.Add(field, reqValue)
 		} else {
-			fmt.Printf("else field %s and Value %v\n", field, va)
+			//	fmt.Printf("else field %s and Value %v\n", field, va)
 			fbuf.Add(field, va)
 		}
 		return nil
@@ -276,8 +278,8 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Val
 
 	for i := 0; i < len(path); i++ {
 		v, err := d.GetByField(path[i])
-		fmt.Printf("in SET DOC %s, i == %d and last == %d\n", v, i, last)
-		fmt.Printf("Type := %s and path %s and value %v\n", v.Type, path[i], v)
+		//	fmt.Printf("in SET DOC %s, i == %d and last == %d\n", v, i, last)
+		//	fmt.Printf("Type := %s and path %s and value %v\n", v.Type, path[i], v)
 		if err != nil {
 			if i == last {
 				fbuf.Copy(d)
@@ -324,9 +326,8 @@ func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Val
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 	//check the dot notation
-	for i, field := range fb.fields {
-		fmt.Printf("field == %s and fb[i] :: %v\n", field.Field, fb.fields[i].Value)
-		if p[0] != field.Field {
+	for _, field := range fb.fields {
+		if p[0] != field.Field && field.Value.Type != ArrayValue {
 			continue
 		}
 		switch field.Value.Type {
@@ -343,14 +344,16 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 
 			//set the first node of the document
 			vv, _ := setDocumentValue(field.Value, p[1], va)
-			fmt.Printf("vv == %v\n", vv)
+			//		fmt.Printf("vv == %v\n", vv)
 			fb.Replace(field.Field, vv)
 			return nil
 		case ArrayValue:
 			fmt.Printf("p size %d\n", len(p))
 			arr, err := field.Value.ConvertToArray()
 			_, err = IndexValidator(p, arr)
+			fmt.Printf("err %s\n", err)
 			if err != nil {
+				fmt.Printf("err %s\n", err)
 				return errors.New("out of range")
 			}
 
@@ -397,7 +400,6 @@ func (fb *FieldBuffer) Delete(field string) error {
 // Replace the value of the field by v.
 func (fb *FieldBuffer) Replace(field string, v Value) error {
 	for i := range fb.fields {
-		fmt.Printf("array to change %v\n", fb.fields[i].Value)
 		if fb.fields[i].Field == field {
 			fb.fields[i].Value = v
 			return nil

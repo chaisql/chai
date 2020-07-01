@@ -3,7 +3,6 @@ package document_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -84,6 +83,7 @@ func TestFieldBuffer(t *testing.T) {
 		var result document.FieldBuffer
 		var buf1 document.FieldBuffer
 		var buf2 document.FieldBuffer
+		var friendBuf document.ValueBuffer
 
 		//construct array
 		vbuf = vbuf.Append(document.NewInt64Value(1))
@@ -153,20 +153,19 @@ func TestFieldBuffer(t *testing.T) {
 		buf2.Add("city", document.NewTextValue("Paris"))
 		buf2.Add("zipcode", document.NewTextValue("75001"))
 		buf1.Add("adress", document.NewDocumentValue(buf2))
-		var friendBuf document.ValueBuffer
 
-		buf1.Add("name", document.NewTextValue("Baz"))
-		buf2.Add("city", document.NewTextValue("Ajaccio"))
-		buf2.Add("zipcode", document.NewTextValue("20000"))
-		buf1.Add("adress", document.NewDocumentValue(buf2))
 		buf1.Add("favorite game", document.NewTextValue("FF IX"))
 
 		friendBuf = friendBuf.Append(document.NewDocumentValue(buf1))
 		buf.Add("friends", document.NewArrayValue(friendBuf))
 		err = buf.Set(document.NewValuePath("friends.0.favorite game"), document.NewTextValue("splinter cell"))
-		fmt.Printf("Set friend err %s\n", err)
 		vb, err = buf.GetByField("friends")
-		fmt.Printf("buf friend == %v and err %s\n", vb, err)
+		arr, err = vb.ConvertToArray()
+		size = document.Lenght(arr)
+		data, err := arr.GetByIndex(0)
+		d, err = data.ConvertToDocument()
+		game, err := d.GetByField("favorite game")
+		require.Equal(t, game, document.NewTextValue("splinter cell"))
 	})
 
 	t.Run("Delete", func(t *testing.T) {
