@@ -350,17 +350,19 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 			return nil
 		case ArrayValue:
 			fmt.Printf("field == %v and p size %d\n", fb.fields[i], len(p))
+			if len(p) == 1 {
+				var b ValueBuffer
+				b.Copy(field.Value.V.(Array))
+				fb.Add(field.Field, NewArrayValue(&b))
+				fb.Delete(field.Field)
+				fb.Add(p[0], value)
+				return nil
+			}
 			arr, err := field.Value.ConvertToArray()
 			index, err := IndexValidator(p, arr)
 			fmt.Printf("err %s && index == %d\n", err, index)
 			if err != nil {
 				//	var buf FieldBuffer
-				var b ValueBuffer
-				b.Copy(field.Value.V.(Array))
-				fb.Add(field.Field, NewArrayValue(&b))
-				fb.Delete(field.Field)
-
-				fb.Add(p[0], value)
 				fmt.Printf("err %s and buf == %v\n", err, fb.fields)
 				return errors.New("out of range")
 			}
