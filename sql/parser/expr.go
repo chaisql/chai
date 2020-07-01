@@ -380,7 +380,6 @@ func (p *Parser) parseFieldRef() ([]string, error) {
 		return nil, err
 	}
 	fieldRef = append(fieldRef, chunk)
-
 LOOP:
 	for {
 		// scan the very next token.
@@ -393,9 +392,11 @@ LOOP:
 		case scanner.DOT:
 			// scan the next token for an ident
 			tok, pos, lit := p.Scan()
-			if tok != scanner.IDENT {
+
+			if tok != scanner.IDENT && tok != scanner.STRING {
 				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
 			}
+
 			fieldRef = append(fieldRef, lit)
 		case scanner.NUMBER:
 			// if it starts with a dot, it's considered as an array index

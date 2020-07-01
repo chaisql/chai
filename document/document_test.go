@@ -3,6 +3,7 @@ package document_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -144,6 +145,28 @@ func TestFieldBuffer(t *testing.T) {
 		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
 		require.Error(t, err, errors.New("index out of bounds"))
 
+		buf.Reset()
+		buf1.Reset()
+		buf2.Reset()
+
+		buf1.Add("name", document.NewTextValue("Bar"))
+		buf2.Add("city", document.NewTextValue("Paris"))
+		buf2.Add("zipcode", document.NewTextValue("75001"))
+		buf1.Add("adress", document.NewDocumentValue(buf2))
+		var friendBuf document.ValueBuffer
+
+		buf1.Add("name", document.NewTextValue("Baz"))
+		buf2.Add("city", document.NewTextValue("Ajaccio"))
+		buf2.Add("zipcode", document.NewTextValue("20000"))
+		buf1.Add("adress", document.NewDocumentValue(buf2))
+		buf1.Add("favorite game", document.NewTextValue("FF IX"))
+
+		friendBuf = friendBuf.Append(document.NewDocumentValue(buf1))
+		buf.Add("friends", document.NewArrayValue(friendBuf))
+		err = buf.Set(document.NewValuePath("friends.0.favorite game"), document.NewTextValue("splinter cell"))
+		fmt.Printf("Set friend err %s\n", err)
+		vb, err = buf.GetByField("friends")
+		fmt.Printf("buf friend == %v and err %s\n", vb, err)
 	})
 
 	t.Run("Delete", func(t *testing.T) {

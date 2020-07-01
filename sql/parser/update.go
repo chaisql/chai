@@ -62,7 +62,6 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 		if tok != scanner.IDENT {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 		}
-
 		p.Unscan()
 		ref, err := p.parseFieldRef()
 		if err != nil {
