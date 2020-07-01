@@ -144,6 +144,8 @@ func TestFieldBuffer(t *testing.T) {
 
 		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
 		require.Error(t, err, errors.New("index out of bounds"))
+		err = buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
+		require.NoError(t, err)
 
 		buf.Reset()
 		buf1.Reset()
