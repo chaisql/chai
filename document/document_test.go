@@ -80,37 +80,70 @@ func TestFieldBuffer(t *testing.T) {
 	t.Run("Set", func(t *testing.T) {
 		var buf document.FieldBuffer
 		var vbuf document.ValueBuffer
+		var result document.FieldBuffer
+		var buf1 document.FieldBuffer
+		var buf2 document.FieldBuffer
 
+		//construct array
 		vbuf = vbuf.Append(document.NewInt64Value(1))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
+
+		// document imbrication
+		buf2.Add("type", document.NewTextValue("cell"))
+		buf2.Add("number", document.NewTextValue("111-222-3333"))
+		buf1.Add("phone", document.NewDocumentValue(buf2))
+		buf.Add("contact", document.NewDocumentValue(buf1))
+
+		//change phone type
+		buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
+
+		//expected results cell to fix
+		result.Add("type", document.NewTextValue("fix"))
+		result.Add("number", document.NewTextValue("111-222-3333"))
+
+		vb, err := buf.GetByField("contact")
+		require.NoError(t, err)
+		d, err := vb.ConvertToDocument()
+		require.NoError(t, err)
+		v, err := d.GetByField("phone")
+		require.NoError(t, err)
+		res := document.NewDocumentValue(result)
+		require.Equal(t, res, v)
 
 		buf.Add("a", document.NewInt64Value(10))
 		buf.Add("b", document.NewTextValue("hello"))
 
 		buf.Set(document.NewValuePath("a"), document.NewFloat64Value(11))
-		v, err := buf.GetByField("a")
+		v, err = buf.GetByField("a")
 		require.NoError(t, err)
 		require.Equal(t, document.NewFloat64Value(11), v)
 
 		buf.Set(document.NewValuePath("c"), document.NewInt64Value(12))
-		require.Equal(t, 3, buf.Len())
+		require.Equal(t, 4, buf.Len())
 		v, err = buf.GetByField("c")
 		require.NoError(t, err)
 		require.Equal(t, document.NewInt64Value(12), v)
 
 		buf.Add("d", document.NewArrayValue(vbuf))
-
 		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
-		require.Equal(t, 4, buf.Len())
-		vb, err := buf.GetByField("d")
+
+		vb, err = buf.GetByField("d")
 		require.NoError(t, err)
 		arr, err := vb.ConvertToArray()
+		require.NoError(t, err)
+		size, err := document.ArrayLength(arr)
+		require.NoError(t, err)
+		require.Equal(t, 3, size)
 		require.NoError(t, err)
 
 		v, err = arr.GetByIndex(2)
 		require.NoError(t, err)
 		require.Equal(t, document.NewInt64Value(9), v)
+
+		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
+		require.Error(t, err, errors.New("index out of bounds"))
+
 	})
 
 	t.Run("Delete", func(t *testing.T) {

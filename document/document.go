@@ -101,7 +101,7 @@ func setArrayValue(value Value, index int, reqValue Value) (ValueBuffer, error) 
 
 // Lenght return size of array
 func Lenght(a Array) int {
-	len := 1
+	len := 0
 
 	_ = a.Iterate(func(i int, va Value) error {
 		len++
@@ -161,7 +161,11 @@ func FieldValidator(d Document, path ValuePath) error {
 
 // IndexValidator check if the index is not out of range
 func IndexValidator(path ValuePath, a Array) (int, error) {
-	size := Lenght(a)
+	size, err := ArrayLength(a)
+	if err != nil {
+		return size, err
+	}
+
 	index, err := path.findIndexInPath()
 	if err != nil {
 		fmt.Println("Err := ", a)
@@ -215,7 +219,7 @@ func setArray(arr Value, path ValuePath, value Value) (Value, error) {
 			if err != nil {
 				return arr, err
 			}
-			fmt.Println("VF ", vf)
+
 			return NewArrayValue(vf), nil
 		default:
 			fmt.Printf("Set array value at index ==  %d\n", index)
@@ -328,7 +332,6 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 		case DocumentValue:
 			d, err := field.Value.ConvertToDocument()
 			va, err := fb.SetDocument(d, p[1:], value)
-
 			switch err {
 			case ErrCreateField:
 				fb.Replace(field.Field, va)
@@ -356,18 +359,14 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 			}
 			arr, err := field.Value.ConvertToArray()
 			_, err = IndexValidator(p[1:], arr)
-			fmt.Printf("error in before if array set %s\n", err)
 			if err != nil {
 				return errors.New("out of range")
 			}
 
 			va, _ := setArray(field.Value, p[1:], value)
-			vv, _ := setDocumentValue(field.Value, p[1], va)
-			fmt.Printf("vv == %v\n", vv)
 			fb.Replace(field.Field, va)
 			return nil
 		default:
-			fmt.Printf("field == %s && value == %v and type %s\n", field.Field, value, value.Type)
 			fb.Replace(field.Field, value)
 			return nil
 		}
