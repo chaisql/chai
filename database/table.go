@@ -18,7 +18,7 @@ type Table struct {
 	tx       *Transaction
 	Store    engine.Store
 	name     string
-	cfgStore *tableConfigStore
+	cfgStore *tableInfoStore
 }
 
 // Config of the table.

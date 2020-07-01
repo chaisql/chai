@@ -121,11 +121,11 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	return err
 }
 
-type tableConfigStore struct {
+type tableInfoStore struct {
 	st engine.Store
 }
 
-func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
+func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) error {
 	key := []byte(tableName)
 	_, err := t.st.Get(key)
 	if err == nil {
@@ -143,7 +143,7 @@ func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
 	return t.st.Put(key, v)
 }
 
-func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
+func (t *tableInfoStore) Replace(tableName string, cfg *TableConfig) error {
 	key := []byte(tableName)
 	_, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
@@ -160,7 +160,7 @@ func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
 	return t.st.Put(key, v)
 }
 
-func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
+func (t *tableInfoStore) Get(tableName string) (*TableConfig, error) {
 	key := []byte(tableName)
 	v, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
@@ -180,7 +180,7 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 	return &cfg, nil
 }
 
-func (t *tableConfigStore) Delete(tableName string) error {
+func (t *tableInfoStore) Delete(tableName string) error {
 	key := []byte(tableName)
 	err := t.st.Delete(key)
 	if err == engine.ErrKeyNotFound {

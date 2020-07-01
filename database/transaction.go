@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	tableConfigStoreName = "__genji.tables"
-	indexStoreName       = "__genji.indexes"
+	tableInfoStoreName = "__genji.tables"
+	indexStoreName     = "__genji.indexes"
 )
 
 // Transaction represents a database transaction. It provides methods for managing the
@@ -24,7 +24,7 @@ type Transaction struct {
 	db         *Database
 	Tx         engine.Transaction
 	writable   bool
-	tcfgStore  *tableConfigStore
+	tcfgStore  *tableInfoStore
 	indexStore *indexStore
 }
 
@@ -158,7 +158,7 @@ func (tx Transaction) ListTables() ([]string, error) {
 	tables := make([]string, 0, len(stores))
 
 	for _, st := range stores {
-		if st == indexStoreName || st == tableConfigStoreName {
+		if st == indexStoreName || st == tableInfoStoreName {
 			continue
 		}
 		if strings.HasPrefix(st, index.StorePrefix) {
@@ -281,12 +281,12 @@ func (tx Transaction) ReIndexAll() error {
 	return nil
 }
 
-func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {
-	st, err := tx.Tx.GetStore(tableConfigStoreName)
+func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
+	st, err := tx.Tx.GetStore(tableInfoStoreName)
 	if err != nil {
 		return nil, err
 	}
-	return &tableConfigStore{
+	return &tableInfoStore{
 		st: st,
 	}, nil
 }

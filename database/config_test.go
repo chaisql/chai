@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTableConfigStore(t *testing.T) {
+func TestTableInfoStore(t *testing.T) {
 	ng := memoryengine.NewEngine()
 	defer ng.Close()
 
@@ -21,7 +21,7 @@ func TestTableConfigStore(t *testing.T) {
 	st, err := tx.GetStore("foo")
 	require.NoError(t, err)
 
-	tcs := tableConfigStore{st}
+	tcs := tableInfoStore{st}
 
 	cfg := TableConfig{
 		FieldConstraints: []FieldConstraint{
