@@ -392,8 +392,7 @@ LOOP:
 		case scanner.DOT:
 			// scan the next token for an ident
 			tok, pos, lit := p.Scan()
-
-			if tok != scanner.IDENT && tok != scanner.STRING {
+			if tok != scanner.IDENT {
 				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
 			}
 

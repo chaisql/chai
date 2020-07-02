@@ -106,7 +106,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 		return err
 	}
 
-	for _, v := range *vb {
+	for i, v := range *vb {
 		switch v.Type {
 		case DocumentValue:
 			var buf FieldBuffer
@@ -115,7 +115,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			*vb = vb.Append(NewDocumentValue(&buf))
+			_ = vb.Replace(i, NewDocumentValue(&buf))
 		case ArrayValue:
 			var buf ValueBuffer
 			err = buf.Copy(v.V.(Array))
@@ -123,7 +123,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			*vb = vb.Append(NewArrayValue(&buf))
+			_ = vb.Replace(i, NewArrayValue(&buf))
 		}
 	}
 
