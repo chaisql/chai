@@ -23,6 +23,14 @@ func TestParserUdpate(t *testing.T) {
 				},
 			},
 			false},
+		{"SET/No con field with double quotes", "UPDATE test SET \"favorite game\" = \"splinter cell\"",
+			query.UpdateStmt{
+				TableName: "test",
+				SetPairs: map[string]expr.Expr{
+					"favorite game": expr.TextValue("splinter cell"),
+				},
+			},
+			false},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			query.UpdateStmt{
 				TableName: "test",
