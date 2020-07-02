@@ -152,20 +152,15 @@ func FieldValidator(d Document, path ValuePath) error {
 
 // IndexValidator check if the index is not out of range
 func IndexValidator(path ValuePath, a Array) (int, error) {
-	size, err := ArrayLength(a)
-	fmt.Printf(" size of array ==  %d\n", size)
-	if err != nil {
-		return size, err
-	}
 
 	index, err := path.findIndexInPath()
 	if err != nil {
-		fmt.Printf("Err := %s\n", err)
 		return -1, err
 	}
 
-	if index >= size {
-		fmt.Printf("index %d && size %d\n", index, size)
+	_, err = a.GetByIndex(index)
+	if err != nil {
+		fmt.Printf("Err := %s\n", err)
 		return index, ErrIndexOutOfBound
 	}
 
@@ -322,6 +317,7 @@ func (fb *FieldBuffer) AddFieldToArray(value Value, field string, ReqField strin
 		return err
 	}
 	fb.Add(field, NewArrayValue(&b))
+
 	fb.Add(ReqField, reqValue)
 	fb.Delete(field)
 	return nil
@@ -355,10 +351,9 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 		case ArrayValue:
 			fmt.Printf("field == %v and field.Value %v\n", fb.fields[i], (field.Value))
 			if len(p) == 1 {
-				if i == 0 {
-					return fb.AddFieldToArray(field.Value, field.Field, p[0], value)
-				}
-				break
+
+				return fb.AddFieldToArray(field.Value, field.Field, p[0], value)
+
 			}
 
 			arr, _ := field.Value.ConvertToArray()

@@ -3,6 +3,7 @@ package document_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -147,6 +148,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, document.NewInt64Value(9), v)
 
 		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
+		fmt.Printf("********\n ERR ===>  %s\n ***********", err)
 		require.Error(t, err, errors.New("index out of bounds"))
 
 		buf.Reset()
@@ -165,7 +167,6 @@ func TestFieldBuffer(t *testing.T) {
 		err = buf.Set(document.NewValuePath("friends.0.favorite game"), document.NewTextValue("splinter cell"))
 		vb, err = buf.GetByField("friends")
 		arr, err = vb.ConvertToArray()
-		size = document.Lenght(arr)
 		data, err := arr.GetByIndex(0)
 		d, err = data.ConvertToDocument()
 		game, err := d.GetByField("favorite game")
