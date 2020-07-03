@@ -172,7 +172,7 @@ func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
 	if err != nil {
 		return value, err
 	}
-
+	fmt.Printf("setDocumentValue:change Value == %v at field %s, by value = %v\n", value, f, reqValue)
 	var fbuf FieldBuffer
 	err = d.Iterate(func(field string, va Value) error {
 		if f == field {
@@ -222,12 +222,12 @@ func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
 			return v, err
 		}
 
-		err = buf.ReplaceFieldValue(path[1:], reqValue)
+		v, err = buf.ReplaceFieldValue(path[1:], reqValue)
 		if err != nil {
 			return v, err
 		}
 
-		return NewDocumentValue(buf), nil
+		return v, nil
 	case ArrayValue:
 		var buf ValueBuffer
 		err := buf.Copy(v.V.(Array))
@@ -249,18 +249,18 @@ func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
 }
 
 //ReplaceFieldValue reur
-func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
+func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) (Value, error) {
 	fmt.Printf("ReplaceFieldValue: path = %s\n", path[0])
 
 	last := path.lastIndexOfPath()
-	for i, f := range fb.fields {
+	for _, f := range fb.fields {
 		if f.Field == path[0] {
 			switch f.Value.Type {
 			case DocumentValue:
 				var fbuf FieldBuffer
 				err := fbuf.Copy(f.Value.V.(Document))
 				if err != nil {
-					return err
+					return f.Value, err
 				}
 
 				v, err := fbuf.GetByField(path[1])
@@ -268,52 +268,59 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 					return fb.ReplaceFieldValue(path[1:], reqValue)
 				}
 				fmt.Printf("ReplaceFieldValue: DocValue: v by field %v && last = %d\n", v, last)
-				if last == 1 {
-					va, _ := setDocumentValue(f.Value, path[last], reqValue)
-					fb.fields[i].Value = va
-					return nil
+				if last == 2 {
+					va, _ := setDocumentValue(v, path[last], reqValue)
+					fbuf.Replace(path[1], va)
+					return NewDocumentValue(fbuf), nil
 				}
 
-				v, err = replaceValue(v, path[1:], reqValue)
+				v, err = fbuf.ReplaceFieldValue(path[1:], reqValue)
+				if err != nil {
+					return NewDocumentValue(fbuf), err
+				}
+				return v, nil
 
-				fmt.Printf("ReplaceFieldValue: returned replaceValue: v = %v and error = %s\n", v, err)
-				fbuf.Replace(path[1], v)
-				fb.fields[i].Value = NewDocumentValue(fbuf)
-				return nil
 			case ArrayValue:
 				var buf ValueBuffer
 				arr, _ := f.Value.ConvertToArray()
 				err := buf.Copy(arr)
 				if err != nil {
-					return err
+					return f.Value, err
 				}
 				fmt.Printf("ReplaceFieldValue: call ArrayReplaceValue path = %s\n", path[1])
 				err = buf.ArrayReplaceValue(path[1:], reqValue)
 				if err != nil {
-					return err
+					return f.Value, err
 				}
 
-				fb.fields[i].Value = NewArrayValue(buf)
-				return nil
+				return NewArrayValue(buf), nil
 			default:
-				fb.fields[i].Value = reqValue
-				return nil
+				fb.Replace(path[0], reqValue)
+				return reqValue, errors.New("text value replaced ")
 			}
 		}
 	}
+	fmt.Printf("ReplaceFieldValue: add path = %s\n", path[1])
 	fb.Add(path[0], reqValue)
-	return nil
+	return NewZeroValue(DocumentValue), nil
 }
 
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
+func (fb *FieldBuffer) Set(pa ValuePath, reqValue Value) error {
 	//check the dot notation
 	fmt.Printf("Set: path = %s\n", pa)
 	for i, field := range fb.fields {
 		if pa[0] != field.Field && field.Value.Type != ArrayValue {
 			continue
+		} else if pa[0] == field.Field {
+			v, err := fb.ReplaceFieldValue(pa, reqValue)
+			if err != nil {
+				return err
+			}
+			fb.fields[i].Value = v
+			return nil
 		}
-		switch field.Value.Type {
+		/*switch field.Value.Type {
 		case DocumentValue:
 			var fbuf FieldBuffer
 			err := fbuf.Copy(field.Value.V.(Document))
@@ -350,10 +357,10 @@ func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 		default:
 			fb.Replace(field.Field, value)
 			return nil
-		}
+		}*/
 	}
-
-	fb.Add(pa[0], value)
+	fmt.Printf("Set: add = %s and value == %v\n", pa[0], reqValue)
+	fb.Add(pa[0], reqValue)
 	return nil
 
 }

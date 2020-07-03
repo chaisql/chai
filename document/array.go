@@ -103,13 +103,12 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 	index, err := IndexValidator(path, vb)
 	last := path.lastIndexOfPath()
-	fmt.Printf("Array Replace path ==  %s\n", path[0])
+	fmt.Printf("Array Replace path ==  %s, index = %d\n", path[0], index)
 	if err != nil {
 		return err
 	}
 
 	for i, v := range *vb {
-
 		if i == index {
 			switch v.Type {
 			case DocumentValue:
@@ -119,16 +118,39 @@ func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 					return err
 				}
 				fmt.Printf("ArrayReplaceValue: path = %s\n", path[1])
-				_ = buf.ReplaceFieldValue(path[1:], reqValue)
-				vb.Replace(i, NewDocumentValue(&buf))
+				idx := 1
+				_, err = buf.GetByField(path[idx])
+				fmt.Printf("ArrayReplaceValue: GetByField() err = %s\n", err)
+				if err != nil {
+					idx++
+				}
+				v, err := buf.ReplaceFieldValue(path[idx:], reqValue)
+				buf.Replace(path[idx+1], v)
+				fmt.Printf("ArrayReplaceValue: buf.Replace(path[idx], v) = %s\n", path)
+				fmt.Printf("ArrayReplaceValue: return value %v and err = %s\n", v, err)
+				vb.Replace(i, NewDocumentValue(buf))
 			case ArrayValue:
-				fmt.Printf("Array value %v && last == %d\n", v, last)
+
+				fmt.Printf("ArrayReplaceValue: ArrayValue:  %v && last == %d\n", v, last)
+				row, err := v.V.(Array).GetByIndex(i)
+				fmt.Printf("ArrayReplaceValue: Array value by row %v at index == %d and error = %s\n", row, i, err)
+
 				if last == 1 {
 					v = reqValue
 					vb.Replace(index, v)
+					return nil
 				}
+				var buf ValueBuffer
+				arr, _ := v.ConvertToArray()
+				fmt.Printf("ArrayReplaceValue: ArrayValue:  %v && last == %d\n", arr, index)
+				err = buf.Copy(arr)
+				if err != nil {
+					return err
+				}
+
 			default:
 				v = reqValue
+				fmt.Printf("ArrayReplaceValue: Default:  %v\n", v)
 				vb.Replace(index, v)
 			}
 		}
