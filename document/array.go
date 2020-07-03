@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
@@ -99,11 +100,41 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
+// GetBufferFromValue return buffer
+func (vb *ValueBuffer) GetBufferFromValue(v Value) (FieldBuffer, ValueBuffer, error) {
+	switch v.Type {
+	case DocumentValue:
+		var fbuf FieldBuffer
+		err := fbuf.Copy(v.V.(Document))
+		if err != nil {
+			return fbuf, nil, err
+		}
+
+		return fbuf, nil, nil
+
+	case ArrayValue:
+		var buf ValueBuffer
+		fb := NewFieldBuffer()
+		arr, _ := v.ConvertToArray()
+		err := buf.Copy(arr)
+		if err != nil {
+
+			return *fb, nil, err
+		}
+		return *fb, buf, nil
+	default:
+		fb := NewFieldBuffer()
+		return *fb, nil, fmt.Errorf("no conversion bad type %s", v.Type)
+	}
+	fb := NewFieldBuffer()
+	return *fb, nil, errors.New("no conversion done")
+}
+
 // ArrayReplaceValue set value at index
 func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 	index, err := IndexValidator(path, vb)
 	last := path.lastIndexOfPath()
-	fmt.Printf("Array Replace path ==  %s, index = %d\n", path[0], index)
+	fmt.Printf("Array Replace path ==  %s, index = %d last == %d\n", path, index, last)
 	if err != nil {
 		return err
 	}
@@ -113,22 +144,40 @@ func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 			switch v.Type {
 			case DocumentValue:
 				var buf FieldBuffer
-				err := buf.Copy(v.V.(Document))
-				if err != nil {
-					return err
+				fmt.Printf("*** ****     ArrayReplaceValue: DocumentValue: value = %v\n", v)
+				_, err := strconv.Atoi(path[0])
+				if err == nil && last != 1 {
+					buf, _, err := vb.GetBufferFromValue(v)
+					if err != nil {
+						return err
+					}
+					v, err := buf.ReplaceFieldValue(path[1:], reqValue)
+					fmt.Printf("ArrayReplaceValue: buf.Replace(path[idx], v) = %s\n", path)
+					fmt.Printf("ArrayReplaceValue: return value %v and err = %s\n", v, err)
+					vb.Replace(i, NewDocumentValue(buf))
+					return nil
 				}
-				fmt.Printf("ArrayReplaceValue: path = %s\n", path[1])
+
+				fmt.Printf("ArrayReplaceValue: DocumentValue: path = %s\n", path[1])
 				idx := 1
-				_, err = buf.GetByField(path[idx])
-				fmt.Printf("ArrayReplaceValue: GetByField() err = %s\n", err)
+				v, err = buf.GetByField(path[idx])
+				fmt.Printf("ArrayReplaceValue: GetByField() v := %v and err = %s\n", v, err)
 				if err != nil {
+					err := buf.Copy(v.V.(Document))
 					idx++
+					if err != nil {
+						return err
+					}
+					fmt.Printf("ArrayReplaceValue: buf.Copy = %v\n", NewDocumentValue(buf))
+
 				}
 				v, err := buf.ReplaceFieldValue(path[idx:], reqValue)
 				buf.Replace(path[idx+1], v)
 				fmt.Printf("ArrayReplaceValue: buf.Replace(path[idx], v) = %s\n", path)
 				fmt.Printf("ArrayReplaceValue: return value %v and err = %s\n", v, err)
+				fmt.Printf("****             ArrayReplaceValue: return to SET value %v and err = %s\n", NewDocumentValue(buf), err)
 				vb.Replace(i, NewDocumentValue(buf))
+
 			case ArrayValue:
 
 				fmt.Printf("ArrayReplaceValue: ArrayValue:  %v && last == %d\n", v, last)

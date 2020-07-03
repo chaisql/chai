@@ -248,6 +248,35 @@ func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
 	return v, errors.New("type must be an array or a document")
 }
 
+func GetBufferFromValue(v Value) (FieldBuffer, ValueBuffer, error) {
+	switch v.Type {
+	case DocumentValue:
+		var fbuf FieldBuffer
+		err := fbuf.Copy(v.V.(Document))
+		if err != nil {
+			return fbuf, nil, err
+		}
+
+		return fbuf, nil, nil
+
+	case ArrayValue:
+		var buf ValueBuffer
+		fb := NewFieldBuffer()
+		arr, _ := v.ConvertToArray()
+		err := buf.Copy(arr)
+		if err != nil {
+
+			return *fb, nil, err
+		}
+		return *fb, buf, nil
+	default:
+		fb := NewFieldBuffer()
+		return *fb, nil, fmt.Errorf("no conversion bad type %s", v.Type)
+	}
+	fb := NewFieldBuffer()
+	return *fb, nil, errors.New("no conversion done")
+}
+
 //ReplaceFieldValue reur
 func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) (Value, error) {
 	fmt.Printf("ReplaceFieldValue: path = %s\n", path[0])
@@ -287,7 +316,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) (Value,
 				if err != nil {
 					return f.Value, err
 				}
-				fmt.Printf("ReplaceFieldValue: call ArrayReplaceValue path = %s\n", path[1])
+				fmt.Printf("ReplaceFieldValue: call ArrayReplaceValue path = %s\n", path[1:])
 				err = buf.ArrayReplaceValue(path[1:], reqValue)
 				if err != nil {
 					return f.Value, err
