@@ -291,7 +291,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 	//check the dot notation
 	for i, field := range fb.fields {
-		if pa[0] != field.Field {
+		if pa[0] != field.Field && field.Value.Type != ArrayValue {
 			continue
 		}
 		switch field.Value.Type {
@@ -306,6 +306,16 @@ func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 			fb.fields[i].Value = NewDocumentValue(fbuf)
 			return nil
 		case ArrayValue:
+			fmt.Printf("len(pa) == %d and i == %d\n", len(pa), i)
+			if len(pa) == 1 {
+				if i == 0 {
+					fb.AddFieldToArray(field.Value, field.Field, pa[0], value)
+					fmt.Printf("Set: final Value:: fb.fields[i] == %v\n", fb.fields)
+					return nil
+				}
+				break
+			}
+
 			var buf ValueBuffer
 			err := buf.Copy(field.Value.V.(Array))
 			if err != nil {
