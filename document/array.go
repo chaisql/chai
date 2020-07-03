@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
@@ -100,111 +99,55 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-// GetBufferFromValue return buffer
-func (vb *ValueBuffer) GetBufferFromValue(v Value) (FieldBuffer, ValueBuffer, error) {
+// ArrayReplaceValue set value at index
+func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
+	fmt.Printf("ArrayReplaceValue: V.Type == %s \n", v.Type)
+	last := path.lastIndexOfPath()
+	fmt.Printf("     ArrayReplaceValue: LAST == %d \n", last)
+
+	_, index, _ := IndexValidator(path, vb)
+	fmt.Printf("ArrayReplaceValue: path ==  %s, index = %d last == %d\n", path, index, last)
+	fmt.Printf("ArrayReplaceValue: V := %v and  V.Type == %s \n", v, v.Type)
 	switch v.Type {
 	case DocumentValue:
-		var fbuf FieldBuffer
-		err := fbuf.Copy(v.V.(Document))
-		if err != nil {
-			return fbuf, nil, err
-		}
+		fmt.Printf("ArrayReplaceValue: DocumentValue: V := %v and  V.Type == %s \n", v, v.Type)
+		var buf FieldBuffer
+		idx := 0
+		_ = buf.Copy(v.V.(Document))
+		v, _ := buf.GetByField(path[idx])
 
-		return fbuf, nil, nil
+		vv, err := buf.ReplaceFieldValue(v, path[1:], reqValue)
+		buf.Replace(path[0], vv)
+		fmt.Printf(" *****                  ArrayReplaceValue: vv == %v && path == %s and err == %s\n", NewDocumentValue(buf), path, err)
 
+		return NewDocumentValue(buf), nil
 	case ArrayValue:
+		fmt.Printf("ArrayReplaceValue: ArrayValue: V := %v and  V.Type == %s \n", v, v.Type)
 		var buf ValueBuffer
-		fb := NewFieldBuffer()
-		arr, _ := v.ConvertToArray()
-		err := buf.Copy(arr)
-		if err != nil {
+		_ = buf.Copy(v.V.(Array))
+		vv, index, err := IndexValidator(path, buf)
+		nextIndex := 1
+		if last > 0 {
+			fmt.Printf("============== *****                  ArrayReplaceValue: vv == %v && index == %d and err == %s\n", vv, index, err)
+			va, _ := buf.ArrayReplaceValue(vv, path[nextIndex+1:], reqValue)
+			buf.Replace(index, va)
+		} else {
+			fmt.Printf(">>>>>============== *****        ELSE          ArrayReplaceValue: vv == %v && index == %d and err == %s\n", vv, index, err)
 
-			return *fb, nil, err
+			buf.Replace(index, reqValue)
 		}
-		return *fb, buf, nil
+		fmt.Printf("============== *****                  ArrayReplaceValue: vv == %v && path == %s and err == %s\n", NewArrayValue(buf), path, err)
+
+		return NewArrayValue(buf), nil
 	default:
-		fb := NewFieldBuffer()
-		return *fb, nil, fmt.Errorf("no conversion bad type %s", v.Type)
-	}
-	fb := NewFieldBuffer()
-	return *fb, nil, errors.New("no conversion done")
-}
+		fmt.Printf("ArrayReplaceValue: Default: V := %v and  V.Type == %s \n", v, v.Type)
+	//	vb.Replace(index, reqValue)
+		fmt.Printf("ArrayReplaceValue: Default:  %v\n", NewArrayValue(vb))
+		return reqValue, nil
 
-// ArrayReplaceValue set value at index
-func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
-	index, err := IndexValidator(path, vb)
-	last := path.lastIndexOfPath()
-	fmt.Printf("Array Replace path ==  %s, index = %d last == %d\n", path, index, last)
-	if err != nil {
-		return err
 	}
 
-	for i, v := range *vb {
-		if i == index {
-			switch v.Type {
-			case DocumentValue:
-				var buf FieldBuffer
-				fmt.Printf("*** ****     ArrayReplaceValue: DocumentValue: value = %v\n", v)
-				_, err := strconv.Atoi(path[0])
-				if err == nil && last != 1 {
-					buf, _, err := vb.GetBufferFromValue(v)
-					if err != nil {
-						return err
-					}
-					v, err := buf.ReplaceFieldValue(path[1:], reqValue)
-					fmt.Printf("ArrayReplaceValue: buf.Replace(path[idx], v) = %s\n", path)
-					fmt.Printf("ArrayReplaceValue: return value %v and err = %s\n", v, err)
-					vb.Replace(i, NewDocumentValue(buf))
-					return nil
-				}
-
-				fmt.Printf("ArrayReplaceValue: DocumentValue: path = %s\n", path[1])
-				idx := 1
-				v, err = buf.GetByField(path[idx])
-				fmt.Printf("ArrayReplaceValue: GetByField() v := %v and err = %s\n", v, err)
-				if err != nil {
-					err := buf.Copy(v.V.(Document))
-					idx++
-					if err != nil {
-						return err
-					}
-					fmt.Printf("ArrayReplaceValue: buf.Copy = %v\n", NewDocumentValue(buf))
-
-				}
-				v, err := buf.ReplaceFieldValue(path[idx:], reqValue)
-				buf.Replace(path[idx+1], v)
-				fmt.Printf("ArrayReplaceValue: buf.Replace(path[idx], v) = %s\n", path)
-				fmt.Printf("ArrayReplaceValue: return value %v and err = %s\n", v, err)
-				fmt.Printf("****             ArrayReplaceValue: return to SET value %v and err = %s\n", NewDocumentValue(buf), err)
-				vb.Replace(i, NewDocumentValue(buf))
-
-			case ArrayValue:
-
-				fmt.Printf("ArrayReplaceValue: ArrayValue:  %v && last == %d\n", v, last)
-				row, err := v.V.(Array).GetByIndex(i)
-				fmt.Printf("ArrayReplaceValue: Array value by row %v at index == %d and error = %s\n", row, i, err)
-
-				if last == 1 {
-					v = reqValue
-					vb.Replace(index, v)
-					return nil
-				}
-				var buf ValueBuffer
-				arr, _ := v.ConvertToArray()
-				fmt.Printf("ArrayReplaceValue: ArrayValue:  %v && last == %d\n", arr, index)
-				err = buf.Copy(arr)
-				if err != nil {
-					return err
-				}
-
-			default:
-				v = reqValue
-				fmt.Printf("ArrayReplaceValue: Default:  %v\n", v)
-				vb.Replace(index, v)
-			}
-		}
-	}
-	return nil
+	return NewArrayValue(vb), nil
 }
 
 // Copy deep copies all the values from the given array.
