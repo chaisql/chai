@@ -2,7 +2,6 @@ package document
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 )
 
@@ -105,9 +104,8 @@ func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Array Replace at:  index == %d, by value == %v as type %s\n", index, reqValue, reqValue.Type)
+
 	for i, v := range *vb {
-		fmt.Printf("i == %d, v == %v && type == %s\n", i, v, v.Type)
 		if i == index {
 			switch v.Type {
 			case DocumentValue:
@@ -127,9 +125,7 @@ func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 				v = reqValue
 				vb.Replace(index, v)
 			}
-
 		}
-
 	}
 	return nil
 }

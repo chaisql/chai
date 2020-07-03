@@ -166,6 +166,7 @@ func IndexValidator(path ValuePath, a Array) (int, error) {
 	return index, nil
 }
 
+//
 func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
 	d, err := value.ConvertToDocument()
 	if err != nil {
@@ -182,7 +183,6 @@ func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
 		fbuf.Add(field, va)
 		return nil
 	})
-
 	return NewDocumentValue(fbuf), err
 }
 
@@ -274,11 +274,11 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 					return err
 				}
 
-				_, err = IndexValidator(path[i:], arr)
+				err = buf.ArrayReplaceValue(path[1:], reqValue)
 				if err != nil {
 					return err
 				}
-				buf.ArrayReplaceValue(path[1:], reqValue)
+
 				fb.fields[i].Value = NewArrayValue(buf)
 				return nil
 			default:
