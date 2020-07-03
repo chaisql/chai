@@ -218,20 +218,19 @@ func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
 	case DocumentValue:
 	case ArrayValue:
 		var buf ValueBuffer
-		arr, _ := v.ConvertToArray()
-		err := buf.Copy(arr)
+		err := buf.Copy(v.V.(Array))
 		if err != nil {
-			return NewArrayValue(buf), err
+			return v, err
 		}
 
-		_, err = IndexValidator(path[1:], arr)
+		err = buf.ArrayReplaceValue(path[1:], reqValue)
 		if err != nil {
-			return NewArrayValue(buf), err
+			return v, err
 		}
-		buf.ArrayReplaceValue(path[1:], reqValue)
 
 		return NewArrayValue(buf), nil
 	}
+
 	return v, errors.New("type must be an array or a document")
 }
 
@@ -243,7 +242,6 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 			switch f.Value.Type {
 			case DocumentValue:
 				var fbuf FieldBuffer
-				fmt.Printf("FieldBuffer document value:  value == %v\n", f.Value)
 				err := fbuf.Copy(f.Value.V.(Document))
 				if err != nil {
 					return err
@@ -251,7 +249,6 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 
 				v, err := fbuf.GetByField(path[1])
 				if err != nil {
-					fmt.Printf("FieldBuffer Recusive: path == %v and err == %s \n", path[1:], err)
 					return fb.ReplaceFieldValue(path[1:], reqValue)
 				}
 
@@ -264,7 +261,6 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 				v, err = replaceValue(v, path[1:], reqValue)
 				fbuf.Replace(path[1], v)
 				fb.fields[i].Value = NewDocumentValue(fbuf)
-				fmt.Printf("FieldBuffer: fb.fields[i].Value %v\n", fb.fields[i].Value)
 				return nil
 			case ArrayValue:
 				var buf ValueBuffer
@@ -301,20 +297,17 @@ func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 		switch field.Value.Type {
 		case DocumentValue:
 			var fbuf FieldBuffer
-			d, _ := field.Value.ConvertToDocument()
-			fbuf.Copy(d)
+			err := fbuf.Copy(field.Value.V.(Document))
+			if err != nil {
+				return err
+			}
+
 			fbuf.ReplaceFieldValue(pa[1:], value)
 			fb.fields[i].Value = NewDocumentValue(fbuf)
 			return nil
 		case ArrayValue:
 			var buf ValueBuffer
-			arr, _ := field.Value.ConvertToArray()
-			err := buf.Copy(arr)
-			if err != nil {
-				return err
-			}
-
-			_, err = IndexValidator(pa, arr)
+			err := buf.Copy(field.Value.V.(Array))
 			if err != nil {
 				return err
 			}
@@ -332,6 +325,7 @@ func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 			return nil
 		}
 	}
+
 	fb.Add(pa[0], value)
 	return nil
 
