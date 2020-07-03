@@ -2,6 +2,7 @@ package document
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 )
 
@@ -96,6 +97,41 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 		*vb = append(*vb, v)
 		return nil
 	})
+}
+
+// ArrayReplaceValue set value at index
+func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
+	index, err := IndexValidator(path, vb)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Array Replace at:  index == %d, by value == %v as type %s\n", index, reqValue, reqValue.Type)
+	for i, v := range *vb {
+		fmt.Printf("i == %d, v == %v && type == %s\n", i, v, v.Type)
+		if i == index {
+			switch v.Type {
+			case DocumentValue:
+				var buf FieldBuffer
+				err := buf.Copy(v.V.(Document))
+				if err != nil {
+					return err
+				}
+
+				_ = buf.ReplaceFieldValue(path[1:], reqValue)
+				vb.Replace(i, NewDocumentValue(&buf))
+			case ArrayValue:
+				v = reqValue
+				vb.Replace(index, v)
+
+			default:
+				v = reqValue
+				vb.Replace(index, v)
+			}
+
+		}
+
+	}
+	return nil
 }
 
 // Copy deep copies all the values from the given array.

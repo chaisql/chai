@@ -59,6 +59,7 @@ func (p *Parser) parseSetClause() (map[string]expr.Expr, error) {
 
 		// Scan the identifier for the field name.
 		tok, pos, lit := p.ScanIgnoreWhitespace()
+
 		if tok != scanner.IDENT {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 		}

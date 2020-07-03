@@ -120,7 +120,6 @@ func (path ValuePath) lastIndexOfPath() int {
 	if size == 0 {
 		return 0
 	}
-
 	return (size - 1)
 }
 
@@ -160,102 +159,31 @@ func IndexValidator(path ValuePath, a Array) (int, error) {
 
 	_, err = a.GetByIndex(index)
 	if err != nil {
-		fmt.Printf("Err := %s\n", err)
+		fmt.Printf("index validator Err := %s\n", err)
 		return index, ErrIndexOutOfBound
 	}
 
 	return index, nil
 }
 
-func (fb *FieldBuffer) SetArray(arr Value, path ValuePath, value Value) (Value, error) {
-	d, _ := arr.ConvertToArray()
-	size, err := ArrayLength(d)
-	fmt.Printf("in set Array == %v and path == %s and size %d\n", arr, path, size)
-	last := path.lastIndexOfPath()
-	var vbuf ValueBuffer
-	err = vbuf.Copy(d)
-	if err != nil {
-		fmt.Printf("error in array %s\n", err)
-		return arr, err
-	}
-	index, err := IndexValidator(path, d)
-	if err != nil {
-		fmt.Printf("error in array %s\n", err)
-		return arr, err
-	}
-	fmt.Printf("validate index ==  %d\n", index)
-	for i := 0; i < size; i++ {
-		fmt.Printf("i == %d idx %d and size %d\n", i, index, size)
-		v, err := d.GetByIndex(i)
-		if err != nil {
-			fmt.Printf("error get index == %s\n", err)
-			return arr, err
-		}
-		fmt.Printf("v by index %v\n", v)
-		switch v.Type {
-		case DocumentValue:
-			if i == index {
-				if i != last {
-					fmt.Printf("VA in first append before return %v\n", NewArrayValue(vbuf))
-
-					d, err := v.ConvertToDocument()
-					fmt.Printf("err in last %s\n", err)
-
-					va, err := fb.SetDocument(d, path[i+1:], value)
-					vbuf.Replace(i, va)
-					fmt.Printf("VA in last before return %v\n", NewArrayValue(vbuf))
-
-					break
-				}
-				va, err := setDocumentValue(v, path[last], value)
-				fmt.Println("VA ", va, err)
-				if err != nil {
-					fmt.Println(err)
-					return NewArrayValue(vbuf), err
-				}
-			}
-		case ArrayValue:
-			vf, err := setArrayValue(arr, index, value)
-			if err != nil {
-				return arr, err
-			}
-
-			return NewArrayValue(vf), nil
-		default:
-			fmt.Printf("Set array value at index ==  %d\n", index)
-			vf, _ := setArrayValue(arr, index, value)
-			fmt.Println("VF ", vf)
-			return NewArrayValue(vf), nil
-		}
-	}
-
-	return NewArrayValue(vbuf), nil
-}
-
 func setDocumentValue(value Value, f string, reqValue Value) (Value, error) {
-	//	fmt.Printf("field in req %s and Value in req %v\n", f, reqValue)
 	d, err := value.ConvertToDocument()
 	if err != nil {
-		//	fmt.Printf("error to convert %s\n", err)
-		return NewZeroValue(DocumentValue), err
+		return value, err
 	}
 
 	var fbuf FieldBuffer
 	err = d.Iterate(func(field string, va Value) error {
 		if f == field {
-			//	fmt.Printf("field %s and Value %v\n", field, reqValue)
 			fbuf.Add(field, reqValue)
-		} else {
-			//	fmt.Printf("else field %s and Value %v\n", field, va)
-			fbuf.Add(field, va)
+			return nil
 		}
+
+		fbuf.Add(field, va)
 		return nil
 	})
-	_, errField := d.GetByField(f)
-	if errField != nil {
-		fbuf.Add(f, reqValue)
-	}
-	return NewDocumentValue(fbuf), nil
+
+	return NewDocumentValue(fbuf), err
 }
 
 // SizeOfDoc return the size of Document.
@@ -266,82 +194,6 @@ func SizeOfDoc(d Document) int {
 		return nil
 	})
 	return i
-}
-
-// SetDocument set a document
-func (fb *FieldBuffer) SetDocument(d Document, path ValuePath, value Value) (Value, error) {
-	last := len(path) - 1
-	var fbuf FieldBuffer
-	fmt.Printf("path %s\n", path)
-	fbuf.Copy(d)
-	/*v, err := d.GetByField(path[0])
-	fmt.Printf("DOC GET BY FIELD %v &&  path[0] == %s and err == %s\n", v, path[0], err)*/
-	for i := 0; i < len(path); i++ {
-		v, err := d.GetByField(path[i])
-		fmt.Printf("in SET DOC %v, i == %d and last == %d\n", v, i, last)
-		//	fmt.Printf("Type := %s and path %s and value %v\n", v.Type, path[i], v)
-		if err != nil {
-			if i == last {
-				fbuf.Copy(d)
-				fbuf.Add(path[i], value)
-				fmt.Printf("Type := %s and path %s and value %v\n", v.Type, path, NewDocumentValue(fbuf))
-				return NewDocumentValue(fbuf), ErrCreateField
-			}
-			return NewZeroValue(DocumentValue), err
-		}
-		switch v.Type {
-		case DocumentValue:
-			if i == last || last == 1 {
-				v, err := setDocumentValue(v, path[last], value)
-				if err != nil {
-					fmt.Println(err)
-					return v, err
-				}
-				fbuf.Replace(path[last], v)
-				fmt.Printf("return va %v\n", NewDocumentValue(fbuf))
-				return v, nil
-			}
-
-			d, _ := v.ConvertToDocument()
-			buf, _ := fb.SetDocument(d, path[i+1:], value)
-			va, _ := setDocumentValue(v, path[i+1], buf)
-			fbuf.Replace(path[i], va)
-			vv := NewDocumentValue(fbuf)
-			fmt.Printf("return vv %v\n", NewDocumentValue(fbuf))
-			return vv, nil
-		case ArrayValue:
-			var buf ValueBuffer
-			arr, _ := v.ConvertToArray()
-			err := buf.Copy(arr)
-			if err != nil {
-				return v, err
-			}
-
-			index, err := IndexValidator(path[i:], arr)
-			if err != nil {
-				return v, errors.New("out of range")
-			}
-
-			buf.Replace(index, value)
-
-			//	va, _ := fb.SetArray(field.Value, p[1:], value)
-			// /fb.Replace(path[i], NewArrayValue(buf))
-
-			fmt.Printf("Array Value  := %v\n", v)
-			v, err := fb.SetArray(v, path[i:], value)
-			if err != nil {
-				fmt.Printf("error in array %s\n", err)
-				return v, err
-			}
-			fmt.Printf("Array Value befor AADD and va type %s and va %s\n", v.Type, v)
-			
-			return NewArrayValue(buf), nil
-		case TextValue:
-			return value, nil
-		}
-
-	}
-	return NewZeroValue(DocumentValue), nil
 }
 
 // AddFieldToArray add a field in unique of document
@@ -361,35 +213,100 @@ func (fb *FieldBuffer) AddFieldToArray(value Value, field string, ReqField strin
 	return nil
 }
 
+func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
+	switch v.Type {
+	case DocumentValue:
+	case ArrayValue:
+		var buf ValueBuffer
+		arr, _ := v.ConvertToArray()
+		err := buf.Copy(arr)
+		if err != nil {
+			return NewArrayValue(buf), err
+		}
+
+		_, err = IndexValidator(path[1:], arr)
+		if err != nil {
+			return NewArrayValue(buf), err
+		}
+		buf.ArrayReplaceValue(path[1:], reqValue)
+
+		return NewArrayValue(buf), nil
+	}
+	return v, errors.New("type must be an array or a document")
+}
+
+//ReplaceFieldValue reur
+func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
+	last := path.lastIndexOfPath()
+	for i, f := range fb.fields {
+		if f.Field == path[0] {
+			switch f.Value.Type {
+			case DocumentValue:
+				var fbuf FieldBuffer
+				fmt.Printf("FieldBuffer document value:  value == %v\n", f.Value)
+				err := fbuf.Copy(f.Value.V.(Document))
+				if err != nil {
+					return err
+				}
+
+				v, err := fbuf.GetByField(path[1])
+				if err != nil {
+					fmt.Printf("FieldBuffer Recusive: path == %v and err == %s \n", path[1:], err)
+					return fb.ReplaceFieldValue(path[1:], reqValue)
+				}
+
+				if last == 1 {
+					va, _ := setDocumentValue(f.Value, path[last], reqValue)
+					fb.fields[i].Value = va
+					return nil
+				}
+
+				v, err = replaceValue(v, path[1:], reqValue)
+				fbuf.Replace(path[1], v)
+				fb.fields[i].Value = NewDocumentValue(fbuf)
+				fmt.Printf("FieldBuffer: fb.fields[i].Value %v\n", fb.fields[i].Value)
+				return nil
+			case ArrayValue:
+				var buf ValueBuffer
+				arr, _ := f.Value.ConvertToArray()
+				err := buf.Copy(arr)
+				if err != nil {
+					return err
+				}
+
+				_, err = IndexValidator(path[i:], arr)
+				if err != nil {
+					return err
+				}
+				buf.ArrayReplaceValue(path[1:], reqValue)
+				fb.fields[i].Value = NewArrayValue(buf)
+				return nil
+			default:
+				fb.fields[i].Value = reqValue
+				return nil
+			}
+		}
+	}
+	fb.Add(path[0], reqValue)
+	return nil
+}
+
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
+func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 	//check the dot notation
-	for _, field := range fb.fields {
-		if p[0] != field.Field && field.Value.Type != ArrayValue {
+	for i, field := range fb.fields {
+		if pa[0] != field.Field {
 			continue
 		}
 		switch field.Value.Type {
 		case DocumentValue:
-
-			d, err := field.Value.ConvertToDocument()
-			va, err := fb.SetDocument(d, p[1:], value)
-			switch err {
-			case ErrCreateField:
-				fb.Replace(field.Field, va)
-				return err
-			case ErrIndexOutOfBound:
-				return err
-			}
-
-			//set the first node of the document
-			vv, _ := setDocumentValue(field.Value, p[1], va)
-			fb.Replace(field.Field, vv)
+			var fbuf FieldBuffer
+			d, _ := field.Value.ConvertToDocument()
+			fbuf.Copy(d)
+			fbuf.ReplaceFieldValue(pa[1:], value)
+			fb.fields[i].Value = NewDocumentValue(fbuf)
 			return nil
 		case ArrayValue:
-			if len(p) == 1 {
-				return fb.AddFieldToArray(field.Value, field.Field, p[0], value)
-			}
-
 			var buf ValueBuffer
 			arr, _ := field.Value.ConvertToArray()
 			err := buf.Copy(arr)
@@ -397,21 +314,25 @@ func (fb *FieldBuffer) Set(p ValuePath, value Value) error {
 				return err
 			}
 
-			_, err = IndexValidator(p, arr)
+			_, err = IndexValidator(pa, arr)
 			if err != nil {
-				return errors.New("out of range")
+				return err
 			}
 
-			va, _ := fb.SetArray(field.Value, p[1:], value)
-			fb.Replace(field.Field, va)
+			err = buf.ArrayReplaceValue(pa[1:], value)
+			if err != nil {
+				return err
+			}
+
+			fb.Replace(field.Field, NewArrayValue(buf))
+			fmt.Printf("Set: final Value:: fb.fields[i] == %v\n", fb.fields[i].Value)
 			return nil
 		default:
 			fb.Replace(field.Field, value)
 			return nil
 		}
 	}
-
-	fb.Add(p[0], value)
+	fb.Add(pa[0], value)
 	return nil
 
 }
@@ -462,7 +383,7 @@ func (fb *FieldBuffer) Copy(d Document) error {
 		return err
 	}
 
-	for _, f := range fb.fields {
+	for i, f := range fb.fields {
 		switch f.Value.Type {
 		case DocumentValue:
 			var buf FieldBuffer
@@ -471,15 +392,14 @@ func (fb *FieldBuffer) Copy(d Document) error {
 				return err
 			}
 
-			fb.Replace(f.Field, NewDocumentValue(&buf))
+			fb.fields[i].Value = NewDocumentValue(&buf)
 		case ArrayValue:
 			var buf ValueBuffer
 			err = buf.Copy(f.Value.V.(Array))
 			if err != nil {
 				return err
 			}
-
-			fb.Replace(f.Field, NewArrayValue(&buf))
+			fb.fields[i].Value = NewArrayValue(&buf)
 		}
 	}
 
