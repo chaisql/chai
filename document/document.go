@@ -216,17 +216,31 @@ func (fb *FieldBuffer) AddFieldToArray(value Value, field string, ReqField strin
 func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
 	switch v.Type {
 	case DocumentValue:
+		var buf FieldBuffer
+		err := buf.Copy(v.V.(Document))
+		if err != nil {
+			return v, err
+		}
+
+		err = buf.ReplaceFieldValue(path[1:], reqValue)
+		if err != nil {
+			return v, err
+		}
+
+		return NewDocumentValue(buf), nil
 	case ArrayValue:
 		var buf ValueBuffer
 		err := buf.Copy(v.V.(Array))
 		if err != nil {
 			return v, err
 		}
+		fmt.Printf("replaceValue: BUF:  %v \n", NewArrayValue(buf))
 
 		err = buf.ArrayReplaceValue(path[1:], reqValue)
 		if err != nil {
 			return v, err
 		}
+		fmt.Printf("replaceValue: BUF:  %v \n", NewArrayValue(buf))
 
 		return NewArrayValue(buf), nil
 	}
@@ -236,6 +250,8 @@ func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
 
 //ReplaceFieldValue reur
 func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
+	fmt.Printf("ReplaceFieldValue: path = %s\n", path[0])
+
 	last := path.lastIndexOfPath()
 	for i, f := range fb.fields {
 		if f.Field == path[0] {
@@ -251,7 +267,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 				if err != nil {
 					return fb.ReplaceFieldValue(path[1:], reqValue)
 				}
-
+				fmt.Printf("ReplaceFieldValue: DocValue: v by field %v && last = %d\n", v, last)
 				if last == 1 {
 					va, _ := setDocumentValue(f.Value, path[last], reqValue)
 					fb.fields[i].Value = va
@@ -259,6 +275,8 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 				}
 
 				v, err = replaceValue(v, path[1:], reqValue)
+
+				fmt.Printf("ReplaceFieldValue: returned replaceValue: v = %v and error = %s\n", v, err)
 				fbuf.Replace(path[1], v)
 				fb.fields[i].Value = NewDocumentValue(fbuf)
 				return nil
@@ -269,7 +287,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 				if err != nil {
 					return err
 				}
-
+				fmt.Printf("ReplaceFieldValue: call ArrayReplaceValue path = %s\n", path[1])
 				err = buf.ArrayReplaceValue(path[1:], reqValue)
 				if err != nil {
 					return err
@@ -290,6 +308,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(path ValuePath, reqValue Value) error {
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 	//check the dot notation
+	fmt.Printf("Set: path = %s\n", pa)
 	for i, field := range fb.fields {
 		if pa[0] != field.Field && field.Value.Type != ArrayValue {
 			continue
@@ -301,16 +320,14 @@ func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 			if err != nil {
 				return err
 			}
-
+			fmt.Printf("ReplaceFieldValue: path = %s", pa[0])
 			fbuf.ReplaceFieldValue(pa[1:], value)
 			fb.fields[i].Value = NewDocumentValue(fbuf)
 			return nil
 		case ArrayValue:
-			fmt.Printf("len(pa) == %d and i == %d\n", len(pa), i)
 			if len(pa) == 1 {
 				if i == 0 {
 					fb.AddFieldToArray(field.Value, field.Field, pa[0], value)
-					fmt.Printf("Set: final Value:: fb.fields[i] == %v\n", fb.fields)
 					return nil
 				}
 				break
@@ -321,7 +338,7 @@ func (fb *FieldBuffer) Set(pa ValuePath, value Value) error {
 			if err != nil {
 				return err
 			}
-
+			fmt.Printf("set: path = %s\n", pa[1])
 			err = buf.ArrayReplaceValue(pa[1:], value)
 			if err != nil {
 				return err

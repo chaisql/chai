@@ -2,6 +2,7 @@ package document
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 )
 
@@ -101,11 +102,14 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 // ArrayReplaceValue set value at index
 func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 	index, err := IndexValidator(path, vb)
+	last := path.lastIndexOfPath()
+	fmt.Printf("Array Replace path ==  %s\n", path[0])
 	if err != nil {
 		return err
 	}
 
 	for i, v := range *vb {
+
 		if i == index {
 			switch v.Type {
 			case DocumentValue:
@@ -114,13 +118,15 @@ func (vb *ValueBuffer) ArrayReplaceValue(path ValuePath, reqValue Value) error {
 				if err != nil {
 					return err
 				}
-
+				fmt.Printf("ArrayReplaceValue: path = %s\n", path[1])
 				_ = buf.ReplaceFieldValue(path[1:], reqValue)
 				vb.Replace(i, NewDocumentValue(&buf))
 			case ArrayValue:
-				v = reqValue
-				vb.Replace(index, v)
-
+				fmt.Printf("Array value %v && last == %d\n", v, last)
+				if last == 1 {
+					v = reqValue
+					vb.Replace(index, v)
+				}
 			default:
 				v = reqValue
 				vb.Replace(index, v)
