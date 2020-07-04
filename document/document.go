@@ -315,7 +315,6 @@ func (fb *FieldBuffer) Set(pa ValuePath, reqValue Value) error {
 					if len(pa) == 2 {
 						_, err := fb.GetByField(pa[1])
 						fmt.Printf("Set: ErrCreateField: err  = %s and len %d\n", err, len(pa))
-
 						switch err {
 						case ErrFieldNotFound:
 							fb.Add(pa[1], reqValue)
