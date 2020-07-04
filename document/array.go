@@ -101,11 +101,9 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 
 // ArrayReplaceValue set value at index
 func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
-	fmt.Printf("ArrayReplaceValue: V.Type == %s \n", v.Type)
 	last := path.lastIndexOfPath()
-	fmt.Printf("     ArrayReplaceValue: LAST == %d \n", last)
-
 	_, index, _ := IndexValidator(path, vb)
+
 	fmt.Printf("ArrayReplaceValue: path ==  %s, index = %d last == %d\n", path, index, last)
 	fmt.Printf("ArrayReplaceValue: V := %v and  V.Type == %s \n", v, v.Type)
 	switch v.Type {
@@ -116,38 +114,30 @@ func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value
 		_ = buf.Copy(v.V.(Document))
 		v, _ := buf.GetByField(path[idx])
 
-		vv, err := buf.ReplaceFieldValue(v, path[1:], reqValue)
+		vv, _ := buf.ReplaceFieldValue(v, path[1:], reqValue)
 		buf.Replace(path[0], vv)
-		fmt.Printf(" *****                  ArrayReplaceValue: vv == %v && path == %s and err == %s\n", NewDocumentValue(buf), path, err)
 
 		return NewDocumentValue(buf), nil
 	case ArrayValue:
-		fmt.Printf("ArrayReplaceValue: ArrayValue: V := %v and  V.Type == %s \n", v, v.Type)
 		var buf ValueBuffer
 		_ = buf.Copy(v.V.(Array))
-		vv, index, err := IndexValidator(path, buf)
+		vv, index, _ := IndexValidator(path, buf)
 		nextIndex := 1
-		if last > 0 {
-			fmt.Printf("============== *****                  ArrayReplaceValue: vv == %v && index == %d and err == %s\n", vv, index, err)
+		if last > 1 {
 			va, _ := buf.ArrayReplaceValue(vv, path[nextIndex+1:], reqValue)
 			buf.Replace(index, va)
-		} else {
-			fmt.Printf(">>>>>============== *****        ELSE          ArrayReplaceValue: vv == %v && index == %d and err == %s\n", vv, index, err)
-
+		} else if last == 0 {
 			buf.Replace(index, reqValue)
+		} else {
+			va, _ := buf.ArrayReplaceValue(vv, path[nextIndex:], reqValue)
+			buf.Replace(index, va)
 		}
-		fmt.Printf("============== *****                  ArrayReplaceValue: vv == %v && path == %s and err == %s\n", NewArrayValue(buf), path, err)
 
 		return NewArrayValue(buf), nil
 	default:
-		fmt.Printf("ArrayReplaceValue: Default: V := %v and  V.Type == %s \n", v, v.Type)
-	//	vb.Replace(index, reqValue)
-		fmt.Printf("ArrayReplaceValue: Default:  %v\n", NewArrayValue(vb))
 		return reqValue, nil
 
 	}
-
-	return NewArrayValue(vb), nil
 }
 
 // Copy deep copies all the values from the given array.

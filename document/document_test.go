@@ -114,12 +114,16 @@ func TestFieldBuffer(t *testing.T) {
 		buf1.Add("adress", document.NewDocumentValue(buf2))
 		buf1.Add("favorite game", document.NewTextValue("FF IX"))
 
+		buf2.Add("city", document.NewTextValue("ORLEANS"))
+		buf2.Add("zipcode", document.NewTextValue("45100"))
 		friendBuf = friendBuf.Append(document.NewDocumentValue(buf1))
 		buf.Add("friends", document.NewArrayValue(friendBuf))
 		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewArrayValue(vbuf))
 		fmt.Printf("buf set : %v\n", document.NewDocumentValue(buf))
 		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewInt64Value(99))
-
+		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2"), document.NewDocumentValue(buf1))
+		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.name"), document.NewTextValue("Toufik"))
+		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.adress"), document.NewDocumentValue(buf2))
 		vb, err := buf.GetByField("friends")
 		arr, err := vb.ConvertToArray()
 		data, err := arr.GetByIndex(0)
