@@ -115,7 +115,7 @@ func FieldValidator(v Value, path ValuePath) (Value, int, error) {
 			return vv, i, err
 		}
 	}
-
+	fmt.Printf("FieldValidator: Return err := %s\n", ErrFieldNotFound)
 	return v, -1, ErrFieldNotFound
 
 }
@@ -228,7 +228,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(v Value, path ValuePath, reqValue Value
 		if err != nil {
 			return v, nil
 		}
-
+		fmt.Printf("ReplaceFieldValue: DocumentValue: last == %d and path %s\n", last, path)
 		nextField := 0
 		if last == 1 {
 			nextField = 1
@@ -244,10 +244,18 @@ func (fb *FieldBuffer) ReplaceFieldValue(v Value, path ValuePath, reqValue Value
 			return NewDocumentValue(fbuf), err
 		}
 
-		vv, _, err := FieldValidator(v, path)
+		vv, _, err := FieldValidator(v, path[nextField:])
+		if last == 1 {
+			if err == ErrFieldNotFound {
+				fb.Add(path[0], reqValue)
+				fmt.Printf("ReplaceFieldValue: fb %v\n", NewDocumentValue(fb))
+				return NewDocumentValue(fbuf), ErrCreateField
+			}
+		}
+
 		if last == 0 {
 			fbuf.Replace(path[0], reqValue)
-			return NewDocumentValue(fbuf), nil
+			return NewDocumentValue(fbuf), err
 		}
 		va, err := replaceValue(vv, path[nextField:], reqValue)
 		if err != nil {
@@ -280,6 +288,7 @@ func (fb *FieldBuffer) ReplaceFieldValue(v Value, path ValuePath, reqValue Value
 		buf.Replace(index, vv)
 		return NewArrayValue(buf), nil
 	default:
+		fmt.Println("ReplaceFieldValue: Default:")
 		return reqValue, nil
 	}
 }
@@ -293,8 +302,16 @@ func (fb *FieldBuffer) Set(pa ValuePath, reqValue Value) error {
 			continue
 		} else if pa[0] == field.Field {
 			v, err := fb.ReplaceFieldValue(field.Value, pa, reqValue)
-			if err != nil {
+			fmt.Printf("Set: Err  = %s\n", err)
+			switch err {
+			case ErrCreateField:
+				fb.Add(pa[1], reqValue)
+				return nil
+			case nil:
+				break
+			default:
 				return err
+
 			}
 			fb.fields[i].Value = v
 			fmt.Printf("Set: Final value  = %v\n", fb.fields[i].Value)
