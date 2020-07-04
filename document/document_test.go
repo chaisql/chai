@@ -129,6 +129,10 @@ func TestFieldBuffer(t *testing.T) {
 		va, err := buf3.GetByField("email")
 		require.NoError(t, err)
 		require.Equal(t, va, document.NewTextValue("zed@gmail.com"))
+		buf3.Set(document.NewValuePath("contact.email"), document.NewTextValue("zerouali.t@gmail.com"))
+		va, err = buf3.GetByField("email")
+		require.NoError(t, err)
+		require.Equal(t, va, document.NewTextValue("zerouali.t@gmail.com"))
 
 		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewInt64Value(99))
 		require.NoError(t, err)
@@ -149,62 +153,102 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		v, err = arr.GetByIndex(2)
 		require.Equal(t, v, document.NewInt64Value(99))
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewDocumentValue(buf2))
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.type"), document.NewTextValue("fix"))
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.number"), document.NewTextValue("0609XXXX"))
 
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2"), document.NewDocumentValue(buf2))
 		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.type"), document.NewTextValue("fix"))
-		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.number"), document.NewTextValue("0609XXXX"))
-		require.NoError(t, err)
-
-		var result document.FieldBuffer
-		buf.Reset()
-		buf1.Reset()
-		// document imbrication
-
-		buf1.Add("phone", document.NewDocumentValue(buf2))
-		buf.Add("contact", document.NewDocumentValue(buf1))
-
-		//change phone type
-		buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
-
-		//expected results cell to fix
-		result.Add("type", document.NewTextValue("fix"))
-		result.Add("number", document.NewTextValue("111-222-3333"))
-
-		vb, err = buf.GetByField("contact")
-		require.NoError(t, err)
-		d, err = vb.ConvertToDocument()
-		require.NoError(t, err)
-		v, err = d.GetByField("phone")
-		require.NoError(t, err)
-		res := document.NewDocumentValue(result)
-		require.Equal(t, res, v)
-
-		buf.Add("d", document.NewArrayValue(vbuf))
-		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
-		vb, err = buf.GetByField("d")
+		vb, err = buf.GetByField("friends")
 		require.NoError(t, err)
 		arr, err = vb.ConvertToArray()
-		size, err := document.ArrayLength(arr)
 		require.NoError(t, err)
-		require.Equal(t, 3, size)
-		buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
-		buf.Set(document.NewValuePath("min"), document.NewInt64Value(0))
-		buf.Set(document.NewValuePath("average"), document.NewInt64Value(50))
-		vb, err = buf.GetByField("max")
+		data, err = arr.GetByIndex(0)
 		require.NoError(t, err)
-		require.Equal(t, vb, document.NewInt64Value(99))
-		v, err = arr.GetByIndex(2)
+		d, err = data.ConvertToDocument()
 		require.NoError(t, err)
-		require.Equal(t, document.NewInt64Value(9), v)
+		v, err = d.GetByField("adress")
+		require.NoError(t, err)
+		d, err = v.ConvertToDocument()
+		require.NoError(t, err)
+		v, err = d.GetByField("a")
+		arr, err = v.ConvertToArray()
+		require.NoError(t, err)
+		vd, err := arr.GetByIndex(2)
+		var fb document.FieldBuffer
+		err = fb.Copy(vd.V.(document.Document))
+		v, err = fb.GetByField("type")
+		require.NoError(t, err)
+		require.Equal(t, v, document.NewTextValue("fix"))
 
-		buf.Set(document.NewValuePath("favorite game"), document.NewTextValue("splinter cell"))
-		vb, err = buf.GetByField("favorite game")
+		v, err = fb.GetByField("number")
 		require.NoError(t, err)
-		require.Equal(t, vb, document.NewTextValue("splinter cell"))
-		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
-		require.Error(t, err, errors.New("index out of bounds"))
+		require.Equal(t, v, document.NewTextValue("0609XXXX"))
+
+		buf.Reset()
+		buf1.Reset()
+		buf.Add("contact", document.NewDocumentValue(buf2))
+		err = buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
+		require.NoError(t, err)
+		v, err = fb.GetByField("type")
+		require.NoError(t, err)
+		require.Equal(t, v, document.NewTextValue("fix"))
+		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("zed@gmail.com"))
+		require.NoError(t, err)
+		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("tzed@gmail.com"))
+		require.NoError(t, err)
+		v, err = buf.GetByField("email")
+		require.Equal(t, v, document.NewTextValue("tzzed@gmail.com"))
+
+		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
+
+		/*
+			require.NoError(t, err)
+			require.NoError(t, err)
+
+			var result document.FieldBuffer
+
+			// document imbrication
+
+			buf1.Add("phone", document.NewDocumentValue(buf2))
+			buf.Add("contact", document.NewDocumentValue(buf1))
+
+			//change phone type
+			buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
+
+			//expected results cell to fix
+			result.Add("type", document.NewTextValue("fix"))
+			result.Add("number", document.NewTextValue("111-222-3333"))
+
+			vb, err = buf.GetByField("contact")
+			require.NoError(t, err)
+			d, err = vb.ConvertToDocument()
+			require.NoError(t, err)
+			v, err = d.GetByField("phone")
+			require.NoError(t, err)
+			res := document.NewDocumentValue(result)
+			require.Equal(t, res, v)
+
+			buf.Add("d", document.NewArrayValue(vbuf))
+			buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
+			vb, err = buf.GetByField("d")
+			require.NoError(t, err)
+			arr, err = vb.ConvertToArray()
+			size, err := document.ArrayLength(arr)
+			require.NoError(t, err)
+			require.Equal(t, 3, size)
+			buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
+			buf.Set(document.NewValuePath("min"), document.NewInt64Value(0))
+			buf.Set(document.NewValuePath("average"), document.NewInt64Value(50))
+			vb, err = buf.GetByField("max")
+			require.NoError(t, err)
+			require.Equal(t, vb, document.NewInt64Value(99))
+
+			buf.Set(document.NewValuePath("favorite game"), document.NewTextValue("splinter cell"))
+			vb, err = buf.GetByField("favorite game")
+			require.NoError(t, err)
+			require.Equal(t, vb, document.NewTextValue("splinter cell"))
+			err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
+			require.Error(t, err, document.ErrIndexOutOfBound )*/
 
 	})
 
