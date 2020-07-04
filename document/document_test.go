@@ -197,7 +197,7 @@ func TestFieldBuffer(t *testing.T) {
 		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("tzed@gmail.com"))
 		require.NoError(t, err)
 		v, err = buf.GetByField("email")
-		require.Equal(t, v, document.NewTextValue("tzzed@gmail.com"))
+		require.Equal(t, v, document.NewTextValue("tzed@gmail.com"))
 
 		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
 

@@ -310,18 +310,24 @@ func (fb *FieldBuffer) Set(pa ValuePath, reqValue Value) error {
 				if err == ErrIndexOutOfBound {
 					return err
 				}
-				if len(pa) == 2 {
-					_, err := fb.GetByField(pa[1])
-					switch err {
-					case ErrFieldNotFound:
-						fb.Add(pa[1], reqValue)
-						return nil
-					case nil:
-						fb.Replace(pa[1], reqValue)
-						return nil
+				if err == ErrCreateField {
+					fmt.Printf("Set: ErrCreateField  = %s and len %d\n", err, len(pa))
+					if len(pa) == 2 {
+						_, err := fb.GetByField(pa[1])
+						fmt.Printf("Set: ErrCreateField: err  = %s and len %d\n", err, len(pa))
+
+						switch err {
+						case ErrFieldNotFound:
+							fb.Add(pa[1], reqValue)
+							return nil
+						case nil:
+							fb.Replace(pa[1], reqValue)
+							return nil
+						}
+						return err
 					}
-					return err
 				}
+
 				return err
 			}
 
