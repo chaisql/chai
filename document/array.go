@@ -121,7 +121,11 @@ func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value
 	case ArrayValue:
 		var buf ValueBuffer
 		_ = buf.Copy(v.V.(Array))
-		vv, index, _ := IndexValidator(path, buf)
+		vv, index, err := IndexValidator(path, buf)
+		if err != nil {
+			return NewArrayValue(buf), err
+		}
+
 		nextIndex := 1
 		if last > 1 {
 			va, _ := buf.ArrayReplaceValue(vv, path[nextIndex+1:], reqValue)

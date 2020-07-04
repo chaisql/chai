@@ -119,10 +119,16 @@ func TestFieldBuffer(t *testing.T) {
 		buf.Add("friends", document.NewArrayValue(friendBuf))
 		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewArrayValue(vbuf))
 		fmt.Printf("buf set : %v\n", document.NewDocumentValue(buf))
+		buf2.Reset()
+
+		// document imbrication
+		buf2.Add("type", document.NewTextValue("cell"))
+		buf2.Add("number", document.NewTextValue("111-222-3333"))
 		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewInt64Value(99))
-		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2"), document.NewDocumentValue(buf1))
-		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.name"), document.NewTextValue("Toufik"))
-		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.adress.city"), document.NewTextValue("ORLE"))
+		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2"), document.NewDocumentValue(buf2))
+		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.type"), document.NewTextValue("fix"))
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.2.number"), document.NewTextValue("0609XXXX"))
+		require.NoError(t, err)
 		/*	vb, err := buf.GetByField("friends")
 			var result document.FieldBuffer
 

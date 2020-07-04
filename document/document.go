@@ -266,11 +266,17 @@ func (fb *FieldBuffer) ReplaceFieldValue(v Value, path ValuePath, reqValue Value
 		if err != nil {
 			return v, err
 		}
+
 		nextIndex := 1
 		if last > 1 {
 			nextIndex++
 		}
+
 		vv, err = buf.ArrayReplaceValue(vv, path[nextIndex:], reqValue)
+		if err != nil {
+			return NewArrayValue(buf), err
+		}
+
 		buf.Replace(index, vv)
 		return NewArrayValue(buf), nil
 	default:
