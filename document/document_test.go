@@ -188,6 +188,7 @@ func TestFieldBuffer(t *testing.T) {
 		buf1.Reset()
 		buf.Add("contact", document.NewDocumentValue(buf2))
 		err = buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
+
 		require.NoError(t, err)
 		v, err = fb.GetByField("type")
 		require.NoError(t, err)
@@ -198,8 +199,22 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		v, err = buf.GetByField("email")
 		require.Equal(t, v, document.NewTextValue("tzed@gmail.com"))
+		err = buf.Set(document.NewValuePath("contact.favorite game"), document.NewTextValue("splinter cell"))
+		require.NoError(t, err)
+
+		v, err = buf.GetByField("favorite game")
+		require.NoError(t, err)
+		require.Equal(t, v, document.NewTextValue("splinter cell"))
+		err = buf.Set(document.NewValuePath("contact.favorite game"), document.NewTextValue("driver"))
+		require.NoError(t, err)
+
+		v, err = buf.GetByField("favorite game")
+		require.NoError(t, err)
+		require.Equal(t, v, document.NewTextValue("driver"))
 
 		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
+		fmt.Printf("############# END OF TEST #########################\n")
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 
 		/*
 			require.NoError(t, err)

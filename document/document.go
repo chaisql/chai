@@ -314,10 +314,13 @@ func (fb *FieldBuffer) Set(pa ValuePath, reqValue Value) error {
 					fmt.Printf("Set: ErrCreateField  = %s and len %d\n", err, len(pa))
 					if len(pa) == 2 {
 						_, err := fb.GetByField(pa[1])
-						fmt.Printf("Set: ErrCreateField: err  = %s and len %d\n", err, len(pa))
+						fmt.Printf("Set: ErrCreateField: field %s err  = %s and len %d\n", pa[1], err, len(pa))
 						switch err {
 						case ErrFieldNotFound:
+							fmt.Printf("Set: ErrCreateField:ErrFieldNotFound: field %s err  = %s and len %d\n", pa[1], err, len(pa))
+
 							fb.Add(pa[1], reqValue)
+							fmt.Printf("Set: Final value  = %v\n", NewDocumentValue(fb))
 							return nil
 						case nil:
 							fb.Replace(pa[1], reqValue)
