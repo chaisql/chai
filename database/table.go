@@ -117,6 +117,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 
 	lastDocID, ok := t.tx.db.tableDocIDs[t.name]
 	if !ok {
+		// if no key was found in the cache, get the largest key in the table
 		it := t.Store.NewIterator(engine.IteratorConfig{Reverse: true})
 		it.Seek(nil)
 		if it.Valid() {
