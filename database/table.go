@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/genjidb/genji/document"
@@ -89,11 +90,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // the document, converts it to the targeted type and returns
 // its encoded version.
 // if there are no primary key in the table, a default
-// key is generated, called the document id.
-// this function looks up for the highest key in the table,
-// increments it, caches it in tableDocIDs and returns its encoded version.
-// Generating a default key is safe for concurrent access across
-// multiple transactions.
+// key is generated, called the docid.
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	cfg, err := t.cfgStore.Get(t.name)
 	if err != nil {
@@ -112,33 +109,79 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return encoding.EncodeValue(v)
 	}
 
+	docid, err := t.generateDocid()
+	if err != nil {
+		return nil, err
+	}
+
+	return encoding.EncodeInt64(docid), nil
+}
+
+// this function looks up for the highest key in the table,
+// increments it, caches it in the database tableDocids map
+// and returns it.
+// if the docid is greater than max.Int64, it looks up for the lowest
+// available docid in the table.
+// Generating a docid is safe for concurrent access across
+// multiple transactions.
+func (t *Table) generateDocid() (int64, error) {
 	t.tx.db.mu.Lock()
 	defer t.tx.db.mu.Unlock()
 
-	lastDocID, ok := t.tx.db.tableDocIDs[t.name]
+	var err error
+
+	// get the cached latest docid
+	lastDocid, ok := t.tx.db.tableDocids[t.name]
+	// if no key was found in the cache, get the largest key in the table
 	if !ok {
-		// if no key was found in the cache, get the largest key in the table
 		it := t.Store.NewIterator(engine.IteratorConfig{Reverse: true})
 		it.Seek(nil)
 		if it.Valid() {
-			item := it.Item()
-			t.tx.db.tableDocIDs[t.name], err = encoding.DecodeInt64(item.Key())
+			t.tx.db.tableDocids[t.name], err = encoding.DecodeInt64(it.Item().Key())
 			if err != nil {
-				return nil, err
+				return 0, err
 			}
 		} else {
-			t.tx.db.tableDocIDs[t.name] = 0
+			t.tx.db.tableDocids[t.name] = 0
 		}
 
 		err = it.Close()
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
-		lastDocID = t.tx.db.tableDocIDs[t.name]
+
+		lastDocid = t.tx.db.tableDocids[t.name]
 	}
-	lastDocID++
-	t.tx.db.tableDocIDs[t.name] = lastDocID
-	return encoding.EncodeInt64(lastDocID), nil
+
+	// if the id is bigger than an int64
+	// look for the smallest available docid
+	if lastDocid > math.MaxInt64-1 {
+		return t.getSmallestAvailableDocid()
+	}
+
+	lastDocid++
+
+	// cache it
+	t.tx.db.tableDocids[t.name] = lastDocid
+	return lastDocid, nil
+}
+
+// getSmallestAvailableDocid iterates through the table store
+// and returns the first available docid.
+func (t *Table) getSmallestAvailableDocid() (int64, error) {
+	it := t.Store.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	var i int64 = 1
+
+	for it.Seek(nil); it.Valid(); it.Next() {
+		if !bytes.Equal(it.Item().Key(), encoding.EncodeInt64(i)) {
+			return i, nil
+		}
+		i++
+	}
+
+	return 0, errors.New("reached maximum number of documents in a table")
 }
 
 func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
