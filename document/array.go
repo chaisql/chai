@@ -99,6 +99,16 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
+// SetValueFromPath set
+func (vb *ValueBuffer) SetValueFromPath(path ValuePath, reqValue Value) error {
+	index, err := path.findIndexInPath()
+	if err != nil {
+		return err
+	}
+
+	return vb.Replace(index, reqValue)
+}
+
 // NewValueBufferByCopy return pointer of ValueBuffer from Value after copying it.
 func NewValueBufferByCopy(value Value) (*ValueBuffer, error) {
 	if value.Type != ArrayValue {
