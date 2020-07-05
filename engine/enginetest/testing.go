@@ -667,6 +667,23 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		}
 		require.True(t, called)
 	})
+
+	t.Run("With reverse true, one key in the store, and no pivot, should return that key", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		k := []byte{0xFF, 0xFF, 0xFF, 0xFF}
+		err := st.Put(k, []byte{1})
+		require.NoError(t, err)
+
+		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		defer it.Close()
+
+		it.Seek(nil)
+
+		require.True(t, it.Valid())
+		require.Equal(t, it.Item().Key(), k)
+	})
 }
 
 // TestStorePut verifies Put behaviour.

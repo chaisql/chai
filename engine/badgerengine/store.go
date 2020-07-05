@@ -16,10 +16,17 @@ type Store struct {
 	name     string
 }
 
+// build a long key for each key of a store
+// in the form: storePrefix + <sep> + 0 + key.
+// the 0 is used to separate the actual key
+// from the rest of the prexix and to ensure
+// we can quickly access the latest key of the store
+// by replacing 0 by anything bigger.
 func buildKey(prefix, k []byte) []byte {
-	key := make([]byte, 0, len(prefix)+1+len(k))
+	key := make([]byte, 0, len(prefix)+2+len(k))
 	key = append(key, prefix...)
 	key = append(key, separator)
+	key = append(key, 0)
 	key = append(key, k...)
 	return key
 }
@@ -128,7 +135,15 @@ func (it *iterator) Seek(pivot []byte) {
 	if !it.reverse {
 		seek = buildKey(it.storePrefix, pivot)
 	} else {
-		seek = buildKey(it.storePrefix, append(pivot, 0xFF))
+		// if pivot is nil and reverse is true,
+		// seek the largest key by replacing 0
+		// by anything bigger, here 255
+		if len(pivot) == 0 {
+			seek = buildKey(it.storePrefix, pivot)
+			seek[len(seek)-1] = 255
+		} else {
+			seek = buildKey(it.storePrefix, append(pivot, 0xFF))
+		}
 	}
 
 	it.it.Seek(seek)
