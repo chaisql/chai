@@ -339,12 +339,9 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-
 			// if path contains only one field and <Document.Field>.
 			if path.isOneNestedField() {
 				switch field.Value.Type {
-				case DocumentValue:
-					return fb.SetUniqueFieldOfDocument(path[1], reqValue)
 				case ArrayValue:
 					buf, err := NewValueBufferByCopy(field.Value)
 					if err != nil {
@@ -360,7 +357,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 					fb.fields[i].Value = NewArrayValue(buf)
 					return nil
 				}
-
+				return fb.SetUniqueFieldOfDocument(path[1], reqValue)
 			}
 
 			v, err := fb.SetDocument(field.Value, path, reqValue)
