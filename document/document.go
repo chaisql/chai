@@ -356,55 +356,6 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-			v := field.Value
-			// if path contains only one field and <Document.Field>.
-			switch v.Type {
-			case DocumentValue:
-				if path.isOneNestedField() {
-					return fb.SetUniqueFieldOfDocument(path[1], reqValue)
-				}
-
-				v, _, err := FieldValidator(v, path[1:])
-				if err != nil {
-					return  err
-				}
-				switch v.Type {
-				case DocumentValue:
-					var fbuf FieldBuffer
-					err := fbuf.Copy(v.V.(Document))
-					if err != nil {
-					  return err
-					}
-					return fbuf.Set(path[1:], reqValue)
-
-				case ArrayValue:
-				default:
-					fb.fields[i].Value = v
-				}
-				return nil
-			case ArrayValue:
-				buf, err := NewValueBufferByCopy(v)
-				if err != nil {
-					return err
-				}
-				_, index, err := IndexValidator(path, buf)
-				if err != nil {
-					return err
-				}
-
-				if path.isOneNestedField() {
-					buf.Replace(index, reqValue)
-					fb.fields[i].Value = NewArrayValue(buf)
-					return nil
-				}
-				nextIndex := 2
-				vv, err := buf.SetArray(v, path[nextIndex:], reqValue)
-				if err != nil {
-					return err
-				}
-				fb.fields[i].Value = vv
-				return nil
-			}
 
 			fb.fields[i].Value = reqValue
 			return nil
