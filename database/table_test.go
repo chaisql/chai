@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -131,6 +132,50 @@ func TestTableInsert(t *testing.T) {
 		require.NotEmpty(t, key2)
 
 		require.NotEqual(t, key1, key2)
+	})
+
+	t.Run("Should generate the right default key on existing databases", func(t *testing.T) {
+		ng := memoryengine.NewEngine()
+
+		db, err := database.New(ng)
+		require.NoError(t, err)
+
+		insertDoc := func(db *database.Database) []byte {
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+
+			_ = tx.CreateTable("test", &database.TableConfig{})
+
+			tb, err := tx.GetTable("test")
+			require.NoError(t, err)
+
+			doc := newDocument()
+			key, err := tb.Insert(doc)
+			require.NoError(t, err)
+			require.NotEmpty(t, key)
+
+			err = tx.Commit()
+			require.NoError(t, err)
+
+			return key
+		}
+
+		key1 := insertDoc(db)
+		require.NoError(t, err)
+
+		// create new database
+		db, err = database.New(ng)
+		require.NoError(t, err)
+
+		key2 := insertDoc(db)
+
+		a, err := encoding.DecodeInt64(key1)
+		require.NoError(t, err)
+
+		b, err := encoding.DecodeInt64(key2)
+		require.NoError(t, err)
+
+		require.True(t, a < b)
 	})
 
 	t.Run("Should use the right field if primary key is specified", func(t *testing.T) {
