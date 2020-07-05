@@ -10,8 +10,6 @@ import (
 // TableConfig holds the configuration of a table
 type TableConfig struct {
 	FieldConstraints []FieldConstraint
-
-	LastKey int64
 }
 
 // ToDocument returns a document from t.
@@ -24,7 +22,6 @@ func (t *TableConfig) ToDocument() document.Document {
 	}
 
 	buf.Add("field_constraints", document.NewArrayValue(vbuf))
-	buf.Add("last_key", document.NewInt64Value(t.LastKey))
 	return buf
 }
 
@@ -46,23 +43,13 @@ func (t *TableConfig) ScanDocument(d document.Document) error {
 
 	t.FieldConstraints = make([]FieldConstraint, l)
 
-	err = ar.Iterate(func(i int, value document.Value) error {
+	return ar.Iterate(func(i int, value document.Value) error {
 		doc, err := value.ConvertToDocument()
 		if err != nil {
 			return err
 		}
 		return t.FieldConstraints[i].ScanDocument(doc)
 	})
-	if err != nil {
-		return err
-	}
-
-	v, err = d.GetByField("last_key")
-	if err != nil {
-		return err
-	}
-	t.LastKey, err = v.ConvertToInt64()
-	return err
 }
 
 // GetPrimaryKey returns the field constraint of the primary key.

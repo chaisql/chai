@@ -27,7 +27,6 @@ func TestTableConfigStore(t *testing.T) {
 		FieldConstraints: []FieldConstraint{
 			{Path: []string{"k"}, Type: document.Float64Value, IsPrimaryKey: true},
 		},
-		LastKey: 100,
 	}
 
 	// inserting one should work
