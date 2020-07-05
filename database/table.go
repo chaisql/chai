@@ -84,13 +84,22 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	return &d, err
 }
 
+// generate a key for d based on the table configuration.
+// if the table has a primary key, it extracts the field from
+// the document, converts it to the targeted type and returns
+// its encoded version.
+// if there are no primary key in the table, a default
+// key is generated, called the document id.
+// this function looks up for the highest key in the table,
+// increments it, caches it in tableDocIDs and returns its encoded version.
+// Generating a default key is safe for concurrent access across
+// multiple transactions.
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	cfg, err := t.cfgStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
 
-	var key []byte
 	if pk := cfg.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValue(d)
 		if err == document.ErrFieldNotFound {
@@ -106,19 +115,29 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	t.tx.db.mu.Lock()
 	defer t.tx.db.mu.Unlock()
 
-	cfg, err = t.cfgStore.Get(t.name)
-	if err != nil {
-		return nil, err
-	}
+	lastDocID, ok := t.tx.db.tableDocIDs[t.name]
+	if !ok {
+		it := t.Store.NewIterator(engine.IteratorConfig{Reverse: true})
+		it.Seek(nil)
+		if it.Valid() {
+			item := it.Item()
+			t.tx.db.tableDocIDs[t.name], err = encoding.DecodeInt64(item.Key())
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			t.tx.db.tableDocIDs[t.name] = 0
+		}
 
-	cfg.LastKey++
-	key = encoding.EncodeInt64(cfg.LastKey)
-	err = t.cfgStore.Replace(t.name, cfg)
-	if err != nil {
-		return nil, err
+		err = it.Close()
+		if err != nil {
+			return nil, err
+		}
+		lastDocID = t.tx.db.tableDocIDs[t.name]
 	}
-
-	return key, nil
+	lastDocID++
+	t.tx.db.tableDocIDs[t.name] = lastDocID
+	return encoding.EncodeInt64(lastDocID), nil
 }
 
 func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
