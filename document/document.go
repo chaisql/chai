@@ -256,6 +256,23 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 		if err != nil {
 			return v, nil
 		}
+		if path.isOneNestedField() {
+			switch v.Type {
+			case ArrayValue:
+				buf, err := NewValueBufferByCopy(v)
+				if err != nil {
+					return v, err
+				}
+				_, index, err := IndexValidator(path, buf)
+				if err != nil {
+					return err
+				}
+				buf.Replace(index, reqValue)
+				return NewDocumentValue(fbuf), nil
+			}
+			err := fbuf.SetUniqueFieldOfDocument(path[1], reqValue)
+			return NewDocumentValue(fbuf), err
+		}
 
 		fmt.Printf("ReplaceFieldValue: DocumentValue: last == %d and path %s\n", last, path)
 		nextField := 0
@@ -339,43 +356,61 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
+			v := field.Value
 			// if path contains only one field and <Document.Field>.
-			if path.isOneNestedField() {
-				switch field.Value.Type {
+			switch v.Type {
+			case DocumentValue:
+				if path.isOneNestedField() {
+					return fb.SetUniqueFieldOfDocument(path[1], reqValue)
+				}
+
+				v, _, err := FieldValidator(v, path[1:])
+				if err != nil {
+					return  err
+				}
+				switch v.Type {
+				case DocumentValue:
+					var fbuf FieldBuffer
+					err := fbuf.Copy(v.V.(Document))
+					if err != nil {
+					  return err
+					}
+					return fbuf.Set(path[1:], reqValue)
+
 				case ArrayValue:
-					buf, err := NewValueBufferByCopy(field.Value)
-					if err != nil {
-						return err
-					}
+				default:
+					fb.fields[i].Value = v
+				}
+				return nil
+			case ArrayValue:
+				buf, err := NewValueBufferByCopy(v)
+				if err != nil {
+					return err
+				}
+				_, index, err := IndexValidator(path, buf)
+				if err != nil {
+					return err
+				}
 
-					_, index, err := IndexValidator(path, buf)
-					if err != nil {
-						return err
-					}
-
+				if path.isOneNestedField() {
 					buf.Replace(index, reqValue)
 					fb.fields[i].Value = NewArrayValue(buf)
 					return nil
 				}
-				return fb.SetUniqueFieldOfDocument(path[1], reqValue)
+				nextIndex := 2
+				vv, err := buf.SetArray(v, path[nextIndex:], reqValue)
+				if err != nil {
+					return err
+				}
+				fb.fields[i].Value = vv
+				return nil
 			}
 
-			v, err := fb.SetDocument(field.Value, path, reqValue)
-			fmt.Printf("Set: Err  = %s\n", err)
-			if err != nil {
-				return err
-			}
-
-			fb.fields[i].Value = v
-			fmt.Printf("Set: Final value  = %v\n", fb.fields[i].Value)
+			fb.fields[i].Value = reqValue
 			return nil
 		}
 	}
-
-	fmt.Printf("Set: add = %s and value == %v\n", path[0], reqValue)
-	fb.Add(path[0], reqValue)
 	return nil
-
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.

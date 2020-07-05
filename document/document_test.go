@@ -118,7 +118,12 @@ func TestFieldBuffer(t *testing.T) {
 		buf2.Add("zipcode", document.NewTextValue("45100"))
 		friendBuf = friendBuf.Append(document.NewDocumentValue(buf1))
 		buf.Add("friends", document.NewArrayValue(friendBuf))
-		_ = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewArrayValue(vbuf))
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewArrayValue(vbuf))
+		require.NoError(t, err)
+		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
+		fmt.Printf("############# END OF TEST #########################\n")
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+
 		buf2.Reset()
 
 		// document imbrication
@@ -239,9 +244,6 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		res := document.NewDocumentValue(result)
 		require.Equal(t, res, v)
-		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
-		fmt.Printf("############# END OF TEST #########################\n")
-		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 
 		buf.Add("d", document.NewArrayValue(vbuf))
 		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
