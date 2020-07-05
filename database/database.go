@@ -12,12 +12,19 @@ type Database struct {
 	ng engine.Engine
 
 	mu sync.Mutex
+
+	// tableDocIDs holds the latest document ID for a table.
+	// it is cached in this map the first time a table is accessed
+	// and is used by every call to table#Insert to generate the
+	// document key when there is no primary key.
+	tableDocIDs map[string]int64
 }
 
 // New initializes the DB using the given engine.
 func New(ng engine.Engine) (*Database, error) {
 	db := Database{
-		ng: ng,
+		ng:          ng,
+		tableDocIDs: make(map[string]int64),
 	}
 
 	ntx, err := db.ng.Begin(true)
