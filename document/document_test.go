@@ -129,7 +129,8 @@ func TestFieldBuffer(t *testing.T) {
 		va, err := buf3.GetByField("email")
 		require.NoError(t, err)
 		require.Equal(t, va, document.NewTextValue("zed@gmail.com"))
-		buf3.Set(document.NewValuePath("contact.email"), document.NewTextValue("zerouali.t@gmail.com"))
+		err = buf3.Set(document.NewValuePath("contact.email"), document.NewTextValue("zerouali.t@gmail.com"))
+		require.NoError(t, err)
 		va, err = buf3.GetByField("email")
 		require.NoError(t, err)
 		require.Equal(t, va, document.NewTextValue("zerouali.t@gmail.com"))
@@ -195,6 +196,8 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, v, document.NewTextValue("fix"))
 		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("zed@gmail.com"))
 		require.NoError(t, err)
+		v, err = buf.GetByField("email")
+		require.Equal(t, v, document.NewTextValue("zed@gmail.com"))
 		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("tzed@gmail.com"))
 		require.NoError(t, err)
 		v, err = buf.GetByField("email")
@@ -212,58 +215,64 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, v, document.NewTextValue("driver"))
 
+		var result document.FieldBuffer
+
+		// document imbrication
+		buf.Reset()
+		buf1.Reset()
+		buf1.Add("phone", document.NewDocumentValue(buf2))
+		buf.Add("contact", document.NewDocumentValue(buf1))
+
+		//change phone type
+		buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
+		buf.Set(document.NewValuePath("contact.phone.number"), document.NewTextValue("06XXXXX"))
+
+		//expected results cell to fix
+		result.Add("type", document.NewTextValue("fix"))
+		result.Add("number", document.NewTextValue("06XXXXX"))
+
+		vb, err = buf.GetByField("contact")
+		require.NoError(t, err)
+		d, err = vb.ConvertToDocument()
+		require.NoError(t, err)
+		v, err = d.GetByField("phone")
+		require.NoError(t, err)
+		res := document.NewDocumentValue(result)
+		require.Equal(t, res, v)
 		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
 		fmt.Printf("############# END OF TEST #########################\n")
 		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 
-		/*
-			require.NoError(t, err)
-			require.NoError(t, err)
+		buf.Add("d", document.NewArrayValue(vbuf))
+		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
+		vb, err = buf.GetByField("d")
+		require.NoError(t, err)
+		arr, err = vb.ConvertToArray()
+		size, err := document.ArrayLength(arr)
+		require.NoError(t, err)
+		require.Equal(t, 3, size)
+		err = buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
+		require.NoError(t, err)
+		err = buf.Set(document.NewValuePath("min"), document.NewInt64Value(0))
+		require.NoError(t, err)
+		err = buf.Set(document.NewValuePath("average"), document.NewInt64Value(50))
+		require.NoError(t, err)
+		vb, err = buf.GetByField("max")
+		require.NoError(t, err)
+		require.Equal(t, vb, document.NewInt64Value(99))
 
-			var result document.FieldBuffer
-
-			// document imbrication
-
-			buf1.Add("phone", document.NewDocumentValue(buf2))
-			buf.Add("contact", document.NewDocumentValue(buf1))
-
-			//change phone type
-			buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
-
-			//expected results cell to fix
-			result.Add("type", document.NewTextValue("fix"))
-			result.Add("number", document.NewTextValue("111-222-3333"))
-
-			vb, err = buf.GetByField("contact")
-			require.NoError(t, err)
-			d, err = vb.ConvertToDocument()
-			require.NoError(t, err)
-			v, err = d.GetByField("phone")
-			require.NoError(t, err)
-			res := document.NewDocumentValue(result)
-			require.Equal(t, res, v)
-
-			buf.Add("d", document.NewArrayValue(vbuf))
-			buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
-			vb, err = buf.GetByField("d")
-			require.NoError(t, err)
-			arr, err = vb.ConvertToArray()
-			size, err := document.ArrayLength(arr)
-			require.NoError(t, err)
-			require.Equal(t, 3, size)
-			buf.Set(document.NewValuePath("max"), document.NewInt64Value(99))
-			buf.Set(document.NewValuePath("min"), document.NewInt64Value(0))
-			buf.Set(document.NewValuePath("average"), document.NewInt64Value(50))
-			vb, err = buf.GetByField("max")
-			require.NoError(t, err)
-			require.Equal(t, vb, document.NewInt64Value(99))
-
-			buf.Set(document.NewValuePath("favorite game"), document.NewTextValue("splinter cell"))
-			vb, err = buf.GetByField("favorite game")
-			require.NoError(t, err)
-			require.Equal(t, vb, document.NewTextValue("splinter cell"))
-			err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
-			require.Error(t, err, document.ErrIndexOutOfBound )*/
+		err = buf.Set(document.NewValuePath("favorite game"), document.NewTextValue("splinter cell"))
+		require.NoError(t, err)
+		vb, err = buf.GetByField("favorite game")
+		require.NoError(t, err)
+		require.Equal(t, vb, document.NewTextValue("splinter cell"))
+		vb, err = buf.GetByField("favorite game")
+		buf.Set(document.NewValuePath("favorite game"), document.NewTextValue("driver"))
+		require.NoError(t, err)
+		vb, err = buf.GetByField("favorite game")
+		require.Equal(t, vb, document.NewTextValue("driver"))
+		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
+		require.Error(t, err, document.ErrIndexOutOfBound)
 
 	})
 

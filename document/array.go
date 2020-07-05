@@ -99,8 +99,23 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-// ArrayReplaceValue set value at index
-func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
+// NewValueBufferByCopy return pointer of ValueBuffer from Value after copying it.
+func NewValueBufferByCopy(value Value) (*ValueBuffer, error) {
+	if value.Type != ArrayValue {
+		return nil, fmt.Errorf("Cannot Create ValueBuffer with type %s\n", value.Type)
+	}
+
+	var buf ValueBuffer
+	err := buf.Copy(value.V.(Array))
+	if err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+// SetArray set value at index
+func (vb *ValueBuffer) SetArray(v Value, path ValuePath, reqValue Value) (Value, error) {
 	last := path.lastIndexOfPath()
 	_, index, _ := IndexValidator(path, vb)
 
@@ -114,7 +129,7 @@ func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value
 		_ = buf.Copy(v.V.(Document))
 		v, _ := buf.GetByField(path[idx])
 
-		vv, _ := buf.ReplaceFieldValue(v, path[1:], reqValue)
+		vv, _ := buf.SetDocument(v, path[1:], reqValue)
 		buf.Replace(path[0], vv)
 
 		return NewDocumentValue(buf), nil
@@ -128,12 +143,12 @@ func (vb *ValueBuffer) ArrayReplaceValue(v Value, path ValuePath, reqValue Value
 
 		nextIndex := 1
 		if last > 1 {
-			va, _ := buf.ArrayReplaceValue(vv, path[nextIndex+1:], reqValue)
+			va, _ := buf.SetArray(vv, path[nextIndex+1:], reqValue)
 			buf.Replace(index, va)
 		} else if last == 0 {
 			buf.Replace(index, reqValue)
 		} else {
-			va, _ := buf.ArrayReplaceValue(vv, path[nextIndex:], reqValue)
+			va, _ := buf.SetArray(vv, path[nextIndex:], reqValue)
 			buf.Replace(index, va)
 		}
 
@@ -179,7 +194,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 // Replace the value of the index by v.
 func (vb *ValueBuffer) Replace(index int, v Value) error {
 	if len(*vb) <= index {
-		return ErrFieldNotFound
+		return ErrIndexOutOfBound
 	}
 
 	(*vb)[index] = v
