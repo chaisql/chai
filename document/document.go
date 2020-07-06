@@ -272,11 +272,6 @@ func NewValuePath(p string) ValuePath {
 	return strings.Split(p, ".")
 }
 
-// GetFirstStringFromValuePath return the first string element of the valuePath
-func (p ValuePath) GetFirstStringFromValuePath() string {
-	return p[0]
-}
-
 // String joins all the chunks of the path using the dot separator.
 // It implements the Stringer interface.
 func (p ValuePath) String() string {
@@ -294,26 +289,6 @@ func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
 	}
 
 	v, err := d.GetByField(p[0])
-	if err != nil {
-		return Value{}, err
-	}
-
-	return p.getValueFromValue(v)
-}
-
-//indemnisation.collectives@april.fr
-
-func (p ValuePath) getValueFromArray(a Array) (Value, error) {
-	if len(p) == 0 {
-		return Value{}, errors.New("empty valuepath")
-	}
-
-	i, err := strconv.Atoi(p[0])
-	if err != nil {
-		return Value{}, err
-	}
-
-	v, err := a.GetByIndex(i)
 	if err != nil {
 		return Value{}, err
 	}
