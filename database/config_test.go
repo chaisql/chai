@@ -29,28 +29,38 @@ func TestTableInfoStore(t *testing.T) {
 		},
 	}
 
-	// inserting one should work
-	err = tcs.Insert("foo-table", cfg)
+	// Inserting one tableInfo should work.
+	ti, err := tcs.Insert("foo-table", cfg)
 	require.NoError(t, err)
 
-	// inserting one with the same name should not work
-	err = tcs.Insert("foo-table", cfg)
+	// Inserting an existing tableInfo should not work.
+	_, err = tcs.Insert("foo-table", cfg)
 	require.Equal(t, err, ErrTableAlreadyExists)
 
-	// getting an existing table should work
+	// Getting an existing tableInfo should work.
 	received, err := tcs.Get("foo-table")
 	require.NoError(t, err)
-	require.Equal(t, cfg, *received)
+	require.Equal(t, ti, received)
 
-	// getting a non-existing table should not work
+	// Getting a non-existing tableInfo should not work.
 	_, err = tcs.Get("unknown")
 	require.Equal(t, ErrTableNotFound, err)
 
-	// deleting an existing table should work
+	// Updating the last key.
+	cfg.LastKey = 101
+	err = tcs.Replace("foo-table", &cfg)
+	require.NoError(t, err)
+
+	received, err = tcs.Get("foo-table")
+	require.NoError(t, err)
+	require.Equal(t, ti.storeID, received.storeID)
+	require.Equal(t, cfg, *received.cfg)
+
+	// Deleting an existing tableInfo should work.
 	err = tcs.Delete("foo-table")
 	require.NoError(t, err)
 
-	// deleting a non-existing table should not work
+	// Deleting a non-existing tableInfo should not work.
 	err = tcs.Delete("foo-table")
 	require.Equal(t, ErrTableNotFound, err)
 }
