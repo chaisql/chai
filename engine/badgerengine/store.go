@@ -13,7 +13,7 @@ type Store struct {
 	tx       *badger.Txn
 	prefix   []byte
 	writable bool
-	name     string
+	name     []byte
 }
 
 // build a long key for each key of a store
