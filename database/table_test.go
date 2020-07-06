@@ -295,7 +295,7 @@ func TestTableInsert(t *testing.T) {
 
 		tests := [][]byte{
 			nil,
-			[]byte{},
+			{},
 			[]byte(nil),
 		}
 

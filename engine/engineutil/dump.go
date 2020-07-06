@@ -13,13 +13,13 @@ func DumpEngine(e engine.Engine) error {
 	}
 	defer tx.Rollback()
 
-	stores, err := tx.ListStores("")
+	stores, err := tx.ListStores([]byte(""))
 	if err != nil {
 		return err
 	}
 
 	for _, name := range stores {
-		s, err := tx.GetStore(name)
+		s, err := tx.GetStore([]byte(name))
 		if err != nil {
 			return err
 		}

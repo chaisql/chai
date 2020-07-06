@@ -16,9 +16,9 @@ func TestTableInfoStore(t *testing.T) {
 	require.NoError(t, err)
 	defer tx.Rollback()
 
-	err = tx.CreateStore("foo")
+	err = tx.CreateStore([]byte("foo"))
 	require.NoError(t, err)
-	st, err := tx.GetStore("foo")
+	st, err := tx.GetStore([]byte("foo"))
 	require.NoError(t, err)
 
 	tcs := tableInfoStore{st}
@@ -74,9 +74,9 @@ func TestIndexStore(t *testing.T) {
 	require.NoError(t, err)
 	defer tx.Rollback()
 
-	err = tx.CreateStore("test")
+	err = tx.CreateStore([]byte("test"))
 	require.NoError(t, err)
-	st, err := tx.GetStore("test")
+	st, err := tx.GetStore([]byte("test"))
 	require.NoError(t, err)
 
 	idxs := indexStore{st}
