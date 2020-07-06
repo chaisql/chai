@@ -179,7 +179,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, v, document.NewArrayValue(vbuf))
 
-		fmt.Printf("##########  TEST 3 friends.0.adress.a.2 :: v %v and v.Type %s\n #############\n", v, v.Type)
+		fmt.Printf("##########  TEST 3 friends.0.adress.a.2 :: v %v and v.Type %s #############\n", v, v.Type)
 		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
@@ -194,7 +194,7 @@ func TestFieldBuffer(t *testing.T) {
 		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.number"), document.NewTextValue("0609XXXX"))
 		require.NoError(t, err)
 
-		fmt.Printf("##########  TEST 4 :: v %v and v.Type %s\n #############\n", va, va.Type)
+		fmt.Printf("##########  TEST 4 :: v %v and v.Type %s #############\n", va, va.Type)
 		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
@@ -273,7 +273,7 @@ func TestFieldBuffer(t *testing.T) {
 		va, err = d.GetByField("number")
 		require.Equal(t, va, document.NewTextValue("0238XXXX"))
 		require.Equal(t, v, document.NewTextValue("fix"))
-		fmt.Printf("##########  TEST 7 :: v %v and v.Type %s\n #############\n", v, v.Type)
+		fmt.Printf("##########  TEST 7 :: v %v and v.Type %s #############\n", v, v.Type)
 		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
@@ -296,7 +296,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		v, err	= d.GetByField("favorite game")
 		require.Equal(t, v, document.NewTextValue("driver"))
-		fmt.Printf("##########  TEST 8 :: v %v and v.Type %s\n #############\n", v, v.Type)
+		fmt.Printf("##########  TEST 8 :: v %v and v.Type %s #############\n", v, v.Type)
 		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
@@ -326,12 +326,16 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		arr, err = vb.ConvertToArray()
 		size, err := document.ArrayLength(arr)
-		require.NoError(t, err) 
+		require.NoError(t, err)
 		require.Equal(t, 3, size)
 		buf.Set(document.NewValuePath("d.2"), document.NewInt64Value(9))
 		vb, err = buf.GetByField("d")
 		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
 		require.Error(t, err, document.ErrIndexOutOfBound)
+		fmt.Printf("##########  TEST 9 :: v %v and v.Type %s #############\n", v, v.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# ALL TESTS PASSED #########################\n\n\n")
+
 
 	})
 

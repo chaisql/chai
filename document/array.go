@@ -100,35 +100,19 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-// GetValueFromString return
+// GetValueFromString return a value from string after conversion to index int.
 func (vb *ValueBuffer) GetValueFromString(f string) (Value, int, error) {
-	fmt.Printf("GetValueFromString: = %s\n", f)
 	index, err := strconv.Atoi(f)
 	if err != nil {
 		return NewZeroValue(ArrayValue), -1, err
 	}
 
 	v, err := vb.GetByIndex(index)
-	fmt.Printf("IndexValidator: value = %v index %d and err %s\n", v, index, err)
 	if err != nil {
-		fmt.Printf("index validator Err := %s\n", err)
 		return NewZeroValue(ArrayValue), index, ErrIndexOutOfBound
 	}
 
 	return v, index, err
-}
-
-//SetAtIndexFromString Convert string to int and replace the value at Index
-//return error if field is not convertable.
-func (vb *ValueBuffer) SetAtIndexFromString(field string, reqValue Value) error {
-	fmt.Printf("§§§§§§§§§§§§§ SetAtIndexFromString: NewValueBufferByCopy  field == %s\n", field)
-
-	index, err := strconv.Atoi(field)
-	if err != nil {
-		return err
-	}
-
-	return vb.Replace(index, reqValue)
 }
 
 // NewValueBufferByCopy return pointer of ValueBuffer from Value after copying it.
@@ -144,18 +128,6 @@ func NewValueBufferByCopy(value Value) (*ValueBuffer, error) {
 	}
 
 	return &buf, nil
-}
-
-// SetArray set value at index
-func (vb *ValueBuffer) SetArray(v Value, path ValuePath, reqValue Value) (Value, error) {
-	last := path.lastIndexOfPath()
-	_, index, _ := path.IndexValidator(vb)
-	fmt.Printf("ArrayReplaceValue: path ==  %s, index = %d last == %d\n", path, index, last)
-	fmt.Printf("ArrayReplaceValue: V := %v and  V.Type == %s \n", v, v.Type)
-	switch v.Type {
-	case DocumentValue:
-	}
-	return v, nil
 }
 
 // Copy deep copies all the values from the given array.
