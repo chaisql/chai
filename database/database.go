@@ -76,7 +76,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 		writable: writable,
 	}
 
-	tx.tcfgStore, err = tx.getTableInfoStore()
+	tx.infoStore, err = tx.getTableInfoStore()
 	if err != nil {
 		return nil, err
 	}

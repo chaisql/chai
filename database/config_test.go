@@ -46,8 +46,9 @@ func TestTableInfoStore(t *testing.T) {
 	_, err = tcs.Get("unknown")
 	require.Equal(t, ErrTableNotFound, err)
 
-	// Updating the last key.
-	cfg.LastKey = 101
+	// Updating the config table.
+	fc := FieldConstraint{Path: []string{"j"}, Type: document.TextValue, IsNotNull: true}
+	cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
 	err = tcs.Replace("foo-table", &cfg)
 	require.NoError(t, err)
 

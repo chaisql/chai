@@ -21,10 +21,11 @@ var (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	db         *Database
-	Tx         engine.Transaction
-	writable   bool
-	tcfgStore  *tableInfoStore
+	db       *Database
+	Tx       engine.Transaction
+	writable bool
+
+	infoStore  *tableInfoStore
 	indexStore *indexStore
 }
 
@@ -70,7 +71,7 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 	if cfg == nil {
 		cfg = new(TableConfig)
 	}
-	err := tx.tcfgStore.Insert(name, *cfg)
+	_, err := tx.infoStore.Insert(name, *cfg)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Transaction) GetTable(name string) (*Table, error) {
-	_, err := tx.tcfgStore.Get(name)
+	_, err := tx.infoStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -96,10 +97,10 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 	}
 
 	return &Table{
-		tx:       &tx,
-		Store:    s,
-		name:     name,
-		cfgStore: tx.tcfgStore,
+		tx:        &tx,
+		Store:     s,
+		name:      name,
+		infoStore: tx.infoStore,
 	}, nil
 }
 
@@ -140,7 +141,7 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
-	err = tx.tcfgStore.Delete(name)
+	err = tx.infoStore.Delete(name)
 	if err != nil {
 		return err
 	}

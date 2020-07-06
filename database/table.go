@@ -15,15 +15,19 @@ import (
 
 // A Table represents a collection of documents.
 type Table struct {
-	tx       *Transaction
-	Store    engine.Store
-	name     string
-	cfgStore *tableInfoStore
+	tx        *Transaction
+	Store     engine.Store
+	name      string
+	infoStore *tableInfoStore
 }
 
 // Config of the table.
 func (t *Table) Config() (*TableConfig, error) {
-	return t.cfgStore.Get(t.name)
+	ti, err := t.infoStore.Get(t.name)
+	if err != nil {
+		return nil, err
+	}
+	return ti.cfg, nil
 }
 
 type encodedDocumentWithKey struct {
@@ -92,10 +96,12 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
-	cfg, err := t.cfgStore.Get(t.name)
+	ti, err := t.infoStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
+
+	cfg := ti.cfg
 
 	if pk := cfg.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValue(d)
