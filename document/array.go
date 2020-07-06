@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
@@ -99,9 +100,30 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-// SetValueFromPath set
-func (vb *ValueBuffer) SetValueFromPath(path ValuePath, reqValue Value) error {
-	index, err := path.findIndexInPath()
+// GetValueFromString return
+func (vb *ValueBuffer) GetValueFromString(f string) (Value, int, error) {
+	fmt.Printf("GetValueFromString: = %s\n", f)
+	index, err := strconv.Atoi(f)
+	if err != nil {
+		return NewZeroValue(ArrayValue), -1, err
+	}
+
+	v, err := vb.GetByIndex(index)
+	fmt.Printf("IndexValidator: value = %v index %d and err %s\n", v, index, err)
+	if err != nil {
+		fmt.Printf("index validator Err := %s\n", err)
+		return NewZeroValue(ArrayValue), index, ErrIndexOutOfBound
+	}
+
+	return v, index, err
+}
+
+//SetAtIndexFromString Convert string to int and replace the value at Index
+//return error if field is not convertable.
+func (vb *ValueBuffer) SetAtIndexFromString(field string, reqValue Value) error {
+	fmt.Printf("§§§§§§§§§§§§§ SetAtIndexFromString: NewValueBufferByCopy  field == %s\n", field)
+
+	index, err := strconv.Atoi(field)
 	if err != nil {
 		return err
 	}
@@ -112,7 +134,7 @@ func (vb *ValueBuffer) SetValueFromPath(path ValuePath, reqValue Value) error {
 // NewValueBufferByCopy return pointer of ValueBuffer from Value after copying it.
 func NewValueBufferByCopy(value Value) (*ValueBuffer, error) {
 	if value.Type != ArrayValue {
-		return nil, fmt.Errorf("Cannot Create ValueBuffer with type %s\n", value.Type)
+		return nil, fmt.Errorf("Cannot Create ValueBuffer with type %s", value.Type)
 	}
 
 	var buf ValueBuffer
@@ -127,46 +149,13 @@ func NewValueBufferByCopy(value Value) (*ValueBuffer, error) {
 // SetArray set value at index
 func (vb *ValueBuffer) SetArray(v Value, path ValuePath, reqValue Value) (Value, error) {
 	last := path.lastIndexOfPath()
-	_, index, _ := IndexValidator(path, vb)
-
+	_, index, _ := path.IndexValidator(vb)
 	fmt.Printf("ArrayReplaceValue: path ==  %s, index = %d last == %d\n", path, index, last)
 	fmt.Printf("ArrayReplaceValue: V := %v and  V.Type == %s \n", v, v.Type)
 	switch v.Type {
 	case DocumentValue:
-		fmt.Printf("ArrayReplaceValue: DocumentValue: V := %v and  V.Type == %s \n", v, v.Type)
-		var buf FieldBuffer
-		idx := 0
-		_ = buf.Copy(v.V.(Document))
-		v, _ := buf.GetByField(path[idx])
-
-		vv, _ := buf.SetDocument(v, path[1:], reqValue)
-		buf.Replace(path[0], vv)
-
-		return NewDocumentValue(buf), nil
-	case ArrayValue:
-		var buf ValueBuffer
-		_ = buf.Copy(v.V.(Array))
-		vv, index, err := IndexValidator(path, buf)
-		if err != nil {
-			return NewArrayValue(buf), err
-		}
-
-		nextIndex := 1
-		if last > 1 {
-			va, _ := buf.SetArray(vv, path[nextIndex+1:], reqValue)
-			buf.Replace(index, va)
-		} else if last == 0 {
-			buf.Replace(index, reqValue)
-		} else {
-			va, _ := buf.SetArray(vv, path[nextIndex:], reqValue)
-			buf.Replace(index, va)
-		}
-
-		return NewArrayValue(buf), nil
-	default:
-		return reqValue, nil
-
 	}
+	return v, nil
 }
 
 // Copy deep copies all the values from the given array.

@@ -83,7 +83,6 @@ func TestFieldBuffer(t *testing.T) {
 		var vbuf document.ValueBuffer
 		var buf1 document.FieldBuffer
 		var buf2 document.FieldBuffer
-		var buf3 document.FieldBuffer
 
 		var friendBuf document.ValueBuffer
 
@@ -93,7 +92,6 @@ func TestFieldBuffer(t *testing.T) {
 		buf.Set(document.NewValuePath("a"), document.NewFloat64Value(11))
 		v, err := buf.GetByField("a")
 		require.NoError(t, err)
-		fmt.Printf("Test: value == %v\n", v)
 		require.Equal(t, document.NewFloat64Value(11), v)
 
 		buf.Set(document.NewValuePath("c"), document.NewInt64Value(12))
@@ -101,6 +99,16 @@ func TestFieldBuffer(t *testing.T) {
 		v, err = buf.GetByField("c")
 		require.NoError(t, err)
 		require.Equal(t, document.NewInt64Value(12), v)
+
+		buf.Set(document.NewValuePath("c"), document.NewInt64Value(200))
+		require.Equal(t, 3, buf.Len())
+		v, err = buf.GetByField("c")
+		require.NoError(t, err)
+		require.Equal(t, document.NewInt64Value(200), v)
+
+		fmt.Printf("##########  TEST 1 :: v %v and v.Type %s      #############\n", v, v.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
 		//construct array
 		vbuf = vbuf.Append(document.NewInt64Value(1))
@@ -117,30 +125,20 @@ func TestFieldBuffer(t *testing.T) {
 		buf2.Add("city", document.NewTextValue("ORLEANS"))
 		buf2.Add("zipcode", document.NewTextValue("45100"))
 		friendBuf = friendBuf.Append(document.NewDocumentValue(buf1))
-		buf.Add("friends", document.NewArrayValue(friendBuf))
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewArrayValue(vbuf))
-		require.NoError(t, err)
-		fmt.Printf("##########  TEST:: v %v and v.Type %s\n #############\n", v, v.Type)
-		fmt.Printf("############# END OF TEST #########################\n")
-		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
 
+		buf1.Reset()
 		buf2.Reset()
 
-		// document imbrication
-		buf2.Add("type", document.NewTextValue("cell"))
-		buf2.Add("number", document.NewTextValue("111-222-3333"))
-		buf3.Add("contact", document.NewDocumentValue(buf2))
-		buf3.Set(document.NewValuePath("contact.email"), document.NewTextValue("zed@gmail.com"))
-		va, err := buf3.GetByField("email")
-		require.NoError(t, err)
-		require.Equal(t, va, document.NewTextValue("zed@gmail.com"))
-		err = buf3.Set(document.NewValuePath("contact.email"), document.NewTextValue("zerouali.t@gmail.com"))
-		require.NoError(t, err)
-		va, err = buf3.GetByField("email")
-		require.NoError(t, err)
-		require.Equal(t, va, document.NewTextValue("zerouali.t@gmail.com"))
+		buf1.Add("name", document.NewTextValue("Foo"))
+		buf2.Add("city", document.NewTextValue("Orleans"))
+		buf2.Add("zipcode", document.NewTextValue("45000"))
+		buf2.Add("a", document.NewArrayValue(vbuf))
+		buf1.Add("adress", document.NewDocumentValue(buf2))
+		buf1.Add("favorite game", document.NewTextValue("Driver"))
+		friendBuf = friendBuf.Append(document.NewDocumentValue(buf1))
+		buf.Add("friends", document.NewArrayValue(friendBuf))
 
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewInt64Value(99))
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewInt64Value(99))
 		require.NoError(t, err)
 		vb, err := buf.GetByField("friends")
 		require.NoError(t, err)
@@ -159,10 +157,50 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		v, err = arr.GetByIndex(2)
 		require.Equal(t, v, document.NewInt64Value(99))
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewDocumentValue(buf2))
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.type"), document.NewTextValue("fix"))
-		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.number"), document.NewTextValue("0609XXXX"))
+		fmt.Printf("##########  TEST 2 :: v %v and v.Type %s      #############\n", v, v.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
+
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2"), document.NewArrayValue(vbuf))
+		require.NoError(t, err)
+		v, err = buf.GetByField("friends")
+		require.NoError(t, err)
+		arr, err = v.ConvertToArray()
+		require.NoError(t, err)
+		v, err = arr.GetByIndex(0)
+		require.NoError(t, err)
+		d, err = v.ConvertToDocument()
+		v, err = d.GetByField("adress")
+		d, err = v.ConvertToDocument()
+		va, err := d.GetByField("a")
+		arr, err = va.ConvertToArray()
+		v, err = arr.GetByIndex(2)
+		require.NoError(t, err)
+		require.Equal(t, v, document.NewArrayValue(vbuf))
+
+		fmt.Printf("##########  TEST 3 friends.0.adress.a.2 :: v %v and v.Type %s\n #############\n", v, v.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# END OF TEST #########################\n\n\n")
+
+
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2"), document.NewDocumentValue(buf2))
+		require.NoError(t, err)
+
+		//Add field int the document at index 2 of the array
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.type"), document.NewTextValue("fix"))
+		require.NoError(t, err)
+
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.number"), document.NewTextValue("0609XXXX"))
+		require.NoError(t, err)
+
+		fmt.Printf("##########  TEST 4 :: v %v and v.Type %s\n #############\n", va, va.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# END OF TEST #########################\n\n\n")
+
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.number"), document.NewTextValue("0609991781"))
+		require.NoError(t, err)
+		err = buf.Set(document.NewValuePath("friends.0.adress.a.2.2.type"), document.NewTextValue("cell"))
 		require.NoError(t, err)
 		vb, err = buf.GetByField("friends")
 		require.NoError(t, err)
@@ -180,26 +218,58 @@ func TestFieldBuffer(t *testing.T) {
 		arr, err = v.ConvertToArray()
 		require.NoError(t, err)
 		vd, err := arr.GetByIndex(2)
-		var fb document.FieldBuffer
-		err = fb.Copy(vd.V.(document.Document))
-		v, err = fb.GetByField("type")
+		arr, err = vd.ConvertToArray()
+		v, err = arr.GetByIndex(2)
+		d, err = v.ConvertToDocument()
+		va, err = d.GetByField("type")
 		require.NoError(t, err)
-		require.Equal(t, v, document.NewTextValue("fix"))
-
-		v, err = fb.GetByField("number")
+		require.Equal(t, va, document.NewTextValue("cell"))
+		v, err = d.GetByField("number")
 		require.NoError(t, err)
-		require.Equal(t, v, document.NewTextValue("0609XXXX"))
+		require.Equal(t, v, document.NewTextValue("0609991781"))
+		fmt.Printf("##########  TEST 5 :: va %v and va.Type %s\n #############\n", va, va.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# END OF TEST #########################\n\n\n")
 
-		buf.Reset()
-		buf1.Reset()
+
+		buf2.Reset()
+		var buf3 document.FieldBuffer
+		// document imbrication
+		buf3.Add("type", document.NewTextValue("cell"))
+		buf3.Add("number", document.NewTextValue("111-222-3333"))
+		buf2.Add("phone", document.NewDocumentValue(buf3))
 		buf.Add("contact", document.NewDocumentValue(buf2))
-		err = buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
-
+		buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("zed@gmail.com"))
+		va, err = buf.GetByField("contact")
 		require.NoError(t, err)
-		v, err = fb.GetByField("type")
+		d, err = va.ConvertToDocument()
+		va, err = d.GetByField("email")
+		require.NoError(t, err)
+		require.Equal(t, va, document.NewTextValue("zed@gmail.com"))
+		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("zerouali.t@gmail.com"))
+		va, err = buf.GetByField("contact")
+		require.NoError(t, err)
+		d, err = va.ConvertToDocument()
+		va, err = d.GetByField("email")
+		require.NoError(t, err)
+		require.Equal(t, va, document.NewTextValue("zerouali.t@gmail.com"))
+
+		fmt.Printf("##########  TEST 6 :: va %v and va.Type %s\n #############\n", va, va.Type)
+		fmt.Printf("############# BUF  == %v #########################\n", document.NewDocumentValue(buf))
+		fmt.Printf("############# END OF TEST #########################\n\n\n")
+
+
+
+		err = buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("fix"))
+		require.NoError(t, err)
+		v, err = buf.GetByField("phone")
+		require.NoError(t, err)
+		d, err = v.ConvertToDocument()
+		require.NoError(t, err)
+		v, err = buf.GetByField("type")
 		require.NoError(t, err)
 		require.Equal(t, v, document.NewTextValue("fix"))
-		err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("zed@gmail.com"))
+		/*err = buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("zed@gmail.com"))
 		require.NoError(t, err)
 		v, err = buf.GetByField("email")
 		require.Equal(t, v, document.NewTextValue("zed@gmail.com"))
@@ -274,7 +344,7 @@ func TestFieldBuffer(t *testing.T) {
 		vb, err = buf.GetByField("favorite game")
 		require.Equal(t, vb, document.NewTextValue("driver"))
 		err = buf.Set(document.NewValuePath("d.5"), document.NewInt64Value(9))
-		require.Error(t, err, document.ErrIndexOutOfBound)
+		require.Error(t, err, document.ErrIndexOutOfBound)*/
 
 	})
 

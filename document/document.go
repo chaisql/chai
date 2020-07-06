@@ -14,8 +14,10 @@ var (
 	ErrFieldNotFound   = errors.New("field not found")
 	ErrShortNotation   = errors.New("Short Notation")
 	ErrCreateField     = errors.New("field must be created")
+	ErrFieldReplaced   = errors.New("buffer is replaced")
 	ErrValueNotSet     = errors.New("value not set")
 	ErrIndexOutOfBound = errors.New("index out of bounds")
+	ErrNotDocument     = errors.New("type must be  a document")
 )
 
 // A Document represents a group of key value pairs.
@@ -106,24 +108,27 @@ func (path ValuePath) lastIndexOfPath() int {
 }
 
 // FieldValidator set field
-func FieldValidator(v Value, path ValuePath) (Value, int, error) {
+func (path ValuePath) FieldValidator(v Value) (Value, int, error) {
 	fmt.Printf("FieldValidator: v == %v && path == %s\n", v, path)
 	d, _ := v.V.(Document)
 
 	for i, p := range path {
 		vv, err := d.GetByField(p)
 		if err == nil {
+			path = path[1:]
+			fmt.Printf("FieldValidator: RETURN %v with path %s\n", v, path)
 			return vv, i, err
 		}
 	}
 	fmt.Printf("FieldValidator: Return err := %s\n", ErrFieldNotFound)
+
 	return v, -1, ErrFieldNotFound
 
 }
 
 // IndexValidator check if the index is not out of range
-func IndexValidator(path ValuePath, a Array) (Value, int, error) {
-
+func (path ValuePath) IndexValidator(a Array) (Value, int, error) {
+	fmt.Printf("IndexValidator: path %s\n", path)
 	index, err := path.findIndexInPath()
 	if err != nil {
 		fmt.Printf("IndexValidator: error %s\n", err)
@@ -131,12 +136,13 @@ func IndexValidator(path ValuePath, a Array) (Value, int, error) {
 	}
 
 	v, err := a.GetByIndex(index)
-	fmt.Printf("IndexValidator: = %v and err %s\n", v, err)
+	fmt.Printf("IndexValidator: = index %d %v and err %s\n", index, v, err)
 	if err != nil {
 		fmt.Printf("index validator Err := %s\n", err)
 		return NewZeroValue(ArrayValue), index, ErrIndexOutOfBound
 	}
 
+	fmt.Printf("IndexValidator: RETURN %v with path %s but must be %s\n", v, path, path[1:])
 	return v, index, nil
 }
 
@@ -187,33 +193,14 @@ func (fb *FieldBuffer) AddFieldToArray(value Value, field string, ReqField strin
 	return nil
 }
 
-func replaceValue(v Value, path ValuePath, reqValue Value) (Value, error) {
-	switch v.Type {
-	case DocumentValue:
-		var buf FieldBuffer
-		err := buf.Copy(v.V.(Document))
-		if err != nil {
-			return v, err
-		}
-
-		v, err = buf.SetDocument(v, path[1:], reqValue)
-		if err != nil {
-			return v, err
-		}
-
-		return v, nil
-	case ArrayValue:
-		var buf ValueBuffer
-		err := buf.Copy(v.V.(Array))
-		if err != nil {
-			return v, err
-		}
-		i, err := strconv.Atoi(path[0])
-		buf.Replace(i, reqValue)
-		return NewArrayValue(buf), nil
+func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
+	var buf FieldBuffer
+	err := buf.Copy(v.V.(Document))
+	if err != nil {
+		return *NewFieldBuffer(), ErrNotDocument
 	}
 
-	return v, errors.New("type must be an array or a document")
+	return buf, nil
 }
 
 // IsUniqueField is the ValuePath contains an unique field to set <field>
@@ -236,96 +223,86 @@ func (path ValuePath) isOneNestedField() bool {
 
 // isLastField check if we reach the  field of ValuePath.
 func (path ValuePath) isLastField() bool {
-	indexOfLastField := path.lastIndexOfPath()
-	if indexOfLastField == 1 {
+	if len(path) == 1 {
 		return true
 	}
 
 	return false
 }
 
+// SetUniqueFieldOfDocument Add/Replace a value if the request is <Document.Field> or <Array.Index> or field
+func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) error {
+	fmt.Printf("SetUniqueFieldOfDocument: : field  = %s by value %v\n", field, reqValue)
+	_, err := fb.GetByField(field)
+	switch err {
+	case ErrFieldNotFound:
+		fmt.Printf("SetUniqueFieldOfDocument: ErrFieldNotFound: fb.Add(field = %s, reqValue == %v\n", field, reqValue)
+		fb.Add(field, reqValue)
+		fmt.Printf("SetUniqueFieldOfDocument: : Final value  = %v\n", NewDocumentValue(fb))
+		return nil
+	case nil:
+		fmt.Printf("SetUniqueFieldOfDocument: REPLACE %s\n", err)
+		fb.Replace(field, reqValue)
+		fmt.Printf("SetUniqueFieldOfDocument: : Final value  = %v\n", NewDocumentValue(fb))
+		return nil
+	default:
+		fmt.Printf("SetUniqueFieldOfDocument: DEFAULT: fb.Add(field = %s, reqValue == %v\n", field, reqValue)
+		return err
+	}
+}
+
 // SetDocument reur
 func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Value, error) {
-	fmt.Printf("ReplaceFieldValue: Replace value %v with path = %s by Value == %v\n", v, path, reqValue)
-	last := path.lastIndexOfPath()
-	fmt.Printf("ReplaceFieldValue: V == %v and V.Type == %s \n", v, v.Type)
+	fmt.Printf("SetDocument: SetValue %v with path = %s into Value == %v\n", reqValue, path, v)
+	fmt.Printf("SetDocument: V.TYPE == %s \n", v.Type)
 	switch v.Type {
 	case DocumentValue:
-		var fbuf FieldBuffer
-		err := fbuf.Copy(v.V.(Document))
+		fmt.Printf("SetDocument: DocumentValue: V == %v and V.Type == %s \n", v, v.Type)
+		buf, err := NewFieldBufferByCopy(v)
 		if err != nil {
-			return v, nil
+			fmt.Printf("SetDocument: DocumentValue ERROR ==== > %s\n", err)
+
+			return v, err
+		}
+		fmt.Printf("SetDocument: SetUniqueFieldOfDocument len path ==== > %d with path %s\n", len(path), path)
+		if path.IsUniqueField() {
+			fmt.Printf("SetDocument: SetUniqueFieldOfDocument ERROR ==== > %s\n", err)
+			buf.SetUniqueFieldOfDocument(path[0], reqValue)
+			return NewDocumentValue(buf), nil
 		}
 
-		fmt.Printf("ReplaceFieldValue: DocumentValue: last == %d and path %s\n", last, path)
-		nextField := 0
+		va, err := buf.GetByField(path[0])
+		fmt.Printf("SetDocument: DocumentValue V == %v and V.Type == %s and path %s\n", va, va.Type, path)
+		fmt.Printf("############# VA  == %v #########################\n", va)
 
-		if path.isLastField() {
-			_, _, err := FieldValidator(v, path[1:])
-			switch err {
-			case ErrFieldNotFound:
-				fmt.Printf("ReplaceFieldValue: fb %v\n", NewDocumentValue(fb))
-				return NewDocumentValue(fbuf), ErrCreateField
-			case nil:
-				return NewDocumentValue(fbuf), nil
-			}
-		}
+		va, err = buf.SetDocument(va, path[1:], reqValue)
+		buf.SetUniqueFieldOfDocument(path[0], va)
+		fmt.Printf("############# BUF  == %v #########################\n", NewDocumentValue(buf))
 
-		if !path.isLastField() {
-			vv, nextField, err := FieldValidator(v, path[nextField:])
-			if err != nil {
-				return v, err
-			}
-			vv, err = fbuf.SetDocument(vv, path[nextField+1:], reqValue)
-			fbuf.Replace(path[nextField], vv)
-			return NewDocumentValue(fbuf), err
-		}
+		return NewDocumentValue(buf), nil
 
-		return NewDocumentValue(fbuf), nil
 	case ArrayValue:
+		fmt.Printf("SetDocument: ArrayValue V == %v and V.Type == %s && path %s\n", v, v.Type, path)
 		buf, err := NewValueBufferByCopy(v)
-		vv, index, err := IndexValidator(path, buf)
 		if err != nil {
 			return v, err
 		}
 
-		if path.isOneNestedField() {
+		va, index, err := buf.GetValueFromString(path[0])
+		fmt.Printf("SetDocument: ArrayValue V == %v and V.Type == %s and index %d\n", va, va.Type, index)
+		fmt.Printf("############# VA  == %v #########################\n", va)
+		if len(path) == 1 {
 			buf.Replace(index, reqValue)
-			return NewArrayValue(buf), err
+			fmt.Printf("############# ARRAYVALUE:   BUF  == %v #########################\n", NewArrayValue(buf))
+			return NewArrayValue(buf), nil
 		}
-
-		nextIndex := 1
-		if last > 1 {
-			nextIndex++
-		}
-
-		vv, err = buf.SetArray(vv, path[nextIndex:], reqValue)
-		if err != nil {
-			return NewArrayValue(buf), err
-		}
-
-		buf.Replace(index, vv)
+		va, err = fb.SetDocument(va, path[1:], reqValue)
+		buf.Replace(index, va)
+		fmt.Printf("############# ARRAYVALUE: NOT LAST  BUF  == %v #########################\n", NewArrayValue(buf))
 		return NewArrayValue(buf), nil
-	default:
-		fmt.Println("ReplaceFieldValue: Default:")
-		return reqValue, nil
 	}
-}
 
-// SetUniqueFieldOfDocument Add/Replace a value if the request is <Document.Field> or <Array.Index> or field
-func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) error {
-	_, err := fb.GetByField(field)
-	switch err {
-	case ErrFieldNotFound:
-		fb.Add(field, reqValue)
-		fmt.Printf("SetUniqueFieldOfDocument: ErrFieldNotFound: Final value  = %v\n", NewDocumentValue(fb))
-		return nil
-	case nil:
-		fb.Replace(field, reqValue)
-		return nil
-	default:
-		return err
-	}
+	return v, nil
 }
 
 // Set replaces a field if it already exists or creates one if not.
@@ -339,30 +316,9 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-
+			v := field.Value
 			// if path contains only one field and <Document.Field>.
-			if path.isOneNestedField() {
-				switch field.Value.Type {
-				case DocumentValue:
-					return fb.SetUniqueFieldOfDocument(path[1], reqValue)
-				case ArrayValue:
-					buf, err := NewValueBufferByCopy(field.Value)
-					if err != nil {
-						return err
-					}
-
-					err = buf.SetValueFromPath(path[1:], reqValue)
-					if err != nil {
-						return err
-					}
-
-					fb.fields[i].Value = NewArrayValue(buf)
-					return nil
-				}
-
-			}
-
-			v, err := fb.SetDocument(field.Value, path, reqValue)
+			v, err := fb.SetDocument(v, path[1:], reqValue)
 			fmt.Printf("Set: Err  = %s\n", err)
 			if err != nil {
 				return err
