@@ -138,7 +138,7 @@ func (path ValuePath) IndexValidator(a Array) (Value, int, error) {
 	v, err := a.GetByIndex(index)
 	fmt.Printf("IndexValidator: = index %d %v and err %s\n", index, v, err)
 	if err != nil {
-		fmt.Printf("index validator Err := %s\n", err)
+		fmt.Printf("index validator Err := %s\n", ErrIndexOutOfBound)
 		return NewZeroValue(ArrayValue), index, ErrIndexOutOfBound
 	}
 
@@ -176,22 +176,6 @@ func SizeOfDoc(d Document) int {
 	return i
 }
 
-// AddFieldToArray add a field in unique of document
-func (fb *FieldBuffer) AddFieldToArray(value Value, field string, ReqField string, reqValue Value) error {
-	var b ValueBuffer
-	err := b.Copy(value.V.(Array))
-	if err != nil {
-		fb.Add(field, NewArrayValue(&b))
-		fb.Delete(field)
-		return err
-	}
-
-	fb.Add(field, NewArrayValue(&b))
-	fb.Add(ReqField, reqValue)
-	fb.Delete(field)
-
-	return nil
-}
 
 func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
 	var buf FieldBuffer
@@ -206,15 +190,6 @@ func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
 // IsUniqueField is the ValuePath contains an unique field to set <field>
 func (path ValuePath) IsUniqueField() bool {
 	if len(path) == 1 {
-		return true
-	}
-
-	return false
-}
-
-// isOneNestedField check if the Value path request just one field. Simple dot notatino <Document>.<field> or <Array>.>index>
-func (path ValuePath) isOneNestedField() bool {
-	if len(path) == 2 {
 		return true
 	}
 
@@ -289,6 +264,9 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 		}
 
 		va, index, err := buf.GetValueFromString(path[0])
+		if err != nil {
+			return v, err
+		}
 		fmt.Printf("SetDocument: ArrayValue V == %v and V.Type == %s and index %d\n", va, va.Type, index)
 		fmt.Printf("############# VA  == %v #########################\n", va)
 		if len(path) == 1 {
@@ -307,33 +285,23 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
-	//check the dot notation
-	fmt.Printf("***************************** \nSet: reqValue %v with path = %s and len == %d\n **********************\n", reqValue, path, len(path))
-
 	if path.IsUniqueField() {
 		return fb.SetUniqueFieldOfDocument(path[0], reqValue)
 	}
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-			v := field.Value
-			// if path contains only one field and <Document.Field>.
-			v, err := fb.SetDocument(v, path[1:], reqValue)
-			fmt.Printf("Set: Err  = %s\n", err)
+			v, err := fb.SetDocument(field.Value, path[1:], reqValue)
 			if err != nil {
 				return err
 			}
 
 			fb.fields[i].Value = v
-			fmt.Printf("Set: Final value  = %v\n", fb.fields[i].Value)
 			return nil
 		}
 	}
 
-	fmt.Printf("Set: add = %s and value == %v\n", path[0], reqValue)
-	fb.Add(path[0], reqValue)
 	return nil
-
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
