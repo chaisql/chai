@@ -71,12 +71,12 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 	if cfg == nil {
 		cfg = new(TableConfig)
 	}
-	_, err := tx.infoStore.Insert(name, *cfg)
+	ti, err := tx.infoStore.Insert(name, *cfg)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(name)
+	err = tx.Tx.CreateStore(ti.storeID[:])
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -91,7 +91,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore(name)
+	s, err := tx.Tx.GetStore([]byte(name))
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +146,13 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
-	return tx.Tx.DropStore(name)
+	return tx.Tx.DropStore([]byte(name))
 }
 
 // ListTables lists all the tables.
 func (tx Transaction) ListTables() ([]string, error) {
-	stores, err := tx.Tx.ListStores("")
+	// TODO (yaziine): Change this, we should use the tableInfoStore instead!
+	stores, err := tx.Tx.ListStores([]byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +284,7 @@ func (tx Transaction) ReIndexAll() error {
 }
 
 func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
-	st, err := tx.Tx.GetStore(tableInfoStoreName)
+	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +294,7 @@ func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {
-	st, err := tx.Tx.GetStore(indexStoreName)
+	st, err := tx.Tx.GetStore([]byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}
