@@ -24,6 +24,12 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 	return tb, fn
 }
 
+func newDocument() *document.FieldBuffer {
+	return document.NewFieldBuffer().
+		Add("fielda", document.NewTextValue("a")).
+		Add("fieldb", document.NewTextValue("b"))
+}
+
 // TestTableIterate verifies Iterate behaviour.
 func TestTableIterate(t *testing.T) {
 	t.Run("Should not fail with no documents", func(t *testing.T) {

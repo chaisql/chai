@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
@@ -86,12 +85,12 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Transaction) GetTable(name string) (*Table, error) {
-	_, err := tx.infoStore.Get(name)
+	ti, err := tx.infoStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore([]byte(name))
+	s, err := tx.Tx.GetStore(ti.storeID[:])
 	if err != nil {
 		return nil, err
 	}
@@ -141,36 +140,23 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
+	ti, err := tx.infoStore.Get(name)
+	if err != nil {
+		return err
+	}
+
 	err = tx.infoStore.Delete(name)
 	if err != nil {
 		return err
 	}
 
-	return tx.Tx.DropStore([]byte(name))
+	return tx.Tx.DropStore(ti.storeID[:])
 }
 
 // ListTables lists all the tables.
+// The returned slice is lexicographically ordered.
 func (tx Transaction) ListTables() ([]string, error) {
-	// TODO (yaziine): Change this, we should use the tableInfoStore instead!
-	stores, err := tx.Tx.ListStores([]byte(""))
-	if err != nil {
-		return nil, err
-	}
-
-	tables := make([]string, 0, len(stores))
-
-	for _, st := range stores {
-		if st == indexStoreName || st == tableInfoStoreName {
-			continue
-		}
-		if strings.HasPrefix(st, index.StorePrefix) {
-			continue
-		}
-
-		tables = append(tables, st)
-	}
-
-	return tables, nil
+	return tx.infoStore.ListTables()
 }
 
 // CreateIndex creates an index with the given name.
