@@ -490,8 +490,8 @@ func (t *Table) Truncate() error {
 	return t.Store.Truncate()
 }
 
-// TableName returns the name of the table.
-func (t *Table) TableName() string {
+// Name returns the name of the table.
+func (t *Table) Name() string {
 	return t.name
 }
 

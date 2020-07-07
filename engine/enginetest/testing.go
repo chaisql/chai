@@ -4,7 +4,6 @@ package enginetest
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -33,7 +32,6 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Transaction/Store", TestTransactionStore},
 		{"Transaction/CreateStore", TestTransactionCreateStore},
 		{"Transaction/DropStore", TestTransactionDropStore},
-		{"Transaction/ListStores", TestTransactionListStores},
 		{"Store/Iterator", TestStoreIterator},
 		{"Store/Put", TestStorePut},
 		{"Store/Get", TestStoreGet},
@@ -422,60 +420,6 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 
 		err = tx.DropStore([]byte("store"))
 		require.Equal(t, engine.ErrStoreNotFound, err)
-	})
-}
-
-// TestTransactionListStores verifies ListStores behaviour.
-func TestTransactionListStores(t *testing.T, builder Builder) {
-	t.Run("With no prefix, should list all stores", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		for i := 0; i < 10; i++ {
-			name := fmt.Sprintf("store%d", i)
-			err = tx.CreateStore([]byte(name))
-			require.NoError(t, err)
-		}
-
-		list, err := tx.ListStores([]byte(""))
-		require.NoError(t, err)
-		require.Len(t, list, 10)
-		for i, name := range list {
-			exp := fmt.Sprintf("store%d", i)
-			require.Equal(t, []byte(exp), name)
-		}
-	})
-
-	t.Run("With a prefix, should list some stores", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-
-		tx, err := ng.Begin(true)
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		var name string
-		for i := 0; i < 10; i++ {
-			if i%2 == 0 {
-				name = fmt.Sprintf("foo%d", i)
-				err = tx.CreateStore([]byte(name))
-			} else {
-				name = fmt.Sprintf("bar%d", i)
-				err = tx.CreateStore([]byte(name))
-			}
-			require.NoError(t, err)
-		}
-
-		list, err := tx.ListStores([]byte("f"))
-		require.NoError(t, err)
-		require.Len(t, list, 5)
-		for i, name := range list {
-			require.Equal(t, fmt.Sprintf("foo%d", i*2), name)
-		}
 	})
 }
 

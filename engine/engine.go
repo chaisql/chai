@@ -52,9 +52,6 @@ type Transaction interface {
 	// Drop a store by name. If the store doesn't exist, it returns ErrStoreNotFound.
 	// It deletes all the values stored in it.
 	DropStore(name []byte) error
-	// Returns a list of store names lexicographically sorted.
-	// If there are no stores, an empty slice is returned.
-	ListStores(prefix []byte) ([]string, error)
 }
 
 // A Store manages key value pairs. It is an abstraction on top of any data structure that can provide

@@ -159,18 +159,3 @@ func (t *Transaction) DropStore(name []byte) error {
 
 	return err
 }
-
-// ListStores returns a list of all the store names.
-func (t *Transaction) ListStores(prefix []byte) ([]string, error) {
-	var names []string
-
-	p := buildStoreKey(prefix)
-	it := t.tx.NewIterator(badger.DefaultIteratorOptions)
-	defer it.Close()
-
-	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-		names = append(names, string(bytes.TrimPrefix(it.Item().Key(), p[:len(p)-len(prefix)])))
-	}
-
-	return names, nil
-}
