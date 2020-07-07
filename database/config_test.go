@@ -30,15 +30,23 @@ func TestTableInfoStore(t *testing.T) {
 	}
 
 	// Inserting one tableInfo should work.
-	ti, err := tcs.Insert("foo-table", cfg)
+	ti, err := tcs.Insert("foo1", cfg)
 	require.NoError(t, err)
 
 	// Inserting an existing tableInfo should not work.
-	_, err = tcs.Insert("foo-table", cfg)
+	_, err = tcs.Insert("foo1", cfg)
 	require.Equal(t, err, ErrTableAlreadyExists)
 
+	// Listing all tables should return their name
+	// lexicographically ordered.
+	_, _ = tcs.Insert("foo3", cfg)
+	_, _ = tcs.Insert("foo2", cfg)
+	lt, err := tcs.ListTables()
+	require.NoError(t, err)
+	require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
+
 	// Getting an existing tableInfo should work.
-	received, err := tcs.Get("foo-table")
+	received, err := tcs.Get("foo1")
 	require.NoError(t, err)
 	require.Equal(t, ti, received)
 
@@ -52,17 +60,17 @@ func TestTableInfoStore(t *testing.T) {
 	err = tcs.Replace("foo-table", &cfg)
 	require.NoError(t, err)
 
-	received, err = tcs.Get("foo-table")
+	received, err = tcs.Get("foo1")
 	require.NoError(t, err)
 	require.Equal(t, ti.storeID, received.storeID)
 	require.Equal(t, cfg, *received.cfg)
 
 	// Deleting an existing tableInfo should work.
-	err = tcs.Delete("foo-table")
+	err = tcs.Delete("foo1")
 	require.NoError(t, err)
 
 	// Deleting a non-existing tableInfo should not work.
-	err = tcs.Delete("foo-table")
+	err = tcs.Delete("foo1")
 	require.Equal(t, ErrTableNotFound, err)
 }
 

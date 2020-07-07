@@ -259,6 +259,17 @@ func (t *tableInfoStore) Delete(tableName string) error {
 	return err
 }
 
+func (t *tableInfoStore) ListTables() ([]string, error) {
+	it := t.st.NewIterator(engine.IteratorConfig{Reverse: false})
+
+	var names []string
+	for it.Seek(nil); it.Valid(); it.Next() {
+		k := it.Item().Key()
+		names = append(names, string(k))
+	}
+	return names, it.Close()
+}
+
 func generateStoreID() [6]byte {
 	var id [6]byte
 
