@@ -69,11 +69,6 @@ func (p *Parser) parseResultFields() ([]query.ResultField, error) {
 			p.Unscan()
 			return rfields, nil
 		}
-		tok, _, _ = p.ScanIgnoreWhitespace()
-		if tok != scanner.DOT {
-			p.Unscan()
-			return rfields, nil
-		}
 
 		if rf, err = p.parseResultField(); err != nil {
 			return nil, err

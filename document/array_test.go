@@ -2,6 +2,7 @@ package document
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,46 @@ func TestSortArray(t *testing.T) {
 			actual, err := json.Marshal(output)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, string(actual))
+		})
+	}
+}
+
+func TestValueBuffer_GetByIndexWithString(t *testing.T) {
+	type args struct {
+		f string
+	}
+
+
+	vb := NewValueBuffer(
+		NewTextValue("foo"),
+	)
+
+	tests := []struct {
+		name    string
+		vb      ValueBuffer
+		args    args
+		want    Value
+		want1   int
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{"Value at index with string number", vb, args{f: "0"}, NewTextValue("foo"), 0, false},
+		{"Value at index by with string", vb, args{f: "foo"}, Value{}, -1, true},
+
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := tt.vb.GetByIndexWithString(tt.args.f)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetByIndexWithString() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetByIndexWithString() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("GetByIndexWithString() got1 = %v, want %v", got1, tt.want1)
+			}
 		})
 	}
 }

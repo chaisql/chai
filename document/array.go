@@ -9,7 +9,10 @@ import (
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 // the index wasn't found in the array.
-var ErrValueNotFound = errors.New("value not found")
+var (
+	ErrValueNotFound = errors.New("value not found")
+	ErrIndexOutOfBound = errors.New("index out of bounds")
+)
 
 // An Array contains a set of values.
 type Array interface {
@@ -100,29 +103,29 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-// GetValueFromString return a value from string after conversion to index int.
-func (vb *ValueBuffer) GetValueFromString(f string) (Value, int, error) {
+// GetByIndexWithString do a string conversion before calling GetByIndex.
+func (vb *ValueBuffer) GetByIndexWithString(f string) (Value, int, error) {
 	index, err := strconv.Atoi(f)
 	if err != nil {
-		return NewZeroValue(ArrayValue), -1, err
+		return Value{}, -1, err
 	}
 
 	v, err := vb.GetByIndex(index)
 	if err != nil {
-		return NewZeroValue(ArrayValue), index, ErrIndexOutOfBound
+		return Value{}, index, ErrIndexOutOfBound
 	}
 
 	return v, index, err
 }
 
 // NewValueBufferByCopy return pointer of ValueBuffer from Value after copying it.
-func NewValueBufferByCopy(value Value) (*ValueBuffer, error) {
-	if value.Type != ArrayValue {
-		return nil, fmt.Errorf("Cannot Create ValueBuffer with type %s", value.Type)
+func NewValueBufferByCopy(v Value) (*ValueBuffer, error) {
+	if v.Type != ArrayValue {
+		return nil, fmt.Errorf("cannot create valueBuffer with type %s", v.Type)
 	}
 
 	var buf ValueBuffer
-	err := buf.Copy(value.V.(Array))
+	err := buf.Copy(v.V.(Array))
 	if err != nil {
 		return nil, err
 	}

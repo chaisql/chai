@@ -132,7 +132,11 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 		}
 
 		path := document.NewValuePath(fname)
-		_ = d.Set(path, ev)
+		err = d.Set(path, ev)
+		fmt.Printf("ERROR %s\n", err)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

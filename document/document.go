@@ -9,17 +9,15 @@ import (
 
 // ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
 // the field wasn't found in the document.
+//ErrIndexOutOfBound
 var (
 	ErrFieldNotFound   = errors.New("field not found")
-	ErrShortNotation   = errors.New("Short Notation")
-	ErrCreateField     = errors.New("field must be created")
-	ErrFieldReplaced   = errors.New("buffer is replaced")
-	ErrValueNotSet     = errors.New("value not set")
-	ErrIndexOutOfBound = errors.New("index out of bounds")
 	ErrNotDocument     = errors.New("type must be  a document")
 )
 
+//
 const NEXTFIELD = 1
+
 // A Document represents a group of key value pairs.
 type Document interface {
 	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
@@ -80,6 +78,7 @@ func (fb *FieldBuffer) ScanDocument(d Document) error {
 
 // GetByField returns a value by field. Returns an error if the field doesn't exists.
 func (fb FieldBuffer) GetByField(field string) (Value, error) {
+
 	for _, fv := range fb.fields {
 		if fv.Field == field {
 			return fv.Value, nil
@@ -145,7 +144,7 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 			return v, err
 		}
 
-		va, index, err := buf.GetValueFromString(path[0])
+		va, index, err := buf.GetByIndexWithString(path[0])
 		if err != nil {
 			return v, err
 		}
@@ -166,12 +165,13 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 	if path.IsUniqueField() {
+		//Set or replace the unique field
 		return fb.SetUniqueFieldOfDocument(path[0], reqValue)
 	}
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-			v, err := fb.SetDocument(field.Value, path[1:], reqValue)
+			v, err := fb.SetDocument(field.Value, path[NEXTFIELD:], reqValue)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,8 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 		}
 	}
 
-	return nil
+	//return Err if the request is like foo.1.2.etc where foo doesn't exist
+	return ErrFieldNotFound
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
@@ -289,6 +290,24 @@ func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
 	}
 
 	v, err := d.GetByField(p[0])
+	if err != nil {
+		return Value{}, err
+	}
+
+	return p.getValueFromValue(v)
+}
+
+func (p ValuePath) getValueFromArray(a Array) (Value, error) {
+	if len(p) == 0 {
+		return Value{}, errors.New("empty valuepath")
+	}
+
+	i, err := strconv.Atoi(p[0])
+	if err != nil {
+		return Value{}, err
+	}
+
+	v, err := a.GetByIndex(i)
 	if err != nil {
 		return Value{}, err
 	}

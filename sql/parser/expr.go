@@ -393,14 +393,12 @@ LOOP:
 		case scanner.DOT:
 			// scan the next token for an ident
 			tok, pos, lit := p.Scan()
-			fmt.Printf("EXPR tok == %s and lit %s\n", tok, lit)
 			if tok != scanner.IDENT && tok != scanner.STRING {
 				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
 			}
 
 			fieldRef = append(fieldRef, lit)
 		case scanner.NUMBER:
-			fmt.Printf("EXPR NUMBER tok == %s and lit %s\n", tok, lit)
 			// if it starts with a dot, it's considered as an array index
 			if lit[0] != '.' {
 				p.Unscan()
