@@ -128,7 +128,7 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 
 type tableInfo struct {
 	// storeID is a generated ID that acts as a key to reference this table.
-	// The first-4 bytes represents the timestamp in second and the last-2 bytes are
+	// The first 4 bytes represent the timestamp in seconds and the last 2 bytes are
 	// randomly generated.
 	storeID [6]byte
 
@@ -172,9 +172,8 @@ type tableInfoStore struct {
 	st engine.Store
 }
 
-// Insert inserts a new tableInfo for the table tableName.
-// If the generated storeID already exists, a new one will be generated
-// until it doesn't already exist.
+// Insert a new tableInfo for the given table name.
+// It automatically generates a unique storeID for that table.
 func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) (*tableInfo, error) {
 	key := []byte(tableName)
 	_, err := t.st.Get(key)
@@ -260,7 +259,7 @@ func (t *tableInfoStore) Delete(tableName string) error {
 }
 
 func (t *tableInfoStore) ListTables() ([]string, error) {
-	it := t.st.NewIterator(engine.IteratorConfig{Reverse: false})
+	it := t.st.NewIterator(engine.IteratorConfig{})
 
 	var names []string
 	for it.Seek(nil); it.Valid(); it.Next() {

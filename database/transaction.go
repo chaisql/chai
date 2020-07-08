@@ -24,7 +24,7 @@ type Transaction struct {
 	Tx       engine.Transaction
 	writable bool
 
-	infoStore  *tableInfoStore
+	tableInfoStore  *tableInfoStore
 	indexStore *indexStore
 }
 
