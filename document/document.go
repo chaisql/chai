@@ -15,9 +15,6 @@ var (
 	ErrNotDocument     = errors.New("type must be  a document")
 )
 
-//
-const NEXTFIELD = 1
-
 // A Document represents a group of key value pairs.
 type Document interface {
 	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
@@ -53,12 +50,12 @@ func NewFieldBuffer() *FieldBuffer {
 // NewFieldBufferByCopy creates a FieldBuffer from a DocumentValue.
 func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
 	var buf FieldBuffer
-	err := buf.Copy(v.V.(Document))
-	if err != nil {
-		return *NewFieldBuffer(), ErrNotDocument
+	if v.Type != DocumentValue {
+		return buf, ErrNotDocument
 	}
 
-	return buf, nil
+	err := buf.Copy(v.V.(Document))
+	return buf, err
 }
 
 
@@ -88,16 +85,7 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
-// IsUniqueField is the ValuePath only a field to set <field>
-func (path ValuePath) IsUniqueField() bool {
-	if len(path) == 1 {
-		return true
-	}
-
-	return false
-}
-
-// SetUniqueFieldOfDocument Add/Replace a value if the request is <Document.Field> or <Array.Index> or field.
+// SetUniqueFieldOfDocument Add/Replace a value if the request is  field.
 func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) error {
 	_, err := fb.GetByField(field)
 	switch err {
@@ -112,8 +100,9 @@ func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) er
 	return err
 }
 
-// SetDocument make deep replacement or creation of a field.
-func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Value, error) {
+// SetValueFromValuePath make a deep replacement or creation of a field field or index of an array.
+func (fb *FieldBuffer) SetValueFromValuePath(v Value, path ValuePath, reqValue Value) (Value, error) {
+
 	switch v.Type {
 	case DocumentValue:
 		buf, err := NewFieldBufferByCopy(v)
@@ -121,7 +110,7 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 			return v, err
 		}
 
-		if path.IsUniqueField() {
+		if len(path) == 1 {
 			buf.SetUniqueFieldOfDocument(path[0], reqValue)
 			return NewDocumentValue(buf), nil
 		}
@@ -131,7 +120,7 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 			return v, err
 		}
 
-		va, err = buf.SetDocument(va, path[NEXTFIELD:], reqValue)
+		va, err = buf.SetValueFromValuePath(va, path[1:], reqValue)
 		if err != nil {
 			return v, err
 		}
@@ -149,12 +138,12 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 			return v, err
 		}
 
-		if path.IsUniqueField() {
+		if len(path) == 1 {
 			_ = buf.Replace(index, reqValue)
 			return NewArrayValue(buf), nil
 		}
 
-		va, err = fb.SetDocument(va, path[NEXTFIELD:], reqValue)
+		va, err = fb.SetValueFromValuePath(va, path[1:], reqValue)
 		_ = buf.Replace(index, va)
 		return NewArrayValue(buf), nil
 	}
@@ -164,14 +153,16 @@ func (fb *FieldBuffer) SetDocument(v Value, path ValuePath, reqValue Value) (Val
 
 // Set replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
-	if path.IsUniqueField() {
+
+	// check if the ValuePath contains only one field to set
+	if len(path) == 1 {
 		//Set or replace the unique field
 		return fb.SetUniqueFieldOfDocument(path[0], reqValue)
 	}
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-			v, err := fb.SetDocument(field.Value, path[NEXTFIELD:], reqValue)
+			v, err := fb.SetValueFromValuePath(field.Value, path[1:], reqValue)
 			if err != nil {
 				return err
 			}
@@ -265,6 +256,7 @@ func (fb *FieldBuffer) Reset() {
 }
 
 // A ValuePath represents the path to a particular value within a document.
+// is used for dot notation
 type ValuePath []string
 
 // NewValuePath takes a string representation of a value path and returns a ValuePath.

@@ -94,3 +94,24 @@ func TestValueBuffer_GetByIndexWithString(t *testing.T) {
 		})
 	}
 }
+
+func TestValueBuffer_Copy(t *testing.T) {
+	type args struct {
+		a Array
+	}
+	tests := []struct {
+		name    string
+		vb      ValueBuffer
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.vb.Copy(tt.args.a); (err != nil) != tt.wantErr {
+				t.Errorf("Copy() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
