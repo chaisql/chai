@@ -127,8 +127,8 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 }
 
 type tableInfo struct {
-	// storeID is a generated ID that acts as a key to reference this table.
-	// The first 4 bytes represent the timestamp in seconds and the last 2 bytes are
+	// storeID is a generated ID that acts as a key to reference a table.
+	// The first-4 bytes represents the timestamp in second and the last-2 bytes are
 	// randomly generated.
 	storeID [6]byte
 

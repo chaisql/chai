@@ -24,8 +24,8 @@ type Transaction struct {
 	Tx       engine.Transaction
 	writable bool
 
-	tableInfoStore  *tableInfoStore
-	indexStore *indexStore
+	tableInfoStore *tableInfoStore
+	indexStore     *indexStore
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -70,7 +70,7 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 	if cfg == nil {
 		cfg = new(TableConfig)
 	}
-	ti, err := tx.infoStore.Insert(name, *cfg)
+	ti, err := tx.tableInfoStore.Insert(name, *cfg)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Transaction) GetTable(name string) (*Table, error) {
-	ti, err := tx.infoStore.Get(name)
+	ti, err := tx.tableInfoStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 		tx:        &tx,
 		Store:     s,
 		name:      name,
-		infoStore: tx.infoStore,
+		infoStore: tx.tableInfoStore,
 	}, nil
 }
 
@@ -140,12 +140,12 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
-	ti, err := tx.infoStore.Get(name)
+	ti, err := tx.tableInfoStore.Get(name)
 	if err != nil {
 		return err
 	}
 
-	err = tx.infoStore.Delete(name)
+	err = tx.tableInfoStore.Delete(name)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (tx Transaction) DropTable(name string) error {
 // ListTables lists all the tables.
 // The returned slice is lexicographically ordered.
 func (tx Transaction) ListTables() ([]string, error) {
-	return tx.infoStore.ListTables()
+	return tx.tableInfoStore.ListTables()
 }
 
 // CreateIndex creates an index with the given name.
