@@ -23,3 +23,5 @@ profile.*
 # Databases
 *.db
 *.idea
+.idea/*
+*.vscode
