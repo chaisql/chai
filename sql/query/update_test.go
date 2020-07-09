@@ -56,6 +56,7 @@ func TestUpdateStmt(t *testing.T) {
 			err = db.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
 			require.NoError(t, err)
 
+
 			err = db.Exec(test.query, test.params...)
 			if test.fails {
 				require.Error(t, err)

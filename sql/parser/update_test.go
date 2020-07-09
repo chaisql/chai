@@ -46,11 +46,22 @@ func TestParserUdpate(t *testing.T) {
 				WhereExpr:   expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
 			},
 			false},
+		{"SET/No cond dot notation", "UPDATE test SET 'foo.1.bar.0.1.2.3.4.bar' = 'foo'",
+			query.UpdateStmt{
+				TableName: "test",
+				SetPairs: map[string]expr.Expr{
+					"foo.1.bar.0.1.2.3.4.bar": expr.TextValue("foo"),
+				},
+			},
+			false},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},
 		{"No SET", "UPDATE test WHERE age = 10", nil, true},
 		{"No pair", "UPDATE test SET WHERE age = 10", nil, true},
 		{"query.Field only", "UPDATE test SET a WHERE age = 10", nil, true},
 		{"No value", "UPDATE test SET a = WHERE age = 10", nil, true},
+		{"Dot notation", "UPDATE test SET foo.1.bar.0.1.2.3.4.bar", nil, true},
+
+
 	}
 
 	for _, test := range tests {

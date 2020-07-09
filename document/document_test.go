@@ -79,19 +79,74 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Set", func(t *testing.T) {
 		var buf document.FieldBuffer
-		buf.Add("a", document.NewInt64Value(10))
-		buf.Add("b", document.NewTextValue("hello"))
+		var vbuf document.ValueBuffer
 
-		buf.Set("a", document.NewFloat64Value(11))
-		v, err := buf.GetByField("a")
-		require.NoError(t, err)
-		require.Equal(t, document.NewFloat64Value(11), v)
+		vbuf = vbuf.Append(document.NewInt64Value(1))
+		vbuf = vbuf.Append(document.NewInt64Value(0))
+		vbuf = vbuf.Append(document.NewInt64Value(0))
 
-		buf.Set("c", document.NewInt64Value(12))
-		require.Equal(t, 3, buf.Len())
-		v, err = buf.GetByField("c")
+		data :=[]byte(`{
+						"name": "Foo",
+						"address": {
+							"city": "Lyon",
+							"zipcode": "69001"
+						},
+						"friends": [
+						  {
+							"name": "Bar",
+							"address": {
+								"city": "Paris",
+								"zipcode": "75001"
+							}
+						  },
+							{
+							  "name": "Baz",
+							  "address": {
+								  "city": "Ajaccio",
+								  "zipcode": "20000"
+							  },
+							  "favorite game": "FF IX"
+							}
+						]
+}`)
+		d, err :=	document.NewFromJSON(data)
+		buf.Copy(d)
+
+
+		vb, err := buf.GetByField("friends")
 		require.NoError(t, err)
-		require.Equal(t, document.NewInt64Value(12), v)
+		arr, err := vb.ConvertToArray()
+		require.NoError(t, err)
+		v, err := arr.GetByIndex(0)
+		require.NoError(t, err)
+		d, err = v.ConvertToDocument()
+		require.NoError(t, err)
+		v, err = d.GetByField("address")
+		fbuf, _ := document.NewFieldBufferByCopy(v)
+		fbuf.Set(document.NewValuePath("a"), document.NewArrayValue(&vbuf))
+		err = buf.Set(document.NewValuePath("friends.0.address"), document.NewDocumentValue(fbuf))
+		require.NoError(t, err)
+		err = buf.Set(document.NewValuePath("friends.0.address.a.2"), document.NewInt64Value(99))
+
+		err = buf.Set(document.NewValuePath("friends.0.address.a.2"), document.NewArrayValue(&vbuf))
+		require.NoError(t, err)
+		v, err = buf.GetByField("friends")
+		require.NoError(t, err)
+		arr, err = v.ConvertToArray()
+		require.NoError(t, err)
+		v, err = arr.GetByIndex(0)
+		require.NoError(t, err)
+		d, err = v.ConvertToDocument()
+		v, err = d.GetByField("address")
+		d, err = v.ConvertToDocument()
+		va, err := d.GetByField("a")
+		arr, err = va.ConvertToArray()
+		v, err = arr.GetByIndex(2)
+		require.NoError(t, err)
+		require.Equal(t, v, document.NewArrayValue(vbuf))
+
+
+
 	})
 
 	t.Run("Delete", func(t *testing.T) {

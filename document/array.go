@@ -2,12 +2,17 @@ package document
 
 import (
 	"errors"
+	"fmt"
 	"sort"
+	"strconv"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 // the index wasn't found in the array.
-var ErrValueNotFound = errors.New("value not found")
+var (
+	ErrValueNotFound = errors.New("value not found")
+	ErrIndexOutOfBound = errors.New("index out of bounds")
+)
 
 // An Array contains a set of values.
 type Array interface {
@@ -98,6 +103,36 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
+// GetByIndexWithString do a string conversion before calling GetByIndex.
+func (vb *ValueBuffer) GetByIndexWithString(f string) (Value, int, error) {
+	index, err := strconv.Atoi(f)
+	if err != nil {
+		return Value{}, -1, err
+	}
+
+	v, err := vb.GetByIndex(index)
+	if err != nil {
+		return Value{}, index, ErrIndexOutOfBound
+	}
+
+	return v, index, err
+}
+
+// NewValueBufferByCopy return pointer of ValueBuffer from Value after copying it.
+func NewValueBufferByCopy(v Value) (*ValueBuffer, error) {
+	if v.Type != ArrayValue {
+		return nil, fmt.Errorf("cannot create valueBuffer with type %s", v.Type)
+	}
+
+	var buf ValueBuffer
+	err := buf.Copy(v.V.(Array))
+	if err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
 // Copy deep copies all the values from the given array.
 // If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
 func (vb *ValueBuffer) Copy(a Array) error {
@@ -106,7 +141,12 @@ func (vb *ValueBuffer) Copy(a Array) error {
 		return err
 	}
 
-	for _, v := range *vb {
+	if len(*vb) == 0 {
+		 *vb = ValueBuffer{}
+		 return nil
+	}
+
+	for i, v := range *vb {
 		switch v.Type {
 		case DocumentValue:
 			var buf FieldBuffer
@@ -115,7 +155,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			*vb = vb.Append(NewDocumentValue(&buf))
+			err := vb.Replace(i, NewDocumentValue(&buf))
+			if err != nil {
+				return err
+			}
 		case ArrayValue:
 			var buf ValueBuffer
 			err = buf.Copy(v.V.(Array))
@@ -123,7 +166,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			*vb = vb.Append(NewArrayValue(&buf))
+			err := vb.Replace(i, NewArrayValue(&buf))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -133,7 +179,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 // Replace the value of the index by v.
 func (vb *ValueBuffer) Replace(index int, v Value) error {
 	if len(*vb) <= index {
-		return ErrFieldNotFound
+		return ErrIndexOutOfBound
 	}
 
 	(*vb)[index] = v

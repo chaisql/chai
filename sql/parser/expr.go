@@ -218,7 +218,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 // parseIdent parses an identifier.
 func (p *Parser) parseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok != scanner.IDENT {
+	if tok != scanner.IDENT && tok != scanner.STRING {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 	}
 
@@ -374,13 +374,13 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 // parseFieldRef parses a field reference in the form ident (.ident|integer)*
 func (p *Parser) parseFieldRef() ([]string, error) {
 	var fieldRef []string
-	// parse first mandatory ident
+	// parse first mandatory ident can be a string
 	chunk, err := p.parseIdent()
+
 	if err != nil {
 		return nil, err
 	}
 	fieldRef = append(fieldRef, chunk)
-
 LOOP:
 	for {
 		// scan the very next token.
@@ -393,9 +393,10 @@ LOOP:
 		case scanner.DOT:
 			// scan the next token for an ident
 			tok, pos, lit := p.Scan()
-			if tok != scanner.IDENT {
+			if tok != scanner.IDENT && tok != scanner.STRING {
 				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
 			}
+
 			fieldRef = append(fieldRef, lit)
 		case scanner.NUMBER:
 			// if it starts with a dot, it's considered as an array index
