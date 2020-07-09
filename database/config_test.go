@@ -57,7 +57,7 @@ func TestTableInfoStore(t *testing.T) {
 	// Updating the config table.
 	fc := FieldConstraint{Path: []string{"j"}, Type: document.TextValue, IsNotNull: true}
 	cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
-	err = tcs.Replace("foo-table", &cfg)
+	err = tcs.Replace("foo1", &cfg)
 	require.NoError(t, err)
 
 	received, err = tcs.Get("foo1")
