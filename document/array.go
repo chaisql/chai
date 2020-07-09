@@ -141,6 +141,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 		return err
 	}
 
+	if len(*vb) == 0 {
+		 *vb = ValueBuffer{}
+		 return nil
+	}
 
 	for i, v := range *vb {
 		switch v.Type {
