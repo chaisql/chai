@@ -26,7 +26,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="043c90c9-c834-417f-9880-6324cf46b61e" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/cmd/genji/shell/shell.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/genji/shell/shell.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
