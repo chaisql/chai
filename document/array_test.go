@@ -53,3 +53,26 @@ func TestSortArray(t *testing.T) {
 		})
 	}
 }
+
+func TestValueBufferCopy(t *testing.T) {
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"empty array", `[]`},
+		{"flat", `[1.4,-5,"hello",true]`},
+		{"nested", `[["foo","bar",1],{"a":1},[1,2]]`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var from, to ValueBuffer
+			require.NoError(t, from.UnmarshalJSON([]byte(test.want)))
+			err := to.Copy(from)
+			require.NoError(t, err)
+			got, err := json.Marshal(to)
+			require.NoError(t, err)
+			require.Equal(t, test.want, string(got))
+		})
+	}
+}

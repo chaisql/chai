@@ -106,7 +106,15 @@ func (vb *ValueBuffer) Copy(a Array) error {
 		return err
 	}
 
-	for _, v := range *vb {
+	// if there is nothing to copy
+	// exit early and make sure the array
+	// is not nil but an empty array.
+	if len(*vb) == 0 {
+		*vb = ValueBuffer{}
+		return nil
+	}
+
+	for i, v := range *vb {
 		switch v.Type {
 		case DocumentValue:
 			var buf FieldBuffer
@@ -115,7 +123,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			*vb = vb.Append(NewDocumentValue(&buf))
+			err = vb.Replace(i, NewDocumentValue(&buf))
+			if err != nil {
+				return err
+			}
 		case ArrayValue:
 			var buf ValueBuffer
 			err = buf.Copy(v.V.(Array))
@@ -123,7 +134,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			*vb = vb.Append(NewArrayValue(&buf))
+			err = vb.Replace(i, NewArrayValue(&buf))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
