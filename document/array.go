@@ -141,6 +141,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 		return err
 	}
 
+
 	for i, v := range *vb {
 		switch v.Type {
 		case DocumentValue:
@@ -150,7 +151,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			_ = vb.Replace(i, NewDocumentValue(&buf))
+			err := vb.Replace(i, NewDocumentValue(&buf))
+			if err != nil {
+				return err
+			}
 		case ArrayValue:
 			var buf ValueBuffer
 			err = buf.Copy(v.V.(Array))
@@ -158,7 +162,10 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			_ = vb.Replace(i, NewArrayValue(&buf))
+			err := vb.Replace(i, NewArrayValue(&buf))
+			if err != nil {
+				return err
+			}
 		}
 	}
 

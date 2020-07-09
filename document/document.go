@@ -100,7 +100,7 @@ func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) er
 	return err
 }
 
-// SetValueFromValuePath make a deep replacement or creation of a field field or index of an array.
+// SetValueFromValuePath make a deep replacement or creation of a field document or index of an array.
 func (fb *FieldBuffer) SetValueFromValuePath(v Value, path ValuePath, reqValue Value) (Value, error) {
 
 	switch v.Type {
@@ -162,7 +162,12 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-			v, err := fb.SetValueFromValuePath(field.Value, path[1:], reqValue)
+			var buf FieldBuffer
+			err := buf.Copy(fb)
+			if err != nil {
+				return err
+			}
+			v, err := buf.SetValueFromValuePath(field.Value, path[1:], reqValue)
 			if err != nil {
 				return err
 			}
@@ -171,6 +176,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 			return nil
 		}
 	}
+
 
 	//return Err if the request is like foo.1.2.etc where foo doesn't exist
 	return ErrFieldNotFound
@@ -221,7 +227,6 @@ func (fb *FieldBuffer) Copy(d Document) error {
 	if err != nil {
 		return err
 	}
-
 	for i, f := range fb.fields {
 		switch f.Value.Type {
 		case DocumentValue:
@@ -314,9 +319,6 @@ func (p ValuePath) getValueFromValue(v Value) (Value, error) {
 
 	switch v.Type {
 	case DocumentValue:
-		if len(p) == 1 {
-			return v, nil
-		}
 
 		d, err := v.ConvertToDocument()
 		if err != nil {
