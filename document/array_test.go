@@ -95,23 +95,26 @@ func TestValueBuffer_GetByIndexWithString(t *testing.T) {
 	}
 }
 
-func TestValueBuffer_Copy(t *testing.T) {
-	type args struct {
-		a Array
-	}
-	tests := []struct {
-		name    string
-		vb      ValueBuffer
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.vb.Copy(tt.args.a); (err != nil) != tt.wantErr {
-				t.Errorf("Copy() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+
+func TestValueBufferCopy(t *testing.T) {
+		tests := []struct {
+			name string
+			want string
+		}{
+			{"empty array", `[]`},
+			{"flat", `[1.4,-5,"hello",true]`},
+			{"nested", `[["foo","bar",1],{"a":1},[1,2]]`},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				var from, to ValueBuffer
+				require.NoError(t, from.UnmarshalJSON([]byte(test.want)))
+				err := to.Copy(from)
+				require.NoError(t, err)
+				got, err := json.Marshal(to)
+				require.NoError(t, err)
+				require.Equal(t, test.want, string(got))
+			})
+		}
 }
