@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:docs" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="043c90c9-c834-417f-9880-6324cf46b61e" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/cmd/genji/shell/shell.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/genji/shell/shell.go" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" path="/usr/local/go" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="ProjectId" id="1e12UpDyLFXHaPdSdAXjrvmeKgd" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
+  </component>
+  <component name="RunManager" selected="Go Test.TestParserMultiStatement in github.com/genjidb/genji/sql/parser">
+    <configuration name="go build github.com/genjidb/genji" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+      <module name="genji" />
+      <working_directory value="$PROJECT_DIR$/" />
+      <parameters value="my.db" />
+      <kind value="DIRECTORY" />
+      <filePath value="Users/touk/workspace/genji/cmd/genji/main.go" />
+      <package value="github.com/genjidb/genji" />
+      <directory value="$PROJECT_DIR$/" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestFieldBuffer/Set in github.com/genjidb/genji/document" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="genji" />
+      <working_directory value="$PROJECT_DIR$/document" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/genjidb/genji/document" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestFieldBuffer$/^Set$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestParserMultiStatement in github.com/genjidb/genji/sql/parser" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="genji" />
+      <working_directory value="$PROJECT_DIR$/sql/parser" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/genjidb/genji/sql/parser" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestParserMultiStatement$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestValueBufferCopy in github.com/genjidb/genji/document" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="genji" />
+      <working_directory value="$PROJECT_DIR$/document" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/genjidb/genji/document" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestValueBufferCopy$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestValueBuffer_GetArrayValueFromString in github.com/genjidb/genji/document" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="genji" />
+      <working_directory value="$PROJECT_DIR$/document" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/genjidb/genji/document" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestValueBuffer_GetArrayValueFromString$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestValueBuffer_GetByIndexWithString in github.com/genjidb/genji/document" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="genji" />
+      <working_directory value="$PROJECT_DIR$/document" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/genjidb/genji/document" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestValueBuffer_GetByIndexWithString$" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile">
+      <makefile filename="$PROJECT_DIR$/Makefile" target="" workingDirectory="" arguments="">
+        <envs />
+      </makefile>
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Go Build.go build github.com/genjidb/genji" />
+      <item itemvalue="Go Test.TestFieldBuffer/Set in github.com/genjidb/genji/document" />
+      <item itemvalue="Go Test.TestValueBuffer_GetArrayValueFromString in github.com/genjidb/genji/document" />
+      <item itemvalue="Go Test.TestValueBuffer_GetByIndexWithString in github.com/genjidb/genji/document" />
+      <item itemvalue="Go Test.TestValueBufferCopy in github.com/genjidb/genji/document" />
+      <item itemvalue="Go Test.TestParserMultiStatement in github.com/genjidb/genji/sql/parser" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.TestParserMultiStatement in github.com/genjidb/genji/sql/parser" />
+        <item itemvalue="Go Test.TestValueBufferCopy in github.com/genjidb/genji/document" />
+        <item itemvalue="Go Test.TestFieldBuffer/Set in github.com/genjidb/genji/document" />
+        <item itemvalue="Go Test.TestValueBuffer_GetByIndexWithString in github.com/genjidb/genji/document" />
+        <item itemvalue="Go Test.TestValueBuffer_GetArrayValueFromString in github.com/genjidb/genji/document" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="043c90c9-c834-417f-9880-6324cf46b61e" name="Default Changelist" comment="" />
+      <created>1593474796643</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1593474796643</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="2" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="184" y="112" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1594060796617">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="184" y="112" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1440.900/-369.-1080.1920.1080@0.0.1440.900" timestamp="1594060796617" />
+    <state x="406" y="96" key="#go_build_genji" timestamp="1594060323117">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="406" y="96" key="#go_build_genji/0.0.1440.900/-369.-1080.1920.1080@0.0.1440.900" timestamp="1594060323117" />
+    <state width="1878" height="250" key="GridCell.Tab.0.bottom" timestamp="1594307458145">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="264" key="GridCell.Tab.0.bottom/0.0.1440.900/-349.-1080.1920.1080@-349.-1080.1920.1080" timestamp="1594151079234" />
+    <state width="1878" height="450" key="GridCell.Tab.0.bottom/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594076381196" />
+    <state width="1398" height="245" key="GridCell.Tab.0.bottom/0.0.1440.900/-369.-1080.1920.1080@0.0.1440.900" timestamp="1594060944830" />
+    <state width="1878" height="250" key="GridCell.Tab.0.bottom/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594307458145" />
+    <state width="1878" height="450" key="GridCell.Tab.0.bottom/0.23.1440.816/-369.-1057.1920.1057@-369.-1057.1920.1057" timestamp="1594067538197" />
+    <state width="1398" height="245" key="GridCell.Tab.0.bottom/0.23.1440.816/-369.-1057.1920.1057@0.23.1440.816" timestamp="1594060701502" />
+    <state width="1878" height="450" key="GridCell.Tab.0.bottom/0.23.1440.816@0.23.1440.816" timestamp="1594077952309" />
+    <state width="1878" height="304" key="GridCell.Tab.0.bottom/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594064334562" />
+    <state width="1878" height="250" key="GridCell.Tab.0.center" timestamp="1594307458144">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="264" key="GridCell.Tab.0.center/0.0.1440.900/-349.-1080.1920.1080@-349.-1080.1920.1080" timestamp="1594151079233" />
+    <state width="1878" height="450" key="GridCell.Tab.0.center/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594076381194" />
+    <state width="1398" height="245" key="GridCell.Tab.0.center/0.0.1440.900/-369.-1080.1920.1080@0.0.1440.900" timestamp="1594060944829" />
+    <state width="1878" height="250" key="GridCell.Tab.0.center/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594307458144" />
+    <state width="1878" height="450" key="GridCell.Tab.0.center/0.23.1440.816/-369.-1057.1920.1057@-369.-1057.1920.1057" timestamp="1594067538196" />
+    <state width="1398" height="245" key="GridCell.Tab.0.center/0.23.1440.816/-369.-1057.1920.1057@0.23.1440.816" timestamp="1594060701500" />
+    <state width="1878" height="450" key="GridCell.Tab.0.center/0.23.1440.816@0.23.1440.816" timestamp="1594077952308" />
+    <state width="1878" height="304" key="GridCell.Tab.0.center/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594064334561" />
+    <state width="1878" height="250" key="GridCell.Tab.0.left" timestamp="1594307458144">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="264" key="GridCell.Tab.0.left/0.0.1440.900/-349.-1080.1920.1080@-349.-1080.1920.1080" timestamp="1594151079233" />
+    <state width="1878" height="450" key="GridCell.Tab.0.left/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594076381193" />
+    <state width="1398" height="245" key="GridCell.Tab.0.left/0.0.1440.900/-369.-1080.1920.1080@0.0.1440.900" timestamp="1594060944828" />
+    <state width="1878" height="250" key="GridCell.Tab.0.left/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594307458144" />
+    <state width="1878" height="450" key="GridCell.Tab.0.left/0.23.1440.816/-369.-1057.1920.1057@-369.-1057.1920.1057" timestamp="1594067538195" />
+    <state width="1398" height="245" key="GridCell.Tab.0.left/0.23.1440.816/-369.-1057.1920.1057@0.23.1440.816" timestamp="1594060701499" />
+    <state width="1878" height="450" key="GridCell.Tab.0.left/0.23.1440.816@0.23.1440.816" timestamp="1594077952308" />
+    <state width="1878" height="304" key="GridCell.Tab.0.left/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594064334560" />
+    <state width="1878" height="250" key="GridCell.Tab.0.right" timestamp="1594307458145">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="264" key="GridCell.Tab.0.right/0.0.1440.900/-349.-1080.1920.1080@-349.-1080.1920.1080" timestamp="1594151079234" />
+    <state width="1878" height="450" key="GridCell.Tab.0.right/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594076381195" />
+    <state width="1398" height="245" key="GridCell.Tab.0.right/0.0.1440.900/-369.-1080.1920.1080@0.0.1440.900" timestamp="1594060944829" />
+    <state width="1878" height="250" key="GridCell.Tab.0.right/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594307458145" />
+    <state width="1878" height="450" key="GridCell.Tab.0.right/0.23.1440.816/-369.-1057.1920.1057@-369.-1057.1920.1057" timestamp="1594067538196" />
+    <state width="1398" height="245" key="GridCell.Tab.0.right/0.23.1440.816/-369.-1057.1920.1057@0.23.1440.816" timestamp="1594060701500" />
+    <state width="1878" height="450" key="GridCell.Tab.0.right/0.23.1440.816@0.23.1440.816" timestamp="1594077952309" />
+    <state width="1878" height="304" key="GridCell.Tab.0.right/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594064334562" />
+    <state width="1878" height="328" key="GridCell.Tab.1.bottom" timestamp="1594301025523">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="345" key="GridCell.Tab.1.bottom/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594061147145" />
+    <state width="1878" height="328" key="GridCell.Tab.1.bottom/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594301025523" />
+    <state width="1878" height="345" key="GridCell.Tab.1.bottom/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594063827667" />
+    <state width="1878" height="328" key="GridCell.Tab.1.center" timestamp="1594301025523">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="345" key="GridCell.Tab.1.center/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594061147144" />
+    <state width="1878" height="328" key="GridCell.Tab.1.center/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594301025523" />
+    <state width="1878" height="345" key="GridCell.Tab.1.center/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594063827666" />
+    <state width="1878" height="328" key="GridCell.Tab.1.left" timestamp="1594301025523">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="345" key="GridCell.Tab.1.left/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594061147144" />
+    <state width="1878" height="328" key="GridCell.Tab.1.left/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594301025523" />
+    <state width="1878" height="345" key="GridCell.Tab.1.left/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594063827665" />
+    <state width="1878" height="328" key="GridCell.Tab.1.right" timestamp="1594301025523">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state width="1878" height="345" key="GridCell.Tab.1.right/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594061147145" />
+    <state width="1878" height="328" key="GridCell.Tab.1.right/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594301025523" />
+    <state width="1878" height="345" key="GridCell.Tab.1.right/0.23.1440.877/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594063827666" />
+    <state width="500" height="445" key="SwitcherDM" timestamp="1594074796922">
+      <screen x="-369" y="-1080" width="1920" height="1080" />
+    </state>
+    <state width="500" height="445" key="SwitcherDM/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594074796922" />
+    <state x="317" y="-932" width="588" height="807" key="find.popup" timestamp="1594316483877">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state x="317" y="-932" width="588" height="807" key="find.popup/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594316483877" />
+    <state x="276" y="-821" width="670" height="662" key="search.everywhere.popup" timestamp="1594305184224">
+      <screen x="-349" y="-1057" width="1920" height="1057" />
+    </state>
+    <state x="256" y="-839" width="670" height="676" key="search.everywhere.popup/0.0.1440.900/-369.-1080.1920.1080@-369.-1080.1920.1080" timestamp="1594070013306" />
+    <state x="276" y="-821" width="670" height="662" key="search.everywhere.popup/0.23.1440.816/-349.-1057.1920.1057@-349.-1057.1920.1057" timestamp="1594305184224" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/genji$TestParserUdpate_in_github_com_genjidb_genji_sql_parser.out" NAME="TestParserUdpate in github.com/genjidb/genji/sql/parser Coverage Results" MODIFIED="1594075375287" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+    <SUITE FILE_PATH="coverage/genji$TestUpdateStmt_in_github_com_genjidb_genji_sql_query.out" NAME="TestUpdateStmt in github.com/genjidb/genji/sql/query Coverage Results" MODIFIED="1594072152267" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+    <SUITE FILE_PATH="coverage/genji$TestValueBuffer_GetByIndexWithString_in_github_com_genjidb_genji_document.out" NAME="TestValueBuffer_GetByIndexWithString in github.com/genjidb/genji/document Coverage Results" MODIFIED="1594219746128" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+    <SUITE FILE_PATH="coverage/genji$TestFieldBuffer_Set_in_github_com_genjidb_genji_document.out" NAME="TestFieldBuffer/Set in github.com/genjidb/genji/document Coverage Results" MODIFIED="1594240721544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+  </component>
+</project>
