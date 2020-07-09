@@ -184,17 +184,17 @@ func (sh *Shell) execute(in string) {
 	}
 }
 
-// Query Error return an error if we press return with no input, or ended by whitespace
-func (sh *Shell) QueryError(in string) error {
-	sh.query = sh.query + in
+// buildQuery return an error if we press return with no input, or ended by whitespace
+func (sh *Shell) buildQuery(in string) error {
+	sh.query += in
 	sh.multiLine = false
-	sh.livePrefix = in
 	err := sh.runQuery(sh.query)
 	sh.query = ""
 	return err
 }
 
 func (sh *Shell) executeInput(in string) error {
+	in = strings.TrimSpace(in)
 	switch {
 	// if it starts with a "." it's a command
 	// it must not be in the middle of a multi line query though
@@ -202,13 +202,10 @@ func (sh *Shell) executeInput(in string) error {
 		return sh.runCommand(in)
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
-		return sh.QueryError(in)
-	//If we press enter without any query
+		return sh.buildQuery(in)
+	// If we press enter without any query
 	case len(in) == 0:
-		return sh.QueryError(in)
-	// If it ends by espace "; "
-	case strings.HasSuffix(in, " "):
-		return sh.QueryError(in)
+		return sh.buildQuery(in)
 	// If we reach this case, it means the user is in the middle of a
 	// multi line query. We change the prompt and set the multiLine var to true.
 	default:
