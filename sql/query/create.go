@@ -12,7 +12,7 @@ import (
 type CreateTableStmt struct {
 	TableName   string
 	IfNotExists bool
-	Config      database.TableConfig
+	Info        database.TableInfo
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -29,7 +29,7 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 		return res, errors.New("missing table name")
 	}
 
-	err := tx.CreateTable(stmt.TableName, &stmt.Config)
+	err := tx.CreateTable(stmt.TableName, &stmt.Info)
 	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
 		err = nil
 	}

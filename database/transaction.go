@@ -66,16 +66,16 @@ func (tx *Transaction) Promote() error {
 
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
-	if cfg == nil {
-		cfg = new(TableConfig)
+func (tx Transaction) CreateTable(name string, info *TableInfo) error {
+	if info == nil {
+		info = new(TableInfo)
 	}
-	ti, err := tx.tableInfoStore.Insert(name, *cfg)
+	sid, err := tx.tableInfoStore.Insert(name, info)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(ti.storeID[:])
+	err = tx.Tx.CreateStore(sid)
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}

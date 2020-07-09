@@ -21,8 +21,8 @@ type ProjectionNode struct {
 	Expressions []ResultField
 	tableName   string
 
-	cfg *database.TableConfig
-	tx  *database.Transaction
+	info *database.TableInfo
+	tx   *database.Transaction
 }
 
 var _ outputNode = (*ProjectionNode)(nil)
@@ -52,7 +52,7 @@ func (n *ProjectionNode) Bind(tx *database.Transaction, params []expr.Param) (er
 		return err
 	}
 
-	n.cfg, err = table.Config()
+	n.info, err = table.Info()
 	return
 }
 
@@ -72,7 +72,7 @@ func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 
 	return st.Map(func(d document.Document) (document.Document, error) {
 		return documentMask{
-			cfg:          n.cfg,
+			info:         n.info,
 			r:            d,
 			resultFields: n.Expressions,
 		}, nil
@@ -103,7 +103,7 @@ func (n *ProjectionNode) String() string {
 }
 
 type documentMask struct {
-	cfg          *database.TableConfig
+	info         *database.TableInfo
 	r            document.Document
 	resultFields []ResultField
 }
@@ -123,7 +123,7 @@ func (r documentMask) GetByField(field string) (document.Value, error) {
 func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
 	stack := expr.EvalStack{
 		Document: r.r,
-		Cfg:      r.cfg,
+		Info:     r.info,
 	}
 
 	for _, rf := range r.resultFields {

@@ -33,11 +33,11 @@ type PKFunc struct{}
 
 // Eval returns the primary key of the current document.
 func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
-	if ctx.Cfg == nil {
+	if ctx.Info == nil {
 		return document.Value{}, errors.New("no table specified")
 	}
 
-	pk := ctx.Cfg.GetPrimaryKey()
+	pk := ctx.Info.GetPrimaryKey()
 	if pk != nil {
 		return pk.Path.GetValue(ctx.Document)
 	}
