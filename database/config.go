@@ -1,6 +1,11 @@
 package database
 
 import (
+	"crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"time"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
@@ -121,46 +126,111 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	return err
 }
 
-type tableConfigStore struct {
+type tableInfo struct {
+	// storeID is a generated ID that acts as a key to reference a table.
+	// The first-4 bytes represents the timestamp in second and the last-2 bytes are
+	// randomly generated.
+	storeID [6]byte
+
+	cfg *TableConfig
+}
+
+func (ti *tableInfo) ToDocument() document.Document {
+	buf := document.NewFieldBuffer()
+
+	buf.Add("storeID", document.NewBlobValue(ti.storeID[:]))
+	buf.Add("config", document.NewDocumentValue(ti.cfg.ToDocument()))
+
+	return buf
+}
+
+func (ti *tableInfo) ScanDocument(d document.Document) error {
+	v, err := d.GetByField("storeID")
+	if err != nil {
+		return err
+	}
+	b, err := v.ConvertToBlob()
+	if err != nil {
+		return err
+	}
+	copy(ti.storeID[:], b)
+
+	v, err = d.GetByField("config")
+	if err != nil {
+		return err
+	}
+	doc, err := v.ConvertToDocument()
+	if err != nil {
+		return err
+	}
+
+	ti.cfg = &TableConfig{}
+	return ti.cfg.ScanDocument(doc)
+}
+
+type tableInfoStore struct {
 	st engine.Store
 }
 
-func (t *tableConfigStore) Insert(tableName string, cfg TableConfig) error {
+// Insert a new tableInfo for the given table name.
+// It automatically generates a unique storeID for that table.
+func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) (*tableInfo, error) {
 	key := []byte(tableName)
 	_, err := t.st.Get(key)
 	if err == nil {
-		return ErrTableAlreadyExists
+		return nil, ErrTableAlreadyExists
 	}
 	if err != engine.ErrKeyNotFound {
-		return err
+		return nil, err
 	}
 
-	v, err := encoding.EncodeDocument(cfg.ToDocument())
+	var id [6]byte
+	for {
+		id = generateStoreID()
+		_, err = t.st.Get(id[:])
+		if err == nil {
+			// A store with this id already exists.
+			// Let's generate a new one.
+			continue
+		}
+		if err != engine.ErrKeyNotFound {
+			return nil, err
+		}
+		break
+	}
+	ti := tableInfo{
+		storeID: id,
+		cfg:     &cfg,
+	}
+
+	v, err := encoding.EncodeDocument(ti.ToDocument())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return t.st.Put(key, v)
+	err = t.st.Put(key, v)
+	if err != nil {
+		return nil, err
+	}
+	return &ti, err
 }
 
-func (t *tableConfigStore) Replace(tableName string, cfg *TableConfig) error {
-	key := []byte(tableName)
-	_, err := t.st.Get(key)
-	if err == engine.ErrKeyNotFound {
-		return ErrTableNotFound
-	}
+func (t *tableInfoStore) Replace(tableName string, cfg *TableConfig) error {
+	ti, err := t.Get(tableName)
 	if err != nil {
 		return err
 	}
 
-	v, err := encoding.EncodeDocument(cfg.ToDocument())
+	ti.cfg = cfg
+	v, err := encoding.EncodeDocument(ti.ToDocument())
 	if err != nil {
 		return err
 	}
-	return t.st.Put(key, v)
+
+	return t.st.Put([]byte(tableName), v)
 }
 
-func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
+func (t *tableInfoStore) Get(tableName string) (*tableInfo, error) {
 	key := []byte(tableName)
 	v, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
@@ -170,23 +240,44 @@ func (t *tableConfigStore) Get(tableName string) (*TableConfig, error) {
 		return nil, err
 	}
 
-	var cfg TableConfig
-
-	err = cfg.ScanDocument(encoding.EncodedDocument(v))
+	var ti tableInfo
+	err = ti.ScanDocument(encoding.EncodedDocument(v))
 	if err != nil {
 		return nil, err
 	}
 
-	return &cfg, nil
+	return &ti, nil
 }
 
-func (t *tableConfigStore) Delete(tableName string) error {
+func (t *tableInfoStore) Delete(tableName string) error {
 	key := []byte(tableName)
 	err := t.st.Delete(key)
 	if err == engine.ErrKeyNotFound {
 		return ErrTableNotFound
 	}
 	return err
+}
+
+func (t *tableInfoStore) ListTables() ([]string, error) {
+	it := t.st.NewIterator(engine.IteratorConfig{})
+
+	var names []string
+	for it.Seek(nil); it.Valid(); it.Next() {
+		k := it.Item().Key()
+		names = append(names, string(k))
+	}
+	return names, it.Close()
+}
+
+func generateStoreID() [6]byte {
+	var id [6]byte
+
+	binary.BigEndian.PutUint32(id[:], uint32(time.Now().Unix()))
+	if _, err := rand.Reader.Read(id[4:]); err != nil {
+		panic(fmt.Errorf("cannot generate random number: %v;", err))
+	}
+
+	return id
 }
 
 // IndexConfig holds the configuration of an index.

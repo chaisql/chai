@@ -46,15 +46,12 @@ type Transaction interface {
 	// If the transaction was already rolled back or commited, an error is returned.
 	Commit() error
 	// Fetch a store by name. If the store doesn't exist, it returns the ErrStoreNotFound error.
-	GetStore(name string) (Store, error)
+	GetStore(name []byte) (Store, error)
 	// Create a store with the given name. If the store already exists, it returns ErrStoreAlreadyExists.
-	CreateStore(name string) error
+	CreateStore(name []byte) error
 	// Drop a store by name. If the store doesn't exist, it returns ErrStoreNotFound.
 	// It deletes all the values stored in it.
-	DropStore(name string) error
-	// Returns a list of store names lexicographically sorted.
-	// If there are no stores, an empty slice is returned.
-	ListStores(prefix string) ([]string, error)
+	DropStore(name []byte) error
 }
 
 // A Store manages key value pairs. It is an abstraction on top of any data structure that can provide

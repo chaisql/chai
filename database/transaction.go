@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
@@ -12,8 +11,8 @@ import (
 )
 
 var (
-	tableConfigStoreName = "__genji.tables"
-	indexStoreName       = "__genji.indexes"
+	tableInfoStoreName = "__genji.tables"
+	indexStoreName     = "__genji.indexes"
 )
 
 // Transaction represents a database transaction. It provides methods for managing the
@@ -21,11 +20,12 @@ var (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	db         *Database
-	Tx         engine.Transaction
-	writable   bool
-	tcfgStore  *tableConfigStore
-	indexStore *indexStore
+	db       *Database
+	Tx       engine.Transaction
+	writable bool
+
+	tableInfoStore *tableInfoStore
+	indexStore     *indexStore
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -70,12 +70,12 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 	if cfg == nil {
 		cfg = new(TableConfig)
 	}
-	err := tx.tcfgStore.Insert(name, *cfg)
+	ti, err := tx.tableInfoStore.Insert(name, *cfg)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(name)
+	err = tx.Tx.CreateStore(ti.storeID[:])
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -85,21 +85,21 @@ func (tx Transaction) CreateTable(name string, cfg *TableConfig) error {
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
 func (tx Transaction) GetTable(name string) (*Table, error) {
-	_, err := tx.tcfgStore.Get(name)
+	ti, err := tx.tableInfoStore.Get(name)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore(name)
+	s, err := tx.Tx.GetStore(ti.storeID[:])
 	if err != nil {
 		return nil, err
 	}
 
 	return &Table{
-		tx:       &tx,
-		Store:    s,
-		name:     name,
-		cfgStore: tx.tcfgStore,
+		tx:        &tx,
+		Store:     s,
+		name:      name,
+		infoStore: tx.tableInfoStore,
 	}, nil
 }
 
@@ -140,35 +140,23 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
-	err = tx.tcfgStore.Delete(name)
+	ti, err := tx.tableInfoStore.Get(name)
 	if err != nil {
 		return err
 	}
 
-	return tx.Tx.DropStore(name)
+	err = tx.tableInfoStore.Delete(name)
+	if err != nil {
+		return err
+	}
+
+	return tx.Tx.DropStore(ti.storeID[:])
 }
 
 // ListTables lists all the tables.
+// The returned slice is lexicographically ordered.
 func (tx Transaction) ListTables() ([]string, error) {
-	stores, err := tx.Tx.ListStores("")
-	if err != nil {
-		return nil, err
-	}
-
-	tables := make([]string, 0, len(stores))
-
-	for _, st := range stores {
-		if st == indexStoreName || st == tableConfigStoreName {
-			continue
-		}
-		if strings.HasPrefix(st, index.StorePrefix) {
-			continue
-		}
-
-		tables = append(tables, st)
-	}
-
-	return tables, nil
+	return tx.tableInfoStore.ListTables()
 }
 
 // CreateIndex creates an index with the given name.
@@ -281,18 +269,18 @@ func (tx Transaction) ReIndexAll() error {
 	return nil
 }
 
-func (tx *Transaction) getTableConfigStore() (*tableConfigStore, error) {
-	st, err := tx.Tx.GetStore(tableConfigStoreName)
+func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
+	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return nil, err
 	}
-	return &tableConfigStore{
+	return &tableInfoStore{
 		st: st,
 	}, nil
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {
-	st, err := tx.Tx.GetStore(indexStoreName)
+	st, err := tx.Tx.GetStore([]byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}

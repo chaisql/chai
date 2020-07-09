@@ -1,9 +1,9 @@
 package index
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
@@ -97,14 +97,19 @@ func NewUniqueIndex(tx engine.Transaction, idxName string) *UniqueIndex {
 	}
 }
 
-func buildIndexName(name string, t Type) string {
-	var b strings.Builder
-	b.WriteString(StorePrefix)
-	b.WriteString(name)
-	b.WriteByte(separator)
-	b.WriteByte(byte(t))
+func buildIndexName(name []byte, t Type) []byte {
+	var buf bytes.Buffer
 
-	return b.String()
+	// We can deterministically set the size of the buffer.
+	// The last 2 bytes are for the separator and the Type t.
+	buf.Grow(len(StorePrefix) + len(name) + 2)
+
+	buf.WriteString(StorePrefix)
+	buf.Write(name)
+	buf.WriteByte(separator)
+	buf.WriteByte(byte(t))
+
+	return buf.Bytes()
 }
 
 // A Pivot is a value that is used to seek for a particular value in an index.
@@ -160,7 +165,7 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 }
 
 func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) (engine.Store, error) {
-	idxName := buildIndexName(name, NewTypeFromValueType(t))
+	idxName := buildIndexName([]byte(name), NewTypeFromValueType(t))
 	st, err := tx.GetStore(idxName)
 	if err == nil {
 		return st, nil
@@ -179,7 +184,7 @@ func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) 
 }
 
 func getStore(tx engine.Transaction, t Type, name string) (engine.Store, error) {
-	idxName := buildIndexName(name, t)
+	idxName := buildIndexName([]byte(name), t)
 	st, err := tx.GetStore(idxName)
 	if err == nil || err == engine.ErrStoreNotFound {
 		return st, nil
@@ -189,7 +194,7 @@ func getStore(tx engine.Transaction, t Type, name string) (engine.Store, error) 
 }
 
 func dropStore(tx engine.Transaction, t Type, name string) error {
-	idxName := buildIndexName(name, t)
+	idxName := buildIndexName([]byte(name), t)
 	_, err := tx.GetStore(idxName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err

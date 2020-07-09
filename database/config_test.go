@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTableConfigStore(t *testing.T) {
+func TestTableInfoStore(t *testing.T) {
 	ng := memoryengine.NewEngine()
 	defer ng.Close()
 
@@ -16,12 +16,12 @@ func TestTableConfigStore(t *testing.T) {
 	require.NoError(t, err)
 	defer tx.Rollback()
 
-	err = tx.CreateStore("foo")
+	err = tx.CreateStore([]byte("foo"))
 	require.NoError(t, err)
-	st, err := tx.GetStore("foo")
+	st, err := tx.GetStore([]byte("foo"))
 	require.NoError(t, err)
 
-	tcs := tableConfigStore{st}
+	tcs := tableInfoStore{st}
 
 	cfg := TableConfig{
 		FieldConstraints: []FieldConstraint{
@@ -29,29 +29,48 @@ func TestTableConfigStore(t *testing.T) {
 		},
 	}
 
-	// inserting one should work
-	err = tcs.Insert("foo-table", cfg)
+	// Inserting one tableInfo should work.
+	ti, err := tcs.Insert("foo1", cfg)
 	require.NoError(t, err)
 
-	// inserting one with the same name should not work
-	err = tcs.Insert("foo-table", cfg)
+	// Inserting an existing tableInfo should not work.
+	_, err = tcs.Insert("foo1", cfg)
 	require.Equal(t, err, ErrTableAlreadyExists)
 
-	// getting an existing table should work
-	received, err := tcs.Get("foo-table")
+	// Listing all tables should return their name
+	// lexicographically ordered.
+	_, _ = tcs.Insert("foo3", cfg)
+	_, _ = tcs.Insert("foo2", cfg)
+	lt, err := tcs.ListTables()
 	require.NoError(t, err)
-	require.Equal(t, cfg, *received)
+	require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
 
-	// getting a non-existing table should not work
+	// Getting an existing tableInfo should work.
+	received, err := tcs.Get("foo1")
+	require.NoError(t, err)
+	require.Equal(t, ti, received)
+
+	// Getting a non-existing tableInfo should not work.
 	_, err = tcs.Get("unknown")
 	require.Equal(t, ErrTableNotFound, err)
 
-	// deleting an existing table should work
-	err = tcs.Delete("foo-table")
+	// Updating the config table.
+	fc := FieldConstraint{Path: []string{"j"}, Type: document.TextValue, IsNotNull: true}
+	cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
+	err = tcs.Replace("foo1", &cfg)
 	require.NoError(t, err)
 
-	// deleting a non-existing table should not work
-	err = tcs.Delete("foo-table")
+	received, err = tcs.Get("foo1")
+	require.NoError(t, err)
+	require.Equal(t, ti.storeID, received.storeID)
+	require.Equal(t, cfg, *received.cfg)
+
+	// Deleting an existing tableInfo should work.
+	err = tcs.Delete("foo1")
+	require.NoError(t, err)
+
+	// Deleting a non-existing tableInfo should not work.
+	err = tcs.Delete("foo1")
 	require.Equal(t, ErrTableNotFound, err)
 }
 
@@ -63,9 +82,9 @@ func TestIndexStore(t *testing.T) {
 	require.NoError(t, err)
 	defer tx.Rollback()
 
-	err = tx.CreateStore("test")
+	err = tx.CreateStore([]byte("test"))
 	require.NoError(t, err)
-	st, err := tx.GetStore("test")
+	st, err := tx.GetStore([]byte("test"))
 	require.NoError(t, err)
 
 	idxs := indexStore{st}

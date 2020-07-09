@@ -75,17 +75,17 @@ func (t *Transaction) Commit() error {
 	return t.tx.Commit()
 }
 
-func buildStoreKey(name string) []byte {
+func buildStoreKey(name []byte) []byte {
 	var buf bytes.Buffer
 	buf.Grow(len(storeKey) + 1 + len(name))
 	buf.WriteString(storeKey)
 	buf.WriteByte(separator)
-	buf.WriteString(name)
+	buf.Write(name)
 
 	return buf.Bytes()
 }
 
-func buildStorePrefixKey(name string) []byte {
+func buildStorePrefixKey(name []byte) []byte {
 	prefix := make([]byte, 0, len(name)+3)
 	prefix = append(prefix, storePrefix)
 	prefix = append(prefix, separator)
@@ -95,7 +95,7 @@ func buildStorePrefixKey(name string) []byte {
 }
 
 // GetStore returns a store by name.
-func (t *Transaction) GetStore(name string) (engine.Store, error) {
+func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 	key := buildStoreKey(name)
 
 	_, err := t.tx.Get(key)
@@ -119,7 +119,7 @@ func (t *Transaction) GetStore(name string) (engine.Store, error) {
 
 // CreateStore creates a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
-func (t *Transaction) CreateStore(name string) error {
+func (t *Transaction) CreateStore(name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -137,7 +137,7 @@ func (t *Transaction) CreateStore(name string) error {
 }
 
 // DropStore deletes the store and all its keys.
-func (t *Transaction) DropStore(name string) error {
+func (t *Transaction) DropStore(name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -152,25 +152,10 @@ func (t *Transaction) DropStore(name string) error {
 		return err
 	}
 
-	err = t.tx.Delete(buildStoreKey(name))
+	err = t.tx.Delete(buildStoreKey([]byte(name)))
 	if err == badger.ErrKeyNotFound {
 		return engine.ErrStoreNotFound
 	}
 
 	return err
-}
-
-// ListStores returns a list of all the store names.
-func (t *Transaction) ListStores(prefix string) ([]string, error) {
-	var names []string
-
-	p := buildStoreKey(prefix)
-	it := t.tx.NewIterator(badger.DefaultIteratorOptions)
-	defer it.Close()
-
-	for it.Seek(p); it.ValidForPrefix(p); it.Next() {
-		names = append(names, string(bytes.TrimPrefix(it.Item().Key(), p[:len(p)-len(prefix)])))
-	}
-
-	return names, nil
 }

@@ -22,6 +22,85 @@ func newTestDB(t testing.TB) (*database.Transaction, func()) {
 	}
 }
 
+// TestTxTable tests all basic operations on tables:
+// - CreateTable
+// - GetTable
+// - DropTable
+// - ListTables
+func TestTxTable(t *testing.T) {
+	t.Run("Create", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		// Creating a table that already exists should fail.
+		err = tx.CreateTable("test", nil)
+		require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		table, err := tx.GetTable("test")
+		require.NoError(t, err)
+		require.Equal(t, "test", table.Name())
+
+		// Getting a table that doesn't exist should fail.
+		_, err = tx.GetTable("unknown")
+		require.EqualError(t, err, database.ErrTableNotFound.Error())
+	})
+
+	t.Run("Drop", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		err = tx.DropTable("test")
+		require.NoError(t, err)
+
+		// Getting a table that has been dropped should fail.
+		_, err = tx.GetTable("test")
+		require.EqualError(t, err, database.ErrTableNotFound.Error())
+
+		// Dropping a table that doesn't exist should fail.
+		err = tx.DropTable("test")
+		require.EqualError(t, err, database.ErrTableNotFound.Error())
+	})
+
+	t.Run("List", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		tables, err := tx.ListTables()
+		require.NoError(t, err)
+		require.Len(t, tables, 0)
+
+		err = tx.CreateTable("foo", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateTable("bar", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateTable("baz", nil)
+		require.NoError(t, err)
+
+		tables, err = tx.ListTables()
+		require.NoError(t, err)
+
+		// The returned slice should be lexicographically ordered.
+		exp := []string{"bar", "baz", "foo"}
+		require.Equal(t, exp, tables)
+	})
+}
+
 func TestTxCreateIndex(t *testing.T) {
 	t.Run("Should create an index and return it", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
@@ -64,43 +143,6 @@ func TestTxCreateIndex(t *testing.T) {
 		err := tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
 		})
-		require.Equal(t, database.ErrTableNotFound, err)
-	})
-}
-
-func TestTxDropTable(t *testing.T) {
-	t.Run("Should drop a table and its indexes", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		err := tx.CreateTable("test", nil)
-		require.NoError(t, err)
-
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
-		})
-		require.NoError(t, err)
-
-		err = tx.DropTable("test")
-		require.NoError(t, err)
-
-		_, err = tx.GetTable("test")
-		require.Error(t, err)
-
-		err = tx.CreateTable("test", nil)
-		require.NoError(t, err)
-
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: document.NewValuePath("foo"),
-		})
-		require.NoError(t, err)
-	})
-
-	t.Run("Should fail if it doesn't exist", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		err := tx.DropTable("foo")
 		require.Equal(t, database.ErrTableNotFound, err)
 	})
 }
@@ -281,50 +323,5 @@ func TestReIndexAll(t *testing.T) {
 		})
 		require.Equal(t, 10, i)
 		require.NoError(t, err)
-	})
-}
-
-func newDocument() *document.FieldBuffer {
-	return document.NewFieldBuffer().
-		Add("fielda", document.NewTextValue("a")).
-		Add("fieldb", document.NewTextValue("b"))
-}
-
-func TestTxListTables(t *testing.T) {
-	t.Run("Should succeed if no tables", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		list, err := tx.ListTables()
-		require.NoError(t, err)
-		require.Len(t, list, 0)
-	})
-
-	t.Run("Should return the right tables", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		err := tx.CreateTable("a", nil)
-		require.NoError(t, err)
-		err = tx.CreateTable("b", nil)
-		require.NoError(t, err)
-
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "name",
-			TableName: "a",
-			Path:      document.NewValuePath("foo"),
-		})
-		require.NoError(t, err)
-
-		// insert some data to make sure indexes are actually created by the engine
-		ta, err := tx.GetTable("a")
-		require.NoError(t, err)
-		_, err = ta.Insert(document.NewFieldBuffer().Add("foo", document.NewBoolValue(true)))
-		require.NoError(t, err)
-
-		list, err := tx.ListTables()
-		require.NoError(t, err)
-		require.Len(t, list, 2)
-		require.Equal(t, []string{"a", "b"}, list)
 	})
 }

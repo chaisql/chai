@@ -2,7 +2,6 @@
 package boltengine
 
 import (
-	"bytes"
 	"os"
 
 	"github.com/genjidb/genji/engine"
@@ -70,9 +69,8 @@ func (t *Transaction) Commit() error {
 }
 
 // GetStore returns a store by name. The store uses a Bolt bucket.
-func (t *Transaction) GetStore(name string) (engine.Store, error) {
-	bname := []byte(name)
-	b := t.tx.Bucket(bname)
+func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
+	b := t.tx.Bucket(name)
 	if b == nil {
 		return nil, engine.ErrStoreNotFound
 	}
@@ -80,18 +78,18 @@ func (t *Transaction) GetStore(name string) (engine.Store, error) {
 	return &Store{
 		bucket: b,
 		tx:     t.tx,
-		name:   bname,
+		name:   name,
 	}, nil
 }
 
 // CreateStore creates a bolt bucket and returns a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
-func (t *Transaction) CreateStore(name string) error {
+func (t *Transaction) CreateStore(name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	_, err := t.tx.CreateBucket([]byte(name))
+	_, err := t.tx.CreateBucket(name)
 	if err == bolt.ErrBucketExists {
 		return engine.ErrStoreAlreadyExists
 	}
@@ -100,29 +98,15 @@ func (t *Transaction) CreateStore(name string) error {
 }
 
 // DropStore deletes the underlying bucket.
-func (t *Transaction) DropStore(name string) error {
+func (t *Transaction) DropStore(name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	err := t.tx.DeleteBucket([]byte(name))
+	err := t.tx.DeleteBucket(name)
 	if err == bolt.ErrBucketNotFound {
 		return engine.ErrStoreNotFound
 	}
 
 	return err
-}
-
-// ListStores returns a list of all the store names.
-func (t *Transaction) ListStores(prefix string) ([]string, error) {
-	var names []string
-	p := []byte(prefix)
-	err := t.tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
-		if bytes.HasPrefix(name, p) {
-			names = append(names, string(name))
-		}
-		return nil
-	})
-
-	return names, err
 }

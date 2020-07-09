@@ -33,17 +33,17 @@ func New(ng engine.Engine) (*Database, error) {
 	}
 	defer ntx.Rollback()
 
-	_, err = ntx.GetStore(tableConfigStoreName)
+	_, err = ntx.GetStore([]byte(tableInfoStoreName))
 	if err == engine.ErrStoreNotFound {
-		err = ntx.CreateStore(tableConfigStoreName)
+		err = ntx.CreateStore([]byte(tableInfoStoreName))
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = ntx.GetStore(indexStoreName)
+	_, err = ntx.GetStore([]byte(indexStoreName))
 	if err == engine.ErrStoreNotFound {
-		err = ntx.CreateStore(indexStoreName)
+		err = ntx.CreateStore([]byte(indexStoreName))
 	}
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 		writable: writable,
 	}
 
-	tx.tcfgStore, err = tx.getTableConfigStore()
+	tx.tableInfoStore, err = tx.getTableInfoStore()
 	if err != nil {
 		return nil, err
 	}

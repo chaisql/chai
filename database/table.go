@@ -15,15 +15,19 @@ import (
 
 // A Table represents a collection of documents.
 type Table struct {
-	tx       *Transaction
-	Store    engine.Store
-	name     string
-	cfgStore *tableConfigStore
+	tx        *Transaction
+	Store     engine.Store
+	name      string
+	infoStore *tableInfoStore
 }
 
 // Config of the table.
 func (t *Table) Config() (*TableConfig, error) {
-	return t.cfgStore.Get(t.name)
+	ti, err := t.infoStore.Get(t.name)
+	if err != nil {
+		return nil, err
+	}
+	return ti.cfg, nil
 }
 
 type encodedDocumentWithKey struct {
@@ -92,10 +96,12 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
-	cfg, err := t.cfgStore.Get(t.name)
+	ti, err := t.infoStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
+
+	cfg := ti.cfg
 
 	if pk := cfg.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValue(d)
@@ -484,14 +490,14 @@ func (t *Table) Truncate() error {
 	return t.Store.Truncate()
 }
 
-// TableName returns the name of the table.
-func (t *Table) TableName() string {
+// Name returns the name of the table.
+func (t *Table) Name() string {
 	return t.name
 }
 
 // Indexes returns a map of all the indexes of a table.
 func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.Tx.GetStore(indexStoreName)
+	s, err := t.tx.Tx.GetStore([]byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}
