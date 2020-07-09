@@ -3,6 +3,7 @@ package document
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -12,7 +13,6 @@ import (
 //ErrIndexOutOfBound
 var (
 	ErrFieldNotFound = errors.New("field not found")
-	ErrNotDocument   = errors.New("type must be  a document")
 )
 
 // A Document represents a group of key value pairs.
@@ -51,7 +51,7 @@ func NewFieldBuffer() *FieldBuffer {
 func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
 	var buf FieldBuffer
 	if v.Type != DocumentValue {
-		return buf, ErrNotDocument
+		return buf, fmt.Errorf("cannot create FieldBuffer with type %s", v.Type)
 	}
 
 	err := buf.Copy(v.V.(Document))
