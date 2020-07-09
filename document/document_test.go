@@ -81,37 +81,38 @@ func TestFieldBuffer(t *testing.T) {
 		var buf document.FieldBuffer
 		var vbuf document.ValueBuffer
 
+		vbuf = document.ValueBuffer{}
 		vbuf = vbuf.Append(document.NewInt64Value(1))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 
-		data :=[]byte(`{
-						"name": "Foo",
-						"address": {
-							"city": "Lyon",
-							"zipcode": "69001"
-						},
-						"friends": [
-						  {
-							"name": "Bar",
-							"address": {
-								"city": "Paris",
-								"zipcode": "75001"
-							}
-						  },
-							{
-							  "name": "Baz",
-							  "address": {
-								  "city": "Ajaccio",
-								  "zipcode": "20000"
-							  },
-							  "favorite game": "FF IX"
-							}
-						]
-}`)
-		d, err :=	document.NewFromJSON(data)
-		buf.Copy(d)
-
+		jsonDocument := []byte(`{
+								"name": "Foo",
+								"address": {
+									"city": "Lyon",
+									"zipcode": "69001"
+								},
+								"friends": [
+								  {
+									"name": "Bar",
+									"address": {
+										"city": "Paris",
+										"zipcode": "75001"
+									}
+								  },
+									{
+									  "name": "Baz",
+									  "address": {
+										  "city": "Ajaccio",
+										  "zipcode": "20000"
+									  },
+									  "favorite game": "FF IX"
+									}
+								]
+							}`)
+		d, err := document.NewFromJSON(jsonDocument)
+		err = buf.Copy(d)
+		require.NoError(t, err)
 
 		vb, err := buf.GetByField("friends")
 		require.NoError(t, err)
@@ -122,9 +123,11 @@ func TestFieldBuffer(t *testing.T) {
 		d, err = v.ConvertToDocument()
 		require.NoError(t, err)
 		v, err = d.GetByField("address")
-		fbuf, _ := document.NewFieldBufferByCopy(v)
-		fbuf.Set(document.NewValuePath("a"), document.NewArrayValue(&vbuf))
-		err = buf.Set(document.NewValuePath("friends.0.address"), document.NewDocumentValue(fbuf))
+		fieldBuffer, err := document.NewFieldBufferByCopy(v)
+		require.NoError(t, err)
+		err = fieldBuffer.Set(document.NewValuePath("a"), document.NewArrayValue(&vbuf))
+		require.NoError(t, err)
+		err = buf.Set(document.NewValuePath("friends.0.address"), document.NewDocumentValue(fieldBuffer))
 		require.NoError(t, err)
 		err = buf.Set(document.NewValuePath("friends.0.address.a.2"), document.NewInt64Value(99))
 
@@ -137,15 +140,18 @@ func TestFieldBuffer(t *testing.T) {
 		v, err = arr.GetByIndex(0)
 		require.NoError(t, err)
 		d, err = v.ConvertToDocument()
+		require.NoError(t, err)
 		v, err = d.GetByField("address")
+		require.NoError(t, err)
 		d, err = v.ConvertToDocument()
+		require.NoError(t, err)
 		va, err := d.GetByField("a")
+		require.NoError(t, err)
 		arr, err = va.ConvertToArray()
+		require.NoError(t, err)
 		v, err = arr.GetByIndex(2)
 		require.NoError(t, err)
 		require.Equal(t, v, document.NewArrayValue(vbuf))
-
-
 
 	})
 

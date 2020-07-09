@@ -32,7 +32,6 @@ func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewRea
 func (p *Parser) ParseQuery() (query.Query, error) {
 	var statements []query.Statement
 	semi := true
-
 	for {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.EOF {
 			return query.New(statements...), nil

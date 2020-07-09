@@ -11,8 +11,8 @@ import (
 // the field wasn't found in the document.
 //ErrIndexOutOfBound
 var (
-	ErrFieldNotFound   = errors.New("field not found")
-	ErrNotDocument     = errors.New("type must be  a document")
+	ErrFieldNotFound = errors.New("field not found")
+	ErrNotDocument   = errors.New("type must be  a document")
 )
 
 // A Document represents a group of key value pairs.
@@ -58,7 +58,6 @@ func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
 	return buf, err
 }
 
-
 // Add a field to the buffer.
 func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
 	fb.fields = append(fb.fields, fieldValue{field, v})
@@ -85,8 +84,8 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
-// SetUniqueFieldOfDocument Add/Replace a value if the request is  field.
-func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) error {
+// SetValue add or replace field value.
+func (fb *FieldBuffer) SetValue(field string, reqValue Value) error {
 	_, err := fb.GetByField(field)
 	switch err {
 	case ErrFieldNotFound:
@@ -101,7 +100,7 @@ func (fb *FieldBuffer) SetUniqueFieldOfDocument(field string, reqValue Value) er
 }
 
 // SetValueFromValuePath make a deep replacement or creation of a field document or index of an array.
-func (fb *FieldBuffer) SetValueFromValuePath(v Value, path ValuePath, reqValue Value) (Value, error) {
+func (fb *FieldBuffer) setValueFromValuePath(v Value, path ValuePath, reqValue Value) (Value, error) {
 
 	switch v.Type {
 	case DocumentValue:
@@ -111,8 +110,8 @@ func (fb *FieldBuffer) SetValueFromValuePath(v Value, path ValuePath, reqValue V
 		}
 
 		if len(path) == 1 {
-			buf.SetUniqueFieldOfDocument(path[0], reqValue)
-			return NewDocumentValue(buf), nil
+			err = buf.SetValue(path[0], reqValue)
+			return NewDocumentValue(buf), err
 		}
 
 		va, err := buf.GetByField(path[0])
@@ -120,20 +119,20 @@ func (fb *FieldBuffer) SetValueFromValuePath(v Value, path ValuePath, reqValue V
 			return v, err
 		}
 
-		va, err = buf.SetValueFromValuePath(va, path[1:], reqValue)
+		va, err = buf.setValueFromValuePath(va, path[1:], reqValue)
 		if err != nil {
 			return v, err
 		}
 
-		buf.SetUniqueFieldOfDocument(path[0], va)
-		return NewDocumentValue(buf), nil
+		err = buf.SetValue(path[0], va)
+		return NewDocumentValue(buf), err
 	case ArrayValue:
 		buf, err := NewValueBufferByCopy(v)
 		if err != nil {
 			return v, err
 		}
 
-		va, index, err := buf.GetByIndexWithString(path[0])
+		va, index, err := buf.GetByIndexFromString(path[0])
 		if err != nil {
 			return v, err
 		}
@@ -143,7 +142,7 @@ func (fb *FieldBuffer) SetValueFromValuePath(v Value, path ValuePath, reqValue V
 			return NewArrayValue(buf), nil
 		}
 
-		va, err = fb.SetValueFromValuePath(va, path[1:], reqValue)
+		va, err = fb.setValueFromValuePath(va, path[1:], reqValue)
 		_ = buf.Replace(index, va)
 		return NewArrayValue(buf), nil
 	}
@@ -156,8 +155,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	// check if the ValuePath contains only one field to set
 	if len(path) == 1 {
-		//Set or replace the unique field
-		return fb.SetUniqueFieldOfDocument(path[0], reqValue)
+		return fb.SetValue(path[0], reqValue)
 	}
 
 	for i, field := range fb.fields {
@@ -167,7 +165,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 			if err != nil {
 				return err
 			}
-			v, err := buf.SetValueFromValuePath(field.Value, path[1:], reqValue)
+			v, err := buf.setValueFromValuePath(field.Value, path[1:], reqValue)
 			if err != nil {
 				return err
 			}
@@ -177,8 +175,8 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 		}
 	}
 
-
-	//return Err if the request is like foo.1.2.etc where foo doesn't exist
+	// We reach this return the first field of the value path doesn't exist.
+	// For example foo.bar.1.2.baz where first field foo doesn't exists
 	return ErrFieldNotFound
 }
 

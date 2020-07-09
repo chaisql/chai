@@ -10,8 +10,8 @@ import (
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 // the index wasn't found in the array.
 var (
-	ErrValueNotFound = errors.New("value not found")
-	ErrIndexOutOfBound = errors.New("index out of bounds")
+	ErrValueNotFound   = errors.New("value not found")
+	ErrIndexOutOfRange = errors.New("index out of range")
 )
 
 // An Array contains a set of values.
@@ -103,8 +103,8 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 	})
 }
 
-// GetByIndexWithString do a string conversion before calling GetByIndex.
-func (vb *ValueBuffer) GetByIndexWithString(f string) (Value, int, error) {
+// GetByIndexFromString do a string conversion before calling GetByIndex.
+func (vb *ValueBuffer) GetByIndexFromString(f string) (Value, int, error) {
 	index, err := strconv.Atoi(f)
 	if err != nil {
 		return Value{}, -1, err
@@ -112,7 +112,7 @@ func (vb *ValueBuffer) GetByIndexWithString(f string) (Value, int, error) {
 
 	v, err := vb.GetByIndex(index)
 	if err != nil {
-		return Value{}, index, ErrIndexOutOfBound
+		return Value{}, index, ErrIndexOutOfRange
 	}
 
 	return v, index, err
@@ -142,8 +142,8 @@ func (vb *ValueBuffer) Copy(a Array) error {
 	}
 
 	if len(*vb) == 0 {
-		 *vb = ValueBuffer{}
-		 return nil
+		*vb = ValueBuffer{}
+		return nil
 	}
 
 	for i, v := range *vb {
@@ -179,7 +179,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 // Replace the value of the index by v.
 func (vb *ValueBuffer) Replace(index int, v Value) error {
 	if len(*vb) <= index {
-		return ErrIndexOutOfBound
+		return ErrIndexOutOfRange
 	}
 
 	(*vb)[index] = v
