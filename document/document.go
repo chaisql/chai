@@ -11,8 +11,8 @@ import (
 // the field wasn't found in the document.
 //ErrIndexOutOfBound
 var (
-	ErrFieldNotFound   = errors.New("field not found")
-	ErrNotDocument     = errors.New("type must be  a document")
+	ErrFieldNotFound = errors.New("field not found")
+	ErrNotDocument   = errors.New("type must be  a document")
 )
 
 // A Document represents a group of key value pairs.
@@ -57,7 +57,6 @@ func NewFieldBufferByCopy(v Value) (FieldBuffer, error) {
 	err := buf.Copy(v.V.(Document))
 	return buf, err
 }
-
 
 // Add a field to the buffer.
 func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
@@ -176,7 +175,6 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 			return nil
 		}
 	}
-
 
 	//return Err if the request is like foo.1.2.etc where foo doesn't exist
 	return ErrFieldNotFound

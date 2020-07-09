@@ -10,7 +10,7 @@ import (
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 // the index wasn't found in the array.
 var (
-	ErrValueNotFound = errors.New("value not found")
+	ErrValueNotFound   = errors.New("value not found")
 	ErrIndexOutOfBound = errors.New("index out of bounds")
 )
 
@@ -142,8 +142,8 @@ func (vb *ValueBuffer) Copy(a Array) error {
 	}
 
 	if len(*vb) == 0 {
-		 *vb = ValueBuffer{}
-		 return nil
+		*vb = ValueBuffer{}
+		return nil
 	}
 
 	for i, v := range *vb {

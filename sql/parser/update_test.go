@@ -60,8 +60,6 @@ func TestParserUdpate(t *testing.T) {
 		{"query.Field only", "UPDATE test SET a WHERE age = 10", nil, true},
 		{"No value", "UPDATE test SET a = WHERE age = 10", nil, true},
 		{"Dot notation", "UPDATE test SET foo.1.bar.0.1.2.3.4.bar", nil, true},
-
-
 	}
 
 	for _, test := range tests {

@@ -85,7 +85,7 @@ func TestFieldBuffer(t *testing.T) {
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 
-		data :=[]byte(`{
+		data := []byte(`{
 						"name": "Foo",
 						"address": {
 							"city": "Lyon",
@@ -109,9 +109,8 @@ func TestFieldBuffer(t *testing.T) {
 							}
 						]
 }`)
-		d, err :=	document.NewFromJSON(data)
+		d, err := document.NewFromJSON(data)
 		buf.Copy(d)
-
 
 		vb, err := buf.GetByField("friends")
 		require.NoError(t, err)
@@ -144,8 +143,6 @@ func TestFieldBuffer(t *testing.T) {
 		v, err = arr.GetByIndex(2)
 		require.NoError(t, err)
 		require.Equal(t, v, document.NewArrayValue(vbuf))
-
-
 
 	})
 

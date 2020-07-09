@@ -60,7 +60,6 @@ func TestValueBuffer_GetByIndexWithString(t *testing.T) {
 		f string
 	}
 
-
 	vb := NewValueBuffer(
 		NewTextValue("foo"),
 	)
@@ -76,7 +75,6 @@ func TestValueBuffer_GetByIndexWithString(t *testing.T) {
 		// TODO: Add test cases.
 		{"Value at index with string number", vb, args{f: "0"}, NewTextValue("foo"), 0, false},
 		{"Value at index by with string", vb, args{f: "foo"}, Value{}, -1, true},
-
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,26 +93,25 @@ func TestValueBuffer_GetByIndexWithString(t *testing.T) {
 	}
 }
 
-
 func TestValueBufferCopy(t *testing.T) {
-		tests := []struct {
-			name string
-			want string
-		}{
-			{"empty array", `[]`},
-			{"flat", `[1.4,-5,"hello",true]`},
-			{"nested", `[["foo","bar",1],{"a":1},[1,2]]`},
-		}
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"empty array", `[]`},
+		{"flat", `[1.4,-5,"hello",true]`},
+		{"nested", `[["foo","bar",1],{"a":1},[1,2]]`},
+	}
 
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				var from, to ValueBuffer
-				require.NoError(t, from.UnmarshalJSON([]byte(test.want)))
-				err := to.Copy(from)
-				require.NoError(t, err)
-				got, err := json.Marshal(to)
-				require.NoError(t, err)
-				require.Equal(t, test.want, string(got))
-			})
-		}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var from, to ValueBuffer
+			require.NoError(t, from.UnmarshalJSON([]byte(test.want)))
+			err := to.Copy(from)
+			require.NoError(t, err)
+			got, err := json.Marshal(to)
+			require.NoError(t, err)
+			require.Equal(t, test.want, string(got))
+		})
+	}
 }
