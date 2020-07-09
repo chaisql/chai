@@ -63,7 +63,7 @@ func TestTableInfoStore(t *testing.T) {
 	received, err = tcs.Get("foo1")
 	require.NoError(t, err)
 	require.Equal(t, ti.storeID, received.storeID)
-	require.Equal(t, cfg, *received.cfg)
+	require.Equal(t, cfg.FieldConstraints, received.FieldConstraints)
 
 	// Deleting an existing tableInfo should work.
 	err = tcs.Delete("foo1")

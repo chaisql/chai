@@ -132,14 +132,20 @@ type tableInfo struct {
 	// randomly generated.
 	storeID [6]byte
 
-	cfg *TableConfig
+	FieldConstraints []FieldConstraint
 }
 
 func (ti *tableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	buf.Add("storeID", document.NewBlobValue(ti.storeID[:]))
-	buf.Add("config", document.NewDocumentValue(ti.cfg.ToDocument()))
+
+	vbuf := document.NewValueBuffer()
+	for _, fc := range ti.FieldConstraints {
+		vbuf = vbuf.Append(document.NewDocumentValue(fc.ToDocument()))
+	}
+
+	buf.Add("field_constraints", document.NewArrayValue(vbuf))
 
 	return buf
 }
@@ -155,17 +161,29 @@ func (ti *tableInfo) ScanDocument(d document.Document) error {
 	}
 	copy(ti.storeID[:], b)
 
-	v, err = d.GetByField("config")
+	v, err = d.GetByField("field_constraints")
 	if err != nil {
 		return err
 	}
-	doc, err := v.ConvertToDocument()
+	ar, err := v.ConvertToArray()
 	if err != nil {
 		return err
 	}
 
-	ti.cfg = &TableConfig{}
-	return ti.cfg.ScanDocument(doc)
+	l, err := document.ArrayLength(ar)
+	if err != nil {
+		return err
+	}
+
+	ti.FieldConstraints = make([]FieldConstraint, l)
+
+	return ar.Iterate(func(i int, value document.Value) error {
+		doc, err := value.ConvertToDocument()
+		if err != nil {
+			return err
+		}
+		return ti.FieldConstraints[i].ScanDocument(doc)
+	})
 }
 
 type tableInfoStore struct {
@@ -199,8 +217,8 @@ func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) (*tableInfo, 
 		break
 	}
 	ti := tableInfo{
-		storeID: id,
-		cfg:     &cfg,
+		storeID:          id,
+		FieldConstraints: cfg.FieldConstraints,
 	}
 
 	v, err := encoding.EncodeDocument(ti.ToDocument())
@@ -221,7 +239,7 @@ func (t *tableInfoStore) Replace(tableName string, cfg *TableConfig) error {
 		return err
 	}
 
-	ti.cfg = cfg
+	ti.FieldConstraints = cfg.FieldConstraints
 	v, err := encoding.EncodeDocument(ti.ToDocument())
 	if err != nil {
 		return err

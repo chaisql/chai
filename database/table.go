@@ -27,7 +27,8 @@ func (t *Table) Config() (*TableConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ti.cfg, nil
+
+	return &TableConfig{FieldConstraints: ti.FieldConstraints}, nil
 }
 
 type encodedDocumentWithKey struct {
@@ -101,7 +102,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	cfg := ti.cfg
+	cfg := &TableConfig{FieldConstraints: ti.FieldConstraints}
 
 	if pk := cfg.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValue(d)
