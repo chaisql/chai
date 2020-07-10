@@ -184,15 +184,6 @@ func (sh *Shell) execute(in string) {
 	}
 }
 
-// buildQuery return an error if we press return with no input, or ended by whitespace
-func (sh *Shell) buildQuery(in string) error {
-	sh.query += in
-	sh.multiLine = false
-	err := sh.runQuery(sh.query)
-	sh.query = ""
-	return err
-}
-
 func (sh *Shell) executeInput(in string) error {
 	in = strings.TrimSpace(in)
 	switch {
@@ -202,10 +193,14 @@ func (sh *Shell) executeInput(in string) error {
 		return sh.runCommand(in)
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
-		return sh.buildQuery(in)
+		sh.query += in
+		sh.multiLine = false
+		err := sh.runQuery(sh.query)
+		sh.query = ""
+		return err
 	// If we press enter without any query
 	case len(in) == 0:
-		return sh.buildQuery(in)
+		return nil
 	// If we reach this case, it means the user is in the middle of a
 	// multi line query. We change the prompt and set the multiLine var to true.
 	default:
