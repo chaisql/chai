@@ -3,6 +3,7 @@ package document_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -78,80 +79,71 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Set", func(t *testing.T) {
-		var buf document.FieldBuffer
-		var vbuf document.ValueBuffer
 
-		vbuf = document.ValueBuffer{}
+		jsonDoc := []byte(`{"friends": [{"name": "Bar","address": {"city": "Paris","zipcode": "75001"}}]}`)
+		doc, err := document.NewFromJSON(jsonDoc)
+		require.NoError(t, err)
+		var buf document.FieldBuffer
+		err = buf.Copy(doc)
+		require.NoError(t, err)
+
+
+		contactJson := []byte(`{"phone":{"type": "cell", "number":"111-222-333"}}`)
+		var contactBuf document.FieldBuffer
+		d, err := document.NewFromJSON(contactJson)
+		err = contactBuf.Copy(d)
+		require.NoError(t, err)
+
+		var vbuf document.ValueBuffer
+		vbuf = nil
 		vbuf = vbuf.Append(document.NewInt64Value(1))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 
-		jsonDocument := []byte(`{
-								"name": "Foo",
-								"address": {
-									"city": "Lyon",
-									"zipcode": "69001"
-								},
-								"friends": [
-								  {
-									"name": "Bar",
-									"address": {
-										"city": "Paris",
-										"zipcode": "75001"
-									}
-								  },
-									{
-									  "name": "Baz",
-									  "address": {
-										  "city": "Ajaccio",
-										  "zipcode": "20000"
-									  },
-									  "favorite game": "FF IX"
-									}
-								]
-							}`)
-		d, err := document.NewFromJSON(jsonDocument)
-		err = buf.Copy(d)
+		resultJson := []byte(`{"friends": [{"name": "Baz","address": {"city": "Paris","zipcode": "75001"}, "a": [[1, 0, 0], 99, 0]}], "contact":{"phone":{"type": "cell", "number":"111-222-333"}}}`)
+		doc, err = document.NewFromJSON(resultJson)
+		require.NoError(t, err)
+		var resultBuffer document.FieldBuffer
+		err = resultBuffer.Copy(doc)
 		require.NoError(t, err)
 
-		vb, err := buf.GetByField("friends")
-		require.NoError(t, err)
-		arr, err := vb.ConvertToArray()
-		require.NoError(t, err)
-		v, err := arr.GetByIndex(0)
-		require.NoError(t, err)
-		d, err = v.ConvertToDocument()
-		require.NoError(t, err)
-		v, err = d.GetByField("address")
-		fieldBuffer, err := document.NewFieldBufferByCopy(v)
-		require.NoError(t, err)
-		err = fieldBuffer.Set(document.NewValuePath("a"), document.NewArrayValue(&vbuf))
-		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.address"), document.NewDocumentValue(fieldBuffer))
-		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.address.a.2"), document.NewInt64Value(99))
 
-		err = buf.Set(document.NewValuePath("friends.0.address.a.2"), document.NewArrayValue(&vbuf))
+		err = buf.Set(document.NewValuePath("friends.0.name"), document.NewTextValue("Baz"))
 		require.NoError(t, err)
-		v, err = buf.GetByField("friends")
+		err = buf.Set(document.NewValuePath("friends.0.a"), document.NewArrayValue(&vbuf))
 		require.NoError(t, err)
-		arr, err = v.ConvertToArray()
+		err = buf.Set(document.NewValuePath("friends.0.a.0"), document.NewArrayValue(&vbuf))
 		require.NoError(t, err)
-		v, err = arr.GetByIndex(0)
+		err = buf.Set(document.NewValuePath("friends.0.a.1"), document.NewInt64Value(99))
 		require.NoError(t, err)
-		d, err = v.ConvertToDocument()
+		err = buf.Set(document.NewValuePath("contact"), document.NewDocumentValue(&contactBuf))
 		require.NoError(t, err)
-		v, err = d.GetByField("address")
-		require.NoError(t, err)
-		d, err = v.ConvertToDocument()
-		require.NoError(t, err)
-		va, err := d.GetByField("a")
-		require.NoError(t, err)
-		arr, err = va.ConvertToArray()
-		require.NoError(t, err)
-		v, err = arr.GetByIndex(2)
-		require.NoError(t, err)
-		require.Equal(t, v, document.NewArrayValue(vbuf))
+
+		contact, err := buf.GetByField("contact")
+
+		fmt.Printf(" buf == %v and v.type %s && value == %v\n", document.NewDocumentValue(contactBuf), contact.Type, contact)
+		require.Equal(t, contact, document.NewDocumentValue(contactBuf))
+
+
+
+
+		tests := []struct {
+			name     string
+			r        document.Value
+			expected document.Value
+		}{
+			{"friends",
+				document.NewDocumentValue(contactBuf),
+				contact,
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				require.Equal(t, test.expected, test.r)
+				require.NoError(t, err)
+			})
+		}
 
 	})
 

@@ -143,6 +143,10 @@ func (fb *FieldBuffer) setValueFromValuePath(v Value, path ValuePath, reqValue V
 		}
 
 		va, err = fb.setValueFromValuePath(va, path[1:], reqValue)
+		if err != nil {
+			return v, err
+		}
+
 		_ = buf.Replace(index, va)
 		return NewArrayValue(buf), nil
 	}
@@ -311,6 +315,33 @@ func (p ValuePath) getValueFromArray(a Array) (Value, error) {
 }
 
 func (p ValuePath) getValueFromValue(v Value) (Value, error) {
+	if len(p) == 1 {
+		return v, nil
+	}
+
+	switch v.Type {
+	case DocumentValue:
+
+		d, err := v.ConvertToDocument()
+		if err != nil {
+			return Value{}, err
+		}
+
+		return p[1:].getValueFromDocument(d)
+	case ArrayValue:
+
+		a, err := v.ConvertToArray()
+		if err != nil {
+			return Value{}, err
+		}
+
+		return p[1:].getValueFromArray(a)
+	}
+
+	return Value{}, ErrFieldNotFound
+}
+
+func (p ValuePath) GetValueFromValue(v Value) (Value, error) {
 	if len(p) == 1 {
 		return v, nil
 	}
