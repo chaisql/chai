@@ -95,6 +95,7 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 // - int16 -> int16
 // - int32 -> int32
 // - int64 -> int64
+// - float64 -> float64
 // - duration -> custom type with code 0x1 and size 8
 func (e *Encoder) EncodeValue(v document.Value) error {
 	switch v.Type {
@@ -169,8 +170,6 @@ func (e *Encoder) Close() {
 // from MessagePack.
 type Decoder struct {
 	dec *msgpack.Decoder
-
-	curDocLen int
 }
 
 // NewDecoder creates a Decoder that reads from the given reader.
