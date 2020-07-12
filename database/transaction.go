@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 )
@@ -107,7 +107,7 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 func (tx Transaction) DropTable(name string) error {
 	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
 
-	var buf encoding.EncodedDocument
+	var buf msgpack.EncodedDocument
 	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()

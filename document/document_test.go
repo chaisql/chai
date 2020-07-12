@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/stretchr/testify/require"
 )
 
@@ -587,14 +587,14 @@ func BenchmarkDocumentIterate(b *testing.B) {
 
 	b.Run("Encoding/Implementation", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			encoding.EncodeDocument(&f)
+			msgpack.EncodeDocument(&f)
 		}
 	})
 
 	b.Run("Encoding/Reflection", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			refd, _ := document.NewFromStruct(&f)
-			encoding.EncodeDocument(refd)
+			msgpack.EncodeDocument(refd)
 		}
 	})
 

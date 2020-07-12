@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/pkg/bytesutil"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -73,7 +73,7 @@ func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
 	}
 
 	for h.Len() > 0 {
-		err := fn(encoding.EncodedDocument(heap.Pop(h).(heapNode).data))
+		err := fn(msgpack.EncodedDocument(heap.Pop(h).(heapNode).data))
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// representing the type of the value.
 		value = append([]byte{byte(index.NewTypeFromValueType(v.Type))}, value...)
 
-		data, err := encoding.EncodeDocument(d)
+		data, err := msgpack.EncodeDocument(d)
 		if err != nil {
 			return err
 		}

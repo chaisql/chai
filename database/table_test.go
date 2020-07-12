@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
@@ -197,7 +198,7 @@ func TestTableInsert(t *testing.T) {
 
 		manualInsert := func(id int64) {
 			docid := encoding.EncodeInt64(id)
-			v, err := encoding.EncodeDocument(newDocument())
+			v, err := msgpack.EncodeDocument(newDocument())
 			require.NoError(t, err)
 			err = tb.Store.Put(docid, v)
 			require.NoError(t, err)

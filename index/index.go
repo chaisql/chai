@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 )
 
@@ -156,9 +157,9 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 		b, err := encoding.DecodeBool(data)
 		return document.NewBoolValue(b), err
 	case Array:
-		return document.NewArrayValue(encoding.DecodeArray(data)), nil
+		return document.NewArrayValue(msgpack.DecodeArray(data)), nil
 	case Document:
-		return document.NewDocumentValue(encoding.DecodeDocument(data)), nil
+		return document.NewDocumentValue(msgpack.DecodeDocument(data)), nil
 	}
 
 	return document.Value{}, fmt.Errorf("unknown index type %d", t)

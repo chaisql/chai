@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 )
@@ -32,7 +33,7 @@ func (t *Table) Info() (*TableInfo, error) {
 }
 
 type encodedDocumentWithKey struct {
-	encoding.EncodedDocument
+	msgpack.EncodedDocument
 
 	key []byte
 }
@@ -85,7 +86,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	}
 
 	var d encodedDocumentWithKey
-	d.EncodedDocument = encoding.EncodedDocument(v)
+	d.EncodedDocument = msgpack.EncodedDocument(v)
 	d.key = key
 	return &d, err
 }
@@ -357,7 +358,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, ErrDuplicateDocument
 	}
 
-	v, err := encoding.EncodeDocument(d)
+	v, err := msgpack.EncodeDocument(d)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
@@ -457,7 +458,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 	}
 
 	// encode new document
-	v, err := encoding.EncodeDocument(d)
+	v, err := msgpack.EncodeDocument(d)
 	if err != nil {
 		return fmt.Errorf("failed to encode document: %w", err)
 	}
