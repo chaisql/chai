@@ -39,6 +39,14 @@ func TestParserSelect(t *testing.T) {
 					"test",
 				)),
 			false},
+		{"WithFieldsWithQuotes", "SELECT `long \"field\"` FROM test",
+			planner.NewTree(
+				planner.NewProjectionNode(
+					planner.NewTableInputNode("test"),
+					[]planner.ResultField{planner.ResultFieldExpr{Expr: expr.FieldSelector([]string{"long \"field\""}), ExprName: "long \"field\""}},
+					"test",
+				)),
+			false},
 		{"WithAlias", "SELECT a AS A, b FROM test",
 			planner.NewTree(
 				planner.NewProjectionNode(

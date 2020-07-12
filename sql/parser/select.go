@@ -94,6 +94,12 @@ func (p *Parser) parseResultField() (planner.ResultField, error) {
 		return nil, err
 	}
 
+	// FieldSelectors may be quoted, we make sure we name the result field
+	// with the unquoted name instead.
+	if fs, ok := e.(expr.FieldSelector); ok {
+		lit = fs.String()
+	}
+
 	rf := planner.ResultFieldExpr{Expr: e, ExprName: lit}
 
 	// Check if the AS token exists.
