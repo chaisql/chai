@@ -199,7 +199,8 @@ func (sh *Shell) executeInput(in string) error {
 		err := sh.runQuery(sh.query)
 		sh.query = ""
 		return err
-	case len(in) == 0:
+	// If the input is empty
+	case in == "":
 		return nil
 	// If we reach this case, it means the user is in the middle of a
 	// multi line query. We change the prompt and set the multiLine var to true.
