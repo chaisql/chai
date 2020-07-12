@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 )
@@ -173,7 +173,7 @@ func (t *tableInfoStore) Insert(tableName string, info *TableInfo) ([]byte, erro
 	}
 	info.storeID = id
 
-	v, err := encoding.EncodeDocument(info.ToDocument())
+	v, err := msgpack.EncodeDocument(info.ToDocument())
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (t *tableInfoStore) Get(tableName string) (*TableInfo, error) {
 	}
 
 	var ti TableInfo
-	err = ti.ScanDocument(encoding.EncodedDocument(v))
+	err = ti.ScanDocument(msgpack.EncodedDocument(v))
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 		return err
 	}
 
-	v, err := encoding.EncodeDocument(cfg.ToDocument())
+	v, err := msgpack.EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}
@@ -337,7 +337,7 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 	}
 
 	var idxopts IndexConfig
-	err = idxopts.ScanDocument(encoding.EncodedDocument(v))
+	err = idxopts.ScanDocument(msgpack.EncodedDocument(v))
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +358,7 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 	var idxList []*IndexConfig
 	it := t.st.NewIterator(engine.IteratorConfig{})
 
-	var buf encoding.EncodedDocument
+	var buf msgpack.EncodedDocument
 	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()

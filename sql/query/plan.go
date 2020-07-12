@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/pkg/bytesutil"
@@ -368,7 +368,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 	if it.e == nil {
 		var err error
 
-		var d encoding.EncodedDocument
+		var d msgpack.EncodedDocument
 		it := it.tb.Store.NewIterator(engine.IteratorConfig{Reverse: it.orderByDirection == scanner.DESC})
 		defer func() {
 			it.Close()
@@ -436,7 +436,7 @@ func (qo *queryOptimizer) sortIterator(it document.Iterator) (st document.Stream
 			return err
 		}
 
-		data, err := encoding.EncodeDocument(d)
+		data, err := msgpack.EncodeDocument(d)
 		if err != nil {
 			return err
 		}
@@ -465,7 +465,7 @@ type sortedIterator struct {
 func (s *sortedIterator) Iterate(fn func(d document.Document) error) error {
 	i := 0
 	for s.h.Len() > 0 && (s.k == 0 || i < s.k) {
-		err := fn(encoding.EncodedDocument(heap.Pop(s.h).(heapNode).data))
+		err := fn(msgpack.EncodedDocument(heap.Pop(s.h).(heapNode).data))
 		if err != nil {
 			return err
 		}

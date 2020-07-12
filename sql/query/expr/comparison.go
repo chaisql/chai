@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/pkg/bytesutil"
@@ -80,7 +81,7 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 		return err
 	}
-	return fn(encoding.EncodedDocument(val))
+	return fn(msgpack.EncodedDocument(val))
 }
 
 func (op eqOp) String() string {
@@ -141,7 +142,7 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	var d encoding.EncodedDocument
+	var d msgpack.EncodedDocument
 
 	data, err := encoding.EncodeValue(v)
 	if err != nil {
@@ -205,7 +206,7 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	var d encoding.EncodedDocument
+	var d msgpack.EncodedDocument
 
 	data, err := encoding.EncodeValue(v)
 	if err != nil {
@@ -275,7 +276,7 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	var d encoding.EncodedDocument
+	var d msgpack.EncodedDocument
 
 	data, err := encoding.EncodeValue(v)
 	if err != nil {
@@ -348,7 +349,7 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	var d encoding.EncodedDocument
+	var d msgpack.EncodedDocument
 
 	data, err := encoding.EncodeValue(v)
 	if err != nil {
@@ -512,7 +513,7 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return errors.New("IN operator takes an array")
 	}
 
-	var d encoding.EncodedDocument
+	var d msgpack.EncodedDocument
 	arr, err := v.ConvertToArray()
 	if err != nil {
 		return err
