@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecodeValueFromDocument(t *testing.T) {
+func TestGetByField(t *testing.T) {
 	doc := document.NewFieldBuffer().
 		Add("age", document.NewInt64Value(10)).
 		Add("address", document.NewNullValue()).
@@ -39,6 +39,9 @@ func TestDecodeValueFromDocument(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, document.NewTextValue("john"), v)
 
+	v, err = d.GetByField("doesnexists")
+	require.Equal(t, err, document.ErrFieldNotFound)
+
 	v, err = d.GetByField("d")
 	require.NoError(t, err)
 	require.Equal(t, document.NewDurationValue(10*time.Nanosecond), v)
@@ -46,6 +49,34 @@ func TestDecodeValueFromDocument(t *testing.T) {
 	v, err = d.GetByField(strings.Repeat("a", 2<<20))
 	require.NoError(t, err)
 	require.Equal(t, document.NewBoolValue(true), v)
+}
+
+func TestGetByIndex(t *testing.T) {
+	arr := document.NewValueBuffer().
+		Append(document.NewInt64Value(10)).
+		Append(document.NewNullValue()).
+		Append(document.NewTextValue("john")).
+		Append(document.NewDurationValue(10 * time.Nanosecond))
+
+	data, err := EncodeArray(arr)
+	require.NoError(t, err)
+
+	a := EncodedArray(data)
+
+	v, err := a.GetByIndex(0)
+	require.NoError(t, err)
+	require.Equal(t, document.NewInt64Value(10), v)
+
+	v, err = a.GetByIndex(1)
+	require.NoError(t, err)
+	require.Equal(t, document.NewNullValue(), v)
+
+	v, err = a.GetByIndex(2)
+	require.NoError(t, err)
+	require.Equal(t, document.NewTextValue("john"), v)
+
+	v, err = a.GetByIndex(1000)
+	require.Equal(t, err, document.ErrValueNotFound)
 }
 
 func TestEncodeDecode(t *testing.T) {
