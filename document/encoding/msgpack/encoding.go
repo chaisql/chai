@@ -156,7 +156,8 @@ func (e EncodedDocument) GetByField(field string) (v document.Value, err error) 
 		}
 	}
 
-	return document.NewNullValue(), nil
+	err = document.ErrFieldNotFound
+	return
 }
 
 // Iterate decodes each fields one by one and passes them to fn
@@ -256,7 +257,8 @@ func (e EncodedArray) GetByIndex(idx int) (v document.Value, err error) {
 		}
 	}
 
-	return document.NewNullValue(), nil
+	err = document.ErrValueNotFound
+	return
 }
 
 // MarshalJSON implements the json.Marshaler interface.
