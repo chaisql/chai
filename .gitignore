@@ -22,9 +22,3 @@ profile.*
 
 # Databases
 *.db
-
-# ide
-*.idea
-*.code*
-*.code*
-.idea/*
