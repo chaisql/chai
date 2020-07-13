@@ -131,9 +131,14 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 			return err
 		}
 
-		path := document.NewValuePath(fname)
-		err = d.Set(path, ev)
-		fmt.Printf("ERROR %s\n", err)
+		_ , err = d.GetByField(fname)
+		switch err {
+		case document.ErrFieldNotFound:
+			_ = d.Replace(fname, ev)
+		case nil:
+			  d.Set(fname, ev)
+
+		}
 		if err != nil {
 			return err
 		}
