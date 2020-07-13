@@ -218,7 +218,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 // parseIdent parses an identifier.
 func (p *Parser) parseIdent() (string, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok != scanner.IDENT && tok != scanner.STRING {
+	if tok != scanner.IDENT  {
 		return "", newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 	}
 
@@ -393,7 +393,7 @@ LOOP:
 		case scanner.DOT:
 			// scan the next token for an ident
 			tok, pos, lit := p.Scan()
-			if tok != scanner.IDENT && tok != scanner.STRING {
+			if tok != scanner.IDENT  {
 				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
 			}
 
