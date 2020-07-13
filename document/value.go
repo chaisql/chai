@@ -646,12 +646,12 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 
 	xa, err = a.ConvertToInt64()
 	if err != nil {
-		return
+		return NewNullValue(), nil
 	}
 
 	xb, err = b.ConvertToInt64()
 	if err != nil {
-		return
+		return NewNullValue(), nil
 	}
 
 	var xr int64
