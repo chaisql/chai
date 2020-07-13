@@ -134,14 +134,12 @@ func (stmt UpdateStmt) set(d *document.FieldBuffer, tx *database.Transaction, ar
 		_ , err = d.GetByField(fname)
 		switch err {
 		case document.ErrFieldNotFound:
-			_ = d.Replace(fname, ev)
+			d.Set(fname, ev)
 		case nil:
-			  d.Set(fname, ev)
+			_ = d.Replace(fname, ev)
 
 		}
-		if err != nil {
-			return err
-		}
+
 	}
 
 	return nil
