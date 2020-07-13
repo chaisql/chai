@@ -88,7 +88,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 
 
-		contactJson := []byte(`{"phone":{"type": "cell", "number":"111-222-333"}}`)
+		contactJson := []byte(`{"contact": {"phone":{"type": "cell", "number":"111-222-333"}}}`)
 		var contactBuf document.FieldBuffer
 		d, err := document.NewFromJSON(contactJson)
 		err = contactBuf.Copy(d)
@@ -116,13 +116,18 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 		err = buf.Set(document.NewValuePath("friends.0.a.1"), document.NewInt64Value(99))
 		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("contact"), document.NewDocumentValue(&contactBuf))
+		contact, err := resultBuffer.GetByField("contact")
+		err = buf.Set(document.NewValuePath("contact"), contact)
 		require.NoError(t, err)
-
-		contact, err := buf.GetByField("contact")
-
-		fmt.Printf(" buf == %v and v.type %s && value == %v\n", document.NewDocumentValue(contactBuf), contact.Type, contact)
-		require.Equal(t, contact, document.NewDocumentValue(contactBuf))
+		ve, _:= resultBuffer.GetByField("friends")
+		vv, _ := buf.GetByField("friends")
+		arr, err := ve.ConvertToArray()
+		va, err := arr.GetByIndex(0)
+		vv, _ = buf.GetByField("friends")
+		arr, err = vv.ConvertToArray()
+		viq, err := arr.GetByIndex(0)
+		fmt.Printf("%v\n%v\n", vi, va)
+		require.Equal(t, vv, vi)
 
 
 
@@ -132,15 +137,19 @@ func TestFieldBuffer(t *testing.T) {
 			r        document.Value
 			expected document.Value
 		}{
-			{"friends",
-				document.NewDocumentValue(contactBuf),
+			{"All",
+				document.NewDocumentValue(&buf),
+				document.NewDocumentValue(&resultBuffer),
+			},
+			{"Document 'Contact' ",
+				document.NewDocumentValue(&contactBuf),
 				contact,
 			},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				require.Equal(t, test.expected, test.r)
+				require.Equal(t, test.r, test.expected)
 				require.NoError(t, err)
 			})
 		}
