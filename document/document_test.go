@@ -1,9 +1,9 @@
 package document_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -93,6 +93,8 @@ func TestFieldBuffer(t *testing.T) {
 		d, err := document.NewFromJSON(contactJson)
 		err = contactBuf.Copy(d)
 		require.NoError(t, err)
+		contact, err := contactBuf.GetByField("contact")
+
 
 		var vbuf document.ValueBuffer
 		vbuf = nil
@@ -100,60 +102,68 @@ func TestFieldBuffer(t *testing.T) {
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 		vbuf = vbuf.Append(document.NewInt64Value(0))
 
-		resultJson := []byte(`{"friends": [{"name": "Baz","address": {"city": "Paris","zipcode": "75001"}, "a": [[1, 0, 0], 99, 0]}], "contact":{"phone":{"type": "cell", "number":"111-222-333"}}}`)
-		doc, err = document.NewFromJSON(resultJson)
+		expectedJson := []byte(`{"friends":[{"name":"Baz","address":{"city":"Paris","zipcode":"75001"},"a":[[1,0,0],0,99]}],"contact":{"phone":{"type":"foo","number":"111-222-333"},"email":"foo@example.com", "favorite game":"foo bar"}}`)
+		doc, err = document.NewFromJSON(expectedJson)
 		require.NoError(t, err)
-		var resultBuffer document.FieldBuffer
-		err = resultBuffer.Copy(doc)
+		var expectedBuffer document.FieldBuffer
+		err = expectedBuffer.Copy(doc)
 		require.NoError(t, err)
 
 
-		err = buf.Set(document.NewValuePath("friends.0.name"), document.NewTextValue("Baz"))
-		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.a"), document.NewArrayValue(&vbuf))
-		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.a.0"), document.NewArrayValue(&vbuf))
-		require.NoError(t, err)
-		err = buf.Set(document.NewValuePath("friends.0.a.1"), document.NewInt64Value(99))
-		require.NoError(t, err)
-		contact, err := resultBuffer.GetByField("contact")
-		err = buf.Set(document.NewValuePath("contact"), contact)
-		require.NoError(t, err)
-		ve, _:= resultBuffer.GetByField("friends")
-		vv, _ := buf.GetByField("friends")
-		arr, err := ve.ConvertToArray()
-		va, err := arr.GetByIndex(0)
-		vv, _ = buf.GetByField("friends")
-		arr, err = vv.ConvertToArray()
-		viq, err := arr.GetByIndex(0)
-		fmt.Printf("%v\n%v\n", vi, va)
-		require.Equal(t, vv, vi)
-
-
-
-
-		tests := []struct {
-			name     string
-			r        document.Value
-			expected document.Value
+		tests := []struct{
+			name string
+			err  error
 		}{
-			{"All",
-				document.NewDocumentValue(&buf),
-				document.NewDocumentValue(&resultBuffer),
+			{
+				"SET Field TextValue",
+				buf.Set(document.NewValuePath("friends.0.name"), document.NewTextValue("Baz")),
 			},
-			{"Document 'Contact' ",
-				document.NewDocumentValue(&contactBuf),
-				contact,
+			{
+				"SET ArrayValue",
+				buf.Set(document.NewValuePath("friends.0.a"), document.NewArrayValue(&vbuf)),
+			},
+			{
+				"SET ArrayValue in array",
+				buf.Set(document.NewValuePath("friends.0.a.0"), document.NewArrayValue(&vbuf)),
+			},
+			{
+				"SET Replace value at index ",
+				buf.Set(document.NewValuePath("friends.0.a.2"), document.NewInt64Value(99)),
+			},
+			{
+				"SET Document add document to document",
+				buf.Set(document.NewValuePath("contact"), contact),
+			},
+			{
+				"SET add field to a Document",
+				buf.Set(document.NewValuePath("contact.email"), document.NewTextValue("foo@example.com")),
+			},
+			{
+				"SET replace field of Document",
+				buf.Set(document.NewValuePath("contact.phone.type"), document.NewTextValue("foo")),
+			},
+			{
+				"SET replace field of Document",
+				buf.Set(document.NewValuePath("contact.favorite game"), document.NewTextValue("foo bar")),
 			},
 		}
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				require.Equal(t, test.r, test.expected)
 				require.NoError(t, err)
 			})
 		}
 
+		var bufBytes bytes.Buffer
+		err = document.ToJSON(&bufBytes, buf)
+		require.NoError(t, err)
+
+
+		var wantBytes bytes.Buffer
+		err = document.ToJSON(&wantBytes, expectedBuffer)
+		require.NoError(t, err)
+		require.Equal(t, wantBytes.String(), bufBytes.String())
+		require.NoError(t, err)
 	})
 
 	t.Run("Delete", func(t *testing.T) {

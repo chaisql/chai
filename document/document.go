@@ -340,30 +340,3 @@ func (p ValuePath) getValueFromValue(v Value) (Value, error) {
 
 	return Value{}, ErrFieldNotFound
 }
-
-func (p ValuePath) GetValueFromValue(v Value) (Value, error) {
-	if len(p) == 1 {
-		return v, nil
-	}
-
-	switch v.Type {
-	case DocumentValue:
-
-		d, err := v.ConvertToDocument()
-		if err != nil {
-			return Value{}, err
-		}
-
-		return p[1:].getValueFromDocument(d)
-	case ArrayValue:
-
-		a, err := v.ConvertToArray()
-		if err != nil {
-			return Value{}, err
-		}
-
-		return p[1:].getValueFromArray(a)
-	}
-
-	return Value{}, ErrFieldNotFound
-}
