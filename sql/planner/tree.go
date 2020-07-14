@@ -370,20 +370,10 @@ func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 			return nil, err
 		}
 
-		_, err = fb.GetByField(n.field)
-
-		switch err {
-		case nil:
-			// If no error, it means that the field already exists
-			// and it should be replaced.
-			_ = fb.Replace(n.field, ev)
-		case document.ErrFieldNotFound:
-			// If the field doesn't exist,
-			// it should be added to the document.
-			fb.Set(n.field, ev)
-		}
-
-		return &fb, nil
+		path := document.NewValuePath(n.field)
+		err = fb.Set(path, ev)
+		
+		return &fb, err
 	}), nil
 }
 

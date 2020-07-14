@@ -86,16 +86,108 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
+// SetFieldValue replaces a field if it already exists or creates one if not.
+func (fb *FieldBuffer) SetFieldValue(field string, reqValue Value) error {
+	_, err := fb.GetByField(field)
+	switch err {
+	case ErrFieldNotFound:
+		fb.Add(field, reqValue)
+		return nil
+	case nil:
+		_ = fb.Replace(field, reqValue)
+		return nil
+	}
+
+	return err
+}
+
+// SetValueFromValue deep replaces or creates a field
+// through the value path to get the value to set or replace.
+func (fb *FieldBuffer) SetValueFromValue(v Value, p ValuePath, newValue Value) (Value, error) {
+
+	switch v.Type {
+	case DocumentValue:
+		var buf FieldBuffer
+		err := buf.Copy(v.V.(Document))
+		if err != nil {
+			return v, err
+		}
+
+		if len(p) == 1 {
+			err = buf.SetFieldValue(p[0], newValue)
+			return NewDocumentValue(&buf), err
+		}
+
+		va, err := buf.GetByField(p[0])
+		if err != nil {
+			return v, err
+		}
+
+		va, err = buf.SetValueFromValue(va, p[1:], newValue)
+		if err != nil {
+			return v, err
+		}
+
+		err = buf.SetFieldValue(p[0], va)
+		return NewDocumentValue(&buf), err
+	case ArrayValue:
+		var vb ValueBuffer
+		err := vb.Copy(v.V.(Array))
+		if err != nil {
+			return v, err
+		}
+
+
+		index, err := strconv.Atoi(p[0])
+		if err != nil {
+			return v, err
+		}
+
+		va, err := vb.GetByIndex(index)
+		if err != nil {
+			return v, err
+		}
+
+		if len(p) == 1 {
+			err = vb.Replace(index, newValue)
+			return NewArrayValue(&vb), err
+		}
+
+		va, err = fb.SetValueFromValue(va, p[1:], newValue)
+		err = vb.Replace(index, va)
+		return NewArrayValue(&vb), err
+	}
+
+	return v, nil
+}
+
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(f string, v Value) {
-	for i := range fb.fields {
-		if fb.fields[i].Field == f {
+func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
+	// check if the ValuePath contains only one field to set or replace
+	if len(path) == 1 {
+		// Set or replace the unique field
+		return fb.SetFieldValue(path[0], reqValue)
+	}
+
+	for i, field := range fb.fields {
+		if path[0] == field.Field {
+			var buf FieldBuffer
+			err := buf.Copy(fb)
+			if err != nil {
+				return err
+			}
+
+			v, err := buf.SetValueFromValue(field.Value, path[1:], reqValue)
+			if err != nil {
+				return err
+			}
 			fb.fields[i].Value = v
-			return
+			return nil
 		}
 	}
 
-	fb.Add(f, v)
+	//return Err if the request is like foo.1.2.etc where foo doesn't exist
+	return ErrFieldNotFound
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
