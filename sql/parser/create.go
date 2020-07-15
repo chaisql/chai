@@ -46,8 +46,8 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 		return stmt, err
 	}
 
-	// parse table constraints
-	err = p.parseConstraints(&stmt.Info)
+	// parse fields constraints
+	err = p.parseFieldsConstraints(&stmt.Info)
 	if err != nil {
 		return stmt, err
 	}
@@ -75,7 +75,7 @@ func (p *Parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
-func (p *Parser) parseConstraints(info *database.TableInfo) error {
+func (p *Parser) parseFieldsConstraints(info *database.TableInfo) error {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
