@@ -418,9 +418,9 @@ func TestValueAdd(t *testing.T) {
 		{"int64(max)+int8(10)", document.NewInt64Value(math.MaxInt64), document.NewIntValue(10), document.NewFloat64Value(math.MaxInt64 + 10), false},
 		{"int64(min)+int8(-10)", document.NewInt64Value(math.MinInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MinInt64 - 10), false},
 		{"int8(120)+text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document+document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array+array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document+document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array+array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(1ns)+duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond + time.Millisecond), false},
 	}
 
@@ -455,9 +455,9 @@ func TestValueSub(t *testing.T) {
 		{"int64(min)-int8(10)", document.NewInt64Value(math.MinInt64), document.NewIntValue(10), document.NewFloat64Value(math.MinInt64 - 10), false},
 		{"int64(max)-int8(-10)", document.NewInt64Value(math.MaxInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MaxInt64 + 10), false},
 		{"int8(120)-text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"text('120')-text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document-document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array-array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')-text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document-document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array-array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(1ns)-duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond - time.Millisecond), false},
 	}
 
@@ -490,9 +490,9 @@ func TestValueMult(t *testing.T) {
 		{"int8(10)*float64(80)", document.NewInt8Value(10), document.NewFloat64Value(80), document.NewFloat64Value(800), false},
 		{"int64(max)*int64(max)", document.NewInt64Value(math.MaxInt64), document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64 * math.MaxInt64), false},
 		{"int8(120)*text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"text('120')*text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document*document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array*array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')*text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document*document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array*array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)*duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond * time.Millisecond), false},
 	}
 
@@ -526,9 +526,9 @@ func TestValueDiv(t *testing.T) {
 		{"int8(10)/float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewFloat64Value(1.25), false},
 		{"int64(maxint)/float64(maxint)", document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64), document.NewFloat64Value(1), false},
 		{"int8(120)/text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"text('120')/text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document/document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array/array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')/text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document/document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array/array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)/duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond / time.Millisecond), false},
 	}
 
@@ -564,9 +564,9 @@ func TestValueMod(t *testing.T) {
 		{"float64(> maxint)%int64(100)", document.NewFloat64Value(math.MaxInt64 + 1000), document.NewInt8Value(100), document.NewFloat64Value(-8), false},
 		{"int64(100)%float64(> maxint)", document.NewInt8Value(100), document.NewFloat64Value(math.MaxInt64 + 1000), document.NewFloat64Value(100), false},
 		{"int8(120)%text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"text('120')%text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document%document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array%array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')%text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document%document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array%array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)%duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond % time.Millisecond), false},
 	}
 
@@ -600,8 +600,8 @@ func TestValueBitwiseAnd(t *testing.T) {
 		{"int8(10)&int8(8)", document.NewInt8Value(10), document.NewInt8Value(8), document.NewInt8Value(8), false},
 		{"int8(10)&float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewInt8Value(8), false},
 		{"text('120')&text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document&document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array&array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"document&document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array&array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)&duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(8), false},
 	}
 
@@ -633,9 +633,9 @@ func TestValueBitwiseOr(t *testing.T) {
 		{"int8(10)|float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewInt8Value(10), false},
 		{"int8(10)|int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(10), false},
 		{"int8(10)|float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewInt8Value(10), false},
-		{"text('120')|text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document|document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array|array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')|text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document|document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array|array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)|duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(1002), false},
 	}
 
@@ -666,9 +666,9 @@ func TestValueBitwiseXor(t *testing.T) {
 		{"float64(10.5)^float64(3.2)", document.NewFloat64Value(10.5), document.NewFloat64Value(3.2), document.NewInt8Value(9), false},
 		{"int8(10)^float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewInt8Value(10), false},
 		{"int8(10)^int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(0), false},
-		{"text('120')^text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.Value{}, true},
-		{"document^document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.Value{}, true},
-		{"array^array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.Value{}, true},
+		{"text('120')^text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"document^document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
+		{"array^array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)^duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(994), false},
 	}
 
