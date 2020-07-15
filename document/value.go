@@ -637,8 +637,7 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		return calculateIntegers(a, b, operator)
 	}
 
-	err = fmt.Errorf("cannot add value of type %q to value of type %q", a.Type, b.Type)
-	return
+	return NewNullValue(), nil
 }
 
 func convertNumberToInt64(v Value) (int64, error) {
@@ -739,7 +738,7 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 
 	xa, err = a.ConvertToFloat64()
 	if err != nil {
-		return  NewNullValue(), nil
+		return NewNullValue(), nil
 	}
 
 	xb, err = b.ConvertToFloat64()
