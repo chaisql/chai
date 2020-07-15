@@ -90,7 +90,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	return &d, err
 }
 
-// generate a key for d based on the table constraints.
+// generate a key for d based on the table configuration.
 // if the table has a primary key, it extracts the field from
 // the document, converts it to the targeted type and returns
 // its encoded version.
