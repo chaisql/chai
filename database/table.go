@@ -102,9 +102,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	info := &TableInfo{FieldConstraints: ti.FieldConstraints}
-
-	if pk := info.GetPrimaryKey(); pk != nil {
+	if pk := ti.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValue(d)
 		if err == document.ErrFieldNotFound {
 			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
