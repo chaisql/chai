@@ -12,8 +12,6 @@ import (
 	"github.com/genjidb/genji/index"
 )
 
-// TODO: check if adding Constraints type worth it.
-
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
 	Path         document.ValuePath
