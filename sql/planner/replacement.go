@@ -66,7 +66,7 @@ func (n *replacementNode) toResult(st document.Stream) (res query.Result, err er
 			}
 
 			docs[i].Reset()
-			err := docs[i].ScanDocument(d)
+			err := docs[i].Copy(d)
 			if err != nil {
 				return err
 			}

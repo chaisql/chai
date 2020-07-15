@@ -75,4 +75,24 @@ func TestUpdateStmt(t *testing.T) {
 			require.JSONEq(t, test.expected, buf.String())
 		})
 	}
+
+	t.Run("with arrays", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		res, err := db.Query(`
+			CREATE TABLE foo;
+			INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);
+			UPDATE foo set b = 0;
+			SELECT * FROM foo; 
+		`)
+		require.NoError(t, err)
+		defer res.Close()
+
+		var buf bytes.Buffer
+		err = document.IteratorToJSONArray(&buf, res)
+		require.NoError(t, err)
+		require.JSONEq(t, `[{"a": [1, 0, 0], "b": 0}, {"a": [2, 0], "b": 0}]`, buf.String())
+	})
 }
