@@ -185,6 +185,7 @@ func (sh *Shell) execute(in string) {
 }
 
 func (sh *Shell) executeInput(in string) error {
+	in = strings.TrimSpace(in)
 	switch {
 	// if it starts with a "." it's a command
 	// it must not be in the middle of a multi line query though
@@ -198,6 +199,9 @@ func (sh *Shell) executeInput(in string) error {
 		err := sh.runQuery(sh.query)
 		sh.query = ""
 		return err
+	// If the input is empty we ignore it
+	case in == "":
+		return nil
 	// If we reach this case, it means the user is in the middle of a
 	// multi line query. We change the prompt and set the multiLine var to true.
 	default:
