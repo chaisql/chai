@@ -273,7 +273,7 @@ func (e EncodedArray) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// EncodeArray encodes a into its binary representation.
+// EncodeArray encodes a document.Array into its binary representation.
 func EncodeArray(a document.Array) ([]byte, error) {
 	if ea, ok := a.(EncodedArray); ok {
 		return ea, nil
@@ -297,7 +297,7 @@ func DecodeArray(buf []byte) document.Array {
 	return EncodedArray(buf)
 }
 
-// DecodeValue takes some encoded data and decodes it to the target type t.
+// DecodeValue takes some encoded data and decodes it into its concrete value.
 func DecodeValue(data []byte) (document.Value, error) {
 	dec := NewDecoder(bytes.NewReader(data))
 	defer dec.Close()

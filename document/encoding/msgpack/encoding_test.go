@@ -262,7 +262,7 @@ func BenchmarkGetByField(b *testing.B) {
 	}
 }
 
-func BenchmarkDecodeDocument(b *testing.B) {
+func BenchmarkDocumentIterate(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
