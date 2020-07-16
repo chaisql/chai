@@ -27,6 +27,7 @@ func newTestDB(t testing.TB) (*database.Transaction, func()) {
 // - GetTable
 // - DropTable
 // - ListTables
+// - RenameTable
 func TestTxTable(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
@@ -95,6 +96,52 @@ func TestTxTable(t *testing.T) {
 		// The returned slice should be lexicographically ordered.
 		exp := []string{"bar", "baz", "foo"}
 		require.Equal(t, exp, tables)
+	})
+
+	t.Run("Rename", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		ti := &database.TableInfo{FieldConstraints: []database.FieldConstraint{
+			{Path: []string{"name"}, Type: document.TextValue, IsNotNull: true},
+			{Path: []string{"age"}, Type: document.IntegerValue, IsPrimaryKey: true},
+			{Path: []string{"gender"}, Type: document.TextValue},
+			{Path: []string{"city"}, Type: document.TextValue},
+		}}
+		err := tx.CreateTable("foo", ti)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(database.IndexConfig{Path: []string{"gender"}, IndexName: "idx_gender", TableName: "foo"})
+		require.NoError(t, err)
+		err = tx.CreateIndex(database.IndexConfig{Path: []string{"city"}, IndexName: "idx_city", TableName: "foo", Unique: true})
+		require.NoError(t, err)
+
+		err = tx.RenameTable("foo", "zoo")
+		require.NoError(t, err)
+
+		// Getting the old table should return an error.
+		_, err = tx.GetTable("foo")
+		require.EqualError(t, database.ErrTableNotFound, err.Error())
+
+		tb, err := tx.GetTable("zoo")
+		require.NoError(t, err)
+
+		// The field constraints should be the same.
+		info, err := tb.Info()
+		require.NoError(t, err)
+		require.Equal(t, ti, info)
+
+		// Check that the indexes have been updated as well.
+		idxs, err := tx.ListIndexes()
+		require.NoError(t, err)
+		require.Len(t, idxs, 2)
+		for _, idx := range idxs {
+			require.Equal(t, "zoo", idx.TableName)
+		}
+
+		// Renaming a non existing table should return an error
+		err = tx.RenameTable("foo", "")
+		require.EqualError(t, database.ErrTableNotFound, err.Error())
 	})
 }
 

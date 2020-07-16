@@ -14,7 +14,7 @@ func TestParserAlterTable(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "ALTER TABLE foo RENAME TO bar", query.AlterStmt{TableName: "foo", NewName: "bar"}, false},
+		{"Basic", "ALTER TABLE foo RENAME TO bar", query.AlterStmt{TableName: "foo", NewTableName: "bar"}, false},
 		{"With error / missing TABLE keyword", "ALTER foo RENAME TO bar", query.AlterStmt{}, true},
 		{"With error / two identifiers for table name", "ALTER TABLE foo baz RENAME TO bar", query.AlterStmt{}, true},
 		{"With error / two identifiers for new table name", "ALTER TABLE foo RENAME TO bar baz", query.AlterStmt{}, true},

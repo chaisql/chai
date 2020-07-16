@@ -32,6 +32,216 @@ func (t *Table) Info() (*TableInfo, error) {
 	return ti, nil
 }
 
+// Name returns the name of the table.
+func (t *Table) Name() string {
+	return t.name
+}
+
+// Truncate deletes all the documents from the table.
+func (t *Table) Truncate() error {
+	return t.Store.Truncate()
+}
+
+// Insert the document into the table.
+// If a primary key has been specified during the table creation, the field is expected to be present
+// in the given document.
+// If no primary key has been selected, a monotonic autoincremented integer key will be generated.
+func (t *Table) Insert(d document.Document) ([]byte, error) {
+	d, err := t.ValidateConstraints(d)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := t.generateKey(d)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = t.Store.Get(key)
+	if err == nil {
+		return nil, ErrDuplicateDocument
+	}
+
+	v, err := msgpack.EncodeDocument(d)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode document: %w", err)
+	}
+
+	err = t.Store.Put(key, v)
+	if err != nil {
+		return nil, err
+	}
+
+	indexes, err := t.Indexes()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, idx := range indexes {
+		v, err := idx.Opts.Path.GetValue(d)
+		if err != nil {
+			v = document.NewNullValue()
+		}
+
+		err = idx.Set(v, key)
+		if err != nil {
+			if err == index.ErrDuplicate {
+				return nil, ErrDuplicateDocument
+			}
+
+			return nil, err
+		}
+	}
+
+	return key, nil
+}
+
+// Delete a document by key.
+// Indexes are automatically updated.
+func (t *Table) Delete(key []byte) error {
+	d, err := t.GetDocument(key)
+	if err != nil {
+		return err
+	}
+
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
+		v, err := idx.Opts.Path.GetValue(d)
+		if err != nil {
+			return err
+		}
+
+		err = idx.Delete(v, key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return t.Store.Delete(key)
+}
+
+// Replace a document by key.
+// An error is returned if the key doesn't exist.
+// Indexes are automatically updated.
+func (t *Table) Replace(key []byte, d document.Document) error {
+	d, err := t.ValidateConstraints(d)
+	if err != nil {
+		return err
+	}
+
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	return t.replace(indexes, key, d)
+}
+
+func (t *Table) replace(indexes map[string]Index, key []byte, d document.Document) error {
+	// make sure key exists
+	old, err := t.GetDocument(key)
+	if err != nil {
+		return err
+	}
+
+	// remove key from indexes
+	for _, idx := range indexes {
+		v, err := idx.Opts.Path.GetValue(old)
+		if err != nil {
+			return err
+		}
+
+		err = idx.Delete(v, key)
+		if err != nil {
+			return err
+		}
+	}
+
+	// encode new document
+	v, err := msgpack.EncodeDocument(d)
+	if err != nil {
+		return fmt.Errorf("failed to encode document: %w", err)
+	}
+
+	// replace old document with new document
+	err = t.Store.Put(key, v)
+	if err != nil {
+		return err
+	}
+
+	// update indexes
+	for _, idx := range indexes {
+		v, err := idx.Opts.Path.GetValue(d)
+		if err != nil {
+			continue
+		}
+
+		err = idx.Set(v, key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+// Indexes returns a map of all the indexes of a table.
+func (t *Table) Indexes() (map[string]Index, error) {
+	s, err := t.tx.Tx.GetStore([]byte(indexStoreName))
+	if err != nil {
+		return nil, err
+	}
+
+	tb := Table{
+		tx:    t.tx,
+		Store: s,
+		name:  indexStoreName,
+	}
+
+	tableName := []byte(t.name)
+	indexes := make(map[string]Index)
+
+	err = document.NewStream(&tb).
+		Filter(func(d document.Document) (bool, error) {
+			v, err := d.GetByField("tablename")
+			if err != nil {
+				return false, err
+			}
+
+			return bytes.Equal(v.V.([]byte), tableName), nil
+		}).
+		Iterate(func(d document.Document) error {
+			var opts IndexConfig
+			err := opts.ScanDocument(d)
+			if err != nil {
+				return err
+			}
+
+			var idx index.Index
+			if opts.Unique {
+				idx = index.NewUniqueIndex(t.tx.Tx, opts.IndexName)
+			} else {
+				idx = index.NewListIndex(t.tx.Tx, opts.IndexName)
+			}
+
+			indexes[opts.Path.String()] = Index{
+				Index: idx,
+				Opts:  opts,
+			}
+
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	return indexes, nil
+}
+
 type encodedDocumentWithKey struct {
 	msgpack.EncodedDocument
 
@@ -227,18 +437,6 @@ func (t *Table) getSmallestAvailableDocid() (int64, error) {
 	return 0, errors.New("reached maximum number of documents in a table")
 }
 
-func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
-	if len(p) == 0 {
-		return document.Value{}, errors.New("empty path")
-	}
-
-	if len(p) == 1 {
-		return document.NewDocumentValue(d), nil
-	}
-
-	return p[:len(p)-1].GetValue(d)
-}
-
 // ValidateConstraints check the table configuration for constraints and validates the document
 // against them. If the types defined by the constraints are different than the ones found in
 // the document, the fields are converted to these types when possible. if the conversion
@@ -375,212 +573,14 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 	return nil
 }
 
-// Insert the document into the table.
-// If a primary key has been specified during the table creation, the field is expected to be present
-// in the given document.
-// If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-func (t *Table) Insert(d document.Document) ([]byte, error) {
-	d, err := t.ValidateConstraints(d)
-	if err != nil {
-		return nil, err
+func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
+	if len(p) == 0 {
+		return document.Value{}, errors.New("empty path")
 	}
 
-	key, err := t.generateKey(d)
-	if err != nil {
-		return nil, err
+	if len(p) == 1 {
+		return document.NewDocumentValue(d), nil
 	}
 
-	_, err = t.Store.Get(key)
-	if err == nil {
-		return nil, ErrDuplicateDocument
-	}
-
-	v, err := msgpack.EncodeDocument(d)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode document: %w", err)
-	}
-
-	err = t.Store.Put(key, v)
-	if err != nil {
-		return nil, err
-	}
-
-	indexes, err := t.Indexes()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
-		if err != nil {
-			v = document.NewNullValue()
-		}
-
-		err = idx.Set(v, key)
-		if err != nil {
-			if err == index.ErrDuplicate {
-				return nil, ErrDuplicateDocument
-			}
-
-			return nil, err
-		}
-	}
-
-	return key, nil
-}
-
-// Delete a document by key.
-// Indexes are automatically updated.
-func (t *Table) Delete(key []byte) error {
-	d, err := t.GetDocument(key)
-	if err != nil {
-		return err
-	}
-
-	indexes, err := t.Indexes()
-	if err != nil {
-		return err
-	}
-
-	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
-		if err != nil {
-			return err
-		}
-
-		err = idx.Delete(v, key)
-		if err != nil {
-			return err
-		}
-	}
-
-	return t.Store.Delete(key)
-}
-
-// Replace a document by key.
-// An error is returned if the key doesn't exist.
-// Indexes are automatically updated.
-func (t *Table) Replace(key []byte, d document.Document) error {
-	d, err := t.ValidateConstraints(d)
-	if err != nil {
-		return err
-	}
-
-	indexes, err := t.Indexes()
-	if err != nil {
-		return err
-	}
-
-	return t.replace(indexes, key, d)
-}
-
-func (t *Table) replace(indexes map[string]Index, key []byte, d document.Document) error {
-	// make sure key exists
-	old, err := t.GetDocument(key)
-	if err != nil {
-		return err
-	}
-
-	// remove key from indexes
-	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(old)
-		if err != nil {
-			return err
-		}
-
-		err = idx.Delete(v, key)
-		if err != nil {
-			return err
-		}
-	}
-
-	// encode new document
-	v, err := msgpack.EncodeDocument(d)
-	if err != nil {
-		return fmt.Errorf("failed to encode document: %w", err)
-	}
-
-	// replace old document with new document
-	err = t.Store.Put(key, v)
-	if err != nil {
-		return err
-	}
-
-	// update indexes
-	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
-		if err != nil {
-			continue
-		}
-
-		err = idx.Set(v, key)
-		if err != nil {
-			return err
-		}
-	}
-
-	return err
-}
-
-// Truncate deletes all the documents from the table.
-func (t *Table) Truncate() error {
-	return t.Store.Truncate()
-}
-
-// Name returns the name of the table.
-func (t *Table) Name() string {
-	return t.name
-}
-
-// Indexes returns a map of all the indexes of a table.
-func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.Tx.GetStore([]byte(indexStoreName))
-	if err != nil {
-		return nil, err
-	}
-
-	tb := Table{
-		tx:    t.tx,
-		Store: s,
-		name:  indexStoreName,
-	}
-
-	tableName := []byte(t.name)
-	indexes := make(map[string]Index)
-
-	err = document.NewStream(&tb).
-		Filter(func(d document.Document) (bool, error) {
-			v, err := d.GetByField("tablename")
-			if err != nil {
-				return false, err
-			}
-
-			return bytes.Equal(v.V.([]byte), tableName), nil
-		}).
-		Iterate(func(d document.Document) error {
-			var opts IndexConfig
-			err := opts.ScanDocument(d)
-			if err != nil {
-				return err
-			}
-
-			var idx index.Index
-			if opts.Unique {
-				idx = index.NewUniqueIndex(t.tx.Tx, opts.IndexName)
-			} else {
-				idx = index.NewListIndex(t.tx.Tx, opts.IndexName)
-			}
-
-			indexes[opts.Path.String()] = Index{
-				Index: idx,
-				Opts:  opts,
-			}
-
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	return indexes, nil
+	return p[:len(p)-1].GetValue(d)
 }

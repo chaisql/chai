@@ -33,7 +33,7 @@ func (p *Parser) parseAlterStatement() (query.AlterStmt, error) {
 	}
 
 	// Parse new table name.
-	stmt.NewName, err = p.parseIdent()
+	stmt.NewTableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
