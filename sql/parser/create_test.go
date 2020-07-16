@@ -21,7 +21,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With primary key", "CREATE TABLE test(foo INT PRIMARY KEY)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true},
 					},
@@ -32,7 +32,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With type", "CREATE TABLE test(foo INT)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, Type: document.Int64Value},
 					},
@@ -41,7 +41,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With not null", "CREATE TABLE test(foo NOT NULL)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, IsNotNull: true},
 					},
@@ -52,7 +52,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With type and not null", "CREATE TABLE test(foo INT NOT NULL)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, Type: document.Int64Value, IsNotNull: true},
 					},
@@ -61,7 +61,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With not null and primary key", "CREATE TABLE test(foo INT NOT NULL PRIMARY KEY)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true, IsNotNull: true},
 					},
@@ -70,7 +70,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With primary key and not null", "CREATE TABLE test(foo INT PRIMARY KEY NOT NULL)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true, IsNotNull: true},
 					},
@@ -79,7 +79,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar INT16 NOT NULL, baz.4.1.bat STRING)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true},
 						{Path: []string{"bar"}, Type: document.Int16Value, IsNotNull: true},
@@ -93,7 +93,7 @@ func TestParserCreateTable(t *testing.T) {
 			"CREATE TABLE test(i8 int8, i16 int16, i32 int32, i64 int64, f64 float64, b bool)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"i8"}, Type: document.Int8Value},
 						{Path: []string{"i16"}, Type: document.Int16Value},
@@ -108,7 +108,7 @@ func TestParserCreateTable(t *testing.T) {
 			"CREATE TABLE test(i int, ig integer, n numeric, du duration, b blob, byt bytes, t text, s string, a array, d document)",
 			query.CreateTableStmt{
 				TableName: "test",
-				Config: database.TableConfig{
+				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
 						{Path: []string{"i"}, Type: document.Int64Value},
 						{Path: []string{"ig"}, Type: document.Int64Value},

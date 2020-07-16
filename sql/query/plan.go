@@ -39,7 +39,7 @@ func newQueryOptimizer(tx *database.Transaction, tableName string) (qo queryOpti
 		return
 	}
 
-	cfg, err := t.Config()
+	info, err := t.Info()
 	if err != nil {
 		return
 	}
@@ -48,7 +48,7 @@ func newQueryOptimizer(tx *database.Transaction, tableName string) (qo queryOpti
 		tx:        tx,
 		t:         t,
 		tableName: tableName,
-		cfg:       cfg,
+		info:      info,
 		indexes:   indexes,
 	}, nil
 }
@@ -60,7 +60,7 @@ type queryOptimizer struct {
 	tableName        string
 	whereExpr        expr.Expr
 	args             []expr.Param
-	cfg              *database.TableConfig
+	info             *database.TableInfo
 	indexes          map[string]database.Index
 	orderBy          expr.FieldSelector
 	orderByDirection scanner.Token
@@ -79,7 +79,7 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 			pkit := pkIterator{
 				tx:               qo.tx,
 				tb:               qo.t,
-				cfg:              qo.cfg,
+				info:             qo.info,
 				args:             qo.args,
 				e:                qp.field.e,
 				orderByDirection: qo.orderByDirection,
@@ -105,7 +105,7 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 		// for all operators except IN, we require the exact same type
 		// otherwise we operate a scan table.
 		if !expr.IsInOperator(qp.field.op) {
-			v, err = v.ConvertTo(qo.cfg.GetPrimaryKey().Type)
+			v, err = v.ConvertTo(qo.info.GetPrimaryKey().Type)
 			if err != nil {
 				err = nil
 				st = document.NewStream(qo.t)
@@ -116,7 +116,7 @@ func (qo *queryOptimizer) optimizeQuery() (st document.Stream, err error) {
 		pkit := pkIterator{
 			tx:               qo.tx,
 			tb:               qo.t,
-			cfg:              qo.cfg,
+			info:             qo.info,
 			args:             qo.args,
 			e:                qp.field.e,
 			orderByDirection: qo.orderByDirection,
@@ -164,7 +164,7 @@ func (qo *queryOptimizer) buildQueryPlan() queryPlan {
 	if qp.field == nil {
 		if len(qo.orderBy) != 0 {
 			_, ok := qo.indexes[qo.orderBy.Name()]
-			pk := qo.cfg.GetPrimaryKey()
+			pk := qo.info.GetPrimaryKey()
 			if ok || (pk != nil && pk.Path.String() == qo.orderBy.Name()) {
 				qp.field = &queryPlanField{
 					indexedField: qo.orderBy,
@@ -216,7 +216,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 			}
 		}
 
-		pk := qo.cfg.GetPrimaryKey()
+		pk := qo.info.GetPrimaryKey()
 		if pk != nil && pk.Path.String() == fs.Name() {
 			return &queryPlanField{
 				indexedField: fs,
@@ -356,7 +356,7 @@ type pkIteratorOperator interface {
 type pkIterator struct {
 	tx               *database.Transaction
 	tb               *database.Table
-	cfg              *database.TableConfig
+	info             *database.TableInfo
 	args             []expr.Param
 	e                expr.Expr
 	pkop             pkIteratorOperator
@@ -388,7 +388,7 @@ func (it pkIterator) Iterate(fn func(d document.Document) error) error {
 		return nil
 	}
 
-	return it.pkop.IteratePK(it.tb, it.evalValue, it.cfg.GetPrimaryKey().Type, fn)
+	return it.pkop.IteratePK(it.tb, it.evalValue, it.info.GetPrimaryKey().Type, fn)
 }
 
 // sortIterator operates a partial sort on the iterator using a heap.

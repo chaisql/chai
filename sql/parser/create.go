@@ -46,8 +46,8 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 		return stmt, err
 	}
 
-	// parse table config
-	err = p.parseTableConfig(&stmt.Config)
+	// parse field constraints
+	err = p.parseFieldConstraints(&stmt.Info)
 	if err != nil {
 		return stmt, err
 	}
@@ -75,7 +75,7 @@ func (p *Parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
-func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
+func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
@@ -101,7 +101,7 @@ func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
 			return err
 		}
 
-		cfg.FieldConstraints = append(cfg.FieldConstraints, fc)
+		info.FieldConstraints = append(info.FieldConstraints, fc)
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
@@ -116,7 +116,7 @@ func (p *Parser) parseTableConfig(cfg *database.TableConfig) error {
 
 	// ensure only one primary key
 	var pkCount int
-	for _, fc := range cfg.FieldConstraints {
+	for _, fc := range info.FieldConstraints {
 		if fc.IsPrimaryKey {
 			pkCount++
 		}

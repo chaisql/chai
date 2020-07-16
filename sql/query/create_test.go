@@ -54,21 +54,19 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.ViewTable("test", func(_ *genji.Tx, tb *database.Table) error {
-				cfg, err := tb.Config()
+				info, err := tb.Info()
 				if err != nil {
 					return err
 				}
 
-				require.Equal(t, &database.TableConfig{
-					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"i8"}, Type: document.Int8Value},
-						{Path: []string{"i16"}, Type: document.Int16Value},
-						{Path: []string{"i32"}, Type: document.Int32Value},
-						{Path: []string{"i64"}, Type: document.Int64Value},
-						{Path: []string{"f64"}, Type: document.Float64Value},
-						{Path: []string{"b"}, Type: document.BoolValue},
-					},
-				}, cfg)
+				require.Equal(t, []database.FieldConstraint{
+					{Path: []string{"i8"}, Type: document.Int8Value},
+					{Path: []string{"i16"}, Type: document.Int16Value},
+					{Path: []string{"i32"}, Type: document.Int32Value},
+					{Path: []string{"i64"}, Type: document.Int64Value},
+					{Path: []string{"f64"}, Type: document.Float64Value},
+					{Path: []string{"b"}, Type: document.BoolValue},
+				}, info.FieldConstraints)
 				return nil
 			})
 			require.NoError(t, err)
@@ -85,25 +83,23 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.ViewTable("test1", func(_ *genji.Tx, tb *database.Table) error {
-				cfg, err := tb.Config()
+				info, err := tb.Info()
 				if err != nil {
 					return err
 				}
 
-				require.Equal(t, &database.TableConfig{
-					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo", "bar", "1", "hello"}, Type: document.BlobValue, IsPrimaryKey: true},
-						{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue, IsNotNull: true},
-						{Path: []string{"bar", "4", "0", "bat"}, Type: document.Int64Value},
-						{Path: []string{"ig"}, Type: document.Int64Value},
-						{Path: []string{"n"}, Type: document.Float64Value},
-						{Path: []string{"du"}, Type: document.DurationValue},
-						{Path: []string{"b"}, Type: document.BlobValue},
-						{Path: []string{"t"}, Type: document.TextValue},
-						{Path: []string{"a"}, Type: document.ArrayValue},
-						{Path: []string{"d"}, Type: document.DocumentValue},
-					},
-				}, cfg)
+				require.Equal(t, []database.FieldConstraint{
+					{Path: []string{"foo", "bar", "1", "hello"}, Type: document.BlobValue, IsPrimaryKey: true},
+					{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue, IsNotNull: true},
+					{Path: []string{"bar", "4", "0", "bat"}, Type: document.Int64Value},
+					{Path: []string{"ig"}, Type: document.Int64Value},
+					{Path: []string{"n"}, Type: document.Float64Value},
+					{Path: []string{"du"}, Type: document.DurationValue},
+					{Path: []string{"b"}, Type: document.BlobValue},
+					{Path: []string{"t"}, Type: document.TextValue},
+					{Path: []string{"a"}, Type: document.ArrayValue},
+					{Path: []string{"d"}, Type: document.DocumentValue},
+				}, info.FieldConstraints)
 				return nil
 			})
 			require.NoError(t, err)

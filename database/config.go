@@ -12,63 +12,6 @@ import (
 	"github.com/genjidb/genji/index"
 )
 
-// TableConfig holds the configuration of a table
-type TableConfig struct {
-	FieldConstraints []FieldConstraint
-}
-
-// ToDocument returns a document from t.
-func (t *TableConfig) ToDocument() document.Document {
-	buf := document.NewFieldBuffer()
-
-	vbuf := document.NewValueBuffer()
-	for _, fc := range t.FieldConstraints {
-		vbuf = vbuf.Append(document.NewDocumentValue(fc.ToDocument()))
-	}
-
-	buf.Add("field_constraints", document.NewArrayValue(vbuf))
-	return buf
-}
-
-// ScanDocument implements the document.Scanner interface.
-func (t *TableConfig) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("field_constraints")
-	if err != nil {
-		return err
-	}
-	ar, err := v.ConvertToArray()
-	if err != nil {
-		return err
-	}
-
-	l, err := document.ArrayLength(ar)
-	if err != nil {
-		return err
-	}
-
-	t.FieldConstraints = make([]FieldConstraint, l)
-
-	return ar.Iterate(func(i int, value document.Value) error {
-		doc, err := value.ConvertToDocument()
-		if err != nil {
-			return err
-		}
-		return t.FieldConstraints[i].ScanDocument(doc)
-	})
-}
-
-// GetPrimaryKey returns the field constraint of the primary key.
-// Returns nil if there is no primary key.
-func (t TableConfig) GetPrimaryKey() *FieldConstraint {
-	for _, f := range t.FieldConstraints {
-		if f.IsPrimaryKey {
-			return &f
-		}
-	}
-
-	return nil
-}
-
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
 	Path         document.ValuePath
@@ -126,25 +69,43 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	return err
 }
 
-type tableInfo struct {
+type TableInfo struct {
 	// storeID is a generated ID that acts as a key to reference a table.
 	// The first-4 bytes represents the timestamp in second and the last-2 bytes are
 	// randomly generated.
 	storeID [6]byte
 
-	cfg *TableConfig
+	FieldConstraints []FieldConstraint
 }
 
-func (ti *tableInfo) ToDocument() document.Document {
+// GetPrimaryKey returns the field constraint of the primary key.
+// Returns nil if there is no primary key.
+func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
+	for _, f := range ti.FieldConstraints {
+		if f.IsPrimaryKey {
+			return &f
+		}
+	}
+
+	return nil
+}
+
+func (ti *TableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	buf.Add("storeID", document.NewBlobValue(ti.storeID[:]))
-	buf.Add("config", document.NewDocumentValue(ti.cfg.ToDocument()))
+
+	vbuf := document.NewValueBuffer()
+	for _, fc := range ti.FieldConstraints {
+		vbuf = vbuf.Append(document.NewDocumentValue(fc.ToDocument()))
+	}
+
+	buf.Add("field_constraints", document.NewArrayValue(vbuf))
 
 	return buf
 }
 
-func (ti *tableInfo) ScanDocument(d document.Document) error {
+func (ti *TableInfo) ScanDocument(d document.Document) error {
 	v, err := d.GetByField("storeID")
 	if err != nil {
 		return err
@@ -155,17 +116,29 @@ func (ti *tableInfo) ScanDocument(d document.Document) error {
 	}
 	copy(ti.storeID[:], b)
 
-	v, err = d.GetByField("config")
+	v, err = d.GetByField("field_constraints")
 	if err != nil {
 		return err
 	}
-	doc, err := v.ConvertToDocument()
+	ar, err := v.ConvertToArray()
 	if err != nil {
 		return err
 	}
 
-	ti.cfg = &TableConfig{}
-	return ti.cfg.ScanDocument(doc)
+	l, err := document.ArrayLength(ar)
+	if err != nil {
+		return err
+	}
+
+	ti.FieldConstraints = make([]FieldConstraint, l)
+
+	return ar.Iterate(func(i int, value document.Value) error {
+		doc, err := value.ConvertToDocument()
+		if err != nil {
+			return err
+		}
+		return ti.FieldConstraints[i].ScanDocument(doc)
+	})
 }
 
 type tableInfoStore struct {
@@ -174,7 +147,7 @@ type tableInfoStore struct {
 
 // Insert a new tableInfo for the given table name.
 // It automatically generates a unique storeID for that table.
-func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) (*tableInfo, error) {
+func (t *tableInfoStore) Insert(tableName string, info *TableInfo) ([]byte, error) {
 	key := []byte(tableName)
 	_, err := t.st.Get(key)
 	if err == nil {
@@ -198,12 +171,9 @@ func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) (*tableInfo, 
 		}
 		break
 	}
-	ti := tableInfo{
-		storeID: id,
-		cfg:     &cfg,
-	}
+	info.storeID = id
 
-	v, err := encoding.EncodeDocument(ti.ToDocument())
+	v, err := encoding.EncodeDocument(info.ToDocument())
 	if err != nil {
 		return nil, err
 	}
@@ -212,25 +182,10 @@ func (t *tableInfoStore) Insert(tableName string, cfg TableConfig) (*tableInfo, 
 	if err != nil {
 		return nil, err
 	}
-	return &ti, err
+	return info.storeID[:], err
 }
 
-func (t *tableInfoStore) Replace(tableName string, cfg *TableConfig) error {
-	ti, err := t.Get(tableName)
-	if err != nil {
-		return err
-	}
-
-	ti.cfg = cfg
-	v, err := encoding.EncodeDocument(ti.ToDocument())
-	if err != nil {
-		return err
-	}
-
-	return t.st.Put([]byte(tableName), v)
-}
-
-func (t *tableInfoStore) Get(tableName string) (*tableInfo, error) {
+func (t *tableInfoStore) Get(tableName string) (*TableInfo, error) {
 	key := []byte(tableName)
 	v, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
@@ -240,7 +195,7 @@ func (t *tableInfoStore) Get(tableName string) (*tableInfo, error) {
 		return nil, err
 	}
 
-	var ti tableInfo
+	var ti TableInfo
 	err = ti.ScanDocument(encoding.EncodedDocument(v))
 	if err != nil {
 		return nil, err

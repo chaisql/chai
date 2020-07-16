@@ -21,13 +21,14 @@ type Table struct {
 	infoStore *tableInfoStore
 }
 
-// Config of the table.
-func (t *Table) Config() (*TableConfig, error) {
+// Info of the table.
+func (t *Table) Info() (*TableInfo, error) {
 	ti, err := t.infoStore.Get(t.name)
 	if err != nil {
 		return nil, err
 	}
-	return ti.cfg, nil
+
+	return ti, nil
 }
 
 type encodedDocumentWithKey struct {
@@ -101,9 +102,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	cfg := ti.cfg
-
-	if pk := cfg.GetPrimaryKey(); pk != nil {
+	if pk := ti.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValue(d)
 		if err == document.ErrFieldNotFound {
 			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
@@ -207,14 +206,14 @@ func getParentValue(d document.Document, p document.ValuePath) (document.Value, 
 // the document, the fields are converted to these types when possible. if the conversion
 // fails, an error is returned.
 func (t *Table) ValidateConstraints(d document.Document) (document.Document, error) {
-	cfg, err := t.Config()
+	info, err := t.Info()
 	if err != nil {
 		return nil, err
 	}
 
-	pk := cfg.GetPrimaryKey()
+	pk := info.GetPrimaryKey()
 
-	if len(cfg.FieldConstraints) == 0 && pk == nil {
+	if len(info.FieldConstraints) == 0 && pk == nil {
 		return d, nil
 	}
 
@@ -234,7 +233,7 @@ func (t *Table) ValidateConstraints(d document.Document) (document.Document, err
 		}
 	}
 
-	for _, fc := range cfg.FieldConstraints {
+	for _, fc := range info.FieldConstraints {
 		err := validateConstraint(&fb, &fc)
 		if err != nil {
 			return nil, err

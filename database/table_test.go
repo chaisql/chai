@@ -151,7 +151,7 @@ func TestTableInsert(t *testing.T) {
 			tx, err := db.Begin(true)
 			require.NoError(t, err)
 
-			_ = tx.CreateTable("test", &database.TableConfig{})
+			_ = tx.CreateTable("test", &database.TableInfo{})
 
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableConfig{
+		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{Path: []string{"foo", "a", "1"}, Type: document.Int32Value, IsPrimaryKey: true},
 			},
@@ -260,7 +260,7 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableConfig{
+		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{Path: []string{"foo"}, Type: document.ArrayValue},
 				{Path: []string{"foo", "0"}, Type: document.Int32Value},
@@ -290,7 +290,7 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableConfig{
+		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{Path: []string{"foo"}, Type: document.Int32Value, IsPrimaryKey: true},
 			},
@@ -367,7 +367,7 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableConfig{
+		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo"}, document.Int32Value, false, false},
 				{[]string{"bar"}, document.Int8Value, false, false},
@@ -405,7 +405,7 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		// no enforced type, not null
-		err := tx.CreateTable("test1", &database.TableConfig{
+		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo"}, 0, false, true},
 			},
@@ -415,7 +415,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// enforced type, not null
-		err = tx.CreateTable("test2", &database.TableConfig{
+		err = tx.CreateTable("test2", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo"}, document.Int32Value, false, true},
 			},
@@ -459,7 +459,7 @@ func TestTableInsert(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test1", &database.TableConfig{
+		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
 				{[]string{"foo", "1"}, 0, false, true},
 			},
