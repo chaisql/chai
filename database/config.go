@@ -148,50 +148,32 @@ func newTableInfoStore(tx engine.Transaction) (*tableInfoStore, error) {
 }
 
 // Insert a new tableInfo for the given table name.
-// It automatically generates a unique storeID for that table.
-func (t *tableInfoStore) Insert(tx engine.Transaction, tableName string, info *TableInfo) ([]byte, error) {
+func (t *tableInfoStore) Insert(tx engine.Transaction, tableName string, info *TableInfo) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	_, ok := t.tableInfos[tableName]
 	if ok {
-		return nil, ErrTableAlreadyExists
+		return ErrTableAlreadyExists
 	}
-
-	var found bool = true
-	var id [6]byte
-	for found {
-		id = generateStoreID()
-
-		found = false
-		for _, ti := range t.tableInfos {
-			if ti.storeID == id {
-				// A store with this id already exists.
-				// Let's generate a new one.
-				found = true
-				break
-			}
-		}
-	}
-	info.storeID = id
 
 	v, err := msgpack.EncodeDocument(info.ToDocument())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	st, err := tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = st.Put([]byte(tableName), v)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	t.tableInfos[tableName] = *info
-	return info.storeID[:], err
+	return nil
 }
 
 func (t *tableInfoStore) Get(tableName string) (*TableInfo, error) {
@@ -280,12 +262,27 @@ func (t *tableInfoStore) ListTables() []string {
 	return names
 }
 
-func generateStoreID() [6]byte {
-	var id [6]byte
+func (t *tableInfoStore) generateStoreID() [6]byte {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
-	binary.BigEndian.PutUint32(id[:], uint32(time.Now().Unix()))
-	if _, err := rand.Reader.Read(id[4:]); err != nil {
-		panic(fmt.Errorf("cannot generate random number: %v;", err))
+	var found bool = true
+	var id [6]byte
+	for found {
+		binary.BigEndian.PutUint32(id[:], uint32(time.Now().Unix()))
+		if _, err := rand.Reader.Read(id[4:]); err != nil {
+			panic(fmt.Errorf("cannot generate random number: %v;", err))
+		}
+
+		found = false
+		for _, ti := range t.tableInfos {
+			if ti.storeID == id {
+				// A store with this id already exists.
+				// Let's generate a new one.
+				found = true
+				break
+			}
+		}
 	}
 
 	return id
@@ -386,6 +383,15 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 	}
 
 	return &idxopts, nil
+}
+
+func (t *indexStore) Replace(indexName string, cfg IndexConfig) error {
+	v, err := msgpack.EncodeDocument(cfg.ToDocument())
+	if err != nil {
+		return err
+	}
+
+	return t.st.Put([]byte(indexName), v)
 }
 
 func (t *indexStore) Delete(indexName string) error {

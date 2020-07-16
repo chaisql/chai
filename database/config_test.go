@@ -26,29 +26,35 @@ func TestTableInfoStore(t *testing.T) {
 		},
 	}
 
-	// Inserting one tableInfo should work.
-	sid, err := tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
+	// Inserting one TableInfo should work.
+	err = tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
 	require.NoError(t, err)
-	require.NotNil(t, sid)
 
-	// Inserting an existing tableInfo should not work.
-	_, err = tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
+	// Inserting an existing TableInfo should not work.
+	err = tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
 	require.Equal(t, err, ErrTableAlreadyExists)
 
-	// Getting an existing tableInfo should work.
+	// Listing all tables should return their name
+	// lexicographically ordered.
+	_ = tx.tableInfoStore.Insert(tx.Tx, "foo3", info)
+	_ = tx.tableInfoStore.Insert(tx.Tx, "foo2", info)
+	lt := tx.tableInfoStore.ListTables()
+	require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
+
+	// Getting an existing TableInfo should work.
 	received, err := tx.tableInfoStore.Get("foo1")
 	require.NoError(t, err)
 	require.NotNil(t, received.storeID)
 
-	// Getting a non-existing tableInfo should not work.
+	// Getting a non-existing TableInfo should not work.
 	_, err = tx.tableInfoStore.Get("unknown")
 	require.Equal(t, ErrTableNotFound, err)
 
-	// Deleting an existing tableInfo should work.
+	// Deleting an existing TableInfo should work.
 	err = tx.tableInfoStore.Delete(tx.Tx, "foo1")
 	require.NoError(t, err)
 
-	// Deleting a non-existing tableInfo should not work.
+	// Deleting a non-existing TableInfo should not work.
 	err = tx.tableInfoStore.Delete(tx.Tx, "foo1")
 	require.Equal(t, ErrTableNotFound, err)
 }
@@ -85,6 +91,14 @@ func TestIndexStore(t *testing.T) {
 		idxcfg, err := idxs.Get("idx_test")
 		require.NoError(t, err)
 		require.Equal(t, &cfg, idxcfg)
+
+		// Updating the index should work
+		cfg.Unique = false
+		err = idxs.Replace(cfg.IndexName, cfg)
+		require.NoError(t, err)
+		idxcfg, err = idxs.Get("idx_test")
+		require.NoError(t, err)
+		require.False(t, idxcfg.Unique)
 
 		err = idxs.Delete("idx_test")
 		require.NoError(t, err)

@@ -70,12 +70,14 @@ func (tx Transaction) CreateTable(name string, info *TableInfo) error {
 	if info == nil {
 		info = new(TableInfo)
 	}
-	sid, err := tx.tableInfoStore.Insert(tx.Tx, name, info)
+
+	info.storeID = tx.tableInfoStore.generateStoreID()
+	err := tx.tableInfoStore.Insert(tx.Tx, name, info)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(sid)
+	err = tx.Tx.CreateStore(info.storeID[:])
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -101,6 +103,39 @@ func (tx Transaction) GetTable(name string) (*Table, error) {
 		name:      name,
 		infoStore: tx.tableInfoStore,
 	}, nil
+}
+
+// RenameTable renames a table.
+// If it doesn't exist, it returns ErrTableNotFound.
+func (tx Transaction) RenameTable(oldName, newName string) error {
+	ti, err := tx.tableInfoStore.Get(oldName)
+	if err != nil {
+		return err
+	}
+
+	// Insert the TableInfo keyed by the newName name.
+	err = tx.tableInfoStore.Insert(tx.Tx, newName, ti)
+	if err != nil {
+		return err
+	}
+
+	// Update the indexes.
+	idxs, err := tx.ListIndexes()
+	if err != nil {
+		return err
+	}
+	for _, idx := range idxs {
+		if idx.TableName == oldName {
+			idx.TableName = newName
+			err = tx.indexStore.Replace(idx.IndexName, *idx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Delete the old reference from the tableInfoStore.
+	return tx.tableInfoStore.Delete(tx.Tx, oldName)
 }
 
 // DropTable deletes a table from the database.
@@ -160,7 +195,7 @@ func (tx Transaction) ListTables() []string {
 }
 
 // CreateIndex creates an index with the given name.
-// If it already exists, returns ErrTableAlreadyExists.
+// If it already exists, returns ErrIndexAlreadyExists.
 func (tx Transaction) CreateIndex(opts IndexConfig) error {
 	_, err := tx.GetTable(opts.TableName)
 	if err != nil {

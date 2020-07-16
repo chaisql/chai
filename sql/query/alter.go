@@ -9,8 +9,8 @@ import (
 
 // AlterStmt is a DSL that allows creating a full ALTER TABLE query.
 type AlterStmt struct {
-	TableName string
-	NewName   string
+	TableName    string
+	NewTableName string
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -20,16 +20,21 @@ func (stmt AlterStmt) IsReadOnly() bool {
 
 // Run runs the ALTER TABLE statement in the given transaction.
 // It implements the Statement interface.
-func (stmt AlterStmt) Run(*database.Transaction, []expr.Param) (Result, error) {
+func (stmt AlterStmt) Run(tx *database.Transaction, _ []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
 		return res, errors.New("missing table name")
 	}
 
-	if stmt.NewName == "" {
+	if stmt.NewTableName == "" {
 		return res, errors.New("missing new table name")
 	}
 
-	return res, nil
+	if stmt.TableName == stmt.NewTableName {
+		return res, database.ErrTableAlreadyExists
+	}
+
+	err := tx.RenameTable(stmt.TableName, stmt.NewTableName)
+	return res, err
 }
