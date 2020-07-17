@@ -2,14 +2,13 @@ package shell
 
 import (
 	"fmt"
+
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/document"
 )
 
 func runTablesCmd(db *genji.DB, cmd []string) error {
 	if len(cmd) > 1 {
-		return fmt.Errorf("too many arguments in call to %s", cmd[0])
+		return fmt.Errorf("usage: .tables")
 	}
 
 	var tables []string
@@ -30,57 +29,58 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 	return nil
 }
 
-// runTableIndexCmd shows the all indexes that the given table contains.
-func runTableIndexCmd(db *genji.DB, tableName string) error {
-	err := db.ViewTable(tableName, func(tx *genji.Tx, table *database.Table) error {
-		return table.PrintIndexes()
-	})
+// displayTableIndex prints all indexes that the given table contains.
+func displayTableIndex(db *genji.DB, tableName string) error {
+	err := db.View(func(tx *genji.Tx) error {
+		t, err := tx.GetTable(tableName)
+		if err != nil {
+			return err
+		}
 
-	if err == document.ErrFieldNotFound {
+		indexes, err := t.Indexes()
+		if err != nil {
+			return err
+		}
+
+		for _, idx := range indexes {
+			fmt.Printf("%s on %s(%s)\n", idx.Opts.IndexName, idx.Opts.TableName, idx.Opts.Path)
+		}
+
 		return nil
-	}
+	})
 
 	return err
 }
 
-// runAllIndexesCmd shows all indexes that the database contains.
-func runAllIndexesCmd(db *genji.DB) error {
-	var tables []string
+// displayAllIndexes shows all indexes that the database contains.
+func displayAllIndexes(db *genji.DB) error {
 	err := db.View(func(tx *genji.Tx) error {
-		var err error
-		tables, err = tx.ListTables()
-		return err
+		indexes, err := tx.ListIndexes()
+		if err != nil {
+			return err
+		}
+
+		for _, idx := range indexes {
+			fmt.Printf("%s on %s(%s)\n", idx.IndexName, idx.TableName, idx.Path)
+		}
+
+		return nil
 	})
 
-	if err != nil {
-		return err
-	}
-
-	for _, table := range tables {
-		// If there is no index in a table we continue to the next. No error handling needed
-		_ = db.View(func(tx *genji.Tx) error {
-			t, err := tx.GetTable(table)
-			if err != nil {
-				return err
-			}
-
-			return t.PrintIndexes()
-		})
-	}
-
-	return nil
+	return err
 }
 
-// runIndexesCmd select a kind of indexes command is wanted
+// runIndexesCmd executes all indexes of the database or all indexes of the given table.
 func runIndexesCmd(db *genji.DB, in []string) error {
 	switch len(in) {
 	case 1:
-		// If the input is ".Indexes"
-		return runAllIndexesCmd(db)
+		// If the input is ".indexes"
+		return displayAllIndexes(db)
 	case 2:
-		// If the input is ".Indexes <tableName>" cmd[1] is the table name
-		return runTableIndexCmd(db, in[1])
+		// If the input is ".indexes <tableName>"
+		return displayTableIndex(db, in[1])
+
 	}
 
-	return fmt.Errorf("too many arguments in call to %s", in[0])
+	return fmt.Errorf("usage: .indexes [tablename]")
 }

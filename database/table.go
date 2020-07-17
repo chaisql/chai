@@ -2,7 +2,6 @@ package database
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -376,7 +375,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValue(d)
 		if err != nil {
 			v = document.NewNullValue()
 		}
@@ -408,7 +407,7 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValue(d)
 		if err != nil {
 			return err
 		}
@@ -448,7 +447,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		v, err := idx.Path.GetValue(old)
+		v, err := idx.Opts.Path.GetValue(old)
 		if err != nil {
 			return err
 		}
@@ -473,7 +472,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := idx.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValue(d)
 		if err != nil {
 			continue
 		}
@@ -542,11 +541,8 @@ func (t *Table) Indexes() (map[string]Index, error) {
 			}
 
 			indexes[opts.Path.String()] = Index{
-				Index:     idx,
-				IndexName: opts.IndexName,
-				TableName: opts.TableName,
-				Path:      opts.Path,
-				Unique:    opts.Unique,
+				Index: idx,
+				Opts:  opts,
 			}
 
 			return nil
@@ -556,19 +552,4 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	}
 
 	return indexes, nil
-}
-
-// PrintIndexes prints all indexes of the table receiver.
-func (t *Table) PrintIndexes() error {
-	indexes, err := t.Indexes()
-	for _, idx := range indexes {
-		j, err := json.MarshalIndent(&idx, "", " ")
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(string(j))
-	}
-
-	return err
 }

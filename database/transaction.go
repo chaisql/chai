@@ -185,11 +185,8 @@ func (tx Transaction) GetIndex(name string) (*Index, error) {
 	}
 
 	return &Index{
-		Index:     idx,
-		IndexName: opts.IndexName,
-		TableName: opts.TableName,
-		Path:      opts.Path,
-		Unique:    opts.Unique,
+		Index: idx,
+		Opts:  *opts,
 	}, nil
 }
 
@@ -226,7 +223,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 		return err
 	}
 
-	tb, err := tx.GetTable(idx.TableName)
+	tb, err := tx.GetTable(idx.Opts.TableName)
 	if err != nil {
 		return err
 	}
@@ -237,7 +234,7 @@ func (tx Transaction) ReIndex(indexName string) error {
 	}
 
 	return tb.Iterate(func(d document.Document) error {
-		v, err := idx.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValue(d)
 		if err != nil {
 			return err
 		}

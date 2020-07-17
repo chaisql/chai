@@ -398,7 +398,7 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 		return nil
 	}
 
-	in := NewIndexInputNode(tableName, idx.IndexName, iop, e, scanner.ASC).(*indexInputNode)
+	in := NewIndexInputNode(tableName, idx.Opts.IndexName, iop, e, scanner.ASC).(*indexInputNode)
 	in.index = idx
 
 	return in

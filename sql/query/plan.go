@@ -212,7 +212,7 @@ func (qo *queryOptimizer) analyseExpr(e expr.Expr) *queryPlanField {
 				indexedField: fs,
 				op:           op,
 				e:            e,
-				uniqueIndex:  idx.Unique,
+				uniqueIndex:  idx.Opts.Unique,
 			}
 		}
 
