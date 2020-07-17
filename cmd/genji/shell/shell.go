@@ -226,7 +226,7 @@ func (sh *Shell) runCommand(in string) error {
 		return runTablesCmd(db, cmd)
 	case ".exit":
 		if len(cmd) > 1 {
-			return fmt.Errorf("too many arguments in call to %s", cmd[0])
+			return fmt.Errorf("usage: .exit")
 		}
 
 		os.Exit(0)

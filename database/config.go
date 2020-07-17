@@ -237,12 +237,12 @@ func generateStoreID() [6]byte {
 
 // IndexConfig holds the configuration of an index.
 type IndexConfig struct {
+	TableName string
+	IndexName string
+	Path      document.ValuePath
+
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
-
-	IndexName string
-	TableName string
-	Path      document.ValuePath
 }
 
 // ToDocument creates a document from an IndexConfig.
@@ -297,11 +297,7 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 // the index configuration and provides methods to manipulate the index.
 type Index struct {
 	index.Index
-
-	IndexName string
-	TableName string
-	Path      document.ValuePath
-	Unique    bool
+	Opts IndexConfig
 }
 
 type indexStore struct {
