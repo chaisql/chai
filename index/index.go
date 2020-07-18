@@ -132,7 +132,7 @@ func EmptyPivot(t document.ValueType) *Pivot {
 // EncodeFieldToIndexValue returns a byte array that represents the value in such
 // a way that can be compared for ordering and indexing
 func EncodeFieldToIndexValue(val document.Value) ([]byte, error) {
-	if val.V != nil && val.Type.IsNumber() && val.Type != document.Float64Value {
+	if val.V != nil && val.Type.IsNumber() && val.Type != document.DoubleValue {
 		x, err := val.ConvertToFloat64()
 		if err != nil {
 			return nil, err
@@ -152,7 +152,7 @@ func decodeIndexValueToField(t Type, data []byte) (document.Value, error) {
 		return document.NewBlobValue(data), nil
 	case Float:
 		f, err := encoding.DecodeFloat64(data)
-		return document.NewFloat64Value(f), err
+		return document.NewDoubleValue(f), err
 	case Bool:
 		b, err := encoding.DecodeBool(data)
 		return document.NewBoolValue(b), err

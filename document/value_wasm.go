@@ -16,11 +16,11 @@ func NewValue(x interface{}) (Value, error) {
 	case Array:
 		return NewArrayValue(v), nil
 	case int:
-		return NewIntValue(v), nil
+		return NewIntegerValue(int64(v)), nil
 	case bool:
 		return NewBoolValue(v), nil
 	case float64:
-		return NewFloat64Value(v), nil
+		return NewDoubleValue(v), nil
 	case string:
 		return NewTextValue(v), nil
 	}

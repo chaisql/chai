@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"strconv"
 	"strings"
 
@@ -242,19 +241,10 @@ func parseJSONValue(dec *json.Decoder) (Value, error) {
 				return Value{}, err
 			}
 
-			return NewFloat64Value(f), nil
+			return NewDoubleValue(f), nil
 		}
 
-		switch {
-		case i >= math.MinInt8 && i <= math.MaxInt8:
-			return NewInt8Value(int8(i)), nil
-		case i >= math.MinInt16 && i <= math.MaxInt16:
-			return NewInt16Value(int16(i)), nil
-		case i >= math.MinInt32 && i <= math.MaxInt32:
-			return NewInt32Value(int32(i)), nil
-		default:
-			return NewInt64Value(int64(i)), nil
-		}
+		return NewIntegerValue(int64(i)), nil
 	case json.Delim:
 		switch tt {
 		case ']', '}':

@@ -58,12 +58,12 @@ func TestSplitANDConditionRule(t *testing.T) {
 				planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 					expr.And(
 						expr.And(
-							expr.IntValue(1),
-							expr.IntValue(2),
+							expr.IntegerValue(1),
+							expr.IntegerValue(2),
 						),
 						expr.And(
-							expr.IntValue(3),
-							expr.IntValue(4),
+							expr.IntegerValue(3),
+							expr.IntegerValue(4),
 						),
 					),
 				), 10),
@@ -73,10 +73,10 @@ func TestSplitANDConditionRule(t *testing.T) {
 						planner.NewSelectionNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("foo"),
-								expr.IntValue(4)),
-							expr.IntValue(3)),
-						expr.IntValue(2)),
-					expr.IntValue(1)),
+								expr.IntegerValue(4)),
+							expr.IntegerValue(3)),
+						expr.IntegerValue(2)),
+					expr.IntegerValue(1)),
 				10,
 			),
 		},
@@ -98,65 +98,65 @@ func TestPrecalculateExprRule(t *testing.T) {
 	}{
 		{
 			"constant expr: 3 -> 3",
-			expr.IntValue(3),
-			expr.IntValue(3),
+			expr.IntegerValue(3),
+			expr.IntegerValue(3),
 		},
 		{
 			"operator with two constant operands: 3 + true -> 4",
-			expr.Add(expr.IntValue(3), expr.BoolValue(true)),
-			expr.IntValue(4),
+			expr.Add(expr.IntegerValue(3), expr.BoolValue(true)),
+			expr.IntegerValue(4),
 		},
 		{
 			"operator with constant nested operands: 3 > true - 40 -> true",
-			expr.Gt(expr.IntValue(3), expr.Sub(expr.BoolValue(true), expr.Float64Value(40))),
+			expr.Gt(expr.IntegerValue(3), expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))),
 			expr.BoolValue(true),
 		},
 		{
 			"constant sub-expr: a > true - 40 -> a > -39",
-			expr.Gt(expr.FieldSelector{"a"}, expr.Sub(expr.BoolValue(true), expr.Float64Value(40))),
-			expr.Gt(expr.FieldSelector{"a"}, expr.Float64Value(-39)),
+			expr.Gt(expr.FieldSelector{"a"}, expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))),
+			expr.Gt(expr.FieldSelector{"a"}, expr.DoubleValue(-39)),
 		},
 		{
 			"non-constant expr list: [a, true - 40] -> [a, -39]",
 			expr.LiteralExprList{
 				expr.FieldSelector([]string{"a"}),
-				expr.Sub(expr.BoolValue(true), expr.Float64Value(40)),
+				expr.Sub(expr.BoolValue(true), expr.DoubleValue(40)),
 			},
 			expr.LiteralExprList{
 				expr.FieldSelector([]string{"a"}),
-				expr.Float64Value(-39),
+				expr.DoubleValue(-39),
 			},
 		},
 		{
 			"constant expr list: [3, true - 40] -> array([3, 40])",
 			expr.LiteralExprList{
-				expr.IntValue(3),
-				expr.Sub(expr.BoolValue(true), expr.Float64Value(40)),
+				expr.IntegerValue(3),
+				expr.Sub(expr.BoolValue(true), expr.DoubleValue(40)),
 			},
 			expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer().
-				Append(document.NewIntValue(3)).
-				Append(document.NewFloat64Value(-39)))),
+				Append(document.NewIntegerValue(3)).
+				Append(document.NewDoubleValue(-39)))),
 		},
 		{
 			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
 			expr.KVPairs{
 				{K: "a", V: expr.FieldSelector{"d"}},
-				{K: "b", V: expr.Sub(expr.BoolValue(true), expr.Float64Value(40))},
+				{K: "b", V: expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))},
 			},
 			expr.KVPairs{
 				{K: "a", V: expr.FieldSelector{"d"}},
-				{K: "b", V: expr.Float64Value(-39)},
+				{K: "b", V: expr.DoubleValue(-39)},
 			},
 		},
 		{
 			`constant kvpair: {"a": 3, "b": 1 - 40} -> document({"a": 3, "b": -39})`,
 			expr.KVPairs{
-				{K: "a", V: expr.IntValue(3)},
-				{K: "b", V: expr.Sub(expr.BoolValue(true), expr.Float64Value(40))},
+				{K: "a", V: expr.IntegerValue(3)},
+				{K: "b", V: expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))},
 			},
 			expr.LiteralValue(document.NewDocumentValue(document.NewFieldBuffer().
-				Add("a", document.NewIntValue(3)).
-				Add("b", document.NewFloat64Value(-39)),
+				Add("a", document.NewIntegerValue(3)).
+				Add("b", document.NewDoubleValue(-39)),
 			)),
 		},
 	}
@@ -182,12 +182,12 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 		},
 		{
 			"truthy constant expr",
-			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.IntValue(10)),
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.IntegerValue(10)),
 			planner.NewTableInputNode("foo"),
 		},
 		{
 			"falsy constant expr",
-			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.IntValue(0)),
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.IntegerValue(0)),
 			nil,
 		},
 	}
@@ -215,7 +215,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 				expr.Eq(
 					expr.FieldSelector{"d"},
-					expr.IntValue(1),
+					expr.IntegerValue(1),
 				)),
 			nil,
 		},
@@ -224,13 +224,13 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 				expr.Eq(
 					expr.FieldSelector{"a"},
-					expr.IntValue(1),
+					expr.IntegerValue(1),
 				)),
 			planner.NewIndexInputNode(
 				"foo",
 				"idx_foo_a",
 				expr.Eq(nil, nil).(planner.IndexIteratorOperator),
-				expr.IntValue(1),
+				expr.IntegerValue(1),
 				scanner.ASC,
 			),
 		},
@@ -240,12 +240,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 				planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 					expr.Eq(
 						expr.FieldSelector{"a"},
-						expr.IntValue(1),
+						expr.IntegerValue(1),
 					),
 				),
 				expr.Eq(
 					expr.FieldSelector{"b"},
-					expr.IntValue(2),
+					expr.IntegerValue(2),
 				),
 			),
 			planner.NewSelectionNode(
@@ -253,12 +253,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					"foo",
 					"idx_foo_b",
 					expr.Eq(nil, nil).(planner.IndexIteratorOperator),
-					expr.IntValue(2),
+					expr.IntegerValue(2),
 					scanner.ASC,
 				),
 				expr.Eq(
 					expr.FieldSelector{"a"},
-					expr.IntValue(1),
+					expr.IntegerValue(1),
 				),
 			),
 		},
@@ -268,12 +268,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 				planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 					expr.Eq(
 						expr.FieldSelector{"c"},
-						expr.IntValue(3),
+						expr.IntegerValue(3),
 					),
 				),
 				expr.Eq(
 					expr.FieldSelector{"b"},
-					expr.IntValue(2),
+					expr.IntegerValue(2),
 				),
 			),
 			planner.NewSelectionNode(
@@ -281,12 +281,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					"foo",
 					"idx_foo_c",
 					expr.Eq(nil, nil).(planner.IndexIteratorOperator),
-					expr.IntValue(3),
+					expr.IntegerValue(3),
 					scanner.ASC,
 				),
 				expr.Eq(
 					expr.FieldSelector{"b"},
-					expr.IntValue(2),
+					expr.IntegerValue(2),
 				),
 			),
 		},
@@ -297,12 +297,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 						expr.Eq(
 							expr.FieldSelector{"c"},
-							expr.IntValue(3),
+							expr.IntegerValue(3),
 						),
 					),
 					expr.Eq(
 						expr.FieldSelector{"b"},
-						expr.IntValue(2),
+						expr.IntegerValue(2),
 					),
 				),
 				[]planner.ResultField{
@@ -318,12 +318,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 						"foo",
 						"idx_foo_c",
 						expr.Eq(nil, nil).(planner.IndexIteratorOperator),
-						expr.IntValue(3),
+						expr.IntegerValue(3),
 						scanner.ASC,
 					),
 					expr.Eq(
 						expr.FieldSelector{"b"},
-						expr.IntValue(2),
+						expr.IntegerValue(2),
 					),
 				),
 				[]planner.ResultField{

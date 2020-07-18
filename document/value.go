@@ -10,17 +10,14 @@ import (
 )
 
 var (
-	arrayZeroValue    = NewZeroValue(ArrayValue)
-	blobZeroValue     = NewZeroValue(BlobValue)
 	boolZeroValue     = NewZeroValue(BoolValue)
-	documentZeroValue = NewZeroValue(DocumentValue)
+	integerZeroValue  = NewZeroValue(IntegerValue)
+	doubleZeroValue   = NewZeroValue(DoubleValue)
 	durationZeroValue = NewZeroValue(DurationValue)
-	float64ZeroValue  = NewZeroValue(Float64Value)
-	int8ZeroValue     = NewZeroValue(Int8Value)
-	int16ZeroValue    = NewZeroValue(Int16Value)
-	int32ZeroValue    = NewZeroValue(Int32Value)
-	int64ZeroValue    = NewZeroValue(Int64Value)
+	blobZeroValue     = NewZeroValue(BlobValue)
 	textZeroValue     = NewZeroValue(TextValue)
+	arrayZeroValue    = NewZeroValue(ArrayValue)
+	documentZeroValue = NewZeroValue(DocumentValue)
 )
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
@@ -37,50 +34,53 @@ func (e *ErrUnsupportedType) Error() string {
 type ValueType uint8
 
 // List of supported value types.
+// These types are separated by family so that when
+// new types are introduced we don't need to modify them.
 const (
-	BlobValue ValueType = iota + 1
-	TextValue
-	BoolValue
-	Int8Value
-	Int16Value
-	Int32Value
-	Int64Value
-	Float64Value
+	NullValue ValueType = 0x1
 
-	NullValue
+	BoolValue = 0x5
 
-	DocumentValue
-	ArrayValue
+	// integer family: 0x10 to 0x1F
+	IntegerValue = 0x10
 
-	DurationValue
+	// double family: 0x20 to 0x2F
+	DoubleValue = 0x20
+
+	// time family: 0x30 to 0x3F
+	DurationValue = 0x30
+
+	// string family: 0x40 to 0x4F
+	BlobValue = 0x40
+	TextValue = 0x41
+
+	// array family: 0x40 to 0x5F
+	ArrayValue = 0x50
+
+	// document family: 0x60 to 0x6F
+	DocumentValue = 0x60
 )
 
 func (t ValueType) String() string {
 	switch t {
+	case NullValue:
+		return "null"
+	case BoolValue:
+		return "bool"
+	case IntegerValue:
+		return "integer"
+	case DoubleValue:
+		return "double"
+	case DurationValue:
+		return "duration"
 	case BlobValue:
 		return "blob"
 	case TextValue:
 		return "text"
-	case BoolValue:
-		return "bool"
-	case Int8Value:
-		return "int8"
-	case Int16Value:
-		return "int16"
-	case Int32Value:
-		return "int32"
-	case Int64Value:
-		return "int64"
-	case Float64Value:
-		return "float64"
-	case NullValue:
-		return "null"
-	case DocumentValue:
-		return "document"
 	case ArrayValue:
 		return "array"
-	case DurationValue:
-		return "duration"
+	case DocumentValue:
+		return "document"
 	}
 
 	return ""
@@ -93,18 +93,58 @@ func (t ValueType) IsNumber() bool {
 
 // IsInteger returns true if t is a signed or unsigned integer of any size.
 func (t ValueType) IsInteger() bool {
-	return t >= Int8Value && t <= Int64Value || t == DurationValue
+	return t == IntegerValue || t == DurationValue
 }
 
-// IsFloat returns true if t is either a Float32 or Float64.
+// IsFloat returns true if t is a Double.
 func (t ValueType) IsFloat() bool {
-	return t == Float64Value
+	return t == DoubleValue
 }
 
 // A Value stores encoded data alongside its type.
 type Value struct {
 	Type ValueType
 	V    interface{}
+}
+
+// NewNullValue returns a Null value.
+func NewNullValue() Value {
+	return Value{
+		Type: NullValue,
+	}
+}
+
+// NewBoolValue encodes x and returns a value.
+func NewBoolValue(x bool) Value {
+	return Value{
+		Type: BoolValue,
+		V:    x,
+	}
+}
+
+// NewIntegerValue encodes x and returns a value whose type depends on the
+// magnitude of x.
+func NewIntegerValue(x int64) Value {
+	return Value{
+		Type: IntegerValue,
+		V:    int64(x),
+	}
+}
+
+// NewDoubleValue encodes x and returns a value.
+func NewDoubleValue(x float64) Value {
+	return Value{
+		Type: DoubleValue,
+		V:    x,
+	}
+}
+
+// NewDurationValue returns a value of type Duration.
+func NewDurationValue(d time.Duration) Value {
+	return Value{
+		Type: DurationValue,
+		V:    d,
+	}
 }
 
 // NewBlobValue encodes x and returns a value.
@@ -123,64 +163,11 @@ func NewTextValue(x string) Value {
 	}
 }
 
-// NewBoolValue encodes x and returns a value.
-func NewBoolValue(x bool) Value {
+// NewArrayValue returns a value of type Array.
+func NewArrayValue(a Array) Value {
 	return Value{
-		Type: BoolValue,
-		V:    x,
-	}
-}
-
-// NewIntValue encodes x and returns a value whose type depends on the
-// magnitude of x.
-func NewIntValue(x int) Value {
-	return intToValue(int64(x))
-}
-
-// NewInt8Value encodes x and returns a value.
-func NewInt8Value(x int8) Value {
-	return Value{
-		Type: Int8Value,
-		V:    x,
-	}
-}
-
-// NewInt16Value encodes x and returns a value.
-func NewInt16Value(x int16) Value {
-	return Value{
-		Type: Int16Value,
-		V:    x,
-	}
-}
-
-// NewInt32Value encodes x and returns a value.
-func NewInt32Value(x int32) Value {
-	return Value{
-		Type: Int32Value,
-		V:    x,
-	}
-}
-
-// NewInt64Value encodes x and returns a value.
-func NewInt64Value(x int64) Value {
-	return Value{
-		Type: Int64Value,
-		V:    x,
-	}
-}
-
-// NewFloat64Value encodes x and returns a value.
-func NewFloat64Value(x float64) Value {
-	return Value{
-		Type: Float64Value,
-		V:    x,
-	}
-}
-
-// NewNullValue returns a Null value.
-func NewNullValue() Value {
-	return Value{
-		Type: NullValue,
+		Type: ArrayValue,
+		V:    a,
 	}
 }
 
@@ -192,61 +179,28 @@ func NewDocumentValue(d Document) Value {
 	}
 }
 
-// NewDurationValue returns a value of type Duration.
-func NewDurationValue(d time.Duration) Value {
-	return Value{
-		Type: DurationValue,
-		V:    d,
-	}
-}
-
-// NewArrayValue returns a value of type Array.
-func NewArrayValue(a Array) Value {
-	return Value{
-		Type: ArrayValue,
-		V:    a,
-	}
-}
-
-func intToValue(x int64) Value {
-	switch {
-	case x <= math.MaxInt8 && x >= math.MinInt8:
-		return NewInt8Value(int8(x))
-	case x <= math.MaxInt16 && x >= math.MinInt16:
-		return NewInt16Value(int16(x))
-	case x <= math.MaxInt32 && x >= math.MinInt32:
-		return NewInt32Value(int32(x))
-	}
-
-	return NewInt64Value(x)
-}
-
 // NewZeroValue returns a value whose value is equal to the Go zero value
 // of the selected type.
 func NewZeroValue(t ValueType) Value {
 	switch t {
+	case NullValue:
+		return NewNullValue()
+	case BoolValue:
+		return NewBoolValue(false)
+	case IntegerValue:
+		return NewIntegerValue(0)
+	case DoubleValue:
+		return NewDoubleValue(0)
+	case DurationValue:
+		return NewDurationValue(0)
 	case BlobValue:
 		return NewBlobValue(nil)
 	case TextValue:
 		return NewTextValue("")
-	case BoolValue:
-		return NewBoolValue(false)
-	case Int8Value:
-		return NewInt8Value(0)
-	case Int16Value:
-		return NewInt16Value(0)
-	case Int32Value:
-		return NewInt32Value(0)
-	case Int64Value:
-		return NewInt64Value(0)
-	case Float64Value:
-		return NewFloat64Value(0)
-	case DocumentValue:
-		return NewDocumentValue(NewFieldBuffer())
 	case ArrayValue:
 		return NewArrayValue(NewValueBuffer())
-	case DurationValue:
-		return NewDurationValue(0)
+	case DocumentValue:
+		return NewDocumentValue(NewFieldBuffer())
 	}
 
 	return Value{}
@@ -274,6 +228,30 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 	}
 
 	switch t {
+	case BoolValue:
+		x, err := v.ConvertToBool()
+		if err != nil {
+			return Value{}, err
+		}
+		return NewBoolValue(x), nil
+	case IntegerValue:
+		x, err := v.ConvertToInt64()
+		if err != nil {
+			return Value{}, fmt.Errorf(`cannot convert %q to "integer": %w`, v.Type, err)
+		}
+		return NewIntegerValue(x), nil
+	case DoubleValue:
+		x, err := v.ConvertToFloat64()
+		if err != nil {
+			return Value{}, err
+		}
+		return NewDoubleValue(x), nil
+	case DurationValue:
+		x, err := v.ConvertToDuration()
+		if err != nil {
+			return Value{}, err
+		}
+		return NewDurationValue(x), nil
 	case BlobValue:
 		x, err := v.ConvertToBlob()
 		if err != nil {
@@ -286,58 +264,6 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 			return Value{}, err
 		}
 		return NewTextValue(x), nil
-	case BoolValue:
-		x, err := v.ConvertToBool()
-		if err != nil {
-			return Value{}, err
-		}
-		return NewBoolValue(x), nil
-	case Int8Value:
-		x, err := v.ConvertToInt64()
-		if err != nil {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int8": %w`, v.Type, err)
-		}
-		if x > math.MaxInt8 {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int8": out of range`, v.Type)
-		}
-
-		return NewInt8Value(int8(x)), nil
-	case Int16Value:
-		x, err := v.ConvertToInt64()
-		if err != nil {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int16": %w`, v.Type, err)
-		}
-		if x > math.MaxInt16 {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int16": out of range`, v.Type)
-		}
-		return NewInt16Value(int16(x)), nil
-	case Int32Value:
-		x, err := v.ConvertToInt64()
-		if err != nil {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int32": %w`, v.Type, err)
-		}
-		if x > math.MaxInt32 {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int32": out of range`, v.Type)
-		}
-		return NewInt32Value(int32(x)), nil
-	case Int64Value:
-		x, err := v.ConvertToInt64()
-		if err != nil {
-			return Value{}, fmt.Errorf(`cannot convert %q to "int64": %w`, v.Type, err)
-		}
-		return NewInt64Value(x), nil
-	case Float64Value:
-		x, err := v.ConvertToFloat64()
-		if err != nil {
-			return Value{}, err
-		}
-		return NewFloat64Value(x), nil
-	case DurationValue:
-		x, err := v.ConvertToDuration()
-		if err != nil {
-			return Value{}, err
-		}
-		return NewDurationValue(x), nil
 	}
 
 	return Value{}, fmt.Errorf("cannot convert %q to %q", v.Type, t)
@@ -390,7 +316,7 @@ func (v Value) ConvertToBool() (bool, error) {
 // ConvertToInt64 turns any number into an int64.
 // It doesn't work with other types.
 func (v Value) ConvertToInt64() (int64, error) {
-	if v.Type == Int64Value {
+	if v.Type == IntegerValue {
 		return v.V.(int64), nil
 	}
 
@@ -416,7 +342,7 @@ func (v Value) ConvertToInt64() (int64, error) {
 // ConvertToFloat64 turns any number into a float64.
 // It doesn't work with other types.
 func (v Value) ConvertToFloat64() (float64, error) {
-	if v.Type == Float64Value {
+	if v.Type == DoubleValue {
 		return v.V.(float64), nil
 	}
 
@@ -440,7 +366,7 @@ func (v Value) ConvertToFloat64() (float64, error) {
 		return 0, nil
 	}
 
-	return 0, fmt.Errorf(`cannot convert %q to "float64"`, v.Type)
+	return 0, fmt.Errorf(`cannot convert %q to "double"`, v.Type)
 }
 
 // ConvertToDocument returns a document from the value.
@@ -498,22 +424,16 @@ func (v Value) ConvertToDuration() (time.Duration, error) {
 // This function doesn't perform any allocation.
 func (v Value) IsZeroValue() (bool, error) {
 	switch v.Type {
-	case BlobValue, TextValue:
-		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
 	case BoolValue:
 		return v.V == boolZeroValue.V, nil
-	case Int8Value:
-		return v.V == int8ZeroValue.V, nil
-	case Int16Value:
-		return v.V == int16ZeroValue.V, nil
-	case Int32Value:
-		return v.V == int32ZeroValue.V, nil
-	case Int64Value:
-		return v.V == int64ZeroValue.V, nil
-	case Float64Value:
-		return v.V == float64ZeroValue.V, nil
+	case IntegerValue:
+		return v.V == integerZeroValue.V, nil
+	case DoubleValue:
+		return v.V == doubleZeroValue.V, nil
 	case DurationValue:
 		return v.V == durationZeroValue.V, nil
+	case BlobValue, TextValue:
+		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
 	case ArrayValue:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
@@ -604,14 +524,14 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	}
 
 	if a.Type == BoolValue {
-		a, err = a.ConvertTo(Int64Value)
+		a, err = a.ConvertTo(IntegerValue)
 		if err != nil {
 			return
 		}
 	}
 
 	if b.Type == BoolValue {
-		b, err = b.ConvertTo(Int64Value)
+		b, err = b.ConvertTo(IntegerValue)
 		if err != nil {
 			return
 		}
@@ -644,21 +564,15 @@ func convertNumberToInt64(v Value) (int64, error) {
 	var i int64
 
 	switch v.Type {
-	case Int8Value:
-		i = int64(v.V.(int8))
-	case Int16Value:
-		i = int64(v.V.(int16))
-	case Int32Value:
-		i = int64(v.V.(int32))
-	case Int64Value:
+	case IntegerValue:
 		return v.V.(int64), nil
-	case Float64Value:
+	case DoubleValue:
 		f := v.V.(float64)
 		if f > math.MaxInt64 {
-			return i, errors.New(`cannot convert "float64" to "integer" without overflowing`)
+			return i, errors.New(`cannot convert "double" to "integer" without overflowing`)
 		}
 		if math.Trunc(f) != f {
-			return 0, errors.New(`cannot convert "float64" value to "integer" without loss of precision`)
+			return 0, errors.New(`cannot convert "double" value to "integer" without loss of precision`)
 		}
 		i = int64(f)
 	case DurationValue:
@@ -692,12 +606,12 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 		// if there is an integer overflow
 		// convert to float
 		if (xr > xa) != (xb > 0) {
-			return NewFloat64Value(float64(xa) + float64(xb)), nil
+			return NewDoubleValue(float64(xa) + float64(xb)), nil
 		}
-		return NewIntValue(int(xr)), nil
+		return NewIntegerValue(xr), nil
 	case '*':
 		if xa == 0 || xb == 0 {
-			return NewIntValue(0), nil
+			return NewIntegerValue(0), nil
 		}
 
 		xr = xa * xb
@@ -706,28 +620,28 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 		// convert to float
 		if (xr < 0) == ((xa < 0) != (xb < 0)) {
 			if xr/xb == xa {
-				return NewIntValue(int(xr)), nil
+				return NewIntegerValue(xr), nil
 			}
 		}
-		return NewFloat64Value(float64(xa) * float64(xb)), nil
+		return NewDoubleValue(float64(xa) * float64(xb)), nil
 	case '/':
 		if xb == 0 {
 			return NewNullValue(), nil
 		}
 
-		return NewIntValue(int(xa / xb)), nil
+		return NewIntegerValue(xa / xb), nil
 	case '%':
 		if xb == 0 {
 			return NewNullValue(), nil
 		}
 
-		return NewIntValue(int(xa % xb)), nil
+		return NewIntegerValue(xa % xb), nil
 	case '&':
-		return NewIntValue(int(xa & xb)), nil
+		return NewIntegerValue(xa & xb), nil
 	case '|':
-		return NewIntValue(int(xa | xb)), nil
+		return NewIntegerValue(xa | xb), nil
 	case '^':
-		return NewIntValue(int(xa ^ xb)), nil
+		return NewIntegerValue(xa ^ xb), nil
 	default:
 		panic(fmt.Sprintf("unknown operator %c", operator))
 	}
@@ -748,33 +662,33 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 
 	switch operator {
 	case '+':
-		return NewFloat64Value(xa + xb), nil
+		return NewDoubleValue(xa + xb), nil
 	case '-':
-		return NewFloat64Value(xa - xb), nil
+		return NewDoubleValue(xa - xb), nil
 	case '*':
-		return NewFloat64Value(xa * xb), nil
+		return NewDoubleValue(xa * xb), nil
 	case '/':
 		if xb == 0 {
 			return NewNullValue(), nil
 		}
 
-		return NewFloat64Value(xa / xb), nil
+		return NewDoubleValue(xa / xb), nil
 	case '%':
 		if xb == 0 {
 			return NewNullValue(), nil
 		}
 
 		ia, ib := int64(xa), int64(xb)
-		return NewFloat64Value(float64(ia % ib)), nil
+		return NewDoubleValue(float64(ia % ib)), nil
 	case '&':
 		ia, ib := int64(xa), int64(xb)
-		return NewIntValue(int(ia & ib)), nil
+		return NewIntegerValue(ia & ib), nil
 	case '|':
 		ia, ib := int64(xa), int64(xb)
-		return NewIntValue(int(ia | ib)), nil
+		return NewIntegerValue(ia | ib), nil
 	case '^':
 		ia, ib := int64(xa), int64(xb)
-		return NewIntValue(int(ia ^ ib)), nil
+		return NewIntegerValue(ia ^ ib), nil
 	default:
 		panic(fmt.Sprintf("unknown operator %c", operator))
 	}

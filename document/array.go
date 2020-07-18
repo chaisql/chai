@@ -168,7 +168,7 @@ func (a *sortableArray) Swap(i, j int) { a.vb[i], a.vb[j] = a.vb[j], a.vb[i] }
 var typeSortOrder = map[ValueType]int{
 	NullValue:     0,
 	BoolValue:     1,
-	Float64Value:  2,
+	DoubleValue:   2,
 	TextValue:     3,
 	ArrayValue:    4,
 	DocumentValue: 5,
@@ -183,14 +183,14 @@ func (a *sortableArray) Less(i, j int) (ok bool) {
 
 	switch {
 	case it.IsNumber():
-		it = Float64Value
+		it = DoubleValue
 	case it == BlobValue:
 		it = TextValue
 	}
 
 	switch {
 	case jt.IsNumber():
-		jt = Float64Value
+		jt = DoubleValue
 	case jt == BlobValue:
 		jt = TextValue
 	}

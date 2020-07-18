@@ -25,7 +25,7 @@ func TestTableInfoStore(t *testing.T) {
 
 	info := &TableInfo{
 		FieldConstraints: []FieldConstraint{
-			{Path: []string{"k"}, Type: document.Float64Value, IsPrimaryKey: true},
+			{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
 		},
 	}
 

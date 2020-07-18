@@ -16,7 +16,7 @@ func TestPkExpr(t *testing.T) {
 	}{
 		{"empty stack", expr.EvalStack{}, nullLitteral, true},
 		{"stack with doc", stackWithDoc, nullLitteral, true},
-		{"stack with doc and info", stackWithDocAndInfo, document.NewIntValue(1), false},
+		{"stack with doc and info", stackWithDocAndInfo, document.NewIntegerValue(1), false},
 	}
 
 	for _, test := range tests {

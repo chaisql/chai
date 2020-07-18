@@ -42,14 +42,14 @@ func BoolValue(v bool) LiteralValue {
 	return LiteralValue(document.NewBoolValue(v))
 }
 
-// IntValue creates a litteral value of type Int.
-func IntValue(v int) LiteralValue {
-	return LiteralValue(document.NewIntValue(v))
+// IntegerValue creates a litteral value of type Integer.
+func IntegerValue(v int64) LiteralValue {
+	return LiteralValue(document.NewIntegerValue(v))
 }
 
-// Float64Value creates a litteral value of type Float64.
-func Float64Value(v float64) LiteralValue {
-	return LiteralValue(document.NewFloat64Value(v))
+// DoubleValue creates a litteral value of type Double.
+func DoubleValue(v float64) LiteralValue {
+	return LiteralValue(document.NewDoubleValue(v))
 }
 
 // DurationValue creates a litteral value of type Duration.

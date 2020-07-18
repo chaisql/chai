@@ -9,12 +9,12 @@ import (
 
 func TestArrayContains(t *testing.T) {
 	arr := NewValueBuffer(
-		NewIntValue(1),
+		NewIntegerValue(1),
 		NewTextValue("foo"),
 		NewBlobValue([]byte{1, 2, 3}),
 	)
 
-	ok, err := ArrayContains(arr, NewFloat64Value(1))
+	ok, err := ArrayContains(arr, NewDoubleValue(1))
 	require.NoError(t, err)
 	require.True(t, ok)
 

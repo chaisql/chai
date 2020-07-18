@@ -237,15 +237,9 @@ func EncodeValue(v document.Value) ([]byte, error) {
 			return nil, err
 		}
 		return EncodeBool(x), nil
-	case document.Int8Value:
-		return EncodeInt8(v.V.(int8)), nil
-	case document.Int16Value:
-		return EncodeInt16(v.V.(int16)), nil
-	case document.Int32Value:
-		return EncodeInt32(v.V.(int32)), nil
-	case document.Int64Value:
+	case document.IntegerValue:
 		return EncodeInt64(v.V.(int64)), nil
-	case document.Float64Value:
+	case document.DoubleValue:
 		return EncodeFloat64(v.V.(float64)), nil
 	case document.DurationValue:
 		return EncodeInt64(int64(v.V.(time.Duration))), nil
@@ -277,36 +271,18 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewBoolValue(x), nil
-	case document.Int8Value:
-		x, err := DecodeInt8(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewInt8Value(x), nil
-	case document.Int16Value:
-		x, err := DecodeInt16(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewInt16Value(x), nil
-	case document.Int32Value:
-		x, err := DecodeInt32(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewInt32Value(x), nil
-	case document.Int64Value:
+	case document.IntegerValue:
 		x, err := DecodeInt64(data)
 		if err != nil {
 			return document.Value{}, err
 		}
-		return document.NewInt64Value(x), nil
-	case document.Float64Value:
+		return document.NewIntegerValue(x), nil
+	case document.DoubleValue:
 		x, err := DecodeFloat64(data)
 		if err != nil {
 			return document.Value{}, err
 		}
-		return document.NewFloat64Value(x), nil
+		return document.NewDoubleValue(x), nil
 	case document.DurationValue:
 		x, err := DecodeInt64(data)
 		if err != nil {

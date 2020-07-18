@@ -52,9 +52,9 @@ func TestIndexSet(t *testing.T) {
 		idx, cleanup := getIndex(t, true)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewIntValue(10), []byte("key")))
-		require.NoError(t, idx.Set(document.NewIntValue(11), []byte("key")))
-		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntValue(10), []byte("key")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
+		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
 	})
 }
 
@@ -63,19 +63,19 @@ func TestIndexDelete(t *testing.T) {
 		idx, cleanup := getIndex(t, false)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewIntValue(10), []byte("key")))
-		require.NoError(t, idx.Set(document.NewIntValue(10), []byte("other-key")))
-		require.NoError(t, idx.Set(document.NewIntValue(11), []byte("yet-another-key")))
-		require.NoError(t, idx.Delete(document.NewIntValue(10), []byte("key")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("other-key")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("yet-another-key")))
+		require.NoError(t, idx.Delete(document.NewIntegerValue(10), []byte("key")))
 
-		pivot := document.NewIntValue(10)
+		pivot := document.NewIntegerValue(10)
 		i := 0
 		err := idx.AscendGreaterOrEqual(&index.Pivot{Value: pivot}, func(val document.Value, key []byte) error {
 			if i == 0 {
-				require.Equal(t, document.NewFloat64Value(10), val)
+				require.Equal(t, document.NewDoubleValue(10), val)
 				require.Equal(t, "other-key", string(key))
 			} else if i == 1 {
-				require.Equal(t, document.NewFloat64Value(11), val)
+				require.Equal(t, document.NewDoubleValue(11), val)
 				require.Equal(t, "yet-another-key", string(key))
 			} else {
 				return errors.New("should not reach this point")
@@ -92,19 +92,19 @@ func TestIndexDelete(t *testing.T) {
 		idx, cleanup := getIndex(t, true)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewIntValue(10), []byte("key1")))
-		require.NoError(t, idx.Set(document.NewIntValue(11), []byte("key2")))
-		require.NoError(t, idx.Set(document.NewIntValue(12), []byte("key3")))
-		require.NoError(t, idx.Delete(document.NewIntValue(11), []byte("key2")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key1")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key2")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(12), []byte("key3")))
+		require.NoError(t, idx.Delete(document.NewIntegerValue(11), []byte("key2")))
 
 		i := 0
-		err := idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int64Value), func(val document.Value, key []byte) error {
+		err := idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
 			switch i {
 			case 0:
-				require.Equal(t, document.NewFloat64Value(10), val)
+				require.Equal(t, document.NewDoubleValue(10), val)
 				require.Equal(t, "key1", string(key))
 			case 1:
-				require.Equal(t, document.NewFloat64Value(12), val)
+				require.Equal(t, document.NewDoubleValue(12), val)
 				require.Equal(t, "key3", string(key))
 			default:
 				return errors.New("should not reach this point")
@@ -138,7 +138,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			defer cleanup()
 
 			i := 0
-			err := idx.AscendGreaterOrEqual(index.EmptyPivot(document.Int32Value), func(val document.Value, key []byte) error {
+			err := idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
 				i++
 				return errors.New("should not iterate")
 			})
@@ -153,7 +153,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				t     index.Type
 				pivot *index.Pivot
 			}{
-				{"floats", func(i int) document.Value { return document.NewInt32Value(int32(i)) }, index.Float, index.EmptyPivot(document.Int32Value)},
+				{"floats", func(i int) document.Value { return document.NewIntegerValue(int64(i)) }, index.Float, index.EmptyPivot(document.IntegerValue)},
 				{"bytes", func(i int) document.Value { return document.NewTextValue(string([]byte{byte(i)})) }, index.Bytes, index.EmptyPivot(document.TextValue)},
 			}
 
@@ -171,7 +171,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					err := idx.AscendGreaterOrEqual(test.pivot, func(val document.Value, rid []byte) error {
 						switch test.t {
 						case index.Float:
-							require.Equal(t, document.NewFloat64Value(float64(i)), val)
+							require.Equal(t, document.NewDoubleValue(float64(i)), val)
 						case index.Bytes:
 							require.Equal(t, document.NewBlobValue([]byte{i}), val)
 						case index.Bool:
@@ -216,17 +216,17 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
-			for i := 0; i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewIntValue(i), []byte{'i', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
+			for i := int64(0); i < 10; i++ {
+				require.NoError(t, idx.Set(document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(int(i))), []byte{'s', 'a' + byte(i)}))
 			}
 
 			var floats, bytes int
 			var count int
 			err := idx.AscendGreaterOrEqual(nil, func(val document.Value, rid []byte) error {
 				switch val.Type {
-				case document.Float64Value:
-					require.Equal(t, document.NewFloat64Value(float64(floats)), val)
+				case document.DoubleValue:
+					require.Equal(t, document.NewDoubleValue(float64(floats)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(floats)}, rid)
 					floats++
 				case document.BlobValue:
@@ -257,7 +257,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			defer cleanup()
 
 			i := 0
-			err := idx.DescendLessOrEqual(index.EmptyPivot(document.Int32Value), func(val document.Value, key []byte) error {
+			err := idx.DescendLessOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
 				i++
 				return errors.New("should not iterate")
 			})
@@ -270,13 +270,13 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			defer cleanup()
 
 			for i := byte(0); i < 10; i += 2 {
-				require.NoError(t, idx.Set(document.NewInt32Value(int32(i)), []byte{'a' + i}))
+				require.NoError(t, idx.Set(document.NewIntegerValue(int64(i)), []byte{'a' + i}))
 			}
 
 			var i uint8 = 8
 			var count int
-			err := idx.DescendLessOrEqual(index.EmptyPivot(document.Int32Value), func(val document.Value, key []byte) error {
-				require.Equal(t, document.NewFloat64Value(float64(i)), val)
+			err := idx.DescendLessOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
+				require.Equal(t, document.NewDoubleValue(float64(i)), val)
 				require.Equal(t, []byte{'a' + i}, key)
 
 				i -= 2
@@ -315,7 +315,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			defer cleanup()
 
 			for i := 0; i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewIntValue(i), []byte{'i', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(document.NewIntegerValue(int64(i)), []byte{'i', 'a' + byte(i)}))
 				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
 			}
 
@@ -323,8 +323,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			var count int = 20
 			err := idx.DescendLessOrEqual(nil, func(val document.Value, rid []byte) error {
 				switch val.Type {
-				case document.Float64Value:
-					require.Equal(t, document.NewFloat64Value(float64(floats)), val)
+				case document.DoubleValue:
+					require.Equal(t, document.NewDoubleValue(float64(floats)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(floats)}, rid)
 					floats--
 				case document.BlobValue:

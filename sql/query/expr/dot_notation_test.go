@@ -14,17 +14,17 @@ func TestDotNotationExpr(t *testing.T) {
 		res   document.Value
 		fails bool
 	}{
-		{"a", document.NewIntValue(1), false},
+		{"a", document.NewIntegerValue(1), false},
 		{"b", func() document.Value {
 			d, _ := document.NewFromJSON([]byte(`{"foo bar": [1, 2]}`))
 			return document.NewDocumentValue(d)
 		}(),
 			false},
-		{"b.`foo bar`.0", document.NewIntValue(1), false},
-		{"b.`foo bar`.1", document.NewIntValue(2), false},
+		{"b.`foo bar`.0", document.NewIntegerValue(1), false},
+		{"b.`foo bar`.1", document.NewIntegerValue(2), false},
 		{"b.`foo bar`.2", nullLitteral, false},
 		{"b.0", nullLitteral, false},
-		{"c.0", document.NewIntValue(1), false},
+		{"c.0", document.NewIntegerValue(1), false},
 		{"c.1.foo", document.NewTextValue("bar"), false},
 		{"c.foo", nullLitteral, false},
 		{"d", nullLitteral, false},

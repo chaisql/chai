@@ -153,16 +153,9 @@ func TestScanner_Scan(t *testing.T) {
 
 		// types
 		{s: "BYTES", tok: scanner.TYPEBYTES, raw: `BYTES`},
-		{s: "STRING", tok: scanner.TYPESTRING, raw: `STRING`},
 		{s: "BOOL", tok: scanner.TYPEBOOL, raw: `BOOL`},
-		{s: "INT8", tok: scanner.TYPEINT8, raw: `INT8`},
-		{s: "INT16", tok: scanner.TYPEINT16, raw: `INT16`},
-		{s: "INT32", tok: scanner.TYPEINT32, raw: `INT32`},
-		{s: "INT64", tok: scanner.TYPEINT64, raw: `INT64`},
-		{s: "INT", tok: scanner.TYPEINT, raw: `INT`},
-		{s: "FLOAT64", tok: scanner.TYPEFLOAT64, raw: `FLOAT64`},
+		{s: "DOUBLE", tok: scanner.TYPEDOUBLE, raw: `DOUBLE`},
 		{s: "INTEGER", tok: scanner.TYPEINTEGER, raw: `INTEGER`},
-		{s: "NUMERIC", tok: scanner.TYPENUMERIC, raw: `NUMERIC`},
 		{s: "TEXT", tok: scanner.TYPETEXT, raw: `TEXT`},
 	}
 

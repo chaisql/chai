@@ -14,7 +14,7 @@ import (
 
 func TestGetByField(t *testing.T) {
 	doc := document.NewFieldBuffer().
-		Add("age", document.NewInt64Value(10)).
+		Add("age", document.NewIntegerValue(10)).
 		Add("address", document.NewNullValue()).
 		Add("name", document.NewTextValue("john")).
 		Add("d", document.NewDurationValue(10*time.Nanosecond)).
@@ -29,7 +29,7 @@ func TestGetByField(t *testing.T) {
 
 	v, err := d.GetByField("age")
 	require.NoError(t, err)
-	require.Equal(t, document.NewInt64Value(10), v)
+	require.Equal(t, document.NewIntegerValue(10), v)
 
 	v, err = d.GetByField("address")
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestGetByField(t *testing.T) {
 
 func TestGetByIndex(t *testing.T) {
 	arr := document.NewValueBuffer().
-		Append(document.NewInt64Value(10)).
+		Append(document.NewIntegerValue(10)).
 		Append(document.NewNullValue()).
 		Append(document.NewTextValue("john")).
 		Append(document.NewDurationValue(10 * time.Nanosecond))
@@ -65,7 +65,7 @@ func TestGetByIndex(t *testing.T) {
 
 	v, err := a.GetByIndex(0)
 	require.NoError(t, err)
-	require.Equal(t, document.NewInt64Value(10), v)
+	require.Equal(t, document.NewIntegerValue(10), v)
 
 	v, err = a.GetByIndex(1)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestEncodeDecode(t *testing.T) {
 		{
 			"document.FieldBuffer",
 			document.NewFieldBuffer().
-				Add("age", document.NewInt64Value(10)).
+				Add("age", document.NewIntegerValue(10)).
 				Add("name", document.NewTextValue("john")),
 			`{"age": 10, "name": "john"}`,
 		},
@@ -112,7 +112,7 @@ func TestEncodeDecode(t *testing.T) {
 		{
 			"Nested Document",
 			document.NewFieldBuffer().
-				Add("age", document.NewInt64Value(10)).
+				Add("age", document.NewIntegerValue(10)).
 				Add("name", document.NewTextValue("john")).
 				Add("address", document.NewDocumentValue(addressMapDoc)),
 			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}}`,
@@ -139,7 +139,7 @@ func TestDecodeDocument(t *testing.T) {
 	require.NoError(t, err)
 
 	doc := document.NewFieldBuffer().
-		Add("age", document.NewInt64Value(10)).
+		Add("age", document.NewIntegerValue(10)).
 		Add("name", document.NewTextValue("john")).
 		Add("address", document.NewDocumentValue(mapDoc))
 
@@ -149,7 +149,7 @@ func TestDecodeDocument(t *testing.T) {
 	ec := DecodeDocument(data)
 	v, err := ec.GetByField("age")
 	require.NoError(t, err)
-	require.Equal(t, document.NewInt64Value(10), v)
+	require.Equal(t, document.NewIntegerValue(10), v)
 	v, err = ec.GetByField("address")
 	require.NoError(t, err)
 	var expected, actual bytes.Buffer
@@ -163,7 +163,7 @@ func TestDecodeDocument(t *testing.T) {
 	err = ec.Iterate(func(f string, v document.Value) error {
 		switch f {
 		case "age":
-			require.Equal(t, document.NewInt64Value(10), v)
+			require.Equal(t, document.NewIntegerValue(10), v)
 		case "address":
 			var expected, actual bytes.Buffer
 			err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
@@ -196,10 +196,10 @@ func TestEncodeArray(t *testing.T) {
 		{
 			"Complex array",
 			document.NewValueBuffer().
-				Append(document.NewInt64Value(10)).
+				Append(document.NewIntegerValue(10)).
 				Append(document.NewTextValue("john")).
 				Append(document.NewDocumentValue(mapDoc)).
-				Append(document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt64Value(11)))),
+				Append(document.NewArrayValue(document.NewValueBuffer().Append(document.NewIntegerValue(11)))),
 			`[10, "john", {"city": "Ajaccio", "country": "France"}, [11]]` + "\n",
 		},
 		{
@@ -224,7 +224,7 @@ func BenchmarkEncodeDocument(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	b.ResetTimer()
@@ -250,7 +250,7 @@ func BenchmarkGetByField(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	data, err := EncodeDocument(&buf)
@@ -266,7 +266,7 @@ func BenchmarkDocumentIterate(b *testing.B) {
 	var buf document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		buf.Add(fmt.Sprintf("name-%d", i), document.NewInt64Value(i))
+		buf.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	data, err := EncodeDocument(&buf)
