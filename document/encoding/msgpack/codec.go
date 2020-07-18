@@ -138,6 +138,13 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 	case document.Float64Value:
 		return e.enc.EncodeFloat64(v.V.(float64))
 	case document.DurationValue:
+		// because messagepack doesn't have a duration type
+		// vmihailenco/msgpack EncodeDuration method
+		// encodes durations as int64 values.
+		// this means that the duration is lost during
+		// encoding and there is no way of knowing that
+		// an int64 is a duration during decoding.
+		// to avoid that, we create a custom duration type.
 		err := e.enc.EncodeExtHeader(DurationType, 8)
 		if err != nil {
 			return err
