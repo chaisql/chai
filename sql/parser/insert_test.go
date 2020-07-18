@@ -20,10 +20,10 @@ func TestParserInsert(t *testing.T) {
 				TableName: "test",
 				Values: expr.LiteralExprList{
 					expr.KVPairs{
-						expr.KVPair{K: "a", V: expr.IntValue(1)},
+						expr.KVPair{K: "a", V: expr.IntegerValue(1)},
 						expr.KVPair{K: "b", V: expr.TextValue("foo")},
 						expr.KVPair{K: "c", V: expr.TextValue("bar")},
-						expr.KVPair{K: "d", V: expr.Eq(expr.IntValue(1), expr.IntValue(1))},
+						expr.KVPair{K: "d", V: expr.Eq(expr.IntegerValue(1), expr.IntegerValue(1))},
 						expr.KVPair{K: "e", V: expr.KVPairs{
 							expr.KVPair{K: "f", V: expr.TextValue("baz")},
 						}},
@@ -35,9 +35,9 @@ func TestParserInsert(t *testing.T) {
 				Values: expr.LiteralExprList{
 					expr.KVPairs{
 						expr.KVPair{K: "a", V: expr.TextValue("a")},
-						expr.KVPair{K: "b", V: expr.Float64Value(-2.3)},
+						expr.KVPair{K: "b", V: expr.DoubleValue(-2.3)},
 					},
-					expr.KVPairs{expr.KVPair{K: "a", V: expr.IntValue(1)}, expr.KVPair{K: "d", V: expr.BoolValue(true)}},
+					expr.KVPairs{expr.KVPair{K: "a", V: expr.IntegerValue(1)}, expr.KVPair{K: "d", V: expr.BoolValue(true)}},
 				},
 			}, false},
 		{"Documents / Positional Param", "INSERT INTO test VALUES ?, ?",

@@ -127,15 +127,9 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 		return e.enc.EncodeBytes(b)
 	case document.BoolValue:
 		return e.enc.EncodeBool(v.V.(bool))
-	case document.Int8Value:
-		return e.enc.EncodeInt8(v.V.(int8))
-	case document.Int16Value:
-		return e.enc.EncodeInt16(v.V.(int16))
-	case document.Int32Value:
-		return e.enc.EncodeInt32(v.V.(int32))
-	case document.Int64Value:
+	case document.IntegerValue:
 		return e.enc.EncodeInt64(v.V.(int64))
-	case document.Float64Value:
+	case document.DoubleValue:
 		return e.enc.EncodeFloat64(v.V.(float64))
 	case document.DurationValue:
 		// because messagepack doesn't have a duration type
@@ -285,44 +279,23 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		}
 		v.Type = document.BoolValue
 		return
-	case codes.Int8:
-		v.V, err = d.dec.DecodeInt8()
-		if err != nil {
-			return
-		}
-		v.Type = document.Int8Value
-		return
-	case codes.Int16:
-		v.V, err = d.dec.DecodeInt16()
-		if err != nil {
-			return
-		}
-		v.Type = document.Int16Value
-		return
-	case codes.Int32:
-		v.V, err = d.dec.DecodeInt32()
-		if err != nil {
-			return
-		}
-		v.Type = document.Int32Value
-		return
-	case codes.Int64:
+	case codes.Int8, codes.Int16, codes.Int32, codes.Int64, codes.Uint8, codes.Uint16, codes.Uint32, codes.Uint64:
 		v.V, err = d.dec.DecodeInt64()
 		if err != nil {
 			return
 		}
-		v.Type = document.Int64Value
+		v.Type = document.IntegerValue
 		return
 	case codes.Double:
 		v.V, err = d.dec.DecodeFloat64()
 		if err != nil {
 			return
 		}
-		v.Type = document.Float64Value
+		v.Type = document.DoubleValue
 		return
 	}
 
-	panic("unsupported type")
+	panic(fmt.Sprintf("unsupported type %v", c))
 }
 
 // DecodeDocument decodes one document from the reader.

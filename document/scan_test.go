@@ -13,12 +13,12 @@ func TestScan(t *testing.T) {
 		Add("a", document.NewBlobValue([]byte("foo"))).
 		Add("b", document.NewTextValue("bar")).
 		Add("c", document.NewBoolValue(true)).
-		Add("d", document.NewIntValue(10)).
-		Add("e", document.NewInt8Value(10)).
-		Add("f", document.NewInt16Value(10)).
-		Add("g", document.NewInt32Value(10)).
-		Add("h", document.NewInt64Value(10)).
-		Add("i", document.NewFloat64Value(10.5)).
+		Add("d", document.NewIntegerValue(10)).
+		Add("e", document.NewIntegerValue(10)).
+		Add("f", document.NewIntegerValue(10)).
+		Add("g", document.NewIntegerValue(10)).
+		Add("h", document.NewIntegerValue(10)).
+		Add("i", document.NewDoubleValue(10.5)).
 		Add("j", document.NewArrayValue(
 			document.NewValueBuffer().
 				Append(document.NewBoolValue(true)),
@@ -114,7 +114,7 @@ func TestScan(t *testing.T) {
 
 	t.Run("Small Slice", func(t *testing.T) {
 		s := make([]int, 1)
-		arr := document.NewValueBuffer().Append(document.NewInt16Value(1)).Append(document.NewInt16Value(2))
+		arr := document.NewValueBuffer().Append(document.NewIntegerValue(1)).Append(document.NewIntegerValue(2))
 		err := document.SliceScan(arr, &s)
 		require.NoError(t, err)
 		require.Len(t, s, 2)
@@ -123,7 +123,7 @@ func TestScan(t *testing.T) {
 
 	t.Run("Slice overwrite", func(t *testing.T) {
 		s := make([]int, 1)
-		arr := document.NewValueBuffer().Append(document.NewInt16Value(1)).Append(document.NewInt16Value(2))
+		arr := document.NewValueBuffer().Append(document.NewIntegerValue(1)).Append(document.NewIntegerValue(2))
 		err := document.SliceScan(arr, &s)
 		require.NoError(t, err)
 		err = document.SliceScan(arr, &s)

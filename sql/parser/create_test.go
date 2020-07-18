@@ -18,23 +18,23 @@ func TestParserCreateTable(t *testing.T) {
 	}{
 		{"Basic", "CREATE TABLE test", query.CreateTableStmt{TableName: "test"}, false},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", query.CreateTableStmt{TableName: "test", IfNotExists: true}, false},
-		{"With primary key", "CREATE TABLE test(foo INT PRIMARY KEY)",
+		{"With primary key", "CREATE TABLE test(foo INTEGER PRIMARY KEY)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true},
+						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true},
 					},
 				},
 			}, false},
 		{"With primary key twice", "CREATE TABLE test(foo PRIMARY KEY PRIMARY KEY)",
 			query.CreateTableStmt{}, true},
-		{"With type", "CREATE TABLE test(foo INT)",
+		{"With type", "CREATE TABLE test(foo INTEGER)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.Int64Value},
+						{Path: []string{"foo"}, Type: document.IntegerValue},
 					},
 				},
 			}, false},
@@ -49,40 +49,40 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)",
 			query.CreateTableStmt{}, true},
-		{"With type and not null", "CREATE TABLE test(foo INT NOT NULL)",
+		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.Int64Value, IsNotNull: true},
+						{Path: []string{"foo"}, Type: document.IntegerValue, IsNotNull: true},
 					},
 				},
 			}, false},
-		{"With not null and primary key", "CREATE TABLE test(foo INT NOT NULL PRIMARY KEY)",
+		{"With not null and primary key", "CREATE TABLE test(foo INTEGER NOT NULL PRIMARY KEY)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true, IsNotNull: true},
+						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
-		{"With primary key and not null", "CREATE TABLE test(foo INT PRIMARY KEY NOT NULL)",
+		{"With primary key and not null", "CREATE TABLE test(foo INTEGER PRIMARY KEY NOT NULL)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true, IsNotNull: true},
+						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
-		{"With multiple constraints", "CREATE TABLE test(foo INT PRIMARY KEY, bar INT16 NOT NULL, baz.4.1.bat STRING)",
+		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz.4.1.bat TEXT)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.Int64Value, IsPrimaryKey: true},
-						{Path: []string{"bar"}, Type: document.Int16Value, IsNotNull: true},
+						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: []string{"bar"}, Type: document.IntegerValue, IsNotNull: true},
 						{Path: []string{"baz", "4", "1", "bat"}, Type: document.TextValue},
 					},
 				},
@@ -90,34 +90,27 @@ func TestParserCreateTable(t *testing.T) {
 		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
 			query.CreateTableStmt{}, true},
 		{"With all supported fixed size data types",
-			"CREATE TABLE test(i8 int8, i16 int16, i32 int32, i64 int64, f64 float64, b bool)",
+			"CREATE TABLE test(d double, b bool)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"i8"}, Type: document.Int8Value},
-						{Path: []string{"i16"}, Type: document.Int16Value},
-						{Path: []string{"i32"}, Type: document.Int32Value},
-						{Path: []string{"i64"}, Type: document.Int64Value},
-						{Path: []string{"f64"}, Type: document.Float64Value},
+						{Path: []string{"d"}, Type: document.DoubleValue},
 						{Path: []string{"b"}, Type: document.BoolValue},
 					},
 				},
 			}, false},
 		{"With all supported variable size data types",
-			"CREATE TABLE test(i int, ig integer, n numeric, du duration, b blob, byt bytes, t text, s string, a array, d document)",
+			"CREATE TABLE test(i integer, du duration, b blob, byt bytes, t text, a array, d document)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"i"}, Type: document.Int64Value},
-						{Path: []string{"ig"}, Type: document.Int64Value},
-						{Path: []string{"n"}, Type: document.Float64Value},
+						{Path: []string{"i"}, Type: document.IntegerValue},
 						{Path: []string{"du"}, Type: document.DurationValue},
 						{Path: []string{"b"}, Type: document.BlobValue},
 						{Path: []string{"byt"}, Type: document.BlobValue},
 						{Path: []string{"t"}, Type: document.TextValue},
-						{Path: []string{"s"}, Type: document.TextValue},
 						{Path: []string{"a"}, Type: document.ArrayValue},
 						{Path: []string{"d"}, Type: document.DocumentValue},
 					},

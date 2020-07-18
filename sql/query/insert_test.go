@@ -137,18 +137,18 @@ func TestInsertStmt(t *testing.T) {
 		defer db.Close()
 
 		err = db.Exec(`CREATE TABLE test(
-			i8 int8, i16 int16, i32 int32, i64 int64, f64 float64, b bool,
-			i int, ig integer, n numeric, du duration, bb blob, byt bytes,
-			t text, s string, a array, d document
+			b bool, db double,
+			i integer, du duration, bb blob, byt bytes,
+			t text, a array, d document
 		)`)
 		require.NoError(t, err)
 
 		err = db.Exec(`
 			INSERT INTO test
 			VALUES {
-				i8: 100, i16: 1000, i32: 10000,	i64: 10000000000, f64: 21.21, b: true,
-				i: 1000, ig: 1000, n: 21.21, du: 127ns, bb: "blobValue", byt: "bytesValue",
-				t: "text", s: "string", a: [1, "foo", true], d: {"foo": "bar"}
+				i: 10000000000, db: 21.21, b: true,
+				du: 127ns, bb: "blobValue", byt: "bytesValue",
+				t: "text", a: [1, "foo", true], d: {"foo": "bar"}
 			}`)
 		require.NoError(t, err)
 
@@ -160,20 +160,13 @@ func TestInsertStmt(t *testing.T) {
 		err = document.IteratorToJSON(&buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `{
-			"i8": 100,
-			"i16": 1000,
-			"i32": 10000,
-			"i64": 10000000000,
-			"f64": 21.21,
+			"i": 10000000000,
+			"db": 21.21,
 			"b": true,
-			"i": 1000,
-			"ig": 1000,
-			"n": 21.21,
 			"du": 127,
 			"bb": "blobValue",
 			"byt": "bytesValue",
 			"t": "text",
-			"s": "string",
 			"a": [1, "foo", true],
 			"d": {"foo": "bar"}
 		  }`, buf.String())
@@ -190,17 +183,17 @@ func TestInsertStmt(t *testing.T) {
 
 			{"array", "ARRAY", `{a: "[1,2,3]"}`, `cannot convert "text" to "array"`},
 			{"array / not null with type constraint", "ARRAY NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`, `cannot convert "int8" to "array"`},
+			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`, `cannot convert "integer" to "array"`},
 
 			{"blob", "BLOB", `{a: true}`, `cannot convert "bool" to "bytes"`},
 			{"blob / not null with type constraint", "BLOB NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`, `cannot convert "int8" to "bytes"`},
+			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`, `cannot convert "integer" to "bytes"`},
 
 			{"bool / not null with type constraint", "BOOL NOT NULL", `{}`, `field "a" is required and must be not null`},
 
 			{"bytes", "BYTES", `{a: [1,2,3]}`, `cannot convert "array" to "bytes"`},
 			{"bytes / not null with type constraint", "BYTES NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`, `cannot convert "int8" to "bytes"`},
+			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`, `cannot convert "integer" to "bytes"`},
 
 			{"document", "DOCUMENT", `{a: "foo"}`, `cannot convert "text" to "document"`},
 			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`, `field "a" is required and must be not null`},
@@ -210,45 +203,17 @@ func TestInsertStmt(t *testing.T) {
 			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`, `field "a" is required and must be not null`},
 			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`, `type "array" incompatible with "integer"`},
 
-			{"float64", "FLOAT64", `{a: "foo"}`, `cannot convert "text" to "float64"`},
-			{"float64 / not null with type constraint", "FLOAT64 NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"float64 / not null with non-respected type constraint ", "FLOAT64 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "float64"`},
+			{"double", "DOUBLE", `{a: "foo"}`, `cannot convert "text" to "double"`},
+			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "double"`},
 
-			{"int", "INT", `{a: "foo"}`, `cannot convert "text" to "int64": type "text" incompatible with "integer"`},
-			{"int / not null with type constraint", "INT NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"int / not null with non-respected type constraint ", "INT NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int64": type "array" incompatible with "integer"`},
-
-			{"integer", "INTEGER", `{a: "foo"}`, `cannot convert "text" to "int64": type "text" incompatible with "integer"`},
+			{"integer", "INTEGER", `{a: "foo"}`, `cannot convert "text" to "integer": type "text" incompatible with "integer"`},
 			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int64": type "array" incompatible with "integer"`},
-
-			{"int8", "INT8", `{a: "foo"}`, `cannot convert "text" to "int8": type "text" incompatible with "integer"`},
-			{"int8 / not null with type constraint", "INT8 NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"int8 / not null with non-respected type constraint ", "INT8 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int8": type "array" incompatible with "integer"`},
-
-			{"int16", "INT16", `{a: "foo"}`, `cannot convert "text" to "int16": type "text" incompatible with "integer"`},
-			{"int16 / not null with type constraint", "INT16 NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"int16 / not null with non-respected type constraint ", "INT16 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int16": type "array" incompatible with "integer"`},
-
-			{"int32", "INT32", `{a: "foo"}`, `cannot convert "text" to "int32": type "text" incompatible with "integer"`},
-			{"int32 / not null with type constraint", "INT32 NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"int32 / not null with non-respected type constraint ", "INT32 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int32": type "array" incompatible with "integer"`},
-
-			{"int64", "INT64", `{a: "foo"}`, `cannot convert "text" to "int64": type "text" incompatible with "integer"`},
-			{"int64 / not null with type constraint", "INT64 NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"int64 / not null with non-respected type constraint ", "INT64 NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "int64": type "array" incompatible with "integer"`},
-
-			{"numeric", "NUMERIC", `{a: "foo"}`, `cannot convert "text" to "float64"`},
-			{"numeric / not null with type constraint", "NUMERIC NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"numeric / not null with non-respected type constraint ", "NUMERIC NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "float64"`},
-
-			{"string", "STRING", `{a: [1,2,3]}`, `cannot convert "array" to "string"`},
-			{"string / not null with type constraint", "STRING NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"string / not null with non-respected type constraint ", "STRING NOT NULL", `{a: 420}`, `cannot convert "int16" to "string"`},
+			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "integer": type "array" incompatible with "integer"`},
 
 			{"text", "TEXT", `{a: [1,2,3]}`, `cannot convert "array" to "string"`},
 			{"text / not null with type constraint", "TEXT NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"text / not null with non-respected type constraint ", "TEXT NOT NULL", `{a: 42}`, `cannot convert "int8" to "string"`},
+			{"text / not null with non-respected type constraint ", "TEXT NOT NULL", `{a: 42}`, `cannot convert "integer" to "string"`},
 		}
 
 		db, err := genji.Open(":memory:")

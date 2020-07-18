@@ -19,7 +19,7 @@ func TestParserSelect(t *testing.T) {
 		{"NoTable", "SELECT 1",
 			planner.NewTree(planner.NewProjectionNode(nil,
 				[]planner.ResultField{
-					planner.ResultFieldExpr{Expr: expr.IntValue(1), ExprName: "1"},
+					planner.ResultFieldExpr{Expr: expr.IntegerValue(1), ExprName: "1"},
 				}, "")),
 			false,
 		},
@@ -67,7 +67,7 @@ func TestParserSelect(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ResultField{planner.ResultFieldExpr{Expr: expr.Gt(expr.FieldSelector([]string{"a"}), expr.IntValue(1)), ExprName: "a    > 1"}},
+					[]planner.ResultField{planner.ResultFieldExpr{Expr: expr.Gt(expr.FieldSelector([]string{"a"}), expr.IntegerValue(1)), ExprName: "a    > 1"}},
 					"test",
 				)),
 			false},
@@ -76,7 +76,7 @@ func TestParserSelect(t *testing.T) {
 				planner.NewProjectionNode(
 					planner.NewSelectionNode(
 						planner.NewTableInputNode("test"),
-						expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+						expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 					),
 					[]planner.ResultField{planner.Wildcard{}},
 					"test",
@@ -88,7 +88,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewSortNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 						),
 						[]string{"a", "b", "c"},
 						scanner.ASC,
@@ -103,7 +103,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewSortNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 						),
 						[]string{"a", "b", "c"},
 						scanner.ASC,
@@ -118,7 +118,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewSortNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 						),
 						[]string{"a", "b", "c"},
 						scanner.DESC,
@@ -133,7 +133,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewLimitNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 						),
 						20,
 					),
@@ -147,7 +147,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewOffsetNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 						),
 						20,
 					),
@@ -162,7 +162,7 @@ func TestParserSelect(t *testing.T) {
 						planner.NewOffsetNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
-								expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntValue(10)),
+								expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
 							),
 							20,
 						),

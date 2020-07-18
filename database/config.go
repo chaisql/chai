@@ -25,7 +25,7 @@ func (f *FieldConstraint) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	buf.Add("path", document.NewArrayValue(valuePathToArray(f.Path)))
-	buf.Add("type", document.NewIntValue(int(f.Type)))
+	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
 	return buf

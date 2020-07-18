@@ -19,8 +19,8 @@ func TestCreateTable(t *testing.T) {
 		{"Exists", "CREATE TABLE test;CREATE TABLE test", true},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", false},
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
-		{"With primary key", "CREATE TABLE test(foo STRING PRIMARY KEY)", false},
-		{"With field constraints", "CREATE TABLE test(foo.a.1.2 STRING primary key, bar.4.0.bat int8 not null, baz not null)", false},
+		{"With primary key", "CREATE TABLE test(foo TEXT PRIMARY KEY)", false},
+		{"With field constraints", "CREATE TABLE test(foo.a.1.2 TEXT primary key, bar.4.0.bat INTEGER not null, baz not null)", false},
 		{"With no constraints", "CREATE TABLE test(a, b)", false},
 	}
 
@@ -50,7 +50,7 @@ func TestCreateTable(t *testing.T) {
 		defer db.Close()
 
 		t.Run("with fixed size data types", func(t *testing.T) {
-			err = db.Exec(`CREATE TABLE test(i8 int8, i16 int16, i32 int32, i64 int64, f64 float64, b bool)`)
+			err = db.Exec(`CREATE TABLE test(d double, b bool)`)
 			require.NoError(t, err)
 
 			err = db.ViewTable("test", func(_ *genji.Tx, tb *database.Table) error {
@@ -60,11 +60,7 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: []string{"i8"}, Type: document.Int8Value},
-					{Path: []string{"i16"}, Type: document.Int16Value},
-					{Path: []string{"i32"}, Type: document.Int32Value},
-					{Path: []string{"i64"}, Type: document.Int64Value},
-					{Path: []string{"f64"}, Type: document.Float64Value},
+					{Path: []string{"d"}, Type: document.DoubleValue},
 					{Path: []string{"b"}, Type: document.BoolValue},
 				}, info.FieldConstraints)
 				return nil
@@ -76,8 +72,8 @@ func TestCreateTable(t *testing.T) {
 		t.Run("with variable size data types", func(t *testing.T) {
 			err = db.Exec(`
 				CREATE TABLE test1(
-					foo.bar.1.hello bytes PRIMARY KEY, foo.a.1.2 STRING NOT NULL, bar.4.0.bat int,
-					ig integer, n numeric, du duration, b blob, t text, a array, d document
+					foo.bar.1.hello bytes PRIMARY KEY, foo.a.1.2 TEXT NOT NULL, bar.4.0.bat integer,
+				 	du duration, b blob, t text, a array, d document
 				)
 			`)
 			require.NoError(t, err)
@@ -91,9 +87,7 @@ func TestCreateTable(t *testing.T) {
 				require.Equal(t, []database.FieldConstraint{
 					{Path: []string{"foo", "bar", "1", "hello"}, Type: document.BlobValue, IsPrimaryKey: true},
 					{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue, IsNotNull: true},
-					{Path: []string{"bar", "4", "0", "bat"}, Type: document.Int64Value},
-					{Path: []string{"ig"}, Type: document.Int64Value},
-					{Path: []string{"n"}, Type: document.Float64Value},
+					{Path: []string{"bar", "4", "0", "bat"}, Type: document.IntegerValue},
 					{Path: []string{"du"}, Type: document.DurationValue},
 					{Path: []string{"b"}, Type: document.BlobValue},
 					{Path: []string{"t"}, Type: document.TextValue},

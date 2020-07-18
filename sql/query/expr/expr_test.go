@@ -61,7 +61,7 @@ func TestString(t *testing.T) {
 		`[1, 2, "foo"]`,
 		`{"a": "foo", "b": 10}`,
 		"pk()",
-		"CAST(10 AS int64)",
+		"CAST(10 AS integer)",
 	}
 
 	var operators = []string{

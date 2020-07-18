@@ -20,14 +20,10 @@ func TestValueString(t *testing.T) {
 		{"bytes", document.NewBlobValue([]byte("bar")), "[98 97 114]"},
 		{"string", document.NewTextValue("bar"), "\"bar\""},
 		{"bool", document.NewBoolValue(true), "true"},
-		{"int", document.NewIntValue(10), "10"},
-		{"int8", document.NewInt8Value(10), "10"},
-		{"int16", document.NewInt16Value(10), "10"},
-		{"int32", document.NewInt32Value(10), "10"},
-		{"int64", document.NewInt64Value(10), "10"},
-		{"float64", document.NewFloat64Value(10.1), "10.1"},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), "{\"a\": 10}"},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), "[10]"},
+		{"int", document.NewIntegerValue(10), "10"},
+		{"double", document.NewDoubleValue(10.1), "10.1"},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), "{\"a\": 10}"},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), "[10]"},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), "10ns"},
 	}
 
@@ -63,32 +59,31 @@ func TestNewValue(t *testing.T) {
 		{"bytes", []byte("bar"), []byte("bar")},
 		{"string", "bar", []byte("bar")},
 		{"bool", true, true},
-		{"uint", uint(10), int8(10)},
-		{"uint8", uint8(10), int8(10)},
-		{"uint16", uint16(10), int8(10)},
-		{"uint16 big", uint16(500), int16(500)},
-		{"uint32", uint32(10), int8(10)},
-		{"uint64", uint64(10), int8(10)},
-		{"int", int(10), int8(10)},
-		{"int8", int8(10), int8(10)},
-		{"int16", int16(10), int8(10)},
-		{"int32", int32(10), int8(10)},
-		{"int64", int64(10), int8(10)},
+		{"uint", uint(10), int64(10)},
+		{"uint8", uint8(10), int64(10)},
+		{"uint16", uint16(10), int64(10)},
+		{"uint32", uint32(10), int64(10)},
+		{"uint64", uint64(10), int64(10)},
+		{"int", int(10), int64(10)},
+		{"int8", int8(10), int64(10)},
+		{"int16", int16(10), int64(10)},
+		{"int32", int32(10), int64(10)},
+		{"int64", int64(10), int64(10)},
 		{"float64", 10.1, float64(10.1)},
 		{"null", nil, nil},
-		{"document", document.NewFieldBuffer().Add("a", document.NewIntValue(10)), document.NewFieldBuffer().Add("a", document.NewIntValue(10))},
-		{"array", document.NewValueBuffer(document.NewIntValue(10)), document.NewValueBuffer(document.NewIntValue(10))},
+		{"document", document.NewFieldBuffer().Add("a", document.NewIntegerValue(10)), document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))},
+		{"array", document.NewValueBuffer(document.NewIntegerValue(10)), document.NewValueBuffer(document.NewIntegerValue(10))},
 		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
 		{"bytes", myBytes("bar"), []byte("bar")},
 		{"string", myString("bar"), []byte("bar")},
-		{"myUint", myUint(10), int8(10)},
-		{"myUint16", myUint16(500), int16(500)},
-		{"myUint32", myUint32(90000), int32(90000)},
-		{"myUint64", myUint64(100), int8(100)},
-		{"myInt", myInt(7), int8(7)},
-		{"myInt8", myInt8(3), int8(3)},
-		{"myInt16", myInt16(500), int16(500)},
-		{"myInt64", myInt64(10), int8(10)},
+		{"myUint", myUint(10), int64(10)},
+		{"myUint16", myUint16(500), int64(500)},
+		{"myUint32", myUint32(90000), int64(90000)},
+		{"myUint64", myUint64(100), int64(100)},
+		{"myInt", myInt(7), int64(7)},
+		{"myInt8", myInt8(3), int64(3)},
+		{"myInt16", myInt16(500), int64(500)},
+		{"myInt64", myInt64(10), int64(10)},
 		{"myFloat64", myFloat64(10.1), float64(10.1)},
 	}
 
@@ -110,16 +105,12 @@ func TestConvertToBlob(t *testing.T) {
 	}{
 		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), false, []byte("bar")},
-		{"string", document.NewTextValue("bar"), false, []byte("bar")},
+		{"text", document.NewTextValue("bar"), false, []byte("bar")},
 		{"bool", document.NewBoolValue(true), true, nil},
-		{"int", document.NewIntValue(10), true, nil},
-		{"int8", document.NewInt8Value(10), true, nil},
-		{"int16", document.NewInt16Value(10), true, nil},
-		{"int32", document.NewInt32Value(10), true, nil},
-		{"int64", document.NewInt64Value(10), true, nil},
-		{"float64", document.NewFloat64Value(10.1), true, nil},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, nil},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, nil},
+		{"integer", document.NewIntegerValue(10), true, nil},
+		{"double", document.NewDoubleValue(10.1), true, nil},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), true, nil},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), true, nil},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, nil},
 	}
 
@@ -145,16 +136,12 @@ func TestConvertToText(t *testing.T) {
 	}{
 		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), false, []byte("bar")},
-		{"string", document.NewTextValue("bar"), false, []byte("bar")},
+		{"text", document.NewTextValue("bar"), false, []byte("bar")},
 		{"bool", document.NewBoolValue(true), true, []byte{}},
-		{"int", document.NewIntValue(10), true, []byte{}},
-		{"int8", document.NewInt8Value(10), true, []byte{}},
-		{"int16", document.NewInt16Value(10), true, []byte{}},
-		{"int32", document.NewInt32Value(10), true, []byte{}},
-		{"int64", document.NewInt64Value(10), true, []byte{}},
-		{"float64", document.NewFloat64Value(10.1), true, []byte{}},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, []byte{}},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, []byte{}},
+		{"integer", document.NewIntegerValue(10), true, []byte{}},
+		{"double", document.NewDoubleValue(10.1), true, []byte{}},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), true, []byte{}},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), true, []byte{}},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, []byte{}},
 	}
 
@@ -181,25 +168,17 @@ func TestConvertToBool(t *testing.T) {
 		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), false, true},
 		{"zero bytes", document.NewBlobValue([]byte("")), false, false},
-		{"string", document.NewTextValue("bar"), false, true},
-		{"zero string", document.NewTextValue(""), false, false},
+		{"text", document.NewTextValue("bar"), false, true},
+		{"zero text", document.NewTextValue(""), false, false},
 		{"bool", document.NewBoolValue(true), false, true},
 		{"zero bool", document.NewBoolValue(false), false, false},
-		{"int", document.NewIntValue(10), false, true},
-		{"zero int", document.NewIntValue(0), false, false},
-		{"int8", document.NewInt8Value(10), false, true},
-		{"zero int8", document.NewInt8Value(0), false, false},
-		{"int16", document.NewInt16Value(10), false, true},
-		{"zero int16", document.NewInt16Value(0), false, false},
-		{"int32", document.NewInt32Value(10), false, true},
-		{"zero int32", document.NewInt32Value(0), false, false},
-		{"int64", document.NewInt64Value(10), false, true},
-		{"zero int64", document.NewInt64Value(0), false, false},
-		{"float64", document.NewFloat64Value(10.1), false, true},
-		{"zero float64", document.NewFloat64Value(0), false, false},
+		{"integer", document.NewIntegerValue(10), false, true},
+		{"zero integer", document.NewIntegerValue(0), false, false},
+		{"double", document.NewDoubleValue(10.1), false, true},
+		{"zero double", document.NewDoubleValue(0), false, false},
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewBoolValue(true))), false, true},
 		{"zero document", document.NewDocumentValue(document.NewFieldBuffer()), false, false},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewInt16Value(1))), false, true},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(1))), false, true},
 		{"zero array", document.NewArrayValue(document.NewValueBuffer()), false, false},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), false, true},
 		{"zero duration", document.NewDurationValue(0), false, false},
@@ -227,16 +206,12 @@ func TestConvertToNumber(t *testing.T) {
 	}{
 		{"null", document.NewNullValue(), false, nil},
 		{"bytes", document.NewBlobValue([]byte("bar")), true, 0},
-		{"string", document.NewTextValue("bar"), true, 0},
+		{"text", document.NewTextValue("bar"), true, 0},
 		{"bool", document.NewBoolValue(true), false, 1},
-		{"int", document.NewIntValue(10), false, 10},
-		{"int8", document.NewInt8Value(10), false, 10},
-		{"int16", document.NewInt16Value(10), false, 10},
-		{"int32", document.NewInt32Value(10), false, 10},
-		{"int64", document.NewInt64Value(10), false, 10},
-		{"float64", document.NewFloat64Value(10), false, 10},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, 0},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, 0},
+		{"integer", document.NewIntegerValue(10), false, 10},
+		{"double", document.NewDoubleValue(10), false, 10},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), true, 0},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), true, 0},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), false, 10},
 	}
 
@@ -250,16 +225,16 @@ func TestConvertToNumber(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name+" to int64", func(t *testing.T) {
-			res, err := test.v.ConvertTo(document.Int64Value)
+		t.Run(test.name+" to integer", func(t *testing.T) {
+			res, err := test.v.ConvertTo(document.IntegerValue)
 			expected := test.expected
 			if expected != nil {
 				expected = int64(expected.(int))
 			}
 			check(t, res, err, test.fails, expected)
 		})
-		t.Run(test.name+" to float64", func(t *testing.T) {
-			res, err := test.v.ConvertTo(document.Float64Value)
+		t.Run(test.name+" to double", func(t *testing.T) {
+			res, err := test.v.ConvertTo(document.DoubleValue)
 			expected := test.expected
 			if expected != nil {
 				expected = float64(expected.(int))
@@ -268,30 +243,17 @@ func TestConvertToNumber(t *testing.T) {
 		})
 	}
 
-	t.Run("float64/precision loss", func(t *testing.T) {
-		_, err := document.NewFloat64Value(10.4).ConvertTo(document.Int64Value)
+	t.Run("double/precision loss", func(t *testing.T) {
+		_, err := document.NewDoubleValue(10.4).ConvertTo(document.IntegerValue)
 		require.Error(t, err)
-		_, err = document.NewFloat64Value(10.4).ConvertTo(document.Int32Value)
+		_, err = document.NewDoubleValue(10.4).ConvertTo(document.IntegerValue)
 		require.Error(t, err)
+
 	})
 
-	t.Run("ints/overflow", func(t *testing.T) {
-		tests := []struct {
-			from, to document.ValueType
-			x        interface{}
-		}{
-			{document.Float64Value, document.Int64Value, float64(math.MaxFloat64)},
-			{document.Int16Value, document.Int8Value, int16(math.MaxInt16)},
-			{document.Int32Value, document.Int16Value, int32(math.MaxInt32)},
-			{document.Int64Value, document.Int32Value, int64(math.MaxInt64)},
-		}
-
-		for _, test := range tests {
-			t.Run(fmt.Sprintf("%s/%s", test.from, test.to), func(t *testing.T) {
-				_, err := document.Value{Type: test.from, V: test.x}.ConvertTo(test.to)
-				require.Error(t, err)
-			})
-		}
+	t.Run("double/overflow", func(t *testing.T) {
+		_, err := document.NewDoubleValue(math.MaxFloat64).ConvertTo(document.IntegerValue)
+		require.Error(t, err)
 	})
 }
 
@@ -307,14 +269,14 @@ func TestConvertToDuration(t *testing.T) {
 		{"string", document.NewTextValue("1ms"), false, time.Millisecond},
 		{"bad string", document.NewTextValue("foo"), true, 0},
 		{"bool", document.NewBoolValue(true), false, time.Nanosecond},
-		{"int", document.NewIntValue(10), false, 10 * time.Nanosecond},
-		{"int8", document.NewInt8Value(10), false, 10 * time.Nanosecond},
-		{"int16", document.NewInt16Value(10), false, 10 * time.Nanosecond},
-		{"int32", document.NewInt32Value(10), false, 10 * time.Nanosecond},
-		{"int64", document.NewInt64Value(10), false, 10 * time.Nanosecond},
-		{"float64", document.NewFloat64Value(10), false, 10 * time.Nanosecond},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, 0},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, 0},
+		{"int", document.NewIntegerValue(10), false, 10 * time.Nanosecond},
+		{"int8", document.NewIntegerValue(10), false, 10 * time.Nanosecond},
+		{"int16", document.NewIntegerValue(10), false, 10 * time.Nanosecond},
+		{"int32", document.NewIntegerValue(10), false, 10 * time.Nanosecond},
+		{"int64", document.NewIntegerValue(10), false, 10 * time.Nanosecond},
+		{"double", document.NewDoubleValue(10), false, 10 * time.Nanosecond},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), true, 0},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), true, 0},
 	}
 
 	for _, test := range tests {
@@ -338,17 +300,17 @@ func TestConvertToDocument(t *testing.T) {
 		expected document.Value
 	}{
 		{"null", document.NewNullValue(), false, document.NewNullValue()},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10))), false, document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewInt16Value(10)))},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), false, document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10)))},
 		{"bytes", document.NewBlobValue([]byte("bar")), true, document.Value{}},
 		{"string", document.NewTextValue("bar"), true, document.Value{}},
 		{"bool", document.NewBoolValue(true), true, document.Value{}},
-		{"int", document.NewIntValue(10), true, document.Value{}},
-		{"int8", document.NewInt8Value(10), true, document.Value{}},
-		{"int16", document.NewInt16Value(10), true, document.Value{}},
-		{"int32", document.NewInt32Value(10), true, document.Value{}},
-		{"int64", document.NewInt64Value(10), true, document.Value{}},
-		{"float64", document.NewFloat64Value(10), true, document.Value{}},
-		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), true, document.Value{}},
+		{"int", document.NewIntegerValue(10), true, document.Value{}},
+		{"int8", document.NewIntegerValue(10), true, document.Value{}},
+		{"int16", document.NewIntegerValue(10), true, document.Value{}},
+		{"int32", document.NewIntegerValue(10), true, document.Value{}},
+		{"int64", document.NewIntegerValue(10), true, document.Value{}},
+		{"double", document.NewDoubleValue(10), true, document.Value{}},
+		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), true, document.Value{}},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, document.Value{}},
 	}
 
@@ -373,17 +335,17 @@ func TestConvertToArray(t *testing.T) {
 		expected document.Array
 	}{
 		{"null", document.NewNullValue(), false, document.NewValueBuffer()},
-		{"array", document.NewArrayValue(document.NewValueBuffer().Append(document.NewInt16Value(10))), false, document.NewValueBuffer().Append(document.NewInt16Value(10))},
+		{"array", document.NewArrayValue(document.NewValueBuffer().Append(document.NewIntegerValue(10))), false, document.NewValueBuffer().Append(document.NewIntegerValue(10))},
 		{"bytes", document.NewBlobValue([]byte("bar")), true, nil},
 		{"string", document.NewTextValue("bar"), true, nil},
 		{"bool", document.NewBoolValue(true), true, nil},
-		{"int", document.NewIntValue(10), true, nil},
-		{"int8", document.NewInt8Value(10), true, nil},
-		{"int16", document.NewInt16Value(10), true, nil},
-		{"int32", document.NewInt32Value(10), true, nil},
-		{"int64", document.NewInt64Value(10), true, nil},
-		{"float64", document.NewFloat64Value(10), true, nil},
-		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), true, nil},
+		{"int", document.NewIntegerValue(10), true, nil},
+		{"int8", document.NewIntegerValue(10), true, nil},
+		{"int16", document.NewIntegerValue(10), true, nil},
+		{"int32", document.NewIntegerValue(10), true, nil},
+		{"int64", document.NewIntegerValue(10), true, nil},
+		{"double", document.NewDoubleValue(10), true, nil},
+		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), true, nil},
 		{"duration", document.NewDurationValue(10 * time.Nanosecond), true, nil},
 	}
 
@@ -407,20 +369,20 @@ func TestValueAdd(t *testing.T) {
 		fails          bool
 	}{
 		{"null+null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null+int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)+bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(2), false},
-		{"bool(true)+bool(false)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(2), false},
-		{"bool(true)+int8(-10)", document.NewBoolValue(true), document.NewInt8Value(-10), document.NewInt8Value(-9), false},
-		{"int8(-10)+int8(10)", document.NewInt8Value(-10), document.NewInt8Value(10), document.NewInt8Value(0), false},
-		{"int8(120)+int8(120)", document.NewInt8Value(120), document.NewInt8Value(120), document.NewInt16Value(240), false},
-		{"int8(120)+float64(120)", document.NewInt8Value(120), document.NewFloat64Value(120), document.NewFloat64Value(240), false},
-		{"int8(120)+float64(120.1)", document.NewInt8Value(120), document.NewFloat64Value(120.1), document.NewFloat64Value(240.1), false},
-		{"int64(max)+int8(10)", document.NewInt64Value(math.MaxInt64), document.NewIntValue(10), document.NewFloat64Value(math.MaxInt64 + 10), false},
-		{"int64(min)+int8(-10)", document.NewInt64Value(math.MinInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MinInt64 - 10), false},
-		{"int8(120)+text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"null+integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)+bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(2), false},
+		{"bool(true)+bool(false)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(2), false},
+		{"bool(true)+integer(-10)", document.NewBoolValue(true), document.NewIntegerValue(-10), document.NewIntegerValue(-9), false},
+		{"integer(-10)+integer(10)", document.NewIntegerValue(-10), document.NewIntegerValue(10), document.NewIntegerValue(0), false},
+		{"integer(120)+integer(120)", document.NewIntegerValue(120), document.NewIntegerValue(120), document.NewIntegerValue(240), false},
+		{"integer(120)+float64(120)", document.NewIntegerValue(120), document.NewDoubleValue(120), document.NewDoubleValue(240), false},
+		{"integer(120)+float64(120.1)", document.NewIntegerValue(120), document.NewDoubleValue(120.1), document.NewDoubleValue(240.1), false},
+		{"int64(max)+integer(10)", document.NewIntegerValue(math.MaxInt64), document.NewIntegerValue(10), document.NewDoubleValue(math.MaxInt64 + 10), false},
+		{"int64(min)+integer(-10)", document.NewIntegerValue(math.MinInt64), document.NewIntegerValue(-10), document.NewDoubleValue(math.MinInt64 - 10), false},
+		{"integer(120)+text('120')", document.NewIntegerValue(120), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document+document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array+array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
+		{"document+document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array+array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"duration(1ns)+duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond + time.Millisecond), false},
 	}
 
@@ -444,20 +406,20 @@ func TestValueSub(t *testing.T) {
 		fails          bool
 	}{
 		{"null-null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null-int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)-bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(0), false},
-		{"bool(true)-bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewInt8Value(1), false},
-		{"bool(true)-int8(-10)", document.NewBoolValue(true), document.NewInt8Value(-10), document.NewInt8Value(11), false},
-		{"int8(10)-int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(0), false},
-		{"int16(250)-int16(220)", document.NewInt16Value(250), document.NewInt16Value(220), document.NewInt8Value(30), false},
-		{"int8(120)-float64(620)", document.NewInt8Value(120), document.NewFloat64Value(620), document.NewFloat64Value(-500), false},
-		{"int8(120)-float64(120.1)", document.NewInt8Value(120), document.NewFloat64Value(120.1), document.NewFloat64Value(-0.09999999999999432), false},
-		{"int64(min)-int8(10)", document.NewInt64Value(math.MinInt64), document.NewIntValue(10), document.NewFloat64Value(math.MinInt64 - 10), false},
-		{"int64(max)-int8(-10)", document.NewInt64Value(math.MaxInt64), document.NewIntValue(-10), document.NewFloat64Value(math.MaxInt64 + 10), false},
-		{"int8(120)-text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"null-integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)-bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(0), false},
+		{"bool(true)-bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewIntegerValue(1), false},
+		{"bool(true)-integer(-10)", document.NewBoolValue(true), document.NewIntegerValue(-10), document.NewIntegerValue(11), false},
+		{"integer(10)-integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(0), false},
+		{"int16(250)-int16(220)", document.NewIntegerValue(250), document.NewIntegerValue(220), document.NewIntegerValue(30), false},
+		{"integer(120)-float64(620)", document.NewIntegerValue(120), document.NewDoubleValue(620), document.NewDoubleValue(-500), false},
+		{"integer(120)-float64(120.1)", document.NewIntegerValue(120), document.NewDoubleValue(120.1), document.NewDoubleValue(-0.09999999999999432), false},
+		{"int64(min)-integer(10)", document.NewIntegerValue(math.MinInt64), document.NewIntegerValue(10), document.NewDoubleValue(math.MinInt64 - 10), false},
+		{"int64(max)-integer(-10)", document.NewIntegerValue(math.MaxInt64), document.NewIntegerValue(-10), document.NewDoubleValue(math.MaxInt64 + 10), false},
+		{"integer(120)-text('120')", document.NewIntegerValue(120), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"text('120')-text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document-document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array-array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
+		{"document-document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array-array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"duration(1ns)-duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond - time.Millisecond), false},
 	}
 
@@ -481,18 +443,18 @@ func TestValueMult(t *testing.T) {
 		fails          bool
 	}{
 		{"null*null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null*int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)*bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(1), false},
-		{"bool(true)*bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewInt8Value(0), false},
-		{"bool(true)*int8(-10)", document.NewBoolValue(true), document.NewInt8Value(-10), document.NewInt8Value(-10), false},
-		{"int8(10)*int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(100), false},
-		{"int8(10)*int8(80)", document.NewInt8Value(10), document.NewInt8Value(80), document.NewInt16Value(800), false},
-		{"int8(10)*float64(80)", document.NewInt8Value(10), document.NewFloat64Value(80), document.NewFloat64Value(800), false},
-		{"int64(max)*int64(max)", document.NewInt64Value(math.MaxInt64), document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64 * math.MaxInt64), false},
-		{"int8(120)*text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"null*integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)*bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(1), false},
+		{"bool(true)*bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewIntegerValue(0), false},
+		{"bool(true)*integer(-10)", document.NewBoolValue(true), document.NewIntegerValue(-10), document.NewIntegerValue(-10), false},
+		{"integer(10)*integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(100), false},
+		{"integer(10)*integer(80)", document.NewIntegerValue(10), document.NewIntegerValue(80), document.NewIntegerValue(800), false},
+		{"integer(10)*float64(80)", document.NewIntegerValue(10), document.NewDoubleValue(80), document.NewDoubleValue(800), false},
+		{"int64(max)*int64(max)", document.NewIntegerValue(math.MaxInt64), document.NewIntegerValue(math.MaxInt64), document.NewDoubleValue(math.MaxInt64 * math.MaxInt64), false},
+		{"integer(120)*text('120')", document.NewIntegerValue(120), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"text('120')*text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document*document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array*array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
+		{"document*document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array*array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)*duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond * time.Millisecond), false},
 	}
 
@@ -516,19 +478,19 @@ func TestValueDiv(t *testing.T) {
 		fails          bool
 	}{
 		{"null/null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null/int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)/bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(1), false},
+		{"null/integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)/bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(1), false},
 		{"bool(true)/bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewNullValue(), false},
-		{"int8(10)/int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewNullValue(), false},
-		{"int8(10)/float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewNullValue(), false},
-		{"int8(10)/int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(1), false},
-		{"int8(10)/int8(8)", document.NewInt8Value(10), document.NewInt8Value(8), document.NewInt8Value(1), false},
-		{"int8(10)/float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewFloat64Value(1.25), false},
-		{"int64(maxint)/float64(maxint)", document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64), document.NewFloat64Value(1), false},
-		{"int8(120)/text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"integer(10)/integer(0)", document.NewIntegerValue(10), document.NewIntegerValue(0), document.NewNullValue(), false},
+		{"integer(10)/float64(0)", document.NewIntegerValue(10), document.NewDoubleValue(0), document.NewNullValue(), false},
+		{"integer(10)/integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(1), false},
+		{"integer(10)/integer(8)", document.NewIntegerValue(10), document.NewIntegerValue(8), document.NewIntegerValue(1), false},
+		{"integer(10)/float64(8)", document.NewIntegerValue(10), document.NewDoubleValue(8), document.NewDoubleValue(1.25), false},
+		{"int64(maxint)/float64(maxint)", document.NewIntegerValue(math.MaxInt64), document.NewDoubleValue(math.MaxInt64), document.NewDoubleValue(1), false},
+		{"integer(120)/text('120')", document.NewIntegerValue(120), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"text('120')/text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document/document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array/array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
+		{"document/document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array/array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)/duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond / time.Millisecond), false},
 	}
 
@@ -552,21 +514,21 @@ func TestValueMod(t *testing.T) {
 		fails          bool
 	}{
 		{"null%null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null%int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)%bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(0), false},
+		{"null%integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)%bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(0), false},
 		{"bool(true)%bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewNullValue(), false},
-		{"int8(10)%int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewNullValue(), false},
-		{"int8(10)%float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewNullValue(), false},
-		{"int8(10)%int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(0), false},
-		{"int8(10)%int8(8)", document.NewInt8Value(10), document.NewInt8Value(8), document.NewInt8Value(2), false},
-		{"int8(10)%float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewFloat64Value(2), false},
-		{"int64(maxint)%float64(maxint)", document.NewInt64Value(math.MaxInt64), document.NewFloat64Value(math.MaxInt64), document.NewFloat64Value(0), false},
-		{"float64(> maxint)%int64(100)", document.NewFloat64Value(math.MaxInt64 + 1000), document.NewInt8Value(100), document.NewFloat64Value(-8), false},
-		{"int64(100)%float64(> maxint)", document.NewInt8Value(100), document.NewFloat64Value(math.MaxInt64 + 1000), document.NewFloat64Value(100), false},
-		{"int8(120)%text('120')", document.NewInt8Value(120), document.NewTextValue("120"), document.NewNullValue(), false},
+		{"integer(10)%integer(0)", document.NewIntegerValue(10), document.NewIntegerValue(0), document.NewNullValue(), false},
+		{"integer(10)%float64(0)", document.NewIntegerValue(10), document.NewDoubleValue(0), document.NewNullValue(), false},
+		{"integer(10)%integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(0), false},
+		{"integer(10)%integer(8)", document.NewIntegerValue(10), document.NewIntegerValue(8), document.NewIntegerValue(2), false},
+		{"integer(10)%float64(8)", document.NewIntegerValue(10), document.NewDoubleValue(8), document.NewDoubleValue(2), false},
+		{"int64(maxint)%float64(maxint)", document.NewIntegerValue(math.MaxInt64), document.NewDoubleValue(math.MaxInt64), document.NewDoubleValue(0), false},
+		{"double(> maxint)%int64(100)", document.NewDoubleValue(math.MaxInt64 + 1000), document.NewIntegerValue(100), document.NewDoubleValue(-8), false},
+		{"int64(100)%float64(> maxint)", document.NewIntegerValue(100), document.NewDoubleValue(math.MaxInt64 + 1000), document.NewDoubleValue(100), false},
+		{"integer(120)%text('120')", document.NewIntegerValue(120), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"text('120')%text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document%document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array%array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
+		{"document%document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array%array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"duration(10ns)%duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond % time.Millisecond), false},
 	}
 
@@ -590,19 +552,19 @@ func TestValueBitwiseAnd(t *testing.T) {
 		fails          bool
 	}{
 		{"null&null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null&int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)&bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(1), false},
-		{"bool(true)&bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewInt8Value(0), false},
-		{"int8(10)&int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewInt8Value(0), false},
-		{"float64(10.5)&float64(3.2)", document.NewFloat64Value(10.5), document.NewFloat64Value(3.2), document.NewInt8Value(2), false},
-		{"int8(10)&float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewInt8Value(0), false},
-		{"int8(10)&int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(10), false},
-		{"int8(10)&int8(8)", document.NewInt8Value(10), document.NewInt8Value(8), document.NewInt8Value(8), false},
-		{"int8(10)&float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewInt8Value(8), false},
+		{"null&integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)&bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(1), false},
+		{"bool(true)&bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewIntegerValue(0), false},
+		{"integer(10)&integer(0)", document.NewIntegerValue(10), document.NewIntegerValue(0), document.NewIntegerValue(0), false},
+		{"double(10.5)&float64(3.2)", document.NewDoubleValue(10.5), document.NewDoubleValue(3.2), document.NewIntegerValue(2), false},
+		{"integer(10)&float64(0)", document.NewIntegerValue(10), document.NewDoubleValue(0), document.NewIntegerValue(0), false},
+		{"integer(10)&integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(10), false},
+		{"integer(10)&integer(8)", document.NewIntegerValue(10), document.NewIntegerValue(8), document.NewIntegerValue(8), false},
+		{"integer(10)&float64(8)", document.NewIntegerValue(10), document.NewDoubleValue(8), document.NewIntegerValue(8), false},
 		{"text('120')&text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document&document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array&array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)&duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(8), false},
+		{"document&document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array&array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"duration(10ns)&duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntegerValue(8), false},
 	}
 
 	for _, test := range tests {
@@ -625,18 +587,18 @@ func TestValueBitwiseOr(t *testing.T) {
 		fails          bool
 	}{
 		{"null|null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null|int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)|bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(1), false},
-		{"bool(true)|bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewInt8Value(1), false},
-		{"int8(10)|int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewInt8Value(10), false},
-		{"float64(10.5)|float64(3.2)", document.NewFloat64Value(10.5), document.NewFloat64Value(3.2), document.NewInt8Value(11), false},
-		{"int8(10)|float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewInt8Value(10), false},
-		{"int8(10)|int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(10), false},
-		{"int8(10)|float64(8)", document.NewInt8Value(10), document.NewFloat64Value(8), document.NewInt8Value(10), false},
+		{"null|integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)|bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(1), false},
+		{"bool(true)|bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewIntegerValue(1), false},
+		{"integer(10)|integer(0)", document.NewIntegerValue(10), document.NewIntegerValue(0), document.NewIntegerValue(10), false},
+		{"double(10.5)|float64(3.2)", document.NewDoubleValue(10.5), document.NewDoubleValue(3.2), document.NewIntegerValue(11), false},
+		{"integer(10)|float64(0)", document.NewIntegerValue(10), document.NewDoubleValue(0), document.NewIntegerValue(10), false},
+		{"integer(10)|integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(10), false},
+		{"integer(10)|float64(8)", document.NewIntegerValue(10), document.NewDoubleValue(8), document.NewIntegerValue(10), false},
 		{"text('120')|text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document|document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array|array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)|duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(1002), false},
+		{"document|document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array|array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"duration(10ns)|duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntegerValue(1002), false},
 	}
 
 	for _, test := range tests {
@@ -659,17 +621,17 @@ func TestValueBitwiseXor(t *testing.T) {
 		fails          bool
 	}{
 		{"null^null", document.NewNullValue(), document.NewNullValue(), document.NewNullValue(), false},
-		{"null^int8(10)", document.NewNullValue(), document.NewInt8Value(10), document.NewNullValue(), false},
-		{"bool(true)^bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewInt8Value(0), false},
-		{"bool(true)^bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewInt8Value(1), false},
-		{"int8(10)^int8(0)", document.NewInt8Value(10), document.NewInt8Value(0), document.NewInt8Value(10), false},
-		{"float64(10.5)^float64(3.2)", document.NewFloat64Value(10.5), document.NewFloat64Value(3.2), document.NewInt8Value(9), false},
-		{"int8(10)^float64(0)", document.NewInt8Value(10), document.NewFloat64Value(0), document.NewInt8Value(10), false},
-		{"int8(10)^int8(10)", document.NewInt8Value(10), document.NewInt8Value(10), document.NewInt8Value(0), false},
+		{"null^integer(10)", document.NewNullValue(), document.NewIntegerValue(10), document.NewNullValue(), false},
+		{"bool(true)^bool(true)", document.NewBoolValue(true), document.NewBoolValue(true), document.NewIntegerValue(0), false},
+		{"bool(true)^bool(false)", document.NewBoolValue(true), document.NewBoolValue(false), document.NewIntegerValue(1), false},
+		{"integer(10)^integer(0)", document.NewIntegerValue(10), document.NewIntegerValue(0), document.NewIntegerValue(10), false},
+		{"double(10.5)^double(3.2)", document.NewDoubleValue(10.5), document.NewDoubleValue(3.2), document.NewIntegerValue(9), false},
+		{"integer(10)^double(0)", document.NewIntegerValue(10), document.NewDoubleValue(0), document.NewIntegerValue(10), false},
+		{"integer(10)^integer(10)", document.NewIntegerValue(10), document.NewIntegerValue(10), document.NewIntegerValue(0), false},
 		{"text('120')^text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
-		{"document^document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntValue(10))), document.NewNullValue(), false},
-		{"array^array", document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)^duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntValue(994), false},
+		{"document^document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"array^array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
+		{"duration(10ns)^duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntegerValue(994), false},
 	}
 
 	for _, test := range tests {
@@ -694,8 +656,8 @@ type CompareTest struct {
 func TestValueCompare(t *testing.T) {
 	tests := []CompareTest{
 		{"null,null", document.NewNullValue(), document.NewNullValue(), 0},
-		{"null,int8", document.NewNullValue(), document.NewInt8Value(0), -1},
-		{"int8,null", document.NewInt8Value(0), document.NewNullValue(), 1},
+		{"null,int8", document.NewNullValue(), document.NewIntegerValue(0), -1},
+		{"int8,null", document.NewIntegerValue(0), document.NewNullValue(), 1},
 	}
 
 	// cartesian computes a cartesian product, generating all possible combinations of the passed arrays
@@ -723,11 +685,11 @@ func TestValueCompare(t *testing.T) {
 	}
 
 	// sample numeric values. Values at index [0] are known to be less than values at index [1]
-	int8s := []document.Value{document.NewInt8Value(0), document.NewInt8Value(1)}
-	int16s := []document.Value{document.NewInt16Value(0), document.NewInt16Value(1)}
-	int32s := []document.Value{document.NewInt32Value(0), document.NewInt32Value(1)}
-	int64s := []document.Value{document.NewInt64Value(0), document.NewInt64Value(1)}
-	float64s := []document.Value{document.NewFloat64Value(0), document.NewFloat64Value(1)}
+	int8s := []document.Value{document.NewIntegerValue(0), document.NewIntegerValue(1)}
+	int16s := []document.Value{document.NewIntegerValue(0), document.NewIntegerValue(1)}
+	int32s := []document.Value{document.NewIntegerValue(0), document.NewIntegerValue(1)}
+	int64s := []document.Value{document.NewIntegerValue(0), document.NewIntegerValue(1)}
+	float64s := []document.Value{document.NewDoubleValue(0), document.NewDoubleValue(1)}
 	bools := []document.Value{document.NewBoolValue(false), document.NewBoolValue(true)}
 
 	// generate a batch of tests mixing everything with everything

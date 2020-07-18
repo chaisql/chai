@@ -42,7 +42,7 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 		return pk.Path.GetValue(ctx.Document)
 	}
 
-	return encoding.DecodeValue(document.Int64Value, ctx.Document.(document.Keyer).Key())
+	return encoding.DecodeValue(document.IntegerValue, ctx.Document.(document.Keyer).Key())
 }
 
 // IsEqual compares this expression with the other expression and returns

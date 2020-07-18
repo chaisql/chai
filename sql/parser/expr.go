@@ -180,17 +180,17 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return expr.Float64Value(v), nil
+		return expr.DoubleValue(v), nil
 	case scanner.INTEGER:
-		v, err := strconv.Atoi(lit)
+		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64, parse as Float64
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {
-				return expr.Float64Value(v), nil
+				return expr.DoubleValue(v), nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		return expr.IntValue(int(v)), nil
+		return expr.IntegerValue(v), nil
 	case scanner.TRUE, scanner.FALSE:
 		return expr.BoolValue(tok == scanner.TRUE), nil
 	case scanner.NULL:
@@ -289,18 +289,10 @@ func (p *Parser) parseType() document.ValueType {
 		return document.DocumentValue
 	case scanner.TYPEDURATION:
 		return document.DurationValue
-	case scanner.TYPEFLOAT64, scanner.TYPENUMERIC:
-		return document.Float64Value
-	case scanner.TYPEINT8:
-		return document.Int8Value
-	case scanner.TYPEINT16:
-		return document.Int16Value
-	case scanner.TYPEINT32:
-		return document.Int32Value
-	case scanner.TYPEINT64, scanner.TYPEINT, scanner.TYPEINTEGER:
-		return document.Int64Value
-	case scanner.TYPESTRING:
-		return document.TextValue
+	case scanner.TYPEDOUBLE:
+		return document.DoubleValue
+	case scanner.TYPEINTEGER:
+		return document.IntegerValue
 	case scanner.TYPETEXT:
 		return document.TextValue
 	}

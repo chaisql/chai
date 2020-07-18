@@ -14,11 +14,8 @@ var numericFuncs = []struct {
 	name string
 	fn   func(x interface{}) document.Value
 }{
-	{"int8", func(x interface{}) document.Value { return document.NewInt8Value(int8(x.(int))) }},
-	{"int16", func(x interface{}) document.Value { return document.NewInt16Value(int16(x.(int))) }},
-	{"int32", func(x interface{}) document.Value { return document.NewInt32Value(int32(x.(int))) }},
-	{"int64", func(x interface{}) document.Value { return document.NewInt64Value(int64(x.(int))) }},
-	{"float64", func(x interface{}) document.Value { return document.NewFloat64Value(float64(x.(int))) }},
+	{"integer", func(x interface{}) document.Value { return document.NewIntegerValue(int64(x.(int))) }},
+	{"double", func(x interface{}) document.Value { return document.NewDoubleValue(float64(x.(int))) }},
 	{"duration", func(x interface{}) document.Value { return document.NewDurationValue(time.Duration(int64(x.(int)))) }},
 }
 
@@ -26,7 +23,7 @@ var textFuncs = []struct {
 	name string
 	fn   func(x interface{}) document.Value
 }{
-	{"string", func(x interface{}) document.Value { return document.NewTextValue(x.(string)) }},
+	{"text", func(x interface{}) document.Value { return document.NewTextValue(x.(string)) }},
 	{"bytes", func(x interface{}) document.Value { return document.NewBlobValue([]byte(x.(string))) }},
 }
 
@@ -416,7 +413,7 @@ func TestComparisonDifferentTypes(t *testing.T) {
 	}
 
 	t.Run("not equal with different types", func(t *testing.T) {
-		ok, err := document.NewIntValue(1).IsNotEqual(document.NewTextValue("foo"))
+		ok, err := document.NewIntegerValue(1).IsNotEqual(document.NewTextValue("foo"))
 		require.NoError(t, err)
 		require.True(t, ok)
 	})
