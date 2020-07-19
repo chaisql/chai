@@ -87,18 +87,27 @@ func TestParserExpr(t *testing.T) {
 		{"bad document: missing right bracket", `{a: 1`, nil, true},
 		{"bad document: missing colon", `{a: 1, 'b'}`, nil, true},
 
-		// list of expressions
-		{"list with parentheses: empty", "()", expr.LiteralExprList(nil), false},
-		{"list with parentheses: values", `(1, true, {a: 1}, a.b.c, (-1), [-1])`,
-			expr.LiteralExprList{
-				expr.IntegerValue(1),
-				expr.BoolValue(true),
-				expr.KVPairs{expr.KVPair{K: "a", V: expr.IntegerValue(1)}},
-				expr.FieldSelector{"a", "b", "c"},
-				expr.LiteralExprList{expr.IntegerValue(-1)},
-				expr.LiteralExprList{expr.IntegerValue(-1)},
+		// parentheses
+		{"parentheses: empty", "()", nil, true},
+		{"parentheses: values", `(1)`,
+			expr.Parentheses{
+				E: expr.IntegerValue(1),
 			}, false},
-		{"list with parentheses: missing parenthese", `(1, true, {a: 1}, a.b.c, (-1)`, nil, true},
+		{"parentheses: expr", `(1 + true * (4 + 3))`,
+			expr.Parentheses{
+				E: expr.Add(
+					expr.IntegerValue(1),
+					expr.Mul(
+						expr.BoolValue(true),
+						expr.Parentheses{
+							E: expr.Add(
+								expr.IntegerValue(4),
+								expr.IntegerValue(3),
+							),
+						},
+					),
+				),
+			}, false},
 		{"list with brackets: empty", "[]", expr.LiteralExprList(nil), false},
 		{"list with brackets: values", `[1, true, {a: 1}, a.b.c, (-1), [-1]]`,
 			expr.LiteralExprList{
@@ -106,7 +115,7 @@ func TestParserExpr(t *testing.T) {
 				expr.BoolValue(true),
 				expr.KVPairs{expr.KVPair{K: "a", V: expr.IntegerValue(1)}},
 				expr.FieldSelector{"a", "b", "c"},
-				expr.LiteralExprList{expr.IntegerValue(-1)},
+				expr.Parentheses{E: expr.IntegerValue(-1)},
 				expr.LiteralExprList{expr.IntegerValue(-1)},
 			}, false},
 		{"list with brackets: missing bracket", `[1, true, {a: 1}, a.b.c, (-1), [-1]`, nil, true},
