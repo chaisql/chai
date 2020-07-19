@@ -121,8 +121,8 @@ type Operator interface {
 }
 
 // Parentheses is a special expression which turns
-// any expression as a unary expression.
-// It hides the underlying expression operator from the parser
+// any sub-expression as unary.
+// It hides the underlying operator, if any, from the parser
 // so that it doesn't get reordered by precedence.
 type Parentheses struct {
 	E Expr
