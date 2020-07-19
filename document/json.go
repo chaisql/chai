@@ -47,6 +47,12 @@ func (v Value) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 		x = s
+	case DurationValue:
+		d, err := v.ConvertToDuration()
+		if err != nil {
+			return nil, err
+		}
+		x = d.String()
 	default:
 		x = v.V
 	}
