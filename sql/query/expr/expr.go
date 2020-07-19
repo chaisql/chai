@@ -119,3 +119,16 @@ type Operator interface {
 	SetRightHandExpr(Expr)
 	Token() scanner.Token
 }
+
+// Parentheses is a special expression which turns
+// any expression as a unary expression.
+// It hides the underlying expression operator from the parser
+// so that it doesn't get reordered by precedence.
+type Parentheses struct {
+	E Expr
+}
+
+// Eval calls the underlying expression Eval method.
+func (p Parentheses) Eval(es EvalStack) (document.Value, error) {
+	return p.E.Eval(es)
+}
