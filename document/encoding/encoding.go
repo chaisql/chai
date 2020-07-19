@@ -220,13 +220,13 @@ func EncodeValue(v document.Value) ([]byte, error) {
 		}
 		return msgpack.EncodeArray(a)
 	case document.BlobValue:
-		x, err := v.ConvertToBlob()
+		x, err := v.ConvertToBytes()
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
 	case document.TextValue:
-		x, err := v.ConvertToText()
+		x, err := v.ConvertToString()
 		if err != nil {
 			return nil, err
 		}

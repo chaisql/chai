@@ -253,13 +253,13 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 		}
 		return NewDurationValue(x), nil
 	case BlobValue:
-		x, err := v.ConvertToBlob()
+		x, err := v.ConvertToBytes()
 		if err != nil {
 			return Value{}, err
 		}
 		return NewBlobValue(x), nil
 	case TextValue:
-		x, err := v.ConvertToText()
+		x, err := v.ConvertToString()
 		if err != nil {
 			return Value{}, err
 		}
@@ -269,9 +269,9 @@ func (v Value) ConvertTo(t ValueType) (Value, error) {
 	return Value{}, fmt.Errorf("cannot convert %q to %q", v.Type, t)
 }
 
-// ConvertToBlob converts a value of type Text or Blob to a slice of bytes.
+// ConvertToBytes converts a value of type Text or Blob to a slice of bytes.
 // If fails if it's used with any other type.
-func (v Value) ConvertToBlob() ([]byte, error) {
+func (v Value) ConvertToBytes() ([]byte, error) {
 	switch v.Type {
 	case TextValue, BlobValue:
 		return v.V.([]byte), nil
@@ -284,9 +284,9 @@ func (v Value) ConvertToBlob() ([]byte, error) {
 	return nil, fmt.Errorf(`cannot convert %q to "bytes"`, v.Type)
 }
 
-// ConvertToText turns a value of type Text or Blob into a string.
+// ConvertToString turns a value of type Text or Blob into a string.
 // If fails if it's used with any other type.
-func (v Value) ConvertToText() (string, error) {
+func (v Value) ConvertToString() (string, error) {
 	switch v.Type {
 	case TextValue, BlobValue:
 		return string(v.V.([]byte)), nil

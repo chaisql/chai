@@ -114,13 +114,13 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 	case document.NullValue:
 		return e.enc.EncodeNil()
 	case document.TextValue:
-		s, err := v.ConvertToText()
+		s, err := v.ConvertToString()
 		if err != nil {
 			return err
 		}
 		return e.enc.EncodeString(s)
 	case document.BlobValue:
-		b, err := v.ConvertToBlob()
+		b, err := v.ConvertToBytes()
 		if err != nil {
 			return err
 		}

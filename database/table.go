@@ -518,7 +518,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				return false, err
 			}
 
-			b, err := v.ConvertToBlob()
+			b, err := v.ConvertToBytes()
 			if err != nil {
 				return false, err
 			}
