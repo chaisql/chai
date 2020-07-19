@@ -214,7 +214,7 @@ func EncodeValue(v document.Value) ([]byte, error) {
 	case document.BlobValue:
 		return v.V.([]byte), nil
 	case document.TextValue:
-		return EncodeString(string(v.V.([]byte))), nil
+		return EncodeString(v.V.(string)), nil
 	case document.BoolValue:
 		return EncodeBool(v.V.(bool)), nil
 	case document.IntegerValue:

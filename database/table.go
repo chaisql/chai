@@ -202,7 +202,6 @@ func (t *Table) Indexes() (map[string]Index, error) {
 		name:  indexStoreName,
 	}
 
-	tableName := []byte(t.name)
 	indexes := make(map[string]Index)
 
 	err = document.NewStream(&tb).
@@ -212,7 +211,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				return false, err
 			}
 
-			return bytes.Equal(v.V.([]byte), tableName), nil
+			return v.V.(string) == t.name, nil
 		}).
 		Iterate(func(d document.Document) error {
 			var opts IndexConfig
