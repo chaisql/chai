@@ -100,31 +100,15 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 func (e *Encoder) EncodeValue(v document.Value) error {
 	switch v.Type {
 	case document.DocumentValue:
-		d, err := v.ConvertToDocument()
-		if err != nil {
-			return err
-		}
-		return e.EncodeDocument(d)
+		return e.EncodeDocument(v.V.(document.Document))
 	case document.ArrayValue:
-		a, err := v.ConvertToArray()
-		if err != nil {
-			return err
-		}
-		return e.EncodeArray(a)
+		return e.EncodeArray(v.V.(document.Array))
 	case document.NullValue:
 		return e.enc.EncodeNil()
 	case document.TextValue:
-		s, err := v.ConvertToString()
-		if err != nil {
-			return err
-		}
-		return e.enc.EncodeString(s)
+		return e.enc.EncodeString(v.V.(string))
 	case document.BlobValue:
-		b, err := v.ConvertToBytes()
-		if err != nil {
-			return err
-		}
-		return e.enc.EncodeBytes(b)
+		return e.enc.EncodeBytes(v.V.([]byte))
 	case document.BoolValue:
 		return e.enc.EncodeBool(v.V.(bool))
 	case document.IntegerValue:
