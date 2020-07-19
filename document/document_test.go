@@ -206,7 +206,7 @@ func TestNewFromMap(t *testing.T) {
 			counter[f]++
 			switch f {
 			case "name":
-				require.Equal(t, m[f], string(v.V.([]byte)))
+				require.Equal(t, m[f], v.V.(string))
 			default:
 				require.EqualValues(t, m[f], v.V)
 			}
@@ -335,7 +335,7 @@ func TestNewFromStruct(t *testing.T) {
 			case 0:
 				require.Equal(t, u.A, v.V.([]byte))
 			case 1:
-				require.Equal(t, u.B, string(v.V.([]byte)))
+				require.Equal(t, u.B, v.V.(string))
 			case 2:
 				require.Equal(t, u.C, v.V.(bool))
 			case 3:
@@ -408,7 +408,7 @@ func TestNewFromStruct(t *testing.T) {
 		require.Equal(t, u.A, v.V.([]byte))
 		v, err = doc.GetByField("b")
 		require.NoError(t, err)
-		require.Equal(t, u.B, string(v.V.([]byte)))
+		require.Equal(t, u.B, v.V.(string))
 		v, err = doc.GetByField("c")
 		require.NoError(t, err)
 		require.Equal(t, u.C, v.V.(bool))

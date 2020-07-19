@@ -559,14 +559,14 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
-		require.Equal(t, "e", string(f.V.([]byte)))
+		require.Equal(t, "e", f.V.(string))
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetDocument(key2)
 		require.NoError(t, err)
 		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
-		require.Equal(t, "c", string(f.V.([]byte)))
+		require.Equal(t, "c", f.V.(string))
 	})
 }
 

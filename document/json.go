@@ -32,7 +32,7 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	case ArrayValue:
 		return jsonArray{v.V.(Array)}.MarshalJSON()
 	case TextValue:
-		x = string(v.V.([]byte))
+		x = string(v.V.(string))
 	case DurationValue:
 		x = v.V.(time.Duration).String()
 	default:
@@ -63,7 +63,7 @@ func (v Value) String() string {
 	case NullValue:
 		return "NULL"
 	case TextValue:
-		return strconv.Quote(string(v.V.([]byte)))
+		return strconv.Quote(v.V.(string))
 	case BlobValue, DurationValue:
 		return fmt.Sprintf("%v", v.V)
 	}

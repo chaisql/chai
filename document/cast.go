@@ -52,7 +52,7 @@ func (v Value) CastAsBool() (Value, error) {
 	case IntegerValue:
 		return NewBoolValue(v.V.(int64) != 0), nil
 	case TextValue:
-		b, err := strconv.ParseBool(string(v.V.([]byte)))
+		b, err := strconv.ParseBool(v.V.(string))
 		if err != nil {
 			return Value{}, fmt.Errorf(`cannot cast %q as bool: %w`, v.V, err)
 		}
@@ -106,7 +106,7 @@ func (v Value) CastAsDouble() (Value, error) {
 	case IntegerValue:
 		return NewDoubleValue(float64(v.V.(int64))), nil
 	case TextValue:
-		f, err := strconv.ParseFloat(string(v.V.([]byte)), 64)
+		f, err := strconv.ParseFloat(v.V.(string), 64)
 		if err != nil {
 			return Value{}, fmt.Errorf(`cannot cast %q as double: %w`, v.V, err)
 		}
@@ -125,7 +125,7 @@ func (v Value) CastAsDuration() (Value, error) {
 	}
 
 	if v.Type == TextValue {
-		d, err := time.ParseDuration(string(v.V.([]byte)))
+		d, err := time.ParseDuration(v.V.(string))
 		if err != nil {
 			return Value{}, fmt.Errorf(`cannot cast %q as duration: %w`, v.V, err)
 		}
@@ -169,7 +169,7 @@ func (v Value) CastAsBlob() (Value, error) {
 	}
 
 	if v.Type == TextValue {
-		b, err := base64.StdEncoding.DecodeString(string(v.V.([]byte)))
+		b, err := base64.StdEncoding.DecodeString(v.V.(string))
 		if err != nil {
 			return Value{}, fmt.Errorf(`cannot cast %q as blob: %w`, v.V, err)
 		}
@@ -190,7 +190,7 @@ func (v Value) CastAsArray() (Value, error) {
 
 	if v.Type == TextValue {
 		var vb ValueBuffer
-		err := vb.UnmarshalJSON([]byte(string(v.V.([]byte))))
+		err := vb.UnmarshalJSON([]byte(v.V.(string)))
 		if err != nil {
 			return Value{}, fmt.Errorf(`cannot cast %q as array: %w`, v.V, err)
 		}
@@ -211,7 +211,7 @@ func (v Value) CastAsDocument() (Value, error) {
 
 	if v.Type == TextValue {
 		var fb FieldBuffer
-		err := fb.UnmarshalJSON([]byte(string(v.V.([]byte))))
+		err := fb.UnmarshalJSON([]byte(v.V.(string)))
 		if err != nil {
 			return Value{}, fmt.Errorf(`cannot cast %q as document: %w`, v.V, err)
 		}

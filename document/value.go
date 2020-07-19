@@ -158,7 +158,7 @@ func NewBlobValue(x []byte) Value {
 func NewTextValue(x string) Value {
 	return Value{
 		Type: TextValue,
-		V:    []byte(x),
+		V:    x,
 	}
 }
 
@@ -227,8 +227,10 @@ func (v Value) IsZeroValue() (bool, error) {
 		return v.V == doubleZeroValue.V, nil
 	case DurationValue:
 		return v.V == durationZeroValue.V, nil
-	case BlobValue, TextValue:
+	case BlobValue:
 		return bytes.Compare(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
+	case TextValue:
+		return v.V == textZeroValue.V, nil
 	case ArrayValue:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound

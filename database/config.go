@@ -321,13 +321,13 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	i.IndexName = string(v.V.([]byte))
+	i.IndexName = string(v.V.(string))
 
 	v, err = d.GetByField("tablename")
 	if err != nil {
 		return err
 	}
-	i.TableName = string(v.V.([]byte))
+	i.TableName = string(v.V.(string))
 
 	v, err = d.GetByField("path")
 	if err != nil {
@@ -438,7 +438,7 @@ func arrayToValuePath(v document.Value) (document.ValuePath, error) {
 	var path document.ValuePath
 
 	err := v.V.(document.Array).Iterate(func(_ int, value document.Value) error {
-		path = append(path, string(value.V.([]byte)))
+		path = append(path, value.V.(string))
 		return nil
 	})
 

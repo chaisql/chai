@@ -106,7 +106,7 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 	case document.NullValue:
 		return e.enc.EncodeNil()
 	case document.TextValue:
-		return e.enc.EncodeString(string(v.V.([]byte)))
+		return e.enc.EncodeString(v.V.(string))
 	case document.BlobValue:
 		return e.enc.EncodeBytes(v.V.([]byte))
 	case document.BoolValue:
@@ -205,8 +205,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v.V = []byte(s)
-		v.Type = document.TextValue
+		v = document.NewTextValue(s)
 		return
 	}
 

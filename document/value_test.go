@@ -56,7 +56,7 @@ func TestNewValue(t *testing.T) {
 		value, expected interface{}
 	}{
 		{"bytes", []byte("bar"), []byte("bar")},
-		{"string", "bar", []byte("bar")},
+		{"string", "bar", "bar"},
 		{"bool", true, true},
 		{"uint", uint(10), int64(10)},
 		{"uint8", uint8(10), int64(10)},
@@ -74,7 +74,7 @@ func TestNewValue(t *testing.T) {
 		{"array", document.NewValueBuffer(document.NewIntegerValue(10)), document.NewValueBuffer(document.NewIntegerValue(10))},
 		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
 		{"bytes", myBytes("bar"), []byte("bar")},
-		{"string", myString("bar"), []byte("bar")},
+		{"string", myString("bar"), "bar"},
 		{"myUint", myUint(10), int64(10)},
 		{"myUint16", myUint16(500), int64(500)},
 		{"myUint32", myUint32(90000), int64(90000)},

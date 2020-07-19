@@ -249,7 +249,7 @@ func scanValue(v Value, ref reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		ref.SetString(string(v.V.([]byte)))
+		ref.SetString(string(v.V.(string)))
 		return nil
 	case reflect.Bool:
 		v, err := v.CastAsBool()
@@ -295,7 +295,11 @@ func scanValue(v Value, ref reflect.Value) error {
 			if v.Type != TextValue && v.Type != BlobValue {
 				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type)
 			}
-			ref.SetBytes(v.V.([]byte))
+			if v.Type == TextValue {
+				ref.SetBytes([]byte(v.V.(string)))
+			} else {
+				ref.SetBytes(v.V.([]byte))
+			}
 			return nil
 		}
 		v, err := v.CastAsArray()
