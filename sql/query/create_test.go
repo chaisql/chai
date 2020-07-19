@@ -37,8 +37,9 @@ func TestCreateTable(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			err = db.ViewTable("test", func(_ *genji.Tx, _ *database.Table) error {
-				return nil
+			err = db.View(func(tx *genji.Tx) error {
+				_, err := tx.GetTable("test")
+				return err
 			})
 			require.NoError(t, err)
 		})
@@ -53,7 +54,12 @@ func TestCreateTable(t *testing.T) {
 			err = db.Exec(`CREATE TABLE test(d double, b bool)`)
 			require.NoError(t, err)
 
-			err = db.ViewTable("test", func(_ *genji.Tx, tb *database.Table) error {
+			err = db.View(func(tx *genji.Tx) error {
+				tb, err := tx.GetTable("test")
+				if err != nil {
+					return err
+				}
+
 				info, err := tb.Info()
 				if err != nil {
 					return err
@@ -78,7 +84,11 @@ func TestCreateTable(t *testing.T) {
 			`)
 			require.NoError(t, err)
 
-			err = db.ViewTable("test1", func(_ *genji.Tx, tb *database.Table) error {
+			err = db.View(func(tx *genji.Tx) error {
+				tb, err := tx.GetTable("test1")
+				if err != nil {
+					return err
+				}
 				info, err := tb.Info()
 				if err != nil {
 					return err
