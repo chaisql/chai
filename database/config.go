@@ -110,7 +110,7 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	b, err := v.ConvertToBlob()
+	b, err := v.ConvertToBytes()
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	i.IndexName, err = v.ConvertToText()
+	i.IndexName, err = v.ConvertToString()
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	i.TableName, err = v.ConvertToText()
+	i.TableName, err = v.ConvertToString()
 	if err != nil {
 		return err
 	}
@@ -394,7 +394,7 @@ func arrayToValuePath(v document.Value) (document.ValuePath, error) {
 	var path document.ValuePath
 
 	err = ar.Iterate(func(_ int, value document.Value) error {
-		p, err := value.ConvertToText()
+		p, err := value.ConvertToString()
 		if err != nil {
 			return err
 		}

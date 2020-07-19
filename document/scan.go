@@ -245,7 +245,7 @@ func scanValue(v Value, ref reflect.Value) error {
 
 	switch ref.Kind() {
 	case reflect.String:
-		x, err := v.ConvertToText()
+		x, err := v.ConvertToString()
 		if err != nil {
 			return err
 		}
@@ -291,7 +291,7 @@ func scanValue(v Value, ref reflect.Value) error {
 		return structScan(d, ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			x, err := v.ConvertToBlob()
+			x, err := v.ConvertToBytes()
 			if err != nil {
 				return err
 			}

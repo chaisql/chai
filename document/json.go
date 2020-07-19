@@ -42,7 +42,7 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		}
 		return jsonArray{a}.MarshalJSON()
 	case TextValue, BlobValue:
-		s, err := v.ConvertToText()
+		s, err := v.ConvertToString()
 		if err != nil {
 			return nil, err
 		}
@@ -411,8 +411,8 @@ func (v Value) Compare(u Value) int {
 
 	// compare byte arrays and strings
 	if (v.Type == TextValue || v.Type == BlobValue) && (u.Type == TextValue || u.Type == BlobValue) {
-		bv, _ := v.ConvertToBlob()
-		bu, _ := u.ConvertToBlob()
+		bv, _ := v.ConvertToBytes()
+		bu, _ := u.ConvertToBytes()
 		return bytesutil.CompareBytes(bv, bu)
 	}
 
