@@ -41,7 +41,7 @@ func (v Value) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 		return jsonArray{a}.MarshalJSON()
-	case TextValue, BlobValue:
+	case TextValue:
 		s, err := v.ConvertToString()
 		if err != nil {
 			return nil, err
