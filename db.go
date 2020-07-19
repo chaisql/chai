@@ -118,33 +118,6 @@ func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, e
 	return &fb, nil
 }
 
-// ViewTable starts a read only transaction, fetches the selected table, calls fn with that table
-// and automatically rolls back the transaction.
-func (db *DB) ViewTable(tableName string, fn func(*Tx, *database.Table) error) error {
-	return db.View(func(tx *Tx) error {
-		tb, err := tx.GetTable(tableName)
-		if err != nil {
-			return err
-		}
-
-		return fn(tx, tb)
-	})
-}
-
-// UpdateTable starts a read/write transaction, fetches the selected table, calls fn with that table
-// and automatically commits the transaction.
-// If fn returns an error, the transaction is rolled back.
-func (db *DB) UpdateTable(tableName string, fn func(*Tx, *database.Table) error) error {
-	return db.Update(func(tx *Tx) error {
-		tb, err := tx.GetTable(tableName)
-		if err != nil {
-			return err
-		}
-
-		return fn(tx, tb)
-	})
-}
-
 // Tx represents a database transaction. It provides methods for managing the
 // collection of tables and the transaction itself.
 // Tx is either read-only or read/write. Read-only can be used to read tables
