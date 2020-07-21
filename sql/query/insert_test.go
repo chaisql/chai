@@ -164,8 +164,8 @@ func TestInsertStmt(t *testing.T) {
 			"db": 21.21,
 			"b": true,
 			"du": 127,
-			"bb": "blobValue",
-			"byt": "bytesValue",
+			"bb": "YmxvYlZhbHVl",
+			"byt": "Ynl0ZXNWYWx1ZQ==",
 			"t": "text",
 			"a": [1, "foo", true],
 			"d": {"foo": "bar"}

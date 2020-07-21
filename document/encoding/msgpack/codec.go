@@ -106,7 +106,7 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 	case document.NullValue:
 		return e.enc.EncodeNil()
 	case document.TextValue:
-		return e.enc.EncodeString(v.V.(string))
+		return e.enc.EncodeString(string(v.V.([]byte)))
 	case document.BlobValue:
 		return e.enc.EncodeBytes(v.V.([]byte))
 	case document.BoolValue:

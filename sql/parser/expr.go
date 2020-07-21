@@ -520,5 +520,5 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return expr.Cast{Expr: e, ConvertTo: tp}, nil
+	return expr.Cast{Expr: e, CastAs: tp}, nil
 }

@@ -163,7 +163,7 @@ func TestParserExpr(t *testing.T) {
 			), false},
 		{"with NULL", "age > NULL", expr.Gt(expr.FieldSelector([]string{"age"}), expr.NullValue()), false},
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
-		{"CAST", "CAST(a.b.1.0 AS TEXT)", expr.Cast{Expr: expr.FieldSelector([]string{"a", "b", "1", "0"}), ConvertTo: document.TextValue}, false},
+		{"CAST", "CAST(a.b.1.0 AS TEXT)", expr.Cast{Expr: expr.FieldSelector([]string{"a", "b", "1", "0"}), CastAs: document.TextValue}, false},
 	}
 
 	for _, test := range tests {
