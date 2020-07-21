@@ -58,8 +58,8 @@ func (k PKFunc) String() string {
 
 // Cast represents the CAST expression.
 type Cast struct {
-	Expr      Expr
-	ConvertTo document.ValueType
+	Expr   Expr
+	CastAs document.ValueType
 }
 
 // Eval returns the primary key of the current document.
@@ -69,7 +69,7 @@ func (c Cast) Eval(ctx EvalStack) (document.Value, error) {
 		return v, err
 	}
 
-	return v.ConvertTo(c.ConvertTo)
+	return v.CastAs(c.CastAs)
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -84,7 +84,7 @@ func (c Cast) IsEqual(other Expr) bool {
 		return false
 	}
 
-	if c.ConvertTo != o.ConvertTo {
+	if c.CastAs != o.CastAs {
 		return false
 	}
 
@@ -96,5 +96,5 @@ func (c Cast) IsEqual(other Expr) bool {
 }
 
 func (c Cast) String() string {
-	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.ConvertTo)
+	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
