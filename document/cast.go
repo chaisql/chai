@@ -44,7 +44,7 @@ func (v Value) CastAs(t ValueType) (Value, error) {
 // Integer: true if truthy, otherwise false.
 // Text: uses strconv.Parsebool to determine the boolean value,
 // it fails if the text doesn't contain a valid boolean.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsBool() (Value, error) {
 	switch v.Type {
 	case BoolValue:
@@ -68,7 +68,7 @@ func (v Value) CastAsBool() (Value, error) {
 // Text: uses strconv.ParseFloat to determine the double value,
 // then casts it to an integer. it fails if the text doesn't
 // contain a valid float value.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsInteger() (Value, error) {
 	switch v.Type {
 	case IntegerValue:
@@ -95,7 +95,7 @@ func (v Value) CastAsInteger() (Value, error) {
 // Integer: returns a double version of the integer.
 // Text: uses strconv.ParseFloat to determine the double value,
 // it fails if the text doesn't contain a valid float value.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsDouble() (Value, error) {
 	switch v.Type {
 	case DoubleValue:
@@ -115,7 +115,7 @@ func (v Value) CastAsDouble() (Value, error) {
 
 // CastAsDuration casts according to the following rules:
 // Text: decodes using time.ParseDuration, otherwise fails.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsDuration() (Value, error) {
 	if v.Type == DurationValue {
 		return v, nil
@@ -159,7 +159,7 @@ func (v Value) CastAsText() (Value, error) {
 
 // CastAsBlob casts according to the following rules:
 // Text: decodes a base64 string, otherwise fails.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsBlob() (Value, error) {
 	if v.Type == BlobValue {
 		return v, nil
@@ -179,7 +179,7 @@ func (v Value) CastAsBlob() (Value, error) {
 
 // CastAsArray casts according to the following rules:
 // Text: decodes a JSON array, otherwise fails.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsArray() (Value, error) {
 	if v.Type == ArrayValue {
 		return v, nil
@@ -200,7 +200,7 @@ func (v Value) CastAsArray() (Value, error) {
 
 // CastAsDocument casts according to the following rules:
 // Text: decodes a JSON object, otherwise fails.
-// Any other type is consider an invalid cast.
+// Any other type is considered an invalid cast.
 func (v Value) CastAsDocument() (Value, error) {
 	if v.Type == DocumentValue {
 		return v, nil
