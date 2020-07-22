@@ -11,7 +11,6 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
-	"github.com/genjidb/genji/pkg/bytesutil"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
@@ -291,7 +290,7 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		if err != nil {
 			return err
 		}
-		if bytesutil.CompareBytes(data, d) <= 0 {
+		if bytes.Compare(data, d) <= 0 {
 			break
 		}
 
@@ -364,7 +363,7 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		if err != nil {
 			return err
 		}
-		if bytesutil.CompareBytes(data, d) < 0 {
+		if bytes.Compare(data, d) < 0 {
 			break
 		}
 

@@ -1,12 +1,11 @@
 package document
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
 	"time"
-
-	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 var (
@@ -433,7 +432,7 @@ func (v Value) IsZeroValue() (bool, error) {
 	case DurationValue:
 		return v.V == durationZeroValue.V, nil
 	case BlobValue, TextValue:
-		return bytesutil.CompareBytes(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
+		return bytes.Compare(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
 	case ArrayValue:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
