@@ -3,10 +3,9 @@
 package genji
 
 import (
-	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
+	"github.com/genjidb/genji/engine/memoryengine"
 )
 
 // Open creates a Genji database at the given path.
@@ -18,7 +17,7 @@ func Open(path string) (*DB, error) {
 
 	switch path {
 	case ":memory:":
-		ng, err = badgerengine.NewEngine(badger.DefaultOptions("").WithInMemory(true).WithLogger(nil))
+		ng = memoryengine.NewEngine()
 	default:
 		ng, err = boltengine.NewEngine(path, 0660, nil)
 	}
