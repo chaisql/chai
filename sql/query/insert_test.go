@@ -163,7 +163,7 @@ func TestInsertStmt(t *testing.T) {
 			"i": 10000000000,
 			"db": 21.21,
 			"b": true,
-			"du": 127,
+			"du": "127ns",
 			"bb": "YmxvYlZhbHVl",
 			"byt": "Ynl0ZXNWYWx1ZQ==",
 			"t": "text",
