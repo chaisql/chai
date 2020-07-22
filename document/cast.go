@@ -66,7 +66,7 @@ func (v Value) CastAsBool() (Value, error) {
 // Bool: returns 1 if true, 0 if false.
 // Double: cuts off the decimal and remaining numbers.
 // Text: uses strconv.ParseFloat to determine the double value,
-// then casts it to an integer. it fails if the text doesn't
+// then casts it to an integer. It fails if the text doesn't
 // contain a valid float value.
 // Any other type is considered an invalid cast.
 func (v Value) CastAsInteger() (Value, error) {
