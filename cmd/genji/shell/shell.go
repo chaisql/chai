@@ -189,7 +189,7 @@ func (sh *Shell) executeInput(in string) error {
 	switch {
 	// if it starts with a "." it's a command
 	// it must not be in the middle of a multi line query though
-	case strings.HasPrefix(in, ".") && sh.query == "":
+	case strings.HasPrefix(in, "."):
 		return sh.runCommand(in)
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
@@ -202,6 +202,7 @@ func (sh *Shell) executeInput(in string) error {
 	// If the input is empty we ignore it
 	case in == "":
 		return nil
+
 	// If we reach this case, it means the user is in the middle of a
 	// multi line query. We change the prompt and set the multiLine var to true.
 	default:
@@ -213,16 +214,29 @@ func (sh *Shell) executeInput(in string) error {
 	return nil
 }
 
-func (sh *Shell) runCommand(cmd string) error {
-	switch cmd {
+func (sh *Shell) runCommand(in string) error {
+	cmd := strings.Fields(in)
+	switch cmd[0] {
 	case ".tables":
 		db, err := sh.getDB()
 		if err != nil {
 			return err
 		}
-		return runTablesCmd(db)
+
+		return runTablesCmd(db, cmd)
 	case ".exit":
+		if len(cmd) > 1 {
+			return fmt.Errorf("too many arguments in call to %s", cmd[0])
+		}
+
 		os.Exit(0)
+	case ".indexes":
+		db, err := sh.getDB()
+		if err != nil {
+			return err
+		}
+
+		return runIndexesCmd(db, cmd)
 	}
 
 	return fmt.Errorf("unknown command %q", cmd)

@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -555,4 +556,19 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	}
 
 	return indexes, nil
+}
+
+// PrintIndexes prints all indexes of the table receiver.
+func (t *Table) PrintIndexes() error {
+	indexes, err := t.Indexes()
+	for _, idx := range indexes {
+		j, err := json.MarshalIndent(&idx, "", " ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(j))
+	}
+
+	return err
 }
