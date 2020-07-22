@@ -145,6 +145,7 @@ func (t *Table) generateDocid() (int64, error) {
 		if it.Valid() {
 			t.tx.db.tableDocids[t.name], err = encoding.DecodeInt64(it.Item().Key())
 			if err != nil {
+				it.Close()
 				return 0, err
 			}
 		} else {
