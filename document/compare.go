@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-
-	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 type operator uint8
@@ -163,13 +161,13 @@ func compareBytes(op operator, l, r Value) (bool, error) {
 	case operatorEq:
 		ok = bytes.Equal(l.V.([]byte), r.V.([]byte))
 	case operatorGt:
-		ok = bytesutil.CompareBytes(l.V.([]byte), r.V.([]byte)) > 0
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) > 0
 	case operatorGte:
-		ok = bytesutil.CompareBytes(l.V.([]byte), r.V.([]byte)) >= 0
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) >= 0
 	case operatorLt:
-		ok = bytesutil.CompareBytes(l.V.([]byte), r.V.([]byte)) < 0
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) < 0
 	case operatorLte:
-		ok = bytesutil.CompareBytes(l.V.([]byte), r.V.([]byte)) <= 0
+		ok = bytes.Compare(l.V.([]byte), r.V.([]byte)) <= 0
 	}
 
 	return ok, nil

@@ -10,8 +10,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-
-	"github.com/genjidb/genji/pkg/bytesutil"
 )
 
 // NewFromJSON creates a document from a JSON object.
@@ -419,7 +417,7 @@ func (v Value) Compare(u Value) int {
 	if (v.Type == TextValue || v.Type == BlobValue) && (u.Type == TextValue || u.Type == BlobValue) {
 		bv, _ := v.ConvertToBytes()
 		bu, _ := u.ConvertToBytes()
-		return bytesutil.CompareBytes(bv, bu)
+		return bytes.Compare(bv, bu)
 	}
 
 	// if all else fails, compare string representation of values

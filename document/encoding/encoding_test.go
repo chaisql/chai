@@ -1,9 +1,9 @@
 package encoding
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/genjidb/genji/pkg/bytesutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +70,7 @@ func TestOrdering(t *testing.T) {
 					continue
 				}
 
-				require.Equal(t, -1, bytesutil.CompareBytes(prev, cur))
+				require.Equal(t, -1, bytes.Compare(prev, cur))
 				prev = cur
 			}
 		})

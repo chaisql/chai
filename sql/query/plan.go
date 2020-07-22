@@ -1,6 +1,7 @@
 package query
 
 import (
+	"bytes"
 	"container/heap"
 	"errors"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
-	"github.com/genjidb/genji/pkg/bytesutil"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -483,7 +483,7 @@ type heapNode struct {
 type minHeap []heapNode
 
 func (h minHeap) Len() int           { return len(h) }
-func (h minHeap) Less(i, j int) bool { return bytesutil.CompareBytes(h[i].value, h[j].value) < 0 }
+func (h minHeap) Less(i, j int) bool { return bytes.Compare(h[i].value, h[j].value) < 0 }
 func (h minHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 
 func (h *minHeap) Push(x interface{}) {
@@ -503,5 +503,5 @@ type maxHeap struct {
 }
 
 func (h maxHeap) Less(i, j int) bool {
-	return bytesutil.CompareBytes(h.minHeap[i].value, h.minHeap[j].value) > 0
+	return bytes.Compare(h.minHeap[i].value, h.minHeap[j].value) > 0
 }
