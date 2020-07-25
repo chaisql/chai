@@ -9,10 +9,8 @@ import (
 func runTablesCmd(db *genji.DB) error {
 	var tables []string
 	err := db.View(func(tx *genji.Tx) error {
-		var err error
-
-		tables, err = tx.ListTables()
-		return err
+		tables = tx.ListTables()
+		return nil
 	})
 	if err != nil {
 		return err
