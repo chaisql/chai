@@ -70,7 +70,7 @@ func (tx Transaction) CreateTable(name string, info *TableInfo) error {
 	if info == nil {
 		info = new(TableInfo)
 	}
-	sid, err := tx.tableInfoStore.Insert(name, info)
+	sid, err := tx.tableInfoStore.Insert(tx.Tx, name, info)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (tx Transaction) DropTable(name string) error {
 		return err
 	}
 
-	err = tx.tableInfoStore.Delete(name)
+	err = tx.tableInfoStore.Delete(tx.Tx, name)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (tx Transaction) DropTable(name string) error {
 
 // ListTables lists all the tables.
 // The returned slice is lexicographically ordered.
-func (tx Transaction) ListTables() ([]string, error) {
+func (tx Transaction) ListTables() []string {
 	return tx.tableInfoStore.ListTables()
 }
 
@@ -264,16 +264,6 @@ func (tx Transaction) ReIndexAll() error {
 	}
 
 	return nil
-}
-
-func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
-	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
-	if err != nil {
-		return nil, err
-	}
-	return &tableInfoStore{
-		st: st,
-	}, nil
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {

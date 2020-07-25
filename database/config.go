@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/genjidb/genji/document"
@@ -141,35 +143,54 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	})
 }
 
+// tableInfoStore manages table information.
+// It loads table information during database startup
+// and holds it in memory.
 type tableInfoStore struct {
-	st engine.Store
+	// tableInfos contains information about all the tables
+	tableInfos map[string]TableInfo
+
+	mu sync.RWMutex
+}
+
+func newTableInfoStore(tx engine.Transaction) (*tableInfoStore, error) {
+	ts := tableInfoStore{
+		tableInfos: make(map[string]TableInfo),
+	}
+
+	err := ts.loadAllTableInfo(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ts, nil
 }
 
 // Insert a new tableInfo for the given table name.
 // It automatically generates a unique storeID for that table.
-func (t *tableInfoStore) Insert(tableName string, info *TableInfo) ([]byte, error) {
-	key := []byte(tableName)
-	_, err := t.st.Get(key)
-	if err == nil {
+func (t *tableInfoStore) Insert(tx engine.Transaction, tableName string, info *TableInfo) ([]byte, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	_, ok := t.tableInfos[tableName]
+	if ok {
 		return nil, ErrTableAlreadyExists
 	}
-	if err != engine.ErrKeyNotFound {
-		return nil, err
-	}
 
+	var found bool = true
 	var id [6]byte
-	for {
+	for found {
 		id = generateStoreID()
-		_, err = t.st.Get(id[:])
-		if err == nil {
-			// A store with this id already exists.
-			// Let's generate a new one.
-			continue
+
+		found = false
+		for _, ti := range t.tableInfos {
+			if ti.storeID == id {
+				// A store with this id already exists.
+				// Let's generate a new one.
+				found = true
+				break
+			}
 		}
-		if err != engine.ErrKeyNotFound {
-			return nil, err
-		}
-		break
 	}
 	info.storeID = id
 
@@ -178,50 +199,102 @@ func (t *tableInfoStore) Insert(tableName string, info *TableInfo) ([]byte, erro
 		return nil, err
 	}
 
-	err = t.st.Put(key, v)
+	st, err := tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return nil, err
 	}
+
+	err = st.Put([]byte(tableName), v)
+	if err != nil {
+		return nil, err
+	}
+
+	t.tableInfos[tableName] = *info
 	return info.storeID[:], err
 }
 
 func (t *tableInfoStore) Get(tableName string) (*TableInfo, error) {
-	key := []byte(tableName)
-	v, err := t.st.Get(key)
-	if err == engine.ErrKeyNotFound {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	info, ok := t.tableInfos[tableName]
+	if !ok {
 		return nil, ErrTableNotFound
 	}
-	if err != nil {
-		return nil, err
-	}
 
-	var ti TableInfo
-	err = ti.ScanDocument(msgpack.EncodedDocument(v))
-	if err != nil {
-		return nil, err
-	}
-
-	return &ti, nil
+	return &info, nil
 }
 
-func (t *tableInfoStore) Delete(tableName string) error {
+func (t *tableInfoStore) Delete(tx engine.Transaction, tableName string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	st, err := tx.GetStore([]byte(tableInfoStoreName))
+	if err != nil {
+		return err
+	}
+
 	key := []byte(tableName)
-	err := t.st.Delete(key)
+	err = st.Delete(key)
 	if err == engine.ErrKeyNotFound {
 		return ErrTableNotFound
 	}
+	if err != nil {
+		return err
+	}
+
+	delete(t.tableInfos, tableName)
+
 	return err
 }
 
-func (t *tableInfoStore) ListTables() ([]string, error) {
-	it := t.st.NewIterator(engine.IteratorConfig{})
+func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
-	var names []string
-	for it.Seek(nil); it.Valid(); it.Next() {
-		k := it.Item().Key()
-		names = append(names, string(k))
+	st, err := tx.GetStore([]byte(tableInfoStoreName))
+	if err != nil {
+		return err
 	}
-	return names, it.Close()
+
+	it := st.NewIterator(engine.IteratorConfig{})
+
+	t.tableInfos = make(map[string]TableInfo)
+	var b []byte
+	for it.Seek(nil); it.Valid(); it.Next() {
+		itm := it.Item()
+		b, err = itm.ValueCopy(b)
+		if err != nil {
+			return err
+		}
+
+		var ti TableInfo
+		err = ti.ScanDocument(msgpack.EncodedDocument(b))
+		if err != nil {
+			return err
+		}
+
+		t.tableInfos[string(itm.Key())] = ti
+	}
+	return it.Close()
+}
+
+// ListTables lists all the tables.
+// The returned slice is lexicographically ordered.
+func (t *tableInfoStore) ListTables() []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	names := make([]string, len(t.tableInfos))
+	var i int
+	for k := range t.tableInfos {
+		names[i] = k
+		i++
+	}
+
+	sort.Strings(names)
+
+	return names
 }
 
 func generateStoreID() [6]byte {
