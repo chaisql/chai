@@ -30,10 +30,8 @@ func TestDropTable(t *testing.T) {
 	// Assert that only the table `test1` has been dropped.
 	var tables []string
 	err = db.View(func(tx *genji.Tx) error {
-		var err error
-
-		tables, err = tx.ListTables()
-		return err
+		tables = tx.ListTables()
+		return nil
 	})
 	require.Len(t, tables, 2)
 }

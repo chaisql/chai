@@ -79,11 +79,10 @@ func TestTxTable(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		tables, err := tx.ListTables()
-		require.NoError(t, err)
+		tables := tx.ListTables()
 		require.Len(t, tables, 0)
 
-		err = tx.CreateTable("foo", nil)
+		err := tx.CreateTable("foo", nil)
 		require.NoError(t, err)
 
 		err = tx.CreateTable("bar", nil)
@@ -92,9 +91,7 @@ func TestTxTable(t *testing.T) {
 		err = tx.CreateTable("baz", nil)
 		require.NoError(t, err)
 
-		tables, err = tx.ListTables()
-		require.NoError(t, err)
-
+		tables = tx.ListTables()
 		// The returned slice should be lexicographically ordered.
 		exp := []string{"bar", "baz", "foo"}
 		require.Equal(t, exp, tables)

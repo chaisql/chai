@@ -12,16 +12,13 @@ func TestTableInfoStore(t *testing.T) {
 	ng := memoryengine.NewEngine()
 	defer ng.Close()
 
-	tx, err := ng.Begin(true)
+	db, err := New(ng)
+	require.NoError(t, err)
+	defer db.Close()
+
+	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	defer tx.Rollback()
-
-	err = tx.CreateStore([]byte("foo"))
-	require.NoError(t, err)
-	st, err := tx.GetStore([]byte("foo"))
-	require.NoError(t, err)
-
-	tcs := tableInfoStore{st}
 
 	info := &TableInfo{
 		FieldConstraints: []FieldConstraint{
@@ -30,37 +27,29 @@ func TestTableInfoStore(t *testing.T) {
 	}
 
 	// Inserting one tableInfo should work.
-	sid, err := tcs.Insert("foo1", info)
+	sid, err := tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
 	require.NoError(t, err)
 	require.NotNil(t, sid)
 
 	// Inserting an existing tableInfo should not work.
-	_, err = tcs.Insert("foo1", info)
+	_, err = tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
 	require.Equal(t, err, ErrTableAlreadyExists)
 
-	// Listing all tables should return their name
-	// lexicographically ordered.
-	_, _ = tcs.Insert("foo3", info)
-	_, _ = tcs.Insert("foo2", info)
-	lt, err := tcs.ListTables()
-	require.NoError(t, err)
-	require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
-
 	// Getting an existing tableInfo should work.
-	received, err := tcs.Get("foo1")
+	received, err := tx.tableInfoStore.Get("foo1")
 	require.NoError(t, err)
 	require.NotNil(t, received.storeID)
 
 	// Getting a non-existing tableInfo should not work.
-	_, err = tcs.Get("unknown")
+	_, err = tx.tableInfoStore.Get("unknown")
 	require.Equal(t, ErrTableNotFound, err)
 
 	// Deleting an existing tableInfo should work.
-	err = tcs.Delete("foo1")
+	err = tx.tableInfoStore.Delete(tx.Tx, "foo1")
 	require.NoError(t, err)
 
 	// Deleting a non-existing tableInfo should not work.
-	err = tcs.Delete("foo1")
+	err = tx.tableInfoStore.Delete(tx.Tx, "foo1")
 	require.Equal(t, ErrTableNotFound, err)
 }
 

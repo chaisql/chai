@@ -258,6 +258,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 	}
 
 	it := st.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
 
 	t.tableInfos = make(map[string]TableInfo)
 	var b []byte
@@ -276,7 +277,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 
 		t.tableInfos[string(itm.Key())] = ti
 	}
-	return it.Close()
+
+	return nil
 }
 
 // ListTables lists all the tables.
