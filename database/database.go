@@ -13,6 +13,9 @@ type Database struct {
 
 	mu sync.Mutex
 
+	// tableInfoStore manages information about all the tables
+	tableInfoStore *tableInfoStore
+
 	// tableDocids holds the latest docid for a table.
 	// it is cached in this map the first time a table is accessed
 	// and is used by every call to table#Insert to generate the
@@ -33,18 +36,12 @@ func New(ng engine.Engine) (*Database, error) {
 	}
 	defer ntx.Rollback()
 
-	_, err = ntx.GetStore([]byte(tableInfoStoreName))
-	if err == engine.ErrStoreNotFound {
-		err = ntx.CreateStore([]byte(tableInfoStoreName))
-	}
+	err = db.initInternalStores(ntx)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = ntx.GetStore([]byte(indexStoreName))
-	if err == engine.ErrStoreNotFound {
-		err = ntx.CreateStore([]byte(indexStoreName))
-	}
+	db.tableInfoStore, err = newTableInfoStore(ntx)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +52,22 @@ func New(ng engine.Engine) (*Database, error) {
 	}
 
 	return &db, nil
+}
+
+func (db *Database) initInternalStores(tx engine.Transaction) error {
+	_, err := tx.GetStore([]byte(tableInfoStoreName))
+	if err == engine.ErrStoreNotFound {
+		err = tx.CreateStore([]byte(tableInfoStoreName))
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.GetStore([]byte(indexStoreName))
+	if err == engine.ErrStoreNotFound {
+		err = tx.CreateStore([]byte(indexStoreName))
+	}
+	return err
 }
 
 // Close the underlying engine.
@@ -71,14 +84,10 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 	}
 
 	tx := Transaction{
-		db:       db,
-		Tx:       ntx,
-		writable: writable,
-	}
-
-	tx.tableInfoStore, err = tx.getTableInfoStore()
-	if err != nil {
-		return nil, err
+		db:             db,
+		Tx:             ntx,
+		writable:       writable,
+		tableInfoStore: db.tableInfoStore,
 	}
 
 	tx.indexStore, err = tx.getIndexStore()
