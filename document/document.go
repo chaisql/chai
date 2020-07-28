@@ -86,8 +86,8 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
-// SetFieldValue replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) SetFieldValue(field string, reqValue Value) error {
+// setFieldValue replaces a field if it already exists or creates one if not.
+func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
 	_, err := fb.GetByField(field)
 	switch err {
 	case ErrFieldNotFound:
@@ -101,9 +101,9 @@ func (fb *FieldBuffer) SetFieldValue(field string, reqValue Value) error {
 	return err
 }
 
-// SetValueFromValue deep replaces or creates a field
-// through the value path to get the value to set or replace.
-func (fb *FieldBuffer) SetValueFromValue(v Value, p ValuePath, newValue Value) (Value, error) {
+// setValueAtPath deep replaces or creates a field
+// through the value path to get the value and create or replace it.
+func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
 
 	switch v.Type {
 	case DocumentValue:
@@ -114,7 +114,7 @@ func (fb *FieldBuffer) SetValueFromValue(v Value, p ValuePath, newValue Value) (
 		}
 
 		if len(p) == 1 {
-			err = buf.SetFieldValue(p[0], newValue)
+			err = buf.setFieldValue(p[0], newValue)
 			return NewDocumentValue(&buf), err
 		}
 
@@ -123,12 +123,12 @@ func (fb *FieldBuffer) SetValueFromValue(v Value, p ValuePath, newValue Value) (
 			return v, err
 		}
 
-		va, err = buf.SetValueFromValue(va, p[1:], newValue)
+		va, err = buf.setValueAtPath(va, p[1:], newValue)
 		if err != nil {
 			return v, err
 		}
 
-		err = buf.SetFieldValue(p[0], va)
+		err = buf.setFieldValue(p[0], va)
 		return NewDocumentValue(&buf), err
 	case ArrayValue:
 		var vb ValueBuffer
@@ -136,7 +136,6 @@ func (fb *FieldBuffer) SetValueFromValue(v Value, p ValuePath, newValue Value) (
 		if err != nil {
 			return v, err
 		}
-
 
 		index, err := strconv.Atoi(p[0])
 		if err != nil {
@@ -153,7 +152,7 @@ func (fb *FieldBuffer) SetValueFromValue(v Value, p ValuePath, newValue Value) (
 			return NewArrayValue(&vb), err
 		}
 
-		va, err = fb.SetValueFromValue(va, p[1:], newValue)
+		va, err = fb.setValueAtPath(va, p[1:], newValue)
 		err = vb.Replace(index, va)
 		return NewArrayValue(&vb), err
 	}
@@ -166,7 +165,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 	// check if the ValuePath contains only one field to set or replace
 	if len(path) == 1 {
 		// Set or replace the unique field
-		return fb.SetFieldValue(path[0], reqValue)
+		return fb.setFieldValue(path[0], reqValue)
 	}
 
 	for i, field := range fb.fields {
@@ -177,7 +176,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 				return err
 			}
 
-			v, err := buf.SetValueFromValue(field.Value, path[1:], reqValue)
+			v, err := buf.setValueAtPath(field.Value, path[1:], reqValue)
 			if err != nil {
 				return err
 			}
