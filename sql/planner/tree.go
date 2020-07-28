@@ -372,7 +372,7 @@ func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 
 		path := document.NewValuePath(n.field)
 		err = fb.Set(path, ev)
-		
+
 		return &fb, err
 	}), nil
 }

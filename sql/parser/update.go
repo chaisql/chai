@@ -4,6 +4,7 @@ import (
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"strings"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
@@ -56,12 +57,18 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 			}
 		}
 
-		// Scan the identifier for the field name.
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		if tok != scanner.IDENT {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
 		}
 
+		p.Unscan()
+		ref, err := p.parseFieldRef()
+		if err != nil {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+		}
+
+		lit = strings.Join(ref, ".")
 		// Scan the eq sign
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EQ {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"="}, pos)
@@ -72,8 +79,8 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, updateSetPair{lit, expr})
 
+		pairs = append(pairs, updateSetPair{lit, expr})
 		firstPair = false
 	}
 
