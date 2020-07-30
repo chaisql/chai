@@ -154,9 +154,7 @@ type tableInfoStore struct {
 }
 
 func newTableInfoStore(tx engine.Transaction) (*tableInfoStore, error) {
-	ts := tableInfoStore{
-		tableInfos: make(map[string]TableInfo),
-	}
+	var ts tableInfoStore
 
 	err := ts.loadAllTableInfo(tx)
 	if err != nil {
@@ -245,7 +243,7 @@ func (t *tableInfoStore) Delete(tx engine.Transaction, tableName string) error {
 
 	delete(t.tableInfos, tableName)
 
-	return err
+	return nil
 }
 
 func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
