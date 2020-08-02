@@ -70,12 +70,13 @@ func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 		return document.NewStream(document.NewIterator(fb)), nil
 	}
 
+	var dm documentMask
 	return st.Map(func(d document.Document) (document.Document, error) {
-		return documentMask{
-			info:         n.info,
-			r:            d,
-			resultFields: n.Expressions,
-		}, nil
+		dm.info = n.info
+		dm.r = d
+		dm.resultFields = n.Expressions
+
+		return &dm, nil
 	}), nil
 }
 
