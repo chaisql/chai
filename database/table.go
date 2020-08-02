@@ -42,29 +42,65 @@ func (e encodedDocumentWithKey) Key() []byte {
 	return e.key
 }
 
+// This document implementation waits until
+// GetByField or Iterate are called to
+// fetch the value from the engine store.
+// This is useful to prevent reading the value
+// from store on documents that don't need to be
+// decoded.
+type lazilyDecodedDocument struct {
+	item engine.Item
+	buf  msgpack.EncodedDocument
+}
+
+func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err error) {
+	if len(d.buf) == 0 {
+		d.copyFromItem()
+	}
+
+	return d.buf.GetByField(field)
+}
+
+func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Value) error) error {
+	if len(d.buf) == 0 {
+		d.copyFromItem()
+	}
+
+	return d.buf.Iterate(fn)
+}
+
+func (d *lazilyDecodedDocument) Key() []byte {
+	return d.item.Key()
+}
+
+func (d *lazilyDecodedDocument) Reset() {
+	d.buf = d.buf[:0]
+	d.item = nil
+}
+
+func (d *lazilyDecodedDocument) copyFromItem() error {
+	var err error
+	d.buf, err = d.item.ValueCopy(d.buf[:0])
+
+	return err
+}
+
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (t *Table) Iterate(fn func(d document.Document) error) error {
-	// To avoid unnecessary allocations, we create the slice once and reuse it
-	// at each call of the fn method.
-	// Since the AscendGreaterOrEqual is never supposed to call the callback concurrently
-	// we can assume that it's thread safe.
-	// TODO(asdine) Add a mutex if proven necessary
-	var d encodedDocumentWithKey
+	// To avoid unnecessary allocations, we create the struct once and reuse
+	// it during each iteration.
+	var d lazilyDecodedDocument
 
 	it := t.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
 	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
-		item := it.Item()
-		d.EncodedDocument, err = item.ValueCopy(d.EncodedDocument[:0])
-		if err != nil {
-			return err
-		}
-
-		d.key = item.Key()
-		// r must be passed as pointer, not value, because passing a value to an interface
+		d.Reset()
+		d.item = it.Item()
+		// d must be passed as pointer, not value,
+		// because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
 		err = fn(&d)
 		if err != nil {
