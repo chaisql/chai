@@ -66,9 +66,10 @@ func (v Value) CastAsBool() (Value, error) {
 // Bool: returns 1 if true, 0 if false.
 // Double: cuts off the decimal and remaining numbers.
 // Duration: returns the number of nanoseconds in the duration.
-// Text: uses strconv.ParseFloat to determine the double value,
-// then casts it to an integer. It fails if the text doesn't
-// contain a valid float value.
+// Text: uses strconv.ParseInt to determine the integer value,
+// then casts it to an integer. If it fails uses strconv.ParseFloat
+// to determine the double value, then casts it to an integer
+// It fails if the text doesn't contain a valid float value.
 // Any other type is considered an invalid cast.
 func (v Value) CastAsInteger() (Value, error) {
 	switch v.Type {
@@ -84,11 +85,16 @@ func (v Value) CastAsInteger() (Value, error) {
 	case DurationValue:
 		return NewIntegerValue(int64(v.V.(time.Duration))), nil
 	case TextValue:
-		f, err := strconv.ParseFloat(string(v.V.([]byte)), 64)
+		i, err := strconv.ParseInt(v.V.(string), 10, 64)
 		if err != nil {
-			return Value{}, fmt.Errorf(`cannot cast %q as integer: %w`, v.V, err)
+			intErr := err
+			f, err := strconv.ParseFloat(v.V.(string), 64)
+			if err != nil {
+				return Value{}, fmt.Errorf(`cannot cast %q as integer: %w`, v.V, intErr)
+			}
+			i = int64(f)
 		}
-		return NewIntegerValue(int64(f)), nil
+		return NewIntegerValue(i), nil
 	}
 
 	return Value{}, fmt.Errorf("cannot cast %s as integer", v.Type)
