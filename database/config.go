@@ -48,27 +48,21 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	tp, err := v.ConvertToInt64()
-	if err != nil {
-		return err
-	}
+	tp := v.V.(int64)
 	f.Type = document.ValueType(tp)
 
 	v, err = d.GetByField("is_primary_key")
 	if err != nil {
 		return err
 	}
-	f.IsPrimaryKey, err = v.ConvertToBool()
-	if err != nil {
-		return err
-	}
+	f.IsPrimaryKey = v.V.(bool)
 
 	v, err = d.GetByField("is_not_null")
 	if err != nil {
 		return err
 	}
-	f.IsNotNull, err = v.ConvertToBool()
-	return err
+	f.IsNotNull = v.V.(bool)
+	return nil
 }
 
 type TableInfo struct {
@@ -112,20 +106,13 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	b, err := v.ConvertToBytes()
-	if err != nil {
-		return err
-	}
-	copy(ti.storeID[:], b)
+	copy(ti.storeID[:], v.V.([]byte))
 
 	v, err = d.GetByField("field_constraints")
 	if err != nil {
 		return err
 	}
-	ar, err := v.ConvertToArray()
-	if err != nil {
-		return err
-	}
+	ar := v.V.(document.Array)
 
 	l, err := document.ArrayLength(ar)
 	if err != nil {
@@ -135,11 +122,7 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	ti.FieldConstraints = make([]FieldConstraint, l)
 
 	return ar.Iterate(func(i int, value document.Value) error {
-		doc, err := value.ConvertToDocument()
-		if err != nil {
-			return err
-		}
-		return ti.FieldConstraints[i].ScanDocument(doc)
+		return ti.FieldConstraints[i].ScanDocument(v.V.(document.Document))
 	})
 }
 
@@ -335,28 +318,19 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	i.Unique, err = v.ConvertToBool()
-	if err != nil {
-		return err
-	}
+	i.Unique = v.V.(bool)
 
 	v, err = d.GetByField("indexname")
 	if err != nil {
 		return err
 	}
-	i.IndexName, err = v.ConvertToString()
-	if err != nil {
-		return err
-	}
+	i.IndexName = string(v.V.([]byte))
 
 	v, err = d.GetByField("tablename")
 	if err != nil {
 		return err
 	}
-	i.TableName, err = v.ConvertToString()
-	if err != nil {
-		return err
-	}
+	i.TableName = string(v.V.([]byte))
 
 	v, err = d.GetByField("path")
 	if err != nil {
@@ -455,20 +429,10 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 }
 
 func arrayToValuePath(v document.Value) (document.ValuePath, error) {
-	ar, err := v.ConvertToArray()
-	if err != nil {
-		return nil, err
-	}
-
 	var path document.ValuePath
 
-	err = ar.Iterate(func(_ int, value document.Value) error {
-		p, err := value.ConvertToString()
-		if err != nil {
-			return err
-		}
-
-		path = append(path, p)
+	err := v.V.(document.Array).Iterate(func(_ int, value document.Value) error {
+		path = append(path, string(value.V.([]byte)))
 		return nil
 	})
 

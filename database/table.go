@@ -321,7 +321,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			return nil
 		}
 
-		v, err = v.ConvertTo(c.Type)
+		v, err = v.CastAs(c.Type)
 		if err != nil {
 			return err
 		}
@@ -361,7 +361,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			return nil
 		}
 
-		v, err = v.ConvertTo(c.Type)
+		v, err = v.CastAs(c.Type)
 		if err != nil {
 			return err
 		}
@@ -555,12 +555,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				return false, err
 			}
 
-			b, err := v.ConvertToBytes()
-			if err != nil {
-				return false, err
-			}
-
-			return bytes.Equal(b, tableName), nil
+			return bytes.Equal(v.V.([]byte), tableName), nil
 		}).
 		Iterate(func(d document.Document) error {
 			var opts IndexConfig

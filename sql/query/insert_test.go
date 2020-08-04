@@ -147,7 +147,7 @@ func TestInsertStmt(t *testing.T) {
 			INSERT INTO test
 			VALUES {
 				i: 10000000000, db: 21.21, b: true,
-				du: 127ns, bb: "blobValue", byt: "bytesValue",
+				du: 127ns, bb: "YmxvYlZhbHVlCg==", byt: "Ynl0ZXNWYWx1ZQ==",
 				t: "text", a: [1, "foo", true], d: {"foo": "bar"}
 			}`)
 		require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestInsertStmt(t *testing.T) {
 			"db": 21.21,
 			"b": true,
 			"du": "127ns",
-			"bb": "YmxvYlZhbHVl",
+			"bb": "YmxvYlZhbHVlCg==",
 			"byt": "Ynl0ZXNWYWx1ZQ==",
 			"t": "text",
 			"a": [1, "foo", true],
@@ -181,39 +181,36 @@ func TestInsertStmt(t *testing.T) {
 		}{
 			{"not null without type constraint", "NOT NULL", `{}`, `field "a" is required and must be not null`},
 
-			{"array", "ARRAY", `{a: "[1,2,3]"}`, `cannot convert "text" to "array"`},
 			{"array / not null with type constraint", "ARRAY NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`, `cannot convert "integer" to "array"`},
+			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`, `cannot cast integer as array`},
 
-			{"blob", "BLOB", `{a: true}`, `cannot convert "bool" to "bytes"`},
+			{"blob", "BLOB", `{a: true}`, `cannot cast bool as blob`},
 			{"blob / not null with type constraint", "BLOB NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`, `cannot convert "integer" to "bytes"`},
+			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`, `cannot cast integer as blob`},
 
 			{"bool / not null with type constraint", "BOOL NOT NULL", `{}`, `field "a" is required and must be not null`},
 
-			{"bytes", "BYTES", `{a: [1,2,3]}`, `cannot convert "array" to "bytes"`},
+			{"bytes", "BYTES", `{a: [1,2,3]}`, `cannot cast array as blob`},
 			{"bytes / not null with type constraint", "BYTES NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`, `cannot convert "integer" to "bytes"`},
+			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`, `cannot cast integer as blob`},
 
-			{"document", "DOCUMENT", `{a: "foo"}`, `cannot convert "text" to "document"`},
+			{"document", "DOCUMENT", `{"a": "foo"}`, `cannot cast "foo" as document: found "\x00", expected '{'`},
 			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`, `cannot convert "bool" to "document"`},
+			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`, `cannot cast bool as document`},
 
-			{"duration", "DURATION", `{a: "foo"}`, `cannot convert "foo" to "duration": time: invalid duration foo`},
+			{"duration", "DURATION", `{a: "foo"}`, `cannot cast "foo" as duration: time: invalid duration foo`},
 			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`, `type "array" incompatible with "integer"`},
+			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`, `cannot cast array as duration`},
 
-			{"double", "DOUBLE", `{a: "foo"}`, `cannot convert "text" to "double"`},
+			{"double", "DOUBLE", `{a: "foo"}`, `cannot cast "foo" as double: strconv.ParseFloat: parsing "foo": invalid syntax`},
 			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "double"`},
+			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`, `cannot cast array as double`},
 
-			{"integer", "INTEGER", `{a: "foo"}`, `cannot convert "text" to "integer": type "text" incompatible with "integer"`},
+			{"integer", "INTEGER", `{a: "foo"}`, `cannot cast "foo" as integer: strconv.ParseFloat: parsing "foo": invalid syntax`},
 			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot convert "array" to "integer": type "array" incompatible with "integer"`},
+			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot cast array as integer`},
 
-			{"text", "TEXT", `{a: [1,2,3]}`, `cannot convert "array" to "string"`},
 			{"text / not null with type constraint", "TEXT NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"text / not null with non-respected type constraint ", "TEXT NOT NULL", `{a: 42}`, `cannot convert "integer" to "string"`},
 		}
 
 		db, err := genji.Open(":memory:")

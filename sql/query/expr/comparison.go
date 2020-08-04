@@ -62,7 +62,7 @@ func (op eqOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 }
 
 func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.ConvertTo(pkType)
+	v, err := v.CastAs(pkType)
 	if err != nil {
 		return nil
 	}
@@ -136,7 +136,7 @@ func (op gtOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 }
 
 func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.ConvertTo(pkType)
+	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (op gteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Val
 }
 
 func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.ConvertTo(pkType)
+	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 }
 
 func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.ConvertTo(pkType)
+	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Val
 }
 
 func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.ConvertTo(pkType)
+	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
 	}
@@ -473,12 +473,7 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 		return falseLitteral, nil
 	}
 
-	arr, err := b.ConvertToArray()
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	ok, err := document.ArrayContains(arr, a)
+	ok, err := document.ArrayContains(b.V.(document.Array), a)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -494,13 +489,8 @@ func (op inOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 		return errors.New("IN operator takes an array")
 	}
 
-	a, err := v.ConvertToArray()
-	if err != nil {
-		return err
-	}
-
 	var eq eqOp
-	return a.Iterate(func(i int, value document.Value) error {
+	return v.V.(document.Array).Iterate(func(i int, value document.Value) error {
 		return eq.IterateIndex(idx, tb, value, fn)
 	})
 }
@@ -513,13 +503,9 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 	}
 
 	var d msgpack.EncodedDocument
-	arr, err := v.ConvertToArray()
-	if err != nil {
-		return err
-	}
 
-	return arr.Iterate(func(i int, value document.Value) error {
-		val, err := value.ConvertTo(pkType)
+	return v.V.(document.Array).Iterate(func(i int, value document.Value) error {
+		val, err := value.CastAs(pkType)
 		if err != nil {
 			return nil
 		}

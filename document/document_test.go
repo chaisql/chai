@@ -448,16 +448,16 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err = doc.GetByField("o")
 		require.NoError(t, err)
-		d, err := v.ConvertToDocument()
-		require.NoError(t, err)
+		d, ok := v.V.(document.Document)
+		require.True(t, ok)
 		v, err = d.GetByField("a")
 		require.NoError(t, err)
 		require.EqualValues(t, 0, v.V.(int64))
 
 		v, err = doc.GetByField("t")
 		require.NoError(t, err)
-		a, err := v.ConvertToArray()
-		require.NoError(t, err)
+		a, ok := v.V.(document.Array)
+		require.True(t, ok)
 		var count int
 		err = a.Iterate(func(i int, v document.Value) error {
 			count++

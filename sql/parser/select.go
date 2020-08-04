@@ -213,12 +213,12 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
 		}
 
-		offset, err := v.ConvertToInt64()
+		v, err = v.CastAsInteger()
 		if err != nil {
 			return nil, err
 		}
 
-		t = planner.NewOffsetNode(t, int(offset))
+		t = planner.NewOffsetNode(t, int(v.V.(int64)))
 	}
 
 	if cfg.LimitExpr != nil {
@@ -231,12 +231,12 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
 		}
 
-		limit, err := v.ConvertToInt64()
+		v, err = v.CastAsInteger()
 		if err != nil {
 			return nil, err
 		}
 
-		t = planner.NewLimitNode(t, int(limit))
+		t = planner.NewLimitNode(t, int(v.V.(int64)))
 	}
 
 	t = planner.NewProjectionNode(t, cfg.ProjectionExprs, cfg.TableName)

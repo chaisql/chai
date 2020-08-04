@@ -168,7 +168,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 	}
 
 	if v.Type.IsNumber() {
-		v, err = v.ConvertTo(document.DoubleValue)
+		v, err = v.CastAsDouble()
 		if err != nil {
 			return err
 		}

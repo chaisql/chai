@@ -61,7 +61,7 @@ func TestCastAs(t *testing.T) {
 			{boolV, NewIntegerValue(1), false},
 			{NewBoolValue(false), NewIntegerValue(0), false},
 			{integerV, integerV, false},
-			{durationV, Value{}, true},
+			{durationV, NewIntegerValue(int64(3 * time.Second)), false},
 			{doubleV, integerV, false},
 			{textV, Value{}, true},
 			{NewTextValue("10"), integerV, false},

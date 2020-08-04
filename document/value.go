@@ -319,14 +319,14 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	}
 
 	if a.Type == BoolValue {
-		a, err = a.ConvertTo(IntegerValue)
+		a, err = a.CastAs(IntegerValue)
 		if err != nil {
 			return
 		}
 	}
 
 	if b.Type == BoolValue {
-		b, err = b.ConvertTo(IntegerValue)
+		b, err = b.CastAs(IntegerValue)
 		if err != nil {
 			return
 		}
@@ -338,18 +338,20 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 			return
 		}
 		if operator != '&' && operator != '|' && operator != '^' {
-			return res.ConvertTo(DurationValue)
+			return NewDurationValue(time.Duration(res.V.(int64))), nil
 		}
 
 		return
 	}
 
-	if a.Type.IsFloat() || b.Type.IsFloat() {
-		return calculateFloats(a, b, operator)
-	}
+	if a.Type.IsNumber() && b.Type.IsNumber() {
+		if a.Type.IsFloat() || b.Type.IsFloat() {
+			return calculateFloats(a, b, operator)
+		}
 
-	if a.Type.IsInteger() || b.Type.IsInteger() {
-		return calculateIntegers(a, b, operator)
+		if a.Type.IsInteger() || b.Type.IsInteger() {
+			return calculateIntegers(a, b, operator)
+		}
 	}
 
 	return NewNullValue(), nil
@@ -380,15 +382,17 @@ func convertNumberToInt64(v Value) (int64, error) {
 func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 	var xa, xb int64
 
-	xa, err = a.ConvertToInt64()
+	ia, err := a.CastAsInteger()
 	if err != nil {
 		return NewNullValue(), nil
 	}
+	xa = ia.V.(int64)
 
-	xb, err = b.ConvertToInt64()
+	ib, err := b.CastAsInteger()
 	if err != nil {
 		return NewNullValue(), nil
 	}
+	xb = ib.V.(int64)
 
 	var xr int64
 
@@ -445,15 +449,17 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 	var xa, xb float64
 
-	xa, err = a.ConvertToFloat64()
+	fa, err := a.CastAsDouble()
 	if err != nil {
 		return NewNullValue(), nil
 	}
+	xa = fa.V.(float64)
 
-	xb, err = b.ConvertToFloat64()
+	fb, err := b.CastAsDouble()
 	if err != nil {
 		return NewNullValue(), nil
 	}
+	xb = fb.V.(float64)
 
 	switch operator {
 	case '+':

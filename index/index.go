@@ -133,12 +133,12 @@ func EmptyPivot(t document.ValueType) *Pivot {
 // a way that can be compared for ordering and indexing
 func EncodeFieldToIndexValue(val document.Value) ([]byte, error) {
 	if val.V != nil && val.Type.IsNumber() && val.Type != document.DoubleValue {
-		x, err := val.ConvertToFloat64()
+		v, err := val.CastAsDouble()
 		if err != nil {
 			return nil, err
 		}
 
-		return encoding.EncodeFloat64(x), nil
+		return encoding.EncodeFloat64(v.V.(float64)), nil
 	}
 
 	return encoding.EncodeValue(val)

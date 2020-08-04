@@ -245,72 +245,72 @@ func scanValue(v Value, ref reflect.Value) error {
 
 	switch ref.Kind() {
 	case reflect.String:
-		x, err := v.ConvertToString()
+		v, err := v.CastAsText()
 		if err != nil {
 			return err
 		}
-		ref.SetString(x)
+		ref.SetString(string(v.V.([]byte)))
 		return nil
 	case reflect.Bool:
-		x, err := v.ConvertToBool()
+		v, err := v.CastAsBool()
 		if err != nil {
 			return err
 		}
-		ref.SetBool(x)
+		ref.SetBool(v.V.(bool))
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		x, err := v.ConvertToInt64()
+		v, err := v.CastAsInteger()
 		if err != nil {
 			return err
 		}
+		x := v.V.(int64)
 		if x < 0 {
 			return fmt.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
 		}
 		ref.SetUint(uint64(x))
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		x, err := v.ConvertToInt64()
+		v, err := v.CastAsInteger()
 		if err != nil {
 			return err
 		}
-		ref.SetInt(x)
+		ref.SetInt(v.V.(int64))
 		return nil
 	case reflect.Float32, reflect.Float64:
-		x, err := v.ConvertToFloat64()
+		v, err := v.CastAsDouble()
 		if err != nil {
 			return err
 		}
-		ref.SetFloat(x)
+		ref.SetFloat(v.V.(float64))
 		return nil
 	case reflect.Struct:
-		d, err := v.ConvertToDocument()
+		v, err := v.CastAsDocument()
 		if err != nil {
 			return err
 		}
 
-		return structScan(d, ref)
+		return structScan(v.V.(Document), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			x, err := v.ConvertToBytes()
-			if err != nil {
-				return err
+			if v.Type != TextValue && v.Type != BlobValue {
+				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type)
 			}
-			ref.SetBytes(x)
+			ref.SetBytes(v.V.([]byte))
 			return nil
 		}
-		a, err := v.ConvertToArray()
+		v, err := v.CastAsArray()
 		if err != nil {
 			return err
 		}
 
-		return sliceScan(a, ref.Addr())
+		return sliceScan(v.V.(Array), ref.Addr())
 	case reflect.Map:
-		d, err := v.ConvertToDocument()
+		v, err := v.CastAsDocument()
 		if err != nil {
 			return err
 		}
 
-		return mapScan(d, ref)
+		return mapScan(v.V.(Document), ref)
 	case reflect.Interface:
 		ref.Set(reflect.ValueOf(v.V))
 		return nil
