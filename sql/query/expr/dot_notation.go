@@ -54,9 +54,9 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 
 		switch v.Type {
 		case document.DocumentValue:
-			stack.Document, err = v.ConvertToDocument()
+			stack.Document = v.V.(document.Document)
 		case document.ArrayValue:
-			a, err = v.ConvertToArray()
+			a = v.V.(document.Array)
 		default:
 			return nullLitteral, nil
 		}

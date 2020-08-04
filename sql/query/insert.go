@@ -2,6 +2,7 @@ package query
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -59,12 +60,11 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) 
 			return res, err
 		}
 
-		d, err := v.ConvertToDocument()
-		if err != nil {
-			return res, err
+		if v.Type != document.DocumentValue {
+			return res, fmt.Errorf("expected document, got %s", v.Type)
 		}
 
-		res.LastInsertKey, err = t.Insert(d)
+		res.LastInsertKey, err = t.Insert(v.V.(document.Document))
 		if err != nil {
 			return res, err
 		}
@@ -89,13 +89,12 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack expr.EvalStack) (
 
 		// each document must be a list of expressions
 		// (e1, e2, e3, ...) or [e1, e2, e2, ....]
-		vlist, err := v.ConvertToArray()
-		if err != nil {
-			return res, err
+		if v.Type != document.ArrayValue {
+			return res, fmt.Errorf("expected array, got %s", v.Type)
 		}
 
 		// iterate over each value
-		vlist.Iterate(func(i int, v document.Value) error {
+		v.V.(document.Array).Iterate(func(i int, v document.Value) error {
 			// get the field name
 			fieldName := stmt.FieldNames[i]
 

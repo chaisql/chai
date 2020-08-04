@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
+	"time"
 )
 
 // NewFromJSON creates a document from a JSON object.
@@ -28,29 +28,13 @@ func (v Value) MarshalJSON() ([]byte, error) {
 
 	switch v.Type {
 	case DocumentValue:
-		d, err := v.ConvertToDocument()
-		if err != nil {
-			return nil, err
-		}
-		return jsonDocument{d}.MarshalJSON()
+		return jsonDocument{v.V.(Document)}.MarshalJSON()
 	case ArrayValue:
-		a, err := v.ConvertToArray()
-		if err != nil {
-			return nil, err
-		}
-		return jsonArray{a}.MarshalJSON()
+		return jsonArray{v.V.(Array)}.MarshalJSON()
 	case TextValue:
-		s, err := v.ConvertToString()
-		if err != nil {
-			return nil, err
-		}
-		x = s
+		x = string(v.V.([]byte))
 	case DurationValue:
-		d, err := v.ConvertToDuration()
-		if err != nil {
-			return nil, err
-		}
-		x = d.String()
+		x = v.V.(time.Duration).String()
 	default:
 		x = v.V
 	}

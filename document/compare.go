@@ -174,16 +174,18 @@ func compareBytes(op operator, l, r Value) (bool, error) {
 }
 
 func compareIntegers(op operator, l, r Value) (bool, error) {
-	// integer OP integer
-	ai, err := l.ConvertToInt64()
+	l, err := l.CastAsInteger()
+	if err != nil {
+		return false, err
+	}
+	r, err = r.CastAsInteger()
 	if err != nil {
 		return false, err
 	}
 
-	bi, err := r.ConvertToInt64()
-	if err != nil {
-		return false, err
-	}
+	// integer OP integer
+	ai := l.V.(int64)
+	bi := r.V.(int64)
 
 	var ok bool
 
@@ -204,15 +206,17 @@ func compareIntegers(op operator, l, r Value) (bool, error) {
 }
 
 func compareNumbers(op operator, l, r Value) (bool, error) {
-	af, err := l.ConvertToFloat64()
+	l, err := l.CastAsDouble()
+	if err != nil {
+		return false, err
+	}
+	r, err = r.CastAsDouble()
 	if err != nil {
 		return false, err
 	}
 
-	bf, err := r.ConvertToFloat64()
-	if err != nil {
-		return false, err
-	}
+	af := l.V.(float64)
+	bf := r.V.(float64)
 
 	var ok bool
 
@@ -239,18 +243,11 @@ func compareDocuments(op operator, l, r Value) (bool, error) {
 		return false, nil
 	}
 
-	ld, err := l.ConvertToDocument()
-	if err != nil {
-		return false, err
-	}
-
-	rd, err := r.ConvertToDocument()
-	if err != nil {
-		return false, err
-	}
+	ld := l.V.(Document)
+	rd := r.V.(Document)
 
 	var lsize, rsize int
-	err = ld.Iterate(func(field string, lv Value) error {
+	err := ld.Iterate(func(field string, lv Value) error {
 		lsize++
 		return nil
 	})
@@ -302,15 +299,8 @@ func compareDocuments(op operator, l, r Value) (bool, error) {
 }
 
 func compareArrays(op operator, l, r Value) (bool, error) {
-	la, err := l.ConvertToArray()
-	if err != nil {
-		return false, err
-	}
-
-	ra, err := r.ConvertToArray()
-	if err != nil {
-		return false, err
-	}
+	la := l.V.(Array)
+	ra := r.V.(Array)
 
 	var i, j int
 

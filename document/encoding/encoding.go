@@ -208,35 +208,15 @@ func DecodeFloat64(buf []byte) (float64, error) {
 func EncodeValue(v document.Value) ([]byte, error) {
 	switch v.Type {
 	case document.DocumentValue:
-		d, err := v.ConvertToDocument()
-		if err != nil {
-			return nil, err
-		}
-		return msgpack.EncodeDocument(d)
+		return msgpack.EncodeDocument(v.V.(document.Document))
 	case document.ArrayValue:
-		a, err := v.ConvertToArray()
-		if err != nil {
-			return nil, err
-		}
-		return msgpack.EncodeArray(a)
+		return msgpack.EncodeArray(v.V.(document.Array))
 	case document.BlobValue:
-		x, err := v.ConvertToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return x, nil
+		return v.V.([]byte), nil
 	case document.TextValue:
-		x, err := v.ConvertToString()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeString(x), nil
+		return EncodeString(string(v.V.([]byte))), nil
 	case document.BoolValue:
-		x, err := v.ConvertToBool()
-		if err != nil {
-			return nil, err
-		}
-		return EncodeBool(x), nil
+		return EncodeBool(v.V.(bool)), nil
 	case document.IntegerValue:
 		return EncodeInt64(v.V.(int64)), nil
 	case document.DoubleValue:

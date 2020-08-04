@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
@@ -16,7 +15,6 @@ var numericFuncs = []struct {
 }{
 	{"integer", func(x interface{}) document.Value { return document.NewIntegerValue(int64(x.(int))) }},
 	{"double", func(x interface{}) document.Value { return document.NewDoubleValue(float64(x.(int))) }},
-	{"duration", func(x interface{}) document.Value { return document.NewDurationValue(time.Duration(int64(x.(int)))) }},
 }
 
 var textFuncs = []struct {
