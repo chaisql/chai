@@ -320,18 +320,8 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		return NewNullValue(), nil
 	}
 
-	if a.Type == BoolValue {
-		a, err = a.CastAs(IntegerValue)
-		if err != nil {
-			return
-		}
-	}
-
-	if b.Type == BoolValue {
-		b, err = b.CastAs(IntegerValue)
-		if err != nil {
-			return
-		}
+	if a.Type == BoolValue || b.Type == BoolValue {
+		return NewNullValue(), nil
 	}
 
 	if a.Type == DurationValue && b.Type == DurationValue {
