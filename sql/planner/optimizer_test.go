@@ -102,25 +102,25 @@ func TestPrecalculateExprRule(t *testing.T) {
 			expr.IntegerValue(3),
 		},
 		{
-			"operator with two constant operands: 3 + true -> 4",
-			expr.Add(expr.IntegerValue(3), expr.BoolValue(true)),
-			expr.IntegerValue(4),
+			"operator with two constant operands: 3 + 2.4 -> 5.4",
+			expr.Add(expr.IntegerValue(3), expr.DoubleValue(2.4)),
+			expr.DoubleValue(5.4),
 		},
 		{
-			"operator with constant nested operands: 3 > true - 40 -> true",
-			expr.Gt(expr.IntegerValue(3), expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))),
+			"operator with constant nested operands: 3 > 1 - 40 -> true",
+			expr.Gt(expr.DoubleValue(3), expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))),
 			expr.BoolValue(true),
 		},
 		{
-			"constant sub-expr: a > true - 40 -> a > -39",
-			expr.Gt(expr.FieldSelector{"a"}, expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))),
+			"constant sub-expr: a > 1 - 40 -> a > -39",
+			expr.Gt(expr.FieldSelector{"a"}, expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))),
 			expr.Gt(expr.FieldSelector{"a"}, expr.DoubleValue(-39)),
 		},
 		{
-			"non-constant expr list: [a, true - 40] -> [a, -39]",
+			"non-constant expr list: [a, 1 - 40] -> [a, -39]",
 			expr.LiteralExprList{
 				expr.FieldSelector([]string{"a"}),
-				expr.Sub(expr.BoolValue(true), expr.DoubleValue(40)),
+				expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40)),
 			},
 			expr.LiteralExprList{
 				expr.FieldSelector([]string{"a"}),
@@ -128,10 +128,10 @@ func TestPrecalculateExprRule(t *testing.T) {
 			},
 		},
 		{
-			"constant expr list: [3, true - 40] -> array([3, 40])",
+			"constant expr list: [3, 1 - 40] -> array([3, -39])",
 			expr.LiteralExprList{
 				expr.IntegerValue(3),
-				expr.Sub(expr.BoolValue(true), expr.DoubleValue(40)),
+				expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40)),
 			},
 			expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer().
 				Append(document.NewIntegerValue(3)).
@@ -141,7 +141,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
 			expr.KVPairs{
 				{K: "a", V: expr.FieldSelector{"d"}},
-				{K: "b", V: expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))},
+				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
 			},
 			expr.KVPairs{
 				{K: "a", V: expr.FieldSelector{"d"}},
@@ -152,7 +152,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 			`constant kvpair: {"a": 3, "b": 1 - 40} -> document({"a": 3, "b": -39})`,
 			expr.KVPairs{
 				{K: "a", V: expr.IntegerValue(3)},
-				{K: "b", V: expr.Sub(expr.BoolValue(true), expr.DoubleValue(40))},
+				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
 			},
 			expr.LiteralValue(document.NewDocumentValue(document.NewFieldBuffer().
 				Add("a", document.NewIntegerValue(3)).
@@ -165,7 +165,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.PrecalculateExprRule(planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.e)))
 			require.NoError(t, err)
-			require.Equal(t, res.String(), planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.expected)).String())
+			require.Equal(t, planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.expected)).String(), res.String())
 		})
 	}
 }
