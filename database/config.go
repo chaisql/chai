@@ -262,6 +262,19 @@ func (t *tableInfoStore) ListTables() []string {
 	return names
 }
 
+// GetTableInfo returns a copy of all the table information.
+func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	ti := make(map[string]TableInfo, len(t.tableInfos))
+	for k, v := range t.tableInfos {
+		ti[k] = v
+	}
+
+	return ti
+}
+
 func (t *tableInfoStore) generateStoreID() [6]byte {
 	t.mu.RLock()
 	defer t.mu.RUnlock()

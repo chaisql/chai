@@ -18,11 +18,11 @@ func TestArrayContains(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = ArrayContains(arr, NewBlobValue([]byte("foo")))
+	ok, err = ArrayContains(arr, NewTextValue("foo"))
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = ArrayContains(arr, NewBlobValue([]byte("bar")))
+	ok, err = ArrayContains(arr, NewTextValue("bar"))
 	require.NoError(t, err)
 	require.False(t, ok)
 }
@@ -36,7 +36,7 @@ func TestSortArray(t *testing.T) {
 		{"empty array", `[]`, `[]`},
 		{"numbers", `[1.4,3,2.1,-5]`, `[-5,1.4,2.1,3]`},
 		{"text", `["foo","bar",""]`, `["","bar","foo"]`},
-		{"arrays", `[[1, 2],[-1,10],[]]`, `[[],[-1,10],[1,2]]`},
+		{"arrays", `[[1, 2],[-1,10],[]]`, `[[1,2],[-1,10],[]]`},
 		{"documents", `[{"z":10},{"a":40},{}]`, `[{"z":10},{"a":40},{}]`},
 		{"mixed", `["foo",["a"],{},null,true,10]`, `[null,true,10,"foo",["a"],{}]`},
 	}

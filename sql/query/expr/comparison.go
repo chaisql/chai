@@ -36,13 +36,13 @@ func Eq(a, b Expr) Expr {
 var errStop = errors.New("errStop")
 
 func (op eqOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
-		ok, err := v.IsEqual(val)
-		if err != nil {
-			return err
-		}
+	pivot, err := index.NewPivot(v)
+	if err != nil {
+		return err
+	}
 
-		if ok {
+	err = idx.AscendGreaterOrEqual(pivot, func(val, key []byte) error {
+		if bytes.Equal(pivot.EncodedValue, val) {
 			r, err := tb.GetDocument(key)
 			if err != nil {
 				return err
@@ -110,13 +110,13 @@ func Gt(a, b Expr) Expr {
 }
 
 func (op gtOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
-		ok, err := v.IsEqual(val)
-		if err != nil {
-			return err
-		}
+	pivot, err := index.NewPivot(v)
+	if err != nil {
+		return err
+	}
 
-		if ok {
+	err = idx.AscendGreaterOrEqual(pivot, func(val, key []byte) error {
+		if bytes.Equal(pivot.EncodedValue, val) {
 			return nil
 		}
 
@@ -183,7 +183,12 @@ func Gte(a, b Expr) Expr {
 }
 
 func (op gteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(&index.Pivot{Value: v}, func(val document.Value, key []byte) error {
+	pivot, err := index.NewPivot(v)
+	if err != nil {
+		return err
+	}
+
+	err = idx.AscendGreaterOrEqual(pivot, func(val, key []byte) error {
 		r, err := tb.GetDocument(key)
 		if err != nil {
 			return err
@@ -244,13 +249,13 @@ func Lt(a, b Expr) Expr {
 }
 
 func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
-		ok, err := v.IsLesserThanOrEqual(val)
-		if err != nil {
-			return err
-		}
+	enc, err := key.EncodeValue(v)
+	if err != nil {
+		return err
+	}
 
-		if ok {
+	err = idx.AscendGreaterOrEqual(&index.Pivot{Type: v.Type}, func(val, key []byte) error {
+		if bytes.Compare(enc, val) <= 0 {
 			return errStop
 		}
 
@@ -317,13 +322,13 @@ func Lte(a, b Expr) Expr {
 }
 
 func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(index.EmptyPivot(v.Type), func(val document.Value, key []byte) error {
-		ok, err := v.IsLesserThan(val)
-		if err != nil {
-			return err
-		}
+	enc, err := key.EncodeValue(v)
+	if err != nil {
+		return err
+	}
 
-		if ok {
+	err = idx.AscendGreaterOrEqual(&index.Pivot{Type: v.Type}, func(val, key []byte) error {
+		if bytes.Compare(enc, val) < 0 {
 			return errStop
 		}
 
