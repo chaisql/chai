@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
-	"github.com/genjidb/genji/index"
+	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -117,7 +117,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// if the same with or without indexes.
 		// To achieve that, the value must be encoded using the same method
 		// as what the index package would do.
-		value, err := index.EncodeFieldToIndexValue(v)
+		value, err := key.EncodeValue(v)
 		if err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// see index package for more info)
 		// we will prepend the encoded value with one byte
 		// representing the type of the value.
-		value = append([]byte{byte(index.NewTypeFromValueType(v.Type))}, value...)
+		value = append([]byte{byte(v.Type)}, value...)
 
 		data, err := msgpack.EncodeDocument(d)
 		if err != nil {

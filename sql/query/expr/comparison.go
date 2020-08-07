@@ -7,10 +7,10 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
+	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
@@ -67,7 +67,7 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return nil
 	}
 
-	data, err := encoding.EncodeValue(v)
+	data, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 	var d msgpack.EncodedDocument
 
-	data, err := encoding.EncodeValue(v)
+	data, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 
 	var d msgpack.EncodedDocument
 
-	data, err := encoding.EncodeValue(v)
+	data, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 	var d msgpack.EncodedDocument
 
-	data, err := encoding.EncodeValue(v)
+	data, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 
 	var d msgpack.EncodedDocument
 
-	data, err := encoding.EncodeValue(v)
+	data, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
@@ -510,7 +510,7 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 			return nil
 		}
 
-		data, err := encoding.EncodeValue(val)
+		data, err := key.EncodeValue(val)
 		if err != nil {
 			return err
 		}

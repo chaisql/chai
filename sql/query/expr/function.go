@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/key"
 )
 
 var functions = map[string]func(args ...Expr) (Expr, error){
@@ -42,7 +42,7 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 		return pk.Path.GetValue(ctx.Document)
 	}
 
-	return encoding.DecodeValue(document.IntegerValue, ctx.Document.(document.Keyer).Key())
+	return key.DecodeValue(document.IntegerValue, ctx.Document.(document.Keyer).Key())
 }
 
 // IsEqual compares this expression with the other expression and returns
