@@ -206,7 +206,7 @@ func TestInsertStmt(t *testing.T) {
 			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`, `field "a" is required and must be not null`},
 			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`, `cannot cast array as double`},
 
-			{"integer", "INTEGER", `{a: "foo"}`, `cannot cast "foo" as integer: strconv.ParseFloat: parsing "foo": invalid syntax`},
+			{"integer", "INTEGER", `{a: "foo"}`, `cannot cast "foo" as integer: strconv.ParseInt: parsing "foo": invalid syntax`},
 			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`, `field "a" is required and must be not null`},
 			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot cast array as integer`},
 

@@ -3,6 +3,7 @@ package index
 import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/key"
 )
 
 // UniqueIndex is an implementation that associates a value with a exactly one key.
@@ -13,21 +14,21 @@ type UniqueIndex struct {
 
 // Set associates a value with exactly one key.
 // If the association already exists, it returns an error.
-func (i *UniqueIndex) Set(val document.Value, key []byte) error {
-	v, err := EncodeFieldToIndexValue(val)
+func (i *UniqueIndex) Set(v document.Value, k []byte) error {
+	enc, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, val.Type, i.name)
+	st, err := getOrCreateStore(i.tx, v.Type, i.name)
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, len(v)+2)
-	buf = append(buf, uint8(NewTypeFromValueType(val.Type)))
+	buf := make([]byte, 0, len(enc)+2)
+	buf = append(buf, uint8(v.Type))
 	buf = append(buf, separator)
-	buf = append(buf, v...)
+	buf = append(buf, enc...)
 
 	_, err = st.Get(buf)
 	if err == nil {
@@ -37,25 +38,25 @@ func (i *UniqueIndex) Set(val document.Value, key []byte) error {
 		return err
 	}
 
-	return st.Put(buf, key)
+	return st.Put(buf, k)
 }
 
 // Delete all the references to the key from the index.
-func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
-	v, err := EncodeFieldToIndexValue(val)
+func (i *UniqueIndex) Delete(v document.Value, k []byte) error {
+	enc, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, val.Type, i.name)
+	st, err := getOrCreateStore(i.tx, v.Type, i.name)
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, len(v)+2)
-	buf = append(buf, uint8(NewTypeFromValueType(val.Type)))
+	buf := make([]byte, 0, len(enc)+2)
+	buf = append(buf, uint8(v.Type))
 	buf = append(buf, separator)
-	buf = append(buf, v...)
+	buf = append(buf, enc...)
 
 	return st.Delete(buf)
 }
@@ -63,10 +64,10 @@ func (i *UniqueIndex) Delete(val document.Value, key []byte) error {
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
-func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
-		for t := Null; t <= Bytes; t++ {
+		for t := document.NullValue; t <= document.BlobValue; t++ {
 			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
@@ -80,18 +81,12 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 			var v []byte
 			for it.Seek(nil); it.Valid(); it.Next() {
 				item := it.Item()
-				f, err := decodeIndexValueToField(t, item.Key()[2:])
-				if err != nil {
-					it.Close()
-					return err
-				}
-
 				v, err = item.ValueCopy(v[:0])
 				if err != nil {
 					it.Close()
 					return err
 				}
-				err = fn(f, v)
+				err = fn(item.Key()[2:], v)
 				if err != nil {
 					it.Close()
 					return err
@@ -106,7 +101,7 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
+	st, err := getStore(i.tx, pivot.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -114,24 +109,13 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 		return nil
 	}
 
-	var data []byte
-	if !pivot.empty {
-		data, err = EncodeFieldToIndexValue(pivot.Value)
-		if err != nil {
-			return err
-		}
-	}
-
-	seek := make([]byte, 0, len(data)+2)
-	seek = append(seek, uint8(NewTypeFromValueType(pivot.Value.Type)))
+	seek := make([]byte, 0, len(pivot.EncodedValue)+2)
+	seek = append(seek, uint8(pivot.Type))
 	seek = append(seek, separator)
-	seek = append(seek, data...)
+	seek = append(seek, pivot.EncodedValue...)
 
 	it := st.NewIterator(engine.IteratorConfig{})
-	// https://github.com/tinygo-org/tinygo/issues/1033
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
 	var pk []byte
 	for it.Seek(seek); it.Valid(); it.Next() {
@@ -142,12 +126,7 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 			return err
 		}
 
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), item.Key()[2:])
-		if err != nil {
-			return err
-		}
-
-		err = fn(f, pk)
+		err = fn(item.Key()[2:], pk)
 		if err != nil {
 			return err
 		}
@@ -159,10 +138,10 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Va
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
-func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
-		for t := Bytes; t >= Null; t-- {
+		for t := document.BlobValue; t >= document.NullValue; t-- {
 			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
@@ -177,19 +156,13 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 			for it.Seek(nil); it.Valid(); it.Next() {
 				item := it.Item()
 
-				f, err := decodeIndexValueToField(t, item.Key()[2:])
-				if err != nil {
-					it.Close()
-					return err
-				}
-
 				v, err = item.ValueCopy(v[:0])
 				if err != nil {
 					it.Close()
 					return err
 				}
 
-				err = fn(f, v)
+				err = fn(item.Key()[2:], v)
 				if err != nil {
 					it.Close()
 					return err
@@ -204,7 +177,7 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
+	st, err := getStore(i.tx, pivot.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -212,25 +185,14 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 		return nil
 	}
 
-	var data []byte
-	if !pivot.empty {
-		data, err = EncodeFieldToIndexValue(pivot.Value)
-		if err != nil {
-			return err
-		}
-	}
-
-	seek := make([]byte, 0, len(data)+3)
-	seek = append(seek, uint8(NewTypeFromValueType(pivot.Value.Type)))
+	seek := make([]byte, 0, len(pivot.EncodedValue)+3)
+	seek = append(seek, uint8(pivot.Type))
 	seek = append(seek, separator)
-	seek = append(seek, data...)
+	seek = append(seek, pivot.EncodedValue...)
 	seek = append(seek, 0xFF)
 
 	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
-	// https://github.com/tinygo-org/tinygo/issues/1033
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
 	var pk []byte
 	for it.Seek(seek); it.Valid(); it.Next() {
@@ -241,12 +203,7 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 			return err
 		}
 
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), item.Key()[2:])
-		if err != nil {
-			return err
-		}
-
-		err = fn(f, pk)
+		err = fn(item.Key()[2:], pk)
 		if err != nil {
 			return err
 		}
@@ -257,15 +214,12 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Valu
 
 // Truncate deletes all the index data.
 func (i *UniqueIndex) Truncate() error {
-	err := dropStore(i.tx, Float, i.name)
-	if err != nil {
-		return err
+	for t := document.NullValue; t <= document.BlobValue; t++ {
+		err := dropStore(i.tx, t, i.name)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = dropStore(i.tx, Bytes, i.name)
-	if err != nil {
-		return err
-	}
-
-	return dropStore(i.tx, Bool, i.name)
+	return nil
 }

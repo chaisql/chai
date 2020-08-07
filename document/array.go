@@ -32,6 +32,8 @@ func ArrayLength(a Array) (int, error) {
 	return len, err
 }
 
+var errStop = errors.New("stop")
+
 // ArrayContains iterates over a and returns whether v is equal to one of its values.
 func ArrayContains(a Array, v Value) (bool, error) {
 	var found bool

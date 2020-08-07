@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/index"
+	"github.com/genjidb/genji/key"
 	"github.com/stretchr/testify/require"
 )
 
@@ -271,8 +272,10 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
-			require.Equal(t, document.NewDoubleValue(float64(i)), val)
+		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(v, k []byte) error {
+			enc, err := key.EncodeValue(document.NewIntegerValue(int64(i)))
+			require.NoError(t, err)
+			require.Equal(t, enc, v)
 			i++
 			return nil
 		})
@@ -283,7 +286,7 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
+		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(val, key []byte) error {
 			i++
 			return nil
 		})
@@ -348,8 +351,10 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
-			require.Equal(t, document.NewDoubleValue(float64(i)), val)
+		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(v, k []byte) error {
+			enc, err := key.EncodeValue(document.NewIntegerValue(int64(i)))
+			require.NoError(t, err)
+			require.Equal(t, enc, v)
 			i++
 			return nil
 		})
@@ -360,8 +365,10 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(index.EmptyPivot(document.IntegerValue), func(val document.Value, key []byte) error {
-			require.Equal(t, document.NewDoubleValue(float64(i)), val)
+		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(v, k []byte) error {
+			enc, err := key.EncodeValue(document.NewIntegerValue(int64(i)))
+			require.NoError(t, err)
+			require.Equal(t, enc, v)
 			i++
 			return nil
 		})

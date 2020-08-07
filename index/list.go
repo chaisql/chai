@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/key"
 )
 
 // ListIndex is an implementation that associates a value with a list of keys.
@@ -15,41 +16,41 @@ type ListIndex struct {
 
 // Set associates a value with a key. It is possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
-func (i *ListIndex) Set(val document.Value, key []byte) error {
-	st, err := getOrCreateStore(i.tx, val.Type, i.name)
+func (i *ListIndex) Set(v document.Value, k []byte) error {
+	st, err := getOrCreateStore(i.tx, v.Type, i.name)
 	if err != nil {
 		return err
 	}
 
-	v, err := EncodeFieldToIndexValue(val)
+	enc, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, len(v)+len(key)+1)
-	buf = append(buf, v...)
+	buf := make([]byte, 0, len(enc)+len(k)+1)
+	buf = append(buf, enc...)
 	buf = append(buf, separator)
-	buf = append(buf, key...)
+	buf = append(buf, k...)
 
 	return st.Put(buf, nil)
 }
 
 // Delete all the references to the key from the index.
-func (i *ListIndex) Delete(val document.Value, key []byte) error {
-	v, err := EncodeFieldToIndexValue(val)
+func (i *ListIndex) Delete(v document.Value, k []byte) error {
+	enc, err := key.EncodeValue(v)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, val.Type, i.name)
+	st, err := getOrCreateStore(i.tx, v.Type, i.name)
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, len(v)+len(key)+1)
-	buf = append(buf, v...)
+	buf := make([]byte, 0, len(enc)+len(k)+1)
+	buf = append(buf, enc...)
 	buf = append(buf, separator)
-	buf = append(buf, key...)
+	buf = append(buf, k...)
 
 	return st.Delete(buf)
 }
@@ -57,10 +58,10 @@ func (i *ListIndex) Delete(val document.Value, key []byte) error {
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
-func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
-		for t := Null; t <= Bytes; t++ {
+		for t := document.NullValue; t <= document.BlobValue; t++ {
 			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
@@ -74,13 +75,7 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 				item := it.Item()
 				k := item.Key()
 				idx := bytes.LastIndexByte(k, separator)
-				f, err := decodeIndexValueToField(t, k[:idx])
-				if err != nil {
-					it.Close()
-					return err
-				}
-
-				err = fn(f, k[idx+1:])
+				err = fn(k[:idx], k[idx+1:])
 				if err != nil {
 					it.Close()
 					return err
@@ -95,7 +90,7 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
+	st, err := getStore(i.tx, pivot.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -103,31 +98,15 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 		return nil
 	}
 
-	var data []byte
-	if !pivot.empty {
-		data, err = EncodeFieldToIndexValue(pivot.Value)
-		if err != nil {
-			return err
-		}
-	}
-
 	it := st.NewIterator(engine.IteratorConfig{})
-	// https://github.com/tinygo-org/tinygo/issues/1033
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
-	for it.Seek(data); it.Valid(); it.Next() {
+	for it.Seek(pivot.EncodedValue); it.Valid(); it.Next() {
 		item := it.Item()
 		k := item.Key()
 
 		idx := bytes.LastIndexByte(k, separator)
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
-		if err != nil {
-			return err
-		}
-
-		err = fn(f, k[idx+1:])
+		err = fn(k[:idx], k[idx+1:])
 		if err != nil {
 			return err
 		}
@@ -139,10 +118,10 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val document.Valu
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
-func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value, key []byte) error) error {
+func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
 	// iterate over all stores in order
 	if pivot == nil {
-		for t := Bytes; t >= Null; t-- {
+		for t := document.BlobValue; t >= document.NullValue; t-- {
 			st, err := getStore(i.tx, t, i.name)
 			if err != nil {
 				return err
@@ -158,13 +137,7 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 				k := item.Key()
 
 				idx := bytes.LastIndexByte(k, separator)
-				f, err := decodeIndexValueToField(t, k[:idx])
-				if err != nil {
-					it.Close()
-					return err
-				}
-
-				err = fn(f, k[idx+1:])
+				err = fn(k[:idx], k[idx+1:])
 				if err != nil {
 					it.Close()
 					return err
@@ -181,7 +154,7 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 		return nil
 	}
 
-	st, err := getStore(i.tx, NewTypeFromValueType(pivot.Value.Type), i.name)
+	st, err := getStore(i.tx, pivot.Type, i.name)
 	if err != nil {
 		return err
 	}
@@ -189,36 +162,20 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 		return nil
 	}
 
-	var data []byte
-	if !pivot.empty {
-		data, err = EncodeFieldToIndexValue(pivot.Value)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(data) > 0 {
+	if len(pivot.EncodedValue) > 0 {
 		// ensure the pivot is bigger than the requested value so it doesn't get skipped.
-		data = append(data, separator, 0xFF)
+		pivot.EncodedValue = append(pivot.EncodedValue, separator, 0xFF)
 	}
 
 	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
-	// https://github.com/tinygo-org/tinygo/issues/1033
-	defer func() {
-		it.Close()
-	}()
+	defer it.Close()
 
-	for it.Seek(data); it.Valid(); it.Next() {
+	for it.Seek(pivot.EncodedValue); it.Valid(); it.Next() {
 		item := it.Item()
 		k := item.Key()
 
 		idx := bytes.LastIndexByte(k, separator)
-		f, err := decodeIndexValueToField(NewTypeFromValueType(pivot.Value.Type), k[:idx])
-		if err != nil {
-			return err
-		}
-
-		err = fn(f, k[idx+1:])
+		err = fn(k[:idx], k[idx+1:])
 		if err != nil {
 			return err
 		}
@@ -229,15 +186,12 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val document.Value,
 
 // Truncate deletes all the index data.
 func (i *ListIndex) Truncate() error {
-	err := dropStore(i.tx, Float, i.name)
-	if err != nil {
-		return err
+	for t := document.NullValue; t <= document.BlobValue; t++ {
+		err := dropStore(i.tx, t, i.name)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = dropStore(i.tx, Bytes, i.name)
-	if err != nil {
-		return err
-	}
-
-	return dropStore(i.tx, Bool, i.name)
+	return nil
 }

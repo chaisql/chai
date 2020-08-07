@@ -38,26 +38,28 @@ type ValueType uint8
 const (
 	NullValue ValueType = 0x1
 
-	BoolValue = 0x5
+	BoolValue ValueType = 0x5
 
 	// integer family: 0x10 to 0x1F
-	IntegerValue = 0x10
+	IntegerValue ValueType = 0x10
 
 	// double family: 0x20 to 0x2F
-	DoubleValue = 0x20
+	DoubleValue ValueType = 0x20
 
 	// time family: 0x30 to 0x3F
-	DurationValue = 0x30
+	DurationValue ValueType = 0x30
 
 	// string family: 0x40 to 0x4F
-	BlobValue = 0x40
-	TextValue = 0x41
+	TextValue ValueType = 0x40
 
-	// array family: 0x40 to 0x5F
-	ArrayValue = 0x50
+	// blob family: 0x50 to 0x5F
+	BlobValue ValueType = 0x50
 
-	// document family: 0x60 to 0x6F
-	DocumentValue = 0x60
+	// array family: 0x60 to 0x6F
+	ArrayValue ValueType = 0x60
+
+	// document family: 0x70 to 0x7F
+	DocumentValue ValueType = 0x70
 )
 
 func (t ValueType) String() string {
@@ -87,17 +89,7 @@ func (t ValueType) String() string {
 
 // IsNumber returns true if t is either an integer of a float.
 func (t ValueType) IsNumber() bool {
-	return t.IsInteger() || t.IsFloat() || t == DurationValue
-}
-
-// IsInteger returns true if t is a signed or unsigned integer of any size.
-func (t ValueType) IsInteger() bool {
-	return t == IntegerValue || t == DurationValue
-}
-
-// IsFloat returns true if t is a Double.
-func (t ValueType) IsFloat() bool {
-	return t == DoubleValue
+	return t == IntegerValue || t == DoubleValue
 }
 
 // A Value stores encoded data alongside its type.
@@ -337,11 +329,11 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	}
 
 	if a.Type.IsNumber() && b.Type.IsNumber() {
-		if a.Type.IsFloat() || b.Type.IsFloat() {
+		if a.Type == DoubleValue || b.Type == DoubleValue {
 			return calculateFloats(a, b, operator)
 		}
 
-		if a.Type.IsInteger() || b.Type.IsInteger() {
+		if a.Type == IntegerValue || b.Type == IntegerValue {
 			return calculateIntegers(a, b, operator)
 		}
 	}
