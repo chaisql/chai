@@ -8,10 +8,10 @@ import (
 	"strconv"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
+	"github.com/genjidb/genji/key"
 )
 
 // A Table represents a collection of documents.
@@ -357,7 +357,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 			return nil, err
 		}
 
-		return encoding.EncodeValue(v)
+		return key.EncodeValue(v)
 	}
 
 	docid, err := t.generateDocid()
@@ -365,7 +365,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	return encoding.EncodeInt64(docid), nil
+	return key.EncodeInt64(docid), nil
 }
 
 // this function looks up for the highest key in the table,
@@ -388,7 +388,7 @@ func (t *Table) generateDocid() (int64, error) {
 		it := t.Store.NewIterator(engine.IteratorConfig{Reverse: true})
 		it.Seek(nil)
 		if it.Valid() {
-			t.tx.db.tableDocids[t.name], err = encoding.DecodeInt64(it.Item().Key())
+			t.tx.db.tableDocids[t.name], err = key.DecodeInt64(it.Item().Key())
 			if err != nil {
 				it.Close()
 				return 0, err
@@ -427,7 +427,7 @@ func (t *Table) getSmallestAvailableDocid() (int64, error) {
 	var i int64 = 1
 
 	for it.Seek(nil); it.Valid(); it.Next() {
-		if !bytes.Equal(it.Item().Key(), encoding.EncodeInt64(i)) {
+		if !bytes.Equal(it.Item().Key(), key.EncodeInt64(i)) {
 			return i, nil
 		}
 		i++

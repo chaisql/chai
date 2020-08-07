@@ -1,11 +1,11 @@
-// Package encoding provides types and functions to encode and decode documents and values.
+// Package key provides types and functions to encode and decode keys.
 //
-// Encoding values
+// Encoding keys
 //
 // Each type is encoded in a way that allows ordering to be preserved. That way, if vA < vB,
 // where vA and vB are two unencoded values of the same type, then eA < eB, where eA and eB
 // are the respective encoded values of vA and vB.
-package encoding
+package key
 
 import (
 	"encoding/binary"
@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 )
 
 // EncodeString takes a string and returns its binary representation.
@@ -43,63 +42,6 @@ func DecodeBool(buf []byte) (bool, error) {
 	return buf[0] == 1, nil
 }
 
-// EncodeUint takes an uint and returns its binary representation.
-func EncodeUint(x uint) []byte {
-	return EncodeUint64(uint64(x))
-}
-
-// DecodeUint takes a byte slice and decodes it into a uint.
-func DecodeUint(buf []byte) (uint, error) {
-	x, err := DecodeUint64(buf)
-	return uint(x), err
-}
-
-// EncodeUint8 takes an uint8 and returns its binary representation.
-func EncodeUint8(x uint8) []byte {
-	return []byte{x}
-}
-
-// DecodeUint8 takes a byte slice and decodes it into a uint8.
-func DecodeUint8(buf []byte) (uint8, error) {
-	if len(buf) == 0 {
-		return 0, errors.New("cannot decode buffer to uint8")
-	}
-
-	return buf[0], nil
-}
-
-// EncodeUint16 takes an uint16 and returns its binary representation.
-func EncodeUint16(x uint16) []byte {
-	var buf [2]byte
-	binary.BigEndian.PutUint16(buf[:], x)
-	return buf[:]
-}
-
-// DecodeUint16 takes a byte slice and decodes it into a uint16.
-func DecodeUint16(buf []byte) (uint16, error) {
-	if len(buf) < 2 {
-		return 0, errors.New("cannot decode buffer to uint16")
-	}
-
-	return binary.BigEndian.Uint16(buf), nil
-}
-
-// EncodeUint32 takes an uint32 and returns its binary representation.
-func EncodeUint32(x uint32) []byte {
-	var buf [4]byte
-	binary.BigEndian.PutUint32(buf[:], x)
-	return buf[:]
-}
-
-// DecodeUint32 takes a byte slice and decodes it into a uint32.
-func DecodeUint32(buf []byte) (uint32, error) {
-	if len(buf) < 4 {
-		return 0, errors.New("cannot decode buffer to uint32")
-	}
-
-	return binary.BigEndian.Uint32(buf), nil
-}
-
 // EncodeUint64 takes an uint64 and returns its binary representation.
 func EncodeUint64(x uint64) []byte {
 	var buf [8]byte
@@ -114,57 +56,6 @@ func DecodeUint64(buf []byte) (uint64, error) {
 	}
 
 	return binary.BigEndian.Uint64(buf), nil
-}
-
-// EncodeInt takes an int and returns its binary representation.
-func EncodeInt(x int) []byte {
-	return EncodeInt64(int64(x))
-}
-
-// DecodeInt takes a byte slice and decodes it into an int.
-func DecodeInt(buf []byte) (int, error) {
-	x, err := DecodeInt64(buf)
-	return int(x), err
-}
-
-// EncodeInt8 takes an int8 and returns its binary representation.
-func EncodeInt8(x int8) []byte {
-	return []byte{uint8(x + math.MaxInt8 + 1)}
-}
-
-// DecodeInt8 takes a byte slice and decodes it into an int8.
-func DecodeInt8(buf []byte) (int8, error) {
-	return int8(buf[0] - math.MaxInt8 - 1), nil
-}
-
-// EncodeInt16 takes an int16 and returns its binary representation.
-func EncodeInt16(x int16) []byte {
-	var buf [2]byte
-
-	binary.BigEndian.PutUint16(buf[:], uint16(x)+math.MaxInt16+1)
-	return buf[:]
-}
-
-// DecodeInt16 takes a byte slice and decodes it into an int16.
-func DecodeInt16(buf []byte) (int16, error) {
-	x, err := DecodeUint16(buf)
-	x -= math.MaxInt16 + 1
-	return int16(x), err
-}
-
-// EncodeInt32 takes an int32 and returns its binary representation.
-func EncodeInt32(x int32) []byte {
-	var buf [4]byte
-
-	binary.BigEndian.PutUint32(buf[:], uint32(x)+math.MaxInt32+1)
-	return buf[:]
-}
-
-// DecodeInt32 takes a byte slice and decodes it into an int32.
-func DecodeInt32(buf []byte) (int32, error) {
-	x, err := DecodeUint32(buf)
-	x -= math.MaxInt32 + 1
-	return int32(x), err
 }
 
 // EncodeInt64 takes an int64 and returns its binary representation.
@@ -205,12 +96,10 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	return math.Float64frombits(x), nil
 }
 
+// EncodeValue encodes a value as a key.
+// It only works with scalars and doesn't support documents and arrays.
 func EncodeValue(v document.Value) ([]byte, error) {
 	switch v.Type {
-	case document.DocumentValue:
-		return msgpack.EncodeDocument(v.V.(document.Document))
-	case document.ArrayValue:
-		return msgpack.EncodeArray(v.V.(document.Array))
 	case document.BlobValue:
 		return v.V.([]byte), nil
 	case document.TextValue:
@@ -227,16 +116,12 @@ func EncodeValue(v document.Value) ([]byte, error) {
 		return nil, nil
 	}
 
-	return nil, errors.New("unknown type")
+	return nil, errors.New("cannot encode type " + v.Type.String() + " as key")
 }
 
 // DecodeValue takes some encoded data and decodes it to the target type t.
 func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	switch t {
-	case document.DocumentValue:
-		return document.NewDocumentValue(msgpack.EncodedDocument(data)), nil
-	case document.ArrayValue:
-		return document.NewArrayValue(msgpack.EncodedArray(data)), nil
 	case document.BlobValue:
 		return document.NewBlobValue(data), nil
 	case document.TextValue:
