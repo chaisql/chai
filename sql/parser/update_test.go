@@ -42,7 +42,7 @@ func TestParserUpdate(t *testing.T) {
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
 							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
-					),
+						),
 						"a.2.a", expr.IntegerValue(1),
 					),
 					"test",
