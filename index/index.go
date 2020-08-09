@@ -79,6 +79,7 @@ func buildIndexName(name []byte, t document.ValueType) []byte {
 // A Pivot is typed and can only be used to seek for values of the same type.
 type Pivot struct {
 	EncodedValue []byte
+	Value        document.Value
 	Type         document.ValueType
 }
 
@@ -91,6 +92,7 @@ func NewPivot(v document.Value) (*Pivot, error) {
 
 	return &Pivot{
 		EncodedValue: enc,
+		Value:        v,
 		Type:         v.Type,
 	}, nil
 }

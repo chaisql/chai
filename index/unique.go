@@ -76,23 +76,7 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte
 				continue
 			}
 
-			it := st.NewIterator(engine.IteratorConfig{})
-
-			var v []byte
-			for it.Seek(nil); it.Valid(); it.Next() {
-				item := it.Item()
-				v, err = item.ValueCopy(v[:0])
-				if err != nil {
-					it.Close()
-					return err
-				}
-				err = fn(item.Key()[2:], v)
-				if err != nil {
-					it.Close()
-					return err
-				}
-			}
-			err = it.Close()
+			err = i.iterate(nil, st, false, fn)
 			if err != nil {
 				return err
 			}
@@ -114,25 +98,7 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte
 	seek = append(seek, separator)
 	seek = append(seek, pivot.EncodedValue...)
 
-	it := st.NewIterator(engine.IteratorConfig{})
-	defer it.Close()
-
-	var pk []byte
-	for it.Seek(seek); it.Valid(); it.Next() {
-		item := it.Item()
-
-		pk, err = item.ValueCopy(pk[:0])
-		if err != nil {
-			return err
-		}
-
-		err = fn(item.Key()[2:], pk)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return i.iterate(seek, st, false, fn)
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
@@ -150,25 +116,7 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) 
 				continue
 			}
 
-			it := st.NewIterator(engine.IteratorConfig{Reverse: true})
-
-			var v []byte
-			for it.Seek(nil); it.Valid(); it.Next() {
-				item := it.Item()
-
-				v, err = item.ValueCopy(v[:0])
-				if err != nil {
-					it.Close()
-					return err
-				}
-
-				err = fn(item.Key()[2:], v)
-				if err != nil {
-					it.Close()
-					return err
-				}
-			}
-			err = it.Close()
+			err = i.iterate(nil, st, true, fn)
 			if err != nil {
 				return err
 			}
@@ -191,19 +139,25 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) 
 	seek = append(seek, pivot.EncodedValue...)
 	seek = append(seek, 0xFF)
 
-	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+	return i.iterate(seek, st, true, fn)
+}
+
+func (i *UniqueIndex) iterate(seek []byte, store engine.Store, reverse bool, fn func(val, key []byte) error) error {
+	var v []byte
+	var err error
+
+	it := store.NewIterator(engine.IteratorConfig{Reverse: reverse})
 	defer it.Close()
 
-	var pk []byte
 	for it.Seek(seek); it.Valid(); it.Next() {
 		item := it.Item()
 
-		pk, err = item.ValueCopy(pk[:0])
+		v, err = item.ValueCopy(v[:0])
 		if err != nil {
 			return err
 		}
 
-		err = fn(item.Key()[2:], pk)
+		err = fn(item.Key()[2:], v)
 		if err != nil {
 			return err
 		}
