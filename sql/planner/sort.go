@@ -117,10 +117,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// if the same with or without indexes.
 		// To achieve that, the value must be encoded using the same method
 		// as what the index package would do.
-		value, err := key.EncodeValue(v)
-		if err != nil {
-			return err
-		}
+		value := key.AppendValue(nil, v)
 
 		// to ensure ordering of values based on their types
 		// (i.e. booleans < numbers < text, ...,

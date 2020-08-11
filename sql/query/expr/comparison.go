@@ -67,7 +67,7 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return nil
 	}
 
-	data, err := key.EncodeValue(v)
+	data, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 	var d msgpack.EncodedDocument
 
-	data, err := key.EncodeValue(v)
+	data, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 
 	var d msgpack.EncodedDocument
 
-	data, err := key.EncodeValue(v)
+	data, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func Lt(a, b Expr) Expr {
 }
 
 func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	enc, err := key.EncodeValue(v)
+	enc, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 	var d msgpack.EncodedDocument
 
-	data, err := key.EncodeValue(v)
+	data, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func Lte(a, b Expr) Expr {
 }
 
 func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	enc, err := key.EncodeValue(v)
+	enc, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -355,7 +355,7 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 
 	var d msgpack.EncodedDocument
 
-	data, err := key.EncodeValue(v)
+	data, err := key.AppendValue(v)
 	if err != nil {
 		return err
 	}
@@ -515,7 +515,7 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 			return nil
 		}
 
-		data, err := key.EncodeValue(val)
+		data, err := key.AppendValue(val)
 		if err != nil {
 			return err
 		}
