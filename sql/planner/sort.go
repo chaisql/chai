@@ -7,7 +7,6 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -73,7 +72,8 @@ func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
 	}
 
 	for h.Len() > 0 {
-		err := fn(msgpack.EncodedDocument(heap.Pop(h).(heapNode).data))
+		node := heap.Pop(h).(heapNode)
+		err := fn(&(node.data))
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
 // Once the heap is filled entirely with the content of the table a stream is returned.
 // During iteration, the stream will pop the k-smallest or k-largest elements, depending on
 // the chosen sorting order (ASC or DESC).
-// This function is not memory efficient as it's loading the entire table in memory before
+// This function is not memory efficient as it's loading the entire stream in memory before
 // returning the k-smallest or k-largest elements.
 func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 	path := document.ValuePath(it.sortField)
@@ -117,24 +117,35 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// if the same with or without indexes.
 		// To achieve that, the value must be encoded using the same method
 		// as what the index package would do.
-		value := key.AppendValue(nil, v)
+		if v.Type == document.IntegerValue {
+			v, err = v.CastAsDouble()
+			if err != nil {
+				return err
+			}
+		}
+
+		var value []byte
+		if v.Type != document.ArrayValue && v.Type != document.DocumentValue {
+			value = key.AppendValue(nil, v)
+		}
 
 		// to ensure ordering of values based on their types
 		// (i.e. booleans < numbers < text, ...,
 		// see index package for more info)
 		// we will prepend the encoded value with one byte
 		// representing the type of the value.
+		// integer will be considered as double
 		value = append([]byte{byte(v.Type)}, value...)
 
-		data, err := msgpack.EncodeDocument(d)
+		node := heapNode{
+			value: value,
+		}
+		err = node.data.Copy(d)
 		if err != nil {
 			return err
 		}
 
-		heap.Push(h, heapNode{
-			value: value,
-			data:  data,
-		})
+		heap.Push(h, node)
 
 		return nil
 	})
@@ -142,7 +153,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 
 type heapNode struct {
 	value []byte
-	data  []byte
+	data  document.FieldBuffer
 }
 
 type minHeap []heapNode

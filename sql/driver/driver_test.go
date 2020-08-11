@@ -99,7 +99,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Params", func(t *testing.T) {
-		rows, err := db.Query("SELECT a FROM test WHERE a = ? AND b = ?", 5, []int{6, 7, 8})
+		rows, err := db.Query("SELECT a FROM test WHERE a = ?", 5)
 		require.NoError(t, err)
 		defer rows.Close()
 

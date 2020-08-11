@@ -138,21 +138,21 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 
 		if it.orderByDirection == scanner.DESC {
 			err = it.index.DescendLessOrEqual(document.Value{}, func(val, key []byte, isEqual bool) error {
-				r, err := it.tb.GetDocument(key)
+				d, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err
 				}
 
-				return fn(r)
+				return fn(d)
 			})
 		} else {
 			err = it.index.AscendGreaterOrEqual(document.Value{}, func(val, key []byte, isEqual bool) error {
-				r, err := it.tb.GetDocument(key)
+				d, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err
 				}
 
-				return fn(r)
+				return fn(d)
 			})
 		}
 
