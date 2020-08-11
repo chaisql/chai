@@ -86,10 +86,6 @@ func compare(op operator, l, r Value) (bool, error) {
 	case r.Type == BlobValue && l.Type == BlobValue:
 		return compareBlobs(op, l.V.([]byte), r.V.([]byte)), nil
 
-	// compare integers together
-	case l.Type == IntegerValue && r.Type == IntegerValue:
-		return compareIntegers(op, l.V.(int64), r.V.(int64)), nil
-
 	// compare numbers together
 	case l.Type.IsNumber() && r.Type.IsNumber():
 		return compareNumbers(op, l, r)

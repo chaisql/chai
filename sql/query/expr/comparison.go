@@ -38,12 +38,12 @@ var errStop = errors.New("errStop")
 func (op eqOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
 		if isEqual {
-			r, err := tb.GetDocument(key)
+			d, err := tb.GetDocument(key)
 			if err != nil {
 				return err
 			}
 
-			return fn(r)
+			return fn(d)
 		}
 
 		return errStop
@@ -107,12 +107,12 @@ func (op gtOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 			return nil
 		}
 
-		r, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(key)
 		if err != nil {
 			return err
 		}
 
-		return fn(r)
+		return fn(d)
 	})
 
 	if err != nil && err != errStop {
@@ -168,12 +168,12 @@ func Gte(a, b Expr) Expr {
 
 func (op gteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
-		r, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(key)
 		if err != nil {
 			return err
 		}
 
-		return fn(r)
+		return fn(d)
 	})
 
 	if err != nil && err != errStop {
@@ -240,12 +240,12 @@ func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 			return errStop
 		}
 
-		r, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(key)
 		if err != nil {
 			return err
 		}
 
-		return fn(r)
+		return fn(d)
 	})
 
 	if err != nil && err != errStop {
@@ -315,12 +315,12 @@ func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Val
 			return errStop
 		}
 
-		r, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(key)
 		if err != nil {
 			return err
 		}
 
-		return fn(r)
+		return fn(d)
 	})
 
 	if err != nil && err != errStop {
