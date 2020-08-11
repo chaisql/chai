@@ -198,7 +198,7 @@ func TestInsertStmt(t *testing.T) {
 			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`, `field "a" is required and must be not null`},
 			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`, `cannot cast bool as document`},
 
-			{"duration", "DURATION", `{a: "foo"}`, `cannot cast "foo" as duration: time: invalid duration foo`},
+			{"duration", "DURATION", `{a: "foo"}`, `cannot cast "foo" as duration: time: invalid duration "foo"`},
 			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`, `field "a" is required and must be not null`},
 			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`, `cannot cast array as duration`},
 

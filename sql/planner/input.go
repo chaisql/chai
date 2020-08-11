@@ -137,7 +137,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 		var err error
 
 		if it.orderByDirection == scanner.DESC {
-			err = it.index.DescendLessOrEqual(nil, func(val, key []byte) error {
+			err = it.index.DescendLessOrEqual(document.Value{}, func(val, key []byte, isEqual bool) error {
 				r, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err
@@ -146,7 +146,7 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 				return fn(r)
 			})
 		} else {
-			err = it.index.AscendGreaterOrEqual(nil, func(val, key []byte) error {
+			err = it.index.AscendGreaterOrEqual(document.Value{}, func(val, key []byte, isEqual bool) error {
 				r, err := it.tb.GetDocument(key)
 				if err != nil {
 					return err

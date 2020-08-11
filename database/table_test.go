@@ -348,7 +348,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual(nil, func(val, k []byte) error {
+		err = idx.AscendGreaterOrEqual(document.Value{}, func(val, k []byte, isEqual bool) error {
 			switch count {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
