@@ -197,7 +197,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		manualInsert := func(id int64) {
-			docid := key.EncodeInt64(id)
+			docid := key.AppendInt64(nil, id)
 			v, err := msgpack.EncodeDocument(newDocument())
 			require.NoError(t, err)
 			err = tb.Store.Put(docid, v)
@@ -246,7 +246,7 @@ func TestTableInsert(t *testing.T) {
 		// insert
 		k, err := tb.Insert(doc)
 		require.NoError(t, err)
-		require.Equal(t, key.EncodeInt64(10), k)
+		require.Equal(t, key.AppendInt64(nil, 10), k)
 
 		// make sure the document is fetchable using the returned key
 		_, err = tb.GetDocument(k)

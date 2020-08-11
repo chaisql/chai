@@ -357,7 +357,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 			return nil, err
 		}
 
-		return key.EncodeValue(v)
+		return key.AppendValue(nil, v), nil
 	}
 
 	docid, err := t.generateDocid()
@@ -365,7 +365,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	return key.EncodeInt64(docid), nil
+	return key.AppendInt64(nil, docid), nil
 }
 
 // this function looks up for the highest key in the table,
@@ -426,8 +426,9 @@ func (t *Table) getSmallestAvailableDocid() (int64, error) {
 
 	var i int64 = 1
 
+	var buf [8]byte
 	for it.Seek(nil); it.Valid(); it.Next() {
-		if !bytes.Equal(it.Item().Key(), key.EncodeInt64(i)) {
+		if !bytes.Equal(it.Item().Key(), key.AppendInt64(buf[:0], i)) {
 			return i, nil
 		}
 		i++

@@ -17,36 +17,28 @@ import (
 )
 
 // EncodeString takes a string and returns its binary representation.
-func EncodeString(x string) []byte {
-	return []byte(x)
+func EncodeString(buf []byte, x string) {
+	copy(buf, x)
 }
 
-// DecodeString takes a byte slice and decodes it into a string.
-func DecodeString(buf []byte) (string, error) {
-	return string(buf), nil
-}
-
-// EncodeBool takes a bool and returns its binary representation.
-func EncodeBool(x bool) []byte {
+// AppendBool takes a bool and returns its binary representation.
+func AppendBool(buf []byte, x bool) []byte {
 	if x {
-		return []byte{1}
+		return append(buf, 1)
 	}
-	return []byte{0}
+	return append(buf, 0)
 }
 
 // DecodeBool takes a byte slice and decodes it into a boolean.
-func DecodeBool(buf []byte) (bool, error) {
-	if len(buf) != 1 {
-		return false, errors.New("cannot decode buffer to bool")
-	}
-	return buf[0] == 1, nil
+func DecodeBool(buf []byte) bool {
+	return buf[0] == 1
 }
 
-// EncodeUint64 takes an uint64 and returns its binary representation.
-func EncodeUint64(x uint64) []byte {
-	var buf [8]byte
-	binary.BigEndian.PutUint64(buf[:], x)
-	return buf[:]
+// AppendUint64 takes an uint64 and returns its binary representation.
+func AppendUint64(buf []byte, x uint64) []byte {
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], x)
+	return append(buf, b[:]...)
 }
 
 // DecodeUint64 takes a byte slice and decodes it into a uint64.
@@ -58,12 +50,12 @@ func DecodeUint64(buf []byte) (uint64, error) {
 	return binary.BigEndian.Uint64(buf), nil
 }
 
-// EncodeInt64 takes an int64 and returns its binary representation.
-func EncodeInt64(x int64) []byte {
-	var buf [8]byte
+// AppendInt64 takes an int64 and returns its binary representation.
+func AppendInt64(buf []byte, x int64) []byte {
+	var b [8]byte
 
-	binary.BigEndian.PutUint64(buf[:], uint64(x)+math.MaxInt64+1)
-	return buf[:]
+	binary.BigEndian.PutUint64(b[:], uint64(x)+math.MaxInt64+1)
+	return append(buf, b[:]...)
 }
 
 // DecodeInt64 takes a byte slice and decodes it into an int64.
@@ -73,15 +65,15 @@ func DecodeInt64(buf []byte) (int64, error) {
 	return int64(x), err
 }
 
-// EncodeFloat64 takes an float64 and returns its binary representation.
-func EncodeFloat64(x float64) []byte {
+// AppendFloat64 takes an float64 and returns its binary representation.
+func AppendFloat64(buf []byte, x float64) []byte {
 	fb := math.Float64bits(x)
 	if x >= 0 {
 		fb ^= 1 << 63
 	} else {
 		fb ^= 1<<64 - 1
 	}
-	return EncodeUint64(fb)
+	return AppendUint64(buf, fb)
 }
 
 // DecodeFloat64 takes a byte slice and decodes it into an float64.
@@ -96,27 +88,27 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	return math.Float64frombits(x), nil
 }
 
-// EncodeValue encodes a value as a key.
+// AppendValue encodes a value as a key.
 // It only works with scalars and doesn't support documents and arrays.
-func EncodeValue(v document.Value) ([]byte, error) {
+func AppendValue(buf []byte, v document.Value) []byte {
 	switch v.Type {
 	case document.BlobValue:
-		return v.V.([]byte), nil
+		return append(buf, v.V.([]byte)...)
 	case document.TextValue:
-		return EncodeString(v.V.(string)), nil
+		return append(buf, v.V.(string)...)
 	case document.BoolValue:
-		return EncodeBool(v.V.(bool)), nil
+		return AppendBool(buf, v.V.(bool))
 	case document.IntegerValue:
-		return EncodeInt64(v.V.(int64)), nil
+		return AppendInt64(buf, v.V.(int64))
 	case document.DoubleValue:
-		return EncodeFloat64(v.V.(float64)), nil
+		return AppendFloat64(buf, v.V.(float64))
 	case document.DurationValue:
-		return EncodeInt64(int64(v.V.(time.Duration))), nil
+		return AppendInt64(buf, int64(v.V.(time.Duration)))
 	case document.NullValue:
-		return nil, nil
+		return buf
 	}
 
-	return nil, errors.New("cannot encode type " + v.Type.String() + " as key")
+	panic("cannot encode type " + v.Type.String() + " as key")
 }
 
 // DecodeValue takes some encoded data and decodes it to the target type t.
@@ -125,17 +117,9 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	case document.BlobValue:
 		return document.NewBlobValue(data), nil
 	case document.TextValue:
-		x, err := DecodeString(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewTextValue(x), nil
+		return document.NewTextValue(string(data)), nil
 	case document.BoolValue:
-		x, err := DecodeBool(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewBoolValue(x), nil
+		return document.NewBoolValue(DecodeBool(data)), nil
 	case document.IntegerValue:
 		x, err := DecodeInt64(data)
 		if err != nil {
