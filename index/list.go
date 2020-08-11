@@ -16,16 +16,22 @@ type ListIndex struct {
 
 // Set associates a value with a key. It is possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
-func (i *ListIndex) Set(v document.Value, k []byte) error {
-	st, err := getOrCreateStore(i.tx, v.Type, i.name)
+func (idx *ListIndex) Set(v document.Value, k []byte) error {
+	var err error
+
+	if v.Type == document.IntegerValue {
+		v, err = v.CastAsDouble()
+		if err != nil {
+			return err
+		}
+	}
+
+	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
 	if err != nil {
 		return err
 	}
 
-	enc, err := key.EncodeValue(v)
-	if err != nil {
-		return err
-	}
+	enc := key.AppendValue(nil, v)
 
 	buf := make([]byte, 0, len(enc)+len(k)+1)
 	buf = append(buf, enc...)
@@ -36,13 +42,19 @@ func (i *ListIndex) Set(v document.Value, k []byte) error {
 }
 
 // Delete all the references to the key from the index.
-func (i *ListIndex) Delete(v document.Value, k []byte) error {
-	enc, err := key.EncodeValue(v)
-	if err != nil {
-		return err
+func (idx *ListIndex) Delete(v document.Value, k []byte) error {
+	var err error
+
+	if v.Type == document.IntegerValue {
+		v, err = v.CastAsDouble()
+		if err != nil {
+			return err
+		}
 	}
 
-	st, err := getOrCreateStore(i.tx, v.Type, i.name)
+	enc := key.AppendValue(nil, v)
+
+	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
 	if err != nil {
 		return err
 	}
@@ -58,30 +70,11 @@ func (i *ListIndex) Delete(v document.Value, k []byte) error {
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
-func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
+func (idx *ListIndex) AscendGreaterOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
 	// iterate over all stores in order
-	if pivot == nil {
-		for t := document.NullValue; t <= document.BlobValue; t++ {
-			st, err := getStore(i.tx, t, i.name)
-			if err != nil {
-				return err
-			}
-			if st == nil {
-				continue
-			}
-
-			it := st.NewIterator(engine.IteratorConfig{})
-			for it.Seek(nil); it.Valid(); it.Next() {
-				item := it.Item()
-				k := item.Key()
-				idx := bytes.LastIndexByte(k, separator)
-				err = fn(k[:idx], k[idx+1:])
-				if err != nil {
-					it.Close()
-					return err
-				}
-			}
-			err = it.Close()
+	if pivot.Type == 0 {
+		for i := 0; i < len(valueTypes); i++ {
+			err := idx.iterateOnStore(document.Value{Type: valueTypes[i]}, false, fn)
 			if err != nil {
 				return err
 			}
@@ -90,71 +83,43 @@ func (i *ListIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte) 
 		return nil
 	}
 
-	st, err := getStore(i.tx, pivot.Type, i.name)
-	if err != nil {
-		return err
-	}
-	if st == nil {
-		return nil
-	}
-
-	it := st.NewIterator(engine.IteratorConfig{})
-	defer it.Close()
-
-	for it.Seek(pivot.EncodedValue); it.Valid(); it.Next() {
-		item := it.Item()
-		k := item.Key()
-
-		idx := bytes.LastIndexByte(k, separator)
-		err = fn(k[:idx], k[idx+1:])
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return idx.iterateOnStore(pivot, false, fn)
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
-func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
+func (idx *ListIndex) DescendLessOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
 	// iterate over all stores in order
-	if pivot == nil {
-		for t := document.BlobValue; t >= document.NullValue; t-- {
-			st, err := getStore(i.tx, t, i.name)
+	if pivot.Type == 0 {
+		for i := len(valueTypes) - 1; i >= 0; i-- {
+			err := idx.iterateOnStore(document.Value{Type: valueTypes[i]}, true, fn)
 			if err != nil {
 				return err
 			}
-			if st == nil {
-				continue
-			}
-
-			it := st.NewIterator(engine.IteratorConfig{Reverse: true})
-
-			for it.Seek(nil); it.Valid(); it.Next() {
-				item := it.Item()
-				k := item.Key()
-
-				idx := bytes.LastIndexByte(k, separator)
-				err = fn(k[:idx], k[idx+1:])
-				if err != nil {
-					it.Close()
-					return err
-				}
-			}
-
-			err = it.Close()
-			if err != nil {
-				return err
-			}
-
 		}
 
 		return nil
 	}
 
-	st, err := getStore(i.tx, pivot.Type, i.name)
+	return idx.iterateOnStore(pivot, true, fn)
+}
+
+func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
+	var err error
+
+	if pivot.Type == document.IntegerValue {
+		if pivot.V != nil {
+			pivot, err = pivot.CastAsDouble()
+			if err != nil {
+				return err
+			}
+		} else {
+			pivot.Type = document.DoubleValue
+		}
+	}
+
+	st, err := getStore(idx.tx, pivot.Type, idx.name)
 	if err != nil {
 		return err
 	}
@@ -162,20 +127,25 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) er
 		return nil
 	}
 
-	if len(pivot.EncodedValue) > 0 {
-		// ensure the pivot is bigger than the requested value so it doesn't get skipped.
-		pivot.EncodedValue = append(pivot.EncodedValue, separator, 0xFF)
+	var seek, enc []byte
+
+	if pivot.V != nil {
+		enc = key.AppendValue(nil, pivot)
+		seek = enc
+
+		if reverse {
+			seek = append(seek, separator, 0xFF)
+		}
 	}
 
-	it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
 	defer it.Close()
 
-	for it.Seek(pivot.EncodedValue); it.Valid(); it.Next() {
+	for it.Seek(seek); it.Valid(); it.Next() {
 		item := it.Item()
 		k := item.Key()
-
 		idx := bytes.LastIndexByte(k, separator)
-		err = fn(k[:idx], k[idx+1:])
+		err = fn(k[:idx], k[idx+1:], bytes.Equal(k[:idx], enc))
 		if err != nil {
 			return err
 		}
@@ -185,9 +155,9 @@ func (i *ListIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) er
 }
 
 // Truncate deletes all the index data.
-func (i *ListIndex) Truncate() error {
+func (idx *ListIndex) Truncate() error {
 	for t := document.NullValue; t <= document.BlobValue; t++ {
-		err := dropStore(i.tx, t, i.name)
+		err := dropStore(idx.tx, t, idx.name)
 		if err != nil {
 			return err
 		}

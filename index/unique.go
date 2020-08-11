@@ -1,6 +1,8 @@
 package index
 
 import (
+	"bytes"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/key"
@@ -14,23 +16,25 @@ type UniqueIndex struct {
 
 // Set associates a value with exactly one key.
 // If the association already exists, it returns an error.
-func (i *UniqueIndex) Set(v document.Value, k []byte) error {
-	enc, err := key.EncodeValue(v)
+// It stores integers as doubles.
+func (idx *UniqueIndex) Set(v document.Value, k []byte) error {
+	var err error
+
+	if v.Type == document.IntegerValue {
+		v, err = v.CastAsDouble()
+		if err != nil {
+			return err
+		}
+	}
+
+	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, v.Type, i.name)
-	if err != nil {
-		return err
-	}
+	enc := key.AppendValue(nil, v)
 
-	buf := make([]byte, 0, len(enc)+2)
-	buf = append(buf, uint8(v.Type))
-	buf = append(buf, separator)
-	buf = append(buf, enc...)
-
-	_, err = st.Get(buf)
+	_, err = st.Get(enc)
 	if err == nil {
 		return ErrDuplicate
 	}
@@ -38,45 +42,38 @@ func (i *UniqueIndex) Set(v document.Value, k []byte) error {
 		return err
 	}
 
-	return st.Put(buf, k)
+	return st.Put(enc, k)
 }
 
 // Delete all the references to the key from the index.
-func (i *UniqueIndex) Delete(v document.Value, k []byte) error {
-	enc, err := key.EncodeValue(v)
+func (idx *UniqueIndex) Delete(v document.Value, k []byte) error {
+	var err error
+
+	if v.Type == document.IntegerValue {
+		v, err = v.CastAsDouble()
+		if err != nil {
+			return err
+		}
+	}
+
+	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
 	if err != nil {
 		return err
 	}
 
-	st, err := getOrCreateStore(i.tx, v.Type, i.name)
-	if err != nil {
-		return err
-	}
+	enc := key.AppendValue(nil, v)
 
-	buf := make([]byte, 0, len(enc)+2)
-	buf = append(buf, uint8(v.Type))
-	buf = append(buf, separator)
-	buf = append(buf, enc...)
-
-	return st.Delete(buf)
+	return st.Delete(enc)
 }
 
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
-func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
+func (idx *UniqueIndex) AscendGreaterOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
 	// iterate over all stores in order
-	if pivot == nil {
-		for t := document.NullValue; t <= document.BlobValue; t++ {
-			st, err := getStore(i.tx, t, i.name)
-			if err != nil {
-				return err
-			}
-			if st == nil {
-				continue
-			}
-
-			err = i.iterate(nil, st, false, fn)
+	if pivot.Type == 0 {
+		for i := 0; i < len(valueTypes); i++ {
+			err := idx.iterateOnStore(document.Value{Type: valueTypes[i]}, false, fn)
 			if err != nil {
 				return err
 			}
@@ -85,38 +82,17 @@ func (i *UniqueIndex) AscendGreaterOrEqual(pivot *Pivot, fn func(val, key []byte
 		return nil
 	}
 
-	st, err := getStore(i.tx, pivot.Type, i.name)
-	if err != nil {
-		return err
-	}
-	if st == nil {
-		return nil
-	}
-
-	seek := make([]byte, 0, len(pivot.EncodedValue)+2)
-	seek = append(seek, uint8(pivot.Type))
-	seek = append(seek, separator)
-	seek = append(seek, pivot.EncodedValue...)
-
-	return i.iterate(seek, st, false, fn)
+	return idx.iterateOnStore(pivot, false, fn)
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
-func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) error) error {
+func (idx *UniqueIndex) DescendLessOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
 	// iterate over all stores in order
-	if pivot == nil {
-		for t := document.BlobValue; t >= document.NullValue; t-- {
-			st, err := getStore(i.tx, t, i.name)
-			if err != nil {
-				return err
-			}
-			if st == nil {
-				continue
-			}
-
-			err = i.iterate(nil, st, true, fn)
+	if pivot.Type == 0 {
+		for i := len(valueTypes) - 1; i >= 0; i-- {
+			err := idx.iterateOnStore(document.Value{Type: valueTypes[i]}, true, fn)
 			if err != nil {
 				return err
 			}
@@ -125,28 +101,44 @@ func (i *UniqueIndex) DescendLessOrEqual(pivot *Pivot, fn func(val, key []byte) 
 		return nil
 	}
 
-	st, err := getStore(i.tx, pivot.Type, i.name)
+	return idx.iterateOnStore(pivot, true, fn)
+}
+
+func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
+	var err error
+
+	if pivot.Type == document.IntegerValue {
+		if pivot.V != nil {
+			pivot, err = pivot.CastAsDouble()
+			if err != nil {
+				return err
+			}
+		} else {
+			pivot.Type = document.DoubleValue
+		}
+	}
+
+	st, err := getStore(idx.tx, pivot.Type, idx.name)
 	if err != nil {
 		return err
 	}
 	if st == nil {
 		return nil
 	}
-
-	seek := make([]byte, 0, len(pivot.EncodedValue)+3)
-	seek = append(seek, uint8(pivot.Type))
-	seek = append(seek, separator)
-	seek = append(seek, pivot.EncodedValue...)
-	seek = append(seek, 0xFF)
-
-	return i.iterate(seek, st, true, fn)
-}
-
-func (i *UniqueIndex) iterate(seek []byte, store engine.Store, reverse bool, fn func(val, key []byte) error) error {
 	var v []byte
-	var err error
 
-	it := store.NewIterator(engine.IteratorConfig{Reverse: reverse})
+	var seek, enc []byte
+
+	if pivot.V != nil {
+		enc = key.AppendValue(nil, pivot)
+		seek = enc
+
+		if reverse {
+			seek = append(seek, 0xFF)
+		}
+	}
+
+	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {
@@ -157,7 +149,8 @@ func (i *UniqueIndex) iterate(seek []byte, store engine.Store, reverse bool, fn 
 			return err
 		}
 
-		err = fn(item.Key()[2:], v)
+		k := item.Key()
+		err = fn(k, v, bytes.Equal(k, enc))
 		if err != nil {
 			return err
 		}
@@ -167,9 +160,9 @@ func (i *UniqueIndex) iterate(seek []byte, store engine.Store, reverse bool, fn 
 }
 
 // Truncate deletes all the index data.
-func (i *UniqueIndex) Truncate() error {
+func (idx *UniqueIndex) Truncate() error {
 	for t := document.NullValue; t <= document.BlobValue; t++ {
-		err := dropStore(i.tx, t, i.name)
+		err := dropStore(idx.tx, t, idx.name)
 		if err != nil {
 			return err
 		}

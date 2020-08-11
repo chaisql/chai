@@ -6,7 +6,6 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
 	"github.com/stretchr/testify/require"
 )
@@ -272,9 +271,8 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(v, k []byte) error {
-			enc, err := key.AppendValue(document.NewIntegerValue(int64(i)))
-			require.NoError(t, err)
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+			enc := key.AppendValue(nil, document.NewDoubleValue(float64(i)))
 			require.Equal(t, enc, v)
 			i++
 			return nil
@@ -286,7 +284,7 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(val, key []byte) error {
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
 			i++
 			return nil
 		})
@@ -351,9 +349,8 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(v, k []byte) error {
-			enc, err := key.AppendValue(document.NewIntegerValue(int64(i)))
-			require.NoError(t, err)
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+			enc := key.AppendValue(nil, document.NewDoubleValue(float64(i)))
 			require.Equal(t, enc, v)
 			i++
 			return nil
@@ -365,9 +362,8 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(&index.Pivot{Type: document.IntegerValue}, func(v, k []byte) error {
-			enc, err := key.AppendValue(document.NewIntegerValue(int64(i)))
-			require.NoError(t, err)
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+			enc := key.AppendValue(nil, document.NewDoubleValue(float64(i)))
 			require.Equal(t, enc, v)
 			i++
 			return nil

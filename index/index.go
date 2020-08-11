@@ -6,7 +6,6 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/key"
 )
 
 const (
@@ -15,6 +14,17 @@ const (
 
 	separator byte = 0x1E
 )
+
+var valueTypes = []document.ValueType{
+	document.NullValue,
+	document.BoolValue,
+	document.DoubleValue,
+	document.DurationValue,
+	document.TextValue,
+	document.BlobValue,
+	document.ArrayValue,
+	document.DocumentValue,
+}
 
 var (
 	// ErrDuplicate is returned when a value is already associated with a key
@@ -33,12 +43,14 @@ type Index interface {
 	// AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the beginning.
-	AscendGreaterOrEqual(pivot *Pivot, fn func(val []byte, key []byte) error) error
+	// If val is equal to the pivot, isEqual is set to true.
+	AscendGreaterOrEqual(pivot document.Value, fn func(val []byte, key []byte, isEqual bool) error) error
 
 	// DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 	// If the given function returns an error, the iteration stops and returns that error.
 	// If the pivot is nil, starts from the end.
-	DescendLessOrEqual(pivot *Pivot, fn func(val []byte, key []byte) error) error
+	// If val is equal to the pivot, isEqual is set to true.
+	DescendLessOrEqual(pivot document.Value, fn func(val []byte, key []byte, isEqual bool) error) error
 
 	// Truncate deletes all the index data.
 	Truncate() error
@@ -73,28 +85,6 @@ func buildIndexName(name []byte, t document.ValueType) []byte {
 	buf.WriteByte(byte(t))
 
 	return buf.Bytes()
-}
-
-// A Pivot is a value that is used to seek for a particular value in an index.
-// A Pivot is typed and can only be used to seek for values of the same type.
-type Pivot struct {
-	EncodedValue []byte
-	Value        document.Value
-	Type         document.ValueType
-}
-
-// NewPivot encodes v and returns a pivot for this type.
-func NewPivot(v document.Value) (*Pivot, error) {
-	enc, err := key.EncodeValue(v)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Pivot{
-		EncodedValue: enc,
-		Value:        v,
-		Type:         v.Type,
-	}, nil
 }
 
 func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) (engine.Store, error) {
