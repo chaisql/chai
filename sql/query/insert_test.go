@@ -177,40 +177,39 @@ func TestInsertStmt(t *testing.T) {
 			name            string
 			fieldConstraint string
 			value           string
-			expectedErr     string
 		}{
-			{"not null without type constraint", "NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"not null without type constraint", "NOT NULL", `{}`},
 
-			{"array / not null with type constraint", "ARRAY NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`, `cannot cast integer as array`},
+			{"array / not null with type constraint", "ARRAY NOT NULL", `{}`},
+			{"array / not null with non-respected type constraint ", "ARRAY NOT NULL", `{a: 42}`},
 
-			{"blob", "BLOB", `{a: true}`, `cannot cast bool as blob`},
-			{"blob / not null with type constraint", "BLOB NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`, `cannot cast integer as blob`},
+			{"blob", "BLOB", `{a: true}`},
+			{"blob / not null with type constraint", "BLOB NOT NULL", `{}`},
+			{"blob / not null with non-respected type constraint ", "BLOB NOT NULL", `{a: 42}`},
 
-			{"bool / not null with type constraint", "BOOL NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"bool / not null with type constraint", "BOOL NOT NULL", `{}`},
 
-			{"bytes", "BYTES", `{a: [1,2,3]}`, `cannot cast array as blob`},
-			{"bytes / not null with type constraint", "BYTES NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`, `cannot cast integer as blob`},
+			{"bytes", "BYTES", `{a: [1,2,3]}`},
+			{"bytes / not null with type constraint", "BYTES NOT NULL", `{}`},
+			{"bytes / not null with non-respected type constraint ", "BYTES NOT NULL", `{a: 42}`},
 
-			{"document", "DOCUMENT", `{"a": "foo"}`, `cannot cast "foo" as document: found "\x00", expected '{'`},
-			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`, `cannot cast bool as document`},
+			{"document", "DOCUMENT", `{"a": "foo"}`},
+			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`},
+			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`},
 
-			{"duration", "DURATION", `{a: "foo"}`, `cannot cast "foo" as duration: time: invalid duration "foo"`},
-			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`, `cannot cast array as duration`},
+			{"duration", "DURATION", `{a: "foo"}`},
+			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`},
+			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`},
 
-			{"double", "DOUBLE", `{a: "foo"}`, `cannot cast "foo" as double: strconv.ParseFloat: parsing "foo": invalid syntax`},
-			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`, `cannot cast array as double`},
+			{"double", "DOUBLE", `{a: "foo"}`},
+			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`},
+			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`},
 
-			{"integer", "INTEGER", `{a: "foo"}`, `cannot cast "foo" as integer: strconv.ParseInt: parsing "foo": invalid syntax`},
-			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`, `field "a" is required and must be not null`},
-			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`, `cannot cast array as integer`},
+			{"integer", "INTEGER", `{a: "foo"}`},
+			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`},
+			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`},
 
-			{"text / not null with type constraint", "TEXT NOT NULL", `{}`, `field "a" is required and must be not null`},
+			{"text / not null with type constraint", "TEXT NOT NULL", `{}`},
 		}
 
 		db, err := genji.Open(":memory:")
@@ -225,7 +224,7 @@ func TestInsertStmt(t *testing.T) {
 
 				q = fmt.Sprintf("INSERT INTO test%d VALUES %s", i, test.value)
 				err = db.Exec(q)
-				require.EqualError(t, err, test.expectedErr)
+				require.Error(t, err)
 			})
 		}
 	})
