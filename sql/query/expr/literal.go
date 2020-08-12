@@ -170,6 +170,9 @@ func (kvp KVPairs) IsEqual(other Expr) bool {
 // Eval turns a list of KVPairs into a document.
 func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {
 	var fb document.FieldBuffer
+	if ctx.Document == nil {
+		ctx.Document = &fb
+	}
 
 	for _, kv := range kvp {
 		v, err := kv.V.Eval(ctx)
