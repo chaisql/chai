@@ -1,6 +1,6 @@
 module github.com/genjidb/genji
 
-go 1.14
+go 1.15
 
 require (
 	github.com/google/btree v1.0.0
