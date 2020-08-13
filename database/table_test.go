@@ -604,6 +604,94 @@ func TestTableTruncate(t *testing.T) {
 	})
 }
 
+func TestTableReIndex(t *testing.T) {
+	t.Run("Should succeed if table has no index", func(t *testing.T) {
+		tb, cleanup := newTestTable(t)
+		defer cleanup()
+
+		err := tb.ReIndex()
+		require.NoError(t, err)
+	})
+
+	t.Run("Should reindex the right indexes", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test1", nil)
+		require.NoError(t, err)
+		err = tx.CreateTable("test2", nil)
+		require.NoError(t, err)
+		tb1, err := tx.GetTable("test1")
+		require.NoError(t, err)
+		tb2, err := tx.GetTable("test2")
+		require.NoError(t, err)
+
+		for i := int64(0); i < 10; i++ {
+			doc := document.NewFieldBuffer().
+				Add("a", document.NewIntegerValue(i)).
+				Add("b", document.NewIntegerValue(i*10))
+			_, err = tb1.Insert(doc)
+			require.NoError(t, err)
+			_, err = tb2.Insert(doc)
+			require.NoError(t, err)
+		}
+
+		err = tx.CreateIndex(database.IndexConfig{
+			IndexName: "test1a",
+			TableName: "test1",
+			Path:      document.NewValuePath("a"),
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(database.IndexConfig{
+			IndexName: "test1b",
+			TableName: "test1",
+			Path:      document.NewValuePath("b"),
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(database.IndexConfig{
+			IndexName: "test2a",
+			TableName: "test2",
+			Path:      document.NewValuePath("a"),
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(database.IndexConfig{
+			IndexName: "test2b",
+			TableName: "test2",
+			Path:      document.NewValuePath("b"),
+		})
+		require.NoError(t, err)
+
+		err = tb1.ReIndex()
+		require.NoError(t, err)
+
+		countIndexElems := func(idx *database.Index) int {
+			var i int
+			err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+				i++
+				return nil
+			})
+			require.NoError(t, err)
+			return i
+		}
+
+		idx, err := tx.GetIndex("test1a")
+		require.NoError(t, err)
+		require.Equal(t, 10, countIndexElems(idx))
+
+		idx, err = tx.GetIndex("test1b")
+		require.NoError(t, err)
+		require.Equal(t, 10, countIndexElems(idx))
+
+		idx, err = tx.GetIndex("test2a")
+		require.NoError(t, err)
+		require.Equal(t, 0, countIndexElems(idx))
+
+		idx, err = tx.GetIndex("test2b")
+		require.NoError(t, err)
+		require.Equal(t, 0, countIndexElems(idx))
+	})
+}
+
 func TestTableIndexes(t *testing.T) {
 	t.Run("Should succeed if table has no indexes", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
