@@ -73,6 +73,8 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 		return p.parseDropStatement()
 	case scanner.EXPLAIN:
 		return p.parseExplainStatement()
+	case scanner.REINDEX:
+		return p.parseReIndexStatement()
 	}
 
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{
