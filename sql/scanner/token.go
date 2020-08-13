@@ -96,6 +96,7 @@ const (
 	ON
 	ORDER
 	PRIMARY
+	REINDEX
 	RENAME
 	SELECT
 	SET
@@ -195,6 +196,7 @@ var tokens = [...]string{
 	ON:      "ON",
 	ORDER:   "ORDER",
 	PRIMARY: "PRIMARY",
+	REINDEX: "REINDEX",
 	RENAME:  "RENAME",
 	SELECT:  "SELECT",
 	SET:     "SET",
