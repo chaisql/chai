@@ -144,6 +144,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `OFFSET`, tok: scanner.OFFSET, raw: `OFFSET`},
 		{s: `ORDER`, tok: scanner.ORDER, raw: `ORDER`},
 		{s: `PRIMARY`, tok: scanner.PRIMARY, raw: `PRIMARY`},
+		{s: `REINDEX`, tok: scanner.REINDEX, raw: `REINDEX`},
 		{s: `RENAME`, tok: scanner.RENAME, raw: `RENAME`},
 		{s: `SELECT`, tok: scanner.SELECT, raw: `SELECT`},
 		{s: `SET`, tok: scanner.SET, raw: `SET`},
