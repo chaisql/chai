@@ -589,3 +589,20 @@ func getParentValue(d document.Document, p document.ValuePath) (document.Value, 
 
 	return p[:len(p)-1].GetValue(d)
 }
+
+// ReIndex all the indexes of the table.
+func (t *Table) ReIndex() error {
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
+		err = t.tx.ReIndex(idx.Opts.IndexName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
