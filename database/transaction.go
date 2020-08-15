@@ -1,7 +1,6 @@
 package database
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/genjidb/genji/document"
@@ -41,27 +40,6 @@ func (tx *Transaction) Commit() error {
 // Writable indicates if the transaction is writable or not.
 func (tx *Transaction) Writable() bool {
 	return tx.writable
-}
-
-// Promote rollsback a read-only transaction and begins a read-write transaction transparently.
-// It returns an error if the current transaction is already writable.
-func (tx *Transaction) Promote() error {
-	if tx.writable {
-		return errors.New("cannot promote a writable transaction")
-	}
-
-	err := tx.Rollback()
-	if err != nil {
-		return err
-	}
-
-	newTransaction, err := tx.db.Begin(true)
-	if err != nil {
-		return err
-	}
-
-	*tx = *newTransaction
-	return nil
 }
 
 // CreateTable creates a table with the given name.

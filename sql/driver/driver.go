@@ -82,10 +82,9 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 	}
 
 	return stmt{
-		db:            c.db,
-		tx:            c.tx,
-		q:             pq,
-		nonPromotable: c.nonPromotable,
+		db: c.db,
+		tx: c.tx,
+		q:  pq,
 	}, nil
 }
 
@@ -113,37 +112,35 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 
 	var err error
 
-	// if the ReadOnly flag is explicitly specified, create a non promotable transaction,
-	// otherwise start with a promotable read only transaction.
+	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
+	// otherwise create a read/write transaction.
 	if opts.ReadOnly {
-		c.nonPromotable = true
+		c.tx, err = c.db.Begin(false)
+	} else {
+		c.tx, err = c.db.Begin(true)
 	}
 
-	c.tx, err = c.db.Begin(false)
 	return c, err
 }
 
 func (c *conn) Commit() error {
 	err := c.tx.Commit()
 	c.tx = nil
-	c.nonPromotable = false
 	return err
 }
 
 func (c *conn) Rollback() error {
 	err := c.tx.Rollback()
 	c.tx = nil
-	c.nonPromotable = false
 	return err
 }
 
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	db            *genji.DB
-	tx            *genji.Tx
-	q             query.Query
-	nonPromotable bool
+	db *genji.DB
+	tx *genji.Tx
+	q  query.Query
 }
 
 // NumInput returns the number of placeholder parameters.
@@ -192,7 +189,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args), s.nonPromotable)
+		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
 	} else {
 		res, err = s.q.Run(s.db.DB, driverNamedValueToParams(args))
 	}
@@ -242,7 +239,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args), s.nonPromotable)
+		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
 	} else {
 		res, err = s.q.Run(s.db.DB, driverNamedValueToParams(args))
 	}
@@ -343,7 +340,6 @@ func (rs *documentStream) iterate(ctx context.Context) {
 				return nil
 			}
 		}
-
 	})
 
 	if err == errStop || err == nil {
