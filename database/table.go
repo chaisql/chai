@@ -83,6 +83,11 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 			v = document.NewNullValue()
 		}
 
+		// arrays and documents are not indexed.
+		if v.Type == document.ArrayValue || v.Type == document.DocumentValue {
+			continue
+		}
+
 		err = idx.Set(v, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
