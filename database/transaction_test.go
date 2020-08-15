@@ -41,6 +41,30 @@ func TestTxTable(t *testing.T) {
 		require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
 	})
 
+	t.Run("Create and rollback", func(t *testing.T) {
+		db, err := database.New(memoryengine.NewEngine())
+		require.NoError(t, err)
+		defer db.Close()
+
+		tx, err := db.Begin(true)
+		require.NoError(t, err)
+
+		err = tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+
+		tx, err = db.Begin(true)
+		require.NoError(t, err)
+
+		err = tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+	})
+
 	t.Run("Get", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
