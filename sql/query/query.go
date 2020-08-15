@@ -61,22 +61,12 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 	return &res, nil
 }
 
-// Exec the query within the given transaction. If the one of the statements requires a read-write
-// transaction and tx is not, tx will get promoted.
-func (q Query) Exec(tx *database.Transaction, args []expr.Param, forceReadOnly bool) (*Result, error) {
+// Exec the query within the given transaction.
+func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*Result, error) {
 	var res Result
 	var err error
 
 	for _, stmt := range q.Statements {
-		// if the statement requires a writable transaction,
-		// promote the current transaction.
-		if !forceReadOnly && !tx.Writable() && !stmt.IsReadOnly() {
-			err := tx.Promote()
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		res, err = stmt.Run(tx, args)
 		if err != nil {
 			return nil, err

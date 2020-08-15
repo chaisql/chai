@@ -134,7 +134,7 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 		return nil, err
 	}
 
-	return pq.Exec(tx.Transaction, argsToParams(args), false)
+	return pq.Exec(tx.Transaction, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.

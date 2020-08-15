@@ -18,7 +18,7 @@ func ExampleTx() {
 	}
 	defer db.Close()
 
-	tx, err := db.Begin(false)
+	tx, err := db.Begin(true)
 	if err != nil {
 		panic(err)
 	}
