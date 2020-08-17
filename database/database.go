@@ -104,8 +104,3 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 
 	return &tx, nil
 }
-
-// GetTableInfo returns a map containing information about all the tables.
-func (db *Database) GetTableInfo() map[string]TableInfo {
-	return db.tableInfoStore.GetTableInfo()
-}

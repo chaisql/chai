@@ -66,6 +66,9 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 }
 
 type TableInfo struct {
+	// if non-zero, this tableInfo has been created during the current transaction.
+	// it will be removed if the transaction is rolled back or set to false if its commited.
+	transactionID int64
 	// storeID is a generated ID that acts as a key to reference a table.
 	// The first-4 bytes represents the timestamp in second and the last-2 bytes are
 	// randomly generated.
@@ -148,12 +151,18 @@ func newTableInfoStore(tx engine.Transaction) (*tableInfoStore, error) {
 }
 
 // Insert a new tableInfo for the given table name.
-func (t *tableInfoStore) Insert(tx engine.Transaction, tableName string, info *TableInfo) error {
+func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	_, ok := t.tableInfos[tableName]
 	if ok {
+		// TODO(asdine): if a table already exists but is uncommited,
+		// there is a chance the other transaction will be rolled back.
+		// Instead of returning an error, wait until the other transaction is
+		// either commited or rolled back.
+		// If it is commited, return an error here
+		// If not, create the table in this transaction.
 		return ErrTableAlreadyExists
 	}
 
@@ -162,7 +171,7 @@ func (t *tableInfoStore) Insert(tx engine.Transaction, tableName string, info *T
 		return err
 	}
 
-	st, err := tx.GetStore([]byte(tableInfoStoreName))
+	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
@@ -172,11 +181,12 @@ func (t *tableInfoStore) Insert(tx engine.Transaction, tableName string, info *T
 		return err
 	}
 
+	info.transactionID = tx.id
 	t.tableInfos[tableName] = *info
 	return nil
 }
 
-func (t *tableInfoStore) Get(tableName string) (*TableInfo, error) {
+func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -185,14 +195,27 @@ func (t *tableInfoStore) Get(tableName string) (*TableInfo, error) {
 		return nil, ErrTableNotFound
 	}
 
+	if info.transactionID != 0 && info.transactionID != tx.id {
+		return nil, ErrTableNotFound
+	}
+
 	return &info, nil
 }
 
-func (t *tableInfoStore) Delete(tx engine.Transaction, tableName string) error {
+func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	st, err := tx.GetStore([]byte(tableInfoStoreName))
+	info, ok := t.tableInfos[tableName]
+	if !ok {
+		return ErrTableNotFound
+	}
+
+	if info.transactionID != 0 && info.transactionID != tx.id {
+		return ErrTableNotFound
+	}
+
+	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
@@ -244,15 +267,48 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 	return nil
 }
 
-// ListTables lists all the tables.
+// remove all tableInfo whose transaction id is equal to the given transacrion id.
+// this is called when a read/write transaction is being rolled back.
+func (t *tableInfoStore) rollback(tx *Transaction) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for k, info := range t.tableInfos {
+		if info.transactionID == tx.id {
+			delete(t.tableInfos, k)
+		}
+	}
+}
+
+// set all the tableInfo created by this transaction to 0.
+// this is called when a read/write transaction is being commited.
+func (t *tableInfoStore) commit(tx *Transaction) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	for k := range t.tableInfos {
+		if t.tableInfos[k].transactionID == tx.id {
+			info := t.tableInfos[k]
+			info.transactionID = 0
+			t.tableInfos[k] = info
+		}
+	}
+}
+
+// ListTables lists all the tables. It ignores tables created by
+// other transactions that haven't been commited yet.
 // The returned slice is lexicographically ordered.
-func (t *tableInfoStore) ListTables() []string {
+func (t *tableInfoStore) ListTables(tx *Transaction) []string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	names := make([]string, len(t.tableInfos))
 	var i int
 	for k := range t.tableInfos {
+		if t.tableInfos[k].transactionID != 0 && t.tableInfos[k].transactionID != tx.id {
+			continue
+		}
+
 		names[i] = k
 		i++
 	}
@@ -260,19 +316,6 @@ func (t *tableInfoStore) ListTables() []string {
 	sort.Strings(names)
 
 	return names
-}
-
-// GetTableInfo returns a copy of all the table information.
-func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	ti := make(map[string]TableInfo, len(t.tableInfos))
-	for k, v := range t.tableInfos {
-		ti[k] = v
-	}
-
-	return ti
 }
 
 func (t *tableInfoStore) generateStoreID() [6]byte {
