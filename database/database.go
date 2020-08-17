@@ -3,6 +3,7 @@ package database
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/genjidb/genji/engine"
 )
@@ -21,6 +22,11 @@ type Database struct {
 	// and is used by every call to table#Insert to generate the
 	// docid if the table doesn't have a primary key.
 	tableDocids map[string]int64
+
+	// This stores the last transaction id created.
+	// It starts at 0 at database startup and is
+	// incremented atomically every time Begin is called.
+	lastTransactionID int64
 }
 
 // New initializes the DB using the given engine.
@@ -84,6 +90,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 	}
 
 	tx := Transaction{
+		id:             atomic.AddInt64(&db.lastTransactionID, 1),
 		db:             db,
 		Tx:             ntx,
 		writable:       writable,
