@@ -9,54 +9,113 @@ import (
 )
 
 func TestTableInfoStore(t *testing.T) {
-	ng := memoryengine.NewEngine()
-	defer ng.Close()
+	t.Run("ok", func(t *testing.T) {
+		ng := memoryengine.NewEngine()
+		defer ng.Close()
 
-	db, err := New(ng)
-	require.NoError(t, err)
-	defer db.Close()
+		db, err := New(ng)
+		require.NoError(t, err)
+		defer db.Close()
 
-	tx, err := db.Begin(true)
-	require.NoError(t, err)
-	defer tx.Rollback()
+		tx, err := db.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
 
-	info := &TableInfo{
-		FieldConstraints: []FieldConstraint{
-			{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
-		},
-	}
+		info := &TableInfo{
+			FieldConstraints: []FieldConstraint{
+				{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+			},
+		}
 
-	// Inserting one TableInfo should work.
-	err = tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
-	require.NoError(t, err)
+		// Inserting one TableInfo should work.
+		err = tx.tableInfoStore.Insert(tx, "foo1", info)
+		require.NoError(t, err)
 
-	// Inserting an existing TableInfo should not work.
-	err = tx.tableInfoStore.Insert(tx.Tx, "foo1", info)
-	require.Equal(t, err, ErrTableAlreadyExists)
+		// Inserting an existing TableInfo should not work.
+		err = tx.tableInfoStore.Insert(tx, "foo1", info)
+		require.Equal(t, err, ErrTableAlreadyExists)
 
-	// Listing all tables should return their name
-	// lexicographically ordered.
-	_ = tx.tableInfoStore.Insert(tx.Tx, "foo3", info)
-	_ = tx.tableInfoStore.Insert(tx.Tx, "foo2", info)
-	lt := tx.tableInfoStore.ListTables()
-	require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
+		// Listing all tables should return their name
+		// lexicographically ordered.
+		_ = tx.tableInfoStore.Insert(tx, "foo3", info)
+		_ = tx.tableInfoStore.Insert(tx, "foo2", info)
+		lt := tx.tableInfoStore.ListTables(tx)
+		require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
 
-	// Getting an existing TableInfo should work.
-	received, err := tx.tableInfoStore.Get("foo1")
-	require.NoError(t, err)
-	require.NotNil(t, received.storeID)
+		// Getting an existing TableInfo should work.
+		received, err := tx.tableInfoStore.Get(tx, "foo1")
+		require.NoError(t, err)
+		require.NotNil(t, received.storeID)
 
-	// Getting a non-existing TableInfo should not work.
-	_, err = tx.tableInfoStore.Get("unknown")
-	require.Equal(t, ErrTableNotFound, err)
+		// Getting a non-existing TableInfo should not work.
+		_, err = tx.tableInfoStore.Get(tx, "unknown")
+		require.Equal(t, ErrTableNotFound, err)
 
-	// Deleting an existing TableInfo should work.
-	err = tx.tableInfoStore.Delete(tx.Tx, "foo1")
-	require.NoError(t, err)
+		// Deleting an existing TableInfo should work.
+		err = tx.tableInfoStore.Delete(tx, "foo1")
+		require.NoError(t, err)
 
-	// Deleting a non-existing TableInfo should not work.
-	err = tx.tableInfoStore.Delete(tx.Tx, "foo1")
-	require.Equal(t, ErrTableNotFound, err)
+		// Deleting a non-existing TableInfo should not work.
+		err = tx.tableInfoStore.Delete(tx, "foo1")
+		require.Equal(t, ErrTableNotFound, err)
+	})
+
+	t.Run("on rollback", func(t *testing.T) {
+		ng := memoryengine.NewEngine()
+		defer ng.Close()
+
+		db, err := New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		info := &TableInfo{
+			FieldConstraints: []FieldConstraint{
+				{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+			},
+		}
+
+		insertAndRollback := func() {
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			err = tx.tableInfoStore.Insert(tx, "foo", info)
+			require.NoError(t, err)
+			err = tx.Rollback()
+			require.NoError(t, err)
+		}
+
+		insertAndRollback()
+		insertAndRollback()
+	})
+
+	t.Run("on commit", func(t *testing.T) {
+		ng := memoryengine.NewEngine()
+		defer ng.Close()
+
+		db, err := New(ng)
+		require.NoError(t, err)
+		defer db.Close()
+
+		info := &TableInfo{
+			FieldConstraints: []FieldConstraint{
+				{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+			},
+		}
+
+		insertAndCommit := func() error {
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			err = tx.tableInfoStore.Insert(tx, "foo", info)
+			if err != nil {
+				return err
+			}
+			return tx.Commit()
+		}
+
+		require.NoError(t, insertAndCommit())
+		require.Error(t, insertAndCommit())
+	})
 }
 
 func TestIndexStore(t *testing.T) {
