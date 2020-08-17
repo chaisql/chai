@@ -46,23 +46,20 @@ func TestTxTable(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		tx, err := db.Begin(true)
-		require.NoError(t, err)
+		check := func() {
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer func() {
+				err = tx.Rollback()
+				require.NoError(t, err)
+			}()
 
-		err = tx.CreateTable("test", nil)
-		require.NoError(t, err)
+			err = tx.CreateTable("test", nil)
+			require.NoError(t, err)
+		}
 
-		err = tx.Rollback()
-		require.NoError(t, err)
-
-		tx, err = db.Begin(true)
-		require.NoError(t, err)
-
-		err = tx.CreateTable("test", nil)
-		require.NoError(t, err)
-
-		err = tx.Rollback()
-		require.NoError(t, err)
+		check()
+		check()
 	})
 
 	t.Run("Get", func(t *testing.T) {
