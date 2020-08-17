@@ -24,12 +24,7 @@ type Table struct {
 
 // Info of the table.
 func (t *Table) Info() (*TableInfo, error) {
-	ti, err := t.infoStore.Get(t.name)
-	if err != nil {
-		return nil, err
-	}
-
-	return ti, nil
+	return t.infoStore.Get(t.tx, t.name)
 }
 
 // Name returns the name of the table.
@@ -348,7 +343,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
 func (t *Table) generateKey(d document.Document) ([]byte, error) {
-	ti, err := t.infoStore.Get(t.name)
+	ti, err := t.infoStore.Get(t.tx, t.name)
 	if err != nil {
 		return nil, err
 	}
