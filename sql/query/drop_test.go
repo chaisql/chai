@@ -34,6 +34,10 @@ func TestDropTable(t *testing.T) {
 		return nil
 	})
 	require.Len(t, tables, 2)
+
+	// Dropping a read-only table should fail.
+	err = db.Exec("DROP TABLE __genji_tables")
+	require.Error(t, err)
 }
 
 func TestDropIndex(t *testing.T) {

@@ -38,4 +38,8 @@ func TestAlterTable(t *testing.T) {
 	err = document.ToJSON(&buf, d)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, buf.String())
+
+	// Renaming a read-only table should fail
+	err = db.Exec("ALTER TABLE __genji_tables RENAME TO bar")
+	require.Error(t, err)
 }

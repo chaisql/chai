@@ -19,6 +19,7 @@ func TestReIndex(t *testing.T) {
 		{"ReIndex table", `REINDEX test2`, []string{"idx_test2_a", "idx_test2_b"}, false},
 		{"ReIndex index", `REINDEX idx_test1_a`, []string{"idx_test1_a"}, false},
 		{"ReIndex unknown", `REINDEX doesntexist`, []string{}, true},
+		{"ReIndex read-only", `REINDEX __genji_tables`, []string{}, true},
 	}
 
 	for _, test := range tests {

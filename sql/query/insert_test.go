@@ -37,6 +37,7 @@ func TestInsertStmt(t *testing.T) {
 		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, false, `{"pk()":1,"a":"a","b":2.3}`, nil},
 		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, `{"pk()":1,"a":"b"}`, nil},
 		{"Documents / with reference to other fields", `INSERT INTO test VALUES {a: 400, b: a * 4}`, false, `{"pk()":1,"a":400,"b":1600}`, nil},
+		{"Read-only tables", `INSERT INTO __genji_tables VALUES {a: 400, b: a * 4}`, true, ``, nil},
 	}
 
 	for _, test := range tests {
