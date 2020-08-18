@@ -64,6 +64,7 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 	}
 
 	info.storeID = tx.tableInfoStore.generateStoreID()
+	info.tableName = name
 	err := tx.tableInfoStore.Insert(tx, name, info)
 	if err != nil {
 		return err
