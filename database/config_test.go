@@ -43,9 +43,8 @@ func TestTableInfoStore(t *testing.T) {
 		require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
 
 		// Getting an existing TableInfo should work.
-		received, err := tx.tableInfoStore.Get(tx, "foo1")
+		_, err = tx.tableInfoStore.Get(tx, "foo1")
 		require.NoError(t, err)
-		require.NotNil(t, received.storeID)
 
 		// Getting a non-existing TableInfo should not work.
 		_, err = tx.tableInfoStore.Get(tx, "unknown")

@@ -1,10 +1,12 @@
 package database
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,13 +68,12 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 }
 
 type TableInfo struct {
+	// storeID is used as a key to reference a table.
+	storeID  []byte
+	readOnly bool
 	// if non-zero, this tableInfo has been created during the current transaction.
 	// it will be removed if the transaction is rolled back or set to false if its commited.
 	transactionID int64
-	// storeID is a generated ID that acts as a key to reference a table.
-	// The first-4 bytes represents the timestamp in second and the last-2 bytes are
-	// randomly generated.
-	storeID [6]byte
 
 	FieldConstraints []FieldConstraint
 }
@@ -92,7 +93,7 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 func (ti *TableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
-	buf.Add("storeID", document.NewBlobValue(ti.storeID[:]))
+	buf.Add("storeID", document.NewBlobValue(ti.storeID))
 
 	vbuf := document.NewValueBuffer()
 	for _, fc := range ti.FieldConstraints {
@@ -101,6 +102,7 @@ func (ti *TableInfo) ToDocument() document.Document {
 
 	buf.Add("field_constraints", document.NewArrayValue(vbuf))
 
+	buf.Add("read_only", document.NewBoolValue(ti.readOnly))
 	return buf
 }
 
@@ -109,7 +111,8 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	copy(ti.storeID[:], v.V.([]byte))
+	ti.storeID = make([]byte, len(v.V.([]byte)))
+	copy(ti.storeID, v.V.([]byte))
 
 	v, err = d.GetByField("field_constraints")
 	if err != nil {
@@ -124,9 +127,20 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 
 	ti.FieldConstraints = make([]FieldConstraint, l)
 
-	return ar.Iterate(func(i int, value document.Value) error {
+	err = ar.Iterate(func(i int, value document.Value) error {
 		return ti.FieldConstraints[i].ScanDocument(v.V.(document.Document))
 	})
+	if err != nil {
+		return err
+	}
+
+	v, err = d.GetByField("read_only")
+	if err != nil {
+		return err
+	}
+
+	ti.readOnly = v.V.(bool)
+	return nil
 }
 
 // tableInfoStore manages table information.
@@ -264,6 +278,9 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		t.tableInfos[string(itm.Key())] = ti
 	}
 
+	t.tableInfos[tableInfoStoreName] = TableInfo{
+		storeID: []byte(tableInfoStoreName),
+	}
 	return nil
 }
 
@@ -302,15 +319,17 @@ func (t *tableInfoStore) ListTables(tx *Transaction) []string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	names := make([]string, len(t.tableInfos))
-	var i int
+	names := make([]string, 0, len(t.tableInfos))
 	for k := range t.tableInfos {
 		if t.tableInfos[k].transactionID != 0 && t.tableInfos[k].transactionID != tx.id {
 			continue
 		}
 
-		names[i] = k
-		i++
+		if strings.HasPrefix(k, internalPrefix) {
+			continue
+		}
+
+		names = append(names, k)
 	}
 
 	sort.Strings(names)
@@ -318,7 +337,23 @@ func (t *tableInfoStore) ListTables(tx *Transaction) []string {
 	return names
 }
 
-func (t *tableInfoStore) generateStoreID() [6]byte {
+// GetTableInfo returns a copy of all the table information.
+func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	ti := make(map[string]TableInfo, len(t.tableInfos))
+	for k, v := range t.tableInfos {
+		ti[k] = v
+	}
+
+	return ti
+}
+
+// generateStoreID generates an ID used as a key to reference a table.
+// The first 4 bytes represent the timestamp in second and the last-2 bytes are
+// randomly generated.
+func (t *tableInfoStore) generateStoreID() []byte {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -332,7 +367,7 @@ func (t *tableInfoStore) generateStoreID() [6]byte {
 
 		found = false
 		for _, ti := range t.tableInfos {
-			if ti.storeID == id {
+			if bytes.Equal(ti.storeID, id[:]) {
 				// A store with this id already exists.
 				// Let's generate a new one.
 				found = true
@@ -341,7 +376,7 @@ func (t *tableInfoStore) generateStoreID() [6]byte {
 		}
 	}
 
-	return id
+	return id[:]
 }
 
 // IndexConfig holds the configuration of an index.
