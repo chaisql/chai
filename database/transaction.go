@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
@@ -10,8 +11,9 @@ import (
 )
 
 var (
-	tableInfoStoreName = "__genji.tables"
-	indexStoreName     = "__genji.indexes"
+	internalPrefix     = "__genji_"
+	tableInfoStoreName = internalPrefix + "tables"
+	indexStoreName     = internalPrefix + "indexes"
 )
 
 // Transaction represents a database transaction. It provides methods for managing the
@@ -52,6 +54,10 @@ func (tx *Transaction) Writable() bool {
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
+	if strings.HasPrefix(name, internalPrefix) {
+		return fmt.Errorf("table name must not start with %s", internalPrefix)
+	}
+
 	if info == nil {
 		info = new(TableInfo)
 	}
@@ -62,7 +68,7 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(info.storeID[:])
+	err = tx.Tx.CreateStore(info.storeID)
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -77,7 +83,7 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore(ti.storeID[:])
+	s, err := tx.Tx.GetStore(ti.storeID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +176,7 @@ func (tx *Transaction) DropTable(name string) error {
 		return err
 	}
 
-	return tx.Tx.DropStore(ti.storeID[:])
+	return tx.Tx.DropStore(ti.storeID)
 }
 
 // ListTables lists all the tables.

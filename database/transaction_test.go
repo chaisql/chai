@@ -39,6 +39,10 @@ func TestTxTable(t *testing.T) {
 		// Creating a table that already exists should fail.
 		err = tx.CreateTable("test", nil)
 		require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
+
+		// Creating a table that starts with __genji_ should fail.
+		err = tx.CreateTable("__genji_foo", nil)
+		require.Error(t, err)
 	})
 
 	t.Run("Create and rollback", func(t *testing.T) {
