@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -104,6 +105,10 @@ func (tx *Transaction) RenameTable(oldName, newName string) error {
 		return err
 	}
 
+	if ti.readOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
 	// Insert the TableInfo keyed by the newName name.
 	err = tx.tableInfoStore.Insert(tx, newName, ti)
 	if err != nil {
@@ -131,10 +136,18 @@ func (tx *Transaction) RenameTable(oldName, newName string) error {
 
 // DropTable deletes a table from the database.
 func (tx *Transaction) DropTable(name string) error {
+	ti, err := tx.tableInfoStore.Get(tx, name)
+	if err != nil {
+		return err
+	}
+
+	if ti.readOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
 	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
 
 	var buf msgpack.EncodedDocument
-	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()
 		var opts IndexConfig
@@ -162,11 +175,6 @@ func (tx *Transaction) DropTable(name string) error {
 		}
 	}
 	err = it.Close()
-	if err != nil {
-		return err
-	}
-
-	ti, err := tx.tableInfoStore.Get(tx, name)
 	if err != nil {
 		return err
 	}

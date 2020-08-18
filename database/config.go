@@ -279,7 +279,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 	}
 
 	t.tableInfos[tableInfoStoreName] = TableInfo{
-		storeID: []byte(tableInfoStoreName),
+		storeID:  []byte(tableInfoStoreName),
+		readOnly: true,
 	}
 	return nil
 }

@@ -42,7 +42,16 @@ func (t *Table) Truncate() error {
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 func (t *Table) Insert(d document.Document) ([]byte, error) {
-	d, err := t.ValidateConstraints(d)
+	info, err := t.Info()
+	if err != nil {
+		return nil, err
+	}
+
+	if info.readOnly {
+		return nil, errors.New("cannot write to read-only table")
+	}
+
+	d, err = t.ValidateConstraints(d)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +108,15 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 // Delete a document by key.
 // Indexes are automatically updated.
 func (t *Table) Delete(key []byte) error {
+	info, err := t.Info()
+	if err != nil {
+		return err
+	}
+
+	if info.readOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
 	d, err := t.GetDocument(key)
 	if err != nil {
 		return err
@@ -128,7 +146,16 @@ func (t *Table) Delete(key []byte) error {
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
 func (t *Table) Replace(key []byte, d document.Document) error {
-	d, err := t.ValidateConstraints(d)
+	info, err := t.Info()
+	if err != nil {
+		return err
+	}
+
+	if info.readOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
+	d, err = t.ValidateConstraints(d)
 	if err != nil {
 		return err
 	}
@@ -587,6 +614,15 @@ func getParentValue(d document.Document, p document.ValuePath) (document.Value, 
 
 // ReIndex all the indexes of the table.
 func (t *Table) ReIndex() error {
+	info, err := t.Info()
+	if err != nil {
+		return err
+	}
+
+	if info.readOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
 	indexes, err := t.Indexes()
 	if err != nil {
 		return err
