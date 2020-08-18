@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
 )
 
 func runTablesCmd(db *genji.DB, cmd []string) error {
@@ -11,20 +12,21 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 		return fmt.Errorf("usage: .tables")
 	}
 
-	var tables []string
-	err := db.View(func(tx *genji.Tx) error {
-		tables = tx.ListTables()
-		return nil
-	})
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return err
 	}
+	defer res.Close()
 
-	for _, t := range tables {
-		fmt.Println(t)
-	}
-
-	return nil
+	return res.Iterate(func(d document.Document) error {
+		var tableName string
+		err = document.Scan(d, &tableName)
+		if err != nil {
+			return err
+		}
+		fmt.Println(tableName)
+		return nil
+	})
 }
 
 // displayTableIndex prints all indexes that the given table contains.
