@@ -93,7 +93,7 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 func (ti *TableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
-	buf.Add("storeID", document.NewBlobValue(ti.storeID))
+	buf.Add("store_id", document.NewBlobValue(ti.storeID))
 
 	vbuf := document.NewValueBuffer()
 	for _, fc := range ti.FieldConstraints {
@@ -107,7 +107,7 @@ func (ti *TableInfo) ToDocument() document.Document {
 }
 
 func (ti *TableInfo) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("storeID")
+	v, err := d.GetByField("store_id")
 	if err != nil {
 		return err
 	}
