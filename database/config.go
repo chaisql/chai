@@ -68,6 +68,7 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 }
 
 type TableInfo struct {
+	tableName string
 	// storeID is used as a key to reference a table.
 	storeID  []byte
 	readOnly bool
@@ -93,6 +94,7 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 func (ti *TableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
+	buf.Add("table_name", document.NewTextValue(ti.tableName))
 	buf.Add("store_id", document.NewBlobValue(ti.storeID))
 
 	vbuf := document.NewValueBuffer()
@@ -107,7 +109,13 @@ func (ti *TableInfo) ToDocument() document.Document {
 }
 
 func (ti *TableInfo) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("store_id")
+	v, err := d.GetByField("table_name")
+	if err != nil {
+		return err
+	}
+	ti.tableName = v.V.(string)
+
+	v, err = d.GetByField("store_id")
 	if err != nil {
 		return err
 	}
