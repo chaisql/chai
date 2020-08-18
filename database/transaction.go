@@ -63,8 +63,8 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 		info = new(TableInfo)
 	}
 
-	info.storeID = tx.tableInfoStore.generateStoreID()
 	info.tableName = name
+	info.storeID = tx.tableInfoStore.generateStoreID()
 	err := tx.tableInfoStore.Insert(tx, name, info)
 	if err != nil {
 		return err
@@ -110,6 +110,7 @@ func (tx *Transaction) RenameTable(oldName, newName string) error {
 		return errors.New("cannot write to read-only table")
 	}
 
+	ti.tableName = newName
 	// Insert the TableInfo keyed by the newName name.
 	err = tx.tableInfoStore.Insert(tx, newName, ti)
 	if err != nil {
@@ -186,12 +187,6 @@ func (tx *Transaction) DropTable(name string) error {
 	}
 
 	return tx.Tx.DropStore(ti.storeID)
-}
-
-// ListTables lists all the tables.
-// The returned slice is lexicographically ordered.
-func (tx *Transaction) ListTables() []string {
-	return tx.tableInfoStore.ListTables(tx)
 }
 
 // CreateIndex creates an index with the given name.

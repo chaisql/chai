@@ -35,13 +35,6 @@ func TestTableInfoStore(t *testing.T) {
 		err = tx.tableInfoStore.Insert(tx, "foo1", info)
 		require.Equal(t, err, ErrTableAlreadyExists)
 
-		// Listing all tables should return their name
-		// lexicographically ordered.
-		_ = tx.tableInfoStore.Insert(tx, "foo3", info)
-		_ = tx.tableInfoStore.Insert(tx, "foo2", info)
-		lt := tx.tableInfoStore.ListTables(tx)
-		require.Equal(t, []string{"foo1", "foo2", "foo3"}, lt)
-
 		// Getting an existing TableInfo should work.
 		_, err = tx.tableInfoStore.Get(tx, "foo1")
 		require.NoError(t, err)
