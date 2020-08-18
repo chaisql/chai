@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -319,31 +317,6 @@ func (t *tableInfoStore) commit(tx *Transaction) {
 			t.tableInfos[k] = info
 		}
 	}
-}
-
-// ListTables lists all the tables. It ignores tables created by
-// other transactions that haven't been commited yet.
-// The returned slice is lexicographically ordered.
-func (t *tableInfoStore) ListTables(tx *Transaction) []string {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	names := make([]string, 0, len(t.tableInfos))
-	for k := range t.tableInfos {
-		if t.tableInfos[k].transactionID != 0 && t.tableInfos[k].transactionID != tx.id {
-			continue
-		}
-
-		if strings.HasPrefix(k, internalPrefix) {
-			continue
-		}
-
-		names = append(names, k)
-	}
-
-	sort.Strings(names)
-
-	return names
 }
 
 // GetTableInfo returns a copy of all the table information.

@@ -26,7 +26,6 @@ func newTestDB(t testing.TB) (*database.Transaction, func()) {
 // - CreateTable
 // - GetTable
 // - DropTable
-// - ListTables
 // - RenameTable
 func TestTxTable(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
@@ -101,28 +100,6 @@ func TestTxTable(t *testing.T) {
 		require.EqualError(t, err, database.ErrTableNotFound.Error())
 	})
 
-	t.Run("List", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		tables := tx.ListTables()
-		require.Len(t, tables, 0)
-
-		err := tx.CreateTable("foo", nil)
-		require.NoError(t, err)
-
-		err = tx.CreateTable("bar", nil)
-		require.NoError(t, err)
-
-		err = tx.CreateTable("baz", nil)
-		require.NoError(t, err)
-
-		tables = tx.ListTables()
-		// The returned slice should be lexicographically ordered.
-		exp := []string{"bar", "baz", "foo"}
-		require.Equal(t, exp, tables)
-	})
-
 	t.Run("Rename", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
@@ -154,7 +131,7 @@ func TestTxTable(t *testing.T) {
 		// The field constraints should be the same.
 		info, err := tb.Info()
 		require.NoError(t, err)
-		require.Equal(t, ti, info)
+		require.Equal(t, ti.FieldConstraints, info.FieldConstraints)
 
 		// Check that the indexes have been updated as well.
 		idxs, err := tx.ListIndexes()

@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,11 +29,20 @@ func TestDropTable(t *testing.T) {
 	require.Error(t, err)
 
 	// Assert that only the table `test1` has been dropped.
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
+	require.NoError(t, err)
 	var tables []string
-	err = db.View(func(tx *genji.Tx) error {
-		tables = tx.ListTables()
+	err = res.Iterate(func(d document.Document) error {
+		v, err := d.GetByField("table_name")
+		if err != nil {
+			return err
+		}
+		tables = append(tables, v.V.(string))
 		return nil
 	})
+	require.NoError(t, err)
+	require.NoError(t, res.Close())
+
 	require.Len(t, tables, 2)
 
 	// Dropping a read-only table should fail.
