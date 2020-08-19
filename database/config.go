@@ -14,6 +14,8 @@ import (
 	"github.com/genjidb/genji/index"
 )
 
+const storePrefix = 't'
+
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
 	Path         document.ValuePath
@@ -333,17 +335,19 @@ func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
 }
 
 // generateStoreID generates an ID used as a key to reference a table.
-// The first 4 bytes represent the timestamp in second and the last-2 bytes are
+// The first byte contains the prefix used for table stores.
+// The next 4 bytes represent the timestamp in second and the last 2 bytes are
 // randomly generated.
 func (t *tableInfoStore) generateStoreID() []byte {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	var found bool = true
-	var id [6]byte
+	var id [7]byte
 	for found {
-		binary.BigEndian.PutUint32(id[:], uint32(time.Now().Unix()))
-		if _, err := rand.Reader.Read(id[4:]); err != nil {
+		id[0] = storePrefix
+		binary.BigEndian.PutUint32(id[1:], uint32(time.Now().Unix()))
+		if _, err := rand.Reader.Read(id[5:]); err != nil {
 			panic(fmt.Errorf("cannot generate random number: %v;", err))
 		}
 
