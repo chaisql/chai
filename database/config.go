@@ -134,7 +134,7 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	ti.FieldConstraints = make([]FieldConstraint, l)
 
 	err = ar.Iterate(func(i int, value document.Value) error {
-		return ti.FieldConstraints[i].ScanDocument(v.V.(document.Document))
+		return ti.FieldConstraints[i].ScanDocument(value.V.(document.Document))
 	})
 	if err != nil {
 		return err
