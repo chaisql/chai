@@ -8,6 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTableInfo(t *testing.T) {
+	info := &TableInfo{
+		FieldConstraints: []FieldConstraint{
+			{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+		},
+	}
+
+	doc := info.ToDocument()
+
+	var res TableInfo
+	err := res.ScanDocument(doc)
+	require.NoError(t, err)
+}
+
 func TestTableInfoStore(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		ng := memoryengine.NewEngine()
