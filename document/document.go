@@ -268,18 +268,31 @@ func (fb *FieldBuffer) Key() []byte {
 }
 
 // A ValuePath represents the path to a particular value within a document.
-type ValuePath []string
+type ValuePath []ValuePathFragment
 
-// NewValuePath takes a string representation of a value path and returns a ValuePath.
-// It assumes the separator is a dot.
-func NewValuePath(p string) ValuePath {
-	return strings.Split(p, ".")
+// ValuePathFragment is a fragment of a path representing either a field name or
+// the index of an array.
+type ValuePathFragment struct {
+	FieldName  string
+	ArrayIndex int
 }
 
-// String joins all the chunks of the path using the dot separator.
+// String representation of all the fragments of the path.
 // It implements the Stringer interface.
 func (p ValuePath) String() string {
-	return strings.Join(p, ".")
+	var b strings.Builder
+
+	for i := range p {
+		if p[i].FieldName != "" {
+			if i != 0 {
+				b.WriteRune('.')
+			}
+			b.WriteString(p[i].FieldName)
+		} else {
+			b.WriteString("[" + strconv.Itoa(p[i].ArrayIndex) + "]")
+		}
+	}
+	return b.String()
 }
 
 // GetValue from a document.
@@ -291,8 +304,11 @@ func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
 	if len(p) == 0 {
 		return Value{}, errors.New("empty valuepath")
 	}
+	if p[0].FieldName == "" {
+		return Value{}, errors.New("field fragment expected")
+	}
 
-	v, err := d.GetByField(p[0])
+	v, err := d.GetByField(p[0].FieldName)
 	if err != nil {
 		return Value{}, err
 	}
@@ -304,13 +320,11 @@ func (p ValuePath) getValueFromArray(a Array) (Value, error) {
 	if len(p) == 0 {
 		return Value{}, errors.New("empty valuepath")
 	}
-
-	i, err := strconv.Atoi(p[0])
-	if err != nil {
-		return Value{}, err
+	if p[0].FieldName == "" {
+		return Value{}, errors.New("array index fragment expected")
 	}
 
-	v, err := a.GetByIndex(i)
+	v, err := a.GetByIndex(p[0].ArrayIndex)
 	if err != nil {
 		return Value{}, err
 	}
