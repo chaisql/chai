@@ -104,7 +104,7 @@ func Run(opts *Options) error {
 
 	e := prompt.New(
 		sh.execute,
-		completer,
+		sh.completer,
 		prompt.OptionPrefix("genji> "),
 		prompt.OptionTitle("genji"),
 		prompt.OptionLivePrefix(sh.changelivePrefix),
@@ -314,7 +314,36 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
-func completer(in prompt.Document) []prompt.Suggest {
+// getTables returns all the tables of the database
+func (sh *Shell) getAllTables() ([]string, error) {
+	var tables []string
+	db, _ := sh.getDB()
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Close()
+
+	err = res.Iterate(func(d document.Document) error {
+		var tableName string
+		err = document.Scan(d, &tableName)
+		if err != nil {
+			return err
+		}
+		tables = append(tables, tableName)
+		return nil
+	})
+
+	// if there is no table return table as a suggestion
+	if len(tables) == 0 {
+		tables = append(tables, "table_name")
+	}
+
+	return tables, nil
+}
+
+func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery()
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
@@ -322,6 +351,14 @@ func completer(in prompt.Document) []prompt.Suggest {
 			return []prompt.Suggest{}
 		}
 		expected := e.Expected
+		switch expected[0] {
+		case "table_name":
+			expected, err = sh.getAllTables()
+			if err != nil {
+				return []prompt.Suggest{}
+			}
+		}
+
 		suggestions := make([]prompt.Suggest, len(expected))
 		for i, e := range expected {
 			suggestions[i].Text = e
