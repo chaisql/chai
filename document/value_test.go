@@ -51,6 +51,8 @@ func TestNewValue(t *testing.T) {
 	type myInt64 int64
 	type myFloat64 float64
 
+	now := time.Now()
+
 	tests := []struct {
 		name            string
 		value, expected interface{}
@@ -73,6 +75,7 @@ func TestNewValue(t *testing.T) {
 		{"document", document.NewFieldBuffer().Add("a", document.NewIntegerValue(10)), document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))},
 		{"array", document.NewValueBuffer(document.NewIntegerValue(10)), document.NewValueBuffer(document.NewIntegerValue(10))},
 		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
+		{"time", now, now.Format(time.RFC3339Nano)},
 		{"bytes", myBytes("bar"), []byte("bar")},
 		{"string", myString("bar"), "bar"},
 		{"myUint", myUint(10), int64(10)},

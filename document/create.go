@@ -147,6 +147,8 @@ func NewValue(x interface{}) (Value, error) {
 	switch v := x.(type) {
 	case time.Duration:
 		return NewDurationValue(v), nil
+	case time.Time:
+		return NewTextValue(v.Format(time.RFC3339Nano)), nil
 	case nil:
 		return NewNullValue(), nil
 	case Document:
