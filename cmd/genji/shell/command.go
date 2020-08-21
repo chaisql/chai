@@ -2,10 +2,18 @@ package shell
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 )
+
+var commands = map[string]string{
+	".tables":               "\t\tList names of tables.",
+	".exit":                 "\t\t\tExit this program.",
+	".indexes [table_name]": "\tDisplay all indexes or the indexes of the given table name.",
+	".help":                 "\t\t\tList all commands.",
+}
 
 func runTablesCmd(db *genji.DB, cmd []string) error {
 	if len(cmd) > 1 {
@@ -79,8 +87,22 @@ func runIndexesCmd(db *genji.DB, in []string) error {
 	case 2:
 		// If the input is ".indexes <tableName>"
 		return displayTableIndex(db, in[1])
-
 	}
 
 	return fmt.Errorf("usage: .indexes [tablename]")
+}
+
+// runHelpCmd display all available dot commands.
+func runHelpCmd() error {
+	var keys []string
+	for k := range commands {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("%s %s\n", k, commands[k])
+	}
+
+	return nil
 }
