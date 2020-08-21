@@ -88,6 +88,7 @@ func Run(opts *Options) error {
 		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
 	}
 
+	fmt.Println("Enter \".help\" for usage hints.")
 	history, err := sh.loadHistory()
 	if err != nil {
 		return err
@@ -237,9 +238,11 @@ func (sh *Shell) runCommand(in string) error {
 		}
 
 		return runIndexesCmd(db, cmd)
+	case ".help":
+		return runHelpCmd()
 	}
 
-	return fmt.Errorf("unknown command %q", cmd)
+	return fmt.Errorf("unknown command %q. Enter \".help\" for help.", cmd)
 }
 
 func (sh *Shell) runQuery(q string) error {
