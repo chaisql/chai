@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // A Scanner can iterate over a document and scan all the fields.
@@ -283,6 +284,26 @@ func scanValue(v Value, ref reflect.Value) error {
 		}
 		ref.SetFloat(v.V.(float64))
 		return nil
+	case reflect.Interface:
+		ref.Set(reflect.ValueOf(v.V))
+		return nil
+	}
+
+	// test with supported stdlib types
+	switch ref.Type().String() {
+	case "time.Time":
+		if v.Type == TextValue {
+			parsed, err := time.Parse(time.RFC3339Nano, v.V.(string))
+			if err != nil {
+				return err
+			}
+
+			ref.Set(reflect.ValueOf(parsed))
+			return nil
+		}
+	}
+
+	switch ref.Kind() {
 	case reflect.Struct:
 		v, err := v.CastAsDocument()
 		if err != nil {
@@ -315,9 +336,6 @@ func scanValue(v Value, ref reflect.Value) error {
 		}
 
 		return mapScan(v.V.(Document), ref)
-	case reflect.Interface:
-		ref.Set(reflect.ValueOf(v.V))
-		return nil
 	}
 
 	return &ErrUnsupportedType{ref, "Invalid type"}
