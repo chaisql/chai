@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -124,7 +123,11 @@ func (p *Parser) parseFrom() (string, bool, error) {
 
 	// Parse table name
 	ident, err := p.parseIdent()
-	return ident, true, err
+	if err != nil {
+		return ident, true,  newParseError("", []string{"table_name"}, scanner.Pos{})
+	}
+
+	return ident, true,  err
 }
 
 func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
