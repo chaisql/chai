@@ -238,11 +238,9 @@ func (sh *Shell) runCommand(in string) error {
 		}
 
 		return runIndexesCmd(db, cmd)
-	case ".help":
-		return runHelpCmd()
 	}
 
-	return fmt.Errorf("unknown command %q. Enter \".help\" for help.", cmd)
+	return fmt.Errorf("unknown command %q", cmd)
 }
 
 func (sh *Shell) runQuery(q string) error {

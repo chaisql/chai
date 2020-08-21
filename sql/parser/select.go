@@ -124,7 +124,7 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	// Parse table name
 	ident, err := p.parseIdent()
 	if err != nil {
-		return ident, true,  newParseError("", []string{"table_name"}, scanner.Pos{})
+		return ident, true,  newParseError("", []string{"table"}, scanner.Pos{})
 	}
 
 	return ident, true,  err
