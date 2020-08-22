@@ -370,39 +370,51 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 }
 
 // parseFieldRef parses a field reference in the form ident (.ident|integer)*
-func (p *Parser) parseFieldRef() ([]string, error) {
-	var fieldRef []string
+func (p *Parser) parseFieldRef() (document.ValuePath, error) {
+	var fieldRef document.ValuePath
 	// parse first mandatory ident
 	chunk, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
-	fieldRef = append(fieldRef, chunk)
+	fieldRef = append(fieldRef, document.ValuePathFragment{
+		FieldName: chunk,
+	})
 
 LOOP:
 	for {
 		// scan the very next token.
-		// if can be either a '.' or a number starting with '.'
-		// because the scanner is unable to detect a dot when
-		// it's followed by digits.
+		// if can be either a '.' or a '['
 		// Otherwise, unscan and return the fieldRef
-		tok, _, lit := p.Scan()
+		tok, _, _ := p.Scan()
 		switch tok {
 		case scanner.DOT:
 			// scan the next token for an ident
 			tok, pos, lit := p.Scan()
 			if tok != scanner.IDENT {
-				return nil, newParseError(lit, []string{"array index", "identifier"}, pos)
+				return nil, newParseError(lit, []string{"identifier"}, pos)
 			}
-			fieldRef = append(fieldRef, lit)
-		case scanner.NUMBER:
-			// if it starts with a dot, it's considered as an array index
-			if lit[0] != '.' {
-				p.Unscan()
-				return fieldRef, nil
+			fieldRef = append(fieldRef, document.ValuePathFragment{
+				FieldName: lit,
+			})
+		case scanner.LSBRACKET:
+			// scan the next token for an integer
+			tok, pos, lit := p.Scan()
+			if tok != scanner.INTEGER || lit[0] == '-' {
+				return nil, newParseError(lit, []string{"array index"}, pos)
 			}
-			lit = lit[1:]
-			fieldRef = append(fieldRef, lit)
+			idx, err := strconv.Atoi(lit)
+			if err != nil {
+				return nil, err
+			}
+			fieldRef = append(fieldRef, document.ValuePathFragment{
+				ArrayIndex: idx,
+			})
+			// scan the next token for a closing left bracket
+			tok, pos, lit = p.Scan()
+			if tok != scanner.RSBRACKET {
+				return nil, newParseError(lit, []string{"]"}, pos)
+			}
 		default:
 			p.Unscan()
 			break LOOP
