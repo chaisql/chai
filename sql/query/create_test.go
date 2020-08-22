@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parseFieldRef(t testing.TB, str string) document.ValuePath {
-	vp, err := parser.ParseFieldRef(str)
+func parsePath(t testing.TB, str string) document.ValuePath {
+	vp, err := parser.ParsePath(str)
 	require.NoError(t, err)
 	return vp
 }
@@ -73,8 +73,8 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: parseFieldRef(t, "d"), Type: document.DoubleValue},
-					{Path: parseFieldRef(t, "b"), Type: document.BoolValue},
+					{Path: parsePath(t, "d"), Type: document.DoubleValue},
+					{Path: parsePath(t, "b"), Type: document.BoolValue},
 				}, info.FieldConstraints)
 				return nil
 			})
@@ -102,14 +102,14 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: parseFieldRef(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
-					{Path: parseFieldRef(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
-					{Path: parseFieldRef(t, "bar[4][0].bat"), Type: document.IntegerValue},
-					{Path: parseFieldRef(t, "du"), Type: document.DurationValue},
-					{Path: parseFieldRef(t, "b"), Type: document.BlobValue},
-					{Path: parseFieldRef(t, "t"), Type: document.TextValue},
-					{Path: parseFieldRef(t, "a"), Type: document.ArrayValue},
-					{Path: parseFieldRef(t, "d"), Type: document.DocumentValue},
+					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
+					{Path: parsePath(t, "du"), Type: document.DurationValue},
+					{Path: parsePath(t, "b"), Type: document.BlobValue},
+					{Path: parsePath(t, "t"), Type: document.TextValue},
+					{Path: parsePath(t, "a"), Type: document.ArrayValue},
+					{Path: parsePath(t, "d"), Type: document.DocumentValue},
 				}, info.FieldConstraints)
 				return nil
 			})

@@ -35,7 +35,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 
-	// Parse order by: "ORDER BY fieldRef [ASC|DESC]?"
+	// Parse order by: "ORDER BY path [ASC|DESC]?"
 	cfg.OrderBy, cfg.OrderByDirection, err = p.parseOrderBy()
 	if err != nil {
 		return nil, err
@@ -144,8 +144,8 @@ func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
 		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"BY"}, pos)
 	}
 
-	// parse field reference
-	ref, err := p.parseFieldRef()
+	// parse path
+	ref, err := p.parsePath()
 	if err != nil {
 		return nil, 0, err
 	}

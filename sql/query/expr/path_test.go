@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDotNotationExpr(t *testing.T) {
+func TestPathExpr(t *testing.T) {
 	tests := []struct {
 		expr  string
 		res   document.Value

@@ -55,7 +55,7 @@ func TestParserUpdate(t *testing.T) {
 						planner.NewSetNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
-								expr.Eq(expr.FieldSelector(newFieldRef(t, "age")), expr.IntegerValue(10)),
+								expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 							),
 							"a", expr.IntegerValue(1),
 						),
@@ -81,7 +81,7 @@ func TestParserUpdate(t *testing.T) {
 						planner.NewUnsetNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
-								expr.Eq(expr.FieldSelector(newFieldRef(t, "age")), expr.IntegerValue(10)),
+								expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 							),
 							"a",
 						),
