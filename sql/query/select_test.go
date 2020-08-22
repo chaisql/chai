@@ -174,8 +174,8 @@ func TestSelectStmt(t *testing.T) {
 
 		call("SELECT *, a.b FROM test WHERE a = {b: 1}", `{"a": {"b":1}, "a.b": 1}`)
 		call("SELECT a.b FROM test", `{"a.b": 1}`, `{"a.b": null}`, `{"a.b": null}`)
-		call("SELECT a.1 FROM test", `{"a.1": null}`, `{"a.1": null}`, `{"a.1": 2}`)
-		call("SELECT a.2.1 FROM test", `{"a.2.1": null}`, `{"a.2.1": null}`, `{"a.2.1": 9}`)
+		call("SELECT a[1] FROM test", `{"a[1]": null}`, `{"a[1]": null}`, `{"a[1]": 2}`)
+		call("SELECT a[2][1] FROM test", `{"a[2][1]": null}`, `{"a[2][1]": null}`, `{"a[2][1]": 9}`)
 	})
 
 	t.Run("table not found", func(t *testing.T) {

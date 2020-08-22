@@ -20,12 +20,12 @@ func TestDotNotationExpr(t *testing.T) {
 			return document.NewDocumentValue(d)
 		}(),
 			false},
-		{"b.`foo bar`.0", document.NewIntegerValue(1), false},
-		{"b.`foo bar`.1", document.NewIntegerValue(2), false},
-		{"b.`foo bar`.2", nullLitteral, false},
-		{"b.0", nullLitteral, false},
-		{"c.0", document.NewIntegerValue(1), false},
-		{"c.1.foo", document.NewTextValue("bar"), false},
+		{"b.`foo bar`[0]", document.NewIntegerValue(1), false},
+		{"b.`foo bar`[1]", document.NewIntegerValue(2), false},
+		{"b.`foo bar`[2]", nullLitteral, false},
+		{"b[0]", nullLitteral, false},
+		{"c[0]", document.NewIntegerValue(1), false},
+		{"c[1].foo", document.NewTextValue("bar"), false},
 		{"c.foo", nullLitteral, false},
 		{"d", nullLitteral, false},
 	}
