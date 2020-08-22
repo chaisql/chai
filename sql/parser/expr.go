@@ -152,7 +152,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		}
 		p.Unscan()
 		p.Unscan()
-		field, err := p.parseFieldRef()
+		field, err := p.parsePath()
 		if err != nil {
 			return nil, err
 		}
@@ -369,15 +369,15 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 	}, nil
 }
 
-// parseFieldRef parses a field reference in the form ident (.ident|integer)*
-func (p *Parser) parseFieldRef() (document.ValuePath, error) {
-	var fieldRef document.ValuePath
+// parsePath parses a path to a specific value.
+func (p *Parser) parsePath() (document.ValuePath, error) {
+	var vPath document.ValuePath
 	// parse first mandatory ident
 	chunk, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
-	fieldRef = append(fieldRef, document.ValuePathFragment{
+	vPath = append(vPath, document.ValuePathFragment{
 		FieldName: chunk,
 	})
 
@@ -385,7 +385,7 @@ LOOP:
 	for {
 		// scan the very next token.
 		// if can be either a '.' or a '['
-		// Otherwise, unscan and return the fieldRef
+		// Otherwise, unscan and return the path
 		tok, _, _ := p.Scan()
 		switch tok {
 		case scanner.DOT:
@@ -394,7 +394,7 @@ LOOP:
 			if tok != scanner.IDENT {
 				return nil, newParseError(lit, []string{"identifier"}, pos)
 			}
-			fieldRef = append(fieldRef, document.ValuePathFragment{
+			vPath = append(vPath, document.ValuePathFragment{
 				FieldName: lit,
 			})
 		case scanner.LSBRACKET:
@@ -407,7 +407,7 @@ LOOP:
 			if err != nil {
 				return nil, err
 			}
-			fieldRef = append(fieldRef, document.ValuePathFragment{
+			vPath = append(vPath, document.ValuePathFragment{
 				ArrayIndex: idx,
 			})
 			// scan the next token for a closing left bracket
@@ -421,7 +421,7 @@ LOOP:
 		}
 	}
 
-	return fieldRef, nil
+	return vPath, nil
 }
 
 func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.LiteralExprList, error) {

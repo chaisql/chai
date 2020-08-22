@@ -11,12 +11,11 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/key"
-	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 
-func parseFieldRef(t testing.TB, str string) document.ValuePath {
-	vp, err := parser.ParseFieldRef(str)
+func parsePath(t testing.TB, str string) document.ValuePath {
+	vp, err := parser.parsePath(str)
 	require.NoError(t, err)
 	return vp
 }
@@ -239,7 +238,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{Path: parseFieldRef(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Path: parsePath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -270,8 +269,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{Path: parseFieldRef(t, "foo"), Type: document.ArrayValue},
-				{Path: parseFieldRef(t, "foo[0]"), Type: document.IntegerValue},
+				{Path: parsePath(t, "foo"), Type: document.ArrayValue},
+				{Path: parsePath(t, "foo[0]"), Type: document.IntegerValue},
 			},
 		})
 		require.NoError(t, err)
@@ -289,7 +288,7 @@ func TestTableInsert(t *testing.T) {
 		d, err := tb.GetDocument(key)
 		require.NoError(t, err)
 
-		v, err := parseFieldRef(t, "foo[0]").GetValue(d)
+		v, err := parsePath(t, "foo[0]").GetValue(d)
 		require.NoError(t, err)
 		require.Equal(t, document.NewIntegerValue(100), v)
 	})
@@ -300,7 +299,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{Path: parseFieldRef(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -332,7 +331,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parseFieldRef(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.NoError(t, err)
 		idx, err := tx.GetIndex("idxFoo")
@@ -377,8 +376,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parseFieldRef(t, "foo"), document.IntegerValue, false, false},
-				{parseFieldRef(t, "bar"), document.IntegerValue, false, false},
+				{parsePath(t, "foo"), document.IntegerValue, false, false},
+				{parsePath(t, "bar"), document.IntegerValue, false, false},
 			},
 		})
 		require.NoError(t, err)
@@ -415,7 +414,7 @@ func TestTableInsert(t *testing.T) {
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parseFieldRef(t, "foo"), 0, false, true},
+				{parsePath(t, "foo"), 0, false, true},
 			},
 		})
 		require.NoError(t, err)
@@ -425,7 +424,7 @@ func TestTableInsert(t *testing.T) {
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parseFieldRef(t, "foo"), document.IntegerValue, false, true},
+				{parsePath(t, "foo"), document.IntegerValue, false, true},
 			},
 		})
 		require.NoError(t, err)
@@ -469,7 +468,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parseFieldRef(t, "foo[1]"), 0, false, true},
+				{parsePath(t, "foo[1]"), 0, false, true},
 			},
 		})
 		require.NoError(t, err)
@@ -646,25 +645,25 @@ func TestTableReIndex(t *testing.T) {
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test1a",
 			TableName: "test1",
-			Path:      parseFieldRef(t, "a"),
+			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test1b",
 			TableName: "test1",
-			Path:      parseFieldRef(t, "b"),
+			Path:      parsePath(t, "b"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test2a",
 			TableName: "test2",
-			Path:      parseFieldRef(t, "a"),
+			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test2b",
 			TableName: "test2",
-			Path:      parseFieldRef(t, "b"),
+			Path:      parsePath(t, "b"),
 		})
 		require.NoError(t, err)
 
@@ -725,21 +724,21 @@ func TestTableIndexes(t *testing.T) {
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
-			Path:      parseFieldRef(t, "a"),
+			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
-			Path:      parseFieldRef(t, "b"),
+			Path:      parsePath(t, "b"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",
-			Path:      parseFieldRef(t, "a"),
+			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
 

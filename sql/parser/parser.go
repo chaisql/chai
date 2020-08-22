@@ -28,9 +28,9 @@ func NewParser(r io.Reader) *Parser {
 // ParseQuery parses a query string and returns its AST representation.
 func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
 
-// ParseFieldRef parses a field reference string.
-func ParseFieldRef(s string) (document.ValuePath, error) {
-	return NewParser(strings.NewReader(s)).parseFieldRef()
+// ParsePath parses the path of a value in a document.
+func ParsePath(s string) (document.ValuePath, error) {
+	return NewParser(strings.NewReader(s)).parsePath()
 }
 
 // ParseQuery parses a Genji SQL string and returns a Query.
@@ -116,7 +116,7 @@ func (p *Parser) parsePathList() ([]document.ValuePath, error) {
 	var err error
 	var vp document.ValuePath
 	// Parse first (required) path.
-	if vp, err = p.parseFieldRef(); err != nil {
+	if vp, err = p.parsePath(); err != nil {
 		return nil, err
 	}
 
@@ -129,7 +129,7 @@ func (p *Parser) parsePathList() ([]document.ValuePath, error) {
 			break
 		}
 
-		vp, err := p.parseFieldRef()
+		vp, err := p.parsePath()
 		if err != nil {
 			return nil, err
 		}

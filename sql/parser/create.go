@@ -88,7 +88,7 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 	for {
 		var fc database.FieldConstraint
 
-		fc.Path, err = p.parseFieldRef()
+		fc.Path, err = p.parsePath()
 		if err != nil {
 			p.Unscan()
 			break
