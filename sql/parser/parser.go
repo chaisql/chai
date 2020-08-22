@@ -28,6 +28,11 @@ func NewParser(r io.Reader) *Parser {
 // ParseQuery parses a query string and returns its AST representation.
 func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
 
+// ParseFieldRef parses a field reference string.
+func ParseFieldRef(s string) (document.ValuePath, error) {
+	return NewParser(strings.NewReader(s)).parseFieldRef()
+}
+
 // ParseQuery parses a Genji SQL string and returns a Query.
 func (p *Parser) ParseQuery() (query.Query, error) {
 	var statements []query.Statement

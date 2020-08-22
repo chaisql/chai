@@ -51,10 +51,6 @@ func TestParserExpr(t *testing.T) {
 		{"double quoted string", `"10.0"`, expr.TextValue("10.0"), false},
 		{"single quoted string", "'-10.0'", expr.TextValue("-10.0"), false},
 
-		// identifiers
-		{"simple field ref", `a`, expr.FieldSelector(newFieldRef(t, "a")), false},
-		{"simple field ref with quotes", "`some ident`", expr.FieldSelector(newFieldRef(t, "some ident")), false},
-
 		// documents
 		{"empty document", `{}`, expr.KVPairs(nil), false},
 		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
@@ -167,7 +163,7 @@ func TestParserExpr(t *testing.T) {
 			), false},
 		{"with NULL", "age > NULL", expr.Gt(expr.FieldSelector(newFieldRef(t, "age")), expr.NullValue()), false},
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
-		{"CAST", "CAST(a.b.1.0 AS TEXT)", expr.Cast{Expr: expr.FieldSelector(newFieldRef(t, "a.b[1][0]")), CastAs: document.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.Cast{Expr: expr.FieldSelector(newFieldRef(t, "a.b[1][0]")), CastAs: document.TextValue}, false},
 	}
 
 	for _, test := range tests {
@@ -193,6 +189,9 @@ func TestParserFieldRef(t *testing.T) {
 	}{
 		{"one fragment", `a`, document.ValuePath{
 			document.ValuePathFragment{FieldName: "a"},
+		}, false},
+		{"one fragment with quotes", "`    \"a\"`", document.ValuePath{
+			document.ValuePathFragment{FieldName: "    \"a\""},
 		}, false},
 		{"multiple fragments", `a.b[100].c[1][2]`, document.ValuePath{
 			document.ValuePathFragment{FieldName: "a"},
