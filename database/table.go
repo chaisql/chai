@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
@@ -520,8 +519,15 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 
 		// the field to modify is the last chunk of the path
 		field := c.Path[len(c.Path)-1]
+		if field.FieldName == "" {
+			// if the field is not found we make sure it is not required
+			if c.IsNotNull {
+				return fmt.Errorf("field %q is required and must be not null", c.Path)
+			}
+			return nil
+		}
 
-		v, err := buf.GetByField(field)
+		v, err := buf.GetByField(field.FieldName)
 		// if the field is not found we make sure it is not required
 		if err != nil {
 			if err == document.ErrFieldNotFound {
@@ -551,7 +557,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			return err
 		}
 
-		err = buf.Replace(field, v)
+		err = buf.Replace(field.FieldName, v)
 		if err != nil {
 			return err
 		}
@@ -559,15 +565,14 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		// if it's an array, we can assume it's a ValueBuffer
 		buf := parent.V.(*document.ValueBuffer)
 
-		// the index to modify if the last chunk of the path
-		index, err := strconv.Atoi(c.Path[len(c.Path)-1])
-		// if there is an error, then the path must refer to a document and not an array,
-		// we simply skip
-		if err != nil {
+		frag := c.Path[len(c.Path)-1]
+		if frag.FieldName != "" {
+			// if the fieldName is not empty, then the path must refer to a document and not an array,
+			// we simply skip
 			return nil
 		}
 
-		v, err := buf.GetByIndex(index)
+		v, err := buf.GetByIndex(frag.ArrayIndex)
 		// if the value is not found we make sure it is not required,
 		if err != nil {
 			if err == document.ErrValueNotFound {
@@ -591,7 +596,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			return err
 		}
 
-		err = buf.Replace(index, v)
+		err = buf.Replace(frag.ArrayIndex, v)
 		if err != nil {
 			return err
 		}
