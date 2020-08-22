@@ -515,7 +515,11 @@ func arrayToValuePath(v document.Value) (document.ValuePath, error) {
 	var path document.ValuePath
 
 	err := v.V.(document.Array).Iterate(func(_ int, value document.Value) error {
-		path = append(path, value.V.(string))
+		if value.Type == document.TextValue {
+			path = append(path, document.ValuePathFragment{FieldName: value.V.(string)})
+		} else {
+			path = append(path, document.ValuePathFragment{ArrayIndex: int(value.V.(int64))})
+		}
 		return nil
 	})
 
@@ -525,7 +529,11 @@ func arrayToValuePath(v document.Value) (document.ValuePath, error) {
 func valuePathToArray(path document.ValuePath) document.Array {
 	abuf := document.NewValueBuffer()
 	for _, p := range path {
-		abuf = abuf.Append(document.NewTextValue(p))
+		if p.FieldName != "" {
+			abuf = abuf.Append(document.NewTextValue(p.FieldName))
+		} else {
+			abuf = abuf.Append(document.NewIntegerValue(int64(p.ArrayIndex)))
+		}
 	}
 
 	return abuf

@@ -8,10 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newValuePath(s string) document.ValuePath {
+	return document.ValuePath{
+		document.ValuePathFragment{
+			FieldName: "k",
+		},
+	}
+}
+
 func TestTableInfo(t *testing.T) {
 	info := &TableInfo{
 		FieldConstraints: []FieldConstraint{
-			{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+			{Path: newValuePath("k"), Type: document.DoubleValue, IsPrimaryKey: true},
 		},
 	}
 
@@ -37,7 +45,7 @@ func TestTableInfoStore(t *testing.T) {
 
 		info := &TableInfo{
 			FieldConstraints: []FieldConstraint{
-				{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+				{Path: newValuePath("k"), Type: document.DoubleValue, IsPrimaryKey: true},
 			},
 		}
 
@@ -76,7 +84,7 @@ func TestTableInfoStore(t *testing.T) {
 
 		info := &TableInfo{
 			FieldConstraints: []FieldConstraint{
-				{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+				{Path: newValuePath("k"), Type: document.DoubleValue, IsPrimaryKey: true},
 			},
 		}
 
@@ -103,7 +111,7 @@ func TestTableInfoStore(t *testing.T) {
 
 		info := &TableInfo{
 			FieldConstraints: []FieldConstraint{
-				{Path: []string{"k"}, Type: document.DoubleValue, IsPrimaryKey: true},
+				{Path: newValuePath("k"), Type: document.DoubleValue, IsPrimaryKey: true},
 			},
 		}
 
