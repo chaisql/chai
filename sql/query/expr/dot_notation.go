@@ -1,18 +1,15 @@
 package expr
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/genjidb/genji/document"
 )
 
 // A FieldSelector is a ResultField that extracts a field from a document at a given path.
-type FieldSelector []string
+type FieldSelector document.ValuePath
 
 // Name joins the chunks of the fields selector with the . separator.
 func (f FieldSelector) Name() string {
-	return strings.Join(f, ".")
+	return f.String()
 }
 
 // Eval extracts the document from the context and selects the right field.
@@ -22,47 +19,9 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		return nullLitteral, document.ErrFieldNotFound
 	}
 
-	var v document.Value
-	var a document.Array
-	var err error
-
-	for i, chunk := range f {
-		if stack.Document != nil {
-			v, err = stack.Document.GetByField(chunk)
-		} else {
-			var idx int
-			idx, err = strconv.Atoi(chunk)
-			if err != nil {
-				return nullLitteral, nil
-			}
-			v, err = a.GetByIndex(idx)
-		}
-		if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
-			return nullLitteral, nil
-		}
-
-		if err != nil {
-			return nullLitteral, err
-		}
-
-		if i+1 == len(f) {
-			break
-		}
-
-		stack.Document = nil
-		a = nil
-
-		switch v.Type {
-		case document.DocumentValue:
-			stack.Document = v.V.(document.Document)
-		case document.ArrayValue:
-			a = v.V.(document.Array)
-		default:
-			return nullLitteral, nil
-		}
-		if err != nil {
-			return nullLitteral, err
-		}
+	v, err := document.ValuePath(f).GetValue(stack.Document)
+	if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
+		return nullLitteral, nil
 	}
 
 	return v, nil
@@ -94,5 +53,5 @@ func (f FieldSelector) IsEqual(other Expr) bool {
 }
 
 func (f FieldSelector) String() string {
-	return f.Name()
+	return document.ValuePath(f).String()
 }

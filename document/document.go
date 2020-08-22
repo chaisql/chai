@@ -302,10 +302,10 @@ func (p ValuePath) GetValue(d Document) (Value, error) {
 
 func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
 	if len(p) == 0 {
-		return Value{}, errors.New("empty valuepath")
+		return Value{}, ErrFieldNotFound
 	}
 	if p[0].FieldName == "" {
-		return Value{}, errors.New("field fragment expected")
+		return Value{}, ErrFieldNotFound
 	}
 
 	v, err := d.GetByField(p[0].FieldName)
@@ -313,39 +313,43 @@ func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
 		return Value{}, err
 	}
 
-	return p.getValueFromValue(v)
-}
-
-func (p ValuePath) getValueFromArray(a Array) (Value, error) {
-	if len(p) == 0 {
-		return Value{}, errors.New("empty valuepath")
-	}
-	if p[0].FieldName == "" {
-		return Value{}, errors.New("array index fragment expected")
-	}
-
-	v, err := a.GetByIndex(p[0].ArrayIndex)
-	if err != nil {
-		return Value{}, err
-	}
-
-	return p.getValueFromValue(v)
-}
-
-func (p ValuePath) getValueFromValue(v Value) (Value, error) {
 	if len(p) == 1 {
 		return v, nil
 	}
 
-	switch v.Type {
-	case DocumentValue:
-		if len(p) == 1 {
-			return v, nil
+	return p[1:].getValueFromValue(v)
+}
+
+func (p ValuePath) getValueFromArray(a Array) (Value, error) {
+	if len(p) == 0 {
+		return Value{}, ErrFieldNotFound
+	}
+	if p[0].FieldName != "" {
+		return Value{}, ErrFieldNotFound
+	}
+
+	v, err := a.GetByIndex(p[0].ArrayIndex)
+	if err != nil {
+		if err == ErrValueNotFound {
+			return Value{}, ErrFieldNotFound
 		}
 
-		return p[1:].getValueFromDocument(v.V.(Document))
+		return Value{}, err
+	}
+
+	if len(p) == 1 {
+		return v, nil
+	}
+
+	return p[1:].getValueFromValue(v)
+}
+
+func (p ValuePath) getValueFromValue(v Value) (Value, error) {
+	switch v.Type {
+	case DocumentValue:
+		return p.getValueFromDocument(v.V.(Document))
 	case ArrayValue:
-		return p[1:].getValueFromArray(v.V.(Array))
+		return p.getValueFromArray(v.V.(Array))
 	}
 
 	return Value{}, ErrFieldNotFound

@@ -8,6 +8,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 
@@ -583,12 +584,11 @@ func TestValuePath(t *testing.T) {
 		result string
 		fails  bool
 	}{
-		{"empty path", `{"a": 1}`, ``, ``, true},
 		{"root", `{"a": {"b": [1, 2, 3]}}`, `a`, `{"b": [1, 2, 3]}`, false},
 		{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, `[1, 2, 3]`, false},
-		{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b.1`, `2`, false},
-		{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b.1000`, ``, true},
-		{"number field", `{"a": {"0": [1, 2, 3]}}`, `a.0`, `[1, 2, 3]`, false},
+		{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b[1]`, `2`, false},
+		{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, ``, true},
+		{"number field", `{"a": {"0": [1, 2, 3]}}`, "a.`0`", `[1, 2, 3]`, false},
 		{"letter index", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, ``, true},
 		{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, ``, true},
 	}
@@ -599,7 +599,8 @@ func TestValuePath(t *testing.T) {
 
 			err := json.Unmarshal([]byte(test.data), &buf)
 			require.NoError(t, err)
-			p := document.NewValuePath(test.path)
+			p, err := parser.ParseFieldRef(test.path)
+			require.NoError(t, err)
 			v, err := p.GetValue(&buf)
 			if test.fails {
 				require.Error(t, err)

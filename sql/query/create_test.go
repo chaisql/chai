@@ -6,8 +6,15 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
+
+func parseFieldRef(t testing.TB, str string) document.ValuePath {
+	vp, err := parser.ParseFieldRef(str)
+	require.NoError(t, err)
+	return vp
+}
 
 func TestCreateTable(t *testing.T) {
 	tests := []struct {
@@ -20,7 +27,7 @@ func TestCreateTable(t *testing.T) {
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", false},
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
 		{"With primary key", "CREATE TABLE test(foo TEXT PRIMARY KEY)", false},
-		{"With field constraints", "CREATE TABLE test(foo.a.1.2 TEXT primary key, bar.4.0.bat INTEGER not null, baz not null)", false},
+		{"With field constraints", "CREATE TABLE test(foo.a[1][2] TEXT primary key, bar[4][0].bat INTEGER not null, baz not null)", false},
 		{"With no constraints", "CREATE TABLE test(a, b)", false},
 	}
 
@@ -66,8 +73,8 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: []string{"d"}, Type: document.DoubleValue},
-					{Path: []string{"b"}, Type: document.BoolValue},
+					{Path: parseFieldRef(t, "d"), Type: document.DoubleValue},
+					{Path: parseFieldRef(t, "b"), Type: document.BoolValue},
 				}, info.FieldConstraints)
 				return nil
 			})
@@ -78,7 +85,7 @@ func TestCreateTable(t *testing.T) {
 		t.Run("with variable size data types", func(t *testing.T) {
 			err = db.Exec(`
 				CREATE TABLE test1(
-					foo.bar.1.hello bytes PRIMARY KEY, foo.a.1.2 TEXT NOT NULL, bar.4.0.bat integer,
+					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] TEXT NOT NULL, bar[4][0].bat integer,
 				 	du duration, b blob, t text, a array, d document
 				)
 			`)
@@ -95,14 +102,14 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: []string{"foo", "bar", "1", "hello"}, Type: document.BlobValue, IsPrimaryKey: true},
-					{Path: []string{"foo", "a", "1", "2"}, Type: document.TextValue, IsNotNull: true},
-					{Path: []string{"bar", "4", "0", "bat"}, Type: document.IntegerValue},
-					{Path: []string{"du"}, Type: document.DurationValue},
-					{Path: []string{"b"}, Type: document.BlobValue},
-					{Path: []string{"t"}, Type: document.TextValue},
-					{Path: []string{"a"}, Type: document.ArrayValue},
-					{Path: []string{"d"}, Type: document.DocumentValue},
+					{Path: parseFieldRef(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Path: parseFieldRef(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Path: parseFieldRef(t, "bar[4][0].bat"), Type: document.IntegerValue},
+					{Path: parseFieldRef(t, "du"), Type: document.DurationValue},
+					{Path: parseFieldRef(t, "b"), Type: document.BlobValue},
+					{Path: parseFieldRef(t, "t"), Type: document.TextValue},
+					{Path: parseFieldRef(t, "a"), Type: document.ArrayValue},
+					{Path: parseFieldRef(t, "d"), Type: document.DocumentValue},
 				}, info.FieldConstraints)
 				return nil
 			})
@@ -120,7 +127,7 @@ func TestCreateIndex(t *testing.T) {
 	}{
 		{"Basic", "CREATE INDEX idx ON test (foo)", false},
 		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar)", false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo.1)", false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[1])", false},
 		{"No fields", "CREATE INDEX idx ON test", true},
 		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", true},
 	}

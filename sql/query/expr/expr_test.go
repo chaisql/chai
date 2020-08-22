@@ -28,8 +28,8 @@ var stackWithDoc = expr.EvalStack{
 
 var fakeTableInfo = &database.TableInfo{
 	FieldConstraints: []database.FieldConstraint{
-		{Path: []string{"c", "0"}, IsPrimaryKey: true},
-		{Path: []string{"c", "1"}},
+		{Path: document.ValuePath{document.ValuePathFragment{FieldName: "c"}, document.ValuePathFragment{ArrayIndex: 0}}, IsPrimaryKey: true},
+		{Path: document.ValuePath{document.ValuePathFragment{FieldName: "c"}, document.ValuePathFragment{ArrayIndex: 1}}},
 	},
 }
 var stackWithDocAndInfo = expr.EvalStack{
@@ -40,6 +40,8 @@ var stackWithDocAndInfo = expr.EvalStack{
 var nullLitteral = document.NewNullValue()
 
 func testExpr(t testing.TB, exprStr string, stack expr.EvalStack, want document.Value, fails bool) {
+	t.Helper()
+
 	e, _, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
 	require.NoError(t, err)
 	res, err := e.Eval(stack)
@@ -56,7 +58,7 @@ func TestString(t *testing.T) {
 		`10.4`,
 		"true",
 		"500",
-		`foo.bar.1`,
+		`foo.bar[1]`,
 		`"hello"`,
 		`[1, 2, "foo"]`,
 		`{"a": "foo", "b": 10}`,
@@ -81,7 +83,7 @@ func TestString(t *testing.T) {
 	}
 
 	for _, op := range operators {
-		want := fmt.Sprintf("10.4 %s foo.bar.1", op)
+		want := fmt.Sprintf("10.4 %s foo.bar[1]", op)
 		testFn(want, want)
 	}
 }
