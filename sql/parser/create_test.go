@@ -23,7 +23,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: newFieldRef(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 					},
 				},
 			}, false},
@@ -34,7 +34,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.IntegerValue},
+						{Path: newFieldRef(t, "foo"), Type: document.IntegerValue},
 					},
 				},
 			}, false},
@@ -43,7 +43,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, IsNotNull: true},
+						{Path: newFieldRef(t, "foo"), IsNotNull: true},
 					},
 				},
 			}, false},
@@ -54,7 +54,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.IntegerValue, IsNotNull: true},
+						{Path: newFieldRef(t, "foo"), Type: document.IntegerValue, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -63,7 +63,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Path: newFieldRef(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -72,18 +72,18 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Path: newFieldRef(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
-		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz.4.1.bat TEXT)",
+		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz[4][1].bat TEXT)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"foo"}, Type: document.IntegerValue, IsPrimaryKey: true},
-						{Path: []string{"bar"}, Type: document.IntegerValue, IsNotNull: true},
-						{Path: []string{"baz", "4", "1", "bat"}, Type: document.TextValue},
+						{Path: newFieldRef(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: newFieldRef(t, "bar"), Type: document.IntegerValue, IsNotNull: true},
+						{Path: newFieldRef(t, "baz[4][1].bat"), Type: document.TextValue},
 					},
 				},
 			}, false},
@@ -95,8 +95,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"d"}, Type: document.DoubleValue},
-						{Path: []string{"b"}, Type: document.BoolValue},
+						{Path: newFieldRef(t, "d"), Type: document.DoubleValue},
+						{Path: newFieldRef(t, "b"), Type: document.BoolValue},
 					},
 				},
 			}, false},
@@ -106,13 +106,13 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: []string{"i"}, Type: document.IntegerValue},
-						{Path: []string{"du"}, Type: document.DurationValue},
-						{Path: []string{"b"}, Type: document.BlobValue},
-						{Path: []string{"byt"}, Type: document.BlobValue},
-						{Path: []string{"t"}, Type: document.TextValue},
-						{Path: []string{"a"}, Type: document.ArrayValue},
-						{Path: []string{"d"}, Type: document.DocumentValue},
+						{Path: newFieldRef(t, "i"), Type: document.IntegerValue},
+						{Path: newFieldRef(t, "du"), Type: document.DurationValue},
+						{Path: newFieldRef(t, "b"), Type: document.BlobValue},
+						{Path: newFieldRef(t, "byt"), Type: document.BlobValue},
+						{Path: newFieldRef(t, "t"), Type: document.TextValue},
+						{Path: newFieldRef(t, "a"), Type: document.ArrayValue},
+						{Path: newFieldRef(t, "d"), Type: document.DocumentValue},
 					},
 				},
 			}, false},
@@ -139,9 +139,9 @@ func TestParserCreateIndex(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.NewValuePath("foo")}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar.1)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.NewValuePath("foo.bar.1"), IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo.3.baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.NewValuePath("foo.3.baz"), IfNotExists: true, Unique: true}, false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: newFieldRef(t, "foo")}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: newFieldRef(t, "foo.bar[1]"), IfNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: newFieldRef(t, "foo[3].baz"), IfNotExists: true, Unique: true}, false},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
 		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}
