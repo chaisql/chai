@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 
@@ -539,7 +540,7 @@ func TestValuePath(t *testing.T) {
 
 			err := json.Unmarshal([]byte(test.data), &buf)
 			require.NoError(t, err)
-			p, err := parser.parsePath(test.path)
+			p, err := parser.ParsePath(test.path)
 			require.NoError(t, err)
 			v, err := p.GetValue(&buf)
 			if test.fails {

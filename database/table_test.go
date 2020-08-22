@@ -11,11 +11,12 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/key"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 
 func parsePath(t testing.TB, str string) document.ValuePath {
-	vp, err := parser.parsePath(str)
+	vp, err := parser.ParsePath(str)
 	require.NoError(t, err)
 	return vp
 }
