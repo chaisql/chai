@@ -20,7 +20,9 @@ func (p *Parser) parseDeleteStatement() (*planner.Tree, error) {
 	// Parse table name
 	cfg.TableName, err = p.parseIdent()
 	if err != nil {
-		return nil, newParseError("", []string{"table_name"}, scanner.Pos{})
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"table_name"}
+		return nil, pErr
 	}
 
 	// Parse condition: "WHERE EXPR".

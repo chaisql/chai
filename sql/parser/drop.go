@@ -39,7 +39,9 @@ func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
 	// Parse table name
 	stmt.TableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, newParseError("", []string{"table_name"}, scanner.Pos{})
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"table_name"}
+		return stmt, pErr
 	}
 
 	return stmt, nil
