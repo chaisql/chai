@@ -124,10 +124,12 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	// Parse table name
 	ident, err := p.parseIdent()
 	if err != nil {
-		return ident, true,  newParseError("", []string{"table"}, scanner.Pos{})
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"table_name"}
+		return ident, true, pErr
 	}
 
-	return ident, true,  err
+	return ident, true,  nil
 }
 
 func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {

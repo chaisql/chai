@@ -320,7 +320,6 @@ func (sh *Shell) getAllTables() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer res.Close()
 
 	err = res.Iterate(func(d document.Document) error {
