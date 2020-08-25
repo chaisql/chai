@@ -218,6 +218,8 @@ func (sh *Shell) executeInput(in string) error {
 func (sh *Shell) runCommand(in string) error {
 	cmd := strings.Fields(in)
 	switch cmd[0] {
+	case ".help":
+		return runHelpCmd()
 	case ".tables":
 		db, err := sh.getDB()
 		if err != nil {
