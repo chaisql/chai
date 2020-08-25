@@ -102,7 +102,7 @@ func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
 }
 
 // setValueAtPath deep replaces or creates a field
-// using the value path
+// through the value path to get the value and create or replace it.
 func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
 
 	switch v.Type {
@@ -170,7 +170,13 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 
 	for i, field := range fb.fields {
 		if path[0] == field.Field {
-			v, err := fb.setValueAtPath(field.Value, path[1:], reqValue)
+			var buf FieldBuffer
+			err := buf.Copy(fb)
+			if err != nil {
+				return err
+			}
+
+			v, err := buf.setValueAtPath(field.Value, path[1:], reqValue)
 			if err != nil {
 				return err
 			}
@@ -179,7 +185,7 @@ func (fb *FieldBuffer) Set(path ValuePath, reqValue Value) error {
 		}
 	}
 
-	// return an error if the first element of the path is not found
+	//return Err if the request is like foo.1.2.etc where foo doesn't exist
 	return ErrFieldNotFound
 }
 
