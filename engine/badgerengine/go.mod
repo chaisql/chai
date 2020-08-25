@@ -8,4 +8,3 @@ require (
 	github.com/stretchr/testify v1.6.1
 )
 
-replace github.com/genjidb/genji v0.7.0 => ../../
