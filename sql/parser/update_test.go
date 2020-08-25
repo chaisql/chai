@@ -25,29 +25,6 @@ func TestParserUpdate(t *testing.T) {
 					"test",
 				)),
 			false},
-		{"SET/Dot notation", "UPDATE test SET a.2.a = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						"a.2.a", expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
-		{"SET/Dot notation with cond", "UPDATE test SET a.2.a = 1 WHERE age = 10",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector([]string{"age"}), expr.IntegerValue(10)),
-					),
-						"a.2.a", expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			planner.NewTree(
 				planner.NewReplacementNode(
