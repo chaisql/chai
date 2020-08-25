@@ -1,7 +1,6 @@
 package document_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -80,80 +79,20 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Set", func(t *testing.T) {
-		d, err := document.NewFromJSON([]byte(`{"friends": [{"name": "Bar","address": {"city": "Paris","zipcode": "75001"}}]}`))
-		require.NoError(t, err)
 		var buf document.FieldBuffer
-		err = buf.Copy(d)
+		buf.Add("a", document.NewIntegerValue(10))
+		buf.Add("b", document.NewTextValue("hello"))
+
+		buf.Set("a", document.NewDoubleValue(11))
+		v, err := buf.GetByField("a")
 		require.NoError(t, err)
+		require.Equal(t, document.NewDoubleValue(11), v)
 
-
-		var fb document.FieldBuffer
-		d, err = document.NewFromJSON([]byte(`{"phone":{"type": "cell", "number":"111-222-333"}}`))
+		buf.Set("c", document.NewIntegerValue(12))
+		require.Equal(t, 3, buf.Len())
+		v, err = buf.GetByField("c")
 		require.NoError(t, err)
-		err = fb.Copy(d)
-		require.NoError(t, err)
-
-		var vb document.ValueBuffer
-		vb = vb.Append(document.NewIntegerValue(1))
-		vb = vb.Append(document.NewIntegerValue(0))
-		vb = vb.Append(document.NewIntegerValue(0))
-
-		tests := []struct {
-			name     string
-			p        document.ValuePath
-			v 		document.Value
-			want    string
-		}{
-			{"Set replace field textValue",
-				document.NewValuePath("friends.0.name"),
-				document.NewTextValue("Baz"),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}}]}`,
-			},
-			{"Set array",
-				document.NewValuePath("friends.0.a"),
-				document.NewArrayValue(&vb),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}, "a": [1, 0, 0]}]}`,
-			},
-			{"Nested array",
-				document.NewValuePath("friends.0.a.0"),
-				document.NewArrayValue(&vb),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}, "a": [[1, 0, 0], 0, 0]}]}`,
-			},
-			{"Set at index",
-				document.NewValuePath("friends.0.a.1"),
-				document.NewIntegerValue(99),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}, "a": [[1, 0, 0], 99, 0]}]}`,
-			},
-			{
-				"Set Document",
-				document.NewValuePath("contact"),
-				document.NewDocumentValue(&fb),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}, "a": [[1, 0, 0], 99, 0]}], "contact": {"phone": {"type": "cell", "number": "111-222-333"}}}`,
-			},
-			{
-				"Set Nested Document",
-				document.NewValuePath("contact.phone.type"),
-				document.NewTextValue("fix"),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}, "a": [[1, 0, 0], 99, 0]}], "contact": {"phone": {"type": "fix", "number": "111-222-333"}}}`,
-			},
-			{"Set add field into nested document",
-				document.NewValuePath("contact.email"),
-				document.NewTextValue("foo@example.com"),
-				`{"friends": [{"name": "Baz", "address": {"city": "Paris", "zipcode": "75001"}, "a": [[1, 0, 0], 99, 0]}], "contact": {"phone": {"type": "fix", "number": "111-222-333"}, "email": "foo@example.com"}}`,
-			},
-
-		}
-
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				var bufBytes bytes.Buffer
-				require.NoError(t, err, buf.Set(test.p, test.v))
-				err := document.ToJSON(&bufBytes, buf)
-				require.NoError(t, err)
-				require.Equal(t, test.want, bufBytes.String())
-			})
-		}
-
+		require.Equal(t, document.NewIntegerValue(12), v)
 	})
 
 	t.Run("Delete", func(t *testing.T) {
