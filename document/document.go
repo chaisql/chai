@@ -108,7 +108,7 @@ func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Val
 	switch v.Type {
 	case DocumentValue:
 		var buf FieldBuffer
-		err := buf.ScanDocument(v.V.(Document))
+		err := buf.Copy(v.V.(Document))
 		if err != nil {
 			return v, err
 		}
@@ -132,7 +132,7 @@ func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Val
 		return NewDocumentValue(&buf), err
 	case ArrayValue:
 		var vb ValueBuffer
-		err := vb.ScanArray(v.V.(Array))
+		err := vb.Copy(v.V.(Array))
 		if err != nil {
 			return v, err
 		}
