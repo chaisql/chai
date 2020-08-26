@@ -15,7 +15,9 @@ func (p *Parser) parseUpdateStatement() (*planner.Tree, error) {
 	// Parse table name
 	cfg.TableName, err = p.parseIdent()
 	if err != nil {
-		return nil, err
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"table_name"}
+		return nil, pErr
 	}
 
 	// Parse clause: SET or UNSET.

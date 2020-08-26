@@ -19,7 +19,9 @@ func (p *Parser) parseAlterStatement() (query.AlterStmt, error) {
 	// Parse table name.
 	stmt.TableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"table_name"}
+		return stmt, pErr
 	}
 
 	// Parse "RENAME".
