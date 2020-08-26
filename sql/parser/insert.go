@@ -22,7 +22,9 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	// Parse table name
 	stmt.TableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"table_name"}
+		return stmt, pErr
 	}
 
 	valueParser := p.parseParamOrDocument
