@@ -314,6 +314,33 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
+func (sh *Shell) getAllIndexes() ([]string, error) {
+	db, err := sh.getDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var listName []string
+	err = db.View(func(tx *genji.Tx) error {
+		indexes, err := tx.ListIndexes()
+		if err != nil {
+			return err
+		}
+
+		for _, idx := range indexes {
+			listName = append(listName, idx.IndexName)
+		}
+
+		return nil
+	})
+
+	if len(listName) == 0 {
+		listName = append(listName, "index_name")
+	}
+
+	return listName, err
+}
+
 // getTables returns all the tables of the database
 func (sh *Shell) getAllTables() ([]string, error) {
 	var tables []string
@@ -353,6 +380,11 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 		switch expected[0] {
 		case "table_name":
 			expected, err = sh.getAllTables()
+			if err != nil {
+				return []prompt.Suggest{}
+			}
+		case "index_name":
+			expected, err = sh.getAllIndexes()
 			if err != nil {
 				return []prompt.Suggest{}
 			}

@@ -67,7 +67,9 @@ func (p *Parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
 	// Parse index name
 	stmt.IndexName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"index_name"}
+		return stmt, pErr
 	}
 
 	return stmt, nil
