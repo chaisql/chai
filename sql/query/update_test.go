@@ -77,22 +77,50 @@ func TestUpdateStmt(t *testing.T) {
 	}
 
 	t.Run("with arrays", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
-		defer db.Close()
+		tests := []struct {
+			name     string
+			query    string
+			fails    bool
+			expected string
+			params   []interface{}
+		}{
+			{"SET / No cond add field ", `UPDATE foo set b = 0`, false, `[{"a": [1, 0, 0], "b": 0}, {"a": [2, 0], "b": 0}]`, nil},
+			{"SET / No cond / with dot notation at existing index only", `UPDATE foo SET a[2] = 10`, false, `[{"a": [1, 0, 10]}, {"a": [2, 0]}]`, nil},
+			{"SET / No cond / with dot notation", `UPDATE foo SET a[1] = 10`, false, `[{"a": [1, 10, 0]}, {"a": [2, 10]}]`, nil},
+			{"SET / No cond / with dot notation non existing field", `UPDATE foo SET a.foo[1] = 10`, false, `[{"a": [1, 0, 0]}, {"a": [2, 0]}]`, nil},
+			{"SET / With cond / with dot notation", `UPDATE foo SET a[0] = 1 WHERE a[0] = 2`, false, `[{"a": [1, 0, 0]}, {"a": [1, 0]}]`, nil},
+			{"SET / No cond / index out of range", `UPDATE foo SET a[10] = 1`, true, `[{"a": [1, 0, 0]}, {"a": [1, 0]}]`, nil},
+			{"SET / No cond / Nested array", `UPDATE foo SET a[1] = [1, 0, 0]`, false, `[{"a": [1, [1, 0, 0], 0]}, {"a": [2, [1, 0, 0]]}]`, nil},
+			{"SET / No cond / with multiple idents", `UPDATE foo SET a[1] = [1, 0, 0], a[1][2] = 9`, false, `[{"a": [1, [1, 0, 9], 0]}, {"a": [2, [1, 0, 9]]}]`, nil},
+			{"SET / No cond / add doc / with multiple idents with multiple indexes", `UPDATE foo SET a[1] = [1, 0, 0], a[1][2] = {"b": "foo"}`, false, `[{"a": [1, [1, 0, {"b":"foo"}], 0]}, {"a": [2, [1, 0, {"b":"foo"}]]}]`, nil},
+		}
 
-		res, err := db.Query(`
-			CREATE TABLE foo;
-			INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);
-			UPDATE foo set b = 0;
-			SELECT * FROM foo; 
-		`)
-		require.NoError(t, err)
-		defer res.Close()
+		for _, tt := range tests {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
 
-		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, res)
-		require.NoError(t, err)
-		require.JSONEq(t, `[{"a": [1, 0, 0], "b": 0}, {"a": [2, 0], "b": 0}]`, buf.String())
+			err = db.Exec(`CREATE TABLE foo;`)
+			require.NoError(t, err)
+			err = db.Exec(`INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);`)
+			require.NoError(t, err)
+
+			err = db.Exec(tt.query, tt.params...)
+			if tt.fails {
+				require.Error(t, err)
+				continue
+			}
+
+			require.NoError(t, err)
+			st, err := db.Query("SELECT * FROM foo")
+			require.NoError(t, err)
+			defer st.Close()
+
+			var buf bytes.Buffer
+
+			err = document.IteratorToJSONArray(&buf, st)
+			require.NoError(t, err)
+			require.JSONEq(t, tt.expected, buf.String())
+		}
 	})
 }

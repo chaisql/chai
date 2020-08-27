@@ -46,7 +46,7 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 		return stmt, err
 	}
 
-	// parse field constraints
+	// parse path constraints
 	err = p.parseFieldConstraints(&stmt.Info)
 	if err != nil {
 		return stmt, err
@@ -215,7 +215,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	if len(paths) != 1 {
-		return stmt, &ParseError{Message: "indexes on more than one field are not supported"}
+		return stmt, &ParseError{Message: "indexes on more than one path are not supported"}
 	}
 
 	stmt.Path = paths[0]

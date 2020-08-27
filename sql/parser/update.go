@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -58,10 +59,12 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 			}
 		}
 
-		// Scan the identifier for the field name.
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		if tok != scanner.IDENT {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+		// Scan the identifier for the path name.
+		path, err := p.parsePath()
+		if err != nil {
+			pErr := err.(*ParseError)
+			pErr.Expected = []string{"value path"}
+			return nil, pErr
 		}
 
 		// Scan the eq sign
@@ -74,7 +77,7 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, updateSetPair{lit, expr})
+		pairs = append(pairs, updateSetPair{path, expr})
 
 		firstPair = false
 	}
@@ -96,7 +99,7 @@ func (p *Parser) parseUnsetClause() ([]string, error) {
 			}
 		}
 
-		// Scan the identifier for the field to unset.
+		// Scan the identifier for the path to unset.
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		if tok != scanner.IDENT {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
@@ -113,20 +116,20 @@ type updateConfig struct {
 	TableName string
 
 	// SetPairs is used along with the Set clause. It holds
-	// each field with its corresponding value that
+	// each path with its corresponding value that
 	// should be set in the document.
 	SetPairs []updateSetPair
 
 	// UnsetFields is used along with the Unset clause. It holds
-	// each field that should be unset from the document.
+	// each path that should be unset from the document.
 	UnsetFields []string
 
 	WhereExpr expr.Expr
 }
 
 type updateSetPair struct {
-	field string
-	e     expr.Expr
+	path document.ValuePath
+	e    expr.Expr
 }
 
 // ToTree turns the statement into an expression tree.
@@ -139,7 +142,7 @@ func (cfg updateConfig) ToTree() *planner.Tree {
 
 	if cfg.SetPairs != nil {
 		for _, pair := range cfg.SetPairs {
-			t = planner.NewSetNode(t, pair.field, pair.e)
+			t = planner.NewSetNode(t, pair.path, pair.e)
 		}
 	} else if cfg.UnsetFields != nil {
 		for _, name := range cfg.UnsetFields {

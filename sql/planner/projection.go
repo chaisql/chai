@@ -149,7 +149,7 @@ func (r documentMask) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// A ResultField is a field that will be part of the result document that will be returned at the end of a Select statement.
+// A ResultField is a path that will be part of the result document that will be returned at the end of a Select statement.
 type ResultField interface {
 	Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error
 	Name() string

@@ -20,7 +20,7 @@ func TestParserUpdate(t *testing.T) {
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						"a", expr.IntegerValue(1),
+						parsePath(t, "a"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
@@ -34,9 +34,59 @@ func TestParserUpdate(t *testing.T) {
 								planner.NewTableInputNode("test"),
 								expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 							),
-							"a", expr.IntegerValue(1),
+							parsePath(t, "a"), expr.IntegerValue(1),
 						),
-						"b", expr.IntegerValue(2),
+						parsePath(t, "b"), expr.IntegerValue(2),
+					),
+					"test",
+				)),
+			false},
+		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewTableInputNode("test"),
+						parsePath(t, "`   some \"path\" `"), expr.IntegerValue(1),
+					),
+					"test",
+				)),
+			false},
+		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewTableInputNode("test"),
+						parsePath(t, "a.b"), expr.IntegerValue(1),
+					),
+					"test",
+				)),
+			false},
+		{"SET/No cond nested path with backquotes", "UPDATE test SET a.` b `.c = 1",
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewTableInputNode("test"),
+						parsePath(t, "a.` b `.c"), expr.IntegerValue(1),
+					),
+					"test",
+				)),
+			false},
+		{"SET/No cond array index", "UPDATE test SET a[1] = 1",
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewTableInputNode("test"),
+						parsePath(t, "a[1]"), expr.IntegerValue(1),
+					),
+					"test",
+				)),
+			false},
+		{"SET/No cond nested array index", "UPDATE test SET a.b[100][10].c = 1",
+			planner.NewTree(
+				planner.NewReplacementNode(
+					planner.NewSetNode(
+						planner.NewTableInputNode("test"),
+						parsePath(t, "a.b[100][10].c"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
@@ -81,6 +131,7 @@ func TestParserUpdate(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])

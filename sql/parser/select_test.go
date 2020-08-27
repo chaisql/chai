@@ -39,11 +39,11 @@ func TestParserSelect(t *testing.T) {
 					"test",
 				)),
 			false},
-		{"WithFieldsWithQuotes", "SELECT `long \"field\"` FROM test",
+		{"WithFieldsWithQuotes", "SELECT `long \"path\"` FROM test",
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ResultField{planner.ResultFieldExpr{Expr: expr.FieldSelector(parsePath(t, "`long \"field\"`")), ExprName: "long \"field\""}},
+					[]planner.ResultField{planner.ResultFieldExpr{Expr: expr.FieldSelector(parsePath(t, "`long \"path\"`")), ExprName: "long \"path\""}},
 					"test",
 				)),
 			false},

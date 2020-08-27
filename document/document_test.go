@@ -1,6 +1,7 @@
 package document_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -78,20 +79,62 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Set", func(t *testing.T) {
-		var buf document.FieldBuffer
-		buf.Add("a", document.NewIntegerValue(10))
-		buf.Add("b", document.NewTextValue("hello"))
 
-		buf.Set("a", document.NewDoubleValue(11))
-		v, err := buf.GetByField("a")
-		require.NoError(t, err)
-		require.Equal(t, document.NewDoubleValue(11), v)
+		tests := []struct {
+			name  string
+			data  string
+			path  string
+			value document.Value
+			want  string
+			fails bool
+		}{
+			{"root", `{}`, `a`, document.NewIntegerValue(1), `{"a": 1}`, false},
+			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, document.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
+			{"nested doc", `{"a": "foo"}`, `a`, document.NewDocumentValue(document.NewFieldBuffer().
+				Add("b", document.NewArrayValue(document.NewValueBuffer().
+				Append(document.NewIntegerValue(1)).
+				Append(document.NewIntegerValue(2)).
+				Append(document.NewIntegerValue(3))))), `{"a": {"b": [1, 2, 3]}}`, false},
+			{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, document.NewArrayValue(document.NewValueBuffer().
+				Append(document.NewIntegerValue(1)).
+				Append(document.NewIntegerValue(2)).
+				Append(document.NewIntegerValue(3))), `{"a": {"b": [1, 2, 3]}}`, false},
+			{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b[1]`, document.NewIntegerValue(1), `{"a": {"b": [1, 1, 3]}}`, false},
+			{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `a.b[2][2].c`, document.NewTextValue("bar"), `{"a": {"b": [1, 2, [1, 2, {"c": "bar"}]]}}`, false},
+			{"number field", `{"a": {"0": [1, 2, 3]}}`, "a.`0`[0]", document.NewIntegerValue(6), `{"a": {"0": [6, 2, 3]}}`, false},
+			{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `a[0].b`, document.NewTextValue("bar"), `{"a": [{"b": "bar"}, 2, 3]}`, false},
+			// with errors or request ignored doc unchanged
+			{"field not found", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, document.NewIntegerValue(1), `{"a": {"b": [1, 2, 3]}}`, false},
+			{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, document.NewIntegerValue(1), ``, true},
+			{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, document.NewIntegerValue(1), ``, true},
+			{"document not array", `{"a": {"b": "foo"}}`, `a[0].b`, document.NewTextValue("bar"), ``, true},
 
-		buf.Set("c", document.NewIntegerValue(12))
-		require.Equal(t, 3, buf.Len())
-		v, err = buf.GetByField("c")
-		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(12), v)
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				var fb document.FieldBuffer
+
+				d, err := document.NewFromJSON([]byte(tt.data))
+				require.NoError(t, err)
+				err = fb.Copy(d)
+				require.NoError(t, err)
+				p, err := parser.ParsePath(tt.path)
+				require.NoError(t, err)
+				err = fb.Set(p, tt.value)
+				if tt.fails {
+					require.Error(t, err)
+					return
+				}
+
+				require.NoError(t, err)
+				var bufBytes bytes.Buffer
+				require.NoError(t, err)
+				err = document.ToJSON(&bufBytes, fb)
+				require.NoError(t, err)
+				require.Equal(t, tt.want, bufBytes.String())
+			})
+		}
 	})
 
 	t.Run("Delete", func(t *testing.T) {

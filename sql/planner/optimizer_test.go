@@ -211,7 +211,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 		root, expected planner.Node
 	}{
 		{
-			"non-indexed field",
+			"non-indexed path",
 			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 				expr.Eq(
 					expr.FieldSelector{document.ValuePathFragment{FieldName: "d"}},

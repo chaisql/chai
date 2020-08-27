@@ -24,7 +24,7 @@ const (
 	Selection
 	// Projection (∏) is an operation that selects a list of fields from each document of a stream.
 	Projection
-	// Rename (ρ) is an operation that renames a field from each document of a stream.
+	// Rename (ρ) is an operation that renames a path from each document of a stream.
 	Rename
 	// Deletion is an operation that removes all of the documents of a stream from their respective table.
 	Deletion
@@ -35,11 +35,11 @@ const (
 	Limit
 	// Skip is an operation that ignores a certain number of documents.
 	Skip
-	// Sort is an operation that sorts a stream of document according to a given field and a direction.
+	// Sort is an operation that sorts a stream of document according to a given path and a direction.
 	Sort
-	// Set is an operation that adds or replaces a field for every document of the stream.
+	// Set is an operation that adds or replaces a path for every document of the stream.
 	Set
-	// Unset is an operation that removes a field from every document of a stream
+	// Unset is an operation that removes a path from every document of a stream
 	Unset
 )
 
@@ -317,8 +317,8 @@ func (n *offsetNode) toStream(st document.Stream) (document.Stream, error) {
 type setNode struct {
 	node
 
-	field string
-	e     expr.Expr
+	path document.ValuePath
+	e    expr.Expr
 
 	tx     *database.Transaction
 	params []expr.Param
@@ -326,15 +326,15 @@ type setNode struct {
 
 var _ operationNode = (*setNode)(nil)
 
-// NewSetNode creates a node that adds or replaces a field for every document of the stream.
-func NewSetNode(n Node, field string, e expr.Expr) Node {
+// NewSetNode creates a node that adds or replaces a path for every document of the stream.
+func NewSetNode(n Node, path document.ValuePath, e expr.Expr) Node {
 	return &setNode{
 		node: node{
 			op:   Set,
 			left: n,
 		},
-		field: field,
-		e:     e,
+		path: path,
+		e:    e,
 	}
 }
 
@@ -345,7 +345,7 @@ func (n *setNode) Bind(tx *database.Transaction, params []expr.Param) (err error
 }
 
 func (n *setNode) String() string {
-	return fmt.Sprintf("Set(%s = %s)", n.field, n.e)
+	return fmt.Sprintf("Set(%s = %s)", n.path, n.e)
 }
 
 func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
@@ -370,17 +370,9 @@ func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 			return nil, err
 		}
 
-		_, err = fb.GetByField(n.field)
-
-		switch err {
-		case nil:
-			// If no error, it means that the field already exists
-			// and it should be replaced.
-			_ = fb.Replace(n.field, ev)
-		case document.ErrFieldNotFound:
-			// If the field doesn't exist,
-			// it should be added to the document.
-			fb.Set(n.field, ev)
+		err = fb.Set(n.path, ev)
+		if err != nil {
+			return nil, err
 		}
 
 		return &fb, nil
@@ -395,7 +387,7 @@ type unsetNode struct {
 
 var _ operationNode = (*unsetNode)(nil)
 
-// NewUnsetNode creates a node that adds or replaces a field for every document of the stream.
+// NewUnsetNode creates a node that adds or replaces a path for every document of the stream.
 func NewUnsetNode(n Node, field string) Node {
 	return &unsetNode{
 		node: node{
