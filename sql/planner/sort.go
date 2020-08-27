@@ -22,7 +22,7 @@ type sortNode struct {
 var _ operationNode = (*sortNode)(nil)
 
 // NewSortNode creates a node that sorts a stream according to a given
-// document field and a sort direction.
+// document path and a sort direction.
 func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) Node {
 	if direction == 0 {
 		direction = scanner.ASC

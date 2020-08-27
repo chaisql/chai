@@ -86,16 +86,94 @@ func (fb FieldBuffer) GetByField(field string) (Value, error) {
 	return Value{}, ErrFieldNotFound
 }
 
+// setFieldValue replaces a field if it already exists or creates one if not.
+func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
+	_, err := fb.GetByField(field)
+	switch err {
+	case ErrFieldNotFound:
+		fb.Add(field, reqValue)
+		return nil
+	case nil:
+		_ = fb.Replace(field, reqValue)
+		return nil
+	}
+
+	return err
+}
+
+// setValueAtPath deep replaces or creates a field
+// using the value path
+func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
+	switch v.Type {
+	case DocumentValue:
+		var buf FieldBuffer
+		err := buf.ScanDocument(v.V.(Document))
+		if err != nil {
+			return v, err
+		}
+
+		if len(p) == 1 {
+			err = buf.setFieldValue(p[0].FieldName, newValue)
+			return NewDocumentValue(&buf), err
+		}
+
+		va, err := buf.GetByField(p[0].FieldName)
+		if err != nil {
+			return v, err
+		}
+
+		va, err = buf.setValueAtPath(va, p[1:], newValue)
+		if err != nil {
+			return v, err
+		}
+
+		err = buf.setFieldValue(p[0].FieldName, va)
+		return NewDocumentValue(&buf), err
+	case ArrayValue:
+		var vb ValueBuffer
+		err := vb.ScanArray(v.V.(Array))
+		if err != nil {
+			return v, err
+		}
+
+		va, err := vb.GetByIndex(p[0].ArrayIndex)
+		if err != nil {
+			return v, err
+		}
+
+		if len(p) == 1 {
+			err = vb.Replace(p[0].ArrayIndex, newValue)
+			return NewArrayValue(&vb), err
+		}
+
+		va, err = fb.setValueAtPath(va, p[1:], newValue)
+		err = vb.Replace(p[0].ArrayIndex, va)
+		return NewArrayValue(&vb), err
+	}
+
+	return v, nil
+}
+
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(f string, v Value) {
-	for i := range fb.fields {
-		if fb.fields[i].Field == f {
-			fb.fields[i].Value = v
-			return
+func (fb *FieldBuffer) Set(path ValuePath, v Value) error {
+	if len(path) == 1 {
+		return fb.setFieldValue(path[0].FieldName, v)
+	}
+
+	for i, f := range fb.fields {
+		if f.Field == path[0].FieldName {
+			va, err := fb.setValueAtPath(f.Value, path[1:], v)
+			if err != nil {
+				return err
+			}
+
+			fb.fields[i].Value = va
+			return nil
 		}
 	}
 
-	fb.Add(f, v)
+	fb.Add(path[0].FieldName, v)
+	return nil
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.

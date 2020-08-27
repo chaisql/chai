@@ -143,7 +143,7 @@ func TestParserCreateIndex(t *testing.T) {
 		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: parsePath(t, "foo.bar[1]"), IfNotExists: true}, false},
 		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: parsePath(t, "foo[3].baz"), IfNotExists: true, Unique: true}, false},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
-		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", nil, true},
+		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}
 
 	for _, test := range tests {

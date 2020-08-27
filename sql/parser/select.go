@@ -13,7 +13,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 	var cfg selectConfig
 	var err error
 
-	// Parse field list or query.Wildcard
+	// Parse path list or query.Wildcard
 	cfg.ProjectionExprs, err = p.parseResultFields()
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 
 // parseResultFields parses the list of result fields.
 func (p *Parser) parseResultFields() ([]planner.ResultField, error) {
-	// Parse first (required) result field.
+	// Parse first (required) result path.
 	rf, err := p.parseResultField()
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (p *Parser) parseResultField() (planner.ResultField, error) {
 		return nil, err
 	}
 
-	// FieldSelectors may be quoted, we make sure we name the result field
+	// FieldSelectors may be quoted, we make sure we name the result path
 	// with the unquoted name instead.
 	if fs, ok := e.(expr.FieldSelector); ok {
 		lit = fs.String()
@@ -129,7 +129,7 @@ func (p *Parser) parseFrom() (string, bool, error) {
 		return ident, true, pErr
 	}
 
-	return ident, true,  nil
+	return ident, true, nil
 }
 
 func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
