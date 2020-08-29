@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"sync/atomic"
 
 	"github.com/genjidb/genji/engine"
 	"github.com/google/btree"
@@ -37,8 +38,9 @@ func (i *item) Less(than btree.Item) bool {
 
 // storeTx implements an engine.Store.
 type storeTx struct {
-	tr *btree.BTree
-	tx *transaction
+	tr      *btree.BTree
+	tx      *transaction
+	counter uint64
 }
 
 func (s *storeTx) Put(k, v []byte) error {
@@ -167,6 +169,15 @@ func (s *storeTx) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
 		ch:      make(chan *item),
 		closed:  make(chan struct{}),
 	}
+}
+
+// NextSequence returns a monotonically increasing integer.
+func (s *storeTx) NextSequence() (uint64, error) {
+	if !s.tx.writable {
+		return 0, engine.ErrTransactionReadOnly
+	}
+
+	return atomic.AddUint64(&s.counter, 1), nil
 }
 
 // iterator uses a goroutine to read from the tree on demand.

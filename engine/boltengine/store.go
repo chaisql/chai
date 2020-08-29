@@ -62,6 +62,15 @@ func (s *Store) Truncate() error {
 	return err
 }
 
+// NextSequence returns a monotonically increasing integer.
+func (s *Store) NextSequence() (uint64, error) {
+	if !s.bucket.Writable() {
+		return 0, engine.ErrTransactionReadOnly
+	}
+
+	return s.bucket.NextSequence()
+}
+
 // NewIterator uses the bucket cursor.
 func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
 	return &iterator{

@@ -36,6 +36,7 @@ func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
 	tx := e.DB.NewTransaction(writable)
 
 	return &Transaction{
+		ng:       e,
 		tx:       tx,
 		writable: writable,
 	}, nil
@@ -48,6 +49,7 @@ func (e *Engine) Close() error {
 
 // A Transaction uses Badger's transactions.
 type Transaction struct {
+	ng        *Engine
 	tx        *badger.Txn
 	writable  bool
 	discarded bool
@@ -110,6 +112,7 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 	pkey := buildStorePrefixKey(name)
 
 	return &Store{
+		ng:       t.ng,
 		tx:       t.tx,
 		prefix:   pkey,
 		writable: t.writable,
