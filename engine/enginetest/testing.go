@@ -37,6 +37,7 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Store/Get", TestStoreGet},
 		{"Store/Delete", TestStoreDelete},
 		{"Store/Truncate", TestStoreTruncate},
+		{"Store/NextSequence", TestStoreNextSequence},
 		{"TestQueries", TestQueries},
 		{"TestQueriesSameTransaction", TestQueriesSameTransaction},
 	}
@@ -781,6 +782,68 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		defer it.Close()
 		it.Seek(nil)
 		require.False(t, it.Valid())
+	})
+}
+
+// TestStoreNextSequence verifies NextSequence behaviour.
+func TestStoreNextSequence(t *testing.T, builder Builder) {
+	t.Run("Should fail if tx not writable", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		err = tx.CreateStore([]byte("test"))
+		require.NoError(t, err)
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		tx, err = ng.Begin(false)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		st, err := tx.GetStore([]byte("test"))
+		require.NoError(t, err)
+
+		_, err = st.NextSequence()
+		require.Error(t, err)
+	})
+
+	t.Run("Should return the next sequence", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		for i := uint64(1); i < 100; i++ {
+			s, err := st.NextSequence()
+			require.NoError(t, err)
+			require.Equal(t, i, s)
+		}
+	})
+
+	t.Run("Should store the last sequence", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+		tx, err := ng.Begin(true)
+		require.NoError(t, err)
+		err = tx.CreateStore([]byte("test"))
+		require.NoError(t, err)
+		st, err := tx.GetStore([]byte("test"))
+		require.NoError(t, err)
+
+		s1, err := st.NextSequence()
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		tx, err = ng.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		st, err = tx.GetStore([]byte("test"))
+		require.NoError(t, err)
+		s2, err := st.NextSequence()
+		require.NoError(t, err)
+		require.Equal(t, s1+1, s2)
 	})
 }
 

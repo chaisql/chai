@@ -17,16 +17,17 @@ const btreeDegree = 12
 // Engine is a simple memory engine implementation that stores data in
 // an in-memory Btree. It allows multiple readers and one single writer.
 type Engine struct {
-	closed bool
-	stores map[string]*btree.BTree
-
-	mu sync.RWMutex
+	closed    bool
+	stores    map[string]*btree.BTree
+	sequences map[string]uint64
+	mu        sync.RWMutex
 }
 
 // NewEngine creates an in-memory engine.
 func NewEngine() *Engine {
 	return &Engine{
-		stores: make(map[string]*btree.BTree),
+		stores:    make(map[string]*btree.BTree),
+		sequences: make(map[string]uint64),
 	}
 }
 
@@ -124,7 +125,7 @@ func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
 		return nil, engine.ErrStoreNotFound
 	}
 
-	return &storeTx{tx: tx, tr: tr}, nil
+	return &storeTx{tx: tx, tr: tr, name: string(name)}, nil
 }
 
 func (tx *transaction) CreateStore(name []byte) error {

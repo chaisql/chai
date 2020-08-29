@@ -110,13 +110,22 @@ func (s *Store) NextSequence() (uint64, error) {
 		return 0, engine.ErrTransactionReadOnly
 	}
 
+	// this is an ineficient way of generating sequences.
+	// use a bigger lease in the future.
 	seq, err := s.ng.DB.GetSequence([]byte(s.name), 1)
 	if err != nil {
 		return 0, err
 	}
 	defer seq.Release()
 
-	return seq.Next()
+	nb, err := seq.Next()
+	if err != nil {
+		return 0, err
+	}
+
+	// the first number in a sequence is always zero
+	// but Genji expects the first to be 1.
+	return nb + 1, nil
 }
 
 // NewIterator uses a Badger iterator with default options.
