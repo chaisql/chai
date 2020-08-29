@@ -67,6 +67,8 @@ type Store interface {
 	Truncate() error
 	// NewIterator creates an iterator with the given config.
 	NewIterator(IteratorConfig) Iterator
+	// NextSequence returns a monotonically increasing integer.
+	NextSequence() (uint64, error)
 }
 
 // IteratorConfig is used to configure an iterator upon creation.

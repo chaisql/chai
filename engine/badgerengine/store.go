@@ -10,6 +10,7 @@ import (
 
 // A Store is an implementation of the engine.Store interface.
 type Store struct {
+	ng       *Engine
 	tx       *badger.Txn
 	prefix   []byte
 	writable bool
@@ -100,6 +101,22 @@ func (s *Store) Truncate() error {
 	}
 
 	return nil
+}
+
+// NextSequence returns a monotonically increasing integer across
+// the engine.
+func (s *Store) NextSequence() (uint64, error) {
+	if !s.writable {
+		return 0, engine.ErrTransactionReadOnly
+	}
+
+	seq, err := s.ng.DB.GetSequence([]byte(s.name), 1)
+	if err != nil {
+		return 0, err
+	}
+	defer seq.Release()
+
+	return seq.Next()
 }
 
 // NewIterator uses a Badger iterator with default options.
