@@ -9,10 +9,8 @@ import (
 )
 
 const (
-	// StorePrefix is the prefix used to name the index store.
-	StorePrefix = "i" + string(separator)
-
-	separator byte = 0x1E
+	// storePrefix is the prefix used to name the index stores.
+	storePrefix = "i"
 )
 
 var valueTypes = []document.ValueType{
@@ -75,13 +73,10 @@ func NewUniqueIndex(tx engine.Transaction, idxName string) *UniqueIndex {
 func buildIndexName(name []byte, t document.ValueType) []byte {
 	var buf bytes.Buffer
 
-	// We can deterministically set the size of the buffer.
-	// The last 2 bytes are for the separator and the Type t.
-	buf.Grow(len(StorePrefix) + len(name) + 2)
+	buf.Grow(len(storePrefix) + len(name) + 1)
 
-	buf.WriteString(StorePrefix)
+	buf.WriteString(storePrefix)
 	buf.Write(name)
-	buf.WriteByte(separator)
 	buf.WriteByte(byte(t))
 
 	return buf.Bytes()

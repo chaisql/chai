@@ -31,14 +31,14 @@ func (idx *ListIndex) Set(v document.Value, k []byte) error {
 		return err
 	}
 
-	enc := key.AppendValue(nil, v)
+	buf := key.AppendValue(nil, v)
+	seq, err := st.NextSequence()
+	if err != nil {
+		return err
+	}
+	buf = key.AppendUint64(buf, seq)
 
-	buf := make([]byte, 0, len(enc)+len(k)+1)
-	buf = append(buf, enc...)
-	buf = append(buf, separator)
-	buf = append(buf, k...)
-
-	return st.Put(buf, nil)
+	return st.Put(buf, k)
 }
 
 // Delete all the references to the key from the index.
@@ -52,19 +52,35 @@ func (idx *ListIndex) Delete(v document.Value, k []byte) error {
 		}
 	}
 
-	enc := key.AppendValue(nil, v)
-
 	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, 0, len(enc)+len(k)+1)
-	buf = append(buf, enc...)
-	buf = append(buf, separator)
-	buf = append(buf, k...)
+	seek := key.AppendValue(nil, v)
 
-	return st.Delete(buf)
+	it := st.NewIterator(engine.IteratorConfig{})
+	defer it.Close()
+
+	var buf []byte
+	var toDelete []byte
+	for it.Seek(seek); it.Valid(); it.Next() {
+		item := it.Item()
+		buf, err = item.ValueCopy(buf)
+		if err != nil {
+			return err
+		}
+		if bytes.Equal(buf, k) {
+			toDelete = item.Key()
+			break
+		}
+	}
+
+	if toDelete != nil {
+		return st.Delete(toDelete)
+	}
+
+	return engine.ErrKeyNotFound
 }
 
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
@@ -134,18 +150,25 @@ func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func
 		seek = enc
 
 		if reverse {
-			seek = append(seek, separator, 0xFF)
+			seek = append(seek, 0xFF)
 		}
 	}
 
 	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
 	defer it.Close()
 
+	var buf []byte
 	for it.Seek(seek); it.Valid(); it.Next() {
 		item := it.Item()
-		k := item.Key()
-		idx := bytes.LastIndexByte(k, separator)
-		err = fn(k[:idx], k[idx+1:], bytes.Equal(k[:idx], enc))
+		v := item.Key()
+		idx := len(v) - 8
+
+		buf, err = item.ValueCopy(buf)
+		if err != nil {
+			return err
+		}
+
+		err = fn(v[:idx], buf, bytes.Equal(v[:idx], enc))
 		if err != nil {
 			return err
 		}
