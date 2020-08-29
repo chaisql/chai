@@ -103,14 +103,13 @@ func (s *Store) Truncate() error {
 	return nil
 }
 
-// NextSequence returns a monotonically increasing integer across
-// the engine.
+// NextSequence returns a monotonically increasing integer.
 func (s *Store) NextSequence() (uint64, error) {
 	if !s.writable {
 		return 0, engine.ErrTransactionReadOnly
 	}
 
-	// this is an ineficient way of generating sequences.
+	// TODO: this is an ineficient way of generating sequences.
 	// use a bigger lease in the future.
 	seq, err := s.ng.DB.GetSequence([]byte(s.name), 1)
 	if err != nil {
@@ -123,7 +122,7 @@ func (s *Store) NextSequence() (uint64, error) {
 		return 0, err
 	}
 
-	// the first number in a sequence is always zero
+	// the first number in a Badger sequence is always zero
 	// but Genji expects the first to be 1.
 	return nb + 1, nil
 }
