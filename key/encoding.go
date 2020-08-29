@@ -16,11 +16,6 @@ import (
 	"github.com/genjidb/genji/document"
 )
 
-// EncodeString takes a string and returns its binary representation.
-func EncodeString(buf []byte, x string) {
-	copy(buf, x)
-}
-
 // AppendBool takes a bool and returns its binary representation.
 func AppendBool(buf []byte, x bool) []byte {
 	if x {

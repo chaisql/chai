@@ -3,30 +3,32 @@ package key
 import (
 	"bytes"
 	"testing"
+	"time"
 
+	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
 func TestValueEncodeDecode(t *testing.T) {
 	tests := []struct {
-		name     string
-		expected interface{}
-		enc      func([]byte) []byte
-		dec      func([]byte) (interface{}, error)
+		name string
+		v    document.Value
 	}{
-		{"bool", true, func(buf []byte) []byte { return AppendBool(buf, true) }, func(buf []byte) (interface{}, error) { return DecodeBool(buf), nil }},
-		{"uint64", uint64(10), func(buf []byte) []byte { return AppendUint64(buf, 10) }, func(buf []byte) (interface{}, error) { return DecodeUint64(buf) }},
-		{"int64", int64(-10), func(buf []byte) []byte { return AppendInt64(buf, -10) }, func(buf []byte) (interface{}, error) { return DecodeInt64(buf) }},
-		{"float64", float64(-3.14), func(buf []byte) []byte { return AppendFloat64(buf, -3.14) }, func(buf []byte) (interface{}, error) { return DecodeFloat64(buf) }},
+		{"null", document.NewNullValue()},
+		{"bool", document.NewBoolValue(true)},
+		{"integer", document.NewIntegerValue(-10)},
+		{"double", document.NewDoubleValue(-3.14)},
+		{"text", document.NewTextValue("foo")},
+		{"blob", document.NewBlobValue([]byte("bar"))},
+		{"duration", document.NewDurationValue(10 * time.Second)},
 	}
 
 	for _, test := range tests {
-		var buf []byte
 		t.Run(test.name, func(t *testing.T) {
-			buf = test.enc(buf[:0])
-			actual, err := test.dec(buf)
+			b := AppendValue(nil, test.v)
+			got, err := DecodeValue(test.v.Type, b)
 			require.NoError(t, err)
-			require.Equal(t, test.expected, actual)
+			require.Equal(t, test.v, got)
 		})
 	}
 }
