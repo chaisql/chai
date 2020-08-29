@@ -254,6 +254,38 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.Equal(t, 10, texts)
 		})
 	}
+
+	t.Run("Unique: false, Must iterate through similar values properly", func(t *testing.T) {
+		idx, cleanup := getIndex(t, false)
+		defer cleanup()
+
+		for i := int64(0); i < 100; i++ {
+			require.NoError(t, idx.Set(document.NewIntegerValue(1), key.AppendInt64(nil, i)))
+			require.NoError(t, idx.Set(document.NewTextValue("1"), key.AppendInt64(nil, i)))
+		}
+
+		var ints, texts int
+		i := int64(0)
+		err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, rid []byte, isEqual bool) error {
+			requireEqualEncoded(t, document.NewDoubleValue(1), val)
+			require.Equal(t, key.AppendInt64(nil, i), rid)
+			i++
+			ints++
+			return nil
+		})
+
+		i = 0
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(val, rid []byte, isEqual bool) error {
+			requireEqualEncoded(t, document.NewTextValue("1"), val)
+			require.Equal(t, key.AppendInt64(nil, i), rid)
+			i++
+			texts++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 100, ints)
+		require.Equal(t, 100, texts)
+	})
 }
 
 func TestIndexDescendLessOrEqual(t *testing.T) {
