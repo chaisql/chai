@@ -298,6 +298,16 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 	t.tableInfos[tableInfoStoreName] = TableInfo{
 		storeName: []byte(tableInfoStoreName),
 		readOnly:  true,
+		FieldConstraints: []FieldConstraint{
+			{
+				Path: document.ValuePath{
+					document.ValuePathFragment{
+						FieldName: "table_name",
+					},
+				},
+				IsPrimaryKey: true,
+			},
+		},
 	}
 	return nil
 }
