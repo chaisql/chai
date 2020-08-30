@@ -1,17 +1,13 @@
 package database
 
 import (
-	"bytes"
-	"crypto/rand"
-	"encoding/binary"
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
+	"github.com/genjidb/genji/key"
 )
 
 const storePrefix = 't'
@@ -67,11 +63,13 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	return nil
 }
 
+// TableInfo contains information about a table.
 type TableInfo struct {
+	// name of the table.
 	tableName string
-	// storeID is used as a key to reference a table.
-	storeID  []byte
-	readOnly bool
+	// name of the store associated with the table.
+	storeName []byte
+	readOnly  bool
 	// if non-zero, this tableInfo has been created during the current transaction.
 	// it will be removed if the transaction is rolled back or set to false if its commited.
 	transactionID int64
@@ -91,11 +89,12 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 	return nil
 }
 
+// ToDocument turns ti into a document.
 func (ti *TableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	buf.Add("table_name", document.NewTextValue(ti.tableName))
-	buf.Add("store_id", document.NewBlobValue(ti.storeID))
+	buf.Add("store_name", document.NewBlobValue(ti.storeName))
 
 	vbuf := document.NewValueBuffer()
 	for _, fc := range ti.FieldConstraints {
@@ -108,6 +107,7 @@ func (ti *TableInfo) ToDocument() document.Document {
 	return buf
 }
 
+// ScanDocument decodes d into ti.
 func (ti *TableInfo) ScanDocument(d document.Document) error {
 	v, err := d.GetByField("table_name")
 	if err != nil {
@@ -115,12 +115,12 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	}
 	ti.tableName = v.V.(string)
 
-	v, err = d.GetByField("store_id")
+	v, err = d.GetByField("store_name")
 	if err != nil {
 		return err
 	}
-	ti.storeID = make([]byte, len(v.V.([]byte)))
-	copy(ti.storeID, v.V.([]byte))
+	ti.storeName = make([]byte, len(v.V.([]byte)))
+	copy(ti.storeName, v.V.([]byte))
 
 	v, err = d.GetByField("field_constraints")
 	if err != nil {
@@ -173,6 +173,7 @@ func newTableInfoStore(tx engine.Transaction) (*tableInfoStore, error) {
 }
 
 // Insert a new tableInfo for the given table name.
+// If info.storeName is nil, it generates one and stores it in info.
 func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -188,12 +189,20 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		return ErrTableAlreadyExists
 	}
 
-	v, err := msgpack.EncodeDocument(info.ToDocument())
+	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
 
-	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
+	if info.storeName == nil {
+		seq, err := st.NextSequence()
+		if err != nil {
+			return err
+		}
+		info.storeName = key.AppendInt64([]byte{storePrefix}, int64(seq))
+	}
+
+	v, err := msgpack.EncodeDocument(info.ToDocument())
 	if err != nil {
 		return err
 	}
@@ -287,8 +296,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 	}
 
 	t.tableInfos[tableInfoStoreName] = TableInfo{
-		storeID:  []byte(tableInfoStoreName),
-		readOnly: true,
+		storeName: []byte(tableInfoStoreName),
+		readOnly:  true,
 	}
 	return nil
 }
@@ -332,37 +341,6 @@ func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
 	}
 
 	return ti
-}
-
-// generateStoreID generates an ID used as a key to reference a table.
-// The first byte contains the prefix used for table stores.
-// The next 4 bytes represent the timestamp in second and the last 2 bytes are
-// randomly generated.
-func (t *tableInfoStore) generateStoreID() []byte {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	var found bool = true
-	var id [7]byte
-	for found {
-		id[0] = storePrefix
-		binary.BigEndian.PutUint32(id[1:], uint32(time.Now().Unix()))
-		if _, err := rand.Reader.Read(id[5:]); err != nil {
-			panic(fmt.Errorf("cannot generate random number: %v;", err))
-		}
-
-		found = false
-		for _, ti := range t.tableInfos {
-			if bytes.Equal(ti.storeID, id[:]) {
-				// A store with this id already exists.
-				// Let's generate a new one.
-				found = true
-				break
-			}
-		}
-	}
-
-	return id[:]
 }
 
 // IndexConfig holds the configuration of an index.

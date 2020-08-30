@@ -2,7 +2,6 @@
 package database
 
 import (
-	"sync"
 	"sync/atomic"
 
 	"github.com/genjidb/genji/engine"
@@ -12,16 +11,8 @@ import (
 type Database struct {
 	ng engine.Engine
 
-	mu sync.Mutex
-
 	// tableInfoStore manages information about all the tables
 	tableInfoStore *tableInfoStore
-
-	// tableDocids holds the latest docid for a table.
-	// it is cached in this map the first time a table is accessed
-	// and is used by every call to table#Insert to generate the
-	// docid if the table doesn't have a primary key.
-	tableDocids map[string]int64
 
 	// This stores the last transaction id created.
 	// It starts at 0 at database startup and is
@@ -32,8 +23,7 @@ type Database struct {
 // New initializes the DB using the given engine.
 func New(ng engine.Engine) (*Database, error) {
 	db := Database{
-		ng:          ng,
-		tableDocids: make(map[string]int64),
+		ng: ng,
 	}
 
 	ntx, err := db.ng.Begin(true)
