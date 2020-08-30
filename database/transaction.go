@@ -64,13 +64,12 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 	}
 
 	info.tableName = name
-	info.storeID = tx.tableInfoStore.generateStoreID()
 	err := tx.tableInfoStore.Insert(tx, name, info)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(info.storeID)
+	err = tx.Tx.CreateStore(info.storeName)
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -85,7 +84,7 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore(ti.storeID)
+	s, err := tx.Tx.GetStore(ti.storeName)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,7 @@ func (tx *Transaction) DropTable(name string) error {
 		return err
 	}
 
-	return tx.Tx.DropStore(ti.storeID)
+	return tx.Tx.DropStore(ti.storeName)
 }
 
 // CreateIndex creates an index with the given name.

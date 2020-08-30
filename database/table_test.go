@@ -3,12 +3,10 @@ package database_test
 import (
 	"errors"
 	"fmt"
-	"math"
 	"testing"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/parser"
@@ -178,59 +176,19 @@ func TestTableInsert(t *testing.T) {
 		key1 := insertDoc(db)
 		require.NoError(t, err)
 
-		// create new database
+		// create new database object
 		db, err = database.New(ng)
 		require.NoError(t, err)
 
 		key2 := insertDoc(db)
 
-		a, err := key.DecodeInt64(key1)
+		a, err := key.DecodeUint64(key1)
 		require.NoError(t, err)
 
-		b, err := key.DecodeInt64(key2)
+		b, err := key.DecodeUint64(key2)
 		require.NoError(t, err)
 
 		require.Equal(t, a+1, b)
-	})
-
-	t.Run("Should lookup for the smallest available docid if int64 overflowed", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		err := tx.CreateTable("test", nil)
-		require.NoError(t, err)
-
-		tb, err := tx.GetTable("test")
-		require.NoError(t, err)
-
-		manualInsert := func(id int64) {
-			docid := key.AppendInt64(nil, id)
-			v, err := msgpack.EncodeDocument(newDocument())
-			require.NoError(t, err)
-			err = tb.Store.Put(docid, v)
-			require.NoError(t, err)
-		}
-
-		// insert manually a document with the maximum docid
-		manualInsert(math.MaxInt64)
-		// insert manually a document with docid = 2
-		manualInsert(2)
-
-		expectDocid := func(want int64, got []byte) {
-			newDocid, err := key.DecodeInt64(got)
-			require.NoError(t, err)
-			require.Equal(t, want, newDocid)
-		}
-
-		// now insert a document and expect its docid to be 1
-		key, err := tb.Insert(newDocument())
-		require.NoError(t, err)
-		expectDocid(1, key)
-
-		// insert another one and expect its docid to be 3
-		key, err = tb.Insert(newDocument())
-		require.NoError(t, err)
-		expectDocid(3, key)
 	})
 
 	t.Run("Should use the right field if primary key is specified", func(t *testing.T) {

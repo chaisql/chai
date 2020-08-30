@@ -1,10 +1,8 @@
 package database
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"math"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
@@ -386,81 +384,12 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return key.AppendValue(nil, v), nil
 	}
 
-	docid, err := t.generateDocid()
+	docid, err := t.Store.NextSequence()
 	if err != nil {
 		return nil, err
 	}
 
-	return key.AppendInt64(nil, docid), nil
-}
-
-// this function looks up for the highest key in the table,
-// increments it, caches it in the database tableDocids map
-// and returns it.
-// if the docid is greater than max.Int64, it looks up for the lowest
-// available docid in the table.
-// Generating a docid is safe for concurrent access across
-// multiple transactions.
-func (t *Table) generateDocid() (int64, error) {
-	t.tx.db.mu.Lock()
-	defer t.tx.db.mu.Unlock()
-
-	var err error
-
-	// get the cached latest docid
-	lastDocid, ok := t.tx.db.tableDocids[t.name]
-	// if no key was found in the cache, get the largest key in the table
-	if !ok {
-		it := t.Store.NewIterator(engine.IteratorConfig{Reverse: true})
-		it.Seek(nil)
-		if it.Valid() {
-			t.tx.db.tableDocids[t.name], err = key.DecodeInt64(it.Item().Key())
-			if err != nil {
-				it.Close()
-				return 0, err
-			}
-		} else {
-			t.tx.db.tableDocids[t.name] = 0
-		}
-
-		err = it.Close()
-		if err != nil {
-			return 0, err
-		}
-
-		lastDocid = t.tx.db.tableDocids[t.name]
-	}
-
-	// if the id is bigger than an int64
-	// look for the smallest available docid
-	if lastDocid > math.MaxInt64-1 {
-		return t.getSmallestAvailableDocid()
-	}
-
-	lastDocid++
-
-	// cache it
-	t.tx.db.tableDocids[t.name] = lastDocid
-	return lastDocid, nil
-}
-
-// getSmallestAvailableDocid iterates through the table store
-// and returns the first available docid.
-func (t *Table) getSmallestAvailableDocid() (int64, error) {
-	it := t.Store.NewIterator(engine.IteratorConfig{})
-	defer it.Close()
-
-	var i int64 = 1
-
-	var buf [8]byte
-	for it.Seek(nil); it.Valid(); it.Next() {
-		if !bytes.Equal(it.Item().Key(), key.AppendInt64(buf[:0], i)) {
-			return i, nil
-		}
-		i++
-	}
-
-	return 0, errors.New("reached maximum number of documents in a table")
+	return key.AppendInt64(nil, int64(docid)), nil
 }
 
 // ValidateConstraints check the table configuration for constraints and validates the document
