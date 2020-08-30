@@ -36,7 +36,7 @@ func (idx *ListIndex) Set(v document.Value, k []byte) error {
 	if err != nil {
 		return err
 	}
-	buf = key.AppendUint64(buf, seq)
+	buf = key.AppendInt64(buf, int64(seq))
 
 	return st.Put(buf, k)
 }
