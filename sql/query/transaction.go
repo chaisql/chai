@@ -19,7 +19,10 @@ func (stmt BeginStmt) alterQuery(db *database.Database, q *Query) error {
 
 	var err error
 	q.tx, err = db.Begin(stmt.Writable)
-	return err
+	if err != nil {
+		return err
+	}
+	return db.SetActiveTransaction(q.tx)
 }
 
 func (stmt BeginStmt) IsReadOnly() bool {
