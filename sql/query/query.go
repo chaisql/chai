@@ -16,47 +16,63 @@ var ErrResultClosed = errors.New("result already closed")
 // Results are returned as streams.
 type Query struct {
 	Statements []Statement
+	tx         *database.Transaction
+	autoCommit bool
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
 func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 	var res Result
-	var tx *database.Transaction
 	var err error
+	q.autoCommit = true
+
+	type queryAlterer interface {
+		alterQuery(q *Query) error
+	}
 
 	for _, stmt := range q.Statements {
+		if qa, ok := stmt.(queryAlterer); ok {
+			err = qa.alterQuery(&q)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// it there is an opened transaction but there are still statements
 		// to be executed, close the current transaction.
-		if tx != nil {
-			if tx.Writable() {
-				err := tx.Commit()
+		if q.tx != nil && q.autoCommit {
+			if q.tx.Writable() {
+				err := q.tx.Commit()
 				if err != nil {
 					return nil, err
 				}
 			} else {
-				err := tx.Rollback()
+				err := q.tx.Rollback()
 				if err != nil {
 					return nil, err
 				}
 			}
+			q.tx = nil
 		}
 
-		// start a new transaction for every statement
-		tx, err = db.Begin(!stmt.IsReadOnly())
-		if err != nil {
-			return nil, err
+		if q.tx == nil {
+			// start a new transaction for every statement
+			q.tx, err = db.Begin(!stmt.IsReadOnly())
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		res, err = stmt.Run(tx, args)
+		res, err = stmt.Run(q.tx, args)
 		if err != nil {
-			tx.Rollback()
+			q.tx.Rollback()
 			return nil, err
 		}
 	}
 
 	// the returned result will now own the transaction.
 	// its Close method is expected to be called.
-	res.Tx = tx
+	res.Tx = q.tx
 
 	return &res, nil
 }
