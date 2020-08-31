@@ -2,6 +2,7 @@
 package database
 
 import (
+	"errors"
 	"sync/atomic"
 
 	"github.com/genjidb/genji/engine"
@@ -18,6 +19,12 @@ type Database struct {
 	// It starts at 0 at database startup and is
 	// incremented atomically every time Begin is called.
 	lastTransactionID int64
+
+	// If this is non-nil, the user is running an explicit transaction
+	// using the BEGIN statement.
+	// Only one global transaction can be run at a time and any calls to DB.Begin()
+	// will cause an error until that transaction is rolled back or commited.
+	globalTransaction *Transaction
 }
 
 // New initializes the DB using the given engine.
@@ -74,7 +81,29 @@ func (db *Database) Close() error {
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *Database) Begin(writable bool) (*Transaction, error) {
-	ntx, err := db.ng.Begin(writable)
+	return db.BeginTx(&TxOptions{
+		ReadOnly: !writable,
+	})
+}
+
+// BeginTx starts a new transaction with the given options.
+// If opts is empty, it will use the default options.
+// The returned transaction must be closed either by calling Rollback or Commit.
+func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
+	if opts == nil {
+		opts = new(TxOptions)
+	}
+
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if opts.Global {
+		if db.globalTransaction != nil {
+			return nil, errors.New("cannot open a transaction within a transaction")
+		}
+	}
+
+	ntx, err := db.ng.Begin(!opts.ReadOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +112,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 		id:             atomic.AddInt64(&db.lastTransactionID, 1),
 		db:             db,
 		Tx:             ntx,
-		writable:       writable,
+		writable:       !opts.ReadOnly,
 		tableInfoStore: db.tableInfoStore,
 	}
 
@@ -93,4 +122,14 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 	}
 
 	return &tx, nil
+}
+
+// TxOptions are passed to Begin to configure transactions.
+type TxOptions struct {
+	// Open a read-only transaction.
+	ReadOnly bool
+	// Set the transaction as global at the database level.
+	// Any queries run by the database will use that transaction until it is
+	// rolled back or commited.
+	Global bool
 }
