@@ -102,8 +102,8 @@ func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
 }
 
 // setValueAtPath deep replaces or creates a field
-// using the value path
-func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
+// at the given path
+func setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
 	switch v.Type {
 	case DocumentValue:
 		var buf FieldBuffer
@@ -122,7 +122,7 @@ func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Val
 			return v, err
 		}
 
-		va, err = buf.setValueAtPath(va, p[1:], newValue)
+		va, err = setValueAtPath(va, p[1:], newValue)
 		if err != nil {
 			return v, err
 		}
@@ -146,7 +146,7 @@ func (fb *FieldBuffer) setValueAtPath(v Value, p ValuePath, newValue Value) (Val
 			return NewArrayValue(&vb), err
 		}
 
-		va, err = fb.setValueAtPath(va, p[1:], newValue)
+		va, err = setValueAtPath(va, p[1:], newValue)
 		err = vb.Replace(p[0].ArrayIndex, va)
 		return NewArrayValue(&vb), err
 	}
@@ -160,9 +160,9 @@ func (fb *FieldBuffer) Set(path ValuePath, v Value) error {
 		return fb.setFieldValue(path[0].FieldName, v)
 	}
 
-	for i, f := range fb.fields {
-		if f.Field == path[0].FieldName {
-			va, err := fb.setValueAtPath(f.Value, path[1:], v)
+	for i := range fb.fields {
+		if fb.fields[i].Field == path[0].FieldName {
+			va, err := setValueAtPath(fb.fields[i].Value, path[1:], v)
 			if err != nil {
 				return err
 			}
