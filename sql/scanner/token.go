@@ -76,8 +76,10 @@ const (
 	ALTER
 	AS
 	ASC
+	BEGIN
 	BY
 	CAST
+	COMMIT
 	CREATE
 	DELETE
 	DESC
@@ -98,10 +100,12 @@ const (
 	PRIMARY
 	REINDEX
 	RENAME
+	ROLLBACK
 	SELECT
 	SET
 	TABLE
 	TO
+	TRANSACTION
 	UNIQUE
 	UNSET
 	UPDATE
@@ -173,40 +177,44 @@ var tokens = [...]string{
 	SEMICOLON:   ";",
 	DOT:         ".",
 
-	ALTER:   "ALTER",
-	AS:      "AS",
-	ASC:     "ASC",
-	BY:      "BY",
-	CREATE:  "CREATE",
-	CAST:    "CAST",
-	DELETE:  "DELETE",
-	DESC:    "DESC",
-	DROP:    "DROP",
-	EXISTS:  "EXISTS",
-	EXPLAIN: "EXPLAIN",
-	KEY:     "KEY",
-	FROM:    "FROM",
-	IF:      "IF",
-	INDEX:   "INDEX",
-	INSERT:  "INSERT",
-	INTO:    "INTO",
-	LIMIT:   "LIMIT",
-	NOT:     "NOT",
-	OFFSET:  "OFFSET",
-	ON:      "ON",
-	ORDER:   "ORDER",
-	PRIMARY: "PRIMARY",
-	REINDEX: "REINDEX",
-	RENAME:  "RENAME",
-	SELECT:  "SELECT",
-	SET:     "SET",
-	TABLE:   "TABLE",
-	TO:      "TO",
-	UNIQUE:  "UNIQUE",
-	UNSET:   "UNSET",
-	UPDATE:  "UPDATE",
-	VALUES:  "VALUES",
-	WHERE:   "WHERE",
+	ALTER:       "ALTER",
+	AS:          "AS",
+	ASC:         "ASC",
+	BEGIN:       "BEGIN",
+	COMMIT:      "COMMIT",
+	BY:          "BY",
+	CREATE:      "CREATE",
+	CAST:        "CAST",
+	DELETE:      "DELETE",
+	DESC:        "DESC",
+	DROP:        "DROP",
+	EXISTS:      "EXISTS",
+	EXPLAIN:     "EXPLAIN",
+	KEY:         "KEY",
+	FROM:        "FROM",
+	IF:          "IF",
+	INDEX:       "INDEX",
+	INSERT:      "INSERT",
+	INTO:        "INTO",
+	LIMIT:       "LIMIT",
+	NOT:         "NOT",
+	OFFSET:      "OFFSET",
+	ON:          "ON",
+	ORDER:       "ORDER",
+	PRIMARY:     "PRIMARY",
+	REINDEX:     "REINDEX",
+	RENAME:      "RENAME",
+	ROLLBACK:    "ROLLBACK",
+	SELECT:      "SELECT",
+	SET:         "SET",
+	TABLE:       "TABLE",
+	TO:          "TO",
+	TRANSACTION: "TRANSACTION",
+	UNIQUE:      "UNIQUE",
+	UNSET:       "UNSET",
+	UPDATE:      "UPDATE",
+	VALUES:      "VALUES",
+	WHERE:       "WHERE",
 
 	TYPEARRAY:    "ARRAY",
 	TYPEBLOB:     "BLOB",
