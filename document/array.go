@@ -9,7 +9,6 @@ import (
 // the index wasn't found in the array.
 var (
 	ErrValueNotFound   = errors.New("value not found")
-	ErrIndexOutOfRange = errors.New("index out of range")
 )
 
 // An Array contains a set of values.
@@ -84,7 +83,7 @@ func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
 // GetByIndex returns a value set at the given index. If the index is out of range it returns an error.
 func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
 	if i >= len(vb) {
-		return Value{}, ErrIndexOutOfRange
+		return Value{}, ErrFieldNotFound
 	}
 
 	return vb[i], nil

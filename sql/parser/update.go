@@ -63,7 +63,7 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 		path, err := p.parsePath()
 		if err != nil {
 			pErr := err.(*ParseError)
-			pErr.Expected = []string{"value path"}
+			pErr.Expected = []string{"path"}
 			return nil, pErr
 		}
 

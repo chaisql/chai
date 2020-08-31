@@ -85,10 +85,10 @@ func TestUpdateStmt(t *testing.T) {
 			params   []interface{}
 		}{
 			{"SET / No cond add field ", `UPDATE foo set b = 0`, false, `[{"a": [1, 0, 0], "b": 0}, {"a": [2, 0], "b": 0}]`, nil},
-			{"SET / No cond / with dot notation at existing index only", `UPDATE foo SET a[2] = 10`, false, `[{"a": [1, 0, 10]}, {"a": [2, 0]}]`, nil},
-			{"SET / No cond / with dot notation", `UPDATE foo SET a[1] = 10`, false, `[{"a": [1, 10, 0]}, {"a": [2, 10]}]`, nil},
-			{"SET / No cond / with dot notation non existing field", `UPDATE foo SET a.foo[1] = 10`, false, `[{"a": [1, 0, 0]}, {"a": [2, 0]}]`, nil},
-			{"SET / With cond / with dot notation", `UPDATE foo SET a[0] = 1 WHERE a[0] = 2`, false, `[{"a": [1, 0, 0]}, {"a": [1, 0]}]`, nil},
+			{"SET / No cond / with path at existing index only", `UPDATE foo SET a[2] = 10`, false, `[{"a": [1, 0, 10]}, {"a": [2, 0]}]`, nil},
+			{"SET / No cond / with index array", `UPDATE foo SET a[1] = 10`, false, `[{"a": [1, 10, 0]}, {"a": [2, 10]}]`, nil},
+			{"SET / No cond / with path on non existing field", `UPDATE foo SET a.foo[1] = 10`, false, `[{"a": [1, 0, 0]}, {"a": [2, 0]}]`, nil},
+			{"SET / With cond / index array", `UPDATE foo SET a[0] = 1 WHERE a[0] = 2`, false, `[{"a": [1, 0, 0]}, {"a": [1, 0]}]`, nil},
 			{"SET / No cond / index out of range", `UPDATE foo SET a[10] = 1`, true, `[{"a": [1, 0, 0]}, {"a": [1, 0]}]`, nil},
 			{"SET / No cond / Nested array", `UPDATE foo SET a[1] = [1, 0, 0]`, false, `[{"a": [1, [1, 0, 0], 0]}, {"a": [2, [1, 0, 0]]}]`, nil},
 			{"SET / No cond / with multiple idents", `UPDATE foo SET a[1] = [1, 0, 0], a[1][2] = 9`, false, `[{"a": [1, [1, 0, 9], 0]}, {"a": [2, [1, 0, 9]]}]`, nil},

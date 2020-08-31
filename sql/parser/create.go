@@ -46,7 +46,7 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 		return stmt, err
 	}
 
-	// parse path constraints
+	// parse field constraints
 	err = p.parseFieldConstraints(&stmt.Info)
 	if err != nil {
 		return stmt, err
