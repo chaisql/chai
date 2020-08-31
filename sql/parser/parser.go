@@ -64,6 +64,10 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 	switch tok {
 	case scanner.ALTER:
 		return p.parseAlterStatement()
+	case scanner.BEGIN:
+		return p.parseBeginStatement()
+	case scanner.COMMIT:
+		return p.parseCommitStatement()
 	case scanner.SELECT:
 		return p.parseSelectStatement()
 	case scanner.DELETE:
@@ -80,10 +84,12 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 		return p.parseExplainStatement()
 	case scanner.REINDEX:
 		return p.parseReIndexStatement()
+	case scanner.ROLLBACK:
+		return p.parseRollbackStatement()
 	}
 
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{
-		"SELECT", "DELETE", "UPDATE", "INSERT", "CREATE", "DROP",
+		"ALTER", "BEGIN", "COMMIT", "SELECT", "DELETE", "UPDATE", "INSERT", "CREATE", "DROP", "EXPLAIN", "REINDEX", "ROLLBACK",
 	}, pos)
 }
 
