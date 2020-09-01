@@ -22,9 +22,9 @@ type Database struct {
 
 	// If this is non-nil, the user is running an explicit transaction
 	// using the BEGIN statement.
-	// Only one global transaction can be run at a time and any calls to DB.Begin()
+	// Only one attached transaction can be run at a time and any calls to DB.Begin()
 	// will cause an error until that transaction is rolled back or commited.
-	globalTransaction *Transaction
+	attachedTransaction *Transaction
 }
 
 // New initializes the DB using the given engine.
@@ -89,6 +89,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // BeginTx starts a new transaction with the given options.
 // If opts is empty, it will use the default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
+// If the Global option is passed, it opens a database level transaction.
 func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = new(TxOptions)
@@ -97,10 +98,8 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	if opts.Global {
-		if db.globalTransaction != nil {
-			return nil, errors.New("cannot open a transaction within a transaction")
-		}
+	if db.attachedTransaction != nil {
+		return nil, errors.New("cannot open a transaction within a transaction")
 	}
 
 	ntx, err := db.ng.Begin(!opts.ReadOnly)
@@ -121,6 +120,10 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		return nil, err
 	}
 
+	if opts.Attached {
+		db.attachedTransaction = &tx
+	}
+
 	return &tx, nil
 }
 
@@ -131,5 +134,15 @@ type TxOptions struct {
 	// Set the transaction as global at the database level.
 	// Any queries run by the database will use that transaction until it is
 	// rolled back or commited.
-	Global bool
+	Attached bool
+}
+
+// GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
+// such transaction.
+// The returned transaction is not thread safe.
+func (db *Database) GetAttachedTx() *Transaction {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	return db.attachedTransaction
 }
