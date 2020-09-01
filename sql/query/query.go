@@ -24,23 +24,48 @@ type Query struct {
 func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 	var res Result
 	var err error
-	q.autoCommit = true
 
-	type queryAlterer interface {
-		alterQuery(q *Query) error
+	q.tx = db.GetAttachedTx()
+	if q.tx == nil {
+		q.autoCommit = true
 	}
 
-	for _, stmt := range q.Statements {
+	type queryAlterer interface {
+		alterQuery(db *database.Database, q *Query) error
+	}
+
+	for i, stmt := range q.Statements {
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(&q)
+			err = qa.alterQuery(db, &q)
+			if err != nil {
+				if tx := db.GetAttachedTx(); tx != nil {
+					tx.Rollback()
+				}
+				return nil, err
+			}
+
+			continue
+		}
+
+		if q.tx == nil {
+			q.tx, err = db.Begin(!stmt.IsReadOnly())
 			if err != nil {
 				return nil, err
 			}
 		}
 
+		res, err = stmt.Run(q.tx, args)
+		if err != nil {
+			if q.autoCommit {
+				q.tx.Rollback()
+			}
+
+			return nil, err
+		}
+
 		// it there is an opened transaction but there are still statements
 		// to be executed, close the current transaction.
-		if q.tx != nil && q.autoCommit {
+		if q.tx != nil && q.autoCommit && i+1 < len(q.Statements) {
 			if q.tx.Writable() {
 				err := q.tx.Commit()
 				if err != nil {
@@ -54,25 +79,13 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 			}
 			q.tx = nil
 		}
-
-		if q.tx == nil {
-			// start a new transaction for every statement
-			q.tx, err = db.Begin(!stmt.IsReadOnly())
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		res, err = stmt.Run(q.tx, args)
-		if err != nil {
-			q.tx.Rollback()
-			return nil, err
-		}
 	}
 
-	// the returned result will now own the transaction.
-	// its Close method is expected to be called.
-	res.Tx = q.tx
+	if q.autoCommit {
+		// the returned result will now own the transaction.
+		// its Close method is expected to be called.
+		res.Tx = q.tx
+	}
 
 	return &res, nil
 }
