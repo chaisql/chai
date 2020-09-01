@@ -3,6 +3,7 @@ package database
 
 import (
 	"errors"
+	"sync"
 	"sync/atomic"
 
 	"github.com/genjidb/genji/engine"
@@ -25,6 +26,7 @@ type Database struct {
 	// Only one attached transaction can be run at a time and any calls to DB.Begin()
 	// will cause an error until that transaction is rolled back or commited.
 	attachedTransaction *Transaction
+	attachedTxMu        sync.Mutex
 }
 
 // New initializes the DB using the given engine.
@@ -95,8 +97,8 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		opts = new(TxOptions)
 	}
 
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.attachedTxMu.Lock()
+	defer db.attachedTxMu.Unlock()
 
 	if db.attachedTransaction != nil {
 		return nil, errors.New("cannot open a transaction within a transaction")
@@ -141,8 +143,8 @@ type TxOptions struct {
 // such transaction.
 // The returned transaction is not thread safe.
 func (db *Database) GetAttachedTx() *Transaction {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.attachedTxMu.Lock()
+	defer db.attachedTxMu.Unlock()
 
 	return db.attachedTransaction
 }
