@@ -14,8 +14,8 @@ func TestParserTransactions(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Begin", "BEGIN", query.BeginStmt{}, false},
-		{"Begin transaction", "BEGIN TRANSACTION", query.BeginStmt{}, false},
+		{"Begin", "BEGIN", query.BeginStmt{Writable: true}, false},
+		{"Begin transaction", "BEGIN TRANSACTION", query.BeginStmt{Writable: true}, false},
 		{"Rollback", "ROLLBACK", query.RollbackStmt{}, false},
 		{"Rollback transaction", "ROLLBACK TRANSACTION", query.RollbackStmt{}, false},
 		{"Commit", "COMMIT", query.CommitStmt{}, false},

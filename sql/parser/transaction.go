@@ -13,7 +13,7 @@ func (p *Parser) parseBeginStatement() (query.Statement, error) {
 		p.Unscan()
 	}
 
-	return query.BeginStmt{}, nil
+	return query.BeginStmt{Writable: true}, nil
 }
 
 // parseRollbackStatement parses a ROLLBACK statement.
