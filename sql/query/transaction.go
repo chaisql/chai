@@ -18,11 +18,12 @@ func (stmt BeginStmt) alterQuery(db *database.Database, q *Query) error {
 	}
 
 	var err error
-	q.tx, err = db.Begin(stmt.Writable)
-	if err != nil {
-		return err
-	}
-	return db.SetActiveTransaction(q.tx)
+	q.tx, err = db.BeginTx(&database.TxOptions{
+		ReadOnly: !stmt.Writable,
+		Attached: true,
+	})
+	q.autoCommit = false
+	return err
 }
 
 func (stmt BeginStmt) IsReadOnly() bool {
@@ -30,7 +31,7 @@ func (stmt BeginStmt) IsReadOnly() bool {
 }
 
 func (stmt BeginStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
-	return Result{}, nil
+	return Result{}, errors.New("cannot begin a transaction within a transaction")
 }
 
 // RollbackStmt is a statement that rollbacks the current active transaction.
@@ -41,7 +42,12 @@ func (stmt RollbackStmt) alterQuery(db *database.Database, q *Query) error {
 		return errors.New("cannot rollback with no active transaction")
 	}
 
-	return q.tx.Rollback()
+	err := q.tx.Rollback()
+	if err != nil {
+		return err
+	}
+	q.tx = nil
+	return nil
 }
 
 func (stmt RollbackStmt) IsReadOnly() bool {
@@ -49,7 +55,7 @@ func (stmt RollbackStmt) IsReadOnly() bool {
 }
 
 func (stmt RollbackStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
-	return Result{}, nil
+	return Result{}, errors.New("cannot rollback with no active transaction")
 }
 
 // CommitStmt is a statement that commits the current active transaction.
@@ -57,10 +63,15 @@ type CommitStmt struct{}
 
 func (stmt CommitStmt) alterQuery(db *database.Database, q *Query) error {
 	if q.tx == nil || q.autoCommit == true {
-		return errors.New("cannot rollback with no active transaction")
+		return errors.New("cannot commit with no active transaction")
 	}
 
-	return q.tx.Commit()
+	err := q.tx.Commit()
+	if err != nil {
+		return err
+	}
+	q.tx = nil
+	return nil
 }
 
 func (stmt CommitStmt) IsReadOnly() bool {
@@ -68,5 +79,5 @@ func (stmt CommitStmt) IsReadOnly() bool {
 }
 
 func (stmt CommitStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
-	return Result{}, nil
+	return Result{}, errors.New("cannot commit with no active transaction")
 }
