@@ -143,9 +143,11 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `INSERT`, tok: scanner.INSERT, raw: `INSERT`},
 		{s: `INTO`, tok: scanner.INTO, raw: `INTO`},
 		{s: `LIMIT`, tok: scanner.LIMIT, raw: `LIMIT`},
+		{s: `ONLY`, tok: scanner.ONLY, raw: `ONLY`},
 		{s: `OFFSET`, tok: scanner.OFFSET, raw: `OFFSET`},
 		{s: `ORDER`, tok: scanner.ORDER, raw: `ORDER`},
 		{s: `PRIMARY`, tok: scanner.PRIMARY, raw: `PRIMARY`},
+		{s: `READ`, tok: scanner.READ, raw: `READ`},
 		{s: `REINDEX`, tok: scanner.REINDEX, raw: `REINDEX`},
 		{s: `RENAME`, tok: scanner.RENAME, raw: `RENAME`},
 		{s: `ROLLBACK`, tok: scanner.ROLLBACK, raw: `ROLLBACK`},
@@ -158,6 +160,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `UNSET`, tok: scanner.UNSET, raw: `UNSET`},
 		{s: `VALUES`, tok: scanner.VALUES, raw: `VALUES`},
 		{s: `WHERE`, tok: scanner.WHERE, raw: `WHERE`},
+		{s: `WRITE`, tok: scanner.WRITE, raw: `WRITE`},
 		{s: `seLECT`, tok: scanner.SELECT, raw: `seLECT`}, // case insensitive
 
 		// types
