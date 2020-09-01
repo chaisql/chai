@@ -13,6 +13,24 @@ func (p *Parser) parseBeginStatement() (query.Statement, error) {
 		p.Unscan()
 	}
 
+	// parse optional READ token
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.READ {
+		p.Unscan()
+		return query.BeginStmt{Writable: true}, nil
+	}
+
+	// parse ONLY token
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.ONLY {
+		return query.BeginStmt{Writable: false}, nil
+	}
+
+	p.Unscan()
+
+	// parse WRITE token
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.WRITE {
+		return query.BeginStmt{}, newParseError(scanner.Tokstr(tok, lit), []string{"ONLY", "WRITE"}, pos)
+	}
+
 	return query.BeginStmt{Writable: true}, nil
 }
 
