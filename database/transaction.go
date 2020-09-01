@@ -33,18 +33,45 @@ type Transaction struct {
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
+	tx.db.mu.Lock()
+	defer tx.db.mu.Unlock()
+
 	if tx.writable {
 		tx.tableInfoStore.rollback(tx)
 	}
-	return tx.Tx.Rollback()
+
+	err := tx.Tx.Rollback()
+	if err != nil {
+		return err
+	}
+
+	if tx.db.attachedTransaction != nil {
+		tx.db.attachedTransaction = nil
+	}
+
+	return nil
 }
 
 // Commit the transaction.
 func (tx *Transaction) Commit() error {
+	tx.db.mu.Lock()
+	defer tx.db.mu.Unlock()
+
 	if tx.writable {
 		tx.tableInfoStore.commit(tx)
 	}
-	return tx.Tx.Commit()
+
+	err := tx.Tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	if tx.db.attachedTransaction != nil {
+		tx.db.attachedTransaction = nil
+	}
+
+	return nil
+
 }
 
 // Writable indicates if the transaction is writable or not.
