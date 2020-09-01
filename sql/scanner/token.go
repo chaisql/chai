@@ -96,8 +96,10 @@ const (
 	NOT
 	OFFSET
 	ON
+	ONLY
 	ORDER
 	PRIMARY
+	READ
 	REINDEX
 	RENAME
 	ROLLBACK
@@ -111,6 +113,7 @@ const (
 	UPDATE
 	VALUES
 	WHERE
+	WRITE
 
 	TYPEARRAY
 	TYPEBLOB
@@ -200,8 +203,10 @@ var tokens = [...]string{
 	NOT:         "NOT",
 	OFFSET:      "OFFSET",
 	ON:          "ON",
+	ONLY:        "ONLY",
 	ORDER:       "ORDER",
 	PRIMARY:     "PRIMARY",
+	READ:        "READ",
 	REINDEX:     "REINDEX",
 	RENAME:      "RENAME",
 	ROLLBACK:    "ROLLBACK",
@@ -215,6 +220,7 @@ var tokens = [...]string{
 	UPDATE:      "UPDATE",
 	VALUES:      "VALUES",
 	WHERE:       "WHERE",
+	WRITE:       "WRITE",
 
 	TYPEARRAY:    "ARRAY",
 	TYPEBLOB:     "BLOB",
