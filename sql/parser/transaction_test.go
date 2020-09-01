@@ -9,21 +9,24 @@ import (
 
 func TestParserTransactions(t *testing.T) {
 	tests := []struct {
-		name     string
 		s        string
 		expected query.Statement
 		errored  bool
 	}{
-		{"Begin", "BEGIN", query.BeginStmt{Writable: true}, false},
-		{"Begin transaction", "BEGIN TRANSACTION", query.BeginStmt{Writable: true}, false},
-		{"Rollback", "ROLLBACK", query.RollbackStmt{}, false},
-		{"Rollback transaction", "ROLLBACK TRANSACTION", query.RollbackStmt{}, false},
-		{"Commit", "COMMIT", query.CommitStmt{}, false},
-		{"Rollback transaction", "COMMIT TRANSACTION", query.CommitStmt{}, false},
+		{"BEGIN", query.BeginStmt{Writable: true}, false},
+		{"BEGIN TRANSACTION", query.BeginStmt{Writable: true}, false},
+		{"BEGIN READ ONLY", query.BeginStmt{Writable: false}, false},
+		{"BEGIN READ WRITE", query.BeginStmt{Writable: true}, false},
+		{"BEGIN READ", query.BeginStmt{}, true},
+		{"BEGIN WRITE", query.BeginStmt{}, true},
+		{"ROLLBACK", query.RollbackStmt{}, false},
+		{"ROLLBACK TRANSACTION", query.RollbackStmt{}, false},
+		{"COMMIT", query.CommitStmt{}, false},
+		{"COMMIT TRANSACTION", query.CommitStmt{}, false},
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		t.Run(test.s, func(t *testing.T) {
 			q, err := ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
