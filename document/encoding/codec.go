@@ -1,4 +1,7 @@
-// Package encoding defines types that deal with documents encoding.
+// Package encoding defines types that deal with document encoding.
+// Genji codecs are designed to support buffer reuse during encoding
+// and optional random-access, i.e. decoding one path without decoding the entire document,
+// during decoding.
 package encoding
 
 import (
