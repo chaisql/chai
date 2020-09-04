@@ -27,8 +27,8 @@ func (i *item) ValueCopy(buf []byte) ([]byte, error) {
 	if len(buf) < len(i.v) {
 		buf = make([]byte, len(i.v))
 	}
-	copy(buf, i.v)
-	return buf, nil
+	n := copy(buf, i.v)
+	return buf[:n], nil
 }
 
 func (i *item) Less(than btree.Item) bool {

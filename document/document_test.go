@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -577,25 +576,6 @@ func BenchmarkDocumentIterate(b *testing.B) {
 			refd.Iterate(func(string, document.Value) error {
 				return nil
 			})
-		}
-	})
-
-	b.Run("Encoding/Implementation", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			msgpack.EncodeDocument(&f)
-		}
-	})
-
-	b.Run("Encoding/Reflection", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			refd, _ := document.NewFromStruct(&f)
-			msgpack.EncodeDocument(refd)
-		}
-	})
-
-	b.Run("Encoding/JSON", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			json.Marshal(&f)
 		}
 	})
 }

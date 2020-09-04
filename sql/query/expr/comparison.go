@@ -7,7 +7,6 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
@@ -72,7 +71,7 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 		return err
 	}
-	return fn(msgpack.EncodedDocument(val))
+	return fn(tb.Tx().DB().Codec.NewDocument(val))
 }
 
 func (op eqOp) String() string {
@@ -128,23 +127,22 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	var d msgpack.EncodedDocument
-
 	data := key.AppendValue(nil, v)
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
+	var buf []byte
 	for it.Seek(data); it.Valid(); it.Next() {
-		d, err = it.Item().ValueCopy(d)
+		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
 		}
-		if bytes.Equal(data, d) {
+		if bytes.Equal(data, buf) {
 			return nil
 		}
 
-		err = fn(&d)
+		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
 			return err
 		}
@@ -189,20 +187,19 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	var d msgpack.EncodedDocument
-
 	data := key.AppendValue(nil, v)
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
+	var buf []byte
 	for it.Seek(data); it.Valid(); it.Next() {
-		d, err = it.Item().ValueCopy(d)
+		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
 		}
 
-		err = fn(&d)
+		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
 			return err
 		}
@@ -261,23 +258,22 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	var d msgpack.EncodedDocument
-
 	data := key.AppendValue(nil, v)
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
+	var buf []byte
 	for it.Seek(nil); it.Valid(); it.Next() {
-		d, err = it.Item().ValueCopy(d)
+		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
 		}
-		if bytes.Compare(data, d) <= 0 {
+		if bytes.Compare(data, buf) <= 0 {
 			break
 		}
 
-		err = fn(&d)
+		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
 			return err
 		}
@@ -336,23 +332,22 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	var d msgpack.EncodedDocument
-
 	data := key.AppendValue(nil, v)
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
+	var buf []byte
 	for it.Seek(nil); it.Valid(); it.Next() {
-		d, err = it.Item().ValueCopy(d)
+		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
 		}
-		if bytes.Compare(data, d) < 0 {
+		if bytes.Compare(data, buf) < 0 {
 			break
 		}
 
-		err = fn(&d)
+		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
 			return err
 		}
@@ -487,8 +482,6 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return errors.New("IN operator takes an array")
 	}
 
-	var d msgpack.EncodedDocument
-
 	return v.V.(document.Array).Iterate(func(i int, value document.Value) error {
 		val, err := value.CastAs(pkType)
 		if err != nil {
@@ -497,7 +490,7 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 		data := key.AppendValue(nil, val)
 
-		d, err = tb.Store.Get(data)
+		v, err := tb.Store.Get(data)
 		if err != nil {
 			if err == engine.ErrKeyNotFound {
 				return nil
@@ -505,7 +498,7 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 			return err
 		}
-		return fn(d)
+		return fn(tb.Tx().DB().Codec.NewDocument(v))
 	})
 }
 

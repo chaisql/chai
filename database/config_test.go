@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
@@ -145,7 +146,7 @@ func TestIndexStore(t *testing.T) {
 	st, err := tx.GetStore([]byte("test"))
 	require.NoError(t, err)
 
-	idxs := indexStore{st}
+	idxs := indexStore{db: &Database{Codec: msgpack.NewCodec()}, st: st}
 
 	t.Run("Basic operations", func(t *testing.T) {
 		cfg := IndexConfig{
