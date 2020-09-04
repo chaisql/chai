@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 )
 
@@ -27,12 +29,16 @@ type Database struct {
 	// will cause an error until that transaction is rolled back or commited.
 	attachedTransaction *Transaction
 	attachedTxMu        sync.Mutex
+
+	// Codec used to encode documents. Defaults to MessagePack.
+	Codec encoding.Codec
 }
 
 // New initializes the DB using the given engine.
 func New(ng engine.Engine) (*Database, error) {
 	db := Database{
-		ng: ng,
+		ng:    ng,
+		Codec: msgpack.NewCodec(),
 	}
 
 	ntx, err := db.ng.Begin(true)
@@ -46,7 +52,7 @@ func New(ng engine.Engine) (*Database, error) {
 		return nil, err
 	}
 
-	db.tableInfoStore, err = newTableInfoStore(ntx)
+	db.tableInfoStore, err = newTableInfoStore(&db, ntx)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +118,7 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 	tx := Transaction{
 		id:             atomic.AddInt64(&db.lastTransactionID, 1),
 		db:             db,
-		Tx:             ntx,
+		tx:             ntx,
 		writable:       !opts.ReadOnly,
 		tableInfoStore: db.tableInfoStore,
 	}

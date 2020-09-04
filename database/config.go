@@ -1,10 +1,10 @@
 package database
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
@@ -155,14 +155,17 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 // It loads table information during database startup
 // and holds it in memory.
 type tableInfoStore struct {
+	db *Database
 	// tableInfos contains information about all the tables
 	tableInfos map[string]TableInfo
 
 	mu sync.RWMutex
 }
 
-func newTableInfoStore(tx engine.Transaction) (*tableInfoStore, error) {
-	var ts tableInfoStore
+func newTableInfoStore(db *Database, tx engine.Transaction) (*tableInfoStore, error) {
+	ts := tableInfoStore{
+		db: db,
+	}
 
 	err := ts.loadAllTableInfo(tx)
 	if err != nil {
@@ -189,7 +192,7 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		return ErrTableAlreadyExists
 	}
 
-	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
+	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
@@ -202,12 +205,13 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		info.storeName = key.AppendInt64([]byte{storePrefix}, int64(seq))
 	}
 
-	v, err := msgpack.EncodeDocument(info.ToDocument())
+	var buf bytes.Buffer
+	err = t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
 	if err != nil {
 		return err
 	}
 
-	err = st.Put([]byte(tableName), v)
+	err = st.Put([]byte(tableName), buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -246,7 +250,7 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 		return ErrTableNotFound
 	}
 
-	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
+	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
@@ -287,7 +291,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		}
 
 		var ti TableInfo
-		err = ti.ScanDocument(msgpack.EncodedDocument(b))
+		err = ti.ScanDocument(t.db.Codec.NewDocument(b))
 		if err != nil {
 			return err
 		}
@@ -410,6 +414,7 @@ type Index struct {
 }
 
 type indexStore struct {
+	db *Database
 	st engine.Store
 }
 
@@ -423,12 +428,13 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 		return err
 	}
 
-	v, err := msgpack.EncodeDocument(cfg.ToDocument())
+	var buf bytes.Buffer
+	err = t.db.Codec.NewEncoder(&buf).EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}
 
-	return t.st.Put(key, v)
+	return t.st.Put(key, buf.Bytes())
 }
 
 func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
@@ -442,7 +448,7 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 	}
 
 	var idxopts IndexConfig
-	err = idxopts.ScanDocument(msgpack.EncodedDocument(v))
+	err = idxopts.ScanDocument(t.db.Codec.NewDocument(v))
 	if err != nil {
 		return nil, err
 	}
@@ -451,12 +457,13 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 }
 
 func (t *indexStore) Replace(indexName string, cfg IndexConfig) error {
-	v, err := msgpack.EncodeDocument(cfg.ToDocument())
+	var buf bytes.Buffer
+	err := t.db.Codec.NewEncoder(&buf).EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}
 
-	return t.st.Put([]byte(indexName), v)
+	return t.st.Put([]byte(indexName), buf.Bytes())
 }
 
 func (t *indexStore) Delete(indexName string) error {
@@ -472,7 +479,7 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 	var idxList []*IndexConfig
 	it := t.st.NewIterator(engine.IteratorConfig{})
 
-	var buf msgpack.EncodedDocument
+	var buf []byte
 	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()
@@ -483,7 +490,7 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 			return nil, err
 		}
 
-		err = opts.ScanDocument(&buf)
+		err = opts.ScanDocument(t.db.Codec.NewDocument(buf))
 		if err != nil {
 			it.Close()
 			return nil, err

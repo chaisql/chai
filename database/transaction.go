@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 )
@@ -24,11 +23,16 @@ var (
 type Transaction struct {
 	id       int64
 	db       *Database
-	Tx       engine.Transaction
+	tx       engine.Transaction
 	writable bool
 
 	tableInfoStore *tableInfoStore
 	indexStore     *indexStore
+}
+
+// DB returns the underlying database that created the transaction.
+func (tx *Transaction) DB() *Database {
+	return tx.db
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -40,7 +44,7 @@ func (tx *Transaction) Rollback() error {
 		tx.tableInfoStore.rollback(tx)
 	}
 
-	err := tx.Tx.Rollback()
+	err := tx.tx.Rollback()
 	if err != nil {
 		return err
 	}
@@ -61,7 +65,7 @@ func (tx *Transaction) Commit() error {
 		tx.tableInfoStore.commit(tx)
 	}
 
-	err := tx.Tx.Commit()
+	err := tx.tx.Commit()
 	if err != nil {
 		return err
 	}
@@ -96,7 +100,7 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 		return err
 	}
 
-	err = tx.Tx.CreateStore(info.storeName)
+	err = tx.tx.CreateStore(info.storeName)
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -111,7 +115,7 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore(ti.storeName)
+	s, err := tx.tx.GetStore(ti.storeName)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +179,7 @@ func (tx *Transaction) DropTable(name string) error {
 
 	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
 
-	var buf msgpack.EncodedDocument
+	var buf []byte
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()
 		var opts IndexConfig
@@ -185,7 +189,7 @@ func (tx *Transaction) DropTable(name string) error {
 			return err
 		}
 
-		err = opts.ScanDocument(&buf)
+		err = opts.ScanDocument(tx.db.Codec.NewDocument(buf))
 		if err != nil {
 			it.Close()
 			return err
@@ -212,7 +216,7 @@ func (tx *Transaction) DropTable(name string) error {
 		return err
 	}
 
-	return tx.Tx.DropStore(ti.storeName)
+	return tx.tx.DropStore(ti.storeName)
 }
 
 // CreateIndex creates an index with the given name.
@@ -235,9 +239,9 @@ func (tx *Transaction) GetIndex(name string) (*Index, error) {
 
 	var idx index.Index
 	if opts.Unique {
-		idx = index.NewUniqueIndex(tx.Tx, opts.IndexName)
+		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
 	} else {
-		idx = index.NewListIndex(tx.Tx, opts.IndexName)
+		idx = index.NewListIndex(tx.tx, opts.IndexName)
 	}
 
 	return &Index{
@@ -259,9 +263,9 @@ func (tx *Transaction) DropIndex(name string) error {
 
 	var idx index.Index
 	if opts.Unique {
-		idx = index.NewUniqueIndex(tx.Tx, opts.IndexName)
+		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
 	} else {
-		idx = index.NewListIndex(tx.Tx, opts.IndexName)
+		idx = index.NewListIndex(tx.tx, opts.IndexName)
 	}
 
 	return idx.Truncate()
@@ -323,11 +327,12 @@ func (tx *Transaction) ReIndexAll() error {
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {
-	st, err := tx.Tx.GetStore([]byte(indexStoreName))
+	st, err := tx.tx.GetStore([]byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}
 	return &indexStore{
 		st: st,
+		db: tx.db,
 	}, nil
 }

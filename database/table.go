@@ -1,11 +1,12 @@
 package database
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
@@ -17,6 +18,11 @@ type Table struct {
 	Store     engine.Store
 	name      string
 	infoStore *tableInfoStore
+}
+
+// Tx returns the current transaction.
+func (t *Table) Tx() *Transaction {
+	return t.tx
 }
 
 // Info of the table.
@@ -63,12 +69,13 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, ErrDuplicateDocument
 	}
 
-	v, err := msgpack.EncodeDocument(d)
+	var buf bytes.Buffer
+	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(d)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
 
-	err = t.Store.Put(key, v)
+	err = t.Store.Put(key, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -186,13 +193,14 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 	}
 
 	// encode new document
-	v, err := msgpack.EncodeDocument(d)
+	var buf bytes.Buffer
+	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(d)
 	if err != nil {
 		return fmt.Errorf("failed to encode document: %w", err)
 	}
 
 	// replace old document with new document
-	err = t.Store.Put(key, v)
+	err = t.Store.Put(key, buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -215,7 +223,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 // Indexes returns a map of all the indexes of a table.
 func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.Tx.GetStore([]byte(indexStoreName))
+	s, err := t.tx.tx.GetStore([]byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}
@@ -246,9 +254,9 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 			var idx index.Index
 			if opts.Unique {
-				idx = index.NewUniqueIndex(t.tx.Tx, opts.IndexName)
+				idx = index.NewUniqueIndex(t.tx.tx, opts.IndexName)
 			} else {
-				idx = index.NewListIndex(t.tx.Tx, opts.IndexName)
+				idx = index.NewListIndex(t.tx.tx, opts.IndexName)
 			}
 
 			indexes[opts.Path.String()] = Index{
@@ -266,7 +274,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 }
 
 type encodedDocumentWithKey struct {
-	msgpack.EncodedDocument
+	document.Document
 
 	key []byte
 }
@@ -282,8 +290,9 @@ func (e encodedDocumentWithKey) Key() []byte {
 // from store on documents that don't need to be
 // decoded.
 type lazilyDecodedDocument struct {
-	item engine.Item
-	buf  msgpack.EncodedDocument
+	item  engine.Item
+	buf   []byte
+	codec encoding.Codec
 }
 
 func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err error) {
@@ -291,7 +300,7 @@ func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err 
 		d.copyFromItem()
 	}
 
-	return d.buf.GetByField(field)
+	return d.codec.NewDocument(d.buf).GetByField(field)
 }
 
 func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Value) error) error {
@@ -299,7 +308,7 @@ func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Val
 		d.copyFromItem()
 	}
 
-	return d.buf.Iterate(fn)
+	return d.codec.NewDocument(d.buf).Iterate(fn)
 }
 
 func (d *lazilyDecodedDocument) Key() []byte {
@@ -313,7 +322,7 @@ func (d *lazilyDecodedDocument) Reset() {
 
 func (d *lazilyDecodedDocument) copyFromItem() error {
 	var err error
-	d.buf, err = d.item.ValueCopy(d.buf[:0])
+	d.buf, err = d.item.ValueCopy(d.buf)
 
 	return err
 }
@@ -323,7 +332,9 @@ func (d *lazilyDecodedDocument) copyFromItem() error {
 func (t *Table) Iterate(fn func(d document.Document) error) error {
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
-	var d lazilyDecodedDocument
+	d := lazilyDecodedDocument{
+		codec: t.tx.db.Codec,
+	}
 
 	it := t.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
@@ -355,7 +366,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	}
 
 	var d encodedDocumentWithKey
-	d.EncodedDocument = msgpack.EncodedDocument(v)
+	d.Document = t.tx.db.Codec.NewDocument(v)
 	d.key = key
 	return &d, err
 }

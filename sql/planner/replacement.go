@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -20,6 +20,7 @@ type replacementNode struct {
 
 	tableName string
 	table     *database.Table
+	codec     encoding.Codec
 }
 
 var _ outputNode = (*replacementNode)(nil)
@@ -49,7 +50,10 @@ func (n *replacementNode) Bind(tx *database.Transaction, params []expr.Param) (e
 // Increasing replaceBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
 func (n *replacementNode) toResult(st document.Stream) (res query.Result, err error) {
 	// replace store implementation by a resumable store, temporarily.
-	rit := resumableIterator{store: n.table.Store}
+	rit := resumableIterator{
+		store: n.table.Store,
+		codec: n.codec,
+	}
 
 	st = st.Limit(replaceBufferSize)
 
@@ -103,6 +107,7 @@ func (n *replacementNode) String() string {
 // it is used to resume iteration.
 type resumableIterator struct {
 	store engine.Store
+	codec encoding.Codec
 
 	curKey []byte
 }
@@ -115,15 +120,17 @@ func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
 	it := u.store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
 
+	var buf []byte
 	for it.Seek(u.curKey); it.Valid(); it.Next() {
 		item := it.Item()
 
 		d.key = item.Key()
-		d.EncodedDocument, err = item.ValueCopy(d.EncodedDocument)
+		buf, err = item.ValueCopy(buf)
 		if err != nil {
 			return err
 		}
 
+		d.Document = u.codec.NewDocument(buf)
 		err = fn(&d)
 		if err != nil {
 			return err
@@ -134,7 +141,7 @@ func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
 }
 
 type encodedDocumentWithKey struct {
-	msgpack.EncodedDocument
+	document.Document
 
 	key []byte
 }
