@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/codes"
 )
@@ -14,6 +15,24 @@ import (
 const (
 	DurationType int8 = 0x1
 )
+
+// A Codec is a MessagePack implementation of an encoding.Codec.
+type Codec struct{}
+
+// NewCodec creates a MessagePack codec.
+func NewCodec() Codec {
+	return Codec{}
+}
+
+// NewEncoder implements the encoding.Codec interface.
+func (c Codec) NewEncoder(w io.Writer) encoding.Encoder {
+	return NewEncoder(w)
+}
+
+// NewDocument implements the encoding.Codec interface.
+func (c Codec) NewDocument(data []byte) document.Document {
+	return EncodedDocument(data)
+}
 
 // Encoder encodes Genji documents and values
 // in MessagePack.
