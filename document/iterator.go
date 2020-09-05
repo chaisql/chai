@@ -34,6 +34,15 @@ func (rr documentsIterator) Iterate(fn func(d Document) error) error {
 	return nil
 }
 
+// The IteratorFunc type is an adapter to allow the use of ordinary functions as Iterators.
+// If f is a function with the appropriate signature, HandlerFunc(f) is a Handler that calls f.
+type IteratorFunc func(func(d Document) error) error
+
+// Iterate calls f(fn).
+func (f IteratorFunc) Iterate(fn func(d Document) error) error {
+	return f(fn)
+}
+
 // Stream reads documents of an iterator one by one and passes them
 // through a list of functions for transformation.
 type Stream struct {
@@ -198,6 +207,79 @@ func (s Stream) First() (d Document, err error) {
 	}
 
 	return
+}
+
+// GroupBy returns a StreamGroup that creates a stream for each different values
+// found in path.
+func (s Stream) GroupBy(path ValuePath) Stream {
+	return s.Pipe(func() func(d Document) (Document, error) {
+		var gd groupedDocument
+
+		return func(d Document) (Document, error) {
+			v, err := path.GetValue(d)
+			if err != nil {
+				return nil, err
+			}
+
+			gd.group = v
+			gd.Document = d
+
+			return &gd, nil
+		}
+	})
+}
+
+// Aggregate takes a list of aggregators and passes each document of the stream to them.
+// The given field buffer is shared between aggregators and allows storing the state of the
+// aggregation. It will then be emitted by the returned stream.
+// If GroupBy is called before this function, each group of document will be aggregated into one
+// document for each group and be emitted by the returned stream.
+func (s Stream) Aggregate(aggregators ...func(d Document, fb *FieldBuffer) error) Stream {
+	return NewStream(IteratorFunc(func(fn func(d Document) error) error {
+		aggregates := make(map[Value]*FieldBuffer)
+		err := s.Iterate(func(d Document) error {
+			group := NewNullValue()
+
+			if gd, ok := d.(*groupedDocument); ok {
+				group = gd.group
+			}
+
+			fb, ok := aggregates[group]
+			if !ok {
+				fb = NewFieldBuffer()
+				aggregates[group] = fb
+			}
+
+			for _, aggFn := range aggregators {
+				err := aggFn(d, fb)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, fb := range aggregates {
+			err = fn(fb)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}))
+}
+
+// groupedDocument tags a document with a group value.
+// It is used by GroupBy to group documents in a stream.
+type groupedDocument struct {
+	Document
+
+	group Value
 }
 
 // An StreamOperator is used to modify a stream.
