@@ -41,6 +41,7 @@ const (
 	Set
 	// Unset is an operation that removes a path from every document of a stream
 	Unset
+	// Group is an operation that groups documents based on a given path.
 )
 
 // A Tree describes the flow of a stream of documents.
@@ -434,4 +435,37 @@ func (n *unsetNode) toStream(st document.Stream) (document.Stream, error) {
 
 func (n *unsetNode) String() string {
 	return fmt.Sprintf("Unset(%s)", n.field)
+}
+
+// A GroupingNode is a node that groups documents by a given path.
+type GroupingNode struct {
+	node
+
+	Path document.ValuePath
+}
+
+var _ operationNode = (*GroupingNode)(nil)
+
+// NewGroupingNode creates a GroupingNode.
+func NewGroupingNode(n Node, path document.ValuePath) Node {
+	return &GroupingNode{
+		node: node{
+			op:   Projection,
+			left: n,
+		},
+		Path: path,
+	}
+}
+
+// Bind database resources to this node.
+func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	return
+}
+
+func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
+	return st.GroupBy(n.Path), nil
+}
+
+func (n *GroupingNode) String() string {
+	return fmt.Sprintf("G(%s)", n.Path)
 }
