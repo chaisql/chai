@@ -252,7 +252,7 @@ func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 // UseIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
 // operator that satisfies the following criterias:
 // - implements the indexIteratorOperator interface
-// - one of its operands is the expr.FieldSelectors that is indexed
+// - one of its operands is path selector that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
 func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {

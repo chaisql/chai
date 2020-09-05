@@ -50,7 +50,6 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 			p.Unscan()
 			s, err := p.ParseStatement()
 			if err != nil {
-				fmt.Println("sufgg")
 				return query.Query{}, err
 			}
 			statements = append(statements, s)
