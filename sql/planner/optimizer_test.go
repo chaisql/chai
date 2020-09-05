@@ -305,8 +305,8 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 						expr.IntegerValue(2),
 					),
 				),
-				[]planner.ResultField{
-					planner.ResultFieldExpr{
+				[]planner.ProjectedField{
+					planner.ProjectedExpr{
 						Expr: expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
 					},
 				},
@@ -326,8 +326,8 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 						expr.IntegerValue(2),
 					),
 				),
-				[]planner.ResultField{
-					planner.ResultFieldExpr{
+				[]planner.ProjectedField{
+					planner.ProjectedExpr{
 						Expr: expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
 					},
 				},

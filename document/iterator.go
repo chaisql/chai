@@ -217,8 +217,11 @@ func (s Stream) GroupBy(path ValuePath) Stream {
 
 		return func(d Document) (Document, error) {
 			v, err := path.GetValue(d)
-			if err != nil {
+			if err != nil && err != ErrFieldNotFound {
 				return nil, err
+			}
+			if err == ErrFieldNotFound {
+				v = NewNullValue()
 			}
 
 			gd.group = v

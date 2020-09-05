@@ -19,7 +19,7 @@ func TestParserMultiStatement(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
-					[]planner.ResultField{
+					[]planner.ProjectedField{
 						planner.Wildcard{},
 					},
 					"foo",
