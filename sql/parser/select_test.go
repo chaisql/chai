@@ -84,92 +84,92 @@ func TestParserSelect(t *testing.T) {
 			false},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewSortNode(
+				planner.NewSortNode(
+					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
 							expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 						),
-						expr.FieldSelector(parsePath(t, "a.b.c")),
-						scanner.ASC,
+						[]planner.ResultField{planner.Wildcard{}},
+						"test",
 					),
-					[]planner.ResultField{planner.Wildcard{}},
-					"test",
+					expr.FieldSelector(parsePath(t, "a.b.c")),
+					scanner.ASC,
 				)),
 			false},
 		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
 			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewSortNode(
+				planner.NewSortNode(
+					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
 							expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 						),
-						expr.FieldSelector(parsePath(t, "a.b.c")),
-						scanner.ASC,
+						[]planner.ResultField{planner.Wildcard{}},
+						"test",
 					),
-					[]planner.ResultField{planner.Wildcard{}},
-					"test",
+					expr.FieldSelector(parsePath(t, "a.b.c")),
+					scanner.ASC,
 				)),
 			false},
 		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
 			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewSortNode(
+				planner.NewSortNode(
+					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
 							expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 						),
-						expr.FieldSelector(parsePath(t, "a.b.c")),
-						scanner.DESC,
+						[]planner.ResultField{planner.Wildcard{}},
+						"test",
 					),
-					[]planner.ResultField{planner.Wildcard{}},
-					"test",
+					expr.FieldSelector(parsePath(t, "a.b.c")),
+					scanner.DESC,
 				)),
 			false},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewLimitNode(
+				planner.NewLimitNode(
+					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
 							expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 						),
-						20,
+						[]planner.ResultField{planner.Wildcard{}},
+						"test",
 					),
-					[]planner.ResultField{planner.Wildcard{}},
-					"test",
+					20,
 				)),
 			false},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewOffsetNode(
+				planner.NewOffsetNode(
+					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
 							expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 						),
-						20,
+						[]planner.ResultField{planner.Wildcard{}},
+						"test",
 					),
-					[]planner.ResultField{planner.Wildcard{}},
-					"test",
+					20,
 				)),
 			false},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewLimitNode(
-						planner.NewOffsetNode(
+				planner.NewLimitNode(
+					planner.NewOffsetNode(
+						planner.NewProjectionNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
 								expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
 							),
-							20,
+							[]planner.ResultField{planner.Wildcard{}},
+							"test",
 						),
-						10,
+						20,
 					),
-					[]planner.ResultField{planner.Wildcard{}},
-					"test",
+					10,
 				)),
 			false},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
