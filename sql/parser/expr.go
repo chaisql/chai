@@ -491,9 +491,16 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
-			return expr.GetFunc(fname, exprs...)
+			break
 		}
 	}
+
+	// Parse required ) token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	}
+
+	return expr.GetFunc(fname, exprs...)
 }
 
 // parseCastExpression parses a string of the form CAST(expr AS type).
@@ -532,5 +539,5 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return expr.Cast{Expr: e, CastAs: tp}, nil
+	return expr.CastFunc{Expr: e, CastAs: tp}, nil
 }
