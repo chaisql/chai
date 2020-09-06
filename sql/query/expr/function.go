@@ -3,6 +3,7 @@ package expr
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/key"
@@ -15,11 +16,17 @@ var functions = map[string]func(args ...Expr) (Expr, error){
 		}
 		return new(PKFunc), nil
 	},
+	"count": func(args ...Expr) (Expr, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("COUNT() takes 1 argument")
+		}
+		return &Count{Expr: args[0]}, nil
+	},
 }
 
 // GetFunc return a function expression by name.
 func GetFunc(name string, args ...Expr) (Expr, error) {
-	fn, ok := functions[name]
+	fn, ok := functions[strings.ToLower(name)]
 	if !ok {
 		return nil, fmt.Errorf("no such function: %q", name)
 	}
@@ -97,4 +104,50 @@ func (c Cast) IsEqual(other Expr) bool {
 
 func (c Cast) String() string {
 	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
+}
+
+// Count is the COUNT aggregator function. It aggregates documents
+type Count struct {
+	Expr  Expr
+	Count int64
+}
+
+// Eval evaluates Expr and returns 1 if the result is not null.
+func (c *Count) Eval(ctx EvalStack) (document.Value, error) {
+	return document.NewIntegerValue(c.Count), nil
+}
+
+func (c *Count) Aggregate(d document.Document, fb *document.FieldBuffer) error {
+	v, err := c.Expr.Eval(EvalStack{
+		Document: d,
+	})
+	if err != nil {
+		return err
+	}
+	if v == nullLitteral {
+		return nil
+	}
+
+	c.Count++
+
+	return nil
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (c *Count) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*Count)
+	if !ok {
+		return false
+	}
+
+	return Equal(c.Expr, o.Expr)
+}
+
+func (c *Count) String() string {
+	return fmt.Sprintf("COUNT(%v)", c.Expr)
 }
