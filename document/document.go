@@ -288,6 +288,21 @@ func (p ValuePath) String() string {
 	return b.String()
 }
 
+// IsEqual returns whether other is equal to p.
+func (p ValuePath) IsEqual(other ValuePath) bool {
+	if len(other) != len(p) {
+		return false
+	}
+
+	for i := range p {
+		if other[i] != p[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 // GetValue from a document.
 func (p ValuePath) GetValue(d Document) (Value, error) {
 	return p.getValueFromDocument(d)
