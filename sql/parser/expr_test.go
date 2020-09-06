@@ -163,7 +163,8 @@ func TestParserExpr(t *testing.T) {
 			), false},
 		{"with NULL", "age > NULL", expr.Gt(expr.FieldSelector(parsePath(t, "age")), expr.NullValue()), false},
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.Cast{Expr: expr.FieldSelector(parsePath(t, "a.b[1][0]")), CastAs: document.TextValue}, false},
+		{"count() function", "count(a)", &expr.CountFunc{Expr: expr.FieldSelector(parsePath(t, "a"))}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: expr.FieldSelector(parsePath(t, "a.b[1][0]")), CastAs: document.TextValue}, false},
 	}
 
 	for _, test := range tests {

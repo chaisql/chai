@@ -20,7 +20,7 @@ var functions = map[string]func(args ...Expr) (Expr, error){
 		if len(args) != 1 {
 			return nil, fmt.Errorf("COUNT() takes 1 argument")
 		}
-		return &Count{Expr: args[0]}, nil
+		return &CountFunc{Expr: args[0]}, nil
 	},
 }
 
@@ -63,14 +63,14 @@ func (k PKFunc) String() string {
 	return "pk()"
 }
 
-// Cast represents the CAST expression.
-type Cast struct {
+// CastFunc represents the CAST expression.
+type CastFunc struct {
 	Expr   Expr
 	CastAs document.ValueType
 }
 
 // Eval returns the primary key of the current document.
-func (c Cast) Eval(ctx EvalStack) (document.Value, error) {
+func (c CastFunc) Eval(ctx EvalStack) (document.Value, error) {
 	v, err := c.Expr.Eval(ctx)
 	if err != nil {
 		return v, err
@@ -81,12 +81,12 @@ func (c Cast) Eval(ctx EvalStack) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c Cast) IsEqual(other Expr) bool {
+func (c CastFunc) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(Cast)
+	o, ok := other.(CastFunc)
 	if !ok {
 		return false
 	}
@@ -102,22 +102,22 @@ func (c Cast) IsEqual(other Expr) bool {
 	return o.Expr != nil
 }
 
-func (c Cast) String() string {
+func (c CastFunc) String() string {
 	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
 
-// Count is the COUNT aggregator function. It aggregates documents
-type Count struct {
+// CountFunc is the COUNT aggregator function. It aggregates documents
+type CountFunc struct {
 	Expr  Expr
 	Count int64
 }
 
 // Eval evaluates Expr and returns 1 if the result is not null.
-func (c *Count) Eval(ctx EvalStack) (document.Value, error) {
+func (c *CountFunc) Eval(ctx EvalStack) (document.Value, error) {
 	return document.NewIntegerValue(c.Count), nil
 }
 
-func (c *Count) Aggregate(d document.Document, fb *document.FieldBuffer) error {
+func (c *CountFunc) Aggregate(d document.Document, fb *document.FieldBuffer) error {
 	v, err := c.Expr.Eval(EvalStack{
 		Document: d,
 	})
@@ -135,12 +135,12 @@ func (c *Count) Aggregate(d document.Document, fb *document.FieldBuffer) error {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c *Count) IsEqual(other Expr) bool {
+func (c *CountFunc) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(*Count)
+	o, ok := other.(*CountFunc)
 	if !ok {
 		return false
 	}
@@ -148,6 +148,6 @@ func (c *Count) IsEqual(other Expr) bool {
 	return Equal(c.Expr, o.Expr)
 }
 
-func (c *Count) String() string {
+func (c *CountFunc) String() string {
 	return fmt.Sprintf("COUNT(%v)", c.Expr)
 }
