@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -194,18 +195,20 @@ type selectConfig struct {
 
 // ToTree turns the statement into an expression tree.
 func (cfg selectConfig) ToTree() (*planner.Tree, error) {
-	if cfg.TableName == "" {
-		return planner.NewTree(planner.NewProjectionNode(nil, cfg.ProjectionExprs, "")), nil
-	}
+	var n planner.Node
 
-	t := planner.NewTableInputNode(cfg.TableName)
+	if cfg.TableName != "" {
+		n = planner.NewTableInputNode(cfg.TableName)
+	}
 
 	if cfg.WhereExpr != nil {
-		t = planner.NewSelectionNode(t, cfg.WhereExpr)
+		n = planner.NewSelectionNode(n, cfg.WhereExpr)
 	}
 
+	n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+
 	if cfg.OrderBy != nil {
-		t = planner.NewSortNode(t, cfg.OrderBy, cfg.OrderByDirection)
+		n = planner.NewSortNode(n, cfg.OrderBy, cfg.OrderByDirection)
 	}
 
 	if cfg.OffsetExpr != nil {
@@ -223,7 +226,7 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			return nil, err
 		}
 
-		t = planner.NewOffsetNode(t, int(v.V.(int64)))
+		n = planner.NewOffsetNode(n, int(v.V.(int64)))
 	}
 
 	if cfg.LimitExpr != nil {
@@ -241,10 +244,8 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			return nil, err
 		}
 
-		t = planner.NewLimitNode(t, int(v.V.(int64)))
+		n = planner.NewLimitNode(n, int(v.V.(int64)))
 	}
 
-	t = planner.NewProjectionNode(t, cfg.ProjectionExprs, cfg.TableName)
-
-	return &planner.Tree{Root: t}, nil
+	return &planner.Tree{Root: n}, nil
 }
