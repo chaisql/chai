@@ -68,9 +68,8 @@ func stdinFromTerminal() bool {
 	fi, _ := os.Stdin.Stat()
 	if (fi.Mode() & os.ModeCharDevice) == 0 {
 		return false // data is from pipe
-	} else {
-		return true // data is from terminal
 	}
+	return true // data is from terminal
 }
 
 // Run a shell.
