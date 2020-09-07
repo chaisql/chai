@@ -64,6 +64,15 @@ func (o *Options) validate() error {
 	return nil
 }
 
+func stdinFromTerminal() bool {
+	fi, _ := os.Stdin.Stat()
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		return false // data is from pipe
+	} else {
+		return true // data is from terminal
+	}
+}
+
 // Run a shell.
 func Run(opts *Options) error {
 	if opts == nil {
@@ -79,16 +88,18 @@ func Run(opts *Options) error {
 
 	sh.opts = opts
 
-	switch opts.Engine {
-	case "memory":
-		fmt.Println("Opened an in-memory database.")
-	case "bolt":
-		fmt.Printf("On-disk database using BoltDB engine at path %s.\n", opts.DBPath)
-	case "badger":
-		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
+	if stdinFromTerminal() {
+		switch opts.Engine {
+		case "memory":
+			fmt.Println("Opened an in-memory database.")
+		case "bolt":
+			fmt.Printf("On-disk database using BoltDB engine at path %s.\n", opts.DBPath)
+		case "badger":
+			fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
+		}
+		fmt.Println("Enter \".help\" for usage hints.")
 	}
 
-	fmt.Println("Enter \".help\" for usage hints.")
 	history, err := sh.loadHistory()
 	if err != nil {
 		return err
