@@ -81,7 +81,14 @@ func (t *Tree) execute() (query.Result, error) {
 		}
 	}
 
-	return t.Root.(outputNode).toResult(st)
+	st, err = t.Root.(operationNode).toStream(st)
+	if err != nil {
+		return query.Result{}, err
+	}
+
+	return query.Result{
+		Stream: st,
+	}, nil
 }
 
 func (t *Tree) String() string {
@@ -154,12 +161,6 @@ type operationNode interface {
 	Node
 
 	toStream(st document.Stream) (document.Stream, error)
-}
-
-type outputNode interface {
-	Node
-
-	toResult(st document.Stream) (query.Result, error)
 }
 
 type node struct {

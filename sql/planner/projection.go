@@ -8,7 +8,6 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
@@ -25,7 +24,6 @@ type ProjectionNode struct {
 	tx   *database.Transaction
 }
 
-var _ outputNode = (*ProjectionNode)(nil)
 var _ operationNode = (*ProjectionNode)(nil)
 
 // NewProjectionNode creates a ProjectionNode.
@@ -78,16 +76,6 @@ func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 
 		return &dm, nil
 	}), nil
-}
-
-func (n *ProjectionNode) toResult(st document.Stream) (res query.Result, err error) {
-	st, err = n.toStream(st)
-	if err != nil {
-		return
-	}
-
-	res.Stream = st
-	return
 }
 
 func (n *ProjectionNode) String() string {

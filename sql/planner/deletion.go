@@ -6,7 +6,6 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
@@ -20,7 +19,7 @@ type deletionNode struct {
 	table     *database.Table
 }
 
-var _ outputNode = (*deletionNode)(nil)
+var _ operationNode = (*deletionNode)(nil)
 
 // NewDeletionNode creates a node that delete every document of a stream
 // from their respective table.
@@ -46,7 +45,7 @@ func (n *deletionNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no document
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (n *deletionNode) toResult(st document.Stream) (res query.Result, err error) {
+func (n *deletionNode) toStream(st document.Stream) (document.Stream, error) {
 	st = st.Limit(deleteBufferSize)
 
 	keys := make([][]byte, deleteBufferSize)
@@ -65,7 +64,7 @@ func (n *deletionNode) toResult(st document.Stream) (res query.Result, err error
 			return nil
 		})
 		if err != nil {
-			return res, err
+			return document.Stream{}, err
 		}
 
 		keys = keys[:i]
@@ -73,7 +72,7 @@ func (n *deletionNode) toResult(st document.Stream) (res query.Result, err error
 		for _, key := range keys {
 			err = n.table.Delete(key)
 			if err != nil {
-				return res, err
+				return document.Stream{}, err
 			}
 		}
 
@@ -82,7 +81,7 @@ func (n *deletionNode) toResult(st document.Stream) (res query.Result, err error
 		}
 	}
 
-	return res, nil
+	return document.Stream{}, nil
 }
 
 func (n *deletionNode) String() string {
