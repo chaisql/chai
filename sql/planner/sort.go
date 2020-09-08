@@ -105,12 +105,27 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 	heap.Init(h)
 
 	return h, st.Iterate(func(d document.Document) error {
+		// It is possible to sort by any projected field
+		// or field of the original document.
 		v, err := path.GetValue(d)
 		if err != nil && err != document.ErrFieldNotFound {
 			return err
 		}
+
+		// If a field is not found in the projected fields
+		// Look for fields in the original document.
 		if err == document.ErrFieldNotFound {
-			v = document.NewNullValue()
+			if dm, ok := d.(*documentMask); ok {
+				v, err = path.GetValue(dm.d)
+				if err != nil && err != document.ErrFieldNotFound {
+					return err
+				}
+				if err == document.ErrFieldNotFound {
+					v = document.NewNullValue()
+				}
+			} else {
+				v = document.NewNullValue()
+			}
 		}
 
 		// We need to make sure sort behaviour

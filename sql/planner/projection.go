@@ -71,7 +71,7 @@ func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 	var dm documentMask
 	return st.Map(func(d document.Document) (document.Document, error) {
 		dm.info = n.info
-		dm.r = d
+		dm.d = d
 		dm.resultFields = n.Expressions
 
 		return &dm, nil
@@ -93,7 +93,7 @@ func (n *ProjectionNode) String() string {
 
 type documentMask struct {
 	info         *database.TableInfo
-	r            document.Document
+	d            document.Document
 	resultFields []ResultField
 }
 
@@ -102,7 +102,7 @@ var _ document.Document = documentMask{}
 func (r documentMask) GetByField(field string) (document.Value, error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == field || rf.Name() == "*" {
-			return r.r.GetByField(field)
+			return r.d.GetByField(field)
 		}
 	}
 
@@ -111,7 +111,7 @@ func (r documentMask) GetByField(field string) (document.Value, error) {
 
 func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
 	stack := expr.EvalStack{
-		Document: r.r,
+		Document: r.d,
 		Info:     r.info,
 	}
 
