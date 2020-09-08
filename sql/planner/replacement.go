@@ -8,7 +8,6 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
@@ -23,7 +22,7 @@ type replacementNode struct {
 	codec     encoding.Codec
 }
 
-var _ outputNode = (*replacementNode)(nil)
+var _ operationNode = (*replacementNode)(nil)
 
 // NewReplacementNode creates a node that stores every document of a stream
 // in their respective table and primary keys.
@@ -48,7 +47,7 @@ func (n *replacementNode) Bind(tx *database.Transaction, params []expr.Param) (e
 // to a buffer and replace them after the iteration is complete, and it will do that until there is no document
 // left to replace.
 // Increasing replaceBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (n *replacementNode) toResult(st document.Stream) (res query.Result, err error) {
+func (n *replacementNode) toStream(st document.Stream) (document.Stream, error) {
 	// replace store implementation by a resumable store, temporarily.
 	rit := resumableIterator{
 		store: n.table.Store,
@@ -60,6 +59,7 @@ func (n *replacementNode) toResult(st document.Stream) (res query.Result, err er
 	keys := make([][]byte, replaceBufferSize)
 	docs := make([]document.FieldBuffer, replaceBufferSize)
 
+	var err error
 	for {
 		var i int
 
@@ -85,7 +85,7 @@ func (n *replacementNode) toResult(st document.Stream) (res query.Result, err er
 		for j := 0; j < i; j++ {
 			err = n.table.Replace(keys[j], docs[j])
 			if err != nil {
-				return res, err
+				return document.Stream{}, err
 			}
 		}
 
@@ -96,7 +96,7 @@ func (n *replacementNode) toResult(st document.Stream) (res query.Result, err er
 		rit.curKey = keys[i-1]
 	}
 
-	return res, err
+	return document.Stream{}, err
 }
 
 func (n *replacementNode) String() string {
