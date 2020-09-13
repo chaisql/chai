@@ -209,8 +209,7 @@ func (s Stream) First() (d Document, err error) {
 	return
 }
 
-// GroupBy returns a StreamGroup that creates a stream for each different values
-// found in path.
+// GroupBy tags each document with the group they belong to. The group is determined by the value returned by groupFn.
 func (s Stream) GroupBy(groupFn func(d Document) (Value, error)) Stream {
 	return s.Pipe(func() func(d Document) (Document, error) {
 		var gd groupedDocument
