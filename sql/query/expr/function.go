@@ -109,28 +109,22 @@ func (c CastFunc) String() string {
 // CountFunc is the COUNT aggregator function. It aggregates documents
 type CountFunc struct {
 	Expr  Expr
-	Count int64
+	Alias string
 }
 
 // Eval evaluates Expr and returns 1 if the result is not null.
 func (c *CountFunc) Eval(ctx EvalStack) (document.Value, error) {
-	return document.NewIntegerValue(c.Count), nil
+	return ctx.Document.GetByField(c.String())
 }
 
-func (c *CountFunc) Aggregate(d document.Document, fb *document.FieldBuffer) error {
-	v, err := c.Expr.Eval(EvalStack{
-		Document: d,
-	})
-	if err != nil {
-		return err
-	}
-	if v == nullLitteral {
-		return nil
-	}
+func (c *CountFunc) SetAlias(alias string) {
+	c.Alias = alias
+}
 
-	c.Count++
-
-	return nil
+func (c *CountFunc) NewAggregator(group document.Value) document.Aggregator {
+	return &CountAggregator{
+		Fn: c,
+	}
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -149,5 +143,39 @@ func (c *CountFunc) IsEqual(other Expr) bool {
 }
 
 func (c *CountFunc) String() string {
+	if c.Alias != "" {
+		return c.Alias
+	}
+
 	return fmt.Sprintf("COUNT(%v)", c.Expr)
+}
+
+// CountAggregator is an aggregator that counts non-null expressions.
+type CountAggregator struct {
+	Fn    *CountFunc
+	Count int64
+}
+
+// Add increments the counter if the count expression evaluates to a non-null value.
+func (c *CountAggregator) Add(d document.Document) error {
+	v, err := c.Fn.Expr.Eval(EvalStack{
+		Document: d,
+	})
+	if err != nil {
+		return err
+	}
+	if err != nil && err != document.ErrFieldNotFound {
+		return err
+	}
+	if v != nullLitteral {
+		c.Count++
+	}
+
+	return nil
+}
+
+// Aggregate adds a field to the given buffer with the value of the counter.
+func (c *CountAggregator) Aggregate(fb *document.FieldBuffer) error {
+	fb.Add(c.Fn.String(), document.NewIntegerValue(c.Count))
+	return nil
 }
