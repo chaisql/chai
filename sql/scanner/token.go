@@ -87,6 +87,7 @@ const (
 	EXISTS
 	EXPLAIN
 	FROM
+	GROUP
 	IF
 	INDEX
 	INSERT
@@ -185,6 +186,7 @@ var tokens = [...]string{
 	ASC:         "ASC",
 	BEGIN:       "BEGIN",
 	COMMIT:      "COMMIT",
+	GROUP:       "GROUP",
 	BY:          "BY",
 	CREATE:      "CREATE",
 	CAST:        "CAST",
