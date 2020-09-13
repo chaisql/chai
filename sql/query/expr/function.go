@@ -108,8 +108,9 @@ func (c CastFunc) String() string {
 
 // CountFunc is the COUNT aggregator function. It aggregates documents
 type CountFunc struct {
-	Expr  Expr
-	Alias string
+	Expr     Expr
+	Alias    string
+	Wildcard bool
 }
 
 // Eval evaluates Expr and returns 1 if the result is not null.
@@ -158,6 +159,11 @@ type CountAggregator struct {
 
 // Add increments the counter if the count expression evaluates to a non-null value.
 func (c *CountAggregator) Add(d document.Document) error {
+	if c.Fn.Wildcard {
+		c.Count++
+		return nil
+	}
+
 	v, err := c.Fn.Expr.Eval(EvalStack{
 		Document: d,
 	})
