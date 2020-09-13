@@ -35,7 +35,10 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, err
 	}
 	if withFields {
-		valueParser = p.parseParamOrExprList
+		valueParser = func() (expr.Expr, error) {
+			// expect an expression list
+			return p.parseExprList(scanner.LPAREN, scanner.RPAREN)
+		}
 		stmt.FieldNames = fields
 	}
 
@@ -132,22 +135,4 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 
 	// Expect a document
 	return p.parseDocument()
-}
-
-// parseParamOrExprList parses either a parameter or a list of expressions.
-func (p *Parser) parseParamOrExprList() (expr.Expr, error) {
-	// Parse a param first
-	prm, err := p.parseParam()
-	if err != nil {
-		return nil, err
-	}
-	if prm != nil {
-		return prm, nil
-	}
-
-	// If not a param, start over
-	p.Unscan()
-
-	// expect an expression list
-	return p.parseExprList(scanner.LPAREN, scanner.RPAREN)
 }
