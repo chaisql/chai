@@ -140,6 +140,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `DESC`, tok: scanner.DESC, raw: `DESC`},
 		{s: `DROP`, tok: scanner.DROP, raw: `DROP`},
 		{s: `FROM`, tok: scanner.FROM, raw: `FROM`},
+		{s: `GROUP`, tok: scanner.GROUP, raw: `GROUP`},
 		{s: `INSERT`, tok: scanner.INSERT, raw: `INSERT`},
 		{s: `INTO`, tok: scanner.INTO, raw: `INTO`},
 		{s: `LIMIT`, tok: scanner.LIMIT, raw: `LIMIT`},

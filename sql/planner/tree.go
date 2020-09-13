@@ -441,31 +441,41 @@ func (n *unsetNode) String() string {
 type GroupingNode struct {
 	node
 
-	Path document.ValuePath
+	Expr   expr.Expr
+	Tx     *database.Transaction
+	Params []expr.Param
 }
 
 var _ operationNode = (*GroupingNode)(nil)
 
 // NewGroupingNode creates a GroupingNode.
-func NewGroupingNode(n Node, path document.ValuePath) Node {
+func NewGroupingNode(n Node, e expr.Expr) Node {
 	return &GroupingNode{
 		node: node{
 			op:   Projection,
 			left: n,
 		},
-		Path: path,
+		Expr: e,
 	}
 }
 
 // Bind database resources to this node.
 func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	n.Tx = tx
+	n.Params = params
 	return
 }
 
 func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
-	return st.GroupBy(n.Path), nil
+	return st.GroupBy(func(d document.Document) (document.Value, error) {
+		return n.Expr.Eval(expr.EvalStack{
+			Tx:       n.Tx,
+			Params:   n.Params,
+			Document: d,
+		})
+	}), nil
 }
 
 func (n *GroupingNode) String() string {
-	return fmt.Sprintf("G(%s)", n.Path)
+	return fmt.Sprintf("G(%s)", n.Expr)
 }
