@@ -472,6 +472,16 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 	}
 
+	// Special case: If the function is COUNT, support the special case COUNT(*)
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		}
+
+		return &expr.CountFunc{Wildcard: true}, nil
+	}
+	p.Unscan()
+
 	// Check if the function is called without arguments.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {
 		return expr.GetFunc(fname)
