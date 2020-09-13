@@ -211,12 +211,12 @@ func (s Stream) First() (d Document, err error) {
 
 // GroupBy returns a StreamGroup that creates a stream for each different values
 // found in path.
-func (s Stream) GroupBy(path ValuePath) Stream {
+func (s Stream) GroupBy(groupFn func(d Document) (Value, error)) Stream {
 	return s.Pipe(func() func(d Document) (Document, error) {
 		var gd groupedDocument
 
 		return func(d Document) (Document, error) {
-			v, err := path.GetValue(d)
+			v, err := groupFn(d)
 			if err != nil && err != ErrFieldNotFound {
 				return nil, err
 			}
@@ -232,29 +232,34 @@ func (s Stream) GroupBy(path ValuePath) Stream {
 	})
 }
 
-// Aggregate takes a list of aggregators and passes each document of the stream to them.
-// The given field buffer is shared between aggregators and allows storing the state of the
-// aggregation. It will then be emitted by the returned stream.
-// If GroupBy is called before this function, each group of document will be aggregated into one
-// document for each group and be emitted by the returned stream.
-func (s Stream) Aggregate(aggregators ...func(d Document, fb *FieldBuffer) error) Stream {
+// Aggregate builds a list of aggregators for each group of documents and passes each document of the stream to them.
+func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 	return NewStream(IteratorFunc(func(fn func(d Document) error) error {
-		aggregates := make(map[Value]*FieldBuffer)
+		aggregates := make(map[Value][]Aggregator)
+		var groups []Value
+
+		nullValue := NewNullValue()
+
 		err := s.Iterate(func(d Document) error {
-			group := NewNullValue()
+			group := nullValue
 
 			if gd, ok := d.(*groupedDocument); ok {
 				group = gd.group
 			}
 
-			fb, ok := aggregates[group]
+			aggs, ok := aggregates[group]
 			if !ok {
-				fb = NewFieldBuffer()
-				aggregates[group] = fb
+				groups = append(groups, group)
+				aggs = make([]Aggregator, len(aggregatorBuilders))
+				for i, builder := range aggregatorBuilders {
+					aggs[i] = builder.NewAggregator(group)
+				}
+				aggregates[group] = aggs
 			}
 
-			for _, aggFn := range aggregators {
-				err := aggFn(d, fb)
+			var err error
+			for _, agg := range aggs {
+				err = agg.Add(d)
 				if err != nil {
 					return err
 				}
@@ -266,7 +271,16 @@ func (s Stream) Aggregate(aggregators ...func(d Document, fb *FieldBuffer) error
 			return err
 		}
 
-		for _, fb := range aggregates {
+		for _, group := range groups {
+			fb := NewFieldBuffer()
+			aggs := aggregates[group]
+			for _, agg := range aggs {
+				err = agg.Aggregate(fb)
+				if err != nil {
+					return err
+				}
+			}
+
 			err = fn(fb)
 			if err != nil {
 				return err
@@ -275,6 +289,17 @@ func (s Stream) Aggregate(aggregators ...func(d Document, fb *FieldBuffer) error
 
 		return nil
 	}))
+}
+
+// An Aggregator aggregates documents into a single one.
+type Aggregator interface {
+	Add(d Document) error
+	Aggregate(fb *FieldBuffer) error
+}
+
+// An AggregatorBuilder can build aggregators on demand.
+type AggregatorBuilder interface {
+	NewAggregator(group Value) Aggregator
 }
 
 // groupedDocument tags a document with a group value.
