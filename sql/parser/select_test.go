@@ -82,6 +82,20 @@ func TestParserSelect(t *testing.T) {
 					"test",
 				)),
 			false},
+		{"WithGroupBy", "SELECT * FROM test WHERE age = 10 GROUP BY a.b.c",
+			planner.NewTree(
+				planner.NewProjectionNode(
+					planner.NewGroupingNode(
+						planner.NewSelectionNode(
+							planner.NewTableInputNode("test"),
+							expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
+						),
+						expr.FieldSelector(parsePath(t, "a.b.c")),
+					),
+					[]planner.ProjectedField{planner.Wildcard{}},
+					"test",
+				)),
+			false},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			planner.NewTree(
 				planner.NewSortNode(
