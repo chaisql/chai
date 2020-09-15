@@ -28,6 +28,12 @@ var functions = map[string]func(args ...Expr) (Expr, error){
 		}
 		return &MinFunc{Expr: args[0]}, nil
 	},
+	"max": func(args ...Expr) (Expr, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("MAX() takes 1 argument")
+		}
+		return &MaxFunc{Expr: args[0]}, nil
+	},
 }
 
 // GetFunc return a function expression by name.
@@ -198,14 +204,17 @@ type MinFunc struct {
 	Alias string
 }
 
+// Eval extracts the min value from the given document and returns it.
 func (m *MinFunc) Eval(ctx EvalStack) (document.Value, error) {
 	return ctx.Document.GetByField(m.String())
 }
 
+// SetAlias implements the planner.AggregatorBuilder interface.
 func (m *MinFunc) SetAlias(alias string) {
 	m.Alias = alias
 }
 
+// NewAggregator implements the planner.AggregatorBuilder interface.
 func (m *MinFunc) NewAggregator(group document.Value) document.Aggregator {
 	return &MinAggregator{
 		Fn: m,
@@ -227,21 +236,24 @@ func (m *MinFunc) IsEqual(other Expr) bool {
 	return Equal(m.Expr, o.Expr)
 }
 
-func (c *MinFunc) String() string {
-	if c.Alias != "" {
-		return c.Alias
+// String returns the alias if non-zero, otherwise it returns a string representation
+// of the count expression.
+func (m *MinFunc) String() string {
+	if m.Alias != "" {
+		return m.Alias
 	}
 
-	return fmt.Sprintf("MIN(%v)", c.Expr)
+	return fmt.Sprintf("MIN(%v)", m.Expr)
 }
 
-// MinAggregator is an aggregator that counts non-null expressions.
+// MinAggregator is an aggregator that returns the minimum non-null value.
 type MinAggregator struct {
 	Fn  *MinFunc
 	Min document.Value
 }
 
-// Add increments the counter if the count expression evaluates to a non-null value.
+// Add stores the minimum value. Values are compared based on their types,
+// then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MinAggregator) Add(d document.Document) error {
 	v, err := m.Fn.Expr.Eval(EvalStack{
 		Document: d,
@@ -280,5 +292,102 @@ func (m *MinAggregator) Add(d document.Document) error {
 // Aggregate adds a field to the given buffer with the minimum value.
 func (m *MinAggregator) Aggregate(fb *document.FieldBuffer) error {
 	fb.Add(m.Fn.String(), m.Min)
+	return nil
+}
+
+// MaxFunc is the MAX aggregator function.
+type MaxFunc struct {
+	Expr  Expr
+	Alias string
+}
+
+// Eval extracts the max value from the given document and returns it.
+func (m *MaxFunc) Eval(ctx EvalStack) (document.Value, error) {
+	return ctx.Document.GetByField(m.String())
+}
+
+// SetAlias implements the planner.AggregatorBuilder interface.
+func (m *MaxFunc) SetAlias(alias string) {
+	m.Alias = alias
+}
+
+// NewAggregator implements the planner.AggregatorBuilder interface.
+func (m *MaxFunc) NewAggregator(group document.Value) document.Aggregator {
+	return &MaxAggregator{
+		Fn: m,
+	}
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (m *MaxFunc) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*MaxFunc)
+	if !ok {
+		return false
+	}
+
+	return Equal(m.Expr, o.Expr)
+}
+
+// String returns the alias if non-zero, otherwise it returns a string representation
+// of the count expression.
+func (m *MaxFunc) String() string {
+	if m.Alias != "" {
+		return m.Alias
+	}
+
+	return fmt.Sprintf("MAX(%v)", m.Expr)
+}
+
+// MaxAggregator is an aggregator that returns the minimum non-null value.
+type MaxAggregator struct {
+	Fn  *MaxFunc
+	Max document.Value
+}
+
+// Add stores the maximum value. Values are compared based on their types,
+// then if the type is equal their value is compared. Numbers are considered of the same type.
+func (m *MaxAggregator) Add(d document.Document) error {
+	v, err := m.Fn.Expr.Eval(EvalStack{
+		Document: d,
+	})
+	if err != nil && err != document.ErrFieldNotFound {
+		return err
+	}
+	if v == nullLitteral {
+		return nil
+	}
+
+	if m.Max.Type == 0 {
+		m.Max = v
+		return nil
+	}
+
+	if m.Max.Type == v.Type || m.Max.Type.IsNumber() && m.Max.Type.IsNumber() {
+		ok, err := m.Max.IsLesserThan(v)
+		if err != nil {
+			return err
+		}
+		if ok {
+			m.Max = v
+		}
+
+		return nil
+	}
+
+	if m.Max.Type < v.Type {
+		m.Max = v
+	}
+
+	return nil
+}
+
+// Aggregate adds a field to the given buffer with the maximum value.
+func (m *MaxAggregator) Aggregate(fb *document.FieldBuffer) error {
+	fb.Add(m.Fn.String(), m.Max)
 	return nil
 }
