@@ -76,6 +76,8 @@ func TestSelectStmt(t *testing.T) {
 		{"With count", "SELECT COUNT(k) FROM test", false, `[{"COUNT(k)": 3}]`, nil},
 		{"With count wildcard", "SELECT COUNT(*) FROM test", false, `[{"COUNT(*)": 3}]`, nil},
 		{"With multiple counts", "SELECT COUNT(k), COUNT(color) FROM test", false, `[{"COUNT(k)": 3, "COUNT(color)": 2}]`, nil},
+		{"With min", "SELECT MIN(k) FROM test", false, `[{"MIN(k)": 1}]`, nil},
+		{"With multiple mins", "SELECT MIN(color), MIN(weight) FROM test", false, `[{"MIN(color)": "blue", "MIN(weight)": 100}]`, nil},
 		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, `[]`, nil},
 		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, `[]`, nil},
 		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, `[]`, nil},

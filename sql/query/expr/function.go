@@ -22,6 +22,12 @@ var functions = map[string]func(args ...Expr) (Expr, error){
 		}
 		return &CountFunc{Expr: args[0]}, nil
 	},
+	"min": func(args ...Expr) (Expr, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("MIN() takes 1 argument")
+		}
+		return &MinFunc{Expr: args[0]}, nil
+	},
 }
 
 // GetFunc return a function expression by name.
