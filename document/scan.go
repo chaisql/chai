@@ -285,6 +285,23 @@ func scanValue(v Value, ref reflect.Value) error {
 		ref.SetFloat(v.V.(float64))
 		return nil
 	case reflect.Interface:
+		switch v.Type {
+		case DocumentValue:
+			m := make(map[string]interface{})
+			vm := reflect.ValueOf(m)
+			ref.Set(vm)
+			return mapScan(v.V.(Document), vm)
+		case ArrayValue:
+			var s []interface{}
+			vs := reflect.ValueOf(&s)
+			err := sliceScan(v.V.(Array), vs)
+			if err != nil {
+				return err
+			}
+			ref.Set(vs.Elem())
+			return nil
+		}
+
 		ref.Set(reflect.ValueOf(v.V))
 		return nil
 	}
