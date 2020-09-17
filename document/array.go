@@ -8,7 +8,7 @@ import (
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 // the index wasn't found in the array.
 var (
-	ErrValueNotFound   = errors.New("value not found")
+	ErrValueNotFound = errors.New("value not found")
 )
 
 // An Array contains a set of values.

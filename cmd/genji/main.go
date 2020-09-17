@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/genjidb/genji/cmd/genji/shell"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
@@ -24,6 +24,49 @@ func main() {
 		},
 	}
 
+	app.Commands = []*cli.Command{
+		{
+			Name:      "insert",
+			Usage:     "Insert documents from the command line",
+			UsageText: "genji insert [options] [arguments...]",
+			HideHelp:  true,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "engine",
+					Aliases: []string{"e"},
+					Usage:   "name of the engine to use, options are 'bolt' or 'badger'. defaults to bolt",
+					Value:   "bolt",
+				},
+				&cli.StringFlag{
+					Name:     "db",
+					Usage:    "path of the database file",
+					Required: true,
+				},
+				&cli.StringFlag{
+					Name:     "table",
+					Aliases:  []string{"t"},
+					Usage:    "name of the table, it must already exist",
+					Required: true,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				dbPath := c.String("db")
+				table := c.String("table")
+				// Use bolt as default engine.
+				engine := c.String("engine")
+				args := c.Args().Slice()
+
+				return runInsertCommand(engine, dbPath, table, args)
+			},
+
+			OnUsageError: func(c *cli.Context, err error, isSubcommand bool) error {
+				_, _ = fmt.Fprintf(c.App.Writer, "error: %s\n", err.Error())
+				return err
+			},
+		},
+	}
+
+	// Root command
 	app.Action = func(c *cli.Context) error {
 		useBolt := c.Bool("bolt")
 		useBadger := c.Bool("badger")
@@ -55,6 +98,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		_, _ = fmt.Fprintf(os.Stdout, "error: %v\n", err)
 	}
 }
