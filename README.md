@@ -1,7 +1,7 @@
 <h1 align="center"> Genji </h1>
 <p align="center">
   <a href="https://genji.dev">
-    <img alt="Genji" title="Genji" src="https://raw.githubusercontent.com/genjidb/genji/master/docs/assets/icons/logo.svg?sanitize=true" width="100">
+    <img alt="Genji" title="Genji" src="https://raw.githubusercontent.com/genjidb/docs/master/assets/icons/logo.svg?sanitize=true" width="100">
   </a>
 </p>
 
