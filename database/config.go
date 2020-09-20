@@ -365,6 +365,9 @@ type IndexConfig struct {
 
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
+
+	// If set, the index is typed and only accepts that type
+	Type document.ValueType
 }
 
 // ToDocument creates a document from an IndexConfig.
@@ -375,6 +378,9 @@ func (i *IndexConfig) ToDocument() document.Document {
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
 	buf.Add("path", document.NewArrayValue(valuePathToArray(i.Path)))
+	if i.Type != 0 {
+		buf.Add("type", document.NewIntegerValue(int64(i.Type)))
+	}
 	return buf
 }
 
@@ -403,7 +409,19 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 		return err
 	}
 	i.Path, err = arrayToValuePath(v)
-	return err
+	if err != nil {
+		return err
+	}
+
+	v, err = d.GetByField("type")
+	if err != nil && err != document.ErrFieldNotFound {
+		return err
+	}
+	if err == nil {
+		i.Type = document.ValueType(v.V.(int64))
+	}
+
+	return nil
 }
 
 // Index of a table field. Contains information about

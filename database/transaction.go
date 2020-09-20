@@ -222,9 +222,26 @@ func (tx *Transaction) DropTable(name string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrIndexAlreadyExists.
 func (tx *Transaction) CreateIndex(opts IndexConfig) error {
-	_, err := tx.GetTable(opts.TableName)
+	t, err := tx.GetTable(opts.TableName)
 	if err != nil {
 		return err
+	}
+
+	info, err := t.Info()
+	if err != nil {
+		return err
+	}
+
+	// if the index is created on a field on which we know the type,
+	// create a typed index.
+	for _, fc := range info.FieldConstraints {
+		if fc.Path.IsEqual(opts.Path) {
+			if fc.Type != 0 {
+				opts.Type = fc.Type
+			}
+
+			break
+		}
 	}
 
 	return tx.indexStore.Insert(opts)
@@ -237,7 +254,10 @@ func (tx *Transaction) GetIndex(name string) (*Index, error) {
 		return nil, err
 	}
 
-	idx := index.NewIndex(tx.tx, opts.IndexName, index.Options{Unique: opts.Unique})
+	idx := index.NewIndex(tx.tx, opts.IndexName, index.Options{
+		Unique: opts.Unique,
+		Type:   opts.Type,
+	})
 
 	return &Index{
 		Index: idx,
@@ -256,7 +276,10 @@ func (tx *Transaction) DropIndex(name string) error {
 		return err
 	}
 
-	idx := index.NewIndex(tx.tx, opts.IndexName, index.Options{Unique: opts.Unique})
+	idx := index.NewIndex(tx.tx, opts.IndexName, index.Options{
+		Unique: opts.Unique,
+		Type:   opts.Type,
+	})
 
 	return idx.Truncate()
 }
