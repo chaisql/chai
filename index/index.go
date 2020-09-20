@@ -65,27 +65,38 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		return nil
 	}
 
+	// encode the value we are going to use as a key
 	buf, err := key.AppendValue(nil, v)
 	if err != nil {
 		return err
 	}
 
+	// lookup for an already existing value in the index.
+	// every value ends with a zero byte.
 	lookupKey := append(buf, 0)
 
 	_, err = st.Get(lookupKey)
 	switch err {
 	case nil:
+		// the value already exists
+		// if this is a unique index, return an error
 		if idx.Unique {
 			return ErrDuplicate
 		}
 
+		// the value already exists
+		// add a prefix to that value
 		seq, err := st.NextSequence()
 		if err != nil {
 			return err
 		}
 		buf = key.AppendInt64(buf, int64(seq))
+
+		// duplicated values always end with 1
 		buf = append(buf, 1)
 	case engine.ErrKeyNotFound:
+		// the value doesn't exist
+		// use the lookup as value
 		buf = lookupKey
 	default:
 		return err
@@ -103,7 +114,7 @@ func (idx *Index) Delete(v document.Value, k []byte) error {
 
 	var toDelete []byte
 	var buf []byte
-	err = iterate(st, v, false, func(encodedValue []byte, item engine.Item) error {
+	err = iterate(st, v, false, func(item engine.Item) error {
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
 			return err
@@ -150,13 +161,26 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 		return nil
 	}
 
-	return iterate(st, pivot, reverse, func(encodedValue []byte, item engine.Item) error {
+	var enc []byte
+	if pivot.V != nil {
+		enc, err = key.AppendValue(nil, pivot)
+		if err != nil {
+			return err
+		}
+	}
+
+	return iterate(st, pivot, reverse, func(item engine.Item) error {
 		var err error
 
 		k := item.Key()
+
+		// if the key ends with 0, it's not duplicated.
+		// remove the 0
 		if k[len(k)-1] == 0 {
 			k = k[:len(k)-1]
 		} else {
+			// if the key doesn't end with 0, it is a duplicated key.
+			// remove the suffix: 8 byte integer + 1 byte
 			k = k[:len(k)-9]
 		}
 
@@ -165,7 +189,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 			return err
 		}
 
-		return fn(k, buf, bytes.Equal(k, encodedValue))
+		return fn(k, buf, bytes.Equal(k, enc))
 	})
 }
 
@@ -197,16 +221,15 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 	return tx.GetStore(name)
 }
 
-func iterate(st engine.Store, pivot document.Value, reverse bool, fn func(encodedValue []byte, item engine.Item) error) error {
-	var seek, enc []byte
+func iterate(st engine.Store, pivot document.Value, reverse bool, fn func(item engine.Item) error) error {
+	var seek []byte
 	var err error
 
 	if pivot.V != nil {
-		enc, err = key.AppendValue(nil, pivot)
+		seek, err = key.AppendValue(nil, pivot)
 		if err != nil {
 			return err
 		}
-		seek = enc
 
 		if reverse {
 			seek = append(seek, 0xFF)
@@ -235,7 +258,7 @@ func iterate(st engine.Store, pivot document.Value, reverse bool, fn func(encode
 			return nil
 		}
 
-		err := fn(enc, itm)
+		err := fn(itm)
 		if err != nil {
 			return err
 		}
