@@ -2,6 +2,7 @@ package index
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 
 	"github.com/genjidb/genji/document"
@@ -90,10 +91,11 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		if err != nil {
 			return err
 		}
-		buf = key.AppendInt64(buf, int64(seq))
-
-		// duplicated values always end with 1
-		buf = append(buf, 1)
+		vbuf := make([]byte, binary.MaxVarintLen64)
+		n := binary.PutUvarint(vbuf, seq)
+		buf = append(buf, vbuf[:n]...)
+		// duplicated values always end with the size of the varint
+		buf = append(buf, byte(n))
 	case engine.ErrKeyNotFound:
 		// the value doesn't exist
 		// use the lookup as value
@@ -174,15 +176,10 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 
 		k := item.Key()
 
-		// if the key ends with 0, it's not duplicated.
-		// remove the 0
-		if k[len(k)-1] == 0 {
-			k = k[:len(k)-1]
-		} else {
-			// if the key doesn't end with 0, it is a duplicated key.
-			// remove the suffix: 8 byte integer + 1 byte
-			k = k[:len(k)-9]
-		}
+		// the last byte of the key is the size of the varint.
+		// if that byte is 0, it means that key is not duplicated.
+		n := k[len(k)-1]
+		k = k[:len(k)-int(n)-1]
 
 		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
