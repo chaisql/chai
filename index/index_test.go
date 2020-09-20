@@ -36,10 +36,10 @@ func TestIndexSet(t *testing.T) {
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
-		t.Run(text+"Set nil key succeeds", func(t *testing.T) {
+		t.Run(text+"Set nil key falls", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
-			require.NoError(t, idx.Set(document.NewBoolValue(true), nil))
+			require.Error(t, idx.Set(document.NewBoolValue(true), nil))
 		})
 
 		t.Run(text+"Set value and key succeeds", func(t *testing.T) {
@@ -239,7 +239,6 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			}
 
 			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
-				fmt.Println("Unique:", unique, val)
 				return nil
 			})
 
