@@ -137,7 +137,8 @@ func TestIndexDelete(t *testing.T) {
 func requireEqualEncoded(t *testing.T, expected document.Value, actual []byte) {
 	t.Helper()
 
-	enc := key.AppendValue(nil, expected)
+	enc, err := key.AppendValue(nil, expected)
+	require.NoError(t, err)
 	require.Equal(t, enc, actual)
 }
 
@@ -233,18 +234,28 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 			for i := int64(0); i < 10; i++ {
 				require.NoError(t, idx.Set(document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(int(i))), []byte{'s', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(document.NewDoubleValue(float64(i)), []byte{'d', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(int(i+10))), []byte{'s', 'a' + byte(i)}))
 			}
 
-			var ints, texts int
-			var count int
 			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
-				if count < 10 {
+				fmt.Println("Unique:", unique, val)
+				return nil
+			})
+
+			var ints, doubles, texts int
+			var count int
+			err = idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
+				if count < 20 && count%2 == 0 {
 					requireEqualEncoded(t, document.NewIntegerValue(int64(ints)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
 					ints++
+				} else if count < 20 {
+					requireEqualEncoded(t, document.NewDoubleValue(float64(doubles)), val)
+					require.Equal(t, []byte{'d', 'a' + byte(doubles)}, rid)
+					doubles++
 				} else {
-					requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(texts))), val)
+					requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(texts+10))), val)
 					require.Equal(t, []byte{'s', 'a' + byte(texts)}, rid)
 					texts++
 				}
@@ -252,7 +263,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				return nil
 			})
 			require.NoError(t, err)
-			require.Equal(t, 20, count)
+			require.Equal(t, 30, count)
 			require.Equal(t, 10, ints)
 			require.Equal(t, 10, texts)
 		})

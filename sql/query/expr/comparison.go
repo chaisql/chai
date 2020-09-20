@@ -61,7 +61,10 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return nil
 	}
 
-	data := key.AppendValue(nil, v)
+	data, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	val, err := tb.Store.Get(data)
 	if err != nil {
@@ -127,7 +130,10 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	data := key.AppendValue(nil, v)
+	data, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
@@ -187,7 +193,10 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	data := key.AppendValue(nil, v)
+	data, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
@@ -231,7 +240,10 @@ func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Valu
 		}
 	}
 
-	enc := key.AppendValue(nil, v)
+	enc, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) <= 0 {
 			return errStop
@@ -258,7 +270,10 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	data := key.AppendValue(nil, v)
+	data, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
@@ -305,7 +320,11 @@ func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Val
 		}
 	}
 
-	enc := key.AppendValue(nil, v)
+	enc, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
+
 	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) < 0 {
 			return errStop
@@ -332,7 +351,10 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	data := key.AppendValue(nil, v)
+	data, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	it := tb.Store.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
@@ -488,7 +510,10 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 			return nil
 		}
 
-		data := key.AppendValue(nil, val)
+		data, err := key.AppendValue(nil, val)
+		if err != nil {
+			return err
+		}
 
 		v, err := tb.Store.Get(data)
 		if err != nil {

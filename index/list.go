@@ -29,7 +29,10 @@ func (idx *ListIndex) Set(v document.Value, k []byte) error {
 		return err
 	}
 
-	buf := key.AppendValue(nil, v)
+	buf, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 	seq, err := st.NextSequence()
 	if err != nil {
 		return err
@@ -53,7 +56,10 @@ func (idx *ListIndex) Delete(v document.Value, k []byte) error {
 		return err
 	}
 
-	seek := key.AppendValue(nil, v)
+	seek, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	it := st.NewIterator(engine.IteratorConfig{})
 	defer it.Close()
@@ -137,7 +143,10 @@ func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func
 	var seek, enc []byte
 
 	if pivot.V != nil {
-		enc = key.AppendValue(nil, pivot)
+		enc, err = key.AppendValue(nil, pivot)
+		if err != nil {
+			return err
+		}
 		seek = enc
 
 		if reverse {

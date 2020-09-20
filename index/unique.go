@@ -30,7 +30,10 @@ func (idx *UniqueIndex) Set(v document.Value, k []byte) error {
 		return err
 	}
 
-	enc := key.AppendValue(nil, v)
+	enc, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	_, err = st.Get(enc)
 	if err == nil {
@@ -57,7 +60,10 @@ func (idx *UniqueIndex) Delete(v document.Value, k []byte) error {
 		return err
 	}
 
-	enc := key.AppendValue(nil, v)
+	enc, err := key.AppendValue(nil, v)
+	if err != nil {
+		return err
+	}
 
 	return st.Delete(enc)
 }
@@ -121,7 +127,10 @@ func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn fu
 	var seek, enc []byte
 
 	if pivot.V != nil {
-		enc = key.AppendValue(nil, pivot)
+		enc, err = key.AppendValue(nil, pivot)
+		if err != nil {
+			return err
+		}
 		seek = enc
 
 		if reverse {

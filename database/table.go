@@ -392,7 +392,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 			return nil, err
 		}
 
-		return key.AppendValue(nil, v), nil
+		return key.AppendValue(nil, v)
 	}
 
 	docid, err := t.Store.NextSequence()

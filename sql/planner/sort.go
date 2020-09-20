@@ -141,7 +141,10 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 
 		var value []byte
 		if v.Type != document.ArrayValue && v.Type != document.DocumentValue {
-			value = key.AppendValue(nil, v)
+			value, err = key.AppendValue(nil, v)
+			if err != nil {
+				return err
+			}
 		}
 
 		// to ensure ordering of values based on their types
