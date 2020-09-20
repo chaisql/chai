@@ -83,6 +83,14 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	return math.Float64frombits(x), nil
 }
 
+// AppendIntSortedFloat takes a float value and encodes it in 16 bytes in order to
+// be lexicographically sortable with integers.
+// The float value will first be converted to an integer, encoded using AppendInt64,
+// then AppendFloat64 will be called with the float value.
+func AppendIntSortedFloat(buf []byte, x float64) []byte {
+	return AppendFloat64(AppendInt64(buf, int64(x)), x)
+}
+
 // AppendValue encodes a value as a key.
 // It only works with scalars and doesn't support documents and arrays.
 func AppendValue(buf []byte, v document.Value) []byte {
