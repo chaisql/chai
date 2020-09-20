@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"testing"
@@ -182,10 +183,10 @@ func TestTableInsert(t *testing.T) {
 
 		key2 := insertDoc(db)
 
-		a, err := key.DecodeUint64(key1)
+		a, _ := binary.Uvarint(key1)
 		require.NoError(t, err)
 
-		b, err := key.DecodeUint64(key2)
+		b, _ := binary.Uvarint(key2)
 		require.NoError(t, err)
 
 		require.Equal(t, a+1, b)

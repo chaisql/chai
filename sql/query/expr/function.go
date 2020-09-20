@@ -1,12 +1,12 @@
 package expr
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/key"
 )
 
 var functions = map[string]func(args ...Expr) (Expr, error){
@@ -61,12 +61,9 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 		return pk.Path.GetValue(ctx.Document)
 	}
 
-	i, err := key.DecodeInt64(ctx.Document.(document.Keyer).Key())
-	if err != nil {
-		return document.Value{}, err
-	}
+	i, _ := binary.Uvarint(ctx.Document.(document.Keyer).Key())
 
-	return document.NewIntegerValue(i), nil
+	return document.NewIntegerValue(int64(i)), nil
 }
 
 // IsEqual compares this expression with the other expression and returns

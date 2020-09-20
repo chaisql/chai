@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -403,7 +404,9 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
-	return key.AppendInt64(nil, int64(docid)), nil
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(buf, docid)
+	return buf[:n], nil
 }
 
 // ValidateConstraints check the table configuration for constraints and validates the document
