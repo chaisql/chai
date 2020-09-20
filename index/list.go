@@ -178,5 +178,10 @@ func (idx *ListIndex) iterate(pivot document.Value, reverse bool, fn func(encode
 
 // Truncate deletes all the index data.
 func (idx *ListIndex) Truncate() error {
-	return idx.tx.DropStore(idx.storeName)
+	err := idx.tx.DropStore(idx.storeName)
+	if err != nil && err != engine.ErrStoreNotFound {
+		return err
+	}
+
+	return nil
 }
