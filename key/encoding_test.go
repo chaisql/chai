@@ -27,7 +27,9 @@ func TestValueEncodeDecode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			b := AppendValue(nil, test.v)
+			b, err := AppendValue(nil, test.v)
+			require.NoError(t, err)
+
 			got, err := DecodeValue(test.v.Type, b)
 			require.NoError(t, err)
 			require.Equal(t, test.v, got)
@@ -77,7 +79,9 @@ func TestOrdering(t *testing.T) {
 			encoded = append(encoded, AppendInt64(nil, nb))
 		}
 		for _, nb := range floats {
-			encoded = append(encoded, AppendIntSortedFloat(nil, nb))
+			enc, err := AppendNumber(nil, document.NewDoubleValue(nb))
+			require.NoError(t, err)
+			encoded = append(encoded, enc)
 		}
 
 		sort.Slice(encoded, func(i, j int) bool {
