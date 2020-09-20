@@ -89,6 +89,35 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	return math.Float64frombits(x), nil
 }
 
+// AppendBase64 encodes data into a custom base64 encoding. The resulting slice respects
+// natural sort-ordering.
+func AppendBase64(buf []byte, data []byte) ([]byte, error) {
+	b := bytes.NewBuffer(buf)
+	enc := base64.NewEncoder(base64Encoding, b)
+	_, err := enc.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = enc.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+// DecodeBase64 decodes a custom base64 encoded byte slice,
+// encoded with AppendBase64.
+func DecodeBase64(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	dec := base64.NewDecoder(base64Encoding, bytes.NewReader(data))
+	_, err := buf.ReadFrom(dec)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // AppendNumber takes a number value, integer or double, and encodes it in 16 bytes
 // so that encoded integers and doubles are naturally ordered.
 // Integers will fist be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
@@ -124,21 +153,10 @@ func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 
 	switch v.Type {
 	case document.BlobValue:
-		return append(buf, v.V.([]byte)...), nil
+		return AppendBase64(buf, v.V.([]byte))
 	case document.TextValue:
 		text := v.V.(string)
-		b := bytes.NewBuffer(buf)
-		enc := base64.NewEncoder(base64Encoding, b)
-		_, err := enc.Write([]byte(text))
-		if err != nil {
-			return nil, err
-		}
-		err = enc.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		return b.Bytes(), nil
+		return AppendBase64(buf, []byte(text))
 	case document.BoolValue:
 		return AppendBool(buf, v.V.(bool)), nil
 	case document.IntegerValue, document.DoubleValue:
@@ -159,15 +177,17 @@ func DecodeValue(data []byte) (document.Value, error) {
 
 	switch t {
 	case document.BlobValue:
-		return document.NewBlobValue(data), nil
-	case document.TextValue:
-		var buf bytes.Buffer
-		dec := base64.NewDecoder(base64Encoding, bytes.NewReader(data))
-		_, err := buf.ReadFrom(dec)
+		t, err := DecodeBase64(data)
 		if err != nil {
 			return document.Value{}, err
 		}
-		return document.NewTextValue(buf.String()), nil
+		return document.NewBlobValue(t), nil
+	case document.TextValue:
+		t, err := DecodeBase64(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewTextValue(string(t)), nil
 	case document.BoolValue:
 		return document.NewBoolValue(DecodeBool(data)), nil
 	case document.DoubleValue:
