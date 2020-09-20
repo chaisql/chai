@@ -83,38 +83,49 @@ func DecodeFloat64(buf []byte) (float64, error) {
 	return math.Float64frombits(x), nil
 }
 
-// AppendIntSortedFloat takes a float value and encodes it in 16 bytes in order to
-// be lexicographically sortable with integers.
-// The float value will first be converted to an integer, encoded using AppendInt64,
+// AppendNumber takes a number value, integer or double, and encodes it in 16 bytes
+// so that encoded integers and doubles are naturally ordered.
+// Integers will fist be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
+// appended to them.
+// Doubles will first be converted to integer, encoded using AppendInt64,
 // then AppendFloat64 will be called with the float value.
-func AppendIntSortedFloat(buf []byte, x float64) []byte {
-	if x > math.MaxInt64 {
-		return AppendFloat64(AppendInt64(buf, math.MaxInt64), x)
+func AppendNumber(buf []byte, v document.Value) ([]byte, error) {
+	if !v.Type.IsNumber() {
+		return nil, errors.New("expected number type")
 	}
-	return AppendFloat64(AppendInt64(buf, int64(x)), x)
+
+	if v.Type == document.IntegerValue {
+		// appending 8 zero bytes so that the integer has the same size as the double
+		// but always lower for the same value.
+		return append(AppendInt64(buf, v.V.(int64)), 0, 0, 0, 0, 0, 0, 0, 0), nil
+	}
+
+	x := v.V.(float64)
+	if x > math.MaxInt64 {
+		return AppendFloat64(AppendInt64(buf, math.MaxInt64), x), nil
+	}
+	return AppendFloat64(AppendInt64(buf, int64(x)), x), nil
 }
 
 // AppendValue encodes a value as a key.
 // It only works with scalars and doesn't support documents and arrays.
-func AppendValue(buf []byte, v document.Value) []byte {
+func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 	switch v.Type {
 	case document.BlobValue:
-		return append(buf, v.V.([]byte)...)
+		return append(buf, v.V.([]byte)...), nil
 	case document.TextValue:
-		return append(buf, v.V.(string)...)
+		return append(buf, v.V.(string)...), nil
 	case document.BoolValue:
-		return AppendBool(buf, v.V.(bool))
-	case document.IntegerValue:
-		return AppendInt64(buf, v.V.(int64))
-	case document.DoubleValue:
-		return AppendIntSortedFloat(buf, v.V.(float64))
+		return AppendBool(buf, v.V.(bool)), nil
+	case document.IntegerValue, document.DoubleValue:
+		return AppendNumber(buf, v)
 	case document.DurationValue:
-		return AppendInt64(buf, int64(v.V.(time.Duration)))
+		return AppendInt64(buf, int64(v.V.(time.Duration))), nil
 	case document.NullValue:
-		return buf
+		return buf, nil
 	}
 
-	panic("cannot encode type " + v.Type.String() + " as key")
+	return nil, errors.New("cannot encode type " + v.Type.String() + " as key")
 }
 
 // DecodeValue takes some encoded data and decodes it to the target type t.
@@ -127,13 +138,13 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	case document.BoolValue:
 		return document.NewBoolValue(DecodeBool(data)), nil
 	case document.IntegerValue:
-		x, err := DecodeInt64(data)
+		x, err := DecodeInt64(data[:8])
 		if err != nil {
 			return document.Value{}, err
 		}
 		return document.NewIntegerValue(x), nil
 	case document.DoubleValue:
-		x, err := DecodeFloat64(data)
+		x, err := DecodeFloat64(data[8:])
 		if err != nil {
 			return document.Value{}, err
 		}
