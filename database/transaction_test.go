@@ -262,6 +262,30 @@ func TestTxReIndex(t *testing.T) {
 		require.Equal(t, database.ErrIndexNotFound, err)
 	})
 
+	t.Run("Should not fail if field not found", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
+
+		_, err = tb.Insert(document.NewFieldBuffer().
+			Add("a", document.NewIntegerValue(1)),
+		)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(database.IndexConfig{
+			IndexName: "b",
+			TableName: "test",
+			Path:      parsePath(t, "b"),
+		})
+
+		err = tx.ReIndex("b")
+		require.NoError(t, err)
+	})
+
 	t.Run("Should reindex the right index", func(t *testing.T) {
 		tx, _, cleanup := newTestTableFn(t)
 		defer cleanup()
