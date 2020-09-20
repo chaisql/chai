@@ -107,7 +107,7 @@ func AppendValue(buf []byte, v document.Value) []byte {
 	case document.IntegerValue:
 		return AppendInt64(buf, v.V.(int64))
 	case document.DoubleValue:
-		return AppendFloat64(buf, v.V.(float64))
+		return AppendIntSortedFloat(buf, v.V.(float64))
 	case document.DurationValue:
 		return AppendInt64(buf, int64(v.V.(time.Duration)))
 	case document.NullValue:

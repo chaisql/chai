@@ -19,14 +19,12 @@ type ListIndex struct {
 func (idx *ListIndex) Set(v document.Value, k []byte) error {
 	var err error
 
+	idxType := v.Type
 	if v.Type == document.IntegerValue {
-		v, err = v.CastAsDouble()
-		if err != nil {
-			return err
-		}
+		idxType = document.DoubleValue
 	}
 
-	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
+	st, err := getOrCreateStore(idx.tx, idxType, idx.name)
 	if err != nil {
 		return err
 	}
@@ -45,14 +43,12 @@ func (idx *ListIndex) Set(v document.Value, k []byte) error {
 func (idx *ListIndex) Delete(v document.Value, k []byte) error {
 	var err error
 
+	idxType := v.Type
 	if v.Type == document.IntegerValue {
-		v, err = v.CastAsDouble()
-		if err != nil {
-			return err
-		}
+		idxType = document.DoubleValue
 	}
 
-	st, err := getOrCreateStore(idx.tx, v.Type, idx.name)
+	st, err := getOrCreateStore(idx.tx, idxType, idx.name)
 	if err != nil {
 		return err
 	}
@@ -124,18 +120,13 @@ func (idx *ListIndex) DescendLessOrEqual(pivot document.Value, fn func(val, key 
 func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
 	var err error
 
+	idxType := pivot.Type
+
 	if pivot.Type == document.IntegerValue {
-		if pivot.V != nil {
-			pivot, err = pivot.CastAsDouble()
-			if err != nil {
-				return err
-			}
-		} else {
-			pivot.Type = document.DoubleValue
-		}
+		idxType = document.DoubleValue
 	}
 
-	st, err := getStore(idx.tx, pivot.Type, idx.name)
+	st, err := getStore(idx.tx, idxType, idx.name)
 	if err != nil {
 		return err
 	}
