@@ -122,15 +122,7 @@ func Run(opts *Options) error {
 	)
 
 	e.Run()
-
-	if sh.db != nil {
-		err = sh.db.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return sh.dumpHistory()
+	return nil
 }
 
 func (sh *Shell) loadHistory() ([]string, error) {
@@ -242,7 +234,7 @@ func (sh *Shell) runCommand(in string) error {
 			return fmt.Errorf("usage: .exit")
 		}
 
-		os.Exit(0)
+		sh.exit()
 	case ".indexes":
 		db, err := sh.getDB()
 		if err != nil {
@@ -268,6 +260,22 @@ func (sh *Shell) runQuery(q string) error {
 
 	defer res.Close()
 	return document.IteratorToJSON(os.Stdout, res)
+}
+
+func (sh *Shell) exit() {
+	if sh.db != nil {
+		err := sh.db.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
+	}
+
+	err := sh.dumpHistory()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	}
+
+	os.Exit(0)
 }
 
 func (sh *Shell) getDB() (*genji.DB, error) {
