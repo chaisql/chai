@@ -97,6 +97,10 @@ func compare(op operator, l, r Value) (bool, error) {
 	// compare durations together
 	case l.Type == DurationValue && r.Type == DurationValue:
 		return compareIntegers(op, int64(l.V.(time.Duration)), int64(r.V.(time.Duration))), nil
+
+	// compare arrays together
+	case l.Type == ArrayValue && r.Type == ArrayValue:
+		return compareArrays(op, l.V.(Array), r.V.(Array))
 	}
 
 	return false, nil
@@ -212,4 +216,56 @@ func compareNumbers(op operator, l, r Value) (bool, error) {
 	}
 
 	return ok, nil
+}
+
+func compareArrays(op operator, l Array, r Array) (bool, error) {
+	var i, j int
+
+	for {
+		lv, lerr := l.GetByIndex(i)
+		rv, rerr := r.GetByIndex(j)
+		if lerr == nil {
+			i++
+		}
+		if rerr == nil {
+			j++
+		}
+		if lerr != nil || rerr != nil {
+			break
+		}
+		isEq, err := compare(operatorEq, lv, rv)
+		if err != nil {
+			return false, err
+		}
+		if !isEq && op != operatorEq {
+			return compare(op, lv, rv)
+		}
+		if !isEq {
+			return false, nil
+		}
+	}
+
+	switch {
+	case i > j:
+		switch op {
+		case operatorEq, operatorLt, operatorLte:
+			return false, nil
+		default:
+			return true, nil
+		}
+	case i < j:
+		switch op {
+		case operatorEq, operatorGt, operatorGte:
+			return false, nil
+		default:
+			return true, nil
+		}
+	default:
+		switch op {
+		case operatorEq, operatorGte, operatorLte:
+			return true, nil
+		default:
+			return false, nil
+		}
+	}
 }
