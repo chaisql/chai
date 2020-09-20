@@ -392,6 +392,14 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 			return nil, err
 		}
 
+		// if a primary key type is specified,
+		// encode the key using the optimized encoding solution
+		if pk.Type != 0 {
+			return key.Append(nil, v.Type, v.V)
+		}
+
+		// it no primary key type is specified,
+		// encode keys regardless of type.
 		return key.AppendValue(nil, v)
 	}
 
