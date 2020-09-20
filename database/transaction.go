@@ -285,6 +285,9 @@ func (tx *Transaction) ReIndex(indexName string) error {
 
 	return tb.Iterate(func(d document.Document) error {
 		v, err := idx.Opts.Path.GetValue(d)
+		if err == document.ErrFieldNotFound {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
