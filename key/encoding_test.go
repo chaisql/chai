@@ -74,6 +74,11 @@ func TestOrdering(t *testing.T) {
 		{"uint64", 0, 1000, func(buf []byte, i int) []byte { return AppendUint64(buf, uint64(i)) }},
 		{"int64", -1000, 1000, func(buf []byte, i int) []byte { return AppendInt64(buf, int64(i)) }},
 		{"float64", -1000, 1000, func(buf []byte, i int) []byte { return AppendFloat64(buf, float64(i)) }},
+		{"text", -1000, 1000, func(buf []byte, i int) []byte {
+			b, err := AppendValue(nil, document.NewTextValue(string(AppendInt64(buf, int64(i)))))
+			require.NoError(t, err)
+			return b
+		}},
 	}
 
 	for _, test := range tests {
