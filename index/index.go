@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -35,6 +36,7 @@ var (
 // It is sorted by value following the lexicographic order.
 type Index struct {
 	Unique bool
+	Type   document.ValueType
 
 	tx        engine.Transaction
 	storeName []byte
@@ -43,6 +45,9 @@ type Index struct {
 // Options of the index.
 type Options struct {
 	Unique bool
+
+	// If specified, the indexed expects only one type.
+	Type document.ValueType
 }
 
 // NewIndex creates an index that associates a value with a list of keys.
@@ -51,6 +56,7 @@ func NewIndex(tx engine.Transaction, idxName string, opts Options) *Index {
 		tx:        tx,
 		storeName: append([]byte(storePrefix), idxName...),
 		Unique:    opts.Unique,
+		Type:      opts.Type,
 	}
 }
 
@@ -66,20 +72,28 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		return errors.New("cannot index value without a key")
 	}
 
+	if idx.Type != 0 && idx.Type != v.Type {
+		return fmt.Errorf("cannot index value of type %s in %s index", v.Type, idx.Type)
+	}
+
 	st, err := getOrCreateStore(idx.tx, idx.storeName)
 	if err != nil {
 		return nil
 	}
 
 	// encode the value we are going to use as a key
-	buf, err := key.AppendValue(nil, v)
+	buf, err := idx.encodeValue(v)
 	if err != nil {
 		return err
 	}
 
 	// lookup for an already existing value in the index.
-	// every value ends with a zero byte.
-	lookupKey := append(buf, 0)
+	var lookupKey = buf
+
+	// every value of a non-unique index ends with a byte that starts at zero.
+	if !idx.Unique {
+		lookupKey = append(lookupKey, 0)
+	}
 
 	_, err = st.Get(lookupKey)
 	switch err {
@@ -169,7 +183,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 
 	var enc []byte
 	if pivot.V != nil {
-		enc, err = key.AppendValue(nil, pivot)
+		enc, err = idx.encodeValue(pivot)
 		if err != nil {
 			return err
 		}
@@ -181,10 +195,12 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 
 		k := item.Key()
 
-		// the last byte of the key is the size of the varint.
+		// the last byte of the key of a non-unique index is the size of the varint.
 		// if that byte is 0, it means that key is not duplicated.
-		n := k[len(k)-1]
-		k = k[:len(k)-int(n)-1]
+		if !idx.Unique {
+			n := k[len(k)-1]
+			k = k[:len(k)-int(n)-1]
+		}
 
 		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
@@ -203,6 +219,19 @@ func (idx *Index) Truncate() error {
 	}
 
 	return nil
+}
+
+// encode the value we are going to use as a key
+// if the index is typed, encode the value without expecting
+// the presence of other types.
+// if not, encode so that order is preserved regardless of the type.
+func (idx *Index) encodeValue(v document.Value) (buf []byte, err error) {
+	if idx.Type != 0 {
+		buf, err = key.Append(buf, v.Type, v.V)
+	} else {
+		buf, err = key.AppendValue(buf, v)
+	}
+	return
 }
 
 func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) {
