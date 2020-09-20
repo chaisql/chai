@@ -34,11 +34,23 @@ func (idx *ListIndex) Set(v document.Value, k []byte) error {
 	if err != nil {
 		return err
 	}
-	seq, err := st.NextSequence()
-	if err != nil {
+
+	lookupKey := append(buf, 0)
+
+	_, err = st.Get(lookupKey)
+	switch err {
+	case nil:
+		seq, err := st.NextSequence()
+		if err != nil {
+			return err
+		}
+		buf = key.AppendInt64(buf, int64(seq))
+		buf = append(buf, 1)
+	case engine.ErrKeyNotFound:
+		buf = lookupKey
+	default:
 		return err
 	}
-	buf = key.AppendInt64(buf, int64(seq))
 
 	return st.Put(buf, k)
 }
@@ -103,15 +115,18 @@ func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func
 		var err error
 
 		k := item.Key()
-
-		idx := len(k) - 8
+		if k[len(k)-1] == 0 {
+			k = k[:len(k)-1]
+		} else {
+			k = k[:len(k)-9]
+		}
 
 		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
 			return err
 		}
 
-		return fn(k[:idx], buf, bytes.Equal(k[:idx], encodedValue))
+		return fn(k, buf, bytes.Equal(k, encodedValue))
 	})
 }
 
