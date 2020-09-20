@@ -372,8 +372,8 @@ func (i *IndexConfig) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	buf.Add("unique", document.NewBoolValue(i.Unique))
-	buf.Add("indexname", document.NewTextValue(i.IndexName))
-	buf.Add("tablename", document.NewTextValue(i.TableName))
+	buf.Add("index_name", document.NewTextValue(i.IndexName))
+	buf.Add("table_name", document.NewTextValue(i.TableName))
 	buf.Add("path", document.NewArrayValue(valuePathToArray(i.Path)))
 	return buf
 }
@@ -386,13 +386,13 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	}
 	i.Unique = v.V.(bool)
 
-	v, err = d.GetByField("indexname")
+	v, err = d.GetByField("index_name")
 	if err != nil {
 		return err
 	}
 	i.IndexName = string(v.V.(string))
 
-	v, err = d.GetByField("tablename")
+	v, err = d.GetByField("table_name")
 	if err != nil {
 		return err
 	}

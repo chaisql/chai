@@ -239,7 +239,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 	err = document.NewStream(&tb).
 		Filter(func(d document.Document) (bool, error) {
-			v, err := d.GetByField("tablename")
+			v, err := d.GetByField("table_name")
 			if err != nil {
 				return false, err
 			}
