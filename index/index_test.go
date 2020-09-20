@@ -51,6 +51,16 @@ func TestIndexSet(t *testing.T) {
 		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
 		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
 	})
+
+	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
+		idx, cleanup := getIndex(t, true)
+		idx.Type = document.IntegerValue
+		defer cleanup()
+
+		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
+		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
+	})
 }
 
 func TestIndexDelete(t *testing.T) {
@@ -232,13 +242,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(int(i+10))), []byte{'s', 'a' + byte(i)}))
 			}
 
-			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
-				return nil
-			})
-
 			var ints, doubles, texts int
 			var count int
-			err = idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
+			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
 				if count < 20 && count%2 == 0 {
 					requireEqualEncoded(t, document.NewIntegerValue(int64(ints)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
@@ -259,6 +265,29 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.Equal(t, 30, count)
 			require.Equal(t, 10, ints)
 			require.Equal(t, 10, texts)
+		})
+
+		t.Run(text+"With no pivot and typed index, should iterate over all documents in order", func(t *testing.T) {
+			idx, cleanup := getIndex(t, unique)
+			idx.Type = document.IntegerValue
+			defer cleanup()
+
+			for i := int64(0); i < 10; i++ {
+				require.NoError(t, idx.Set(document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
+			}
+
+			var ints int
+			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
+				enc, err := key.Append(nil, document.IntegerValue, int64(ints))
+				require.NoError(t, err)
+				require.Equal(t, enc, val)
+				require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
+				ints++
+
+				return nil
+			})
+			require.NoError(t, err)
+			require.Equal(t, 10, ints)
 		})
 	}
 
