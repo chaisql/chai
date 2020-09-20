@@ -2,6 +2,7 @@ package index
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -10,8 +11,9 @@ import (
 
 // UniqueIndex is an implementation that associates a value with a exactly one key.
 type UniqueIndex struct {
-	tx   engine.Transaction
-	name string
+	tx        engine.Transaction
+	name      string
+	storeName []byte
 }
 
 // Set associates a value with exactly one key.
@@ -20,14 +22,13 @@ type UniqueIndex struct {
 func (idx *UniqueIndex) Set(v document.Value, k []byte) error {
 	var err error
 
-	idxType := v.Type
-	if v.Type == document.IntegerValue {
-		idxType = document.DoubleValue
+	if len(k) == 0 {
+		return errors.New("cannot index value without a key")
 	}
 
-	st, err := getOrCreateStore(idx.tx, idxType, idx.name)
+	st, err := getOrCreateStore(idx.tx, idx.storeName)
 	if err != nil {
-		return err
+		return nil
 	}
 
 	enc, err := key.AppendValue(nil, v)
@@ -48,16 +49,9 @@ func (idx *UniqueIndex) Set(v document.Value, k []byte) error {
 
 // Delete all the references to the key from the index.
 func (idx *UniqueIndex) Delete(v document.Value, k []byte) error {
-	var err error
-
-	idxType := v.Type
-	if v.Type == document.IntegerValue {
-		idxType = document.DoubleValue
-	}
-
-	st, err := getOrCreateStore(idx.tx, idxType, idx.name)
+	st, err := getOrCreateStore(idx.tx, idx.storeName)
 	if err != nil {
-		return err
+		return nil
 	}
 
 	enc, err := key.AppendValue(nil, v)
@@ -72,18 +66,6 @@ func (idx *UniqueIndex) Delete(v document.Value, k []byte) error {
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the beginning.
 func (idx *UniqueIndex) AscendGreaterOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
-	// iterate over all stores in order
-	if pivot.Type == 0 {
-		for i := 0; i < len(valueTypes); i++ {
-			err := idx.iterateOnStore(document.Value{Type: valueTypes[i]}, false, fn)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
 	return idx.iterateOnStore(pivot, false, fn)
 }
 
@@ -91,38 +73,54 @@ func (idx *UniqueIndex) AscendGreaterOrEqual(pivot document.Value, fn func(val, 
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is nil, starts from the end.
 func (idx *UniqueIndex) DescendLessOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
-	// iterate over all stores in order
-	if pivot.Type == 0 {
-		for i := len(valueTypes) - 1; i >= 0; i-- {
-			err := idx.iterateOnStore(document.Value{Type: valueTypes[i]}, true, fn)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
 	return idx.iterateOnStore(pivot, true, fn)
 }
 
 func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
-	var err error
+	var buf []byte
 
-	idxType := pivot.Type
+	errBreak := errors.New("break")
 
-	if pivot.Type == document.IntegerValue {
-		idxType = document.DoubleValue
+	err := idx.iterate(pivot, reverse, func(encodedValue []byte, item engine.Item) error {
+		var err error
+
+		k := item.Key()
+
+		if pivot.Type == document.IntegerValue {
+			pivot.Type = document.DoubleValue
+		}
+
+		if pivot.Type != 0 && k[0] != byte(pivot.Type) {
+			return errBreak
+		}
+
+		buf, err = item.ValueCopy(buf[:0])
+		if err != nil {
+			return err
+		}
+
+		return fn(k, buf, bytes.Equal(k, encodedValue))
+	})
+
+	if err != nil {
+		if err == errBreak {
+			return nil
+		}
+
+		return err
 	}
 
-	st, err := getStore(idx.tx, idxType, idx.name)
-	if err != nil {
+	return nil
+}
+
+func (idx *UniqueIndex) iterate(pivot document.Value, reverse bool, fn func(encodedValue []byte, item engine.Item) error) error {
+	st, err := idx.tx.GetStore(idx.storeName)
+	if err != nil && err != engine.ErrStoreNotFound {
 		return err
 	}
 	if st == nil {
 		return nil
 	}
-	var v []byte
 
 	var seek, enc []byte
 
@@ -138,19 +136,23 @@ func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn fu
 		}
 	}
 
+	if pivot.Type == document.IntegerValue {
+		pivot.Type = document.DoubleValue
+	}
+
+	if pivot.Type != 0 && pivot.V == nil {
+		seek = []byte{byte(pivot.Type)}
+
+		if reverse {
+			seek = append(seek, 0xFF)
+		}
+	}
+
 	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {
-		item := it.Item()
-
-		v, err = item.ValueCopy(v[:0])
-		if err != nil {
-			return err
-		}
-
-		k := item.Key()
-		err = fn(k, v, bytes.Equal(k, enc))
+		err := fn(enc, it.Item())
 		if err != nil {
 			return err
 		}
@@ -161,12 +163,5 @@ func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn fu
 
 // Truncate deletes all the index data.
 func (idx *UniqueIndex) Truncate() error {
-	for t := document.NullValue; t <= document.BlobValue; t++ {
-		err := dropStore(idx.tx, t, idx.name)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return idx.tx.DropStore(idx.storeName)
 }

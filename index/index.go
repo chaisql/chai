@@ -1,7 +1,6 @@
 package index
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/genjidb/genji/document"
@@ -57,34 +56,25 @@ type Index interface {
 // NewListIndex creates an index that associates a value with a list of keys.
 func NewListIndex(tx engine.Transaction, idxName string) *ListIndex {
 	return &ListIndex{
-		tx:   tx,
-		name: idxName,
+		tx:        tx,
+		name:      idxName,
+		storeName: append([]byte(storePrefix), idxName...),
 	}
 }
 
 // NewUniqueIndex creates an index that associates a value with a exactly one key.
 func NewUniqueIndex(tx engine.Transaction, idxName string) *UniqueIndex {
 	return &UniqueIndex{
-		tx:   tx,
-		name: idxName,
+		tx:        tx,
+		name:      idxName,
+		storeName: append([]byte(storePrefix), idxName...),
 	}
 }
 
-func buildIndexName(name []byte, t document.ValueType) []byte {
-	var buf bytes.Buffer
+var errStop = errors.New("stop")
 
-	buf.Grow(len(storePrefix) + len(name) + 1)
-
-	buf.WriteString(storePrefix)
-	buf.Write(name)
-	buf.WriteByte(byte(t))
-
-	return buf.Bytes()
-}
-
-func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) (engine.Store, error) {
-	idxName := buildIndexName([]byte(name), t)
-	st, err := tx.GetStore(idxName)
+func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) {
+	st, err := tx.GetStore(name)
 	if err == nil {
 		return st, nil
 	}
@@ -93,34 +83,10 @@ func getOrCreateStore(tx engine.Transaction, t document.ValueType, name string) 
 		return nil, err
 	}
 
-	err = tx.CreateStore(idxName)
+	err = tx.CreateStore(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return tx.GetStore(idxName)
-}
-
-func getStore(tx engine.Transaction, t document.ValueType, name string) (engine.Store, error) {
-	idxName := buildIndexName([]byte(name), t)
-	st, err := tx.GetStore(idxName)
-	if err == nil || err == engine.ErrStoreNotFound {
-		return st, nil
-	}
-
-	return nil, err
-}
-
-func dropStore(tx engine.Transaction, t document.ValueType, name string) error {
-	idxName := buildIndexName([]byte(name), t)
-	_, err := tx.GetStore(idxName)
-	if err != nil && err != engine.ErrStoreNotFound {
-		return err
-	}
-
-	if err == engine.ErrStoreNotFound {
-		return nil
-	}
-
-	return tx.DropStore(idxName)
+	return tx.GetStore(name)
 }
