@@ -40,12 +40,17 @@ type Index struct {
 	storeName []byte
 }
 
+// Options of the index.
+type Options struct {
+	Unique bool
+}
+
 // NewIndex creates an index that associates a value with a list of keys.
-func NewIndex(tx engine.Transaction, idxName string, unique bool) *Index {
+func NewIndex(tx engine.Transaction, idxName string, opts Options) *Index {
 	return &Index{
 		tx:        tx,
 		storeName: append([]byte(storePrefix), idxName...),
-		Unique:    unique,
+		Unique:    opts.Unique,
 	}
 }
 
@@ -117,7 +122,7 @@ func (idx *Index) Delete(v document.Value, k []byte) error {
 	var toDelete []byte
 	var buf []byte
 	err = iterate(st, v, false, func(item engine.Item) error {
-		buf, err = item.ValueCopy(buf)
+		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
 			return err
 		}
@@ -154,7 +159,6 @@ func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []by
 }
 
 func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
-	var buf []byte
 	st, err := idx.tx.GetStore(idx.storeName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
@@ -171,6 +175,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 		}
 	}
 
+	var buf []byte
 	return iterate(st, pivot, reverse, func(item engine.Item) error {
 		var err error
 
