@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -59,14 +57,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func fail(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, a...)
-	os.Exit(2)
-}
-
-func exitRecordUsage() {
-	flag.Usage()
-	os.Exit(2)
 }
