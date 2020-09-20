@@ -88,6 +88,9 @@ func DecodeFloat64(buf []byte) (float64, error) {
 // The float value will first be converted to an integer, encoded using AppendInt64,
 // then AppendFloat64 will be called with the float value.
 func AppendIntSortedFloat(buf []byte, x float64) []byte {
+	if x > math.MaxInt64 {
+		return AppendFloat64(AppendInt64(buf, math.MaxInt64), x)
+	}
 	return AppendFloat64(AppendInt64(buf, int64(x)), x)
 }
 
