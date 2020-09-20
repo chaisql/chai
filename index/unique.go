@@ -78,8 +78,15 @@ func (idx *UniqueIndex) DescendLessOrEqual(pivot document.Value, fn func(val, ke
 
 func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
 	var buf []byte
+	st, err := idx.tx.GetStore(idx.storeName)
+	if err != nil && err != engine.ErrStoreNotFound {
+		return err
+	}
+	if st == nil {
+		return nil
+	}
 
-	return idx.iterate(pivot, reverse, func(encodedValue []byte, item engine.Item) error {
+	return iterate(st, pivot, reverse, func(encodedValue []byte, item engine.Item) error {
 		var err error
 
 		k := item.Key()
@@ -91,60 +98,6 @@ func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn fu
 
 		return fn(k, buf, bytes.Equal(k, encodedValue))
 	})
-}
-
-func (idx *UniqueIndex) iterate(pivot document.Value, reverse bool, fn func(encodedValue []byte, item engine.Item) error) error {
-	st, err := idx.tx.GetStore(idx.storeName)
-	if err != nil && err != engine.ErrStoreNotFound {
-		return err
-	}
-	if st == nil {
-		return nil
-	}
-
-	var seek, enc []byte
-
-	if pivot.V != nil {
-		enc, err = key.AppendValue(nil, pivot)
-		if err != nil {
-			return err
-		}
-		seek = enc
-
-		if reverse {
-			seek = append(seek, 0xFF)
-		}
-	}
-
-	if pivot.Type == document.IntegerValue {
-		pivot.Type = document.DoubleValue
-	}
-
-	if pivot.Type != 0 && pivot.V == nil {
-		seek = []byte{byte(pivot.Type)}
-
-		if reverse {
-			seek = append(seek, 0xFF)
-		}
-	}
-
-	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
-	defer it.Close()
-
-	for it.Seek(seek); it.Valid(); it.Next() {
-		itm := it.Item()
-
-		if pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
-			return nil
-		}
-
-		err := fn(enc, itm)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // Truncate deletes all the index data.

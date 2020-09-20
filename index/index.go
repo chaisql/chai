@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/key"
 )
 
 const (
@@ -89,4 +90,51 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 	}
 
 	return tx.GetStore(name)
+}
+
+func iterate(st engine.Store, pivot document.Value, reverse bool, fn func(encodedValue []byte, item engine.Item) error) error {
+	var seek, enc []byte
+	var err error
+
+	if pivot.V != nil {
+		enc, err = key.AppendValue(nil, pivot)
+		if err != nil {
+			return err
+		}
+		seek = enc
+
+		if reverse {
+			seek = append(seek, 0xFF)
+		}
+	}
+
+	if pivot.Type == document.IntegerValue {
+		pivot.Type = document.DoubleValue
+	}
+
+	if pivot.Type != 0 && pivot.V == nil {
+		seek = []byte{byte(pivot.Type)}
+
+		if reverse {
+			seek = append(seek, 0xFF)
+		}
+	}
+
+	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
+	defer it.Close()
+
+	for it.Seek(seek); it.Valid(); it.Next() {
+		itm := it.Item()
+
+		if pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
+			return nil
+		}
+
+		err := fn(enc, itm)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
