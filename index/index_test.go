@@ -19,7 +19,7 @@ func getIndex(t testing.TB, unique bool) (*index.Index, func()) {
 	tx, err := ng.Begin(true)
 	require.NoError(t, err)
 
-	idx := index.NewIndex(tx, "foo", unique)
+	idx := index.NewIndex(tx, "foo", index.Options{Unique: unique})
 
 	return idx, func() {
 		tx.Rollback()
