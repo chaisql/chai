@@ -163,5 +163,10 @@ func (idx *UniqueIndex) iterate(pivot document.Value, reverse bool, fn func(enco
 
 // Truncate deletes all the index data.
 func (idx *UniqueIndex) Truncate() error {
-	return idx.tx.DropStore(idx.storeName)
+	err := idx.tx.DropStore(idx.storeName)
+	if err != nil && err != engine.ErrStoreNotFound {
+		return err
+	}
+
+	return nil
 }
