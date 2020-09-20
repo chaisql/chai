@@ -2,12 +2,12 @@ package database
 
 import (
 	"bytes"
+	"encoding/binary"
 	"sync"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
-	"github.com/genjidb/genji/key"
 )
 
 const storePrefix = 't'
@@ -202,7 +202,10 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		if err != nil {
 			return err
 		}
-		info.storeName = key.AppendInt64([]byte{storePrefix}, int64(seq))
+		buf := make([]byte, binary.MaxVarintLen64+1)
+		buf[0] = storePrefix
+		n := binary.PutUvarint(buf[1:], seq)
+		info.storeName = buf[:n+1]
 	}
 
 	var buf bytes.Buffer
