@@ -2,6 +2,8 @@ package key
 
 import (
 	"bytes"
+	"math"
+	"sort"
 	"testing"
 	"time"
 
@@ -61,4 +63,50 @@ func TestOrdering(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Ordered ints and floats", func(t *testing.T) {
+		ints := []int64{
+			40, 7000, math.MaxInt64 - 1, math.MaxInt64,
+		}
+		floats := []float64{
+			-1000.4, 40, 7000.3, math.MaxFloat64 - 1, math.MaxFloat64,
+		}
+
+		var encoded [][]byte
+		for _, nb := range ints {
+			encoded = append(encoded, AppendInt64(nil, nb))
+		}
+		for _, nb := range floats {
+			encoded = append(encoded, AppendIntSortedFloat(nil, nb))
+		}
+
+		sort.Slice(encoded, func(i, j int) bool {
+			return bytes.Compare(encoded[i], encoded[j]) < 0
+		})
+
+		want := []interface{}{
+			-1000.4,
+			int64(40),
+			float64(40),
+			int64(7000),
+			7000.3,
+			int64(math.MaxInt64 - 1),
+			int64(math.MaxInt64),
+			math.MaxFloat64 - 1,
+			math.MaxFloat64,
+		}
+
+		var err error
+		var x interface{}
+
+		for i, enc := range encoded {
+			if len(enc) == 16 {
+				x, err = DecodeFloat64(enc[8:])
+			} else {
+				x, err = DecodeInt64(enc)
+			}
+			require.NoError(t, err)
+			require.Equal(t, want[i], x)
+		}
+	})
 }
