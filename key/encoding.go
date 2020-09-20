@@ -9,6 +9,7 @@ package key
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"math"
@@ -16,6 +17,10 @@ import (
 
 	"github.com/genjidb/genji/document"
 )
+
+const base64encoder = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+
+var base64Encoding = base64.NewEncoding(base64encoder).WithPadding(base64.NoPadding)
 
 // AppendBool takes a bool and returns its binary representation.
 func AppendBool(buf []byte, x bool) []byte {
@@ -121,7 +126,19 @@ func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 	case document.BlobValue:
 		return append(buf, v.V.([]byte)...), nil
 	case document.TextValue:
-		return append(buf, v.V.(string)...), nil
+		text := v.V.(string)
+		b := bytes.NewBuffer(buf)
+		enc := base64.NewEncoder(base64Encoding, b)
+		_, err := enc.Write([]byte(text))
+		if err != nil {
+			return nil, err
+		}
+		err = enc.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		return b.Bytes(), nil
 	case document.BoolValue:
 		return AppendBool(buf, v.V.(bool)), nil
 	case document.IntegerValue, document.DoubleValue:
@@ -144,7 +161,13 @@ func DecodeValue(data []byte) (document.Value, error) {
 	case document.BlobValue:
 		return document.NewBlobValue(data), nil
 	case document.TextValue:
-		return document.NewTextValue(string(data)), nil
+		var buf bytes.Buffer
+		dec := base64.NewDecoder(base64Encoding, bytes.NewReader(data))
+		_, err := buf.ReadFrom(dec)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewTextValue(buf.String()), nil
 	case document.BoolValue:
 		return document.NewBoolValue(DecodeBool(data)), nil
 	case document.DoubleValue:
