@@ -14,18 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getIndex(t testing.TB, unique bool) (index.Index, func()) {
+func getIndex(t testing.TB, unique bool) (*index.Index, func()) {
 	ng := memoryengine.NewEngine()
 	tx, err := ng.Begin(true)
 	require.NoError(t, err)
 
-	var idx index.Index
-
-	if unique {
-		idx = index.NewUniqueIndex(tx, "foo")
-	} else {
-		idx = index.NewListIndex(tx, "foo")
-	}
+	idx := index.NewIndex(tx, "foo", unique)
 
 	return idx, func() {
 		tx.Rollback()

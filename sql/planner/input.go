@@ -6,7 +6,6 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -57,7 +56,7 @@ type indexInputNode struct {
 	tx               *database.Transaction
 	params           []expr.Param
 	table            *database.Table
-	index            index.Index
+	index            *database.Index
 	iop              IndexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token
@@ -117,14 +116,14 @@ func (n *indexInputNode) String() string {
 // IndexIteratorOperator is an operator that can be used
 // as an input node.
 type IndexIteratorOperator interface {
-	IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
+	IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
 }
 
 type indexIterator struct {
 	tx               *database.Transaction
 	tb               *database.Table
 	params           []expr.Param
-	index            index.Index
+	index            *database.Index
 	iop              IndexIteratorOperator
 	e                expr.Expr
 	orderByDirection scanner.Token

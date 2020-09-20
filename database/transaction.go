@@ -237,12 +237,7 @@ func (tx *Transaction) GetIndex(name string) (*Index, error) {
 		return nil, err
 	}
 
-	var idx index.Index
-	if opts.Unique {
-		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
-	} else {
-		idx = index.NewListIndex(tx.tx, opts.IndexName)
-	}
+	idx := index.NewIndex(tx.tx, opts.IndexName, opts.Unique)
 
 	return &Index{
 		Index: idx,
@@ -261,12 +256,7 @@ func (tx *Transaction) DropIndex(name string) error {
 		return err
 	}
 
-	var idx index.Index
-	if opts.Unique {
-		idx = index.NewUniqueIndex(tx.tx, opts.IndexName)
-	} else {
-		idx = index.NewListIndex(tx.tx, opts.IndexName)
-	}
+	idx := index.NewIndex(tx.tx, opts.IndexName, opts.Unique)
 
 	return idx.Truncate()
 }
