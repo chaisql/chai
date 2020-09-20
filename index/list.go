@@ -92,20 +92,10 @@ func (idx *ListIndex) DescendLessOrEqual(pivot document.Value, fn func(val, key 
 func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
 	var buf []byte
 
-	errBreak := errors.New("break")
-
-	err := idx.iterate(pivot, reverse, func(encodedValue []byte, item engine.Item) error {
+	return idx.iterate(pivot, reverse, func(encodedValue []byte, item engine.Item) error {
 		var err error
 
 		k := item.Key()
-
-		if pivot.Type == document.IntegerValue {
-			pivot.Type = document.DoubleValue
-		}
-
-		if pivot.Type != 0 && k[0] != byte(pivot.Type) {
-			return errBreak
-		}
 
 		idx := len(k) - 8
 
@@ -116,16 +106,6 @@ func (idx *ListIndex) iterateOnStore(pivot document.Value, reverse bool, fn func
 
 		return fn(k[:idx], buf, bytes.Equal(k[:idx], encodedValue))
 	})
-
-	if err != nil {
-		if err == errBreak {
-			return nil
-		}
-
-		return err
-	}
-
-	return nil
 }
 
 func (idx *ListIndex) iterate(pivot document.Value, reverse bool, fn func(encodedValue []byte, item engine.Item) error) error {
@@ -167,7 +147,13 @@ func (idx *ListIndex) iterate(pivot document.Value, reverse bool, fn func(encode
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {
-		err := fn(enc, it.Item())
+		itm := it.Item()
+
+		if pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
+			return nil
+		}
+
+		err := fn(enc, itm)
 		if err != nil {
 			return err
 		}

@@ -79,20 +79,10 @@ func (idx *UniqueIndex) DescendLessOrEqual(pivot document.Value, fn func(val, ke
 func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
 	var buf []byte
 
-	errBreak := errors.New("break")
-
-	err := idx.iterate(pivot, reverse, func(encodedValue []byte, item engine.Item) error {
+	return idx.iterate(pivot, reverse, func(encodedValue []byte, item engine.Item) error {
 		var err error
 
 		k := item.Key()
-
-		if pivot.Type == document.IntegerValue {
-			pivot.Type = document.DoubleValue
-		}
-
-		if pivot.Type != 0 && k[0] != byte(pivot.Type) {
-			return errBreak
-		}
 
 		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
@@ -101,16 +91,6 @@ func (idx *UniqueIndex) iterateOnStore(pivot document.Value, reverse bool, fn fu
 
 		return fn(k, buf, bytes.Equal(k, encodedValue))
 	})
-
-	if err != nil {
-		if err == errBreak {
-			return nil
-		}
-
-		return err
-	}
-
-	return nil
 }
 
 func (idx *UniqueIndex) iterate(pivot document.Value, reverse bool, fn func(encodedValue []byte, item engine.Item) error) error {
@@ -152,7 +132,13 @@ func (idx *UniqueIndex) iterate(pivot document.Value, reverse bool, fn func(enco
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {
-		err := fn(enc, it.Item())
+		itm := it.Item()
+
+		if pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
+			return nil
+		}
+
+		err := fn(enc, itm)
 		if err != nil {
 			return err
 		}
