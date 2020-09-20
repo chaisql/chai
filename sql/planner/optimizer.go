@@ -3,7 +3,6 @@ package planner
 import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -321,8 +320,8 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 
 		// if the candidate's related index is a unique index,
 		// select it.
-		idx := candidate.in.index.(database.Index)
-		if _, ok := idx.Index.(*index.UniqueIndex); ok {
+		idx := candidate.in.index
+		if idx.Unique {
 			selectedCandidate = &candidates[i]
 		}
 	}
@@ -399,7 +398,7 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 	}
 
 	in := NewIndexInputNode(tableName, idx.Opts.IndexName, iop, e, scanner.ASC).(*indexInputNode)
-	in.index = idx
+	in.index = &idx
 
 	return in
 }

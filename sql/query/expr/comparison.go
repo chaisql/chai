@@ -8,7 +8,6 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -34,7 +33,7 @@ func Eq(a, b Expr) Expr {
 
 var errStop = errors.New("errStop")
 
-func (op eqOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op eqOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
 		if isEqual {
 			d, err := tb.GetDocument(key)
@@ -103,7 +102,7 @@ func Gt(a, b Expr) Expr {
 	return gtOp{newCmpOp(a, b, scanner.GT)}
 }
 
-func (op gtOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op gtOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
 		if isEqual {
 			return nil
@@ -170,7 +169,7 @@ func Gte(a, b Expr) Expr {
 	return gteOp{newCmpOp(a, b, scanner.GTE)}
 }
 
-func (op gteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op gteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
 		d, err := tb.GetDocument(key)
 		if err != nil {
@@ -230,7 +229,7 @@ func Lt(a, b Expr) Expr {
 	return ltOp{newCmpOp(a, b, scanner.LT)}
 }
 
-func (op ltOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	var err error
 
 	if v.Type == document.IntegerValue {
@@ -310,7 +309,7 @@ func Lte(a, b Expr) Expr {
 	return lteOp{newCmpOp(a, b, scanner.LTE)}
 }
 
-func (op lteOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	var err error
 
 	if v.Type == document.IntegerValue {
@@ -486,7 +485,7 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op inOp) IterateIndex(idx index.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op inOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	if v.Type != document.ArrayValue {
 		return errors.New("IN operator takes an array")
 	}

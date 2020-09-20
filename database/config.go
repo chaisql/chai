@@ -409,7 +409,7 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 // Index of a table field. Contains information about
 // the index configuration and provides methods to manipulate the index.
 type Index struct {
-	index.Index
+	*index.Index
 	Opts IndexConfig
 }
 
