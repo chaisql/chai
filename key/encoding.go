@@ -8,6 +8,7 @@
 package key
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"math"
@@ -110,6 +111,12 @@ func AppendNumber(buf []byte, v document.Value) ([]byte, error) {
 // AppendValue encodes a value as a key.
 // It only works with scalars and doesn't support documents and arrays.
 func AppendValue(buf []byte, v document.Value) ([]byte, error) {
+	if v.Type == document.IntegerValue || v.Type == document.DoubleValue {
+		buf = append(buf, byte(document.DoubleValue))
+	} else {
+		buf = append(buf, byte(v.Type))
+	}
+
 	switch v.Type {
 	case document.BlobValue:
 		return append(buf, v.V.([]byte)...), nil
@@ -129,7 +136,68 @@ func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 }
 
 // DecodeValue takes some encoded data and decodes it to the target type t.
-func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
+func DecodeValue(data []byte) (document.Value, error) {
+	t := document.ValueType(data[0])
+	data = data[1:]
+
+	switch t {
+	case document.BlobValue:
+		return document.NewBlobValue(data), nil
+	case document.TextValue:
+		return document.NewTextValue(string(data)), nil
+	case document.BoolValue:
+		return document.NewBoolValue(DecodeBool(data)), nil
+	case document.DoubleValue:
+		if bytes.Equal(data[8:], []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
+			x, err := DecodeInt64(data[:8])
+			if err != nil {
+				return document.Value{}, err
+			}
+			return document.NewIntegerValue(x), nil
+		}
+		x, err := DecodeFloat64(data[8:])
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewDoubleValue(x), nil
+	case document.DurationValue:
+		x, err := DecodeInt64(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewDurationValue(time.Duration(x)), nil
+	case document.NullValue:
+		return document.NewNullValue(), nil
+	}
+
+	return document.Value{}, errors.New("unknown type")
+}
+
+// Append encodes a value of the type t as a key.
+// The encoded key doesn't include type information.
+func Append(buf []byte, t document.ValueType, v interface{}) ([]byte, error) {
+	switch t {
+	case document.BlobValue:
+		return append(buf, v.([]byte)...), nil
+	case document.TextValue:
+		return append(buf, v.(string)...), nil
+	case document.BoolValue:
+		return AppendBool(buf, v.(bool)), nil
+	case document.IntegerValue:
+		return AppendInt64(buf, v.(int64)), nil
+	case document.DoubleValue:
+		return AppendFloat64(buf, v.(float64)), nil
+	case document.DurationValue:
+		return AppendInt64(buf, int64(v.(time.Duration))), nil
+	case document.NullValue:
+		return buf, nil
+	}
+
+	return nil, errors.New("cannot encode type " + t.String() + " as key")
+}
+
+// Decode takes some encoded data and decodes it to the target type t.
+func Decode(t document.ValueType, data []byte) (document.Value, error) {
 	switch t {
 	case document.BlobValue:
 		return document.NewBlobValue(data), nil
@@ -138,13 +206,14 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	case document.BoolValue:
 		return document.NewBoolValue(DecodeBool(data)), nil
 	case document.IntegerValue:
-		x, err := DecodeInt64(data[:8])
+		x, err := DecodeInt64(data)
 		if err != nil {
 			return document.Value{}, err
 		}
+
 		return document.NewIntegerValue(x), nil
 	case document.DoubleValue:
-		x, err := DecodeFloat64(data[8:])
+		x, err := DecodeFloat64(data)
 		if err != nil {
 			return document.Value{}, err
 		}
