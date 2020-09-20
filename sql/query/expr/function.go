@@ -61,7 +61,12 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 		return pk.Path.GetValue(ctx.Document)
 	}
 
-	return key.DecodeValue(document.IntegerValue, ctx.Document.(document.Keyer).Key())
+	i, err := key.DecodeInt64(ctx.Document.(document.Keyer).Key())
+	if err != nil {
+		return document.Value{}, err
+	}
+
+	return document.NewIntegerValue(i), nil
 }
 
 // IsEqual compares this expression with the other expression and returns
