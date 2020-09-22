@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji"
@@ -14,6 +15,8 @@ import (
 	"os"
 	"strings"
 )
+
+var ErrNoData = errors.New("no data to insert")
 
 func skipSpaces(r *bufio.Reader) (byte, error) {
 	var c byte
@@ -101,7 +104,6 @@ func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 
 	default:
 		return fmt.Errorf("found %q, but expected '{' or '['", c)
-
 	}
 
 	return nil
@@ -133,6 +135,10 @@ func runInsertCommand(e, DBPath, table string, args []string) error {
 	// Insert command is given in the pipe
 	if (m & os.ModeNamedPipe) != 0 {
 		return executeInsertCommand(db, table, os.Stdin)
+	}
+
+	if len(args) == 0 {
+		return ErrNoData
 	}
 
 	for _, arg := range args {
