@@ -3,6 +3,7 @@ package document
 
 import (
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -39,6 +40,26 @@ func Length(d Document) (int, error) {
 		return nil
 	})
 	return len, err
+}
+
+// Fields returns a list of all the fields at the root of the document
+// sorted lexicographically.
+func Fields(d Document) ([]string, error) {
+	if fb, ok := d.(*FieldBuffer); ok {
+		return fb.Fields(), nil
+	}
+
+	var fields []string
+	err := d.Iterate(func(f string, _ Value) error {
+		fields = append(fields, f)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(fields)
+	return fields, nil
 }
 
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
@@ -258,6 +279,18 @@ func (fb *FieldBuffer) Reset() {
 // Key of the document if any.
 func (fb *FieldBuffer) Key() []byte {
 	return fb.key
+}
+
+// Fields returns a sorted list of root field names.
+func (fb *FieldBuffer) Fields() []string {
+	fields := make([]string, len(fb.fields))
+
+	for i := range fb.fields {
+		fields[i] = fb.fields[i].Field
+	}
+
+	sort.Strings(fields)
+	return fields
 }
 
 // A ValuePath represents the path to a particular value within a document.

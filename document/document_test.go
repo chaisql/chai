@@ -78,6 +78,11 @@ func TestFieldBuffer(t *testing.T) {
 		require.Zero(t, v)
 	})
 
+	t.Run("Fields", func(t *testing.T) {
+		require.Equal(t, []string{}, document.NewFieldBuffer())
+		require.Equal(t, []string{"a", "b"}, buf.Fields())
+	})
+
 	t.Run("Set", func(t *testing.T) {
 
 		tests := []struct {
@@ -92,9 +97,9 @@ func TestFieldBuffer(t *testing.T) {
 			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, document.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
 			{"nested doc", `{"a": "foo"}`, `a`, document.NewDocumentValue(document.NewFieldBuffer().
 				Add("b", document.NewArrayValue(document.NewValueBuffer().
-				Append(document.NewIntegerValue(1)).
-				Append(document.NewIntegerValue(2)).
-				Append(document.NewIntegerValue(3))))), `{"a": {"b": [1, 2, 3]}}`, false},
+					Append(document.NewIntegerValue(1)).
+					Append(document.NewIntegerValue(2)).
+					Append(document.NewIntegerValue(3))))), `{"a": {"b": [1, 2, 3]}}`, false},
 			{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, document.NewArrayValue(document.NewValueBuffer().
 				Append(document.NewIntegerValue(1)).
 				Append(document.NewIntegerValue(2)).
@@ -108,7 +113,6 @@ func TestFieldBuffer(t *testing.T) {
 			{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, document.NewIntegerValue(1), ``, true},
 			{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, document.NewIntegerValue(1), ``, true},
 			{"document not array", `{"a": {"b": "foo"}}`, `a[0].b`, document.NewTextValue("bar"), ``, true},
-
 		}
 
 		for _, tt := range tests {
