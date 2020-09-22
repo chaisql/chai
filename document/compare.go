@@ -101,6 +101,10 @@ func compare(op operator, l, r Value) (bool, error) {
 	// compare arrays together
 	case l.Type == ArrayValue && r.Type == ArrayValue:
 		return compareArrays(op, l.V.(Array), r.V.(Array))
+
+	// compare documents together
+	case l.Type == DocumentValue && r.Type == DocumentValue:
+		return compareDocuments(op, l.V.(Document), r.V.(Document))
 	}
 
 	return false, nil
@@ -224,6 +228,112 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 	for {
 		lv, lerr := l.GetByIndex(i)
 		rv, rerr := r.GetByIndex(j)
+		if lerr == nil {
+			i++
+		}
+		if rerr == nil {
+			j++
+		}
+		if lerr != nil || rerr != nil {
+			break
+		}
+		isEq, err := compare(operatorEq, lv, rv)
+		if err != nil {
+			return false, err
+		}
+		if !isEq && op != operatorEq {
+			return compare(op, lv, rv)
+		}
+		if !isEq {
+			return false, nil
+		}
+	}
+
+	switch {
+	case i > j:
+		switch op {
+		case operatorEq, operatorLt, operatorLte:
+			return false, nil
+		default:
+			return true, nil
+		}
+	case i < j:
+		switch op {
+		case operatorEq, operatorGt, operatorGte:
+			return false, nil
+		default:
+			return true, nil
+		}
+	default:
+		switch op {
+		case operatorEq, operatorGte, operatorLte:
+			return true, nil
+		default:
+			return false, nil
+		}
+	}
+}
+
+func compareDocuments(op operator, l, r Document) (bool, error) {
+	lf, err := Fields(l)
+	if err != nil {
+		return false, err
+	}
+	rf, err := Fields(r)
+	if err != nil {
+		return false, err
+	}
+
+	if len(lf) == 0 && len(rf) > 0 {
+		switch op {
+		case operatorEq:
+			return false, nil
+		case operatorGt:
+			return false, nil
+		case operatorGte:
+			return false, nil
+		case operatorLt:
+			return true, nil
+		case operatorLte:
+			return true, nil
+		}
+	}
+
+	if len(rf) == 0 && len(lf) > 0 {
+		switch op {
+		case operatorEq:
+			return false, nil
+		case operatorGt:
+			return true, nil
+		case operatorGte:
+			return true, nil
+		case operatorLt:
+			return false, nil
+		case operatorLte:
+			return false, nil
+		}
+	}
+
+	var i, j int
+
+	for i < len(lf) && j < len(rf) {
+		if cmp := strings.Compare(lf[i], rf[j]); cmp != 0 {
+			switch op {
+			case operatorEq:
+				return false, nil
+			case operatorGt:
+				return cmp > 0, nil
+			case operatorGte:
+				return cmp >= 0, nil
+			case operatorLt:
+				return cmp < 0, nil
+			case operatorLte:
+				return cmp <= 0, nil
+			}
+		}
+
+		lv, lerr := l.GetByField(lf[i])
+		rv, rerr := r.GetByField(rf[j])
 		if lerr == nil {
 			i++
 		}

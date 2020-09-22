@@ -229,11 +229,18 @@ func TestCompare(t *testing.T) {
 		{"<=", `[]`, `[1,2,3]`, true, jsonToArray},
 
 		// document
-		{"=", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
+		{"=", `{}`, `{}`, true, jsonToDocument},
+		{"=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
+		{"=", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true, jsonToDocument},
+		{"=", `{"a": 1, "b": {"a": 1}}`, `{"b": {"a": 1}, "a": 1}`, true, jsonToDocument},
+		{">", `{"a": 2}`, `{"a": 1}`, true, jsonToDocument},
+		{">", `{"b": 1}`, `{"a": 1}`, true, jsonToDocument},
 		{">", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
-		{">=", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
+		{"<", `{"a": 1}`, `{"a": 2}`, true, jsonToDocument},
+		{"<", `{"a": 1}`, `{"b": 1}`, true, jsonToDocument},
 		{"<", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
-		{"<=", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
+		{">=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
+		{"<=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
 	}
 
 	for _, test := range tests {
