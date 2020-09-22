@@ -56,12 +56,22 @@ func main() {
 				engine := c.String("engine")
 				args := c.Args().Slice()
 
-				return runInsertCommand(engine, dbPath, table, args)
+				err := runInsertCommand(engine, dbPath, table, args)
+				switch err {
+				case ErrNoData:
+					cli.ShowAppHelpAndExit(c, 2)
+				case nil:
+					break
+				default:
+					return err
+				}
+
+				return nil
 			},
 
 			OnUsageError: func(c *cli.Context, err error, isSubcommand bool) error {
-				_, _ = fmt.Fprintf(c.App.Writer, "error: %s\n", err.Error())
-				return err
+				cli.ShowAppHelpAndExit(c, 2)
+				return nil
 			},
 		},
 	}
@@ -99,5 +109,6 @@ func main() {
 	err := app.Run(os.Args)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stdout, "error: %v\n", err)
+		os.Exit(2)
 	}
 }
