@@ -79,7 +79,7 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Fields", func(t *testing.T) {
-		require.Equal(t, []string{}, document.NewFieldBuffer())
+		require.Equal(t, []string{}, document.NewFieldBuffer().Fields())
 		require.Equal(t, []string{"a", "b"}, buf.Fields())
 	})
 
