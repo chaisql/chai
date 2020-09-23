@@ -35,7 +35,7 @@ func (op operator) String() string {
 
 // IsEqual returns true if v is equal to the given value.
 func (v Value) IsEqual(other Value) (bool, error) {
-	return compare(operatorEq, v, other)
+	return compare(operatorEq, v, other, false)
 }
 
 // IsNotEqual returns true if v is not equal to the given value.
@@ -50,25 +50,25 @@ func (v Value) IsNotEqual(other Value) (bool, error) {
 
 // IsGreaterThan returns true if v is greather than the given value.
 func (v Value) IsGreaterThan(other Value) (bool, error) {
-	return compare(operatorGt, v, other)
+	return compare(operatorGt, v, other, false)
 }
 
 // IsGreaterThanOrEqual returns true if v is greather than or equal to the given value.
 func (v Value) IsGreaterThanOrEqual(other Value) (bool, error) {
-	return compare(operatorGte, v, other)
+	return compare(operatorGte, v, other, false)
 }
 
 // IsLesserThan returns true if v is lesser than the given value.
 func (v Value) IsLesserThan(other Value) (bool, error) {
-	return compare(operatorLt, v, other)
+	return compare(operatorLt, v, other, false)
 }
 
 // IsLesserThanOrEqual returns true if v is lesser than or equal to the given value.
 func (v Value) IsLesserThanOrEqual(other Value) (bool, error) {
-	return compare(operatorLte, v, other)
+	return compare(operatorLte, v, other, false)
 }
 
-func compare(op operator, l, r Value) (bool, error) {
+func compare(op operator, l, r Value, compareDifferentTypes bool) (bool, error) {
 	switch {
 	// deal with nil
 	case l.Type == NullValue || r.Type == NullValue:
@@ -105,6 +105,17 @@ func compare(op operator, l, r Value) (bool, error) {
 	// compare documents together
 	case l.Type == DocumentValue && r.Type == DocumentValue:
 		return compareDocuments(op, l.V.(Document), r.V.(Document))
+	}
+
+	if compareDifferentTypes {
+		switch op {
+		case operatorEq:
+			return false, nil
+		case operatorGt, operatorGte:
+			return l.Type > r.Type, nil
+		case operatorLt, operatorLte:
+			return l.Type < r.Type, nil
+		}
 	}
 
 	return false, nil
@@ -237,12 +248,12 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
-		isEq, err := compare(operatorEq, lv, rv)
+		isEq, err := compare(operatorEq, lv, rv, true)
 		if err != nil {
 			return false, err
 		}
 		if !isEq && op != operatorEq {
-			return compare(op, lv, rv)
+			return compare(op, lv, rv, true)
 		}
 		if !isEq {
 			return false, nil
@@ -343,12 +354,12 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
-		isEq, err := compare(operatorEq, lv, rv)
+		isEq, err := compare(operatorEq, lv, rv, true)
 		if err != nil {
 			return false, err
 		}
 		if !isEq && op != operatorEq {
-			return compare(op, lv, rv)
+			return compare(op, lv, rv, true)
 		}
 		if !isEq {
 			return false, nil
