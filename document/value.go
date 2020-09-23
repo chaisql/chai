@@ -36,30 +36,30 @@ type ValueType uint8
 // These types are separated by family so that when
 // new types are introduced we don't need to modify them.
 const (
-	NullValue ValueType = 0x1
+	NullValue ValueType = 0x80
 
-	BoolValue ValueType = 0x5
+	BoolValue ValueType = 0x81
 
-	// integer family: 0x10 to 0x1F
-	IntegerValue ValueType = 0x10
+	// integer family: 0x90 to 0x9F
+	IntegerValue ValueType = 0x90
 
-	// double family: 0x20 to 0x2F
-	DoubleValue ValueType = 0x20
+	// double family: 0xA0 to 0xAF
+	DoubleValue ValueType = 0xA0
 
-	// time family: 0x30 to 0x3F
-	DurationValue ValueType = 0x30
+	// time family: 0xB0 to 0xBF
+	DurationValue ValueType = 0xB0
 
-	// string family: 0x40 to 0x4F
-	TextValue ValueType = 0x40
+	// string family: 0xC0 to 0xCF
+	TextValue ValueType = 0xC0
 
-	// blob family: 0x50 to 0x5F
-	BlobValue ValueType = 0x50
+	// blob family: 0xD0 to 0xDF
+	BlobValue ValueType = 0xD0
 
-	// array family: 0x60 to 0x6F
-	ArrayValue ValueType = 0x60
+	// array family: 0xE0 to 0xEF
+	ArrayValue ValueType = 0xE0
 
-	// document family: 0x70 to 0x7F
-	DocumentValue ValueType = 0x70
+	// document family: 0xF0 to 0xFF
+	DocumentValue ValueType = 0xF0
 )
 
 func (t ValueType) String() string {
