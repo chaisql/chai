@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAppendValueDecodeValue(t *testing.T) {
+func TestAppendDecode(t *testing.T) {
 	tests := []struct {
 		name string
 		v    document.Value
@@ -37,7 +37,7 @@ func TestAppendValueDecodeValue(t *testing.T) {
 	}
 }
 
-func TestAppendDecode(t *testing.T) {
+func TestAppendValueDecodeValue(t *testing.T) {
 	tests := []struct {
 		name string
 		v    document.Value
@@ -49,6 +49,17 @@ func TestAppendDecode(t *testing.T) {
 		{"text", document.NewTextValue("foo")},
 		{"blob", document.NewBlobValue([]byte("bar"))},
 		{"duration", document.NewDurationValue(10 * time.Second)},
+		{"array", document.NewArrayValue(document.NewValueBuffer(
+			document.NewBoolValue(true),
+			document.NewIntegerValue(55),
+			document.NewDoubleValue(789.58),
+			document.NewArrayValue(document.NewValueBuffer(
+				document.NewBoolValue(false),
+				document.NewIntegerValue(100),
+				document.NewTextValue("baz"),
+			)),
+			document.NewBlobValue([]byte("loo")),
+		))},
 	}
 
 	for _, test := range tests {

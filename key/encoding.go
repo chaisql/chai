@@ -142,8 +142,102 @@ func AppendNumber(buf []byte, v document.Value) ([]byte, error) {
 	return AppendFloat64(AppendInt64(buf, int64(x)), x), nil
 }
 
+const arrayValueDelim = 0x1f
+const arrayEnd = 0x1e
+
+// AppendArray encoded an array into a sort-ordered binary representation.
+func AppendArray(buf []byte, a document.Array) ([]byte, error) {
+	err := a.Iterate(func(i int, value document.Value) error {
+		var err error
+
+		if i > 0 {
+			buf = append(buf, arrayValueDelim)
+		}
+
+		buf, err = AppendValue(buf, value)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	buf = append(buf, arrayEnd)
+
+	return buf, nil
+}
+
+// DecodeArray decodes an array.
+func DecodeArray(data []byte) (document.Array, error) {
+	a, _, err := decodeArray(data)
+	return a, err
+}
+
+func decodeArray(data []byte) (document.Array, int, error) {
+	var vb document.ValueBuffer
+
+	var readCount int
+	for len(data) > 0 && data[0] != arrayEnd {
+		t := document.ValueType(data[0])
+		i := 1
+
+		switch t {
+		case document.NullValue:
+		case document.BoolValue:
+			i++
+		case document.DoubleValue:
+			i += 16
+		case document.DurationValue:
+			i += 8
+		case document.BlobValue, document.TextValue:
+			for i < len(data) && data[i] != arrayValueDelim && data[i] != arrayEnd {
+				i++
+			}
+		case document.ArrayValue:
+			a, n, err := decodeArray(data[i:])
+			readCount += n + i
+			if err != nil {
+				return nil, readCount, err
+			}
+			vb = append(vb, document.NewArrayValue(a))
+
+			// skip the delimiter
+			i++
+
+			data = data[n+i:]
+
+			continue
+		default:
+			return nil, 0, errors.New("invalid type character")
+		}
+
+		v, err := DecodeValue(data[:i])
+		if err != nil {
+			return nil, 0, err
+		}
+
+		vb = vb.Append(v)
+
+		// skip the delimiter
+		if data[i] == arrayValueDelim {
+			i++
+		}
+
+		readCount += i
+
+		data = data[i:]
+	}
+
+	// skip the array end character
+	readCount++
+
+	return vb, readCount, nil
+}
+
 // AppendValue encodes a value as a key.
-// It only works with scalars and doesn't support documents and arrays.
 func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 	if v.Type == document.IntegerValue || v.Type == document.DoubleValue {
 		buf = append(buf, byte(document.DoubleValue))
@@ -165,6 +259,8 @@ func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 		return AppendInt64(buf, int64(v.V.(time.Duration))), nil
 	case document.NullValue:
 		return buf, nil
+	case document.ArrayValue:
+		return AppendArray(buf, v.V.(document.Array))
 	}
 
 	return nil, errors.New("cannot encode type " + v.Type.String() + " as key")
@@ -211,6 +307,12 @@ func DecodeValue(data []byte) (document.Value, error) {
 		return document.NewDurationValue(time.Duration(x)), nil
 	case document.NullValue:
 		return document.NewNullValue(), nil
+	case document.ArrayValue:
+		a, err := DecodeArray(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewArrayValue(a), nil
 	}
 
 	return document.Value{}, errors.New("unknown type")
