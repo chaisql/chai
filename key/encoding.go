@@ -22,6 +22,11 @@ const base64encoder = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrs
 
 var base64Encoding = base64.NewEncoding(base64encoder).WithPadding(base64.NoPadding)
 
+const arrayValueDelim = 0x1f
+const arrayEnd = 0x1e
+const documentValueDelim = 0x1c
+const documentEnd = 0x1d
+
 // AppendBool takes a bool and returns its binary representation.
 func AppendBool(buf []byte, x bool) []byte {
 	if x {
@@ -142,10 +147,7 @@ func AppendNumber(buf []byte, v document.Value) ([]byte, error) {
 	return AppendFloat64(AppendInt64(buf, int64(x)), x), nil
 }
 
-const arrayValueDelim = 0x1f
-const arrayEnd = 0x1e
-
-// AppendArray encoded an array into a sort-ordered binary representation.
+// AppendArray encodes an array into a sort-ordered binary representation.
 func AppendArray(buf []byte, a document.Array) ([]byte, error) {
 	err := a.Iterate(func(i int, value document.Value) error {
 		var err error
@@ -170,6 +172,44 @@ func AppendArray(buf []byte, a document.Array) ([]byte, error) {
 	return buf, nil
 }
 
+func decodeValue(data []byte, delim, end byte) (document.Value, int, error) {
+	t := document.ValueType(data[0])
+	i := 1
+
+	switch t {
+	case document.ArrayValue:
+		a, n, err := decodeArray(data[i:])
+		i += n
+		if err != nil {
+			return document.Value{}, i, err
+		}
+		return document.NewArrayValue(a), i, nil
+	case document.DocumentValue:
+		d, n, err := decodeDocument(data[i:])
+		i += n
+		if err != nil {
+			return document.Value{}, i, err
+		}
+		return document.NewDocumentValue(d), i, nil
+	case document.NullValue:
+	case document.BoolValue:
+		i++
+	case document.DoubleValue:
+		i += 16
+	case document.DurationValue:
+		i += 8
+	case document.BlobValue, document.TextValue:
+		for i < len(data) && data[i] != delim && data[i] != end {
+			i++
+		}
+	default:
+		return document.Value{}, 0, errors.New("invalid type character")
+	}
+
+	v, err := DecodeValue(data[:i])
+	return v, i, err
+}
+
 // DecodeArray decodes an array.
 func DecodeArray(data []byte) (document.Array, error) {
 	a, _, err := decodeArray(data)
@@ -181,42 +221,9 @@ func decodeArray(data []byte) (document.Array, int, error) {
 
 	var readCount int
 	for len(data) > 0 && data[0] != arrayEnd {
-		t := document.ValueType(data[0])
-		i := 1
-
-		switch t {
-		case document.NullValue:
-		case document.BoolValue:
-			i++
-		case document.DoubleValue:
-			i += 16
-		case document.DurationValue:
-			i += 8
-		case document.BlobValue, document.TextValue:
-			for i < len(data) && data[i] != arrayValueDelim && data[i] != arrayEnd {
-				i++
-			}
-		case document.ArrayValue:
-			a, n, err := decodeArray(data[i:])
-			readCount += n + i
-			if err != nil {
-				return nil, readCount, err
-			}
-			vb = append(vb, document.NewArrayValue(a))
-
-			// skip the delimiter
-			i++
-
-			data = data[n+i:]
-
-			continue
-		default:
-			return nil, 0, errors.New("invalid type character")
-		}
-
-		v, err := DecodeValue(data[:i])
+		v, i, err := decodeValue(data, arrayValueDelim, arrayEnd)
 		if err != nil {
-			return nil, 0, err
+			return nil, i, err
 		}
 
 		vb = vb.Append(v)
@@ -235,6 +242,96 @@ func decodeArray(data []byte) (document.Array, int, error) {
 	readCount++
 
 	return vb, readCount, nil
+}
+
+// AppendDocument encodes a document into a sort-ordered binary representation.
+func AppendDocument(buf []byte, d document.Document) ([]byte, error) {
+	var i int
+	err := d.Iterate(func(field string, value document.Value) error {
+		var err error
+
+		if i > 0 {
+			buf = append(buf, documentValueDelim)
+		}
+
+		buf, err = AppendBase64(buf, []byte(field))
+		if err != nil {
+			return err
+		}
+
+		buf = append(buf, documentValueDelim)
+
+		buf, err = AppendValue(buf, value)
+		if err != nil {
+			return err
+		}
+
+		i++
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	buf = append(buf, documentEnd)
+
+	return buf, nil
+}
+
+// DecodeDocument decodes a document.
+func DecodeDocument(data []byte) (document.Document, error) {
+	a, _, err := decodeDocument(data)
+	return a, err
+}
+
+func decodeDocument(data []byte) (document.Document, int, error) {
+	var fb document.FieldBuffer
+
+	var readCount int
+	for len(data) > 0 && data[0] != documentEnd {
+		i := 0
+
+		for i < len(data) && data[i] != documentValueDelim {
+			i++
+		}
+
+		field, err := DecodeBase64(data[:i])
+		if err != nil {
+			return nil, 0, err
+		}
+
+		// skip the delimiter
+		i++
+
+		if i >= len(data) {
+			return nil, 0, errors.New("invalid end of input")
+		}
+
+		readCount += i
+
+		data = data[i:]
+
+		v, i, err := decodeValue(data, documentValueDelim, documentEnd)
+		if err != nil {
+			return nil, i, err
+		}
+
+		fb.Add(string(field), v)
+
+		// skip the delimiter
+		if data[i] == documentValueDelim {
+			i++
+		}
+
+		readCount += i
+
+		data = data[i:]
+	}
+
+	// skip the document end character
+	readCount++
+
+	return &fb, readCount, nil
 }
 
 // AppendValue encodes a value as a key.
@@ -261,6 +358,8 @@ func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 		return buf, nil
 	case document.ArrayValue:
 		return AppendArray(buf, v.V.(document.Array))
+	case document.DocumentValue:
+		return AppendDocument(buf, v.V.(document.Document))
 	}
 
 	return nil, errors.New("cannot encode type " + v.Type.String() + " as key")
@@ -313,6 +412,12 @@ func DecodeValue(data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewArrayValue(a), nil
+	case document.DocumentValue:
+		d, err := DecodeDocument(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewDocumentValue(d), nil
 	}
 
 	return document.Value{}, errors.New("unknown type")

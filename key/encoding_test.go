@@ -59,7 +59,37 @@ func TestAppendValueDecodeValue(t *testing.T) {
 				document.NewTextValue("baz"),
 			)),
 			document.NewBlobValue([]byte("loo")),
+			document.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo1", document.NewBoolValue(true)).
+					Add("foo2", document.NewIntegerValue(55)).
+					Add("foo3", document.NewArrayValue(document.NewValueBuffer(
+						document.NewBoolValue(false),
+						document.NewIntegerValue(100),
+						document.NewTextValue("baz"),
+					))),
+			),
 		))},
+		{"document", document.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo1", document.NewBoolValue(true)).
+				Add("foo2", document.NewIntegerValue(55)).
+				Add("foo3", document.NewArrayValue(document.NewValueBuffer(
+					document.NewBoolValue(false),
+					document.NewIntegerValue(100),
+					document.NewTextValue("baz"),
+				))).
+				Add("foo4", document.NewDocumentValue(
+					document.NewFieldBuffer().
+						Add("foo1", document.NewBoolValue(true)).
+						Add("foo2", document.NewIntegerValue(55)).
+						Add("foo3", document.NewArrayValue(document.NewValueBuffer(
+							document.NewBoolValue(false),
+							document.NewIntegerValue(100),
+							document.NewTextValue("baz"),
+						))),
+				)),
+		)},
 	}
 
 	for _, test := range tests {
