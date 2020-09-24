@@ -135,7 +135,7 @@ func (idx *Index) Delete(v document.Value, k []byte) error {
 
 	var toDelete []byte
 	var buf []byte
-	err = iterate(st, v, false, func(item engine.Item) error {
+	err = idx.iterate(st, v, false, func(item engine.Item) error {
 		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
 			return err
@@ -173,6 +173,10 @@ func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []by
 }
 
 func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
+	if idx.Type != 0 && pivot.Type != 0 && idx.Type != pivot.Type {
+		return nil
+	}
+
 	st, err := idx.tx.GetStore(idx.storeName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
@@ -190,7 +194,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 	}
 
 	var buf []byte
-	return iterate(st, pivot, reverse, func(item engine.Item) error {
+	return idx.iterate(st, pivot, reverse, func(item engine.Item) error {
 		var err error
 
 		k := item.Key()
@@ -252,12 +256,12 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 	return tx.GetStore(name)
 }
 
-func iterate(st engine.Store, pivot document.Value, reverse bool, fn func(item engine.Item) error) error {
+func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, fn func(item engine.Item) error) error {
 	var seek []byte
 	var err error
 
 	if pivot.V != nil {
-		seek, err = key.AppendValue(nil, pivot)
+		seek, err = idx.encodeValue(pivot)
 		if err != nil {
 			return err
 		}
@@ -285,7 +289,7 @@ func iterate(st engine.Store, pivot document.Value, reverse bool, fn func(item e
 	for it.Seek(seek); it.Valid(); it.Next() {
 		itm := it.Item()
 
-		if pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
+		if idx.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
 			return nil
 		}
 

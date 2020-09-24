@@ -441,6 +441,10 @@ func Append(buf []byte, t document.ValueType, v interface{}) ([]byte, error) {
 		return AppendInt64(buf, int64(v.(time.Duration))), nil
 	case document.NullValue:
 		return buf, nil
+	case document.ArrayValue:
+		return AppendArray(buf, v.(document.Array))
+	case document.DocumentValue:
+		return AppendDocument(buf, v.(document.Document))
 	}
 
 	return nil, errors.New("cannot encode type " + t.String() + " as key")
@@ -476,6 +480,18 @@ func Decode(t document.ValueType, data []byte) (document.Value, error) {
 		return document.NewDurationValue(time.Duration(x)), nil
 	case document.NullValue:
 		return document.NewNullValue(), nil
+	case document.ArrayValue:
+		a, err := DecodeArray(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewArrayValue(a), nil
+	case document.DocumentValue:
+		d, err := DecodeDocument(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewDocumentValue(d), nil
 	}
 
 	return document.Value{}, errors.New("unknown type")
