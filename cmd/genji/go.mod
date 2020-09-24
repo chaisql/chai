@@ -3,6 +3,7 @@ module github.com/genjidb/genji/cmd/genji
 go 1.15
 
 require (
+	github.com/agnivade/levenshtein v1.1.0
 	github.com/c-bata/go-prompt v0.2.3
 	github.com/dgraph-io/badger/v2 v2.2007.1
 	github.com/genjidb/genji v0.8.0

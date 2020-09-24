@@ -32,7 +32,9 @@ type Shell struct {
 	livePrefix string
 	multiLine  bool
 
-	history []string
+	history        []string
+
+	cmdSuggestions []prompt.Suggest
 }
 
 // Options of the shell.
@@ -99,6 +101,7 @@ func Run(opts *Options) error {
 		fmt.Println("Enter \".help\" for usage hints.")
 	}
 
+	sh.loadCommandSuggestions()
 	history, err := sh.loadHistory()
 	if err != nil {
 		return err
@@ -122,7 +125,23 @@ func Run(opts *Options) error {
 	)
 
 	e.Run()
-	return nil
+
+	if sh.db != nil {
+		err = sh.db.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	return sh.dumpHistory()
+}
+
+func (sh *Shell) loadCommandSuggestions()  {
+	suggestions := make([]prompt.Suggest, len(commands))
+	for i, c := range commands {
+		suggestions[i].Text = c.Name
+	}
+	sh.cmdSuggestions = suggestions
 }
 
 func (sh *Shell) loadHistory() ([]string, error) {
@@ -240,8 +259,9 @@ func (sh *Shell) runCommand(in string) error {
 		if err != nil {
 			return err
 		}
-
 		return runIndexesCmd(db, cmd)
+	default:
+		return displaySuggestions(in)
 	}
 
 	return fmt.Errorf("unknown command %q", cmd)
@@ -388,6 +408,10 @@ func (sh *Shell) getAllTables() ([]string, error) {
 }
 
 func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
+	if strings.HasPrefix(in.Text, ".") {
+		return prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
+	}
+
 	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery()
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
