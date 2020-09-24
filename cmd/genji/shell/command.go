@@ -2,19 +2,24 @@ package shell
 
 import (
 	"fmt"
-	"sort"
 
+	"github.com/agnivade/levenshtein"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 )
 
-var commands = map[string]string{
-	".tables":               "\t\tList names of tables.",
-	".exit":                 "\t\t\tExit this program.",
-	".indexes [table_name]": "\tDisplay all indexes or the indexes of the given table name.",
-	".help":                 "\t\t\tList all commands.",
+var commands = []struct {
+	Name        string
+	Options     string
+	Description string
+}{
+	{".exit", ``, "Exit this program."},
+	{".help", ``, "List all commands."},
+	{".tables", ``, "List names of tables."},
+	{".indexes", `[table_name]`, "Display all indexes or the indexes of the given table name."},
 }
 
+// runTablesCmd shows all tables.
 func runTablesCmd(db *genji.DB, cmd []string) error {
 	if len(cmd) > 1 {
 		return fmt.Errorf("usage: .tables")
@@ -92,17 +97,42 @@ func runIndexesCmd(db *genji.DB, in []string) error {
 	return fmt.Errorf("usage: .indexes [tablename]")
 }
 
-// runHelpCmd display all available dot commands.
+// runHelpCmd shows all available commands.
 func runHelpCmd() error {
-	var keys []string
-	for k := range commands {
-		keys = append(keys, k)
+	for _, c := range commands {
+		// spaces indentation for readability.
+		spaces := 25
+		indent := spaces - len(c.Name) - len(c.Options)
+		fmt.Printf("%s %s %*s %s\n", c.Name, c.Options, indent, "", c.Description)
 	}
 
-	sort.Strings(keys)
-	for _, k := range keys {
-		fmt.Printf("%s %s\n", k, commands[k])
+	return nil
+}
+
+// displaySuggestions shows suggestions.
+func displaySuggestions(in string) error {
+	var suggestions []string
+	for _, c := range commands {
+		d := levenshtein.ComputeDistance(c.Name, in)
+		// input should be at least half the command size to get a suggestion.
+		if d < (len(c.Name) / 2) {
+			suggestions = append(suggestions, c.Name)
+		}
 	}
 
+	if len(suggestions) == 0 {
+		return fmt.Errorf("Unknown command %q. Enter \".help\" for help.", in)
+	}
+
+	fmt.Printf("\"%s\" is not a command. Did you mean: ", in)
+	for i := range suggestions {
+		if i > 0 {
+			fmt.Printf(", ")
+		}
+
+		fmt.Printf("%q", suggestions[i])
+	}
+
+	fmt.Println()
 	return nil
 }
