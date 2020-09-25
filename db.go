@@ -3,7 +3,6 @@ package genji
 import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query"
 )
@@ -11,18 +10,6 @@ import (
 // DB represents a collection of tables stored in the underlying engine.
 type DB struct {
 	DB *database.Database
-}
-
-// New initializes the DB using the given engine.
-func New(ng engine.Engine) (*DB, error) {
-	db, err := database.New(ng)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DB{
-		DB: db,
-	}, nil
 }
 
 // Close the database.

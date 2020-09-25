@@ -8,6 +8,7 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/parser"
@@ -151,7 +152,7 @@ func TestTableInsert(t *testing.T) {
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
 		ng := memoryengine.NewEngine()
 
-		db, err := database.New(ng)
+		db, err := database.New(ng, database.Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 
 		insertDoc := func(db *database.Database) []byte {
@@ -178,7 +179,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// create new database object
-		db, err = database.New(ng)
+		db, err = database.New(ng, database.Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 
 		key2 := insertDoc(db)

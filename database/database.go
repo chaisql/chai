@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"github.com/genjidb/genji/document/encoding"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 )
 
@@ -34,11 +33,19 @@ type Database struct {
 	Codec encoding.Codec
 }
 
+type Options struct {
+	Codec encoding.Codec
+}
+
 // New initializes the DB using the given engine.
-func New(ng engine.Engine) (*Database, error) {
+func New(ng engine.Engine, opts Options) (*Database, error) {
+	if opts.Codec == nil {
+		return nil, errors.New("missing codec")
+	}
+
 	db := Database{
 		ng:    ng,
-		Codec: msgpack.NewCodec(),
+		Codec: opts.Codec,
 	}
 
 	ntx, err := db.ng.Begin(true)
