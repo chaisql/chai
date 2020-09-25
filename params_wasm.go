@@ -1,16 +1,16 @@
 package genji
 
 import (
-	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/query/expr"
 )
 
-func argsToParams(args []interface{}) []query.Param {
-	nv := make([]query.Param, len(args))
+func argsToParams(args []interface{}) []expr.Param {
+	nv := make([]expr.Param, len(args))
 	for i := range args {
 		switch t := args[i].(type) {
-		case *query.Param:
+		case *expr.Param:
 			nv[i] = *t
-		case query.Param:
+		case expr.Param:
 			nv[i] = t
 		default:
 			nv[i].Value = args[i]

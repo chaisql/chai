@@ -9,7 +9,7 @@ import (
 )
 
 // Open creates a Genji database at the given path.
-// If path is equal to ":memory:" it will open an in memory database,
+// If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.
 func Open(path string) (*DB, error) {
 	var ng engine.Engine

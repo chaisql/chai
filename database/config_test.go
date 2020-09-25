@@ -36,7 +36,7 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng)
+		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -79,7 +79,7 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng)
+		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -106,7 +106,7 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng)
+		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 

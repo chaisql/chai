@@ -5,13 +5,14 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/key"
 	"github.com/stretchr/testify/require"
 )
 
 func newTestDB(t testing.TB) (*database.Transaction, func()) {
-	db, err := database.New(memoryengine.NewEngine())
+	db, err := database.New(memoryengine.NewEngine(), database.Options{Codec: msgpack.NewCodec()})
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
@@ -45,7 +46,7 @@ func TestTxTable(t *testing.T) {
 	})
 
 	t.Run("Create and rollback", func(t *testing.T) {
-		db, err := database.New(memoryengine.NewEngine())
+		db, err := database.New(memoryengine.NewEngine(), database.Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
