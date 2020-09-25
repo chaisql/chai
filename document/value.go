@@ -2,10 +2,14 @@ package document
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
+
+	"github.com/buger/jsonparser"
 )
 
 var (
@@ -254,6 +258,61 @@ func (v Value) IsZeroValue() (bool, error) {
 	return false, nil
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (v Value) MarshalJSON() ([]byte, error) {
+	switch v.Type {
+	case NullValue:
+		return []byte("null"), nil
+	case BoolValue:
+		return strconv.AppendBool(nil, v.V.(bool)), nil
+	case IntegerValue:
+		return strconv.AppendInt(nil, v.V.(int64), 10), nil
+	case DoubleValue:
+		f := v.V.(float64)
+		abs := math.Abs(f)
+		fmt := byte('f')
+		if abs != 0 {
+			if abs < 1e-6 || abs >= 1e21 {
+				fmt = 'e'
+			}
+		}
+
+		return strconv.AppendFloat(nil, v.V.(float64), fmt, -1, 64), nil
+	case DurationValue:
+		return []byte(strconv.Quote(v.V.(time.Duration).String())), nil
+	case TextValue:
+		return []byte(strconv.Quote(v.V.(string))), nil
+	case BlobValue:
+		src := v.V.([]byte)
+		dst := make([]byte, base64.StdEncoding.EncodedLen(len(src))+2)
+		dst[0] = '"'
+		dst[len(dst)-1] = '"'
+		base64.StdEncoding.Encode(dst[1:], src)
+		return dst, nil
+	case ArrayValue:
+		return jsonArray{v.V.(Array)}.MarshalJSON()
+	case DocumentValue:
+		return jsonDocument{v.V.(Document)}.MarshalJSON()
+	default:
+		return nil, errors.New("unexpected type: " + v.Type.String())
+	}
+}
+
+// String returns a string representation of the value. It implements the fmt.Stringer interface.
+func (v Value) String() string {
+	switch v.Type {
+	case NullValue:
+		return "NULL"
+	case TextValue:
+		return strconv.Quote(v.V.(string))
+	case BlobValue, DurationValue:
+		return fmt.Sprintf("%v", v.V)
+	}
+
+	d, _ := v.MarshalJSON()
+	return string(d)
+}
+
 // Add u to v and return the result.
 // Only numeric values and booleans can be added together.
 func (v Value) Add(u Value) (res Value, err error) {
@@ -477,4 +536,55 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 	default:
 		panic(fmt.Sprintf("unknown operator %c", operator))
 	}
+}
+
+func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v Value, err error) {
+	switch dataType {
+	case jsonparser.Null:
+		return NewNullValue(), nil
+	case jsonparser.Boolean:
+		b, err := jsonparser.ParseBoolean(data)
+		if err != nil {
+			return Value{}, err
+		}
+		return NewBoolValue(b), nil
+	case jsonparser.Number:
+		i, err := jsonparser.ParseInt(data)
+		if err != nil {
+			// if it's too big to fit in an int64, let's try parsing this as a floating point number
+			f, err := jsonparser.ParseFloat(data)
+			if err != nil {
+				return Value{}, err
+			}
+
+			return NewDoubleValue(f), nil
+		}
+
+		return NewIntegerValue(i), nil
+	case jsonparser.String:
+		s, err := jsonparser.ParseString(data)
+		if err != nil {
+			return Value{}, err
+		}
+		return NewTextValue(s), nil
+	case jsonparser.Array:
+		buf := NewValueBuffer()
+		err := buf.UnmarshalJSON(data)
+		if err != nil {
+			return Value{}, err
+		}
+
+		return NewArrayValue(buf), nil
+	case jsonparser.Object:
+		buf := NewFieldBuffer()
+		err = buf.UnmarshalJSON(data)
+		if err != nil {
+			return Value{}, err
+		}
+
+		return NewDocumentValue(buf), nil
+	default:
+	}
+
+	return Value{}, nil
 }

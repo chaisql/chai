@@ -2,10 +2,13 @@
 package document
 
 import (
+	"bytes"
 	"errors"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/buger/jsonparser"
 )
 
 // ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
@@ -20,6 +23,16 @@ type Document interface {
 	// GetByField returns a value by field name.
 	// Must return ErrFieldNotFound if the field doesnt exist.
 	GetByField(field string) (Value, error)
+}
+
+// MarshalJSON encodes a document to json.
+func MarshalJSON(d Document) ([]byte, error) {
+	return jsonDocument{d}.MarshalJSON()
+}
+
+// MarshalJSONArray encodes an array to json.
+func MarshalJSONArray(a Array) ([]byte, error) {
+	return jsonArray{a}.MarshalJSON()
 }
 
 // A Keyer returns the key identifying documents in their storage.
@@ -71,6 +84,24 @@ type FieldBuffer struct {
 // NewFieldBuffer creates a FieldBuffer.
 func NewFieldBuffer() *FieldBuffer {
 	return new(FieldBuffer)
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
+	return jsonDocument{Document: fb}.MarshalJSON()
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
+	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
+		v, err := parseJSONValue(dataType, value)
+		if err != nil {
+			return err
+		}
+
+		fb.Add(string(key), v)
+		return nil
+	})
 }
 
 type fieldValue struct {
@@ -394,4 +425,39 @@ func (p ValuePath) getValueFromValue(v Value) (Value, error) {
 	}
 
 	return Value{}, ErrFieldNotFound
+}
+
+type jsonDocument struct {
+	Document
+}
+
+func (j jsonDocument) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteByte('{')
+
+	var notFirst bool
+	err := j.Document.Iterate(func(f string, v Value) error {
+		if notFirst {
+			buf.WriteString(", ")
+		}
+		notFirst = true
+
+		buf.WriteString(strconv.Quote(f))
+		buf.WriteString(": ")
+
+		data, err := v.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }

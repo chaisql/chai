@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+// NewFromJSON creates a document from a JSON object.
+func NewFromJSON(data []byte) (Document, error) {
+	var fb FieldBuffer
+	err := fb.UnmarshalJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	return &fb, nil
+}
+
 // NewFromMap creates a document from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
 func NewFromMap(m interface{}) (Document, error) {
@@ -50,6 +60,11 @@ func (m mapDocument) GetByField(field string) (Value, error) {
 		return Value{}, ErrFieldNotFound
 	}
 	return NewValue(v.Interface())
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (m mapDocument) MarshalJSON() ([]byte, error) {
+	return jsonDocument{Document: m}.MarshalJSON()
 }
 
 // NewFromStruct creates a document from a struct using reflection.
@@ -139,6 +154,11 @@ func (s structDocument) GetByField(field string) (Value, error) {
 	}
 
 	return NewValue(v.Interface())
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (s structDocument) MarshalJSON() ([]byte, error) {
+	return jsonDocument{Document: s}.MarshalJSON()
 }
 
 // NewValue creates a value whose type is infered from x.
