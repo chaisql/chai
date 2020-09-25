@@ -1,7 +1,6 @@
 package query_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -34,10 +33,9 @@ func TestAlterTable(t *testing.T) {
 	require.EqualError(t, err, database.ErrTableNotFound.Error())
 
 	d, err := db.QueryDocument("SELECT * FROM bar")
-	var buf bytes.Buffer
-	err = document.ToJSON(&buf, d)
+	data, err := document.MarshalJSON(d)
 	require.NoError(t, err)
-	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, buf.String())
+	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, string(data))
 
 	// Renaming a read-only table should fail
 	err = db.Exec("ALTER TABLE __genji_tables RENAME TO bar")

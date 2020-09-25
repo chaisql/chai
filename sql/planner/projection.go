@@ -1,7 +1,6 @@
 package planner
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -91,7 +90,7 @@ func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 			return st, err
 		}
 
-		st = document.NewStream(document.NewIterator(fb))
+		st = document.NewStream(document.NewIterator(&fb))
 	} else {
 		var dm documentMask
 		st = st.Map(func(d document.Document) (document.Document, error) {
@@ -155,14 +154,7 @@ func (r documentMask) Iterate(fn func(field string, value document.Value) error)
 
 // MarshalJSON implements the json.Marshaler interface.
 func (r documentMask) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-
-	err := document.ToJSON(&buf, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+	return document.MarshalJSON(r)
 }
 
 // A ProjectedField is a field that will be part of the projected document that will be returned at the end of a Select statement.

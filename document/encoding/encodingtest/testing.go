@@ -84,10 +84,9 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 			codec := codecBuilder()
 			err := codec.NewEncoder(&buf).EncodeDocument(test.d)
 			require.NoError(t, err)
-			var jsonBuf bytes.Buffer
-			err = document.ToJSON(&jsonBuf, codec.NewDocument(buf.Bytes()))
+			data, err := document.MarshalJSON(codec.NewDocument(buf.Bytes()))
 			require.NoError(t, err)
-			require.JSONEq(t, test.expected, jsonBuf.String())
+			require.JSONEq(t, test.expected, string(data))
 		})
 	}
 }
@@ -126,7 +125,7 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.Equal(t, document.NewTextValue("john"), v)
 
 	v, err = a.GetByIndex(1000)
-	require.Equal(t, err, document.ErrValueNotFound)
+	require.Equal(t, document.ErrValueNotFound, err)
 }
 
 func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
@@ -154,12 +153,11 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.Equal(t, document.NewIntegerValue(10), v)
 	v, err = ec.GetByField("address")
 	require.NoError(t, err)
-	var expected, actual bytes.Buffer
-	err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
+	expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
 	require.NoError(t, err)
-	err = document.ToJSON(&actual, document.NewFieldBuffer().Add("address", v))
+	actual, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", v))
 	require.NoError(t, err)
-	require.JSONEq(t, expected.String(), actual.String())
+	require.JSONEq(t, string(expected), string(actual))
 
 	var i int
 	err = ec.Iterate(func(f string, v document.Value) error {
@@ -167,12 +165,11 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 		case "age":
 			require.Equal(t, document.NewIntegerValue(10), v)
 		case "address":
-			var expected, actual bytes.Buffer
-			err = document.ToJSON(&expected, document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
+			expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
 			require.NoError(t, err)
-			err = document.ToJSON(&actual, document.NewFieldBuffer().Add(f, v))
+			actual, err := document.MarshalJSON(document.NewFieldBuffer().Add(f, v))
 			require.NoError(t, err)
-			require.JSONEq(t, expected.String(), actual.String())
+			require.JSONEq(t, string(expected), string(actual))
 		case "name":
 			require.Equal(t, document.NewTextValue("john"), v)
 		}

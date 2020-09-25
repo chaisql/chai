@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -279,7 +280,13 @@ func (sh *Shell) runQuery(q string) error {
 	}
 
 	defer res.Close()
-	return document.IteratorToJSON(os.Stdout, res)
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	return res.Iterate(func(d document.Document) error {
+		return enc.Encode(d)
+	})
 }
 
 func (sh *Shell) exit() {

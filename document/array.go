@@ -1,8 +1,11 @@
 package document
 
 import (
+	"bytes"
 	"errors"
 	"sort"
+
+	"github.com/buger/jsonparser"
 )
 
 // ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
@@ -158,6 +161,33 @@ func (vb *ValueBuffer) Replace(index int, v Value) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaler interface.
+func (vb *ValueBuffer) MarshalJSON() ([]byte, error) {
+	return jsonArray{Array: vb}.MarshalJSON()
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
+	var err error
+	_, perr := jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		var v Value
+		v, err = parseJSONValue(dataType, value)
+		if err != nil {
+			return
+		}
+
+		*vb = vb.Append(v)
+	})
+	if err != nil {
+		return err
+	}
+	if perr != nil {
+		return perr
+	}
+
+	return nil
+}
+
 type sortableArray struct {
 	vb  ValueBuffer
 	err error
@@ -230,4 +260,34 @@ func SortArray(a Array) (Array, error) {
 	}
 
 	return &s.vb, nil
+}
+
+type jsonArray struct {
+	Array
+}
+
+func (j jsonArray) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteByte('[')
+	var notFirst bool
+	err := j.Array.Iterate(func(i int, v Value) error {
+		if notFirst {
+			buf.WriteString(", ")
+		}
+		notFirst = true
+
+		data, err := v.MarshalJSON()
+		if err != nil {
+			return err
+		}
+
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteByte(']')
+	return buf.Bytes(), nil
 }

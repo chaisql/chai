@@ -174,10 +174,9 @@ func TestSelectStmt(t *testing.T) {
 
 			var i int
 			err = st.Iterate(func(d document.Document) error {
-				var buf bytes.Buffer
-				err = document.ToJSON(&buf, d)
+				data, err := document.MarshalJSON(d)
 				require.NoError(t, err)
-				require.JSONEq(t, res[i], buf.String())
+				require.JSONEq(t, res[i], string(data))
 				i++
 				return nil
 			})

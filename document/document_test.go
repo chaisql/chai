@@ -1,7 +1,6 @@
 package document_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -132,11 +131,9 @@ func TestFieldBuffer(t *testing.T) {
 				}
 
 				require.NoError(t, err)
-				var bufBytes bytes.Buffer
+				data, err := document.MarshalJSON(fb)
 				require.NoError(t, err)
-				err = document.ToJSON(&bufBytes, fb)
-				require.NoError(t, err)
-				require.Equal(t, tt.want, bufBytes.String())
+				require.Equal(t, tt.want, string(data))
 			})
 		}
 	})
@@ -597,6 +594,48 @@ func TestValuePath(t *testing.T) {
 				require.NoError(t, err)
 				require.JSONEq(t, test.result, string(res))
 			}
+		})
+	}
+}
+
+func TestJSONDocument(t *testing.T) {
+	tests := []struct {
+		name     string
+		d        document.Document
+		expected string
+	}{
+		{
+			"Flat",
+			document.NewFieldBuffer().
+				Add("name", document.NewTextValue("John")).
+				Add("age", document.NewIntegerValue(10)).
+				Add(`"something with" quotes`, document.NewIntegerValue(10)),
+			`{"name": "John", "age": 10, "\"something with\" quotes": 10}`,
+		},
+		{
+			"Nested",
+			document.NewFieldBuffer().
+				Add("name", document.NewTextValue("John")).
+				Add("age", document.NewIntegerValue(10)).
+				Add("address", document.NewDocumentValue(document.NewFieldBuffer().
+					Add("city", document.NewTextValue("Ajaccio")).
+					Add("country", document.NewTextValue("France")),
+				)).
+				Add("friends", document.NewArrayValue(
+					document.NewValueBuffer().
+						Append(document.NewTextValue("fred")).
+						Append(document.NewTextValue("jamie")),
+				)),
+			`{"name": "John", "age": 10, "address": {"city": "Ajaccio", "country": "France"}, "friends": ["fred", "jamie"]}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			data, err := json.Marshal(test.d)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, string(data))
+			require.NoError(t, err)
 		})
 	}
 }
