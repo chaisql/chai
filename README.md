@@ -66,25 +66,25 @@ import (
 )
 
 func main() {
-	// Create a database instance, here we'll store everything on-disk using the BoltDB engine
-	db, err := genji.Open("my.db")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Don't forget to close the database when you're done
-	defer db.Close()
+    // Create a database instance, here we'll store everything on-disk using the BoltDB engine
+    db, err := genji.Open("my.db")
+    if err != nil {
+        log.Fatal(err)
+    }
+    // Don't forget to close the database when you're done
+    defer db.Close()
 
-	// Create a table. Schemas are optional, you don't need to specify one if not needed
-	err = db.Exec("CREATE TABLE user")
+    // Create a table. Schemas are optional, you don't need to specify one if not needed
+    err = db.Exec("CREATE TABLE user")
 
-	// Create an index
-	err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
+    // Create an index
+    err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
 
-	// Insert some data
-	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
+    // Insert some data
+    err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
 
-	// Supported values can go from simple integers to richer data types like lists or documents
-	err = db.Exec(`
+    // Supported values can go from simple integers to richer data types like lists or documents
+    err = db.Exec(`
     INSERT INTO user (id, name, age, address, friends)
     VALUES (
         11,
@@ -94,72 +94,72 @@ func main() {
         ["foo", "bar", "baz"]
     )`)
 
-	// Go structures can be passed directly
-	type User struct {
-		ID              uint
-		Name            string
-		TheAgeOfTheUser float64 `genji:"age"`
-		Address         struct {
-			City    string
-			ZipCode string
-		}
-	}
+    // Go structures can be passed directly
+    type User struct {
+        ID              uint
+        Name            string
+        TheAgeOfTheUser float64 `genji:"age"`
+        Address         struct {
+            City    string
+            ZipCode string
+        }
+    }
 
-	// Let's create a user
-	u := User{
-		ID:              20,
-		Name:            "foo",
-		TheAgeOfTheUser: 40,
-	}
-	u.Address.City = "Lyon"
-	u.Address.ZipCode = "69001"
+    // Let's create a user
+    u := User{
+        ID:              20,
+        Name:            "foo",
+        TheAgeOfTheUser: 40,
+    }
+    u.Address.City = "Lyon"
+    u.Address.ZipCode = "69001"
 
-	err = db.Exec(`INSERT INTO user VALUES ?`, &u)
+    err = db.Exec(`INSERT INTO user VALUES ?`, &u)
 
-	// Query some documents
-	res, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
-	// always close the result when you're done with it
-	defer res.Close()
+    // Query some documents
+    res, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
+    // always close the result when you're done with it
+    defer res.Close()
 
-	// Iterate over the results
-	err = res.Iterate(func(d document.Document) error {
-		// When querying an explicit list of fields, you can use the Scan function to scan them
-		// in order. Note that the types don't have to match exactly the types stored in the table
-		// as long as they are compatible.
-		var id int
-		var name string
-		var age int32
-		var address struct {
-			City    string
-			ZipCode string
-		}
+    // Iterate over the results
+    err = res.Iterate(func(d document.Document) error {
+        // When querying an explicit list of fields, you can use the Scan function to scan them
+        // in order. Note that the types don't have to match exactly the types stored in the table
+        // as long as they are compatible.
+        var id int
+        var name string
+        var age int32
+        var address struct {
+            City    string
+            ZipCode string
+        }
 
-		err = document.Scan(d, &id, &name, &age, &address)
-		if err != nil {
-			return err
-		}
+        err = document.Scan(d, &id, &name, &age, &address)
+        if err != nil {
+            return err
+        }
 
-		fmt.Println(id, name, age, address)
+        fmt.Println(id, name, age, address)
 
-		// It is also possible to scan the results into a structure
-		var u User
-		err = document.StructScan(d, &u)
-		if err != nil {
-			return err
-		}
+        // It is also possible to scan the results into a structure
+        var u User
+        err = document.StructScan(d, &u)
+        if err != nil {
+            return err
+        }
 
-		fmt.Println(u)
+        fmt.Println(u)
 
-		// Or scan into a map
-		var m map[string]interface{}
-		err = document.MapScan(d, &m)
-		if err != nil {
-			return err
-		}
+        // Or scan into a map
+        var m map[string]interface{}
+        err = document.MapScan(d, &m)
+        if err != nil {
+            return err
+        }
 
-		fmt.Println(m)
-		return nil
-	})
+        fmt.Println(m)
+        return nil
+    })
 }
 
 ```
