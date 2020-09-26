@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
-	"io"
-	"os"
-	"strings"
 )
 
 var ErrNoData = errors.New("no data to insert")

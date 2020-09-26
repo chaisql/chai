@@ -33,7 +33,7 @@ type Shell struct {
 	livePrefix string
 	multiLine  bool
 
-	history        []string
+	history []string
 
 	cmdSuggestions []prompt.Suggest
 }
@@ -137,7 +137,7 @@ func Run(opts *Options) error {
 	return sh.dumpHistory()
 }
 
-func (sh *Shell) loadCommandSuggestions()  {
+func (sh *Shell) loadCommandSuggestions() {
 	suggestions := make([]prompt.Suggest, len(commands))
 	for i, c := range commands {
 		suggestions[i].Text = c.Name
