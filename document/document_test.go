@@ -610,7 +610,7 @@ func TestJSONDocument(t *testing.T) {
 				Add("name", document.NewTextValue("John")).
 				Add("age", document.NewIntegerValue(10)).
 				Add(`"something with" quotes`, document.NewIntegerValue(10)),
-			`{"name": "John", "age": 10, "\"something with\" quotes": 10}`,
+			`{"name":"John","age":10,"\"something with\" quotes":10}`,
 		},
 		{
 			"Nested",
@@ -626,7 +626,7 @@ func TestJSONDocument(t *testing.T) {
 						Append(document.NewTextValue("fred")).
 						Append(document.NewTextValue("jamie")),
 				)),
-			`{"name": "John", "age": 10, "address": {"city": "Ajaccio", "country": "France"}, "friends": ["fred", "jamie"]}`,
+			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"},"friends":["fred","jamie"]}`,
 		},
 	}
 
