@@ -34,6 +34,12 @@ var functions = map[string]func(args ...Expr) (Expr, error){
 		}
 		return &MaxFunc{Expr: args[0]}, nil
 	},
+	"sum": func(args ...Expr) (Expr, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("SUM() takes 1 argument")
+		}
+		return &SumFunc{Expr: args[0]}, nil
+	},
 }
 
 // GetFunc return a function expression by name.
@@ -391,5 +397,117 @@ func (m *MaxAggregator) Add(d document.Document) error {
 // Aggregate adds a field to the given buffer with the maximum value.
 func (m *MaxAggregator) Aggregate(fb *document.FieldBuffer) error {
 	fb.Add(m.Fn.String(), m.Max)
+	return nil
+}
+
+// SumFunc is the SUM aggregator function.
+type SumFunc struct {
+	Expr  Expr
+	Alias string
+}
+
+// Eval extracts the sum value from the given document and returns it.
+func (s *SumFunc) Eval(ctx EvalStack) (document.Value, error) {
+	return ctx.Document.GetByField(s.String())
+}
+
+// SetAlias implements the planner.AggregatorBuilder interface.
+func (s *SumFunc) SetAlias(alias string) {
+	s.Alias = alias
+}
+
+// NewAggregator implements the planner.AggregatorBuilder interface.
+func (s *SumFunc) NewAggregator(group document.Value) document.Aggregator {
+	return &SumAggregator{
+		Fn: s,
+	}
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (s *SumFunc) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*SumFunc)
+	if !ok {
+		return false
+	}
+
+	return Equal(s.Expr, o.Expr)
+}
+
+// String returns the alias if non-zero, otherwise it returns a string representation
+// of the count expression.
+func (s *SumFunc) String() string {
+	if s.Alias != "" {
+		return s.Alias
+	}
+
+	return fmt.Sprintf("SUM(%v)", s.Expr)
+}
+
+// SumAggregator is an aggregator that returns the minimum non-null value.
+type SumAggregator struct {
+	Fn   *SumFunc
+	SumI *int64
+	SumF *float64
+}
+
+// Add stores the sum of all non-NULL numeric values in the group.
+// The result is an integer value if all summed values are integers.
+// If any of the value is a double, the returned result will be a double.
+func (s *SumAggregator) Add(d document.Document) error {
+	v, err := s.Fn.Expr.Eval(EvalStack{
+		Document: d,
+	})
+	if err != nil && err != document.ErrFieldNotFound {
+		return err
+	}
+	if v.Type != document.IntegerValue && v.Type != document.DoubleValue {
+		return nil
+	}
+
+	if s.SumF != nil {
+		if v.Type == document.IntegerValue {
+			*s.SumF += float64(v.V.(int64))
+		} else {
+			*s.SumF += float64(v.V.(float64))
+		}
+
+		return nil
+	}
+
+	if v.Type == document.DoubleValue {
+		var sumF float64
+		if s.SumI != nil {
+			sumF = float64(*s.SumI)
+		}
+		s.SumF = &sumF
+		*s.SumF += float64(v.V.(float64))
+
+		return nil
+	}
+
+	if s.SumI == nil {
+		var sumI int64
+		s.SumI = &sumI
+	}
+
+	*s.SumI += v.V.(int64)
+	return nil
+}
+
+// Aggregate adds a field to the given buffer with the maximum value.
+func (s *SumAggregator) Aggregate(fb *document.FieldBuffer) error {
+	if s.SumF != nil {
+		fb.Add(s.Fn.String(), document.NewDoubleValue(*s.SumF))
+	} else if s.SumI != nil {
+		fb.Add(s.Fn.String(), document.NewIntegerValue(*s.SumI))
+	} else {
+		fb.Add(s.Fn.String(), document.NewNullValue())
+	}
+
 	return nil
 }
