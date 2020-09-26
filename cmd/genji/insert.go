@@ -17,8 +17,6 @@ import (
 	"github.com/genjidb/genji/engine/boltengine"
 )
 
-var ErrNoData = errors.New("no data to insert")
-
 func skipSpaces(r *bufio.Reader) (byte, error) {
 	var c byte
 	var err error
@@ -133,13 +131,12 @@ func runInsertCommand(e, DBPath, table string, args []string) error {
 
 	fi, _ := os.Stdin.Stat()
 	m := fi.Mode()
-	// Insert command is given in the pipe
 	if (m & os.ModeNamedPipe) != 0 {
 		return executeInsertCommand(db, table, os.Stdin)
 	}
 
 	if len(args) == 0 {
-		return ErrNoData
+		return errors.New("no data to insert")
 	}
 
 	for _, arg := range args {

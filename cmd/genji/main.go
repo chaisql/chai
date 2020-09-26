@@ -27,14 +27,29 @@ func main() {
 	app.Commands = []*cli.Command{
 		{
 			Name:      "insert",
-			Usage:     "Insert documents from the command line",
-			UsageText: "genji insert [options] [arguments...]",
-			HideHelp:  true,
+			Usage:     "Insert documents from arguments or standard input",
+			UsageText: "genji insert [options] [json...]",
+			Description: `
+The insert command inserts documents into an existing table.
+
+Insert can take JSON documents as separate arguments:
+
+$ genji insert --db my.db -t foo '{"a": 1}' '{"a": 2}'
+
+It is also possible to pass an array of objects:
+
+$ genji insert --db my.db -t foo '[{"a": 1}, {"a": 2}]'
+
+Insert can also insert a stream of objects or an array of objects from standard input:
+
+$ echo '{"a": 1} {"a": 2}' | genji insert --db my.db -t foo
+$ echo '[{"a": 1},{"a": 2}]' | genji insert --db my.db -t foo
+$ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.db -t foo`,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:    "engine",
 					Aliases: []string{"e"},
-					Usage:   "name of the engine to use, options are 'bolt' or 'badger'. defaults to bolt",
+					Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
 					Value:   "bolt",
 				},
 				&cli.StringFlag{
@@ -52,26 +67,10 @@ func main() {
 			Action: func(c *cli.Context) error {
 				dbPath := c.String("db")
 				table := c.String("table")
-				// Use bolt as default engine.
 				engine := c.String("engine")
 				args := c.Args().Slice()
 
-				err := runInsertCommand(engine, dbPath, table, args)
-				switch err {
-				case ErrNoData:
-					cli.ShowAppHelpAndExit(c, 2)
-				case nil:
-					break
-				default:
-					return err
-				}
-
-				return nil
-			},
-
-			OnUsageError: func(c *cli.Context, err error, isSubcommand bool) error {
-				cli.ShowAppHelpAndExit(c, 2)
-				return nil
+				return runInsertCommand(engine, dbPath, table, args)
 			},
 		},
 	}

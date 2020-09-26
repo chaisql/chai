@@ -82,10 +82,9 @@ func TestExecuteInsertCommand(t *testing.T) {
 
 		i := 0
 		_ = res.Iterate(func(d document.Document) error {
-			var buf bytes.Buffer
-			err = document.ToJSON(&buf, d)
+			data, err := document.MarshalJSON(d)
 			require.NoError(t, err)
-			require.JSONEq(t, jsonStreamResult[i], buf.String())
+			require.JSONEq(t, jsonStreamResult[i], string(data))
 			i++
 			return nil
 		})
@@ -120,10 +119,9 @@ func TestExecuteInsertCommand(t *testing.T) {
 
 		i := 0
 		_ = res.Iterate(func(d document.Document) error {
-			var buf bytes.Buffer
-			err = document.ToJSON(&buf, d)
+			data, err := document.MarshalJSON(d)
 			require.NoError(t, err)
-			require.JSONEq(t, jsonStreamResult[i], buf.String())
+			require.JSONEq(t, jsonStreamResult[i], string(data))
 			i++
 			return nil
 		})
