@@ -159,6 +159,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "DOUBLE", tok: scanner.TYPEDOUBLE, raw: `DOUBLE`},
 		{s: "INTEGER", tok: scanner.TYPEINTEGER, raw: `INTEGER`},
 		{s: "TEXT", tok: scanner.TYPETEXT, raw: `TEXT`},
+
 	}
 
 	for i, tt := range tests {
