@@ -16,5 +16,8 @@ script:
   - go mod vendor
   - make
   - make gen
-  - go test -mod vendor -race -cover -timeout=2m ./...
+  - go test -mod vendor -race -cover -coverprofile=coverage.txt -covermode=atomic -timeout=2m ./...
   - go test -mod vendor -race -cover -timeout=2m -tags=tinygo ./...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
