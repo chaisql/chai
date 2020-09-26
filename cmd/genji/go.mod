@@ -11,7 +11,3 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.2.0
 )
-
-replace github.com/genjidb/genji v0.8.0 => ../../
-
-replace github.com/genjidb/genji/engine/badgerengine v0.8.0 => ../../engine/badgerengine
