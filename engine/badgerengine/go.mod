@@ -7,5 +7,3 @@ require (
 	github.com/genjidb/genji v0.8.0
 	github.com/stretchr/testify v1.6.1
 )
-
-replace github.com/genjidb/genji v0.8.0 => ../../
