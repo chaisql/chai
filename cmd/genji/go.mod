@@ -6,8 +6,10 @@ require (
 	github.com/agnivade/levenshtein v1.1.0
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/dgraph-io/badger/v2 v2.2007.2
-	github.com/genjidb/genji v0.8.0
+	github.com/genjidb/genji v0.9.0
 	github.com/genjidb/genji/engine/badgerengine v0.8.0
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.2.0
 )
+
+replace github.com/genjidb/genji v0.9.0 => ../../
