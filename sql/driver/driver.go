@@ -33,45 +33,11 @@ func (d sqlDriver) Open(name string) (driver.Conn, error) {
 	return &conn{db: db}, nil
 }
 
-// proxyDriver is used to turn an existing DB into a driver.Driver.
-type proxyDriver struct {
-	db *genji.DB
-}
-
-func newDriver(db *genji.DB) driver.Driver {
-	return proxyDriver{
-		db: db,
-	}
-}
-
-func (d proxyDriver) Open(name string) (driver.Conn, error) {
-	return &conn{db: d.db}, nil
-}
-
-type proxyConnector struct {
-	driver driver.Driver
-}
-
-func newProxyConnector(db *genji.DB) driver.Connector {
-	return proxyConnector{
-		driver: newDriver(db),
-	}
-}
-
-func (c proxyConnector) Connect(ctx context.Context) (driver.Conn, error) {
-	return c.driver.Open("")
-}
-
-func (c proxyConnector) Driver() driver.Driver {
-	return c.driver
-}
-
 // conn represents a connection to the Genji database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db            *genji.DB
-	tx            *genji.Tx
-	nonPromotable bool
+	db *genji.DB
+	tx *genji.Tx
 }
 
 // Prepare returns a prepared statement, bound to this connection.
