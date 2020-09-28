@@ -49,6 +49,10 @@ func BenchmarkStoreScan(b *testing.B, builder Builder) {
 				it := st.NewIterator(engine.IteratorConfig{})
 				for it.Seek(nil); it.Valid(); it.Next() {
 				}
+				err := it.Close()
+				if err != nil {
+					require.NoError(b, err)
+				}
 			}
 			b.StopTimer()
 		})
