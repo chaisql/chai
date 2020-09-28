@@ -141,7 +141,7 @@ func TestInsertStmt(t *testing.T) {
 
 		err = db.Exec(`CREATE TABLE test(
 			b bool, db double,
-			i integer, du duration, bb blob, byt bytes,
+			i integer, bb blob, byt bytes,
 			t text, a array, d document
 		)`)
 		require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestInsertStmt(t *testing.T) {
 			INSERT INTO test
 			VALUES {
 				i: 10000000000, db: 21.21, b: true,
-				du: 127ns, bb: "YmxvYlZhbHVlCg==", byt: "Ynl0ZXNWYWx1ZQ==",
+				bb: "YmxvYlZhbHVlCg==", byt: "Ynl0ZXNWYWx1ZQ==",
 				t: "text", a: [1, "foo", true], d: {"foo": "bar"}
 			}`)
 		require.NoError(t, err)
@@ -166,7 +166,6 @@ func TestInsertStmt(t *testing.T) {
 			"i": 10000000000,
 			"db": 21.21,
 			"b": true,
-			"du": "127ns",
 			"bb": "YmxvYlZhbHVlCg==",
 			"byt": "Ynl0ZXNWYWx1ZQ==",
 			"t": "text",
@@ -199,10 +198,6 @@ func TestInsertStmt(t *testing.T) {
 			{"document", "DOCUMENT", `{"a": "foo"}`},
 			{"document / not null with type constraint", "DOCUMENT NOT NULL", `{}`},
 			{"document / not null with non-respected type constraint ", "DOCUMENT NOT NULL", `{a: false}`},
-
-			{"duration", "DURATION", `{a: "foo"}`},
-			{"duration / not null with type constraint", "DURATION NOT NULL", `{}`},
-			{"duration / not null with non-respected type constraint ", "DURATION NOT NULL", `{a: [1,2,3]}`},
 
 			{"double", "DOUBLE", `{a: "foo"}`},
 			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`},

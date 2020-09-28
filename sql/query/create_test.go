@@ -85,8 +85,7 @@ func TestCreateTable(t *testing.T) {
 		t.Run("with variable size data types", func(t *testing.T) {
 			err = db.Exec(`
 				CREATE TABLE test1(
-					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] TEXT NOT NULL, bar[4][0].bat integer,
-				 	du duration, b blob, t text, a array, d document
+					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] TEXT NOT NULL, bar[4][0].bat integer, b blob, t text, a array, d document
 				)
 			`)
 			require.NoError(t, err)
@@ -105,7 +104,6 @@ func TestCreateTable(t *testing.T) {
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
 					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
 					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
-					{Path: parsePath(t, "du"), Type: document.DurationValue},
 					{Path: parsePath(t, "b"), Type: document.BlobValue},
 					{Path: parsePath(t, "t"), Type: document.TextValue},
 					{Path: parsePath(t, "a"), Type: document.ArrayValue},

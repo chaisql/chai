@@ -20,7 +20,6 @@ var valueTypes = []document.ValueType{
 	document.NullValue,
 	document.BoolValue,
 	document.DoubleValue,
-	document.DurationValue,
 	document.TextValue,
 	document.BlobValue,
 	document.ArrayValue,

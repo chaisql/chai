@@ -22,7 +22,6 @@ const (
 	POSITIONALPARAM // ?
 	NUMBER          // 12345.67
 	INTEGER         // 12345
-	DURATION        // 13h
 	STRING          // "abc"
 	BADSTRING       // "abc
 	BADESCAPE       // \q
@@ -122,7 +121,6 @@ const (
 	TYPEBYTES
 	TYPEDOCUMENT
 	TYPEDOUBLE
-	TYPEDURATION
 	TYPEINTEGER
 	TYPETEXT
 
@@ -137,7 +135,6 @@ var tokens = [...]string{
 	IDENT:           "IDENT",
 	POSITIONALPARAM: "?",
 	NUMBER:          "NUMBER",
-	DURATION:        "DURATIONVAL",
 	STRING:          "STRING",
 	BADSTRING:       "BADSTRING",
 	BADESCAPE:       "BADESCAPE",
@@ -230,7 +227,6 @@ var tokens = [...]string{
 	TYPEBYTES:    "BYTES",
 	TYPEDOCUMENT: "DOCUMENT",
 	TYPEDOUBLE:   "DOUBLE",
-	TYPEDURATION: "DURATION",
 	TYPEINTEGER:  "INTEGER",
 	TYPETEXT:     "TEXT",
 }

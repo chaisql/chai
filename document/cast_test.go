@@ -2,7 +2,6 @@ package document
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +14,6 @@ func TestCastAs(t *testing.T) {
 
 	boolV := NewBoolValue(true)
 	integerV := NewIntegerValue(10)
-	durationV := NewDurationValue(3 * time.Second)
 	doubleV := NewDoubleValue(10.5)
 	textV := NewTextValue("foo")
 	blobV := NewBlobValue([]byte("abc"))
@@ -45,7 +43,6 @@ func TestCastAs(t *testing.T) {
 			{boolV, boolV, false},
 			{integerV, boolV, false},
 			{NewIntegerValue(0), NewBoolValue(false), false},
-			{durationV, Value{}, true},
 			{doubleV, Value{}, true},
 			{textV, Value{}, true},
 			{NewTextValue("true"), boolV, false},
@@ -61,7 +58,6 @@ func TestCastAs(t *testing.T) {
 			{boolV, NewIntegerValue(1), false},
 			{NewBoolValue(false), NewIntegerValue(0), false},
 			{integerV, integerV, false},
-			{durationV, NewIntegerValue(int64(3 * time.Second)), false},
 			{doubleV, integerV, false},
 			{textV, Value{}, true},
 			{NewTextValue("10"), integerV, false},
@@ -76,7 +72,6 @@ func TestCastAs(t *testing.T) {
 		check(t, DoubleValue, []test{
 			{boolV, Value{}, true},
 			{integerV, NewDoubleValue(10), false},
-			{durationV, Value{}, true},
 			{doubleV, doubleV, false},
 			{textV, Value{}, true},
 			{NewTextValue("10"), NewDoubleValue(10), false},
@@ -87,26 +82,10 @@ func TestCastAs(t *testing.T) {
 		})
 	})
 
-	t.Run("duration", func(t *testing.T) {
-		check(t, DurationValue, []test{
-			{boolV, Value{}, true},
-			{integerV, Value{}, true},
-			{durationV, durationV, false},
-			{doubleV, Value{}, true},
-			{textV, Value{}, true},
-			{NewTextValue("3s"), durationV, false},
-			{NewTextValue("10.5"), Value{}, true},
-			{blobV, Value{}, true},
-			{arrayV, Value{}, true},
-			{docV, Value{}, true},
-		})
-	})
-
 	t.Run("text", func(t *testing.T) {
 		check(t, TextValue, []test{
 			{boolV, NewTextValue("true"), false},
 			{integerV, NewTextValue("10"), false},
-			{durationV, NewTextValue("3s"), false},
 			{doubleV, NewTextValue("10.5"), false},
 			{textV, textV, false},
 			{blobV, NewTextValue("YWJj"), false},
@@ -121,7 +100,6 @@ func TestCastAs(t *testing.T) {
 		check(t, BlobValue, []test{
 			{boolV, Value{}, true},
 			{integerV, Value{}, true},
-			{durationV, Value{}, true},
 			{doubleV, Value{}, true},
 			{NewTextValue("YWJj"), blobV, false},
 			{NewTextValue("   dww  "), Value{}, true},
@@ -135,7 +113,6 @@ func TestCastAs(t *testing.T) {
 		check(t, ArrayValue, []test{
 			{boolV, Value{}, true},
 			{integerV, Value{}, true},
-			{durationV, Value{}, true},
 			{doubleV, Value{}, true},
 			{NewTextValue(`["bar", 10]`), arrayV, false},
 			{NewTextValue("abc"), Value{}, true},
@@ -149,7 +126,6 @@ func TestCastAs(t *testing.T) {
 		check(t, DocumentValue, []test{
 			{boolV, Value{}, true},
 			{integerV, Value{}, true},
-			{durationV, Value{}, true},
 			{doubleV, Value{}, true},
 			{NewTextValue(`{"a": 10, "b": "foo"}`), docV, false},
 			{NewTextValue("abc"), Value{}, true},

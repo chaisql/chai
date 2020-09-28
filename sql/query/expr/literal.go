@@ -3,7 +3,6 @@ package expr
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/genjidb/genji/document"
 )
@@ -50,11 +49,6 @@ func IntegerValue(v int64) LiteralValue {
 // DoubleValue creates a litteral value of type Double.
 func DoubleValue(v float64) LiteralValue {
 	return LiteralValue(document.NewDoubleValue(v))
-}
-
-// DurationValue creates a litteral value of type Duration.
-func DurationValue(v time.Duration) LiteralValue {
-	return LiteralValue(document.NewDurationValue(v))
 }
 
 // NullValue creates a litteral value of type Null.

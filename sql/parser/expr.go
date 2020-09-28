@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -195,12 +194,6 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		return expr.BoolValue(tok == scanner.TRUE), nil
 	case scanner.NULL:
 		return expr.NullValue(), nil
-	case scanner.DURATION:
-		d, err := time.ParseDuration(lit)
-		if err != nil {
-			return nil, &ParseError{Message: "unable to parse duration", Pos: pos}
-		}
-		return expr.DurationValue(d), nil
 	case scanner.LBRACKET:
 		p.Unscan()
 		e, err := p.parseDocument()
@@ -293,8 +286,6 @@ func (p *Parser) parseType() document.ValueType {
 		return document.BlobValue
 	case scanner.TYPEDOCUMENT:
 		return document.DocumentValue
-	case scanner.TYPEDURATION:
-		return document.DurationValue
 	case scanner.TYPEDOUBLE:
 		return document.DoubleValue
 	case scanner.TYPEINTEGER:

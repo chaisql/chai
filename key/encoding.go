@@ -13,7 +13,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
-	"time"
 
 	"github.com/genjidb/genji/document"
 )
@@ -196,8 +195,6 @@ func decodeValue(data []byte, delim, end byte) (document.Value, int, error) {
 		i++
 	case document.DoubleValue:
 		i += 16
-	case document.DurationValue:
-		i += 8
 	case document.BlobValue, document.TextValue:
 		for i < len(data) && data[i] != delim && data[i] != end {
 			i++
@@ -352,8 +349,6 @@ func AppendValue(buf []byte, v document.Value) ([]byte, error) {
 		return AppendBool(buf, v.V.(bool)), nil
 	case document.IntegerValue, document.DoubleValue:
 		return AppendNumber(buf, v)
-	case document.DurationValue:
-		return AppendInt64(buf, int64(v.V.(time.Duration))), nil
 	case document.NullValue:
 		return buf, nil
 	case document.ArrayValue:
@@ -398,12 +393,6 @@ func DecodeValue(data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewDoubleValue(x), nil
-	case document.DurationValue:
-		x, err := DecodeInt64(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewDurationValue(time.Duration(x)), nil
 	case document.NullValue:
 		return document.NewNullValue(), nil
 	case document.ArrayValue:
@@ -437,8 +426,6 @@ func Append(buf []byte, t document.ValueType, v interface{}) ([]byte, error) {
 		return AppendInt64(buf, v.(int64)), nil
 	case document.DoubleValue:
 		return AppendFloat64(buf, v.(float64)), nil
-	case document.DurationValue:
-		return AppendInt64(buf, int64(v.(time.Duration))), nil
 	case document.NullValue:
 		return buf, nil
 	case document.ArrayValue:
@@ -472,12 +459,6 @@ func Decode(t document.ValueType, data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewDoubleValue(x), nil
-	case document.DurationValue:
-		x, err := DecodeInt64(data)
-		if err != nil {
-			return document.Value{}, err
-		}
-		return document.NewDurationValue(time.Duration(x)), nil
 	case document.NullValue:
 		return document.NewNullValue(), nil
 	case document.ArrayValue:

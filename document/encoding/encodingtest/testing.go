@@ -4,7 +4,6 @@ package encodingtest
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
@@ -97,8 +96,7 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	arr := document.NewValueBuffer().
 		Append(document.NewIntegerValue(10)).
 		Append(document.NewNullValue()).
-		Append(document.NewTextValue("john")).
-		Append(document.NewDurationValue(10 * time.Nanosecond))
+		Append(document.NewTextValue("john"))
 
 	var buf bytes.Buffer
 

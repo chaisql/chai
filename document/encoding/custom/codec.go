@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
@@ -128,8 +127,6 @@ func EncodeValue(v document.Value) ([]byte, error) {
 		return encodeInt64(v.V.(int64)), nil
 	case document.DoubleValue:
 		key.AppendFloat64(nil, v.V.(float64))
-	case document.DurationValue:
-		return encodeInt64(int64(v.V.(time.Duration))), nil
 	case document.NullValue:
 		return nil, nil
 	}
@@ -331,9 +328,6 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 			return document.Value{}, err
 		}
 		return document.NewDoubleValue(x), nil
-	case document.DurationValue:
-		x, _ := binary.Varint(data)
-		return document.NewDurationValue(time.Duration(x)), nil
 	case document.NullValue:
 		return document.NewNullValue(), nil
 	}

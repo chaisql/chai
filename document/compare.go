@@ -3,7 +3,6 @@ package document
 import (
 	"bytes"
 	"strings"
-	"time"
 )
 
 type operator uint8
@@ -93,10 +92,6 @@ func compare(op operator, l, r Value, compareDifferentTypes bool) (bool, error) 
 	// compare numbers together
 	case l.Type.IsNumber() && r.Type.IsNumber():
 		return compareNumbers(op, l, r)
-
-	// compare durations together
-	case l.Type == DurationValue && r.Type == DurationValue:
-		return compareIntegers(op, int64(l.V.(time.Duration)), int64(r.V.(time.Duration))), nil
 
 	// compare arrays together
 	case l.Type == ArrayValue && r.Type == ArrayValue:
