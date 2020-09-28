@@ -165,6 +165,8 @@ func (s structDocument) MarshalJSON() ([]byte, error) {
 func NewValue(x interface{}) (Value, error) {
 	// Attempt exact matches first:
 	switch v := x.(type) {
+	case time.Duration:
+		return NewIntegerValue(v.Nanoseconds()), nil
 	case time.Time:
 		return NewTextValue(v.Format(time.RFC3339Nano)), nil
 	case nil:
