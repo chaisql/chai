@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
@@ -32,14 +31,6 @@ func jsonToBoolean(t testing.TB, x string) document.Value {
 	require.NoError(t, err)
 
 	return document.NewBoolValue(b)
-}
-
-func jsonToDuration(t testing.TB, x string) document.Value {
-	var d time.Duration
-	err := json.Unmarshal([]byte(x), &d)
-	require.NoError(t, err)
-
-	return document.NewDurationValue(d)
 }
 
 func toText(t testing.TB, x string) document.Value {
@@ -126,24 +117,6 @@ func TestCompare(t *testing.T) {
 		{"<=", "2", "1", false, jsonToDouble},
 		{"<=", "1", "2", true, jsonToDouble},
 		{"<=", "2", "2", true, jsonToDouble},
-
-		// duration
-		{"=", "2", "1", false, jsonToDuration},
-		{"=", "2", "2", true, jsonToDuration},
-		{"!=", "2", "1", true, jsonToDuration},
-		{"!=", "2", "2", false, jsonToDuration},
-		{">", "2", "1", true, jsonToDuration},
-		{">", "1", "2", false, jsonToDuration},
-		{">", "2", "2", false, jsonToDuration},
-		{">=", "2", "1", true, jsonToDuration},
-		{">=", "1", "2", false, jsonToDuration},
-		{">=", "2", "2", true, jsonToDuration},
-		{"<", "2", "1", false, jsonToDuration},
-		{"<", "1", "2", true, jsonToDuration},
-		{"<", "2", "2", false, jsonToDuration},
-		{"<=", "2", "1", false, jsonToDuration},
-		{"<=", "1", "2", true, jsonToDuration},
-		{"<=", "2", "2", true, jsonToDuration},
 
 		// text
 		{"=", "b", "a", false, toText},

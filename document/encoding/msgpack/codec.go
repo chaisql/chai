@@ -3,17 +3,11 @@ package msgpack
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/codes"
-)
-
-// List of custom types
-const (
-	DurationType int8 = 0x1
 )
 
 // A Codec is a MessagePack implementation of an encoding.Codec.
@@ -115,7 +109,6 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 // - int32 -> int32
 // - int64 -> int64
 // - float64 -> float64
-// - duration -> custom type with code 0x1 and size 8
 func (e *Encoder) EncodeValue(v document.Value) error {
 	switch v.Type {
 	case document.DocumentValue:
@@ -134,32 +127,6 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 		return e.enc.EncodeInt64(v.V.(int64))
 	case document.DoubleValue:
 		return e.enc.EncodeFloat64(v.V.(float64))
-	case document.DurationValue:
-		// because messagepack doesn't have a duration type
-		// vmihailenco/msgpack EncodeDuration method
-		// encodes durations as int64 values.
-		// this means that the duration is lost during
-		// encoding and there is no way of knowing that
-		// an int64 is a duration during decoding.
-		// to avoid that, we create a custom duration type.
-		err := e.enc.EncodeExtHeader(DurationType, 8)
-		if err != nil {
-			return err
-		}
-
-		d := uint64(v.V.(time.Duration))
-		var buf [8]byte
-		buf[0] = byte(d >> 56)
-		buf[1] = byte(d >> 48)
-		buf[2] = byte(d >> 40)
-		buf[3] = byte(d >> 32)
-		buf[4] = byte(d >> 24)
-		buf[5] = byte(d >> 16)
-		buf[6] = byte(d >> 8)
-		buf[7] = byte(d)
-
-		_, err = e.enc.Writer().Write(buf[:])
-		return err
 	}
 
 	return e.enc.Encode(v.V)
@@ -225,36 +192,6 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 			return
 		}
 		v = document.NewTextValue(s)
-		return
-	}
-
-	// decode custom codes
-	if codes.IsExt(c) {
-		var tp int8
-		tp, _, err = d.dec.DecodeExtHeader()
-		if err != nil {
-			return
-		}
-
-		if tp != DurationType {
-			panic(fmt.Sprintf("unknown custom code %d", tp))
-		}
-
-		var buf [8]byte
-		err = d.dec.ReadFull(buf[:])
-		if err != nil {
-			return
-		}
-		n := (uint64(buf[0]) << 56) |
-			(uint64(buf[1]) << 48) |
-			(uint64(buf[2]) << 40) |
-			(uint64(buf[3]) << 32) |
-			(uint64(buf[4]) << 24) |
-			(uint64(buf[5]) << 16) |
-			(uint64(buf[6]) << 8) |
-			uint64(buf[7])
-		v.V = time.Duration(n)
-		v.Type = document.DurationValue
 		return
 	}
 

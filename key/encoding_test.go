@@ -5,7 +5,6 @@ import (
 	"math"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
@@ -22,7 +21,6 @@ func TestAppendDecode(t *testing.T) {
 		{"double", document.NewDoubleValue(-3.14)},
 		{"text", document.NewTextValue("foo")},
 		{"blob", document.NewBlobValue([]byte("bar"))},
-		{"duration", document.NewDurationValue(10 * time.Second)},
 		{"array", document.NewArrayValue(document.NewValueBuffer(
 			document.NewBoolValue(true),
 			document.NewIntegerValue(55),
@@ -89,7 +87,6 @@ func TestAppendValueDecodeValue(t *testing.T) {
 		{"double", document.NewDoubleValue(-3.14)},
 		{"text", document.NewTextValue("foo")},
 		{"blob", document.NewBlobValue([]byte("bar"))},
-		{"duration", document.NewDurationValue(10 * time.Second)},
 		{"array", document.NewArrayValue(document.NewValueBuffer(
 			document.NewBoolValue(true),
 			document.NewIntegerValue(55),

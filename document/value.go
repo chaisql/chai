@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 
 	"github.com/buger/jsonparser"
 )
@@ -16,7 +15,6 @@ var (
 	boolZeroValue     = NewZeroValue(BoolValue)
 	integerZeroValue  = NewZeroValue(IntegerValue)
 	doubleZeroValue   = NewZeroValue(DoubleValue)
-	durationZeroValue = NewZeroValue(DurationValue)
 	blobZeroValue     = NewZeroValue(BlobValue)
 	textZeroValue     = NewZeroValue(TextValue)
 	arrayZeroValue    = NewZeroValue(ArrayValue)
@@ -50,9 +48,6 @@ const (
 	// double family: 0xA0 to 0xAF
 	DoubleValue ValueType = 0xA0
 
-	// time family: 0xB0 to 0xBF
-	DurationValue ValueType = 0xB0
-
 	// string family: 0xC0 to 0xCF
 	TextValue ValueType = 0xC0
 
@@ -76,8 +71,6 @@ func (t ValueType) String() string {
 		return "integer"
 	case DoubleValue:
 		return "double"
-	case DurationValue:
-		return "duration"
 	case BlobValue:
 		return "blob"
 	case TextValue:
@@ -134,14 +127,6 @@ func NewDoubleValue(x float64) Value {
 	}
 }
 
-// NewDurationValue returns a value of type Duration.
-func NewDurationValue(d time.Duration) Value {
-	return Value{
-		Type: DurationValue,
-		V:    d,
-	}
-}
-
 // NewBlobValue encodes x and returns a value.
 func NewBlobValue(x []byte) Value {
 	return Value{
@@ -186,8 +171,6 @@ func NewZeroValue(t ValueType) Value {
 		return NewIntegerValue(0)
 	case DoubleValue:
 		return NewDoubleValue(0)
-	case DurationValue:
-		return NewDurationValue(0)
 	case BlobValue:
 		return NewBlobValue(nil)
 	case TextValue:
@@ -221,8 +204,6 @@ func (v Value) IsZeroValue() (bool, error) {
 		return v.V == integerZeroValue.V, nil
 	case DoubleValue:
 		return v.V == doubleZeroValue.V, nil
-	case DurationValue:
-		return v.V == durationZeroValue.V, nil
 	case BlobValue:
 		return bytes.Compare(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
 	case TextValue:
@@ -278,8 +259,6 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		}
 
 		return strconv.AppendFloat(nil, v.V.(float64), fmt, -1, 64), nil
-	case DurationValue:
-		return []byte(strconv.Quote(v.V.(time.Duration).String())), nil
 	case TextValue:
 		return []byte(strconv.Quote(v.V.(string))), nil
 	case BlobValue:
@@ -305,7 +284,7 @@ func (v Value) String() string {
 		return "NULL"
 	case TextValue:
 		return strconv.Quote(v.V.(string))
-	case BlobValue, DurationValue:
+	case BlobValue:
 		return fmt.Sprintf("%v", v.V)
 	}
 
@@ -375,18 +354,6 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		return NewNullValue(), nil
 	}
 
-	if a.Type == DurationValue && b.Type == DurationValue {
-		res, err = calculateIntegers(a, b, operator)
-		if err != nil {
-			return
-		}
-		if operator != '&' && operator != '|' && operator != '^' {
-			return NewDurationValue(time.Duration(res.V.(int64))), nil
-		}
-
-		return
-	}
-
 	if a.Type.IsNumber() && b.Type.IsNumber() {
 		if a.Type == DoubleValue || b.Type == DoubleValue {
 			return calculateFloats(a, b, operator)
@@ -415,8 +382,6 @@ func convertNumberToInt64(v Value) (int64, error) {
 			return 0, errors.New(`cannot convert "double" value to "integer" without loss of precision`)
 		}
 		i = int64(f)
-	case DurationValue:
-		return int64(v.V.(time.Duration)), nil
 	}
 
 	return i, nil

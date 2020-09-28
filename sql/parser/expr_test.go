@@ -3,7 +3,6 @@ package parser
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -41,11 +40,6 @@ func TestParserExpr(t *testing.T) {
 		// floats
 		{"+float64", "10.0", expr.DoubleValue(10), false},
 		{"-float64", "-10.0", expr.DoubleValue(-10), false},
-
-		// durations
-		{"+duration", "150ms", expr.DurationValue(150 * time.Millisecond), false},
-		{"-duration", "-150ms", expr.DurationValue(-150 * time.Millisecond), false},
-		{"bad duration", "-150xs", expr.DurationValue(0), true},
 
 		// strings
 		{"double quoted string", `"10.0"`, expr.TextValue("10.0"), false},

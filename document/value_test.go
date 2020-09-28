@@ -23,7 +23,6 @@ func TestValueString(t *testing.T) {
 		{"double", document.NewDoubleValue(10.1), "10.1"},
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), "{\"a\": 10}"},
 		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), "[10]"},
-		{"duration", document.NewDurationValue(10 * time.Nanosecond), "10ns"},
 	}
 
 	for _, test := range tests {
@@ -74,7 +73,6 @@ func TestNewValue(t *testing.T) {
 		{"null", nil, nil},
 		{"document", document.NewFieldBuffer().Add("a", document.NewIntegerValue(10)), document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))},
 		{"array", document.NewValueBuffer(document.NewIntegerValue(10)), document.NewValueBuffer(document.NewIntegerValue(10))},
-		{"duration", 10 * time.Nanosecond, 10 * time.Nanosecond},
 		{"time", now, now.Format(time.RFC3339Nano)},
 		{"bytes", myBytes("bar"), []byte("bar")},
 		{"string", myString("bar"), "bar"},
@@ -119,7 +117,6 @@ func TestValueAdd(t *testing.T) {
 		{"text('120')+text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document+document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array+array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(1ns)+duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond + time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -156,7 +153,6 @@ func TestValueSub(t *testing.T) {
 		{"text('120')-text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document-document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array-array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(1ns)-duration(1ms)", document.NewDurationValue(time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(time.Nanosecond - time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -191,7 +187,6 @@ func TestValueMult(t *testing.T) {
 		{"text('120')*text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document*document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array*array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)*duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond * time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -227,7 +222,6 @@ func TestValueDiv(t *testing.T) {
 		{"text('120')/text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document/document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array/array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)/duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond / time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -265,7 +259,6 @@ func TestValueMod(t *testing.T) {
 		{"text('120')%text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document%document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array%array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)%duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Millisecond), document.NewDurationValue(10 * time.Nanosecond % time.Millisecond), false},
 	}
 
 	for _, test := range tests {
@@ -300,7 +293,6 @@ func TestValueBitwiseAnd(t *testing.T) {
 		{"text('120')&text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document&document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array&array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)&duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntegerValue(8), false},
 	}
 
 	for _, test := range tests {
@@ -334,7 +326,6 @@ func TestValueBitwiseOr(t *testing.T) {
 		{"text('120')|text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document|document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array|array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)|duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntegerValue(1002), false},
 	}
 
 	for _, test := range tests {
@@ -367,7 +358,6 @@ func TestValueBitwiseXor(t *testing.T) {
 		{"text('120')^text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"document^document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), document.NewNullValue(), false},
 		{"array^array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), document.NewNullValue(), false},
-		{"duration(10ns)^duration(1ms)", document.NewDurationValue(10 * time.Nanosecond), document.NewDurationValue(time.Microsecond), document.NewIntegerValue(994), false},
 	}
 
 	for _, test := range tests {

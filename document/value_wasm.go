@@ -1,14 +1,8 @@
 package document
 
-import (
-	"time"
-)
-
 // NewValue creates a value from x. It only supports a few type and doesn't rely on reflection.
 func NewValue(x interface{}) (Value, error) {
 	switch v := x.(type) {
-	case time.Duration:
-		return NewDurationValue(v), nil
 	case nil:
 		return NewNullValue(), nil
 	case Document:

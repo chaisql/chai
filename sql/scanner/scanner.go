@@ -50,7 +50,7 @@ func (s *Scanner) unbuffer() string {
 }
 
 // Scan returns the next token and position from the underlying reader.
-// Also returns the literal text read for strings, numbers, and duration tokens
+// Also returns the literal text read for strings, and number tokens
 // since these token types can have different literal representations.
 func (s *Scanner) Scan() TokenInfo {
 	// Read next code point.
@@ -354,32 +354,7 @@ func (s *Scanner) scanNumber() TokenInfo {
 		s.unread()
 	}
 
-	// Read as a duration or integer if it doesn't have a fractional part.
 	if !isDecimal {
-		// If the next rune is a letter then this is a duration token.
-		if ch0, _ := s.read(); isLetter(ch0) || ch0 == 'µ' {
-			_, _ = buf.WriteRune(ch0)
-			for {
-				ch1, _ := s.read()
-				if !isLetter(ch1) && ch1 != 'µ' {
-					s.unread()
-					break
-				}
-				_, _ = buf.WriteRune(ch1)
-			}
-
-			// Continue reading digits and letters as part of this token.
-			for {
-				if ch0, _ := s.read(); isLetter(ch0) || ch0 == 'µ' || isDigit(ch0) {
-					_, _ = buf.WriteRune(ch0)
-				} else {
-					s.unread()
-					break
-				}
-			}
-			return TokenInfo{DURATION, pos, buf.String(), s.unbuffer()}
-		}
-		s.unread()
 		return TokenInfo{INTEGER, pos, buf.String(), s.unbuffer()}
 	}
 	return TokenInfo{NUMBER, pos, buf.String(), s.unbuffer()}

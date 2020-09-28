@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
-	"time"
 )
 
 // CastAs casts v as the selected type when possible.
@@ -25,8 +24,6 @@ func (v Value) CastAs(t ValueType) (Value, error) {
 		return v.CastAsInteger()
 	case DoubleValue:
 		return v.CastAsDouble()
-	case DurationValue:
-		return v.CastAsDuration()
 	case BlobValue:
 		return v.CastAsBlob()
 	case TextValue:
@@ -65,7 +62,6 @@ func (v Value) CastAsBool() (Value, error) {
 // CastAsInteger casts according to the following rules:
 // Bool: returns 1 if true, 0 if false.
 // Double: cuts off the decimal and remaining numbers.
-// Duration: returns the number of nanoseconds in the duration.
 // Text: uses strconv.ParseInt to determine the integer value,
 // then casts it to an integer. If it fails uses strconv.ParseFloat
 // to determine the double value, then casts it to an integer
@@ -82,8 +78,6 @@ func (v Value) CastAsInteger() (Value, error) {
 		return NewIntegerValue(0), nil
 	case DoubleValue:
 		return NewIntegerValue(int64(v.V.(float64))), nil
-	case DurationValue:
-		return NewIntegerValue(int64(v.V.(time.Duration))), nil
 	case TextValue:
 		i, err := strconv.ParseInt(v.V.(string), 10, 64)
 		if err != nil {
@@ -122,26 +116,6 @@ func (v Value) CastAsDouble() (Value, error) {
 	return Value{}, fmt.Errorf("cannot cast %s as double", v.Type)
 }
 
-// CastAsDuration casts according to the following rules:
-// Text: decodes using time.ParseDuration, otherwise fails.
-// Any other type is considered an invalid cast.
-func (v Value) CastAsDuration() (Value, error) {
-	if v.Type == DurationValue {
-		return v, nil
-	}
-
-	if v.Type == TextValue {
-		d, err := time.ParseDuration(v.V.(string))
-		if err != nil {
-			return Value{}, fmt.Errorf(`cannot cast %q as duration: %w`, v.V, err)
-		}
-
-		return NewDurationValue(d), nil
-	}
-
-	return Value{}, fmt.Errorf("cannot cast %s as duration", v.Type)
-}
-
 // CastAsText returns a JSON representation of v.
 // If the representation is a string, it gets unquoted.
 func (v Value) CastAsText() (Value, error) {
@@ -156,7 +130,7 @@ func (v Value) CastAsText() (Value, error) {
 
 	s := string(d)
 
-	if v.Type == DurationValue || v.Type == BlobValue {
+	if v.Type == BlobValue {
 		s, err = strconv.Unquote(s)
 		if err != nil {
 			return Value{}, err
