@@ -1,7 +1,12 @@
 package shell
 
 import (
+	"bytes"
 	"fmt"
+	"os"
+	"strings"
+
+	"github.com/genjidb/genji/database"
 
 	"github.com/agnivade/levenshtein"
 	"github.com/genjidb/genji"
@@ -17,6 +22,7 @@ var commands = []struct {
 	{".help", ``, "List all commands."},
 	{".tables", ``, "List names of tables."},
 	{".indexes", `[table_name]`, "Display all indexes or the indexes of the given table name."},
+	{".dump", `[table_name]`, "Dump database content or table content as SQL statements"},
 }
 
 // runTablesCmd shows all tables.
@@ -134,5 +140,195 @@ func displaySuggestions(in string) error {
 	}
 
 	fmt.Println()
+	return nil
+}
+
+// dumpTable displays the content of the given table as SQL statements.
+func dumpTable(tx *genji.Tx, t *database.Table) error {
+	var buf bytes.Buffer
+
+	c := fmt.Sprintf("CREATE TABLE %s", t.Name())
+	buf.WriteString(c)
+
+	ti, err := t.Info()
+	if err != nil {
+		return err
+	}
+
+	fcs := ti.FieldConstraints
+	hasField := false
+	for i, fc := range fcs {
+		// Fields constraints should be displaying between parenthesis.
+		if !hasField {
+			buf.WriteString("(\n")
+			hasField = true
+		}
+
+		// Don't put the last comma.
+		if i > 0 {
+			buf.WriteString(",\n")
+		}
+
+		buf.WriteString("  " + fcs[i].Path.String() + " ")
+		buf.WriteString(strings.ToUpper(fcs[i].Type.String()))
+		if fc.IsPrimaryKey {
+			buf.WriteString(" PRIMARY KEY")
+		}
+
+		if fc.IsNotNull {
+			buf.WriteString(" NOT NULL")
+		}
+	}
+
+	// Fields constraints close parenthesis.
+	if hasField {
+		buf.WriteString("\n);\n")
+	} else {
+		buf.WriteString(";\n")
+	}
+
+	// Print CREATE TABLE statement.
+	_, err = fmt.Fprintf(os.Stdout, buf.String())
+	if err != nil {
+		return err
+	}
+	buf.Reset()
+
+	// Indexes statement.
+	indexes, err := t.Indexes()
+	if err != nil {
+		return err
+	}
+
+	for _, index := range indexes {
+		u := ""
+		if index.Opts.Unique {
+			u = " UNIQUE"
+		}
+
+		info := fmt.Sprintf("CREATE%s INDEX %s ON %s (%s);\n", u, index.Opts.IndexName, index.Opts.TableName,
+			index.Opts.Path)
+		buf.WriteString(info)
+
+		_, err = fmt.Fprintf(os.Stdout, buf.String())
+		if err != nil {
+			return err
+		}
+		buf.Reset()
+	}
+
+	q := fmt.Sprintf("SELECT * FROM %s", t.Name())
+	res, err := tx.Query(q)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	// Inserts statement.
+	insert := fmt.Sprintf("INSERT INTO %s VALUES ", t.Name())
+	return res.Iterate(func(d document.Document) error {
+		buf.WriteString(insert)
+
+		data, err := document.MarshalJSON(d)
+		if err != nil {
+			return err
+		}
+		buf.Write(data)
+		buf.WriteString(";\n")
+
+		if _, err = fmt.Fprintf(os.Stdout, buf.String()); err != nil {
+			return err
+		}
+
+		buf.Reset()
+
+		return nil
+	})
+}
+
+// runDumpCmd run .dump command where tables slice is the given tables or it can be empty that is consider all database.
+func runDumpCmd(db *genji.DB, tables []string) error {
+	tx, err := db.Begin(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	fmt.Println("BEGIN TRANSACTION;")
+
+	// Dump the given table(s) content.
+	argsTable := false
+	i := 0
+	for _, table := range tables {
+		argsTable = true
+		t, err := tx.GetTable(table)
+		switch err {
+		case nil:
+			// Blank separation between tables.
+			if i > 0 {
+				fmt.Println()
+			}
+			i++
+
+			if err := dumpTable(tx, t); err != nil {
+				fmt.Println("ROLLBACK;")
+				return err
+			}
+		case database.ErrTableNotFound: // If table doesn't exist we skip it.
+			break
+		default:
+			fmt.Println("ROLLBACK;")
+			return err
+		}
+	}
+
+	// tables slice argument is not empty, all args tables has been displayed.
+	// If it is empty we should print the database content.
+	if argsTable {
+		fmt.Println("COMMIT;")
+		return nil
+	}
+
+	// tables slice argument is empty.
+	// Dump database content.
+	res, err := tx.Query("SELECT table_name FROM __genji_tables")
+	if err != nil {
+		fmt.Println("COMMIT;")
+		return err
+	}
+	defer res.Close()
+
+	i = 0
+	err = res.Iterate(func(d document.Document) error {
+		// Blank separation between tables.
+		if i > 0 {
+			fmt.Println()
+		}
+		i++
+
+		// Get table name.
+		var tableName string
+		if err := document.Scan(d, &tableName); err != nil {
+			return err
+		}
+
+		t, err := tx.GetTable(tableName)
+		if err != nil {
+			return err
+		}
+
+		if err := dumpTable(tx, t); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		fmt.Println("ROLLBACK;")
+		return err
+	}
+
+	fmt.Println("COMMIT;")
+
 	return nil
 }

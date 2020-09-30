@@ -295,6 +295,13 @@ func (sh *Shell) runCommand(in string) error {
 			return err
 		}
 		return runIndexesCmd(db, cmd)
+	case ".dump":
+		db, err := sh.getDB()
+		if err != nil {
+			return err
+		}
+
+		return runDumpCmd(db, cmd[1:])
 	default:
 		return displaySuggestions(in)
 	}
