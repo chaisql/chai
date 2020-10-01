@@ -216,7 +216,7 @@ func TestInsertStmt(t *testing.T) {
 
 		for i, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				q := fmt.Sprintf("CREATE TABLE test%d (a %s)", i, test.fieldConstraint)
+				q := fmt.Sprintf( "CREATE TABLE test%d (a %s)", i, test.fieldConstraint)
 				err := db.Exec(q)
 				require.NoError(t, err)
 

@@ -301,7 +301,7 @@ func (sh *Shell) runCommand(in string) error {
 			return err
 		}
 
-		return runDumpCmd(db, cmd[1:])
+		return runDumpCmd(db, cmd[1:], os.Stdout)
 	default:
 		return displaySuggestions(in)
 	}
