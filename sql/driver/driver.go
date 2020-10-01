@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"io"
+	"runtime"
 	"sync"
 
 	"github.com/genjidb/genji"
@@ -20,17 +21,61 @@ func init() {
 	sql.Register("genji", sqlDriver{})
 }
 
+var (
+	_ driver.Driver        = (*sqlDriver)(nil)
+	_ driver.DriverContext = (*sqlDriver)(nil)
+)
+
 // sqlDriver is a driver.Driver that can open a new connection to a Genji database.
 // It is the driver used to register Genji against the database/sql package.
 type sqlDriver struct{}
 
 func (d sqlDriver) Open(name string) (driver.Conn, error) {
+	return nil, errors.New("requires go1.10 or greater")
+}
+
+func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
 	db, err := genji.Open(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &conn{db: db}, nil
+	c := &connector{
+		db:     db,
+		driver: d,
+	}
+	runtime.SetFinalizer(c, (*connector).Close)
+
+	return c, nil
+}
+
+var (
+	_ driver.Connector = (*connector)(nil)
+	_ io.Closer        = (*connector)(nil)
+)
+
+type connector struct {
+	driver driver.Driver
+
+	db *genji.DB
+
+	closeOnce sync.Once
+}
+
+func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
+	return &conn{db: c.db}, nil
+}
+
+func (c *connector) Driver() driver.Driver {
+	return c.driver
+}
+
+func (c *connector) Close() error {
+	var err error
+	c.closeOnce.Do(func() {
+		err = c.db.Close()
+	})
+	return err
 }
 
 // conn represents a connection to the Genji database.
