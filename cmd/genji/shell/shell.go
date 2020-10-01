@@ -116,13 +116,40 @@ func Run(opts *Options) error {
 		return nil
 	}
 
-	e := prompt.New(
-		sh.execute,
-		sh.completer,
+	promptOpts := []prompt.Option{
 		prompt.OptionPrefix("genji> "),
 		prompt.OptionTitle("genji"),
 		prompt.OptionLivePrefix(sh.changelivePrefix),
 		prompt.OptionHistory(history),
+	}
+
+	// If NO_COLOR env var is present, disable color. See https://no-color.org
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		// A list of color options we have to reset.
+		colorOpts := []func(prompt.Color) prompt.Option{
+			prompt.OptionPrefixTextColor,
+			prompt.OptionPreviewSuggestionTextColor,
+			prompt.OptionSuggestionTextColor,
+			prompt.OptionSuggestionBGColor,
+			prompt.OptionSelectedSuggestionTextColor,
+			prompt.OptionSelectedSuggestionBGColor,
+			prompt.OptionDescriptionTextColor,
+			prompt.OptionDescriptionBGColor,
+			prompt.OptionSelectedDescriptionTextColor,
+			prompt.OptionSelectedDescriptionBGColor,
+			prompt.OptionScrollbarThumbColor,
+			prompt.OptionScrollbarBGColor,
+		}
+		for _, opt := range colorOpts {
+			resetColor := opt(prompt.DefaultColor)
+			promptOpts = append(promptOpts, resetColor)
+		}
+	}
+
+	e := prompt.New(
+		sh.execute,
+		sh.completer,
+		promptOpts...,
 	)
 
 	e.Run()
@@ -146,6 +173,9 @@ func (sh *Shell) loadCommandSuggestions() {
 }
 
 func (sh *Shell) loadHistory() ([]string, error) {
+	if _, ok := os.LookupEnv("NO_HISTORY"); ok {
+		return nil, nil
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -174,6 +204,9 @@ func (sh *Shell) loadHistory() ([]string, error) {
 }
 
 func (sh *Shell) dumpHistory() error {
+	if _, ok := os.LookupEnv("NO_HISTORY"); ok {
+		return nil
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
