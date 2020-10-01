@@ -65,6 +65,7 @@ func TestScan(t *testing.T) {
 				Add("foo", document.NewTextValue("foo")).
 				Add("bar", document.NewTextValue("bar")),
 		)).
+		Add("o", document.NewNullValue()).
 		Add("p", document.NewTextValue(now.Format(time.RFC3339Nano))).
 		Add("r", document.NewDocumentValue(codec.NewDocument(buf.Bytes())))
 
@@ -88,10 +89,11 @@ func TestScan(t *testing.T) {
 	var l *foo = new(foo)
 	var m *foo
 	var n map[string]string
+	var o []int = []int{1, 2, 3}
 	var p time.Time
 	var r map[string]interface{}
 
-	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &p, &r)
+	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r)
 	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -108,6 +110,7 @@ func TestScan(t *testing.T) {
 	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, l)
 	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, m)
 	require.Equal(t, map[string]string{"foo": "foo", "bar": "bar"}, n)
+	require.Equal(t, []int(nil), o)
 	require.Equal(t, now.Format(time.RFC3339Nano), p.Format(time.RFC3339Nano))
 	require.Equal(t, map[string]interface{}{
 		"foo": map[string]interface{}{
@@ -133,14 +136,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
 		require.NoError(t, err)
-		require.Len(t, m, 16)
+		require.Len(t, m, 17)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
 		require.NoError(t, err)
-		require.Len(t, m, 16)
+		require.Len(t, m, 17)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {
