@@ -244,6 +244,12 @@ func scanValue(v Value, ref reflect.Value) error {
 		ref = reflect.Indirect(ref)
 	}
 
+	// Scan nulls as Go zero values.
+	if v.Type == NullValue {
+		ref.Set(reflect.Zero(ref.Type()))
+		return nil
+	}
+
 	switch ref.Kind() {
 	case reflect.String:
 		v, err := v.CastAsText()
