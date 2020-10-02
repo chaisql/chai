@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji"
@@ -108,9 +110,19 @@ func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 	return nil
 }
 
-func runInsertCommand(e, DBPath, table string, args []string) error {
+func runInsertCommand(e, DBPath, table string, auto bool, args []string) error {
 	var ng engine.Engine
 	var err error
+
+	ts := time.Now().Unix()
+	if DBPath == "" && auto {
+		DBPath = "data_" + strconv.FormatInt(ts, 10) + ".db"
+	}
+	var createTable = false
+	if table == "" && auto {
+		table = "data_" + strconv.FormatInt(ts, 10)
+		createTable = true
+	}
 
 	switch e {
 	case "bolt":
@@ -126,8 +138,14 @@ func runInsertCommand(e, DBPath, table string, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	defer db.Close()
+
+	if createTable {
+		err := db.Exec("CREATE TABLE " + table)
+		if err != nil {
+			return err
+		}
+	}
 
 	fi, _ := os.Stdin.Stat()
 	m := fi.Mode()

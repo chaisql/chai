@@ -40,6 +40,12 @@ It is also possible to pass an array of objects:
 
 $ genji insert --db my.db -t foo '[{"a": 1}, {"a": 2}]'
 
+Also you can use -a flag to create database automatically.
+This example will create BoltDB-based database with name 'data_${current unix timestamp}.db'
+It can be combined with --db to select an existing database but automatically create the table.
+
+$ genji insert -a -e bolt '[{"a": 1}, {"a": 2}]'
+
 Insert can also insert a stream of objects or an array of objects from standard input:
 
 $ echo '{"a": 1} {"a": 2}' | genji insert --db my.db -t foo
@@ -55,13 +61,20 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				&cli.StringFlag{
 					Name:     "db",
 					Usage:    "path of the database file",
-					Required: true,
+					Required: false,
 				},
 				&cli.StringFlag{
 					Name:     "table",
 					Aliases:  []string{"t"},
 					Usage:    "name of the table, it must already exist",
-					Required: true,
+					Required: false,
+				},
+				&cli.BoolFlag{
+					Name:     "auto",
+					Aliases:  []string{"a"},
+					Usage:    `automatically creates a database and a table whose name is equal to "data_" followed by the current unix timestamp.`,
+					Required: false,
+					Value:    false,
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -70,7 +83,7 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				engine := c.String("engine")
 				args := c.Args().Slice()
 
-				return runInsertCommand(engine, dbPath, table, args)
+				return runInsertCommand(engine, dbPath, table, c.Bool("auto"), args)
 			},
 		},
 	}
