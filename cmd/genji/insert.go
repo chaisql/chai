@@ -110,25 +110,28 @@ func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 	return nil
 }
 
-func runInsertCommand(e, DBPath, table string, auto bool, args []string) error {
+func runInsertCommand(e, dbPath, table string, auto bool, args []string) error {
 	var ng engine.Engine
 	var err error
 
-	ts := time.Now().Unix()
-	if DBPath == "" && auto {
-		DBPath = "data_" + strconv.FormatInt(ts, 10) + ".db"
-	}
-	var createTable = false
+	generatedName := "data_" + strconv.FormatInt(time.Now().Unix(), 10)
+	createTable := false
 	if table == "" && auto {
-		table = "data_" + strconv.FormatInt(ts, 10)
+		table = generatedName
 		createTable = true
 	}
 
 	switch e {
 	case "bolt":
-		ng, err = boltengine.NewEngine(DBPath, 0660, nil)
+		if dbPath == "" && auto {
+			dbPath = generatedName + ".db"
+		}
+		ng, err = boltengine.NewEngine(dbPath, 0660, nil)
 	case "badger":
-		ng, err = badgerengine.NewEngine(badger.DefaultOptions(DBPath).WithLogger(nil))
+		if dbPath == "" && auto {
+			dbPath = generatedName
+		}
+		ng, err = badgerengine.NewEngine(badger.DefaultOptions(dbPath).WithLogger(nil))
 	}
 	if err != nil {
 		return err
