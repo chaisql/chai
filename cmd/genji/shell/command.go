@@ -152,8 +152,9 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		return err
 	}
 
-	c := fmt.Sprintf("CREATE TABLE %s", t.Name())
-	buf.WriteString(c)
+	if _, err = fmt.Fprintf(w, "CREATE TABLE %s", t.Name()); err != nil {
+		return err
+	}
 
 	ti, err := t.Info()
 	if err != nil {
@@ -185,19 +186,18 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 
 	// Fields constraints close parenthesis.
 	if len(fcs) > 0 {
-		buf.WriteString("\n);")
+		buf.WriteString("\n);\n")
 	} else {
-		buf.WriteString(";")
+		buf.WriteString(";\n")
 	}
 
 	// Print CREATE TABLE statement.
-	_, err = fmt.Fprintln(w, buf.String())
-	if err != nil {
+	if _, err = buf.WriteTo(w); err != nil {
 		return err
 	}
 	buf.Reset()
 
-	// Indexes statement.
+	// Indexes statements.
 	indexes, err := t.Indexes()
 	if err != nil {
 		return err
@@ -209,9 +209,8 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 			u = " UNIQUE"
 		}
 
-		info := fmt.Sprintf("CREATE%s INDEX %s ON %s (%s);", u, index.Opts.IndexName, index.Opts.TableName,
+		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Opts.IndexName, index.Opts.TableName,
 			index.Opts.Path)
-		_, err = fmt.Fprintln(w, info)
 		if err != nil {
 			return err
 		}
@@ -234,9 +233,9 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 			return err
 		}
 		buf.Write(data)
-		buf.WriteString(";")
+		buf.WriteString(";\n")
 
-		if _, err = fmt.Fprintln(w, buf.String()); err != nil {
+		if _, err = buf.WriteTo(w); err != nil {
 			return err
 		}
 
@@ -246,33 +245,33 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	})
 }
 
-// runDumpCmd run .dump command where tables slice is the given tables or it can be empty that is consider all database.
+// runDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
 func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	_, err = fmt.Fprintln(w, "BEGIN TRANSACTION;")
-	if err != nil {
+
+	if _, err = fmt.Fprintln(w, "BEGIN TRANSACTION;"); err != nil {
 		return err
 	}
 
-	i := 0
-	for _, table := range tables {
+	for i, table := range tables {
 		err = dumpTable(tx, table, w)
 		switch err {
 		case nil:
 			// Blank separation between tables.
 			if i > 0 {
-				fmt.Println()
+				if _, err := fmt.Fprintln(w, ""); err != nil {
+					return err
+				}
 			}
-			i++
 
 		case database.ErrTableNotFound: // If table doesn't exist we skip it.
 			continue
 		default:
-			_, err = fmt.Fprintln(w, "ROLLBACK;")
+			_, err = fmt.Fprintln(w, "COMMIT;")
 			return err
 		}
 	}
@@ -293,11 +292,13 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	}
 	defer res.Close()
 
-	i = 0
+	i := 0
 	err = res.Iterate(func(d document.Document) error {
 		// Blank separation between tables.
 		if i > 0 {
-			fmt.Println()
+			if _, err := fmt.Fprintln(w, ""); err != nil {
+				return err
+			}
 		}
 		i++
 
@@ -318,6 +319,6 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 		return err
 	}
 
-	_, err = fmt.Fprintln(w, "ROLLBACK;")
+	_, err = fmt.Fprintln(w, "COMMIT;")
 	return err
 }
