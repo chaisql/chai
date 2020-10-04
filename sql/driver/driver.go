@@ -87,7 +87,12 @@ type conn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *conn) Prepare(q string) (driver.Stmt, error) {
-	pq, err := parser.ParseQuery(context.Background(), q)
+	return c.PrepareContext(context.Background(), q)
+}
+
+// PrepareContext returns a prepared statement, bound to this connection.
+func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
+	pq, err := parser.ParseQuery(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +205,9 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
+		res, err = s.q.Exec(ctx, s.tx.Transaction, driverNamedValueToParams(args))
 	} else {
-		res, err = s.q.Run(s.db.DB, driverNamedValueToParams(args))
+		res, err = s.q.Run(ctx, s.db.DB, driverNamedValueToParams(args))
 	}
 
 	if err != nil {
@@ -250,9 +255,9 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
+		res, err = s.q.Exec(ctx, s.tx.Transaction, driverNamedValueToParams(args))
 	} else {
-		res, err = s.q.Run(s.db.DB, driverNamedValueToParams(args))
+		res, err = s.q.Run(ctx, s.db.DB, driverNamedValueToParams(args))
 	}
 
 	if err != nil {
