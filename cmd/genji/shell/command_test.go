@@ -86,17 +86,17 @@ func TestIndexesCmd(t *testing.T) {
 
 func TestRunDumpCmd(t *testing.T) {
 	tests := []struct {
-		name    string
-		query   string
+		name            string
+		query           string
 		fieldConstraint string
-		want    string
-		fails   bool
-		params  []interface{}
+		want            string
+		fails           bool
+		params          []interface{}
 	}{
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, ``,`INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
-		{"text / not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT NOT NULL`,`INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
-		{"text / pk and not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT PRIMARY KEY NOT NULL`,`INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
-		}
+		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, ``, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
+		{"text / not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT NOT NULL`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
+		{"text / pk and not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT PRIMARY KEY NOT NULL`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
+	}
 
 	for _, tt := range tests {
 		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
@@ -107,12 +107,11 @@ func TestRunDumpCmd(t *testing.T) {
 
 				var bwant bytes.Buffer
 
-				tx := fmt.Sprintf("%s\n", `BEGIN TRANSACTION;`)
+				tx := "BEGIN TRANSACTION;\n"
 				bwant.WriteString(tx)
-				ci := fmt.Sprintf("%s\n", `COMMIT;`)
-
+				ci := "COMMIT;\n"
 				if withConstraints {
-					q := fmt.Sprintf( "CREATE TABLE test (\n  a %s\n);\n", tt.fieldConstraint)
+					q := fmt.Sprintf("CREATE TABLE test (\n  a %s\n);\n", tt.fieldConstraint)
 					err := db.Exec(q)
 					require.NoError(t, err)
 					bwant.WriteString(q)
@@ -132,7 +131,7 @@ func TestRunDumpCmd(t *testing.T) {
 					err = db.View(func(tx *genji.Tx) error {
 						// indexes is unordered, we cannot guess the order.
 						// we have to test only one index creation.
-						indexes, err :=  tx.ListIndexes()
+						indexes, err := tx.ListIndexes()
 						require.NoError(t, err)
 						for _, index := range indexes {
 							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", index.IndexName, index.TableName,
@@ -165,9 +164,6 @@ func TestRunDumpCmd(t *testing.T) {
 		t.Run("No Index/"+tt.name, testFn(false, false))
 		t.Run("With Index/"+tt.name, testFn(true, false))
 		t.Run("With FieldsConstraints/"+tt.name, testFn(true, true))
-		t.Run("With FieldsConstraints/"+tt.name, testFn(true, true))
 	}
-
-
 
 }
