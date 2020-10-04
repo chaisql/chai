@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,7 +38,7 @@ func skipSpaces(r *bufio.Reader) (byte, error) {
 	return c, nil
 }
 
-func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
+func executeInsertCommand(ctx context.Context, db *genji.DB, table string, r io.Reader) error {
 	q := fmt.Sprintf("INSERT INTO %s VALUES ?", table)
 	rd := bufio.NewReader(r)
 	var c byte
@@ -65,7 +66,7 @@ func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 				return err
 			}
 
-			if err := db.Exec(q, &fb); err != nil {
+			if err := db.Exec(ctx, q, &fb); err != nil {
 				return err
 			}
 		}
@@ -88,10 +89,9 @@ func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 				return err
 			}
 
-			if err := db.Exec(q, &fb); err != nil {
+			if err := db.Exec(ctx, q, &fb); err != nil {
 				return err
 			}
-
 		}
 
 		t, err = dec.Token()
@@ -110,7 +110,7 @@ func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 	return nil
 }
 
-func runInsertCommand(e, dbPath, table string, auto bool, args []string) error {
+func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, args []string) error {
 	var ng engine.Engine
 	var err error
 
@@ -144,7 +144,7 @@ func runInsertCommand(e, dbPath, table string, auto bool, args []string) error {
 	defer db.Close()
 
 	if createTable {
-		err := db.Exec("CREATE TABLE " + table)
+		err := db.Exec(ctx, "CREATE TABLE "+table)
 		if err != nil {
 			return err
 		}
@@ -153,7 +153,7 @@ func runInsertCommand(e, dbPath, table string, auto bool, args []string) error {
 	fi, _ := os.Stdin.Stat()
 	m := fi.Mode()
 	if (m & os.ModeNamedPipe) != 0 {
-		return executeInsertCommand(db, table, os.Stdin)
+		return executeInsertCommand(ctx, db, table, os.Stdin)
 	}
 
 	if len(args) == 0 {
@@ -161,7 +161,7 @@ func runInsertCommand(e, dbPath, table string, auto bool, args []string) error {
 	}
 
 	for _, arg := range args {
-		if err := executeInsertCommand(db, table, strings.NewReader(arg)); err != nil {
+		if err := executeInsertCommand(ctx, db, table, strings.NewReader(arg)); err != nil {
 			return err
 		}
 	}

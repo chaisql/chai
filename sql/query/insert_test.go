@@ -2,6 +2,7 @@ package query_test
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -13,6 +14,8 @@ import (
 )
 
 func TestInsertStmt(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name     string
 		query    string
@@ -47,24 +50,26 @@ func TestInsertStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test")
+				ctx := context.Background()
+
+				err = db.Exec(ctx, "CREATE TABLE test")
 				require.NoError(t, err)
 				if withIndexes {
-					err = db.Exec(`
+					err = db.Exec(ctx, `
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
 					`)
 					require.NoError(t, err)
 				}
-				err = db.Exec(test.query, test.params...)
+				err = db.Exec(ctx, test.query, test.params...)
 				if test.fails {
 					require.Error(t, err)
 					return
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query("SELECT pk(), * FROM test")
+				st, err := db.Query(ctx, "SELECT pk(), * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 
@@ -84,15 +89,15 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
+		err = db.Exec(ctx, "CREATE TABLE test (foo INTEGER PRIMARY KEY)")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (bar) VALUES (1)`)
+		err = db.Exec(ctx, `INSERT INTO test (bar) VALUES (1)`)
 		require.Error(t, err)
-		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
+		err = db.Exec(ctx, `INSERT INTO test (bar, foo) VALUES (1, 2)`)
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
+		err = db.Exec(ctx, `INSERT INTO test (bar, foo) VALUES (1, 2)`)
 		require.Equal(t, err, database.ErrDuplicateDocument)
 	})
 
@@ -101,10 +106,10 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test")
+		err = db.Exec(ctx, "CREATE TABLE test")
 		require.NoError(t, err)
 
-		err = db.Exec("INSERT INTO test (`pk()`, `key`) VALUES (1, 2)")
+		err = db.Exec(ctx, "INSERT INTO test (`pk()`, `key`) VALUES (1, 2)")
 		require.NoError(t, err)
 	})
 
@@ -113,7 +118,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test")
+		err = db.Exec(ctx, "CREATE TABLE test")
 		require.NoError(t, err)
 
 		type foo struct {
@@ -121,9 +126,9 @@ func TestInsertStmt(t *testing.T) {
 			B string `genji:"b-b"`
 		}
 
-		err = db.Exec("INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
+		err = db.Exec(ctx, "INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
 		require.NoError(t, err)
-		res, err := db.Query("SELECT * FROM test")
+		res, err := db.Query(ctx, "SELECT * FROM test")
 		defer res.Close()
 
 		require.NoError(t, err)
@@ -139,14 +144,14 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE TABLE test(
+		err = db.Exec(ctx, `CREATE TABLE test(
 			b bool, db double,
 			i integer, bb blob, byt bytes,
 			t text, a array, d document
 		)`)
 		require.NoError(t, err)
 
-		err = db.Exec(`
+		err = db.Exec(ctx, `
 			INSERT INTO test
 			VALUES {
 				i: 10000000000, db: 21.21, b: true,
@@ -155,7 +160,7 @@ func TestInsertStmt(t *testing.T) {
 			}`)
 		require.NoError(t, err)
 
-		res, err := db.Query("SELECT * FROM test")
+		res, err := db.Query(ctx, "SELECT * FROM test")
 		defer res.Close()
 		require.NoError(t, err)
 
@@ -217,11 +222,11 @@ func TestInsertStmt(t *testing.T) {
 		for i, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
 				q := fmt.Sprintf("CREATE TABLE test%d (a %s)", i, test.fieldConstraint)
-				err := db.Exec(q)
+				err := db.Exec(ctx, q)
 				require.NoError(t, err)
 
 				q = fmt.Sprintf("INSERT INTO test%d VALUES %s", i, test.value)
-				err = db.Exec(q)
+				err = db.Exec(ctx, q)
 				require.Error(t, err)
 			})
 		}

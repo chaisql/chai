@@ -1,6 +1,7 @@
 package planner_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -39,15 +40,17 @@ func TestExplainStmt(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
+			ctx := context.Background()
+
+			err = db.Exec(ctx, "CREATE TABLE test (k INTEGER PRIMARY KEY)")
 			require.NoError(t, err)
-			err = db.Exec(`
+			err = db.Exec(ctx, `
 						CREATE INDEX idx_a ON test (a);
 						CREATE UNIQUE INDEX idx_b ON test (b);
 					`)
 			require.NoError(t, err)
 
-			d, err := db.QueryDocument(test.query)
+			d, err := db.QueryDocument(ctx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji/sql/planner"
@@ -191,7 +192,7 @@ func TestParserSelect(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := ParseQuery(context.Background(), test.s)
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)

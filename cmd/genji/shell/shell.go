@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -315,7 +316,7 @@ func (sh *Shell) runQuery(q string) error {
 		return err
 	}
 
-	res, err := db.Query(q)
+	res, err := db.Query(context.Background(), q)
 	if err != nil {
 		return err
 	}
@@ -431,7 +432,7 @@ func (sh *Shell) getAllIndexes() ([]string, error) {
 func (sh *Shell) getAllTables() ([]string, error) {
 	var tables []string
 	db, _ := sh.getDB()
-	res, err := db.Query("SELECT table_name FROM __genji_tables")
+	res, err := db.Query(context.Background(), "SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +461,7 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 		return prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
 	}
 
-	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery()
+	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery(context.Background())
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
 		if !ok {

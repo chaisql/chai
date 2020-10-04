@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -69,9 +70,11 @@ func TestIndexesCmd(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test")
+			ctx := context.Background()
+
+			err = db.Exec(ctx, "CREATE TABLE test")
 			require.NoError(t, err)
-			err = db.Exec(`
+			err = db.Exec(ctx, `
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
@@ -98,7 +101,10 @@ func TestRunDumpCmd(t *testing.T) {
 		{"text / pk and not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT PRIMARY KEY NOT NULL`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
 	}
 
+	ctx := context.Background()
+
 	for _, tt := range tests {
+
 		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				db, err := genji.Open(":memory:")
@@ -112,19 +118,19 @@ func TestRunDumpCmd(t *testing.T) {
 				ci := "COMMIT;\n"
 				if withConstraints {
 					q := fmt.Sprintf("CREATE TABLE test (\n  a %s\n);\n", tt.fieldConstraint)
-					err := db.Exec(q)
+					err := db.Exec(ctx, q)
 					require.NoError(t, err)
 					bwant.WriteString(q)
 				} else {
 					q := `CREATE TABLE test;`
-					err = db.Exec(q)
+					err = db.Exec(ctx, q)
 					require.NoError(t, err)
 					q = fmt.Sprintf("%s\n", q)
 					bwant.WriteString(q)
 				}
 
 				if withIndexes {
-					err = db.Exec(`
+					err = db.Exec(ctx, `
 						CREATE INDEX idx_a ON test (a);
 					`)
 					require.NoError(t, err)
@@ -143,7 +149,7 @@ func TestRunDumpCmd(t *testing.T) {
 					require.NoError(t, err)
 
 				}
-				err = db.Exec(tt.query, tt.params...)
+				err = db.Exec(context.Background(), tt.query, tt.params...)
 				if tt.fails {
 					require.Error(t, err)
 					return

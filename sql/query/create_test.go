@@ -1,6 +1,7 @@
 package query_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -17,6 +18,8 @@ func parsePath(t testing.TB, str string) document.ValuePath {
 }
 
 func TestCreateTable(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name  string
 		query string
@@ -37,7 +40,7 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(test.query)
+			err = db.Exec(ctx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return
@@ -58,7 +61,7 @@ func TestCreateTable(t *testing.T) {
 		defer db.Close()
 
 		t.Run("with fixed size data types", func(t *testing.T) {
-			err = db.Exec(`CREATE TABLE test(d double, b bool)`)
+			err = db.Exec(ctx, `CREATE TABLE test(d double, b bool)`)
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
@@ -83,7 +86,7 @@ func TestCreateTable(t *testing.T) {
 		})
 
 		t.Run("with variable size data types", func(t *testing.T) {
-			err = db.Exec(`
+			err = db.Exec(ctx, `
 				CREATE TABLE test1(
 					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] TEXT NOT NULL, bar[4][0].bat integer, b blob, t text, a array, d document
 				)
@@ -136,10 +139,12 @@ func TestCreateIndex(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test")
+			ctx := context.Background()
+
+			err = db.Exec(ctx, "CREATE TABLE test")
 			require.NoError(t, err)
 
-			err = db.Exec(test.query)
+			err = db.Exec(ctx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return

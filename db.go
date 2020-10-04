@@ -1,6 +1,8 @@
 package genji
 
 import (
+	"context"
+
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
@@ -58,8 +60,8 @@ func (db *DB) Update(fn func(tx *Tx) error) error {
 }
 
 // Exec a query against the database without returning the result.
-func (db *DB) Exec(q string, args ...interface{}) error {
-	res, err := db.Query(q, args...)
+func (db *DB) Exec(ctx context.Context, q string, args ...interface{}) error {
+	res, err := db.Query(ctx, q, args...)
 	if err != nil {
 		return err
 	}
@@ -69,19 +71,19 @@ func (db *DB) Exec(q string, args ...interface{}) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
-	pq, err := parser.ParseQuery(q)
+func (db *DB) Query(ctx context.Context, q string, args ...interface{}) (*query.Result, error) {
+	pq, err := parser.ParseQuery(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Run(db.DB, argsToParams(args))
+	return pq.Run(ctx, db.DB, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
-func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, error) {
-	res, err := db.Query(q, args...)
+func (db *DB) QueryDocument(ctx context.Context, q string, args ...interface{}) (document.Document, error) {
+	res, err := db.Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,19 +117,19 @@ type Tx struct {
 
 // Query the database withing the transaction and returns the result.
 // Closing the returned result after usage is not mandatory.
-func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
-	pq, err := parser.ParseQuery(q)
+func (tx *Tx) Query(ctx context.Context, q string, args ...interface{}) (*query.Result, error) {
+	pq, err := parser.ParseQuery(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Exec(tx.Transaction, argsToParams(args))
+	return pq.Exec(ctx, tx.Transaction, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
-func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, error) {
-	res, err := tx.Query(q, args...)
+func (tx *Tx) QueryDocument(ctx context.Context, q string, args ...interface{}) (document.Document, error) {
+	res, err := tx.Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +147,8 @@ func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, e
 }
 
 // Exec a query against the database within tx and without returning the result.
-func (tx *Tx) Exec(q string, args ...interface{}) error {
-	res, err := tx.Query(q, args...)
+func (tx *Tx) Exec(ctx context.Context, q string, args ...interface{}) error {
+	res, err := tx.Query(ctx, q, args...)
 	if err != nil {
 		return err
 	}

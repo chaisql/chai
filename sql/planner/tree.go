@@ -6,6 +6,7 @@
 package planner
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/genjidb/genji/database"
@@ -57,7 +58,7 @@ func NewTree(n Node) *Tree {
 
 // Run implements the query.Statement interface.
 // It binds the tree to the database resources and executes it.
-func (t *Tree) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
+func (t *Tree) Run(ctx context.Context, tx *database.Transaction, params []expr.Param) (query.Result, error) {
 	err := Bind(t, tx, params)
 	if err != nil {
 		return query.Result{}, err

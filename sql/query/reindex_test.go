@@ -1,6 +1,7 @@
 package query_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -9,6 +10,8 @@ import (
 )
 
 func TestReIndex(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name            string
 		query           string
@@ -28,7 +31,7 @@ func TestReIndex(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(`
+			err = db.Exec(ctx, `
 				CREATE TABLE test1;
 				CREATE TABLE test2;
 
@@ -42,7 +45,7 @@ func TestReIndex(t *testing.T) {
 			`)
 			require.NoError(t, err)
 
-			err = db.Exec(test.query)
+			err = db.Exec(ctx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return

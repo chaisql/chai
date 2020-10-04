@@ -87,7 +87,7 @@ type conn struct {
 
 // Prepare returns a prepared statement, bound to this connection.
 func (c *conn) Prepare(q string) (driver.Stmt, error) {
-	pq, err := parser.ParseQuery(q)
+	pq, err := parser.ParseQuery(context.Background(), q)
 	if err != nil {
 		return nil, err
 	}

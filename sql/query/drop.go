@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"errors"
 
 	"github.com/genjidb/genji/database"
@@ -20,7 +21,7 @@ func (stmt DropTableStmt) IsReadOnly() bool {
 
 // Run runs the DropTable statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt DropTableStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -48,7 +49,7 @@ func (stmt DropIndexStmt) IsReadOnly() bool {
 
 // Run runs the DropIndex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt DropIndexStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.IndexName == "" {

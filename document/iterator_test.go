@@ -2,6 +2,7 @@ package document_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,17 +20,19 @@ func ExampleStream_First() {
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE user")
+	ctx := context.Background()
+
+	err = db.Exec(ctx, "CREATE TABLE user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = db.Exec(ctx, "INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := db.Query("SELECT id, name, age FROM user WHERE name = ?", "foo")
+	result, err := db.Query(ctx, "SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -72,13 +75,15 @@ func ExampleStream_Iterate() {
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
+	ctx := context.Background()
+
+	err = db.Exec(ctx, "CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for i := 1; i <= 10; i++ {
-		err = db.Exec("INSERT INTO user VALUES ?", &User{
+		err = db.Exec(ctx, "INSERT INTO user VALUES ?", &User{
 			ID:   int64(i),
 			Name: fmt.Sprintf("foo%d", i),
 			Age:  uint32(i * 10),
@@ -95,7 +100,7 @@ func ExampleStream_Iterate() {
 		}
 	}
 
-	result, err := db.Query(`SELECT id, name, age, address FROM user WHERE age >= 18`)
+	result, err := db.Query(ctx, `SELECT id, name, age, address FROM user WHERE age >= 18`)
 	if err != nil {
 		panic(err)
 	}

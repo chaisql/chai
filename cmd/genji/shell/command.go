@@ -2,14 +2,14 @@ package shell
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
 
-	"github.com/genjidb/genji/database"
-
 	"github.com/agnivade/levenshtein"
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 )
 
@@ -31,7 +31,9 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 		return fmt.Errorf("usage: .tables")
 	}
 
-	res, err := db.Query("SELECT table_name FROM __genji_tables")
+	ctx := context.Background()
+
+	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return err
 	}
@@ -217,7 +219,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	}
 
 	q := fmt.Sprintf("SELECT * FROM %s", t.Name())
-	res, err := tx.Query(q)
+	res, err := tx.Query(context.Background(), q)
 	if err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 
 	// tables slice argument is empty.
 	// Dump database content.
-	res, err := tx.Query("SELECT table_name FROM __genji_tables")
+	res, err := tx.Query(context.Background(), "SELECT table_name FROM __genji_tables")
 	if err != nil {
 		_, err = fmt.Fprintln(w, "ROLLBACK;")
 		return err
