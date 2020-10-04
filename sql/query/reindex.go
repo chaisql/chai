@@ -1,6 +1,8 @@
 package query
 
 import (
+	"context"
+
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/sql/query/expr"
 )
@@ -17,7 +19,7 @@ func (stmt ReIndexStmt) IsReadOnly() bool {
 
 // Run runs the Reindex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt ReIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt ReIndexStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableOrIndexName == "" {

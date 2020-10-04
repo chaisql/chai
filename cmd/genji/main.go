@@ -83,7 +83,7 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				engine := c.String("engine")
 				args := c.Args().Slice()
 
-				return runInsertCommand(engine, dbPath, table, c.Bool("auto"), args)
+				return runInsertCommand(c.Context, engine, dbPath, table, c.Bool("auto"), args)
 			},
 		},
 	}

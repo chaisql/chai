@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"errors"
 
 	"github.com/genjidb/genji/database"
@@ -21,7 +22,7 @@ type Query struct {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
+func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param) (*Result, error) {
 	var res Result
 	var err error
 
@@ -35,6 +36,12 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 	}
 
 	for i, stmt := range q.Statements {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
 		if qa, ok := stmt.(queryAlterer); ok {
 			err = qa.alterQuery(db, &q)
 			if err != nil {
@@ -54,7 +61,7 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 			}
 		}
 
-		res, err = stmt.Run(q.tx, args)
+		res, err = stmt.Run(ctx, q.tx, args)
 		if err != nil {
 			if q.autoCommit {
 				q.tx.Rollback()
@@ -91,12 +98,18 @@ func (q Query) Run(db *database.Database, args []expr.Param) (*Result, error) {
 }
 
 // Exec the query within the given transaction.
-func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*Result, error) {
+func (q Query) Exec(ctx context.Context, tx *database.Transaction, args []expr.Param) (*Result, error) {
 	var res Result
 	var err error
 
 	for _, stmt := range q.Statements {
-		res, err = stmt.Run(tx, args)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		res, err = stmt.Run(ctx, tx, args)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +125,7 @@ func New(statements ...Statement) Query {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*database.Transaction, []expr.Param) (Result, error)
+	Run(context.Context, *database.Transaction, []expr.Param) (Result, error)
 	IsReadOnly() bool
 }
 

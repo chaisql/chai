@@ -1,6 +1,7 @@
 package planner_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -346,7 +347,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec(`
+			err = tx.Exec(context.Background(), `
 				CREATE TABLE foo;
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);

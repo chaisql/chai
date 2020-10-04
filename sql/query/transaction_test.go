@@ -1,6 +1,7 @@
 package query_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -27,13 +28,15 @@ func TestTransactionRun(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			db, err := genji.Open(":memory:")
 			require.NoError(t, err)
 			defer db.Close()
-			defer db.Exec("ROLLBACK")
+			defer db.Exec(ctx, "ROLLBACK")
 
 			for _, q := range test.queries {
-				err = db.Exec(q)
+				err = db.Exec(ctx, q)
 				if err != nil {
 					break
 				}

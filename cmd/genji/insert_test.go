@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -11,6 +12,8 @@ import (
 )
 
 func TestExecuteInsertCommand(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name  string
 		data  string
@@ -32,16 +35,16 @@ func TestExecuteInsertCommand(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(`CREATE TABLE foo`)
+			err = db.Exec(ctx, `CREATE TABLE foo`)
 			require.NoError(t, err)
-			err = executeInsertCommand(db, "foo", strings.NewReader(tt.data))
+			err = executeInsertCommand(context.Background(), db, "foo", strings.NewReader(tt.data))
 			if tt.fails {
 				require.Error(t, err)
 				return
 			}
 
 			require.NoError(t, err)
-			res, err := db.Query("SELECT * FROM foo")
+			res, err := db.Query(ctx, "SELECT * FROM foo")
 			defer res.Close()
 			require.NoError(t, err)
 
@@ -72,11 +75,11 @@ func TestExecuteInsertCommand(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE TABLE foo`)
+		err = db.Exec(ctx, `CREATE TABLE foo`)
 		require.NoError(t, err)
-		err = executeInsertCommand(db, "foo", strings.NewReader(jsonArray))
+		err = executeInsertCommand(context.Background(), db, "foo", strings.NewReader(jsonArray))
 		require.NoError(t, err)
-		res, err := db.Query("SELECT * FROM foo")
+		res, err := db.Query(ctx, "SELECT * FROM foo")
 		defer res.Close()
 		require.NoError(t, err)
 
@@ -107,13 +110,13 @@ func TestExecuteInsertCommand(t *testing.T) {
 		defer db.Close()
 		require.NoError(t, err)
 
-		err = db.Exec(`CREATE TABLE foo`)
+		err = db.Exec(ctx, `CREATE TABLE foo`)
 		require.NoError(t, err)
 
-		err = executeInsertCommand(db, "foo", strings.NewReader(jsonStream))
+		err = executeInsertCommand(context.Background(), db, "foo", strings.NewReader(jsonStream))
 		require.NoError(t, err)
 
-		res, err := db.Query("SELECT * FROM foo")
+		res, err := db.Query(ctx, "SELECT * FROM foo")
 		defer res.Close()
 		require.NoError(t, err)
 

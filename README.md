@@ -75,16 +75,16 @@ func main() {
     defer db.Close()
 
     // Create a table. Schemas are optional, you don't need to specify one if not needed
-    err = db.Exec("CREATE TABLE user")
+    err = db.Exec(ctx, "CREATE TABLE user")
 
     // Create an index
-    err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
+    err = db.Exec(ctx, "CREATE INDEX idx_user_name ON test (name)")
 
     // Insert some data
-    err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
+    err = db.Exec(ctx, "INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
 
     // Supported values can go from simple integers to richer data types like lists or documents
-    err = db.Exec(`
+    err = db.Exec(ctx, `
     INSERT INTO user (id, name, age, address, friends)
     VALUES (
         11,
@@ -114,10 +114,10 @@ func main() {
     u.Address.City = "Lyon"
     u.Address.ZipCode = "69001"
 
-    err = db.Exec(`INSERT INTO user VALUES ?`, &u)
+    err = db.Exec(ctx, `INSERT INTO user VALUES ?`, &u)
 
     // Query some documents
-    res, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
+    res, err := db.Query(ctx, "SELECT id, name, age, address FROM user WHERE age >= ?", 18)
     // always close the result when you're done with it
     defer res.Close()
 

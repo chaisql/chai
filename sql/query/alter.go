@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"errors"
 
 	"github.com/genjidb/genji/database"
@@ -20,7 +21,7 @@ func (stmt AlterStmt) IsReadOnly() bool {
 
 // Run runs the ALTER TABLE statement in the given transaction.
 // It implements the Statement interface.
-func (stmt AlterStmt) Run(tx *database.Transaction, _ []expr.Param) (Result, error) {
+func (stmt AlterStmt) Run(ctx context.Context, tx *database.Transaction, _ []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {

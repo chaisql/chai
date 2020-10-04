@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"errors"
 
 	"github.com/genjidb/genji/database"
@@ -30,7 +31,7 @@ func (stmt BeginStmt) IsReadOnly() bool {
 	return !stmt.Writable
 }
 
-func (stmt BeginStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt BeginStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
 	return Result{}, errors.New("cannot begin a transaction within a transaction")
 }
 
@@ -54,7 +55,7 @@ func (stmt RollbackStmt) IsReadOnly() bool {
 	return false
 }
 
-func (stmt RollbackStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt RollbackStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
 	return Result{}, errors.New("cannot rollback with no active transaction")
 }
 
@@ -78,6 +79,6 @@ func (stmt CommitStmt) IsReadOnly() bool {
 	return false
 }
 
-func (stmt CommitStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt CommitStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
 	return Result{}, errors.New("cannot commit with no active transaction")
 }

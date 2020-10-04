@@ -4,6 +4,7 @@ package enginetest
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -849,6 +850,8 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 
 // TestQueries test simple queries against the engine.
 func TestQueries(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("SELECT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
@@ -857,7 +860,9 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		st, err := db.Query(`
+		ctx := context.Background()
+
+		st, err := db.Query(ctx, `
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT * FROM test;
@@ -870,7 +875,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		t.Run("ORDER BY", func(t *testing.T) {
-			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
+			st, err := db.Query(ctx, "SELECT * FROM test ORDER BY a DESC")
 			require.NoError(t, err)
 			defer st.Close()
 
@@ -895,7 +900,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`
+		err = db.Exec(ctx, `
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
@@ -910,7 +915,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		st, err := db.Query(`
+		st, err := db.Query(ctx, `
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
@@ -932,19 +937,19 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test")
+		err = db.Exec(ctx, "CREATE TABLE test")
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			for i := 1; i < 200; i++ {
-				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
+				err = tx.Exec(ctx, "INSERT INTO test (a) VALUES (?)", i)
 				require.NoError(t, err)
 			}
 			return nil
 		})
 		require.NoError(t, err)
 
-		st, err := db.Query(`
+		st, err := db.Query(ctx, `
 			DELETE FROM test WHERE a > 2;
 			SELECT * FROM test;
 		`)
@@ -958,6 +963,8 @@ func TestQueries(t *testing.T, builder Builder) {
 
 // TestQueriesSameTransaction test simple queries in the same transaction.
 func TestQueriesSameTransaction(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("SELECT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
@@ -967,7 +974,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(`
+			st, err := tx.Query(ctx, `
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT * FROM test;
@@ -991,7 +998,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
-			err = tx.Exec(`
+			err = tx.Exec(ctx, `
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
@@ -1010,7 +1017,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(`
+			st, err := tx.Query(ctx, `
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
@@ -1036,7 +1043,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(`
+			st, err := tx.Query(ctx, `
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;

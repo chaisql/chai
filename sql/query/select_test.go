@@ -2,6 +2,7 @@ package query_test
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"testing"
 
@@ -11,6 +12,8 @@ import (
 )
 
 func TestSelectStmt(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name     string
 		query    string
@@ -94,10 +97,10 @@ func TestSelectStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
+				err = db.Exec(ctx, "CREATE TABLE test (k INTEGER PRIMARY KEY)")
 				require.NoError(t, err)
 				if withIndexes {
-					err = db.Exec(`
+					err = db.Exec(ctx, `
 						CREATE INDEX idx_color ON test (color);
 						CREATE INDEX idx_size ON test (size);
 						CREATE INDEX idx_shape ON test (shape);
@@ -107,14 +110,14 @@ func TestSelectStmt(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				err = db.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
+				err = db.Exec(ctx, "INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
+				err = db.Exec(ctx, "INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
+				err = db.Exec(ctx, "INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
 				require.NoError(t, err)
 
-				st, err := db.Query(test.query, test.params...)
+				st, err := db.Query(ctx, test.query, test.params...)
 				defer st.Close()
 				if test.fails {
 					require.Error(t, err)
@@ -137,16 +140,16 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
+		err = db.Exec(ctx, "CREATE TABLE test (foo INTEGER PRIMARY KEY)")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
+		err = db.Exec(ctx, `INSERT INTO test (foo, bar) VALUES (1, 'a')`)
+		err = db.Exec(ctx, `INSERT INTO test (foo, bar) VALUES (2, 'b')`)
+		err = db.Exec(ctx, `INSERT INTO test (foo, bar) VALUES (3, 'c')`)
+		err = db.Exec(ctx, `INSERT INTO test (foo, bar) VALUES (4, 'd')`)
 		require.NoError(t, err)
 
-		st, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
+		st, err := db.Query(ctx, "SELECT * FROM test WHERE foo < 400 AND foo >= 2")
 		require.NoError(t, err)
 		defer st.Close()
 
@@ -161,14 +164,14 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test")
+		err = db.Exec(ctx, "CREATE TABLE test")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test VALUES {a: {b: 1}}, {a: 1}, {a: [1, 2, [8,9]]}`)
+		err = db.Exec(ctx, `INSERT INTO test VALUES {a: {b: 1}}, {a: 1}, {a: [1, 2, [8,9]]}`)
 		require.NoError(t, err)
 
 		call := func(q string, res ...string) {
-			st, err := db.Query(q)
+			st, err := db.Query(ctx, q)
 			require.NoError(t, err)
 			defer st.Close()
 
@@ -194,7 +197,7 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("SELECT * FROM foo")
+		err = db.Exec(ctx, "SELECT * FROM foo")
 		require.Error(t, err)
 	})
 
@@ -203,13 +206,13 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test; CREATE INDEX idx_foo ON test(foo);")
+		err = db.Exec(ctx, "CREATE TABLE test; CREATE INDEX idx_foo ON test(foo);")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (foo) VALUES (1), ('hello'), (2), (true)`)
+		err = db.Exec(ctx, `INSERT INTO test (foo) VALUES (1), ('hello'), (2), (true)`)
 		require.NoError(t, err)
 
-		st, err := db.Query("SELECT * FROM test ORDER BY foo")
+		st, err := db.Query(ctx, "SELECT * FROM test ORDER BY foo")
 		require.NoError(t, err)
 		defer st.Close()
 

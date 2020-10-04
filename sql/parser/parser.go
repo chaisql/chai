@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -26,7 +27,9 @@ func NewParser(r io.Reader) *Parser {
 }
 
 // ParseQuery parses a query string and returns its AST representation.
-func ParseQuery(s string) (query.Query, error) { return NewParser(strings.NewReader(s)).ParseQuery() }
+func ParseQuery(ctx context.Context, s string) (query.Query, error) {
+	return NewParser(strings.NewReader(s)).ParseQuery(ctx)
+}
 
 // ParsePath parses the path of a value in a document.
 func ParsePath(s string) (document.ValuePath, error) {
@@ -34,11 +37,17 @@ func ParsePath(s string) (document.ValuePath, error) {
 }
 
 // ParseQuery parses a Genji SQL string and returns a Query.
-func (p *Parser) ParseQuery() (query.Query, error) {
+func (p *Parser) ParseQuery(ctx context.Context) (query.Query, error) {
 	var statements []query.Statement
 	semi := true
 
 	for {
+		select {
+		case <-ctx.Done():
+			return query.Query{}, ctx.Err()
+		default:
+		}
+
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.EOF {
 			return query.New(statements...), nil
 		} else if tok == scanner.SEMICOLON {
