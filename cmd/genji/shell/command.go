@@ -52,25 +52,32 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 
 // displayTableIndex prints all indexes that the given table contains.
 func displayTableIndex(db *genji.DB, tableName string) error {
-	err := db.View(func(tx *genji.Tx) error {
-		t, err := tx.GetTable(tableName)
-		if err != nil {
-			return err
+	ctx := context.Background()
+	res, err := db.Query(ctx, "SELECT index_name FROM __genji_indexes")
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	return res.Iterate(func(d document.Document) error {
+		var index string
+		if err = document.Scan(d, &index); err != nil {
+			return nil
 		}
 
-		indexes, err := t.Indexes()
-		if err != nil {
-			return err
-		}
+		return db.View(func(tx *genji.Tx) error {
+			idx, err := tx.GetIndex(index)
+			if err != nil {
+				return err
+			}
 
-		for _, idx := range indexes {
-			fmt.Printf("%s on %s(%s)\n", idx.Opts.IndexName, idx.Opts.TableName, idx.Opts.Path)
-		}
+			if idx.Opts.TableName == tableName {
+				fmt.Printf("%s on %s(%s)\n", idx.Opts.IndexName, idx.Opts.TableName, idx.Opts.Path)
+			}
 
-		return nil
+			return nil
+		})
 	})
-
-	return err
 }
 
 // displayAllIndexes shows all indexes that the database contains.
@@ -86,11 +93,15 @@ func displayAllIndexes(db *genji.DB) error {
 	return res.Iterate(func(d document.Document) error {
 		var index string
 		err = document.Scan(d, &index)
-		if err != nil {
-			return err
-		}
-		fmt.Println(index)
-		return nil
+		return db.View(func(tx *genji.Tx) error {
+			idx, err := tx.GetIndex(index)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("%s on %s(%s)\n", idx.Opts.IndexName, idx.Opts.TableName, idx.Opts.Path)
+			return nil
+		})
 	})
 
 }
