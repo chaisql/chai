@@ -75,20 +75,24 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 
 // displayAllIndexes shows all indexes that the database contains.
 func displayAllIndexes(db *genji.DB) error {
-	err := db.View(func(tx *genji.Tx) error {
-		indexes, err := tx.ListIndexes()
+	ctx := context.Background()
+
+	res, err := db.Query(ctx, "SELECT index_name FROM __genji_indexes")
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	return res.Iterate(func(d document.Document) error {
+		var index string
+		err = document.Scan(d, &index)
 		if err != nil {
 			return err
 		}
-
-		for _, idx := range indexes {
-			fmt.Printf("%s on %s(%s)\n", idx.IndexName, idx.TableName, idx.Path)
-		}
-
+		fmt.Println(index)
 		return nil
 	})
 
-	return err
 }
 
 // runIndexesCmd executes all indexes of the database or all indexes of the given table.
