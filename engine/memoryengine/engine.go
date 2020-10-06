@@ -1,6 +1,7 @@
 package memoryengine
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -32,8 +33,8 @@ func NewEngine() *Engine {
 }
 
 // Begin creates a transaction.
-func (ng *Engine) Begin(writable bool) (engine.Transaction, error) {
-	if writable {
+func (ng *Engine) Begin(ctx context.Context, opts engine.TransactionOptions) (engine.Transaction, error) {
+	if opts.Writable {
 		ng.mu.Lock()
 	} else {
 		ng.mu.RLock()
@@ -43,7 +44,7 @@ func (ng *Engine) Begin(writable bool) (engine.Transaction, error) {
 		return nil, errors.New("engine closed")
 	}
 
-	return &transaction{ng: ng, writable: writable}, nil
+	return &transaction{ng: ng, writable: opts.Writable}, nil
 }
 
 // Close the engine.
@@ -119,7 +120,7 @@ func (tx *transaction) Commit() error {
 	return nil
 }
 
-func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
+func (tx *transaction) GetStore(ctx context.Context, name []byte) (engine.Store, error) {
 	tr, ok := tx.ng.stores[string(name)]
 	if !ok {
 		return nil, engine.ErrStoreNotFound
@@ -128,12 +129,12 @@ func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
 	return &storeTx{tx: tx, tr: tr, name: string(name)}, nil
 }
 
-func (tx *transaction) CreateStore(name []byte) error {
+func (tx *transaction) CreateStore(ctx context.Context, name []byte) error {
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	_, err := tx.GetStore(name)
+	_, err := tx.GetStore(ctx, name)
 	if err == nil {
 		return engine.ErrStoreAlreadyExists
 	}
@@ -150,7 +151,7 @@ func (tx *transaction) CreateStore(name []byte) error {
 	return nil
 }
 
-func (tx *transaction) DropStore(name []byte) error {
+func (tx *transaction) DropStore(ctx context.Context, name []byte) error {
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}

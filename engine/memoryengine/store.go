@@ -42,7 +42,7 @@ type storeTx struct {
 	name string
 }
 
-func (s *storeTx) Put(k, v []byte) error {
+func (s *storeTx) Put(ctx context.Context, k, v []byte) error {
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -81,7 +81,7 @@ func (s *storeTx) Put(k, v []byte) error {
 	return nil
 }
 
-func (s *storeTx) Get(k []byte) ([]byte, error) {
+func (s *storeTx) Get(ctx context.Context, k []byte) ([]byte, error) {
 	it := s.tr.Get(&item{k: k})
 
 	if it == nil {
@@ -104,7 +104,7 @@ func (s *storeTx) Get(k []byte) ([]byte, error) {
 // every time we remove an item from it,
 // which causes iterators to behave incorrectly when looping
 // and deleting at the same time.
-func (s *storeTx) Delete(k []byte) error {
+func (s *storeTx) Delete(ctx context.Context, k []byte) error {
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -144,7 +144,7 @@ func (s *storeTx) Delete(k []byte) error {
 // Truncate replaces the current tree by a new
 // one. The current tree will be garbage collected
 // once the transaction is commited.
-func (s *storeTx) Truncate() error {
+func (s *storeTx) Truncate(ctx context.Context) error {
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -161,7 +161,7 @@ func (s *storeTx) Truncate() error {
 }
 
 // NextSequence returns a monotonically increasing integer.
-func (s *storeTx) NextSequence() (uint64, error) {
+func (s *storeTx) NextSequence(ctx context.Context) (uint64, error) {
 	if !s.tx.writable {
 		return 0, engine.ErrTransactionReadOnly
 	}
@@ -171,11 +171,11 @@ func (s *storeTx) NextSequence() (uint64, error) {
 	return s.tx.ng.sequences[s.name], nil
 }
 
-func (s *storeTx) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		tx:      s.tx,
 		tr:      s.tr,
-		reverse: cfg.Reverse,
+		reverse: opts.Reverse,
 		ch:      make(chan *item),
 		closed:  make(chan struct{}),
 	}
@@ -193,7 +193,7 @@ type iterator struct {
 	cancel  func()
 }
 
-func (it *iterator) Seek(pivot []byte) {
+func (it *iterator) Seek(ctx context.Context, pivot []byte) error {
 	// make sure any opened goroutine
 	// is closed before creating a new one
 	if it.cancel != nil {
@@ -207,7 +207,7 @@ func (it *iterator) Seek(pivot []byte) {
 
 	it.runIterator(pivot)
 
-	it.Next()
+	return it.Next(ctx)
 }
 
 // runIterator creates a goroutine that reads from the tree.
@@ -262,8 +262,9 @@ func (it *iterator) Valid() bool {
 }
 
 // Read the next item from the goroutine
-func (it *iterator) Next() {
+func (it *iterator) Next(ctx context.Context) error {
 	it.item = <-it.ch
+	return nil
 }
 
 func (it *iterator) Item() engine.Item {
