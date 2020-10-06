@@ -536,3 +536,120 @@ func (s *SumAggregator) Aggregate(fb *document.FieldBuffer) error {
 
 	return nil
 }
+
+// AvgFunc is the AVG aggregator function.
+type AvgFunc struct {
+	Expr  Expr
+	Alias string
+}
+
+// Eval extracts the average value from the given document and returns it.
+func (s *AvgFunc) Eval(ctx EvalStack) (document.Value, error) {
+	return ctx.Document.GetByField(s.String())
+}
+
+// SetAlias implements the planner.AggregatorBuilder interface.
+func (s *AvgFunc) SetAlias(alias string) {
+	s.Alias = alias
+}
+
+// NewAggregator implements the planner.AggregatorBuilder interface.
+func (s *AvgFunc) NewAggregator(group document.Value) document.Aggregator {
+	return &AvgAggregator{
+		Fn: s,
+	}
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (s *AvgFunc) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*AvgFunc)
+	if !ok {
+		return false
+	}
+
+	return Equal(s.Expr, o.Expr)
+}
+
+// String returns the alias if non-zero, otherwise it returns a string representation
+// of the count expression.
+func (s *AvgFunc) String() string {
+	if s.Alias != "" {
+		return s.Alias
+	}
+
+	return fmt.Sprintf("AVG(%v)", s.Expr)
+}
+
+// AvgAggregator is an aggregator that returns the average non-null value.
+type AvgAggregator struct {
+	Fn      *AvgFunc
+	AvgI    *int64
+	AvgF    *float64
+	Counter int64
+}
+
+// Add stores the average value of all non-NULL numeric values in the group.
+// The result is an integer value if all summed values are integers.
+// If any of the value is a double, the returned result will be a double.
+func (s *AvgAggregator) Add(d document.Document) error {
+	v, err := s.Fn.Expr.Eval(EvalStack{
+		Document: d,
+	})
+	if err != nil && err != document.ErrFieldNotFound {
+		return err
+	}
+	if v.Type != document.IntegerValue && v.Type != document.DoubleValue {
+		return nil
+	}
+	s.Counter++
+
+	if s.AvgF != nil {
+		if v.Type == document.IntegerValue {
+			*s.AvgF += float64(v.V.(int64))
+		} else {
+			*s.AvgF += float64(v.V.(float64))
+		}
+
+		return nil
+	}
+
+	if v.Type == document.DoubleValue {
+		var avgF float64
+		if s.AvgI != nil {
+			avgF = float64(*s.AvgI)
+		}
+		s.AvgF = &avgF
+		*s.AvgF += float64(v.V.(float64))
+
+		return nil
+	}
+
+	if s.AvgI == nil {
+		var sumI int64
+		s.AvgI = &sumI
+	}
+
+	*s.AvgI += v.V.(int64)
+	return nil
+}
+
+// Aggregate adds a field to the given buffer with the maximum value.
+func (s *AvgAggregator) Aggregate(fb *document.FieldBuffer) error {
+	switch {
+	case s.Counter == 0:
+		fb.Add(s.Fn.String(), document.NewIntegerValue(0))
+	case s.AvgF != nil:
+		fb.Add(s.Fn.String(), document.NewDoubleValue(*s.AvgF/float64(s.Counter)))
+	case s.AvgI != nil:
+		fb.Add(s.Fn.String(), document.NewIntegerValue(*s.AvgI/s.Counter))
+	default:
+		fb.Add(s.Fn.String(), document.NewNullValue())
+	}
+
+	return nil
+}
