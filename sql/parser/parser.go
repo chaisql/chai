@@ -19,11 +19,17 @@ type Parser struct {
 	orderedParams int
 	namedParams   int
 	buf           *bytes.Buffer
+	functions     expr.Functions
 }
 
 // NewParser returns a new instance of Parser.
 func NewParser(r io.Reader) *Parser {
-	return &Parser{s: scanner.NewBufScanner(r)}
+	return &Parser{s: scanner.NewBufScanner(r), functions: expr.NewFunctions()}
+}
+
+func (p *Parser) WithFunctions(functions expr.Functions) *Parser {
+	p.functions = functions
+	return p
 }
 
 // ParseQuery parses a query string and returns its AST representation.

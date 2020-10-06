@@ -475,7 +475,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 
 	// Check if the function is called without arguments.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {
-		return expr.GetFunc(fname)
+		return p.functions.GetFunc(fname)
 	}
 	p.Unscan()
 
@@ -501,7 +501,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return expr.GetFunc(fname, exprs...)
+	return p.functions.GetFunc(fname, exprs...)
 }
 
 // parseCastExpression parses a string of the form CAST(expr AS type).

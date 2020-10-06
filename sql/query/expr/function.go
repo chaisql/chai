@@ -9,42 +9,67 @@ import (
 	"github.com/genjidb/genji/document"
 )
 
-var functions = map[string]func(args ...Expr) (Expr, error){
-	"pk": func(args ...Expr) (Expr, error) {
-		if len(args) != 0 {
-			return nil, fmt.Errorf("pk() takes no arguments")
-		}
-		return new(PKFunc), nil
-	},
-	"count": func(args ...Expr) (Expr, error) {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("COUNT() takes 1 argument")
-		}
-		return &CountFunc{Expr: args[0]}, nil
-	},
-	"min": func(args ...Expr) (Expr, error) {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("MIN() takes 1 argument")
-		}
-		return &MinFunc{Expr: args[0]}, nil
-	},
-	"max": func(args ...Expr) (Expr, error) {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("MAX() takes 1 argument")
-		}
-		return &MaxFunc{Expr: args[0]}, nil
-	},
-	"sum": func(args ...Expr) (Expr, error) {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("SUM() takes 1 argument")
-		}
-		return &SumFunc{Expr: args[0]}, nil
-	},
+// Functions represents a map of builtin SQL functions.
+type Functions struct {
+	m map[string]func(args ...Expr) (Expr, error)
+}
+
+// BuiltinFunctions returns default map of builtin functions.
+func BuiltinFunctions() map[string]func(args ...Expr) (Expr, error) {
+	return map[string]func(args ...Expr) (Expr, error){
+		"pk": func(args ...Expr) (Expr, error) {
+			if len(args) != 0 {
+				return nil, fmt.Errorf("pk() takes no arguments")
+			}
+			return new(PKFunc), nil
+		},
+		"count": func(args ...Expr) (Expr, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("COUNT() takes 1 argument")
+			}
+			return &CountFunc{Expr: args[0]}, nil
+		},
+		"min": func(args ...Expr) (Expr, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("MIN() takes 1 argument")
+			}
+			return &MinFunc{Expr: args[0]}, nil
+		},
+		"max": func(args ...Expr) (Expr, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("MAX() takes 1 argument")
+			}
+			return &MaxFunc{Expr: args[0]}, nil
+		},
+		"sum": func(args ...Expr) (Expr, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("SUM() takes 1 argument")
+			}
+			return &SumFunc{Expr: args[0]}, nil
+		},
+		"avg": func(args ...Expr) (Expr, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("AVG() takes 1 argument")
+			}
+			return &AvgFunc{Expr: args[0]}, nil
+		},
+	}
+}
+
+func NewFunctions() Functions {
+	return Functions{
+		m: BuiltinFunctions(),
+	}
+}
+
+// AddFunc adds function to the map.
+func (f Functions) AddFunc(name string, fn func(args ...Expr) (Expr, error)) {
+	f.m[name] = fn
 }
 
 // GetFunc return a function expression by name.
-func GetFunc(name string, args ...Expr) (Expr, error) {
-	fn, ok := functions[strings.ToLower(name)]
+func (f Functions) GetFunc(name string, args ...Expr) (Expr, error) {
+	fn, ok := f.m[strings.ToLower(name)]
 	if !ok {
 		return nil, fmt.Errorf("no such function: %q", name)
 	}
