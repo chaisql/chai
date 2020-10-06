@@ -334,22 +334,20 @@ func (t *Table) Iterate(ctx context.Context, fn func(d document.Document) error)
 	it := t.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
-	if err := it.Seek(ctx, nil); err != nil {
-		return err
-	}
-	for it.Valid() {
+	var err error
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		d.Reset()
 		d.item = it.Item()
 		// d must be passed as pointer, not value,
 		// because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
-		if err := fn(&d); err != nil {
+		err = fn(&d)
+		if err != nil {
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

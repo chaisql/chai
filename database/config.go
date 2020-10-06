@@ -287,10 +287,7 @@ func (t *tableInfoStore) loadAllTableInfo(ctx context.Context, tx engine.Transac
 
 	t.tableInfos = make(map[string]TableInfo)
 	var b []byte
-	if err := it.Seek(ctx, nil); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		itm := it.Item()
 		b, err = itm.ValueCopy(b)
 		if err != nil {
@@ -304,10 +301,9 @@ func (t *tableInfoStore) loadAllTableInfo(ctx context.Context, tx engine.Transac
 		}
 
 		t.tableInfos[string(itm.Key())] = ti
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	t.tableInfos[tableInfoStoreName] = TableInfo{
@@ -527,10 +523,7 @@ func (t *indexStore) ListAll(ctx context.Context) ([]*IndexConfig, error) {
 	var idxList []*IndexConfig
 	var buf []byte
 	var err error
-	if err := it.Seek(ctx, nil); err != nil {
-		return nil, err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		item := it.Item()
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
@@ -544,10 +537,9 @@ func (t *indexStore) ListAll(ctx context.Context) ([]*IndexConfig, error) {
 		}
 
 		idxList = append(idxList, &opts)
-
-		if err := it.Next(ctx); err != nil {
-			return nil, err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
 
 	return idxList, nil

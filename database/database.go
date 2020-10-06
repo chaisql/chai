@@ -2,8 +2,8 @@
 package database
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 

@@ -87,9 +87,12 @@ type IteratorOptions struct {
 type Iterator interface {
 	// Seek moves the iterator to the selected key. If the key doesn't exist, it must move to the
 	// next smallest key greater than k.
-	Seek(ctx context.Context, k []byte) error
+	Seek(ctx context.Context, k []byte)
 	// Next moves the iterator to the next item.
-	Next(ctx context.Context) error
+	Next(ctx context.Context)
+	// Err returns an error that aborted iteration on Seek or Next.
+	// If Err is not nil then Valid must return false.
+	Err() error
 	// Valid returns whether the iterator is positioned on a valid item or not.
 	Valid() bool
 	// Item returns the current item.

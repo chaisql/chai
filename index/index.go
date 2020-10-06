@@ -286,10 +286,7 @@ func (idx *Index) iterate(ctx context.Context, st engine.Store, pivot document.V
 	it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
-	if err := it.Seek(ctx, seek); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, seek); it.Valid(); it.Next(ctx) {
 		itm := it.Item()
 
 		if idx.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
@@ -301,9 +298,9 @@ func (idx *Index) iterate(ctx context.Context, st engine.Store, pivot document.V
 			return err
 		}
 
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

@@ -1,8 +1,8 @@
 package database
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -182,10 +182,7 @@ func (tx *Transaction) DropTable(ctx context.Context, name string) error {
 	defer it.Close()
 
 	var buf []byte
-	if err := it.Seek(ctx, nil); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		item := it.Item()
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
@@ -195,7 +192,6 @@ func (tx *Transaction) DropTable(ctx context.Context, name string) error {
 		var opts IndexConfig
 		err = opts.ScanDocument(tx.db.Codec.NewDocument(buf))
 		if err != nil {
-			it.Close()
 			return err
 		}
 
@@ -206,13 +202,11 @@ func (tx *Transaction) DropTable(ctx context.Context, name string) error {
 
 		err = tx.DropIndex(ctx, opts.IndexName)
 		if err != nil {
-			it.Close()
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	err = tx.tableInfoStore.Delete(ctx, tx, name)
@@ -329,15 +323,11 @@ func (tx *Transaction) ReIndexAll(ctx context.Context) error {
 	defer it.Close()
 
 	var indexes []string
-	if err := it.Seek(ctx, nil); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		indexes = append(indexes, string(it.Item().Key()))
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	for _, indexName := range indexes {

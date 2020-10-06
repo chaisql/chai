@@ -139,10 +139,7 @@ func (op gtOp) IteratePK(ctx context.Context, tb *database.Table, v document.Val
 	defer it.Close()
 
 	var buf []byte
-	if err := it.Seek(ctx, data); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, data); it.Valid(); it.Next(ctx) {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -155,10 +152,9 @@ func (op gtOp) IteratePK(ctx context.Context, tb *database.Table, v document.Val
 		if err != nil {
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -209,10 +205,7 @@ func (op gteOp) IteratePK(ctx context.Context, tb *database.Table, v document.Va
 	defer it.Close()
 
 	var buf []byte
-	if err := it.Seek(ctx, data); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, data); it.Valid(); it.Next(ctx) {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -222,10 +215,9 @@ func (op gteOp) IteratePK(ctx context.Context, tb *database.Table, v document.Va
 		if err != nil {
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -293,10 +285,7 @@ func (op ltOp) IteratePK(ctx context.Context, tb *database.Table, v document.Val
 	defer it.Close()
 
 	var buf []byte
-	if err := it.Seek(ctx, nil); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -309,10 +298,9 @@ func (op ltOp) IteratePK(ctx context.Context, tb *database.Table, v document.Val
 		if err != nil {
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -381,10 +369,7 @@ func (op lteOp) IteratePK(ctx context.Context, tb *database.Table, v document.Va
 	defer it.Close()
 
 	var buf []byte
-	if err := it.Seek(ctx, nil); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -397,10 +382,9 @@ func (op lteOp) IteratePK(ctx context.Context, tb *database.Table, v document.Va
 		if err != nil {
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

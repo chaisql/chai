@@ -193,7 +193,7 @@ type iterator struct {
 	cancel  func()
 }
 
-func (it *iterator) Seek(ctx context.Context, pivot []byte) error {
+func (it *iterator) Seek(ctx context.Context, pivot []byte) {
 	// make sure any opened goroutine
 	// is closed before creating a new one
 	if it.cancel != nil {
@@ -207,7 +207,7 @@ func (it *iterator) Seek(ctx context.Context, pivot []byte) error {
 
 	it.runIterator(pivot)
 
-	return it.Next(ctx)
+	it.Next(ctx)
 }
 
 // runIterator creates a goroutine that reads from the tree.
@@ -262,8 +262,11 @@ func (it *iterator) Valid() bool {
 }
 
 // Read the next item from the goroutine
-func (it *iterator) Next(ctx context.Context) error {
+func (it *iterator) Next(ctx context.Context) {
 	it.item = <-it.ch
+}
+
+func (it *iterator) Err() error {
 	return nil
 }
 

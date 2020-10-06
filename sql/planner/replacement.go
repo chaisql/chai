@@ -122,10 +122,7 @@ func (u *resumableIterator) Iterate(ctx context.Context, fn func(d document.Docu
 	defer it.Close()
 
 	var buf []byte
-	if err := it.Seek(ctx, u.curKey); err != nil {
-		return err
-	}
-	for it.Valid() {
+	for it.Seek(ctx, u.curKey); it.Valid(); it.Next(ctx) {
 		item := it.Item()
 
 		d.key = item.Key()
@@ -139,10 +136,9 @@ func (u *resumableIterator) Iterate(ctx context.Context, fn func(d document.Docu
 		if err != nil {
 			return err
 		}
-
-		if err := it.Next(ctx); err != nil {
-			return err
-		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

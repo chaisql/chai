@@ -86,15 +86,15 @@ type iterator struct {
 	item    boltItem
 }
 
-func (it *iterator) Seek(ctx context.Context, pivot []byte) error {
+func (it *iterator) Seek(ctx context.Context, pivot []byte) {
 	if !it.reverse {
 		it.item.k, it.item.v = it.c.Seek(pivot)
-		return nil
+		return
 	}
 
 	if len(pivot) == 0 {
 		it.item.k, it.item.v = it.c.Last()
-		return nil
+		return
 	}
 
 	it.item.k, it.item.v = it.c.Seek(pivot)
@@ -103,20 +103,21 @@ func (it *iterator) Seek(ctx context.Context, pivot []byte) error {
 			it.item.k, it.item.v = it.c.Prev()
 		}
 	}
-
-	return nil
 }
 
 func (it *iterator) Valid() bool {
 	return it.item.k != nil
 }
 
-func (it *iterator) Next(ctx context.Context) error {
+func (it *iterator) Next(ctx context.Context) {
 	if it.reverse {
 		it.item.k, it.item.v = it.c.Prev()
 	} else {
 		it.item.k, it.item.v = it.c.Next()
 	}
+}
+
+func (it *iterator) Err() error {
 	return nil
 }
 
