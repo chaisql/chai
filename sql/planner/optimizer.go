@@ -1,13 +1,15 @@
 package planner
 
 import (
+	"context"
+
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
-var optimizerRules = []func(t *Tree) (*Tree, error){
+var optimizerRules = []func(ctx context.Context, t *Tree) (*Tree, error){
 	SplitANDConditionRule,
 	PrecalculateExprRule,
 	RemoveUnnecessarySelectionNodesRule,
@@ -18,11 +20,11 @@ var optimizerRules = []func(t *Tree) (*Tree, error){
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(t *Tree) (*Tree, error) {
+func Optimize(ctx context.Context, t *Tree) (*Tree, error) {
 	var err error
 
 	for _, rule := range optimizerRules {
-		t, err = rule(t)
+		t, err = rule(ctx, t)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +44,7 @@ func Optimize(t *Tree) (*Tree, error) {
 //     σ(a > 2)
 //     σ(b != 3)
 //     σ(c < 2)
-func SplitANDConditionRule(t *Tree) (*Tree, error) {
+func SplitANDConditionRule(ctx context.Context, t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
 
@@ -63,7 +65,7 @@ func SplitANDConditionRule(t *Tree) (*Tree, error) {
 					var newNode Node
 					for i >= 0 {
 						newNode = NewSelectionNode(cur, exprs[i])
-						err := newNode.Bind(sn.tx, sn.params)
+						err := newNode.Bind(ctx, sn.tx, sn.params)
 						if err != nil {
 							return nil, err
 						}
@@ -108,7 +110,7 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(t *Tree) (*Tree, error) {
+func PrecalculateExprRule(ctx context.Context, t *Tree) (*Tree, error) {
 	n := t.Root
 
 	for n != nil {
@@ -213,7 +215,7 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
+func RemoveUnnecessarySelectionNodesRule(ctx context.Context, t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
 
@@ -254,7 +256,7 @@ func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 // - one of its operands is path selector that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
-func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
+func UseIndexBasedOnSelectionNodeRule(ctx context.Context, t *Tree) (*Tree, error) {
 	n := t.Root
 	var prev Node
 	var inputNode Node
@@ -276,7 +278,7 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 	// then we get the table indexes. here we will assume that at this point
 	// inputNodes can only be instances of tableInputNode.
 	inpn := inputNode.(*tableInputNode)
-	indexes, err := inpn.table.Indexes()
+	indexes, err := inpn.table.Indexes(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +333,7 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 	}
 
 	// we make sure the new IndexInputNode is bound
-	if err := selectedCandidate.in.Bind(inpn.tx, inpn.params); err != nil {
+	if err := selectedCandidate.in.Bind(ctx, inpn.tx, inpn.params); err != nil {
 		return nil, err
 	}
 

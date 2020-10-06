@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -36,8 +37,8 @@ func NewReplacementNode(n Node, tableName string) Node {
 	}
 }
 
-func (n *replacementNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
-	n.table, err = tx.GetTable(n.tableName)
+func (n *replacementNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
+	n.table, err = tx.GetTable(ctx, n.tableName)
 	return
 }
 
@@ -47,7 +48,7 @@ func (n *replacementNode) Bind(tx *database.Transaction, params []expr.Param) (e
 // to a buffer and replace them after the iteration is complete, and it will do that until there is no document
 // left to replace.
 // Increasing replaceBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (n *replacementNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *replacementNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	// replace store implementation by a resumable store, temporarily.
 	rit := resumableIterator{
 		store: n.table.Store,
@@ -63,7 +64,7 @@ func (n *replacementNode) toStream(st document.Stream) (document.Stream, error) 
 	for {
 		var i int
 
-		err = st.Iterate(func(d document.Document) error {
+		err = st.Iterate(ctx, func(d document.Document) error {
 			rk, ok := d.(document.Keyer)
 			if !ok || rk == nil {
 				return errors.New("attempt to replace document without key")
@@ -83,7 +84,7 @@ func (n *replacementNode) toStream(st document.Stream) (document.Stream, error) 
 		})
 
 		for j := 0; j < i; j++ {
-			err = n.table.Replace(keys[j], docs[j])
+			err = n.table.Replace(ctx, keys[j], docs[j])
 			if err != nil {
 				return document.Stream{}, err
 			}
@@ -113,15 +114,18 @@ type resumableIterator struct {
 }
 
 // AscendGreaterOrEqual uses key as pivot if pivot is nil
-func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
+func (u *resumableIterator) Iterate(ctx context.Context, fn func(d document.Document) error) error {
 	var d encodedDocumentWithKey
 	var err error
 
-	it := u.store.NewIterator(engine.IteratorConfig{})
+	it := u.store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
-	for it.Seek(u.curKey); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, u.curKey); err != nil {
+		return err
+	}
+	for it.Valid() {
 		item := it.Item()
 
 		d.key = item.Key()
@@ -133,6 +137,10 @@ func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
 		d.Document = u.codec.NewDocument(buf)
 		err = fn(&d)
 		if err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}

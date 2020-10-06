@@ -59,31 +59,31 @@ func NewTree(n Node) *Tree {
 // Run implements the query.Statement interface.
 // It binds the tree to the database resources and executes it.
 func (t *Tree) Run(ctx context.Context, tx *database.Transaction, params []expr.Param) (query.Result, error) {
-	err := Bind(t, tx, params)
+	err := Bind(ctx, t, tx, params)
 	if err != nil {
 		return query.Result{}, err
 	}
 
-	t, err = Optimize(t)
+	t, err = Optimize(ctx, t)
 	if err != nil {
 		return query.Result{}, err
 	}
 
-	return t.execute()
+	return t.execute(ctx)
 }
 
-func (t *Tree) execute() (query.Result, error) {
+func (t *Tree) execute(ctx context.Context) (query.Result, error) {
 	var st document.Stream
 	var err error
 
 	if t.Root.Left() != nil {
-		st, err = nodeToStream(t.Root.Left())
+		st, err = nodeToStream(ctx, t.Root.Left())
 		if err != nil {
 			return query.Result{}, err
 		}
 	}
 
-	st, err = t.Root.(operationNode).toStream(st)
+	st, err = t.Root.(operationNode).toStream(ctx, st)
 	if err != nil {
 		return query.Result{}, err
 	}
@@ -122,10 +122,10 @@ func (t *Tree) IsReadOnly() bool {
 	return false
 }
 
-func nodeToStream(n Node) (st document.Stream, err error) {
+func nodeToStream(ctx context.Context, n Node) (st document.Stream, err error) {
 	l := n.Left()
 	if l != nil {
-		st, err = nodeToStream(l)
+		st, err = nodeToStream(ctx, l)
 		if err != nil {
 			return
 		}
@@ -135,7 +135,7 @@ func nodeToStream(n Node) (st document.Stream, err error) {
 	case inputNode:
 		st, err = t.buildStream()
 	case operationNode:
-		st, err = t.toStream(st)
+		st, err = t.toStream(ctx, st)
 	default:
 		panic(fmt.Sprintf("incorrect node type %#v", n))
 	}
@@ -150,7 +150,7 @@ type Node interface {
 	Right() Node
 	SetLeft(Node)
 	SetRight(Node)
-	Bind(tx *database.Transaction, params []expr.Param) error
+	Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) error
 }
 
 type inputNode interface {
@@ -162,7 +162,7 @@ type inputNode interface {
 type operationNode interface {
 	Node
 
-	toStream(st document.Stream) (document.Stream, error)
+	toStream(ctx context.Context, st document.Stream) (document.Stream, error)
 }
 
 type node struct {
@@ -212,13 +212,13 @@ func NewSelectionNode(n Node, cond expr.Expr) Node {
 	}
 }
 
-func (n *selectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *selectionNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	n.params = params
 	return
 }
 
-func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *selectionNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	if n.cond == nil {
 		return st, nil
 	}
@@ -268,13 +268,13 @@ func NewLimitNode(n Node, limit int) Node {
 	}
 }
 
-func (n *limitNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *limitNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	n.params = params
 	return
 }
 
-func (n *limitNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *limitNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	return st.Limit(n.limit), nil
 }
 
@@ -307,13 +307,13 @@ func (n *offsetNode) String() string {
 	return fmt.Sprintf("Offset(%d)", n.offset)
 }
 
-func (n *offsetNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *offsetNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	n.params = params
 	return
 }
 
-func (n *offsetNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *offsetNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	return st.Offset(n.offset), nil
 }
 
@@ -341,7 +341,7 @@ func NewSetNode(n Node, path document.ValuePath, e expr.Expr) Node {
 	}
 }
 
-func (n *setNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *setNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	n.params = params
 	return
@@ -351,7 +351,7 @@ func (n *setNode) String() string {
 	return fmt.Sprintf("Set(%s = %s)", n.path, n.e)
 }
 
-func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *setNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	var fb document.FieldBuffer
 
 	stack := expr.EvalStack{
@@ -401,11 +401,11 @@ func NewUnsetNode(n Node, field string) Node {
 	}
 }
 
-func (n *unsetNode) Bind(tx *database.Transaction, params []expr.Param) error {
+func (n *unsetNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) error {
 	return nil
 }
 
-func (n *unsetNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *unsetNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	var fb document.FieldBuffer
 
 	return st.Map(func(d document.Document) (document.Document, error) {
@@ -461,13 +461,13 @@ func NewGroupingNode(n Node, e expr.Expr) Node {
 }
 
 // Bind database resources to this node.
-func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *GroupingNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.Tx = tx
 	n.Params = params
 	return
 }
 
-func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *GroupingNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	return st.GroupBy(func(d document.Document) (document.Value, error) {
 		return n.Expr.Eval(expr.EvalStack{
 			Tx:       n.Tx,

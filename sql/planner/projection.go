@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -38,18 +39,18 @@ func NewProjectionNode(n Node, expressions []ProjectedField, tableName string) N
 }
 
 // Bind database resources to this node.
-func (n *ProjectionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *ProjectionNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	if n.tableName == "" {
 		return
 	}
 
-	table, err := tx.GetTable(n.tableName)
+	table, err := tx.GetTable(ctx, n.tableName)
 	if err != nil {
 		return err
 	}
 
-	n.info, err = table.Info()
+	n.info, err = table.Info(ctx)
 	return
 }
 
@@ -59,7 +60,7 @@ type AggregatorBuilder interface {
 	SetAlias(string)
 }
 
-func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *ProjectionNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	var aggBuilders []document.AggregatorBuilder
 
 	for _, e := range n.Expressions {

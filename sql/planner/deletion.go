@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -33,8 +34,8 @@ func NewDeletionNode(n Node, tableName string) Node {
 	}
 }
 
-func (n *deletionNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
-	n.table, err = tx.GetTable(n.tableName)
+func (n *deletionNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
+	n.table, err = tx.GetTable(ctx, n.tableName)
 	return
 }
 
@@ -45,7 +46,7 @@ func (n *deletionNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 // to a buffer and delete them after the iteration is complete, and it will do that until there is no document
 // left to delete.
 // Increasing deleteBufferSize will occasionate less key searches (O(log n) for most engines) but will take more memory.
-func (n *deletionNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *deletionNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	st = st.Limit(deleteBufferSize)
 
 	keys := make([][]byte, deleteBufferSize)
@@ -53,7 +54,7 @@ func (n *deletionNode) toStream(st document.Stream) (document.Stream, error) {
 	for {
 		var i int
 
-		err := st.Iterate(func(d document.Document) error {
+		err := st.Iterate(ctx, func(d document.Document) error {
 			k, ok := d.(document.Keyer)
 			if !ok {
 				return errors.New("attempt to delete document without key")
@@ -70,7 +71,7 @@ func (n *deletionNode) toStream(st document.Stream) (document.Stream, error) {
 		keys = keys[:i]
 
 		for _, key := range keys {
-			err = n.table.Delete(key)
+			err = n.table.Delete(ctx, key)
 			if err != nil {
 				return document.Stream{}, err
 			}

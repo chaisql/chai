@@ -3,6 +3,7 @@ package planner
 import (
 	"bytes"
 	"container/heap"
+	"context"
 	"fmt"
 
 	"github.com/genjidb/genji/database"
@@ -38,11 +39,11 @@ func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) 
 	}
 }
 
-func (n *sortNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *sortNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	return
 }
 
-func (n *sortNode) toStream(st document.Stream) (document.Stream, error) {
+func (n *sortNode) toStream(ctx context.Context, st document.Stream) (document.Stream, error) {
 	return document.NewStream(&sortIterator{
 		st:        st,
 		sortField: n.sortField,
@@ -65,8 +66,8 @@ type sortIterator struct {
 	direction scanner.Token
 }
 
-func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
-	h, err := it.sortStream(it.st)
+func (it *sortIterator) Iterate(ctx context.Context, fn func(d document.Document) error) error {
+	h, err := it.sortStream(ctx, it.st)
 	if err != nil {
 		return err
 	}
@@ -92,7 +93,7 @@ func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
 // the chosen sorting order (ASC or DESC).
 // This function is not memory efficient as it's loading the entire stream in memory before
 // returning the k-smallest or k-largest elements.
-func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
+func (it *sortIterator) sortStream(ctx context.Context, st document.Stream) (heap.Interface, error) {
 	path := document.ValuePath(it.sortField)
 
 	var h heap.Interface
@@ -104,7 +105,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 
 	heap.Init(h)
 
-	return h, st.Iterate(func(d document.Document) error {
+	return h, st.Iterate(ctx, func(d document.Document) error {
 		// It is possible to sort by any projected field
 		// or field of the original document.
 		v, err := path.GetValue(d)

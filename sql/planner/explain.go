@@ -24,12 +24,12 @@ type ExplainStmt struct {
 func (s *ExplainStmt) Run(ctx context.Context, tx *database.Transaction, params []expr.Param) (query.Result, error) {
 	switch t := s.Statement.(type) {
 	case *Tree:
-		err := Bind(t, tx, params)
+		err := Bind(ctx, t, tx, params)
 		if err != nil {
 			return query.Result{}, err
 		}
 
-		t, err = Optimize(t)
+		t, err = Optimize(ctx, t)
 		if err != nil {
 			return query.Result{}, err
 		}

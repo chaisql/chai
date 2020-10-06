@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -32,10 +33,10 @@ func NewTableInputNode(tableName string) Node {
 	}
 }
 
-func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *tableInputNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	n.tx = tx
 	n.params = params
-	n.table, err = tx.GetTable(n.tableName)
+	n.table, err = tx.GetTable(ctx, n.tableName)
 	return
 }
 
@@ -78,16 +79,16 @@ func NewIndexInputNode(tableName, indexName string, iop IndexIteratorOperator, f
 	}
 }
 
-func (n *indexInputNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+func (n *indexInputNode) Bind(ctx context.Context, tx *database.Transaction, params []expr.Param) (err error) {
 	if n.table == nil {
-		n.table, err = tx.GetTable(n.tableName)
+		n.table, err = tx.GetTable(ctx, n.tableName)
 		if err != nil {
 			return
 		}
 	}
 
 	if n.index == nil {
-		n.index, err = tx.GetIndex(n.indexName)
+		n.index, err = tx.GetIndex(ctx, n.indexName)
 		if err != nil {
 			return
 		}
@@ -116,7 +117,7 @@ func (n *indexInputNode) String() string {
 // IndexIteratorOperator is an operator that can be used
 // as an input node.
 type IndexIteratorOperator interface {
-	IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
+	IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
 }
 
 type indexIterator struct {
@@ -131,13 +132,13 @@ type indexIterator struct {
 
 var errStop = errors.New("stop")
 
-func (it indexIterator) Iterate(fn func(d document.Document) error) error {
+func (it indexIterator) Iterate(ctx context.Context, fn func(d document.Document) error) error {
 	if it.e == nil {
 		var err error
 
 		if it.orderByDirection == scanner.DESC {
-			err = it.index.DescendLessOrEqual(document.Value{}, func(val, key []byte, isEqual bool) error {
-				d, err := it.tb.GetDocument(key)
+			err = it.index.DescendLessOrEqual(ctx, document.Value{}, func(val, key []byte, isEqual bool) error {
+				d, err := it.tb.GetDocument(ctx, key)
 				if err != nil {
 					return err
 				}
@@ -145,8 +146,8 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 				return fn(d)
 			})
 		} else {
-			err = it.index.AscendGreaterOrEqual(document.Value{}, func(val, key []byte, isEqual bool) error {
-				d, err := it.tb.GetDocument(key)
+			err = it.index.AscendGreaterOrEqual(ctx, document.Value{}, func(val, key []byte, isEqual bool) error {
+				d, err := it.tb.GetDocument(ctx, key)
 				if err != nil {
 					return err
 				}
@@ -166,5 +167,5 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 		return err
 	}
 
-	return it.iop.IterateIndex(it.index, it.tb, v, fn)
+	return it.iop.IterateIndex(ctx, it.index, it.tb, v, fn)
 }
