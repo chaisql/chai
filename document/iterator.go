@@ -13,7 +13,7 @@ var ErrStreamClosed = errors.New("stream closed")
 type Iterator interface {
 	// Iterate goes through all the documents and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(func(d Document) error) error
+	Iterate(fn func(d Document) error) error
 }
 
 // NewIterator creates an iterator that iterates over documents.
@@ -37,8 +37,8 @@ func (rr documentsIterator) Iterate(fn func(d Document) error) error {
 }
 
 // The IteratorFunc type is an adapter to allow the use of ordinary functions as Iterators.
-// If f is a function with the appropriate signature, HandlerFunc(f) is a Handler that calls f.
-type IteratorFunc func(func(d Document) error) error
+// If f is a function with the appropriate signature, IteratorFunc(f) is an Iterator that calls f.
+type IteratorFunc func(fn func(d Document) error) error
 
 // Iterate calls f(fn).
 func (f IteratorFunc) Iterate(fn func(d Document) error) error {

@@ -71,7 +71,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	}()
 
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -80,7 +82,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Commit after rollback should fail", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -92,7 +96,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Rollback after commit should not fail", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -104,7 +110,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Commit after commit should fail", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -116,7 +124,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Rollback after rollback should not fail", func(t *testing.T) {
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -128,7 +138,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 
 		// create store for testing store methods
@@ -139,7 +151,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		// create a new read-only transaction
-		tx, err = ng.Begin(false)
+		tx, err = ng.Begin(context.Background(), engine.TxOptions{
+			Writable: false,
+		})
 		defer tx.Rollback()
 
 		// fetch the store and the index
@@ -214,7 +228,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(true)
+						tx, err := ng.Begin(context.Background(), engine.TxOptions{
+							Writable: true,
+						})
 						require.NoError(t, err)
 						defer tx.Rollback()
 
@@ -225,7 +241,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					}()
 				}
 
-				tx, err := ng.Begin(true)
+				tx, err := ng.Begin(context.Background(), engine.TxOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -235,7 +253,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				err = tx.Rollback()
 				require.NoError(t, err)
 
-				tx, err = ng.Begin(true)
+				tx, err = ng.Begin(context.Background(), engine.TxOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -254,7 +274,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			t.Run(test.name+"/commit", func(t *testing.T) {
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(true)
+						tx, err := ng.Begin(context.Background(), engine.TxOptions{
+							Writable: true,
+						})
 						require.NoError(t, err)
 						defer tx.Rollback()
 
@@ -265,7 +287,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					}()
 				}
 
-				tx, err := ng.Begin(true)
+				tx, err := ng.Begin(context.Background(), engine.TxOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -275,7 +299,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				err = tx.Commit()
 				require.NoError(t, err)
 
-				tx, err = ng.Begin(true)
+				tx, err = ng.Begin(context.Background(), engine.TxOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -306,7 +332,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					require.NoError(t, ng.Close())
 				}()
 
-				tx, err := ng.Begin(true)
+				tx, err := ng.Begin(context.Background(), engine.TxOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -329,7 +357,9 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -348,7 +378,9 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -368,7 +400,9 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -383,7 +417,9 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -426,7 +462,9 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -447,7 +485,9 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -458,7 +498,9 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 
 func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
 	ng, cleanup := builder()
-	tx, err := ng.Begin(true)
+	tx, err := ng.Begin(context.Background(), engine.TxOptions{
+		Writable: true,
+	})
 	require.NoError(t, err)
 	err = tx.CreateStore([]byte("test"))
 	require.NoError(t, err)
@@ -480,13 +522,14 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			st, cleanup := storeBuilder(t, builder)
 			defer cleanup()
 
-			it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
+			it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
 			defer it.Close()
 			i := 0
 
 			for it.Seek(nil); it.Valid(); it.Next() {
 				i++
 			}
+			require.NoError(t, it.Err())
 			require.Zero(t, i)
 		}
 		t.Run("Reverse: false", func(t *testing.T) {
@@ -508,7 +551,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		var i uint8 = 1
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
@@ -520,6 +563,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i++
 			count++
 		}
+		require.NoError(t, it.Err())
 
 		require.Equal(t, count, 10)
 	})
@@ -535,7 +579,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		var i uint8 = 10
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
@@ -547,6 +591,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i--
 			count++
 		}
+		require.NoError(t, it.Err())
 		require.Equal(t, 10, count)
 	})
 
@@ -561,7 +606,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		var i uint8 = 4
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek([]byte{i}); it.Valid(); it.Next() {
@@ -573,6 +618,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i++
 			count++
 		}
+		require.NoError(t, it.Err())
 		require.Equal(t, 7, count)
 	})
 
@@ -587,7 +633,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		var i uint8 = 4
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		for it.Seek([]byte{i}); it.Valid(); it.Next() {
@@ -599,6 +645,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i--
 			count++
 		}
+		require.NoError(t, it.Err())
 		require.Equal(t, 4, count)
 	})
 
@@ -613,7 +660,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		called := false
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek([]byte{2}); it.Valid(); it.Next() {
@@ -624,6 +671,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{3}, v)
 			called = true
 		}
+		require.NoError(t, it.Err())
 
 		require.True(t, called)
 	})
@@ -639,7 +687,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		called := false
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		for it.Seek([]byte{2}); it.Valid(); it.Next() {
@@ -650,6 +698,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{1}, v)
 			called = true
 		}
+		require.NoError(t, it.Err())
 		require.True(t, called)
 	})
 
@@ -661,11 +710,12 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		err := st.Put(k, []byte{1})
 		require.NoError(t, err)
 
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		it.Seek(nil)
 
+		require.NoError(t, it.Err())
 		require.True(t, it.Valid())
 		require.Equal(t, it.Item().Key(), k)
 	})
@@ -813,9 +863,10 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		err = st.Truncate()
 		require.NoError(t, err)
 
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 		it.Seek(nil)
+		require.NoError(t, it.Err())
 		require.False(t, it.Valid())
 	})
 }
@@ -829,14 +880,19 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
+
 		require.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
 		require.NoError(t, err)
 		err = tx.Commit()
 		require.NoError(t, err)
 
-		tx, err = ng.Begin(false)
+		tx, err = ng.Begin(context.Background(), engine.TxOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -864,7 +920,10 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 		defer func() {
 			require.NoError(t, ng.Close())
 		}()
-		tx, err := ng.Begin(true)
+
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 
 		require.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
@@ -878,7 +937,9 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 		err = tx.Commit()
 		require.NoError(t, err)
 
-		tx, err = ng.Begin(true)
+		tx, err = ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -892,8 +953,6 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 
 // TestQueries test simple queries against the engine.
 func TestQueries(t *testing.T, builder Builder) {
-	ctx := context.Background()
-
 	t.Run("SELECT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
@@ -901,12 +960,10 @@ func TestQueries(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
-		ctx := context.Background()
-
-		st, err := db.Query(ctx, `
+		st, err := db.Query(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT * FROM test;
@@ -919,7 +976,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		t.Run("ORDER BY", func(t *testing.T) {
-			st, err := db.Query(ctx, "SELECT * FROM test ORDER BY a DESC")
+			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
 			require.NoError(t, err)
 			defer st.Close()
 
@@ -943,10 +1000,10 @@ func TestQueries(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, `
+		err = db.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
@@ -960,10 +1017,10 @@ func TestQueries(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
-		st, err := db.Query(ctx, `
+		st, err := db.Query(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
@@ -984,22 +1041,22 @@ func TestQueries(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, "CREATE TABLE test")
+		err = db.Exec("CREATE TABLE test")
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			for i := 1; i < 200; i++ {
-				err = tx.Exec(ctx, "INSERT INTO test (a) VALUES (?)", i)
+				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
 				require.NoError(t, err)
 			}
 			return nil
 		})
 		require.NoError(t, err)
 
-		st, err := db.Query(ctx, `
+		st, err := db.Query(`
 			DELETE FROM test WHERE a > 2;
 			SELECT * FROM test;
 		`)
@@ -1013,8 +1070,6 @@ func TestQueries(t *testing.T, builder Builder) {
 
 // TestQueriesSameTransaction test simple queries in the same transaction.
 func TestQueriesSameTransaction(t *testing.T, builder Builder) {
-	ctx := context.Background()
-
 	t.Run("SELECT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
@@ -1022,11 +1077,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(ctx, `
+			st, err := tx.Query(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT * FROM test;
@@ -1048,11 +1103,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			err = tx.Exec(ctx, `
+			err = tx.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
@@ -1069,11 +1124,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(ctx, `
+			st, err := tx.Query(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
@@ -1097,11 +1152,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, ng.Close())
 		}()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(ctx, `
+			st, err := tx.Query(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;

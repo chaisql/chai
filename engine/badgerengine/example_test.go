@@ -1,6 +1,7 @@
 package badgerengine_test
 
 import (
+	"context"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,6 +13,8 @@ import (
 )
 
 func Example() {
+	ctx := context.Background()
+
 	dir, err := ioutil.TempDir("", "badger")
 	if err != nil {
 		log.Fatal(err)
@@ -23,7 +26,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	db, err := genji.New(ng)
+	db, err := genji.New(ctx, ng)
 	if err != nil {
 		log.Fatal(err)
 	}

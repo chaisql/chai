@@ -340,7 +340,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		return err
 	}
 
-	it := st.NewIterator(engine.IteratorConfig{})
+	it := st.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	t.tableInfos = make(map[string]TableInfo)
@@ -359,6 +359,9 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		}
 
 		t.tableInfos[string(itm.Key())] = ti
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	t.tableInfos[tableInfoStoreName] = TableInfo{
@@ -572,30 +575,28 @@ func (t *indexStore) Delete(indexName string) error {
 }
 
 func (t *indexStore) ListAll() ([]*IndexConfig, error) {
-	var idxList []*IndexConfig
-	it := t.st.NewIterator(engine.IteratorConfig{})
+	it := t.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
 
+	var idxList []*IndexConfig
 	var buf []byte
 	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()
-		var opts IndexConfig
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
-			it.Close()
 			return nil, err
 		}
 
+		var opts IndexConfig
 		err = opts.ScanDocument(t.db.Codec.NewDocument(buf))
 		if err != nil {
-			it.Close()
 			return nil, err
 		}
 
 		idxList = append(idxList, &opts)
 	}
-	err = it.Close()
-	if err != nil {
+	if err := it.Err(); err != nil {
 		return nil, err
 	}
 

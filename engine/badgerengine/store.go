@@ -129,19 +129,19 @@ func (s *Store) NextSequence() (uint64, error) {
 
 // NewIterator uses a Badger iterator with default options.
 // Only one iterator is allowed per read-write transaction.
-func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	prefix := buildKey(s.prefix, nil)
 
 	opt := badger.DefaultIteratorOptions
 	opt.Prefix = prefix
-	opt.Reverse = cfg.Reverse
+	opt.Reverse = opts.Reverse
 	it := s.tx.NewIterator(opt)
 
 	return &iterator{
 		storePrefix: s.prefix,
 		prefix:      prefix,
 		it:          it,
-		reverse:     cfg.Reverse,
+		reverse:     opts.Reverse,
 		item:        badgerItem{prefix: prefix},
 	}
 }
@@ -180,6 +180,10 @@ func (it *iterator) Valid() bool {
 
 func (it *iterator) Next() {
 	it.it.Next()
+}
+
+func (it *iterator) Err() error {
+	return nil
 }
 
 func (it *iterator) Item() engine.Item {

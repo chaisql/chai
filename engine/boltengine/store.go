@@ -72,10 +72,10 @@ func (s *Store) NextSequence() (uint64, error) {
 }
 
 // NewIterator uses the bucket cursor.
-func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		c:       s.bucket.Cursor(),
-		reverse: cfg.Reverse,
+		reverse: opts.Reverse,
 	}
 }
 
@@ -114,6 +114,10 @@ func (it *iterator) Next() {
 	} else {
 		it.item.k, it.item.v = it.c.Next()
 	}
+}
+
+func (it *iterator) Err() error {
+	return nil
 }
 
 func (it *iterator) Item() engine.Item {

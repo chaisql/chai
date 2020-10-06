@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -152,7 +153,9 @@ func TestTableInsert(t *testing.T) {
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
 		ng := memoryengine.NewEngine()
 
-		db, err := database.New(ng, database.Options{Codec: msgpack.NewCodec()})
+		db, err := database.New(context.Background(), ng, database.Options{
+			Codec: msgpack.NewCodec(),
+		})
 		require.NoError(t, err)
 
 		insertDoc := func(db *database.Database) []byte {
@@ -179,7 +182,9 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// create new database object
-		db, err = database.New(ng, database.Options{Codec: msgpack.NewCodec()})
+		db, err = database.New(context.Background(), ng, database.Options{
+			Codec: msgpack.NewCodec(),
+		})
 		require.NoError(t, err)
 
 		key2 := insertDoc(db)

@@ -126,15 +126,12 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		return nil, errors.New("isolation levels are not supported")
 	}
 
-	var err error
+	db := c.db.WithContext(ctx)
 
 	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
 	// otherwise create a read/write transaction.
-	if opts.ReadOnly {
-		c.tx, err = c.db.Begin(false)
-	} else {
-		c.tx, err = c.db.Begin(true)
-	}
+	var err error
+	c.tx, err = db.Begin(!opts.ReadOnly)
 
 	return c, err
 }
@@ -205,7 +202,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	// if calling ExecContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(ctx, s.tx.Transaction, driverNamedValueToParams(args))
+		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
 	} else {
 		res, err = s.q.Run(ctx, s.db.DB, driverNamedValueToParams(args))
 	}
@@ -255,7 +252,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	// if calling QueryContext within a transaction, use it,
 	// otherwise use DB.
 	if s.tx != nil {
-		res, err = s.q.Exec(ctx, s.tx.Transaction, driverNamedValueToParams(args))
+		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
 	} else {
 		res, err = s.q.Run(ctx, s.db.DB, driverNamedValueToParams(args))
 	}

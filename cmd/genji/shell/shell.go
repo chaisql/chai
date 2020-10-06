@@ -99,12 +99,12 @@ func stdinFromTerminal() bool {
 }
 
 // Run a shell.
-func Run(ctx context.Context, opts *Options) (err error) {
+func Run(ctx context.Context, opts *Options) error {
 	if opts == nil {
 		opts = new(Options)
 	}
 
-	err = opts.validate()
+	err := opts.validate()
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,11 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 		}
 	}
 
-	pt := prompt.New(func(in string) {}, sh.completer, append(promptOpts, prompt.OptionHistory(history))...)
+	pt := prompt.New(
+		func(in string) {},
+		sh.completer,
+		promptOpts...,
+	)
 
 	for {
 		// Input() captures ctrl D and ctrl C.
@@ -429,7 +433,6 @@ func (sh *Shell) executeInput(ctx context.Context, in string) error {
 	// it must not be in the middle of a multi line query though
 	case !sh.multiLine && strings.HasPrefix(in, "."), in == "help", in == "exit":
 		return sh.runCommand(ctx, in)
-
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
 		sh.query = sh.query + in
@@ -460,7 +463,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 	case ".help", "help":
 		return runHelpCmd()
 	case ".tables":
-		db, err := sh.getDB()
+		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
@@ -473,13 +476,13 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 
 		return errExitCommand
 	case ".indexes":
-		db, err := sh.getDB()
+		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
 		return runIndexesCmd(db, cmd)
 	case ".dump":
-		db, err := sh.getDB()
+		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
@@ -491,12 +494,12 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 }
 
 func (sh *Shell) runQuery(ctx context.Context, q string) error {
-	db, err := sh.getDB()
+	db, err := sh.getDB(ctx)
 	if err != nil {
 		return err
 	}
 
-	res, err := db.Query(ctx, q)
+	res, err := db.Query(q)
 	if err != nil {
 		return err
 	}
@@ -517,9 +520,9 @@ func (sh *Shell) runQuery(ctx context.Context, q string) error {
 	})
 }
 
-func (sh *Shell) getDB() (*genji.DB, error) {
+func (sh *Shell) getDB(ctx context.Context) (*genji.DB, error) {
 	if sh.db != nil {
-		return sh.db, nil
+		return sh.db.WithContext(ctx), nil
 	}
 
 	var ng engine.Engine
@@ -537,12 +540,12 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 		return nil, err
 	}
 
-	sh.db, err = genji.New(ng)
+	sh.db, err = genji.New(ctx, ng)
 	if err != nil {
 		return nil, err
 	}
 
-	return sh.db, nil
+	return sh.db.WithContext(ctx), nil
 }
 
 func (sh *Shell) runPipedInput(ctx context.Context) (ran bool, err error) {
@@ -569,8 +572,8 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
-func (sh *Shell) getAllIndexes() ([]string, error) {
-	db, err := sh.getDB()
+func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
+	db, err := sh.getDB(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -597,10 +600,10 @@ func (sh *Shell) getAllIndexes() ([]string, error) {
 }
 
 // getTables returns all the tables of the database
-func (sh *Shell) getAllTables() ([]string, error) {
+func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	var tables []string
-	db, _ := sh.getDB()
-	res, err := db.Query(context.Background(), "SELECT table_name FROM __genji_tables")
+	db, _ := sh.getDB(ctx)
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return nil, err
 	}
@@ -636,12 +639,12 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 		expected := e.Expected
 		switch expected[0] {
 		case "table_name":
-			expected, err = sh.getAllTables()
+			expected, err = sh.getAllTables(context.Background())
 			if err != nil {
 				return suggestions
 			}
 		case "index_name":
-			expected, err = sh.getAllIndexes()
+			expected, err = sh.getAllIndexes(context.Background())
 			if err != nil {
 				return suggestions
 			}

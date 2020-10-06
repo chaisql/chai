@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 )
 
@@ -29,9 +30,14 @@ type Engine interface {
 	// Begin returns a read-only or read/write transaction depending on whether writable is set to false
 	// or true, respectively.
 	// The behaviour of opening a transaction when another one is already opened depends on the implementation.
-	Begin(writable bool) (Transaction, error)
+	Begin(ctx context.Context, opts TxOptions) (Transaction, error)
 	// Close the engine after ensuring all the transactions have completed.
 	Close() error
+}
+
+// TxOptions is used to configure a transaction upon creation.
+type TxOptions struct {
+	Writable bool
 }
 
 // A Transaction provides methods for managing the collection of stores and the transaction itself.
@@ -65,14 +71,15 @@ type Store interface {
 	Delete(k []byte) error
 	// Truncate deletes all the key value pairs from the store.
 	Truncate() error
-	// NewIterator creates an iterator with the given config.
-	NewIterator(IteratorConfig) Iterator
+	// Iterator creates an iterator with the given options.
+	// The initial position depends on the implementation.
+	Iterator(opts IteratorOptions) Iterator
 	// NextSequence returns a monotonically increasing integer.
 	NextSequence() (uint64, error)
 }
 
-// IteratorConfig is used to configure an iterator upon creation.
-type IteratorConfig struct {
+// IteratorOptions is used to configure an iterator upon creation.
+type IteratorOptions struct {
 	Reverse bool
 }
 
@@ -83,6 +90,9 @@ type Iterator interface {
 	Seek(k []byte)
 	// Next moves the iterator to the next item.
 	Next()
+	// Err returns an error that invalidated iterator.
+	// If Err is not nil then Valid must return false.
+	Err() error
 	// Valid returns whether the iterator is positioned on a valid item or not.
 	Valid() bool
 	// Item returns the current item.

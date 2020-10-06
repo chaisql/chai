@@ -32,7 +32,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 	}
 
 	type queryAlterer interface {
-		alterQuery(db *database.Database, q *Query) error
+		alterQuery(ctx context.Context, db *database.Database, q *Query) error
 	}
 
 	for i, stmt := range q.Statements {
@@ -43,7 +43,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(db, &q)
+			err = qa.alterQuery(ctx, db, &q)
 			if err != nil {
 				if tx := db.GetAttachedTx(); tx != nil {
 					tx.Rollback()
@@ -55,13 +55,15 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		}
 
 		if q.tx == nil {
-			q.tx, err = db.Begin(!stmt.IsReadOnly())
+			q.tx, err = db.BeginTx(ctx, &database.TxOptions{
+				ReadOnly: stmt.IsReadOnly(),
+			})
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		res, err = stmt.Run(ctx, q.tx, args)
+		res, err = stmt.Run(q.tx, args)
 		if err != nil {
 			if q.autoCommit {
 				q.tx.Rollback()
@@ -98,18 +100,12 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 }
 
 // Exec the query within the given transaction.
-func (q Query) Exec(ctx context.Context, tx *database.Transaction, args []expr.Param) (*Result, error) {
+func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*Result, error) {
 	var res Result
 	var err error
 
 	for _, stmt := range q.Statements {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		res, err = stmt.Run(ctx, tx, args)
+		res, err = stmt.Run(tx, args)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +121,7 @@ func New(statements ...Statement) Query {
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(context.Context, *database.Transaction, []expr.Param) (Result, error)
+	Run(*database.Transaction, []expr.Param) (Result, error)
 	IsReadOnly() bool
 }
 

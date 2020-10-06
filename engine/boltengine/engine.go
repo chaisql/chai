@@ -2,6 +2,7 @@
 package boltengine
 
 import (
+	"context"
 	"os"
 
 	"github.com/genjidb/genji/engine"
@@ -30,15 +31,15 @@ func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, erro
 }
 
 // Begin creates a transaction using Bolt's transaction API.
-func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
-	tx, err := e.DB.Begin(writable)
+func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+	tx, err := e.DB.Begin(opts.Writable)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Transaction{
 		tx:       tx,
-		writable: writable,
+		writable: opts.Writable,
 	}, nil
 }
 

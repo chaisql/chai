@@ -1,7 +1,6 @@
 package planner
 
 import (
-	"context"
 	"errors"
 
 	"github.com/genjidb/genji/database"
@@ -21,7 +20,7 @@ type ExplainStmt struct {
 // If the statement is a tree, Bind and Optimize will be called prior to
 // displaying all the operations.
 // Explain currently only works on SELECT, UPDATE and DELETE statements.
-func (s *ExplainStmt) Run(ctx context.Context, tx *database.Transaction, params []expr.Param) (query.Result, error) {
+func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
 	switch t := s.Statement.(type) {
 	case *Tree:
 		err := Bind(t, tx, params)

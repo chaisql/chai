@@ -171,11 +171,11 @@ func (s *storeTx) NextSequence() (uint64, error) {
 	return s.tx.ng.sequences[s.name], nil
 }
 
-func (s *storeTx) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		tx:      s.tx,
 		tr:      s.tr,
-		reverse: cfg.Reverse,
+		reverse: opts.Reverse,
 		ch:      make(chan *item),
 		closed:  make(chan struct{}),
 	}
@@ -264,6 +264,10 @@ func (it *iterator) Valid() bool {
 // Read the next item from the goroutine
 func (it *iterator) Next() {
 	it.item = <-it.ch
+}
+
+func (it *iterator) Err() error {
+	return nil
 }
 
 func (it *iterator) Item() engine.Item {

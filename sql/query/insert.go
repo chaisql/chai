@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -24,7 +23,7 @@ func (stmt InsertStmt) IsReadOnly() bool {
 
 // Run the Insert statement in the given transaction.
 // It implements the Statement interface.
-func (stmt InsertStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt InsertStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {

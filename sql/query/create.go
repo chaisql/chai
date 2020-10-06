@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"errors"
 
 	"github.com/genjidb/genji/database"
@@ -23,7 +22,7 @@ func (stmt CreateTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateTableStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -60,7 +59,7 @@ func (stmt CreateIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateIndexStmt) Run(ctx context.Context, tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {

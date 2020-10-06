@@ -196,21 +196,20 @@ func (tx *Transaction) DropTable(name string) error {
 		return errors.New("cannot write to read-only table")
 	}
 
-	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
+	it := tx.indexStore.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
 
 	var buf []byte
 	for it.Seek(nil); it.Valid(); it.Next() {
 		item := it.Item()
-		var opts IndexConfig
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
-			it.Close()
 			return err
 		}
 
+		var opts IndexConfig
 		err = opts.ScanDocument(tx.db.Codec.NewDocument(buf))
 		if err != nil {
-			it.Close()
 			return err
 		}
 
@@ -221,12 +220,10 @@ func (tx *Transaction) DropTable(name string) error {
 
 		err = tx.DropIndex(opts.IndexName)
 		if err != nil {
-			it.Close()
 			return err
 		}
 	}
-	err = it.Close()
-	if err != nil {
+	if err := it.Err(); err != nil {
 		return err
 	}
 
@@ -340,19 +337,19 @@ func (tx *Transaction) ReIndex(indexName string) error {
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (tx *Transaction) ReIndexAll() error {
-	var indexes []string
+	it := tx.indexStore.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
 
-	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
+	var indexes []string
 	for it.Seek(nil); it.Valid(); it.Next() {
 		indexes = append(indexes, string(it.Item().Key()))
 	}
-	err := it.Close()
-	if err != nil {
+	if err := it.Err(); err != nil {
 		return err
 	}
 
 	for _, indexName := range indexes {
-		err = tx.ReIndex(indexName)
+		err := tx.ReIndex(indexName)
 		if err != nil {
 			return err
 		}

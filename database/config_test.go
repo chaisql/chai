@@ -1,11 +1,13 @@
 package database
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +39,9 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
+		db, err := New(context.Background(), ng, Options{
+			Codec: msgpack.NewCodec(),
+		})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -84,7 +88,9 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
+		db, err := New(context.Background(), ng, Options{
+			Codec: msgpack.NewCodec(),
+		})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -111,7 +117,9 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
+		db, err := New(context.Background(), ng, Options{
+			Codec: msgpack.NewCodec(),
+		})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -142,7 +150,9 @@ func TestIndexStore(t *testing.T) {
 	ng := memoryengine.NewEngine()
 	defer ng.Close()
 
-	tx, err := ng.Begin(true)
+	tx, err := ng.Begin(context.Background(), engine.TxOptions{
+		Writable: true,
+	})
 	require.NoError(t, err)
 	defer tx.Rollback()
 
