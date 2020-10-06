@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"sync"
 
@@ -162,12 +163,12 @@ type tableInfoStore struct {
 	mu sync.RWMutex
 }
 
-func newTableInfoStore(db *Database, tx engine.Transaction) (*tableInfoStore, error) {
+func newTableInfoStore(ctx context.Context, db *Database, tx engine.Transaction) (*tableInfoStore, error) {
 	ts := tableInfoStore{
 		db: db,
 	}
 
-	err := ts.loadAllTableInfo(tx)
+	err := ts.loadAllTableInfo(ctx, tx)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +178,7 @@ func newTableInfoStore(db *Database, tx engine.Transaction) (*tableInfoStore, er
 
 // Insert a new tableInfo for the given table name.
 // If info.storeName is nil, it generates one and stores it in info.
-func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
+func (t *tableInfoStore) Insert(ctx context.Context, tx *Transaction, tableName string, info *TableInfo) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -192,13 +193,13 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		return ErrTableAlreadyExists
 	}
 
-	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
+	st, err := tx.tx.GetStore(ctx, []byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
 
 	if info.storeName == nil {
-		seq, err := st.NextSequence()
+		seq, err := st.NextSequence(ctx)
 		if err != nil {
 			return err
 		}
@@ -214,7 +215,7 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		return err
 	}
 
-	err = st.Put([]byte(tableName), buf.Bytes())
+	err = st.Put(ctx, []byte(tableName), buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -224,7 +225,7 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 	return nil
 }
 
-func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, error) {
+func (t *tableInfoStore) Get(ctx context.Context, tx *Transaction, tableName string) (*TableInfo, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -240,7 +241,7 @@ func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, err
 	return &info, nil
 }
 
-func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
+func (t *tableInfoStore) Delete(ctx context.Context, tx *Transaction, tableName string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -253,13 +254,13 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 		return ErrTableNotFound
 	}
 
-	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
+	st, err := tx.tx.GetStore(ctx, []byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
 
 	key := []byte(tableName)
-	err = st.Delete(key)
+	err = st.Delete(ctx, key)
 	if err == engine.ErrKeyNotFound {
 		return ErrTableNotFound
 	}
@@ -272,21 +273,24 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 	return nil
 }
 
-func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
+func (t *tableInfoStore) loadAllTableInfo(ctx context.Context, tx engine.Transaction) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	st, err := tx.GetStore([]byte(tableInfoStoreName))
+	st, err := tx.GetStore(ctx, []byte(tableInfoStoreName))
 	if err != nil {
 		return err
 	}
 
-	it := st.NewIterator(engine.IteratorConfig{})
+	it := st.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	t.tableInfos = make(map[string]TableInfo)
 	var b []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, nil); err != nil {
+		return err
+	}
+	for it.Valid() {
 		itm := it.Item()
 		b, err = itm.ValueCopy(b)
 		if err != nil {
@@ -300,6 +304,10 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		}
 
 		t.tableInfos[string(itm.Key())] = ti
+
+		if err := it.Next(ctx); err != nil {
+			return err
+		}
 	}
 
 	t.tableInfos[tableInfoStoreName] = TableInfo{
@@ -455,9 +463,9 @@ type indexStore struct {
 	st engine.Store
 }
 
-func (t *indexStore) Insert(cfg IndexConfig) error {
+func (t *indexStore) Insert(ctx context.Context, cfg IndexConfig) error {
 	key := []byte(cfg.IndexName)
-	_, err := t.st.Get(key)
+	_, err := t.st.Get(ctx, key)
 	if err == nil {
 		return ErrIndexAlreadyExists
 	}
@@ -471,12 +479,12 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 		return err
 	}
 
-	return t.st.Put(key, buf.Bytes())
+	return t.st.Put(ctx, key, buf.Bytes())
 }
 
-func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
+func (t *indexStore) Get(ctx context.Context, indexName string) (*IndexConfig, error) {
 	key := []byte(indexName)
-	v, err := t.st.Get(key)
+	v, err := t.st.Get(ctx, key)
 	if err == engine.ErrKeyNotFound {
 		return nil, ErrIndexNotFound
 	}
@@ -493,51 +501,53 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 	return &idxopts, nil
 }
 
-func (t *indexStore) Replace(indexName string, cfg IndexConfig) error {
+func (t *indexStore) Replace(ctx context.Context, indexName string, cfg IndexConfig) error {
 	var buf bytes.Buffer
 	err := t.db.Codec.NewEncoder(&buf).EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}
 
-	return t.st.Put([]byte(indexName), buf.Bytes())
+	return t.st.Put(ctx, []byte(indexName), buf.Bytes())
 }
 
-func (t *indexStore) Delete(indexName string) error {
+func (t *indexStore) Delete(ctx context.Context, indexName string) error {
 	key := []byte(indexName)
-	err := t.st.Delete(key)
+	err := t.st.Delete(ctx, key)
 	if err == engine.ErrKeyNotFound {
 		return ErrIndexNotFound
 	}
 	return err
 }
 
-func (t *indexStore) ListAll() ([]*IndexConfig, error) {
-	var idxList []*IndexConfig
-	it := t.st.NewIterator(engine.IteratorConfig{})
+func (t *indexStore) ListAll(ctx context.Context) ([]*IndexConfig, error) {
+	it := t.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
 
+	var idxList []*IndexConfig
 	var buf []byte
 	var err error
-	for it.Seek(nil); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, nil); err != nil {
+		return nil, err
+	}
+	for it.Valid() {
 		item := it.Item()
-		var opts IndexConfig
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
-			it.Close()
 			return nil, err
 		}
 
+		var opts IndexConfig
 		err = opts.ScanDocument(t.db.Codec.NewDocument(buf))
 		if err != nil {
-			it.Close()
 			return nil, err
 		}
 
 		idxList = append(idxList, &opts)
-	}
-	err = it.Close()
-	if err != nil {
-		return nil, err
+
+		if err := it.Next(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	return idxList, nil

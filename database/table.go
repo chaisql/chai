@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -27,8 +28,8 @@ func (t *Table) Tx() *Transaction {
 }
 
 // Info of the table.
-func (t *Table) Info() (*TableInfo, error) {
-	return t.infoStore.Get(t.tx, t.name)
+func (t *Table) Info(ctx context.Context) (*TableInfo, error) {
+	return t.infoStore.Get(ctx, t.tx, t.name)
 }
 
 // Name returns the name of the table.
@@ -37,16 +38,16 @@ func (t *Table) Name() string {
 }
 
 // Truncate deletes all the documents from the table.
-func (t *Table) Truncate() error {
-	return t.Store.Truncate()
+func (t *Table) Truncate(ctx context.Context) error {
+	return t.Store.Truncate(ctx)
 }
 
 // Insert the document into the table.
 // If a primary key has been specified during the table creation, the field is expected to be present
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-func (t *Table) Insert(d document.Document) ([]byte, error) {
-	info, err := t.Info()
+func (t *Table) Insert(ctx context.Context, d document.Document) ([]byte, error) {
+	info, err := t.Info(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -55,17 +56,17 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	d, err = t.ValidateConstraints(d)
+	d, err = t.ValidateConstraints(ctx, d)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := t.generateKey(d)
+	key, err := t.generateKey(ctx, d)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = t.Store.Get(key)
+	_, err = t.Store.Get(ctx, key)
 	if err == nil {
 		return nil, ErrDuplicateDocument
 	}
@@ -76,12 +77,12 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
 
-	err = t.Store.Put(key, buf.Bytes())
+	err = t.Store.Put(ctx, key, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	indexes, err := t.Indexes()
+	indexes, err := t.Indexes(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 			v = document.NewNullValue()
 		}
 
-		err = idx.Set(v, key)
+		err = idx.Set(ctx, v, key)
 		if err != nil {
 			if err == index.ErrDuplicate {
 				return nil, ErrDuplicateDocument
@@ -107,8 +108,8 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 
 // Delete a document by key.
 // Indexes are automatically updated.
-func (t *Table) Delete(key []byte) error {
-	info, err := t.Info()
+func (t *Table) Delete(ctx context.Context, key []byte) error {
+	info, err := t.Info(ctx)
 	if err != nil {
 		return err
 	}
@@ -117,12 +118,12 @@ func (t *Table) Delete(key []byte) error {
 		return errors.New("cannot write to read-only table")
 	}
 
-	d, err := t.GetDocument(key)
+	d, err := t.GetDocument(ctx, key)
 	if err != nil {
 		return err
 	}
 
-	indexes, err := t.Indexes()
+	indexes, err := t.Indexes(ctx)
 	if err != nil {
 		return err
 	}
@@ -133,20 +134,20 @@ func (t *Table) Delete(key []byte) error {
 			return err
 		}
 
-		err = idx.Delete(v, key)
+		err = idx.Delete(ctx, v, key)
 		if err != nil {
 			return err
 		}
 	}
 
-	return t.Store.Delete(key)
+	return t.Store.Delete(ctx, key)
 }
 
 // Replace a document by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key []byte, d document.Document) error {
-	info, err := t.Info()
+func (t *Table) Replace(ctx context.Context, key []byte, d document.Document) error {
+	info, err := t.Info(ctx)
 	if err != nil {
 		return err
 	}
@@ -155,22 +156,22 @@ func (t *Table) Replace(key []byte, d document.Document) error {
 		return errors.New("cannot write to read-only table")
 	}
 
-	d, err = t.ValidateConstraints(d)
+	d, err = t.ValidateConstraints(ctx, d)
 	if err != nil {
 		return err
 	}
 
-	indexes, err := t.Indexes()
+	indexes, err := t.Indexes(ctx)
 	if err != nil {
 		return err
 	}
 
-	return t.replace(indexes, key, d)
+	return t.replace(ctx, indexes, key, d)
 }
 
-func (t *Table) replace(indexes map[string]Index, key []byte, d document.Document) error {
+func (t *Table) replace(ctx context.Context, indexes map[string]Index, key []byte, d document.Document) error {
 	// make sure key exists
-	old, err := t.GetDocument(key)
+	old, err := t.GetDocument(ctx, key)
 	if err != nil {
 		return err
 	}
@@ -182,7 +183,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 			return err
 		}
 
-		err = idx.Delete(v, key)
+		err = idx.Delete(ctx, v, key)
 		if err != nil {
 			return err
 		}
@@ -196,7 +197,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 	}
 
 	// replace old document with new document
-	err = t.Store.Put(key, buf.Bytes())
+	err = t.Store.Put(ctx, key, buf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -208,7 +209,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 			continue
 		}
 
-		err = idx.Set(v, key)
+		err = idx.Set(ctx, v, key)
 		if err != nil {
 			return err
 		}
@@ -218,8 +219,8 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 }
 
 // Indexes returns a map of all the indexes of a table.
-func (t *Table) Indexes() (map[string]Index, error) {
-	s, err := t.tx.tx.GetStore([]byte(indexStoreName))
+func (t *Table) Indexes(ctx context.Context) (map[string]Index, error) {
+	s, err := t.tx.tx.GetStore(ctx, []byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +242,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 			return v.V.(string) == t.name, nil
 		}).
-		Iterate(func(d document.Document) error {
+		Iterate(ctx, func(d document.Document) error {
 			var opts IndexConfig
 			err := opts.ScanDocument(d)
 			if err != nil {
@@ -323,25 +324,30 @@ func (d *lazilyDecodedDocument) copyFromItem() error {
 
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t *Table) Iterate(fn func(d document.Document) error) error {
+func (t *Table) Iterate(ctx context.Context, fn func(d document.Document) error) error {
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
 	d := lazilyDecodedDocument{
 		codec: t.tx.db.Codec,
 	}
 
-	it := t.Store.NewIterator(engine.IteratorConfig{})
+	it := t.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
-	var err error
-	for it.Seek(nil); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, nil); err != nil {
+		return err
+	}
+	for it.Valid() {
 		d.Reset()
 		d.item = it.Item()
 		// d must be passed as pointer, not value,
 		// because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
-		err = fn(&d)
-		if err != nil {
+		if err := fn(&d); err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}
@@ -350,8 +356,8 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 }
 
 // GetDocument returns one document by key.
-func (t *Table) GetDocument(key []byte) (document.Document, error) {
-	v, err := t.Store.Get(key)
+func (t *Table) GetDocument(ctx context.Context, key []byte) (document.Document, error) {
+	v, err := t.Store.Get(ctx, key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
 			return nil, ErrDocumentNotFound
@@ -371,8 +377,8 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
-func (t *Table) generateKey(d document.Document) ([]byte, error) {
-	ti, err := t.infoStore.Get(t.tx, t.name)
+func (t *Table) generateKey(ctx context.Context, d document.Document) ([]byte, error) {
+	ti, err := t.infoStore.Get(ctx, t.tx, t.name)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +403,7 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		return key.AppendValue(nil, v)
 	}
 
-	docid, err := t.Store.NextSequence()
+	docid, err := t.Store.NextSequence(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -411,8 +417,8 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 // against them. If the types defined by the constraints are different than the ones found in
 // the document, the fields are converted to these types when possible. if the conversion
 // fails, an error is returned.
-func (t *Table) ValidateConstraints(d document.Document) (document.Document, error) {
-	info, err := t.Info()
+func (t *Table) ValidateConstraints(ctx context.Context, d document.Document) (document.Document, error) {
+	info, err := t.Info(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -562,8 +568,8 @@ func getParentValue(d document.Document, p document.ValuePath) (document.Value, 
 }
 
 // ReIndex all the indexes of the table.
-func (t *Table) ReIndex() error {
-	info, err := t.Info()
+func (t *Table) ReIndex(ctx context.Context) error {
+	info, err := t.Info(ctx)
 	if err != nil {
 		return err
 	}
@@ -572,13 +578,13 @@ func (t *Table) ReIndex() error {
 		return errors.New("cannot write to read-only table")
 	}
 
-	indexes, err := t.Indexes()
+	indexes, err := t.Indexes(ctx)
 	if err != nil {
 		return err
 	}
 
 	for _, idx := range indexes {
-		err = t.tx.ReIndex(idx.Opts.IndexName)
+		err = t.tx.ReIndex(ctx, idx.Opts.IndexName)
 		if err != nil {
 			return err
 		}

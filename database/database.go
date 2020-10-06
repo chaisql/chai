@@ -3,6 +3,7 @@ package database
 
 import (
 	"errors"
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -38,7 +39,7 @@ type Options struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ng engine.Engine, opts Options) (*Database, error) {
+func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error) {
 	if opts.Codec == nil {
 		return nil, errors.New("missing codec")
 	}
@@ -48,18 +49,20 @@ func New(ng engine.Engine, opts Options) (*Database, error) {
 		Codec: opts.Codec,
 	}
 
-	ntx, err := db.ng.Begin(true)
+	ntx, err := db.ng.Begin(ctx, engine.TransactionOptions{
+		Writable: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	defer ntx.Rollback()
 
-	err = db.initInternalStores(ntx)
+	err = db.initInternalStores(ctx, ntx)
 	if err != nil {
 		return nil, err
 	}
 
-	db.tableInfoStore, err = newTableInfoStore(&db, ntx)
+	db.tableInfoStore, err = newTableInfoStore(ctx, &db, ntx)
 	if err != nil {
 		return nil, err
 	}
@@ -72,18 +75,18 @@ func New(ng engine.Engine, opts Options) (*Database, error) {
 	return &db, nil
 }
 
-func (db *Database) initInternalStores(tx engine.Transaction) error {
-	_, err := tx.GetStore([]byte(tableInfoStoreName))
+func (db *Database) initInternalStores(ctx context.Context, tx engine.Transaction) error {
+	_, err := tx.GetStore(ctx, []byte(tableInfoStoreName))
 	if err == engine.ErrStoreNotFound {
-		err = tx.CreateStore([]byte(tableInfoStoreName))
+		err = tx.CreateStore(ctx, []byte(tableInfoStoreName))
 	}
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.GetStore([]byte(indexStoreName))
+	_, err = tx.GetStore(ctx, []byte(indexStoreName))
 	if err == engine.ErrStoreNotFound {
-		err = tx.CreateStore([]byte(indexStoreName))
+		err = tx.CreateStore(ctx, []byte(indexStoreName))
 	}
 	return err
 }
@@ -95,8 +98,8 @@ func (db *Database) Close() error {
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db *Database) Begin(writable bool) (*Transaction, error) {
-	return db.BeginTx(&TxOptions{
+func (db *Database) Begin(ctx context.Context, writable bool) (*Transaction, error) {
+	return db.BeginTx(ctx, &TxOptions{
 		ReadOnly: !writable,
 	})
 }
@@ -105,7 +108,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // If opts is empty, it will use the default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
 // If the Global option is passed, it opens a database level transaction.
-func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
+func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = new(TxOptions)
 	}
@@ -117,7 +120,9 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		return nil, errors.New("cannot open a transaction within a transaction")
 	}
 
-	ntx, err := db.ng.Begin(!opts.ReadOnly)
+	ntx, err := db.ng.Begin(ctx, engine.TransactionOptions{
+		Writable: !opts.ReadOnly,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +135,7 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		tableInfoStore: db.tableInfoStore,
 	}
 
-	tx.indexStore, err = tx.getIndexStore()
+	tx.indexStore, err = tx.getIndexStore(ctx)
 	if err != nil {
 		return nil, err
 	}

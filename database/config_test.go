@@ -1,10 +1,12 @@
 package database
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
@@ -32,15 +34,17 @@ func TestTableInfo(t *testing.T) {
 }
 
 func TestTableInfoStore(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("ok", func(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
+		db, err := New(ctx, ng, Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
-		tx, err := db.Begin(true)
+		tx, err := db.Begin(ctx, true)
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -51,27 +55,27 @@ func TestTableInfoStore(t *testing.T) {
 		}
 
 		// Inserting one TableInfo should work.
-		err = tx.tableInfoStore.Insert(tx, "foo1", info)
+		err = tx.tableInfoStore.Insert(ctx, tx, "foo1", info)
 		require.NoError(t, err)
 
 		// Inserting an existing TableInfo should not work.
-		err = tx.tableInfoStore.Insert(tx, "foo1", info)
+		err = tx.tableInfoStore.Insert(ctx, tx, "foo1", info)
 		require.Equal(t, err, ErrTableAlreadyExists)
 
 		// Getting an existing TableInfo should work.
-		_, err = tx.tableInfoStore.Get(tx, "foo1")
+		_, err = tx.tableInfoStore.Get(ctx, tx, "foo1")
 		require.NoError(t, err)
 
 		// Getting a non-existing TableInfo should not work.
-		_, err = tx.tableInfoStore.Get(tx, "unknown")
+		_, err = tx.tableInfoStore.Get(ctx, tx, "unknown")
 		require.Equal(t, ErrTableNotFound, err)
 
 		// Deleting an existing TableInfo should work.
-		err = tx.tableInfoStore.Delete(tx, "foo1")
+		err = tx.tableInfoStore.Delete(ctx, tx, "foo1")
 		require.NoError(t, err)
 
 		// Deleting a non-existing TableInfo should not work.
-		err = tx.tableInfoStore.Delete(tx, "foo1")
+		err = tx.tableInfoStore.Delete(ctx, tx, "foo1")
 		require.Equal(t, ErrTableNotFound, err)
 	})
 
@@ -79,7 +83,7 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
+		db, err := New(ctx, ng, Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -90,9 +94,9 @@ func TestTableInfoStore(t *testing.T) {
 		}
 
 		insertAndRollback := func() {
-			tx, err := db.Begin(true)
+			tx, err := db.Begin(ctx, true)
 			require.NoError(t, err)
-			err = tx.tableInfoStore.Insert(tx, "foo", info)
+			err = tx.tableInfoStore.Insert(ctx, tx, "foo", info)
 			require.NoError(t, err)
 			err = tx.Rollback()
 			require.NoError(t, err)
@@ -106,7 +110,7 @@ func TestTableInfoStore(t *testing.T) {
 		ng := memoryengine.NewEngine()
 		defer ng.Close()
 
-		db, err := New(ng, Options{Codec: msgpack.NewCodec()})
+		db, err := New(ctx, ng, Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -117,11 +121,11 @@ func TestTableInfoStore(t *testing.T) {
 		}
 
 		insertAndCommit := func() error {
-			tx, err := db.Begin(true)
+			tx, err := db.Begin(ctx, true)
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.tableInfoStore.Insert(tx, "foo", info)
+			err = tx.tableInfoStore.Insert(ctx, tx, "foo", info)
 			if err != nil {
 				return err
 			}
@@ -134,16 +138,20 @@ func TestTableInfoStore(t *testing.T) {
 }
 
 func TestIndexStore(t *testing.T) {
+	ctx := context.Background()
+
 	ng := memoryengine.NewEngine()
 	defer ng.Close()
 
-	tx, err := ng.Begin(true)
+	tx, err := ng.Begin(ctx, engine.TransactionOptions{
+		Writable: true,
+	})
 	require.NoError(t, err)
 	defer tx.Rollback()
 
-	err = tx.CreateStore([]byte("test"))
+	err = tx.CreateStore(ctx, []byte("test"))
 	require.NoError(t, err)
-	st, err := tx.GetStore([]byte("test"))
+	st, err := tx.GetStore(ctx, []byte("test"))
 	require.NoError(t, err)
 
 	idxs := indexStore{db: &Database{Codec: msgpack.NewCodec()}, st: st}
@@ -156,30 +164,30 @@ func TestIndexStore(t *testing.T) {
 			Type:      document.BoolValue,
 		}
 
-		err = idxs.Insert(cfg)
+		err = idxs.Insert(ctx, cfg)
 		require.NoError(t, err)
 
 		// Inserting the same index should fail.
-		err = idxs.Insert(cfg)
+		err = idxs.Insert(ctx, cfg)
 		require.EqualError(t, err, ErrIndexAlreadyExists.Error())
 
-		idxcfg, err := idxs.Get("idx_test")
+		idxcfg, err := idxs.Get(ctx, "idx_test")
 		require.NoError(t, err)
 		require.Equal(t, &cfg, idxcfg)
 
 		// Updating the index should work
 		cfg.Unique = false
-		err = idxs.Replace(cfg.IndexName, cfg)
+		err = idxs.Replace(ctx, cfg.IndexName, cfg)
 		require.NoError(t, err)
-		idxcfg, err = idxs.Get("idx_test")
+		idxcfg, err = idxs.Get(ctx, "idx_test")
 		require.NoError(t, err)
 		require.False(t, idxcfg.Unique)
 
-		err = idxs.Delete("idx_test")
+		err = idxs.Delete(ctx, "idx_test")
 		require.NoError(t, err)
 
 		// Getting a non existing index should fail.
-		_, err = idxs.Get("idx_test")
+		_, err = idxs.Get(ctx, "idx_test")
 		require.EqualError(t, err, ErrIndexNotFound.Error())
 	})
 
@@ -190,20 +198,20 @@ func TestIndexStore(t *testing.T) {
 			{TableName: "test3", IndexName: "idx_test3", Unique: true},
 		}
 		for _, v := range idxcfgs {
-			err = idxs.Insert(*v)
+			err = idxs.Insert(ctx, *v)
 			require.NoError(t, err)
 		}
 
-		list, err := idxs.ListAll()
+		list, err := idxs.ListAll(ctx)
 		require.NoError(t, err)
 		require.Len(t, list, len(idxcfgs))
 		require.EqualValues(t, idxcfgs, list)
 
 		// Removing one index should remove only one index.
-		err = idxs.Delete("idx_test1")
+		err = idxs.Delete(ctx, "idx_test1")
 		require.NoError(t, err)
 
-		list, err = idxs.ListAll()
+		list, err = idxs.ListAll(ctx)
 		require.NoError(t, err)
 		require.Len(t, list, len(idxcfgs)-1)
 	})

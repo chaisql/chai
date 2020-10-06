@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"context"
 	"fmt"
 	"strings"
 
@@ -85,7 +86,7 @@ func (tx *Transaction) Writable() bool {
 
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
-func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
+func (tx *Transaction) CreateTable(ctx context.Context, name string, info *TableInfo) error {
 	if strings.HasPrefix(name, internalPrefix) {
 		return fmt.Errorf("table name must not start with %s", internalPrefix)
 	}
@@ -95,12 +96,12 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 	}
 
 	info.tableName = name
-	err := tx.tableInfoStore.Insert(tx, name, info)
+	err := tx.tableInfoStore.Insert(ctx, tx, name, info)
 	if err != nil {
 		return err
 	}
 
-	err = tx.tx.CreateStore(info.storeName)
+	err = tx.tx.CreateStore(ctx, info.storeName)
 	if err != nil {
 		return fmt.Errorf("failed to create table %q: %w", name, err)
 	}
@@ -109,13 +110,13 @@ func (tx *Transaction) CreateTable(name string, info *TableInfo) error {
 }
 
 // GetTable returns a table by name. The table instance is only valid for the lifetime of the transaction.
-func (tx *Transaction) GetTable(name string) (*Table, error) {
-	ti, err := tx.tableInfoStore.Get(tx, name)
+func (tx *Transaction) GetTable(ctx context.Context, name string) (*Table, error) {
+	ti, err := tx.tableInfoStore.Get(ctx, tx, name)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := tx.tx.GetStore(ti.storeName)
+	s, err := tx.tx.GetStore(ctx, ti.storeName)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +131,8 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 
 // RenameTable renames a table.
 // If it doesn't exist, it returns ErrTableNotFound.
-func (tx *Transaction) RenameTable(oldName, newName string) error {
-	ti, err := tx.tableInfoStore.Get(tx, oldName)
+func (tx *Transaction) RenameTable(ctx context.Context, oldName, newName string) error {
+	ti, err := tx.tableInfoStore.Get(ctx, tx, oldName)
 	if err != nil {
 		return err
 	}
@@ -142,20 +143,20 @@ func (tx *Transaction) RenameTable(oldName, newName string) error {
 
 	ti.tableName = newName
 	// Insert the TableInfo keyed by the newName name.
-	err = tx.tableInfoStore.Insert(tx, newName, ti)
+	err = tx.tableInfoStore.Insert(ctx, tx, newName, ti)
 	if err != nil {
 		return err
 	}
 
 	// Update the indexes.
-	idxs, err := tx.ListIndexes()
+	idxs, err := tx.ListIndexes(ctx)
 	if err != nil {
 		return err
 	}
 	for _, idx := range idxs {
 		if idx.TableName == oldName {
 			idx.TableName = newName
-			err = tx.indexStore.Replace(idx.IndexName, *idx)
+			err = tx.indexStore.Replace(ctx, idx.IndexName, *idx)
 			if err != nil {
 				return err
 			}
@@ -163,12 +164,12 @@ func (tx *Transaction) RenameTable(oldName, newName string) error {
 	}
 
 	// Delete the old reference from the tableInfoStore.
-	return tx.tableInfoStore.Delete(tx, oldName)
+	return tx.tableInfoStore.Delete(ctx, tx, oldName)
 }
 
 // DropTable deletes a table from the database.
-func (tx *Transaction) DropTable(name string) error {
-	ti, err := tx.tableInfoStore.Get(tx, name)
+func (tx *Transaction) DropTable(ctx context.Context, name string) error {
+	ti, err := tx.tableInfoStore.Get(ctx, tx, name)
 	if err != nil {
 		return err
 	}
@@ -177,18 +178,21 @@ func (tx *Transaction) DropTable(name string) error {
 		return errors.New("cannot write to read-only table")
 	}
 
-	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
+	it := tx.indexStore.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
 
 	var buf []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, nil); err != nil {
+		return err
+	}
+	for it.Valid() {
 		item := it.Item()
-		var opts IndexConfig
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
-			it.Close()
 			return err
 		}
 
+		var opts IndexConfig
 		err = opts.ScanDocument(tx.db.Codec.NewDocument(buf))
 		if err != nil {
 			it.Close()
@@ -200,34 +204,34 @@ func (tx *Transaction) DropTable(name string) error {
 			continue
 		}
 
-		err = tx.DropIndex(opts.IndexName)
+		err = tx.DropIndex(ctx, opts.IndexName)
 		if err != nil {
 			it.Close()
 			return err
 		}
+
+		if err := it.Next(ctx); err != nil {
+			return err
+		}
 	}
-	err = it.Close()
+
+	err = tx.tableInfoStore.Delete(ctx, tx, name)
 	if err != nil {
 		return err
 	}
 
-	err = tx.tableInfoStore.Delete(tx, name)
-	if err != nil {
-		return err
-	}
-
-	return tx.tx.DropStore(ti.storeName)
+	return tx.tx.DropStore(ctx, ti.storeName)
 }
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrIndexAlreadyExists.
-func (tx *Transaction) CreateIndex(opts IndexConfig) error {
-	t, err := tx.GetTable(opts.TableName)
+func (tx *Transaction) CreateIndex(ctx context.Context, opts IndexConfig) error {
+	t, err := tx.GetTable(ctx, opts.TableName)
 	if err != nil {
 		return err
 	}
 
-	info, err := t.Info()
+	info, err := t.Info(ctx)
 	if err != nil {
 		return err
 	}
@@ -244,12 +248,12 @@ func (tx *Transaction) CreateIndex(opts IndexConfig) error {
 		}
 	}
 
-	return tx.indexStore.Insert(opts)
+	return tx.indexStore.Insert(ctx, opts)
 }
 
 // GetIndex returns an index by name.
-func (tx *Transaction) GetIndex(name string) (*Index, error) {
-	opts, err := tx.indexStore.Get(name)
+func (tx *Transaction) GetIndex(ctx context.Context, name string) (*Index, error) {
+	opts, err := tx.indexStore.Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -266,12 +270,12 @@ func (tx *Transaction) GetIndex(name string) (*Index, error) {
 }
 
 // DropIndex deletes an index from the database.
-func (tx *Transaction) DropIndex(name string) error {
-	opts, err := tx.indexStore.Get(name)
+func (tx *Transaction) DropIndex(ctx context.Context, name string) error {
+	opts, err := tx.indexStore.Get(ctx, name)
 	if err != nil {
 		return err
 	}
-	err = tx.indexStore.Delete(name)
+	err = tx.indexStore.Delete(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -281,32 +285,32 @@ func (tx *Transaction) DropIndex(name string) error {
 		Type:   opts.Type,
 	})
 
-	return idx.Truncate()
+	return idx.Truncate(ctx)
 }
 
 // ListIndexes lists all indexes.
-func (tx *Transaction) ListIndexes() ([]*IndexConfig, error) {
-	return tx.indexStore.ListAll()
+func (tx *Transaction) ListIndexes(ctx context.Context) ([]*IndexConfig, error) {
+	return tx.indexStore.ListAll(ctx)
 }
 
 // ReIndex truncates and recreates selected index from scratch.
-func (tx *Transaction) ReIndex(indexName string) error {
-	idx, err := tx.GetIndex(indexName)
+func (tx *Transaction) ReIndex(ctx context.Context, indexName string) error {
+	idx, err := tx.GetIndex(ctx, indexName)
 	if err != nil {
 		return err
 	}
 
-	tb, err := tx.GetTable(idx.Opts.TableName)
+	tb, err := tx.GetTable(ctx, idx.Opts.TableName)
 	if err != nil {
 		return err
 	}
 
-	err = idx.Truncate()
+	err = idx.Truncate(ctx)
 	if err != nil {
 		return err
 	}
 
-	return tb.Iterate(func(d document.Document) error {
+	return tb.Iterate(ctx, func(d document.Document) error {
 		v, err := idx.Opts.Path.GetValue(d)
 		if err == document.ErrFieldNotFound {
 			return nil
@@ -315,25 +319,29 @@ func (tx *Transaction) ReIndex(indexName string) error {
 			return err
 		}
 
-		return idx.Set(v, d.(document.Keyer).Key())
+		return idx.Set(ctx, v, d.(document.Keyer).Key())
 	})
 }
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
-func (tx *Transaction) ReIndexAll() error {
-	var indexes []string
+func (tx *Transaction) ReIndexAll(ctx context.Context) error {
+	it := tx.indexStore.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
 
-	it := tx.indexStore.st.NewIterator(engine.IteratorConfig{})
-	for it.Seek(nil); it.Valid(); it.Next() {
-		indexes = append(indexes, string(it.Item().Key()))
-	}
-	err := it.Close()
-	if err != nil {
+	var indexes []string
+	if err := it.Seek(ctx, nil); err != nil {
 		return err
+	}
+	for it.Valid() {
+		indexes = append(indexes, string(it.Item().Key()))
+
+		if err := it.Next(ctx); err != nil {
+			return err
+		}
 	}
 
 	for _, indexName := range indexes {
-		err = tx.ReIndex(indexName)
+		err := tx.ReIndex(ctx, indexName)
 		if err != nil {
 			return err
 		}
@@ -342,8 +350,8 @@ func (tx *Transaction) ReIndexAll() error {
 	return nil
 }
 
-func (tx *Transaction) getIndexStore() (*indexStore, error) {
-	st, err := tx.tx.GetStore([]byte(indexStoreName))
+func (tx *Transaction) getIndexStore(ctx context.Context) (*indexStore, error) {
+	st, err := tx.tx.GetStore(ctx, []byte(indexStoreName))
 	if err != nil {
 		return nil, err
 	}
