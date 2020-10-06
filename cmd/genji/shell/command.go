@@ -53,7 +53,9 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 // displayTableIndex prints all indexes that the given table contains.
 func displayTableIndex(db *genji.DB, tableName string) error {
 	ctx := context.Background()
-	res, err := db.Query(ctx, "SELECT * FROM __genji_indexes")
+
+	q := fmt.Sprintf("SELECT * FROM __genji_indexes WHERE table_name = '%s'", tableName)
+	res, err := db.Query(ctx, q)
 	if err != nil {
 		return err
 	}
@@ -65,11 +67,12 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 		if err != nil {
 			return err
 		}
-		if index.TableName != tableName {
-			return nil
+
+		if err := index.ScanDocument(d); err != nil {
+			return err
 		}
 
-		fmt.Printf("%s ON %s (%v)\n", index.IndexName, index.TableName, index.Path)
+		fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Path)
 
 		return nil
 	})
@@ -87,12 +90,13 @@ func displayAllIndexes(db *genji.DB) error {
 
 	return res.Iterate(func(d document.Document) error {
 		var index database.IndexConfig
-		err := index.ScanDocument(d)
-		if err != nil {
+
+		if err := index.ScanDocument(d); err != nil {
 			return err
 		}
 
-		fmt.Printf("%s ON %s (%v)\n", index.IndexName, index.TableName, index.Path)
+		fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Path)
+
 		return nil
 	})
 
