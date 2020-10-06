@@ -2,6 +2,7 @@ package index
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -64,7 +65,7 @@ var errStop = errors.New("stop")
 // Set associates a value with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
-func (idx *Index) Set(v document.Value, k []byte) error {
+func (idx *Index) Set(ctx context.Context, v document.Value, k []byte) error {
 	var err error
 
 	if len(k) == 0 {
@@ -75,7 +76,7 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		return fmt.Errorf("cannot index value of type %s in %s index", v.Type, idx.Type)
 	}
 
-	st, err := getOrCreateStore(idx.tx, idx.storeName)
+	st, err := getOrCreateStore(ctx, idx.tx, idx.storeName)
 	if err != nil {
 		return nil
 	}
@@ -94,7 +95,7 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		lookupKey = append(lookupKey, 0)
 	}
 
-	_, err = st.Get(lookupKey)
+	_, err = st.Get(ctx, lookupKey)
 	switch err {
 	case nil:
 		// the value already exists
@@ -105,7 +106,7 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 
 		// the value already exists
 		// add a prefix to that value
-		seq, err := st.NextSequence()
+		seq, err := st.NextSequence(ctx)
 		if err != nil {
 			return err
 		}
@@ -122,19 +123,19 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		return err
 	}
 
-	return st.Put(buf, k)
+	return st.Put(ctx, buf, k)
 }
 
 // Delete all the references to the key from the index.
-func (idx *Index) Delete(v document.Value, k []byte) error {
-	st, err := getOrCreateStore(idx.tx, idx.storeName)
+func (idx *Index) Delete(ctx context.Context, v document.Value, k []byte) error {
+	st, err := getOrCreateStore(ctx, idx.tx, idx.storeName)
 	if err != nil {
 		return nil
 	}
 
 	var toDelete []byte
 	var buf []byte
-	err = idx.iterate(st, v, false, func(item engine.Item) error {
+	err = idx.iterate(ctx, st, v, false, func(item engine.Item) error {
 		buf, err = item.ValueCopy(buf[:0])
 		if err != nil {
 			return err
@@ -151,7 +152,7 @@ func (idx *Index) Delete(v document.Value, k []byte) error {
 	}
 
 	if toDelete != nil {
-		return st.Delete(toDelete)
+		return st.Delete(ctx, toDelete)
 	}
 
 	return engine.ErrKeyNotFound
@@ -160,23 +161,23 @@ func (idx *Index) Delete(v document.Value, k []byte) error {
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is empty, starts from the beginning.
-func (idx *Index) AscendGreaterOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
-	return idx.iterateOnStore(pivot, false, fn)
+func (idx *Index) AscendGreaterOrEqual(ctx context.Context, pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
+	return idx.iterateOnStore(ctx, pivot, false, fn)
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is empty, starts from the end.
-func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
-	return idx.iterateOnStore(pivot, true, fn)
+func (idx *Index) DescendLessOrEqual(ctx context.Context, pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
+	return idx.iterateOnStore(ctx, pivot, true, fn)
 }
 
-func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
+func (idx *Index) iterateOnStore(ctx context.Context, pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
 	if idx.Type != 0 && pivot.Type != 0 && idx.Type != pivot.Type {
 		return nil
 	}
 
-	st, err := idx.tx.GetStore(idx.storeName)
+	st, err := idx.tx.GetStore(ctx, idx.storeName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
 	}
@@ -193,7 +194,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 	}
 
 	var buf []byte
-	return idx.iterate(st, pivot, reverse, func(item engine.Item) error {
+	return idx.iterate(ctx, st, pivot, reverse, func(item engine.Item) error {
 		var err error
 
 		k := item.Key()
@@ -215,8 +216,8 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 }
 
 // Truncate deletes all the index data.
-func (idx *Index) Truncate() error {
-	err := idx.tx.DropStore(idx.storeName)
+func (idx *Index) Truncate(ctx context.Context) error {
+	err := idx.tx.DropStore(ctx, idx.storeName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
 	}
@@ -237,8 +238,8 @@ func (idx *Index) encodeValue(v document.Value) (buf []byte, err error) {
 	return
 }
 
-func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) {
-	st, err := tx.GetStore(name)
+func getOrCreateStore(ctx context.Context, tx engine.Transaction, name []byte) (engine.Store, error) {
+	st, err := tx.GetStore(ctx, name)
 	if err == nil {
 		return st, nil
 	}
@@ -247,15 +248,15 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 		return nil, err
 	}
 
-	err = tx.CreateStore(name)
+	err = tx.CreateStore(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
-	return tx.GetStore(name)
+	return tx.GetStore(ctx, name)
 }
 
-func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, fn func(item engine.Item) error) error {
+func (idx *Index) iterate(ctx context.Context, st engine.Store, pivot document.Value, reverse bool, fn func(item engine.Item) error) error {
 	var seek []byte
 	var err error
 
@@ -282,10 +283,13 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		}
 	}
 
-	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
+	it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
-	for it.Seek(seek); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, seek); err != nil {
+		return err
+	}
+	for it.Valid() {
 		itm := it.Item()
 
 		if idx.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
@@ -294,6 +298,10 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 
 		err := fn(itm)
 		if err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}
