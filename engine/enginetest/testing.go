@@ -63,11 +63,15 @@ func TestEngine(t *testing.T, builder Builder) {
 // TestTransactionCommitRollback runs a list of tests to verify Commit and Rollback
 // behaviour of transactions created from the given engine.
 func TestTransactionCommitRollback(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	ng, cleanup := builder()
 	defer cleanup()
 
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -76,7 +80,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Commit after rollback should fail", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -88,7 +94,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Rollback after commit should not fail", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -100,7 +108,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Commit after commit should fail", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -112,7 +122,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Rollback after rollback should not fail", func(t *testing.T) {
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -124,22 +136,26 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 
 		// create store for testing store methods
-		err = tx.CreateStore([]byte("store1"))
+		err = tx.CreateStore(ctx, []byte("store1"))
 		require.NoError(t, err)
 
 		err = tx.Commit()
 		require.NoError(t, err)
 
 		// create a new read-only transaction
-		tx, err = ng.Begin(false)
+		tx, err = ng.Begin(ctx, engine.TransactionOptions{
+			Writable: false,
+		})
 		defer tx.Rollback()
 
 		// fetch the store and the index
-		st, err := tx.GetStore([]byte("store1"))
+		st, err := tx.GetStore(ctx, []byte("store1"))
 		require.NoError(t, err)
 
 		tests := []struct {
@@ -147,11 +163,11 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			err  error
 			fn   func(*error)
 		}{
-			{"CreateStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateStore([]byte("store")) }},
-			{"DropStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropStore([]byte("store")) }},
-			{"StorePut", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Put([]byte("id"), nil) }},
-			{"StoreDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Delete([]byte("id")) }},
-			{"StoreTruncate", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Truncate() }},
+			{"CreateStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateStore(ctx, []byte("store")) }},
+			{"DropStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropStore(ctx, []byte("store")) }},
+			{"StorePut", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Put(ctx, []byte("id"), nil) }},
+			{"StoreDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Delete(ctx, []byte("id")) }},
+			{"StoreTruncate", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Truncate(ctx) }},
 		}
 
 		for _, test := range tests {
@@ -175,27 +191,27 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			{
 				"CreateStore",
 				nil,
-				func(tx engine.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
-				func(tx engine.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateStore(ctx, []byte("store")) },
+				func(tx engine.Transaction, err *error) { _, *err = tx.GetStore(ctx, []byte("store")) },
 			},
 			{
 				"DropStore",
-				func(tx engine.Transaction) error { return tx.CreateStore([]byte("store")) },
-				func(tx engine.Transaction, err *error) { *err = tx.DropStore([]byte("store")) },
-				func(tx engine.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
+				func(tx engine.Transaction) error { return tx.CreateStore(ctx, []byte("store")) },
+				func(tx engine.Transaction, err *error) { *err = tx.DropStore(ctx, []byte("store")) },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateStore(ctx, []byte("store")) },
 			},
 			{
 				"StorePut",
-				func(tx engine.Transaction) error { return tx.CreateStore([]byte("store")) },
+				func(tx engine.Transaction) error { return tx.CreateStore(ctx, []byte("store")) },
 				func(tx engine.Transaction, err *error) {
-					st, er := tx.GetStore([]byte("store"))
+					st, er := tx.GetStore(ctx, []byte("store"))
 					require.NoError(t, er)
-					require.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
+					require.NoError(t, st.Put(ctx, []byte("foo"), []byte("FOO")))
 				},
 				func(tx engine.Transaction, err *error) {
-					st, er := tx.GetStore([]byte("store"))
+					st, er := tx.GetStore(ctx, []byte("store"))
 					require.NoError(t, er)
-					_, *err = st.Get([]byte("foo"))
+					_, *err = st.Get(ctx, []byte("foo"))
 				},
 			},
 		}
@@ -207,7 +223,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(true)
+						tx, err := ng.Begin(ctx, engine.TransactionOptions{
+							Writable: true,
+						})
 						require.NoError(t, err)
 						defer tx.Rollback()
 
@@ -218,7 +236,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					}()
 				}
 
-				tx, err := ng.Begin(true)
+				tx, err := ng.Begin(ctx, engine.TransactionOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -228,7 +248,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				err = tx.Rollback()
 				require.NoError(t, err)
 
-				tx, err = ng.Begin(true)
+				tx, err = ng.Begin(ctx, engine.TransactionOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -244,7 +266,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			t.Run(test.name+"/commit", func(t *testing.T) {
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(true)
+						tx, err := ng.Begin(ctx, engine.TransactionOptions{
+							Writable: true,
+						})
 						require.NoError(t, err)
 						defer tx.Rollback()
 
@@ -255,7 +279,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 					}()
 				}
 
-				tx, err := ng.Begin(true)
+				tx, err := ng.Begin(ctx, engine.TransactionOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -265,7 +291,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				err = tx.Commit()
 				require.NoError(t, err)
 
-				tx, err = ng.Begin(true)
+				tx, err = ng.Begin(ctx, engine.TransactionOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -283,8 +311,8 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		}{
 			{
 				"CreateStore",
-				func(tx engine.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
-				func(tx engine.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
+				func(tx engine.Transaction, err *error) { *err = tx.CreateStore(ctx, []byte("store")) },
+				func(tx engine.Transaction, err *error) { _, *err = tx.GetStore(ctx, []byte("store")) },
 			},
 		}
 
@@ -293,7 +321,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				ng, cleanup := builder()
 				defer cleanup()
 
-				tx, err := ng.Begin(true)
+				tx, err := ng.Begin(ctx, engine.TransactionOptions{
+					Writable: true,
+				})
 				require.NoError(t, err)
 				defer tx.Rollback()
 
@@ -309,18 +339,22 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 
 // TestTransactionCreateStore verifies CreateStore behaviour.
 func TestTransactionCreateStore(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should create a store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateStore([]byte("store"))
+		err = tx.CreateStore(ctx, []byte("store"))
 		require.NoError(t, err)
 
-		st, err := tx.GetStore([]byte("store"))
+		st, err := tx.GetStore(ctx, []byte("store"))
 		require.NoError(t, err)
 		require.NotNil(t, st)
 	})
@@ -329,28 +363,34 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateStore([]byte("store"))
+		err = tx.CreateStore(ctx, []byte("store"))
 		require.NoError(t, err)
-		err = tx.CreateStore([]byte("store"))
+		err = tx.CreateStore(ctx, []byte("store"))
 		require.Equal(t, engine.ErrStoreAlreadyExists, err)
 	})
 }
 
 // TestTransactionStore verifies Store behaviour.
 func TestTransactionStore(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		tx, err := ng.Begin(false)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		_, err = tx.GetStore([]byte("store"))
+		_, err = tx.GetStore(ctx, []byte("store"))
 		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 
@@ -358,57 +398,63 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
 		// create two stores
-		err = tx.CreateStore([]byte("storea"))
+		err = tx.CreateStore(ctx, []byte("storea"))
 		require.NoError(t, err)
 
-		err = tx.CreateStore([]byte("storeb"))
+		err = tx.CreateStore(ctx, []byte("storeb"))
 		require.NoError(t, err)
 
 		// fetch first store
-		sta, err := tx.GetStore([]byte("storea"))
+		sta, err := tx.GetStore(ctx, []byte("storea"))
 		require.NoError(t, err)
 
 		// fetch second store
-		stb, err := tx.GetStore([]byte("storeb"))
+		stb, err := tx.GetStore(ctx, []byte("storeb"))
 		require.NoError(t, err)
 
 		// insert data in first store
-		err = sta.Put([]byte("foo"), []byte("FOO"))
+		err = sta.Put(ctx, []byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
 
 		// use sta to fetch data and verify if it's present
-		v, err := sta.Get([]byte("foo"))
+		v, err := sta.Get(ctx, []byte("foo"))
 		require.NoError(t, err)
 		require.Equal(t, v, []byte("FOO"))
 
 		// use stb to fetch data and verify it's not present
-		_, err = stb.Get([]byte("foo"))
+		_, err = stb.Get(ctx, []byte("foo"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 	})
 }
 
 // TestTransactionDropStore verifies DropStore behaviour.
 func TestTransactionDropStore(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should drop a store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.CreateStore([]byte("store"))
+		err = tx.CreateStore(ctx, []byte("store"))
 		require.NoError(t, err)
 
-		err = tx.DropStore([]byte("store"))
+		err = tx.DropStore(ctx, []byte("store"))
 		require.NoError(t, err)
 
-		_, err = tx.GetStore([]byte("store"))
+		_, err = tx.GetStore(ctx, []byte("store"))
 		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 
@@ -416,22 +462,27 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.DropStore([]byte("store"))
+		err = tx.DropStore(ctx, []byte("store"))
 		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
 }
 
 func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
+	ctx := context.Background()
 	ng, cleanup := builder()
-	tx, err := ng.Begin(true)
+	tx, err := ng.Begin(ctx, engine.TransactionOptions{
+		Writable: true,
+	})
 	require.NoError(t, err)
-	err = tx.CreateStore([]byte("test"))
+	err = tx.CreateStore(ctx, []byte("test"))
 	require.NoError(t, err)
-	st, err := tx.GetStore([]byte("test"))
+	st, err := tx.GetStore(ctx, []byte("test"))
 	require.NoError(t, err)
 	return st, func() {
 		tx.Rollback()
@@ -441,18 +492,21 @@ func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
 
 // TestStoreIterator verifies Iterator behaviour.
 func TestStoreIterator(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should not fail with no documents", func(t *testing.T) {
 		fn := func(t *testing.T, reverse bool) {
 			st, cleanup := storeBuilder(t, builder)
 			defer cleanup()
 
-			it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
+			it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
 			defer it.Close()
 			i := 0
 
-			for it.Seek(nil); it.Valid(); it.Next() {
+			for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 				i++
 			}
+			require.NoError(t, it.Err())
 			require.Zero(t, i)
 		}
 		t.Run("Reverse: false", func(t *testing.T) {
@@ -468,16 +522,16 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
+			err := st.Put(ctx, []byte{uint8(i)}, []byte{uint8(i + 20)})
 			require.NoError(t, err)
 		}
 
 		var i uint8 = 1
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 
-		for it.Seek(nil); it.Valid(); it.Next() {
+		for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 			item := it.Item()
 			k := item.Key()
 			v, _ := item.ValueCopy(nil)
@@ -486,6 +540,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i++
 			count++
 		}
+		require.NoError(t, it.Err())
 
 		require.Equal(t, count, 10)
 	})
@@ -495,16 +550,16 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
+			err := st.Put(ctx, []byte{uint8(i)}, []byte{uint8(i + 20)})
 			require.NoError(t, err)
 		}
 
 		var i uint8 = 10
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
-		for it.Seek(nil); it.Valid(); it.Next() {
+		for it.Seek(ctx, nil); it.Valid(); it.Next(ctx) {
 			item := it.Item()
 			k := item.Key()
 			v, _ := item.ValueCopy(nil)
@@ -513,6 +568,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i--
 			count++
 		}
+		require.NoError(t, it.Err())
 		require.Equal(t, 10, count)
 	})
 
@@ -521,16 +577,16 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
+			err := st.Put(ctx, []byte{uint8(i)}, []byte{uint8(i + 20)})
 			require.NoError(t, err)
 		}
 
 		var i uint8 = 4
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 
-		for it.Seek([]byte{i}); it.Valid(); it.Next() {
+		for it.Seek(ctx, []byte{i}); it.Valid(); it.Next(ctx) {
 			item := it.Item()
 			k := item.Key()
 			v, _ := item.ValueCopy(nil)
@@ -539,6 +595,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i++
 			count++
 		}
+		require.NoError(t, it.Err())
 		require.Equal(t, 7, count)
 	})
 
@@ -547,16 +604,16 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
+			err := st.Put(ctx, []byte{uint8(i)}, []byte{uint8(i + 20)})
 			require.NoError(t, err)
 		}
 
 		var i uint8 = 4
 		var count int
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
-		for it.Seek([]byte{i}); it.Valid(); it.Next() {
+		for it.Seek(ctx, []byte{i}); it.Valid(); it.Next(ctx) {
 			item := it.Item()
 			k := item.Key()
 			v, _ := item.ValueCopy(nil)
@@ -565,6 +622,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i--
 			count++
 		}
+		require.NoError(t, it.Err())
 		require.Equal(t, 4, count)
 	})
 
@@ -572,17 +630,17 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte{1}, []byte{1})
+		err := st.Put(ctx, []byte{1}, []byte{1})
 		require.NoError(t, err)
 
-		err = st.Put([]byte{3}, []byte{3})
+		err = st.Put(ctx, []byte{3}, []byte{3})
 		require.NoError(t, err)
 
 		called := false
-		it := st.NewIterator(engine.IteratorConfig{})
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 
-		for it.Seek([]byte{2}); it.Valid(); it.Next() {
+		for it.Seek(ctx, []byte{2}); it.Valid(); it.Next(ctx) {
 			item := it.Item()
 			k := item.Key()
 			v, _ := item.ValueCopy(nil)
@@ -590,6 +648,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{3}, v)
 			called = true
 		}
+		require.NoError(t, it.Err())
 
 		require.True(t, called)
 	})
@@ -598,17 +657,17 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte{1}, []byte{1})
+		err := st.Put(ctx, []byte{1}, []byte{1})
 		require.NoError(t, err)
 
-		err = st.Put([]byte{3}, []byte{3})
+		err = st.Put(ctx, []byte{3}, []byte{3})
 		require.NoError(t, err)
 
 		called := false
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
-		for it.Seek([]byte{2}); it.Valid(); it.Next() {
+		for it.Seek(ctx, []byte{2}); it.Valid(); it.Next(ctx) {
 			item := it.Item()
 			k := item.Key()
 			v, _ := item.ValueCopy(nil)
@@ -616,6 +675,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{1}, v)
 			called = true
 		}
+		require.NoError(t, it.Err())
 		require.True(t, called)
 	})
 
@@ -624,14 +684,15 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		k := []byte{0xFF, 0xFF, 0xFF, 0xFF}
-		err := st.Put(k, []byte{1})
+		err := st.Put(ctx, k, []byte{1})
 		require.NoError(t, err)
 
-		it := st.NewIterator(engine.IteratorConfig{Reverse: true})
+		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
-		it.Seek(nil)
+		it.Seek(ctx, nil)
 
+		require.NoError(t, it.Err())
 		require.True(t, it.Valid())
 		require.Equal(t, it.Item().Key(), k)
 	})
@@ -639,14 +700,16 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 // TestStorePut verifies Put behaviour.
 func TestStorePut(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should insert data", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(ctx, []byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
+		v, err := st.Get(ctx, []byte("foo"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 	})
@@ -655,13 +718,13 @@ func TestStorePut(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(ctx, []byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
 
-		err = st.Put([]byte("foo"), []byte("BAR"))
+		err = st.Put(ctx, []byte("foo"), []byte("BAR"))
 		require.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
+		v, err := st.Get(ctx, []byte("foo"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
 	})
@@ -670,10 +733,10 @@ func TestStorePut(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put(nil, []byte("FOO"))
+		err := st.Put(ctx, nil, []byte("FOO"))
 		require.Error(t, err)
 
-		err = st.Put([]byte(""), []byte("BAR"))
+		err = st.Put(ctx, []byte(""), []byte("BAR"))
 		require.Error(t, err)
 	})
 
@@ -681,21 +744,23 @@ func TestStorePut(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte("foo"), nil)
+		err := st.Put(ctx, []byte("foo"), nil)
 		require.NoError(t, err)
 
-		err = st.Put([]byte("foo"), []byte(""))
+		err = st.Put(ctx, []byte("foo"), []byte(""))
 		require.NoError(t, err)
 	})
 }
 
 // TestStoreGet verifies Get behaviour.
 func TestStoreGet(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should fail if not found", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		r, err := st.Get([]byte("id"))
+		r, err := st.Get(ctx, []byte("id"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 		require.Nil(t, r)
 	})
@@ -704,16 +769,16 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(ctx, []byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
-		err = st.Put([]byte("bar"), []byte("BAR"))
+		err = st.Put(ctx, []byte("bar"), []byte("BAR"))
 		require.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
+		v, err := st.Get(ctx, []byte("foo"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 
-		v, err = st.Get([]byte("bar"))
+		v, err = st.Get(ctx, []byte("bar"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
 	})
@@ -721,11 +786,13 @@ func TestStoreGet(t *testing.T, builder Builder) {
 
 // TestStoreDelete verifies Delete behaviour.
 func TestStoreDelete(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should fail if not found", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Delete([]byte("id"))
+		err := st.Delete(ctx, []byte("id"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 	})
 
@@ -733,25 +800,25 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(ctx, []byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
-		err = st.Put([]byte("bar"), []byte("BAR"))
+		err = st.Put(ctx, []byte("bar"), []byte("BAR"))
 		require.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
+		v, err := st.Get(ctx, []byte("foo"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 
 		// delete the key
-		err = st.Delete([]byte("foo"))
+		err = st.Delete(ctx, []byte("foo"))
 		require.NoError(t, err)
 
 		// try again, should fail
-		err = st.Delete([]byte("foo"))
+		err = st.Delete(ctx, []byte("foo"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 
 		// make sure it didn't also delete the other one
-		v, err = st.Get([]byte("bar"))
+		v, err = st.Get(ctx, []byte("bar"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
 	})
@@ -759,11 +826,13 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 
 // TestStoreTruncate verifies Truncate behaviour.
 func TestStoreTruncate(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should succeed if store is empty", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Truncate()
+		err := st.Truncate(ctx)
 		require.NoError(t, err)
 	})
 
@@ -771,41 +840,48 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(ctx, []byte("foo"), []byte("FOO"))
 		require.NoError(t, err)
-		err = st.Put([]byte("bar"), []byte("BAR"))
-		require.NoError(t, err)
-
-		err = st.Truncate()
+		err = st.Put(ctx, []byte("bar"), []byte("BAR"))
 		require.NoError(t, err)
 
-		it := st.NewIterator(engine.IteratorConfig{})
+		err = st.Truncate(ctx)
+		require.NoError(t, err)
+
+		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
-		it.Seek(nil)
+		it.Seek(ctx, nil)
+		require.NoError(t, it.Err())
 		require.False(t, it.Valid())
 	})
 }
 
 // TestStoreNextSequence verifies NextSequence behaviour.
 func TestStoreNextSequence(t *testing.T, builder Builder) {
+	ctx := context.Background()
+
 	t.Run("Should fail if tx not writable", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
-		err = tx.CreateStore([]byte("test"))
+		err = tx.CreateStore(ctx, []byte("test"))
 		require.NoError(t, err)
 		err = tx.Commit()
 		require.NoError(t, err)
 
-		tx, err = ng.Begin(false)
+		tx, err = ng.Begin(ctx, engine.TransactionOptions{
+			Writable: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		st, err := tx.GetStore([]byte("test"))
+		st, err := tx.GetStore(ctx, []byte("test"))
 		require.NoError(t, err)
 
-		_, err = st.NextSequence()
+		_, err = st.NextSequence(ctx)
 		require.Error(t, err)
 	})
 
@@ -814,7 +890,7 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		for i := uint64(1); i < 100; i++ {
-			s, err := st.NextSequence()
+			s, err := st.NextSequence(ctx)
 			require.NoError(t, err)
 			require.Equal(t, i, s)
 		}
@@ -823,26 +899,30 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 	t.Run("Should store the last sequence", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
-		tx, err := ng.Begin(true)
+		tx, err := ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
-		err = tx.CreateStore([]byte("test"))
+		err = tx.CreateStore(ctx, []byte("test"))
 		require.NoError(t, err)
-		st, err := tx.GetStore([]byte("test"))
+		st, err := tx.GetStore(ctx, []byte("test"))
 		require.NoError(t, err)
 
-		s1, err := st.NextSequence()
+		s1, err := st.NextSequence(ctx)
 		require.NoError(t, err)
 
 		err = tx.Commit()
 		require.NoError(t, err)
 
-		tx, err = ng.Begin(true)
+		tx, err = ng.Begin(ctx, engine.TransactionOptions{
+			Writable: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		st, err = tx.GetStore([]byte("test"))
+		st, err = tx.GetStore(ctx, []byte("test"))
 		require.NoError(t, err)
-		s2, err := st.NextSequence()
+		s2, err := st.NextSequence(ctx)
 		require.NoError(t, err)
 		require.Equal(t, s1+1, s2)
 	})
@@ -856,11 +936,9 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
-
-		ctx := context.Background()
 
 		st, err := db.Query(ctx, `
 			CREATE TABLE test;
@@ -868,7 +946,7 @@ func TestQueries(t *testing.T, builder Builder) {
 			SELECT * FROM test;
 		`)
 		require.NoError(t, err)
-		n, err := st.Count()
+		n, err := st.Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 4, n)
 		err = st.Close()
@@ -880,7 +958,7 @@ func TestQueries(t *testing.T, builder Builder) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(d document.Document) error {
+			err = st.Iterate(ctx, func(d document.Document) error {
 				var a int
 				err := document.Scan(d, &a)
 				require.NoError(t, err)
@@ -896,7 +974,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -911,7 +989,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -924,7 +1002,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, st)
+		err = document.IteratorToJSONArray(ctx, &buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 	})
@@ -933,14 +1011,14 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(ctx, "CREATE TABLE test")
 		require.NoError(t, err)
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(ctx, func(tx *genji.Tx) error {
 			for i := 1; i < 200; i++ {
 				err = tx.Exec(ctx, "INSERT INTO test (a) VALUES (?)", i)
 				require.NoError(t, err)
@@ -955,7 +1033,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		`)
 		require.NoError(t, err)
 		defer st.Close()
-		n, err := st.Count()
+		n, err := st.Count(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 2, n)
 	})
@@ -969,11 +1047,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(ctx, func(tx *genji.Tx) error {
 			st, err := tx.Query(ctx, `
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -981,7 +1059,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			`)
 			require.NoError(t, err)
 			defer st.Close()
-			n, err := st.Count()
+			n, err := st.Count(ctx)
 			require.NoError(t, err)
 			require.Equal(t, 4, n)
 			return nil
@@ -993,11 +1071,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(ctx, func(tx *genji.Tx) error {
 			err = tx.Exec(ctx, `
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -1012,11 +1090,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(ctx, func(tx *genji.Tx) error {
 			st, err := tx.Query(ctx, `
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -1026,7 +1104,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
-			err = document.IteratorToJSONArray(&buf, st)
+			err = document.IteratorToJSONArray(ctx, &buf, st)
 			require.NoError(t, err)
 			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 			return nil
@@ -1038,11 +1116,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		db, err := genji.New(ng)
+		db, err := genji.New(ctx, ng)
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(ctx, func(tx *genji.Tx) error {
 			st, err := tx.Query(ctx, `
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
@@ -1051,7 +1129,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		`)
 			require.NoError(t, err)
 			defer st.Close()
-			n, err := st.Count()
+			n, err := st.Count(ctx)
 			require.NoError(t, err)
 			require.Equal(t, 2, n)
 			return nil
