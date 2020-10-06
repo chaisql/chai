@@ -2,6 +2,7 @@ package boltengine
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/genjidb/genji/engine"
 	bolt "go.etcd.io/bbolt"
@@ -15,7 +16,7 @@ type Store struct {
 }
 
 // Put stores a key value pair. If it already exists, it overrides it.
-func (s *Store) Put(k, v []byte) error {
+func (s *Store) Put(ctx context.Context, k, v []byte) error {
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
@@ -24,7 +25,7 @@ func (s *Store) Put(k, v []byte) error {
 }
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
-func (s *Store) Get(k []byte) ([]byte, error) {
+func (s *Store) Get(ctx context.Context, k []byte) ([]byte, error) {
 	v := s.bucket.Get(k)
 	if v == nil {
 		return nil, engine.ErrKeyNotFound
@@ -34,7 +35,7 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 }
 
 // Delete a record by key. If not found, returns table.ErrDocumentNotFound.
-func (s *Store) Delete(k []byte) error {
+func (s *Store) Delete(ctx context.Context, k []byte) error {
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
@@ -48,7 +49,7 @@ func (s *Store) Delete(k []byte) error {
 }
 
 // Truncate deletes all the records of the store.
-func (s *Store) Truncate() error {
+func (s *Store) Truncate(ctx context.Context) error {
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
@@ -63,7 +64,7 @@ func (s *Store) Truncate() error {
 }
 
 // NextSequence returns a monotonically increasing integer.
-func (s *Store) NextSequence() (uint64, error) {
+func (s *Store) NextSequence(ctx context.Context) (uint64, error) {
 	if !s.bucket.Writable() {
 		return 0, engine.ErrTransactionReadOnly
 	}
@@ -72,10 +73,10 @@ func (s *Store) NextSequence() (uint64, error) {
 }
 
 // NewIterator uses the bucket cursor.
-func (s *Store) NewIterator(cfg engine.IteratorConfig) engine.Iterator {
+func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		c:       s.bucket.Cursor(),
-		reverse: cfg.Reverse,
+		reverse: opts.Reverse,
 	}
 }
 
@@ -85,15 +86,15 @@ type iterator struct {
 	item    boltItem
 }
 
-func (it *iterator) Seek(pivot []byte) {
+func (it *iterator) Seek(ctx context.Context, pivot []byte) error {
 	if !it.reverse {
 		it.item.k, it.item.v = it.c.Seek(pivot)
-		return
+		return nil
 	}
 
 	if len(pivot) == 0 {
 		it.item.k, it.item.v = it.c.Last()
-		return
+		return nil
 	}
 
 	it.item.k, it.item.v = it.c.Seek(pivot)
@@ -102,18 +103,21 @@ func (it *iterator) Seek(pivot []byte) {
 			it.item.k, it.item.v = it.c.Prev()
 		}
 	}
+
+	return nil
 }
 
 func (it *iterator) Valid() bool {
 	return it.item.k != nil
 }
 
-func (it *iterator) Next() {
+func (it *iterator) Next(ctx context.Context) error {
 	if it.reverse {
 		it.item.k, it.item.v = it.c.Prev()
 	} else {
 		it.item.k, it.item.v = it.c.Next()
 	}
+	return nil
 }
 
 func (it *iterator) Item() engine.Item {

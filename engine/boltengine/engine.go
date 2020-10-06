@@ -2,6 +2,7 @@
 package boltengine
 
 import (
+	"context"
 	"os"
 
 	"github.com/genjidb/genji/engine"
@@ -30,15 +31,15 @@ func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, erro
 }
 
 // Begin creates a transaction using Bolt's transaction API.
-func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
-	tx, err := e.DB.Begin(writable)
+func (e *Engine) Begin(ctx context.Context, opts engine.TransactionOptions) (engine.Transaction, error) {
+	tx, err := e.DB.Begin(opts.Writable)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Transaction{
 		tx:       tx,
-		writable: writable,
+		writable: opts.Writable,
 	}, nil
 }
 
@@ -69,7 +70,7 @@ func (t *Transaction) Commit() error {
 }
 
 // GetStore returns a store by name. The store uses a Bolt bucket.
-func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
+func (t *Transaction) GetStore(ctx context.Context, name []byte) (engine.Store, error) {
 	b := t.tx.Bucket(name)
 	if b == nil {
 		return nil, engine.ErrStoreNotFound
@@ -84,7 +85,7 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 
 // CreateStore creates a bolt bucket and returns a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
-func (t *Transaction) CreateStore(name []byte) error {
+func (t *Transaction) CreateStore(ctx context.Context, name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -98,7 +99,7 @@ func (t *Transaction) CreateStore(name []byte) error {
 }
 
 // DropStore deletes the underlying bucket.
-func (t *Transaction) DropStore(name []byte) error {
+func (t *Transaction) DropStore(ctx context.Context, name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
