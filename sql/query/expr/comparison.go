@@ -2,6 +2,7 @@ package expr
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 
@@ -33,10 +34,10 @@ func Eq(a, b Expr) Expr {
 
 var errStop = errors.New("errStop")
 
-func (op eqOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
+func (op eqOp) IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(ctx, v, func(val, key []byte, isEqual bool) error {
 		if isEqual {
-			d, err := tb.GetDocument(key)
+			d, err := tb.GetDocument(ctx, key)
 			if err != nil {
 				return err
 			}
@@ -54,7 +55,7 @@ func (op eqOp) IterateIndex(idx *database.Index, tb *database.Table, v document.
 	return nil
 }
 
-func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+func (op eqOp) IteratePK(ctx context.Context, tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
 	v, err := v.CastAs(pkType)
 	if err != nil {
 		return nil
@@ -65,7 +66,7 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	val, err := tb.Store.Get(data)
+	val, err := tb.Store.Get(ctx, data)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
 			return nil
@@ -102,13 +103,13 @@ func Gt(a, b Expr) Expr {
 	return gtOp{newCmpOp(a, b, scanner.GT)}
 }
 
-func (op gtOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
+func (op gtOp) IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(ctx, v, func(val, key []byte, isEqual bool) error {
 		if isEqual {
 			return nil
 		}
 
-		d, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -123,7 +124,7 @@ func (op gtOp) IterateIndex(idx *database.Index, tb *database.Table, v document.
 	return nil
 }
 
-func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+func (op gtOp) IteratePK(ctx context.Context, tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
 	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
@@ -134,11 +135,14 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
-	for it.Seek(data); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, data); err != nil {
+		return err
+	}
+	for it.Valid() {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -149,6 +153,10 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}
@@ -169,9 +177,9 @@ func Gte(a, b Expr) Expr {
 	return gteOp{newCmpOp(a, b, scanner.GTE)}
 }
 
-func (op gteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
-		d, err := tb.GetDocument(key)
+func (op gteOp) IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+	err := idx.AscendGreaterOrEqual(ctx, v, func(val, key []byte, isEqual bool) error {
+		d, err := tb.GetDocument(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -186,7 +194,7 @@ func (op gteOp) IterateIndex(idx *database.Index, tb *database.Table, v document
 	return nil
 }
 
-func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+func (op gteOp) IteratePK(ctx context.Context, tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
 	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
@@ -197,11 +205,14 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
-	for it.Seek(data); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, data); err != nil {
+		return err
+	}
+	for it.Valid() {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -209,6 +220,10 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 
 		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}
@@ -229,7 +244,7 @@ func Lt(a, b Expr) Expr {
 	return ltOp{newCmpOp(a, b, scanner.LT)}
 }
 
-func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op ltOp) IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	var err error
 
 	if v.Type == document.IntegerValue {
@@ -243,12 +258,12 @@ func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.
 	if err != nil {
 		return err
 	}
-	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
+	err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) <= 0 {
 			return errStop
 		}
 
-		d, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -263,7 +278,7 @@ func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.
 	return nil
 }
 
-func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+func (op ltOp) IteratePK(ctx context.Context, tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
 	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
@@ -274,11 +289,14 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, nil); err != nil {
+		return err
+	}
+	for it.Valid() {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -289,6 +307,10 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 
 		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}
@@ -309,7 +331,7 @@ func Lte(a, b Expr) Expr {
 	return lteOp{newCmpOp(a, b, scanner.LTE)}
 }
 
-func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op lteOp) IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	var err error
 
 	if v.Type == document.IntegerValue {
@@ -324,12 +346,12 @@ func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document
 		return err
 	}
 
-	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
+	err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) < 0 {
 			return errStop
 		}
 
-		d, err := tb.GetDocument(key)
+		d, err := tb.GetDocument(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -344,7 +366,7 @@ func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document
 	return nil
 }
 
-func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+func (op lteOp) IteratePK(ctx context.Context, tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
 	v, err := v.CastAs(pkType)
 	if err != nil {
 		return err
@@ -355,11 +377,14 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
+	if err := it.Seek(ctx, nil); err != nil {
+		return err
+	}
+	for it.Valid() {
 		buf, err = it.Item().ValueCopy(buf)
 		if err != nil {
 			return err
@@ -370,6 +395,10 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 
 		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
 		if err != nil {
+			return err
+		}
+
+		if err := it.Next(ctx); err != nil {
 			return err
 		}
 	}
@@ -485,20 +514,20 @@ func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op inOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
+func (op inOp) IterateIndex(ctx context.Context, idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
 	if v.Type != document.ArrayValue {
 		return errors.New("IN operator takes an array")
 	}
 
 	var eq eqOp
 	return v.V.(document.Array).Iterate(func(i int, value document.Value) error {
-		return eq.IterateIndex(idx, tb, value, fn)
+		return eq.IterateIndex(ctx, idx, tb, value, fn)
 	})
 }
 
 // IteratePK implements the query.pkIterator interface. It expects v to be an array,
 // iterates over it, and for each value, gets it from the underlying store of tb.
-func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
+func (op inOp) IteratePK(ctx context.Context, tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
 	if v.Type != document.ArrayValue {
 		return errors.New("IN operator takes an array")
 	}
@@ -514,7 +543,7 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 			return err
 		}
 
-		v, err := tb.Store.Get(data)
+		v, err := tb.Store.Get(ctx, data)
 		if err != nil {
 			if err == engine.ErrKeyNotFound {
 				return nil
