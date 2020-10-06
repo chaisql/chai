@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 )
 
@@ -29,9 +30,14 @@ type Engine interface {
 	// Begin returns a read-only or read/write transaction depending on whether writable is set to false
 	// or true, respectively.
 	// The behaviour of opening a transaction when another one is already opened depends on the implementation.
-	Begin(writable bool) (Transaction, error)
+	Begin(ctx context.Context, opts TransactionOptions) (Transaction, error)
 	// Close the engine after ensuring all the transactions have completed.
 	Close() error
+}
+
+// TransactionOptions is used to configure a transaction upon creation.
+type TransactionOptions struct {
+	Writable bool
 }
 
 // A Transaction provides methods for managing the collection of stores and the transaction itself.
@@ -46,33 +52,34 @@ type Transaction interface {
 	// If the transaction was already rolled back or commited, an error is returned.
 	Commit() error
 	// Fetch a store by name. If the store doesn't exist, it returns the ErrStoreNotFound error.
-	GetStore(name []byte) (Store, error)
+	GetStore(ctx context.Context, name []byte) (Store, error)
 	// Create a store with the given name. If the store already exists, it returns ErrStoreAlreadyExists.
-	CreateStore(name []byte) error
+	CreateStore(ctx context.Context, name []byte) error
 	// Drop a store by name. If the store doesn't exist, it returns ErrStoreNotFound.
 	// It deletes all the values stored in it.
-	DropStore(name []byte) error
+	DropStore(ctx context.Context, name []byte) error
 }
 
 // A Store manages key value pairs. It is an abstraction on top of any data structure that can provide
 // random read, random write, and ordered sequential read.
 type Store interface {
 	// Get returns a value associated with the given key. If no key is not found, it returns ErrKeyNotFound.
-	Get(k []byte) ([]byte, error)
+	Get(ctx context.Context, k []byte) ([]byte, error)
 	// Put stores a key value pair. If it already exists, it overrides it.
-	Put(k, v []byte) error
+	Put(ctx context.Context, k, v []byte) error
 	// Delete a key value pair. If the key is not found, returns ErrKeyNotFound.
-	Delete(k []byte) error
+	Delete(ctx context.Context, k []byte) error
 	// Truncate deletes all the key value pairs from the store.
-	Truncate() error
-	// NewIterator creates an iterator with the given config.
-	NewIterator(IteratorConfig) Iterator
+	Truncate(ctx context.Context) error
+	// Iterator creates an iterator with the given options.
+	// The initial position depends on the implementation.
+	Iterator(opts IteratorOptions) Iterator
 	// NextSequence returns a monotonically increasing integer.
-	NextSequence() (uint64, error)
+	NextSequence(ctx context.Context) (uint64, error)
 }
 
-// IteratorConfig is used to configure an iterator upon creation.
-type IteratorConfig struct {
+// IteratorOptions is used to configure an iterator upon creation.
+type IteratorOptions struct {
 	Reverse bool
 }
 
@@ -80,9 +87,9 @@ type IteratorConfig struct {
 type Iterator interface {
 	// Seek moves the iterator to the selected key. If the key doesn't exist, it must move to the
 	// next smallest key greater than k.
-	Seek(k []byte)
+	Seek(ctx context.Context, k []byte) error
 	// Next moves the iterator to the next item.
-	Next()
+	Next(ctx context.Context) error
 	// Valid returns whether the iterator is positioned on a valid item or not.
 	Valid() bool
 	// Item returns the current item.
