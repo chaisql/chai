@@ -2,6 +2,7 @@
 package database
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -38,7 +39,7 @@ type Options struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ng engine.Engine, opts Options) (*Database, error) {
+func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error) {
 	if opts.Codec == nil {
 		return nil, errors.New("missing codec")
 	}
@@ -48,7 +49,9 @@ func New(ng engine.Engine, opts Options) (*Database, error) {
 		Codec: opts.Codec,
 	}
 
-	ntx, err := db.ng.Begin(true)
+	ntx, err := db.ng.Begin(ctx, engine.TxOptions{
+		Writable: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +96,10 @@ func (db *Database) Close() error {
 	return db.ng.Close()
 }
 
-// Begin starts a new transaction.
+// Begin starts a new transaction with default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *Database) Begin(writable bool) (*Transaction, error) {
-	return db.BeginTx(&TxOptions{
+	return db.BeginTx(context.Background(), &TxOptions{
 		ReadOnly: !writable,
 	})
 }
@@ -105,7 +108,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // If opts is empty, it will use the default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
 // If the Global option is passed, it opens a database level transaction.
-func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
+func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = new(TxOptions)
 	}
@@ -117,7 +120,9 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		return nil, errors.New("cannot open a transaction within a transaction")
 	}
 
-	ntx, err := db.ng.Begin(!opts.ReadOnly)
+	ntx, err := db.ng.Begin(ctx, engine.TxOptions{
+		Writable: !opts.ReadOnly,
+	})
 	if err != nil {
 		return nil, err
 	}

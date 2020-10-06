@@ -282,7 +282,7 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		}
 	}
 
-	it := st.NewIterator(engine.IteratorConfig{Reverse: reverse})
+	it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {
@@ -296,6 +296,10 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		if err != nil {
 			return err
 		}
+
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

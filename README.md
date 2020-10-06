@@ -66,11 +66,12 @@ There are two ways of using Genji, either by using Genji's API or by using the [
 package main
 
 import (
-	"fmt"
-	"log"
+    "context"
+    "fmt"
+    "log"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
+    "github.com/genjidb/genji"
+    "github.com/genjidb/genji/document"
 )
 
 func main() {
@@ -82,19 +83,20 @@ func main() {
     // Don't forget to close the database when you're done
     defer db.Close()
 
-    ctx := context.Background()
+    // Attach context, e.g. (*http.Request).Context().
+    db = db.WithContext(context.Background())
 
     // Create a table. Schemas are optional, you don't need to specify one if not needed
-    err = db.Exec(ctx, "CREATE TABLE user")
+    err = db.Exec("CREATE TABLE user")
 
     // Create an index
-    err = db.Exec(ctx, "CREATE INDEX idx_user_name ON test (name)")
+    err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
 
     // Insert some data
-    err = db.Exec(ctx, "INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
+    err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
 
     // Supported values can go from simple integers to richer data types like lists or documents
-    err = db.Exec(ctx, `
+    err = db.Exec(`
     INSERT INTO user (id, name, age, address, friends)
     VALUES (
         11,
@@ -124,10 +126,10 @@ func main() {
     u.Address.City = "Lyon"
     u.Address.ZipCode = "69001"
 
-    err = db.Exec(ctx, `INSERT INTO user VALUES ?`, &u)
+    err = db.Exec(`INSERT INTO user VALUES ?`, &u)
 
     // Query some documents
-    res, err := db.Query(ctx, "SELECT id, name, age, address FROM user WHERE age >= ?", 18)
+    res, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
     // always close the result when you're done with it
     defer res.Close()
 
@@ -240,6 +242,7 @@ go get github.com/genjidb/genji/engine/badgerengine
 
 ```go
 import (
+    "context"
     "log"
 
     "github.com/genjidb/genji"
@@ -255,7 +258,7 @@ func main() {
     }
 
     // Pass it to genji
-    db, err := genji.New(ng)
+    db, err := genji.New(context.Background(), ng)
     if err != nil {
         log.Fatal(err)
     }

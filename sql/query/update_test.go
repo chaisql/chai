@@ -2,7 +2,6 @@ package query_test
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"testing"
 
@@ -12,8 +11,6 @@ import (
 )
 
 func TestUpdateStmt(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name     string
 		query    string
@@ -51,23 +48,23 @@ func TestUpdateStmt(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, "CREATE TABLE test (a text not null)")
+			err = db.Exec("CREATE TABLE test (a text not null)")
 			require.NoError(t, err)
-			err = db.Exec(ctx, "INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
+			err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
 			require.NoError(t, err)
-			err = db.Exec(ctx, "INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
+			err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
 			require.NoError(t, err)
-			err = db.Exec(ctx, "INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
+			err = db.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
 			require.NoError(t, err)
 
-			err = db.Exec(ctx, test.query, test.params...)
+			err = db.Exec(test.query, test.params...)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			st, err := db.Query(ctx, "SELECT * FROM test")
+			st, err := db.Query("SELECT * FROM test")
 			require.NoError(t, err)
 			defer st.Close()
 
@@ -103,19 +100,19 @@ func TestUpdateStmt(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, `CREATE TABLE foo;`)
+			err = db.Exec(`CREATE TABLE foo;`)
 			require.NoError(t, err)
-			err = db.Exec(ctx, `INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);`)
+			err = db.Exec(`INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);`)
 			require.NoError(t, err)
 
-			err = db.Exec(ctx, tt.query, tt.params...)
+			err = db.Exec(tt.query, tt.params...)
 			if tt.fails {
 				require.Error(t, err)
 				continue
 			}
 
 			require.NoError(t, err)
-			st, err := db.Query(ctx, "SELECT * FROM foo")
+			st, err := db.Query("SELECT * FROM foo")
 			require.NoError(t, err)
 			defer st.Close()
 

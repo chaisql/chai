@@ -134,7 +134,7 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
@@ -151,6 +151,9 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		if err != nil {
 			return err
 		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -197,7 +200,7 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
@@ -211,6 +214,9 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		if err != nil {
 			return err
 		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -274,7 +280,7 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
@@ -291,6 +297,9 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		if err != nil {
 			return err
 		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -355,7 +364,7 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	it := tb.Store.NewIterator(engine.IteratorConfig{})
+	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
@@ -372,6 +381,9 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		if err != nil {
 			return err
 		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package boltengine_test
 
 import (
+	"context"
 	"io/ioutil"
 	"log"
 	"os"
@@ -36,7 +37,7 @@ func ExampleNewEngine() {
 		log.Fatal(err)
 	}
 
-	db, err := genji.New(ng)
+	db, err := genji.New(context.Background(), ng)
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)

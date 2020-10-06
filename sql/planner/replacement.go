@@ -117,7 +117,7 @@ func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
 	var d encodedDocumentWithKey
 	var err error
 
-	it := u.store.NewIterator(engine.IteratorConfig{})
+	it := u.store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var buf []byte
@@ -135,6 +135,9 @@ func (u *resumableIterator) Iterate(fn func(d document.Document) error) error {
 		if err != nil {
 			return err
 		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil

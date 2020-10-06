@@ -1,6 +1,7 @@
 package memoryengine
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -32,8 +33,8 @@ func NewEngine() *Engine {
 }
 
 // Begin creates a transaction.
-func (ng *Engine) Begin(writable bool) (engine.Transaction, error) {
-	if writable {
+func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+	if opts.Writable {
 		ng.mu.Lock()
 	} else {
 		ng.mu.RLock()
@@ -43,7 +44,7 @@ func (ng *Engine) Begin(writable bool) (engine.Transaction, error) {
 		return nil, errors.New("engine closed")
 	}
 
-	return &transaction{ng: ng, writable: writable}, nil
+	return &transaction{ng: ng, writable: opts.Writable}, nil
 }
 
 // Close the engine.

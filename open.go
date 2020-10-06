@@ -3,6 +3,8 @@
 package genji
 
 import (
+	"context"
+
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/memoryengine"
@@ -25,5 +27,6 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 
-	return New(ng)
+	ctx := context.Background()
+	return New(ctx, ng)
 }

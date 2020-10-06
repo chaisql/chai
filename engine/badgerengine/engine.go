@@ -3,6 +3,7 @@ package badgerengine
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji/engine"
@@ -32,13 +33,13 @@ func NewEngine(opt badger.Options) (*Engine, error) {
 }
 
 // Begin creates a transaction using Badger's transaction API.
-func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
-	tx := e.DB.NewTransaction(writable)
+func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+	tx := e.DB.NewTransaction(opts.Writable)
 
 	return &Transaction{
 		ng:       e,
 		tx:       tx,
-		writable: writable,
+		writable: opts.Writable,
 	}, nil
 }
 

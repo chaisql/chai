@@ -1,7 +1,6 @@
 package genji_test
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"testing"
@@ -25,19 +24,17 @@ func ExampleTx() {
 	}
 	defer tx.Rollback()
 
-	ctx := context.Background()
-
-	err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS user")
+	err = tx.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = tx.Exec(ctx, "INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	d, err := tx.QueryDocument(ctx, "SELECT id, name, age FROM user WHERE name = ?", "foo")
+	d, err := tx.QueryDocument("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -77,9 +74,7 @@ func TestQueryDocument(t *testing.T) {
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 
-	ctx := context.Background()
-
-	err = tx.Exec(ctx, `
+	err = tx.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
 		`)
@@ -90,7 +85,7 @@ func TestQueryDocument(t *testing.T) {
 		var a int
 		var b string
 
-		r, err := db.QueryDocument(ctx, "SELECT * FROM test")
+		r, err := db.QueryDocument("SELECT * FROM test")
 		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
@@ -100,7 +95,7 @@ func TestQueryDocument(t *testing.T) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		r, err = tx.QueryDocument(ctx, "SELECT * FROM test")
+		r, err = tx.QueryDocument("SELECT * FROM test")
 		require.NoError(t, err)
 		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
@@ -109,14 +104,14 @@ func TestQueryDocument(t *testing.T) {
 	})
 
 	t.Run("Should return an error if no document", func(t *testing.T) {
-		r, err := db.QueryDocument(ctx, "SELECT * FROM test WHERE a > 100")
+		r, err := db.QueryDocument("SELECT * FROM test WHERE a > 100")
 		require.Equal(t, database.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		require.NoError(t, err)
 		defer tx.Rollback()
-		r, err = tx.QueryDocument(ctx, "SELECT * FROM test WHERE a > 100")
+		r, err = tx.QueryDocument("SELECT * FROM test WHERE a > 100")
 		require.Equal(t, database.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 	})

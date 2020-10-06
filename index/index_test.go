@@ -2,12 +2,14 @@
 package index_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
@@ -16,7 +18,9 @@ import (
 
 func getIndex(t testing.TB, unique bool) (*index.Index, func()) {
 	ng := memoryengine.NewEngine()
-	tx, err := ng.Begin(true)
+	tx, err := ng.Begin(context.Background(), engine.TxOptions{
+		Writable: true,
+	})
 	require.NoError(t, err)
 
 	idx := index.NewIndex(tx, "foo", index.Options{Unique: unique})

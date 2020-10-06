@@ -330,7 +330,7 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 		codec: t.tx.db.Codec,
 	}
 
-	it := t.Store.NewIterator(engine.IteratorConfig{})
+	it := t.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
 	var err error
@@ -344,6 +344,9 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 		if err != nil {
 			return err
 		}
+	}
+	if err := it.Err(); err != nil {
+		return err
 	}
 
 	return nil
