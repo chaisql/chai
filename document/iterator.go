@@ -2,6 +2,7 @@ package document
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 )
@@ -13,7 +14,7 @@ var ErrStreamClosed = errors.New("stream closed")
 type Iterator interface {
 	// Iterate goes through all the documents and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(func(d Document) error) error
+	Iterate(ctx context.Context, fn func(d Document) error) error
 }
 
 // NewIterator creates an iterator that iterates over documents.
@@ -23,7 +24,7 @@ func NewIterator(documents ...Document) Iterator {
 
 type documentsIterator []Document
 
-func (rr documentsIterator) Iterate(fn func(d Document) error) error {
+func (rr documentsIterator) Iterate(ctx context.Context, fn func(d Document) error) error {
 	var err error
 
 	for _, d := range rr {
@@ -37,20 +38,20 @@ func (rr documentsIterator) Iterate(fn func(d Document) error) error {
 }
 
 // The IteratorFunc type is an adapter to allow the use of ordinary functions as Iterators.
-// If f is a function with the appropriate signature, HandlerFunc(f) is a Handler that calls f.
-type IteratorFunc func(func(d Document) error) error
+// If f is a function with the appropriate signature, IteratorFunc(f) is an Iterator that calls f.
+type IteratorFunc func(ctx context.Context, fn func(d Document) error) error
 
 // Iterate calls f(fn).
-func (f IteratorFunc) Iterate(fn func(d Document) error) error {
-	return f(fn)
+func (f IteratorFunc) Iterate(ctx context.Context, fn func(d Document) error) error {
+	return f(ctx, fn)
 }
 
 // IteratorToJSON encodes all the documents of an iterator to JSON stream.
-func IteratorToJSON(w io.Writer, s Iterator) error {
+func IteratorToJSON(ctx context.Context, w io.Writer, s Iterator) error {
 	buf := bufio.NewWriter(w)
 	defer buf.Flush()
 
-	return s.Iterate(func(d Document) error {
+	return s.Iterate(ctx, func(d Document) error {
 		data, err := jsonDocument{d}.MarshalJSON()
 		if err != nil {
 			return err
@@ -62,13 +63,13 @@ func IteratorToJSON(w io.Writer, s Iterator) error {
 }
 
 // IteratorToJSONArray encodes all the documents of an iterator to a JSON array.
-func IteratorToJSONArray(w io.Writer, s Iterator) error {
+func IteratorToJSONArray(ctx context.Context, w io.Writer, s Iterator) error {
 	buf := bufio.NewWriter(w)
 
 	buf.WriteByte('[')
 
 	first := true
-	err := s.Iterate(func(d Document) error {
+	err := s.Iterate(ctx, func(d Document) error {
 		if !first {
 			buf.WriteString(", ")
 		} else {
@@ -117,18 +118,18 @@ func (s Stream) IsEmpty() bool {
 // and returned by fn, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
 // It implements the Iterator interface.
-func (s Stream) Iterate(fn func(d Document) error) error {
+func (s Stream) Iterate(ctx context.Context, fn func(d Document) error) error {
 	if s.it == nil {
 		return nil
 	}
 
 	if s.op == nil {
-		return s.it.Iterate(fn)
+		return s.it.Iterate(ctx, fn)
 	}
 
 	opFn := s.op()
 
-	err := s.it.Iterate(func(d Document) error {
+	err := s.it.Iterate(ctx, func(d Document) error {
 		d, err := opFn(d)
 		if err != nil {
 			return err
@@ -231,10 +232,10 @@ func (s Stream) Append(it Iterator) Stream {
 }
 
 // Count counts all the documents from the stream.
-func (s Stream) Count() (int, error) {
+func (s Stream) Count(ctx context.Context) (int, error) {
 	counter := 0
 
-	err := s.Iterate(func(d Document) error {
+	err := s.Iterate(ctx, func(d Document) error {
 		counter++
 		return nil
 	})
@@ -244,8 +245,8 @@ func (s Stream) Count() (int, error) {
 
 // First runs the stream, returns the first document found and closes the stream.
 // If the stream is empty, all return values are nil.
-func (s Stream) First() (d Document, err error) {
-	err = s.Iterate(func(doc Document) error {
+func (s Stream) First(ctx context.Context) (d Document, err error) {
+	err = s.Iterate(ctx, func(doc Document) error {
 		d = doc
 		return ErrStreamClosed
 	})
@@ -281,13 +282,13 @@ func (s Stream) GroupBy(groupFn func(d Document) (Value, error)) Stream {
 
 // Aggregate builds a list of aggregators for each group of documents and passes each document of the stream to them.
 func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
-	return NewStream(IteratorFunc(func(fn func(d Document) error) error {
+	return NewStream(IteratorFunc(func(ctx context.Context, fn func(d Document) error) error {
 		aggregates := make(map[Value][]Aggregator)
 		var groups []Value
 
 		nullValue := NewNullValue()
 
-		err := s.Iterate(func(d Document) error {
+		err := s.Iterate(ctx, func(d Document) error {
 			group := nullValue
 
 			if gd, ok := d.(*groupedDocument); ok {
@@ -371,9 +372,9 @@ type multiIterator struct {
 	iterators []Iterator
 }
 
-func (m multiIterator) Iterate(fn func(d Document) error) error {
+func (m multiIterator) Iterate(ctx context.Context, fn func(d Document) error) error {
 	for _, it := range m.iterators {
-		err := it.Iterate(fn)
+		err := it.Iterate(ctx, fn)
 		if err != nil {
 			return err
 		}
