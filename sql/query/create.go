@@ -30,7 +30,7 @@ func (stmt CreateTableStmt) Run(ctx context.Context, tx *database.Transaction, a
 		return res, errors.New("missing table name")
 	}
 
-	err := tx.CreateTable(stmt.TableName, &stmt.Info)
+	err := tx.CreateTable(ctx, stmt.TableName, &stmt.Info)
 	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
 		err = nil
 	}
@@ -70,7 +70,7 @@ func (stmt CreateIndexStmt) Run(ctx context.Context, tx *database.Transaction, a
 		return res, errors.New("missing path")
 	}
 
-	err := tx.CreateIndex(database.IndexConfig{
+	err := tx.CreateIndex(ctx, database.IndexConfig{
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,

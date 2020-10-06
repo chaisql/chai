@@ -36,6 +36,6 @@ func (stmt AlterStmt) Run(ctx context.Context, tx *database.Transaction, _ []exp
 		return res, database.ErrTableAlreadyExists
 	}
 
-	err := tx.RenameTable(stmt.TableName, stmt.NewTableName)
+	err := tx.RenameTable(ctx, stmt.TableName, stmt.NewTableName)
 	return res, err
 }

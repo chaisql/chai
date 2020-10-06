@@ -28,7 +28,7 @@ func (stmt DropTableStmt) Run(ctx context.Context, tx *database.Transaction, arg
 		return res, errors.New("missing table name")
 	}
 
-	err := tx.DropTable(stmt.TableName)
+	err := tx.DropTable(ctx, stmt.TableName)
 	if err == database.ErrTableNotFound && stmt.IfExists {
 		err = nil
 	}
@@ -56,7 +56,7 @@ func (stmt DropIndexStmt) Run(ctx context.Context, tx *database.Transaction, arg
 		return res, errors.New("missing index name")
 	}
 
-	err := tx.DropIndex(stmt.IndexName)
+	err := tx.DropIndex(ctx, stmt.IndexName)
 	if err == database.ErrIndexNotFound && stmt.IfExists {
 		err = nil
 	}

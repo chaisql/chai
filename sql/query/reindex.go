@@ -23,17 +23,17 @@ func (stmt ReIndexStmt) Run(ctx context.Context, tx *database.Transaction, args 
 	var res Result
 
 	if stmt.TableOrIndexName == "" {
-		return res, tx.ReIndexAll()
+		return res, tx.ReIndexAll(ctx)
 	}
 
-	t, err := tx.GetTable(stmt.TableOrIndexName)
+	t, err := tx.GetTable(ctx, stmt.TableOrIndexName)
 	if err == nil {
-		return res, t.ReIndex()
+		return res, t.ReIndex(ctx)
 	}
 	if err != database.ErrTableNotFound {
 		return res, err
 	}
 
-	err = tx.ReIndex(stmt.TableOrIndexName)
+	err = tx.ReIndex(ctx, stmt.TableOrIndexName)
 	return res, err
 }

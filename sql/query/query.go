@@ -32,7 +32,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 	}
 
 	type queryAlterer interface {
-		alterQuery(db *database.Database, q *Query) error
+		alterQuery(ctx context.Context, db *database.Database, q *Query) error
 	}
 
 	for i, stmt := range q.Statements {
@@ -43,7 +43,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(db, &q)
+			err = qa.alterQuery(ctx, db, &q)
 			if err != nil {
 				if tx := db.GetAttachedTx(); tx != nil {
 					tx.Rollback()
@@ -55,7 +55,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		}
 
 		if q.tx == nil {
-			q.tx, err = db.Begin(!stmt.IsReadOnly())
+			q.tx, err = db.Begin(ctx, !stmt.IsReadOnly())
 			if err != nil {
 				return nil, err
 			}

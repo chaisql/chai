@@ -35,7 +35,7 @@ func (stmt InsertStmt) Run(ctx context.Context, tx *database.Transaction, args [
 		return res, errors.New("values are empty")
 	}
 
-	t, err := tx.GetTable(stmt.TableName)
+	t, err := tx.GetTable(ctx, stmt.TableName)
 	if err != nil {
 		return res, err
 	}
@@ -46,13 +46,13 @@ func (stmt InsertStmt) Run(ctx context.Context, tx *database.Transaction, args [
 	}
 
 	if len(stmt.FieldNames) > 0 {
-		return stmt.insertExprList(t, stack)
+		return stmt.insertExprList(ctx, t, stack)
 	}
 
-	return stmt.insertDocuments(t, stack)
+	return stmt.insertDocuments(ctx, t, stack)
 }
 
-func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) (Result, error) {
+func (stmt InsertStmt) insertDocuments(ctx context.Context, t *database.Table, stack expr.EvalStack) (Result, error) {
 	var res Result
 
 	for _, e := range stmt.Values {
@@ -65,7 +65,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) 
 			return res, fmt.Errorf("expected document, got %s", v.Type)
 		}
 
-		res.LastInsertKey, err = t.Insert(v.V.(document.Document))
+		res.LastInsertKey, err = t.Insert(ctx, v.V.(document.Document))
 		if err != nil {
 			return res, err
 		}
@@ -76,7 +76,7 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) 
 	return res, nil
 }
 
-func (stmt InsertStmt) insertExprList(t *database.Table, stack expr.EvalStack) (Result, error) {
+func (stmt InsertStmt) insertExprList(ctx context.Context, t *database.Table, stack expr.EvalStack) (Result, error) {
 	var res Result
 
 	// iterate over all of the documents (r1, r2, r3, ...)
@@ -105,7 +105,7 @@ func (stmt InsertStmt) insertExprList(t *database.Table, stack expr.EvalStack) (
 			return nil
 		})
 
-		res.LastInsertKey, err = t.Insert(&fb)
+		res.LastInsertKey, err = t.Insert(ctx, &fb)
 		if err != nil {
 			return res, err
 		}
