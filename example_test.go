@@ -21,14 +21,14 @@ type User struct {
 }
 
 func Example() {
+	ctx := context.Background()
+
 	// Create a database instance, here we'll store everything in memory
-	db, err := genji.Open(":memory:")
+	db, err := genji.Open(ctx, ":memory:")
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
-
-	ctx := context.Background()
 
 	// Create a table. Genji tables are schemaless by default, you don't need to specify a schema.
 	err = db.Exec(ctx, "CREATE TABLE user")
@@ -69,7 +69,7 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(d document.Document) error {
+	err = stream.Iterate(ctx, func(d document.Document) error {
 		var u User
 
 		err = document.StructScan(d, &u)
@@ -85,14 +85,14 @@ func Example() {
 	}
 
 	// Count results
-	count, err := stream.Count()
+	count, err := stream.Count(ctx)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Count:", count)
 
 	// Get first document from the results
-	d, err := stream.First()
+	d, err := stream.First(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -129,7 +129,7 @@ func Example() {
 			return &fb, nil
 		}).
 		// Iterate on them
-		Iterate(func(d document.Document) error {
+		Iterate(ctx, func(d document.Document) error {
 			return enc.Encode(d)
 		})
 

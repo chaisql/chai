@@ -13,19 +13,19 @@ import (
 )
 
 func ExampleTx() {
-	db, err := genji.Open(":memory:")
+	ctx := context.Background()
+
+	db, err := genji.Open(ctx, ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	tx, err := db.Begin(true)
+	tx, err := db.Begin(ctx, true)
 	if err != nil {
 		panic(err)
 	}
 	defer tx.Rollback()
-
-	ctx := context.Background()
 
 	err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
@@ -71,13 +71,13 @@ func ExampleTx() {
 }
 
 func TestQueryDocument(t *testing.T) {
-	db, err := genji.Open(":memory:")
-	require.NoError(t, err)
-
-	tx, err := db.Begin(true)
-	require.NoError(t, err)
-
 	ctx := context.Background()
+
+	db, err := genji.Open(ctx, ":memory:")
+	require.NoError(t, err)
+
+	tx, err := db.Begin(ctx, true)
+	require.NoError(t, err)
 
 	err = tx.Exec(ctx, `
 			CREATE TABLE test;
@@ -96,7 +96,7 @@ func TestQueryDocument(t *testing.T) {
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 
-		tx, err := db.Begin(false)
+		tx, err := db.Begin(ctx, false)
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -113,7 +113,7 @@ func TestQueryDocument(t *testing.T) {
 		require.Equal(t, database.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 
-		tx, err := db.Begin(false)
+		tx, err := db.Begin(ctx, false)
 		require.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryDocument(ctx, "SELECT * FROM test WHERE a > 100")

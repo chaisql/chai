@@ -3,6 +3,8 @@
 package genji
 
 import (
+	"context"
+
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/memoryengine"
@@ -11,7 +13,7 @@ import (
 // Open creates a Genji database at the given path.
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.
-func Open(path string) (*DB, error) {
+func Open(ctx context.Context, path string) (*DB, error) {
 	var ng engine.Engine
 	var err error
 
@@ -25,5 +27,5 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 
-	return New(ng)
+	return New(ctx, ng)
 }

@@ -21,8 +21,8 @@ func (db *DB) Close() error {
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.DB.Begin(writable)
+func (db *DB) Begin(ctx context.Context, writable bool) (*Tx, error) {
+	tx, err := db.DB.Begin(ctx, writable)
 	if err != nil {
 		return nil, err
 	}
@@ -33,8 +33,8 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
-func (db *DB) View(fn func(tx *Tx) error) error {
-	tx, err := db.Begin(false)
+func (db *DB) View(ctx context.Context, fn func(tx *Tx) error) error {
+	tx, err := db.Begin(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -44,8 +44,8 @@ func (db *DB) View(fn func(tx *Tx) error) error {
 }
 
 // Update starts a read-write transaction, runs fn and automatically commits it.
-func (db *DB) Update(fn func(tx *Tx) error) error {
-	tx, err := db.Begin(true)
+func (db *DB) Update(ctx context.Context, fn func(tx *Tx) error) error {
+	tx, err := db.Begin(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (db *DB) QueryDocument(ctx context.Context, q string, args ...interface{}) 
 	}
 	defer res.Close()
 
-	r, err := res.First()
+	r, err := res.First(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (tx *Tx) QueryDocument(ctx context.Context, q string, args ...interface{}) 
 	}
 	defer res.Close()
 
-	r, err := res.First()
+	r, err := res.First(ctx)
 	if err != nil {
 		return nil, err
 	}
