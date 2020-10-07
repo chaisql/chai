@@ -14,13 +14,13 @@ import (
 )
 
 func ExampleStream_First() {
-	db, err := genji.Open(":memory:")
+	ctx := context.Background()
+
+	db, err := genji.Open(ctx, ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
-	ctx := context.Background()
 
 	err = db.Exec(ctx, "CREATE TABLE user")
 	if err != nil {
@@ -38,7 +38,7 @@ func ExampleStream_First() {
 	}
 	defer result.Close()
 
-	d, err := result.First()
+	d, err := result.First(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -69,13 +69,13 @@ func ExampleStream_Iterate() {
 		}
 	}
 
-	db, err := genji.Open(":memory:")
+	ctx := context.Background()
+
+	db, err := genji.Open(ctx, ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
-	ctx := context.Background()
 
 	err = db.Exec(ctx, "CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
@@ -106,7 +106,7 @@ func ExampleStream_Iterate() {
 	}
 	defer result.Close()
 
-	err = result.Iterate(func(d document.Document) error {
+	err = result.Iterate(ctx, func(d document.Document) error {
 		// Scan into a struct
 		var u User
 		err = document.StructScan(d, &u)
@@ -156,6 +156,8 @@ func ExampleStream_Iterate() {
 }
 
 func TestIteratorToJSONArray(t *testing.T) {
+	ctx := context.Background()
+
 	var docs []document.Document
 	for i := 0; i < 3; i++ {
 		fb := document.NewFieldBuffer()
@@ -166,7 +168,7 @@ func TestIteratorToJSONArray(t *testing.T) {
 
 	it := document.NewIterator(docs...)
 	var buf bytes.Buffer
-	err := document.IteratorToJSONArray(&buf, it)
+	err := document.IteratorToJSONArray(ctx, &buf, it)
 	require.NoError(t, err)
 	require.Equal(t, `[{"a": 0}, {"a": 1}, {"a": 2}]`, buf.String())
 }
