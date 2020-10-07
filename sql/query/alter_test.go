@@ -13,7 +13,7 @@ import (
 func TestAlterTable(t *testing.T) {
 	ctx := context.Background()
 
-	db, err := genji.Open(":memory:")
+	db, err := genji.Open(ctx, ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 

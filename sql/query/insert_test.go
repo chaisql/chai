@@ -46,7 +46,7 @@ func TestInsertStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -74,7 +74,7 @@ func TestInsertStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = document.IteratorToJSON(&buf, st)
+				err = document.IteratorToJSON(ctx, &buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -85,7 +85,7 @@ func TestInsertStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -102,7 +102,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with shadowing", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -114,7 +114,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with struct param", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -133,14 +133,14 @@ func TestInsertStmt(t *testing.T) {
 
 		require.NoError(t, err)
 		var buf bytes.Buffer
-		err = document.IteratorToJSON(&buf, res)
+		err = document.IteratorToJSON(ctx, &buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `{"a": "a", "b-b": "b"}`, buf.String())
 	})
 
 	t.Run("with types constraints", func(t *testing.T) {
 		// This test ensures that we can insert data into every supported types.
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -165,7 +165,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSON(&buf, res)
+		err = document.IteratorToJSON(ctx, &buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `{
 			"i": 10000000000,
@@ -215,7 +215,7 @@ func TestInsertStmt(t *testing.T) {
 			{"text / not null with type constraint", "TEXT NOT NULL", `{}`},
 		}
 
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 

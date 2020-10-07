@@ -36,7 +36,7 @@ func TestCreateTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -47,8 +47,8 @@ func TestCreateTable(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			err = db.View(func(tx *genji.Tx) error {
-				_, err := tx.GetTable("test")
+			err = db.View(ctx, func(tx *genji.Tx) error {
+				_, err := tx.GetTable(ctx, "test")
 				return err
 			})
 			require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestCreateTable(t *testing.T) {
 	}
 
 	t.Run("constraints", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -64,13 +64,13 @@ func TestCreateTable(t *testing.T) {
 			err = db.Exec(ctx, `CREATE TABLE test(d double, b bool)`)
 			require.NoError(t, err)
 
-			err = db.View(func(tx *genji.Tx) error {
-				tb, err := tx.GetTable("test")
+			err = db.View(ctx, func(tx *genji.Tx) error {
+				tb, err := tx.GetTable(ctx, "test")
 				if err != nil {
 					return err
 				}
 
-				info, err := tb.Info()
+				info, err := tb.Info(ctx)
 				if err != nil {
 					return err
 				}
@@ -93,12 +93,12 @@ func TestCreateTable(t *testing.T) {
 			`)
 			require.NoError(t, err)
 
-			err = db.View(func(tx *genji.Tx) error {
-				tb, err := tx.GetTable("test1")
+			err = db.View(ctx, func(tx *genji.Tx) error {
+				tb, err := tx.GetTable(ctx, "test1")
 				if err != nil {
 					return err
 				}
-				info, err := tb.Info()
+				info, err := tb.Info(ctx)
 				if err != nil {
 					return err
 				}
@@ -121,6 +121,8 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestCreateIndex(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name  string
 		query string
@@ -135,11 +137,9 @@ func TestCreateIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
-
-			ctx := context.Background()
 
 			err = db.Exec(ctx, "CREATE TABLE test")
 			require.NoError(t, err)

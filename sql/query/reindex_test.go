@@ -27,7 +27,7 @@ func TestReIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -52,12 +52,12 @@ func TestReIndex(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			err = db.View(func(tx *genji.Tx) error {
-				idxList, err := tx.ListIndexes()
+			err = db.View(ctx, func(tx *genji.Tx) error {
+				idxList, err := tx.ListIndexes(ctx)
 				require.NoError(t, err)
 
 				for _, cfg := range idxList {
-					idx, err := tx.GetIndex(cfg.IndexName)
+					idx, err := tx.GetIndex(ctx, cfg.IndexName)
 					require.NoError(t, err)
 
 					shouldBeIndexed := false
@@ -69,7 +69,7 @@ func TestReIndex(t *testing.T) {
 					}
 
 					i := 0
-					err = idx.AscendGreaterOrEqual(document.Value{}, func(val []byte, key []byte, isEqual bool) error {
+					err = idx.AscendGreaterOrEqual(ctx, document.Value{}, func(val []byte, key []byte, isEqual bool) error {
 						i++
 						return nil
 					})

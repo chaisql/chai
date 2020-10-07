@@ -28,7 +28,7 @@ func TestDeleteStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -53,7 +53,7 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = document.IteratorToJSON(&buf, st)
+			err = document.IteratorToJSON(ctx, &buf, st)
 			require.NoError(t, err)
 			if len(test.expected) == 0 {
 				require.Equal(t, 0, buf.Len())

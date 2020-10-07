@@ -93,7 +93,7 @@ func TestSelectStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -126,7 +126,7 @@ func TestSelectStmt(t *testing.T) {
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = document.IteratorToJSONArray(&buf, st)
+				err = document.IteratorToJSONArray(ctx, &buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -136,7 +136,7 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -154,13 +154,13 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, st)
+		err = document.IteratorToJSONArray(ctx, &buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
 	})
 
 	t.Run("with documents", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -176,7 +176,7 @@ func TestSelectStmt(t *testing.T) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(d document.Document) error {
+			err = st.Iterate(ctx, func(d document.Document) error {
 				data, err := document.MarshalJSON(d)
 				require.NoError(t, err)
 				require.JSONEq(t, res[i], string(data))
@@ -193,7 +193,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("table not found", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -202,7 +202,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -217,7 +217,7 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, st)
+		err = document.IteratorToJSONArray(ctx, &buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})

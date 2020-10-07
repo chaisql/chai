@@ -11,11 +11,11 @@ import (
 )
 
 func TestDropTable(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	ctx := context.Background()
+
+	db, err := genji.Open(ctx, ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
-
-	ctx := context.Background()
 
 	err = db.Exec(ctx, "CREATE TABLE test1; CREATE TABLE test2; CREATE TABLE test3")
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestDropTable(t *testing.T) {
 	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
 	require.NoError(t, err)
 	var tables []string
-	err = res.Iterate(func(d document.Document) error {
+	err = res.Iterate(ctx, func(d document.Document) error {
 		v, err := d.GetByField("table_name")
 		if err != nil {
 			return err
@@ -54,11 +54,11 @@ func TestDropTable(t *testing.T) {
 }
 
 func TestDropIndex(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	ctx := context.Background()
+
+	db, err := genji.Open(ctx, ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
-
-	ctx := context.Background()
 
 	err = db.Exec(ctx, `
 		CREATE TABLE test1(foo text); CREATE INDEX idx_test1_foo ON test1(foo);
@@ -71,9 +71,9 @@ func TestDropIndex(t *testing.T) {
 
 	// Assert that the good index has been dropped.
 	var indexes []*database.IndexConfig
-	err = db.View(func(tx *genji.Tx) error {
+	err = db.View(ctx, func(tx *genji.Tx) error {
 		var err error
-		indexes, err = tx.ListIndexes()
+		indexes, err = tx.ListIndexes(ctx)
 		return err
 	})
 	require.Len(t, indexes, 1)
