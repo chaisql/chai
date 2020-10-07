@@ -64,6 +64,7 @@ There are two ways of using Genji, either by using Genji's API or by using the [
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -72,15 +73,15 @@ import (
 )
 
 func main() {
+    ctx := context.Background()
+
     // Create a database instance, here we'll store everything on-disk using the BoltDB engine
-    db, err := genji.Open("my.db")
+    db, err := genji.Open(ctx, "my.db")
     if err != nil {
         log.Fatal(err)
     }
     // Don't forget to close the database when you're done
     defer db.Close()
-
-    ctx := context.Background()
 
     // Create a table. Schemas are optional, you don't need to specify one if not needed
     err = db.Exec(ctx, "CREATE TABLE user")
@@ -130,7 +131,7 @@ func main() {
     defer res.Close()
 
     // Iterate over the results
-    err = res.Iterate(func(d document.Document) error {
+    err = res.Iterate(ctx, func(d document.Document) error {
         // When querying an explicit list of fields, you can use the Scan function to scan them
         // in order. Note that the types don't have to match exactly the types stored in the table
         // as long as they are compatible.
@@ -199,13 +200,15 @@ Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbo
 
 ```go
 import (
+    "context"
     "log"
 
     "github.com/genjidb/genji"
 )
 
 func main() {
-    db, err := genji.Open("my.db")
+    ctx := context.Background()
+    db, err := genji.Open(ctx, "my.db")
     defer db.Close()
 }
 ```
@@ -214,13 +217,15 @@ func main() {
 
 ```go
 import (
+    "context"
     "log"
 
     "github.com/genjidb/genji"
 )
 
 func main() {
-    db, err := genji.Open(":memory:")
+    ctx := context.Background()
+    db, err := genji.Open(ctx, ":memory:")
     if err != nil {
         log.Fatal(err)
     }
@@ -238,6 +243,7 @@ go get github.com/genjidb/genji/engine/badgerengine
 
 ```go
 import (
+    "context"
     "log"
 
     "github.com/genjidb/genji"
@@ -246,6 +252,8 @@ import (
 )
 
 func main() {
+    ctx := context.Background()
+
     // Create a badger engine
     ng, err := badgerengine.NewEngine(badger.DefaultOptions("mydb"))
     if err != nil {
@@ -253,7 +261,7 @@ func main() {
     }
 
     // Pass it to genji
-    db, err := genji.New(ng)
+    db, err := genji.New(ctx, ng)
     if err != nil {
         log.Fatal(err)
     }
