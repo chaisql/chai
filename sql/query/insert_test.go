@@ -14,8 +14,6 @@ import (
 )
 
 func TestInsertStmt(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name     string
 		query    string
@@ -46,11 +44,11 @@ func TestInsertStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
+				ctx := context.Background()
+
 				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
-
-				ctx := context.Background()
 
 				err = db.Exec(ctx, "CREATE TABLE test")
 				require.NoError(t, err)
@@ -85,6 +83,8 @@ func TestInsertStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -102,6 +102,8 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with shadowing", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -114,6 +116,8 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with struct param", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -139,6 +143,8 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with types constraints", func(t *testing.T) {
+		ctx := context.Background()
+
 		// This test ensures that we can insert data into every supported types.
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
@@ -215,17 +221,19 @@ func TestInsertStmt(t *testing.T) {
 			{"text / not null with type constraint", "TEXT NOT NULL", `{}`},
 		}
 
-		db, err := genji.Open(ctx, ":memory:")
-		require.NoError(t, err)
-		defer db.Close()
-
-		for i, test := range tests {
+		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				q := fmt.Sprintf("CREATE TABLE test%d (a %s)", i, test.fieldConstraint)
-				err := db.Exec(ctx, q)
+				ctx := context.Background()
+
+				db, err := genji.Open(ctx, ":memory:")
+				require.NoError(t, err)
+				defer db.Close()
+
+				q := fmt.Sprintf("CREATE TABLE test (a %s)", test.fieldConstraint)
+				err = db.Exec(ctx, q)
 				require.NoError(t, err)
 
-				q = fmt.Sprintf("INSERT INTO test%d VALUES %s", i, test.value)
+				q = fmt.Sprintf("INSERT INTO test VALUES %s", test.value)
 				err = db.Exec(ctx, q)
 				require.Error(t, err)
 			})

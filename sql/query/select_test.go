@@ -12,8 +12,6 @@ import (
 )
 
 func TestSelectStmt(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name     string
 		query    string
@@ -93,6 +91,8 @@ func TestSelectStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
+				ctx := context.Background()
+
 				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
@@ -136,6 +136,8 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -160,6 +162,8 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("with documents", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -193,6 +197,8 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("table not found", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -202,6 +208,8 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {
+		ctx := context.Background()
+
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()

@@ -148,8 +148,8 @@ func Run(ctx context.Context, opts *Options) error {
 	}
 
 	e := prompt.New(
-		sh.execute,
-		sh.completer,
+		sh.execute(ctx),
+		sh.completer(ctx),
 		promptOpts...,
 	)
 
@@ -232,9 +232,13 @@ func (sh *Shell) dumpHistory() error {
 	return w.Flush()
 }
 
-func (sh *Shell) execute(in string) {
-	ctx := context.Background()
+func (sh *Shell) execute(ctx context.Context) prompt.Executor {
+	return func(in string) {
+		sh.executeContext(ctx, in)
+	}
+}
 
+func (sh *Shell) executeContext(ctx context.Context, in string) {
 	sh.history = append(sh.history, in)
 
 	err := sh.executeInput(ctx, in)
@@ -458,9 +462,13 @@ func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
-	ctx := context.Background()
+func (sh *Shell) completer(ctx context.Context) prompt.Completer {
+	return func(in prompt.Document) []prompt.Suggest {
+		return sh.completerContext(ctx, in)
+	}
+}
 
+func (sh *Shell) completerContext(ctx context.Context, in prompt.Document) []prompt.Suggest {
 	if strings.HasPrefix(in.Text, ".") {
 		return prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
 	}

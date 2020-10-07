@@ -10,8 +10,6 @@ import (
 )
 
 func TestReIndex(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name            string
 		query           string
@@ -27,6 +25,8 @@ func TestReIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()

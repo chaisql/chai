@@ -113,7 +113,8 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			engine = "badger"
 		}
 
-		return shell.Run(context.Background(), &shell.Options{
+		ctx := context.Background()
+		return shell.Run(ctx, &shell.Options{
 			Engine: engine,
 			DBPath: dbpath,
 		})

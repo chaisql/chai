@@ -593,7 +593,7 @@ func TestTableReIndex(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		err := tb.ReIndex(ctx, )
+		err := tb.ReIndex(ctx)
 		require.NoError(t, err)
 	})
 
@@ -645,7 +645,7 @@ func TestTableReIndex(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = tb1.ReIndex(ctx, )
+		err = tb1.ReIndex(ctx)
 		require.NoError(t, err)
 
 		countIndexElems := func(idx *database.Index) int {
@@ -683,7 +683,7 @@ func TestTableIndexes(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		m, err := tb.Indexes(ctx, )
+		m, err := tb.Indexes(ctx)
 		require.NoError(t, err)
 		require.Empty(t, m)
 	})
@@ -722,7 +722,7 @@ func TestTableIndexes(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		m, err := tb.Indexes(ctx, )
+		m, err := tb.Indexes(ctx)
 		require.NoError(t, err)
 		require.Len(t, m, 2)
 		idx1a, ok := m["a"]
