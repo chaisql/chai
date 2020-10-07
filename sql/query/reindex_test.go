@@ -26,12 +26,11 @@ func TestReIndex(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, `
+			err = db.Exec(`
 				CREATE TABLE test1;
 				CREATE TABLE test2;
 
@@ -45,14 +44,14 @@ func TestReIndex(t *testing.T) {
 			`)
 			require.NoError(t, err)
 
-			err = db.Exec(ctx, test.query)
+			err = db.Exec(test.query)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			err = db.View(ctx, func(tx *genji.Tx) error {
+			err = db.View(func(tx *genji.Tx) error {
 				idxList, err := tx.ListIndexes(ctx)
 				require.NoError(t, err)
 

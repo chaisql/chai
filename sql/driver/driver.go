@@ -126,10 +126,12 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		return nil, errors.New("isolation levels are not supported")
 	}
 
+	db := c.db.WithContext(ctx)
+
 	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
 	// otherwise create a read/write transaction.
 	var err error
-	c.tx, err = c.db.Begin(ctx, !opts.ReadOnly)
+	c.tx, err = db.Begin(!opts.ReadOnly)
 
 	return c, err
 }

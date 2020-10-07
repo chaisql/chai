@@ -12,27 +12,26 @@ import (
 
 func TestDropTable(t *testing.T) {
 	ctx := context.Background()
-
 	db, err := genji.Open(ctx, ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	err = db.Exec(ctx, "CREATE TABLE test1; CREATE TABLE test2; CREATE TABLE test3")
+	err = db.Exec("CREATE TABLE test1; CREATE TABLE test2; CREATE TABLE test3")
 	require.NoError(t, err)
 
-	err = db.Exec(ctx, "DROP TABLE test1")
+	err = db.Exec("DROP TABLE test1")
 	require.NoError(t, err)
 
-	err = db.Exec(ctx, "DROP TABLE IF EXISTS test1")
+	err = db.Exec("DROP TABLE IF EXISTS test1")
 	require.NoError(t, err)
 
 	// Dropping a table that doesn't exist without "IF EXISTS"
 	// should return an error.
-	err = db.Exec(ctx, "DROP TABLE test1")
+	err = db.Exec("DROP TABLE test1")
 	require.Error(t, err)
 
 	// Assert that only the table `test1` has been dropped.
-	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
 	require.NoError(t, err)
 	var tables []string
 	err = res.Iterate(ctx, func(d document.Document) error {
@@ -49,29 +48,28 @@ func TestDropTable(t *testing.T) {
 	require.Len(t, tables, 2)
 
 	// Dropping a read-only table should fail.
-	err = db.Exec(ctx, "DROP TABLE __genji_tables")
+	err = db.Exec("DROP TABLE __genji_tables")
 	require.Error(t, err)
 }
 
 func TestDropIndex(t *testing.T) {
 	ctx := context.Background()
-
 	db, err := genji.Open(ctx, ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	err = db.Exec(ctx, `
+	err = db.Exec(`
 		CREATE TABLE test1(foo text); CREATE INDEX idx_test1_foo ON test1(foo);
 		CREATE TABLE test2(bar text); CREATE INDEX idx_test2_bar ON test2(bar);
 	`)
 	require.NoError(t, err)
 
-	err = db.Exec(ctx, "DROP INDEX idx_test2_bar")
+	err = db.Exec("DROP INDEX idx_test2_bar")
 	require.NoError(t, err)
 
 	// Assert that the good index has been dropped.
 	var indexes []*database.IndexConfig
-	err = db.View(ctx, func(tx *genji.Tx) error {
+	err = db.View(func(tx *genji.Tx) error {
 		var err error
 		indexes, err = tx.ListIndexes(ctx)
 		return err

@@ -18,8 +18,6 @@ func parsePath(t testing.TB, str string) document.ValuePath {
 }
 
 func TestCreateTable(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name  string
 		query string
@@ -36,18 +34,19 @@ func TestCreateTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, test.query)
+			err = db.Exec(test.query)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			err = db.View(ctx, func(tx *genji.Tx) error {
+			err = db.View(func(tx *genji.Tx) error {
 				_, err := tx.GetTable(ctx, "test")
 				return err
 			})
@@ -56,15 +55,16 @@ func TestCreateTable(t *testing.T) {
 	}
 
 	t.Run("constraints", func(t *testing.T) {
+		ctx := context.Background()
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
 		t.Run("with fixed size data types", func(t *testing.T) {
-			err = db.Exec(ctx, `CREATE TABLE test(d double, b bool)`)
+			err = db.Exec(`CREATE TABLE test(d double, b bool)`)
 			require.NoError(t, err)
 
-			err = db.View(ctx, func(tx *genji.Tx) error {
+			err = db.View(func(tx *genji.Tx) error {
 				tb, err := tx.GetTable(ctx, "test")
 				if err != nil {
 					return err
@@ -86,14 +86,14 @@ func TestCreateTable(t *testing.T) {
 		})
 
 		t.Run("with variable size data types", func(t *testing.T) {
-			err = db.Exec(ctx, `
+			err = db.Exec(`
 				CREATE TABLE test1(
 					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] TEXT NOT NULL, bar[4][0].bat integer, b blob, t text, a array, d document
 				)
 			`)
 			require.NoError(t, err)
 
-			err = db.View(ctx, func(tx *genji.Tx) error {
+			err = db.View(func(tx *genji.Tx) error {
 				tb, err := tx.GetTable(ctx, "test1")
 				if err != nil {
 					return err
@@ -121,8 +121,6 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestCreateIndex(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name  string
 		query string
@@ -137,14 +135,15 @@ func TestCreateIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, "CREATE TABLE test")
+			err = db.Exec("CREATE TABLE test")
 			require.NoError(t, err)
 
-			err = db.Exec(ctx, test.query)
+			err = db.Exec(test.query)
 			if test.fails {
 				require.Error(t, err)
 				return

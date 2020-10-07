@@ -13,8 +13,6 @@ import (
 )
 
 func TestSplitANDConditionRule(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name           string
 		root, expected planner.Node
@@ -87,6 +85,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			res, err := planner.SplitANDConditionRule(ctx, planner.NewTree(test.root))
 			require.NoError(t, err)
 			require.Equal(t, res.String(), planner.NewTree(test.expected).String())
@@ -95,8 +94,6 @@ func TestSplitANDConditionRule(t *testing.T) {
 }
 
 func TestPrecalculateExprRule(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name        string
 		e, expected expr.Expr
@@ -168,6 +165,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			res, err := planner.PrecalculateExprRule(ctx, planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.e)))
 			require.NoError(t, err)
 			require.Equal(t, planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.expected)).String(), res.String())
@@ -176,8 +174,6 @@ func TestPrecalculateExprRule(t *testing.T) {
 }
 
 func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name           string
 		root, expected planner.Node
@@ -201,6 +197,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			res, err := planner.RemoveUnnecessarySelectionNodesRule(ctx, planner.NewTree(test.root))
 			require.NoError(t, err)
 			if test.expected != nil {
@@ -213,8 +210,6 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 }
 
 func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name           string
 		root, expected planner.Node
@@ -347,15 +342,16 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			tx, err := db.Begin(ctx, true)
+			tx, err := db.Begin(true)
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec(ctx, `
+			err = tx.Exec(`
 				CREATE TABLE foo;
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);

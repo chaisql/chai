@@ -45,29 +45,28 @@ func TestInsertStmt(t *testing.T) {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				ctx := context.Background()
-
 				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec(ctx, "CREATE TABLE test")
+				err = db.Exec("CREATE TABLE test")
 				require.NoError(t, err)
 				if withIndexes {
-					err = db.Exec(ctx, `
+					err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
 					`)
 					require.NoError(t, err)
 				}
-				err = db.Exec(ctx, test.query, test.params...)
+				err = db.Exec(test.query, test.params...)
 				if test.fails {
 					require.Error(t, err)
 					return
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query(ctx, "SELECT pk(), * FROM test")
+				st, err := db.Query("SELECT pk(), * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 
@@ -83,46 +82,41 @@ func TestInsertStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key", func(t *testing.T) {
-		ctx := context.Background()
-
-		db, err := genji.Open(ctx, ":memory:")
+		db, err := genji.Open(context.Background(), ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, "CREATE TABLE test (foo INTEGER PRIMARY KEY)")
+		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, `INSERT INTO test (bar) VALUES (1)`)
+		err = db.Exec(`INSERT INTO test (bar) VALUES (1)`)
 		require.Error(t, err)
-		err = db.Exec(ctx, `INSERT INTO test (bar, foo) VALUES (1, 2)`)
+		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, `INSERT INTO test (bar, foo) VALUES (1, 2)`)
+		err = db.Exec(`INSERT INTO test (bar, foo) VALUES (1, 2)`)
 		require.Equal(t, err, database.ErrDuplicateDocument)
 	})
 
 	t.Run("with shadowing", func(t *testing.T) {
-		ctx := context.Background()
-
-		db, err := genji.Open(ctx, ":memory:")
+		db, err := genji.Open(context.Background(), ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, "CREATE TABLE test")
+		err = db.Exec("CREATE TABLE test")
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, "INSERT INTO test (`pk()`, `key`) VALUES (1, 2)")
+		err = db.Exec("INSERT INTO test (`pk()`, `key`) VALUES (1, 2)")
 		require.NoError(t, err)
 	})
 
 	t.Run("with struct param", func(t *testing.T) {
 		ctx := context.Background()
-
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, "CREATE TABLE test")
+		err = db.Exec("CREATE TABLE test")
 		require.NoError(t, err)
 
 		type foo struct {
@@ -130,9 +124,9 @@ func TestInsertStmt(t *testing.T) {
 			B string `genji:"b-b"`
 		}
 
-		err = db.Exec(ctx, "INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
+		err = db.Exec("INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
 		require.NoError(t, err)
-		res, err := db.Query(ctx, "SELECT * FROM test")
+		res, err := db.Query("SELECT * FROM test")
 		defer res.Close()
 
 		require.NoError(t, err)
@@ -143,21 +137,20 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with types constraints", func(t *testing.T) {
-		ctx := context.Background()
-
 		// This test ensures that we can insert data into every supported types.
+		ctx := context.Background()
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, `CREATE TABLE test(
+		err = db.Exec(`CREATE TABLE test(
 			b bool, db double,
 			i integer, bb blob, byt bytes,
 			t text, a array, d document
 		)`)
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, `
+		err = db.Exec(`
 			INSERT INTO test
 			VALUES {
 				i: 10000000000, db: 21.21, b: true,
@@ -166,7 +159,7 @@ func TestInsertStmt(t *testing.T) {
 			}`)
 		require.NoError(t, err)
 
-		res, err := db.Query(ctx, "SELECT * FROM test")
+		res, err := db.Query("SELECT * FROM test")
 		defer res.Close()
 		require.NoError(t, err)
 
@@ -223,18 +216,16 @@ func TestInsertStmt(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				ctx := context.Background()
-
-				db, err := genji.Open(ctx, ":memory:")
+				db, err := genji.Open(context.Background(), ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
 				q := fmt.Sprintf("CREATE TABLE test (a %s)", test.fieldConstraint)
-				err = db.Exec(ctx, q)
+				err = db.Exec(q)
 				require.NoError(t, err)
 
 				q = fmt.Sprintf("INSERT INTO test VALUES %s", test.value)
-				err = db.Exec(ctx, q)
+				err = db.Exec(q)
 				require.Error(t, err)
 			})
 		}

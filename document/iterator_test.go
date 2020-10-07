@@ -15,24 +15,23 @@ import (
 
 func ExampleStream_First() {
 	ctx := context.Background()
-
 	db, err := genji.Open(ctx, ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	err = db.Exec(ctx, "CREATE TABLE user")
+	err = db.Exec("CREATE TABLE user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.Exec(ctx, "INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
+	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := db.Query(ctx, "SELECT id, name, age FROM user WHERE name = ?", "foo")
+	result, err := db.Query("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
@@ -70,20 +69,19 @@ func ExampleStream_Iterate() {
 	}
 
 	ctx := context.Background()
-
 	db, err := genji.Open(ctx, ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	err = db.Exec(ctx, "CREATE TABLE IF NOT EXISTS user")
+	err = db.Exec("CREATE TABLE IF NOT EXISTS user")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for i := 1; i <= 10; i++ {
-		err = db.Exec(ctx, "INSERT INTO user VALUES ?", &User{
+		err = db.Exec("INSERT INTO user VALUES ?", &User{
 			ID:   int64(i),
 			Name: fmt.Sprintf("foo%d", i),
 			Age:  uint32(i * 10),
@@ -100,7 +98,7 @@ func ExampleStream_Iterate() {
 		}
 	}
 
-	result, err := db.Query(ctx, `SELECT id, name, age, address FROM user WHERE age >= 18`)
+	result, err := db.Query(`SELECT id, name, age, address FROM user WHERE age >= 18`)
 	if err != nil {
 		panic(err)
 	}
@@ -156,8 +154,6 @@ func ExampleStream_Iterate() {
 }
 
 func TestIteratorToJSONArray(t *testing.T) {
-	ctx := context.Background()
-
 	var docs []document.Document
 	for i := 0; i < 3; i++ {
 		fb := document.NewFieldBuffer()
@@ -168,7 +164,7 @@ func TestIteratorToJSONArray(t *testing.T) {
 
 	it := document.NewIterator(docs...)
 	var buf bytes.Buffer
-	err := document.IteratorToJSONArray(ctx, &buf, it)
+	err := document.IteratorToJSONArray(context.Background(), &buf, it)
 	require.NoError(t, err)
 	require.Equal(t, `[{"a": 0}, {"a": 1}, {"a": 2}]`, buf.String())
 }
