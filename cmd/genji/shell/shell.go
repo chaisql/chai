@@ -322,7 +322,7 @@ func (sh *Shell) runQuery(ctx context.Context, q string) error {
 		return err
 	}
 
-	res, err := db.Query(ctx, q)
+	res, err := db.Query(q)
 	if err != nil {
 		return err
 	}
@@ -414,7 +414,7 @@ func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
 	}
 
 	var listName []string
-	err = db.View(ctx, func(tx *genji.Tx) error {
+	err = db.View(func(tx *genji.Tx) error {
 		indexes, err := tx.ListIndexes(ctx)
 		if err != nil {
 			return err
@@ -438,7 +438,7 @@ func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
 func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	var tables []string
 	db, _ := sh.getDB(ctx)
-	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return nil, err
 	}

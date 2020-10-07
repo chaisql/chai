@@ -30,12 +30,11 @@ func TestExecuteInsertCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, `CREATE TABLE foo`)
+			err = db.Exec(`CREATE TABLE foo`)
 			require.NoError(t, err)
 			err = executeInsertCommand(ctx, db, "foo", strings.NewReader(tt.data))
 			if tt.fails {
@@ -44,7 +43,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			res, err := db.Query(ctx, "SELECT * FROM foo")
+			res, err := db.Query("SELECT * FROM foo")
 			defer res.Close()
 			require.NoError(t, err)
 
@@ -57,8 +56,6 @@ func TestExecuteInsertCommand(t *testing.T) {
 	}
 
 	t.Run(`Json Array`, func(t *testing.T) {
-		ctx := context.Background()
-
 		const jsonArray = `
 	[
 		{"Name": "Ed", "Text": "Knock knock."},
@@ -73,15 +70,16 @@ func TestExecuteInsertCommand(t *testing.T) {
 			`{"Name": "Sam", "Text": "Go fmt who?"}`,
 			`{"Name": "Ed", "Text": "Go fmt yourself!"}`}
 
+		ctx := context.Background()
 		db, err := genji.Open(ctx, ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, `CREATE TABLE foo`)
+		err = db.Exec(`CREATE TABLE foo`)
 		require.NoError(t, err)
 		err = executeInsertCommand(ctx, db, "foo", strings.NewReader(jsonArray))
 		require.NoError(t, err)
-		res, err := db.Query(ctx, "SELECT * FROM foo")
+		res, err := db.Query("SELECT * FROM foo")
 		defer res.Close()
 		require.NoError(t, err)
 
@@ -96,8 +94,6 @@ func TestExecuteInsertCommand(t *testing.T) {
 	})
 
 	t.Run(`Json Stream`, func(t *testing.T) {
-		ctx := context.Background()
-
 		const jsonStream = `
 		{"Name": "Ed", "Text": "Knock knock."}
 		{"Name": "Sam", "Text": "Who's there?"}
@@ -110,17 +106,18 @@ func TestExecuteInsertCommand(t *testing.T) {
 			`{"Name": "Sam", "Text": "Go fmt who?"}`,
 			`{"Name": "Ed", "Text": "Go fmt yourself!"}`}
 
+		ctx := context.Background()
 		db, err := genji.Open(ctx, ":memory:")
 		defer db.Close()
 		require.NoError(t, err)
 
-		err = db.Exec(ctx, `CREATE TABLE foo`)
+		err = db.Exec(`CREATE TABLE foo`)
 		require.NoError(t, err)
 
 		err = executeInsertCommand(ctx, db, "foo", strings.NewReader(jsonStream))
 		require.NoError(t, err)
 
-		res, err := db.Query(ctx, "SELECT * FROM foo")
+		res, err := db.Query("SELECT * FROM foo")
 		defer res.Close()
 		require.NoError(t, err)
 

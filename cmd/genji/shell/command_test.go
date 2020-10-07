@@ -31,7 +31,6 @@ func TestRunTablesCmd(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
@@ -69,14 +68,13 @@ func TestIndexesCmd(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-
 			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(ctx, "CREATE TABLE test")
+			err = db.Exec("CREATE TABLE test")
 			require.NoError(t, err)
-			err = db.Exec(ctx, `
+			err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
@@ -108,7 +106,6 @@ func TestRunDumpCmd(t *testing.T) {
 		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				ctx := context.Background()
-
 				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
@@ -120,23 +117,23 @@ func TestRunDumpCmd(t *testing.T) {
 				ci := "COMMIT;\n"
 				if withConstraints {
 					q := fmt.Sprintf("CREATE TABLE test (\n  a %s\n);\n", tt.fieldConstraint)
-					err := db.Exec(ctx, q)
+					err := db.Exec(q)
 					require.NoError(t, err)
 					bwant.WriteString(q)
 				} else {
 					q := `CREATE TABLE test;`
-					err = db.Exec(ctx, q)
+					err = db.Exec(q)
 					require.NoError(t, err)
 					q = fmt.Sprintf("%s\n", q)
 					bwant.WriteString(q)
 				}
 
 				if withIndexes {
-					err = db.Exec(ctx, `
+					err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 					`)
 					require.NoError(t, err)
-					err = db.View(ctx, func(tx *genji.Tx) error {
+					err = db.View(func(tx *genji.Tx) error {
 						// indexes is unordered, we cannot guess the order.
 						// we have to test only one index creation.
 						indexes, err := tx.ListIndexes(ctx)
@@ -151,7 +148,7 @@ func TestRunDumpCmd(t *testing.T) {
 					require.NoError(t, err)
 
 				}
-				err = db.Exec(ctx, tt.query, tt.params...)
+				err = db.Exec(tt.query, tt.params...)
 				if tt.fails {
 					require.Error(t, err)
 					return

@@ -66,7 +66,7 @@ func executeInsertCommand(ctx context.Context, db *genji.DB, table string, r io.
 				return err
 			}
 
-			if err := db.Exec(ctx, q, &fb); err != nil {
+			if err := db.Exec(q, &fb); err != nil {
 				return err
 			}
 		}
@@ -89,7 +89,7 @@ func executeInsertCommand(ctx context.Context, db *genji.DB, table string, r io.
 				return err
 			}
 
-			if err := db.Exec(ctx, q, &fb); err != nil {
+			if err := db.Exec(q, &fb); err != nil {
 				return err
 			}
 		}
@@ -144,7 +144,7 @@ func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, a
 	defer db.Close()
 
 	if createTable {
-		err := db.Exec(ctx, "CREATE TABLE "+table)
+		err := db.Exec("CREATE TABLE " + table)
 		if err != nil {
 			return err
 		}

@@ -31,7 +31,7 @@ func runTablesCmd(ctx context.Context, db *genji.DB, cmd []string) error {
 		return fmt.Errorf("usage: .tables")
 	}
 
-	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
+	res, err := db.Query("SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return err
 	}
@@ -51,17 +51,15 @@ func runTablesCmd(ctx context.Context, db *genji.DB, cmd []string) error {
 // displayTableIndex prints all indexes that the given table contains.
 func displayTableIndex(db *genji.DB, tableName string) error {
 	return db.View(func(tx *genji.Tx) error {
-		ctx := context.Background()
-		_, err := tx.QueryDocument(ctx, "SELECT table_name FROM __genji_tables WHERE table_name = ?", tableName)
+		_, err := tx.QueryDocument("SELECT table_name FROM __genji_tables WHERE table_name = ?", tableName)
 		if err != nil {
 			if err == database.ErrDocumentNotFound {
 				return database.ErrTableNotFound
 			}
-
 			return err
 		}
 
-		res, err := tx.Query(ctx, "SELECT * FROM __genji_indexes WHERE table_name = ?", tableName)
+		res, err := tx.Query("SELECT * FROM __genji_indexes WHERE table_name = ?", tableName)
 		if err != nil {
 			return err
 		}
@@ -83,7 +81,7 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 
 // displayAllIndexes shows all indexes that the database contains.
 func displayAllIndexes(ctx context.Context, db *genji.DB) error {
-	res, err := db.Query(ctx, "SELECT * FROM __genji_indexes")
+	res, err := db.Query("SELECT * FROM __genji_indexes")
 	if err != nil {
 		return err
 	}
@@ -231,7 +229,7 @@ func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer)
 	}
 
 	q := fmt.Sprintf("SELECT * FROM %s", t.Name())
-	res, err := tx.Query(ctx, q)
+	res, err := tx.Query(q)
 	if err != nil {
 		return err
 	}
@@ -261,7 +259,7 @@ func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer)
 
 // runDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
 func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer) error {
-	tx, err := db.Begin(ctx, false)
+	tx, err := db.Begin(false)
 	if err != nil {
 		return err
 	}
@@ -299,7 +297,7 @@ func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer)
 
 	// tables slice argument is empty.
 	// Dump database content.
-	res, err := tx.Query(ctx, "SELECT table_name FROM __genji_tables")
+	res, err := tx.Query("SELECT table_name FROM __genji_tables")
 	if err != nil {
 		_, err = fmt.Fprintln(w, "ROLLBACK;")
 		return err
