@@ -206,10 +206,23 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		switch tok {
+		case scanner.RPAREN:
+			return expr.Parentheses{E: e}, nil
+		case scanner.COMMA:
+			exprList, err := p.parseExprListUntil(scanner.RPAREN)
+			if err != nil {
+				return nil, err
+			}
+
+			// prepend first parsed expression
+			exprList = append([]expr.Expr{e}, exprList...)
+			return exprList, nil
 		}
-		return expr.Parentheses{E: e}, nil
+
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")", ","}, pos)
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
@@ -415,12 +428,7 @@ LOOP:
 	return vPath, nil
 }
 
-func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.LiteralExprList, error) {
-	// Parse ( or [ token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != leftToken {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
-	}
-
+func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {
 	var exprList expr.LiteralExprList
 	var expr expr.Expr
 	var err error
@@ -446,6 +454,15 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.Litera
 	}
 
 	return exprList, nil
+}
+
+func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.LiteralExprList, error) {
+	// Parse ( or [ token.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != leftToken {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
+	}
+
+	return p.parseExprListUntil(rightToken)
 }
 
 // parseFunction parses a function call.

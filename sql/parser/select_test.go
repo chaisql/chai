@@ -24,6 +24,40 @@ func TestParserSelect(t *testing.T) {
 				}, "")),
 			false,
 		},
+		{"NoTableWithTuple", "SELECT (1, 2)",
+			planner.NewTree(planner.NewProjectionNode(nil,
+				[]planner.ProjectedField{
+					planner.ProjectedExpr{Expr: expr.LiteralExprList{
+						expr.IntegerValue(1),
+						expr.IntegerValue(2),
+					}, ExprName: "(1, 2)"},
+				}, "")),
+			false,
+		},
+		{"NoTableWithBrackets", "SELECT [1, 2]",
+			planner.NewTree(planner.NewProjectionNode(nil,
+				[]planner.ProjectedField{
+					planner.ProjectedExpr{Expr: expr.LiteralExprList{
+						expr.IntegerValue(1),
+						expr.IntegerValue(2),
+					}, ExprName: "[1, 2]"},
+				}, "")),
+			false,
+		},
+		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
+			planner.NewTree(planner.NewProjectionNode(nil,
+				[]planner.ProjectedField{
+					planner.ProjectedExpr{
+						Expr: expr.In(expr.IntegerValue(1), expr.LiteralExprList{
+							expr.IntegerValue(1),
+							expr.IntegerValue(2),
+						}),
+						ExprName: "1 in (1, 2)",
+					},
+					planner.ProjectedExpr{Expr: expr.IntegerValue(3), ExprName: "3"},
+				}, "")),
+			false,
+		},
 		{"NoCond", "SELECT * FROM test",
 			planner.NewTree(
 				planner.NewProjectionNode(
