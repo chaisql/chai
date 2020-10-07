@@ -54,8 +54,7 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 func displayTableIndex(db *genji.DB, tableName string) error {
 	ctx := context.Background()
 
-	q := fmt.Sprintf("SELECT * FROM __genji_indexes WHERE table_name = '%s'", tableName)
-	res, err := db.Query(ctx, q)
+	res, err := db.Query(ctx, "SELECT * FROM __genji_indexes WHERE table_name = ?", tableName)
 	if err != nil {
 		return err
 	}
@@ -63,10 +62,6 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 
 	return res.Iterate(func(d document.Document) error {
 		var index database.IndexConfig
-		err := index.ScanDocument(d)
-		if err != nil {
-			return err
-		}
 
 		if err := index.ScanDocument(d); err != nil {
 			return err
