@@ -13,6 +13,8 @@ import (
 )
 
 func TestSplitANDConditionRule(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name           string
 		root, expected planner.Node
@@ -85,7 +87,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.SplitANDConditionRule(planner.NewTree(test.root))
+			res, err := planner.SplitANDConditionRule(ctx, planner.NewTree(test.root))
 			require.NoError(t, err)
 			require.Equal(t, res.String(), planner.NewTree(test.expected).String())
 		})
@@ -93,6 +95,8 @@ func TestSplitANDConditionRule(t *testing.T) {
 }
 
 func TestPrecalculateExprRule(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name        string
 		e, expected expr.Expr
@@ -164,7 +168,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.PrecalculateExprRule(planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.e)))
+			res, err := planner.PrecalculateExprRule(ctx, planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.e)))
 			require.NoError(t, err)
 			require.Equal(t, planner.NewTree(planner.NewSelectionNode(planner.NewTableInputNode("foo"), test.expected)).String(), res.String())
 		})
@@ -172,6 +176,8 @@ func TestPrecalculateExprRule(t *testing.T) {
 }
 
 func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name           string
 		root, expected planner.Node
@@ -195,7 +201,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.RemoveUnnecessarySelectionNodesRule(planner.NewTree(test.root))
+			res, err := planner.RemoveUnnecessarySelectionNodesRule(ctx, planner.NewTree(test.root))
 			require.NoError(t, err)
 			if test.expected != nil {
 				require.Equal(t, planner.NewTree(test.expected).String(), res.String())
@@ -207,6 +213,8 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 }
 
 func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		name           string
 		root, expected planner.Node
@@ -339,15 +347,15 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			tx, err := db.Begin(true)
+			tx, err := db.Begin(ctx, true)
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec(context.Background(), `
+			err = tx.Exec(ctx, `
 				CREATE TABLE foo;
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
@@ -359,13 +367,13 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			`)
 			require.NoError(t, err)
 
-			err = planner.Bind(planner.NewTree(test.root), tx.Transaction, []expr.Param{
+			err = planner.Bind(ctx, planner.NewTree(test.root), tx.Transaction, []expr.Param{
 				{Name: "p1", Value: 1},
 				{Name: "p2", Value: 2},
 			})
 			require.NoError(t, err)
 
-			res, err := planner.UseIndexBasedOnSelectionNodeRule(planner.NewTree(test.root))
+			res, err := planner.UseIndexBasedOnSelectionNodeRule(ctx, planner.NewTree(test.root))
 			require.NoError(t, err)
 			if test.expected != nil {
 				require.Equal(t, planner.NewTree(test.expected).String(), res.String())

@@ -9,6 +9,8 @@ import (
 )
 
 func TestExplainStmt(t *testing.T) {
+	ctx := context.Background()
+
 	tests := []struct {
 		query    string
 		fails    bool
@@ -36,11 +38,9 @@ func TestExplainStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.query, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
-
-			ctx := context.Background()
 
 			err = db.Exec(ctx, "CREATE TABLE test (k INTEGER PRIMARY KEY)")
 			require.NoError(t, err)
