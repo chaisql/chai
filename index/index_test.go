@@ -2,21 +2,25 @@
 package index_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
 	"github.com/stretchr/testify/require"
 )
 
-func getIndex(t testing.TB, unique bool) (*index.Index, func()) {
+func getIndex(ctx context.Context, t testing.TB, unique bool) (*index.Index, func()) {
 	ng := memoryengine.NewEngine()
-	tx, err := ng.Begin(true)
+	tx, err := ng.Begin(ctx, engine.TransactionOptions{
+		Writable: true,
+	})
 	require.NoError(t, err)
 
 	idx := index.NewIndex(tx, "foo", index.Options{Unique: unique})
@@ -27,55 +31,59 @@ func getIndex(t testing.TB, unique bool) (*index.Index, func()) {
 }
 
 func TestIndexSet(t *testing.T) {
+	ctx := context.Background()
+
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Set nil key falls", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
-			require.Error(t, idx.Set(document.NewBoolValue(true), nil))
+			require.Error(t, idx.Set(ctx, document.NewBoolValue(true), nil))
 		})
 
 		t.Run(text+"Set value and key succeeds", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
-			require.NoError(t, idx.Set(document.NewBoolValue(true), []byte("key")))
+			require.NoError(t, idx.Set(ctx, document.NewBoolValue(true), []byte("key")))
 		})
 	}
 
 	t.Run("Unique: true, Duplicate", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true)
+		idx, cleanup := getIndex(ctx, t, true)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
-		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
-		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(11), []byte("key")))
+		require.Equal(t, index.ErrDuplicate, idx.Set(ctx, document.NewIntegerValue(10), []byte("key")))
 	})
 
 	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true)
+		idx, cleanup := getIndex(ctx, t, true)
 		idx.Type = document.IntegerValue
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
-		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
-		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(10), []byte("key")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(11), []byte("key")))
+		require.Equal(t, index.ErrDuplicate, idx.Set(ctx, document.NewIntegerValue(10), []byte("key")))
 	})
 }
 
 func TestIndexDelete(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Unique: false, Delete valid key succeeds", func(t *testing.T) {
-		idx, cleanup := getIndex(t, false)
+		idx, cleanup := getIndex(ctx, t, false)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewDoubleValue(10), []byte("key")))
-		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("other-key")))
-		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("yet-another-key")))
-		require.NoError(t, idx.Delete(document.NewDoubleValue(10), []byte("key")))
+		require.NoError(t, idx.Set(ctx, document.NewDoubleValue(10), []byte("key")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(10), []byte("other-key")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(11), []byte("yet-another-key")))
+		require.NoError(t, idx.Delete(ctx, document.NewDoubleValue(10), []byte("key")))
 
 		pivot := document.NewIntegerValue(10)
 		i := 0
-		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte, isEqual bool) error {
+		err := idx.AscendGreaterOrEqual(ctx, pivot, func(v, k []byte, isEqual bool) error {
 			if i == 0 {
 				require.True(t, isEqual)
 				requireEqualEncoded(t, document.NewIntegerValue(10), v)
@@ -96,16 +104,16 @@ func TestIndexDelete(t *testing.T) {
 	})
 
 	t.Run("Unique: true, Delete valid key succeeds", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true)
+		idx, cleanup := getIndex(ctx, t, true)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key1")))
-		require.NoError(t, idx.Set(document.NewDoubleValue(11), []byte("key2")))
-		require.NoError(t, idx.Set(document.NewIntegerValue(12), []byte("key3")))
-		require.NoError(t, idx.Delete(document.NewDoubleValue(11), []byte("key2")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(10), []byte("key1")))
+		require.NoError(t, idx.Set(ctx, document.NewDoubleValue(11), []byte("key2")))
+		require.NoError(t, idx.Set(ctx, document.NewIntegerValue(12), []byte("key3")))
+		require.NoError(t, idx.Delete(ctx, document.NewDoubleValue(11), []byte("key2")))
 
 		i := 0
-		err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err := idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
 			switch i {
 			case 0:
 				require.False(t, isEqual)
@@ -130,10 +138,10 @@ func TestIndexDelete(t *testing.T) {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Delete non existing key fails", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
-			require.Error(t, idx.Delete(document.NewTextValue("foo"), []byte("foo")))
+			require.Error(t, idx.Delete(ctx, document.NewTextValue("foo"), []byte("foo")))
 		})
 	}
 }
@@ -147,15 +155,17 @@ func requireEqualEncoded(t *testing.T, expected document.Value, actual []byte) {
 }
 
 func TestIndexAscendGreaterThan(t *testing.T) {
+	ctx := context.Background()
+
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Should not iterate if index is empty", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			i := 0
-			err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
+			err := idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
 				i++
 				return errors.New("should not iterate")
 			})
@@ -177,16 +187,16 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					idx, cleanup := getIndex(t, unique)
+					idx, cleanup := getIndex(ctx, t, unique)
 					defer cleanup()
 
 					for i := 0; i < 10; i += 2 {
-						require.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
+						require.NoError(t, idx.Set(ctx, test.val(i), []byte{'a' + byte(i)}))
 					}
 
 					var i uint8
 					var count int
-					err := idx.AscendGreaterOrEqual(test.pivot, func(val, rid []byte, isEqual bool) error {
+					err := idx.AscendGreaterOrEqual(ctx, test.pivot, func(val, rid []byte, isEqual bool) error {
 						switch test.t {
 						case document.IntegerValue:
 							requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
@@ -210,17 +220,17 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		})
 
 		t.Run(text+"With pivot, should iterate over some documents in order", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			for i := byte(0); i < 10; i += 2 {
-				require.NoError(t, idx.Set(document.NewTextValue(string([]byte{'A' + i})), []byte{'a' + i}))
+				require.NoError(t, idx.Set(ctx, document.NewTextValue(string([]byte{'A' + i})), []byte{'a' + i}))
 			}
 
 			var i uint8
 			var count int
 			pivot := document.NewTextValue("C")
-			err := idx.AscendGreaterOrEqual(pivot, func(val, rid []byte, isEqual bool) error {
+			err := idx.AscendGreaterOrEqual(ctx, pivot, func(val, rid []byte, isEqual bool) error {
 				requireEqualEncoded(t, document.NewTextValue(string([]byte{'C' + i})), val)
 				require.Equal(t, []byte{'c' + i}, rid)
 
@@ -233,18 +243,18 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		})
 
 		t.Run(text+"With no pivot, should iterate over all documents in order, regardless of their type", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			for i := int64(0); i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewDoubleValue(float64(i)), []byte{'d', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(int(i+10))), []byte{'s', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(ctx, document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(ctx, document.NewDoubleValue(float64(i)), []byte{'d', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(ctx, document.NewTextValue(strconv.Itoa(int(i+10))), []byte{'s', 'a' + byte(i)}))
 			}
 
 			var ints, doubles, texts int
 			var count int
-			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
+			err := idx.AscendGreaterOrEqual(ctx, document.Value{}, func(val, rid []byte, isEqual bool) error {
 				if count < 20 && count%2 == 0 {
 					requireEqualEncoded(t, document.NewIntegerValue(int64(ints)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
@@ -268,16 +278,16 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		})
 
 		t.Run(text+"With no pivot and typed index, should iterate over all documents in order", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			idx.Type = document.IntegerValue
 			defer cleanup()
 
 			for i := int64(0); i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(ctx, document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
 			}
 
 			var ints int
-			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
+			err := idx.AscendGreaterOrEqual(ctx, document.Value{}, func(val, rid []byte, isEqual bool) error {
 				enc, err := key.Append(nil, document.IntegerValue, int64(ints))
 				require.NoError(t, err)
 				require.Equal(t, enc, val)
@@ -292,17 +302,17 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 	}
 
 	t.Run("Unique: false, Must iterate through similar values properly", func(t *testing.T) {
-		idx, cleanup := getIndex(t, false)
+		idx, cleanup := getIndex(ctx, t, false)
 		defer cleanup()
 
 		for i := int64(0); i < 100; i++ {
-			require.NoError(t, idx.Set(document.NewIntegerValue(1), key.AppendInt64(nil, i)))
-			require.NoError(t, idx.Set(document.NewTextValue("1"), key.AppendInt64(nil, i)))
+			require.NoError(t, idx.Set(ctx, document.NewIntegerValue(1), key.AppendInt64(nil, i)))
+			require.NoError(t, idx.Set(ctx, document.NewTextValue("1"), key.AppendInt64(nil, i)))
 		}
 
 		var ints, texts int
 		i := int64(0)
-		err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, rid []byte, isEqual bool) error {
+		err := idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(val, rid []byte, isEqual bool) error {
 			requireEqualEncoded(t, document.NewIntegerValue(1), val)
 			require.Equal(t, key.AppendInt64(nil, i), rid)
 			i++
@@ -311,7 +321,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		})
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(val, rid []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.TextValue}, func(val, rid []byte, isEqual bool) error {
 			requireEqualEncoded(t, document.NewTextValue("1"), val)
 			require.Equal(t, key.AppendInt64(nil, i), rid)
 			i++
@@ -325,15 +335,17 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 }
 
 func TestIndexDescendLessOrEqual(t *testing.T) {
+	ctx := context.Background()
+
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Should not iterate if index is empty", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			i := 0
-			err := idx.DescendLessOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
+			err := idx.DescendLessOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
 				i++
 				return errors.New("should not iterate")
 			})
@@ -342,16 +354,16 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 		})
 
 		t.Run(text+"With empty typed pivot, should iterate over all documents of the same type in reverse order", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			for i := byte(0); i < 10; i += 2 {
-				require.NoError(t, idx.Set(document.NewIntegerValue(int64(i)), []byte{'a' + i}))
+				require.NoError(t, idx.Set(ctx, document.NewIntegerValue(int64(i)), []byte{'a' + i}))
 			}
 
 			var i uint8 = 8
 			var count int
-			err := idx.DescendLessOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
+			err := idx.DescendLessOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
 				requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
 				require.Equal(t, []byte{'a' + i}, key)
 
@@ -364,17 +376,17 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 		})
 
 		t.Run(text+"With pivot, should iterate over some documents in order", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			for i := byte(0); i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewTextValue(string([]byte{'A' + i})), []byte{'a' + i}))
+				require.NoError(t, idx.Set(ctx, document.NewTextValue(string([]byte{'A' + i})), []byte{'a' + i}))
 			}
 
 			var i byte = 0
 			var count int
 			pivot := document.NewTextValue("F")
-			err := idx.DescendLessOrEqual(pivot, func(val, rid []byte, isEqual bool) error {
+			err := idx.DescendLessOrEqual(ctx, pivot, func(val, rid []byte, isEqual bool) error {
 				requireEqualEncoded(t, document.NewTextValue(string([]byte{'F' - i})), val)
 				require.Equal(t, []byte{'f' - i}, rid)
 
@@ -387,17 +399,17 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 		})
 
 		t.Run(text+"With no pivot, should iterate over all documents in reverse order, regardless of their type", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(ctx, t, unique)
 			defer cleanup()
 
 			for i := 0; i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewIntegerValue(int64(i)), []byte{'i', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(ctx, document.NewIntegerValue(int64(i)), []byte{'i', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(ctx, document.NewTextValue(strconv.Itoa(i)), []byte{'s', 'a' + byte(i)}))
 			}
 
 			var ints, texts int = 9, 9
 			var count int = 20
-			err := idx.DescendLessOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
+			err := idx.DescendLessOrEqual(ctx, document.Value{}, func(val, rid []byte, isEqual bool) error {
 				if count > 10 {
 					requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(texts))), val)
 					require.Equal(t, []byte{'s', 'a' + byte(texts)}, rid)
@@ -421,17 +433,19 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 // BenchmarkIndexSet benchmarks the Set method with 1, 10, 1000 and 10000 successive insertions.
 func BenchmarkIndexSet(b *testing.B) {
+	ctx := context.Background()
+
 	for size := 10; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			b.ResetTimer()
 			b.StopTimer()
 			for i := 0; i < b.N; i++ {
-				idx, cleanup := getIndex(b, false)
+				idx, cleanup := getIndex(ctx, b, false)
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
 					k := fmt.Sprintf("name-%d", j)
-					idx.Set(document.NewTextValue(k), []byte(k))
+					idx.Set(ctx, document.NewTextValue(k), []byte(k))
 				}
 				b.StopTimer()
 				cleanup()
@@ -442,19 +456,21 @@ func BenchmarkIndexSet(b *testing.B) {
 
 // BenchmarkIndexIteration benchmarks the iterarion of a cursor with 1, 10, 1000 and 10000 items.
 func BenchmarkIndexIteration(b *testing.B) {
+	ctx := context.Background()
+
 	for size := 10; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			idx, cleanup := getIndex(b, false)
+			idx, cleanup := getIndex(ctx, b, false)
 			defer cleanup()
 
 			for i := 0; i < size; i++ {
 				k := []byte(fmt.Sprintf("name-%d", i))
-				idx.Set(document.NewTextValue(string(k)), k)
+				idx.Set(ctx, document.NewTextValue(string(k)), k)
 			}
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(_, _ []byte, isEqual bool) error {
+				idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.TextValue}, func(_, _ []byte, isEqual bool) error {
 					return nil
 				})
 			}
