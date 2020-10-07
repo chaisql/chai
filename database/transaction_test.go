@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji/database"
@@ -12,10 +13,12 @@ import (
 )
 
 func newTestDB(t testing.TB) (*database.Transaction, func()) {
-	db, err := database.New(memoryengine.NewEngine(), database.Options{Codec: msgpack.NewCodec()})
+	ctx := context.Background()
+
+	db, err := database.New(ctx, memoryengine.NewEngine(), database.Options{Codec: msgpack.NewCodec()})
 	require.NoError(t, err)
 
-	tx, err := db.Begin(true)
+	tx, err := db.Begin(ctx, true)
 	require.NoError(t, err)
 
 	return tx, func() {
@@ -29,36 +32,38 @@ func newTestDB(t testing.TB) (*database.Transaction, func()) {
 // - DropTable
 // - RenameTable
 func TestTxTable(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Create", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
 
 		// Creating a table that already exists should fail.
-		err = tx.CreateTable("test", nil)
+		err = tx.CreateTable(ctx, "test", nil)
 		require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
 
 		// Creating a table that starts with __genji_ should fail.
-		err = tx.CreateTable("__genji_foo", nil)
+		err = tx.CreateTable(ctx, "__genji_foo", nil)
 		require.Error(t, err)
 	})
 
 	t.Run("Create and rollback", func(t *testing.T) {
-		db, err := database.New(memoryengine.NewEngine(), database.Options{Codec: msgpack.NewCodec()})
+		db, err := database.New(ctx, memoryengine.NewEngine(), database.Options{Codec: msgpack.NewCodec()})
 		require.NoError(t, err)
 		defer db.Close()
 
 		check := func() {
-			tx, err := db.Begin(true)
+			tx, err := db.Begin(ctx, true)
 			require.NoError(t, err)
 			defer func() {
 				err = tx.Rollback()
 				require.NoError(t, err)
 			}()
 
-			err = tx.CreateTable("test", nil)
+			err = tx.CreateTable(ctx, "test", nil)
 			require.NoError(t, err)
 		}
 
@@ -70,15 +75,15 @@ func TestTxTable(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
 
-		table, err := tx.GetTable("test")
+		table, err := tx.GetTable(ctx, "test")
 		require.NoError(t, err)
 		require.Equal(t, "test", table.Name())
 
 		// Getting a table that doesn't exist should fail.
-		_, err = tx.GetTable("unknown")
+		_, err = tx.GetTable(ctx, "unknown")
 		require.EqualError(t, err, database.ErrTableNotFound.Error())
 	})
 
@@ -86,18 +91,18 @@ func TestTxTable(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
 
-		err = tx.DropTable("test")
+		err = tx.DropTable(ctx, "test")
 		require.NoError(t, err)
 
 		// Getting a table that has been dropped should fail.
-		_, err = tx.GetTable("test")
+		_, err = tx.GetTable(ctx, "test")
 		require.EqualError(t, err, database.ErrTableNotFound.Error())
 
 		// Dropping a table that doesn't exist should fail.
-		err = tx.DropTable("test")
+		err = tx.DropTable(ctx, "test")
 		require.EqualError(t, err, database.ErrTableNotFound.Error())
 	})
 
@@ -111,31 +116,31 @@ func TestTxTable(t *testing.T) {
 			{Path: parsePath(t, "gender"), Type: document.TextValue},
 			{Path: parsePath(t, "city"), Type: document.TextValue},
 		}}
-		err := tx.CreateTable("foo", ti)
+		err := tx.CreateTable(ctx, "foo", ti)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{Path: parsePath(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
+		err = tx.CreateIndex(ctx, database.IndexConfig{Path: parsePath(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{Path: parsePath(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
+		err = tx.CreateIndex(ctx, database.IndexConfig{Path: parsePath(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
 		require.NoError(t, err)
 
-		err = tx.RenameTable("foo", "zoo")
+		err = tx.RenameTable(ctx, "foo", "zoo")
 		require.NoError(t, err)
 
 		// Getting the old table should return an error.
-		_, err = tx.GetTable("foo")
+		_, err = tx.GetTable(ctx, "foo")
 		require.EqualError(t, database.ErrTableNotFound, err.Error())
 
-		tb, err := tx.GetTable("zoo")
+		tb, err := tx.GetTable(ctx, "zoo")
 		require.NoError(t, err)
 
 		// The field constraints should be the same.
-		info, err := tb.Info()
+		info, err := tb.Info(ctx)
 		require.NoError(t, err)
 		require.Equal(t, ti.FieldConstraints, info.FieldConstraints)
 
 		// Check that the indexes have been updated as well.
-		idxs, err := tx.ListIndexes()
+		idxs, err := tx.ListIndexes(ctx)
 		require.NoError(t, err)
 		require.Len(t, idxs, 2)
 		for _, idx := range idxs {
@@ -143,24 +148,26 @@ func TestTxTable(t *testing.T) {
 		}
 
 		// Renaming a non existing table should return an error
-		err = tx.RenameTable("foo", "")
+		err = tx.RenameTable(ctx, "foo", "")
 		require.EqualError(t, database.ErrTableNotFound, err.Error())
 	})
 }
 
 func TestTxCreateIndex(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Should create an index and return it", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.NoError(t, err)
-		idx, err := tx.GetIndex("idxFoo")
+		idx, err := tx.GetIndex(ctx, "idxFoo")
 		require.NoError(t, err)
 		require.NotNil(t, idx)
 	})
@@ -169,15 +176,15 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.Equal(t, database.ErrIndexAlreadyExists, err)
@@ -187,7 +194,7 @@ func TestTxCreateIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateIndex(database.IndexConfig{
+		err := tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.Equal(t, database.ErrTableNotFound, err)
@@ -195,22 +202,24 @@ func TestTxCreateIndex(t *testing.T) {
 }
 
 func TestTxDropIndex(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Should drop an index", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.NoError(t, err)
 
-		err = tx.DropIndex("idxFoo")
+		err = tx.DropIndex(ctx, "idxFoo")
 		require.NoError(t, err)
 
-		_, err = tx.GetIndex("idxFoo")
+		_, err = tx.GetIndex(ctx, "idxFoo")
 		require.Error(t, err)
 	})
 
@@ -218,34 +227,36 @@ func TestTxDropIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.DropIndex("idxFoo")
+		err := tx.DropIndex(ctx, "idxFoo")
 		require.Equal(t, database.ErrIndexNotFound, err)
 	})
 }
 
 func TestTxReIndex(t *testing.T) {
+	ctx := context.Background()
+
 	newTestTableFn := func(t *testing.T) (*database.Transaction, *database.Table, func()) {
 		tx, cleanup := newTestDB(t)
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.GetTable(ctx, "test")
 		require.NoError(t, err)
 
 		for i := int64(0); i < 10; i++ {
-			_, err = tb.Insert(document.NewFieldBuffer().
+			_, err = tb.Insert(ctx, document.NewFieldBuffer().
 				Add("a", document.NewIntegerValue(i)).
 				Add("b", document.NewIntegerValue(i*10)),
 			)
 			require.NoError(t, err)
 		}
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "a",
 			TableName: "test",
 			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "b",
 			TableName: "test",
 			Path:      parsePath(t, "b"),
@@ -259,7 +270,7 @@ func TestTxReIndex(t *testing.T) {
 		tx, _, cleanup := newTestTableFn(t)
 		defer cleanup()
 
-		err := tx.ReIndex("foo")
+		err := tx.ReIndex(ctx, "foo")
 		require.Equal(t, database.ErrIndexNotFound, err)
 	})
 
@@ -267,23 +278,23 @@ func TestTxReIndex(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable(ctx, "test", nil)
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.GetTable(ctx, "test")
 		require.NoError(t, err)
 
-		_, err = tb.Insert(document.NewFieldBuffer().
+		_, err = tb.Insert(ctx, document.NewFieldBuffer().
 			Add("a", document.NewIntegerValue(1)),
 		)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "b",
 			TableName: "test",
 			Path:      parsePath(t, "b"),
 		})
 
-		err = tx.ReIndex("b")
+		err = tx.ReIndex(ctx, "b")
 		require.NoError(t, err)
 	})
 
@@ -291,14 +302,14 @@ func TestTxReIndex(t *testing.T) {
 		tx, _, cleanup := newTestTableFn(t)
 		defer cleanup()
 
-		err := tx.ReIndex("a")
+		err := tx.ReIndex(ctx, "a")
 		require.NoError(t, err)
 
-		idx, err := tx.GetIndex("a")
+		idx, err := tx.GetIndex(ctx, "a")
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
 			enc, err := key.AppendValue(nil, document.NewIntegerValue(int64(i)))
 			require.NoError(t, err)
 			require.Equal(t, enc, v)
@@ -308,11 +319,11 @@ func TestTxReIndex(t *testing.T) {
 		require.Equal(t, 10, i)
 		require.NoError(t, err)
 
-		idx, err = tx.GetIndex("b")
+		idx, err = tx.GetIndex(ctx, "b")
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(val, key []byte, isEqual bool) error {
 			i++
 			return nil
 		})
@@ -322,11 +333,13 @@ func TestTxReIndex(t *testing.T) {
 }
 
 func TestReIndexAll(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Should succeed if not indexes", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.ReIndexAll()
+		err := tx.ReIndexAll(ctx)
 		require.NoError(t, err)
 	})
 
@@ -334,50 +347,50 @@ func TestReIndexAll(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test1", nil)
+		err := tx.CreateTable(ctx, "test1", nil)
 		require.NoError(t, err)
-		tb1, err := tx.GetTable("test1")
+		tb1, err := tx.GetTable(ctx, "test1")
 		require.NoError(t, err)
 
-		err = tx.CreateTable("test2", nil)
+		err = tx.CreateTable(ctx, "test2", nil)
 		require.NoError(t, err)
-		tb2, err := tx.GetTable("test2")
+		tb2, err := tx.GetTable(ctx, "test2")
 		require.NoError(t, err)
 
 		for i := int64(0); i < 10; i++ {
-			_, err = tb1.Insert(document.NewFieldBuffer().
+			_, err = tb1.Insert(ctx, document.NewFieldBuffer().
 				Add("a", document.NewIntegerValue(i)).
 				Add("b", document.NewIntegerValue(i*10)),
 			)
 			require.NoError(t, err)
-			_, err = tb2.Insert(document.NewFieldBuffer().
+			_, err = tb2.Insert(ctx, document.NewFieldBuffer().
 				Add("a", document.NewIntegerValue(i)).
 				Add("b", document.NewIntegerValue(i*10)),
 			)
 			require.NoError(t, err)
 		}
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "t1a",
 			TableName: "test1",
 			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(ctx, database.IndexConfig{
 			IndexName: "t2a",
 			TableName: "test2",
 			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
 
-		err = tx.ReIndexAll()
+		err = tx.ReIndexAll(ctx)
 		require.NoError(t, err)
 
-		idx, err := tx.GetIndex("t1a")
+		idx, err := tx.GetIndex(ctx, "t1a")
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
 			enc, err := key.AppendValue(nil, document.NewIntegerValue(int64(i)))
 			require.NoError(t, err)
 			require.Equal(t, enc, v)
@@ -387,11 +400,11 @@ func TestReIndexAll(t *testing.T) {
 		require.Equal(t, 10, i)
 		require.NoError(t, err)
 
-		idx, err = tx.GetIndex("t2a")
+		idx, err = tx.GetIndex(ctx, "t2a")
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(ctx, document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
 			enc, err := key.AppendValue(nil, document.NewIntegerValue(int64(i)))
 			require.NoError(t, err)
 			require.Equal(t, enc, v)
