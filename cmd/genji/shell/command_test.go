@@ -14,17 +14,17 @@ import (
 func TestRunTablesCmd(t *testing.T) {
 	tests := []struct {
 		name    string
-		in      string
+		in      []string
 		wantErr bool
 	}{
 		{
 			"Table",
-			".tables",
+			strings.Fields(".tables"),
 			false,
 		},
 		{
 			"Table with options",
-			".tables test",
+			strings.Fields(".tables test"),
 			true,
 		},
 	}
@@ -34,7 +34,7 @@ func TestRunTablesCmd(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			if err := displayTableIndex(db, test.in); (err != nil) != test.wantErr {
+			if err := runTablesCmd(db, test.in); (err != nil) != test.wantErr {
 				require.Errorf(t, err, "", test.wantErr)
 			}
 		})
@@ -60,7 +60,7 @@ func TestIndexesCmd(t *testing.T) {
 		{
 			"Indexes with nonexistent table name",
 			strings.Fields(".indexes foo"),
-			false,
+			true,
 		},
 	}
 
