@@ -18,8 +18,8 @@ script:
   - make gen
   - go test -mod vendor -race -cover -coverprofile=coverage.txt -covermode=atomic -timeout=2m ./...
   - go test -mod vendor -race -cover -timeout=2m -tags=tinygo ./...
-  - cd ./cmd/genji && go test -race && cd -
-  - cd ./engine/badgerengine && go test -race && cd -
+  - cd ./cmd/genji && go test -race ./... && cd -
+  - cd ./engine/badgerengine && go test -race ./... && cd -
 
 
 after_success:
