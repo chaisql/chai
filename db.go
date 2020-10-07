@@ -12,6 +12,15 @@ import (
 // DB represents a collection of tables stored in the underlying engine.
 type DB struct {
 	DB *database.Database
+
+	Context context.Context
+}
+
+func (db *DB) WithContext(ctx context.Context) *DB {
+	return &DB{
+		DB:      db.DB,
+		Context: ctx,
+	}
 }
 
 // Close the database.
@@ -21,20 +30,21 @@ func (db *DB) Close() error {
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db *DB) Begin(ctx context.Context, writable bool) (*Tx, error) {
-	tx, err := db.DB.Begin(ctx, writable)
+func (db *DB) Begin(writable bool) (*Tx, error) {
+	tx, err := db.DB.Begin(db.Context, writable)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Tx{
 		Transaction: tx,
+		Context:     db.Context,
 	}, nil
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
-func (db *DB) View(ctx context.Context, fn func(tx *Tx) error) error {
-	tx, err := db.Begin(ctx, false)
+func (db *DB) View(fn func(tx *Tx) error) error {
+	tx, err := db.Begin(false)
 	if err != nil {
 		return err
 	}
@@ -44,8 +54,8 @@ func (db *DB) View(ctx context.Context, fn func(tx *Tx) error) error {
 }
 
 // Update starts a read-write transaction, runs fn and automatically commits it.
-func (db *DB) Update(ctx context.Context, fn func(tx *Tx) error) error {
-	tx, err := db.Begin(ctx, true)
+func (db *DB) Update(fn func(tx *Tx) error) error {
+	tx, err := db.Begin(true)
 	if err != nil {
 		return err
 	}
@@ -60,8 +70,8 @@ func (db *DB) Update(ctx context.Context, fn func(tx *Tx) error) error {
 }
 
 // Exec a query against the database without returning the result.
-func (db *DB) Exec(ctx context.Context, q string, args ...interface{}) error {
-	res, err := db.Query(ctx, q, args...)
+func (db *DB) Exec(q string, args ...interface{}) error {
+	res, err := db.Query(q, args...)
 	if err != nil {
 		return err
 	}
@@ -71,25 +81,25 @@ func (db *DB) Exec(ctx context.Context, q string, args ...interface{}) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db *DB) Query(ctx context.Context, q string, args ...interface{}) (*query.Result, error) {
-	pq, err := parser.ParseQuery(ctx, q)
+func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
+	pq, err := parser.ParseQuery(db.Context, q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Run(ctx, db.DB, argsToParams(args))
+	return pq.Run(db.Context, db.DB, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
-func (db *DB) QueryDocument(ctx context.Context, q string, args ...interface{}) (document.Document, error) {
-	res, err := db.Query(ctx, q, args...)
+func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, error) {
+	res, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Close()
 
-	r, err := res.First(ctx)
+	r, err := res.First(db.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -113,29 +123,38 @@ func (db *DB) QueryDocument(ctx context.Context, q string, args ...interface{}) 
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
 	*database.Transaction
+
+	Context context.Context
+}
+
+func (tx *Tx) WithContext(ctx context.Context) *Tx {
+	return &Tx{
+		Transaction: tx.Transaction,
+		Context:     ctx,
+	}
 }
 
 // Query the database withing the transaction and returns the result.
 // Closing the returned result after usage is not mandatory.
-func (tx *Tx) Query(ctx context.Context, q string, args ...interface{}) (*query.Result, error) {
-	pq, err := parser.ParseQuery(ctx, q)
+func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
+	pq, err := parser.ParseQuery(tx.Context, q)
 	if err != nil {
 		return nil, err
 	}
 
-	return pq.Exec(ctx, tx.Transaction, argsToParams(args))
+	return pq.Exec(tx.Context, tx.Transaction, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
-func (tx *Tx) QueryDocument(ctx context.Context, q string, args ...interface{}) (document.Document, error) {
-	res, err := tx.Query(ctx, q, args...)
+func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, error) {
+	res, err := tx.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Close()
 
-	r, err := res.First(ctx)
+	r, err := res.First(tx.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +166,8 @@ func (tx *Tx) QueryDocument(ctx context.Context, q string, args ...interface{}) 
 }
 
 // Exec a query against the database within tx and without returning the result.
-func (tx *Tx) Exec(ctx context.Context, q string, args ...interface{}) error {
-	res, err := tx.Query(ctx, q, args...)
+func (tx *Tx) Exec(q string, args ...interface{}) error {
+	res, err := tx.Query(q, args...)
 	if err != nil {
 		return err
 	}

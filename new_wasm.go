@@ -18,6 +18,7 @@ func New(ctx context.Context, ng engine.Engine) (*DB, error) {
 	}
 
 	return &DB{
-		DB: db,
+		DB:      db,
+		Context: ctx,
 	}, nil
 }
