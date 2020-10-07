@@ -1,6 +1,7 @@
 package boltengine_test
 
 import (
+	"context"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,13 +12,15 @@ import (
 )
 
 func Example() {
+	ctx := context.Background()
+
 	dir, err := ioutil.TempDir("", "bolt")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	db, err := genji.Open(path.Join(dir, "my.db"))
+	db, err := genji.Open(ctx, path.Join(dir, "my.db"))
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -25,6 +28,8 @@ func Example() {
 }
 
 func ExampleNewEngine() {
+	ctx := context.Background()
+
 	dir, err := ioutil.TempDir("", "bolt")
 	if err != nil {
 		log.Fatal(err)
@@ -36,7 +41,7 @@ func ExampleNewEngine() {
 		log.Fatal(err)
 	}
 
-	db, err := genji.New(ng)
+	db, err := genji.New(ctx, ng)
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
