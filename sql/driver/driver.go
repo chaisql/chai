@@ -35,7 +35,7 @@ func (d sqlDriver) Open(name string) (driver.Conn, error) {
 }
 
 func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
-	db, err := genji.Open(name)
+	db, err := genji.Open(context.TODO(), name)
 	if err != nil {
 		return nil, err
 	}
@@ -126,15 +126,10 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		return nil, errors.New("isolation levels are not supported")
 	}
 
-	var err error
-
 	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
 	// otherwise create a read/write transaction.
-	if opts.ReadOnly {
-		c.tx, err = c.db.Begin(false)
-	} else {
-		c.tx, err = c.db.Begin(true)
-	}
+	var err error
+	c.tx, err = c.db.Begin(ctx, !opts.ReadOnly)
 
 	return c, err
 }
@@ -341,7 +336,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(d document.Document) error {
+	err := rs.res.Iterate(ctx, func(d document.Document) error {
 		select {
 		case <-ctx.Done():
 			return errStop
