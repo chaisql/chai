@@ -60,6 +60,11 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 	}
 	defer res.Close()
 
+	_, err = res.Tx.GetTable(tableName)
+	if err != nil {
+		return err
+	}
+
 	return res.Iterate(func(d document.Document) error {
 		var index database.IndexConfig
 
