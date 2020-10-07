@@ -3,6 +3,7 @@ package badgerengine
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji/engine"
@@ -32,13 +33,13 @@ func NewEngine(opt badger.Options) (*Engine, error) {
 }
 
 // Begin creates a transaction using Badger's transaction API.
-func (e *Engine) Begin(writable bool) (engine.Transaction, error) {
-	tx := e.DB.NewTransaction(writable)
+func (e *Engine) Begin(ctx context.Context, opts engine.TransactionOptions) (engine.Transaction, error) {
+	tx := e.DB.NewTransaction(opts.Writable)
 
 	return &Transaction{
 		ng:       e,
 		tx:       tx,
-		writable: writable,
+		writable: opts.Writable,
 	}, nil
 }
 
@@ -97,7 +98,7 @@ func buildStorePrefixKey(name []byte) []byte {
 }
 
 // GetStore returns a store by name.
-func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
+func (t *Transaction) GetStore(ctx context.Context, name []byte) (engine.Store, error) {
 	key := buildStoreKey(name)
 
 	_, err := t.tx.Get(key)
@@ -122,7 +123,7 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 
 // CreateStore creates a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
-func (t *Transaction) CreateStore(name []byte) error {
+func (t *Transaction) CreateStore(ctx context.Context, name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -140,17 +141,17 @@ func (t *Transaction) CreateStore(name []byte) error {
 }
 
 // DropStore deletes the store and all its keys.
-func (t *Transaction) DropStore(name []byte) error {
+func (t *Transaction) DropStore(ctx context.Context, name []byte) error {
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
 
-	s, err := t.GetStore(name)
+	s, err := t.GetStore(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	err = s.Truncate()
+	err = s.Truncate(ctx)
 	if err != nil {
 		return err
 	}
