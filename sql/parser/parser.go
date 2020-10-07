@@ -24,12 +24,16 @@ type Parser struct {
 
 // NewParser returns a new instance of Parser.
 func NewParser(r io.Reader) *Parser {
-	return &Parser{s: scanner.NewBufScanner(r), functions: expr.NewFunctions()}
+	return NewParserWithOptions(r, nil)
 }
 
-func (p *Parser) WithFunctions(functions expr.Functions) *Parser {
-	p.functions = functions
-	return p
+// NewParserWithOptions returns a new instance of Parser using given Options.
+func NewParserWithOptions(r io.Reader, opts *Options) *Parser {
+	if opts == nil {
+		opts = defaultOptions()
+	}
+
+	return &Parser{s: scanner.NewBufScanner(r), functions: opts.Functions}
 }
 
 // ParseQuery parses a query string and returns its AST representation.
