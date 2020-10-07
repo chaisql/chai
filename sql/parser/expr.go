@@ -212,7 +212,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		case scanner.RPAREN:
 			return expr.Parentheses{E: e}, nil
 		case scanner.COMMA:
-			exprList, err := p.parseListUntil(scanner.RPAREN)
+			exprList, err := p.parseExprListUntil(scanner.RPAREN)
 			if err != nil {
 				return nil, err
 			}
@@ -428,7 +428,7 @@ LOOP:
 	return vPath, nil
 }
 
-func (p *Parser) parseListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {
+func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {
 	var exprList expr.LiteralExprList
 	var expr expr.Expr
 	var err error
@@ -462,7 +462,7 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.Litera
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
 	}
 
-	return p.parseListUntil(rightToken)
+	return p.parseExprListUntil(rightToken)
 }
 
 // parseFunction parses a function call.
