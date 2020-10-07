@@ -30,7 +30,9 @@ func TestRunTablesCmd(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			ctx := context.Background()
+
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -66,11 +68,11 @@ func TestIndexesCmd(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			ctx := context.Background()
+
+			db, err := genji.Open(ctx, ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
-
-			ctx := context.Background()
 
 			err = db.Exec(ctx, "CREATE TABLE test")
 			require.NoError(t, err)
@@ -80,7 +82,7 @@ func TestIndexesCmd(t *testing.T) {
 						CREATE INDEX idx_c ON test (c);
 					`)
 			require.NoError(t, err)
-			if err := runIndexesCmd(db, test.in); (err != nil) != test.wantErr {
+			if err := runIndexesCmd(ctx, db, test.in); (err != nil) != test.wantErr {
 				require.Errorf(t, err, "", test.wantErr)
 			}
 		})
@@ -101,13 +103,13 @@ func TestRunDumpCmd(t *testing.T) {
 		{"text / pk and not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT PRIMARY KEY NOT NULL`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
 	}
 
-	ctx := context.Background()
-
 	for _, tt := range tests {
 
 		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+				ctx := context.Background()
+
+				db, err := genji.Open(ctx, ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -134,10 +136,10 @@ func TestRunDumpCmd(t *testing.T) {
 						CREATE INDEX idx_a ON test (a);
 					`)
 					require.NoError(t, err)
-					err = db.View(func(tx *genji.Tx) error {
+					err = db.View(ctx, func(tx *genji.Tx) error {
 						// indexes is unordered, we cannot guess the order.
 						// we have to test only one index creation.
-						indexes, err := tx.ListIndexes()
+						indexes, err := tx.ListIndexes(ctx)
 						require.NoError(t, err)
 						for _, index := range indexes {
 							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", index.IndexName, index.TableName,
@@ -149,7 +151,7 @@ func TestRunDumpCmd(t *testing.T) {
 					require.NoError(t, err)
 
 				}
-				err = db.Exec(context.Background(), tt.query, tt.params...)
+				err = db.Exec(ctx, tt.query, tt.params...)
 				if tt.fails {
 					require.Error(t, err)
 					return
@@ -159,7 +161,7 @@ func TestRunDumpCmd(t *testing.T) {
 				bwant.WriteString(tt.want)
 
 				var buf bytes.Buffer
-				err = runDumpCmd(db, []string{`test`}, &buf)
+				err = runDumpCmd(ctx, db, []string{`test`}, &buf)
 				require.NoError(t, err)
 				bwant.WriteString(ci)
 				require.Equal(t, bwant.String(), buf.String())

@@ -26,12 +26,10 @@ var commands = []struct {
 }
 
 // runTablesCmd shows all tables.
-func runTablesCmd(db *genji.DB, cmd []string) error {
+func runTablesCmd(ctx context.Context, db *genji.DB, cmd []string) error {
 	if len(cmd) > 1 {
 		return fmt.Errorf("usage: .tables")
 	}
-
-	ctx := context.Background()
 
 	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
 	if err != nil {
@@ -39,7 +37,7 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(ctx, func(d document.Document) error {
 		var tableName string
 		err = document.Scan(d, &tableName)
 		if err != nil {
@@ -84,16 +82,14 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 }
 
 // displayAllIndexes shows all indexes that the database contains.
-func displayAllIndexes(db *genji.DB) error {
-	ctx := context.Background()
-
+func displayAllIndexes(ctx context.Context, db *genji.DB) error {
 	res, err := db.Query(ctx, "SELECT * FROM __genji_indexes")
 	if err != nil {
 		return err
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(ctx, func(d document.Document) error {
 		var index database.IndexConfig
 
 		if err := index.ScanDocument(d); err != nil {
@@ -108,14 +104,14 @@ func displayAllIndexes(db *genji.DB) error {
 }
 
 // runIndexesCmd executes all indexes of the database or all indexes of the given table.
-func runIndexesCmd(db *genji.DB, in []string) error {
+func runIndexesCmd(ctx context.Context, db *genji.DB, in []string) error {
 	switch len(in) {
 	case 1:
 		// If the input is ".indexes"
-		return displayAllIndexes(db)
+		return displayAllIndexes(ctx, db)
 	case 2:
 		// If the input is ".indexes <tableName>"
-		return displayTableIndex(db, in[1])
+		return displayTableIndex(ctx, db, in[1])
 	}
 
 	return fmt.Errorf("usage: .indexes [tablename]")
@@ -162,10 +158,10 @@ func displaySuggestions(in string) error {
 }
 
 // dumpTable displays the content of the given table as SQL statements.
-func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
+func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer) error {
 	var buf bytes.Buffer
 
-	t, err := tx.GetTable(tableName)
+	t, err := tx.GetTable(ctx, tableName)
 	if err != nil {
 		return err
 	}
@@ -174,7 +170,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		return err
 	}
 
-	ti, err := t.Info()
+	ti, err := t.Info(ctx)
 	if err != nil {
 		return err
 	}
@@ -216,7 +212,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	buf.Reset()
 
 	// Indexes statements.
-	indexes, err := t.Indexes()
+	indexes, err := t.Indexes(ctx)
 	if err != nil {
 		return err
 	}
@@ -235,7 +231,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	}
 
 	q := fmt.Sprintf("SELECT * FROM %s", t.Name())
-	res, err := tx.Query(context.Background(), q)
+	res, err := tx.Query(ctx, q)
 	if err != nil {
 		return err
 	}
@@ -243,7 +239,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 
 	// Inserts statements.
 	insert := fmt.Sprintf("INSERT INTO %s VALUES ", t.Name())
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(ctx, func(d document.Document) error {
 		buf.WriteString(insert)
 
 		data, err := document.MarshalJSON(d)
@@ -264,8 +260,8 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 }
 
 // runDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
-func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
-	tx, err := db.Begin(false)
+func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer) error {
+	tx, err := db.Begin(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -276,7 +272,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	}
 
 	for i, table := range tables {
-		err = dumpTable(tx, table, w)
+		err = dumpTable(ctx, tx, table, w)
 		switch err {
 		case nil:
 			// Blank separation between tables.
@@ -303,7 +299,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 
 	// tables slice argument is empty.
 	// Dump database content.
-	res, err := tx.Query(context.Background(), "SELECT table_name FROM __genji_tables")
+	res, err := tx.Query(ctx, "SELECT table_name FROM __genji_tables")
 	if err != nil {
 		_, err = fmt.Fprintln(w, "ROLLBACK;")
 		return err
@@ -311,7 +307,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	defer res.Close()
 
 	i := 0
-	err = res.Iterate(func(d document.Document) error {
+	err = res.Iterate(ctx, func(d document.Document) error {
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
@@ -326,7 +322,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 			return err
 		}
 
-		if err := dumpTable(tx, tableName, w); err != nil {
+		if err := dumpTable(ctx, tx, tableName, w); err != nil {
 			return err
 		}
 

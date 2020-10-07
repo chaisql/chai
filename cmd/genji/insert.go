@@ -137,7 +137,7 @@ func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, a
 		return err
 	}
 
-	db, err := genji.New(ng)
+	db, err := genji.New(ctx, ng)
 	if err != nil {
 		return err
 	}

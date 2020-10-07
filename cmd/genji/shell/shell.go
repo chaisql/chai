@@ -77,7 +77,7 @@ func stdinFromTerminal() bool {
 }
 
 // Run a shell.
-func Run(opts *Options) error {
+func Run(ctx context.Context, opts *Options) error {
 	if opts == nil {
 		opts = new(Options)
 	}
@@ -109,7 +109,7 @@ func Run(opts *Options) error {
 		return err
 	}
 
-	ran, err := sh.runPipedInput()
+	ran, err := sh.runPipedInput(ctx)
 	if err != nil {
 		return err
 	}
@@ -233,27 +233,29 @@ func (sh *Shell) dumpHistory() error {
 }
 
 func (sh *Shell) execute(in string) {
+	ctx := context.Background()
+
 	sh.history = append(sh.history, in)
 
-	err := sh.executeInput(in)
+	err := sh.executeInput(ctx, in)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func (sh *Shell) executeInput(in string) error {
+func (sh *Shell) executeInput(ctx context.Context, in string) error {
 	in = strings.TrimSpace(in)
 	switch {
 	// if it starts with a "." it's a command
 	// it must not be in the middle of a multi line query though
 	case strings.HasPrefix(in, "."):
-		return sh.runCommand(in)
+		return sh.runCommand(ctx, in)
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
 		sh.query = sh.query + in
 		sh.multiLine = false
 		sh.livePrefix = in
-		err := sh.runQuery(sh.query)
+		err := sh.runQuery(ctx, sh.query)
 		sh.query = ""
 		return err
 	// If the input is empty we ignore it
@@ -271,19 +273,19 @@ func (sh *Shell) executeInput(in string) error {
 	return nil
 }
 
-func (sh *Shell) runCommand(in string) error {
+func (sh *Shell) runCommand(ctx context.Context, in string) error {
 	in = strings.TrimSuffix(in, ";")
 	cmd := strings.Fields(in)
 	switch cmd[0] {
 	case ".help":
 		return runHelpCmd()
 	case ".tables":
-		db, err := sh.getDB()
+		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
 
-		return runTablesCmd(db, cmd)
+		return runTablesCmd(ctx, db, cmd)
 	case ".exit":
 		if len(cmd) > 1 {
 			return fmt.Errorf("usage: .exit")
@@ -291,18 +293,18 @@ func (sh *Shell) runCommand(in string) error {
 
 		sh.exit()
 	case ".indexes":
-		db, err := sh.getDB()
+		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
-		return runIndexesCmd(db, cmd)
+		return runIndexesCmd(ctx, db, cmd)
 	case ".dump":
-		db, err := sh.getDB()
+		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
 
-		return runDumpCmd(db, cmd[1:], os.Stdout)
+		return runDumpCmd(ctx, db, cmd[1:], os.Stdout)
 	default:
 		return displaySuggestions(in)
 	}
@@ -310,13 +312,13 @@ func (sh *Shell) runCommand(in string) error {
 	return fmt.Errorf("unknown command %q", cmd)
 }
 
-func (sh *Shell) runQuery(q string) error {
-	db, err := sh.getDB()
+func (sh *Shell) runQuery(ctx context.Context, q string) error {
+	db, err := sh.getDB(ctx)
 	if err != nil {
 		return err
 	}
 
-	res, err := db.Query(context.Background(), q)
+	res, err := db.Query(ctx, q)
 	if err != nil {
 		return err
 	}
@@ -326,7 +328,7 @@ func (sh *Shell) runQuery(q string) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(ctx, func(d document.Document) error {
 		return enc.Encode(d)
 	})
 }
@@ -347,7 +349,7 @@ func (sh *Shell) exit() {
 	os.Exit(0)
 }
 
-func (sh *Shell) getDB() (*genji.DB, error) {
+func (sh *Shell) getDB(ctx context.Context) (*genji.DB, error) {
 	if sh.db != nil {
 		return sh.db, nil
 	}
@@ -368,7 +370,7 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 		os.Exit(2)
 	}
 
-	sh.db, err = genji.New(ng)
+	sh.db, err = genji.New(ctx, ng)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(2)
@@ -377,7 +379,7 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 	return sh.db, nil
 }
 
-func (sh *Shell) runPipedInput() (ran bool, err error) {
+func (sh *Shell) runPipedInput(ctx context.Context) (ran bool, err error) {
 	// Check if there is any input being piped in from the terminal
 	stat, _ := os.Stdin.Stat()
 	m := stat.Mode()
@@ -389,7 +391,7 @@ func (sh *Shell) runPipedInput() (ran bool, err error) {
 	if err != nil {
 		return true, fmt.Errorf("Unable to read piped input: %w", err)
 	}
-	err = sh.runQuery(string(data))
+	err = sh.runQuery(ctx, string(data))
 	if err != nil {
 		return true, fmt.Errorf("Unable to execute provided sql statements: %w", err)
 	}
@@ -401,15 +403,15 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
-func (sh *Shell) getAllIndexes() ([]string, error) {
-	db, err := sh.getDB()
+func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
+	db, err := sh.getDB(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var listName []string
-	err = db.View(func(tx *genji.Tx) error {
-		indexes, err := tx.ListIndexes()
+	err = db.View(ctx, func(tx *genji.Tx) error {
+		indexes, err := tx.ListIndexes(ctx)
 		if err != nil {
 			return err
 		}
@@ -429,16 +431,16 @@ func (sh *Shell) getAllIndexes() ([]string, error) {
 }
 
 // getTables returns all the tables of the database
-func (sh *Shell) getAllTables() ([]string, error) {
+func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	var tables []string
-	db, _ := sh.getDB()
-	res, err := db.Query(context.Background(), "SELECT table_name FROM __genji_tables")
+	db, _ := sh.getDB(ctx)
+	res, err := db.Query(ctx, "SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return nil, err
 	}
 	defer res.Close()
 
-	err = res.Iterate(func(d document.Document) error {
+	err = res.Iterate(ctx, func(d document.Document) error {
 		var tableName string
 		err = document.Scan(d, &tableName)
 		if err != nil {
@@ -457,11 +459,13 @@ func (sh *Shell) getAllTables() ([]string, error) {
 }
 
 func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
+	ctx := context.Background()
+
 	if strings.HasPrefix(in.Text, ".") {
 		return prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
 	}
 
-	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery(context.Background())
+	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery(ctx)
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
 		if !ok {
@@ -470,12 +474,12 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 		expected := e.Expected
 		switch expected[0] {
 		case "table_name":
-			expected, err = sh.getAllTables()
+			expected, err = sh.getAllTables(ctx)
 			if err != nil {
 				return []prompt.Suggest{}
 			}
 		case "index_name":
-			expected, err = sh.getAllIndexes()
+			expected, err = sh.getAllIndexes(ctx)
 			if err != nil {
 				return []prompt.Suggest{}
 			}
