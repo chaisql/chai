@@ -56,6 +56,7 @@ const (
 	GTE      // >=
 	IN       // IN
 	IS       // IS
+	LIKE     // LIKE
 	operatorEnd
 
 	LPAREN      // (
@@ -165,6 +166,7 @@ var tokens = [...]string{
 	GTE:      ">=",
 	IN:       "IN",
 	IS:       "IS",
+	LIKE:     "LIKE",
 
 	LPAREN:      "(",
 	RPAREN:      ")",
@@ -260,7 +262,7 @@ func (tok Token) Precedence() int {
 		return 2
 	case IN:
 		return 3
-	case EQ, NEQ, EQREGEX, NEQREGEX, LT, LTE, GT, GTE, IS:
+	case EQ, NEQ, EQREGEX, NEQREGEX, LT, LTE, GT, GTE, IS, LIKE:
 		return 4
 	case ADD, SUB, BITWISEOR, BITWISEXOR:
 		return 5

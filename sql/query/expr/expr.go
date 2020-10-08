@@ -132,3 +132,20 @@ type Parentheses struct {
 func (p Parentheses) Eval(es EvalStack) (document.Value, error) {
 	return p.E.Eval(es)
 }
+
+func invertBoolResult(f func(ctx EvalStack) (document.Value, error)) func(ctx EvalStack) (document.Value, error) {
+	return func(ctx EvalStack) (document.Value, error) {
+		v, err := f(ctx)
+
+		if err != nil {
+			return v, err
+		}
+		if v == trueLitteral {
+			return falseLitteral, nil
+		}
+		if v == falseLitteral {
+			return trueLitteral, nil
+		}
+		return v, nil
+	}
+}
