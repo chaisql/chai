@@ -53,32 +53,34 @@ func runTablesCmd(db *genji.DB, cmd []string) error {
 // displayTableIndex prints all indexes that the given table contains.
 func displayTableIndex(db *genji.DB, tableName string) error {
 	ctx := context.Background()
-	_, err := db.QueryDocument(ctx, "SELECT table_name FROM __genji_tables WHERE table_name = ?", tableName)
-	switch err {
-	case database.ErrDocumentNotFound:
-		return database.ErrTableNotFound
-	case nil:
-		// nop
-	default:
-		return err
-	}
-
-	res, err := db.Query(ctx, "SELECT * FROM __genji_indexes WHERE table_name = ?", tableName)
-	if err != nil {
-		return err
-	}
-	defer res.Close()
-
-	return res.Iterate(func(d document.Document) error {
-		var index database.IndexConfig
-
-		if err := index.ScanDocument(d); err != nil {
+	return db.View(func(tx *genji.Tx) error {
+		_, err := tx.QueryDocument(ctx, "SELECT table_name FROM __genji_tables WHERE table_name = ?", tableName)
+		switch err {
+		case database.ErrDocumentNotFound:
+			return database.ErrTableNotFound
+		case nil:
+			// nop
+		default:
 			return err
 		}
 
-		fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Path)
+		res, err := tx.Query(ctx, "SELECT * FROM __genji_indexes WHERE table_name = ?", tableName)
+		if err != nil {
+			return err
+		}
+		defer res.Close()
 
-		return nil
+		return res.Iterate(func(d document.Document) error {
+			var index database.IndexConfig
+
+			if err := index.ScanDocument(d); err != nil {
+				return err
+			}
+
+			fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Path)
+
+			return nil
+		})
 	})
 }
 
