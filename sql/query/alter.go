@@ -39,3 +39,30 @@ func (stmt AlterStmt) Run(ctx context.Context, tx *database.Transaction, _ []exp
 	err := tx.RenameTable(stmt.TableName, stmt.NewTableName)
 	return res, err
 }
+
+type AlterTableAddColumn struct {
+	TableName  string
+	Constraint database.FieldConstraint
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt AlterTableAddColumn) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the ALTER TABLE ADD COLUMN statement in the given transaction.
+// It implements the Statement interface.
+func (stmt AlterTableAddColumn) Run(ctx context.Context, tx *database.Transaction, _ []expr.Param) (Result, error) {
+	var res Result
+
+	if stmt.TableName == "" {
+		return res, errors.New("missing table name")
+	}
+
+	if stmt.Constraint.Path == nil {
+		return res, errors.New("missing field name")
+	}
+
+	err := tx.AddColumn(stmt.TableName, stmt.Constraint)
+	return res, err
+}

@@ -72,12 +72,14 @@ const (
 
 	keywordBeg
 	// ALL and the following are Genji SQL Keywords
+	ADD_KEYWORD
 	ALTER
 	AS
 	ASC
 	BEGIN
 	BY
 	CAST
+	COLUMN
 	COMMIT
 	CREATE
 	DEFAULT
@@ -191,11 +193,13 @@ var tokens = [...]string{
 	SEMICOLON:   ";",
 	DOT:         ".",
 
+	ADD_KEYWORD: "ADD",
 	ALTER:       "ALTER",
 	AS:          "AS",
 	ASC:         "ASC",
 	BEGIN:       "BEGIN",
 	COMMIT:      "COMMIT",
+	COLUMN:      "COLUMN",
 	GROUP:       "GROUP",
 	BY:          "BY",
 	CREATE:      "CREATE",
