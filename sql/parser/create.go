@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
@@ -159,6 +160,28 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 			}
 
 			fc.IsNotNull = true
+		case scanner.DEFAULT:
+			// Parse default value expression.
+			e, err := p.parseUnaryExpr()
+			if err != nil {
+				return err
+			}
+
+			d, err := e.Eval(expr.EvalStack{})
+			if err != nil {
+				return err
+			}
+
+			if fc.Type != 0 && fc.Type != d.Type {
+				return &ParseError{Message: fmt.Sprintf("default value must have type %s, got %s", fc.Type, d.Type)}
+			}
+
+			// if it's already default value we return an error
+			if fc.HasDefaultValue() {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+			}
+
+			fc.DefaultValue = d
 		default:
 			p.Unscan()
 			return nil

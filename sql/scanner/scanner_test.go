@@ -125,6 +125,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `COMMIT`, tok: scanner.COMMIT, raw: `COMMIT`},
 		{s: `CREATE`, tok: scanner.CREATE, raw: `CREATE`},
 		{s: `EXPLAIN`, tok: scanner.EXPLAIN, raw: `EXPLAIN`},
+		{s: `DEFAULT`, tok: scanner.DEFAULT, raw: `DEFAULT`},
 		{s: `DELETE`, tok: scanner.DELETE, raw: `DELETE`},
 		{s: `DESC`, tok: scanner.DESC, raw: `DESC`},
 		{s: `DROP`, tok: scanner.DROP, raw: `DROP`},

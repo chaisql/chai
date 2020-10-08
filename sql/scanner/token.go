@@ -80,6 +80,7 @@ const (
 	CAST
 	COMMIT
 	CREATE
+	DEFAULT
 	DELETE
 	DESC
 	DROP
@@ -199,6 +200,7 @@ var tokens = [...]string{
 	BY:          "BY",
 	CREATE:      "CREATE",
 	CAST:        "CAST",
+	DEFAULT:     "DEFAULT",
 	DELETE:      "DELETE",
 	DESC:        "DESC",
 	DROP:        "DROP",

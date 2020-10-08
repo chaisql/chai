@@ -18,6 +18,11 @@ type FieldConstraint struct {
 	Type         document.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
+	DefaultValue document.Value
+}
+
+func (f *FieldConstraint) HasDefaultValue() bool {
+	return f.DefaultValue.Type != 0
 }
 
 // ToDocument returns a document from f.
@@ -28,6 +33,7 @@ func (f *FieldConstraint) ToDocument() document.Document {
 	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
+	buf.Add("default_value", f.DefaultValue)
 	return buf
 }
 
@@ -60,6 +66,13 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 		return err
 	}
 	f.IsNotNull = v.V.(bool)
+
+	v, err = d.GetByField("default_value")
+	if err != nil {
+		return err
+	}
+	f.DefaultValue = v
+
 	return nil
 }
 
@@ -319,7 +332,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 
 	t.tableInfos[indexStoreName] = TableInfo{
 		storeName: []byte(indexStoreName),
-		readOnly: true,
+		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
 				Path: document.ValuePath{

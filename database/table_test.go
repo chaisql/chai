@@ -337,8 +337,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, false},
-				{parsePath(t, "bar"), document.IntegerValue, false, false},
+				{parsePath(t, "foo"), document.IntegerValue, false, false, document.Value{}},
+				{parsePath(t, "bar"), document.IntegerValue, false, false, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -375,7 +375,7 @@ func TestTableInsert(t *testing.T) {
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true},
+				{parsePath(t, "foo"), 0, false, true, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -385,7 +385,7 @@ func TestTableInsert(t *testing.T) {
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true},
+				{parsePath(t, "foo"), document.IntegerValue, false, true, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -423,13 +423,80 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("Shouldn't fail if there is a not null field and default constraint on a document field and the field is null or missing", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		// no enforced type, not null
+		err := tx.CreateTable("test1", &database.TableInfo{
+			FieldConstraints: []database.FieldConstraint{
+				{parsePath(t, "foo"), 0, false, true, document.NewIntegerValue(42)},
+			},
+		})
+		require.NoError(t, err)
+		tb1, err := tx.GetTable("test1")
+		require.NoError(t, err)
+
+		// enforced type, not null
+		err = tx.CreateTable("test2", &database.TableInfo{
+			FieldConstraints: []database.FieldConstraint{
+				{parsePath(t, "foo"), document.IntegerValue, false, true, document.NewIntegerValue(42)},
+			},
+		})
+		require.NoError(t, err)
+		tb2, err := tx.GetTable("test2")
+		require.NoError(t, err)
+
+		// insert with empty foo field shouldn't fail
+		k, err := tb1.Insert(document.NewFieldBuffer().
+			Add("bar", document.NewDoubleValue(1)))
+		require.NoError(t, err)
+
+		d, err := tb1.GetDocument(k)
+		require.NoError(t, err)
+		v, err := d.GetByField("foo")
+		require.NoError(t, err)
+		require.Equal(t, v.V.(int64), int64(42))
+
+		// insert with explicit null foo field should fail
+		_, err = tb1.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewNullValue()))
+		require.Error(t, err)
+
+		// otherwise it should work
+		_, err = tb1.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewIntegerValue(1)))
+		require.NoError(t, err)
+
+		// insert with empty foo field shouldn't fail
+		k, err = tb2.Insert(document.NewFieldBuffer().
+			Add("bar", document.NewIntegerValue(1)))
+		require.NoError(t, err)
+
+		d, err = tb2.GetDocument(k)
+		require.NoError(t, err)
+		v, err = d.GetByField("foo")
+		require.NoError(t, err)
+		require.Equal(t, v.V.(int64), int64(42))
+
+		// insert with explicit null foo field should fail
+		_, err = tb2.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewNullValue()))
+		require.Error(t, err)
+
+		// otherwise it should work
+		_, err = tb2.Insert(document.NewFieldBuffer().
+			Add("foo", document.NewDoubleValue(1)))
+		require.NoError(t, err)
+	})
+
 	t.Run("Should fail if there is a not null field constraint on an array value and the value is null", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo[1]"), 0, false, true},
+				{parsePath(t, "foo[1]"), 0, false, true, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
