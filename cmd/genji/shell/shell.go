@@ -245,9 +245,11 @@ func (sh *Shell) executeInput(in string) error {
 	in = strings.TrimSpace(in)
 	switch {
 	// if it starts with a "." it's a command
+	// if the input is "help" or "exit", then it's a command.
 	// it must not be in the middle of a multi line query though
-	case strings.HasPrefix(in, "."):
+	case strings.HasPrefix(in, "."), in == "help", in == "exit":
 		return sh.runCommand(in)
+
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
 		sh.query = sh.query + in
@@ -275,7 +277,7 @@ func (sh *Shell) runCommand(in string) error {
 	in = strings.TrimSuffix(in, ";")
 	cmd := strings.Fields(in)
 	switch cmd[0] {
-	case ".help":
+	case ".help", "help":
 		return runHelpCmd()
 	case ".tables":
 		db, err := sh.getDB()
@@ -284,7 +286,7 @@ func (sh *Shell) runCommand(in string) error {
 		}
 
 		return runTablesCmd(db, cmd)
-	case ".exit":
+	case ".exit", "exit":
 		if len(cmd) > 1 {
 			return fmt.Errorf("usage: .exit")
 		}
