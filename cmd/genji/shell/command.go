@@ -18,8 +18,8 @@ var commands = []struct {
 	Options     string
 	Description string
 }{
-	{".exit", ``, "Exit this program."},
-	{".help", ``, "List all commands."},
+	{".exit or exit", ``, "Exit this program."},
+	{".help or help", ``, "List all commands."},
 	{".tables", ``, "List names of tables."},
 	{".indexes", `[table_name]`, "Display all indexes or the indexes of the given table name."},
 	{".dump", `[table_name]`, "Dump database content or table content as SQL statements"},
