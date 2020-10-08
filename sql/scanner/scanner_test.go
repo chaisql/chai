@@ -116,12 +116,14 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `-10.3`, tok: scanner.NUMBER, lit: `-10.3`, raw: `-10.3`},
 
 		// Keywords
+		{s: `ADD`, tok: scanner.ADD_KEYWORD, raw: `ADD`},
 		{s: `ALTER`, tok: scanner.ALTER, raw: `ALTER`},
 		{s: `AS`, tok: scanner.AS, raw: `AS`},
 		{s: `ASC`, tok: scanner.ASC, raw: `ASC`},
 		{s: `BY`, tok: scanner.BY, raw: `BY`},
 		{s: `BEGIN`, tok: scanner.BEGIN, raw: `BEGIN`},
 		{s: `CAST`, tok: scanner.CAST, raw: `CAST`},
+		{s: `COLUMN`, tok: scanner.COLUMN, raw: `COLUMN`},
 		{s: `COMMIT`, tok: scanner.COMMIT, raw: `COMMIT`},
 		{s: `CREATE`, tok: scanner.CREATE, raw: `CREATE`},
 		{s: `EXPLAIN`, tok: scanner.EXPLAIN, raw: `EXPLAIN`},

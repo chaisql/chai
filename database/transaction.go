@@ -128,6 +128,49 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 	}, nil
 }
 
+// modifyTable modifies TableInfo using given callback.
+func (tx *Transaction) modifyTable(name string, f func(*TableInfo) error) error {
+	ti, err := tx.tableInfoStore.Get(tx, name)
+	if err != nil {
+		return err
+	}
+
+	if ti.readOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
+	err = tx.tableInfoStore.Delete(tx, name)
+	if err != nil {
+		return err
+	}
+
+	err = f(ti)
+	if err != nil {
+		return err
+	}
+
+	return tx.tableInfoStore.Insert(tx, name, ti)
+}
+
+func (tx *Transaction) AddColumn(name string, fc FieldConstraint) error {
+	return tx.modifyTable(name, func(info *TableInfo) error {
+		for _, field := range info.FieldConstraints {
+			if field.Path.IsEqual(fc.Path) {
+				return fmt.Errorf("field %q already exists", fc.Path.String())
+			}
+			if field.IsPrimaryKey && fc.IsPrimaryKey {
+				return fmt.Errorf(
+					"multiple primary keys are not allowed (%q is primary key)",
+					field.Path.String(),
+				)
+			}
+		}
+
+		info.FieldConstraints = append(info.FieldConstraints, fc)
+		return nil
+	})
+}
+
 // RenameTable renames a table.
 // If it doesn't exist, it returns ErrTableNotFound.
 func (tx *Transaction) RenameTable(oldName, newName string) error {

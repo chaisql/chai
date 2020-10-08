@@ -76,6 +76,20 @@ func (p *Parser) parseIfNotExists() (bool, error) {
 	return true, nil
 }
 
+func (p *Parser) parseField(fc *database.FieldConstraint) (err error) {
+	fc.Path, err = p.parsePath()
+	if err != nil {
+		p.Unscan()
+	}
+
+	fc.Type, err = p.parseType()
+	if err != nil {
+		return err
+	}
+
+	return p.parseFieldConstraint(fc)
+}
+
 func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
@@ -89,18 +103,7 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 	for {
 		var fc database.FieldConstraint
 
-		fc.Path, err = p.parsePath()
-		if err != nil {
-			p.Unscan()
-			break
-		}
-
-		fc.Type, err = p.parseType()
-		if err != nil {
-			return err
-		}
-
-		err = p.parseFieldConstraint(&fc)
+		err = p.parseField(&fc)
 		if err != nil {
 			return err
 		}
