@@ -426,7 +426,7 @@ func (op cmpOp) compare(l, r document.Value) (bool, error) {
 func IsComparisonOperator(op Operator) bool {
 	switch op.(type) {
 	case eqOp, neqOp, gtOp, gteOp, ltOp, lteOp,
-		isOp, isNotOp, inOp, notInOp:
+		isOp, isNotOp, inOp, notInOp, likeOp:
 		return true
 	}
 
@@ -540,17 +540,7 @@ func NotIn(a, b Expr) Expr {
 }
 
 func (op notInOp) Eval(ctx EvalStack) (document.Value, error) {
-	v, err := op.inOp.Eval(ctx)
-	if err != nil {
-		return v, err
-	}
-	if v == trueLitteral {
-		return falseLitteral, nil
-	}
-	if v == falseLitteral {
-		return trueLitteral, nil
-	}
-	return v, nil
+	return invertBoolResult(op.inOp.Eval)(ctx)
 }
 
 func (op notInOp) String() string {

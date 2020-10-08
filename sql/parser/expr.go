@@ -132,10 +132,17 @@ func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.To
 		p.Unscan()
 		return expr.Is, op, nil
 	case scanner.NOT:
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.IN {
-			return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN"}, pos)
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		switch tok {
+		case scanner.IN:
+			return expr.NotIn, op, nil
+		case scanner.LIKE:
+			return expr.NotLike, op, nil
 		}
-		return expr.NotIn, op, nil
+
+		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN, LIKE"}, pos)
+	case scanner.LIKE:
+		return expr.Like, op, nil
 	}
 
 	panic(fmt.Sprintf("unknown operator %q", op))
