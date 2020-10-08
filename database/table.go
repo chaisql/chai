@@ -466,7 +466,11 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		if field.FieldName == "" {
 			// if the field is not found we make sure it is not required
 			if c.IsNotNull {
-				return fmt.Errorf("field %q is required and must be not null", c.Path)
+				if !c.HasDefaultValue() {
+					return fmt.Errorf("field %q is required and must be not null", c.Path)
+				}
+
+				return buf.Set(c.Path, c.DefaultValue)
 			}
 			return nil
 		}
@@ -476,9 +480,12 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		if err != nil {
 			if err == document.ErrFieldNotFound {
 				if c.IsNotNull {
-					return fmt.Errorf("field %q is required and must be not null", c.Path)
-				}
+					if !c.HasDefaultValue() {
+						return fmt.Errorf("field %q is required and must be not null", c.Path)
+					}
 
+					return buf.Set(c.Path, c.DefaultValue)
+				}
 				return nil
 			}
 
@@ -521,9 +528,12 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		if err != nil {
 			if err == document.ErrValueNotFound {
 				if c.IsNotNull {
-					return fmt.Errorf("value %q is required and must be not null", c.Path)
-				}
+					if !c.HasDefaultValue() {
+						return fmt.Errorf("field %q is required and must be not null", c.Path)
+					}
 
+					return buf.Copy(c.DefaultValue.V.(document.Array))
+				}
 				return nil
 			}
 

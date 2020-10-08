@@ -48,6 +48,17 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With default", "CREATE TABLE test(foo DEFAULT \"10\")",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "foo"), DefaultValue: document.NewTextValue("10")},
+					},
+				},
+			}, false},
+		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)",
+			query.CreateTableStmt{}, true},
 		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)",
 			query.CreateTableStmt{}, true},
 		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
