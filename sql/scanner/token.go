@@ -88,6 +88,7 @@ const (
 	DROP
 	EXISTS
 	EXPLAIN
+	FIELD
 	FROM
 	GROUP
 	IF
@@ -211,6 +212,7 @@ var tokens = [...]string{
 	EXISTS:      "EXISTS",
 	EXPLAIN:     "EXPLAIN",
 	KEY:         "KEY",
+	FIELD:       "FIELD",
 	FROM:        "FROM",
 	IF:          "IF",
 	INDEX:       "INDEX",

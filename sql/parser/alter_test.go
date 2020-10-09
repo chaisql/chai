@@ -49,6 +49,11 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 				Path: parsePath(t, "bar"),
 			},
 		}, false},
+		{"FIELD instead of COLUMN", "ALTER TABLE foo ADD FIELD bar", query.AlterTableAddColumn{TableName: "foo",
+			Constraint: database.FieldConstraint{
+				Path: parsePath(t, "bar"),
+			},
+		}, false},
 		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", query.AlterTableAddColumn{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path: parsePath(t, "bar"),
@@ -75,6 +80,8 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 				DefaultValue: document.NewIntegerValue(0),
 			},
 		}, false},
+		{"With error / missing COLUMN or FIELD keyword", "ALTER TABLE foo ADD bar", nil, true},
+		{"With error / missing field name", "ALTER TABLE foo ADD FIELD", nil, true},
 	}
 
 	for _, test := range tests {
