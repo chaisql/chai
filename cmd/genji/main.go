@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -113,8 +112,7 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			engine = "badger"
 		}
 
-		ctx := context.Background()
-		return shell.Run(ctx, &shell.Options{
+		return shell.Run(c.Context, &shell.Options{
 			Engine: engine,
 			DBPath: dbpath,
 		})

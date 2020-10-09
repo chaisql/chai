@@ -30,8 +30,7 @@ func TestRunTablesCmd(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := context.Background()
-			db, err := genji.Open(ctx, ":memory:")
+			db, err := genji.Open(context.Background(), ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -67,8 +66,7 @@ func TestIndexesCmd(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := context.Background()
-			db, err := genji.Open(ctx, ":memory:")
+			db, err := genji.Open(context.Background(), ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -80,7 +78,7 @@ func TestIndexesCmd(t *testing.T) {
 						CREATE INDEX idx_c ON test (c);
 					`)
 			require.NoError(t, err)
-			if err := runIndexesCmd(ctx, db, test.in); (err != nil) != test.wantErr {
+			if err := runIndexesCmd(db, test.in); (err != nil) != test.wantErr {
 				require.Errorf(t, err, "", test.wantErr)
 			}
 		})
@@ -105,8 +103,7 @@ func TestRunDumpCmd(t *testing.T) {
 
 		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				ctx := context.Background()
-				db, err := genji.Open(ctx, ":memory:")
+				db, err := genji.Open(context.Background(), ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -136,7 +133,7 @@ func TestRunDumpCmd(t *testing.T) {
 					err = db.View(func(tx *genji.Tx) error {
 						// indexes is unordered, we cannot guess the order.
 						// we have to test only one index creation.
-						indexes, err := tx.ListIndexes(ctx)
+						indexes, err := tx.ListIndexes(tx.Context)
 						require.NoError(t, err)
 						for _, index := range indexes {
 							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", index.IndexName, index.TableName,
@@ -158,7 +155,7 @@ func TestRunDumpCmd(t *testing.T) {
 				bwant.WriteString(tt.want)
 
 				var buf bytes.Buffer
-				err = runDumpCmd(ctx, db, []string{`test`}, &buf)
+				err = runDumpCmd(db, []string{`test`}, &buf)
 				require.NoError(t, err)
 				bwant.WriteString(ci)
 				require.Equal(t, bwant.String(), buf.String())

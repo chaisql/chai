@@ -38,7 +38,7 @@ func skipSpaces(r *bufio.Reader) (byte, error) {
 	return c, nil
 }
 
-func executeInsertCommand(ctx context.Context, db *genji.DB, table string, r io.Reader) error {
+func executeInsertCommand(db *genji.DB, table string, r io.Reader) error {
 	q := fmt.Sprintf("INSERT INTO %s VALUES ?", table)
 	rd := bufio.NewReader(r)
 	var c byte
@@ -153,7 +153,7 @@ func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, a
 	fi, _ := os.Stdin.Stat()
 	m := fi.Mode()
 	if (m & os.ModeNamedPipe) != 0 {
-		return executeInsertCommand(ctx, db, table, os.Stdin)
+		return executeInsertCommand(db, table, os.Stdin)
 	}
 
 	if len(args) == 0 {
@@ -161,7 +161,7 @@ func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, a
 	}
 
 	for _, arg := range args {
-		if err := executeInsertCommand(ctx, db, table, strings.NewReader(arg)); err != nil {
+		if err := executeInsertCommand(db, table, strings.NewReader(arg)); err != nil {
 			return err
 		}
 	}

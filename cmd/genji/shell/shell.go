@@ -289,7 +289,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return err
 		}
 
-		return runTablesCmd(ctx, db, cmd)
+		return runTablesCmd(db, cmd)
 	case ".exit":
 		if len(cmd) > 1 {
 			return fmt.Errorf("usage: .exit")
@@ -301,14 +301,14 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		if err != nil {
 			return err
 		}
-		return runIndexesCmd(ctx, db, cmd)
+		return runIndexesCmd(db, cmd)
 	case ".dump":
 		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
 
-		return runDumpCmd(ctx, db, cmd[1:], os.Stdout)
+		return runDumpCmd(db, cmd[1:], os.Stdout)
 	default:
 		return displaySuggestions(in)
 	}
@@ -332,7 +332,7 @@ func (sh *Shell) runQuery(ctx context.Context, q string) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return res.Iterate(ctx, func(d document.Document) error {
+	return res.Iterate(func(d document.Document) error {
 		return enc.Encode(d)
 	})
 }
@@ -444,7 +444,7 @@ func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	}
 	defer res.Close()
 
-	err = res.Iterate(ctx, func(d document.Document) error {
+	err = res.Iterate(func(d document.Document) error {
 		var tableName string
 		err = document.Scan(d, &tableName)
 		if err != nil {

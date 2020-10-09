@@ -29,14 +29,13 @@ func TestExecuteInsertCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			db, err := genji.Open(ctx, ":memory:")
+			db, err := genji.Open(context.Background(), ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
 			err = db.Exec(`CREATE TABLE foo`)
 			require.NoError(t, err)
-			err = executeInsertCommand(ctx, db, "foo", strings.NewReader(tt.data))
+			err = executeInsertCommand(db, "foo", strings.NewReader(tt.data))
 			if tt.fails {
 				require.Error(t, err)
 				return
@@ -48,7 +47,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 			require.NoError(t, err)
 
 			var buf bytes.Buffer
-			err = document.IteratorToJSON(ctx, &buf, res)
+			err = document.IteratorToJSON(&buf, res)
 			require.NoError(t, err)
 			require.JSONEq(t, tt.want, buf.String())
 
@@ -70,21 +69,20 @@ func TestExecuteInsertCommand(t *testing.T) {
 			`{"Name": "Sam", "Text": "Go fmt who?"}`,
 			`{"Name": "Ed", "Text": "Go fmt yourself!"}`}
 
-		ctx := context.Background()
-		db, err := genji.Open(ctx, ":memory:")
+		db, err := genji.Open(context.Background(), ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`CREATE TABLE foo`)
 		require.NoError(t, err)
-		err = executeInsertCommand(ctx, db, "foo", strings.NewReader(jsonArray))
+		err = executeInsertCommand(db, "foo", strings.NewReader(jsonArray))
 		require.NoError(t, err)
 		res, err := db.Query("SELECT * FROM foo")
 		defer res.Close()
 		require.NoError(t, err)
 
 		i := 0
-		_ = res.Iterate(ctx, func(d document.Document) error {
+		_ = res.Iterate(func(d document.Document) error {
 			data, err := document.MarshalJSON(d)
 			require.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
@@ -106,15 +104,14 @@ func TestExecuteInsertCommand(t *testing.T) {
 			`{"Name": "Sam", "Text": "Go fmt who?"}`,
 			`{"Name": "Ed", "Text": "Go fmt yourself!"}`}
 
-		ctx := context.Background()
-		db, err := genji.Open(ctx, ":memory:")
+		db, err := genji.Open(context.Background(), ":memory:")
 		defer db.Close()
 		require.NoError(t, err)
 
 		err = db.Exec(`CREATE TABLE foo`)
 		require.NoError(t, err)
 
-		err = executeInsertCommand(ctx, db, "foo", strings.NewReader(jsonStream))
+		err = executeInsertCommand(db, "foo", strings.NewReader(jsonStream))
 		require.NoError(t, err)
 
 		res, err := db.Query("SELECT * FROM foo")
@@ -122,7 +119,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		i := 0
-		_ = res.Iterate(ctx, func(d document.Document) error {
+		_ = res.Iterate(func(d document.Document) error {
 			data, err := document.MarshalJSON(d)
 			require.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
@@ -130,7 +127,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 			return nil
 		})
 
-		wantCount, err := res.Count(ctx)
+		wantCount, err := res.Count()
 		require.NoError(t, err)
 		require.Equal(t, wantCount, i)
 	})

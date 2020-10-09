@@ -2,7 +2,6 @@ package shell
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -26,7 +25,7 @@ var commands = []struct {
 }
 
 // runTablesCmd shows all tables.
-func runTablesCmd(ctx context.Context, db *genji.DB, cmd []string) error {
+func runTablesCmd(db *genji.DB, cmd []string) error {
 	if len(cmd) > 1 {
 		return fmt.Errorf("usage: .tables")
 	}
@@ -37,7 +36,7 @@ func runTablesCmd(ctx context.Context, db *genji.DB, cmd []string) error {
 	}
 	defer res.Close()
 
-	return res.Iterate(ctx, func(d document.Document) error {
+	return res.Iterate(func(d document.Document) error {
 		var tableName string
 		err = document.Scan(d, &tableName)
 		if err != nil {
@@ -80,14 +79,14 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 }
 
 // displayAllIndexes shows all indexes that the database contains.
-func displayAllIndexes(ctx context.Context, db *genji.DB) error {
+func displayAllIndexes(db *genji.DB) error {
 	res, err := db.Query("SELECT * FROM __genji_indexes")
 	if err != nil {
 		return err
 	}
 	defer res.Close()
 
-	return res.Iterate(ctx, func(d document.Document) error {
+	return res.Iterate(func(d document.Document) error {
 		var index database.IndexConfig
 
 		if err := index.ScanDocument(d); err != nil {
@@ -102,14 +101,14 @@ func displayAllIndexes(ctx context.Context, db *genji.DB) error {
 }
 
 // runIndexesCmd executes all indexes of the database or all indexes of the given table.
-func runIndexesCmd(ctx context.Context, db *genji.DB, in []string) error {
+func runIndexesCmd(db *genji.DB, in []string) error {
 	switch len(in) {
 	case 1:
 		// If the input is ".indexes"
-		return displayAllIndexes(ctx, db)
+		return displayAllIndexes(db)
 	case 2:
 		// If the input is ".indexes <tableName>"
-		return displayTableIndex(ctx, db, in[1])
+		return displayTableIndex(db, in[1])
 	}
 
 	return fmt.Errorf("usage: .indexes [tablename]")
@@ -156,10 +155,10 @@ func displaySuggestions(in string) error {
 }
 
 // dumpTable displays the content of the given table as SQL statements.
-func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer) error {
+func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	var buf bytes.Buffer
 
-	t, err := tx.GetTable(ctx, tableName)
+	t, err := tx.GetTable(tx.Context, tableName)
 	if err != nil {
 		return err
 	}
@@ -168,7 +167,7 @@ func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer)
 		return err
 	}
 
-	ti, err := t.Info(ctx)
+	ti, err := t.Info(tx.Context)
 	if err != nil {
 		return err
 	}
@@ -210,7 +209,7 @@ func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer)
 	buf.Reset()
 
 	// Indexes statements.
-	indexes, err := t.Indexes(ctx)
+	indexes, err := t.Indexes(tx.Context)
 	if err != nil {
 		return err
 	}
@@ -237,7 +236,7 @@ func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer)
 
 	// Inserts statements.
 	insert := fmt.Sprintf("INSERT INTO %s VALUES ", t.Name())
-	return res.Iterate(ctx, func(d document.Document) error {
+	return res.Iterate(func(d document.Document) error {
 		buf.WriteString(insert)
 
 		data, err := document.MarshalJSON(d)
@@ -258,7 +257,7 @@ func dumpTable(ctx context.Context, tx *genji.Tx, tableName string, w io.Writer)
 }
 
 // runDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
-func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer) error {
+func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -270,7 +269,7 @@ func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer)
 	}
 
 	for i, table := range tables {
-		err = dumpTable(ctx, tx, table, w)
+		err = dumpTable(tx, table, w)
 		switch err {
 		case nil:
 			// Blank separation between tables.
@@ -305,7 +304,7 @@ func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer)
 	defer res.Close()
 
 	i := 0
-	err = res.Iterate(ctx, func(d document.Document) error {
+	err = res.Iterate(func(d document.Document) error {
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
@@ -320,7 +319,7 @@ func runDumpCmd(ctx context.Context, db *genji.DB, tables []string, w io.Writer)
 			return err
 		}
 
-		if err := dumpTable(ctx, tx, tableName, w); err != nil {
+		if err := dumpTable(tx, tableName, w); err != nil {
 			return err
 		}
 
