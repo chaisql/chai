@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -370,4 +371,8 @@ func (tx *Transaction) getIndexStore() (*indexStore, error) {
 		st: st,
 		db: tx.db,
 	}, nil
+}
+
+func (tx *Transaction) CompileRegex(pattern string) (*regexp.Regexp, error) {
+	return tx.db.regexCache.Compile(pattern)
 }

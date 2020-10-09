@@ -6,6 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/genjidb/genji/database/internal/regexcache"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 )
@@ -29,6 +30,9 @@ type Database struct {
 	attachedTransaction *Transaction
 	attachedTxMu        sync.Mutex
 
+	// Stores cache of compiled regexp.
+	regexCache regexcache.Cache
+
 	// Codec used to encode documents. Defaults to MessagePack.
 	Codec encoding.Codec
 }
@@ -44,8 +48,9 @@ func New(ng engine.Engine, opts Options) (*Database, error) {
 	}
 
 	db := Database{
-		ng:    ng,
-		Codec: opts.Codec,
+		ng:         ng,
+		regexCache: regexcache.NewLRU(-1), // uses default cache size
+		Codec:      opts.Codec,
 	}
 
 	ntx, err := db.ng.Begin(true)

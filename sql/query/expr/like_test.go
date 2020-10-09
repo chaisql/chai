@@ -38,7 +38,7 @@ func Test_like(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := like(tt.args.text, tt.args.pattern)
+			got, err := like(EvalStack{}, tt.args.text, tt.args.pattern)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("like() error = %v, wantErr %v", err, tt.wantErr)
 				return

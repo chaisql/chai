@@ -3,10 +3,11 @@ package expr
 import (
 	"errors"
 	"fmt"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/scanner"
 	"regexp"
 	"strings"
+
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/scanner"
 )
 
 func isWildcard(char byte) bool {
@@ -92,27 +93,33 @@ OldLoop:
 	return string(ret[0:retWidth])
 }
 
-func patternToRegexp(pattern string) (*regexp.Regexp, error) {
+// patternToRegexp converts LIKE expression to Go regular expression.
+func patternToRegexp(ctx EvalStack, pattern string) (*regexp.Regexp, error) {
 	pattern = regexp.QuoteMeta(pattern)
 	pattern = replaceUnescaped(pattern, `%`, `.*`, `\\`)
 	pattern = replaceUnescaped(pattern, `_`, `.`, `\\`)
+
+	if ctx.Tx != nil {
+		return ctx.Tx.CompileRegex(pattern)
+	}
 	return regexp.Compile(pattern)
 }
 
-func like(text, pattern string) (bool, error) {
+// trySimpleLike function handles simple cases of LIKE expression.
+func trySimpleLike(text, pattern string) (result bool, ok bool) {
 	if pattern == "" {
 		// true only if text == pattern => text == "" => len(text) == 0
-		return len(text) == 0, nil
+		return len(text) == 0, true
 	}
 
 	if pattern == "%" {
 		// any match
-		return true, nil
+		return true, true
 	}
 
 	if pattern == "_" {
 		// one any character or more
-		return len(text) > 0, nil
+		return len(text) > 0, true
 	}
 
 	if len(pattern) > 1 && !strings.ContainsAny(pattern[1:len(pattern)-1], "%_") {
@@ -121,20 +128,29 @@ func like(text, pattern string) (bool, error) {
 		switch {
 		case !isWildcard(first) && !isWildcard(last):
 			// exact match
-			return text == pattern, nil
+			return text == pattern, true
 		case first == '%' && !isWildcard(last):
 			// suffix match
-			return strings.HasSuffix(text, pattern[1:]), nil
+			return strings.HasSuffix(text, pattern[1:]), true
 		case last == '%' && !isWildcard(first):
 			// prefix match
-			return strings.HasPrefix(text, pattern[0:len(pattern)-1]), nil
+			return strings.HasPrefix(text, pattern[0:len(pattern)-1]), true
 		case first == '%' && last == '%':
 			// contains
-			return strings.Contains(text, pattern[1:len(pattern)-1]), nil
+			return strings.Contains(text, pattern[1:len(pattern)-1]), true
 		}
 	}
 
-	r, err := patternToRegexp(pattern)
+	return
+}
+
+func like(ctx EvalStack, text, pattern string) (bool, error) {
+	result, ok := trySimpleLike(text, pattern)
+	if ok {
+		return result, nil
+	}
+
+	r, err := patternToRegexp(ctx, pattern)
 	if err != nil {
 		return false, err
 	}
@@ -160,7 +176,7 @@ func (op likeOp) Eval(ctx EvalStack) (document.Value, error) {
 		return nullLitteral, errors.New("LIKE operator takes an text")
 	}
 
-	ok, err := like(a.V.(string), b.V.(string))
+	ok, err := like(ctx, a.V.(string), b.V.(string))
 	if err != nil {
 		return nullLitteral, err
 	}
