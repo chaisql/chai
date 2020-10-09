@@ -23,8 +23,8 @@ func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ query.Alter
 	return stmt, nil
 }
 
-func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.AlterTableAddColumn, err error) {
-	var stmt query.AlterTableAddColumn
+func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.AlterTableAddField, err error) {
+	var stmt query.AlterTableAddField
 	stmt.TableName = tableName
 
 	// Parse "COLUMN" or "FIELD".
