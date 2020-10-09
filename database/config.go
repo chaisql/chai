@@ -70,9 +70,6 @@ type TableInfo struct {
 	// name of the store associated with the table.
 	storeName []byte
 	readOnly  bool
-	// if non-zero, this tableInfo has been created during the current transaction.
-	// it will be removed if the transaction is rolled back or set to false if its commited.
-	transactionID int64
 
 	FieldConstraints []FieldConstraint
 }
@@ -152,7 +149,7 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 }
 
 // tableInfoStore manages table information.
-// It loads table information during database startup
+// It loads table information on transaction start
 // and holds it in memory.
 type tableInfoStore struct {
 	db *Database
@@ -160,19 +157,6 @@ type tableInfoStore struct {
 	tableInfos map[string]TableInfo
 
 	mu sync.RWMutex
-}
-
-func newTableInfoStore(db *Database, tx engine.Transaction) (*tableInfoStore, error) {
-	ts := tableInfoStore{
-		db: db,
-	}
-
-	err := ts.loadAllTableInfo(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ts, nil
 }
 
 // Insert a new tableInfo for the given table name.
@@ -183,12 +167,6 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 
 	_, ok := t.tableInfos[tableName]
 	if ok {
-		// TODO(asdine): if a table already exists but is uncommited,
-		// there is a chance the other transaction will be rolled back.
-		// Instead of returning an error, wait until the other transaction is
-		// either commited or rolled back.
-		// If it is commited, return an error here
-		// If not, create the table in this transaction.
 		return ErrTableAlreadyExists
 	}
 
@@ -219,7 +197,6 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		return err
 	}
 
-	info.transactionID = tx.id
 	t.tableInfos[tableName] = *info
 	return nil
 }
@@ -233,10 +210,6 @@ func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, err
 		return nil, ErrTableNotFound
 	}
 
-	if info.transactionID != 0 && info.transactionID != tx.id {
-		return nil, ErrTableNotFound
-	}
-
 	return &info, nil
 }
 
@@ -244,12 +217,8 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	info, ok := t.tableInfos[tableName]
+	_, ok := t.tableInfos[tableName]
 	if !ok {
-		return ErrTableNotFound
-	}
-
-	if info.transactionID != 0 && info.transactionID != tx.id {
 		return ErrTableNotFound
 	}
 
@@ -319,7 +288,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 
 	t.tableInfos[indexStoreName] = TableInfo{
 		storeName: []byte(indexStoreName),
-		readOnly: true,
+		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
 				Path: document.ValuePath{
@@ -333,34 +302,6 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 	}
 
 	return nil
-}
-
-// remove all tableInfo whose transaction id is equal to the given transacrion id.
-// this is called when a read/write transaction is being rolled back.
-func (t *tableInfoStore) rollback(tx *Transaction) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for k, info := range t.tableInfos {
-		if info.transactionID == tx.id {
-			delete(t.tableInfos, k)
-		}
-	}
-}
-
-// set all the tableInfo created by this transaction to 0.
-// this is called when a read/write transaction is being commited.
-func (t *tableInfoStore) commit(tx *Transaction) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for k := range t.tableInfos {
-		if t.tableInfos[k].transactionID == tx.id {
-			info := t.tableInfos[k]
-			info.transactionID = 0
-			t.tableInfos[k] = info
-		}
-	}
 }
 
 // GetTableInfo returns a copy of all the table information.

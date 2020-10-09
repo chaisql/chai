@@ -21,7 +21,6 @@ var (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	id       int64
 	db       *Database
 	tx       engine.Transaction
 	writable bool
@@ -40,10 +39,6 @@ func (tx *Transaction) Rollback() error {
 	tx.db.attachedTxMu.Lock()
 	defer tx.db.attachedTxMu.Unlock()
 
-	if tx.writable {
-		tx.tableInfoStore.rollback(tx)
-	}
-
 	err := tx.tx.Rollback()
 	if err != nil {
 		return err
@@ -60,10 +55,6 @@ func (tx *Transaction) Rollback() error {
 func (tx *Transaction) Commit() error {
 	tx.db.attachedTxMu.Lock()
 	defer tx.db.attachedTxMu.Unlock()
-
-	if tx.writable {
-		tx.tableInfoStore.commit(tx)
-	}
 
 	err := tx.tx.Commit()
 	if err != nil {
@@ -340,6 +331,19 @@ func (tx *Transaction) ReIndexAll() error {
 	}
 
 	return nil
+}
+
+func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
+	ts := tableInfoStore{
+		db: tx.db,
+	}
+
+	err := ts.loadAllTableInfo(tx.tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ts, nil
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {

@@ -4,7 +4,6 @@ package database
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
@@ -16,11 +15,6 @@ type Database struct {
 
 	// tableInfoStore manages information about all the tables
 	tableInfoStore *tableInfoStore
-
-	// This stores the last transaction id created.
-	// It starts at 0 at database startup and is
-	// incremented atomically every time Begin is called.
-	lastTransactionID int64
 
 	// If this is non-nil, the user is running an explicit transaction
 	// using the BEGIN statement.
@@ -55,11 +49,6 @@ func New(ng engine.Engine, opts Options) (*Database, error) {
 	defer ntx.Rollback()
 
 	err = db.initInternalStores(ntx)
-	if err != nil {
-		return nil, err
-	}
-
-	db.tableInfoStore, err = newTableInfoStore(&db, ntx)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +112,14 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 	}
 
 	tx := Transaction{
-		id:             atomic.AddInt64(&db.lastTransactionID, 1),
-		db:             db,
-		tx:             ntx,
-		writable:       !opts.ReadOnly,
-		tableInfoStore: db.tableInfoStore,
+		db:       db,
+		tx:       ntx,
+		writable: !opts.ReadOnly,
+	}
+
+	tx.tableInfoStore, err = tx.getTableInfoStore()
+	if err != nil {
+		return nil, err
 	}
 
 	tx.indexStore, err = tx.getIndexStore()
