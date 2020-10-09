@@ -44,35 +44,35 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "ALTER TABLE foo ADD COLUMN bar", query.AlterTableAddColumn{TableName: "foo",
+		{"Basic", "ALTER TABLE foo ADD COLUMN bar", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path: parsePath(t, "bar"),
 			},
 		}, false},
-		{"FIELD instead of COLUMN", "ALTER TABLE foo ADD FIELD bar", query.AlterTableAddColumn{TableName: "foo",
+		{"FIELD instead of COLUMN", "ALTER TABLE foo ADD FIELD bar", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path: parsePath(t, "bar"),
 			},
 		}, false},
-		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", query.AlterTableAddColumn{TableName: "foo",
+		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path: parsePath(t, "bar"),
 				Type: document.IntegerValue,
 			},
 		}, false},
-		{"With not null", "ALTER TABLE foo ADD COLUMN bar NOT NULL", query.AlterTableAddColumn{TableName: "foo",
+		{"With not null", "ALTER TABLE foo ADD COLUMN bar NOT NULL", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path:      parsePath(t, "bar"),
 				IsNotNull: true,
 			},
 		}, false},
-		{"With primary key", "ALTER TABLE foo ADD COLUMN bar PRIMARY KEY", query.AlterTableAddColumn{TableName: "foo",
+		{"With primary key", "ALTER TABLE foo ADD COLUMN bar PRIMARY KEY", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path:         parsePath(t, "bar"),
 				IsPrimaryKey: true,
 			},
 		}, false},
-		{"With multiple constraints", "ALTER TABLE foo ADD COLUMN bar integer NOT NULL DEFAULT 0", query.AlterTableAddColumn{TableName: "foo",
+		{"With multiple constraints", "ALTER TABLE foo ADD COLUMN bar integer NOT NULL DEFAULT 0", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path:         parsePath(t, "bar"),
 				Type:         document.IntegerValue,

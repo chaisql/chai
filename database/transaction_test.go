@@ -28,7 +28,7 @@ func newTestDB(t testing.TB) (*database.Transaction, func()) {
 // - GetTable
 // - DropTable
 // - RenameTable
-// - AddColumn
+// - AddField
 func TestTxTable(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
@@ -148,7 +148,7 @@ func TestTxTable(t *testing.T) {
 		require.EqualError(t, database.ErrTableNotFound, err.Error())
 	})
 
-	t.Run("Add column", func(t *testing.T) {
+	t.Run("Add field", func(t *testing.T) {
 		tx, cleanup := newTestDB(t)
 		defer cleanup()
 
@@ -161,11 +161,11 @@ func TestTxTable(t *testing.T) {
 		err := tx.CreateTable("foo", ti)
 		require.NoError(t, err)
 
-		// Add column
-		columnToAdd := database.FieldConstraint{
+		// Add field
+		fieldToAdd := database.FieldConstraint{
 			Path: parsePath(t, "last_name"), Type: document.TextValue,
 		}
-		err = tx.AddColumn("foo", columnToAdd)
+		err = tx.AddField("foo", fieldToAdd)
 		require.NoError(t, err)
 
 		tb, err := tx.GetTable("foo")
@@ -174,21 +174,21 @@ func TestTxTable(t *testing.T) {
 		// The field constraints should not be the same.
 		info, err := tb.Info()
 		require.NoError(t, err)
-		require.Contains(t, info.FieldConstraints, columnToAdd)
+		require.Contains(t, info.FieldConstraints, fieldToAdd)
 
 		// Renaming a non existing table should return an error
-		err = tx.AddColumn("bar", columnToAdd)
+		err = tx.AddField("bar", fieldToAdd)
 		require.EqualError(t, database.ErrTableNotFound, err.Error())
 
 		// Adding a existing field should return an error
-		err = tx.AddColumn("foo", ti.FieldConstraints[0])
+		err = tx.AddField("foo", ti.FieldConstraints[0])
 		require.Error(t, err)
 
 		// Adding a second primary key should return an error
-		columnToAdd = database.FieldConstraint{
+		fieldToAdd = database.FieldConstraint{
 			Path: parsePath(t, "foobar"), Type: document.IntegerValue, IsPrimaryKey: true,
 		}
-		err = tx.AddColumn("foo", columnToAdd)
+		err = tx.AddField("foo", fieldToAdd)
 		require.Error(t, err)
 	})
 }

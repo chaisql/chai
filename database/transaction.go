@@ -152,7 +152,7 @@ func (tx *Transaction) modifyTable(name string, f func(*TableInfo) error) error 
 	return tx.tableInfoStore.Insert(tx, name, ti)
 }
 
-func (tx *Transaction) AddColumn(name string, fc FieldConstraint) error {
+func (tx *Transaction) AddField(name string, fc FieldConstraint) error {
 	return tx.modifyTable(name, func(info *TableInfo) error {
 		for _, field := range info.FieldConstraints {
 			if field.Path.IsEqual(fc.Path) {
