@@ -66,8 +66,8 @@ type sortIterator struct {
 	direction scanner.Token
 }
 
-func (it *sortIterator) Iterate(ctx context.Context, fn func(d document.Document) error) error {
-	h, err := it.sortStream(ctx, it.st)
+func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
+	h, err := it.sortStream(it.st)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (it *sortIterator) Iterate(ctx context.Context, fn func(d document.Document
 // the chosen sorting order (ASC or DESC).
 // This function is not memory efficient as it's loading the entire stream in memory before
 // returning the k-smallest or k-largest elements.
-func (it *sortIterator) sortStream(ctx context.Context, st document.Stream) (heap.Interface, error) {
+func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 	path := document.ValuePath(it.sortField)
 
 	var h heap.Interface
@@ -105,7 +105,7 @@ func (it *sortIterator) sortStream(ctx context.Context, st document.Stream) (hea
 
 	heap.Init(h)
 
-	return h, st.Iterate(ctx, func(d document.Document) error {
+	return h, st.Iterate(func(d document.Document) error {
 		// It is possible to sort by any projected field
 		// or field of the original document.
 		v, err := path.GetValue(d)

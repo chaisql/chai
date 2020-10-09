@@ -67,7 +67,7 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(context.Background(), func(d document.Document) error {
+	err = stream.Iterate(func(d document.Document) error {
 		var u User
 
 		err = document.StructScan(d, &u)
@@ -83,14 +83,14 @@ func Example() {
 	}
 
 	// Count results
-	count, err := stream.Count(context.Background())
+	count, err := stream.Count()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Count:", count)
 
 	// Get first document from the results
-	d, err := stream.First(context.Background())
+	d, err := stream.First()
 	if err != nil {
 		panic(err)
 	}
@@ -127,7 +127,7 @@ func Example() {
 			return &fb, nil
 		}).
 		// Iterate on them
-		Iterate(context.Background(), func(d document.Document) error {
+		Iterate(func(d document.Document) error {
 			return enc.Encode(d)
 		})
 

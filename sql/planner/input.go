@@ -44,8 +44,8 @@ func (n *tableInputNode) String() string {
 	return fmt.Sprintf("Table(%s)", n.tableName)
 }
 
-func (n *tableInputNode) buildStream() (document.Stream, error) {
-	return document.NewStream(n.table), nil
+func (n *tableInputNode) buildStream(ctx context.Context) (document.Stream, error) {
+	return document.NewStream(n.table.Iterator(ctx)), nil
 }
 
 type indexInputNode struct {
@@ -99,8 +99,9 @@ func (n *indexInputNode) Bind(ctx context.Context, tx *database.Transaction, par
 	return
 }
 
-func (n *indexInputNode) buildStream() (document.Stream, error) {
+func (n *indexInputNode) buildStream(ctx context.Context) (document.Stream, error) {
 	return document.NewStream(&indexIterator{
+		ctx:    ctx,
 		tx:     n.tx,
 		tb:     n.table,
 		params: n.params,
@@ -121,6 +122,7 @@ type IndexIteratorOperator interface {
 }
 
 type indexIterator struct {
+	ctx              context.Context
 	tx               *database.Transaction
 	tb               *database.Table
 	params           []expr.Param
@@ -132,13 +134,13 @@ type indexIterator struct {
 
 var errStop = errors.New("stop")
 
-func (it indexIterator) Iterate(ctx context.Context, fn func(d document.Document) error) error {
+func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 	if it.e == nil {
 		var err error
 
 		if it.orderByDirection == scanner.DESC {
-			err = it.index.DescendLessOrEqual(ctx, document.Value{}, func(val, key []byte, isEqual bool) error {
-				d, err := it.tb.GetDocument(ctx, key)
+			err = it.index.DescendLessOrEqual(it.ctx, document.Value{}, func(val, key []byte, isEqual bool) error {
+				d, err := it.tb.GetDocument(it.ctx, key)
 				if err != nil {
 					return err
 				}
@@ -146,8 +148,8 @@ func (it indexIterator) Iterate(ctx context.Context, fn func(d document.Document
 				return fn(d)
 			})
 		} else {
-			err = it.index.AscendGreaterOrEqual(ctx, document.Value{}, func(val, key []byte, isEqual bool) error {
-				d, err := it.tb.GetDocument(ctx, key)
+			err = it.index.AscendGreaterOrEqual(it.ctx, document.Value{}, func(val, key []byte, isEqual bool) error {
+				d, err := it.tb.GetDocument(it.ctx, key)
 				if err != nil {
 					return err
 				}
@@ -167,5 +169,5 @@ func (it indexIterator) Iterate(ctx context.Context, fn func(d document.Document
 		return err
 	}
 
-	return it.iop.IterateIndex(ctx, it.index, it.tb, v, fn)
+	return it.iop.IterateIndex(it.ctx, it.index, it.tb, v, fn)
 }

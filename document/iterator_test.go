@@ -14,8 +14,7 @@ import (
 )
 
 func ExampleStream_First() {
-	ctx := context.Background()
-	db, err := genji.Open(ctx, ":memory:")
+	db, err := genji.Open(context.Background(), ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,7 +36,7 @@ func ExampleStream_First() {
 	}
 	defer result.Close()
 
-	d, err := result.First(ctx)
+	d, err := result.First()
 	if err != nil {
 		panic(err)
 	}
@@ -68,8 +67,7 @@ func ExampleStream_Iterate() {
 		}
 	}
 
-	ctx := context.Background()
-	db, err := genji.Open(ctx, ":memory:")
+	db, err := genji.Open(context.Background(), ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,7 +102,7 @@ func ExampleStream_Iterate() {
 	}
 	defer result.Close()
 
-	err = result.Iterate(ctx, func(d document.Document) error {
+	err = result.Iterate(func(d document.Document) error {
 		// Scan into a struct
 		var u User
 		err = document.StructScan(d, &u)
@@ -164,7 +162,7 @@ func TestIteratorToJSONArray(t *testing.T) {
 
 	it := document.NewIterator(docs...)
 	var buf bytes.Buffer
-	err := document.IteratorToJSONArray(context.Background(), &buf, it)
+	err := document.IteratorToJSONArray(&buf, it)
 	require.NoError(t, err)
 	require.Equal(t, `[{"a": 0}, {"a": 1}, {"a": 2}]`, buf.String())
 }

@@ -54,7 +54,7 @@ func (n *deletionNode) toStream(ctx context.Context, st document.Stream) (docume
 	for {
 		var i int
 
-		err := st.Iterate(ctx, func(d document.Document) error {
+		err := st.Iterate(func(d document.Document) error {
 			k, ok := d.(document.Keyer)
 			if !ok {
 				return errors.New("attempt to delete document without key")

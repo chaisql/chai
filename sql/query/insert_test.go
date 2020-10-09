@@ -44,8 +44,7 @@ func TestInsertStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				ctx := context.Background()
-				db, err := genji.Open(ctx, ":memory:")
+				db, err := genji.Open(context.Background(), ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
@@ -71,7 +70,7 @@ func TestInsertStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = document.IteratorToJSON(ctx, &buf, st)
+				err = document.IteratorToJSON(&buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -111,8 +110,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with struct param", func(t *testing.T) {
-		ctx := context.Background()
-		db, err := genji.Open(ctx, ":memory:")
+		db, err := genji.Open(context.Background(), ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -131,15 +129,14 @@ func TestInsertStmt(t *testing.T) {
 
 		require.NoError(t, err)
 		var buf bytes.Buffer
-		err = document.IteratorToJSON(ctx, &buf, res)
+		err = document.IteratorToJSON(&buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `{"a": "a", "b-b": "b"}`, buf.String())
 	})
 
 	t.Run("with types constraints", func(t *testing.T) {
 		// This test ensures that we can insert data into every supported types.
-		ctx := context.Background()
-		db, err := genji.Open(ctx, ":memory:")
+		db, err := genji.Open(context.Background(), ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
@@ -164,7 +161,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSON(ctx, &buf, res)
+		err = document.IteratorToJSON(&buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `{
 			"i": 10000000000,

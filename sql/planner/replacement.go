@@ -64,7 +64,7 @@ func (n *replacementNode) toStream(ctx context.Context, st document.Stream) (doc
 	for {
 		var i int
 
-		err = st.Iterate(ctx, func(d document.Document) error {
+		err = st.Iterate(func(d document.Document) error {
 			rk, ok := d.(document.Keyer)
 			if !ok || rk == nil {
 				return errors.New("attempt to replace document without key")

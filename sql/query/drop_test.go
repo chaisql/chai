@@ -11,8 +11,7 @@ import (
 )
 
 func TestDropTable(t *testing.T) {
-	ctx := context.Background()
-	db, err := genji.Open(ctx, ":memory:")
+	db, err := genji.Open(context.Background(), ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -34,7 +33,7 @@ func TestDropTable(t *testing.T) {
 	res, err := db.Query("SELECT table_name FROM __genji_tables")
 	require.NoError(t, err)
 	var tables []string
-	err = res.Iterate(ctx, func(d document.Document) error {
+	err = res.Iterate(func(d document.Document) error {
 		v, err := d.GetByField("table_name")
 		if err != nil {
 			return err

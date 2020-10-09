@@ -99,7 +99,7 @@ func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, e
 	}
 	defer res.Close()
 
-	r, err := res.First(db.Context)
+	r, err := res.First()
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, e
 	}
 	defer res.Close()
 
-	r, err := res.First(tx.Context)
+	r, err := res.First()
 	if err != nil {
 		return nil, err
 	}

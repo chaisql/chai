@@ -338,7 +338,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(ctx, func(d document.Document) error {
+	err := rs.res.Iterate(func(d document.Document) error {
 		select {
 		case <-ctx.Done():
 			return errStop

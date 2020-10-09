@@ -133,7 +133,7 @@ func nodeToStream(ctx context.Context, n Node) (st document.Stream, err error) {
 
 	switch t := n.(type) {
 	case inputNode:
-		st, err = t.buildStream()
+		st, err = t.buildStream(ctx)
 	case operationNode:
 		st, err = t.toStream(ctx, st)
 	default:
@@ -156,7 +156,7 @@ type Node interface {
 type inputNode interface {
 	Node
 
-	buildStream() (document.Stream, error)
+	buildStream(ctx context.Context) (document.Stream, error)
 }
 
 type operationNode interface {

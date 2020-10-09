@@ -45,8 +45,7 @@ func TestUpdateStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := context.Background()
-			db, err := genji.Open(ctx, ":memory:")
+			db, err := genji.Open(context.Background(), ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -72,7 +71,7 @@ func TestUpdateStmt(t *testing.T) {
 
 			var buf bytes.Buffer
 
-			err = document.IteratorToJSONArray(ctx, &buf, st)
+			err = document.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})
@@ -98,8 +97,7 @@ func TestUpdateStmt(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			ctx := context.Background()
-			db, err := genji.Open(ctx, ":memory:")
+			db, err := genji.Open(context.Background(), ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -121,7 +119,7 @@ func TestUpdateStmt(t *testing.T) {
 
 			var buf bytes.Buffer
 
-			err = document.IteratorToJSONArray(ctx, &buf, st)
+			err = document.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
 			require.JSONEq(t, tt.expected, buf.String())
 		}

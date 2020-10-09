@@ -233,7 +233,7 @@ func (t *Table) Indexes(ctx context.Context) (map[string]Index, error) {
 
 	indexes := make(map[string]Index)
 
-	err = document.NewStream(&tb).
+	err = document.NewStream(tb.Iterator(ctx)).
 		Filter(func(d document.Document) (bool, error) {
 			v, err := d.GetByField("table_name")
 			if err != nil {
@@ -242,7 +242,7 @@ func (t *Table) Indexes(ctx context.Context) (map[string]Index, error) {
 
 			return v.V.(string) == t.name, nil
 		}).
-		Iterate(ctx, func(d document.Document) error {
+		Iterate(func(d document.Document) error {
 			var opts IndexConfig
 			err := opts.ScanDocument(d)
 			if err != nil {
@@ -320,6 +320,13 @@ func (d *lazilyDecodedDocument) copyFromItem() error {
 	d.buf, err = d.item.ValueCopy(d.buf)
 
 	return err
+}
+
+// Iterator curries the ctx parameter of Iterate method and returns a document.Iterator.
+func (t *Table) Iterator(ctx context.Context) document.IteratorFunc {
+	return func(fn func(d document.Document) error) error {
+		return t.Iterate(ctx, fn)
+	}
 }
 
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.

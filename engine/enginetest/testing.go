@@ -945,7 +945,7 @@ func TestQueries(t *testing.T, builder Builder) {
 			SELECT * FROM test;
 		`)
 		require.NoError(t, err)
-		n, err := st.Count(ctx)
+		n, err := st.Count()
 		require.NoError(t, err)
 		require.Equal(t, 4, n)
 		err = st.Close()
@@ -957,7 +957,7 @@ func TestQueries(t *testing.T, builder Builder) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(ctx, func(d document.Document) error {
+			err = st.Iterate(func(d document.Document) error {
 				var a int
 				err := document.Scan(d, &a)
 				require.NoError(t, err)
@@ -1002,7 +1002,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(ctx, &buf, st)
+		err = document.IteratorToJSONArray(&buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 	})
@@ -1034,7 +1034,7 @@ func TestQueries(t *testing.T, builder Builder) {
 		`)
 		require.NoError(t, err)
 		defer st.Close()
-		n, err := st.Count(ctx)
+		n, err := st.Count()
 		require.NoError(t, err)
 		require.Equal(t, 2, n)
 	})
@@ -1059,7 +1059,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			`)
 			require.NoError(t, err)
 			defer st.Close()
-			n, err := st.Count(ctx)
+			n, err := st.Count()
 			require.NoError(t, err)
 			require.Equal(t, 4, n)
 			return nil
@@ -1105,7 +1105,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			require.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
-			err = document.IteratorToJSONArray(ctx, &buf, st)
+			err = document.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
 			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 			return nil
@@ -1131,7 +1131,7 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		`)
 			require.NoError(t, err)
 			defer st.Close()
-			n, err := st.Count(ctx)
+			n, err := st.Count()
 			require.NoError(t, err)
 			require.Equal(t, 2, n)
 			return nil
