@@ -131,6 +131,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `DELETE`, tok: scanner.DELETE, raw: `DELETE`},
 		{s: `DESC`, tok: scanner.DESC, raw: `DESC`},
 		{s: `DROP`, tok: scanner.DROP, raw: `DROP`},
+		{s: `FIELD`, tok: scanner.FIELD, raw: `FIELD`},
 		{s: `FROM`, tok: scanner.FROM, raw: `FROM`},
 		{s: `GROUP`, tok: scanner.GROUP, raw: `GROUP`},
 		{s: `INSERT`, tok: scanner.INSERT, raw: `INSERT`},

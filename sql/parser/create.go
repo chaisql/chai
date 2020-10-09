@@ -80,6 +80,7 @@ func (p *Parser) parseField(fc *database.FieldConstraint) (err error) {
 	fc.Path, err = p.parsePath()
 	if err != nil {
 		p.Unscan()
+		return err
 	}
 
 	fc.Type, err = p.parseType()
