@@ -129,7 +129,7 @@ func main() {
     defer res.Close()
 
     // Iterate over the results
-    err = res.Iterate(context.Background(), func(d document.Document) error {
+    err = res.Iterate(func(d document.Document) error {
         // When querying an explicit list of fields, you can use the Scan function to scan them
         // in order. Note that the types don't have to match exactly the types stored in the table
         // as long as they are compatible.
