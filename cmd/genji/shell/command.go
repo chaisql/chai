@@ -16,13 +16,39 @@ import (
 var commands = []struct {
 	Name        string
 	Options     string
+	DisplayName string
 	Description string
+	Aliases     []string
 }{
-	{".exit or exit", ``, "Exit this program."},
-	{".help or help", ``, "List all commands."},
-	{".tables", ``, "List names of tables."},
-	{".indexes", `[table_name]`, "Display all indexes or the indexes of the given table name."},
-	{".dump", `[table_name]`, "Dump database content or table content as SQL statements"},
+	{
+		Name:        ".exit",
+		DisplayName: ".exit or exit",
+		Description: "Exit this program.",
+		Aliases:     []string{"exit"},
+	},
+	{
+		Name:        ".help",
+		DisplayName: ".help or help",
+		Description: "List all commands.",
+		Aliases:     []string{"help"},
+	},
+	{
+		Name:        ".tables",
+		DisplayName: ".tables",
+		Description: "List names of tables.",
+	},
+	{
+		Name:        ".indexes",
+		Options:     "[table_name]",
+		DisplayName: ".indexes",
+		Description: "Display all indexes or the indexes of the given table name.",
+	},
+	{
+		Name:        ".dump",
+		Options:     "[table_name]",
+		DisplayName: ".dump",
+		Description: "Dump database content or table content as SQL statements.",
+	},
 }
 
 // runTablesCmd shows all tables.
@@ -116,21 +142,31 @@ func runHelpCmd() error {
 	for _, c := range commands {
 		// spaces indentation for readability.
 		spaces := 25
-		indent := spaces - len(c.Name) - len(c.Options)
-		fmt.Printf("%s %s %*s %s\n", c.Name, c.Options, indent, "", c.Description)
+		indent := spaces - len(c.DisplayName) - len(c.Options)
+		fmt.Printf("%s %s %*s %s\n", c.DisplayName, c.Options, indent, "", c.Description)
 	}
 
 	return nil
+}
+
+func shouldDisplaySuggestion(name, in string) bool {
+	// input should be at least half the command size to get a suggestion.
+	d := levenshtein.ComputeDistance(name, in)
+	return d < (len(name) / 2)
 }
 
 // displaySuggestions shows suggestions.
 func displaySuggestions(in string) error {
 	var suggestions []string
 	for _, c := range commands {
-		d := levenshtein.ComputeDistance(c.Name, in)
-		// input should be at least half the command size to get a suggestion.
-		if d < (len(c.Name) / 2) {
+		if shouldDisplaySuggestion(c.Name, in) {
 			suggestions = append(suggestions, c.Name)
+		}
+
+		for _, alias := range c.Aliases {
+			if shouldDisplaySuggestion(alias, in) {
+				suggestions = append(suggestions, alias)
+			}
 		}
 	}
 
