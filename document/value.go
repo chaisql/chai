@@ -250,10 +250,15 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		return strconv.AppendInt(nil, v.V.(int64), 10), nil
 	case DoubleValue:
 		f := v.V.(float64)
-		if f == float64(int(f)) {
-			return strconv.AppendFloat(nil, f, 'f', 1, 64), nil
+		abs := math.Abs(f)
+		fmt := byte('f')
+		if abs != 0 {
+			if abs < 1e-6 || abs >= 1e21 {
+				fmt = 'e'
+			}
 		}
-		return strconv.AppendFloat(nil, f, 'f', -1, 64), nil
+
+		return strconv.AppendFloat(nil, v.V.(float64), fmt, -1, 64), nil
 	case TextValue:
 		return []byte(strconv.Quote(v.V.(string))), nil
 	case BlobValue:
