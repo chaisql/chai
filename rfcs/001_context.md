@@ -14,7 +14,7 @@ The purpose of this RFC is not to describe in detail how each operation should b
 ### Open and New
 
 Opening a database relies on IO and should be cancelable, but after that operation is completed the database handle itself is long-lived and should not be cancelable, but closable with the `Close()` method.
-However, most of the time, we don't care about how long it takes.
+However, most of the time, we don't care about how long it takes to open a database.
 
 We currently have two ways of opening a database:
 
@@ -53,8 +53,6 @@ ng := memoryengine.New()
 // at startup, Genji performs some operations on the engine, this should be cancelable
 db, err := genji.New(ctx, ng)
 ```
-
-Storing the context for further uses prevents doing that and is not intuitive for a database handle that is supposed to be long-lived.
 
 ### genji.DB methods
 
@@ -118,6 +116,7 @@ ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 // only the Begin method takes the context.
 tx, err := ng.Begin(ctx, true)
 
+// Transaction methods don't need to take a context.
 st, err := tx.GetStore([]byte("foo"))
 err = st.Put([]byte("a"), []byte("b"))
 
