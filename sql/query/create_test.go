@@ -31,6 +31,7 @@ func TestCreateTable(t *testing.T) {
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
 		{"With primary key", "CREATE TABLE test(foo TEXT PRIMARY KEY)", false},
 		{"With field constraints", "CREATE TABLE test(foo.a[1][2] TEXT primary key, bar[4][0].bat INTEGER not null, baz not null)", false},
+		{"With auto increment", "CREATE TABLE test(foo INTEGER NOT NULL AUTO_INCREMENT)", false},
 		{"With no constraints", "CREATE TABLE test(a, b)", false},
 	}
 
@@ -156,6 +157,31 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 		})
 
+		t.Run("with configured auto increment", func(t *testing.T) {
+			err := db.Exec(ctx, `
+				CREATE TABLE test5(id INTEGER AUTO_INCREMENT(10, 5)
+				)
+			`)
+			require.NoError(t, err)
+
+			err = db.View(func(tx *genji.Tx) error {
+				tb, err := tx.GetTable("test5")
+				if err != nil {
+					return err
+				}
+				info, err := tb.Info()
+				if err != nil {
+					return err
+				}
+
+				require.Equal(t, []database.FieldConstraint{
+					{Path: parsePath(t, "id"), Type: document.IntegerValue, AutoIncrement: database.AutoIncrement{IsAutoIncrement: true, StartIndex: 10, CurrIndex: 5, IncBy: 5}},
+				}, info.FieldConstraints)
+				return nil
+			})
+			require.NoError(t, err)
+
+		})
 	})
 }
 

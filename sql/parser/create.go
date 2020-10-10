@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/sql/query"
@@ -159,6 +160,57 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 			}
 
 			fc.IsNotNull = true
+
+		case scanner.AUTOINCREMENT:
+			// Ensure it is a number value.
+			if !fc.Type.IsNumber() {
+				return newParseError(fc.Type.String(), []string{"integer", "double"}, pos)
+			}
+
+			// There are two ways to initialize AUTO_INCREMENT.
+			// With parenthesis AUTO_INCREMENT(Start, Increment), see SQL server
+			// Default value with SQL syntax.
+			if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.LPAREN {
+				// Parse start index.
+				tok, _, lit := p.ScanIgnoreWhitespace()
+				if tok != scanner.INTEGER {
+					return newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
+				}
+				index, err := strconv.ParseInt(lit, 10, 64)
+				if err != nil {
+					return err
+				}
+
+				tok, _, lit = p.ScanIgnoreWhitespace()
+				if tok != scanner.COMMA {
+					return newParseError(scanner.Tokstr(tok, lit), []string{","}, pos)
+				}
+
+				// Parse increment.
+				tok, _, lit = p.ScanIgnoreWhitespace()
+				if tok != scanner.INTEGER {
+					return newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
+				}
+
+				inc, err := strconv.ParseInt(lit, 10, 64)
+				if err != nil {
+					return err
+				}
+
+				if tok, _, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+					return newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+				}
+
+				// Subtract inc from index for the first insertion.
+				fc.AutoIncrement = database.AutoIncrement{IsAutoIncrement: true, StartIndex: index, CurrIndex: index - inc, IncBy: inc}
+				return nil
+			}
+
+			// Set Default value.
+			fc.AutoIncrement = database.AutoIncrement{IsAutoIncrement: true, StartIndex: 1, CurrIndex: 0, IncBy: 1}
+
+			p.Unscan()
+			return nil
 		default:
 			p.Unscan()
 			return nil

@@ -119,6 +119,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `ALTER`, tok: scanner.ALTER, raw: `ALTER`},
 		{s: `AS`, tok: scanner.AS, raw: `AS`},
 		{s: `ASC`, tok: scanner.ASC, raw: `ASC`},
+		{s: `AUTO_INCREMENT`, tok: scanner.AUTOINCREMENT, raw: `AUTO_INCREMENT`},
 		{s: `BY`, tok: scanner.BY, raw: `BY`},
 		{s: `BEGIN`, tok: scanner.BEGIN, raw: `BEGIN`},
 		{s: `CAST`, tok: scanner.CAST, raw: `CAST`},

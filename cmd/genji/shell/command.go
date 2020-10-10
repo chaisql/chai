@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/agnivade/levenshtein"
@@ -237,6 +238,16 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		if fc.IsNotNull {
 			buf.WriteString(" NOT NULL")
 		}
+
+		if fc.AutoIncrement.IsAutoIncrement {
+			buf.WriteString(" AUTO_INCREMENT")
+			// check if auto_increment is configured, 1 is the default value.
+			if fc.AutoIncrement.StartIndex != 1 || fc.AutoIncrement.IncBy != 1 {
+				buf.WriteString("(" + strconv.FormatInt(fc.AutoIncrement.StartIndex, 10) +", ")
+				buf.WriteString(strconv.FormatInt(fc.AutoIncrement.IncBy, 10) +")")
+			}
+		}
+
 	}
 
 	// Fields constraints close parenthesis.

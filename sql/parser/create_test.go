@@ -116,6 +116,24 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With configured auto increment", "CREATE TABLE test(id INTEGER NOT NULL AUTO_INCREMENT(10, 2))",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "id"), Type: document.IntegerValue, IsNotNull: true, AutoIncrement: database.AutoIncrement{IsAutoIncrement: true, StartIndex: 10, CurrIndex: 8, IncBy: 2}},
+					},
+				},
+			}, false},
+		{"With auto increment on bad type", "CREATE TABLE test(id TEXT AUTO_INCREMENT)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "id"), Type: document.TextValue, AutoIncrement: database.AutoIncrement{IsAutoIncrement: true, StartIndex: 1, CurrIndex: 0, IncBy: 1}},
+					},
+				},
+			}, true},
 		{"With integer aliases types",
 			"CREATE TABLE test(i int, ii int2, ei int8, m mediumint, s smallint, b bigint, t tinyint)",
 			query.CreateTableStmt{

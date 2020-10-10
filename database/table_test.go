@@ -337,8 +337,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, false},
-				{parsePath(t, "bar"), document.IntegerValue, false, false},
+				{parsePath(t, "foo"), document.IntegerValue, false, false, database.AutoIncrement{IsAutoIncrement: false}},
+				{parsePath(t, "bar"), document.IntegerValue, false, false, database.AutoIncrement{IsAutoIncrement: false}},
 			},
 		})
 		require.NoError(t, err)
@@ -375,7 +375,7 @@ func TestTableInsert(t *testing.T) {
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true},
+				{parsePath(t, "foo"), 0, false, true, database.AutoIncrement{IsAutoIncrement: false}},
 			},
 		})
 		require.NoError(t, err)
@@ -385,7 +385,7 @@ func TestTableInsert(t *testing.T) {
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true},
+				{parsePath(t, "foo"), document.IntegerValue, false, true, database.AutoIncrement{IsAutoIncrement: false}},
 			},
 		})
 		require.NoError(t, err)
@@ -429,7 +429,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo[1]"), 0, false, true},
+				{parsePath(t, "foo[1]"), 0, false, true, database.AutoIncrement{IsAutoIncrement: false}},
 			},
 		})
 		require.NoError(t, err)

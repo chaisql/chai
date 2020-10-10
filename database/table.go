@@ -60,6 +60,11 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, err
 	}
 
+	d, err = t.AutoIncrementHandler(d)
+	if err != nil {
+		return nil, err
+	}
+
 	key, err := t.generateKey(d)
 	if err != nil {
 		return nil, err
@@ -405,6 +410,37 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, docid)
 	return buf[:n], nil
+}
+
+// AutoIncrementHandler if the field auto increment is true the field is incremented.
+func (t *Table) AutoIncrementHandler(d document.Document) (document.Document, error) {
+	ti, err := t.Info()
+	if err != nil {
+		return d, err
+	}
+
+	fc := ti.getAutoIncrement()
+	if fc != nil {
+		fc.AutoIncrement.CurrIndex += fc.AutoIncrement.IncBy
+
+		var v document.Value
+		v.Type = fc.Type
+		v.V = fc.AutoIncrement.CurrIndex
+
+		ti.updateAutoIncrement(fc)
+
+		var fb document.FieldBuffer
+		err = fb.Copy(d)
+		if err != nil {
+			return nil, err
+		}
+
+		fb.Add(fc.Path.String(), v)
+
+		return &fb, nil
+	}
+
+	return d, nil
 }
 
 // ValidateConstraints check the table configuration for constraints and validates the document

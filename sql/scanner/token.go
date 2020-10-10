@@ -75,6 +75,7 @@ const (
 	ALTER
 	AS
 	ASC
+	AUTOINCREMENT
 	BEGIN
 	BY
 	CAST
@@ -193,6 +194,7 @@ var tokens = [...]string{
 	ALTER:       "ALTER",
 	AS:          "AS",
 	ASC:         "ASC",
+	AUTOINCREMENT: "AUTO_INCREMENT",
 	BEGIN:       "BEGIN",
 	COMMIT:      "COMMIT",
 	GROUP:       "GROUP",

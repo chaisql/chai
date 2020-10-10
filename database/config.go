@@ -13,22 +13,39 @@ import (
 
 const storePrefix = 't'
 
+// AutoIncrement describes auto increment configuration.
+type AutoIncrement struct {
+	IsAutoIncrement bool
+	StartIndex      int64
+	CurrIndex       int64
+	IncBy           int64
+}
+
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
 	Path         document.ValuePath
 	Type         document.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
+	AutoIncrement AutoIncrement
 }
 
 // ToDocument returns a document from f.
 func (f *FieldConstraint) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
+	fb := document.NewFieldBuffer()
+	fb.Add("is_auto_increment", document.NewBoolValue(f.AutoIncrement.IsAutoIncrement))
+	fb.Add("start_index", document.NewIntegerValue(f.AutoIncrement.StartIndex))
+	fb.Add("current_index", document.NewIntegerValue(f.AutoIncrement.CurrIndex))
+	fb.Add("increment", document.NewIntegerValue(f.AutoIncrement.IncBy))
+
 	buf.Add("path", document.NewArrayValue(valuePathToArray(f.Path)))
 	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
+	buf.Add("auto_increment", document.NewDocumentValue(fb))
+
 	return buf
 }
 
@@ -61,6 +78,39 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 		return err
 	}
 	f.IsNotNull = v.V.(bool)
+
+	v, err = d.GetByField("auto_increment")
+	if err != nil {
+		return err
+	}
+
+	var fb document.FieldBuffer
+	err = fb.ScanDocument(v.V.(document.Document))
+
+	v, err = fb.GetByField("is_auto_increment")
+	if err != nil {
+		return err
+	}
+	f.AutoIncrement.IsAutoIncrement = v.V.(bool)
+
+	v, err = fb.GetByField("start_index")
+	if err != nil {
+		return err
+	}
+	f.AutoIncrement.StartIndex = v.V.(int64)
+
+	v, err = fb.GetByField("current_index")
+	if err != nil {
+		return err
+	}
+	f.AutoIncrement.CurrIndex = v.V.(int64)
+
+	v, err = fb.GetByField("increment")
+	if err != nil {
+		return err
+	}
+	f.AutoIncrement.IncBy = v.V.(int64)
+
 	return nil
 }
 
@@ -88,6 +138,26 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 	}
 
 	return nil
+}
+
+// getAutoIncrement returns the field constraint of the auto_increment.
+func (ti *TableInfo) getAutoIncrement() *FieldConstraint {
+	for _, f := range ti.FieldConstraints {
+		if f.AutoIncrement.IsAutoIncrement {
+			return &f
+		}
+	}
+
+	return nil
+}
+
+// updateAutoIncrement set the autoIncrement index value. It can be used for reset.
+func (ti *TableInfo) updateAutoIncrement(fc *FieldConstraint) {
+	for i, f := range ti.FieldConstraints {
+		if f.Path.String() == fc.Path.String() && f.AutoIncrement.IsAutoIncrement {
+			ti.FieldConstraints[i].AutoIncrement.CurrIndex = fc.AutoIncrement.CurrIndex
+		}
+	}
 }
 
 // ToDocument turns ti into a document.

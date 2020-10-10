@@ -179,6 +179,112 @@ func TestInsertStmt(t *testing.T) {
 		  }`, buf.String())
 	})
 
+	t.Run("with types auto increment", func(t *testing.T) {
+		// This test ensures that we can insert data into every supported types.
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(ctx, `CREATE TABLE test(i integer auto_increment, db double
+		)`)
+		require.NoError(t, err)
+
+		err = db.Exec(ctx, `
+			INSERT INTO test
+			VALUES {
+				 db: 21.21
+			}`)
+		require.NoError(t, err)
+
+		res, err := db.Query(ctx, "SELECT * FROM test")
+		defer res.Close()
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		err = document.IteratorToJSON(&buf, res)
+		require.NoError(t, err)
+		require.JSONEq(t, `{
+			"i": 1,
+			"db": 21.21
+		  }`, buf.String())
+	})
+
+	t.Run("with multiple insertion of autoincrement", func(t *testing.T) {
+		// This test ensures that we can insert data into every supported types.
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(ctx, `CREATE TABLE test(id integer auto_increment, db double
+		)`)
+		require.NoError(t, err)
+
+		f := 1.0
+		for i := 0; i < 10; i++ {
+			q := fmt.Sprintf(`INSERT INTO test VALUES { db: %.2f }`, f)
+			err = db.Exec(ctx, q)
+			require.NoError(t, err)
+			f++
+		}
+
+		d, err := db.QueryDocument(ctx, "SELECT Max(id) FROM test")
+		require.NoError(t, err)
+		v, err := d.GetByField("Max(id)")
+		require.NoError(t, err)
+		require.Equal(t, document.NewIntegerValue(10), v)
+	})
+
+	t.Run("with configured auto increment", func(t *testing.T) {
+		// This test ensures that we can insert data into every supported types.
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(ctx, `CREATE TABLE test(i integer auto_increment(10, 5), db double
+		)`)
+		require.NoError(t, err)
+
+		err = db.Exec(ctx, `
+			INSERT INTO test
+			VALUES {
+				 db: 21.21
+			}`)
+		require.NoError(t, err)
+
+		res, err := db.Query(ctx, "SELECT * FROM test")
+		defer res.Close()
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		err = document.IteratorToJSON(&buf, res)
+		require.NoError(t, err)
+		require.JSONEq(t, `{
+			"i": 10,
+			"db": 21.21
+		  }`, buf.String())
+	})
+
+	t.Run("with errored insertion auto increment", func(t *testing.T) {
+		// This test ensures that we can insert data into every supported types.
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(ctx, `CREATE TABLE test(i integer auto_increment, 
+			 db double,
+			)
+		`)
+		require.NoError(t, err)
+
+		err = db.Exec(ctx, `
+			INSERT INTO test
+			VALUES {
+				 i: 2
+				 db: 21.21
+			}`)
+		require.Error(t, err)
+	})
+
 	t.Run("with tests that require an error", func(t *testing.T) {
 		tests := []struct {
 			name            string
