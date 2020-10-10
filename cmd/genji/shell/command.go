@@ -104,6 +104,7 @@ func displayAllIndexes(db *genji.DB) error {
 
 		return nil
 	})
+
 }
 
 // runIndexesCmd executes all indexes of the database or all indexes of the given table.

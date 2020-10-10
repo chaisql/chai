@@ -121,7 +121,7 @@ func TestCreateTable(t *testing.T) {
 		t.Run("with variable aliases data types", func(t *testing.T) {
 			ctx := context.Background()
 
-			err = db.Exec(ctx,`
+			err = db.Exec(ctx, `
 				CREATE TABLE test2(
 					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] VARCHAR(255) NOT NULL, bar[4][0].bat tinyint,
 				 	dp double precision, r real, b bigint, m mediumint, eight int8, ii int2, c character(64)
