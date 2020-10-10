@@ -56,54 +56,25 @@ db, err := genji.New(ctx, ng)
 
 ### genji.DB methods
 
-Each of these must be cancelable independently, at any given time while the database handle is opened.
-Because cancelation is handled independently from the database handle, it is very intuitive and doesn't require preparing a different handle to be able to cancel a query.
+By default, database methods must not expect a context. This avoids context pollution when cancelation is not necessary.
+However, when it is necessary, a new handle can be created to use a specific context, using a new method named `WithContext`.
 
 ```go
-db.Exec(ctx, "INSERT INTO foo(a) VALUES (1)")
-db.Query(ctx, "SELECT 1")
-db.QueryDocument(ctx, "SELECT 1")
-```
+// non-cancelable queries
+db.Exec("INSERT INTO foo(a) VALUES (1)")
+db.Query("SELECT 1")
+db.QueryDocument("SELECT 1")
 
-Since a transaction is short-lived and atomic, contexts must be used to cancel the whole transaction by passing a context to `Begin`.
-Any call to the transaction handle methods must return an error and rollback the transaction if the context is canceled.
-
-```go
-tx, _ := db.Begin(ctx, true)
-defer tx.Rollback()
-
-tx.Exec("INSERT INTO foo(a) VALUES (1)")
-tx.Query("SELECT 1")
-tx.QueryDocument("SELECT 1")
-
-tx.Commit()
-```
-
-This also applies to `db.View` and `db.Update`:
-
-```go
-db.View(ctx, func(tx *Tx) error) error {
-    tx.Exec("INSERT INTO foo(a) VALUES (1)")
-    tx.Query("SELECT 1")
-    tx.QueryDocument("SELECT 1")
-})
-
-db.Update(ctx, func(tx *Tx) error) error {
-    tx.Exec("INSERT INTO foo(a) VALUES (1)")
-    tx.Query("SELECT 1")
-    tx.QueryDocument("SELECT 1")
-})
-```
-
-### The case of Close
-
-I don't think we should pass a context to `db.Close()`. Closing a database handle can take time, depending on the type of engine used and one might want to control that.
-But most of the time this is not important, so I'd rather add a specialized method.
-
-```go
 ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 
-err = db.Shutdown(ctx)
+// WithContext returns a cancelable database handle
+db.WithContext(ctx).Exec("INSERT INTO foo (a) VALUES (1)")
+
+dbx := db.WithContext(ctx)
+
+// any called dbx method must return an error if the context is canceled.
+dbx.Query("SELECT 1")
+dbx.Begin(true)
 ```
 
 ## Engines
