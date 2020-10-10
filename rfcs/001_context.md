@@ -5,15 +5,15 @@
 
 ## General approach
 
-I would like to avoid context pollution as much as possible, but without restricting the user flexibility. It is important to be able to control and cancel operations but I also believe that there are times where we don't really care about that.
-I want Genji to be simple to use and intuitive, and for that I prefer to expand a bit more the surface API, rather than making the existing ones more complete and complex.
-The purpose of this RFC is not to describe in details how each individual operation should be cancelled but rather which APIs should expect a context parameter.
+I would like to avoid context pollution as much as possible, but without restricting user flexibility. It is important to be able to control and cancel operations but I also believe that there are times where we don't care about that.
+I want Genji to be simple to use and intuitive, and for that, I prefer to expand a bit more the surface API, rather than making the existing ones more complete and complex.
+The purpose of this RFC is not to describe in detail how each operation should be canceled but rather which APIs should expect a context parameter.
 
 ## Genji package and database lifecycle
 
 ### Open and New
 
-Opening a database relies on IO and should be cancelable, but after that operation is completed the database handle itself is long lived and should not be cancelable, but closable with the `Close()` method.
+Opening a database relies on IO and should be cancelable, but after that operation is completed the database handle itself is long-lived and should not be cancelable, but closable with the `Close()` method.
 However, most of the time, we don't care about how long it takes.
 
 We currently have two ways of opening a database:
@@ -34,13 +34,11 @@ if err != nil {
 defer db.Close()
 ```
 
-It is very simple to write and to use. I think it should remain as-is.
+It is very simple to write and to use, it must remain as-is.
 
-If users want more power, there is the `genji.New` function.
+If users want more power, they must use the `genji.New` function.
 
 Opening a database can take time, even for Bolt or Badger, because accessing disks is unbounded (slow disks, NFS, etc.). It makes sense to have this a cancelable operation.
-
-
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
@@ -56,11 +54,11 @@ ng := memoryengine.New()
 db, err := genji.New(ctx, ng)
 ```
 
-Storing the context for further uses prevents doing that and is not really intuitive for a database handle that is supposed to be long lived.
+Storing the context for further uses prevents doing that and is not intuitive for a database handle that is supposed to be long-lived.
 
 ### genji.DB methods
 
-Each of these should be cancelable independently, at any given time while the database handle is opened.
+Each of these must be cancelable independently, at any given time while the database handle is opened.
 Because cancelation is handled independently from the database handle, it is very intuitive and doesn't require preparing a different handle to be able to cancel a query.
 
 ```go
@@ -69,8 +67,8 @@ db.Query(ctx, "SELECT 1")
 db.QueryDocument(ctx, "SELECT 1")
 ```
 
-Since a transaction is short-lived and atomic, contexts could be used to cancel the whole transaction by passing a context to `Begin`.
-Any call to the transaction handle methods would return an error if the context is canceled.
+Since a transaction is short-lived and atomic, contexts must be used to cancel the whole transaction by passing a context to `Begin`.
+Any call to the transaction handle methods must return an error and rollback the transaction if the context is canceled.
 
 ```go
 tx, _ := db.Begin(ctx, true)
@@ -112,7 +110,7 @@ err = db.Shutdown(ctx)
 
 ## Engines
 
-Since almost every engine action is done from within a transaction, cancelation must be control by the context passed to the `Begin` method. Any action done on a canceled transaction must return an error.
+Since almost every engine action is done from within a transaction, cancelation must be controlled by the context passed to the `Begin` method. Any action done on a canceled transaction must return an error.
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
@@ -129,7 +127,7 @@ defer it.Close()
 
 ### Packages that use an engine
 
-Since the context is passed only to `engine.Engine#Begin`, only the functions that explicitely need to open a transaction must expect a context themselves.
+Since the context is passed only to `engine.Engine#Begin`, only the functions that explicitly need to open a transaction must expect a context themselves.
 
 ```go
 package database
@@ -140,7 +138,7 @@ func (db *Database) BeginTx(ctx context.Context, writable bool) (*Transaction, e
 
 Any function using the returned transaction must not expect a context in their signature.
 
-However, there might be some exceptions: If a function performs a long running operation or relies on IO itself, it must expect a context.
+However, there might be some exceptions: If a function performs a long-running operation or relies on IO itself, it must expect a context.
 
 ### Other packages
 
