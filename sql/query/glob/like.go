@@ -69,11 +69,18 @@ func equalFold(sr, tr rune) bool {
 func MatchLike(pattern, s string) bool {
 	var prevEscape bool
 
-	for len(pattern) != 0 {
+	var w, t string // backtracking state
+
+	for len(s) != 0 {
+		if len(pattern) == 0 {
+			return false
+		}
+
 		// Read (and consume) the next character from the input pattern.
 		var p rune
 		p, pattern = readRune(pattern)
 
+	backtrack:
 		// There are now 4 possibilities:
 		//
 		// 1. p is an unescaped match-all character "%",
@@ -109,13 +116,9 @@ func MatchLike(pattern, s string) bool {
 				return true
 			}
 
-			for len(s) != 0 {
-				if MatchLike(pattern, s) {
-					return true
-				}
-				s = skipRune(s)
-			}
-			return false
+			// Save state and match next character.
+			//
+			w, t = pattern, s
 		} else if p == matchOne && !prevEscape {
 			// Case 2.
 			if len(s) == 0 {
@@ -127,14 +130,38 @@ func MatchLike(pattern, s string) bool {
 			prevEscape = true
 		} else {
 			// Case 4.
+			prevEscape = false
+
 			var r rune
 			r, s = readRune(s)
 			if !equalFold(p, r) {
-				return false
+				if len(w) == 0 {
+					// Nothing to backtrack.
+					return false
+				}
+				// Keep the pattern and skip rune in input.
+				// Note that we only backtrack to matchAll.
+				p, pattern = matchAll, w
+				s = skipRune(t)
+				goto backtrack
 			}
-			prevEscape = false
 		}
 	}
 
-	return len(s) == 0
+	// Check that the rest of the pattern is matchAll.
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] == matchAll {
+			continue
+		}
+
+		// Allow escaping end of string.
+		if i+1 == len(pattern) {
+			if pattern[i] == matchEsc {
+				return true
+			}
+		}
+
+		return false
+	}
+	return true
 }
