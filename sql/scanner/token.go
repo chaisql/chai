@@ -252,7 +252,6 @@ var tokens = [...]string{
 	TYPETINYINT:   "TINYINT",
 	TYPEREAL:      "REAL",
 	TYPEVARCHAR:   "VARCHAR",
-
 }
 
 var keywords map[string]Token
