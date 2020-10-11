@@ -73,7 +73,7 @@ func MatchLike(pattern, s string) bool {
 
 	for len(s) != 0 {
 		if len(pattern) == 0 {
-			return false
+			return prevEscape
 		}
 
 		// Read (and consume) the next character from the input pattern.

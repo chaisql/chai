@@ -37,6 +37,9 @@ func TestMatchLike(t *testing.T) {
 
 		// Escape
 		{"", "\\", true},
+		{"x", "%\\", true},
+		{"x", "_\\", true},
+		{"x", "_\\x", false},
 		{"%", "\\%", true},
 		{"_", "\\_", true},
 		{"x", "\\%", false},
