@@ -109,6 +109,7 @@ func TestMatchLike(t *testing.T) {
 		{"ab", "_%_", true},
 		{"ab", "%_%_%", true},
 		{"aaaa", "_aa%", true},
+		{"aaaa", "%aa_", true},
 		{"abc", "_%%_%_", true},
 		{"abc", "_%%_%&_", false},
 		{"abcd", "_b%__", true},
