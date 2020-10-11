@@ -31,6 +31,8 @@
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/genjidb/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
+![Fuzz](https://github.com/genjidb/genji/workflows/Fuzz/badge.svg)
+
 Genji is a schemaless database that allows running SQL queries on documents.
 
 Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc](https://pkg.go.dev/github.com/genjidb/genji) and the [usage example](#usage) in the README to get started quickly.
