@@ -117,6 +117,45 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 		})
+
+		t.Run("with variable aliases data types", func(t *testing.T) {
+			ctx := context.Background()
+
+			err = db.Exec(ctx, `
+				CREATE TABLE test2(
+					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] VARCHAR(255) NOT NULL, bar[4][0].bat tinyint,
+				 	dp double precision, r real, b bigint, m mediumint, eight int8, ii int2, c character(64)
+				)
+			`)
+			require.NoError(t, err)
+
+			err = db.View(func(tx *genji.Tx) error {
+				tb, err := tx.GetTable("test2")
+				if err != nil {
+					return err
+				}
+				info, err := tb.Info()
+				if err != nil {
+					return err
+				}
+
+				require.Equal(t, []database.FieldConstraint{
+					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
+					{Path: parsePath(t, "dp"), Type: document.DoubleValue},
+					{Path: parsePath(t, "r"), Type: document.DoubleValue},
+					{Path: parsePath(t, "b"), Type: document.IntegerValue},
+					{Path: parsePath(t, "m"), Type: document.IntegerValue},
+					{Path: parsePath(t, "eight"), Type: document.IntegerValue},
+					{Path: parsePath(t, "ii"), Type: document.IntegerValue},
+					{Path: parsePath(t, "c"), Type: document.TextValue},
+				}, info.FieldConstraints)
+				return nil
+			})
+			require.NoError(t, err)
+		})
+
 	})
 }
 

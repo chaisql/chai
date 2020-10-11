@@ -208,11 +208,45 @@ func TestInsertStmt(t *testing.T) {
 			{"double / not null with type constraint", "DOUBLE NOT NULL", `{}`},
 			{"double / not null with non-respected type constraint ", "DOUBLE NOT NULL", `{a: [1,2,3]}`},
 
+			{"double precision", "DOUBLE PRECISION", `{a: "foo"}`},
+			{"double precision / not null with type constraint", "DOUBLE PRECISION NOT NULL", `{}`},
+			{"double precision / not null with non-respected type constraint ", "DOUBLE PRECISION NOT NULL", `{a: [1,2,3]}`},
+
+			{"real", "REAL", `{a: "foo"}`},
+			{"real / not null with type constraint", "REAL NOT NULL", `{}`},
+			{"real / not null with non-respected type constraint ", "REAL NOT NULL", `{a: [1,2,3]}`},
+
 			{"integer", "INTEGER", `{a: "foo"}`},
 			{"integer / not null with type constraint", "INTEGER NOT NULL", `{}`},
 			{"integer / not null with non-respected type constraint ", "INTEGER NOT NULL", `{a: [1,2,3]}`},
 
+			{"int2", "INT2", `{a: "foo"}`},
+			{"int2 / not null with type constraint", "INT2 NOT NULL", `{}`},
+			{"int2 / not null with non-respected type constraint ", "INT NOT NULL", `{a: [1,2,3]}`},
+
+			{"int8", "INT8", `{a: "foo"}`},
+			{"int8 / not null with type constraint", "INT8 NOT NULL", `{}`},
+			{"int8 / not null with non-respected type constraint ", "INT8 NOT NULL", `{a: [1,2,3]}`},
+
+			{"tinyint", "TINYINT", `{a: "foo"}`},
+			{"tinyint / not null with type constraint", "TINYINT NOT NULL", `{}`},
+			{"tinyint / not null with non-respected type constraint ", "TINYINT NOT NULL", `{a: [1,2,3]}`},
+
+			{"bigint", "BIGINT", `{a: "foo"}`},
+			{"bigint / not null with type constraint", "BIGINT NOT NULL", `{}`},
+			{"bigint / not null with non-respected type constraint ", "BIGINT NOT NULL", `{a: [1,2,3]}`},
+
+			{"smallint", "SMALLINT", `{a: "foo"}`},
+			{"smallint / not null with type constraint", "SMALLINT NOT NULL", `{}`},
+			{"smallint / not null with non-respected type constraint ", "SMALLINT NOT NULL", `{a: [1,2,3]}`},
+
+			{"mediumint", "MEDIUMINT", `{a: "foo"}`},
+			{"mediumint / not null with type constraint", "MEDIUMINT NOT NULL", `{}`},
+			{"mediumint / not null with non-respected type constraint ", "MEDIUMINT NOT NULL", `{a: [1,2,3]}`},
+
 			{"text / not null with type constraint", "TEXT NOT NULL", `{}`},
+			{"varchar / not null with type constraint", "VARCHAR(255) NOT NULL", `{}`},
+			{"character / not null with type constraint", "CHARACTER(64) NOT NULL", `{}`},
 		}
 
 		db, err := genji.Open(":memory:")

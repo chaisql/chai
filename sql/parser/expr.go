@@ -286,29 +286,52 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 	}
 }
 
-func (p *Parser) parseType() document.ValueType {
+func (p *Parser) parseType() (document.ValueType, error) {
 	tok, _, _ := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEARRAY:
-		return document.ArrayValue
+		return document.ArrayValue, nil
 	case scanner.TYPEBLOB:
-		return document.BlobValue
+		return document.BlobValue, nil
 	case scanner.TYPEBOOL:
-		return document.BoolValue
+		return document.BoolValue, nil
 	case scanner.TYPEBYTES:
-		return document.BlobValue
+		return document.BlobValue, nil
 	case scanner.TYPEDOCUMENT:
-		return document.DocumentValue
+		return document.DocumentValue, nil
+	case scanner.TYPEREAL:
+		return document.DoubleValue, nil
 	case scanner.TYPEDOUBLE:
-		return document.DoubleValue
-	case scanner.TYPEINTEGER:
-		return document.IntegerValue
+		tok, _, _ := p.ScanIgnoreWhitespace()
+		if tok == scanner.PRECISION {
+			return document.DoubleValue, nil
+		}
+		p.Unscan()
+		return document.DoubleValue, nil
+	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
+		 scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
+		return document.IntegerValue, nil
 	case scanner.TYPETEXT:
-		return document.TextValue
+		return document.TextValue, nil
+	case scanner.TYPEVARCHAR, scanner.TYPECHARACTER:
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
+			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+		}
+		
+		// The value between parentheses is not used.
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTEGER {
+			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
+		}
+
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+			return 0, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		}
+
+		return document.TextValue, nil
 	}
 
 	p.Unscan()
-	return 0
+	return 0, nil
 }
 
 // parseDocument parses a document
@@ -545,7 +568,11 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// Parse require typename.
-	tp := p.parseType()
+	tp, err := p.parseType()
+	if err != nil {
+		return nil, err
+	}
+
 	if tp == 0 {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		p.Unscan()

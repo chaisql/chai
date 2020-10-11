@@ -94,7 +94,10 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 			break
 		}
 
-		fc.Type = p.parseType()
+		fc.Type, err = p.parseType()
+		if err != nil {
+			return err
+		}
 
 		err = p.parseFieldConstraint(&fc)
 		if err != nil {

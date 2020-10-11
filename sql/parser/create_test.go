@@ -116,6 +116,58 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With integer aliases types",
+			"CREATE TABLE test(i int, ii int2, ei int8, m mediumint, s smallint, b bigint, t tinyint)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "i"), Type: document.IntegerValue},
+						{Path: parsePath(t, "ii"), Type: document.IntegerValue},
+						{Path: parsePath(t, "ei"), Type: document.IntegerValue},
+						{Path: parsePath(t, "m"), Type: document.IntegerValue},
+						{Path: parsePath(t, "s"), Type: document.IntegerValue},
+						{Path: parsePath(t, "b"), Type: document.IntegerValue},
+						{Path: parsePath(t, "t"), Type: document.IntegerValue},
+					},
+				},
+			}, false},
+		{"With double aliases types",
+			"CREATE TABLE test(dp DOUBLE PRECISION, r real, d double)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "dp"), Type: document.DoubleValue},
+						{Path: parsePath(t, "r"), Type: document.DoubleValue},
+						{Path: parsePath(t, "d"), Type: document.DoubleValue},
+					},
+				},
+			}, false},
+
+		{"With text aliases types",
+			"CREATE TABLE test(v VARCHAR(255), c CHARACTER(64), t TEXT)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "v"), Type: document.TextValue},
+						{Path: parsePath(t, "c"), Type: document.TextValue},
+						{Path: parsePath(t, "t"), Type: document.TextValue},
+					},
+				},
+			}, false},
+
+		{"With errored text aliases types",
+			"CREATE TABLE test(v VARCHAR(1 IN [1, 2, 3] AND foo > 4) )",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "v"), Type: document.TextValue},
+					},
+				},
+			}, true},
 	}
 
 	for _, test := range tests {
