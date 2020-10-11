@@ -426,7 +426,7 @@ func (op cmpOp) compare(l, r document.Value) (bool, error) {
 func IsComparisonOperator(op Operator) bool {
 	switch op.(type) {
 	case eqOp, neqOp, gtOp, gteOp, ltOp, lteOp,
-		isOp, isNotOp, inOp, notInOp, likeOp:
+		isOp, isNotOp, inOp, notInOp, likeOp, notLikeOp:
 		return true
 	}
 
