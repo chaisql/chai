@@ -72,22 +72,20 @@ func MatchLike(pattern, s string) bool {
 	var w, t string // backtracking state
 
 	for len(s) != 0 {
-		if len(pattern) == 0 {
-			return prevEscape
-		}
-
 		// Read (and consume) the next character from the input pattern.
 		var p rune
+		if len(pattern) == 0 {
+			goto backtrack
+		}
 		p, pattern = readRune(pattern)
 
-	backtrack:
 		// There are now 4 possibilities:
 		//
 		// 1. p is an unescaped match-all character "%",
 		// 2. p is an unescaped match-one character "_",
 		// 3. p is an unescaped escape character, or
 		// 4. p is to be handled as an ordinary character
-		//
+	loop:
 		if p == matchAll && !prevEscape {
 			// Case 1.
 			var c byte
@@ -135,17 +133,21 @@ func MatchLike(pattern, s string) bool {
 			var r rune
 			r, s = readRune(s)
 			if !equalFold(p, r) {
-				if len(w) == 0 {
-					// Nothing to backtrack.
-					return false
-				}
-				// Keep the pattern and skip rune in input.
-				// Note that we only backtrack to matchAll.
-				p, pattern = matchAll, w
-				s = skipRune(t)
 				goto backtrack
 			}
 		}
+		continue
+
+	backtrack:
+		if len(w) == 0 {
+			// Nothing to backtrack.
+			return prevEscape
+		}
+		// Keep the pattern and skip rune in input.
+		// Note that we only backtrack to matchAll.
+		p, pattern = matchAll, w
+		s = skipRune(t)
+		goto loop
 	}
 
 	// Check that the rest of the pattern is matchAll.
