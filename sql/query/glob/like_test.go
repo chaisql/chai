@@ -11,18 +11,35 @@ func TestMatchLike(t *testing.T) {
 	}{
 		// Empty
 		{"", "", true},
-		{"abc", "", false},
+		{"", "x", false},
+		{"x", "", false},
 
 		// One
-		{"x", "_", true},
-		{"xx", "_", false},
 		{"", "_", false},
+		{"x", "_", true},
+		{"x", "__", false},
+		{"xx", "_", false},
+		{"bLah", "bL_h", true},
+		{"bLaaa", "bLa_", false},
+		{"bLah", "bLa_", true},
+		{"bLaH", "_Lah", true},
+		{"bLaH", "_LaH", true},
 
-		// Any
+		// All
+		{"", "%", true},
 		{"abc", "%", true},
 		{"", "%", true},
+		{"abc", "%%", true},
+
+		// Any and one
+		{"x", "%_", true},
+		{"", "%_", false},
 
 		// Escape
+		{"", "\\", true},
+		{"x", "%\\", true},
+		{"x", "_\\", true},
+		{"x", "_\\x", false},
 		{"%", "\\%", true},
 		{"_", "\\_", true},
 		{"x", "\\%", false},
@@ -37,14 +54,29 @@ func TestMatchLike(t *testing.T) {
 
 		// Exact
 		{"abc", "abc", true},
-		{"aBc", "AbC", false},
+		{"aBc", "AbC", true},
 		{"abc", "def", false},
 
+		// Case folding
+		{"K", "\u212A", true}, // K → k → U+212A
+		{"\u212A", "k", true},
+
+		// Invalid UTF-8
+		{"\xFF", "\xFF", true},
+		{"\xFA", "\xFB", false},
+		{"\xFF", "_", true},
+		{"\xFF", "\xFF_", false},
+		{"\xFF", "%", true},
+		{"\xFF", "%\xFF%", true},
+		{"\xFF", "x", false},
+
 		// Prefix
+		{"abc", "abc%", true},
 		{"abcdef", "abc%", true},
 		{"abcdef", "def%", false},
 
 		// Suffix
+		{"abc", "%abc", true},
 		{"defabc", "%abc", true},
 		{"defabc", "%def", false},
 
@@ -54,10 +86,98 @@ func TestMatchLike(t *testing.T) {
 		{"abc", "b", false},
 
 		// Complex
+		{"abc", "ab%d", false},
 		{"ABCD", "%B%C%", true},
-		{"ABCD", "_%B%C%_", true},
 		{"ABxCxxD", "a%b%c%d", true},
+		{"a", "__", false},
+		{"ab", "__", true},
+		{"abc", "___", true},
+		{"abcd", "____", true},
+		{"abc", "____", false},
+		{"abcd", "_b__", true},
+		{"abcd", "_a__", false},
+		{"abcd", "__c_", true},
+		{"abcd", "__d_", false},
+
+		// Mixed
+		{"", "%_", false},
+		{"", "_%", false},
+		{"a", "%_", true},
+		{"a", "%__", false},
+		{"ab", "%_", true},
+		{"abc", "%_", true},
+		{"ab", "_%_", true},
+		{"ab", "%_%_%", true},
+		{"aaaa", "_aa%", true},
+		{"aaaa", "%aa_", true},
+		{"abc", "_%%_%_", true},
+		{"abc", "_%%_%&_", false},
+		{"abcd", "_b%__", true},
+		{"abcd", "_a%__", false},
+		{"abcd", "_%%_c_", true},
+		{"abcd", "_%%_d_", false},
+		{"abcde", "_b_d%_", true},
+		{"abcde", "_%b%_%d%_", true},
+		{"abcd", "_%b%c%_", true},
 		{"ABxCxxD", "%__B", false},
+		{"abBbc", "%b_c", true},
+
+		// Longer strings
+		{
+			"%abc%",
+			"%%\\%a%b%c\\%%%",
+			true,
+		},
+		{
+			"aaabbaabbaab",
+			"%aabbaa%a%",
+			true,
+		},
+		{
+			"abacaaadabacababacaaabadagabacaba",
+			"%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%",
+			true,
+		},
+		{
+			"aaaaaaaaaaaaaaaa",
+			"%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%",
+			false,
+		},
+		{
+			"%a%b%c%",
+			"%%%%%%%%a%%%%\\%%%%b%%%%\\%%%%c%%%%%%%%",
+			true,
+		},
+		{
+			"a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%",
+			"a%a\\%a%a\\%a%a\\%a%a\\%a%a\\%a%a\\%a%a\\%a%a\\%a%",
+			true,
+		},
+		{
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
+			"a%a%a%a%a%a%aa%aaa%a%a%b",
+			true,
+		},
+		{
+			"abababababababababababababababababababaacacacacacacacadaeafagahaiajakalaaaaaaaaaaaaaaaaaffafagaagggagaaaaaaaab",
+			"%a%b%ba%ca%a%aa%aaa%fa%ga%b%",
+			true,
+		},
+		{
+			"abababababababababababababababababababaacacacacacacacadaeafagahaiajakalaaaaaaaaaaaaaaaaaffafagaagggagaaaaaaaab",
+			"%a%b%ba%ca%a%x%aaa%fa%ga%b%",
+			false,
+		},
+		{
+			"abababababababababababababababababababaacacacacacacacadaeafagahaiajakalaaaaaaaaaaaaaaaaaffafagaagggagaaaaaaaab",
+			"%a%b%ba%ca%aaaa%fa%ga%gggg%b%",
+			false,
+		},
+		{
+			"abababababababababababababababababababaacacacacacacacadaeafagahaiajakalaaaaaaaaaaaaaaaaaffafagaagggagaaaaaaaab",
+			"%a%b%ba%ca%aaaa%fa%ga%ggg%b%",
+			true,
+		},
 	}
 
 	for _, test := range tests {

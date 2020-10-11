@@ -69,9 +69,14 @@ func equalFold(sr, tr rune) bool {
 func MatchLike(pattern, s string) bool {
 	var prevEscape bool
 
-	for len(pattern) != 0 {
+	var w, t string // backtracking state
+
+	for len(s) != 0 {
 		// Read (and consume) the next character from the input pattern.
 		var p rune
+		if len(pattern) == 0 {
+			goto backtrack
+		}
 		p, pattern = readRune(pattern)
 
 		// There are now 4 possibilities:
@@ -80,7 +85,7 @@ func MatchLike(pattern, s string) bool {
 		// 2. p is an unescaped match-one character "_",
 		// 3. p is an unescaped escape character, or
 		// 4. p is to be handled as an ordinary character
-		//
+	loop:
 		if p == matchAll && !prevEscape {
 			// Case 1.
 			var c byte
@@ -109,13 +114,9 @@ func MatchLike(pattern, s string) bool {
 				return true
 			}
 
-			for len(s) != 0 {
-				if MatchLike(pattern, s) {
-					return true
-				}
-				s = skipRune(s)
-			}
-			return false
+			// Save state and match next character.
+			//
+			w, t = pattern, s
 		} else if p == matchOne && !prevEscape {
 			// Case 2.
 			if len(s) == 0 {
@@ -127,14 +128,42 @@ func MatchLike(pattern, s string) bool {
 			prevEscape = true
 		} else {
 			// Case 4.
+			prevEscape = false
+
 			var r rune
 			r, s = readRune(s)
 			if !equalFold(p, r) {
-				return false
+				goto backtrack
 			}
-			prevEscape = false
 		}
+		continue
+
+	backtrack:
+		if len(w) == 0 {
+			// Nothing to backtrack.
+			return prevEscape
+		}
+		// Keep the pattern and skip rune in input.
+		// Note that we only backtrack to matchAll.
+		p, pattern = matchAll, w
+		s = skipRune(t)
+		goto loop
 	}
 
-	return len(s) == 0
+	// Check that the rest of the pattern is matchAll.
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] == matchAll {
+			continue
+		}
+
+		// Allow escaping end of string.
+		if i+1 == len(pattern) {
+			if pattern[i] == matchEsc {
+				return true
+			}
+		}
+
+		return false
+	}
+	return true
 }
