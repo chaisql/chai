@@ -81,7 +81,7 @@ func MatchLike(pattern, s string) bool {
 		// 3. p is an unescaped escape character, or
 		// 4. p is to be handled as an ordinary character
 		//
-		if p == matchAll && !prevEscape && p != matchEsc {
+		if p == matchAll && !prevEscape {
 			// Case 1.
 			var c byte
 
@@ -116,7 +116,7 @@ func MatchLike(pattern, s string) bool {
 				s = skipRune(s)
 			}
 			return false
-		} else if p == matchOne && !prevEscape && p != matchEsc {
+		} else if p == matchOne && !prevEscape {
 			// Case 2.
 			if len(s) == 0 {
 				return false

@@ -37,7 +37,7 @@ func TestMatchLike(t *testing.T) {
 
 		// Exact
 		{"abc", "abc", true},
-		{"aBc", "AbC", true},
+		{"aBc", "AbC", false},
 		{"abc", "def", false},
 
 		// Prefix
