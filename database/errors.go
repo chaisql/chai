@@ -6,8 +6,7 @@ import (
 
 var (
 	// ErrTableNotFound is returned when the targeted table doesn't exist.
-	// The table name is added to the error.
-	ErrTableNotFound = errors.New("Error: no such table:")
+	ErrTableNotFound = errors.New("table not found")
 
 	// ErrTableAlreadyExists is returned when attempting to create a table with the
 	// same name as an existing one.
