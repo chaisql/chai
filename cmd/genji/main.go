@@ -94,10 +94,10 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			Usage: "Shows Genji and Genji CLI version",
 			Action: func(c *cli.Context) error {
 				if CLIVersion == "" {
-					CLIVersion = "Development"
+					CLIVersion = "development"
 				}
 				if GenjiVersion == "" {
-					GenjiVersion = "Development"
+					GenjiVersion = "development"
 				}
 				fmt.Printf("Genji %v\nGenji CLI %v\n", GenjiVersion, CLIVersion)
 				return nil
