@@ -1,7 +1,7 @@
 package database
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/genjidb/genji/document"
