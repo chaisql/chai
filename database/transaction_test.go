@@ -192,7 +192,9 @@ func TestTxCreateIndex(t *testing.T) {
 		err := tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
-		require.Equal(t, fmt.Errorf("%w: %q", database.ErrTableNotFound, "test"), err)
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 }
 
