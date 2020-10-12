@@ -130,7 +130,9 @@ func TestTxTable(t *testing.T) {
 
 		// Getting the old table should return an error.
 		_, err = tx.GetTable("foo")
-		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "foo").Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 
 		tb, err := tx.GetTable("zoo")
 		require.NoError(t, err)
