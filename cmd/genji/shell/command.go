@@ -313,20 +313,20 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 
 	for i, table := range tables {
 		err = dumpTable(tx, table, w)
-		switch err {
-		case nil:
-			// Blank separation between tables.
-			if i > 0 {
-				if _, err := fmt.Fprintln(w, ""); err != nil {
-					return err
-				}
+		if err != nil {
+			// If table doesn’t exist we skip it.
+			if errors.Is(err, database.ErrTableNotFound) {
+				continue
 			}
-
-		case fmt.Errorf("%w: %q", database.ErrTableNotFound, table): // If table doesn't exist we skip it.
-			continue
-		default:
-			_, err = fmt.Fprintln(w, "COMMIT;")
+			_, err = fmt.Println(w, "COMMIT;")
 			return err
+		}
+		
+		// Blank separation between tables.
+		if i > 0 {
+			if _, err := fmt.Fprintln(w, ""); err != nil {
+				return err
+			}
 		}
 	}
 
