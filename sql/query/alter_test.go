@@ -2,7 +2,7 @@ package query_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/genjidb/genji"
