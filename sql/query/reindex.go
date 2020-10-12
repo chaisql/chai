@@ -31,7 +31,7 @@ func (stmt ReIndexStmt) Run(ctx context.Context, tx *database.Transaction, args 
 	if err == nil {
 		return res, t.ReIndex()
 	}
-	if !(errors.Is(err, database.ErrTableNotFound)) {
+	if !errors.Is(err, database.ErrTableNotFound) {
 		return res, err
 	}
 
