@@ -146,7 +146,9 @@ func TestTxTable(t *testing.T) {
 
 		// Renaming a non existing table should return an error
 		err = tx.RenameTable("foo", "")
-		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "foo").Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 }
 
