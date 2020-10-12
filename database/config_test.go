@@ -73,7 +73,7 @@ func TestTableInfoStore(t *testing.T) {
 
 		// Deleting a non-existing TableInfo should not work.
 		err = tx.tableInfoStore.Delete(tx, "foo1")
-		require.Equal(t, fmt.Errorf("%w: %q", ErrTableNotFound, "foo1"), err)
+		require.ErrorIs(t, err, ErrTableNotFound)
 	})
 
 	t.Run("on rollback", func(t *testing.T) {
