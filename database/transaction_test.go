@@ -2,7 +2,7 @@ package database_test
 
 import (
 	"testing"
-
+	"fmt"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
@@ -79,7 +79,7 @@ func TestTxTable(t *testing.T) {
 
 		// Getting a table that doesn't exist should fail.
 		_, err = tx.GetTable("unknown")
-		require.EqualError(t, err, database.ErrTableNotFound.Error())
+		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "unknown").Error())
 	})
 
 	t.Run("Drop", func(t *testing.T) {
@@ -94,11 +94,11 @@ func TestTxTable(t *testing.T) {
 
 		// Getting a table that has been dropped should fail.
 		_, err = tx.GetTable("test")
-		require.EqualError(t, err, database.ErrTableNotFound.Error())
+		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "test").Error())
 
 		// Dropping a table that doesn't exist should fail.
 		err = tx.DropTable("test")
-		require.EqualError(t, err, database.ErrTableNotFound.Error())
+		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "test").Error())
 	})
 
 	t.Run("Rename", func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestTxTable(t *testing.T) {
 
 		// Getting the old table should return an error.
 		_, err = tx.GetTable("foo")
-		require.EqualError(t, database.ErrTableNotFound, err.Error())
+		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "foo").Error())
 
 		tb, err := tx.GetTable("zoo")
 		require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestTxTable(t *testing.T) {
 
 		// Renaming a non existing table should return an error
 		err = tx.RenameTable("foo", "")
-		require.EqualError(t, database.ErrTableNotFound, err.Error())
+		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "foo").Error())
 	})
 }
 
@@ -190,7 +190,7 @@ func TestTxCreateIndex(t *testing.T) {
 		err := tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
-		require.Equal(t, database.ErrTableNotFound, err)
+		require.Equal(t, fmt.Errorf("%w: %q", database.ErrTableNotFound, "test"), err)
 	})
 }
 

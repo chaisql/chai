@@ -2,6 +2,7 @@ package query_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -33,7 +34,7 @@ func TestAlterTable(t *testing.T) {
 
 	// Selecting from the old name should fail.
 	err = db.Exec(ctx, "SELECT * FROM foo")
-	require.EqualError(t, err, database.ErrTableNotFound.Error())
+	require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "foo").Error())
 
 	d, err := db.QueryDocument(ctx, "SELECT * FROM bar")
 	data, err := document.MarshalJSON(d)
