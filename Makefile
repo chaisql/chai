@@ -7,7 +7,7 @@ all: $(NAME)
 build: $(NAME)
 
 $(NAME):
-	cd ./cmd/$@ && go install
+	cd ./cmd/$@ && go install -ldflags="-X main.CLIVersion=$(TRAVIS_TAG) -X main.GenjiVersion=$(TRAVIS_TAG)"
 
 gen: $(NAME)
 	go generate ./...

@@ -8,6 +8,9 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var CLIVersion = "Development"
+var GenjiVersion = "Development"
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "Genji"
@@ -84,6 +87,20 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				args := c.Args().Slice()
 
 				return runInsertCommand(c.Context, engine, dbPath, table, c.Bool("auto"), args)
+			},
+		},
+		{
+			Name:  "version",
+			Usage: "Shows Genji and Genji CLI version",
+			Action: func(c *cli.Context) error {
+				if CLIVersion == "" {
+					CLIVersion = "Development"
+				}
+				if GenjiVersion == "" {
+					GenjiVersion = "Development"
+				}
+				fmt.Printf("Genji %v\nGenji CLI %v\n", GenjiVersion, CLIVersion)
+				return nil
 			},
 		},
 	}
