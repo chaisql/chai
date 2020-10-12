@@ -79,7 +79,9 @@ func TestTxTable(t *testing.T) {
 
 		// Getting a table that doesn't exist should fail.
 		_, err = tx.GetTable("unknown")
-		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "unknown").Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 
 	t.Run("Drop", func(t *testing.T) {
