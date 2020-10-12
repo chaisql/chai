@@ -96,7 +96,9 @@ func TestTxTable(t *testing.T) {
 
 		// Getting a table that has been dropped should fail.
 		_, err = tx.GetTable("test")
-		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "test").Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 
 		// Dropping a table that doesn't exist should fail.
 		err = tx.DropTable("test")
