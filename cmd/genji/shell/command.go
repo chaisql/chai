@@ -318,7 +318,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 			if errors.Is(err, database.ErrTableNotFound) {
 				continue
 			}
-			_, err = fmt.Println(w, "COMMIT;")
+			_, err = fmt.Fprintln(w, "COMMIT;")
 			return err
 		}
 		
