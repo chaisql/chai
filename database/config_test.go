@@ -65,9 +65,9 @@ func TestTableInfoStore(t *testing.T) {
 
 		// Getting a non-existing TableInfo should not work.
 		_, err = tx.tableInfoStore.Get(tx, "unknown")
-	if !errors.Is(err, ErrTableNotFound) {
-		require.Equal(t, err, ErrTableNotFound)
-	}
+		if !errors.Is(err, ErrTableNotFound) {
+			require.Equal(t, err, ErrTableNotFound)
+		}
 
 		// Deleting an existing TableInfo should work.
 		err = tx.tableInfoStore.Delete(tx, "foo1")
