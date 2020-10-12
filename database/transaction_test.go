@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"errors"
+	"testing"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
