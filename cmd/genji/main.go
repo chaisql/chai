@@ -8,8 +8,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var CLIVersion = "Development"
-var GenjiVersion = "Development"
+var CLIVersion = "development"
+var GenjiVersion = "development"
 
 func main() {
 	app := cli.NewApp()
