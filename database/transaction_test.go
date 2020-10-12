@@ -102,7 +102,9 @@ func TestTxTable(t *testing.T) {
 
 		// Dropping a table that doesn't exist should fail.
 		err = tx.DropTable("test")
-		require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "test").Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 
 	t.Run("Rename", func(t *testing.T) {
