@@ -34,7 +34,9 @@ func TestAlterTable(t *testing.T) {
 
 	// Selecting from the old name should fail.
 	err = db.Exec(ctx, "SELECT * FROM foo")
-	require.EqualError(t, err, fmt.Errorf("%w: %q", database.ErrTableNotFound, "foo").Error())
+	if !errors.Is(err, database.ErrTableNotFound) {
+		require.Equal(t, err, database.ErrTableNotFound)
+	}
 
 	d, err := db.QueryDocument(ctx, "SELECT * FROM bar")
 	data, err := document.MarshalJSON(d)
