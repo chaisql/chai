@@ -2,7 +2,6 @@ package database_test
 
 import (
 	"errors"
-	"errors"
 	"testing"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
