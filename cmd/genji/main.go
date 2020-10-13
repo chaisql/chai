@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/genjidb/genji/cmd/genji/shell"
 	"github.com/urfave/cli/v2"
@@ -84,6 +85,27 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				args := c.Args().Slice()
 
 				return runInsertCommand(c.Context, engine, dbPath, table, c.Bool("auto"), args)
+			},
+		},
+		{
+			Name:  "version",
+			Usage: "Shows Genji and Genji CLI version",
+			Action: func(c *cli.Context) error {
+				var cliVersion, genjiVersion string
+				info, ok := debug.ReadBuildInfo()
+				if ok {
+					cliVersion = info.Main.Version
+				}
+
+				for _, mod := range info.Deps {
+					if mod.Path != "github.com/genjidb/genji" {
+						continue
+					}
+					genjiVersion = mod.Version
+					break
+				}
+				fmt.Printf("Genji %v\nGenji CLI %v\n", genjiVersion, cliVersion)
+				return nil
 			},
 		},
 	}
