@@ -3,6 +3,7 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"sync"
 
 	"github.com/genjidb/genji/document"
@@ -230,11 +231,11 @@ func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, err
 
 	info, ok := t.tableInfos[tableName]
 	if !ok {
-		return nil, ErrTableNotFound
+		return nil, fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
 	}
 
 	if info.transactionID != 0 && info.transactionID != tx.id {
-		return nil, ErrTableNotFound
+		return nil, fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
 	}
 
 	return &info, nil
@@ -246,11 +247,11 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 
 	info, ok := t.tableInfos[tableName]
 	if !ok {
-		return ErrTableNotFound
+		return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
 	}
 
 	if info.transactionID != 0 && info.transactionID != tx.id {
-		return ErrTableNotFound
+		return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
 	}
 
 	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
@@ -261,7 +262,7 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 	key := []byte(tableName)
 	err = st.Delete(key)
 	if err == engine.ErrKeyNotFound {
-		return ErrTableNotFound
+		return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
 	}
 	if err != nil {
 		return err

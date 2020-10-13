@@ -166,9 +166,17 @@ func Run(opts *Options) error {
 }
 
 func (sh *Shell) loadCommandSuggestions() {
-	suggestions := make([]prompt.Suggest, len(commands))
-	for i, c := range commands {
-		suggestions[i].Text = c.Name
+	suggestions := make([]prompt.Suggest, 0, len(commands))
+	for _, c := range commands {
+		suggestions = append(suggestions, prompt.Suggest{
+			Text: c.Name,
+		})
+
+		for _, alias := range c.Aliases {
+			suggestions = append(suggestions, prompt.Suggest{
+				Text: alias,
+			})
+		}
 	}
 	sh.cmdSuggestions = suggestions
 }
@@ -245,9 +253,11 @@ func (sh *Shell) executeInput(in string) error {
 	in = strings.TrimSpace(in)
 	switch {
 	// if it starts with a "." it's a command
+	// if the input is "help" or "exit", then it's a command.
 	// it must not be in the middle of a multi line query though
-	case strings.HasPrefix(in, "."):
+	case strings.HasPrefix(in, "."), in == "help", in == "exit":
 		return sh.runCommand(in)
+
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
 		sh.query = sh.query + in
@@ -275,7 +285,7 @@ func (sh *Shell) runCommand(in string) error {
 	in = strings.TrimSuffix(in, ";")
 	cmd := strings.Fields(in)
 	switch cmd[0] {
-	case ".help":
+	case ".help", "help":
 		return runHelpCmd()
 	case ".tables":
 		db, err := sh.getDB()
@@ -284,7 +294,7 @@ func (sh *Shell) runCommand(in string) error {
 		}
 
 		return runTablesCmd(db, cmd)
-	case ".exit":
+	case ".exit", "exit":
 		if len(cmd) > 1 {
 			return fmt.Errorf("usage: .exit")
 		}
@@ -457,33 +467,31 @@ func (sh *Shell) getAllTables() ([]string, error) {
 }
 
 func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
-	if strings.HasPrefix(in.Text, ".") {
-		return prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
-	}
+	suggestions := prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
 
 	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery(context.Background())
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
 		if !ok || len(e.Expected) < 1 {
-			return []prompt.Suggest{}
+			return suggestions
 		}
 		expected := e.Expected
 		switch expected[0] {
 		case "table_name":
 			expected, err = sh.getAllTables()
 			if err != nil {
-				return []prompt.Suggest{}
+				return suggestions
 			}
 		case "index_name":
 			expected, err = sh.getAllIndexes()
 			if err != nil {
-				return []prompt.Suggest{}
+				return suggestions
 			}
 		}
-
-		suggestions := make([]prompt.Suggest, len(expected))
-		for i, e := range expected {
-			suggestions[i].Text = e
+		for _, e := range expected {
+			suggestions = append(suggestions, prompt.Suggest{
+				Text: e,
+			})
 		}
 
 		w := in.GetWordBeforeCursor()
