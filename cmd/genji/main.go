@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
-	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/shell"
 	"github.com/urfave/cli/v2"
 )
-
-var CLIVersion = "development"
 
 func main() {
 	app := cli.NewApp()
@@ -93,13 +91,20 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			Name:  "version",
 			Usage: "Shows Genji and Genji CLI version",
 			Action: func(c *cli.Context) error {
-				if CLIVersion == "" {
-					CLIVersion = "development"
+				var cliVersion, genjiVersion string
+				info, ok := debug.ReadBuildInfo()
+				if ok {
+					cliVersion = info.Main.Version
 				}
-				if genji.GenjiVersion == "" {
-					genji.GenjiVersion = "development"
+
+				for _, mod := range info.Deps {
+					if mod.Path != "github.com/genjidb/genji" {
+						continue
+					}
+					genjiVersion = mod.Version
+					break
 				}
-				fmt.Printf("Genji %v\nGenji CLI %v\n", genji.GenjiVersion, CLIVersion)
+				fmt.Printf("Genji %v\nGenji CLI %v\n", genjiVersion, cliVersion)
 				return nil
 			},
 		},

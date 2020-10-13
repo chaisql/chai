@@ -9,8 +9,6 @@ import (
 	"github.com/genjidb/genji/sql/query"
 )
 
-var GenjiVersion = "development"
-
 // DB represents a collection of tables stored in the underlying engine.
 type DB struct {
 	DB *database.Database
