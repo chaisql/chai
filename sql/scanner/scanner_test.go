@@ -123,7 +123,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `BY`, tok: scanner.BY, raw: `BY`},
 		{s: `BEGIN`, tok: scanner.BEGIN, raw: `BEGIN`},
 		{s: `CAST`, tok: scanner.CAST, raw: `CAST`},
-		{s: `COLUMN`, tok: scanner.COLUMN, raw: `COLUMN`},
 		{s: `COMMIT`, tok: scanner.COMMIT, raw: `COMMIT`},
 		{s: `CREATE`, tok: scanner.CREATE, raw: `CREATE`},
 		{s: `EXPLAIN`, tok: scanner.EXPLAIN, raw: `EXPLAIN`},

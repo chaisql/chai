@@ -50,7 +50,7 @@ func (stmt AlterTableAddField) IsReadOnly() bool {
 	return false
 }
 
-// Run runs the ALTER TABLE ADD COLUMN/FIELD statement in the given transaction.
+// Run runs the ALTER TABLE ADD FIELD statement in the given transaction.
 // It implements the Statement interface.
 func (stmt AlterTableAddField) Run(ctx context.Context, tx *database.Transaction, _ []expr.Param) (Result, error) {
 	var res Result
