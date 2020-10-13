@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/shell"
 	"github.com/urfave/cli/v2"
 )
 
 var CLIVersion = "development"
-var GenjiVersion = "development"
 
 func main() {
 	app := cli.NewApp()
@@ -96,10 +96,10 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				if CLIVersion == "" {
 					CLIVersion = "development"
 				}
-				if GenjiVersion == "" {
-					GenjiVersion = "development"
+				if genji.GenjiVersion == "" {
+					genji.GenjiVersion = "development"
 				}
-				fmt.Printf("Genji %v\nGenji CLI %v\n", GenjiVersion, CLIVersion)
+				fmt.Printf("Genji %v\nGenji CLI %v\n", genji.GenjiVersion, CLIVersion)
 				return nil
 			},
 		},
