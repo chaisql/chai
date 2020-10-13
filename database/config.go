@@ -34,7 +34,9 @@ func (f *FieldConstraint) ToDocument() document.Document {
 	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
-	buf.Add("default_value", f.DefaultValue)
+	if f.HasDefaultValue() {
+		buf.Add("default_value", f.DefaultValue)
+	}
 	return buf
 }
 
@@ -69,10 +71,12 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	f.IsNotNull = v.V.(bool)
 
 	v, err = d.GetByField("default_value")
-	if err != nil {
+	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	f.DefaultValue = v
+	if err == nil {
+		f.DefaultValue = v
+	}
 
 	return nil
 }
@@ -282,6 +286,53 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 	}
 
 	delete(t.tableInfos, tableName)
+
+	return nil
+}
+
+// modifyTable modifies TableInfo using given callback.
+func (t *tableInfoStore) modifyTable(tx *Transaction, tableName string, f func(*TableInfo) error) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	info, ok := t.tableInfos[tableName]
+	if !ok {
+		return ErrTableNotFound
+	}
+
+	if info.transactionID != 0 && info.transactionID != tx.id {
+		return ErrTableNotFound
+	}
+
+	err := f(&info)
+	if err != nil {
+		return err
+	}
+
+	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	err = t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
+	if err != nil {
+		return err
+	}
+
+	key := []byte(tableName)
+	err = st.Delete(key)
+	if err != nil {
+		return err
+	}
+
+	err = st.Put(key, buf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	info.transactionID = tx.id
+	t.tableInfos[tableName] = info
 
 	return nil
 }

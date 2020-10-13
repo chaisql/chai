@@ -27,13 +27,13 @@ func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.Alt
 	var stmt query.AlterTableAddField
 	stmt.TableName = tableName
 
-	// Parse "COLUMN" or "FIELD".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.COLUMN && tok != scanner.FIELD {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"COLUMN", "FIELD"}, pos)
+	// Parse "FIELD".
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FIELD {
+		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"FIELD"}, pos)
 	}
 
 	// Parse new field definition.
-	err = p.parseField(&stmt.Constraint)
+	err = p.parseFieldDefinition(&stmt.Constraint)
 	if err != nil {
 		return stmt, err
 	}

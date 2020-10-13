@@ -79,7 +79,6 @@ const (
 	BEGIN
 	BY
 	CAST
-	COLUMN
 	COMMIT
 	CREATE
 	DEFAULT
@@ -200,7 +199,6 @@ var tokens = [...]string{
 	ASC:         "ASC",
 	BEGIN:       "BEGIN",
 	COMMIT:      "COMMIT",
-	COLUMN:      "COLUMN",
 	GROUP:       "GROUP",
 	BY:          "BY",
 	CREATE:      "CREATE",
