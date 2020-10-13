@@ -3,6 +3,7 @@ package shell
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -83,7 +84,7 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 		_, err := tx.QueryDocument(ctx, "SELECT table_name FROM __genji_tables WHERE table_name = ?", tableName)
 		if err != nil {
 			if err == database.ErrDocumentNotFound {
-				return database.ErrTableNotFound
+				return fmt.Errorf("%w: %q", database.ErrTableNotFound, tableName)
 			}
 
 			return err
@@ -313,20 +314,20 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 
 	for i, table := range tables {
 		err = dumpTable(tx, table, w)
-		switch err {
-		case nil:
-			// Blank separation between tables.
-			if i > 0 {
-				if _, err := fmt.Fprintln(w, ""); err != nil {
-					return err
-				}
+		if err != nil {
+			// If table doesn’t exist we skip it.
+			if errors.Is(err, database.ErrTableNotFound) {
+				continue
 			}
-
-		case database.ErrTableNotFound: // If table doesn't exist we skip it.
-			continue
-		default:
 			_, err = fmt.Fprintln(w, "COMMIT;")
 			return err
+		}
+		
+		// Blank separation between tables.
+		if i > 0 {
+			if _, err := fmt.Fprintln(w, ""); err != nil {
+				return err
+			}
 		}
 	}
 

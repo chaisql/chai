@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -64,7 +65,9 @@ func TestTableInfoStore(t *testing.T) {
 
 		// Getting a non-existing TableInfo should not work.
 		_, err = tx.tableInfoStore.Get(tx, "unknown")
-		require.Equal(t, ErrTableNotFound, err)
+		if !errors.Is(err, ErrTableNotFound) {
+			require.Equal(t, err, ErrTableNotFound)
+		}
 
 		// Deleting an existing TableInfo should work.
 		err = tx.tableInfoStore.Delete(tx, "foo1")
@@ -72,7 +75,9 @@ func TestTableInfoStore(t *testing.T) {
 
 		// Deleting a non-existing TableInfo should not work.
 		err = tx.tableInfoStore.Delete(tx, "foo1")
-		require.Equal(t, ErrTableNotFound, err)
+		if !errors.Is(err, ErrTableNotFound) {
+			require.Equal(t, err, ErrTableNotFound)
+		}
 	})
 
 	t.Run("on rollback", func(t *testing.T) {

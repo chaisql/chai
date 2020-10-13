@@ -1,8 +1,8 @@
 package database_test
 
 import (
+	"errors"
 	"testing"
-
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
@@ -79,7 +79,9 @@ func TestTxTable(t *testing.T) {
 
 		// Getting a table that doesn't exist should fail.
 		_, err = tx.GetTable("unknown")
-		require.EqualError(t, err, database.ErrTableNotFound.Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 
 	t.Run("Drop", func(t *testing.T) {
@@ -94,11 +96,15 @@ func TestTxTable(t *testing.T) {
 
 		// Getting a table that has been dropped should fail.
 		_, err = tx.GetTable("test")
-		require.EqualError(t, err, database.ErrTableNotFound.Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 
 		// Dropping a table that doesn't exist should fail.
 		err = tx.DropTable("test")
-		require.EqualError(t, err, database.ErrTableNotFound.Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 
 	t.Run("Rename", func(t *testing.T) {
@@ -124,7 +130,9 @@ func TestTxTable(t *testing.T) {
 
 		// Getting the old table should return an error.
 		_, err = tx.GetTable("foo")
-		require.EqualError(t, database.ErrTableNotFound, err.Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 
 		tb, err := tx.GetTable("zoo")
 		require.NoError(t, err)
@@ -144,7 +152,9 @@ func TestTxTable(t *testing.T) {
 
 		// Renaming a non existing table should return an error
 		err = tx.RenameTable("foo", "")
-		require.EqualError(t, database.ErrTableNotFound, err.Error())
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 }
 
@@ -190,7 +200,9 @@ func TestTxCreateIndex(t *testing.T) {
 		err := tx.CreateIndex(database.IndexConfig{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
-		require.Equal(t, database.ErrTableNotFound, err)
+		if !errors.Is(err, database.ErrTableNotFound) {
+			require.Equal(t, err, database.ErrTableNotFound)
+		}
 	})
 }
 

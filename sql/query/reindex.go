@@ -2,7 +2,8 @@ package query
 
 import (
 	"context"
-
+	"errors"
+	
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/sql/query/expr"
 )
@@ -30,7 +31,7 @@ func (stmt ReIndexStmt) Run(ctx context.Context, tx *database.Transaction, args 
 	if err == nil {
 		return res, t.ReIndex()
 	}
-	if err != database.ErrTableNotFound {
+	if !errors.Is(err, database.ErrTableNotFound) {
 		return res, err
 	}
 

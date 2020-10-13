@@ -29,7 +29,7 @@ func (stmt DropTableStmt) Run(ctx context.Context, tx *database.Transaction, arg
 	}
 
 	err := tx.DropTable(stmt.TableName)
-	if err == database.ErrTableNotFound && stmt.IfExists {
+	if errors.Is(err, database.ErrTableNotFound) && stmt.IfExists {
 		err = nil
 	}
 
