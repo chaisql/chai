@@ -61,12 +61,7 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 				IsNotNull: true,
 			},
 		}, false},
-		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", query.AlterTableAddField{TableName: "foo",
-			Constraint: database.FieldConstraint{
-				Path:         parsePath(t, "bar"),
-				IsPrimaryKey: true,
-			},
-		}, false},
+		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", query.AlterTableAddField{}, true},
 		{"With multiple constraints", "ALTER TABLE foo ADD FIELD bar integer NOT NULL DEFAULT 0", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path:         parsePath(t, "bar"),
