@@ -472,7 +472,7 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery(context.Background())
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
-		if !ok {
+		if !ok || len(e.Expected) < 1 {
 			return suggestions
 		}
 		expected := e.Expected
