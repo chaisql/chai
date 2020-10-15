@@ -5,7 +5,8 @@
 //    May you find forgiveness for yourself and forgive others.
 //    May you share freely, never taking more than you give.
 //
-// https://sqlite.org/src/file?name=ext%2Ficu%2Ficu.c&ln=117-195&m=54b54f02c66c5aea
+// This is an optimized Go port of the SQLite’s icuLikeCompare routine using backtracking.
+// See https://sqlite.org/src/file?name=ext%2Ficu%2Ficu.c&ln=117-195&ci=54b54f02c66c5aea
 
 package glob
 
@@ -79,13 +80,14 @@ func MatchLike(pattern, s string) bool {
 		}
 		p, pattern = readRune(pattern)
 
+	loop:
 		// There are now 4 possibilities:
 		//
-		// 1. p is an unescaped match-all character "%",
-		// 2. p is an unescaped match-one character "_",
-		// 3. p is an unescaped escape character, or
+		// 1. p is an unescaped matchAll character “%”,
+		// 2. p is an unescaped matchOne character “_”,
+		// 3. p is an unescaped matchEsc character, or
 		// 4. p is to be handled as an ordinary character
-	loop:
+		//
 		if p == matchAll && !prevEscape {
 			// Case 1.
 			var c byte
@@ -116,15 +118,32 @@ func MatchLike(pattern, s string) bool {
 
 			// Save state and match next character.
 			//
+			// Since we save t = s and then continue to loop for len(s) ≠ 0,
+			// the condition len(t) ≠ 0 is always true when we need to backtrack.
+			//
 			w, t = pattern, s
 		} else if p == matchOne && !prevEscape {
 			// Case 2.
-			if len(s) == 0 {
-				return false
-			}
+			//
+			// We can either enter loop on normal iteration where len(s) ≠ 0,
+			// or from backtracking. But we consume all matchOne characters
+			// before saving backtracking state, so this case is reachable on
+			// normal iteration only.
+			//
+			// That is, we are guaranteed to have input at this point.
+			//
 			s = skipRune(s)
 		} else if p == matchEsc && !prevEscape {
 			// Case 3.
+			//
+			// We can’t reach this case from backtracking to matchAll.
+			// That implies len(s) ≠ 0 and normal iteration on continue.
+			// We would either have an escaped character in the pattern,
+			// or we’ve consumed whole pattern and attempt to backtrack.
+			// If we can’t backtrack then we are not at the end of input
+			// since len(s) ≠ 0, and false is returned. That said, it’s
+			// impossible to exit the loop with truthy prevEscape.
+			//
 			prevEscape = true
 		} else {
 			// Case 4.
@@ -139,14 +158,20 @@ func MatchLike(pattern, s string) bool {
 		continue
 
 	backtrack:
+		// If we can’t backtrack return prevEscape
+		// to allow escaping end of input.
+		//
 		if len(w) == 0 {
-			// Nothing to backtrack.
-			return prevEscape
+			return prevEscape && len(s) == 0
 		}
+
 		// Keep the pattern and skip rune in input.
 		// Note that we only backtrack to matchAll.
+		//
 		p, pattern = matchAll, w
+		prevEscape = false
 		s = skipRune(t)
+
 		goto loop
 	}
 

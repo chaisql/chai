@@ -37,7 +37,10 @@ func TestMatchLike(t *testing.T) {
 
 		// Escape
 		{"", "\\", true},
+		{"", "%\\", true},
+		{"", "\\%", false},
 		{"x", "%\\", true},
+		{"x", "\\%", false},
 		{"x", "_\\", true},
 		{"x", "_\\x", false},
 		{"%", "\\%", true},
@@ -45,11 +48,18 @@ func TestMatchLike(t *testing.T) {
 		{"x", "\\%", false},
 		{"x", "\\_", false},
 		{"x", "\\x", true},
+		{"ab", "a\\", false},
+		{"ab", "\\b", false},
 
 		// Escaping escape
+		{"", "\\\\", false},
+		{"x", "\\\\", false},
 		{"\\", "\\\\", true},
+		{"\\", "%\\\\", true},
 		{"\\", "\\\\%", true},
+		{"\\", "_\\\\", false},
 		{"\\", "\\\\_", false},
+		{"x\\", "\\x\\", false},
 		{"\\x", "\\\\x", true},
 
 		// Exact
@@ -108,6 +118,7 @@ func TestMatchLike(t *testing.T) {
 		{"abc", "%_", true},
 		{"ab", "_%_", true},
 		{"ab", "%_%_%", true},
+		{"aab", "%b_", false},
 		{"aaaa", "_aa%", true},
 		{"aaaa", "%aa_", true},
 		{"abc", "_%%_%_", true},
