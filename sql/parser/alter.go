@@ -39,7 +39,7 @@ func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.Alt
 	}
 
 	if stmt.Constraint.IsPrimaryKey {
-		return stmt, &ParseError{Message: "Adding a field with primary key constraint is not supported now."}
+		return stmt, &ParseError{Message: "cannot add a PRIMARY KEY constraint"}
 	}
 
 	return stmt, nil
