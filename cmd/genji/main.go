@@ -93,10 +93,13 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			Action: func(c *cli.Context) error {
 				var cliVersion, genjiVersion string
 				info, ok := debug.ReadBuildInfo()
-				if ok {
-					cliVersion = info.Main.Version
+
+				if !ok {
+					fmt.Println("version not available in GOPATH mode")
+					return nil
 				}
 
+				cliVersion = info.Main.Version
 				for _, mod := range info.Deps {
 					if mod.Path != "github.com/genjidb/genji" {
 						continue
