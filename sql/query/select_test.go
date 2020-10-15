@@ -33,6 +33,8 @@ func TestSelectStmt(t *testing.T) {
 		{"No table, wildcard", "SELECT *", true, ``, nil},
 		{"No table, document", "SELECT {a: 1, b: 2 + 1}", false, `[{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}]`, nil},
 		{"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
+		{"With DISTINCT", "SELECT DISTINCT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
+		{"With DISTINCT and expr", "SELECT DISTINCT 'a' FROM test", false, `[{"'a'":"a"}]`, nil},
 		{"Multiple wildcards cond", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","k":1,"color":"red","size":10,"shape":"square","color":"red"},{"k":2,"color":"blue","size":10,"weight":100,"k":2,"color":"blue","size":10,"weight":100,"color":"blue"},{"k":3,"height":100,"weight":200,"k":3,"height":100,"weight":200,"color":null}]`, nil},
 		{"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
 		{"With expr fields", "SELECT color, color != 'red' AS notred FROM test", false, `[{"color":"red","notred":false},{"color":"blue","notred":true},{"color":null,"notred":null}]`, nil},
@@ -221,4 +223,44 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
+}
+
+func TestDistinct(t *testing.T) {
+	ctx := context.Background()
+
+	db, err := genji.Open(":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	err = db.Exec(ctx, "CREATE TABLE test(a integer)")
+	require.NoError(t, err)
+
+	for i := 0; i < 100; i++ {
+		err = db.Exec(ctx, `INSERT INTO test VALUES {a: ?, b: ?, c: {a: ?, b: ?}}`, i%10, i, i%10, i%10+1)
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		name          string
+		query         string
+		expectedCount int
+	}{
+		{`non-unique`, `SELECT DISTINCT a FROM test`, 10},
+		{`non-unique-documents`, `SELECT DISTINCT c FROM test`, 10},
+		{`unique`, `SELECT DISTINCT b FROM test`, 100},
+		{`wildcard`, `SELECT DISTINCT * FROM test`, 100},
+		{`literal`, `SELECT DISTINCT 'a' FROM test`, 1},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q, err := db.Query(ctx, test.query)
+			require.NoError(t, err)
+			defer q.Close()
+
+			c, err := q.Count()
+			require.NoError(t, err)
+			require.Equal(t, test.expectedCount, c)
+		})
+	}
 }

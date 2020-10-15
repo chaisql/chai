@@ -14,6 +14,11 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 	var cfg selectConfig
 	var err error
 
+	cfg.Distinct, err = p.parseDistinct()
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse path list or query.Wildcard
 	cfg.ProjectionExprs, err = p.parseResultFields()
 	if err != nil {
@@ -122,6 +127,15 @@ func (p *Parser) parseResultField() (planner.ProjectedField, error) {
 	return rf, nil
 }
 
+func (p *Parser) parseDistinct() (bool, error) {
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.DISTINCT {
+		p.Unscan()
+		return false, nil
+	}
+
+	return true, nil
+}
+
 func (p *Parser) parseFrom() (string, bool, error) {
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
 		p.Unscan()
@@ -208,6 +222,7 @@ func (p *Parser) parseOffset() (expr.Expr, error) {
 // SelectConfig holds SELECT configuration.
 type selectConfig struct {
 	TableName        string
+	Distinct         bool
 	WhereExpr        expr.Expr
 	GroupByExpr      expr.Expr
 	OrderBy          expr.Path
@@ -233,7 +248,11 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 		n = planner.NewGroupingNode(n, cfg.GroupByExpr)
 	}
 
-	n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+	if cfg.Distinct {
+		n = planner.NewDistinctProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+	} else {
+		n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+	}
 
 	if cfg.OrderBy != nil {
 		n = planner.NewSortNode(n, cfg.OrderBy, cfg.OrderByDirection)

@@ -19,8 +19,9 @@ type ProjectionNode struct {
 	Expressions []ProjectedField
 	tableName   string
 
-	info *database.TableInfo
-	tx   *database.Transaction
+	info     *database.TableInfo
+	tx       *database.Transaction
+	distinct bool
 }
 
 var _ operationNode = (*ProjectionNode)(nil)
@@ -34,6 +35,18 @@ func NewProjectionNode(n Node, expressions []ProjectedField, tableName string) N
 		},
 		Expressions: expressions,
 		tableName:   tableName,
+	}
+}
+
+func NewDistinctProjectionNode(n Node, expressions []ProjectedField, tableName string) Node {
+	return &ProjectionNode{
+		node: node{
+			op:   Projection,
+			left: n,
+		},
+		Expressions: expressions,
+		tableName:   tableName,
+		distinct:    true,
 	}
 }
 
@@ -100,6 +113,11 @@ func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
 
 			return &dm, nil
 		})
+
+		if n.distinct {
+			set := newDocumentHashSet(nil) // use default hashing algorithm
+			st = st.Filter(set.Filter)
+		}
 	}
 
 	return st, nil

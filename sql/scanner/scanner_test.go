@@ -130,6 +130,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `DEFAULT`, tok: scanner.DEFAULT, raw: `DEFAULT`},
 		{s: `DELETE`, tok: scanner.DELETE, raw: `DELETE`},
 		{s: `DESC`, tok: scanner.DESC, raw: `DESC`},
+		{s: `DISTINCT`, tok: scanner.DISTINCT, raw: `DISTINCT`},
 		{s: `DROP`, tok: scanner.DROP, raw: `DROP`},
 		{s: `FIELD`, tok: scanner.FIELD, raw: `FIELD`},
 		{s: `FROM`, tok: scanner.FROM, raw: `FROM`},
