@@ -19,7 +19,7 @@ type DB struct {
 func (db *DB) WithContext(ctx context.Context) *DB {
 	return &DB{
 		DB:      db.DB,
-		Context: ctx,
+		Context: context.Background(),
 	}
 }
 
