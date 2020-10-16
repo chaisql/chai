@@ -116,7 +116,7 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
-		{"With configured auto increment", "CREATE TABLE test(id INTEGER NOT NULL AUTO_INCREMENT(10, 2))",
+		{"With configured auto increment", "CREATE TABLE test(id INTEGER NOT NULL AUTOINCREMENT(10, 2))",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{
@@ -125,7 +125,7 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
-		{"With auto increment on bad type", "CREATE TABLE test(id TEXT AUTO_INCREMENT)",
+		{"With auto increment on bad type", "CREATE TABLE test(id TEXT AUTOINCREMENT)",
 			query.CreateTableStmt{
 				TableName: "test",
 				Info: database.TableInfo{

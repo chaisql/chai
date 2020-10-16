@@ -185,7 +185,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, `CREATE TABLE test(i integer auto_increment, db double
+		err = db.Exec(ctx, `CREATE TABLE test(i integer autoincrement, db double
 		)`)
 		require.NoError(t, err)
 
@@ -215,7 +215,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, `CREATE TABLE test(id integer auto_increment, db double
+		err = db.Exec(ctx, `CREATE TABLE test(id integer autoincrement, db double
 		)`)
 		require.NoError(t, err)
 
@@ -240,7 +240,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, `CREATE TABLE test(i integer auto_increment(10, 5), db double
+		err = db.Exec(ctx, `CREATE TABLE test(i integer autoincrement(10, 5), db double
 		)`)
 		require.NoError(t, err)
 
@@ -270,7 +270,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(ctx, `CREATE TABLE test(i integer auto_increment, 
+		err = db.Exec(ctx, `CREATE TABLE test(i integer autoincrement, 
 			 db double,
 			)
 		`)

@@ -120,13 +120,21 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 
 	// ensure only one primary key
 	var pkCount int
+	var aiCount int
 	for _, fc := range info.FieldConstraints {
 		if fc.IsPrimaryKey {
 			pkCount++
 		}
+		if fc.AutoIncrement.IsAutoIncrement {
+			aiCount++
+		}
 	}
 	if pkCount > 1 {
 		return &ParseError{Message: fmt.Sprintf("only one primary key is allowed, got %d", pkCount)}
+	}
+
+	if aiCount > 1 {
+		return &ParseError{Message: fmt.Sprintf("only one autoincrement column is allowed, got %d", aiCount)}
 	}
 
 	return nil

@@ -31,7 +31,7 @@ func TestCreateTable(t *testing.T) {
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
 		{"With primary key", "CREATE TABLE test(foo TEXT PRIMARY KEY)", false},
 		{"With field constraints", "CREATE TABLE test(foo.a[1][2] TEXT primary key, bar[4][0].bat INTEGER not null, baz not null)", false},
-		{"With auto increment", "CREATE TABLE test(foo INTEGER NOT NULL AUTO_INCREMENT)", false},
+		{"With auto increment", "CREATE TABLE test(foo INTEGER NOT NULL AUTOINCREMENT)", false},
 		{"With no constraints", "CREATE TABLE test(a, b)", false},
 	}
 
@@ -159,7 +159,7 @@ func TestCreateTable(t *testing.T) {
 
 		t.Run("with configured auto increment", func(t *testing.T) {
 			err := db.Exec(ctx, `
-				CREATE TABLE test5(id INTEGER AUTO_INCREMENT(10, 5)
+				CREATE TABLE test5(id INTEGER AUTOINCREMENT(10, 5)
 				)
 			`)
 			require.NoError(t, err)

@@ -76,13 +76,12 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(d)
-	if err != nil {
+
+	if err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(d); err != nil {
 		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
 
-	err = t.Store.Put(key, buf.Bytes())
-	if err != nil {
+	if err := t.Store.Put(key, buf.Bytes()); err != nil {
 		return nil, err
 	}
 
@@ -420,27 +419,35 @@ func (t *Table) AutoIncrementHandler(d document.Document) (document.Document, er
 	}
 
 	fc := ti.getAutoIncrement()
-	if fc != nil {
-		fc.AutoIncrement.CurrIndex += fc.AutoIncrement.IncBy
-
-		var v document.Value
-		v.Type = fc.Type
-		v.V = fc.AutoIncrement.CurrIndex
-
-		ti.updateAutoIncrement(fc)
-
-		var fb document.FieldBuffer
-		err = fb.Copy(d)
-		if err != nil {
-			return nil, err
-		}
-
-		fb.Add(fc.Path.String(), v)
-
-		return &fb, nil
+	if !fc.AutoIncrement.IsAutoIncrement {
+		return d, nil
 	}
 
-	return d, nil
+	_ = t.Iterate(func(d document.Document) error {
+		return d.Iterate(func(field string, value document.Value) error {
+			if field == fc.Path.String() {
+				fc.AutoIncrement.CurrIndex = value.V.(int64)
+			}
+
+			return nil
+		})
+	})
+
+	fc.AutoIncrement.CurrIndex += fc.AutoIncrement.IncBy
+
+	var v document.Value
+	v.Type = fc.Type
+	v.V = fc.AutoIncrement.CurrIndex
+
+	var fb document.FieldBuffer
+	if err := fb.Copy(d); err != nil {
+		return nil, err
+	}
+
+	fb.Add(fc.Path.String(), v)
+
+	return &fb, nil
+
 }
 
 // ValidateConstraints check the table configuration for constraints and validates the document

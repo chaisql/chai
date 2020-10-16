@@ -240,11 +240,11 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		}
 
 		if fc.AutoIncrement.IsAutoIncrement {
-			buf.WriteString(" AUTO_INCREMENT")
+			buf.WriteString(" AUTOINCREMENT")
 			// check if auto_increment is configured, 1 is the default value.
 			if fc.AutoIncrement.StartIndex != 1 || fc.AutoIncrement.IncBy != 1 {
-				buf.WriteString("(" + strconv.FormatInt(fc.AutoIncrement.StartIndex, 10) +", ")
-				buf.WriteString(strconv.FormatInt(fc.AutoIncrement.IncBy, 10) +")")
+				buf.WriteString("(" + strconv.FormatInt(fc.AutoIncrement.StartIndex, 10) + ", ")
+				buf.WriteString(strconv.FormatInt(fc.AutoIncrement.IncBy, 10) + ")")
 			}
 		}
 
@@ -333,7 +333,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 			_, err = fmt.Fprintln(w, "COMMIT;")
 			return err
 		}
-		
+
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {

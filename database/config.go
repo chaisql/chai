@@ -23,10 +23,10 @@ type AutoIncrement struct {
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Path         document.ValuePath
-	Type         document.ValueType
-	IsPrimaryKey bool
-	IsNotNull    bool
+	Path          document.ValuePath
+	Type          document.ValueType
+	IsPrimaryKey  bool
+	IsNotNull     bool
 	AutoIncrement AutoIncrement
 }
 
@@ -35,7 +35,7 @@ func (f *FieldConstraint) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	fb := document.NewFieldBuffer()
-	fb.Add("is_auto_increment", document.NewBoolValue(f.AutoIncrement.IsAutoIncrement))
+	fb.Add("is_autoincrement", document.NewBoolValue(f.AutoIncrement.IsAutoIncrement))
 	fb.Add("start_index", document.NewIntegerValue(f.AutoIncrement.StartIndex))
 	fb.Add("current_index", document.NewIntegerValue(f.AutoIncrement.CurrIndex))
 	fb.Add("increment", document.NewIntegerValue(f.AutoIncrement.IncBy))
@@ -44,7 +44,7 @@ func (f *FieldConstraint) ToDocument() document.Document {
 	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
-	buf.Add("auto_increment", document.NewDocumentValue(fb))
+	buf.Add("autoincrement", document.NewDocumentValue(fb))
 
 	return buf
 }
@@ -79,7 +79,7 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	}
 	f.IsNotNull = v.V.(bool)
 
-	v, err = d.GetByField("auto_increment")
+	v, err = d.GetByField("autoincrement")
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	var fb document.FieldBuffer
 	err = fb.ScanDocument(v.V.(document.Document))
 
-	v, err = fb.GetByField("is_auto_increment")
+	v, err = fb.GetByField("is_autoincrement")
 	if err != nil {
 		return err
 	}
@@ -140,24 +140,15 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 	return nil
 }
 
-// getAutoIncrement returns the field constraint of the auto_increment.
-func (ti *TableInfo) getAutoIncrement() *FieldConstraint {
+// getAutoIncrement returns the field constraint of the autoincrement.
+func (ti *TableInfo) getAutoIncrement() FieldConstraint {
 	for _, f := range ti.FieldConstraints {
 		if f.AutoIncrement.IsAutoIncrement {
-			return &f
+			return f
 		}
 	}
 
-	return nil
-}
-
-// updateAutoIncrement set the autoIncrement index value. It can be used for reset.
-func (ti *TableInfo) updateAutoIncrement(fc *FieldConstraint) {
-	for i, f := range ti.FieldConstraints {
-		if f.Path.String() == fc.Path.String() && f.AutoIncrement.IsAutoIncrement {
-			ti.FieldConstraints[i].AutoIncrement.CurrIndex = fc.AutoIncrement.CurrIndex
-		}
-	}
+	return FieldConstraint{}
 }
 
 // ToDocument turns ti into a document.
@@ -390,7 +381,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 
 	t.tableInfos[indexStoreName] = TableInfo{
 		storeName: []byte(indexStoreName),
-		readOnly: true,
+		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
 				Path: document.ValuePath{
