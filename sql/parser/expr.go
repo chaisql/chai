@@ -432,7 +432,7 @@ LOOP:
 			}
 			idx, err := strconv.Atoi(lit)
 			if err != nil {
-				return nil, err
+				return nil, newParseError(lit, []string{"integer"}, pos)
 			}
 			vPath = append(vPath, document.ValuePathFragment{
 				ArrayIndex: idx,
