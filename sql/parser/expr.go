@@ -84,6 +84,12 @@ func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.To
 		return nil, 0, nil
 	}
 
+	// Ignore currently unused operators.
+	if op == scanner.EQREGEX || op == scanner.NEQREGEX {
+		p.Unscan()
+		return nil, 0, nil
+	}
+
 	switch op {
 	case scanner.EQ:
 		return expr.Eq, op, nil
