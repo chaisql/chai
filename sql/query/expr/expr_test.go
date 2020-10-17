@@ -13,13 +13,11 @@ import (
 )
 
 var doc document.Document = func() document.Document {
-	d, _ := document.NewFromJSON([]byte(`{
+	return document.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
 		"c": [1, {"foo": "bar"}, [1, 2]]
 	}`))
-
-	return d
 }()
 
 var stackWithDoc = expr.EvalStack{

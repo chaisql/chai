@@ -5,7 +5,6 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPathExpr(t *testing.T) {
@@ -16,7 +15,7 @@ func TestPathExpr(t *testing.T) {
 	}{
 		{"a", document.NewIntegerValue(1), false},
 		{"b", func() document.Value {
-			d, _ := document.NewFromJSON([]byte(`{"foo bar": [1, 2]}`))
+			d := document.NewFromJSON([]byte(`{"foo bar": [1, 2]}`))
 			return document.NewDocumentValue(d)
 		}(),
 			false},
@@ -30,12 +29,11 @@ func TestPathExpr(t *testing.T) {
 		{"d", nullLitteral, false},
 	}
 
-	d, err := document.NewFromJSON([]byte(`{
+	d := document.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
 		"c": [1, {"foo": "bar"}, [1, 2]]
 	}`))
-	require.NoError(t, err)
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
