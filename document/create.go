@@ -15,7 +15,7 @@ import (
 
 // NewFromJSON creates a document from raw JSON data.
 // The returned document will lazily decode the data.
-// If data is not a valid json object, calls to Iterate of GetByField will
+// If data is not a valid json object, calls to Iterate or GetByField will
 // return an error.
 func NewFromJSON(data []byte) Document {
 	return &jsonEncodedDocument{data}
