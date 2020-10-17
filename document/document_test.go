@@ -83,7 +83,6 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Set", func(t *testing.T) {
-
 		tests := []struct {
 			name  string
 			data  string
@@ -118,9 +117,8 @@ func TestFieldBuffer(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				var fb document.FieldBuffer
 
-				d, err := document.NewFromJSON([]byte(tt.data))
-				require.NoError(t, err)
-				err = fb.Copy(d)
+				d := document.NewFromJSON([]byte(tt.data))
+				err := fb.Copy(d)
 				require.NoError(t, err)
 				p, err := parser.ParsePath(tt.path)
 				require.NoError(t, err)

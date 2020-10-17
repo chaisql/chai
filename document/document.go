@@ -290,7 +290,7 @@ func (fb *FieldBuffer) Copy(d Document) error {
 				return err
 			}
 
-			fb.fields[i].Value = NewArrayValue(&buf)
+			fb.fields[i].Value = NewArrayValue(buf)
 		}
 	}
 
