@@ -48,6 +48,6 @@ func TestParserMultiStatement(t *testing.T) {
 func TestParserDivideByZero(t *testing.T) {
 	// See https://github.com/genjidb/genji/issues/268
 	require.NotPanics(t, func() {
-		_, _ = ParseQuery(context.Background(), "SELECT*FROM t LIMIT-0%.2")
+		_, _ = ParseQuery(context.Background(), "SELECT * FROM t LIMIT 0 % .5")
 	})
 }
