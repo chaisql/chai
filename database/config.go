@@ -319,13 +319,7 @@ func (t *tableInfoStore) modifyTable(tx *Transaction, tableName string, f func(*
 		return err
 	}
 
-	key := []byte(tableName)
-	err = st.Delete(key)
-	if err != nil {
-		return err
-	}
-
-	err = st.Put(key, buf.Bytes())
+	err = st.Put([]byte(tableName), buf.Bytes())
 	if err != nil {
 		return err
 	}
