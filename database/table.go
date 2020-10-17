@@ -514,7 +514,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		}
 	case document.ArrayValue:
 		// if it's an array, we can assume it's a ValueBuffer
-		buf := parent.V.(*document.ValueBuffer)
+		buf := parent.V.(document.ValueBuffer)
 
 		frag := c.Path[len(c.Path)-1]
 		if frag.FieldName != "" {
