@@ -95,7 +95,7 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				info, ok := debug.ReadBuildInfo()
 
 				if !ok {
-					fmt.Println("version not available in GOPATH mode")
+					fmt.Println(`version not available in GOPATH mode; use "go get" with Go modules enabled`)
 					return nil
 				}
 
