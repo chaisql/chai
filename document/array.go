@@ -68,6 +68,11 @@ type ValueBuffer []Value
 
 // NewValueBuffer creates a buffer of values.
 func NewValueBuffer(values ...Value) ValueBuffer {
+	if len(values) == 0 {
+		// If called with no values return a non-nil slice.
+		return ValueBuffer{}
+	}
+
 	return ValueBuffer(values)
 }
 
@@ -141,7 +146,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			err = vb.Replace(i, NewArrayValue(&buf))
+			err = vb.Replace(i, NewArrayValue(buf))
 			if err != nil {
 				return err
 			}

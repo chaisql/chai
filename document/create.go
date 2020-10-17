@@ -9,16 +9,40 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/buger/jsonparser"
 )
 
-// NewFromJSON creates a document from a JSON object.
-func NewFromJSON(data []byte) (Document, error) {
-	var fb FieldBuffer
-	err := fb.UnmarshalJSON(data)
+// NewFromJSON creates a document from raw JSON data.
+// The returned document will lazily decode the data.
+// If data is not a valid json object, calls to Iterate of GetByField will
+// return an error.
+func NewFromJSON(data []byte) Document {
+	return &jsonEncodedDocument{data}
+}
+
+type jsonEncodedDocument struct {
+	data []byte
+}
+
+func (j jsonEncodedDocument) Iterate(fn func(field string, value Value) error) error {
+	return jsonparser.ObjectEach(j.data, func(key, value []byte, dataType jsonparser.ValueType, offset int) error {
+		v, err := parseJSONValue(dataType, value)
+		if err != nil {
+			return err
+		}
+
+		return fn(string(key), v)
+	})
+}
+
+func (j jsonEncodedDocument) GetByField(field string) (Value, error) {
+	v, dt, _, err := jsonparser.Get(j.data, field)
 	if err != nil {
-		return nil, err
+		return Value{}, err
 	}
-	return &fb, nil
+
+	return parseJSONValue(dt, v)
 }
 
 // NewFromMap creates a document from a map.
