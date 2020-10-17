@@ -483,13 +483,13 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 
 		return NewDoubleValue(xa / xb), nil
 	case '%':
-		ia, ib := int64(xa), int64(xb)
+		mod := math.Mod(xa, xb)
 
-		if ib == 0 {
+		if math.IsNaN(mod) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoubleValue(float64(ia % ib)), nil
+		return NewDoubleValue(mod), nil
 	case '&':
 		ia, ib := int64(xa), int64(xb)
 		return NewIntegerValue(ia & ib), nil
