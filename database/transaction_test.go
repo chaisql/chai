@@ -2,13 +2,13 @@ package database_test
 
 import (
 	"errors"
-	"testing"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/key"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func newTestDB(t testing.TB) (*database.Transaction, func()) {

@@ -309,7 +309,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		p.Unscan()
 		return document.DoubleValue, nil
 	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
-		 scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
+		scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
 		return document.IntegerValue, nil
 	case scanner.TYPETEXT:
 		return document.TextValue, nil
@@ -317,7 +317,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 		}
-		
+
 		// The value between parentheses is not used.
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTEGER {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)

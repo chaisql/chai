@@ -320,7 +320,7 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 
 	t.tableInfos[indexStoreName] = TableInfo{
 		storeName: []byte(indexStoreName),
-		readOnly: true,
+		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
 				Path: document.ValuePath{

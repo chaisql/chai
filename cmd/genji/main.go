@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime/debug"
+	"syscall"
 
 	"github.com/genjidb/genji/cmd/genji/shell"
 	"github.com/urfave/cli/v2"
@@ -140,7 +143,31 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 		})
 	}
 
-	err := app.Run(os.Args)
+	ctx, cancel := context.WithCancel(context.Background())
+	app.Before = func(c *cli.Context) error {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT)
+
+		go func() {
+			defer func() {
+				signal.Stop(sig)
+				cancel()
+			}()
+			for {
+				select {
+				case <-sig:
+					cli.OsExiter(2)
+				case <-ctx.Done():
+					cli.OsExiter(2)
+				}
+			}
+
+		}()
+
+		return nil
+	}
+
+	err := app.RunContext(ctx, os.Args)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stdout, "error: %v\n", err)
 		os.Exit(2)
