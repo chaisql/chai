@@ -483,11 +483,12 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 
 		return NewDoubleValue(xa / xb), nil
 	case '%':
-		if xb == 0 {
+		ia, ib := int64(xa), int64(xb)
+
+		if ib == 0 {
 			return NewNullValue(), nil
 		}
 
-		ia, ib := int64(xa), int64(xb)
 		return NewDoubleValue(float64(ia % ib)), nil
 	case '&':
 		ia, ib := int64(xa), int64(xb)

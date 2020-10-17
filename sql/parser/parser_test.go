@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParserMultiStatement(t *testing.T) {
@@ -42,4 +43,10 @@ func TestParserMultiStatement(t *testing.T) {
 			require.EqualValues(t, test.expected, q.Statements)
 		})
 	}
+}
+
+func TestParserDivideByZero(t *testing.T) {
+	require.NotPanics(t, func() {
+		_, _ = ParseQuery(context.Background(), "SELECT*FROM t LIMIT-0%.2")
+	})
 }
