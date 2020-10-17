@@ -1,10 +1,12 @@
 package expr_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPathExpr(t *testing.T) {
@@ -15,8 +17,10 @@ func TestPathExpr(t *testing.T) {
 	}{
 		{"a", document.NewIntegerValue(1), false},
 		{"b", func() document.Value {
-			d := document.NewFromJSON([]byte(`{"foo bar": [1, 2]}`))
-			return document.NewDocumentValue(d)
+			fb := document.NewFieldBuffer()
+			err := json.Unmarshal([]byte(`{"foo bar": [1, 2]}`), fb)
+			require.NoError(t, err)
+			return document.NewDocumentValue(fb)
 		}(),
 			false},
 		{"b.`foo bar`[0]", document.NewIntegerValue(1), false},

@@ -60,6 +60,17 @@ func TestNewFromJSON(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("GetByField", func(t *testing.T) {
+		d := document.NewFromJSON([]byte(`{"a": 1000}`))
+
+		v, err := d.GetByField("a")
+		require.NoError(t, err)
+		require.Equal(t, document.NewIntegerValue(1000), v)
+
+		v, err = d.GetByField("b")
+		require.Equal(t, document.ErrFieldNotFound, err)
+	})
 }
 
 func BenchmarkJSONToDocument(b *testing.B) {

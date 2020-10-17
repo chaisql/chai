@@ -38,6 +38,9 @@ func (j jsonEncodedDocument) Iterate(fn func(field string, value Value) error) e
 
 func (j jsonEncodedDocument) GetByField(field string) (Value, error) {
 	v, dt, _, err := jsonparser.Get(j.data, field)
+	if dt == jsonparser.NotExist {
+		return Value{}, ErrFieldNotFound
+	}
 	if err != nil {
 		return Value{}, err
 	}
