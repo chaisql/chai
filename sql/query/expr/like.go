@@ -28,7 +28,7 @@ func (op likeOp) Eval(ctx EvalStack) (document.Value, error) {
 	}
 
 	if a.Type != document.TextValue || b.Type != document.TextValue {
-		return nullLitteral, errors.New("LIKE operator takes an text")
+		return nullLitteral, errors.New("LIKE operator takes a text")
 	}
 
 	if like(b.V.(string), a.V.(string)) {
