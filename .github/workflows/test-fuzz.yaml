@@ -85,7 +85,10 @@ jobs:
       - name: Run tests
         run: |
           go run github.com/dvyukov/go-fuzz/go-fuzz-build -func ${{ matrix.func }} && timeout -s INT -k 30 300 \
-          go run github.com/dvyukov/go-fuzz/go-fuzz -workdir=testdata/fuzz/${{ matrix.func }} -dumpcover
+          go run github.com/dvyukov/go-fuzz/go-fuzz -workdir=testdata/fuzz/${{ matrix.func }} -dumpcover || true
+          if [ -d crashers ]; then
+            exit 1
+          fi
         working-directory: genji/fuzz
 
       - name: Prepare report
