@@ -129,29 +129,53 @@ func Run(ctx context.Context, opts *Options) error {
 		sh.dumpHistory()
 	}()
 
+	promptExitCh := make(chan struct{})
+	promptExecCh := make(chan string)
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+
 		select {
-		case <-ch:
-			fmt.Println("Signal handler: Captured control c")
+		case <-signalCh:
 			return context.Canceled
-		case <-ctx.Done():
-			fmt.Println("Signal handler: Context canceled")
-			return ctx.Err()
+		case <-promptExitCh:
+			return context.Canceled
 		}
 	})
 
 	g.Go(func() error {
-		return sh.runPrompt(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case input := <-promptExecCh:
+				err := sh.executeInput(ctx, input)
+				if err == context.Canceled {
+					return err
+				}
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				promptExecCh <- ""
+			}
+		}
 	})
+
+	go func() {
+		defer close(promptExitCh)
+		// TODO: error handling
+
+		sh.runPrompt(ctx, promptExecCh)
+	}()
 
 	return g.Wait()
 }
 
-func (sh *Shell) runPrompt(ctx context.Context) error {
+func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -168,16 +192,6 @@ func (sh *Shell) runPrompt(ctx context.Context) error {
 		prompt.OptionTitle("genji"),
 		prompt.OptionLivePrefix(sh.changelivePrefix),
 		prompt.OptionHistory(history),
-
-		// prompt.OptionAddKeyBind(prompt.KeyBind{
-		// 	Key: prompt.ControlD,
-		// 	Fn: func(buf *prompt.Buffer) {
-		// 		fmt.Println(len(buf.Text()))
-		// 		if len(buf.Text()) == 0 {
-		// 			ctrlDPressed = true
-		// 		}
-		// 	},
-		// }),
 		prompt.OptionBreakLineCallback(func(d *prompt.Document) {
 			lastKeyStroke = d.LastKeyStroke()
 		}),
@@ -223,14 +237,14 @@ LOOP:
 			continue
 		}
 
-		fmt.Println("Input:", input)
 		input = strings.TrimSpace(input)
 
 		if len(input) == 0 {
 			continue
 		}
 
-		sh.execute(ctx, input)
+		execCh <- input
+		<-execCh
 	}
 
 	return ctx.Err()
