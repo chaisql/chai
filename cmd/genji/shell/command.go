@@ -363,11 +363,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 			return err
 		}
 
-		if err := dumpTable(tx, tableName, w); err != nil {
-			return err
-		}
-
-		return nil
+		return dumpTable(tx, tableName, w)
 	})
 	if err != nil {
 		_, err = fmt.Fprintln(w, "ROLLBACK;")
