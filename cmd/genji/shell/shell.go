@@ -20,11 +20,21 @@ import (
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/sql/parser"
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
 	historyFilename = ".genji_history"
+)
+
+var (
+	// error returned when the exit command is executed
+	errExitCommand = errors.New("exit command")
+	// error returned when the program received an interrupt signal
+	errExitSignal = errors.New("interrupt signal received")
+	// error returned when the prompt reads a ctrl d input
+	errExitCtrlD = errors.New("ctrl-d")
 )
 
 // A Shell manages a command line shell program for manipulating a Genji database.
@@ -39,8 +49,6 @@ type Shell struct {
 	history []string
 
 	cmdSuggestions []prompt.Suggest
-
-	cancel func()
 }
 
 // Options of the shell.
@@ -80,15 +88,13 @@ func stdinFromTerminal() bool {
 	return true // data is from terminal
 }
 
-func dummyExecutor(in string) {}
-
 // Run a shell.
-func Run(ctx context.Context, opts *Options) error {
+func Run(ctx context.Context, opts *Options) (err error) {
 	if opts == nil {
 		opts = new(Options)
 	}
 
-	err := opts.validate()
+	err = opts.validate()
 	if err != nil {
 		return err
 	}
@@ -118,19 +124,25 @@ func Run(ctx context.Context, opts *Options) error {
 	}
 
 	defer func() {
-		// TODO use multierror
 		if sh.db != nil {
-			sh.db.Close()
+			closeErr := sh.db.Close()
+			if closeErr != nil {
+				err = multierror.Append(err, closeErr)
+			}
 		}
 	}()
 
 	defer func() {
-		// TODO use multierror
-		sh.dumpHistory()
+		dumpErr := sh.dumpHistory()
+		if dumpErr != nil {
+			err = multierror.Append(err, dumpErr)
+		}
 	}()
 
-	promptExitCh := make(chan struct{})
 	promptExecCh := make(chan string)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -140,9 +152,10 @@ func Run(ctx context.Context, opts *Options) error {
 
 		select {
 		case <-signalCh:
-			return context.Canceled
-		case <-promptExitCh:
-			return context.Canceled
+			fmt.Fprintf(os.Stderr, "\nInterrupt signal received. Quitting...\n")
+			return errExitSignal
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	})
 
@@ -153,32 +166,35 @@ func Run(ctx context.Context, opts *Options) error {
 				return ctx.Err()
 			case input := <-promptExecCh:
 				err := sh.executeInput(ctx, input)
-				if err == context.Canceled {
+				if err == context.Canceled || err == errExitCommand {
 					return err
 				}
 				if err != nil {
 					fmt.Println(err)
 				}
-
-				promptExecCh <- ""
+			case promptExecCh <- "":
 			}
 		}
 	})
 
 	go func() {
-		defer close(promptExitCh)
-		// TODO: error handling
+		defer cancel()
 
-		sh.runPrompt(ctx, promptExecCh)
+		err := sh.runPrompt(ctx, promptExecCh)
+		if err != nil && err != errExitCtrlD {
+			fmt.Fprintf(os.Stderr, err.Error())
+		}
 	}()
 
-	return g.Wait()
+	err = g.Wait()
+	if err == errExitCommand || err == errExitSignal || err == context.Canceled {
+		return nil
+	}
+
+	return err
 }
 
 func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	sh.loadCommandSuggestions()
 	history, err := sh.loadHistory()
 	if err != nil {
@@ -220,21 +236,13 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 		}
 	}
 
-	pt := prompt.New(dummyExecutor, sh.completer, append(promptOpts, prompt.OptionHistory(history))...)
+	pt := prompt.New(func(in string) {}, sh.completer, append(promptOpts, prompt.OptionHistory(history))...)
 
-LOOP:
 	for {
-		select {
-		case <-ctx.Done():
-			break LOOP
-		default:
-		}
-
 		input := pt.Input()
 
 		if lastKeyStroke == prompt.ControlD {
-			cancel()
-			continue
+			return errExitCtrlD
 		}
 
 		input = strings.TrimSpace(input)
@@ -246,8 +254,6 @@ LOOP:
 		execCh <- input
 		<-execCh
 	}
-
-	return ctx.Err()
 }
 
 func (sh *Shell) loadCommandSuggestions() {
@@ -276,11 +282,13 @@ func (sh *Shell) execute(ctx context.Context, in string) {
 }
 
 func (sh *Shell) executeInput(ctx context.Context, in string) error {
+	sh.history = append(sh.history, in)
+
 	switch {
 	// if it starts with a "." it's a command
 	// if the input is "help" or "exit", then it's a command.
 	// it must not be in the middle of a multi line query though
-	case strings.HasPrefix(in, "."), in == "help", in == "exit":
+	case !sh.multiLine && strings.HasPrefix(in, "."), in == "help", in == "exit":
 		return sh.runCommand(ctx, in)
 
 	// If it ends with a ";" we can run a query
@@ -324,8 +332,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return fmt.Errorf("usage: .exit")
 		}
 
-		sh.cancel()
-		return nil
+		return errExitCommand
 	case ".indexes":
 		db, err := sh.getDB()
 		if err != nil {
@@ -388,14 +395,12 @@ func (sh *Shell) getDB() (*genji.DB, error) {
 		ng, err = badgerengine.NewEngine(badger.DefaultOptions(sh.opts.DBPath).WithLogger(nil))
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(2)
+		return nil, err
 	}
 
 	sh.db, err = genji.New(ng)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(2)
+		return nil, err
 	}
 
 	return sh.db, nil
