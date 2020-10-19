@@ -51,7 +51,9 @@ type Shell struct {
 
 	cmdSuggestions []prompt.Suggest
 
-	// context used for execution cancelation
+	// context used for execution cancelation,
+	// these must not be used manually.
+	// Use getExecContext and cancelExecContext instead.
 	execContext  context.Context
 	execCancelFn func()
 	mu           sync.Mutex
@@ -153,52 +155,20 @@ func Run(ctx context.Context, opts *Options) (err error) {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		interruptC := make(chan os.Signal, 1)
-		termC := make(chan os.Signal, 1)
-		signal.Notify(interruptC, os.Interrupt)
-		signal.Notify(termC, syscall.SIGTERM)
-
-		for {
-			select {
-			case <-interruptC:
-				sh.cancelExecution()
-			case <-termC:
-				fmt.Fprintf(os.Stderr, "\nTermination signal received. Quitting...\n")
-				return errExitSignal
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}
+		return sh.runSignalHandlers(ctx)
 	})
 
 	g.Go(func() error {
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case input := <-promptExecCh:
-				err := sh.executeInput(sh.getExecContext(ctx), input)
-				// if the context has been canceled
-				// there is no way to tell at this point
-				// if this is because of a user interruption
-				// or a termination signal.
-				// If it's the latter, it will be detected by the Select statement.
-				if err == context.Canceled {
-					// Print a newline for cleanliness
-					fmt.Println()
-					continue
-				}
-				if err == errExitCommand {
-					return err
-				}
-				if err != nil {
-					fmt.Println(err)
-				}
-			case promptExecCh <- "":
-			}
-		}
+		return sh.runExecutor(ctx, promptExecCh)
 	})
 
+	// Because go-prompt doesn't handle cancelation
+	// it is impossible to ask it to stop when the prompt.Input function
+	// is running.
+	// We run it in a non-managed goroutine with no graceful shutdown
+	// so that if the prompt.Input function is running when we want to quit the program
+	// we simply don't wait for this goroutine to end.
+	// This goroutine must not manage any resource.
 	go func() {
 		defer cancel()
 
@@ -216,6 +186,62 @@ func Run(ctx context.Context, opts *Options) (err error) {
 	return err
 }
 
+// runSignalHandlers handles two different signals.
+// On SIGINT, it cancels any query execution using sh.cancelExecution.
+// On SIGTERM, it triggers graceful shutdown by returning errExitSignal.
+func (sh *Shell) runSignalHandlers(ctx context.Context) error {
+	interruptC := make(chan os.Signal, 1)
+	termC := make(chan os.Signal, 1)
+	signal.Notify(interruptC, os.Interrupt)
+	signal.Notify(termC, syscall.SIGTERM)
+
+	for {
+		select {
+		case <-interruptC:
+			sh.cancelExecution()
+		case <-termC:
+			fmt.Fprintf(os.Stderr, "\nTermination signal received. Quitting...\n")
+			return errExitSignal
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+// runExecutor manages execution. It reads user input from promptExecCh, executes any
+// command or query and writes back an empty string to that channel once it's done.
+func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case input := <-promptExecCh:
+			err := sh.executeInput(sh.getExecContext(ctx), input)
+			// if the context has been canceled
+			// there is no way to tell at this point
+			// if this is because of a user interruption
+			// or a termination signal.
+			// If it's the latter, it will be detected by the Select statement.
+			if err == context.Canceled {
+				// Print a newline for cleanliness
+				fmt.Println()
+				continue
+			}
+			if err == errExitCommand {
+				return err
+			}
+			if err != nil {
+				fmt.Println(err)
+			}
+		case promptExecCh <- "":
+		}
+	}
+}
+
+// runPrompt is a stateless function that displays a prompt to the user.
+// User input is sent to the execCh channel which must deal with parsing and error handling.
+// Once the execution of the user input is done by the reader of the channel, it must
+// send a string back to execCh so that this function will display another prompt.
 func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 	sh.loadCommandSuggestions()
 	history, err := sh.loadHistory()
@@ -223,11 +249,13 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 		return err
 	}
 
+	// we store the last key stroke to
+	// determine if ctrl D was pressed by the user.
 	var lastKeyStroke prompt.Key
 
 	promptOpts := []prompt.Option{
 		prompt.OptionPrefix("genji> "),
-		prompt.OptionTitle("genji"),
+		prompt.OptionTitle("Genji"),
 		prompt.OptionLivePrefix(sh.changelivePrefix),
 		prompt.OptionHistory(history),
 		prompt.OptionBreakLineCallback(func(d *prompt.Document) {
@@ -263,6 +291,8 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 	for {
 		input := pt.Input()
 
+		// go-prompt returns only if ctrl D was pressed on an empty line.
+		// if so, we must stop the program.
 		if lastKeyStroke == prompt.ControlD {
 			return errExitCtrlD
 		}
@@ -273,11 +303,16 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 			continue
 		}
 
+		// deleguate execution to the sh.runExecutor goroutine
 		execCh <- input
+		// and wait for it to finish to display another prompt.
 		<-execCh
 	}
 }
 
+// cancelExecution must be called to cancel any ongoing execution without
+// stopping the program.
+// Calling this function when there is no ongoing execution is a no-op.
 func (sh *Shell) cancelExecution() {
 	sh.mu.Lock()
 	defer sh.mu.Unlock()
@@ -289,6 +324,8 @@ func (sh *Shell) cancelExecution() {
 	}
 }
 
+// getExecContext returns the current cancelable execution context
+// or creates one if needed.
 func (sh *Shell) getExecContext(ctx context.Context) context.Context {
 	sh.mu.Lock()
 	defer sh.mu.Unlock()
@@ -317,15 +354,7 @@ func (sh *Shell) loadCommandSuggestions() {
 	sh.cmdSuggestions = suggestions
 }
 
-func (sh *Shell) execute(ctx context.Context, in string) {
-	sh.history = append(sh.history, in)
-
-	err := sh.executeInput(ctx, in)
-	if err != nil && err != context.Canceled {
-		fmt.Fprintln(os.Stderr, err)
-	}
-}
-
+// executeInput stores user input in the history and executes it.
 func (sh *Shell) executeInput(ctx context.Context, in string) error {
 	sh.history = append(sh.history, in)
 
