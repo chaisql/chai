@@ -291,9 +291,13 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 	pt := prompt.New(func(in string) {}, sh.completer, append(promptOpts, prompt.OptionHistory(history))...)
 
 	for {
+		// Input() captures ctrl D and ctrl C.
+		// It never returns when ctrl C is pressed but does on CTRL D
+		// under specific conditions.
 		input := pt.Input()
 
-		// go-prompt returns only if ctrl D was pressed on an empty line.
+		// go-prompt ignores ctrl D it if it was pressed while the line is not empty.
+		// However, it returns if the line is empty and sets lastKeyStroke to prompt.ControlD.
 		// if so, we must stop the program.
 		if lastKeyStroke == prompt.ControlD {
 			return errExitCtrlD
