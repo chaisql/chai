@@ -253,7 +253,7 @@ func TestValueMod(t *testing.T) {
 		{"integer(10)%integer(8)", document.NewIntegerValue(10), document.NewIntegerValue(8), document.NewIntegerValue(2), false},
 		{"integer(10)%float64(8)", document.NewIntegerValue(10), document.NewDoubleValue(8), document.NewDoubleValue(2), false},
 		{"int64(maxint)%float64(maxint)", document.NewIntegerValue(math.MaxInt64), document.NewDoubleValue(math.MaxInt64), document.NewDoubleValue(0), false},
-		{"double(> maxint)%int64(100)", document.NewDoubleValue(math.MaxInt64 + 1000), document.NewIntegerValue(100), document.NewDoubleValue(-8), false},
+		{"double(> maxint)%int64(100)", document.NewDoubleValue(math.MaxInt64 + 1000), document.NewIntegerValue(100), document.NewDoubleValue(8), false},
 		{"int64(100)%float64(> maxint)", document.NewIntegerValue(100), document.NewDoubleValue(math.MaxInt64 + 1000), document.NewDoubleValue(100), false},
 		{"integer(120)%text('120')", document.NewIntegerValue(120), document.NewTextValue("120"), document.NewNullValue(), false},
 		{"text('120')%text('120')", document.NewTextValue("120"), document.NewTextValue("120"), document.NewNullValue(), false},
