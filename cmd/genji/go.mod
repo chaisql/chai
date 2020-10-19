@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.2.0
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520
 )
 
 replace (

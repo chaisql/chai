@@ -41,6 +41,8 @@ github.com/genjidb/genji v0.8.0 h1:yDxDF8rfwDMVSI1OPZUQzUl8+9QflTym87sUXr9hw3Y=
 github.com/genjidb/genji v0.8.0/go.mod h1:7MhLPBD74B2Z9+L0xwoKbfkS6Dba/PHcZp+vpjoZiyY=
 github.com/genjidb/genji/engine/badgerengine v0.8.0 h1:cYNTxOUTRQo5cRpLVrA8yS/OLv958ahsQatXdvjG9dk=
 github.com/genjidb/genji/engine/badgerengine v0.8.0/go.mod h1:1Rs9U2ahauFJu2ByWDlR34Pa+urEElGzT1hbVo8FEaA=
+github.com/genjidb/go-prompt v0.2.6-0.20201003080130-8e6eb48b4aa0 h1:ni4z939LnS5FmADw/UzcpipQ3LrIod43Ws2HNnLdgXw=
+github.com/genjidb/go-prompt v0.2.6-0.20201003080130-8e6eb48b4aa0/go.mod h1:vFnjEGDIIA/Lib7giyE4E9c50Lvl8j0S+7FVlAwDAVw=
 github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.4 h1:87PNWwrRvUSnqS4dlcBU/ftvOIBep4sYuBLlh6rX2wk=
@@ -122,6 +124,8 @@ golang.org/x/net v0.0.0-20200301022130-244492dfa37a h1:GuSPYbZzB5/dcLNCwLQLsg3ob
 golang.org/x/net v0.0.0-20200301022130-244492dfa37a/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e h1:vcxGaoTs7kV8m5Np9uUNQin4BrLOthgV7252N8V+FwY=
 golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520 h1:Bx6FllMpG4NWDOfhMBz1VR2QYNp/SAOHPIAsaVmxfPo=
+golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20181205085412-a5c9d58dba9a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/c-bata/go-prompt"
@@ -31,8 +32,8 @@ const (
 var (
 	// error returned when the exit command is executed
 	errExitCommand = errors.New("exit command")
-	// error returned when the program received an interrupt signal
-	errExitSignal = errors.New("interrupt signal received")
+	// error returned when the program received a termination signal
+	errExitSignal = errors.New("termination signal received")
 	// error returned when the prompt reads a ctrl d input
 	errExitCtrlD = errors.New("ctrl-d")
 )
@@ -49,6 +50,11 @@ type Shell struct {
 	history []string
 
 	cmdSuggestions []prompt.Suggest
+
+	// context used for execution cancelation
+	execContext  context.Context
+	execCancelFn func()
+	mu           sync.Mutex
 }
 
 // Options of the shell.
@@ -147,15 +153,21 @@ func Run(ctx context.Context, opts *Options) (err error) {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+		interruptC := make(chan os.Signal, 1)
+		termC := make(chan os.Signal, 1)
+		signal.Notify(interruptC, os.Interrupt)
+		signal.Notify(termC, syscall.SIGTERM)
 
-		select {
-		case <-signalCh:
-			fmt.Fprintf(os.Stderr, "\nInterrupt signal received. Quitting...\n")
-			return errExitSignal
-		case <-ctx.Done():
-			return ctx.Err()
+		for {
+			select {
+			case <-interruptC:
+				sh.cancelExecution()
+			case <-termC:
+				fmt.Fprintf(os.Stderr, "\nTermination signal received. Quitting...\n")
+				return errExitSignal
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 	})
 
@@ -165,8 +177,18 @@ func Run(ctx context.Context, opts *Options) (err error) {
 			case <-ctx.Done():
 				return ctx.Err()
 			case input := <-promptExecCh:
-				err := sh.executeInput(ctx, input)
-				if err == context.Canceled || err == errExitCommand {
+				err := sh.executeInput(sh.getExecContext(ctx), input)
+				// if the context has been canceled
+				// there is no way to tell at this point
+				// if this is because of a user interruption
+				// or a termination signal.
+				// If it's the latter, it will be detected by the Select statement.
+				if err == context.Canceled {
+					// Print a newline for cleanliness
+					fmt.Println()
+					continue
+				}
+				if err == errExitCommand {
 					return err
 				}
 				if err != nil {
@@ -254,6 +276,29 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 		execCh <- input
 		<-execCh
 	}
+}
+
+func (sh *Shell) cancelExecution() {
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
+
+	if sh.execCancelFn != nil {
+		sh.execCancelFn()
+		sh.execContext = nil
+		sh.execCancelFn = nil
+	}
+}
+
+func (sh *Shell) getExecContext(ctx context.Context) context.Context {
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
+
+	if sh.execContext != nil {
+		return sh.execContext
+	}
+
+	sh.execContext, sh.execCancelFn = context.WithCancel(ctx)
+	return sh.execContext
 }
 
 func (sh *Shell) loadCommandSuggestions() {
