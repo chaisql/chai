@@ -179,6 +179,69 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, true},
+		{"With coherent constraint(common)",
+			"CREATE TABLE foo(a DOCUMENT, a.b ARRAY, a.b[0] TEXT);",
+			query.CreateTableStmt{
+				TableName: "foo",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "a"), Type: document.DocumentValue},
+						{Path: parsePath(t, "a.b"), Type: document.ArrayValue},
+						{Path: parsePath(t, "a.b[0]"), Type: document.TextValue},
+					},
+				},
+			}, false},
+		{"With coherent constraint(any)",
+			"CREATE TABLE foo(a, a.b[0] TEXT);",
+			query.CreateTableStmt{
+				TableName: "foo",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "a")},
+						{Path: parsePath(t, "a.b[0]"), Type: document.TextValue},
+					},
+				},
+			}, false},
+		{"With coherent constraint(document)",
+			"CREATE TABLE foo(a DOCUMENT, a.b TEXT);",
+			query.CreateTableStmt{
+				TableName: "foo",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "a"), Type: document.DocumentValue},
+						{Path: parsePath(t, "a.b"), Type: document.TextValue},
+					},
+				},
+			}, false},
+		{"With coherent constraint(array)",
+			"CREATE TABLE foo(a ARRAY, a[0] TEXT);",
+			query.CreateTableStmt{
+				TableName: "foo",
+				Info: database.TableInfo{
+					FieldConstraints: []database.FieldConstraint{
+						{Path: parsePath(t, "a"), Type: document.ArrayValue},
+						{Path: parsePath(t, "a[0]"), Type: document.TextValue},
+					},
+				},
+			}, false},
+		{"With incoherent constraint(common)",
+			"CREATE TABLE foo(a INTEGER, a.b[0] TEXT);",
+			query.CreateTableStmt{}, true},
+		{"With incoherent constraint(common)",
+			"CREATE TABLE foo(a DOCUMENT, a.b[0] TEXT, a.b.c TEXT);",
+			query.CreateTableStmt{}, true},
+		{"With incoherent constraint(common)",
+			"CREATE TABLE foo(a DOCUMENT, a.b.c TEXT, a.b[0] TEXT);",
+			query.CreateTableStmt{}, true},
+		{"With incoherent constraint(document)",
+			"CREATE TABLE foo(a INTEGER, a.b TEXT);",
+			query.CreateTableStmt{}, true},
+		{"With incoherent constraint(array)",
+			"CREATE TABLE foo(a INTEGER, a[0] TEXT);",
+			query.CreateTableStmt{}, true},
+		{"With duplicate constraints",
+			"CREATE TABLE foo(a INTEGER, a TEXT);",
+			query.CreateTableStmt{}, true},
 	}
 
 	for _, test := range tests {
