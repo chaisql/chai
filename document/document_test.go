@@ -1,6 +1,7 @@
 package document_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -269,7 +270,6 @@ func TestNewFromStruct(t *testing.T) {
 
 		AA int `genji:"-"` // ignored
 
-		// embedded fields are not supported currently, they should be ignored
 		*group
 
 		// unexported fields should be ignored
@@ -451,6 +451,51 @@ func TestNewFromStruct(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, 2, v.V.(int64))
 	})
+	t.Run("Embedded struct", func(t *testing.T) {
+		type baz struct {
+			I int `genji:"II"`
+			A string
+		}
+
+		type bar struct {
+			Baz  baz
+			Id   int    `genji:"-"` // ignored
+			Name string `genji:"tag-name"`
+		}
+
+		type foo struct {
+			*bar
+			B   string `genji:"b-b"`
+			Bar bar
+			i   int  // ignored
+			P   *int // should be null
+			A   []byte
+		}
+
+		bb := baz{I: 100, A: "ptr"}
+		e := bar{Id: 1, Name: "Foo", Baz: bb}
+		f := foo{bar: &e, Bar: e, B: "b", A: []byte("foo"), i: 300}
+		doc, err := document.NewFromStruct(&f)
+		require.NoError(t, err)
+		_, err = doc.GetByField("id")
+		require.Error(t, document.ErrFieldNotFound, err)
+
+		v, err := doc.GetByField("p")
+		require.NoError(t, err)
+		require.EqualValues(t, document.NewNullValue().V, v.V)
+
+		v, err = doc.GetByField("tag-name")
+		require.NoError(t, err)
+		require.EqualValues(t, document.NewTextValue("Foo").V, v.V.(string))
+
+		var buf bytes.Buffer
+		data, err := document.MarshalJSON(doc)
+		require.NoError(t, err)
+		buf.Write(data)
+		require.JSONEq(t, `{"baz": {"II": 100, "a": "ptr"}, "tag-name": "Foo", "b-b": "b",
+						"bar": {"baz": {"II": 100, "a": "ptr"}, "tag-name": "Foo"}, "p": null, "a": "Zm9v"}`,
+			buf.String())
+	})
 }
 
 type foo struct {
@@ -597,12 +642,4 @@ func BenchmarkDocumentIterate(b *testing.B) {
 		}
 	})
 
-	b.Run("Reflection", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			refd, _ := document.NewFromStruct(&f)
-			refd.Iterate(func(string, document.Value) error {
-				return nil
-			})
-		}
-	})
 }
