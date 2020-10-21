@@ -98,7 +98,7 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 	}
 
 	var err error
-	tree := &constraintTree{}
+
 	// Parse constraints.
 	for {
 		var fc database.FieldConstraint
@@ -106,10 +106,6 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 		err = p.parseFieldDefinition(&fc)
 		if err != nil {
 			return err
-		}
-
-		if err := tree.insert(fc.Path, fc.Type); err != nil {
-			return &ParseError{Message: "incoherent field constraint: " + err.Error(), Pos: p.s.Curr().Pos}
 		}
 
 		info.FieldConstraints = append(info.FieldConstraints, fc)
