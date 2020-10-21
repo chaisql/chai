@@ -46,16 +46,18 @@ func (n *constraintNode) getPath() document.ValuePath {
 }
 
 func (n *constraintNode) search(path document.ValuePath) *constraintNode {
-	if n.frag == path[0] {
-		if len(path) == 1 {
-			return n
-		}
+	if n.frag != path[0] {
+		return nil
+	}
 
-		for _, sub := range n.sub {
-			t := sub.search(path[1:])
-			if t != nil {
-				return t
-			}
+	if len(path) == 1 {
+		return n
+	}
+
+	for _, sub := range n.sub {
+		t := sub.search(path[1:])
+		if t != nil {
+			return t
 		}
 	}
 
@@ -69,15 +71,15 @@ func (n *constraintNode) insert(path document.ValuePath, typ document.ValueType)
 	// when type is explicitly set and does not have array or document type
 	case n.typ != 0 && n.typ != document.ArrayValue && n.typ != document.DocumentValue:
 		p := append(n.getPath(), path[1]).String()
-		return fmt.Errorf("%q already exists as type %s, but trying add %q constraint", p, n.getPath().String(), n.typ.String())
+		return fmt.Errorf("%q already exists as type %s, but trying add %q constraint", n.getPath().String(), n.typ.String(), p)
 	// when constraint tries to set document constraint for path, but there is already a array constraint
 	case path[1].FieldName != "" && n.typ == document.ArrayValue:
 		p := append(n.getPath(), path[1]).String()
-		return fmt.Errorf("%q already exists as array, but trying add %q constraint", p, n.getPath().String())
+		return fmt.Errorf("%q already exists as array, but trying add %q constraint", n.getPath().String(), p)
 	// when constraint tries to set array constraint for path, but there is already a document constraint
 	case path[1].FieldName == "" && n.typ == document.DocumentValue:
 		p := append(n.getPath(), path[1]).String()
-		return fmt.Errorf("%q already exists as document, but trying add %q constraint", p, n.getPath().String())
+		return fmt.Errorf("%q already exists as document, but trying add %q constraint", n.getPath().String(), p)
 	}
 
 	for _, sub := range n.sub {
