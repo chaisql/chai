@@ -43,6 +43,9 @@ const (
 	// Unset is an operation that removes a value at a given path from every document of a stream
 	Unset
 	// Group is an operation that groups documents based on a given path.
+	_
+	// Join is an operation that merges some streams to one using given condition.
+	Join
 )
 
 // A Tree describes the flow of a stream of documents.

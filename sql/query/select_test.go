@@ -11,6 +11,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func createCall(t *testing.T, ctx context.Context, db *genji.DB) func(q string, res ...string) {
+	return func(q string, res ...string) {
+		st, err := db.Query(ctx, q)
+		require.NoError(t, err)
+		defer st.Close()
+
+		var i int
+		err = st.Iterate(func(d document.Document) error {
+			data, err := document.MarshalJSON(d)
+			require.NoError(t, err)
+			require.JSONEq(t, res[i], string(data))
+			i++
+			return nil
+		})
+		require.Equal(t, len(res), i, "not all expectations were met")
+		require.NoError(t, err)
+	}
+}
+
 func TestSelectStmt(t *testing.T) {
 	ctx := context.Background()
 
@@ -170,22 +189,7 @@ func TestSelectStmt(t *testing.T) {
 		err = db.Exec(ctx, `INSERT INTO test VALUES {a: {b: 1}}, {a: 1}, {a: [1, 2, [8,9]]}`)
 		require.NoError(t, err)
 
-		call := func(q string, res ...string) {
-			st, err := db.Query(ctx, q)
-			require.NoError(t, err)
-			defer st.Close()
-
-			var i int
-			err = st.Iterate(func(d document.Document) error {
-				data, err := document.MarshalJSON(d)
-				require.NoError(t, err)
-				require.JSONEq(t, res[i], string(data))
-				i++
-				return nil
-			})
-			require.NoError(t, err)
-		}
-
+		call := createCall(t, ctx, db)
 		call("SELECT *, a.b FROM test WHERE a = {b: 1}", `{"a": {"b":1}, "a.b": 1}`)
 		call("SELECT a.b FROM test", `{"a.b": 1}`, `{"a.b": null}`, `{"a.b": null}`)
 		call("SELECT a[1] FROM test", `{"a[1]": null}`, `{"a[1]": null}`, `{"a[1]": 2}`)
@@ -220,5 +224,96 @@ func TestSelectStmt(t *testing.T) {
 		err = document.IteratorToJSONArray(&buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
+	})
+
+	t.Run("with joins", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		tx, err := db.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.Exec(ctx, "CREATE TABLE leftt(a integer PRIMARY KEY)")
+		require.NoError(t, err)
+		err = tx.Exec(ctx, `INSERT INTO leftt(a) VALUES (1)`)
+		err = tx.Exec(ctx, `INSERT INTO leftt(a) VALUES (2)`)
+		err = tx.Exec(ctx, `INSERT INTO leftt(a) VALUES (13)`)
+		err = tx.Exec(ctx, `INSERT INTO leftt(a) VALUES (14)`)
+		require.NoError(t, err)
+
+		err = tx.Exec(ctx, "CREATE TABLE mid(c integer)")
+		require.NoError(t, err)
+		err = tx.Exec(ctx, `INSERT INTO mid(c) VALUES (1)`)
+		err = tx.Exec(ctx, `INSERT INTO mid(c) VALUES (2)`)
+		err = tx.Exec(ctx, `INSERT INTO mid(c) VALUES (3)`)
+		err = tx.Exec(ctx, `INSERT INTO mid(c) VALUES (4)`)
+		require.NoError(t, err)
+
+		err = tx.Exec(ctx, "CREATE TABLE rightt(b integer)")
+		require.NoError(t, err)
+		err = tx.Exec(ctx, `INSERT INTO rightt(b) VALUES (1)`)
+		err = tx.Exec(ctx, `INSERT INTO rightt(b) VALUES (2)`)
+		err = tx.Exec(ctx, `INSERT INTO rightt(b) VALUES (3)`)
+		err = tx.Exec(ctx, `INSERT INTO rightt(b) VALUES (4)`)
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		call := createCall(t, ctx, db)
+		call("SELECT * FROM leftt INNER JOIN rightt ON a = b", `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`)
+		call("SELECT * FROM leftt INNER JOIN rightt ON b = a INNER JOIN rightt ON a = rightt.b", `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`)
+		call("SELECT * FROM leftt INNER JOIN rightt ON b = a INNER JOIN rightt ON leftt.a = rightt.b", `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`)
+		call("SELECT * FROM leftt INNER JOIN rightt ON b > a",
+			`{"a": 1, "b": 2}`,
+			`{"a": 1, "b": 3}`,
+			`{"a": 1, "b": 4}`,
+			`{"a": 2, "b": 3}`,
+			`{"a": 2, "b": 4}`)
+		call("SELECT * FROM leftt INNER JOIN rightt ON b < a",
+			`{"a": 2, "b": 1}`,
+			`{"a": 13, "b": 1}`,
+			`{"a": 13, "b": 2}`,
+			`{"a": 13, "b": 3}`,
+			`{"a": 13, "b": 4}`,
+			`{"a": 14, "b": 1}`,
+			`{"a": 14, "b": 2}`,
+			`{"a": 14, "b": 3}`,
+			`{"a": 14, "b": 4}`)
+		call("SELECT * FROM leftt INNER JOIN rightt ON true",
+			`{"a": 1, "b": 1}`,
+			`{"a": 1, "b": 2}`,
+			`{"a": 1, "b": 3}`,
+			`{"a": 1, "b": 4}`,
+			`{"a": 2, "b": 1}`,
+			`{"a": 2, "b": 2}`,
+			`{"a": 2, "b": 3}`,
+			`{"a": 2, "b": 4}`,
+			`{"a": 13, "b": 1}`,
+			`{"a": 13, "b": 2}`,
+			`{"a": 13, "b": 3}`,
+			`{"a": 13, "b": 4}`,
+			`{"a": 14, "b": 1}`,
+			`{"a": 14, "b": 2}`,
+			`{"a": 14, "b": 3}`,
+			`{"a": 14, "b": 4}`)
+		call("SELECT * FROM leftt INNER JOIN rightt ON false")
+		call("SELECT * FROM leftt "+
+			"INNER JOIN mid ON a = c "+
+			"INNER JOIN rightt ON leftt.a = rightt.b", `{"a": 1, "b": 1, "c": 1}`, `{"a": 2, "b": 2, "c": 2}`)
+		call("SELECT * FROM leftt "+
+			"INNER JOIN mid ON c = a "+
+			"INNER JOIN rightt ON b > a",
+			`{"a": 1, "b": 2, "c": 1}`,
+			`{"a": 1, "b": 3, "c": 1}`,
+			`{"a": 1, "b": 4, "c": 1}`,
+			`{"a": 2, "b": 3, "c": 2}`,
+			`{"a": 2, "b": 4, "c": 2}`)
+		call("SELECT * FROM leftt "+
+			"INNER JOIN mid ON c = a "+
+			"INNER JOIN rightt ON a > b",
+			`{"a": 2, "b": 1, "c": 2}`)
 	})
 }

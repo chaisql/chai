@@ -93,8 +93,10 @@ const (
 	GROUP
 	IF
 	INDEX
+	INNER
 	INSERT
 	INTO
+	JOIN
 	KEY
 	LIMIT
 	NOT
@@ -215,9 +217,11 @@ var tokens = [...]string{
 	FIELD:       "FIELD",
 	FROM:        "FROM",
 	IF:          "IF",
+	INNER:       "INNER",
 	INDEX:       "INDEX",
 	INSERT:      "INSERT",
 	INTO:        "INTO",
+	JOIN:        "JOIN",
 	LIMIT:       "LIMIT",
 	NOT:         "NOT",
 	OFFSET:      "OFFSET",

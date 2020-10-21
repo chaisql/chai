@@ -375,3 +375,69 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 		})
 	}
 }
+
+func TestUseHashJoinInsteadOfNestedLoops(t *testing.T) {
+	tests := []struct {
+		name           string
+		root, expected planner.Node
+	}{
+		{
+			"SELECT * FROM left INNER JOIN right ON foo = bar",
+			planner.NewJoinNode(planner.NewTableInputNode("left"), planner.TableJoin{
+				Table: "right",
+				Cond: expr.Eq(
+					expr.Path{document.PathFragment{FieldName: "bar"}},
+					expr.Path{document.PathFragment{FieldName: "foo"}},
+				),
+			}),
+			planner.NewHashJoinNode(planner.NewTableInputNode("left"), planner.TableHashJoin{
+				LeftTable:       "left",
+				RightTable:      "right",
+				LeftExpression:  expr.Path{document.PathFragment{FieldName: "bar"}},
+				RightExpression: expr.Path{document.PathFragment{FieldName: "foo"}},
+			}),
+		},
+	}
+
+	for _, test := range tests {
+		ctx := context.Background()
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			err = tx.Exec(ctx, "CREATE TABLE left(bar integer PRIMARY KEY)")
+			require.NoError(t, err)
+
+			err = tx.Exec(ctx, `INSERT INTO left(bar) VALUES (1)`)
+			err = tx.Exec(ctx, `INSERT INTO left(bar) VALUES (2)`)
+			err = tx.Exec(ctx, `INSERT INTO left(bar) VALUES (13)`)
+			err = tx.Exec(ctx, `INSERT INTO left(bar) VALUES (14)`)
+			require.NoError(t, err)
+
+			err = tx.Exec(ctx, "CREATE TABLE right(foo integer)")
+			require.NoError(t, err)
+
+			err = tx.Exec(ctx, `INSERT INTO right(foo) VALUES (1)`)
+			err = tx.Exec(ctx, `INSERT INTO right(foo) VALUES (2)`)
+			err = tx.Exec(ctx, `INSERT INTO right(foo) VALUES (3)`)
+			err = tx.Exec(ctx, `INSERT INTO right(foo) VALUES (4)`)
+			require.NoError(t, err)
+
+			err = planner.Bind(planner.NewTree(test.root), tx.Transaction, []expr.Param{})
+			require.NoError(t, err)
+
+			res, err := planner.UseHashJoinInsteadOfNestedLoops(planner.NewTree(test.root))
+			require.NoError(t, err)
+			if test.expected != nil {
+				require.Equal(t, planner.NewTree(test.expected).String(), res.String())
+			} else {
+				require.Equal(t, res.Root, res.Root)
+			}
+		})
+	}
+}

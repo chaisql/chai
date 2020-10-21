@@ -30,6 +30,12 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return cfg.ToTree()
 	}
 
+	// Parse table joins: "INNER JOIN table_name ON expr = expr".
+	cfg.Joins, err = p.parseInnerJoin()
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse condition: "WHERE expr".
 	cfg.WhereExpr, err = p.parseCondition()
 	if err != nil {
@@ -139,6 +145,40 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	return ident, true, nil
 }
 
+func (p *Parser) parseInnerJoin() (joins []planner.TableJoin, err error) {
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.INNER {
+			p.Unscan()
+			break
+		}
+
+		// parse JOIN token
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.JOIN {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"JOIN"}, pos)
+		}
+
+		var join planner.TableJoin
+		join.Table, err = p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+
+		// parse ON token
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.ON {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"ON"}, pos)
+		}
+
+		join.Cond, _, err = p.ParseExpr()
+		if err != nil {
+			return nil, err
+		}
+
+		joins = append(joins, join)
+	}
+
+	return joins, nil
+}
+
 func (p *Parser) parseGroupBy() (expr.Expr, error) {
 	// parse GROUP token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.GROUP {
@@ -215,6 +255,7 @@ type selectConfig struct {
 	OffsetExpr       expr.Expr
 	LimitExpr        expr.Expr
 	ProjectionExprs  []planner.ProjectedField
+	Joins            []planner.TableJoin
 }
 
 // ToTree turns the statement into an expression tree.
@@ -223,6 +264,12 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 
 	if cfg.TableName != "" {
 		n = planner.NewTableInputNode(cfg.TableName)
+	}
+
+	if cfg.Joins != nil {
+		for i := range cfg.Joins {
+			n = planner.NewJoinNode(n, cfg.Joins[i])
+		}
 	}
 
 	if cfg.WhereExpr != nil {

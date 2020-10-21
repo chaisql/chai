@@ -433,6 +433,12 @@ func IsComparisonOperator(op Operator) bool {
 	return false
 }
 
+// IsEqOperator reports if e is the '=' operator.
+func IsEqOperator(op Operator) bool {
+	_, ok := op.(eqOp)
+	return ok
+}
+
 // IsAndOperator reports if e is the AND operator.
 func IsAndOperator(op Operator) bool {
 	_, ok := op.(*AndOp)

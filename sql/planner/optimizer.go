@@ -12,6 +12,7 @@ var optimizerRules = []func(t *Tree) (*Tree, error){
 	PrecalculateExprRule,
 	RemoveUnnecessarySelectionNodesRule,
 	UseIndexBasedOnSelectionNodeRule,
+	UseHashJoinInsteadOfNestedLoops,
 }
 
 // Optimize takes a tree, applies a list of optimization rules
@@ -115,6 +116,16 @@ func PrecalculateExprRule(t *Tree) (*Tree, error) {
 		if n.Operation() == Selection {
 			sn := n.(*selectionNode)
 			sn.cond = precalculateExpr(sn.cond)
+		}
+
+		if n.Operation() == Join {
+			switch jn := n.(type) {
+			case *nestedLoopJoinNode:
+				jn.join.Cond = precalculateExpr(jn.join.Cond)
+			case *hashJoinNode:
+				jn.join.LeftExpression = precalculateExpr(jn.join.LeftExpression)
+				jn.join.RightExpression = precalculateExpr(jn.join.RightExpression)
+			}
 		}
 
 		n = n.Left()
@@ -423,6 +434,109 @@ func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
 func isLiteralOrParam(e expr.Expr) (ok bool) {
 	switch e.(type) {
 	case expr.LiteralValue, expr.NamedParam, expr.PositionalParam:
+		return true
+	}
+
+	return false
+}
+
+// UseHashJoinInsteadOfNestedLoops scans the tree for the first join node whose condition is a
+// unique equal predicate.
+// If found, it will replace the join node by an hashJoinNode.
+func UseHashJoinInsteadOfNestedLoops(t *Tree) (*Tree, error) {
+	n := t.Root
+	var prev Node
+
+	for n != nil {
+		if n.Operation() == Join {
+			loopJoin, ok := n.(*nestedLoopJoinNode)
+			if !ok {
+				goto next
+			}
+
+			tn, ok := n.Left().(*tableInputNode)
+			if !ok {
+				goto next
+			}
+
+			cond := loopJoin.join.Cond
+			op, ok := cond.(expr.Operator)
+			if !ok {
+				goto next
+			}
+
+			switch {
+			case expr.IsEqOperator(op):
+				ok, err := isEquijoin(tn.table, loopJoin.outer, op)
+				if err != nil {
+					return nil, err
+				}
+
+				if ok {
+					hashJoin := NewHashJoinNode(loopJoin.left, TableHashJoin{
+						LeftTable:       tn.tableName,
+						RightTable:      loopJoin.join.Table,
+						LeftExpression:  op.LeftHand(),
+						RightExpression: op.RightHand(),
+					})
+					// we replace the nested loop join node by the hash join
+					if prev == nil {
+						t.Root = hashJoin
+					} else {
+						prev.SetLeft(hashJoin)
+					}
+					err := hashJoin.Bind(loopJoin.tx, loopJoin.params)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+
+	next:
+		prev = n
+		n = n.Left()
+	}
+
+	return t, nil
+}
+
+func isEquijoin(l, r *database.Table, e expr.Operator) (bool, error) {
+	ok, err := isUniqueTable(l, e.LeftHand())
+	if err != nil {
+		return false, err
+	}
+	if ok {
+		return true, nil
+	}
+	return isUniqueTable(r, e.RightHand())
+}
+
+func isUniqueTable(table *database.Table, e expr.Expr) (canUse bool, err error) {
+	ti, err := table.Info()
+	if err != nil {
+		return
+	}
+
+	indexes, err := table.Indexes()
+	if err != nil {
+		return
+	}
+
+	return isUnique(ti.GetPrimaryKey(), indexes, e), nil
+}
+
+func isUnique(pk *database.FieldConstraint, indexes map[string]database.Index, e expr.Expr) bool {
+	switch v := e.(type) {
+	case expr.Path:
+		if pk != nil && pk.Path.IsEqual(document.Path(v)) {
+			return true
+		}
+
+		if idx, ok := indexes[v.String()]; ok && idx.Unique {
+			return true
+		}
+	case expr.PKFunc:
 		return true
 	}
 
