@@ -1,11 +1,13 @@
-package parser
+package query
 
 import (
 	"fmt"
+	"github.com/genjidb/genji/database"
 
 	"github.com/genjidb/genji/document"
 )
 
+// constraintNode is a tree node which stores a type of document field
 type constraintNode struct {
 	frag   document.ValuePathFragment
 	typ    document.ValueType
@@ -92,6 +94,17 @@ func (n *constraintNode) insert(path document.ValuePath, typ document.ValueType)
 	return nil
 }
 
+// constraintTree is a tree of document field types.
+// Field type can be set explicitly or derived from path.
+// Example query:
+// 	CREATE TABLE foo(a.b TEXT, a.d[1])
+// as a tree
+// 	document(a)
+// 	├── text(b)
+// 	├── array(d)
+// 	│   ├──[1] any
+// 	│   └──...
+//
 type constraintTree struct {
 	roots []*constraintNode
 }
@@ -111,6 +124,17 @@ func (tree *constraintTree) search(path document.ValuePath) *constraintNode {
 	for _, sub := range tree.roots {
 		if sub.frag == path[0] {
 			return sub.search(path)
+		}
+	}
+
+	return nil
+}
+
+func checkConstraints(constraints []database.FieldConstraint) error {
+	tree := constraintTree{}
+	for _, fc := range constraints {
+		if err := tree.insert(fc.Path, fc.Type); err != nil {
+			return fmt.Errorf("incoherent field constraint: %w", err)
 		}
 	}
 

@@ -30,7 +30,12 @@ func (stmt CreateTableStmt) Run(ctx context.Context, tx *database.Transaction, a
 		return res, errors.New("missing table name")
 	}
 
-	err := tx.CreateTable(stmt.TableName, &stmt.Info)
+	err := checkConstraints(stmt.Info.FieldConstraints)
+	if err != nil {
+		return res, err
+	}
+
+	err = tx.CreateTable(stmt.TableName, &stmt.Info)
 	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
 		err = nil
 	}
