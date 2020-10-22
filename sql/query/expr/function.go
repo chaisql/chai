@@ -159,6 +159,9 @@ type CountFunc struct {
 }
 
 func (c *CountFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if ctx.Document == nil {
+		return document.Value{}, errors.New("misuse of aggregation function COUNT()")
+	}
 	return ctx.Document.GetByField(c.String())
 }
 
@@ -239,6 +242,9 @@ type MinFunc struct {
 
 // Eval extracts the min value from the given document and returns it.
 func (m *MinFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if ctx.Document == nil {
+		return document.Value{}, errors.New("misuse of aggregation function MIN()")
+	}
 	return ctx.Document.GetByField(m.String())
 }
 
