@@ -1,7 +1,6 @@
 package document_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -228,7 +227,7 @@ func TestFieldBuffer(t *testing.T) {
 
 func TestNewFromStruct(t *testing.T) {
 	type group struct {
-		A int
+		Ig int
 	}
 
 	type user struct {
@@ -293,6 +292,9 @@ func TestNewFromStruct(t *testing.T) {
 		N:  11.12,
 		Z:  26,
 		AA: 27,
+		group: &group{
+			Ig: 100,
+		},
 	}
 
 	q := 5
@@ -366,6 +368,8 @@ func TestNewFromStruct(t *testing.T) {
 				require.EqualValues(t, u.Z, v.V.(int64))
 			case 26:
 				require.EqualValues(t, document.NullValue, v.Type)
+			case 27:
+				require.EqualValues(t, document.IntegerValue, v.Type)
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
 			}
@@ -375,7 +379,7 @@ func TestNewFromStruct(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 27, counter)
+		require.Equal(t, 28, counter)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
@@ -429,9 +433,13 @@ func TestNewFromStruct(t *testing.T) {
 		require.NoError(t, err)
 		d, ok := v.V.(document.Document)
 		require.True(t, ok)
-		v, err = d.GetByField("a")
+		v, err = d.GetByField("ig")
 		require.NoError(t, err)
 		require.EqualValues(t, 0, v.V.(int64))
+
+		v, err = doc.GetByField("ig")
+		require.NoError(t, err)
+		require.EqualValues(t, 100, v.V.(int64))
 
 		v, err = doc.GetByField("t")
 		require.NoError(t, err)
@@ -451,51 +459,7 @@ func TestNewFromStruct(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, 2, v.V.(int64))
 	})
-	t.Run("Embedded struct", func(t *testing.T) {
-		type baz struct {
-			I int `genji:"II"`
-			A string
-		}
 
-		type bar struct {
-			Baz  baz
-			Id   int    `genji:"-"` // ignored
-			Name string `genji:"tag-name"`
-		}
-
-		type foo struct {
-			*bar
-			B   string `genji:"b-b"`
-			Bar bar
-			i   int  // ignored
-			P   *int // should be null
-			A   []byte
-		}
-
-		bb := baz{I: 100, A: "ptr"}
-		e := bar{Id: 1, Name: "Foo", Baz: bb}
-		f := foo{bar: &e, Bar: e, B: "b", A: []byte("foo"), i: 300}
-		doc, err := document.NewFromStruct(&f)
-		require.NoError(t, err)
-		_, err = doc.GetByField("id")
-		require.Error(t, document.ErrFieldNotFound, err)
-
-		v, err := doc.GetByField("p")
-		require.NoError(t, err)
-		require.EqualValues(t, document.NewNullValue().V, v.V)
-
-		v, err = doc.GetByField("tag-name")
-		require.NoError(t, err)
-		require.EqualValues(t, document.NewTextValue("Foo").V, v.V.(string))
-
-		var buf bytes.Buffer
-		data, err := document.MarshalJSON(doc)
-		require.NoError(t, err)
-		buf.Write(data)
-		require.JSONEq(t, `{"baz": {"II": 100, "a": "ptr"}, "tag-name": "Foo", "b-b": "b",
-						"bar": {"baz": {"II": 100, "a": "ptr"}, "tag-name": "Foo"}, "p": null, "a": "Zm9v"}`,
-			buf.String())
-	})
 }
 
 type foo struct {
