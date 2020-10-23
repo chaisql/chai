@@ -70,7 +70,7 @@ func TestParserSelect(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "a")), ExprName: "a"}, planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "b")), ExprName: "b"}},
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "a")), ExprName: "a"}, planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "b")), ExprName: "b"}},
 					"test",
 				)),
 			false},
@@ -78,7 +78,7 @@ func TestParserSelect(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "`long \"reference\"`")), ExprName: "long \"reference\""}},
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "`long \"reference\"`")), ExprName: "long \"reference\""}},
 					"test",
 				)),
 			false},
@@ -86,7 +86,7 @@ func TestParserSelect(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "a")), ExprName: "A"}, planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "b")), ExprName: "b"}},
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "a")), ExprName: "A"}, planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "b")), ExprName: "b"}},
 					"test",
 				)),
 			false},
@@ -94,7 +94,7 @@ func TestParserSelect(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "a")), ExprName: "a"}, planner.ProjectedExpr{Expr: expr.FieldSelector(parseReference(t, "b")), ExprName: "b"}, planner.Wildcard{}},
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "a")), ExprName: "a"}, planner.ProjectedExpr{Expr: expr.Reference(parseReference(t, "b")), ExprName: "b"}, planner.Wildcard{}},
 					"test",
 				)),
 			false},
@@ -102,7 +102,7 @@ func TestParserSelect(t *testing.T) {
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Gt(expr.FieldSelector(parseReference(t, "a")), expr.IntegerValue(1)), ExprName: "a    > 1"}},
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Gt(expr.Reference(parseReference(t, "a")), expr.IntegerValue(1)), ExprName: "a    > 1"}},
 					"test",
 				)),
 			false},
@@ -111,7 +111,7 @@ func TestParserSelect(t *testing.T) {
 				planner.NewProjectionNode(
 					planner.NewSelectionNode(
 						planner.NewTableInputNode("test"),
-						expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+						expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 					),
 					[]planner.ProjectedField{planner.Wildcard{}},
 					"test",
@@ -123,9 +123,9 @@ func TestParserSelect(t *testing.T) {
 					planner.NewGroupingNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+							expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 						),
-						expr.FieldSelector(parseReference(t, "a.b.c")),
+						expr.Reference(parseReference(t, "a.b.c")),
 					),
 					[]planner.ProjectedField{planner.Wildcard{}},
 					"test",
@@ -137,12 +137,12 @@ func TestParserSelect(t *testing.T) {
 					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+							expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 						),
 						[]planner.ProjectedField{planner.Wildcard{}},
 						"test",
 					),
-					expr.FieldSelector(parseReference(t, "a.b.c")),
+					expr.Reference(parseReference(t, "a.b.c")),
 					scanner.ASC,
 				)),
 			false},
@@ -152,12 +152,12 @@ func TestParserSelect(t *testing.T) {
 					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+							expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 						),
 						[]planner.ProjectedField{planner.Wildcard{}},
 						"test",
 					),
-					expr.FieldSelector(parseReference(t, "a.b.c")),
+					expr.Reference(parseReference(t, "a.b.c")),
 					scanner.ASC,
 				)),
 			false},
@@ -167,12 +167,12 @@ func TestParserSelect(t *testing.T) {
 					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+							expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 						),
 						[]planner.ProjectedField{planner.Wildcard{}},
 						"test",
 					),
-					expr.FieldSelector(parseReference(t, "a.b.c")),
+					expr.Reference(parseReference(t, "a.b.c")),
 					scanner.DESC,
 				)),
 			false},
@@ -182,7 +182,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+							expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 						),
 						[]planner.ProjectedField{planner.Wildcard{}},
 						"test",
@@ -196,7 +196,7 @@ func TestParserSelect(t *testing.T) {
 					planner.NewProjectionNode(
 						planner.NewSelectionNode(
 							planner.NewTableInputNode("test"),
-							expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+							expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 						),
 						[]planner.ProjectedField{planner.Wildcard{}},
 						"test",
@@ -211,7 +211,7 @@ func TestParserSelect(t *testing.T) {
 						planner.NewProjectionNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
-								expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+								expr.Eq(expr.Reference(parseReference(t, "age")), expr.IntegerValue(10)),
 							),
 							[]planner.ProjectedField{planner.Wildcard{}},
 							"test",

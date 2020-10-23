@@ -161,7 +161,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		fs := expr.FieldSelector(field)
+		fs := expr.Reference(field)
 		return fs, nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {

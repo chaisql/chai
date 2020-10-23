@@ -15,7 +15,7 @@ import (
 type sortNode struct {
 	node
 
-	sortField expr.FieldSelector
+	sortField expr.Reference
 	direction scanner.Token
 }
 
@@ -23,7 +23,7 @@ var _ operationNode = (*sortNode)(nil)
 
 // NewSortNode creates a node that sorts a stream according to a given
 // document reference and a sort direction.
-func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) Node {
+func NewSortNode(n Node, sortField expr.Reference, direction scanner.Token) Node {
 	if direction == 0 {
 		direction = scanner.ASC
 	}
@@ -61,7 +61,7 @@ func (n *sortNode) String() string {
 
 type sortIterator struct {
 	st        document.Stream
-	sortField expr.FieldSelector
+	sortField expr.Reference
 	direction scanner.Token
 }
 

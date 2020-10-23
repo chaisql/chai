@@ -392,7 +392,7 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 	}
 
 	// now, we look if an index exists for that reference
-	idx, ok := indexes[field.Name()]
+	idx, ok := indexes[field.String()]
 	if !ok {
 		return nil
 	}
@@ -403,9 +403,9 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 	return in
 }
 
-func opCanUseIndex(op expr.Operator) (bool, expr.FieldSelector, expr.Expr) {
-	lf, leftIsField := op.LeftHand().(expr.FieldSelector)
-	rf, rightIsField := op.RightHand().(expr.FieldSelector)
+func opCanUseIndex(op expr.Operator) (bool, expr.Reference, expr.Expr) {
+	lf, leftIsField := op.LeftHand().(expr.Reference)
+	rf, rightIsField := op.RightHand().(expr.Reference)
 
 	// reference OP expr
 	if leftIsField && !rightIsField {

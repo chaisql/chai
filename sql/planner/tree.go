@@ -478,8 +478,8 @@ func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 			return v, err
 		}
 
-		// TODO Make expr.FieldSelector carry the table information
-		_, ok := n.Expr.(expr.FieldSelector)
+		// TODO: Make expr.FieldSelector carry the table information
+		_, ok := n.Expr.(expr.Reference)
 		if !ok {
 			return v, err
 		}

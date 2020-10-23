@@ -100,9 +100,9 @@ func (p *Parser) parseResultField() (planner.ProjectedField, error) {
 		return nil, err
 	}
 
-	// FieldSelectors may be quoted, we make sure we name the result field
+	// References may be quoted, we make sure we name the result field
 	// with the unquoted name instead.
-	if fs, ok := e.(expr.FieldSelector); ok {
+	if fs, ok := e.(expr.Reference); ok {
 		lit = fs.String()
 	}
 
@@ -156,7 +156,7 @@ func (p *Parser) parseGroupBy() (expr.Expr, error) {
 	return e, err
 }
 
-func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
+func (p *Parser) parseOrderBy() (expr.Reference, scanner.Token, error) {
 	// parse ORDER token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.ORDER {
 		p.Unscan()
@@ -176,11 +176,11 @@ func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
 
 	// parse optional ASC or DESC
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.ASC || tok == scanner.DESC {
-		return expr.FieldSelector(ref), tok, nil
+		return expr.Reference(ref), tok, nil
 	}
 	p.Unscan()
 
-	return expr.FieldSelector(ref), 0, nil
+	return expr.Reference(ref), 0, nil
 }
 
 func (p *Parser) parseLimit() (expr.Expr, error) {
@@ -210,7 +210,7 @@ type selectConfig struct {
 	TableName        string
 	WhereExpr        expr.Expr
 	GroupByExpr      expr.Expr
-	OrderBy          expr.FieldSelector
+	OrderBy          expr.Reference
 	OrderByDirection scanner.Token
 	OffsetExpr       expr.Expr
 	LimitExpr        expr.Expr

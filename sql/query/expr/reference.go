@@ -4,17 +4,12 @@ import (
 	"github.com/genjidb/genji/document"
 )
 
-// A FieldSelector is a ResultField that extracts a field from a document at a given reference.
-type FieldSelector document.Reference
+// A Reference is an expression that extracts a value from a document at a given reference.
+type Reference document.Reference
 
-// Name joins the chunks of the fields selector with the . separator.
-func (f FieldSelector) Name() string {
-	return f.String()
-}
-
-// Eval extracts the document from the context and selects the right field.
+// Eval extracts the document from the context and selects the right value.
 // It implements the Expr interface.
-func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
+func (f Reference) Eval(stack EvalStack) (document.Value, error) {
 	if stack.Document == nil {
 		return nullLitteral, document.ErrFieldNotFound
 	}
@@ -29,12 +24,12 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (f FieldSelector) IsEqual(other Expr) bool {
+func (f Reference) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(FieldSelector)
+	o, ok := other.(Reference)
 	if !ok {
 		return false
 	}
@@ -52,6 +47,6 @@ func (f FieldSelector) IsEqual(other Expr) bool {
 	return true
 }
 
-func (f FieldSelector) String() string {
+func (f Reference) String() string {
 	return document.Reference(f).String()
 }
