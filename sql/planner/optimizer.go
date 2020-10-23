@@ -11,6 +11,7 @@ var optimizerRules = []func(t *Tree) (*Tree, error){
 	SplitANDConditionRule,
 	PrecalculateExprRule,
 	RemoveUnnecessarySelectionNodesRule,
+	RemoveUnnecessaryDedupNodeRule,
 	UseIndexBasedOnSelectionNodeRule,
 }
 
@@ -246,6 +247,78 @@ func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 	}
 
 	return t, nil
+}
+
+// RemoveUnnecessaryDedupNodeRule removes any Dedup nodes
+// where projection is already unique.
+func RemoveUnnecessaryDedupNodeRule(t *Tree) (*Tree, error) {
+	n := t.Root
+	var prev Node
+
+	for n != nil {
+		if n.Operation() == Dedup {
+			d, ok := n.(*dedupNode)
+			if !ok {
+				continue
+			}
+
+			pn, ok := d.left.(*ProjectionNode)
+			if !ok {
+				continue
+			}
+
+			table, err := pn.tx.GetTable(pn.tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			indexes, err := table.Indexes()
+			if err != nil {
+				return nil, err
+			}
+
+			// if the projection is unique, we remove the node from the tree
+			if isProjectionUnique(indexes, pn) {
+				if prev != nil {
+					prev.SetLeft(n.Left())
+				} else {
+					t.Root = n.Left()
+				}
+			}
+		}
+
+		prev = n
+		n = n.Left()
+	}
+
+	return t, nil
+}
+
+func isProjectionUnique(indexes map[string]database.Index, pn *ProjectionNode) bool {
+	pk := pn.info.GetPrimaryKey()
+	for _, field := range pn.Expressions {
+		e, ok := field.(ProjectedExpr)
+		if !ok {
+			return false
+		}
+
+		switch v := e.Expr.(type) {
+		case expr.FieldSelector:
+			if pk != nil && pk.Path.IsEqual(document.ValuePath(v)) {
+				continue
+			}
+
+			if idx, ok := indexes[v.String()]; ok && idx.Unique {
+				continue
+			}
+		case expr.PKFunc:
+			continue
+		}
+
+		return false // if one field is not unique, so projection is not unique too.
+	}
+
+	return true
 }
 
 // UseIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
