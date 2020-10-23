@@ -23,7 +23,7 @@ import (
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/hashicorp/go-multierror"
+	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -137,7 +137,7 @@ func Run(ctx context.Context, opts *Options) (err error) {
 		if sh.db != nil {
 			closeErr := sh.db.Close()
 			if closeErr != nil {
-				err = multierror.Append(err, closeErr)
+				err = multierr.Append(err, closeErr)
 			}
 		}
 	}()
@@ -145,7 +145,7 @@ func Run(ctx context.Context, opts *Options) (err error) {
 	defer func() {
 		dumpErr := sh.dumpHistory()
 		if dumpErr != nil {
-			err = multierror.Append(err, dumpErr)
+			err = multierr.Append(err, dumpErr)
 		}
 	}()
 
