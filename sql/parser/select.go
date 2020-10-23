@@ -248,10 +248,10 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 		n = planner.NewGroupingNode(n, cfg.GroupByExpr)
 	}
 
+	n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+
 	if cfg.Distinct {
-		n = planner.NewDistinctProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
-	} else {
-		n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+		n = planner.NewDistinctNode(n)
 	}
 
 	if cfg.OrderBy != nil {

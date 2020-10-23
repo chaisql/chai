@@ -39,10 +39,14 @@ func (s documentHashSet) generateKey(d document.Document) (uint64, error) {
 			return err
 		}
 
+		buf = buf[0:]
 		return nil
 	})
+	if err != nil {
+		return 0, err
+	}
 
-	return s.hash.Sum64(), err
+	return s.hash.Sum64(), nil
 }
 
 func (s documentHashSet) Filter(d document.Document) (bool, error) {
