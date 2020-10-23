@@ -17,13 +17,14 @@ func BenchmarkStorePut(b *testing.B, builder Builder) {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				st, cleanup := storeBuilder(b, builder)
+				defer cleanup()
 
+				b.ResetTimer()
 				for j := 0; j < size; j++ {
 					k := []byte(fmt.Sprintf("k%d", j))
-
 					st.Put(k, v)
 				}
-				cleanup()
+				b.StopTimer()
 			}
 		})
 	}

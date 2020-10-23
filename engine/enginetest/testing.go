@@ -14,7 +14,8 @@ import (
 )
 
 // Builder is a function that can create an engine on demand and that provides
-// a function to cleanup up and remove any created state.
+// a function to cleanup up and remove any created state. Note that the engine
+// is not closed on cleanup.
 // Tests will use the builder like this:
 //     ng, cleanup := builder()
 //     defer cleanup()
@@ -65,6 +66,9 @@ func TestEngine(t *testing.T, builder Builder) {
 func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	ng, cleanup := builder()
 	defer cleanup()
+	defer func() {
+		require.NoError(t, ng.Close())
+	}()
 
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
 		tx, err := ng.Begin(false)
@@ -204,6 +208,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			t.Run(test.name+"/rollback", func(t *testing.T) {
 				ng, cleanup := builder()
 				defer cleanup()
+				defer func() {
+					require.NoError(t, ng.Close())
+				}()
 
 				if test.initFn != nil {
 					func() {
@@ -240,6 +247,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		for _, test := range tests {
 			ng, cleanup := builder()
 			defer cleanup()
+			defer func() {
+				require.NoError(t, ng.Close())
+			}()
 
 			t.Run(test.name+"/commit", func(t *testing.T) {
 				if test.initFn != nil {
@@ -292,6 +302,9 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			t.Run(test.name, func(t *testing.T) {
 				ng, cleanup := builder()
 				defer cleanup()
+				defer func() {
+					require.NoError(t, ng.Close())
+				}()
 
 				tx, err := ng.Begin(true)
 				require.NoError(t, err)
@@ -312,6 +325,9 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 	t.Run("Should create a store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
@@ -328,6 +344,9 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 	t.Run("Should fail if store already exists", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
@@ -345,6 +364,9 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		tx, err := ng.Begin(false)
 		require.NoError(t, err)
@@ -357,6 +379,9 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 	t.Run("Should return the right store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
@@ -397,6 +422,9 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 	t.Run("Should drop a store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
@@ -415,6 +443,9 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
@@ -434,8 +465,11 @@ func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
 	st, err := tx.GetStore([]byte("test"))
 	require.NoError(t, err)
 	return st, func() {
-		tx.Rollback()
-		cleanup()
+		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
+		defer tx.Rollback()
 	}
 }
 
@@ -791,6 +825,10 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 	t.Run("Should fail if tx not writable", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
+
 		tx, err := ng.Begin(true)
 		require.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
@@ -823,7 +861,11 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 	t.Run("Should store the last sequence", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 		tx, err := ng.Begin(true)
+
 		require.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
 		require.NoError(t, err)
@@ -855,10 +897,12 @@ func TestQueries(t *testing.T, builder Builder) {
 	t.Run("SELECT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		ctx := context.Background()
 
@@ -895,10 +939,12 @@ func TestQueries(t *testing.T, builder Builder) {
 	t.Run("INSERT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		err = db.Exec(ctx, `
 			CREATE TABLE test;
@@ -910,10 +956,12 @@ func TestQueries(t *testing.T, builder Builder) {
 	t.Run("UPDATE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		st, err := db.Query(ctx, `
 				CREATE TABLE test;
@@ -932,10 +980,12 @@ func TestQueries(t *testing.T, builder Builder) {
 	t.Run("DELETE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		err = db.Exec(ctx, "CREATE TABLE test")
 		require.NoError(t, err)
@@ -968,10 +1018,12 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 	t.Run("SELECT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
 			st, err := tx.Query(ctx, `
@@ -992,10 +1044,12 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 	t.Run("INSERT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
 			err = tx.Exec(ctx, `
@@ -1011,10 +1065,12 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 	t.Run("UPDATE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
 			st, err := tx.Query(ctx, `
@@ -1037,10 +1093,12 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 	t.Run("DELETE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
 
 		db, err := genji.New(ng)
 		require.NoError(t, err)
-		defer db.Close()
 
 		err = db.Update(func(tx *genji.Tx) error {
 			st, err := tx.Query(ctx, `
