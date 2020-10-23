@@ -222,6 +222,8 @@ func TestParserSelect(t *testing.T) {
 				)),
 			false},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
+		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", nil, true},
+		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET x(*)", nil, true},
 	}
 
 	for _, test := range tests {
