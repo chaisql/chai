@@ -4,8 +4,8 @@ import (
 	"github.com/genjidb/genji/document"
 )
 
-// A FieldSelector is a ResultField that extracts a field from a document at a given path.
-type FieldSelector document.ValuePath
+// A FieldSelector is a ResultField that extracts a field from a document at a given reference.
+type FieldSelector document.Reference
 
 // Name joins the chunks of the fields selector with the . separator.
 func (f FieldSelector) Name() string {
@@ -19,7 +19,7 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		return nullLitteral, document.ErrFieldNotFound
 	}
 
-	v, err := document.ValuePath(f).GetValue(stack.Document)
+	v, err := document.Reference(f).GetValue(stack.Document)
 	if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
 		return nullLitteral, nil
 	}
@@ -53,5 +53,5 @@ func (f FieldSelector) IsEqual(other Expr) bool {
 }
 
 func (f FieldSelector) String() string {
-	return document.ValuePath(f).String()
+	return document.Reference(f).String()
 }

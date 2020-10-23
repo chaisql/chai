@@ -153,9 +153,8 @@ func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
 	return err
 }
 
-// setValueAtPath deep replaces or creates a field
-// at the given path
-func setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
+// setValueAtReference deep replaces or creates a field at the given reference
+func setValueAtReference(v Value, ref Reference, newValue Value) (Value, error) {
 	switch v.Type {
 	case DocumentValue:
 		var buf FieldBuffer
@@ -164,22 +163,22 @@ func setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
 			return v, err
 		}
 
-		if len(p) == 1 {
-			err = buf.setFieldValue(p[0].FieldName, newValue)
+		if len(ref) == 1 {
+			err = buf.setFieldValue(ref[0].FieldName, newValue)
 			return NewDocumentValue(&buf), err
 		}
 
-		va, err := buf.GetByField(p[0].FieldName)
+		va, err := buf.GetByField(ref[0].FieldName)
 		if err != nil {
 			return v, err
 		}
 
-		va, err = setValueAtPath(va, p[1:], newValue)
+		va, err = setValueAtReference(va, ref[1:], newValue)
 		if err != nil {
 			return v, err
 		}
 
-		err = buf.setFieldValue(p[0].FieldName, va)
+		err = buf.setFieldValue(ref[0].FieldName, va)
 		return NewDocumentValue(&buf), err
 	case ArrayValue:
 		var vb ValueBuffer
@@ -188,18 +187,18 @@ func setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
 			return v, err
 		}
 
-		va, err := vb.GetByIndex(p[0].ArrayIndex)
+		va, err := vb.GetByIndex(ref[0].ArrayIndex)
 		if err != nil {
 			return v, err
 		}
 
-		if len(p) == 1 {
-			err = vb.Replace(p[0].ArrayIndex, newValue)
+		if len(ref) == 1 {
+			err = vb.Replace(ref[0].ArrayIndex, newValue)
 			return NewArrayValue(&vb), err
 		}
 
-		va, err = setValueAtPath(va, p[1:], newValue)
-		err = vb.Replace(p[0].ArrayIndex, va)
+		va, err = setValueAtReference(va, ref[1:], newValue)
+		err = vb.Replace(ref[0].ArrayIndex, va)
 		return NewArrayValue(&vb), err
 	}
 
@@ -207,14 +206,14 @@ func setValueAtPath(v Value, p ValuePath, newValue Value) (Value, error) {
 }
 
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(path ValuePath, v Value) error {
-	if len(path) == 1 {
-		return fb.setFieldValue(path[0].FieldName, v)
+func (fb *FieldBuffer) Set(ref Reference, v Value) error {
+	if len(ref) == 1 {
+		return fb.setFieldValue(ref[0].FieldName, v)
 	}
 
 	for i := range fb.fields {
-		if fb.fields[i].Field == path[0].FieldName {
-			va, err := setValueAtPath(fb.fields[i].Value, path[1:], v)
+		if fb.fields[i].Field == ref[0].FieldName {
+			va, err := setValueAtReference(fb.fields[i].Value, ref[1:], v)
 			if err != nil {
 				return err
 			}
@@ -224,7 +223,7 @@ func (fb *FieldBuffer) Set(path ValuePath, v Value) error {
 		}
 	}
 
-	fb.Add(path[0].FieldName, v)
+	fb.Add(ref[0].FieldName, v)
 	return nil
 }
 
@@ -324,19 +323,19 @@ func (fb *FieldBuffer) Fields() []string {
 	return fields
 }
 
-// A ValuePath represents the path to a particular value within a document.
-type ValuePath []ValuePathFragment
+// A Reference represents the path to a particular value within a document.
+type Reference []ReferenceFragment
 
-// ValuePathFragment is a fragment of a path representing either a field name or
+// ReferenceFragment is a fragment of a reference representing either a field name or
 // the index of an array.
-type ValuePathFragment struct {
+type ReferenceFragment struct {
 	FieldName  string
 	ArrayIndex int
 }
 
-// String representation of all the fragments of the path.
+// String representation of all the fragments of the reference.
 // It implements the Stringer interface.
-func (p ValuePath) String() string {
+func (p Reference) String() string {
 	var b strings.Builder
 
 	for i := range p {
@@ -353,7 +352,7 @@ func (p ValuePath) String() string {
 }
 
 // IsEqual returns whether other is equal to p.
-func (p ValuePath) IsEqual(other ValuePath) bool {
+func (p Reference) IsEqual(other Reference) bool {
 	if len(other) != len(p) {
 		return false
 	}
@@ -368,11 +367,11 @@ func (p ValuePath) IsEqual(other ValuePath) bool {
 }
 
 // GetValue from a document.
-func (p ValuePath) GetValue(d Document) (Value, error) {
+func (p Reference) GetValue(d Document) (Value, error) {
 	return p.getValueFromDocument(d)
 }
 
-func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
+func (p Reference) getValueFromDocument(d Document) (Value, error) {
 	if len(p) == 0 {
 		return Value{}, ErrFieldNotFound
 	}
@@ -392,7 +391,7 @@ func (p ValuePath) getValueFromDocument(d Document) (Value, error) {
 	return p[1:].getValueFromValue(v)
 }
 
-func (p ValuePath) getValueFromArray(a Array) (Value, error) {
+func (p Reference) getValueFromArray(a Array) (Value, error) {
 	if len(p) == 0 {
 		return Value{}, ErrFieldNotFound
 	}
@@ -416,7 +415,7 @@ func (p ValuePath) getValueFromArray(a Array) (Value, error) {
 	return p[1:].getValueFromValue(v)
 }
 
-func (p ValuePath) getValueFromValue(v Value) (Value, error) {
+func (p Reference) getValueFromValue(v Value) (Value, error) {
 	switch v.Type {
 	case DocumentValue:
 		return p.getValueFromDocument(v.V.(Document))

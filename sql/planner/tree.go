@@ -25,7 +25,7 @@ const (
 	Selection
 	// Projection (∏) is an operation that selects a list of fields from each document of a stream.
 	Projection
-	// Rename (ρ) is an operation that renames a path from each document of a stream.
+	// Rename (ρ) is an operation that renames a field from each document of a stream.
 	Rename
 	// Deletion is an operation that removes all of the documents of a stream from their respective table.
 	Deletion
@@ -36,13 +36,13 @@ const (
 	Limit
 	// Skip is an operation that ignores a certain number of documents.
 	Skip
-	// Sort is an operation that sorts a stream of document according to a given path and a direction.
+	// Sort is an operation that sorts a stream of document according to a given reference and a direction.
 	Sort
-	// Set is an operation that adds or replaces a path for every document of the stream.
+	// Set is an operation that adds a value or replaces at a given reference for every document of the stream.
 	Set
-	// Unset is an operation that removes a path from every document of a stream
+	// Unset is an operation that removes a reference from every document of a stream
 	Unset
-	// Group is an operation that groups documents based on a given path.
+	// Group is an operation that groups documents based on a given reference.
 )
 
 // A Tree describes the flow of a stream of documents.
@@ -320,8 +320,8 @@ func (n *offsetNode) toStream(st document.Stream) (document.Stream, error) {
 type setNode struct {
 	node
 
-	path document.ValuePath
-	e    expr.Expr
+	ref document.Reference
+	e   expr.Expr
 
 	tx     *database.Transaction
 	params []expr.Param
@@ -329,15 +329,15 @@ type setNode struct {
 
 var _ operationNode = (*setNode)(nil)
 
-// NewSetNode creates a node that adds or replaces a path for every document of the stream.
-func NewSetNode(n Node, path document.ValuePath, e expr.Expr) Node {
+// NewSetNode creates a node that adds or replaces a value at the given reference for every document of the stream.
+func NewSetNode(n Node, ref document.Reference, e expr.Expr) Node {
 	return &setNode{
 		node: node{
 			op:   Set,
 			left: n,
 		},
-		path: path,
-		e:    e,
+		ref: ref,
+		e:   e,
 	}
 }
 
@@ -348,7 +348,7 @@ func (n *setNode) Bind(tx *database.Transaction, params []expr.Param) (err error
 }
 
 func (n *setNode) String() string {
-	return fmt.Sprintf("Set(%s = %s)", n.path, n.e)
+	return fmt.Sprintf("Set(%s = %s)", n.ref, n.e)
 }
 
 func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
@@ -373,7 +373,7 @@ func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 			return nil, err
 		}
 
-		err = fb.Set(n.path, ev)
+		err = fb.Set(n.ref, ev)
 		if err != nil {
 			return nil, err
 		}
@@ -390,7 +390,7 @@ type unsetNode struct {
 
 var _ operationNode = (*unsetNode)(nil)
 
-// NewUnsetNode creates a node that adds or replaces a path for every document of the stream.
+// NewUnsetNode creates a node that removes a value at a given reference for every document of the stream.
 func NewUnsetNode(n Node, field string) Node {
 	return &unsetNode{
 		node: node{
@@ -438,7 +438,7 @@ func (n *unsetNode) String() string {
 	return fmt.Sprintf("Unset(%s)", n.field)
 }
 
-// A GroupingNode is a node that groups documents by a given path.
+// A GroupingNode is a node that groups documents by value.
 type GroupingNode struct {
 	node
 
@@ -469,11 +469,22 @@ func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 
 func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 	return st.GroupBy(func(d document.Document) (document.Value, error) {
-		return n.Expr.Eval(expr.EvalStack{
+		v, err := n.Expr.Eval(expr.EvalStack{
 			Tx:       n.Tx,
 			Params:   n.Params,
 			Document: d,
 		})
+		if err != nil || !v.Type.IsNumber() {
+			return v, err
+		}
+
+		// TODO Make expr.FieldSelector carry the table information
+		_, ok := n.Expr.(expr.FieldSelector)
+		if !ok {
+			return v, err
+		}
+
+		return v, err
 	}), nil
 }
 

@@ -29,7 +29,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 
 	valueParser := p.parseParamOrDocument
 
-	// Parse path list: (a, b, c)
+	// Parse reference list: (a, b, c)
 	fields, withFields, err := p.parseFieldList()
 	if err != nil {
 		return stmt, err
@@ -48,7 +48,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 		return stmt, err
 	}
 
-	// ensure the length of path list is the same as the length of values
+	// ensure the length of reference list is the same as the length of values
 	if withFields {
 		for _, l := range values {
 			el := l.(expr.LiteralExprList)
@@ -62,7 +62,7 @@ func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
 	return stmt, nil
 }
 
-// parseFieldList parses a list of fields in the form: (path, path, ...), if exists
+// parseFieldList parses a list of fields in the form: (reference, reference, ...), if exists
 func (p *Parser) parseFieldList() ([]string, bool, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
@@ -70,7 +70,7 @@ func (p *Parser) parseFieldList() ([]string, bool, error) {
 		return nil, false, nil
 	}
 
-	// Parse path list.
+	// Parse reference list.
 	var fields []string
 	var err error
 	if fields, err = p.parseIdentList(); err != nil {

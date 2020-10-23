@@ -3,6 +3,7 @@ package database_test
 import (
 	"errors"
 	"testing"
+
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
@@ -113,17 +114,17 @@ func TestTxTable(t *testing.T) {
 		defer cleanup()
 
 		ti := &database.TableInfo{FieldConstraints: []database.FieldConstraint{
-			{Path: parsePath(t, "name"), Type: document.TextValue, IsNotNull: true},
-			{Path: parsePath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
-			{Path: parsePath(t, "gender"), Type: document.TextValue},
-			{Path: parsePath(t, "city"), Type: document.TextValue},
+			{Reference: parseReference(t, "name"), Type: document.TextValue, IsNotNull: true},
+			{Reference: parseReference(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
+			{Reference: parseReference(t, "gender"), Type: document.TextValue},
+			{Reference: parseReference(t, "city"), Type: document.TextValue},
 		}}
 		err := tx.CreateTable("foo", ti)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{Path: parsePath(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
+		err = tx.CreateIndex(database.IndexConfig{Reference: parseReference(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{Path: parsePath(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
+		err = tx.CreateIndex(database.IndexConfig{Reference: parseReference(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
 		require.NoError(t, err)
 
 		err = tx.RenameTable("foo", "zoo")
@@ -163,17 +164,17 @@ func TestTxTable(t *testing.T) {
 		defer cleanup()
 
 		ti := &database.TableInfo{FieldConstraints: []database.FieldConstraint{
-			{Path: parsePath(t, "name"), Type: document.TextValue, IsNotNull: true},
-			{Path: parsePath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
-			{Path: parsePath(t, "gender"), Type: document.TextValue},
-			{Path: parsePath(t, "city"), Type: document.TextValue},
+			{Reference: parseReference(t, "name"), Type: document.TextValue, IsNotNull: true},
+			{Reference: parseReference(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
+			{Reference: parseReference(t, "gender"), Type: document.TextValue},
+			{Reference: parseReference(t, "city"), Type: document.TextValue},
 		}}
 		err := tx.CreateTable("foo", ti)
 		require.NoError(t, err)
 
 		// Add field
 		fieldToAdd := database.FieldConstraint{
-			Path: parsePath(t, "last_name"), Type: document.TextValue,
+			Reference: parseReference(t, "last_name"), Type: document.TextValue,
 		}
 		err = tx.AddField("foo", fieldToAdd)
 		require.NoError(t, err)
@@ -196,7 +197,7 @@ func TestTxTable(t *testing.T) {
 
 		// Adding a second primary key should return an error
 		fieldToAdd = database.FieldConstraint{
-			Path: parsePath(t, "foobar"), Type: document.IntegerValue, IsPrimaryKey: true,
+			Reference: parseReference(t, "foobar"), Type: document.IntegerValue, IsPrimaryKey: true,
 		}
 		err = tx.AddField("foo", fieldToAdd)
 		require.Error(t, err)
@@ -212,7 +213,7 @@ func TestTxCreateIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Reference: parseReference(t, "foo"),
 		})
 		require.NoError(t, err)
 		idx, err := tx.GetIndex("idxFoo")
@@ -228,12 +229,12 @@ func TestTxCreateIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Reference: parseReference(t, "foo"),
 		})
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Reference: parseReference(t, "foo"),
 		})
 		require.Equal(t, database.ErrIndexAlreadyExists, err)
 	})
@@ -243,7 +244,7 @@ func TestTxCreateIndex(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Reference: parseReference(t, "foo"),
 		})
 		if !errors.Is(err, database.ErrTableNotFound) {
 			require.Equal(t, err, database.ErrTableNotFound)
@@ -260,7 +261,7 @@ func TestTxDropIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Reference: parseReference(t, "foo"),
 		})
 		require.NoError(t, err)
 
@@ -299,13 +300,13 @@ func TestTxReIndex(t *testing.T) {
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "a",
 			TableName: "test",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "b",
 			TableName: "test",
-			Path:      parsePath(t, "b"),
+			Reference: parseReference(t, "b"),
 		})
 		require.NoError(t, err)
 
@@ -337,7 +338,7 @@ func TestTxReIndex(t *testing.T) {
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "b",
 			TableName: "test",
-			Path:      parsePath(t, "b"),
+			Reference: parseReference(t, "b"),
 		})
 
 		err = tx.ReIndex("b")
@@ -417,13 +418,13 @@ func TestReIndexAll(t *testing.T) {
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "t1a",
 			TableName: "test1",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "t2a",
 			TableName: "test2",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 

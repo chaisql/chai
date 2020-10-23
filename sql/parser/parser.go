@@ -41,9 +41,9 @@ func ParseQuery(ctx context.Context, s string) (query.Query, error) {
 	return NewParser(strings.NewReader(s)).ParseQuery(ctx)
 }
 
-// ParsePath parses the path of a value in a document.
-func ParsePath(s string) (document.ValuePath, error) {
-	return NewParser(strings.NewReader(s)).parsePath()
+// ParseReference parses a reference to a value in a document.
+func ParseReference(s string) (document.Reference, error) {
+	return NewParser(strings.NewReader(s)).parseReference()
 }
 
 // ParseQuery parses a Genji SQL string and returns a Query.
@@ -129,37 +129,37 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 	return expr, nil
 }
 
-// parsePathList parses a list of paths in the form: (path, path, ...), if exists
-func (p *Parser) parsePathList() ([]document.ValuePath, error) {
+// parseReferenceList parses a list of references in the form: (reference, reference, ...), if exists
+func (p *Parser) parseReferenceList() ([]document.Reference, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
 		return nil, nil
 	}
 
-	var paths []document.ValuePath
+	var references []document.Reference
 	var err error
-	var vp document.ValuePath
-	// Parse first (required) path.
-	if vp, err = p.parsePath(); err != nil {
+	var ref document.Reference
+	// Parse first (required) reference.
+	if ref, err = p.parseReference(); err != nil {
 		return nil, err
 	}
 
-	paths = append(paths, vp)
+	references = append(references, ref)
 
-	// Parse remaining (optional) paths.
+	// Parse remaining (optional) references.
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
 			break
 		}
 
-		vp, err := p.parsePath()
+		vp, err := p.parseReference()
 		if err != nil {
 			return nil, err
 		}
 
-		paths = append(paths, vp)
+		references = append(references, vp)
 	}
 
 	// Parse required ) token.
@@ -167,7 +167,7 @@ func (p *Parser) parsePathList() ([]document.ValuePath, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return paths, nil
+	return references, nil
 }
 
 // Scan returns the next token from the underlying scanner.

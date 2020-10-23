@@ -59,7 +59,7 @@ func (stmt AlterTableAddField) Run(ctx context.Context, tx *database.Transaction
 		return res, errors.New("missing table name")
 	}
 
-	if stmt.Constraint.Path == nil {
+	if stmt.Constraint.Reference == nil {
 		return res, errors.New("missing field name")
 	}
 

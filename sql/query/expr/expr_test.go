@@ -26,8 +26,8 @@ var stackWithDoc = expr.EvalStack{
 
 var fakeTableInfo = &database.TableInfo{
 	FieldConstraints: []database.FieldConstraint{
-		{Path: document.ValuePath{document.ValuePathFragment{FieldName: "c"}, document.ValuePathFragment{ArrayIndex: 0}}, IsPrimaryKey: true},
-		{Path: document.ValuePath{document.ValuePathFragment{FieldName: "c"}, document.ValuePathFragment{ArrayIndex: 1}}},
+		{Reference: document.Reference{document.ReferenceFragment{FieldName: "c"}, document.ReferenceFragment{ArrayIndex: 0}}, IsPrimaryKey: true},
+		{Reference: document.Reference{document.ReferenceFragment{FieldName: "c"}, document.ReferenceFragment{ArrayIndex: 1}}},
 	},
 }
 var stackWithDocAndInfo = expr.EvalStack{

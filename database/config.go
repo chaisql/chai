@@ -15,7 +15,7 @@ const storePrefix = 't'
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Path         document.ValuePath
+	Reference    document.Reference
 	Type         document.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
@@ -30,7 +30,7 @@ func (f *FieldConstraint) HasDefaultValue() bool {
 func (f *FieldConstraint) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
-	buf.Add("path", document.NewArrayValue(valuePathToArray(f.Path)))
+	buf.Add("reference", document.NewArrayValue(referenceToArray(f.Reference)))
 	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
@@ -42,11 +42,11 @@ func (f *FieldConstraint) ToDocument() document.Document {
 
 // ScanDocument implements the document.Scanner interface.
 func (f *FieldConstraint) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("path")
+	v, err := d.GetByField("reference")
 	if err != nil {
 		return err
 	}
-	f.Path, err = arrayToValuePath(v)
+	f.Reference, err = arrayToReference(v)
 	if err != nil {
 		return err
 	}
@@ -366,8 +366,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
-				Path: document.ValuePath{
-					document.ValuePathFragment{
+				Reference: document.Reference{
+					document.ReferenceFragment{
 						FieldName: "table_name",
 					},
 				},
@@ -381,8 +381,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
-				Path: document.ValuePath{
-					document.ValuePathFragment{
+				Reference: document.Reference{
+					document.ReferenceFragment{
 						FieldName: "index_name",
 					},
 				},
@@ -439,7 +439,7 @@ func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
 type IndexConfig struct {
 	TableName string
 	IndexName string
-	Path      document.ValuePath
+	Reference document.Reference
 
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
@@ -455,7 +455,7 @@ func (i *IndexConfig) ToDocument() document.Document {
 	buf.Add("unique", document.NewBoolValue(i.Unique))
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
-	buf.Add("path", document.NewArrayValue(valuePathToArray(i.Path)))
+	buf.Add("reference", document.NewArrayValue(referenceToArray(i.Reference)))
 	if i.Type != 0 {
 		buf.Add("type", document.NewIntegerValue(int64(i.Type)))
 	}
@@ -482,11 +482,11 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	}
 	i.TableName = string(v.V.(string))
 
-	v, err = d.GetByField("path")
+	v, err = d.GetByField("reference")
 	if err != nil {
 		return err
 	}
-	i.Path, err = arrayToValuePath(v)
+	i.Reference, err = arrayToReference(v)
 	if err != nil {
 		return err
 	}
@@ -602,24 +602,24 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 	return idxList, nil
 }
 
-func arrayToValuePath(v document.Value) (document.ValuePath, error) {
-	var path document.ValuePath
+func arrayToReference(v document.Value) (document.Reference, error) {
+	var ref document.Reference
 
 	err := v.V.(document.Array).Iterate(func(_ int, value document.Value) error {
 		if value.Type == document.TextValue {
-			path = append(path, document.ValuePathFragment{FieldName: value.V.(string)})
+			ref = append(ref, document.ReferenceFragment{FieldName: value.V.(string)})
 		} else {
-			path = append(path, document.ValuePathFragment{ArrayIndex: int(value.V.(int64))})
+			ref = append(ref, document.ReferenceFragment{ArrayIndex: int(value.V.(int64))})
 		}
 		return nil
 	})
 
-	return path, err
+	return ref, err
 }
 
-func valuePathToArray(path document.ValuePath) document.Array {
+func referenceToArray(ref document.Reference) document.Array {
 	abuf := document.NewValueBuffer()
-	for _, p := range path {
+	for _, p := range ref {
 		if p.FieldName != "" {
 			abuf = abuf.Append(document.NewTextValue(p.FieldName))
 		} else {

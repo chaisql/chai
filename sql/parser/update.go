@@ -59,11 +59,11 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 			}
 		}
 
-		// Scan the identifier for the path name.
-		path, err := p.parsePath()
+		// Scan the identifier for the reference name.
+		ref, err := p.parseReference()
 		if err != nil {
 			pErr := err.(*ParseError)
-			pErr.Expected = []string{"path"}
+			pErr.Expected = []string{"reference"}
 			return nil, pErr
 		}
 
@@ -77,7 +77,7 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, updateSetPair{path, expr})
+		pairs = append(pairs, updateSetPair{ref, expr})
 
 		firstPair = false
 	}
@@ -99,7 +99,7 @@ func (p *Parser) parseUnsetClause() ([]string, error) {
 			}
 		}
 
-		// Scan the identifier for the path to unset.
+		// Scan the identifier for the reference to unset.
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		if tok != scanner.IDENT {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
@@ -116,20 +116,20 @@ type updateConfig struct {
 	TableName string
 
 	// SetPairs is used along with the Set clause. It holds
-	// each path with its corresponding value that
+	// each reference with its corresponding value that
 	// should be set in the document.
 	SetPairs []updateSetPair
 
 	// UnsetFields is used along with the Unset clause. It holds
-	// each path that should be unset from the document.
+	// each reference that should be unset from the document.
 	UnsetFields []string
 
 	WhereExpr expr.Expr
 }
 
 type updateSetPair struct {
-	path document.ValuePath
-	e    expr.Expr
+	ref document.Reference
+	e   expr.Expr
 }
 
 // ToTree turns the statement into an expression tree.
@@ -142,7 +142,7 @@ func (cfg updateConfig) ToTree() *planner.Tree {
 
 	if cfg.SetPairs != nil {
 		for _, pair := range cfg.SetPairs {
-			t = planner.NewSetNode(t, pair.path, pair.e)
+			t = planner.NewSetNode(t, pair.ref, pair.e)
 		}
 	} else if cfg.UnsetFields != nil {
 		for _, name := range cfg.UnsetFields {

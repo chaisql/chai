@@ -251,7 +251,7 @@ func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
 // UseIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
 // operator that satisfies the following criterias:
 // - implements the indexIteratorOperator interface
-// - one of its operands is path selector that is indexed
+// - one of its operands is a reference that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
 func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
@@ -391,7 +391,7 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 		return nil
 	}
 
-	// now, we look if an index exists for that path
+	// now, we look if an index exists for that reference
 	idx, ok := indexes[field.Name()]
 	if !ok {
 		return nil
@@ -407,12 +407,12 @@ func opCanUseIndex(op expr.Operator) (bool, expr.FieldSelector, expr.Expr) {
 	lf, leftIsField := op.LeftHand().(expr.FieldSelector)
 	rf, rightIsField := op.RightHand().(expr.FieldSelector)
 
-	// path OP expr
+	// reference OP expr
 	if leftIsField && !rightIsField {
 		return true, lf, op.RightHand()
 	}
 
-	// expr OP path
+	// expr OP reference
 	if rightIsField && !leftIsField {
 		return true, rf, op.LeftHand()
 	}

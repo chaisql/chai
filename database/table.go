@@ -87,7 +87,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Reference.GetValue(d)
 		if err != nil {
 			v = document.NewNullValue()
 		}
@@ -128,7 +128,7 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Reference.GetValue(d)
 		if err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(old)
+		v, err := idx.Opts.Reference.GetValue(old)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Reference.GetValue(d)
 		if err != nil {
 			continue
 		}
@@ -253,7 +253,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				Type:   opts.Type,
 			})
 
-			indexes[opts.Path.String()] = Index{
+			indexes[opts.Reference.String()] = Index{
 				Index: idx,
 				Opts:  opts,
 			}
@@ -378,9 +378,9 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	}
 
 	if pk := ti.GetPrimaryKey(); pk != nil {
-		v, err := pk.Path.GetValue(d)
+		v, err := pk.Reference.GetValue(d)
 		if err == document.ErrFieldNotFound {
-			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
+			return nil, fmt.Errorf("missing primary key at path %q", pk.Reference)
 		}
 		if err != nil {
 			return nil, err
@@ -451,7 +451,7 @@ func (t *Table) ValidateConstraints(d document.Document) (document.Document, err
 
 func validateConstraint(d document.Document, c *FieldConstraint) error {
 	// get the parent buffer
-	parent, err := getParentValue(d, c.Path)
+	parent, err := getParentValue(d, c.Reference)
 	if err != nil {
 		return err
 	}
@@ -461,16 +461,16 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		// if it's a document, we can assume it's a FieldBuffer
 		buf := parent.V.(*document.FieldBuffer)
 
-		// the field to modify is the last chunk of the path
-		field := c.Path[len(c.Path)-1]
+		// the field to modify is the last chunk of the reference
+		field := c.Reference[len(c.Reference)-1]
 		if field.FieldName == "" {
 			// if the field is not found we make sure it is not required
 			if c.IsNotNull {
 				if !c.HasDefaultValue() {
-					return fmt.Errorf("field %q is required and must be not null", c.Path)
+					return fmt.Errorf("field %q is required and must be not null", c.Reference)
 				}
 
-				return buf.Set(c.Path, c.DefaultValue)
+				return buf.Set(c.Reference, c.DefaultValue)
 			}
 			return nil
 		}
@@ -481,10 +481,10 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			if err == document.ErrFieldNotFound {
 				if c.IsNotNull {
 					if !c.HasDefaultValue() {
-						return fmt.Errorf("field %q is required and must be not null", c.Path)
+						return fmt.Errorf("field %q is required and must be not null", c.Reference)
 					}
 
-					return buf.Set(c.Path, c.DefaultValue)
+					return buf.Set(c.Reference, c.DefaultValue)
 				}
 				return nil
 			}
@@ -493,7 +493,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		}
 		// if the field is null we make sure it is not required
 		if v.Type == document.NullValue && c.IsNotNull {
-			return fmt.Errorf("field %q is required and must be not null", c.Path)
+			return fmt.Errorf("field %q is required and must be not null", c.Reference)
 		}
 
 		// if not we convert it and replace it in the buffer
@@ -516,9 +516,9 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 		// if it's an array, we can assume it's a ValueBuffer
 		buf := parent.V.(document.ValueBuffer)
 
-		frag := c.Path[len(c.Path)-1]
+		frag := c.Reference[len(c.Reference)-1]
 		if frag.FieldName != "" {
-			// if the fieldName is not empty, then the path must refer to a document and not an array,
+			// if the fieldName is not empty, then the reference must refer to a document and not an array,
 			// we simply skip
 			return nil
 		}
@@ -529,7 +529,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 			if err == document.ErrValueNotFound {
 				if c.IsNotNull {
 					if !c.HasDefaultValue() {
-						return fmt.Errorf("field %q is required and must be not null", c.Path)
+						return fmt.Errorf("field %q is required and must be not null", c.Reference)
 					}
 
 					return buf.Copy(c.DefaultValue.V.(document.Array))
@@ -559,9 +559,9 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 	return nil
 }
 
-func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
+func getParentValue(d document.Document, p document.Reference) (document.Value, error) {
 	if len(p) == 0 {
-		return document.Value{}, errors.New("empty path")
+		return document.Value{}, errors.New("empty reference")
 	}
 
 	if len(p) == 1 {

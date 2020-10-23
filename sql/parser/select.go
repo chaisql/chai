@@ -14,7 +14,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 	var cfg selectConfig
 	var err error
 
-	// Parse path list or query.Wildcard
+	// Parse reference list or query.Wildcard
 	cfg.ProjectionExprs, err = p.parseResultFields()
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 
-	// Parse order by: "ORDER BY path [ASC|DESC]?"
+	// Parse order by: "ORDER BY reference [ASC|DESC]?"
 	cfg.OrderBy, cfg.OrderByDirection, err = p.parseOrderBy()
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 
 // parseResultFields parses the list of result fields.
 func (p *Parser) parseResultFields() ([]planner.ProjectedField, error) {
-	// Parse first (required) result path.
+	// Parse first (required) result field.
 	rf, err := p.parseResultField()
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (p *Parser) parseResultField() (planner.ProjectedField, error) {
 		return nil, err
 	}
 
-	// FieldSelectors may be quoted, we make sure we name the result path
+	// FieldSelectors may be quoted, we make sure we name the result field
 	// with the unquoted name instead.
 	if fs, ok := e.(expr.FieldSelector); ok {
 		lit = fs.String()
@@ -168,8 +168,8 @@ func (p *Parser) parseOrderBy() (expr.FieldSelector, scanner.Token, error) {
 		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"BY"}, pos)
 	}
 
-	// parse path
-	ref, err := p.parsePath()
+	// parse reference
+	ref, err := p.parseReference()
 	if err != nil {
 		return nil, 0, err
 	}

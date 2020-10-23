@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parsePath(t testing.TB, ref string) document.ValuePath {
+func parseReference(t testing.TB, ref string) document.Reference {
 	t.Helper()
 
-	vp, err := ParsePath(ref)
+	vp, err := ParseReference(ref)
 	require.NoError(t, err)
 	return vp
 }
@@ -57,7 +57,7 @@ func TestParserExpr(t *testing.T) {
 				expr.KVPair{K: "f", V: expr.KVPairs{
 					expr.KVPair{K: "foo", V: expr.TextValue("bar")},
 				}},
-				expr.KVPair{K: "g", V: expr.FieldSelector(parsePath(t, "h.i.j"))},
+				expr.KVPair{K: "g", V: expr.FieldSelector(parseReference(t, "h.i.j"))},
 				expr.KVPair{K: "k", V: expr.LiteralExprList{expr.IntegerValue(1), expr.IntegerValue(2), expr.IntegerValue(3)}},
 			},
 			false},
@@ -108,28 +108,28 @@ func TestParserExpr(t *testing.T) {
 				expr.IntegerValue(1),
 				expr.BoolValue(true),
 				expr.KVPairs{expr.KVPair{K: "a", V: expr.IntegerValue(1)}},
-				expr.FieldSelector(parsePath(t, "a.b.c")),
+				expr.FieldSelector(parseReference(t, "a.b.c")),
 				expr.Parentheses{E: expr.IntegerValue(-1)},
 				expr.LiteralExprList{expr.IntegerValue(-1)},
 			}, false},
 		{"list with brackets: missing bracket", `[1, true, {a: 1}, a.b.c, (-1), [-1]`, nil, true},
 
 		// operators
-		{"=", "age = 10", expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"!=", "age != 10", expr.Neq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{">", "age > 10", expr.Gt(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{">=", "age >= 10", expr.Gte(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"<", "age < 10", expr.Lt(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"<=", "age <= 10", expr.Lte(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"+", "age + 10", expr.Add(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"-", "age - 10", expr.Sub(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"*", "age * 10", expr.Mul(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"/", "age / 10", expr.Div(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"%", "age % 10", expr.Mod(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"&", "age & 10", expr.BitwiseAnd(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)), false},
-		{"IN", "age IN ages", expr.In(expr.FieldSelector(parsePath(t, "age")), expr.FieldSelector(parsePath(t, "ages"))), false},
-		{"IS", "age IS NULL", expr.Is(expr.FieldSelector(parsePath(t, "age")), expr.NullValue()), false},
-		{"IS NOT", "age IS NOT NULL", expr.IsNot(expr.FieldSelector(parsePath(t, "age")), expr.NullValue()), false},
+		{"=", "age = 10", expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"!=", "age != 10", expr.Neq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{">", "age > 10", expr.Gt(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{">=", "age >= 10", expr.Gte(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"<", "age < 10", expr.Lt(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"<=", "age <= 10", expr.Lte(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"+", "age + 10", expr.Add(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"-", "age - 10", expr.Sub(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"*", "age * 10", expr.Mul(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"/", "age / 10", expr.Div(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"%", "age % 10", expr.Mod(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"&", "age & 10", expr.BitwiseAnd(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)), false},
+		{"IN", "age IN ages", expr.In(expr.FieldSelector(parseReference(t, "age")), expr.FieldSelector(parseReference(t, "ages"))), false},
+		{"IS", "age IS NULL", expr.Is(expr.FieldSelector(parseReference(t, "age")), expr.NullValue()), false},
+		{"IS NOT", "age IS NOT NULL", expr.IsNot(expr.FieldSelector(parseReference(t, "age")), expr.NullValue()), false},
 		{"precedence", "4 > 1 + 2", expr.Gt(
 			expr.IntegerValue(4),
 			expr.Add(
@@ -139,27 +139,27 @@ func TestParserExpr(t *testing.T) {
 		), false},
 		{"AND", "age = 10 AND age <= 11",
 			expr.And(
-				expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
-				expr.Lte(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(11)),
+				expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+				expr.Lte(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(11)),
 			), false},
 		{"OR", "age = 10 OR age = 11",
 			expr.Or(
-				expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
-				expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(11)),
+				expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+				expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(11)),
 			), false},
 		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
 			expr.Or(
 				expr.And(
-					expr.Gte(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
-					expr.Gt(expr.FieldSelector(parsePath(t, "age")), expr.NamedParam("age")),
+					expr.Gte(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
+					expr.Gt(expr.FieldSelector(parseReference(t, "age")), expr.NamedParam("age")),
 				),
-				expr.Lt(expr.FieldSelector(parsePath(t, "age")), expr.DoubleValue(10.4)),
+				expr.Lt(expr.FieldSelector(parseReference(t, "age")), expr.DoubleValue(10.4)),
 			), false},
-		{"with NULL", "age > NULL", expr.Gt(expr.FieldSelector(parsePath(t, "age")), expr.NullValue()), false},
+		{"with NULL", "age > NULL", expr.Gt(expr.FieldSelector(parseReference(t, "age")), expr.NullValue()), false},
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
-		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: expr.FieldSelector(parsePath(t, "a"))}, false},
+		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: expr.FieldSelector(parseReference(t, "a"))}, false},
 		{"count(*) function", "count(*)", &expr.CountFunc{Wildcard: true}, false},
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: expr.FieldSelector(parsePath(t, "a.b[1][0]")), CastAs: document.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: expr.FieldSelector(parseReference(t, "a.b[1][0]")), CastAs: document.TextValue}, false},
 	}
 
 	for _, test := range tests {
@@ -176,32 +176,32 @@ func TestParserExpr(t *testing.T) {
 	}
 }
 
-func TestParserPath(t *testing.T) {
+func TestParseReference(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected document.ValuePath
+		expected document.Reference
 		fails    bool
 	}{
-		{"one fragment", `a`, document.ValuePath{
-			document.ValuePathFragment{FieldName: "a"},
+		{"one fragment", `a`, document.Reference{
+			document.ReferenceFragment{FieldName: "a"},
 		}, false},
-		{"one fragment with quotes", "`    \"a\"`", document.ValuePath{
-			document.ValuePathFragment{FieldName: "    \"a\""},
+		{"one fragment with quotes", "`    \"a\"`", document.Reference{
+			document.ReferenceFragment{FieldName: "    \"a\""},
 		}, false},
-		{"multiple fragments", `a.b[100].c[1][2]`, document.ValuePath{
-			document.ValuePathFragment{FieldName: "a"},
-			document.ValuePathFragment{FieldName: "b"},
-			document.ValuePathFragment{ArrayIndex: 100},
-			document.ValuePathFragment{FieldName: "c"},
-			document.ValuePathFragment{ArrayIndex: 1},
-			document.ValuePathFragment{ArrayIndex: 2},
+		{"multiple fragments", `a.b[100].c[1][2]`, document.Reference{
+			document.ReferenceFragment{FieldName: "a"},
+			document.ReferenceFragment{FieldName: "b"},
+			document.ReferenceFragment{ArrayIndex: 100},
+			document.ReferenceFragment{FieldName: "c"},
+			document.ReferenceFragment{ArrayIndex: 1},
+			document.ReferenceFragment{ArrayIndex: 2},
 		}, false},
-		{"with quotes", "`some ident`.` with`[5].`  \"quotes`", document.ValuePath{
-			document.ValuePathFragment{FieldName: "some ident"},
-			document.ValuePathFragment{FieldName: " with"},
-			document.ValuePathFragment{ArrayIndex: 5},
-			document.ValuePathFragment{FieldName: "  \"quotes"},
+		{"with quotes", "`some ident`.` with`[5].`  \"quotes`", document.Reference{
+			document.ReferenceFragment{FieldName: "some ident"},
+			document.ReferenceFragment{FieldName: " with"},
+			document.ReferenceFragment{ArrayIndex: 5},
+			document.ReferenceFragment{FieldName: "  \"quotes"},
 		}, false},
 		{"negative index", `a.b[-100].c`, nil, true},
 		{"with spaces", `a.  b[100].  c`, nil, true},
@@ -210,7 +210,7 @@ func TestParserPath(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			vp, err := ParsePath(test.s)
+			vp, err := ParseReference(test.s)
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -228,17 +228,17 @@ func TestParserParams(t *testing.T) {
 		expected expr.Expr
 		errored  bool
 	}{
-		{"one positional", "age = ?", expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.PositionalParam(1)), false},
+		{"one positional", "age = ?", expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.PositionalParam(1)), false},
 		{"multiple positional", "age = ? AND age <= ?",
 			expr.And(
-				expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.PositionalParam(1)),
-				expr.Lte(expr.FieldSelector(parsePath(t, "age")), expr.PositionalParam(2)),
+				expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.PositionalParam(1)),
+				expr.Lte(expr.FieldSelector(parseReference(t, "age")), expr.PositionalParam(2)),
 			), false},
-		{"one named", "age = $age", expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.NamedParam("age")), false},
+		{"one named", "age = $age", expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.NamedParam("age")), false},
 		{"multiple named", "age = $foo OR age = $bar",
 			expr.Or(
-				expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.NamedParam("foo")),
-				expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.NamedParam("bar")),
+				expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.NamedParam("foo")),
+				expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.NamedParam("bar")),
 			), false},
 		{"mixed", "age >= ? AND age > $foo OR age < ?", nil, true},
 	}

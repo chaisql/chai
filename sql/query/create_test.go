@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parsePath(t testing.TB, str string) document.ValuePath {
-	vp, err := parser.ParsePath(str)
+func parseReference(t testing.TB, str string) document.Reference {
+	vp, err := parser.ParseReference(str)
 	require.NoError(t, err)
 	return vp
 }
@@ -86,8 +86,8 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: parsePath(t, "d"), Type: document.DoubleValue},
-					{Path: parsePath(t, "b"), Type: document.BoolValue},
+					{Reference: parseReference(t, "d"), Type: document.DoubleValue},
+					{Reference: parseReference(t, "b"), Type: document.BoolValue},
 				}, info.FieldConstraints)
 				return nil
 			})
@@ -114,13 +114,13 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
-					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
-					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
-					{Path: parsePath(t, "b"), Type: document.BlobValue},
-					{Path: parsePath(t, "t"), Type: document.TextValue},
-					{Path: parsePath(t, "a"), Type: document.ArrayValue},
-					{Path: parsePath(t, "d"), Type: document.DocumentValue},
+					{Reference: parseReference(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Reference: parseReference(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Reference: parseReference(t, "bar[4][0].bat"), Type: document.IntegerValue},
+					{Reference: parseReference(t, "b"), Type: document.BlobValue},
+					{Reference: parseReference(t, "t"), Type: document.TextValue},
+					{Reference: parseReference(t, "a"), Type: document.ArrayValue},
+					{Reference: parseReference(t, "d"), Type: document.DocumentValue},
 				}, info.FieldConstraints)
 				return nil
 			})
@@ -150,16 +150,16 @@ func TestCreateTable(t *testing.T) {
 				}
 
 				require.Equal(t, []database.FieldConstraint{
-					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
-					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
-					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
-					{Path: parsePath(t, "dp"), Type: document.DoubleValue},
-					{Path: parsePath(t, "r"), Type: document.DoubleValue},
-					{Path: parsePath(t, "b"), Type: document.IntegerValue},
-					{Path: parsePath(t, "m"), Type: document.IntegerValue},
-					{Path: parsePath(t, "eight"), Type: document.IntegerValue},
-					{Path: parsePath(t, "ii"), Type: document.IntegerValue},
-					{Path: parsePath(t, "c"), Type: document.TextValue},
+					{Reference: parseReference(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Reference: parseReference(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Reference: parseReference(t, "bar[4][0].bat"), Type: document.IntegerValue},
+					{Reference: parseReference(t, "dp"), Type: document.DoubleValue},
+					{Reference: parseReference(t, "r"), Type: document.DoubleValue},
+					{Reference: parseReference(t, "b"), Type: document.IntegerValue},
+					{Reference: parseReference(t, "m"), Type: document.IntegerValue},
+					{Reference: parseReference(t, "eight"), Type: document.IntegerValue},
+					{Reference: parseReference(t, "ii"), Type: document.IntegerValue},
+					{Reference: parseReference(t, "c"), Type: document.TextValue},
 				}, info.FieldConstraints)
 				return nil
 			})

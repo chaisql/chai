@@ -131,13 +131,13 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 func (tx *Transaction) AddField(name string, fc FieldConstraint) error {
 	return tx.tableInfoStore.modifyTable(tx, name, func(info *TableInfo) error {
 		for _, field := range info.FieldConstraints {
-			if field.Path.IsEqual(fc.Path) {
-				return fmt.Errorf("field %q already exists", fc.Path.String())
+			if field.Reference.IsEqual(fc.Reference) {
+				return fmt.Errorf("field %q already exists", fc.Reference.String())
 			}
 			if field.IsPrimaryKey && fc.IsPrimaryKey {
 				return fmt.Errorf(
 					"multiple primary keys are not allowed (%q is primary key)",
-					field.Path.String(),
+					field.Reference.String(),
 				)
 			}
 		}
@@ -254,7 +254,7 @@ func (tx *Transaction) CreateIndex(opts IndexConfig) error {
 	// if the index is created on a field on which we know the type,
 	// create a typed index.
 	for _, fc := range info.FieldConstraints {
-		if fc.Path.IsEqual(opts.Path) {
+		if fc.Reference.IsEqual(opts.Reference) {
 			if fc.Type != 0 {
 				opts.Type = fc.Type
 			}
@@ -326,7 +326,7 @@ func (tx *Transaction) ReIndex(indexName string) error {
 	}
 
 	return tb.Iterate(func(d document.Document) error {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Reference.GetValue(d)
 		if err == document.ErrFieldNotFound {
 			return nil
 		}

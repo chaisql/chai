@@ -77,7 +77,7 @@ func (p *Parser) parseIfNotExists() (bool, error) {
 }
 
 func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) {
-	fc.Path, err = p.parsePath()
+	fc.Reference, err = p.parseReference()
 	if err != nil {
 		return err
 	}
@@ -234,20 +234,20 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		return stmt, err
 	}
 
-	paths, err := p.parsePathList()
+	refs, err := p.parseReferenceList()
 	if err != nil {
 		return stmt, err
 	}
-	if len(paths) == 0 {
+	if len(refs) == 0 {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 	}
 
-	if len(paths) != 1 {
-		return stmt, &ParseError{Message: "indexes on more than one path are not supported"}
+	if len(refs) != 1 {
+		return stmt, &ParseError{Message: "indexes on more than one references are not supported"}
 	}
 
-	stmt.Path = paths[0]
+	stmt.Reference = refs[0]
 
 	return stmt, nil
 }

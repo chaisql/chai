@@ -22,7 +22,7 @@ type sortNode struct {
 var _ operationNode = (*sortNode)(nil)
 
 // NewSortNode creates a node that sorts a stream according to a given
-// document path and a sort direction.
+// document reference and a sort direction.
 func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) Node {
 	if direction == 0 {
 		direction = scanner.ASC
@@ -93,7 +93,7 @@ func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
 // This function is not memory efficient as it's loading the entire stream in memory before
 // returning the k-smallest or k-largest elements.
 func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
-	path := document.ValuePath(it.sortField)
+	ref := document.Reference(it.sortField)
 
 	var h heap.Interface
 	if it.direction == scanner.ASC {
@@ -107,7 +107,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 	return h, st.Iterate(func(d document.Document) error {
 		// It is possible to sort by any projected field
 		// or field of the original document.
-		v, err := path.GetValue(d)
+		v, err := ref.GetValue(d)
 		if err != nil && err != document.ErrFieldNotFound {
 			return err
 		}
@@ -116,7 +116,7 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// Look for fields in the original document.
 		if err == document.ErrFieldNotFound {
 			if dm, ok := d.(*documentMask); ok {
-				v, err = path.GetValue(dm.d)
+				v, err = ref.GetValue(dm.d)
 				if err != nil && err != document.ErrFieldNotFound {
 					return err
 				}

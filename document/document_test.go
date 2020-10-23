@@ -84,12 +84,12 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Set", func(t *testing.T) {
 		tests := []struct {
-			name  string
-			data  string
-			path  string
-			value document.Value
-			want  string
-			fails bool
+			name      string
+			data      string
+			reference string
+			value     document.Value
+			want      string
+			fails     bool
 		}{
 			{"root", `{}`, `a`, document.NewIntegerValue(1), `{"a": 1}`, false},
 			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, document.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
@@ -108,7 +108,7 @@ func TestFieldBuffer(t *testing.T) {
 			{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `a[0].b`, document.NewTextValue("bar"), `{"a": [{"b": "bar"}, 2, 3]}`, false},
 			// with errors or request ignored doc unchanged
 			{"field not found", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, document.NewIntegerValue(1), `{"a": {"b": [1, 2, 3]}}`, false},
-			{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, document.NewIntegerValue(1), ``, true},
+			{"unknown reference", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, document.NewIntegerValue(1), ``, true},
 			{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, document.NewIntegerValue(1), ``, true},
 			{"document not array", `{"a": {"b": "foo"}}`, `a[0].b`, document.NewTextValue("bar"), ``, true},
 		}
@@ -120,7 +120,7 @@ func TestFieldBuffer(t *testing.T) {
 				d := document.NewFromJSON([]byte(tt.data))
 				err := fb.Copy(d)
 				require.NoError(t, err)
-				p, err := parser.ParsePath(tt.path)
+				p, err := parser.ParseReference(tt.reference)
 				require.NoError(t, err)
 				err = fb.Set(p, tt.value)
 				if tt.fails {
@@ -558,13 +558,13 @@ func (f *foo) GetByField(field string) (document.Value, error) {
 	return document.Value{}, errors.New("unknown field")
 }
 
-func TestValuePath(t *testing.T) {
+func TestReference(t *testing.T) {
 	tests := []struct {
-		name   string
-		data   string
-		path   string
-		result string
-		fails  bool
+		name      string
+		data      string
+		reference string
+		result    string
+		fails     bool
 	}{
 		{"root", `{"a": {"b": [1, 2, 3]}}`, `a`, `{"b": [1, 2, 3]}`, false},
 		{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, `[1, 2, 3]`, false},
@@ -572,7 +572,7 @@ func TestValuePath(t *testing.T) {
 		{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, ``, true},
 		{"number field", `{"a": {"0": [1, 2, 3]}}`, "a.`0`", `[1, 2, 3]`, false},
 		{"letter index", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, ``, true},
-		{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, ``, true},
+		{"unknown reference", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, ``, true},
 	}
 
 	for _, test := range tests {
@@ -581,7 +581,7 @@ func TestValuePath(t *testing.T) {
 
 			err := json.Unmarshal([]byte(test.data), &buf)
 			require.NoError(t, err)
-			p, err := parser.ParsePath(test.path)
+			p, err := parser.ParseReference(test.reference)
 			require.NoError(t, err)
 			v, err := p.GetValue(&buf)
 			if test.fails {

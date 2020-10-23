@@ -103,7 +103,7 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 				return err
 			}
 
-			fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Path)
+			fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Reference)
 
 			return nil
 		})
@@ -127,7 +127,7 @@ func displayAllIndexes(db *genji.DB) error {
 			return err
 		}
 
-		fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Path)
+		fmt.Printf("%s ON %s (%s)\n", index.IndexName, index.TableName, index.Reference)
 
 		return nil
 	})
@@ -228,7 +228,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 			buf.WriteString(",\n")
 		}
 
-		buf.WriteString("  " + fcs[i].Path.String() + " ")
+		buf.WriteString("  " + fcs[i].Reference.String() + " ")
 		buf.WriteString(strings.ToUpper(fcs[i].Type.String()))
 		if fc.IsPrimaryKey {
 			buf.WriteString(" PRIMARY KEY")
@@ -265,7 +265,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		}
 
 		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Opts.IndexName, index.Opts.TableName,
-			index.Opts.Path)
+			index.Opts.Reference)
 		if err != nil {
 			return err
 		}
@@ -322,7 +322,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 			_, err = fmt.Fprintln(w, "COMMIT;")
 			return err
 		}
-		
+
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {

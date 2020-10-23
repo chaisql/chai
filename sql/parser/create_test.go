@@ -24,7 +24,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Reference: parseReference(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 					},
 				},
 			}, false},
@@ -35,7 +35,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "foo"), Type: document.IntegerValue},
 					},
 				},
 			}, false},
@@ -44,7 +44,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), IsNotNull: true},
+						{Reference: parseReference(t, "foo"), IsNotNull: true},
 					},
 				},
 			}, false},
@@ -53,7 +53,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), DefaultValue: document.NewTextValue("10")},
+						{Reference: parseReference(t, "foo"), DefaultValue: document.NewTextValue("10")},
 					},
 				},
 			}, false},
@@ -66,7 +66,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsNotNull: true},
+						{Reference: parseReference(t, "foo"), Type: document.IntegerValue, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -75,7 +75,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Reference: parseReference(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -84,7 +84,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Reference: parseReference(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -93,9 +93,9 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
-						{Path: parsePath(t, "bar"), Type: document.IntegerValue, IsNotNull: true},
-						{Path: parsePath(t, "baz[4][1].bat"), Type: document.TextValue},
+						{Reference: parseReference(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Reference: parseReference(t, "bar"), Type: document.IntegerValue, IsNotNull: true},
+						{Reference: parseReference(t, "baz[4][1].bat"), Type: document.TextValue},
 					},
 				},
 			}, false},
@@ -107,8 +107,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "d"), Type: document.DoubleValue},
-						{Path: parsePath(t, "b"), Type: document.BoolValue},
+						{Reference: parseReference(t, "d"), Type: document.DoubleValue},
+						{Reference: parseReference(t, "b"), Type: document.BoolValue},
 					},
 				},
 			}, false},
@@ -118,12 +118,12 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "i"), Type: document.IntegerValue},
-						{Path: parsePath(t, "b"), Type: document.BlobValue},
-						{Path: parsePath(t, "byt"), Type: document.BlobValue},
-						{Path: parsePath(t, "t"), Type: document.TextValue},
-						{Path: parsePath(t, "a"), Type: document.ArrayValue},
-						{Path: parsePath(t, "d"), Type: document.DocumentValue},
+						{Reference: parseReference(t, "i"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "b"), Type: document.BlobValue},
+						{Reference: parseReference(t, "byt"), Type: document.BlobValue},
+						{Reference: parseReference(t, "t"), Type: document.TextValue},
+						{Reference: parseReference(t, "a"), Type: document.ArrayValue},
+						{Reference: parseReference(t, "d"), Type: document.DocumentValue},
 					},
 				},
 			}, false},
@@ -133,13 +133,13 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "i"), Type: document.IntegerValue},
-						{Path: parsePath(t, "ii"), Type: document.IntegerValue},
-						{Path: parsePath(t, "ei"), Type: document.IntegerValue},
-						{Path: parsePath(t, "m"), Type: document.IntegerValue},
-						{Path: parsePath(t, "s"), Type: document.IntegerValue},
-						{Path: parsePath(t, "b"), Type: document.IntegerValue},
-						{Path: parsePath(t, "t"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "i"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "ii"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "ei"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "m"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "s"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "b"), Type: document.IntegerValue},
+						{Reference: parseReference(t, "t"), Type: document.IntegerValue},
 					},
 				},
 			}, false},
@@ -149,9 +149,9 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "dp"), Type: document.DoubleValue},
-						{Path: parsePath(t, "r"), Type: document.DoubleValue},
-						{Path: parsePath(t, "d"), Type: document.DoubleValue},
+						{Reference: parseReference(t, "dp"), Type: document.DoubleValue},
+						{Reference: parseReference(t, "r"), Type: document.DoubleValue},
+						{Reference: parseReference(t, "d"), Type: document.DoubleValue},
 					},
 				},
 			}, false},
@@ -162,9 +162,9 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "v"), Type: document.TextValue},
-						{Path: parsePath(t, "c"), Type: document.TextValue},
-						{Path: parsePath(t, "t"), Type: document.TextValue},
+						{Reference: parseReference(t, "v"), Type: document.TextValue},
+						{Reference: parseReference(t, "c"), Type: document.TextValue},
+						{Reference: parseReference(t, "t"), Type: document.TextValue},
 					},
 				},
 			}, false},
@@ -175,7 +175,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []database.FieldConstraint{
-						{Path: parsePath(t, "v"), Type: document.TextValue},
+						{Reference: parseReference(t, "v"), Type: document.TextValue},
 					},
 				},
 			}, true},
@@ -202,11 +202,11 @@ func TestParserCreateIndex(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: parsePath(t, "foo")}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: parsePath(t, "foo.bar[1]"), IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: parsePath(t, "foo[3].baz"), IfNotExists: true, Unique: true}, false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Reference: parseReference(t, "foo")}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Reference: parseReference(t, "foo.bar[1]"), IfNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Reference: parseReference(t, "foo[3].baz"), IfNotExists: true, Unique: true}, false},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
-		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)", nil, true},
+		{"More than 1 ref", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}
 
 	for _, test := range tests {

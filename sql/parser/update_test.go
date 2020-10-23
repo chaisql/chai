@@ -21,7 +21,7 @@ func TestParserUpdate(t *testing.T) {
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						parsePath(t, "a"), expr.IntegerValue(1),
+						parseReference(t, "a"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
@@ -33,41 +33,41 @@ func TestParserUpdate(t *testing.T) {
 						planner.NewSetNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
-								expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
+								expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
 							),
-							parsePath(t, "a"), expr.IntegerValue(1),
+							parseReference(t, "a"), expr.IntegerValue(1),
 						),
-						parsePath(t, "b"), expr.IntegerValue(2),
+						parseReference(t, "b"), expr.IntegerValue(2),
 					),
 					"test",
 				)),
 			false},
-		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
+		{"SET/No cond reference with backquotes", "UPDATE test SET `   some \"reference\" ` = 1",
 			planner.NewTree(
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						parsePath(t, "`   some \"path\" `"), expr.IntegerValue(1),
+						parseReference(t, "`   some \"reference\" `"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
 			false},
-		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
+		{"SET/No cond nested reference", "UPDATE test SET a.b = 1",
 			planner.NewTree(
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						parsePath(t, "a.b"), expr.IntegerValue(1),
+						parseReference(t, "a.b"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
 			false},
-		{"SET/No cond nested path with backquotes", "UPDATE test SET a.` b `.c = 1",
+		{"SET/No cond nested reference with backquotes", "UPDATE test SET a.` b `.c = 1",
 			planner.NewTree(
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						parsePath(t, "a.` b `.c"), expr.IntegerValue(1),
+						parseReference(t, "a.` b `.c"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
@@ -77,7 +77,7 @@ func TestParserUpdate(t *testing.T) {
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						parsePath(t, "a[1]"), expr.IntegerValue(1),
+						parseReference(t, "a[1]"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
@@ -87,7 +87,7 @@ func TestParserUpdate(t *testing.T) {
 				planner.NewReplacementNode(
 					planner.NewSetNode(
 						planner.NewTableInputNode("test"),
-						parsePath(t, "a.b[100][10].c"), expr.IntegerValue(1),
+						parseReference(t, "a.b[100][10].c"), expr.IntegerValue(1),
 					),
 					"test",
 				)),
@@ -109,7 +109,7 @@ func TestParserUpdate(t *testing.T) {
 						planner.NewUnsetNode(
 							planner.NewSelectionNode(
 								planner.NewTableInputNode("test"),
-								expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10)),
+								expr.Eq(expr.FieldSelector(parseReference(t, "age")), expr.IntegerValue(10)),
 							),
 							"a",
 						),

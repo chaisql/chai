@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parsePath(t testing.TB, str string) document.ValuePath {
-	vp, err := parser.ParsePath(str)
+func parseReference(t testing.TB, str string) document.Reference {
+	vp, err := parser.ParseReference(str)
 	require.NoError(t, err)
 	return vp
 }
@@ -199,7 +199,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{Path: parsePath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Reference: parseReference(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -230,8 +230,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{Path: parsePath(t, "foo"), Type: document.ArrayValue},
-				{Path: parsePath(t, "foo[0]"), Type: document.IntegerValue},
+				{Reference: parseReference(t, "foo"), Type: document.ArrayValue},
+				{Reference: parseReference(t, "foo[0]"), Type: document.IntegerValue},
 			},
 		})
 		require.NoError(t, err)
@@ -249,7 +249,7 @@ func TestTableInsert(t *testing.T) {
 		d, err := tb.GetDocument(key)
 		require.NoError(t, err)
 
-		v, err := parsePath(t, "foo[0]").GetValue(d)
+		v, err := parseReference(t, "foo[0]").GetValue(d)
 		require.NoError(t, err)
 		require.Equal(t, document.NewIntegerValue(100), v)
 	})
@@ -260,7 +260,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Reference: parseReference(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Reference: parseReference(t, "foo"),
 		})
 		require.NoError(t, err)
 		idx, err := tx.GetIndex("idxFoo")
@@ -337,8 +337,8 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, false, document.Value{}},
-				{parsePath(t, "bar"), document.IntegerValue, false, false, document.Value{}},
+				{parseReference(t, "foo"), document.IntegerValue, false, false, document.Value{}},
+				{parseReference(t, "bar"), document.IntegerValue, false, false, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -375,7 +375,7 @@ func TestTableInsert(t *testing.T) {
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true, document.Value{}},
+				{parseReference(t, "foo"), 0, false, true, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -385,7 +385,7 @@ func TestTableInsert(t *testing.T) {
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true, document.Value{}},
+				{parseReference(t, "foo"), document.IntegerValue, false, true, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -430,7 +430,7 @@ func TestTableInsert(t *testing.T) {
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true, document.NewIntegerValue(42)},
+				{parseReference(t, "foo"), 0, false, true, document.NewIntegerValue(42)},
 			},
 		})
 		require.NoError(t, err)
@@ -440,7 +440,7 @@ func TestTableInsert(t *testing.T) {
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true, document.NewIntegerValue(42)},
+				{parseReference(t, "foo"), document.IntegerValue, false, true, document.NewIntegerValue(42)},
 			},
 		})
 		require.NoError(t, err)
@@ -496,7 +496,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := tx.CreateTable("test1", &database.TableInfo{
 			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo[1]"), 0, false, true, document.Value{}},
+				{parseReference(t, "foo[1]"), 0, false, true, document.Value{}},
 			},
 		})
 		require.NoError(t, err)
@@ -673,25 +673,25 @@ func TestTableReIndex(t *testing.T) {
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test1a",
 			TableName: "test1",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test1b",
 			TableName: "test1",
-			Path:      parsePath(t, "b"),
+			Reference: parseReference(t, "b"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test2a",
 			TableName: "test2",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			IndexName: "test2b",
 			TableName: "test2",
-			Path:      parsePath(t, "b"),
+			Reference: parseReference(t, "b"),
 		})
 		require.NoError(t, err)
 
@@ -752,21 +752,21 @@ func TestTableIndexes(t *testing.T) {
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
-			Path:      parsePath(t, "b"),
+			Reference: parseReference(t, "b"),
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(database.IndexConfig{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",
-			Path:      parsePath(t, "a"),
+			Reference: parseReference(t, "a"),
 		})
 		require.NoError(t, err)
 

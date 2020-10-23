@@ -48,7 +48,7 @@ func (stmt CreateTableStmt) Run(ctx context.Context, tx *database.Transaction, a
 type CreateIndexStmt struct {
 	IndexName   string
 	TableName   string
-	Path        document.ValuePath
+	Reference   document.Reference
 	IfNotExists bool
 	Unique      bool
 }
@@ -71,15 +71,15 @@ func (stmt CreateIndexStmt) Run(ctx context.Context, tx *database.Transaction, a
 		return res, errors.New("missing index name")
 	}
 
-	if len(stmt.Path) == 0 {
-		return res, errors.New("missing path")
+	if len(stmt.Reference) == 0 {
+		return res, errors.New("missing reference")
 	}
 
 	err := tx.CreateIndex(database.IndexConfig{
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,
-		Path:      stmt.Path,
+		Reference: stmt.Reference,
 	})
 	if stmt.IfNotExists && err == database.ErrIndexAlreadyExists {
 		err = nil

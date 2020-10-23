@@ -141,7 +141,7 @@ func TestRunDumpCmd(t *testing.T) {
 						require.NoError(t, err)
 						for _, index := range indexes {
 							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", index.IndexName, index.TableName,
-								index.Path)
+								index.Reference)
 							bwant.WriteString(info)
 						}
 						return nil

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPathExpr(t *testing.T) {
+func TestReferenceExpr(t *testing.T) {
 	tests := []struct {
 		expr  string
 		res   document.Value

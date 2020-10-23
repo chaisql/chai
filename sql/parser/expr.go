@@ -157,7 +157,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		}
 		p.Unscan()
 		p.Unscan()
-		field, err := p.parsePath()
+		field, err := p.parseReference()
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +315,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		p.Unscan()
 		return document.DoubleValue, nil
 	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
-		 scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
+		scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
 		return document.IntegerValue, nil
 	case scanner.TYPETEXT:
 		return document.TextValue, nil
@@ -323,7 +323,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 		}
-		
+
 		// The value between parentheses is not used.
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTEGER {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
@@ -402,15 +402,15 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 	}, nil
 }
 
-// parsePath parses a path to a specific value.
-func (p *Parser) parsePath() (document.ValuePath, error) {
-	var vPath document.ValuePath
+// parseReference parses a reference to a specific value.
+func (p *Parser) parseReference() (document.Reference, error) {
+	var ref document.Reference
 	// parse first mandatory ident
 	chunk, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
-	vPath = append(vPath, document.ValuePathFragment{
+	ref = append(ref, document.ReferenceFragment{
 		FieldName: chunk,
 	})
 
@@ -418,7 +418,7 @@ LOOP:
 	for {
 		// scan the very next token.
 		// if can be either a '.' or a '['
-		// Otherwise, unscan and return the path
+		// Otherwise, unscan and return the reference
 		tok, _, _ := p.Scan()
 		switch tok {
 		case scanner.DOT:
@@ -427,7 +427,7 @@ LOOP:
 			if tok != scanner.IDENT {
 				return nil, newParseError(lit, []string{"identifier"}, pos)
 			}
-			vPath = append(vPath, document.ValuePathFragment{
+			ref = append(ref, document.ReferenceFragment{
 				FieldName: lit,
 			})
 		case scanner.LSBRACKET:
@@ -440,7 +440,7 @@ LOOP:
 			if err != nil {
 				return nil, newParseError(lit, []string{"integer"}, pos)
 			}
-			vPath = append(vPath, document.ValuePathFragment{
+			ref = append(ref, document.ReferenceFragment{
 				ArrayIndex: idx,
 			})
 			// scan the next token for a closing left bracket
@@ -454,7 +454,7 @@ LOOP:
 		}
 	}
 
-	return vPath, nil
+	return ref, nil
 }
 
 func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {

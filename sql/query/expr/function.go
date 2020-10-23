@@ -89,7 +89,7 @@ func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
 
 	pk := ctx.Info.GetPrimaryKey()
 	if pk != nil {
-		return pk.Path.GetValue(ctx.Document)
+		return pk.Reference.GetValue(ctx.Document)
 	}
 
 	i, _ := binary.Uvarint(ctx.Document.(document.Keyer).Key())
