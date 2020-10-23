@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"strconv"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -228,39 +229,76 @@ func TestSelectStmt(t *testing.T) {
 func TestDistinct(t *testing.T) {
 	ctx := context.Background()
 
-	db, err := genji.Open(":memory:")
-	require.NoError(t, err)
-	defer db.Close()
-
-	err = db.Exec(ctx, "CREATE TABLE test(a integer)")
-	require.NoError(t, err)
-
-	for i := 0; i < 100; i++ {
-		err = db.Exec(ctx, `INSERT INTO test VALUES {a: ?, b: ?, c: {a: ?, b: ?}}`, i%10, i, i%10, i%10+1)
-		require.NoError(t, err)
-	}
-
-	tests := []struct {
+	types := []struct {
 		name          string
-		query         string
-		expectedCount int
+		generateValue func(i, notUniqueCount int) (unique interface{}, notunique interface{})
 	}{
-		{`non-unique`, `SELECT DISTINCT a FROM test`, 10},
-		{`non-unique-documents`, `SELECT DISTINCT c FROM test`, 10},
-		{`unique`, `SELECT DISTINCT b FROM test`, 100},
-		{`wildcard`, `SELECT DISTINCT * FROM test`, 100},
-		{`literal`, `SELECT DISTINCT 'a' FROM test`, 1},
+		{`integer`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return i, i % notUniqueCount
+		}},
+		{`double`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return float64(i), float64(i % notUniqueCount)
+		}},
+		{`text`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return strconv.Itoa(i), strconv.Itoa(i % notUniqueCount)
+		}},
+		{`array`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return []interface{}{i}, []interface{}{i % notUniqueCount}
+		}},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			q, err := db.Query(ctx, test.query)
-			require.NoError(t, err)
-			defer q.Close()
+	for _, typ := range types {
+		total := 100
+		notUnique := total / 10
 
-			c, err := q.Count()
+		t.Run(typ.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
 			require.NoError(t, err)
-			require.Equal(t, test.expectedCount, c)
+			defer db.Close()
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			err = tx.Exec(ctx, "CREATE TABLE test(a "+typ.name+" PRIMARY KEY, b "+typ.name+", doc DOCUMENT, nullable "+typ.name+");")
+			require.NoError(t, err)
+
+			err = tx.Exec(ctx, "CREATE UNIQUE INDEX test_doc_index ON test(doc);")
+			require.NoError(t, err)
+
+			for i := 0; i < total; i++ {
+				unique, nonunique := typ.generateValue(i, notUnique)
+				err = tx.Exec(ctx, `INSERT INTO test VALUES {a: ?, b: ?, doc: {a: ?, b: ?}, nullable: null}`, unique, nonunique, unique, nonunique)
+				require.NoError(t, err)
+			}
+			err = tx.Commit()
+			require.NoError(t, err)
+
+			tests := []struct {
+				name          string
+				query         string
+				expectedCount int
+			}{
+				{`unique`, `SELECT DISTINCT a FROM test`, total},
+				{`non-unique`, `SELECT DISTINCT b FROM test`, notUnique},
+				{`documents`, `SELECT DISTINCT doc FROM test`, total},
+				{`null`, `SELECT DISTINCT nullable FROM test`, 1},
+				{`wildcard`, `SELECT DISTINCT * FROM test`, total},
+				{`literal`, `SELECT DISTINCT 'a' FROM test`, 1},
+				{`pk()`, `SELECT DISTINCT pk() FROM test`, total},
+			}
+
+			for _, test := range tests {
+				t.Run(test.name, func(t *testing.T) {
+					q, err := db.Query(ctx, test.query)
+					require.NoError(t, err)
+					defer q.Close()
+
+					c, err := q.Count()
+					require.NoError(t, err)
+					require.Equal(t, test.expectedCount, c)
+				})
+			}
 		})
 	}
 }
