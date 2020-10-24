@@ -251,7 +251,7 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 	n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
 
 	if cfg.Distinct {
-		n = planner.NewDistinctNode(n)
+		n = planner.NewDistinctNode(n, cfg.TableName)
 	}
 
 	if cfg.OrderBy != nil {

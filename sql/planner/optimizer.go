@@ -267,18 +267,8 @@ func RemoveUnnecessaryDedupNodeRule(t *Tree) (*Tree, error) {
 				continue
 			}
 
-			table, err := pn.tx.GetTable(pn.tableName)
-			if err != nil {
-				return nil, err
-			}
-
-			indexes, err := table.Indexes()
-			if err != nil {
-				return nil, err
-			}
-
 			// if the projection is unique, we remove the node from the tree
-			if isProjectionUnique(indexes, pn) {
+			if isProjectionUnique(d.indexes, pn) {
 				if prev != nil {
 					prev.SetLeft(n.Left())
 				} else {

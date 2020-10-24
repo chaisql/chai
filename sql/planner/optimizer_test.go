@@ -221,7 +221,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 						ExprName: "b",
 					}},
 					"foo",
-				)),
+				), "foo"),
 			nil,
 		},
 		{
@@ -234,7 +234,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 						ExprName: "a",
 					}},
 					"foo",
-				)),
+				), "foo"),
 			planner.NewProjectionNode(
 				planner.NewTableInputNode("foo"),
 				[]planner.ProjectedField{planner.ProjectedExpr{
@@ -254,7 +254,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 						ExprName: "c",
 					}},
 					"foo",
-				)),
+				), "foo"),
 			planner.NewProjectionNode(
 				planner.NewTableInputNode("foo"),
 				[]planner.ProjectedField{planner.ProjectedExpr{
@@ -274,7 +274,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 						ExprName: "pk()",
 					}},
 					"foo",
-				)),
+				), "foo"),
 			planner.NewProjectionNode(
 				planner.NewTableInputNode("foo"),
 				[]planner.ProjectedField{planner.ProjectedExpr{

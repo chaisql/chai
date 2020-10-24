@@ -39,7 +39,6 @@ func (s documentHashSet) generateKey(d document.Document) (uint64, error) {
 			return err
 		}
 
-		buf = buf[0:]
 		return nil
 	})
 	if err != nil {

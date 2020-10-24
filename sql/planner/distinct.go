@@ -8,19 +8,29 @@ import (
 
 type dedupNode struct {
 	node
+
+	tableName string
+	indexes   map[string]database.Index
 }
 
-func NewDistinctNode(n Node) Node {
+func NewDistinctNode(n Node, tableName string) Node {
 	return &dedupNode{
-		node{
+		node: node{
 			op:   Dedup,
 			left: n,
 		},
+		tableName: tableName,
 	}
 }
 
-func (n *dedupNode) Bind(tx *database.Transaction, params []expr.Param) error {
-	return nil
+func (n *dedupNode) Bind(tx *database.Transaction, params []expr.Param) (err error) {
+	table, err := tx.GetTable(n.tableName)
+	if err != nil {
+		return
+	}
+
+	n.indexes, err = table.Indexes()
+	return
 }
 
 func (n *dedupNode) toStream(st document.Stream) (document.Stream, error) {
