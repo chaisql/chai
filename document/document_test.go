@@ -225,63 +225,6 @@ func TestFieldBuffer(t *testing.T) {
 	})
 }
 
-func TestNewFromMap(t *testing.T) {
-	m := map[string]interface{}{
-		"name":     "foo",
-		"age":      10,
-		"nilField": nil,
-	}
-
-	doc, err := document.NewFromMap(m)
-	require.NoError(t, err)
-
-	t.Run("Iterate", func(t *testing.T) {
-		counter := make(map[string]int)
-
-		err := doc.Iterate(func(f string, v document.Value) error {
-			counter[f]++
-			switch f {
-			case "name":
-				require.Equal(t, m[f], v.V.(string))
-			default:
-				require.EqualValues(t, m[f], v.V)
-			}
-			return nil
-		})
-		require.NoError(t, err)
-		require.Len(t, counter, 3)
-		require.Equal(t, counter["name"], 1)
-		require.Equal(t, counter["age"], 1)
-		require.Equal(t, counter["nilField"], 1)
-	})
-
-	t.Run("GetByField", func(t *testing.T) {
-		v, err := doc.GetByField("name")
-		require.NoError(t, err)
-		require.Equal(t, document.NewTextValue("foo"), v)
-
-		v, err = doc.GetByField("age")
-		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(10), v)
-
-		v, err = doc.GetByField("nilField")
-		require.NoError(t, err)
-		require.Equal(t, document.NewNullValue(), v)
-
-		_, err = doc.GetByField("bar")
-		require.Equal(t, document.ErrFieldNotFound, err)
-	})
-
-	t.Run("Invalid types", func(t *testing.T) {
-
-		// test NewFromMap rejects invalid types
-		_, err = document.NewFromMap(8)
-		require.Error(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map")
-		_, err = document.NewFromMap(map[int]float64{2: 4.3})
-		require.Error(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map with a string key type")
-	})
-}
-
 func TestNewFromStruct(t *testing.T) {
 	type group struct {
 		A int
