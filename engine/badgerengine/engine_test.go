@@ -3,7 +3,7 @@ package badgerengine_test
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/dgraph-io/badger/v2"
@@ -16,7 +16,7 @@ import (
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
-		opts := badger.DefaultOptions(path.Join(dir, "badger"))
+		opts := badger.DefaultOptions(filepath.Join(dir, "badger"))
 		opts.Logger = nil
 
 		ng, err := badgerengine.NewEngine(opts)
