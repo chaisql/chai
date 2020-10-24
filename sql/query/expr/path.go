@@ -24,7 +24,7 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 		return nullLitteral, nil
 	}
 
-	return v, nil
+	return v, err
 }
 
 // IsEqual compares this expression with the other expression and returns
