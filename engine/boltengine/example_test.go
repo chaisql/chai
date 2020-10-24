@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/engine/boltengine"
@@ -17,7 +17,7 @@ func Example() {
 	}
 	defer os.RemoveAll(dir)
 
-	db, err := genji.Open(path.Join(dir, "my.db"))
+	db, err := genji.Open(filepath.Join(dir, "my.db"))
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -31,7 +31,7 @@ func ExampleNewEngine() {
 	}
 	defer os.RemoveAll(dir)
 
-	ng, err := boltengine.NewEngine(path.Join(dir, "genji.db"), 0600, nil)
+	ng, err := boltengine.NewEngine(filepath.Join(dir, "genji.db"), 0o600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

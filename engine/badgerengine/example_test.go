@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji"
@@ -18,7 +18,7 @@ func Example() {
 	}
 	defer os.RemoveAll(dir)
 
-	ng, err := badgerengine.NewEngine(badger.DefaultOptions(path.Join(dir, "badger")))
+	ng, err := badgerengine.NewEngine(badger.DefaultOptions(filepath.Join(dir, "badger")))
 	if err != nil {
 		log.Fatal(err)
 	}

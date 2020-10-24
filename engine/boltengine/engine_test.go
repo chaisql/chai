@@ -3,7 +3,7 @@ package boltengine_test
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/genjidb/genji/engine"
@@ -15,7 +15,7 @@ import (
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
-		ng, err := boltengine.NewEngine(path.Join(dir, "test.db"), 0600, nil)
+		ng, err := boltengine.NewEngine(filepath.Join(dir, "test.db"), 0o600, nil)
 		require.NoError(t, err)
 		return ng, cleanup
 	}
