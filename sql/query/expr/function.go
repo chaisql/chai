@@ -342,6 +342,9 @@ type MaxFunc struct {
 
 // Eval extracts the max value from the given document and returns it.
 func (m *MaxFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if ctx.Document == nil {
+		return document.Value{}, errors.New("misuse of aggregation function MAX()")
+	}
 	return ctx.Document.GetByField(m.String())
 }
 
@@ -439,6 +442,9 @@ type SumFunc struct {
 
 // Eval extracts the sum value from the given document and returns it.
 func (s *SumFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if ctx.Document == nil {
+		return document.Value{}, errors.New("misuse of aggregation function SUM()")
+	}
 	return ctx.Document.GetByField(s.String())
 }
 
@@ -551,6 +557,9 @@ type AvgFunc struct {
 
 // Eval extracts the average value from the given document and returns it.
 func (s *AvgFunc) Eval(ctx EvalStack) (document.Value, error) {
+	if ctx.Document == nil {
+		return document.Value{}, errors.New("misuse of aggregation function AVG()")
+	}
 	return ctx.Document.GetByField(s.String())
 }
 
