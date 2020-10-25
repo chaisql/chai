@@ -40,7 +40,6 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 
 	return &Tx{
 		Transaction: tx,
-		Context:     db.Context,
 	}, nil
 }
 
@@ -84,7 +83,7 @@ func (db *DB) Exec(q string, args ...interface{}) error {
 // Query the database and return the result.
 // The returned result must always be closed after usage.
 func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
-	pq, err := parser.ParseQuery(db.Context, q)
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
@@ -125,21 +124,12 @@ func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, e
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
 	*database.Transaction
-
-	Context context.Context
-}
-
-func (tx *Tx) WithContext(ctx context.Context) *Tx {
-	return &Tx{
-		Transaction: tx.Transaction,
-		Context:     ctx,
-	}
 }
 
 // Query the database withing the transaction and returns the result.
 // Closing the returned result after usage is not mandatory.
 func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
-	pq, err := parser.ParseQuery(tx.Context, q)
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}

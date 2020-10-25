@@ -1,7 +1,6 @@
 package fuzz
 
 import (
-	"context"
 	"strings"
 
 	"github.com/genjidb/genji/sql/parser"
@@ -10,7 +9,7 @@ import (
 func FuzzParseQuery(data []byte) int {
 	var b strings.Builder
 	b.Write(data)
-	q, err := parser.ParseQuery(context.Background(), b.String())
+	q, err := parser.ParseQuery(b.String())
 	if err != nil {
 		return 0
 	}

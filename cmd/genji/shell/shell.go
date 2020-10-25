@@ -630,7 +630,7 @@ func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 	suggestions := prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
 
-	_, err := parser.NewParser(strings.NewReader(in.Text)).ParseQuery(context.Background())
+	_, err := parser.ParseQuery(in.Text)
 	if err != nil {
 		e, ok := err.(*parser.ParseError)
 		if !ok || len(e.Expected) < 1 {
