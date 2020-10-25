@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parsePath(t testing.TB, str string) document.ValuePath {
+func parsePath(t testing.TB, str string) document.Path {
 	vp, err := parser.ParsePath(str)
 	require.NoError(t, err)
 	return vp

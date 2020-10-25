@@ -38,9 +38,9 @@ const (
 	Skip
 	// Sort is an operation that sorts a stream of document according to a given path and a direction.
 	Sort
-	// Set is an operation that adds or replaces a path for every document of the stream.
+	// Set is an operation that adds a value or replaces at a given path for every document of the stream.
 	Set
-	// Unset is an operation that removes a path from every document of a stream
+	// Unset is an operation that removes a value at a given path from every document of a stream
 	Unset
 	// Group is an operation that groups documents based on a given path.
 )
@@ -320,7 +320,7 @@ func (n *offsetNode) toStream(st document.Stream) (document.Stream, error) {
 type setNode struct {
 	node
 
-	path document.ValuePath
+	path document.Path
 	e    expr.Expr
 
 	tx     *database.Transaction
@@ -329,8 +329,8 @@ type setNode struct {
 
 var _ operationNode = (*setNode)(nil)
 
-// NewSetNode creates a node that adds or replaces a path for every document of the stream.
-func NewSetNode(n Node, path document.ValuePath, e expr.Expr) Node {
+// NewSetNode creates a node that adds or replaces a value at the given path for every document of the stream.
+func NewSetNode(n Node, path document.Path, e expr.Expr) Node {
 	return &setNode{
 		node: node{
 			op:   Set,
@@ -390,7 +390,7 @@ type unsetNode struct {
 
 var _ operationNode = (*unsetNode)(nil)
 
-// NewUnsetNode creates a node that adds or replaces a path for every document of the stream.
+// NewUnsetNode creates a node that removes a value at a given path for every document of the stream.
 func NewUnsetNode(n Node, field string) Node {
 	return &unsetNode{
 		node: node{
@@ -438,7 +438,7 @@ func (n *unsetNode) String() string {
 	return fmt.Sprintf("Unset(%s)", n.field)
 }
 
-// A GroupingNode is a node that groups documents by a given path.
+// A GroupingNode is a node that groups documents by value.
 type GroupingNode struct {
 	node
 

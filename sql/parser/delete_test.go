@@ -23,7 +23,7 @@ func TestParserDelete(t *testing.T) {
 			planner.NewTree(planner.NewDeletionNode(
 				planner.NewSelectionNode(
 					planner.NewTableInputNode("test"),
-					expr.Eq(expr.FieldSelector(parsePath(t, "age")), expr.IntegerValue(10))),
+					expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10))),
 				"test"))},
 	}
 

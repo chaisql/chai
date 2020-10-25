@@ -322,7 +322,7 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 			_, err = fmt.Fprintln(w, "COMMIT;")
 			return err
 		}
-		
+
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {

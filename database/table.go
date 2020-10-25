@@ -559,7 +559,7 @@ func validateConstraint(d document.Document, c *FieldConstraint) error {
 	return nil
 }
 
-func getParentValue(d document.Document, p document.ValuePath) (document.Value, error) {
+func getParentValue(d document.Document, p document.Path) (document.Value, error) {
 	if len(p) == 0 {
 		return document.Value{}, errors.New("empty path")
 	}

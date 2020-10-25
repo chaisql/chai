@@ -2,20 +2,20 @@ package query
 
 import (
 	"fmt"
-	"github.com/genjidb/genji/database"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 )
 
 // constraintNode is a tree node which stores a type of document field
 type constraintNode struct {
-	frag   document.ValuePathFragment
+	frag   document.PathFragment
 	typ    document.ValueType
 	parent *constraintNode
 	sub    []*constraintNode
 }
 
-func createConstraintNode(parent *constraintNode, path document.ValuePath, typ document.ValueType) *constraintNode {
+func createConstraintNode(parent *constraintNode, path document.Path, typ document.ValueType) *constraintNode {
 	node := &constraintNode{
 		frag:   path[0],
 		parent: parent,
@@ -39,15 +39,15 @@ func createConstraintNode(parent *constraintNode, path document.ValuePath, typ d
 	return node
 }
 
-func (n *constraintNode) getPath() document.ValuePath {
+func (n *constraintNode) getPath() document.Path {
 	if n.parent == nil {
-		return document.ValuePath{n.frag}
+		return document.Path{n.frag}
 	}
 
 	return append(n.parent.getPath(), n.frag)
 }
 
-func (n *constraintNode) search(path document.ValuePath) *constraintNode {
+func (n *constraintNode) search(path document.Path) *constraintNode {
 	if n.frag != path[0] {
 		return nil
 	}
@@ -66,7 +66,7 @@ func (n *constraintNode) search(path document.ValuePath) *constraintNode {
 	return nil
 }
 
-func (n *constraintNode) insert(path document.ValuePath, typ document.ValueType) error {
+func (n *constraintNode) insert(path document.Path, typ document.ValueType) error {
 	switch {
 	case len(path) == 1:
 		return fmt.Errorf("%q already exists as type %s", n.getPath().String(), n.typ.String())
@@ -109,7 +109,7 @@ type constraintTree struct {
 	roots []*constraintNode
 }
 
-func (tree *constraintTree) insert(path document.ValuePath, typ document.ValueType) error {
+func (tree *constraintTree) insert(path document.Path, typ document.ValueType) error {
 	for _, sub := range tree.roots {
 		if sub.frag == path[0] {
 			return sub.insert(path, typ)
@@ -120,7 +120,7 @@ func (tree *constraintTree) insert(path document.ValuePath, typ document.ValueTy
 	return nil
 }
 
-func (tree *constraintTree) search(path document.ValuePath) *constraintNode {
+func (tree *constraintTree) search(path document.Path) *constraintNode {
 	for _, sub := range tree.roots {
 		if sub.frag == path[0] {
 			return sub.search(path)
