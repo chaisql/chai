@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"context"
 	"testing"
 
 	"github.com/genjidb/genji/sql/query"
@@ -28,7 +27,7 @@ func TestParserTransactions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.s, func(t *testing.T) {
-			q, err := ParseQuery(context.Background(), test.s)
+			q, err := ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

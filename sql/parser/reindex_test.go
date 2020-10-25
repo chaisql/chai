@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"context"
 	"testing"
 
 	"github.com/genjidb/genji/sql/query"
@@ -22,7 +21,7 @@ func TestParserReIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(context.Background(), test.s)
+			q, err := ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

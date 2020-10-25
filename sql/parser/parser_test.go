@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,7 @@ func TestParserMultiStatement(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(context.Background(), test.s)
+			q, err := ParseQuery(test.s)
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, q.Statements)
 		})
@@ -48,6 +47,6 @@ func TestParserMultiStatement(t *testing.T) {
 func TestParserDivideByZero(t *testing.T) {
 	// See https://github.com/genjidb/genji/issues/268
 	require.NotPanics(t, func() {
-		_, _ = ParseQuery(context.Background(), "SELECT * FROM t LIMIT 0 % .5")
+		_, _ = ParseQuery("SELECT * FROM t LIMIT 0 % .5")
 	})
 }

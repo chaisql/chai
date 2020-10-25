@@ -92,7 +92,7 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 
 // PrepareContext returns a prepared statement, bound to this connection.
 func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	pq, err := parser.ParseQuery(ctx, q)
+	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
