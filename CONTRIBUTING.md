@@ -1,12 +1,12 @@
 # Contributing
 
-You can participate to Genji in several ways, there is so much to do to make this project awesome!
+You can participate in Genji in several ways, there is so much to do to make this project awesome!
 
   - [Reporting a bug](#reporting-a-bug)
   - [Proposing an SQL feature or a general design change](#proposing-an-sql-feature-or-a-general-design-change)
   - [Other contributions](#other-contributions)
 
-The goal of this document is to provide guidelines to contributors in order to make working with Genji a smooth experience.
+The goal of this document is to provide guidelines to contributors to make working with Genji a smooth experience.
 Genji is a complex project that has many moving parts and we want to make sure that everyone's working towards the same goal.
 
 We want to avoid situations where you would put energy on a contribution that gets rejected because it doesn't match the direction
@@ -38,9 +38,9 @@ Depending on the complexity and importance of the feature, the RFC and the PR ma
 
 ## Other contributions
 
-Anythink that can help improve Genji is a welcome contribution. Here are a few example of things that can be improved:
+Anything that can help improve Genji is a welcome contribution. Here are a few examples of things that can be improved:
 
-- CI / tooling
+- CI/Tooling
 - Go APIs
 - Documentation
 - Build targets support
