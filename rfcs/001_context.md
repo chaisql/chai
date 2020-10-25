@@ -81,6 +81,8 @@ dbx.Begin(true)
 
 Since almost every engine action is done from within a transaction, cancelation must be controlled by the context passed to the `Begin` method. Any action done on a canceled transaction must return an error.
 
+In addition, context cancellation or some unrecoverable I/O error may occur when iterating over store with `engine.Iterator`. In such case iterator is invalidated, `Valid()` method returns false and the new `Err()` will return non-nil error.
+
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 
@@ -93,6 +95,12 @@ err = st.Put([]byte("a"), []byte("b"))
 
 it := st.NewIterator(engine.IteratorConfig{})
 defer it.Close()
+for it.Seek(nil); it.Valid(); it.Next() {
+	// …
+}
+if err := it.Err(); err != nil {
+	return err
+}
 ```
 
 ### Packages that use an engine
