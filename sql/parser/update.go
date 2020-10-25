@@ -128,7 +128,7 @@ type updateConfig struct {
 }
 
 type updateSetPair struct {
-	path document.ValuePath
+	path document.Path
 	e    expr.Expr
 }
 

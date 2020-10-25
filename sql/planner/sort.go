@@ -15,7 +15,7 @@ import (
 type sortNode struct {
 	node
 
-	sortField expr.FieldSelector
+	sortField expr.Path
 	direction scanner.Token
 }
 
@@ -23,7 +23,7 @@ var _ operationNode = (*sortNode)(nil)
 
 // NewSortNode creates a node that sorts a stream according to a given
 // document path and a sort direction.
-func NewSortNode(n Node, sortField expr.FieldSelector, direction scanner.Token) Node {
+func NewSortNode(n Node, sortField expr.Path, direction scanner.Token) Node {
 	if direction == 0 {
 		direction = scanner.ASC
 	}
@@ -61,7 +61,7 @@ func (n *sortNode) String() string {
 
 type sortIterator struct {
 	st        document.Stream
-	sortField expr.FieldSelector
+	sortField expr.Path
 	direction scanner.Token
 }
 
@@ -93,7 +93,7 @@ func (it *sortIterator) Iterate(fn func(d document.Document) error) error {
 // This function is not memory efficient as it's loading the entire stream in memory before
 // returning the k-smallest or k-largest elements.
 func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
-	path := document.ValuePath(it.sortField)
+	path := document.Path(it.sortField)
 
 	var h heap.Interface
 	if it.direction == scanner.ASC {

@@ -15,7 +15,7 @@ const storePrefix = 't'
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Path         document.ValuePath
+	Path         document.Path
 	Type         document.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
@@ -30,7 +30,7 @@ func (f *FieldConstraint) HasDefaultValue() bool {
 func (f *FieldConstraint) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
-	buf.Add("path", document.NewArrayValue(valuePathToArray(f.Path)))
+	buf.Add("path", document.NewArrayValue(pathToArray(f.Path)))
 	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
 	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
 	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
@@ -46,7 +46,7 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	f.Path, err = arrayToValuePath(v)
+	f.Path, err = arrayToPath(v.V.(document.Array))
 	if err != nil {
 		return err
 	}
@@ -366,8 +366,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
-				Path: document.ValuePath{
-					document.ValuePathFragment{
+				Path: document.Path{
+					document.PathFragment{
 						FieldName: "table_name",
 					},
 				},
@@ -381,8 +381,8 @@ func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
 		readOnly:  true,
 		FieldConstraints: []FieldConstraint{
 			{
-				Path: document.ValuePath{
-					document.ValuePathFragment{
+				Path: document.Path{
+					document.PathFragment{
 						FieldName: "index_name",
 					},
 				},
@@ -439,7 +439,7 @@ func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
 type IndexConfig struct {
 	TableName string
 	IndexName string
-	Path      document.ValuePath
+	Path      document.Path
 
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
@@ -455,7 +455,7 @@ func (i *IndexConfig) ToDocument() document.Document {
 	buf.Add("unique", document.NewBoolValue(i.Unique))
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
-	buf.Add("path", document.NewArrayValue(valuePathToArray(i.Path)))
+	buf.Add("path", document.NewArrayValue(pathToArray(i.Path)))
 	if i.Type != 0 {
 		buf.Add("type", document.NewIntegerValue(int64(i.Type)))
 	}
@@ -486,7 +486,7 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	if err != nil {
 		return err
 	}
-	i.Path, err = arrayToValuePath(v)
+	i.Path, err = arrayToPath(v.V.(document.Array))
 	if err != nil {
 		return err
 	}
@@ -602,14 +602,14 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 	return idxList, nil
 }
 
-func arrayToValuePath(v document.Value) (document.ValuePath, error) {
-	var path document.ValuePath
+func arrayToPath(a document.Array) (document.Path, error) {
+	var path document.Path
 
-	err := v.V.(document.Array).Iterate(func(_ int, value document.Value) error {
+	err := a.Iterate(func(_ int, value document.Value) error {
 		if value.Type == document.TextValue {
-			path = append(path, document.ValuePathFragment{FieldName: value.V.(string)})
+			path = append(path, document.PathFragment{FieldName: value.V.(string)})
 		} else {
-			path = append(path, document.ValuePathFragment{ArrayIndex: int(value.V.(int64))})
+			path = append(path, document.PathFragment{ArrayIndex: int(value.V.(int64))})
 		}
 		return nil
 	})
@@ -617,7 +617,7 @@ func arrayToValuePath(v document.Value) (document.ValuePath, error) {
 	return path, err
 }
 
-func valuePathToArray(path document.ValuePath) document.Array {
+func pathToArray(path document.Path) document.Array {
 	abuf := document.NewValueBuffer()
 	for _, p := range path {
 		if p.FieldName != "" {

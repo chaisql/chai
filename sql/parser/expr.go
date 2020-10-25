@@ -168,7 +168,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		fs := expr.FieldSelector(field)
+		fs := expr.Path(field)
 		return fs, nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
@@ -322,7 +322,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		p.Unscan()
 		return document.DoubleValue, nil
 	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
-		 scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
+		scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
 		return document.IntegerValue, nil
 	case scanner.TYPETEXT:
 		return document.TextValue, nil
@@ -330,7 +330,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 		}
-		
+
 		// The value between parentheses is not used.
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTEGER {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
@@ -410,14 +410,14 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 }
 
 // parsePath parses a path to a specific value.
-func (p *Parser) parsePath() (document.ValuePath, error) {
-	var vPath document.ValuePath
+func (p *Parser) parsePath() (document.Path, error) {
+	var path document.Path
 	// parse first mandatory ident
 	chunk, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
-	vPath = append(vPath, document.ValuePathFragment{
+	path = append(path, document.PathFragment{
 		FieldName: chunk,
 	})
 
@@ -434,7 +434,7 @@ LOOP:
 			if tok != scanner.IDENT {
 				return nil, newParseError(lit, []string{"identifier"}, pos)
 			}
-			vPath = append(vPath, document.ValuePathFragment{
+			path = append(path, document.PathFragment{
 				FieldName: lit,
 			})
 		case scanner.LSBRACKET:
@@ -447,7 +447,7 @@ LOOP:
 			if err != nil {
 				return nil, newParseError(lit, []string{"integer"}, pos)
 			}
-			vPath = append(vPath, document.ValuePathFragment{
+			path = append(path, document.PathFragment{
 				ArrayIndex: idx,
 			})
 			// scan the next token for a closing left bracket
@@ -461,7 +461,7 @@ LOOP:
 		}
 	}
 
-	return vPath, nil
+	return path, nil
 }
 
 func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {

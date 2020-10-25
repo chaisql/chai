@@ -501,7 +501,7 @@ func (f *foo) GetByField(field string) (document.Value, error) {
 	return document.Value{}, errors.New("unknown field")
 }
 
-func TestValuePath(t *testing.T) {
+func TestPath(t *testing.T) {
 	tests := []struct {
 		name   string
 		data   string

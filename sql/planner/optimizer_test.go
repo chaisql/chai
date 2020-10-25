@@ -114,17 +114,17 @@ func TestPrecalculateExprRule(t *testing.T) {
 		},
 		{
 			"constant sub-expr: a > 1 - 40 -> a > -39",
-			expr.Gt(expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}}, expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))),
-			expr.Gt(expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}}, expr.DoubleValue(-39)),
+			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))),
+			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, expr.DoubleValue(-39)),
 		},
 		{
 			"non-constant expr list: [a, 1 - 40] -> [a, -39]",
 			expr.LiteralExprList{
-				expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+				expr.Path{document.PathFragment{FieldName: "a"}},
 				expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40)),
 			},
 			expr.LiteralExprList{
-				expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+				expr.Path{document.PathFragment{FieldName: "a"}},
 				expr.DoubleValue(-39),
 			},
 		},
@@ -141,11 +141,11 @@ func TestPrecalculateExprRule(t *testing.T) {
 		{
 			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
 			expr.KVPairs{
-				{K: "a", V: expr.FieldSelector{document.ValuePathFragment{FieldName: "d"}}},
+				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
 				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
 			},
 			expr.KVPairs{
-				{K: "a", V: expr.FieldSelector{document.ValuePathFragment{FieldName: "d"}}},
+				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
 				{K: "b", V: expr.DoubleValue(-39)},
 			},
 		},
@@ -178,8 +178,8 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 	}{
 		{
 			"non-constant expr",
-			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}}),
-			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}}),
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.Path{document.PathFragment{FieldName: "a"}}),
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"), expr.Path{document.PathFragment{FieldName: "a"}}),
 		},
 		{
 			"truthy constant expr",
@@ -215,7 +215,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			"non-indexed path",
 			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 				expr.Eq(
-					expr.FieldSelector{document.ValuePathFragment{FieldName: "d"}},
+					expr.Path{document.PathFragment{FieldName: "d"}},
 					expr.IntegerValue(1),
 				)),
 			nil,
@@ -224,7 +224,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			"FROM foo WHERE a = 1",
 			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 				expr.Eq(
-					expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+					expr.Path{document.PathFragment{FieldName: "a"}},
 					expr.IntegerValue(1),
 				)),
 			planner.NewIndexInputNode(
@@ -240,12 +240,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			planner.NewSelectionNode(
 				planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 					expr.Eq(
-						expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+						expr.Path{document.PathFragment{FieldName: "a"}},
 						expr.IntegerValue(1),
 					),
 				),
 				expr.Eq(
-					expr.FieldSelector{document.ValuePathFragment{FieldName: "b"}},
+					expr.Path{document.PathFragment{FieldName: "b"}},
 					expr.IntegerValue(2),
 				),
 			),
@@ -258,7 +258,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					scanner.ASC,
 				),
 				expr.Eq(
-					expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+					expr.Path{document.PathFragment{FieldName: "a"}},
 					expr.IntegerValue(1),
 				),
 			),
@@ -268,12 +268,12 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			planner.NewSelectionNode(
 				planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 					expr.Eq(
-						expr.FieldSelector{document.ValuePathFragment{FieldName: "c"}},
+						expr.Path{document.PathFragment{FieldName: "c"}},
 						expr.IntegerValue(3),
 					),
 				),
 				expr.Eq(
-					expr.FieldSelector{document.ValuePathFragment{FieldName: "b"}},
+					expr.Path{document.PathFragment{FieldName: "b"}},
 					expr.IntegerValue(2),
 				),
 			),
@@ -286,7 +286,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					scanner.ASC,
 				),
 				expr.Eq(
-					expr.FieldSelector{document.ValuePathFragment{FieldName: "b"}},
+					expr.Path{document.PathFragment{FieldName: "b"}},
 					expr.IntegerValue(2),
 				),
 			),
@@ -297,18 +297,18 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 				planner.NewSelectionNode(
 					planner.NewSelectionNode(planner.NewTableInputNode("foo"),
 						expr.Eq(
-							expr.FieldSelector{document.ValuePathFragment{FieldName: "c"}},
+							expr.Path{document.PathFragment{FieldName: "c"}},
 							expr.IntegerValue(3),
 						),
 					),
 					expr.Eq(
-						expr.FieldSelector{document.ValuePathFragment{FieldName: "b"}},
+						expr.Path{document.PathFragment{FieldName: "b"}},
 						expr.IntegerValue(2),
 					),
 				),
 				[]planner.ProjectedField{
 					planner.ProjectedExpr{
-						Expr: expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+						Expr: expr.Path{document.PathFragment{FieldName: "a"}},
 					},
 				},
 				"foo",
@@ -323,13 +323,13 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 						scanner.ASC,
 					),
 					expr.Eq(
-						expr.FieldSelector{document.ValuePathFragment{FieldName: "b"}},
+						expr.Path{document.PathFragment{FieldName: "b"}},
 						expr.IntegerValue(2),
 					),
 				),
 				[]planner.ProjectedField{
 					planner.ProjectedExpr{
-						Expr: expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+						Expr: expr.Path{document.PathFragment{FieldName: "a"}},
 					},
 				},
 				"foo",

@@ -48,7 +48,7 @@ func (stmt CreateTableStmt) Run(ctx context.Context, tx *database.Transaction, a
 type CreateIndexStmt struct {
 	IndexName   string
 	TableName   string
-	Path        document.ValuePath
+	Path        document.Path
 	IfNotExists bool
 	Unique      bool
 }

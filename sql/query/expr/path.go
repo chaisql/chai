@@ -4,22 +4,17 @@ import (
 	"github.com/genjidb/genji/document"
 )
 
-// A FieldSelector is a ResultField that extracts a field from a document at a given path.
-type FieldSelector document.ValuePath
+// A Path is an expression that extracts a value from a document at a given path.
+type Path document.Path
 
-// Name joins the chunks of the fields selector with the . separator.
-func (f FieldSelector) Name() string {
-	return f.String()
-}
-
-// Eval extracts the document from the context and selects the right field.
+// Eval extracts the document from the context and selects the right value.
 // It implements the Expr interface.
-func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
+func (p Path) Eval(stack EvalStack) (document.Value, error) {
 	if stack.Document == nil {
 		return nullLitteral, document.ErrFieldNotFound
 	}
 
-	v, err := document.ValuePath(f).GetValue(stack.Document)
+	v, err := document.Path(p).GetValue(stack.Document)
 	if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
 		return nullLitteral, nil
 	}
@@ -29,22 +24,22 @@ func (f FieldSelector) Eval(stack EvalStack) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (f FieldSelector) IsEqual(other Expr) bool {
+func (p Path) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(FieldSelector)
+	o, ok := other.(Path)
 	if !ok {
 		return false
 	}
 
-	if len(f) != len(o) {
+	if len(p) != len(o) {
 		return false
 	}
 
-	for i := range f {
-		if f[i] != o[i] {
+	for i := range p {
+		if p[i] != o[i] {
 			return false
 		}
 	}
@@ -52,6 +47,6 @@ func (f FieldSelector) IsEqual(other Expr) bool {
 	return true
 }
 
-func (f FieldSelector) String() string {
-	return document.ValuePath(f).String()
+func (p Path) String() string {
+	return document.Path(p).String()
 }

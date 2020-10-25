@@ -41,8 +41,8 @@ func ParseQuery(ctx context.Context, s string) (query.Query, error) {
 	return NewParser(strings.NewReader(s)).ParseQuery(ctx)
 }
 
-// ParsePath parses the path of a value in a document.
-func ParsePath(s string) (document.ValuePath, error) {
+// ParsePath parses a path to a value in a document.
+func ParsePath(s string) (document.Path, error) {
 	return NewParser(strings.NewReader(s)).parsePath()
 }
 
@@ -130,22 +130,22 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 }
 
 // parsePathList parses a list of paths in the form: (path, path, ...), if exists
-func (p *Parser) parsePathList() ([]document.ValuePath, error) {
+func (p *Parser) parsePathList() ([]document.Path, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
 		return nil, nil
 	}
 
-	var paths []document.ValuePath
+	var paths []document.Path
 	var err error
-	var vp document.ValuePath
+	var path document.Path
 	// Parse first (required) path.
-	if vp, err = p.parsePath(); err != nil {
+	if path, err = p.parsePath(); err != nil {
 		return nil, err
 	}
 
-	paths = append(paths, vp)
+	paths = append(paths, path)
 
 	// Parse remaining (optional) paths.
 	for {
