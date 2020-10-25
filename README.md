@@ -290,10 +290,8 @@ genji --badger pathToData
 
 Contributions are welcome!
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
-Thank you, [contributors]!
-
-[contributors]: https://github.com/genjidb/genji/graphs/contributors
+Thank you, [contributors](https://github.com/genjidb/genji/graphs/contributors)!
 
 If you have any doubt, join the [Gophers Slack channel](https://gophers.slack.com/messages/CKPCYQFE0) or open an [issue](https://github.com/genjidb/genji/issues/new).
