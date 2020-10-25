@@ -13,7 +13,7 @@ type dedupNode struct {
 	indexes   map[string]database.Index
 }
 
-func NewDistinctNode(n Node, tableName string) Node {
+func NewDedupNode(n Node, tableName string) Node {
 	return &dedupNode{
 		node: node{
 			op:   Dedup,

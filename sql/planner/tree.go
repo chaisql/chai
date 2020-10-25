@@ -44,7 +44,7 @@ const (
 	Unset
 	// Group is an operation that groups documents based on a given path.
 	_
-	// Dedup
+	// Dedup is an operation that removes duplicate documents from a stream
 	Dedup
 )
 

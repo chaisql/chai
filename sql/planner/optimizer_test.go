@@ -213,7 +213,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 	}{
 		{
 			"non-unique key",
-			planner.NewDistinctNode(
+			planner.NewDedupNode(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{
@@ -226,7 +226,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 		},
 		{
 			"primary key",
-			planner.NewDistinctNode(
+			planner.NewDedupNode(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{
@@ -246,7 +246,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 		},
 		{
 			"unique index",
-			planner.NewDistinctNode(
+			planner.NewDedupNode(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{
@@ -266,7 +266,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 		},
 		{
 			"pk() function",
-			planner.NewDistinctNode(
+			planner.NewDedupNode(
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{

@@ -28,8 +28,7 @@ func (s documentHashSet) generateKey(d document.Document) (uint64, error) {
 	defer s.hash.Reset()
 
 	err := d.Iterate(func(field string, value document.Value) error {
-		var buf []byte
-		buf, err := key.AppendValue(buf, value)
+		buf, err := key.AppendValue(nil, value)
 		if err != nil {
 			return err
 		}
