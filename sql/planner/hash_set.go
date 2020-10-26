@@ -27,17 +27,26 @@ func newDocumentHashSet(hash hash.Hash64) *documentHashSet {
 func (s documentHashSet) generateKey(d document.Document) (uint64, error) {
 	defer s.hash.Reset()
 
-	err := document.IterateInOrder(d, func(field string, value document.Value) error {
+	fields, err := document.Fields(d)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, field := range fields {
+		value, err := d.GetByField(field)
+		if err != nil {
+			return 0, err
+		}
+
 		buf, err := key.AppendValue(nil, value)
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		_, err = s.hash.Write(buf)
-		return err
-	})
-	if err != nil {
-		return 0, err
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return s.hash.Sum64(), nil

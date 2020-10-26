@@ -75,34 +75,6 @@ func Fields(d Document) ([]string, error) {
 	return fields, nil
 }
 
-func IterateInOrder(d Document, fn func(string, Value) error) error {
-	type pair struct {
-		field string
-		value Value
-	}
-	var pairs []pair
-
-	err := d.Iterate(func(field string, value Value) error {
-		pairs = append(pairs, pair{field, value})
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	sort.Slice(pairs, func(i, j int) bool {
-		return strings.Compare(pairs[i].field, pairs[j].field) == -1
-	})
-
-	for _, p := range pairs {
-		err := fn(p.field, p.value)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
 type FieldBuffer struct {
 	fields []fieldValue

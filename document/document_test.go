@@ -606,19 +606,3 @@ func BenchmarkDocumentIterate(b *testing.B) {
 		}
 	})
 }
-
-func TestIterateInOrder(t *testing.T) {
-	fb := new(document.FieldBuffer)
-
-	fb.Add("zyx", document.NewIntegerValue(3))
-	fb.Add("abc", document.NewIntegerValue(1))
-	fb.Add("cba", document.NewIntegerValue(2))
-
-	i := int64(0)
-	err := document.IterateInOrder(fb, func(_ string, value document.Value) error {
-		i++
-		require.Equal(t, i, value.V.(int64))
-		return nil
-	})
-	require.NoError(t, err)
-}
