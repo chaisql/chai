@@ -217,7 +217,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{
-						Expr:     expr.FieldSelector{document.ValuePathFragment{FieldName: "b"}},
+						Expr:     expr.Path{document.PathFragment{FieldName: "b"}},
 						ExprName: "b",
 					}},
 					"foo",
@@ -230,7 +230,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{
-						Expr:     expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+						Expr:     expr.Path{document.PathFragment{FieldName: "a"}},
 						ExprName: "a",
 					}},
 					"foo",
@@ -238,7 +238,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 			planner.NewProjectionNode(
 				planner.NewTableInputNode("foo"),
 				[]planner.ProjectedField{planner.ProjectedExpr{
-					Expr:     expr.FieldSelector{document.ValuePathFragment{FieldName: "a"}},
+					Expr:     expr.Path{document.PathFragment{FieldName: "a"}},
 					ExprName: "a",
 				}},
 				"foo",
@@ -250,7 +250,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 				planner.NewProjectionNode(
 					planner.NewTableInputNode("foo"),
 					[]planner.ProjectedField{planner.ProjectedExpr{
-						Expr:     expr.FieldSelector{document.ValuePathFragment{FieldName: "c"}},
+						Expr:     expr.Path{document.PathFragment{FieldName: "c"}},
 						ExprName: "c",
 					}},
 					"foo",
@@ -258,7 +258,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 			planner.NewProjectionNode(
 				planner.NewTableInputNode("foo"),
 				[]planner.ProjectedField{planner.ProjectedExpr{
-					Expr:     expr.FieldSelector{document.ValuePathFragment{FieldName: "c"}},
+					Expr:     expr.Path{document.PathFragment{FieldName: "c"}},
 					ExprName: "c",
 				}},
 				"foo",

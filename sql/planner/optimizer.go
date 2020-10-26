@@ -293,8 +293,8 @@ func isProjectionUnique(indexes map[string]database.Index, pn *ProjectionNode) b
 		}
 
 		switch v := e.Expr.(type) {
-		case expr.FieldSelector:
-			if pk != nil && pk.Path.IsEqual(document.ValuePath(v)) {
+		case expr.Path:
+			if pk != nil && pk.Path.IsEqual(document.Path(v)) {
 				continue
 			}
 
