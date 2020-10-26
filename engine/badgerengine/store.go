@@ -127,7 +127,7 @@ func (s *Store) NextSequence() (uint64, error) {
 	return nb + 1, nil
 }
 
-// NewIterator uses a Badger iterator with default options.
+// Iterator uses a Badger iterator with default options.
 // Only one iterator is allowed per read-write transaction.
 func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	prefix := buildKey(s.prefix, nil)

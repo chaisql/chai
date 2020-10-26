@@ -171,6 +171,7 @@ func (s *storeTx) NextSequence() (uint64, error) {
 	return s.tx.ng.sequences[s.name], nil
 }
 
+// Iterator creates an iterator with the given options.
 func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		tx:      s.tx,

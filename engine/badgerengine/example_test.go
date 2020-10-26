@@ -13,8 +13,6 @@ import (
 )
 
 func Example() {
-	ctx := context.Background()
-
 	dir, err := ioutil.TempDir("", "badger")
 	if err != nil {
 		log.Fatal(err)
@@ -26,7 +24,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	db, err := genji.New(ctx, ng)
+	db, err := genji.New(context.Background(), ng)
 	if err != nil {
 		log.Fatal(err)
 	}
