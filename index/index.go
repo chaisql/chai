@@ -296,7 +296,6 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		if err != nil {
 			return err
 		}
-
 	}
 	if err := it.Err(); err != nil {
 		return err

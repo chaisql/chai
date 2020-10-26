@@ -71,7 +71,7 @@ func (s *Store) NextSequence() (uint64, error) {
 	return s.bucket.NextSequence()
 }
 
-// NewIterator uses the bucket cursor.
+// Iterator uses the Bolt bucket cursor.
 func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		c:       s.bucket.Cursor(),
