@@ -335,27 +335,28 @@ func (tx *Transaction) ReIndex(indexName string) error {
 	})
 }
 
-// ReIndexAll truncates and recreates all indexes of the database from scratch.
-func (tx *Transaction) ReIndexAll() error {
+// allIndexNames returns a list of all index names in index store.
+func (tx *Transaction) allIndexNames() ([]string, error) {
 	it := tx.indexStore.st.Iterator(engine.IteratorOptions{})
-	itClose := it.Close
-	defer func() {
-		if itClose != nil {
-			itClose()
-		}
-	}()
+	defer it.Close()
 
 	var indexes []string
 	for it.Seek(nil); it.Valid(); it.Next() {
 		indexes = append(indexes, string(it.Item().Key()))
 	}
 	if err := it.Err(); err != nil {
+		return nil, err
+	}
+
+	return indexes, nil
+}
+
+// ReIndexAll truncates and recreates all indexes of the database from scratch.
+func (tx *Transaction) ReIndexAll() error {
+	indexes, err := tx.allIndexNames()
+	if err != nil {
 		return err
 	}
-	// Note that we can’t use deferred close because ReIndex needs
-	// an iterator but only one is allowed at a time.
-	itClose = nil
-	it.Close()
 
 	for _, indexName := range indexes {
 		err := tx.ReIndex(indexName)
