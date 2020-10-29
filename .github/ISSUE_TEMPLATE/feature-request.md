@@ -4,7 +4,7 @@ about: Use this template for proposing features.
 labels: enhancement
 ---
 
-<!-- Answering these questions may help with writting the initial proposal body. Thanks! -->
+<!-- Answering these questions may help with writing the initial proposal body. Thanks! -->
 
 ### Proposal
 
