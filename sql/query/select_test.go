@@ -3,6 +3,7 @@ package query_test
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -221,6 +222,24 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
+
+	// https://github.com/genjidb/genji/issues/208
+	t.Run("group by with arrays", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test; INSERT INTO test (a) VALUES ([1, 2, 3]);")
+		require.NoError(t, err)
+
+		d, err := db.QueryDocument("SELECT MAX(a) from test GROUP BY a")
+		require.NoError(t, err)
+
+		enc, err := json.Marshal(d)
+		require.NoError(t, err)
+
+		require.JSONEq(t, `{"MAX(a)": [1, 2, 3]}`, string(enc))
+	})
 }
 
 func TestDistinct(t *testing.T) {
@@ -297,63 +316,3 @@ func TestDistinct(t *testing.T) {
 		})
 	}
 }
-
-// func TestSelectIndexedDoubleAndIntegers(t *testing.T) {
-// 	tests := []struct {
-// 		a      interface{}
-// 		query  string
-// 		isTrue bool
-// 		param  interface{}
-// 	}{
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a = ?", true, math.MaxInt64},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a > ?", false, math.MaxInt64},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a > ?", true, math.MaxInt64 - 1},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a >= ?", true, math.MaxInt64},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a >= 9223372036854775807.0", true, nil},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a > 9223372036854775800.0", false, nil},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a < 9223372036854775800.0", false, nil},
-// 		{math.MaxInt64, "SELECT true FROM test WHERE a = 9223372036854775800.0", true, nil},
-// 	}
-
-// 	for _, indexed := range []bool{false, true} {
-// 		for _, test := range tests {
-// 			t.Run(fmt.Sprintf("indexed: %v / %q", indexed, test.query), func(t *testing.T) {
-// 				fmt.Println("---")
-// 				db, err := genji.Open(":memory:")
-// 				require.NoError(t, err)
-// 				defer db.Close()
-
-// 				tx, err := db.Begin(true)
-// 				require.NoError(t, err)
-// 				defer tx.Rollback()
-
-// 				err = tx.Exec("CREATE TABLE test")
-// 				require.NoError(t, err)
-
-// 				if indexed {
-// 					err = tx.Exec("CREATE INDEX idx_foo_a ON test(a)")
-// 					require.NoError(t, err)
-// 				}
-
-// 				// a = math.MaxInt64
-// 				err = tx.Exec("INSERT INTO test (a) VALUES (?)", test.a)
-// 				require.NoError(t, err)
-
-// 				var params []interface{}
-// 				if test.param != nil {
-// 					params = append(params, test.param)
-// 				}
-// 				doc, err := tx.QueryDocument(test.query, params...)
-// 				if test.isTrue {
-// 					require.NoError(t, err)
-// 					var got bool
-// 					err = document.Scan(doc, &got)
-// 					require.NoError(t, err)
-// 					require.True(t, got)
-// 				} else {
-// 					require.Equal(t, database.ErrDocumentNotFound, err)
-// 				}
-// 			})
-// 		}
-// 	}
-// }
