@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/buger/jsonparser"
-	"github.com/genjidb/genji/pkg/nsb"
+	"github.com/genjidb/genji/binarysort"
 )
 
 var (
@@ -312,11 +312,11 @@ func (v Value) Append(buf []byte) ([]byte, error) {
 	case TextValue:
 		return append(buf, v.V.(string)...), nil
 	case BoolValue:
-		return nsb.AppendBool(buf, v.V.(bool)), nil
+		return binarysort.AppendBool(buf, v.V.(bool)), nil
 	case IntegerValue:
-		return nsb.AppendInt64(buf, v.V.(int64)), nil
+		return binarysort.AppendInt64(buf, v.V.(int64)), nil
 	case DoubleValue:
-		return nsb.AppendFloat64(buf, v.V.(float64)), nil
+		return binarysort.AppendFloat64(buf, v.V.(float64)), nil
 	case NullValue:
 		return buf, nil
 	case ArrayValue:
@@ -354,15 +354,15 @@ func (v *Value) UnmarshalBinary(data []byte) error {
 	case TextValue:
 		v.V = string(data)
 	case BoolValue:
-		v.V = nsb.DecodeBool(data)
+		v.V = binarysort.DecodeBool(data)
 	case IntegerValue:
-		x, err := nsb.DecodeInt64(data)
+		x, err := binarysort.DecodeInt64(data)
 		if err != nil {
 			return err
 		}
 		v.V = x
 	case DoubleValue:
-		x, err := nsb.DecodeFloat64(data)
+		x, err := binarysort.DecodeFloat64(data)
 		if err != nil {
 			return err
 		}
