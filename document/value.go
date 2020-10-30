@@ -319,9 +319,16 @@ func (v Value) Append(buf []byte) ([]byte, error) {
 		return nsb.AppendFloat64(buf, v.V.(float64)), nil
 	case NullValue:
 		return buf, nil
-	case ArrayValue, DocumentValue:
+	case ArrayValue:
 		var buf bytes.Buffer
-		err := NewValueEncoder(&buf).Encode(v)
+		err := NewValueEncoder(&buf).appendArray(v.V.(Array))
+		if err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	case DocumentValue:
+		var buf bytes.Buffer
+		err := NewValueEncoder(&buf).appendDocument(v.V.(Document))
 		if err != nil {
 			return nil, err
 		}
@@ -341,49 +348,42 @@ func (v Value) MarshalBinary() ([]byte, error) {
 // instead, v.Type must be set.
 func (v *Value) UnmarshalBinary(data []byte) error {
 	switch v.Type {
+	case NullValue:
 	case BlobValue:
-		vv := NewBlobValue(data)
-		*v = vv
+		v.V = data
 	case TextValue:
-		vv := NewTextValue(string(data))
-		*v = vv
+		v.V = string(data)
 	case BoolValue:
-		vv := NewBoolValue(nsb.DecodeBool(data))
-		*v = vv
+		v.V = nsb.DecodeBool(data)
 	case IntegerValue:
 		x, err := nsb.DecodeInt64(data)
 		if err != nil {
 			return err
 		}
-		vv := NewIntegerValue(x)
-		*v = vv
+		v.V = x
 	case DoubleValue:
 		x, err := nsb.DecodeFloat64(data)
 		if err != nil {
 			return err
 		}
-		vv := NewDoubleValue(x)
-		*v = vv
-	case NullValue:
-		vv := NewNullValue()
-		*v = vv
+		v.V = x
 	case ArrayValue:
 		a, _, err := decodeArray(data)
 		if err != nil {
 			return err
 		}
-		vv := NewArrayValue(a)
-		*v = vv
+		v.V = a
 	case DocumentValue:
 		d, _, err := decodeDocument(data)
 		if err != nil {
 			return err
 		}
-		vv := NewDocumentValue(d)
-		*v = vv
+		v.V = d
+	default:
+		return errors.New("unknown type")
 	}
 
-	return errors.New("unknown type")
+	return nil
 }
 
 // Add u to v and return the result.

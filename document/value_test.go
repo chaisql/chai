@@ -374,3 +374,70 @@ func TestValueBitwiseXor(t *testing.T) {
 		})
 	}
 }
+
+func TestValueBinaryMarshaling(t *testing.T) {
+	tests := []struct {
+		name string
+		v    document.Value
+	}{
+		{"null", document.NewNullValue()},
+		{"bool", document.NewBoolValue(true)},
+		{"integer", document.NewIntegerValue(-10)},
+		{"double", document.NewDoubleValue(-3.14)},
+		{"text", document.NewTextValue("foo")},
+		{"blob", document.NewBlobValue([]byte("bar"))},
+		{"array", document.NewArrayValue(document.NewValueBuffer(
+			document.NewBoolValue(true),
+			document.NewIntegerValue(55),
+			document.NewDoubleValue(789.58),
+			document.NewArrayValue(document.NewValueBuffer(
+				document.NewBoolValue(false),
+				document.NewIntegerValue(100),
+				document.NewTextValue("baz"),
+			)),
+			document.NewBlobValue([]byte("loo")),
+			document.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo1", document.NewBoolValue(true)).
+					Add("foo2", document.NewIntegerValue(55)).
+					Add("foo3", document.NewArrayValue(document.NewValueBuffer(
+						document.NewBoolValue(false),
+						document.NewIntegerValue(100),
+						document.NewTextValue("baz"),
+					))),
+			),
+		))},
+		{"document", document.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo1", document.NewBoolValue(true)).
+				Add("foo2", document.NewIntegerValue(55)).
+				Add("foo3", document.NewArrayValue(document.NewValueBuffer(
+					document.NewBoolValue(false),
+					document.NewIntegerValue(100),
+					document.NewTextValue("baz"),
+				))).
+				Add("foo4", document.NewDocumentValue(
+					document.NewFieldBuffer().
+						Add("foo1", document.NewBoolValue(true)).
+						Add("foo2", document.NewIntegerValue(55)).
+						Add("foo3", document.NewArrayValue(document.NewValueBuffer(
+							document.NewBoolValue(false),
+							document.NewIntegerValue(100),
+							document.NewTextValue("baz"),
+						))),
+				)),
+		)},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			b, err := test.v.MarshalBinary()
+			require.NoError(t, err)
+
+			got := document.Value{Type: test.v.Type}
+			err = got.UnmarshalBinary(b)
+			require.NoError(t, err)
+			require.Equal(t, test.v, got)
+		})
+	}
+}

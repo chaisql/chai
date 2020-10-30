@@ -153,6 +153,8 @@ func decodeValue(data []byte) (Value, error) {
 	data = data[1:]
 
 	switch t {
+	case NullValue:
+		return NewNullValue(), nil
 	case BlobValue:
 		t, err := nsb.DecodeBase64(data)
 		if err != nil {
@@ -180,8 +182,6 @@ func decodeValue(data []byte) (Value, error) {
 			return Value{}, err
 		}
 		return NewDoubleValue(x), nil
-	case NullValue:
-		return NewNullValue(), nil
 	case ArrayValue:
 		a, _, err := decodeArray(data)
 		if err != nil {
