@@ -11,9 +11,7 @@ import (
 // See issue https://github.com/genjidb/genji/issues/298
 func TestConcurrentTransactionManagement(t *testing.T) {
 	db, err := genji.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	ch := make(chan struct{})

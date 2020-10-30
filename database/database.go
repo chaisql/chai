@@ -104,7 +104,9 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // BeginTx starts a new transaction with the given options.
 // If opts is empty, it will use the default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
-// If the Global option is passed, it opens a database level transaction.
+// If the Attached option is passed, it opens a database level transaction, which gets
+// attached to the database and prevents any other transaction to be opened afterwards
+// until it gets rolled back or commited.
 func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = new(TxOptions)
@@ -127,6 +129,7 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		db:             db,
 		tx:             ntx,
 		writable:       !opts.ReadOnly,
+		attached:       opts.Attached,
 		tableInfoStore: db.tableInfoStore,
 	}
 

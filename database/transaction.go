@@ -25,6 +25,8 @@ type Transaction struct {
 	db       *Database
 	tx       engine.Transaction
 	writable bool
+	// if set to true, this transaction is attached to the database
+	attached bool
 
 	tableInfoStore *tableInfoStore
 	indexStore     *indexStore
@@ -37,9 +39,6 @@ func (tx *Transaction) DB() *Database {
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
-	tx.db.attachedTxMu.Lock()
-	defer tx.db.attachedTxMu.Unlock()
-
 	if tx.writable {
 		tx.tableInfoStore.rollback(tx)
 	}
@@ -49,8 +48,13 @@ func (tx *Transaction) Rollback() error {
 		return err
 	}
 
-	if tx.db.attachedTransaction != nil {
-		tx.db.attachedTransaction = nil
+	if tx.attached {
+		tx.db.attachedTxMu.Lock()
+		defer tx.db.attachedTxMu.Unlock()
+
+		if tx.db.attachedTransaction != nil {
+			tx.db.attachedTransaction = nil
+		}
 	}
 
 	return nil
@@ -58,9 +62,6 @@ func (tx *Transaction) Rollback() error {
 
 // Commit the transaction.
 func (tx *Transaction) Commit() error {
-	tx.db.attachedTxMu.Lock()
-	defer tx.db.attachedTxMu.Unlock()
-
 	if tx.writable {
 		tx.tableInfoStore.commit(tx)
 	}
@@ -70,8 +71,13 @@ func (tx *Transaction) Commit() error {
 		return err
 	}
 
-	if tx.db.attachedTransaction != nil {
-		tx.db.attachedTransaction = nil
+	if tx.attached {
+		tx.db.attachedTxMu.Lock()
+		defer tx.db.attachedTxMu.Unlock()
+
+		if tx.db.attachedTransaction != nil {
+			tx.db.attachedTransaction = nil
+		}
 	}
 
 	return nil
