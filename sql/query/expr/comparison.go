@@ -8,7 +8,6 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
@@ -60,12 +59,13 @@ func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return nil
 	}
 
-	data, err := key.AppendValue(nil, v)
+	var buf bytes.Buffer
+	err = document.NewValueEncoder(&buf).Encode(v)
 	if err != nil {
 		return err
 	}
 
-	val, err := tb.Store.Get(data)
+	val, err := tb.Store.Get(buf.Bytes())
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
 			return nil
@@ -129,10 +129,12 @@ func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	data, err := key.AppendValue(nil, v)
+	var b bytes.Buffer
+	err = document.NewValueEncoder(&b).Encode(v)
 	if err != nil {
 		return err
 	}
+	data := b.Bytes()
 
 	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
@@ -195,10 +197,12 @@ func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	data, err := key.AppendValue(nil, v)
+	var b bytes.Buffer
+	err = document.NewValueEncoder(&b).Encode(v)
 	if err != nil {
 		return err
 	}
+	data := b.Bytes()
 
 	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
@@ -245,10 +249,13 @@ func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.
 		}
 	}
 
-	enc, err := key.AppendValue(nil, v)
+	var b bytes.Buffer
+	err = document.NewValueEncoder(&b).Encode(v)
 	if err != nil {
 		return err
 	}
+	enc := b.Bytes()
+
 	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) <= 0 {
 			return errStop
@@ -275,10 +282,12 @@ func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 		return err
 	}
 
-	data, err := key.AppendValue(nil, v)
+	var b bytes.Buffer
+	err = document.NewValueEncoder(&b).Encode(v)
 	if err != nil {
 		return err
 	}
+	data := b.Bytes()
 
 	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
@@ -328,10 +337,12 @@ func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document
 		}
 	}
 
-	enc, err := key.AppendValue(nil, v)
+	var b bytes.Buffer
+	err = document.NewValueEncoder(&b).Encode(v)
 	if err != nil {
 		return err
 	}
+	enc := b.Bytes()
 
 	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) < 0 {
@@ -359,10 +370,12 @@ func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.
 		return err
 	}
 
-	data, err := key.AppendValue(nil, v)
+	var b bytes.Buffer
+	err = document.NewValueEncoder(&b).Encode(v)
 	if err != nil {
 		return err
 	}
+	data := b.Bytes()
 
 	it := tb.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
@@ -521,10 +534,12 @@ func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.V
 			return nil
 		}
 
-		data, err := key.AppendValue(nil, val)
+		var b bytes.Buffer
+		err = document.NewValueEncoder(&b).Encode(val)
 		if err != nil {
 			return err
 		}
+		data := b.Bytes()
 
 		v, err := tb.Store.Get(data)
 		if err != nil {

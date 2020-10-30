@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/key"
 	"github.com/stretchr/testify/require"
 )
 
@@ -362,8 +362,10 @@ func TestTxReIndex(t *testing.T) {
 
 		var i int
 		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
-			enc, err := key.AppendValue(nil, document.NewIntegerValue(int64(i)))
+			var buf bytes.Buffer
+			err = document.NewValueEncoder(&buf).Encode(document.NewIntegerValue(int64(i)))
 			require.NoError(t, err)
+			enc := buf.Bytes()
 			require.Equal(t, enc, v)
 			i++
 			return nil
@@ -441,8 +443,10 @@ func TestReIndexAll(t *testing.T) {
 
 		var i int
 		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
-			enc, err := key.AppendValue(nil, document.NewIntegerValue(int64(i)))
+			var buf bytes.Buffer
+			err = document.NewValueEncoder(&buf).Encode(document.NewIntegerValue(int64(i)))
 			require.NoError(t, err)
+			enc := buf.Bytes()
 			require.Equal(t, enc, v)
 			i++
 			return nil
@@ -455,8 +459,10 @@ func TestReIndexAll(t *testing.T) {
 
 		i = 0
 		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
-			enc, err := key.AppendValue(nil, document.NewIntegerValue(int64(i)))
+			var buf bytes.Buffer
+			err = document.NewValueEncoder(&buf).Encode(document.NewIntegerValue(int64(i)))
 			require.NoError(t, err)
+			enc := buf.Bytes()
 			require.Equal(t, enc, v)
 			i++
 			return nil
