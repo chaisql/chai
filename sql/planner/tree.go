@@ -42,7 +42,7 @@ const (
 	// Unset is an operation that removes a value at a given path from every document of a stream
 	Unset
 	// Group is an operation that groups documents based on a given path.
-	_
+	Group
 	// Dedup is an operation that removes duplicate documents from a stream
 	Dedup
 )
@@ -444,9 +444,9 @@ func (n *unsetNode) String() string {
 type GroupingNode struct {
 	node
 
-	Expr   expr.Expr
 	Tx     *database.Transaction
 	Params []expr.Param
+	Expr   expr.Expr
 }
 
 var _ operationNode = (*GroupingNode)(nil)
@@ -455,7 +455,7 @@ var _ operationNode = (*GroupingNode)(nil)
 func NewGroupingNode(n Node, e expr.Expr) Node {
 	return &GroupingNode{
 		node: node{
-			op:   Projection,
+			op:   Group,
 			left: n,
 		},
 		Expr: e,
@@ -469,6 +469,8 @@ func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 	return
 }
 
+// toStream uses the GroupBy stream operation. It evaluates Expr for every field and returns
+// the result.
 func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 	return st.GroupBy(func(d document.Document) (document.Value, error) {
 		return n.Expr.Eval(expr.EvalStack{
