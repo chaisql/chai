@@ -8,7 +8,6 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/key"
 )
 
 const (
@@ -228,13 +227,17 @@ func (idx *Index) Truncate() error {
 // if the index is typed, encode the value without expecting
 // the presence of other types.
 // if not, encode so that order is preserved regardless of the type.
-func (idx *Index) encodeValue(v document.Value) (buf []byte, err error) {
+func (idx *Index) encodeValue(v document.Value) ([]byte, error) {
 	if idx.Type != 0 {
-		buf, err = key.Append(buf, v.Type, v.V)
-	} else {
-		buf, err = key.AppendValue(buf, v)
+		return v.MarshalBinary()
 	}
-	return
+
+	var buf bytes.Buffer
+	err := document.NewValueEncoder(&buf).Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) {

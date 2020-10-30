@@ -10,7 +10,6 @@ import (
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/index"
-	"github.com/genjidb/genji/key"
 )
 
 // A Table represents a collection of documents.
@@ -392,12 +391,17 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 		// if a primary key type is specified,
 		// encode the key using the optimized encoding solution
 		if pk.Type != 0 {
-			return key.Append(nil, v.Type, v.V)
+			return v.MarshalBinary()
 		}
 
 		// it no primary key type is specified,
 		// encode keys regardless of type.
-		return key.AppendValue(nil, v)
+		var buf bytes.Buffer
+		err = document.NewValueEncoder(&buf).Encode(v)
+		if err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
 	}
 
 	docid, err := t.Store.NextSequence()

@@ -7,7 +7,6 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -132,31 +131,15 @@ func (it *sortIterator) sortStream(st document.Stream) (heap.Interface, error) {
 		// if the same with or without indexes.
 		// To achieve that, the value must be encoded using the same method
 		// as what the index package would do.
-		if v.Type == document.IntegerValue {
-			v, err = v.CastAsDouble()
-			if err != nil {
-				return err
-			}
-		}
+		var buf bytes.Buffer
 
-		var value []byte
-		if v.Type != document.ArrayValue && v.Type != document.DocumentValue {
-			value, err = key.AppendValue(nil, v)
-			if err != nil {
-				return err
-			}
+		err = document.NewValueEncoder(&buf).Encode(v)
+		if err != nil {
+			return err
 		}
-
-		// to ensure ordering of values based on their types
-		// (i.e. booleans < numbers < text, ...,
-		// see index package for more info)
-		// we will prepend the encoded value with one byte
-		// representing the type of the value.
-		// integer will be considered as double
-		value = append([]byte{byte(v.Type)}, value...)
 
 		node := heapNode{
-			value: value,
+			value: buf.Bytes(),
 		}
 		err = node.data.Copy(d)
 		if err != nil {

@@ -2,6 +2,7 @@
 package index_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/index"
-	"github.com/genjidb/genji/key"
 	"github.com/genjidb/genji/pkg/nsb"
 	"github.com/stretchr/testify/require"
 )
@@ -146,9 +146,10 @@ func TestIndexDelete(t *testing.T) {
 func requireEqualEncoded(t *testing.T, expected document.Value, actual []byte) {
 	t.Helper()
 
-	enc, err := key.AppendValue(nil, expected)
+	var buf bytes.Buffer
+	err := document.NewValueEncoder(&buf).Encode(expected)
 	require.NoError(t, err)
-	require.Equal(t, enc, actual)
+	require.Equal(t, buf.Bytes(), actual)
 }
 
 func TestIndexAscendGreaterThan(t *testing.T) {
@@ -283,7 +284,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 			var ints int
 			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte, isEqual bool) error {
-				enc, err := key.Append(nil, document.IntegerValue, int64(ints))
+				enc, err := document.NewIntegerValue(int64(ints)).MarshalBinary()
 				require.NoError(t, err)
 				require.Equal(t, enc, val)
 				require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
