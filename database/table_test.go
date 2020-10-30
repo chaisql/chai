@@ -11,7 +11,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/key"
+	"github.com/genjidb/genji/pkg/nsb"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -218,7 +218,7 @@ func TestTableInsert(t *testing.T) {
 		// insert
 		k, err := tb.Insert(doc)
 		require.NoError(t, err)
-		require.Equal(t, key.AppendInt64(nil, 10), k)
+		require.Equal(t, nsb.AppendInt64(nil, 10), k)
 
 		// make sure the document is fetchable using the returned key
 		_, err = tb.GetDocument(k)

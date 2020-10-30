@@ -564,3 +564,8 @@ func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v Value, err er
 
 	return Value{}, nil
 }
+
+// Append appends to buf the sort-ordered representation of v.
+func (v Value) Append(buf []byte) ([]byte, error) {
+	return nil, nil
+}

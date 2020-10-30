@@ -8,7 +8,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
-	"github.com/genjidb/genji/key"
+	"github.com/genjidb/genji/pkg/nsb"
 )
 
 // A Codec is a custom implementation of an encoding.Codec.
@@ -122,11 +122,11 @@ func EncodeValue(v document.Value) ([]byte, error) {
 	case document.TextValue:
 		return []byte(v.V.(string)), nil
 	case document.BoolValue:
-		return key.AppendBool(nil, v.V.(bool)), nil
+		return nsb.AppendBool(nil, v.V.(bool)), nil
 	case document.IntegerValue:
 		return encodeInt64(v.V.(int64)), nil
 	case document.DoubleValue:
-		key.AppendFloat64(nil, v.V.(float64))
+		nsb.AppendFloat64(nil, v.V.(float64))
 	case document.NullValue:
 		return nil, nil
 	}
@@ -318,12 +318,12 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	case document.TextValue:
 		return document.NewTextValue(string(data)), nil
 	case document.BoolValue:
-		return document.NewBoolValue(key.DecodeBool(data)), nil
+		return document.NewBoolValue(nsb.DecodeBool(data)), nil
 	case document.IntegerValue:
 		x, _ := binary.Varint(data)
 		return document.NewIntegerValue(x), nil
 	case document.DoubleValue:
-		x, err := key.DecodeFloat64(data)
+		x, err := nsb.DecodeFloat64(data)
 		if err != nil {
 			return document.Value{}, err
 		}
