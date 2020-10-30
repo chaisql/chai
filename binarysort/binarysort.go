@@ -1,7 +1,7 @@
-// Package nsb provides types and functions to encode into naturally sorted binary representations.
+// Package binarysort provides types and functions to encode into naturally sorted binary representations.
 // That way, if vA < vB, where vA and vB are two unencoded values of the same type, then eA < eB, where eA and eB
 // are the respective encoded values of vA and vB.
-package nsb
+package binarysort
 
 import (
 	"bytes"

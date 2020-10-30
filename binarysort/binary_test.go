@@ -1,4 +1,4 @@
-package nsb
+package binarysort
 
 import (
 	"bytes"

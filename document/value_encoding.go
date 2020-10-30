@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/genjidb/genji/pkg/nsb"
+	"github.com/genjidb/genji/binarysort"
 )
 
 const (
@@ -65,16 +65,16 @@ func (ve *ValueEncoder) appendValue(v Value) error {
 
 	switch v.Type {
 	case BlobValue:
-		ve.buf, err = nsb.AppendBase64(ve.buf, v.V.([]byte))
+		ve.buf, err = binarysort.AppendBase64(ve.buf, v.V.([]byte))
 	case TextValue:
 		text := v.V.(string)
-		ve.buf, err = nsb.AppendBase64(ve.buf, []byte(text))
+		ve.buf, err = binarysort.AppendBase64(ve.buf, []byte(text))
 	case BoolValue:
-		ve.buf, err = nsb.AppendBool(ve.buf, v.V.(bool)), nil
+		ve.buf, err = binarysort.AppendBool(ve.buf, v.V.(bool)), nil
 	case IntegerValue:
-		ve.buf, err = nsb.AppendIntNumber(ve.buf, v.V.(int64))
+		ve.buf, err = binarysort.AppendIntNumber(ve.buf, v.V.(int64))
 	case DoubleValue:
-		ve.buf, err = nsb.AppendFloatNumber(ve.buf, v.V.(float64))
+		ve.buf, err = binarysort.AppendFloatNumber(ve.buf, v.V.(float64))
 	default:
 		return errors.New("cannot encode type " + v.Type.String() + " as key")
 	}
@@ -118,7 +118,7 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 			}
 		}
 
-		ve.buf, err = nsb.AppendBase64(ve.buf[:0], []byte(field))
+		ve.buf, err = binarysort.AppendBase64(ve.buf[:0], []byte(field))
 		if err != nil {
 			return err
 		}
@@ -156,28 +156,28 @@ func decodeValue(data []byte) (Value, error) {
 	case NullValue:
 		return NewNullValue(), nil
 	case BlobValue:
-		t, err := nsb.DecodeBase64(data)
+		t, err := binarysort.DecodeBase64(data)
 		if err != nil {
 			return Value{}, err
 		}
 		return NewBlobValue(t), nil
 	case TextValue:
-		t, err := nsb.DecodeBase64(data)
+		t, err := binarysort.DecodeBase64(data)
 		if err != nil {
 			return Value{}, err
 		}
 		return NewTextValue(string(t)), nil
 	case BoolValue:
-		return NewBoolValue(nsb.DecodeBool(data)), nil
+		return NewBoolValue(binarysort.DecodeBool(data)), nil
 	case DoubleValue:
 		if bytes.Equal(data[8:], []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
-			x, err := nsb.DecodeInt64(data[:8])
+			x, err := binarysort.DecodeInt64(data[:8])
 			if err != nil {
 				return Value{}, err
 			}
 			return NewIntegerValue(x), nil
 		}
-		x, err := nsb.DecodeFloat64(data[8:])
+		x, err := binarysort.DecodeFloat64(data[8:])
 		if err != nil {
 			return Value{}, err
 		}
@@ -274,7 +274,7 @@ func decodeDocument(data []byte) (Document, int, error) {
 			i++
 		}
 
-		field, err := nsb.DecodeBase64(data[:i])
+		field, err := binarysort.DecodeBase64(data[:i])
 		if err != nil {
 			return nil, 0, err
 		}
