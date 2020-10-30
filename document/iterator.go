@@ -2,6 +2,7 @@ package document
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
 )
@@ -282,11 +283,14 @@ func (s Stream) GroupBy(groupFn func(d Document) (Value, error)) Stream {
 // Aggregate builds a list of aggregators for each group of documents and passes each document of the stream to them.
 func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 	return NewStream(IteratorFunc(func(fn func(d Document) error) error {
-		aggregates := make(map[Value][]Aggregator)
-		var groups []Value
+		aggregates := make(map[string][]Aggregator)
+		var groupKeys []string
 
 		nullValue := NewNullValue()
 
+		var b bytes.Buffer
+
+		enc := NewValueEncoder(&b)
 		err := s.Iterate(func(d Document) error {
 			group := nullValue
 
@@ -294,17 +298,26 @@ func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 				group = gd.group
 			}
 
-			aggs, ok := aggregates[group]
+			b.Reset()
+
+			err := enc.Encode(group)
+			if err != nil {
+				return err
+			}
+
+			// using b.Bytes() and cast as a string is much faster than using b.String()
+			// because of compiler optimizations.
+			aggs, ok := aggregates[string(b.Bytes())]
 			if !ok {
-				groups = append(groups, group)
+				groupKey := b.String()
+				groupKeys = append(groupKeys, groupKey)
 				aggs = make([]Aggregator, len(aggregatorBuilders))
 				for i, builder := range aggregatorBuilders {
 					aggs[i] = builder.NewAggregator(group)
 				}
-				aggregates[group] = aggs
+				aggregates[groupKey] = aggs
 			}
 
-			var err error
 			for _, agg := range aggs {
 				err = agg.Add(d)
 				if err != nil {
@@ -318,9 +331,9 @@ func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 			return err
 		}
 
-		for _, group := range groups {
+		for _, groupKey := range groupKeys {
 			fb := NewFieldBuffer()
-			aggs := aggregates[group]
+			aggs := aggregates[groupKey]
 			for _, agg := range aggs {
 				err = agg.Aggregate(fb)
 				if err != nil {
