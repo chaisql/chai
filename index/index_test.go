@@ -13,6 +13,7 @@ import (
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/index"
 	"github.com/genjidb/genji/key"
+	"github.com/genjidb/genji/pkg/nsb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -300,15 +301,15 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		defer cleanup()
 
 		for i := int64(0); i < 100; i++ {
-			require.NoError(t, idx.Set(document.NewIntegerValue(1), key.AppendInt64(nil, i)))
-			require.NoError(t, idx.Set(document.NewTextValue("1"), key.AppendInt64(nil, i)))
+			require.NoError(t, idx.Set(document.NewIntegerValue(1), nsb.AppendInt64(nil, i)))
+			require.NoError(t, idx.Set(document.NewTextValue("1"), nsb.AppendInt64(nil, i)))
 		}
 
 		var ints, texts int
 		i := int64(0)
 		err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, rid []byte, isEqual bool) error {
 			requireEqualEncoded(t, document.NewIntegerValue(1), val)
-			require.Equal(t, key.AppendInt64(nil, i), rid)
+			require.Equal(t, nsb.AppendInt64(nil, i), rid)
 			i++
 			ints++
 			return nil
@@ -317,7 +318,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		i = 0
 		err = idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(val, rid []byte, isEqual bool) error {
 			requireEqualEncoded(t, document.NewTextValue("1"), val)
-			require.Equal(t, key.AppendInt64(nil, i), rid)
+			require.Equal(t, nsb.AppendInt64(nil, i), rid)
 			i++
 			texts++
 			return nil
