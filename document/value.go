@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/pkg/nsb"
 )
 
 var (
@@ -302,6 +303,89 @@ func (v Value) String() string {
 	return string(d)
 }
 
+// Append appends to buf a binary representation of v.
+// The encoded value doesn't include type information.
+func (v Value) Append(buf []byte) ([]byte, error) {
+	switch v.Type {
+	case BlobValue:
+		return append(buf, v.V.([]byte)...), nil
+	case TextValue:
+		return append(buf, v.V.(string)...), nil
+	case BoolValue:
+		return nsb.AppendBool(buf, v.V.(bool)), nil
+	case IntegerValue:
+		return nsb.AppendInt64(buf, v.V.(int64)), nil
+	case DoubleValue:
+		return nsb.AppendFloat64(buf, v.V.(float64)), nil
+	case NullValue:
+		return buf, nil
+	case ArrayValue, DocumentValue:
+		var buf bytes.Buffer
+		err := NewValueEncoder(&buf).Encode(v)
+		if err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+
+	return nil, errors.New("cannot encode type " + v.Type.String() + " as key")
+}
+
+// MarshalBinary returns a binary representation of v.
+// The encoded value doesn't include type information.
+func (v Value) MarshalBinary() ([]byte, error) {
+	return v.Append(nil)
+}
+
+// UnmarshalBinary decodes data to v. Data must not contain type information,
+// instead, v.Type must be set.
+func (v *Value) UnmarshalBinary(data []byte) error {
+	switch v.Type {
+	case BlobValue:
+		vv := NewBlobValue(data)
+		*v = vv
+	case TextValue:
+		vv := NewTextValue(string(data))
+		*v = vv
+	case BoolValue:
+		vv := NewBoolValue(nsb.DecodeBool(data))
+		*v = vv
+	case IntegerValue:
+		x, err := nsb.DecodeInt64(data)
+		if err != nil {
+			return err
+		}
+		vv := NewIntegerValue(x)
+		*v = vv
+	case DoubleValue:
+		x, err := nsb.DecodeFloat64(data)
+		if err != nil {
+			return err
+		}
+		vv := NewDoubleValue(x)
+		*v = vv
+	case NullValue:
+		vv := NewNullValue()
+		*v = vv
+	case ArrayValue:
+		a, _, err := decodeArray(data)
+		if err != nil {
+			return err
+		}
+		vv := NewArrayValue(a)
+		*v = vv
+	case DocumentValue:
+		d, _, err := decodeDocument(data)
+		if err != nil {
+			return err
+		}
+		vv := NewDocumentValue(d)
+		*v = vv
+	}
+
+	return errors.New("unknown type")
+}
+
 // Add u to v and return the result.
 // Only numeric values and booleans can be added together.
 func (v Value) Add(u Value) (res Value, err error) {
@@ -563,9 +647,4 @@ func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v Value, err er
 	}
 
 	return Value{}, nil
-}
-
-// Append appends to buf the sort-ordered representation of v.
-func (v Value) Append(buf []byte) ([]byte, error) {
-	return nil, nil
 }
