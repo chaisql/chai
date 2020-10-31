@@ -225,6 +225,242 @@ func TestFieldBuffer(t *testing.T) {
 	})
 }
 
+func TestNewFromStruct(t *testing.T) {
+	type group struct {
+		Ig int
+	}
+
+	type user struct {
+		A []byte
+		B string
+		C bool
+		D uint `genji:"la-reponse-d"`
+		E uint8
+		F uint16
+		G uint32
+		H uint64
+		I int
+		J int8
+		K int16
+		L int32
+		M int64
+		N float64
+		// structs must be considered as documents
+		O group
+
+		// nil pointers must be considered as Null values
+		// otherwise they must be dereferenced
+		P *int
+		Q *int
+
+		// struct pointers should be considered as documents
+		// if there are nil though, the value must be Null
+		R *group
+		S *group
+
+		T  []int
+		U  []int
+		V  []*int
+		W  []user
+		X  []interface{}
+		Y  [3]int
+		Z  interface{}
+		ZZ interface{}
+
+		AA int `genji:"-"` // ignored
+
+		*group
+
+		// unexported fields should be ignored
+		t int
+	}
+
+	u := user{
+		A:  []byte("foo"),
+		B:  "bar",
+		C:  true,
+		D:  1,
+		E:  2,
+		F:  3,
+		G:  4,
+		H:  5,
+		I:  6,
+		J:  7,
+		K:  8,
+		L:  9,
+		M:  10,
+		N:  11.12,
+		Z:  26,
+		AA: 27,
+		group: &group{
+			Ig: 100,
+		},
+	}
+
+	q := 5
+	u.Q = &q
+	u.R = new(group)
+	u.T = []int{1, 2, 3}
+	u.V = []*int{&q}
+	u.W = []user{u}
+	u.X = []interface{}{1, "foo"}
+
+	t.Run("Iterate", func(t *testing.T) {
+		doc, err := document.NewFromStruct(u)
+		require.NoError(t, err)
+
+		var counter int
+
+		err = doc.Iterate(func(f string, v document.Value) error {
+			switch counter {
+			case 0:
+				require.Equal(t, u.A, v.V.([]byte))
+			case 1:
+				require.Equal(t, u.B, v.V.(string))
+			case 2:
+				require.Equal(t, u.C, v.V.(bool))
+			case 3:
+				require.Equal(t, "la-reponse-d", f)
+				require.EqualValues(t, u.D, v.V.(int64))
+			case 4:
+				require.EqualValues(t, u.E, v.V.(int64))
+			case 5:
+				require.EqualValues(t, u.F, v.V.(int64))
+			case 6:
+				require.EqualValues(t, u.G, v.V.(int64))
+			case 7:
+				require.EqualValues(t, u.H, v.V.(int64))
+			case 8:
+				require.EqualValues(t, u.I, v.V.(int64))
+			case 9:
+				require.EqualValues(t, u.J, v.V.(int64))
+			case 10:
+				require.EqualValues(t, u.K, v.V.(int64))
+			case 11:
+				require.EqualValues(t, u.L, v.V.(int64))
+			case 12:
+				require.EqualValues(t, u.M, v.V.(int64))
+			case 13:
+				require.Equal(t, u.N, v.V.(float64))
+			case 14:
+				require.EqualValues(t, document.DocumentValue, v.Type)
+			case 15:
+				require.EqualValues(t, document.NullValue, v.Type)
+			case 16:
+				require.EqualValues(t, *u.Q, v.V.(int64))
+			case 17:
+				require.EqualValues(t, document.DocumentValue, v.Type)
+			case 18:
+				require.EqualValues(t, document.NullValue, v.Type)
+			case 19:
+				require.EqualValues(t, document.ArrayValue, v.Type)
+			case 20:
+				require.EqualValues(t, document.NullValue, v.Type)
+			case 21:
+				require.EqualValues(t, document.ArrayValue, v.Type)
+			case 22:
+				require.EqualValues(t, document.ArrayValue, v.Type)
+			case 23:
+				require.EqualValues(t, document.ArrayValue, v.Type)
+			case 24:
+				require.EqualValues(t, document.ArrayValue, v.Type)
+			case 25:
+				require.EqualValues(t, u.Z, v.V.(int64))
+			case 26:
+				require.EqualValues(t, document.NullValue, v.Type)
+			case 27:
+				require.EqualValues(t, document.IntegerValue, v.Type)
+			default:
+				require.FailNowf(t, "", "unknown field %q", f)
+			}
+
+			counter++
+
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 28, counter)
+	})
+
+	t.Run("GetByField", func(t *testing.T) {
+		doc, err := document.NewFromStruct(u)
+		require.NoError(t, err)
+
+		v, err := doc.GetByField("a")
+		require.NoError(t, err)
+		require.Equal(t, u.A, v.V.([]byte))
+		v, err = doc.GetByField("b")
+		require.NoError(t, err)
+		require.Equal(t, u.B, v.V.(string))
+		v, err = doc.GetByField("c")
+		require.NoError(t, err)
+		require.Equal(t, u.C, v.V.(bool))
+		v, err = doc.GetByField("la-reponse-d")
+		require.NoError(t, err)
+		require.EqualValues(t, u.D, v.V.(int64))
+		v, err = doc.GetByField("e")
+		require.NoError(t, err)
+		require.EqualValues(t, u.E, v.V.(int64))
+		v, err = doc.GetByField("f")
+		require.NoError(t, err)
+		require.EqualValues(t, u.F, v.V.(int64))
+		v, err = doc.GetByField("g")
+		require.NoError(t, err)
+		require.EqualValues(t, u.G, v.V.(int64))
+		v, err = doc.GetByField("h")
+		require.NoError(t, err)
+		require.EqualValues(t, u.H, v.V.(int64))
+		v, err = doc.GetByField("i")
+		require.NoError(t, err)
+		require.EqualValues(t, u.I, v.V.(int64))
+		v, err = doc.GetByField("j")
+		require.NoError(t, err)
+		require.EqualValues(t, u.J, v.V.(int64))
+		v, err = doc.GetByField("k")
+		require.NoError(t, err)
+		require.EqualValues(t, u.K, v.V.(int64))
+		v, err = doc.GetByField("l")
+		require.NoError(t, err)
+		require.EqualValues(t, u.L, v.V.(int64))
+		v, err = doc.GetByField("m")
+		require.NoError(t, err)
+		require.EqualValues(t, u.M, v.V.(int64))
+		v, err = doc.GetByField("n")
+		require.NoError(t, err)
+		require.Equal(t, u.N, v.V.(float64))
+
+		v, err = doc.GetByField("o")
+		require.NoError(t, err)
+		d, ok := v.V.(document.Document)
+		require.True(t, ok)
+		v, err = d.GetByField("ig")
+		require.NoError(t, err)
+		require.EqualValues(t, 0, v.V.(int64))
+
+		v, err = doc.GetByField("ig")
+		require.NoError(t, err)
+		require.EqualValues(t, 100, v.V.(int64))
+
+		v, err = doc.GetByField("t")
+		require.NoError(t, err)
+		a, ok := v.V.(document.Array)
+		require.True(t, ok)
+		var count int
+		err = a.Iterate(func(i int, v document.Value) error {
+			count++
+			require.EqualValues(t, i+1, v.V.(int64))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 3, count)
+		v, err = a.GetByIndex(10)
+		require.Equal(t, err, document.ErrFieldNotFound)
+		v, err = a.GetByIndex(1)
+		require.NoError(t, err)
+		require.EqualValues(t, 2, v.V.(int64))
+	})
+}
+
 type foo struct {
 	A string
 	B int64
