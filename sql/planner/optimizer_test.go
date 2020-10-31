@@ -205,6 +205,120 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 	}
 }
 
+func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
+	tests := []struct {
+		name           string
+		root, expected planner.Node
+	}{
+		{
+			"non-unique key",
+			planner.NewDedupNode(
+				planner.NewProjectionNode(
+					planner.NewTableInputNode("foo"),
+					[]planner.ProjectedField{planner.ProjectedExpr{
+						Expr:     expr.Path{document.PathFragment{FieldName: "b"}},
+						ExprName: "b",
+					}},
+					"foo",
+				), "foo"),
+			nil,
+		},
+		{
+			"primary key",
+			planner.NewDedupNode(
+				planner.NewProjectionNode(
+					planner.NewTableInputNode("foo"),
+					[]planner.ProjectedField{planner.ProjectedExpr{
+						Expr:     expr.Path{document.PathFragment{FieldName: "a"}},
+						ExprName: "a",
+					}},
+					"foo",
+				), "foo"),
+			planner.NewProjectionNode(
+				planner.NewTableInputNode("foo"),
+				[]planner.ProjectedField{planner.ProjectedExpr{
+					Expr:     expr.Path{document.PathFragment{FieldName: "a"}},
+					ExprName: "a",
+				}},
+				"foo",
+			),
+		},
+		{
+			"unique index",
+			planner.NewDedupNode(
+				planner.NewProjectionNode(
+					planner.NewTableInputNode("foo"),
+					[]planner.ProjectedField{planner.ProjectedExpr{
+						Expr:     expr.Path{document.PathFragment{FieldName: "c"}},
+						ExprName: "c",
+					}},
+					"foo",
+				), "foo"),
+			planner.NewProjectionNode(
+				planner.NewTableInputNode("foo"),
+				[]planner.ProjectedField{planner.ProjectedExpr{
+					Expr:     expr.Path{document.PathFragment{FieldName: "c"}},
+					ExprName: "c",
+				}},
+				"foo",
+			),
+		},
+		{
+			"pk() function",
+			planner.NewDedupNode(
+				planner.NewProjectionNode(
+					planner.NewTableInputNode("foo"),
+					[]planner.ProjectedField{planner.ProjectedExpr{
+						Expr:     expr.PKFunc{},
+						ExprName: "pk()",
+					}},
+					"foo",
+				), "foo"),
+			planner.NewProjectionNode(
+				planner.NewTableInputNode("foo"),
+				[]planner.ProjectedField{planner.ProjectedExpr{
+					Expr:     expr.PKFunc{},
+					ExprName: "pk()",
+				}},
+				"foo",
+			),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			err = tx.Exec(context.Background(), `
+				CREATE TABLE foo(a integer PRIMARY KEY, b integer, c integer);
+				CREATE UNIQUE INDEX idx_foo_idx ON foo(c);
+				INSERT INTO foo (a, b, c) VALUES
+					(1, 1, 1),
+					(2, 2, 2),
+					(3, 3, 3)
+			`)
+			require.NoError(t, err)
+
+			err = planner.Bind(planner.NewTree(test.root), tx.Transaction, nil)
+			require.NoError(t, err)
+
+			res, err := planner.RemoveUnnecessaryDedupNodeRule(planner.NewTree(test.root))
+			require.NoError(t, err)
+			if test.expected != nil {
+				require.Equal(t, planner.NewTree(test.expected).String(), res.String())
+			} else {
+				require.Equal(t, test.root, res.Root)
+			}
+		})
+	}
+}
+
 func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 	tests := []struct {
 		name           string
