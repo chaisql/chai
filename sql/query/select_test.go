@@ -224,8 +224,6 @@ func TestSelectStmt(t *testing.T) {
 }
 
 func TestDistinct(t *testing.T) {
-	ctx := context.Background()
-
 	types := []struct {
 		name          string
 		generateValue func(i, notUniqueCount int) (unique interface{}, notunique interface{})
@@ -257,15 +255,15 @@ func TestDistinct(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec(ctx, "CREATE TABLE test(a "+typ.name+" PRIMARY KEY, b "+typ.name+", doc DOCUMENT, nullable "+typ.name+");")
+			err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", doc DOCUMENT, nullable " + typ.name + ");")
 			require.NoError(t, err)
 
-			err = tx.Exec(ctx, "CREATE UNIQUE INDEX test_doc_index ON test(doc);")
+			err = tx.Exec("CREATE UNIQUE INDEX test_doc_index ON test(doc);")
 			require.NoError(t, err)
 
 			for i := 0; i < total; i++ {
 				unique, nonunique := typ.generateValue(i, notUnique)
-				err = tx.Exec(ctx, `INSERT INTO test VALUES {a: ?, b: ?, doc: {a: ?, b: ?}, nullable: null}`, unique, nonunique, unique, nonunique)
+				err = tx.Exec(`INSERT INTO test VALUES {a: ?, b: ?, doc: {a: ?, b: ?}, nullable: null}`, unique, nonunique, unique, nonunique)
 				require.NoError(t, err)
 			}
 			err = tx.Commit()
@@ -287,7 +285,7 @@ func TestDistinct(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					q, err := db.Query(ctx, test.query)
+					q, err := db.Query(test.query)
 					require.NoError(t, err)
 					defer q.Close()
 
