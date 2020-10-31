@@ -5,7 +5,6 @@ import (
 	"hash/maphash"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/key"
 )
 
 type documentHashSet struct {
@@ -32,18 +31,15 @@ func (s documentHashSet) generateKey(d document.Document) (uint64, error) {
 		return 0, err
 	}
 
+	enc := document.NewValueEncoder(s.hash)
+
 	for _, field := range fields {
 		value, err := d.GetByField(field)
 		if err != nil {
 			return 0, err
 		}
 
-		buf, err := key.AppendValue(nil, value)
-		if err != nil {
-			return 0, err
-		}
-
-		_, err = s.hash.Write(buf)
+		err = enc.Encode(value)
 		if err != nil {
 			return 0, err
 		}

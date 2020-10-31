@@ -1,7 +1,6 @@
 package document
 
 import (
-	"bytes"
 	"errors"
 	"io"
 
@@ -72,7 +71,7 @@ func (ve *ValueEncoder) appendValue(v Value) error {
 	case BoolValue:
 		ve.buf, err = binarysort.AppendBool(ve.buf, v.V.(bool)), nil
 	case IntegerValue:
-		ve.buf, err = binarysort.AppendIntNumber(ve.buf, v.V.(int64))
+		ve.buf = binarysort.AppendInt64(ve.buf, v.V.(int64))
 	case DoubleValue:
 		ve.buf, err = binarysort.AppendFloatNumber(ve.buf, v.V.(float64))
 	default:
@@ -170,8 +169,8 @@ func decodeValue(data []byte) (Value, error) {
 	case BoolValue:
 		return NewBoolValue(binarysort.DecodeBool(data)), nil
 	case DoubleValue:
-		if bytes.Equal(data[8:], []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
-			x, err := binarysort.DecodeInt64(data[:8])
+		if len(data) == 8 {
+			x, err := binarysort.DecodeInt64(data)
 			if err != nil {
 				return Value{}, err
 			}
@@ -222,7 +221,11 @@ func decodeValueUntil(data []byte, delim, end byte) (Value, int, error) {
 	case BoolValue:
 		i++
 	case DoubleValue:
-		i += 16
+		if data[i+8] == delim {
+			i += 8
+		} else {
+			i += 16
+		}
 	case BlobValue, TextValue:
 		for i < len(data) && data[i] != delim && data[i] != end {
 			i++
