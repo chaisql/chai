@@ -126,14 +126,35 @@ type documentMask struct {
 
 var _ document.Document = documentMask{}
 
-func (r documentMask) GetByField(field string) (document.Value, error) {
+func (r documentMask) GetByField(field string) (v document.Value, err error) {
 	for _, rf := range r.resultFields {
 		if rf.Name() == field || rf.Name() == "*" {
-			return r.d.GetByField(field)
+			v, err = r.d.GetByField(field)
+			if err != document.ErrFieldNotFound {
+				return
+			}
+
+			stack := expr.EvalStack{
+				Document: r.d,
+				Info:     r.info,
+			}
+			var found bool
+			err = rf.Iterate(stack, func(f string, value document.Value) error {
+				if f == field {
+					v = value
+					found = true
+				}
+				return nil
+			})
+
+			if found || err != nil {
+				return
+			}
 		}
 	}
 
-	return document.Value{}, document.ErrFieldNotFound
+	err = document.ErrFieldNotFound
+	return
 }
 
 func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {

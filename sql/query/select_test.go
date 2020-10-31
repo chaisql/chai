@@ -3,6 +3,7 @@ package query_test
 import (
 	"bytes"
 	"database/sql"
+	"strconv"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -30,6 +31,8 @@ func TestSelectStmt(t *testing.T) {
 		{"No table, wildcard", "SELECT *", true, ``, nil},
 		{"No table, document", "SELECT {a: 1, b: 2 + 1}", false, `[{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}]`, nil},
 		{"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
+		{"With DISTINCT", "SELECT DISTINCT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
+		{"With DISTINCT and expr", "SELECT DISTINCT 'a' FROM test", false, `[{"'a'":"a"}]`, nil},
 		{"Multiple wildcards cond", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","k":1,"color":"red","size":10,"shape":"square","color":"red"},{"k":2,"color":"blue","size":10,"weight":100,"k":2,"color":"blue","size":10,"weight":100,"color":"blue"},{"k":3,"height":100,"weight":200,"k":3,"height":100,"weight":200,"color":null}]`, nil},
 		{"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
 		{"With expr fields", "SELECT color, color != 'red' AS notred FROM test", false, `[{"color":"red","notred":false},{"color":"blue","notred":true},{"color":null,"notred":null}]`, nil},
@@ -218,4 +221,81 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
+}
+
+func TestDistinct(t *testing.T) {
+	ctx := context.Background()
+
+	types := []struct {
+		name          string
+		generateValue func(i, notUniqueCount int) (unique interface{}, notunique interface{})
+	}{
+		{`integer`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return i, i % notUniqueCount
+		}},
+		{`double`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return float64(i), float64(i % notUniqueCount)
+		}},
+		{`text`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return strconv.Itoa(i), strconv.Itoa(i % notUniqueCount)
+		}},
+		{`array`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+			return []interface{}{i}, []interface{}{i % notUniqueCount}
+		}},
+	}
+
+	for _, typ := range types {
+		total := 100
+		notUnique := total / 10
+
+		t.Run(typ.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			err = tx.Exec(ctx, "CREATE TABLE test(a "+typ.name+" PRIMARY KEY, b "+typ.name+", doc DOCUMENT, nullable "+typ.name+");")
+			require.NoError(t, err)
+
+			err = tx.Exec(ctx, "CREATE UNIQUE INDEX test_doc_index ON test(doc);")
+			require.NoError(t, err)
+
+			for i := 0; i < total; i++ {
+				unique, nonunique := typ.generateValue(i, notUnique)
+				err = tx.Exec(ctx, `INSERT INTO test VALUES {a: ?, b: ?, doc: {a: ?, b: ?}, nullable: null}`, unique, nonunique, unique, nonunique)
+				require.NoError(t, err)
+			}
+			err = tx.Commit()
+			require.NoError(t, err)
+
+			tests := []struct {
+				name          string
+				query         string
+				expectedCount int
+			}{
+				{`unique`, `SELECT DISTINCT a FROM test`, total},
+				{`non-unique`, `SELECT DISTINCT b FROM test`, notUnique},
+				{`documents`, `SELECT DISTINCT doc FROM test`, total},
+				{`null`, `SELECT DISTINCT nullable FROM test`, 1},
+				{`wildcard`, `SELECT DISTINCT * FROM test`, total},
+				{`literal`, `SELECT DISTINCT 'a' FROM test`, 1},
+				{`pk()`, `SELECT DISTINCT pk() FROM test`, total},
+			}
+
+			for _, test := range tests {
+				t.Run(test.name, func(t *testing.T) {
+					q, err := db.Query(ctx, test.query)
+					require.NoError(t, err)
+					defer q.Close()
+
+					c, err := q.Count()
+					require.NoError(t, err)
+					require.Equal(t, test.expectedCount, c)
+				})
+			}
+		})
+	}
 }

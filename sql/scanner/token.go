@@ -85,6 +85,7 @@ const (
 	DEFAULT
 	DELETE
 	DESC
+	DISTINCT
 	DROP
 	EXISTS
 	EXPLAIN
@@ -208,6 +209,7 @@ var tokens = [...]string{
 	DEFAULT:     "DEFAULT",
 	DELETE:      "DELETE",
 	DESC:        "DESC",
+	DISTINCT:    "DISTINCT",
 	DROP:        "DROP",
 	EXISTS:      "EXISTS",
 	EXPLAIN:     "EXPLAIN",

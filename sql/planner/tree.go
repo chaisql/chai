@@ -42,6 +42,9 @@ const (
 	// Unset is an operation that removes a value at a given path from every document of a stream
 	Unset
 	// Group is an operation that groups documents based on a given path.
+	_
+	// Dedup is an operation that removes duplicate documents from a stream
+	Dedup
 )
 
 // A Tree describes the flow of a stream of documents.
