@@ -15,7 +15,7 @@ const (
 	documentEnd        = 0x1d
 )
 
-// ValueEncoder encodes sort-ordered representations of values.
+// ValueEncoder encodes natural sort-ordered representations of values.
 // Type information is encoded alongside each value.
 type ValueEncoder struct {
 	w io.Writer
