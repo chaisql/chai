@@ -11,6 +11,8 @@ import (
 	"math"
 )
 
+// Default Base64 encoder string doesn't preserve lexicographic order. This alternative
+// encoder does.
 const base64encoder = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
 var base64Encoding = base64.NewEncoding(base64encoder).WithPadding(base64.NoPadding)
@@ -111,24 +113,11 @@ func DecodeBase64(data []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// AppendIntNumber takes a number, either integer or float, and encodes it in 16 bytes
-// so that encoded integers and floats are naturally ordered.
-// Integers will first be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
-// appended to them.
+// AppendFloatNumber takes a float and encodes it in 16 bytes
+// so that encoded integers and floats encoded using this function are naturally ordered.
 // Floats will first be converted to integer, encoded using AppendInt64,
 // then AppendFloat64 will be called with the float value.
-func AppendIntNumber(buf []byte, x int64) ([]byte, error) {
-	// appending 8 zero bytes so that the integer has the same size as the double
-	// but always lower for the same value.
-	return append(AppendInt64(buf, x), 0, 0, 0, 0, 0, 0, 0, 0), nil
-}
-
-// AppendFloatNumber takes a number, either integer or float, and encodes it in 16 bytes
-// so that encoded integers and floats are naturally ordered.
-// Integers will first be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
-// appended to them.
-// Floats will first be converted to integer, encoded using AppendInt64,
-// then AppendFloat64 will be called with the float value.
+// If x overflows 64-bit integer space, the first 8 bytes will be equal to math.MaxInt64.
 func AppendFloatNumber(buf []byte, x float64) ([]byte, error) {
 	if x > math.MaxInt64 {
 		return AppendFloat64(AppendInt64(buf, math.MaxInt64), x), nil

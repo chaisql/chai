@@ -51,8 +51,8 @@ func TestOrdering(t *testing.T) {
 
 		var encoded [][]byte
 		for _, nb := range ints {
-			enc, err := AppendIntNumber(nil, nb)
-			require.NoError(t, err)
+			enc := AppendInt64(nil, nb)
+			// require.NoError(t, err)
 			encoded = append(encoded, enc)
 		}
 		for _, nb := range floats {
@@ -81,8 +81,8 @@ func TestOrdering(t *testing.T) {
 		var x interface{}
 
 		for i, enc := range encoded {
-			if bytes.Equal(enc[8:], []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
-				x, err = DecodeInt64(enc[:8])
+			if len(enc) == 8 {
+				x, err = DecodeInt64(enc)
 			} else {
 				x, err = DecodeFloat64(enc[8:])
 			}
