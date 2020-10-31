@@ -295,7 +295,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec(context.Background(), `
+			err = tx.Exec(`
 				CREATE TABLE foo(a integer PRIMARY KEY, b integer, c integer);
 				CREATE UNIQUE INDEX idx_foo_idx ON foo(c);
 				INSERT INTO foo (a, b, c) VALUES
