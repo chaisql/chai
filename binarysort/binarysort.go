@@ -113,7 +113,7 @@ func DecodeBase64(data []byte) ([]byte, error) {
 
 // AppendIntNumber takes a number, either integer or float, and encodes it in 16 bytes
 // so that encoded integers and floats are naturally ordered.
-// Integers will fist be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
+// Integers will first be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
 // appended to them.
 // Floats will first be converted to integer, encoded using AppendInt64,
 // then AppendFloat64 will be called with the float value.
@@ -125,7 +125,7 @@ func AppendIntNumber(buf []byte, x int64) ([]byte, error) {
 
 // AppendFloatNumber takes a number, either integer or float, and encodes it in 16 bytes
 // so that encoded integers and floats are naturally ordered.
-// Integers will fist be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
+// Integers will first be encoded using AppendInt64 on 8 bytes, then 8 zero-bytes will be
 // appended to them.
 // Floats will first be converted to integer, encoded using AppendInt64,
 // then AppendFloat64 will be called with the float value.
