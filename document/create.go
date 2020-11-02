@@ -102,90 +102,71 @@ func NewFromStruct(s interface{}) (Document, error) {
 		return nil, errors.New("expected struct or pointer to struct")
 	}
 
-	return structDocument{ref: ref}, nil
+	return newFromStruct(ref)
 }
 
-type structDocument struct {
-	ref reflect.Value
-}
-
-var _ Document = (*structDocument)(nil)
-
-func (s structDocument) Iterate(fn func(field string, value Value) error) error {
-	l := s.ref.NumField()
-
-	tp := s.ref.Type()
+func newFromStruct(ref reflect.Value) (Document, error) {
+	var fb FieldBuffer
+	l := ref.NumField()
+	tp := ref.Type()
 
 	for i := 0; i < l; i++ {
+		f := ref.Field(i)
+		if !f.IsValid() {
+			continue
+		}
+
+		if f.Kind() == reflect.Ptr && !f.IsNil() {
+			f = f.Elem()
+		}
+
 		sf := tp.Field(i)
+
+		if f.Kind() == reflect.Struct {
+			d, err := newFromStruct(f)
+			if err != nil {
+				return nil, err
+			}
+
+			if !sf.Anonymous {
+				fb.Add(strings.ToLower(sf.Name), NewDocumentValue(d))
+				continue
+			}
+
+			// Embedded struct.
+			err = d.Iterate(func(field string, value Value) error {
+				fb.Add(field, value)
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
 		if sf.PkgPath != "" {
 			continue
 		}
 
-		var name string
+		field := strings.ToLower(sf.Name)
 		if gtag, ok := sf.Tag.Lookup("genji"); ok {
 			if gtag == "-" {
 				continue
 			}
 
-			name = gtag
-		} else {
-			name = strings.ToLower(sf.Name)
+			field = gtag
 		}
-
-		f := s.ref.Field(i)
 
 		v, err := NewValue(f.Interface())
 		if err != nil {
-			if err.(*ErrUnsupportedType) != nil {
-				continue
-			}
-			return err
+			return nil, err
 		}
 
-		err = fn(name, v)
-		if err != nil {
-			return err
-		}
+		fb.Add(field, v)
 	}
 
-	return nil
-}
-
-func (s structDocument) GetByField(field string) (Value, error) {
-	tp := s.ref.Type()
-
-	var sf reflect.StructField
-	var ok bool
-
-	ln := tp.NumField()
-	for i := 0; i < ln; i++ {
-		sf = tp.Field(i)
-		if gtag, found := sf.Tag.Lookup("genji"); found && gtag == field {
-			ok = true
-			break
-		}
-		if strings.ToLower(sf.Name) == field {
-			ok = true
-			break
-		}
-	}
-
-	if !ok || sf.PkgPath != "" {
-		return Value{}, ErrFieldNotFound
-	}
-
-	v := s.ref.FieldByName(sf.Name)
-	if !v.IsValid() {
-		return Value{}, ErrFieldNotFound
-	}
-
-	return NewValue(v.Interface())
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (s structDocument) MarshalJSON() ([]byte, error) {
-	return jsonDocument{Document: s}.MarshalJSON()
+	return &fb, nil
 }
 
 // NewValue creates a value whose type is infered from x.

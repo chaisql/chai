@@ -227,7 +227,7 @@ func TestFieldBuffer(t *testing.T) {
 
 func TestNewFromStruct(t *testing.T) {
 	type group struct {
-		A int
+		Ig int
 	}
 
 	type user struct {
@@ -269,7 +269,6 @@ func TestNewFromStruct(t *testing.T) {
 
 		AA int `genji:"-"` // ignored
 
-		// embedded fields are not supported currently, they should be ignored
 		*group
 
 		// unexported fields should be ignored
@@ -293,6 +292,9 @@ func TestNewFromStruct(t *testing.T) {
 		N:  11.12,
 		Z:  26,
 		AA: 27,
+		group: &group{
+			Ig: 100,
+		},
 	}
 
 	q := 5
@@ -366,6 +368,8 @@ func TestNewFromStruct(t *testing.T) {
 				require.EqualValues(t, u.Z, v.V.(int64))
 			case 26:
 				require.EqualValues(t, document.NullValue, v.Type)
+			case 27:
+				require.EqualValues(t, document.IntegerValue, v.Type)
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
 			}
@@ -375,7 +379,7 @@ func TestNewFromStruct(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 27, counter)
+		require.Equal(t, 28, counter)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
@@ -429,9 +433,13 @@ func TestNewFromStruct(t *testing.T) {
 		require.NoError(t, err)
 		d, ok := v.V.(document.Document)
 		require.True(t, ok)
-		v, err = d.GetByField("a")
+		v, err = d.GetByField("ig")
 		require.NoError(t, err)
 		require.EqualValues(t, 0, v.V.(int64))
+
+		v, err = doc.GetByField("ig")
+		require.NoError(t, err)
+		require.EqualValues(t, 100, v.V.(int64))
 
 		v, err = doc.GetByField("t")
 		require.NoError(t, err)
@@ -597,12 +605,4 @@ func BenchmarkDocumentIterate(b *testing.B) {
 		}
 	})
 
-	b.Run("Reflection", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			refd, _ := document.NewFromStruct(&f)
-			refd.Iterate(func(string, document.Value) error {
-				return nil
-			})
-		}
-	})
 }
