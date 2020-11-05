@@ -353,7 +353,8 @@ func TestTableInsert(t *testing.T) {
 		doc := document.NewFieldBuffer().
 			Add("foo", document.NewIntegerValue(1)).
 			Add("bar", document.NewDoubleValue(10)).
-			Add("baz", document.NewTextValue("baaaaz"))
+			Add("baz", document.NewTextValue("baz")).
+			Add("bat", document.NewIntegerValue(20))
 
 		// insert
 		key, err := tb.Insert(doc)
@@ -370,7 +371,10 @@ func TestTableInsert(t *testing.T) {
 		require.Equal(t, document.NewIntegerValue(10), v)
 		v, err = d.GetByField("baz")
 		require.NoError(t, err)
-		require.Equal(t, document.NewTextValue("baaaaz"), v)
+		require.Equal(t, document.NewTextValue("baz"), v)
+		v, err = d.GetByField("bat")
+		require.NoError(t, err)
+		require.Equal(t, document.NewDoubleValue(20), v)
 	})
 
 	t.Run("Should fail if there is a not null field constraint on a document field and the field is null or missing", func(t *testing.T) {

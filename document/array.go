@@ -156,6 +156,61 @@ func (vb *ValueBuffer) Copy(a Array) error {
 	return nil
 }
 
+// Apply a function to all the values of the buffer.
+func (vb *ValueBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
+	path := Path{PathFragment{}}
+
+	for i, v := range *vb {
+		path[0].ArrayIndex = i
+
+		switch v.Type {
+		case DocumentValue:
+			buf, ok := v.V.(*FieldBuffer)
+			if !ok {
+				buf = NewFieldBuffer()
+				err := buf.Copy(v.V.(Document))
+				if err != nil {
+					return err
+				}
+			}
+
+			err := buf.Apply(func(p Path, v Value) (Value, error) {
+				return fn(append(path, p...), v)
+			})
+			if err != nil {
+				return err
+			}
+			(*vb)[i] = NewDocumentValue(buf)
+		case ArrayValue:
+			buf, ok := v.V.(ValueBuffer)
+			if !ok {
+				buf = NewValueBuffer()
+				err := buf.Copy(v.V.(Array))
+				if err != nil {
+					return err
+				}
+			}
+
+			err := buf.Apply(func(p Path, v Value) (Value, error) {
+				return fn(append(path, p...), v)
+			})
+			if err != nil {
+				return err
+			}
+			(*vb)[i] = NewArrayValue(buf)
+		default:
+			var err error
+			v, err = fn(path, v)
+			if err != nil {
+				return err
+			}
+			(*vb)[i] = v
+		}
+	}
+
+	return nil
+}
+
 // Replace the value of the index by v.
 func (vb *ValueBuffer) Replace(index int, v Value) error {
 	if len(*vb) <= index {
