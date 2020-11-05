@@ -40,13 +40,7 @@ func (ve *ValueEncoder) Encode(v Value) error {
 }
 
 func (ve *ValueEncoder) appendValue(v Value) error {
-	var err error
-
-	if v.Type.IsNumber() {
-		err = ve.append(byte(DoubleValue))
-	} else {
-		err = ve.append(byte(v.Type))
-	}
+	err := ve.append(byte(v.Type))
 	if err != nil {
 		return err
 	}
@@ -73,7 +67,7 @@ func (ve *ValueEncoder) appendValue(v Value) error {
 	case IntegerValue:
 		ve.buf = binarysort.AppendInt64(ve.buf, v.V.(int64))
 	case DoubleValue:
-		ve.buf, err = binarysort.AppendFloatNumber(ve.buf, v.V.(float64))
+		ve.buf = binarysort.AppendFloat64(ve.buf, v.V.(float64))
 	default:
 		return errors.New("cannot encode type " + v.Type.String() + " as key")
 	}
@@ -167,16 +161,19 @@ func decodeValue(data []byte) (Value, error) {
 		}
 		return NewTextValue(string(t)), nil
 	case BoolValue:
-		return NewBoolValue(binarysort.DecodeBool(data)), nil
-	case DoubleValue:
-		if len(data) == 8 {
-			x, err := binarysort.DecodeInt64(data)
-			if err != nil {
-				return Value{}, err
-			}
-			return NewIntegerValue(x), nil
+		b, err := binarysort.DecodeBool(data)
+		if err != nil {
+			return Value{}, err
 		}
-		x, err := binarysort.DecodeFloat64(data[8:])
+		return NewBoolValue(b), nil
+	case IntegerValue:
+		x, err := binarysort.DecodeInt64(data)
+		if err != nil {
+			return Value{}, err
+		}
+		return NewIntegerValue(x), nil
+	case DoubleValue:
+		x, err := binarysort.DecodeFloat64(data)
 		if err != nil {
 			return Value{}, err
 		}
@@ -220,11 +217,11 @@ func decodeValueUntil(data []byte, delim, end byte) (Value, int, error) {
 	case NullValue:
 	case BoolValue:
 		i++
-	case DoubleValue:
-		if data[i+8] == delim {
+	case IntegerValue, DoubleValue:
+		if i+8 < len(data) && data[i+8] == delim {
 			i += 8
 		} else {
-			i += 16
+			return Value{}, 0, errors.New("malformed " + t.String())
 		}
 	case BlobValue, TextValue:
 		for i < len(data) && data[i] != delim && data[i] != end {
