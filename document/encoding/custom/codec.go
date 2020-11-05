@@ -318,7 +318,11 @@ func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	case document.TextValue:
 		return document.NewTextValue(string(data)), nil
 	case document.BoolValue:
-		return document.NewBoolValue(binarysort.DecodeBool(data)), nil
+		x, err := binarysort.DecodeBool(data)
+		if err != nil {
+			return document.Value{}, err
+		}
+		return document.NewBoolValue(x), nil
 	case document.IntegerValue:
 		x, _ := binary.Varint(data)
 		return document.NewIntegerValue(x), nil
