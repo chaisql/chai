@@ -158,7 +158,7 @@ func TestCompare(t *testing.T) {
 		{"=", `[]`, `[]`, true, jsonToArray},
 		{"=", `[1]`, `[1]`, true, jsonToArray},
 		{"=", `[1]`, `[]`, false, jsonToArray},
-		{"=", `[1.0, 2]`, `[1, 2]`, true, jsonToArray},
+		{"=", `[1.0, 2]`, `[1, 2]`, false, jsonToArray},
 		{"=", `[1,2,3]`, `[1,2,3]`, true, jsonToArray},
 		{"!=", `[1]`, `[5]`, true, jsonToArray},
 		{"!=", `[1]`, `[1, 1]`, true, jsonToArray},
