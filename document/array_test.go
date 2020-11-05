@@ -76,3 +76,17 @@ func TestValueBufferCopy(t *testing.T) {
 		})
 	}
 }
+
+func TestValueBufferApply(t *testing.T) {
+	var buf ValueBuffer
+	err := buf.UnmarshalJSON([]byte(`[1, [1, 3], {"4": 5}]`))
+	require.NoError(t, err)
+
+	err = buf.Apply(func(p Path, v Value) (Value, error) {
+		return NewIntegerValue(6), nil
+	})
+	require.NoError(t, err)
+
+	got, err := json.Marshal(buf)
+	require.JSONEq(t, `[6, [6, 6], {"4": 6}]`, string(got))
+}

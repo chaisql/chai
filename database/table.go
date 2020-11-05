@@ -54,7 +54,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	d, err = t.ValidateConstraints(d)
+	d, err = info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (t *Table) Replace(key []byte, d document.Document) error {
 		return errors.New("cannot write to read-only table")
 	}
 
-	d, err = t.ValidateConstraints(d)
+	d, err = info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
 		return err
 	}
@@ -412,170 +412,6 @@ func (t *Table) generateKey(d document.Document) ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, docid)
 	return buf[:n], nil
-}
-
-// ValidateConstraints check the table configuration for constraints and validates the document
-// against them. If the types defined by the constraints are different than the ones found in
-// the document, the fields are converted to these types when possible. if the conversion
-// fails, an error is returned.
-func (t *Table) ValidateConstraints(d document.Document) (document.Document, error) {
-	info, err := t.Info()
-	if err != nil {
-		return nil, err
-	}
-
-	pk := info.GetPrimaryKey()
-
-	if len(info.FieldConstraints) == 0 && pk == nil {
-		return d, nil
-	}
-
-	var fb document.FieldBuffer
-
-	// make sure the document tree is full of document.FieldBuffer or document.ValueBuffer
-	// so we can modify them and convert field types.
-	err = fb.Copy(d)
-	if err != nil {
-		return nil, err
-	}
-
-	if pk != nil {
-		err = validateConstraint(&fb, pk)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for _, fc := range info.FieldConstraints {
-		err := validateConstraint(&fb, &fc)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &fb, err
-}
-
-func validateConstraint(d document.Document, c *FieldConstraint) error {
-	// get the parent buffer
-	parent, err := getParentValue(d, c.Path)
-	if err != nil {
-		return err
-	}
-
-	switch parent.Type {
-	case document.DocumentValue:
-		// if it's a document, we can assume it's a FieldBuffer
-		buf := parent.V.(*document.FieldBuffer)
-
-		// the field to modify is the last chunk of the path
-		field := c.Path[len(c.Path)-1]
-		if field.FieldName == "" {
-			// if the field is not found we make sure it is not required
-			if c.IsNotNull {
-				if !c.HasDefaultValue() {
-					return fmt.Errorf("field %q is required and must be not null", c.Path)
-				}
-
-				return buf.Set(c.Path, c.DefaultValue)
-			}
-			return nil
-		}
-
-		v, err := buf.GetByField(field.FieldName)
-		// if the field is not found we make sure it is not required
-		if err != nil {
-			if err == document.ErrFieldNotFound {
-				if c.IsNotNull {
-					if !c.HasDefaultValue() {
-						return fmt.Errorf("field %q is required and must be not null", c.Path)
-					}
-
-					return buf.Set(c.Path, c.DefaultValue)
-				}
-				return nil
-			}
-
-			return err
-		}
-		// if the field is null we make sure it is not required
-		if v.Type == document.NullValue && c.IsNotNull {
-			return fmt.Errorf("field %q is required and must be not null", c.Path)
-		}
-
-		// if not we convert it and replace it in the buffer
-
-		// if no type was provided, no need to convert though
-		if c.Type == 0 {
-			return nil
-		}
-
-		v, err = v.CastAs(c.Type)
-		if err != nil {
-			return err
-		}
-
-		err = buf.Replace(field.FieldName, v)
-		if err != nil {
-			return err
-		}
-	case document.ArrayValue:
-		// if it's an array, we can assume it's a ValueBuffer
-		buf := parent.V.(document.ValueBuffer)
-
-		frag := c.Path[len(c.Path)-1]
-		if frag.FieldName != "" {
-			// if the fieldName is not empty, then the path must refer to a document and not an array,
-			// we simply skip
-			return nil
-		}
-
-		v, err := buf.GetByIndex(frag.ArrayIndex)
-		// if the value is not found we make sure it is not required,
-		if err != nil {
-			if err == document.ErrValueNotFound {
-				if c.IsNotNull {
-					if !c.HasDefaultValue() {
-						return fmt.Errorf("field %q is required and must be not null", c.Path)
-					}
-
-					return buf.Copy(c.DefaultValue.V.(document.Array))
-				}
-				return nil
-			}
-
-			return err
-		}
-
-		// if not we convert it and replace it in the buffer
-		if c.Type == 0 {
-			return nil
-		}
-
-		v, err = v.CastAs(c.Type)
-		if err != nil {
-			return err
-		}
-
-		err = buf.Replace(frag.ArrayIndex, v)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func getParentValue(d document.Document, p document.Path) (document.Value, error) {
-	if len(p) == 0 {
-		return document.Value{}, errors.New("empty path")
-	}
-
-	if len(p) == 1 {
-		return document.NewDocumentValue(d), nil
-	}
-
-	return p[:len(p)-1].GetValue(d)
 }
 
 // ReIndex all the indexes of the table.

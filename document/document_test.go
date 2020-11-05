@@ -171,6 +171,26 @@ func TestFieldBuffer(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("Apply", func(t *testing.T) {
+		d := document.NewFromJSON([]byte(`{
+			"a": "b",
+			"c": ["d", "e"],
+			"f": {"g": "h"}
+		}`))
+
+		buf := document.NewFieldBuffer()
+		err := buf.Copy(d)
+		require.NoError(t, err)
+
+		err = buf.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+			return document.NewIntegerValue(1), nil
+		})
+		require.NoError(t, err)
+
+		got, err := json.Marshal(buf)
+		require.JSONEq(t, `{"a": 1, "c": [1, 1], "f": {"g": 1}}`, string(got))
+	})
+
 	t.Run("UnmarshalJSON", func(t *testing.T) {
 		tests := []struct {
 			name     string

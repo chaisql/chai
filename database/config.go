@@ -81,6 +81,90 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	return nil
 }
 
+// FieldConstraints is a list of field constraint.
+type FieldConstraints []FieldConstraint
+
+// ValidateDocument calls Convert then ensures no the document validates against the field constraints.
+func (f FieldConstraints) ValidateDocument(d document.Document) (document.Document, error) {
+	fb, err := f.Convert(d)
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure no field is missing
+	for _, fc := range f {
+		v, err := fc.Path.GetValue(fb)
+		if err == nil {
+			// if field is found, it has already been converted
+			// to the right type above.
+			// check if it is required but null.
+			if v.Type == document.NullValue && fc.IsNotNull {
+				return nil, fmt.Errorf("field %q is required and must be not null", fc.Path)
+			}
+			continue
+		}
+
+		if err != document.ErrFieldNotFound {
+			return nil, err
+		}
+
+		// if field is not found
+		// check if there is a default value
+		if fc.DefaultValue.Type != 0 {
+			err = fb.Set(fc.Path, fc.DefaultValue)
+			if err != nil {
+				return nil, err
+			}
+			// if there is no default value
+			// check if field is required
+		} else if fc.IsNotNull {
+			return nil, fmt.Errorf("field %q is required and must be not null", fc.Path)
+		}
+	}
+
+	return fb, nil
+}
+
+// Convert the document using the field constraints.
+// It converts any path that has a field constraint on it into the specified type.
+// If there is no constraint on an integer field or value, it converts it into a double.
+// Default values on missing fields are not applied.
+func (f FieldConstraints) Convert(d document.Document) (*document.FieldBuffer, error) {
+	fb := document.NewFieldBuffer()
+	err := fb.Copy(d)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the document using field constraints type information.
+	// if there is a type constraint on a path, apply it.
+	// if a value is an integer and has no constraint, convert it to double.
+	err = fb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+		for _, fc := range f {
+			if !fc.Path.IsEqual(p) {
+				continue
+			}
+
+			// check if the constraint enforce a particular type
+			// and if so convert the value to the new type.
+			if fc.Type != 0 {
+				return v.CastAs(fc.Type)
+			}
+			break
+		}
+
+		// no constraint have been found for this path.
+		// check if this is an integer and convert it to double.
+		if v.Type == document.IntegerValue {
+			return v.CastAsDouble()
+		}
+
+		return v, nil
+	})
+
+	return fb, err
+}
+
 // TableInfo contains information about a table.
 type TableInfo struct {
 	// name of the table.
@@ -92,7 +176,7 @@ type TableInfo struct {
 	// it will be removed if the transaction is rolled back or set to false if its commited.
 	transactionID int64
 
-	FieldConstraints []FieldConstraint
+	FieldConstraints FieldConstraints
 }
 
 // GetPrimaryKey returns the field constraint of the primary key.

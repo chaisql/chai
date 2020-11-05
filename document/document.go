@@ -296,6 +296,60 @@ func (fb *FieldBuffer) Copy(d Document) error {
 	return nil
 }
 
+// Apply a function to all the values of the buffer.
+func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
+	path := Path{PathFragment{}}
+
+	for i, f := range fb.fields {
+		path[0].FieldName = f.Field
+
+		switch f.Value.Type {
+		case DocumentValue:
+			buf, ok := f.Value.V.(*FieldBuffer)
+			if !ok {
+				buf = NewFieldBuffer()
+				err := buf.Copy(f.Value.V.(Document))
+				if err != nil {
+					return err
+				}
+			}
+
+			err := buf.Apply(func(p Path, v Value) (Value, error) {
+				return fn(append(path, p...), v)
+			})
+			if err != nil {
+				return err
+			}
+			fb.fields[i].Value = NewDocumentValue(buf)
+		case ArrayValue:
+			buf, ok := f.Value.V.(ValueBuffer)
+			if !ok {
+				buf = NewValueBuffer()
+				err := buf.Copy(f.Value.V.(Array))
+				if err != nil {
+					return err
+				}
+			}
+
+			err := buf.Apply(func(p Path, v Value) (Value, error) {
+				return fn(append(path, p...), v)
+			})
+			if err != nil {
+				return err
+			}
+			fb.fields[i].Value = NewArrayValue(buf)
+		default:
+			var err error
+			fb.fields[i].Value, err = fn(path, f.Value)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // Len of the buffer.
 func (fb FieldBuffer) Len() int {
 	return len(fb.fields)
