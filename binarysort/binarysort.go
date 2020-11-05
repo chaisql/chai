@@ -26,8 +26,11 @@ func AppendBool(buf []byte, x bool) []byte {
 }
 
 // DecodeBool takes a byte slice and decodes it into a boolean.
-func DecodeBool(buf []byte) bool {
-	return buf[0] == 1
+func DecodeBool(buf []byte) (bool, error) {
+	if len(buf) == 0 {
+		return false, errors.New("cannot decode buffer to bool")
+	}
+	return buf[0] == 1, nil
 }
 
 // AppendUint64 takes an uint64 and returns its binary representation.
@@ -74,6 +77,9 @@ func AppendFloat64(buf []byte, x float64) []byte {
 
 // DecodeFloat64 takes a byte slice and decodes it into an float64.
 func DecodeFloat64(buf []byte) (float64, error) {
+	if len(buf) < 8 {
+		return 0, errors.New("cannot decode buffer to float64")
+	}
 	x := binary.BigEndian.Uint64(buf)
 
 	if (x & (1 << 63)) != 0 {
@@ -89,14 +95,8 @@ func DecodeFloat64(buf []byte) (float64, error) {
 func AppendBase64(buf []byte, data []byte) ([]byte, error) {
 	b := bytes.NewBuffer(buf)
 	enc := base64.NewEncoder(base64Encoding, b)
-	_, err := enc.Write(data)
-	if err != nil {
-		return nil, err
-	}
-	err = enc.Close()
-	if err != nil {
-		return nil, err
-	}
+	_, _ = enc.Write(data)
+	_ = enc.Close()
 
 	return b.Bytes(), nil
 }
@@ -111,16 +111,4 @@ func DecodeBase64(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// AppendFloatNumber takes a float and encodes it in 16 bytes
-// so that encoded integers and floats encoded using this function are naturally ordered.
-// Floats will first be converted to integer, encoded using AppendInt64,
-// then AppendFloat64 will be called with the float value.
-// If x overflows 64-bit integer space, the first 8 bytes will be equal to math.MaxInt64.
-func AppendFloatNumber(buf []byte, x float64) ([]byte, error) {
-	if x > math.MaxInt64 {
-		return AppendFloat64(AppendInt64(buf, math.MaxInt64), x), nil
-	}
-	return AppendFloat64(AppendInt64(buf, int64(x)), x), nil
 }

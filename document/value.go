@@ -354,7 +354,11 @@ func (v *Value) UnmarshalBinary(data []byte) error {
 	case TextValue:
 		v.V = string(data)
 	case BoolValue:
-		v.V = binarysort.DecodeBool(data)
+		x, err := binarysort.DecodeBool(data)
+		if err != nil {
+			return err
+		}
+		v.V = x
 	case IntegerValue:
 		x, err := binarysort.DecodeInt64(data)
 		if err != nil {
