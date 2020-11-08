@@ -488,6 +488,25 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		}
 
 		return runDumpCmd(db, cmd[1:], os.Stdout)
+	case ".save":
+		db, err := sh.getDB(ctx)
+		if err != nil {
+			return err
+		}
+
+		var engine, path string
+		if len(cmd) > 2 {
+			engine = cmd[1]
+			path = cmd[2]
+		} else if len(cmd) == 2 {
+			engine = "bolt"
+			path = cmd[1]
+		} else {
+			return fmt.Errorf("Can't save without output path")
+		}
+
+		return runSaveCmd(ctx, db, engine, path)
+
 	default:
 		return displaySuggestions(in)
 	}

@@ -2,15 +2,21 @@ package shell
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/agnivade/levenshtein"
+	"github.com/dgraph-io/badger/v2"
+
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/engine/boltengine"
 )
 
 var commands = []struct {
@@ -48,6 +54,12 @@ var commands = []struct {
 		Options:     "[table_name]",
 		DisplayName: ".dump",
 		Description: "Dump database content or table content as SQL statements.",
+	},
+	{
+		Name:        ".save",
+		Options:     "[badger?] [filename]",
+		DisplayName: ".save",
+		Description: "Save database content in the specified file.",
 	},
 }
 
@@ -362,4 +374,136 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 
 	_, err = fmt.Fprintln(w, "COMMIT;")
 	return err
+}
+
+// runSaveCommand saves the currently opened database at the given path.
+// If a path already exists, existing values in the target database will be overwritten.
+func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, path string) error {
+	tx, err := db.Begin(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Open the new database
+	var otherNg engine.Engine
+
+	switch engineName {
+	case "bolt":
+		otherNg, err = boltengine.NewEngine(path, 0660, nil)
+		if err != nil {
+			return err
+		}
+	case "badger":
+		otherNg, err = badgerengine.NewEngine(badger.DefaultOptions(path).WithLogger(nil))
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("Can't use unknown engine %s", engineName)
+	}
+
+	otherDB, err := genji.New(ctx, otherNg)
+	if err != nil {
+		return err
+	}
+	otherDB = otherDB.WithContext(ctx)
+	defer otherDB.Close()
+
+	otherTx, err := otherDB.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer otherTx.Rollback()
+
+	// Find all tables
+	tables, err := tx.Query("SELECT table_name FROM __genji_tables")
+	if err != nil {
+		return err
+	}
+	defer tables.Close()
+
+	err = tables.Iterate(func(d document.Document) error {
+		// Get table name.
+		var tableName string
+		if err := document.Scan(d, &tableName); err != nil {
+			return err
+		}
+
+		table, err := tx.GetTable(tableName)
+		if err != nil {
+			return err
+		}
+
+		ti, err := table.Info()
+		if err != nil {
+			return err
+		}
+
+		err = otherTx.CreateTable(tableName, ti)
+		if err != nil {
+			return err
+		}
+		otherTable, err := otherTx.GetTable(tableName)
+		if err != nil {
+			return err
+		}
+
+		it := table.Store.Iterator(engine.IteratorOptions{})
+		defer it.Close()
+
+		var b []byte
+		for it.Seek(nil); it.Valid(); it.Next() {
+			itm := it.Item()
+			b, err := itm.ValueCopy(b)
+			if err != nil {
+				return err
+			}
+
+			err = otherTable.Store.Put(itm.Key(), b)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := it.Err(); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	// Find all indexes
+	indexes, err := tx.Query("SELECT * FROM __genji_indexes")
+	if err != nil {
+		return err
+	}
+	defer indexes.Close()
+
+	err = indexes.Iterate(func(d document.Document) error {
+		var index database.IndexConfig
+
+		if err := index.ScanDocument(d); err != nil {
+			return err
+		}
+
+		err = otherTx.CreateIndex(index)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	err = otherTx.ReIndexAll()
+	if err != nil {
+		return err
+	}
+
+	err = otherTx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

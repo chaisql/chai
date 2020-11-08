@@ -3,10 +3,15 @@ package shell
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
+	"context"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -167,4 +172,98 @@ func TestRunDumpCmd(t *testing.T) {
 		t.Run("With FieldsConstraints/"+tt.name, testFn(true, true))
 	}
 
+}
+
+func TestSaveCommand(t *testing.T) {
+	tests := []struct {
+		engine string
+		path   string
+	}{
+		{"bolt", os.TempDir() + "/test.db"},
+		{"badger", os.TempDir()},
+	}
+
+	for _, tt := range tests {
+		t.Cleanup(func() {
+			os.RemoveAll(tt.path)
+		})
+
+		t.Run(tt.engine+"/OK", func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec(`
+				CREATE TABLE test (a);
+				CREATE INDEX idx_a ON test (a);
+			`)
+			require.NoError(t, err)
+			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 1, 2)
+			require.NoError(t, err)
+			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 2, 2)
+			require.NoError(t, err)
+			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 3, 2)
+			require.NoError(t, err)
+
+			// save the dummy database
+			err = runSaveCmd(context.Background(), db, tt.engine, tt.path)
+			require.NoError(t, err)
+
+			if tt.engine == "badger" {
+				ng, err := badgerengine.NewEngine(badger.DefaultOptions(tt.path).WithLogger(nil))
+				require.NoError(t, err)
+				db, err = genji.New(context.Background(), ng)
+				require.NoError(t, err)
+			} else {
+				db, err = genji.Open(tt.path)
+				require.NoError(t, err)
+			}
+			defer db.Close()
+
+			// ensure that the data is present
+			doc, err := db.QueryDocument("SELECT * FROM test")
+			require.NoError(t, err)
+
+			var res struct {
+				A int
+				B int
+			}
+			err = document.StructScan(doc, &res)
+			require.NoError(t, err)
+
+			require.Equal(t, 1, res.A)
+			require.Equal(t, 2, res.B)
+
+			// ensure that the index has been created
+			err = db.View(func(tx *genji.Tx) error {
+				indexes, err := tx.ListIndexes()
+				require.NoError(t, err)
+				require.Len(t, indexes, 1)
+				require.Equal(t, "idx_a", indexes[0].IndexName)
+				require.Equal(t, "test", indexes[0].TableName)
+
+				return nil
+			})
+			require.NoError(t, err)
+
+			// ensure that the data has been reindexed
+			tx, err := db.Begin(false)
+			require.NoError(t, err)
+
+			defer tx.Rollback()
+
+			idx, err := tx.GetIndex("idx_a")
+			require.NoError(t, err)
+
+			// check that by iterating through the index and finding the previously inserted values
+			var i int
+			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
+				i++
+				return nil
+			})
+
+			require.Equal(t, 3, i)
+			require.NoError(t, err)
+		})
+	}
 }
