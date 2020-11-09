@@ -263,12 +263,6 @@ func (v Value) MarshalJSON() ([]byte, error) {
 		// See https://pkg.go.dev/strconv#FormatFloat
 		prec := -1
 
-		// If fractional floating-point is 0, the precision should be 1 to add a trailing .0
-		_, frac := math.Modf(f)
-		if frac == 0 {
-			prec = 1
-		}
-
 		return strconv.AppendFloat(nil, v.V.(float64), fmt, prec, 64), nil
 	case TextValue:
 		return []byte(strconv.Quote(v.V.(string))), nil

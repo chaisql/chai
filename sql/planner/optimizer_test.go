@@ -5,11 +5,18 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/stretchr/testify/require"
 )
+
+func parsePath(t testing.TB, str string) document.Path {
+	vp, err := parser.ParsePath(str)
+	require.NoError(t, err)
+	return vp
+}
 
 func TestSplitANDConditionRule(t *testing.T) {
 	tests := []struct {
@@ -344,6 +351,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 				"foo",
 				"idx_foo_a",
 				expr.Eq(nil, nil).(planner.IndexIteratorOperator),
+				expr.Path(parsePath(t, "a")),
 				expr.IntegerValue(1),
 				scanner.ASC,
 			),
@@ -367,6 +375,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					"foo",
 					"idx_foo_b",
 					expr.Eq(nil, nil).(planner.IndexIteratorOperator),
+					expr.Path(parsePath(t, "b")),
 					expr.IntegerValue(2),
 					scanner.ASC,
 				),
@@ -395,6 +404,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 					"foo",
 					"idx_foo_c",
 					expr.Eq(nil, nil).(planner.IndexIteratorOperator),
+					expr.Path(parsePath(t, "c")),
 					expr.IntegerValue(3),
 					scanner.ASC,
 				),
@@ -432,6 +442,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 						"foo",
 						"idx_foo_c",
 						expr.Eq(nil, nil).(planner.IndexIteratorOperator),
+						expr.Path(parsePath(t, "c")),
 						expr.IntegerValue(3),
 						scanner.ASC,
 					),

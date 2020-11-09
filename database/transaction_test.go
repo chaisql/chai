@@ -361,9 +361,9 @@ func TestTxReIndex(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
 			var buf bytes.Buffer
-			err = document.NewValueEncoder(&buf).Encode(document.NewIntegerValue(int64(i)))
+			err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 			require.NoError(t, err)
 			enc := buf.Bytes()
 			require.Equal(t, enc, v)
@@ -442,9 +442,9 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		var i int
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
 			var buf bytes.Buffer
-			err = document.NewValueEncoder(&buf).Encode(document.NewIntegerValue(int64(i)))
+			err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 			require.NoError(t, err)
 			enc := buf.Bytes()
 			require.Equal(t, enc, v)
@@ -458,9 +458,9 @@ func TestReIndexAll(t *testing.T) {
 		require.NoError(t, err)
 
 		i = 0
-		err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
 			var buf bytes.Buffer
-			err = document.NewValueEncoder(&buf).Encode(document.NewIntegerValue(int64(i)))
+			err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 			require.NoError(t, err)
 			enc := buf.Bytes()
 			require.Equal(t, enc, v)

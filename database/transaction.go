@@ -276,7 +276,7 @@ func (tx *Transaction) GetIndex(name string) (*Index, error) {
 		return nil, err
 	}
 
-	idx := index.NewIndex(tx.tx, opts.IndexName, index.Options{
+	idx := index.New(tx.tx, opts.IndexName, index.Options{
 		Unique: opts.Unique,
 		Type:   opts.Type,
 	})
@@ -298,7 +298,7 @@ func (tx *Transaction) DropIndex(name string) error {
 		return err
 	}
 
-	idx := index.NewIndex(tx.tx, opts.IndexName, index.Options{
+	idx := index.New(tx.tx, opts.IndexName, index.Options{
 		Unique: opts.Unique,
 		Type:   opts.Type,
 	})

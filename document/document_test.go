@@ -183,6 +183,10 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 
 		err = buf.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+			if v.Type == document.ArrayValue || v.Type == document.DocumentValue {
+				return v, nil
+			}
+
 			return document.NewIntegerValue(1), nil
 		})
 		require.NoError(t, err)

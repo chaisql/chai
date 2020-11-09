@@ -58,22 +58,25 @@ type indexInputNode struct {
 	table            *database.Table
 	index            *database.Index
 	iop              IndexIteratorOperator
-	e                expr.Expr
+	path             document.Path
+	filter           expr.Expr
+	evaluatedFilter  document.Value
 	orderByDirection scanner.Token
 }
 
 var _ inputNode = (*indexInputNode)(nil)
 
 // NewIndexInputNode creates a node that can be used to read documents using an index.
-func NewIndexInputNode(tableName, indexName string, iop IndexIteratorOperator, filter expr.Expr, orderByDirection scanner.Token) Node {
+func NewIndexInputNode(tableName, indexName string, iop IndexIteratorOperator, path expr.Path, filter expr.Expr, orderByDirection scanner.Token) Node {
 	return &indexInputNode{
 		node: node{
 			op: Input,
 		},
 		tableName:        tableName,
 		indexName:        indexName,
+		path:             document.Path(path),
 		iop:              iop,
-		e:                filter,
+		filter:           filter,
 		orderByDirection: orderByDirection,
 	}
 }
@@ -95,6 +98,38 @@ func (n *indexInputNode) Bind(tx *database.Transaction, params []expr.Param) (er
 
 	n.tx = tx
 	n.params = params
+
+	// evaluate the filter expression
+	n.evaluatedFilter, err = n.filter.Eval(expr.EvalStack{
+		Tx:     n.tx,
+		Params: n.params,
+	})
+	if err != nil {
+		return
+	}
+
+	// if the indexed field has no constraint and the filter is an int, cast that int to a double.
+	if n.evaluatedFilter.Type == document.IntegerValue {
+		info, err := n.table.Info()
+		if err != nil {
+			return err
+		}
+
+		shouldBeConverted := true
+		for _, fc := range info.FieldConstraints {
+			if fc.Path.IsEqual(n.path) && fc.Type != 0 {
+				shouldBeConverted = false
+				break
+			}
+		}
+
+		if shouldBeConverted {
+			n.evaluatedFilter, err = n.evaluatedFilter.CastAsDouble()
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return
 }
 
@@ -104,7 +139,8 @@ func (n *indexInputNode) buildStream() (document.Stream, error) {
 		tb:     n.table,
 		params: n.params,
 		index:  n.index,
-		e:      n.e,
+		path:   n.path,
+		filter: n.evaluatedFilter,
 		iop:    n.iop,
 	}), nil
 }
@@ -124,15 +160,16 @@ type indexIterator struct {
 	tb               *database.Table
 	params           []expr.Param
 	index            *database.Index
+	path             document.Path
 	iop              IndexIteratorOperator
-	e                expr.Expr
+	filter           document.Value
 	orderByDirection scanner.Token
 }
 
 var errStop = errors.New("stop")
 
 func (it indexIterator) Iterate(fn func(d document.Document) error) error {
-	if it.e == nil {
+	if it.filter.Type == 0 {
 		var err error
 
 		if it.orderByDirection == scanner.DESC {
@@ -158,13 +195,5 @@ func (it indexIterator) Iterate(fn func(d document.Document) error) error {
 		return err
 	}
 
-	v, err := it.e.Eval(expr.EvalStack{
-		Tx:     it.tx,
-		Params: it.params,
-	})
-	if err != nil {
-		return err
-	}
-
-	return it.iop.IterateIndex(it.index, it.tb, v, fn)
+	return it.iop.IterateIndex(it.index, it.tb, it.filter, fn)
 }

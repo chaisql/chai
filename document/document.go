@@ -299,9 +299,16 @@ func (fb *FieldBuffer) Copy(d Document) error {
 // Apply a function to all the values of the buffer.
 func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 	path := Path{PathFragment{}}
+	var err error
 
 	for i, f := range fb.fields {
 		path[0].FieldName = f.Field
+
+		f.Value, err = fn(path, f.Value)
+		if err != nil {
+			return err
+		}
+		fb.fields[i].Value = f.Value
 
 		switch f.Value.Type {
 		case DocumentValue:
@@ -338,12 +345,6 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 				return err
 			}
 			fb.fields[i].Value = NewArrayValue(buf)
-		default:
-			var err error
-			fb.fields[i].Value, err = fn(path, f.Value)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
