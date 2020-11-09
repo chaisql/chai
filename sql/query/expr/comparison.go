@@ -240,21 +240,10 @@ func Lt(a, b Expr) Expr {
 }
 
 func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	var err error
-
-	if v.Type == document.IntegerValue {
-		v, err = v.CastAsDouble()
-		if err != nil {
-			return err
-		}
-	}
-
-	var b bytes.Buffer
-	err = document.NewValueEncoder(&b).Encode(v)
+	enc, err := idx.EncodeValue(v)
 	if err != nil {
 		return err
 	}
-	enc := b.Bytes()
 
 	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) <= 0 {
@@ -328,21 +317,10 @@ func Lte(a, b Expr) Expr {
 }
 
 func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	var err error
-
-	if v.Type == document.IntegerValue {
-		v, err = v.CastAsDouble()
-		if err != nil {
-			return err
-		}
-	}
-
-	var b bytes.Buffer
-	err = document.NewValueEncoder(&b).Encode(v)
+	enc, err := idx.EncodeValue(v)
 	if err != nil {
 		return err
 	}
-	enc := b.Bytes()
 
 	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
 		if bytes.Compare(enc, val) < 0 {

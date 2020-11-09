@@ -21,8 +21,8 @@ func TestValueString(t *testing.T) {
 		{"bool", document.NewBoolValue(true), "true"},
 		{"int", document.NewIntegerValue(10), "10"},
 		{"double", document.NewDoubleValue(10.1), "10.1"},
-		{"double with trailing .0", document.NewDoubleValue(10), "10.0"},
-		{"big double with trailing .0", document.NewDoubleValue(1e21), "1.0e+21"},
+		{"double with no decimal", document.NewDoubleValue(10), "10"},
+		{"big double", document.NewDoubleValue(1e21), "1e+21"},
 		{"document", document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))), "{\"a\": 10}"},
 		{"array", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(10))), "[10]"},
 	}

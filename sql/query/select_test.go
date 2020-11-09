@@ -297,3 +297,63 @@ func TestDistinct(t *testing.T) {
 		})
 	}
 }
+
+// func TestSelectIndexedDoubleAndIntegers(t *testing.T) {
+// 	tests := []struct {
+// 		a      interface{}
+// 		query  string
+// 		isTrue bool
+// 		param  interface{}
+// 	}{
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a = ?", true, math.MaxInt64},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a > ?", false, math.MaxInt64},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a > ?", true, math.MaxInt64 - 1},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a >= ?", true, math.MaxInt64},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a >= 9223372036854775807.0", true, nil},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a > 9223372036854775800.0", false, nil},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a < 9223372036854775800.0", false, nil},
+// 		{math.MaxInt64, "SELECT true FROM test WHERE a = 9223372036854775800.0", true, nil},
+// 	}
+
+// 	for _, indexed := range []bool{false, true} {
+// 		for _, test := range tests {
+// 			t.Run(fmt.Sprintf("indexed: %v / %q", indexed, test.query), func(t *testing.T) {
+// 				fmt.Println("---")
+// 				db, err := genji.Open(":memory:")
+// 				require.NoError(t, err)
+// 				defer db.Close()
+
+// 				tx, err := db.Begin(true)
+// 				require.NoError(t, err)
+// 				defer tx.Rollback()
+
+// 				err = tx.Exec("CREATE TABLE test")
+// 				require.NoError(t, err)
+
+// 				if indexed {
+// 					err = tx.Exec("CREATE INDEX idx_foo_a ON test(a)")
+// 					require.NoError(t, err)
+// 				}
+
+// 				// a = math.MaxInt64
+// 				err = tx.Exec("INSERT INTO test (a) VALUES (?)", test.a)
+// 				require.NoError(t, err)
+
+// 				var params []interface{}
+// 				if test.param != nil {
+// 					params = append(params, test.param)
+// 				}
+// 				doc, err := tx.QueryDocument(test.query, params...)
+// 				if test.isTrue {
+// 					require.NoError(t, err)
+// 					var got bool
+// 					err = document.Scan(doc, &got)
+// 					require.NoError(t, err)
+// 					require.True(t, got)
+// 				} else {
+// 					require.Equal(t, database.ErrDocumentNotFound, err)
+// 				}
+// 			})
+// 		}
+// 	}
+// }

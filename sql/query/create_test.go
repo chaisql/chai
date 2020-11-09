@@ -82,7 +82,7 @@ func TestCreateTable(t *testing.T) {
 					return err
 				}
 
-				require.Equal(t, []database.FieldConstraint{
+				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "d"), Type: document.DoubleValue},
 					{Path: parsePath(t, "b"), Type: document.BoolValue},
 				}, info.FieldConstraints)
@@ -110,7 +110,7 @@ func TestCreateTable(t *testing.T) {
 					return err
 				}
 
-				require.Equal(t, []database.FieldConstraint{
+				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
 					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
 					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
@@ -144,7 +144,7 @@ func TestCreateTable(t *testing.T) {
 					return err
 				}
 
-				require.Equal(t, []database.FieldConstraint{
+				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
 					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
 					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},

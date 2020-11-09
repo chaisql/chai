@@ -438,13 +438,14 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 		return nil
 	}
 
+	// determine if the operator can read from the index
 	iop, ok := op.(IndexIteratorOperator)
 	if !ok {
 		return nil
 	}
 
 	// determine if the operator can benefit from an index
-	ok, field, e := opCanUseIndex(op)
+	ok, path, e := opCanUseIndex(op)
 	if !ok {
 		return nil
 	}
@@ -455,12 +456,12 @@ func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map
 	}
 
 	// now, we look if an index exists for that path
-	idx, ok := indexes[field.String()]
+	idx, ok := indexes[path.String()]
 	if !ok {
 		return nil
 	}
 
-	in := NewIndexInputNode(tableName, idx.Opts.IndexName, iop, e, scanner.ASC).(*indexInputNode)
+	in := NewIndexInputNode(tableName, idx.Opts.IndexName, iop, path, e, scanner.ASC).(*indexInputNode)
 	in.index = &idx
 
 	return in

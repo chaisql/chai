@@ -247,7 +247,7 @@ func (t *Table) Indexes() (map[string]Index, error) {
 				return err
 			}
 
-			idx := index.NewIndex(t.tx.tx, opts.IndexName, index.Options{
+			idx := index.New(t.tx.tx, opts.IndexName, index.Options{
 				Unique: opts.Unique,
 				Type:   opts.Type,
 			})

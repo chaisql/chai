@@ -114,7 +114,7 @@ func TestTableGetDocument(t *testing.T) {
 
 		// create two documents, one with an additional field
 		doc1 := newDocument()
-		vc := document.NewIntegerValue(40)
+		vc := document.NewDoubleValue(40)
 		doc1.Add("fieldc", vc)
 		doc2 := newDocument()
 
@@ -375,6 +375,27 @@ func TestTableInsert(t *testing.T) {
 		v, err = d.GetByField("bat")
 		require.NoError(t, err)
 		require.Equal(t, document.NewDoubleValue(20), v)
+	})
+
+	t.Run("Should fail if the fields cannot be converted to specified field constraints", func(t *testing.T) {
+		tx, cleanup := newTestDB(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", &database.TableInfo{
+			FieldConstraints: []database.FieldConstraint{
+				{parsePath(t, "foo"), document.DoubleValue, false, false, document.Value{}},
+			},
+		})
+		require.NoError(t, err)
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(1))))
+
+		// insert
+		_, err = tb.Insert(doc)
+		require.Error(t, err)
 	})
 
 	t.Run("Should fail if there is a not null field constraint on a document field and the field is null or missing", func(t *testing.T) {
@@ -709,7 +730,7 @@ func TestTableReIndex(t *testing.T) {
 
 		countIndexElems := func(idx *database.Index) int {
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte, isEqual bool) error {
+			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
 				i++
 				return nil
 			})

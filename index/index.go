@@ -18,6 +18,7 @@ const (
 var valueTypes = []document.ValueType{
 	document.NullValue,
 	document.BoolValue,
+	document.IntegerValue,
 	document.DoubleValue,
 	document.TextValue,
 	document.BlobValue,
@@ -48,8 +49,8 @@ type Options struct {
 	Type document.ValueType
 }
 
-// NewIndex creates an index that associates a value with a list of keys.
-func NewIndex(tx engine.Transaction, idxName string, opts Options) *Index {
+// New creates an index that associates a value with a list of keys.
+func New(tx engine.Transaction, idxName string, opts Options) *Index {
 	return &Index{
 		tx:        tx,
 		storeName: append([]byte(storePrefix), idxName...),
@@ -80,7 +81,7 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 	}
 
 	// encode the value we are going to use as a key
-	buf, err := idx.encodeValue(v)
+	buf, err := idx.EncodeValue(v)
 	if err != nil {
 		return err
 	}
@@ -171,6 +172,8 @@ func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []by
 }
 
 func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
+	// if index and pivot are typed but not of the same type
+	// return no result
 	if idx.Type != 0 && pivot.Type != 0 && idx.Type != pivot.Type {
 		return nil
 	}
@@ -185,7 +188,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 
 	var enc []byte
 	if pivot.V != nil {
-		enc, err = idx.encodeValue(pivot)
+		enc, err = idx.EncodeValue(pivot)
 		if err != nil {
 			return err
 		}
@@ -223,11 +226,11 @@ func (idx *Index) Truncate() error {
 	return nil
 }
 
-// encode the value we are going to use as a key
-// if the index is typed, encode the value without expecting
+// EncodeValue encodes the value we are going to use as a key,
+// If the index is typed, encode the value without expecting
 // the presence of other types.
-// if not, encode so that order is preserved regardless of the type.
-func (idx *Index) encodeValue(v document.Value) ([]byte, error) {
+// Ff not, encode so that order is preserved regardless of the type.
+func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
 	if idx.Type != 0 {
 		return v.MarshalBinary()
 	}
@@ -263,7 +266,7 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 	var err error
 
 	if pivot.V != nil {
-		seek, err = idx.encodeValue(pivot)
+		seek, err = idx.EncodeValue(pivot)
 		if err != nil {
 			return err
 		}
@@ -271,10 +274,6 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		if reverse {
 			seek = append(seek, 0xFF)
 		}
-	}
-
-	if pivot.Type == document.IntegerValue {
-		pivot.Type = document.DoubleValue
 	}
 
 	if pivot.Type != 0 && pivot.V == nil {
@@ -291,6 +290,7 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 	for it.Seek(seek); it.Valid(); it.Next() {
 		itm := it.Item()
 
+		// if index is untyped and pivot is typed, only iterate on values with the same type as pivot
 		if idx.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
 			return nil
 		}

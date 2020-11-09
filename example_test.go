@@ -111,7 +111,7 @@ func Example() {
 			if err != nil {
 				return false, err
 			}
-			return v.V.(int64)%2 == 0, err
+			return int64(v.V.(float64))%2 == 0, err
 		}).
 		// Enrich the documents with a new field
 		Map(func(d document.Document) (document.Document, error) {

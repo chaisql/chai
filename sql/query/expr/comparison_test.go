@@ -3,8 +3,11 @@ package expr_test
 import (
 	"testing"
 
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/stretchr/testify/require"
 )
 
 func TestComparisonExpr(t *testing.T) {
@@ -155,6 +158,81 @@ func TestComparisonExprNodocument(t *testing.T) {
 					testExpr(t, test.expr, emptyStack, test.res, test.fails)
 				})
 			}
+		})
+	}
+}
+
+func TestIndexedComparisonExpr(t *testing.T) {
+	type idxOp interface {
+		IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error
+	}
+
+	tests := []struct {
+		op       expr.Expr
+		v        document.Value
+		expected []interface{}
+		fails    bool
+	}{
+		{expr.Eq(nil, nil), document.NewDoubleValue(5), []interface{}{5.0}, false},
+		{expr.Eq(nil, nil), document.NewDoubleValue(50), nil, false},
+		{expr.Gt(nil, nil), document.NewDoubleValue(0), []interface{}{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, false},
+		{expr.Gt(nil, nil), document.NewDoubleValue(10), nil, false},
+		{expr.Gt(nil, nil), document.NewDoubleValue(-100), []interface{}{-10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, false},
+		{expr.Gte(nil, nil), document.NewDoubleValue(0), []interface{}{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, false},
+		{expr.Gte(nil, nil), document.NewDoubleValue(10), nil, false},
+		{expr.Gte(nil, nil), document.NewDoubleValue(-100), []interface{}{-10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, false},
+		{expr.Lt(nil, nil), document.NewDoubleValue(0), []interface{}{-10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0}, false},
+		{expr.Lt(nil, nil), document.NewDoubleValue(-11), nil, false},
+		{expr.Lt(nil, nil), document.NewDoubleValue(100), []interface{}{-10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, false},
+		{expr.Lte(nil, nil), document.NewDoubleValue(0), []interface{}{-10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0}, false},
+		{expr.Lte(nil, nil), document.NewDoubleValue(-11), nil, false},
+		{expr.Lte(nil, nil), document.NewDoubleValue(100), []interface{}{-10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, false},
+	}
+
+	db, err := genji.Open(":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	err = db.Update(func(tx *genji.Tx) error {
+		err = tx.Exec("CREATE TABLE foo; CREATE INDEX idx_foo ON foo(a)")
+		if err != nil {
+			return err
+		}
+		for i := -10; i < 10; i++ {
+			err = tx.Exec("INSERT INTO foo(a) VALUES (?)", i)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	for _, test := range tests {
+		t.Run(test.op.(expr.Operator).Token().String(), func(t *testing.T) {
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			tb, err := tx.GetTable("foo")
+			require.NoError(t, err)
+			idx, err := tx.GetIndex("idx_foo")
+			require.NoError(t, err)
+
+			var docs []interface{}
+
+			err = test.op.(idxOp).IterateIndex(idx, tb, test.v, func(d document.Document) error {
+				v, err := d.GetByField("a")
+				if err != nil {
+					return err
+				}
+				docs = append(docs, v.V)
+				return nil
+			})
+			require.NoError(t, err)
+
+			require.Equal(t, test.expected, docs)
 		})
 	}
 }
