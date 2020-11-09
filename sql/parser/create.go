@@ -175,10 +175,6 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 				return err
 			}
 
-			if fc.Type != 0 && fc.Type != d.Type {
-				return &ParseError{Message: fmt.Sprintf("default value must have type %s, got %s", fc.Type, d.Type)}
-			}
-
 			// if it's already default value we return an error
 			if fc.HasDefaultValue() {
 				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)

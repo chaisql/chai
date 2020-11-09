@@ -131,10 +131,30 @@ func (tree *constraintTree) search(path document.Path) *constraintNode {
 }
 
 func checkConstraints(constraints []database.FieldConstraint) error {
+	var err error
+
 	tree := constraintTree{}
-	for _, fc := range constraints {
+	for i, fc := range constraints {
 		if err := tree.insert(fc.Path, fc.Type); err != nil {
 			return fmt.Errorf("incoherent field constraint: %w", err)
+		}
+
+		if fc.DefaultValue.Type == 0 {
+			continue
+		}
+
+		targetType := fc.Type
+
+		// if there is no type constraint, numbers must be converted to double
+		if fc.DefaultValue.Type == document.IntegerValue && fc.Type == 0 {
+			targetType = document.DoubleValue
+		}
+
+		if targetType != 0 {
+			constraints[i].DefaultValue, err = fc.DefaultValue.CastAs(targetType)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

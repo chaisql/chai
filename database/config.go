@@ -81,10 +81,10 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 	return nil
 }
 
-// FieldConstraints is a list of field constraint.
+// FieldConstraints is a list of field constraints.
 type FieldConstraints []FieldConstraint
 
-// ValidateDocument calls Convert then ensures no the document validates against the field constraints.
+// ValidateDocument calls Convert then ensures the document validates against the field constraints.
 func (f FieldConstraints) ValidateDocument(d document.Document) (document.Document, error) {
 	fb, err := f.Convert(d)
 	if err != nil {
