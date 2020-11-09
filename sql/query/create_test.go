@@ -161,6 +161,46 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 		})
 
+		t.Run("default values", func(t *testing.T) {
+			tests := []struct {
+				name        string
+				query       string
+				constraints database.FieldConstraints
+				fails       bool
+			}{
+				{"With default, no type and integer default", "CREATE TABLE test(foo DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), DefaultValue: document.NewDoubleValue(10)}}, false},
+				{"With default, double type and integer default", "CREATE TABLE test(foo DOUBLE DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.DoubleValue, DefaultValue: document.NewDoubleValue(10)}}, false},
+				{"With default, some type and compatible default", "CREATE TABLE test(foo BOOL DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.BoolValue, DefaultValue: document.NewBoolValue(true)}}, false},
+				{"With default, some type and incompatible default", "CREATE TABLE test(foo BOOL DEFAULT 10.5)", nil, true},
+			}
+
+			for _, test := range tests {
+				t.Run(test.name, func(t *testing.T) {
+					db, err := genji.Open(":memory:")
+					require.NoError(t, err)
+					defer db.Close()
+
+					err = db.Exec(test.query)
+					if test.fails {
+						require.Error(t, err)
+						return
+					}
+					require.NoError(t, err)
+
+					err = db.View(func(tx *genji.Tx) error {
+						tb, err := tx.GetTable("test")
+						info, err := tb.Info()
+						if err != nil {
+							return err
+						}
+
+						require.Equal(t, test.constraints, info.FieldConstraints)
+						return err
+					})
+					require.NoError(t, err)
+				})
+			}
+		})
 	})
 }
 
