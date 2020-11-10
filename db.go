@@ -13,13 +13,14 @@ import (
 type DB struct {
 	DB *database.Database
 
-	Context context.Context
+	context context.Context
 }
 
+// WithContext creates a new database handle using the given context for every operation.
 func (db *DB) WithContext(ctx context.Context) *DB {
 	return &DB{
 		DB:      db.DB,
-		Context: ctx,
+		context: ctx,
 	}
 }
 
@@ -31,7 +32,7 @@ func (db *DB) Close() error {
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.DB.BeginTx(db.Context, &database.TxOptions{
+	tx, err := db.DB.BeginTx(db.context, &database.TxOptions{
 		ReadOnly: !writable,
 	})
 	if err != nil {
@@ -88,7 +89,7 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 		return nil, err
 	}
 
-	return pq.Run(db.Context, db.DB, argsToParams(args))
+	return pq.Run(db.context, db.DB, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
