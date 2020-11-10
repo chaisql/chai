@@ -32,12 +32,19 @@ func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, erro
 
 // Begin creates a transaction using Bolt's transaction API.
 func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	tx, err := e.DB.Begin(opts.Writable)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Transaction{
+		ctx:      ctx,
 		tx:       tx,
 		writable: opts.Writable,
 	}, nil
@@ -50,6 +57,7 @@ func (e *Engine) Close() error {
 
 // A Transaction uses Bolt's transactions.
 type Transaction struct {
+	ctx      context.Context
 	tx       *bolt.Tx
 	writable bool
 }
@@ -61,16 +69,35 @@ func (t *Transaction) Rollback() error {
 		return err
 	}
 
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+	}
+
 	return nil
 }
 
 // Commit the transaction.
 func (t *Transaction) Commit() error {
+	select {
+	case <-t.ctx.Done():
+		_ = t.Rollback()
+		return t.ctx.Err()
+	default:
+	}
+
 	return t.tx.Commit()
 }
 
 // GetStore returns a store by name. The store uses a Bolt bucket.
 func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
+	select {
+	case <-t.ctx.Done():
+		return nil, t.ctx.Err()
+	default:
+	}
+
 	b := t.tx.Bucket(name)
 	if b == nil {
 		return nil, engine.ErrStoreNotFound
@@ -80,12 +107,19 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 		bucket: b,
 		tx:     t.tx,
 		name:   name,
+		ctx:    t.ctx,
 	}, nil
 }
 
 // CreateStore creates a bolt bucket and returns a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
 func (t *Transaction) CreateStore(name []byte) error {
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+	}
+
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -100,6 +134,12 @@ func (t *Transaction) CreateStore(name []byte) error {
 
 // DropStore deletes the underlying bucket.
 func (t *Transaction) DropStore(name []byte) error {
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+	}
+
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}

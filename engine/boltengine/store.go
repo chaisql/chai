@@ -2,6 +2,7 @@ package boltengine
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/genjidb/genji/engine"
 	bolt "go.etcd.io/bbolt"
@@ -12,10 +13,17 @@ type Store struct {
 	bucket *bolt.Bucket
 	tx     *bolt.Tx
 	name   []byte
+	ctx    context.Context
 }
 
 // Put stores a key value pair. If it already exists, it overrides it.
 func (s *Store) Put(k, v []byte) error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
@@ -25,6 +33,12 @@ func (s *Store) Put(k, v []byte) error {
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
 func (s *Store) Get(k []byte) ([]byte, error) {
+	select {
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	default:
+	}
+
 	v := s.bucket.Get(k)
 	if v == nil {
 		return nil, engine.ErrKeyNotFound
@@ -35,6 +49,12 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 
 // Delete a record by key. If not found, returns table.ErrDocumentNotFound.
 func (s *Store) Delete(k []byte) error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
@@ -49,6 +69,12 @@ func (s *Store) Delete(k []byte) error {
 
 // Truncate deletes all the records of the store.
 func (s *Store) Truncate() error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
 	}
@@ -64,6 +90,12 @@ func (s *Store) Truncate() error {
 
 // NextSequence returns a monotonically increasing integer.
 func (s *Store) NextSequence() (uint64, error) {
+	select {
+	case <-s.ctx.Done():
+		return 0, s.ctx.Err()
+	default:
+	}
+
 	if !s.bucket.Writable() {
 		return 0, engine.ErrTransactionReadOnly
 	}
@@ -76,6 +108,7 @@ func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		c:       s.bucket.Cursor(),
 		reverse: opts.Reverse,
+		ctx:     s.ctx,
 	}
 }
 
@@ -83,9 +116,18 @@ type iterator struct {
 	c       *bolt.Cursor
 	reverse bool
 	item    boltItem
+	err     error
+	ctx     context.Context
 }
 
 func (it *iterator) Seek(pivot []byte) {
+	select {
+	case <-it.ctx.Done():
+		it.err = it.ctx.Err()
+		return
+	default:
+	}
+
 	if !it.reverse {
 		it.item.k, it.item.v = it.c.Seek(pivot)
 		return
@@ -105,7 +147,7 @@ func (it *iterator) Seek(pivot []byte) {
 }
 
 func (it *iterator) Valid() bool {
-	return it.item.k != nil
+	return it.item.k != nil && it.err == nil
 }
 
 func (it *iterator) Next() {
@@ -117,7 +159,7 @@ func (it *iterator) Next() {
 }
 
 func (it *iterator) Err() error {
-	return nil
+	return it.err
 }
 
 func (it *iterator) Item() engine.Item {
