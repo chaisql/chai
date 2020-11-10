@@ -19,6 +19,6 @@ func New(ctx context.Context, ng engine.Engine) (*DB, error) {
 
 	return &DB{
 		DB:      db,
-		Context: context.Background(),
+		context: context.Background(),
 	}, nil
 }
