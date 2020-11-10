@@ -31,7 +31,7 @@ func TestSuite(t *testing.T, builder Builder) {
 	}{
 		{"Engine", TestEngine},
 		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
-		{"Transaction/Store", TestTransactionStore},
+		{"Transaction/Store", TestTransactionGetStore},
 		{"Transaction/CreateStore", TestTransactionCreateStore},
 		{"Transaction/DropStore", TestTransactionDropStore},
 		{"Store/Iterator", TestStoreIterator},
@@ -95,6 +95,35 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.Error(t, err)
 	})
 
+	t.Run("Commit after context canceled should fail", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		tx, err := ng.Begin(ctx, engine.TxOptions{
+			Writable: true,
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, tx.CreateStore([]byte("test")))
+		st, err := tx.GetStore([]byte("test"))
+		require.NoError(t, err)
+		err = st.Put([]byte("a"), []byte("b"))
+		require.NoError(t, err)
+
+		cancel()
+
+		err = tx.Commit()
+		require.Error(t, err)
+
+		// ensure data has not been persisted
+		tx, err = ng.Begin(context.Background(), engine.TxOptions{
+			Writable: false,
+		})
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		st, err = tx.GetStore([]byte("test"))
+		require.Error(t, err)
+	})
+
 	t.Run("Rollback after commit should not fail", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
@@ -135,6 +164,19 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 
 		err = tx.Rollback()
 		require.NoError(t, err)
+	})
+
+	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		tx, err := ng.Begin(ctx, engine.TxOptions{
+			Writable: true,
+		})
+		require.NoError(t, err)
+
+		cancel()
+
+		err = tx.Rollback()
+		require.Equal(t, context.Canceled, err)
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
@@ -389,10 +431,29 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 		err = tx.CreateStore([]byte("store"))
 		require.Equal(t, engine.ErrStoreAlreadyExists, err)
 	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		tx, err := ng.Begin(ctx, engine.TxOptions{
+			Writable: true,
+		})
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		cancel()
+		err = tx.CreateStore([]byte("store"))
+		require.Equal(t, context.Canceled, err)
+	})
 }
 
-// TestTransactionStore verifies Store behaviour.
-func TestTransactionStore(t *testing.T, builder Builder) {
+// TestTransactionGetStore verifies GetStore behaviour.
+func TestTransactionGetStore(t *testing.T, builder Builder) {
 	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
@@ -451,6 +512,30 @@ func TestTransactionStore(t *testing.T, builder Builder) {
 		_, err = stb.Get([]byte("foo"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		tx, err := ng.Begin(ctx, engine.TxOptions{
+			Writable: true,
+		})
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		// create two stores
+		err = tx.CreateStore([]byte("store"))
+		require.NoError(t, err)
+
+		cancel()
+
+		_, err = tx.GetStore([]byte("store"))
+		require.Equal(t, context.Canceled, err)
+	})
 }
 
 // TestTransactionDropStore verifies DropStore behaviour.
@@ -494,11 +579,39 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		err = tx.DropStore([]byte("store"))
 		require.Equal(t, engine.ErrStoreNotFound, err)
 	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+		defer func() {
+			require.NoError(t, ng.Close())
+		}()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		tx, err := ng.Begin(ctx, engine.TxOptions{
+			Writable: true,
+		})
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		// create two stores
+		err = tx.CreateStore([]byte("store"))
+		require.NoError(t, err)
+
+		cancel()
+
+		err = tx.DropStore([]byte("store"))
+		require.Equal(t, context.Canceled, err)
+	})
 }
 
 func storeBuilder(t testing.TB, builder Builder) (engine.Store, func()) {
+	return storeBuilderWithContext(context.Background(), t, builder)
+}
+
+func storeBuilderWithContext(ctx context.Context, t testing.TB, builder Builder) (engine.Store, func()) {
 	ng, cleanup := builder()
-	tx, err := ng.Begin(context.Background(), engine.TxOptions{
+	tx, err := ng.Begin(ctx, engine.TxOptions{
 		Writable: true,
 	})
 	require.NoError(t, err)
@@ -538,6 +651,31 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		t.Run("Reverse: true", func(t *testing.T) {
 			fn(t, true)
 		})
+	})
+
+	t.Run("Should stop the iteration if context canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, cleanup := storeBuilderWithContext(ctx, t, builder)
+		defer cleanup()
+
+		for i := 1; i <= 10; i++ {
+			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
+			require.NoError(t, err)
+		}
+
+		it := st.Iterator(engine.IteratorOptions{})
+		defer it.Close()
+
+		cancel()
+
+		var i int
+		for it.Seek(nil); it.Valid(); it.Next() {
+			i++
+		}
+		require.Equal(t, context.Canceled, it.Err())
+		require.Zero(t, i)
 	})
 
 	t.Run("With no pivot, should iterate over all documents in order", func(t *testing.T) {
@@ -771,6 +909,18 @@ func TestStorePut(t *testing.T, builder Builder) {
 		err = st.Put([]byte("foo"), []byte(""))
 		require.NoError(t, err)
 	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, cleanup := storeBuilderWithContext(ctx, t, builder)
+		defer cleanup()
+
+		cancel()
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.Equal(t, context.Canceled, err)
+	})
 }
 
 // TestStoreGet verifies Get behaviour.
@@ -800,6 +950,21 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		v, err = st.Get([]byte("bar"))
 		require.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
+	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, cleanup := storeBuilderWithContext(ctx, t, builder)
+		defer cleanup()
+
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+
+		cancel()
+		_, err = st.Get([]byte("foo"))
+		require.Equal(t, context.Canceled, err)
 	})
 }
 
@@ -839,6 +1004,21 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
 	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, cleanup := storeBuilderWithContext(ctx, t, builder)
+		defer cleanup()
+
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+
+		cancel()
+		err = st.Delete([]byte("foo"))
+		require.Equal(t, context.Canceled, err)
+	})
 }
 
 // TestStoreTruncate verifies Truncate behaviour.
@@ -868,6 +1048,21 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		it.Seek(nil)
 		require.NoError(t, it.Err())
 		require.False(t, it.Valid())
+	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, cleanup := storeBuilderWithContext(ctx, t, builder)
+		defer cleanup()
+
+		err := st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+
+		cancel()
+		err = st.Truncate()
+		require.Equal(t, context.Canceled, err)
 	})
 }
 
@@ -948,6 +1143,18 @@ func TestStoreNextSequence(t *testing.T, builder Builder) {
 		s2, err := st.NextSequence()
 		require.NoError(t, err)
 		require.Equal(t, s1+1, s2)
+	})
+
+	t.Run("Should fail if context canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, cleanup := storeBuilderWithContext(ctx, t, builder)
+		defer cleanup()
+
+		cancel()
+		_, err := st.NextSequence()
+		require.Equal(t, context.Canceled, err)
 	})
 }
 
