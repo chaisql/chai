@@ -43,6 +43,12 @@ type storeTx struct {
 }
 
 func (s *storeTx) Put(k, v []byte) error {
+	select {
+	case <-s.tx.ctx.Done():
+		return s.tx.ctx.Err()
+	default:
+	}
+
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -82,6 +88,12 @@ func (s *storeTx) Put(k, v []byte) error {
 }
 
 func (s *storeTx) Get(k []byte) ([]byte, error) {
+	select {
+	case <-s.tx.ctx.Done():
+		return nil, s.tx.ctx.Err()
+	default:
+	}
+
 	it := s.tr.Get(&item{k: k})
 
 	if it == nil {
@@ -105,6 +117,12 @@ func (s *storeTx) Get(k []byte) ([]byte, error) {
 // which causes iterators to behave incorrectly when looping
 // and deleting at the same time.
 func (s *storeTx) Delete(k []byte) error {
+	select {
+	case <-s.tx.ctx.Done():
+		return s.tx.ctx.Err()
+	default:
+	}
+
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -145,6 +163,12 @@ func (s *storeTx) Delete(k []byte) error {
 // one. The current tree will be garbage collected
 // once the transaction is commited.
 func (s *storeTx) Truncate() error {
+	select {
+	case <-s.tx.ctx.Done():
+		return s.tx.ctx.Err()
+	default:
+	}
+
 	if !s.tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -162,6 +186,12 @@ func (s *storeTx) Truncate() error {
 
 // NextSequence returns a monotonically increasing integer.
 func (s *storeTx) NextSequence() (uint64, error) {
+	select {
+	case <-s.tx.ctx.Done():
+		return 0, s.tx.ctx.Err()
+	default:
+	}
+
 	if !s.tx.writable {
 		return 0, engine.ErrTransactionReadOnly
 	}
@@ -192,6 +222,7 @@ type iterator struct {
 	closed  chan struct{} // closed by the goroutine when it's shutdown
 	ctx     context.Context
 	cancel  func()
+	err     error
 }
 
 func (it *iterator) Seek(pivot []byte) {
@@ -204,7 +235,7 @@ func (it *iterator) Seek(pivot []byte) {
 		it.closed = make(chan struct{})
 	}
 
-	it.ctx, it.cancel = context.WithCancel(context.Background())
+	it.ctx, it.cancel = context.WithCancel(it.tx.ctx)
 
 	it.runIterator(pivot)
 
@@ -259,16 +290,20 @@ func (it *iterator) runIterator(pivot []byte) {
 }
 
 func (it *iterator) Valid() bool {
-	return it.item != nil
+	return it.item != nil && it.err == nil
 }
 
 // Read the next item from the goroutine
 func (it *iterator) Next() {
-	it.item = <-it.ch
+	select {
+	case it.item = <-it.ch:
+	case <-it.tx.ctx.Done():
+		it.err = it.tx.ctx.Err()
+	}
 }
 
 func (it *iterator) Err() error {
-	return nil
+	return it.err
 }
 
 func (it *iterator) Item() engine.Item {
