@@ -34,6 +34,12 @@ func NewEngine() *Engine {
 
 // Begin creates a transaction.
 func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	if opts.Writable {
 		ng.mu.Lock()
 	} else {
@@ -44,7 +50,7 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 		return nil, errors.New("engine closed")
 	}
 
-	return &transaction{ng: ng, writable: opts.Writable}, nil
+	return &transaction{ctx: ctx, ng: ng, writable: opts.Writable}, nil
 }
 
 // Close the engine.
@@ -61,6 +67,7 @@ func (ng *Engine) Close() error {
 
 // This implements the engine.Transaction type.
 type transaction struct {
+	ctx        context.Context
 	ng         *Engine
 	writable   bool
 	onRollback []func() // called during a rollback
@@ -91,6 +98,12 @@ func (tx *transaction) Rollback() error {
 		tx.ng.mu.RUnlock()
 	}
 
+	select {
+	case <-tx.ctx.Done():
+		return tx.ctx.Err()
+	default:
+	}
+
 	return nil
 }
 
@@ -109,6 +122,12 @@ func (tx *transaction) Commit() error {
 
 	tx.wg.Wait()
 
+	select {
+	case <-tx.ctx.Done():
+		return tx.Rollback()
+	default:
+	}
+
 	tx.terminated = true
 
 	for _, fn := range tx.onCommit {
@@ -121,6 +140,12 @@ func (tx *transaction) Commit() error {
 }
 
 func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
+	select {
+	case <-tx.ctx.Done():
+		return nil, tx.ctx.Err()
+	default:
+	}
+
 	tr, ok := tx.ng.stores[string(name)]
 	if !ok {
 		return nil, engine.ErrStoreNotFound
@@ -130,6 +155,12 @@ func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
 }
 
 func (tx *transaction) CreateStore(name []byte) error {
+	select {
+	case <-tx.ctx.Done():
+		return tx.ctx.Err()
+	default:
+	}
+
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -152,6 +183,12 @@ func (tx *transaction) CreateStore(name []byte) error {
 }
 
 func (tx *transaction) DropStore(name []byte) error {
+	select {
+	case <-tx.ctx.Done():
+		return tx.ctx.Err()
+	default:
+	}
+
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
