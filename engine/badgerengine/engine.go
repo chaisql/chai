@@ -34,9 +34,16 @@ func NewEngine(opt badger.Options) (*Engine, error) {
 
 // Begin creates a transaction using Badger's transaction API.
 func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	tx := e.DB.NewTransaction(opts.Writable)
 
 	return &Transaction{
+		ctx:      ctx,
 		ng:       e,
 		tx:       tx,
 		writable: opts.Writable,
@@ -50,6 +57,7 @@ func (e *Engine) Close() error {
 
 // A Transaction uses Badger's transactions.
 type Transaction struct {
+	ctx       context.Context
 	ng        *Engine
 	tx        *badger.Txn
 	writable  bool
@@ -61,11 +69,23 @@ func (t *Transaction) Rollback() error {
 	t.tx.Discard()
 
 	t.discarded = true
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+	}
 	return nil
 }
 
 // Commit the transaction.
 func (t *Transaction) Commit() error {
+	select {
+	case <-t.ctx.Done():
+		_ = t.Rollback()
+		return t.ctx.Err()
+	default:
+	}
+
 	if t.discarded {
 		return badger.ErrDiscardedTxn
 	}
@@ -99,6 +119,12 @@ func buildStorePrefixKey(name []byte) []byte {
 
 // GetStore returns a store by name.
 func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
+	select {
+	case <-t.ctx.Done():
+		return nil, t.ctx.Err()
+	default:
+	}
+
 	key := buildStoreKey(name)
 
 	_, err := t.tx.Get(key)
@@ -113,6 +139,7 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 	pkey := buildStorePrefixKey(name)
 
 	return &Store{
+		ctx:      t.ctx,
 		ng:       t.ng,
 		tx:       t.tx,
 		prefix:   pkey,
@@ -124,6 +151,12 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 // CreateStore creates a store.
 // If the store already exists, returns engine.ErrStoreAlreadyExists.
 func (t *Transaction) CreateStore(name []byte) error {
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+	}
+
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -142,6 +175,12 @@ func (t *Transaction) CreateStore(name []byte) error {
 
 // DropStore deletes the store and all its keys.
 func (t *Transaction) DropStore(name []byte) error {
+	select {
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	default:
+	}
+
 	if !t.writable {
 		return engine.ErrTransactionReadOnly
 	}

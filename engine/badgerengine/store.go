@@ -2,6 +2,7 @@ package badgerengine
 
 import (
 	"bytes"
+	"context"
 	"errors"
 
 	"github.com/dgraph-io/badger/v2"
@@ -10,6 +11,7 @@ import (
 
 // A Store is an implementation of the engine.Store interface.
 type Store struct {
+	ctx      context.Context
 	ng       *Engine
 	tx       *badger.Txn
 	prefix   []byte
@@ -34,6 +36,12 @@ func buildKey(prefix, k []byte) []byte {
 
 // Put stores a key value pair. If it already exists, it overrides it.
 func (s *Store) Put(k, v []byte) error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
 	if !s.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -47,6 +55,12 @@ func (s *Store) Put(k, v []byte) error {
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
 func (s *Store) Get(k []byte) ([]byte, error) {
+	select {
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	default:
+	}
+
 	it, err := s.tx.Get(buildKey(s.prefix, k))
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
@@ -61,6 +75,12 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 
 // Delete a record by key. If not found, returns engine.ErrKeyNotFound.
 func (s *Store) Delete(k []byte) error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
 	if !s.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -80,6 +100,12 @@ func (s *Store) Delete(k []byte) error {
 
 // Truncate deletes all the records of the store.
 func (s *Store) Truncate() error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
 	if !s.writable {
 		return engine.ErrTransactionReadOnly
 	}
@@ -105,6 +131,12 @@ func (s *Store) Truncate() error {
 
 // NextSequence returns a monotonically increasing integer.
 func (s *Store) NextSequence() (uint64, error) {
+	select {
+	case <-s.ctx.Done():
+		return 0, s.ctx.Err()
+	default:
+	}
+
 	if !s.writable {
 		return 0, engine.ErrTransactionReadOnly
 	}
@@ -138,6 +170,7 @@ func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	it := s.tx.NewIterator(opt)
 
 	return &iterator{
+		ctx:         s.ctx,
 		storePrefix: s.prefix,
 		prefix:      prefix,
 		it:          it,
@@ -147,14 +180,23 @@ func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 }
 
 type iterator struct {
+	ctx         context.Context
 	prefix      []byte
 	storePrefix []byte
 	it          *badger.Iterator
 	reverse     bool
 	item        badgerItem
+	err         error
 }
 
 func (it *iterator) Seek(pivot []byte) {
+	select {
+	case <-it.ctx.Done():
+		it.err = it.ctx.Err()
+		return
+	default:
+	}
+
 	var seek []byte
 
 	if !it.reverse {
@@ -175,7 +217,7 @@ func (it *iterator) Seek(pivot []byte) {
 }
 
 func (it *iterator) Valid() bool {
-	return it.it.ValidForPrefix(it.prefix)
+	return it.it.ValidForPrefix(it.prefix) && it.err == nil
 }
 
 func (it *iterator) Next() {
@@ -183,7 +225,7 @@ func (it *iterator) Next() {
 }
 
 func (it *iterator) Err() error {
-	return nil
+	return it.err
 }
 
 func (it *iterator) Item() engine.Item {
