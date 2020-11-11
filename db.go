@@ -19,7 +19,7 @@ type DB struct {
 // WithContext creates a new database handle using the given context for every operation.
 func (db *DB) WithContext(ctx context.Context) *DB {
 	return &DB{
-		DB:      db.DB,
+		DB:  db.DB,
 		ctx: ctx,
 	}
 }
