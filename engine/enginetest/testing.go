@@ -31,7 +31,7 @@ func TestSuite(t *testing.T, builder Builder) {
 	}{
 		{"Engine", TestEngine},
 		{"Transaction/Commit-Rollback", TestTransactionCommitRollback},
-		{"Transaction/Store", TestTransactionGetStore},
+		{"Transaction/GetStore", TestTransactionGetStore},
 		{"Transaction/CreateStore", TestTransactionCreateStore},
 		{"Transaction/DropStore", TestTransactionDropStore},
 		{"Store/Iterator", TestStoreIterator},
