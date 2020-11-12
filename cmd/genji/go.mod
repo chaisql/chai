@@ -9,12 +9,7 @@ require (
 	github.com/genjidb/genji v0.9.0
 	github.com/genjidb/genji/engine/badgerengine v0.9.0
 	github.com/stretchr/testify v1.6.1
-	github.com/urfave/cli/v2 v2.2.0
+	github.com/urfave/cli/v2 v2.3.0
 	go.uber.org/multierr v1.6.0
-	golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520
-)
-
-replace (
-	github.com/genjidb/genji v0.9.0 => ../../
-	github.com/genjidb/genji/engine/badgerengine v0.9.0 => ../../engine/badgerengine
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 )
