@@ -126,7 +126,7 @@ func EncodeValue(v document.Value) ([]byte, error) {
 	case document.IntegerValue:
 		return encodeInt64(v.V.(int64)), nil
 	case document.DoubleValue:
-		binarysort.AppendFloat64(nil, v.V.(float64))
+		return binarysort.AppendFloat64(nil, v.V.(float64)), nil
 	case document.NullValue:
 		return nil, nil
 	}
