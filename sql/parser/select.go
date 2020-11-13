@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -246,6 +247,26 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 
 	if cfg.GroupByExpr != nil {
 		n = planner.NewGroupingNode(n, cfg.GroupByExpr)
+
+		// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
+		var invalidProjectedField planner.ProjectedField
+		for _, pe := range cfg.ProjectionExprs {
+			pre, ok := pe.(planner.ProjectedExpr)
+			if !ok {
+				invalidProjectedField = pe
+				break
+			}
+			e := pre.Expr
+
+			if _, ok := e.(document.AggregatorBuilder); !ok && !expr.Equal(e, cfg.GroupByExpr) {
+				invalidProjectedField = pe
+				break
+			}
+		}
+
+		if invalidProjectedField != nil {
+			return nil, fmt.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
+		}
 	}
 
 	n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)

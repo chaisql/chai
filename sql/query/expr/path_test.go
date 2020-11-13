@@ -2,9 +2,11 @@ package expr_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/stretchr/testify/require"
 )
@@ -48,4 +50,29 @@ func TestPathExpr(t *testing.T) {
 	t.Run("empty stack", func(t *testing.T) {
 		testExpr(t, "a", expr.EvalStack{}, nullLitteral, true)
 	})
+}
+
+func TestPathIsEqual(t *testing.T) {
+	tests := []struct {
+		a, b    string
+		isEqual bool
+	}{
+		{`a`, `a`, true},
+		{`a[0].b`, `a[0].b`, true},
+		{`a[0].b`, `a[1].b`, false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s = %s", test.a, test.b), func(t *testing.T) {
+			pa, err := parser.ParsePath(test.a)
+			require.NoError(t, err)
+			ea := expr.Path(pa)
+
+			pb, err := parser.ParsePath(test.b)
+			require.NoError(t, err)
+			eb := expr.Path(pb)
+
+			require.Equal(t, test.isEqual, ea.IsEqual(eb))
+		})
+	}
 }
