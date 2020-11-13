@@ -75,6 +75,9 @@ func (t *Tree) Run(tx *database.Transaction, params []expr.Param) (query.Result,
 }
 
 func (t *Tree) execute() (query.Result, error) {
+	if t.Root == nil {
+		return query.Result{}, nil
+	}
 	var st document.Stream
 	var err error
 
