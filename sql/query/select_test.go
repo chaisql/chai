@@ -89,6 +89,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, `[]`, nil},
 		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, `[]`, nil},
 		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, `[]`, nil},
+		{"With empty WHERE and IN", "SELECT * FROM test WHERE [] IN [];", false, `[]`, nil},
 	}
 
 	for _, test := range tests {
