@@ -116,7 +116,7 @@ func TestParserSelect(t *testing.T) {
 					"test",
 				)),
 			false},
-		{"WithGroupBy", "SELECT * FROM test WHERE age = 10 GROUP BY a.b.c",
+		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			planner.NewTree(
 				planner.NewProjectionNode(
 					planner.NewGroupingNode(
@@ -126,10 +126,12 @@ func TestParserSelect(t *testing.T) {
 						),
 						expr.Path(parsePath(t, "a.b.c")),
 					),
-					[]planner.ProjectedField{planner.Wildcard{}},
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "a.b.c")), ExprName: "a.b.c"}},
 					"test",
 				)),
 			false},
+		{"With Invalid GroupBy: Wildcard", "SELECT * FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
+		{"With Invalid GroupBy: a.b", "SELECT a.b FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			planner.NewTree(
 				planner.NewSortNode(

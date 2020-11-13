@@ -34,17 +34,7 @@ func (p Path) IsEqual(other Expr) bool {
 		return false
 	}
 
-	if len(p) != len(o) {
-		return false
-	}
-
-	for i := range p {
-		if p[i] != o[i] {
-			return false
-		}
-	}
-
-	return true
+	return document.Path(p).IsEqual(document.Path(o))
 }
 
 func (p Path) String() string {
