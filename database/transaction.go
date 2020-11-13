@@ -21,7 +21,6 @@ var (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	id       int64
 	db       *Database
 	tx       engine.Transaction
 	writable bool
@@ -39,10 +38,6 @@ func (tx *Transaction) DB() *Database {
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
-	if tx.writable {
-		tx.tableInfoStore.rollback(tx)
-	}
-
 	err := tx.tx.Rollback()
 	if err != nil {
 		return err
@@ -62,10 +57,6 @@ func (tx *Transaction) Rollback() error {
 
 // Commit the transaction.
 func (tx *Transaction) Commit() error {
-	if tx.writable {
-		tx.tableInfoStore.commit(tx)
-	}
-
 	err := tx.tx.Commit()
 	if err != nil {
 		return err
@@ -134,23 +125,28 @@ func (tx *Transaction) GetTable(name string) (*Table, error) {
 	}, nil
 }
 
-func (tx *Transaction) AddField(name string, fc FieldConstraint) error {
-	return tx.tableInfoStore.modifyTable(tx, name, func(info *TableInfo) error {
-		for _, field := range info.FieldConstraints {
-			if field.Path.IsEqual(fc.Path) {
-				return fmt.Errorf("field %q already exists", fc.Path.String())
-			}
-			if field.IsPrimaryKey && fc.IsPrimaryKey {
-				return fmt.Errorf(
-					"multiple primary keys are not allowed (%q is primary key)",
-					field.Path.String(),
-				)
-			}
-		}
+// AddField adds a field constraint to a table.
+func (tx *Transaction) AddField(tableName string, fc FieldConstraint) error {
+	info, err := tx.tableInfoStore.Get(tx, tableName)
+	if err != nil {
+		return err
+	}
 
-		info.FieldConstraints = append(info.FieldConstraints, fc)
-		return nil
-	})
+	for _, field := range info.FieldConstraints {
+		if field.Path.IsEqual(fc.Path) {
+			return fmt.Errorf("field %q already exists", fc.Path.String())
+		}
+		if field.IsPrimaryKey && fc.IsPrimaryKey {
+			return fmt.Errorf(
+				"multiple primary keys are not allowed (%q is primary key)",
+				field.Path.String(),
+			)
+		}
+	}
+
+	info.FieldConstraints = append(info.FieldConstraints, fc)
+
+	return tx.tableInfoStore.Replace(tx, tableName, info)
 }
 
 // RenameTable renames a table.
@@ -372,6 +368,17 @@ func (tx *Transaction) ReIndexAll() error {
 	}
 
 	return nil
+}
+
+func (tx *Transaction) getTableInfoStore() (*tableInfoStore, error) {
+	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
+	if err != nil {
+		return nil, err
+	}
+	return &tableInfoStore{
+		st: st,
+		db: tx.db,
+	}, nil
 }
 
 func (tx *Transaction) getIndexStore() (*indexStore, error) {

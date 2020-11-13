@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"sync"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -172,9 +171,6 @@ type TableInfo struct {
 	// name of the store associated with the table.
 	storeName []byte
 	readOnly  bool
-	// if non-zero, this tableInfo has been created during the current transaction.
-	// it will be removed if the transaction is rolled back or set to false if its commited.
-	transactionID int64
 
 	FieldConstraints FieldConstraints
 }
@@ -258,49 +254,24 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 // and holds it in memory.
 type tableInfoStore struct {
 	db *Database
-	// tableInfos contains information about all the tables
-	tableInfos map[string]TableInfo
-
-	mu sync.RWMutex
-}
-
-func newTableInfoStore(db *Database, tx engine.Transaction) (*tableInfoStore, error) {
-	ts := tableInfoStore{
-		db: db,
-	}
-
-	err := ts.loadAllTableInfo(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ts, nil
+	st engine.Store
 }
 
 // Insert a new tableInfo for the given table name.
 // If info.storeName is nil, it generates one and stores it in info.
 func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	tblName := []byte(tableName)
 
-	_, ok := t.tableInfos[tableName]
-	if ok {
-		// TODO(asdine): if a table already exists but is uncommited,
-		// there is a chance the other transaction will be rolled back.
-		// Instead of returning an error, wait until the other transaction is
-		// either commited or rolled back.
-		// If it is commited, return an error here
-		// If not, create the table in this transaction.
+	_, err := t.st.Get(tblName)
+	if err == nil {
 		return ErrTableAlreadyExists
 	}
-
-	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
-	if err != nil {
+	if err != engine.ErrKeyNotFound {
 		return err
 	}
 
 	if info.storeName == nil {
-		seq, err := st.NextSequence()
+		seq, err := t.st.NextSequence()
 		if err != nil {
 			return err
 		}
@@ -316,210 +287,98 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 		return err
 	}
 
-	err = st.Put([]byte(tableName), buf.Bytes())
+	err = t.st.Put([]byte(tableName), buf.Bytes())
 	if err != nil {
 		return err
 	}
 
-	info.transactionID = tx.id
-	t.tableInfos[tableName] = *info
 	return nil
 }
 
 func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	info, ok := t.tableInfos[tableName]
-	if !ok {
-		return nil, fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+	if tableName == tableInfoStoreName {
+		return &TableInfo{
+			storeName: []byte(tableInfoStoreName),
+			readOnly:  true,
+			FieldConstraints: []FieldConstraint{
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "table_name",
+						},
+					},
+					IsPrimaryKey: true,
+				},
+			},
+		}, nil
+	}
+	if tableName == indexStoreName {
+		return &TableInfo{
+			storeName: []byte(indexStoreName),
+			readOnly:  true,
+			FieldConstraints: []FieldConstraint{
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "index_name",
+						},
+					},
+					IsPrimaryKey: true,
+				},
+			},
+		}, nil
 	}
 
-	if info.transactionID != 0 && info.transactionID != tx.id {
-		return nil, fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+	v, err := t.st.Get([]byte(tableName))
+	if err != nil {
+		if err == engine.ErrKeyNotFound {
+			return nil, fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+		}
+
+		return nil, err
 	}
 
-	return &info, nil
+	var ti TableInfo
+	err = ti.ScanDocument(t.db.Codec.NewDocument(v))
+	if err != nil {
+		return nil, err
+	}
+
+	return &ti, nil
 }
 
 func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	info, ok := t.tableInfos[tableName]
-	if !ok {
-		return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
-	}
-
-	if info.transactionID != 0 && info.transactionID != tx.id {
-		return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
-	}
-
-	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
+	err := t.st.Delete([]byte(tableName))
 	if err != nil {
+		if err == engine.ErrKeyNotFound {
+			return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+		}
+
 		return err
 	}
-
-	key := []byte(tableName)
-	err = st.Delete(key)
-	if err == engine.ErrKeyNotFound {
-		return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
-	}
-	if err != nil {
-		return err
-	}
-
-	delete(t.tableInfos, tableName)
 
 	return nil
 }
 
-// modifyTable modifies TableInfo using given callback.
-func (t *tableInfoStore) modifyTable(tx *Transaction, tableName string, f func(*TableInfo) error) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	info, ok := t.tableInfos[tableName]
-	if !ok {
-		return ErrTableNotFound
-	}
-
-	if info.transactionID != 0 && info.transactionID != tx.id {
-		return ErrTableNotFound
-	}
-
-	err := f(&info)
-	if err != nil {
-		return err
-	}
-
-	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
-	if err != nil {
-		return err
-	}
-
+// Replace table information by the new one.
+func (t *tableInfoStore) Replace(tx *Transaction, tableName string, info *TableInfo) error {
 	var buf bytes.Buffer
-	err = t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
+	err := t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
 	if err != nil {
 		return err
 	}
 
-	err = st.Put([]byte(tableName), buf.Bytes())
+	tbName := []byte(tableName)
+	_, err = t.st.Get(tbName)
 	if err != nil {
+		if err == engine.ErrKeyNotFound {
+			return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+		}
+
 		return err
 	}
 
-	info.transactionID = tx.id
-	t.tableInfos[tableName] = info
-
-	return nil
-}
-
-func (t *tableInfoStore) loadAllTableInfo(tx engine.Transaction) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	st, err := tx.GetStore([]byte(tableInfoStoreName))
-	if err != nil {
-		return err
-	}
-
-	it := st.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	t.tableInfos = make(map[string]TableInfo)
-	var b []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
-		itm := it.Item()
-		b, err = itm.ValueCopy(b)
-		if err != nil {
-			return err
-		}
-
-		var ti TableInfo
-		err = ti.ScanDocument(t.db.Codec.NewDocument(b))
-		if err != nil {
-			return err
-		}
-
-		t.tableInfos[string(itm.Key())] = ti
-	}
-	if err := it.Err(); err != nil {
-		return err
-	}
-
-	t.tableInfos[tableInfoStoreName] = TableInfo{
-		storeName: []byte(tableInfoStoreName),
-		readOnly:  true,
-		FieldConstraints: []FieldConstraint{
-			{
-				Path: document.Path{
-					document.PathFragment{
-						FieldName: "table_name",
-					},
-				},
-				IsPrimaryKey: true,
-			},
-		},
-	}
-
-	t.tableInfos[indexStoreName] = TableInfo{
-		storeName: []byte(indexStoreName),
-		readOnly:  true,
-		FieldConstraints: []FieldConstraint{
-			{
-				Path: document.Path{
-					document.PathFragment{
-						FieldName: "index_name",
-					},
-				},
-				IsPrimaryKey: true,
-			},
-		},
-	}
-
-	return nil
-}
-
-// remove all tableInfo whose transaction id is equal to the given transacrion id.
-// this is called when a read/write transaction is being rolled back.
-func (t *tableInfoStore) rollback(tx *Transaction) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for k, info := range t.tableInfos {
-		if info.transactionID == tx.id {
-			delete(t.tableInfos, k)
-		}
-	}
-}
-
-// set all the tableInfo created by this transaction to 0.
-// this is called when a read/write transaction is being commited.
-func (t *tableInfoStore) commit(tx *Transaction) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	for k := range t.tableInfos {
-		if t.tableInfos[k].transactionID == tx.id {
-			info := t.tableInfos[k]
-			info.transactionID = 0
-			t.tableInfos[k] = info
-		}
-	}
-}
-
-// GetTableInfo returns a copy of all the table information.
-func (t *tableInfoStore) GetTableInfo() map[string]TableInfo {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	ti := make(map[string]TableInfo, len(t.tableInfos))
-	for k, v := range t.tableInfos {
-		ti[k] = v
-	}
-
-	return ti
+	return t.st.Put(tbName, buf.Bytes())
 }
 
 // IndexConfig holds the configuration of an index.

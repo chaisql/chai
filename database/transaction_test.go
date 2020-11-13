@@ -194,7 +194,7 @@ func TestTxTable(t *testing.T) {
 
 		// Renaming a non existing table should return an error
 		err = tx.AddField("bar", fieldToAdd)
-		require.EqualError(t, database.ErrTableNotFound, err.Error())
+		require.True(t, errors.Is(err, database.ErrTableNotFound))
 
 		// Adding a existing field should return an error
 		err = tx.AddField("foo", ti.FieldConstraints[0])
