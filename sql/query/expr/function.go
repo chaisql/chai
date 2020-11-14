@@ -334,7 +334,11 @@ func (m *MinAggregator) Add(d document.Document) error {
 
 // Aggregate adds a field to the given buffer with the minimum value.
 func (m *MinAggregator) Aggregate(fb *document.FieldBuffer) error {
-	fb.Add(m.Fn.String(), m.Min)
+	if m.Min.Type == 0 {
+		fb.Add(m.Fn.String(), document.NewNullValue())
+	} else {
+		fb.Add(m.Fn.String(), m.Min)
+	}
 	return nil
 }
 
@@ -434,7 +438,11 @@ func (m *MaxAggregator) Add(d document.Document) error {
 
 // Aggregate adds a field to the given buffer with the maximum value.
 func (m *MaxAggregator) Aggregate(fb *document.FieldBuffer) error {
-	fb.Add(m.Fn.String(), m.Max)
+	if m.Max.Type == 0 {
+		fb.Add(m.Fn.String(), document.NewNullValue())
+	} else {
+		fb.Add(m.Fn.String(), m.Max)
+	}
 	return nil
 }
 

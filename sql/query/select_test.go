@@ -242,6 +242,23 @@ func TestSelectStmt(t *testing.T) {
 
 		require.JSONEq(t, `{"MAX(a)": [1, 2, 3]}`, string(enc))
 	})
+
+	t.Run("empty table with aggregators", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test;")
+		require.NoError(t, err)
+
+		d, err := db.QueryDocument("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test")
+		require.NoError(t, err)
+
+		enc, err := json.Marshal(d)
+		require.NoError(t, err)
+
+		require.JSONEq(t, `{"MAX(a)": null, "MIN(b)": null, "COUNT(*)": 0, "SUM(id)": null}`, string(enc))
+	})
 }
 
 func TestDistinct(t *testing.T) {

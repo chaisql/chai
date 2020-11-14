@@ -291,6 +291,18 @@ func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 		var b bytes.Buffer
 
 		enc := NewValueEncoder(&b)
+
+		mkGroup := func(g Value) []Aggregator {
+			groupKey := b.String()
+			groupKeys = append(groupKeys, groupKey)
+			aggs := make([]Aggregator, len(aggregatorBuilders))
+			for i, builder := range aggregatorBuilders {
+				aggs[i] = builder.Aggregator(g)
+			}
+			aggregates[groupKey] = aggs
+			return aggs
+		}
+
 		err := s.Iterate(func(d Document) error {
 			group := nullValue
 
@@ -309,13 +321,7 @@ func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 			// because of compiler optimizations.
 			aggs, ok := aggregates[string(b.Bytes())]
 			if !ok {
-				groupKey := b.String()
-				groupKeys = append(groupKeys, groupKey)
-				aggs = make([]Aggregator, len(aggregatorBuilders))
-				for i, builder := range aggregatorBuilders {
-					aggs[i] = builder.Aggregator(group)
-				}
-				aggregates[groupKey] = aggs
+				aggs = mkGroup(group)
 			}
 
 			for _, agg := range aggs {
@@ -329,6 +335,11 @@ func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 		})
 		if err != nil {
 			return err
+		}
+
+		if len(groupKeys) == 0 {
+			// create one group by default for the null value
+			mkGroup(nullValue)
 		}
 
 		for _, groupKey := range groupKeys {
