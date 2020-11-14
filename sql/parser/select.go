@@ -275,6 +275,7 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 
 			// otherwise it's an error
 			invalidProjectedField = pre
+			break
 		}
 
 		if invalidProjectedField != nil {
