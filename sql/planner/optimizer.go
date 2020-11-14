@@ -336,13 +336,9 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 		return t, nil
 	}
 
-	// then we get the table indexes. here we will assume that at this point
+	// Here we will assume that at this point
 	// inputNodes can only be instances of tableInputNode.
 	inpn := inputNode.(*tableInputNode)
-	indexes, err := inpn.table.Indexes()
-	if err != nil {
-		return nil, err
-	}
 
 	type candidate struct {
 		prevNode, nextNode Node
@@ -356,7 +352,7 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 	for n != nil {
 		if n.Operation() == Selection {
 			sn := n.(*selectionNode)
-			indexedNode := selectionNodeValidForIndex(sn, inpn.tableName, indexes)
+			indexedNode := selectionNodeValidForIndex(sn, inpn.tableName, inpn.indexes)
 			if indexedNode != nil {
 				candidates = append(candidates, candidate{
 					prevNode: prev,
