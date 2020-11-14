@@ -360,7 +360,7 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 	return nil
 }
 
-// Replace table information by the new one.
+// Replace replaces tableName table information with the new info.
 func (t *tableInfoStore) Replace(tx *Transaction, tableName string, info *TableInfo) error {
 	var buf bytes.Buffer
 	err := t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
