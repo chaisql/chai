@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
-// A AggregationNode is a node that uses aggregate functions to aggregate documents from the stream into one document.
+// An AggregationNode is a node that uses aggregate functions to aggregate documents from the stream into one document.
 // If the stream contains a Group node, it will generate one document per group.
 type AggregationNode struct {
 	node
@@ -19,7 +19,7 @@ type AggregationNode struct {
 
 var _ operationNode = (*AggregationNode)(nil)
 
-// NewAggregationNode creates a AggregationNode.
+// NewAggregationNode creates an AggregationNode.
 func NewAggregationNode(n Node, aggregators []document.AggregatorBuilder) Node {
 	return &AggregationNode{
 		node: node{
