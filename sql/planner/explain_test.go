@@ -24,7 +24,7 @@ func TestExplainStmt(t *testing.T) {
 		{"EXPLAIN SELECT a + 1 FROM test WHERE a > 10", false, `"Index(idx_a) -> ∏(a + 1)"`},
 		{"EXPLAIN SELECT a + 1 FROM test WHERE a > 10 AND b > 20 AND c > 30", false, `"Index(idx_b) -> σ(cond: c > 30) -> σ(cond: a > 10) -> ∏(a + 1)"`},
 		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"Table(test) -> σ(cond: c > 30) -> ∏(a + 1) -> Sort(a DESC) -> Offset(20) -> Limit(10)"`},
-		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 GROUP BY b ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"Table(test) -> σ(cond: c > 30) -> G(b) -> ∏(a + 1) -> Sort(a DESC) -> Offset(20) -> Limit(10)"`},
+		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 GROUP BY a + 1 ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"Table(test) -> σ(cond: c > 30) -> Group(a + 1) -> Aggregate(a + 1) -> ∏(a + 1) -> Sort(a DESC) -> Offset(20) -> Limit(10)"`},
 		{"EXPLAIN UPDATE test SET a = 10", false, `"Table(test) -> Set(a = 10) -> Replace(test)"`},
 		{"EXPLAIN UPDATE test SET a = 10 WHERE c > 10", false, `"Table(test) -> σ(cond: c > 10) -> Set(a = 10) -> Replace(test)"`},
 		{"EXPLAIN UPDATE test SET a = 10 WHERE a > 10", false, `"Index(idx_a) -> Set(a = 10) -> Replace(test)"`},
