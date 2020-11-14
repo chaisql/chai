@@ -53,33 +53,7 @@ func (n *ProjectionNode) Bind(tx *database.Transaction, params []expr.Param) (er
 	return
 }
 
-// An AggregatorBuilder can build aggregators on demand.
-type AggregatorBuilder interface {
-	document.AggregatorBuilder
-	SetAlias(string)
-}
-
 func (n *ProjectionNode) toStream(st document.Stream) (document.Stream, error) {
-	var aggBuilders []document.AggregatorBuilder
-
-	for _, e := range n.Expressions {
-		pe, ok := e.(ProjectedExpr)
-		if !ok {
-			continue
-		}
-		if builder, ok := pe.Expr.(AggregatorBuilder); ok {
-			aggBuilders = append(aggBuilders, builder)
-
-			if pe.ExprName != "" {
-				builder.SetAlias(pe.ExprName)
-			}
-		}
-	}
-
-	if len(aggBuilders) > 0 {
-		st = st.Aggregate(aggBuilders...)
-	}
-
 	if st.IsEmpty() {
 		d := documentMask{
 			resultFields: n.Expressions,

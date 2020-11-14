@@ -245,11 +245,14 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 		n = planner.NewSelectionNode(n, cfg.WhereExpr)
 	}
 
+	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
 	if cfg.GroupByExpr != nil {
+		// add Group node
 		n = planner.NewGroupingNode(n, cfg.GroupByExpr)
 
-		// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
 		var invalidProjectedField planner.ProjectedField
+		var aggregators []document.AggregatorBuilder
+
 		for _, pe := range cfg.ProjectionExprs {
 			pre, ok := pe.(planner.ProjectedExpr)
 			if !ok {
@@ -258,14 +261,49 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			}
 			e := pre.Expr
 
-			if _, ok := e.(document.AggregatorBuilder); !ok && !expr.Equal(e, cfg.GroupByExpr) {
-				invalidProjectedField = pe
-				break
+			// check if the projected expression is an aggregation function
+			if agg, ok := e.(document.AggregatorBuilder); ok {
+				aggregators = append(aggregators, agg)
+				continue
 			}
+
+			// check if this is the same expression as the one used in the GROUP BY clause
+			if expr.Equal(e, cfg.GroupByExpr) {
+				aggregators = append(aggregators, &planner.ProjectedGroupAggregatorBuilder{Expr: pre.Expr})
+				continue
+			}
+
+			// otherwise it's an error
+			invalidProjectedField = pre
 		}
 
 		if invalidProjectedField != nil {
 			return nil, fmt.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
+		}
+
+		// add Aggregation node
+		n = planner.NewAggregationNode(n, aggregators)
+	} else {
+		// if there is no GROUP BY clause, check if there are any aggregation function
+		// and if so add an aggregation node
+		var aggregators []document.AggregatorBuilder
+
+		for _, pe := range cfg.ProjectionExprs {
+			pre, ok := pe.(planner.ProjectedExpr)
+			if !ok {
+				continue
+			}
+			e := pre.Expr
+
+			// check if the projected expression is an aggregation function
+			if agg, ok := e.(document.AggregatorBuilder); ok {
+				aggregators = append(aggregators, agg)
+			}
+		}
+
+		// add Aggregation node
+		if len(aggregators) > 0 {
+			n = planner.NewAggregationNode(n, aggregators)
 		}
 	}
 

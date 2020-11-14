@@ -313,7 +313,7 @@ func (s Stream) Aggregate(aggregatorBuilders ...AggregatorBuilder) Stream {
 				groupKeys = append(groupKeys, groupKey)
 				aggs = make([]Aggregator, len(aggregatorBuilders))
 				for i, builder := range aggregatorBuilders {
-					aggs[i] = builder.NewAggregator(group)
+					aggs[i] = builder.Aggregator(group)
 				}
 				aggregates[groupKey] = aggs
 			}
@@ -359,7 +359,7 @@ type Aggregator interface {
 
 // An AggregatorBuilder can build aggregators on demand.
 type AggregatorBuilder interface {
-	NewAggregator(group Value) Aggregator
+	Aggregator(group Value) Aggregator
 }
 
 // groupedDocument tags a document with a group value.

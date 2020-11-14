@@ -169,7 +169,7 @@ func (c *CountFunc) SetAlias(alias string) {
 	c.Alias = alias
 }
 
-func (c *CountFunc) NewAggregator(group document.Value) document.Aggregator {
+func (c *CountFunc) Aggregator(group document.Value) document.Aggregator {
 	return &CountAggregator{
 		Fn: c,
 	}
@@ -197,6 +197,10 @@ func (c *CountFunc) IsEqual(other Expr) bool {
 func (c *CountFunc) String() string {
 	if c.Alias != "" {
 		return c.Alias
+	}
+
+	if c.Wildcard {
+		return "COUNT(*)"
 	}
 
 	return fmt.Sprintf("COUNT(%v)", c.Expr)
@@ -253,8 +257,8 @@ func (m *MinFunc) SetAlias(alias string) {
 	m.Alias = alias
 }
 
-// NewAggregator implements the planner.AggregatorBuilder interface.
-func (m *MinFunc) NewAggregator(group document.Value) document.Aggregator {
+// Aggregator implements the planner.AggregatorBuilder interface.
+func (m *MinFunc) Aggregator(group document.Value) document.Aggregator {
 	return &MinAggregator{
 		Fn: m,
 	}
@@ -353,8 +357,8 @@ func (m *MaxFunc) SetAlias(alias string) {
 	m.Alias = alias
 }
 
-// NewAggregator implements the planner.AggregatorBuilder interface.
-func (m *MaxFunc) NewAggregator(group document.Value) document.Aggregator {
+// Aggregator implements the planner.AggregatorBuilder interface.
+func (m *MaxFunc) Aggregator(group document.Value) document.Aggregator {
 	return &MaxAggregator{
 		Fn: m,
 	}
@@ -453,8 +457,8 @@ func (s *SumFunc) SetAlias(alias string) {
 	s.Alias = alias
 }
 
-// NewAggregator implements the planner.AggregatorBuilder interface.
-func (s *SumFunc) NewAggregator(group document.Value) document.Aggregator {
+// Aggregator implements the planner.AggregatorBuilder interface.
+func (s *SumFunc) Aggregator(group document.Value) document.Aggregator {
 	return &SumAggregator{
 		Fn: s,
 	}
@@ -568,8 +572,8 @@ func (s *AvgFunc) SetAlias(alias string) {
 	s.Alias = alias
 }
 
-// NewAggregator implements the planner.AggregatorBuilder interface.
-func (s *AvgFunc) NewAggregator(group document.Value) document.Aggregator {
+// Aggregator implements the planner.AggregatorBuilder interface.
+func (s *AvgFunc) Aggregator(group document.Value) document.Aggregator {
 	return &AvgAggregator{
 		Fn: s,
 	}

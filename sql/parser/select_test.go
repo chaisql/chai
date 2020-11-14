@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -119,12 +120,15 @@ func TestParserSelect(t *testing.T) {
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			planner.NewTree(
 				planner.NewProjectionNode(
-					planner.NewGroupingNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
+					planner.NewAggregationNode(
+						planner.NewGroupingNode(
+							planner.NewSelectionNode(
+								planner.NewTableInputNode("test"),
+								expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
+							),
+							expr.Path(parsePath(t, "a.b.c")),
 						),
-						expr.Path(parsePath(t, "a.b.c")),
+						[]document.AggregatorBuilder{&planner.ProjectedGroupAggregatorBuilder{Expr: expr.Path(parsePath(t, "a.b.c"))}},
 					),
 					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "a.b.c")), ExprName: "a.b.c"}},
 					"test",
@@ -223,6 +227,17 @@ func TestParserSelect(t *testing.T) {
 				)),
 			false},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
+		{"With aggregation function", "SELECT COUNT(*) FROM test",
+			planner.NewTree(
+				planner.NewProjectionNode(
+					planner.NewAggregationNode(
+						planner.NewTableInputNode("test"),
+						[]document.AggregatorBuilder{&expr.CountFunc{Wildcard: true}},
+					),
+					[]planner.ProjectedField{planner.ProjectedExpr{Expr: &expr.CountFunc{Wildcard: true}, ExprName: "COUNT(*)"}},
+					"test",
+				)),
+			false},
 		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", nil, true},
 		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET x(*)", nil, true},
 		{"Invalid use of MAX() aggregator", "SELECT * FROM test LIMIT max(0)", nil, true},

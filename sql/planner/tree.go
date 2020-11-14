@@ -43,6 +43,8 @@ const (
 	Unset
 	// Group is an operation that groups documents based on a given path.
 	Group
+	// Aggregation is an operation that creates one document per group of documents.
+	Aggregation
 	// Dedup is an operation that removes duplicate documents from a stream
 	Dedup
 )
@@ -482,5 +484,5 @@ func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 }
 
 func (n *GroupingNode) String() string {
-	return fmt.Sprintf("G(%s)", n.Expr)
+	return fmt.Sprintf("Group(%s)", n.Expr)
 }
