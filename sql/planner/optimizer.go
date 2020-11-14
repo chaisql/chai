@@ -477,7 +477,10 @@ func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
 	}
 
 	// expr OP path
-	if rightIsField && !leftIsField {
+	// Special case for IN operator: only left operand is valid for index usage
+	// valid:   a IN [1, 2, 3]
+	// invalid: 1 IN a
+	if rightIsField && !leftIsField && !expr.IsInOperator(op) {
 		return true, rf, op.LeftHand()
 	}
 
