@@ -15,6 +15,7 @@ type tableInputNode struct {
 
 	tableName string
 	table     *database.Table
+	indexes   map[string]database.Index
 	tx        *database.Transaction
 	params    []expr.Param
 }
@@ -36,6 +37,10 @@ func (n *tableInputNode) Bind(tx *database.Transaction, params []expr.Param) (er
 	n.tx = tx
 	n.params = params
 	n.table, err = tx.GetTable(n.tableName)
+	if err != nil {
+		return err
+	}
+	n.indexes, err = n.table.Indexes()
 	return
 }
 
