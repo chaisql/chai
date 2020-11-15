@@ -459,6 +459,38 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 				"foo",
 			),
 		},
+		{
+			"FROM foo WHERE a IN [1, 2]",
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
+				expr.In(
+					expr.Path{document.PathFragment{FieldName: "a"}},
+					expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+				),
+			),
+			planner.NewIndexInputNode(
+				"foo",
+				"idx_foo_a",
+				expr.In(nil, nil).(planner.IndexIteratorOperator),
+				expr.Path(parsePath(t, "a")),
+				expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+				scanner.ASC,
+			),
+		},
+		{
+			"FROM foo WHERE 1 IN a",
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
+				expr.In(
+					expr.IntegerValue(1),
+					expr.Path(parsePath(t, "a")),
+				),
+			),
+			planner.NewSelectionNode(planner.NewTableInputNode("foo"),
+				expr.In(
+					expr.IntegerValue(1),
+					expr.Path(parsePath(t, "a")),
+				),
+			),
+		},
 	}
 
 	for _, test := range tests {
