@@ -243,7 +243,6 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	if _, err = buf.WriteTo(w); err != nil {
 		return err
 	}
-	buf.Reset()
 
 	// Indexes statements.
 	indexes, err := t.Indexes()
@@ -286,8 +285,6 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		if _, err = buf.WriteTo(w); err != nil {
 			return err
 		}
-
-		buf.Reset()
 
 		return nil
 	})
