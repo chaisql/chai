@@ -54,12 +54,12 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	d, err = info.FieldConstraints.ValidateDocument(d)
+	fb, err := info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := t.generateKey(d)
+	key, err := t.generateKey(info, fb)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(d)
+	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(fb)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
@@ -86,7 +86,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValue(fb)
 		if err != nil {
 			v = document.NewNullValue()
 		}
@@ -290,7 +290,10 @@ type lazilyDecodedDocument struct {
 
 func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err error) {
 	if len(d.buf) == 0 {
-		d.copyFromItem()
+		err = d.copyFromItem()
+		if err != nil {
+			return
+		}
 	}
 
 	return d.codec.NewDocument(d.buf).GetByField(field)
@@ -298,7 +301,10 @@ func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err 
 
 func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Value) error) error {
 	if len(d.buf) == 0 {
-		d.copyFromItem()
+		err := d.copyFromItem()
+		if err != nil {
+			return err
+		}
 	}
 
 	return d.codec.NewDocument(d.buf).Iterate(fn)
@@ -373,14 +379,10 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
-func (t *Table) generateKey(d document.Document) ([]byte, error) {
-	ti, err := t.infoStore.Get(t.tx, t.name)
-	if err != nil {
-		return nil, err
-	}
+func (t *Table) generateKey(info *TableInfo, fb *document.FieldBuffer) ([]byte, error) {
+	if pk := info.GetPrimaryKey(); pk != nil {
 
-	if pk := ti.GetPrimaryKey(); pk != nil {
-		v, err := pk.Path.GetValue(d)
+		v, err := pk.Path.GetValue(fb)
 		if err == document.ErrFieldNotFound {
 			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
 		}

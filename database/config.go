@@ -84,7 +84,7 @@ func (f *FieldConstraint) ScanDocument(d document.Document) error {
 type FieldConstraints []FieldConstraint
 
 // ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (f FieldConstraints) ValidateDocument(d document.Document) (document.Document, error) {
+func (f FieldConstraints) ValidateDocument(d document.Document) (*document.FieldBuffer, error) {
 	fb, err := f.Convert(d)
 	if err != nil {
 		return nil, err
