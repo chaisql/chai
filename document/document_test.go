@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
@@ -295,6 +296,8 @@ func TestNewFromStruct(t *testing.T) {
 
 		*group
 
+		BB time.Time // some has special encoding as Document
+
 		// unexported fields should be ignored
 		t int
 	}
@@ -319,6 +322,7 @@ func TestNewFromStruct(t *testing.T) {
 		group: &group{
 			Ig: 100,
 		},
+		BB: time.Date(2020, 11, 15, 16, 37, 10, 20, time.UTC),
 	}
 
 	q := 5
@@ -394,6 +398,8 @@ func TestNewFromStruct(t *testing.T) {
 				require.EqualValues(t, document.NullValue, v.Type)
 			case 27:
 				require.EqualValues(t, document.IntegerValue, v.Type)
+			case 28:
+				require.EqualValues(t, document.TextValue, v.Type)
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
 			}
@@ -403,7 +409,7 @@ func TestNewFromStruct(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 28, counter)
+		require.Equal(t, 29, counter)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
@@ -482,6 +488,14 @@ func TestNewFromStruct(t *testing.T) {
 		v, err = a.GetByIndex(1)
 		require.NoError(t, err)
 		require.EqualValues(t, 2, v.V.(int64))
+
+		v, err = doc.GetByField("bb")
+		require.NoError(t, err)
+		var timeStr string
+		require.NoError(t, v.Scan(&timeStr))
+		parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
+		require.NoError(t, err)
+		require.Equal(t, u.BB, parsedTime)
 	})
 }
 

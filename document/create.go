@@ -122,18 +122,16 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 
 		sf := tp.Field(i)
 
-		if f.Kind() == reflect.Struct {
+		isUnexported := sf.PkgPath != ""
+
+		if sf.Anonymous {
+			if isUnexported && f.Kind() != reflect.Struct {
+				continue
+			}
 			d, err := newFromStruct(f)
 			if err != nil {
 				return nil, err
 			}
-
-			if !sf.Anonymous {
-				fb.Add(strings.ToLower(sf.Name), NewDocumentValue(d))
-				continue
-			}
-
-			// Embedded struct.
 			err = d.Iterate(func(field string, value Value) error {
 				fb.Add(field, value)
 				return nil
@@ -141,12 +139,14 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 			if err != nil {
 				return nil, err
 			}
-
+			continue
+		} else if isUnexported {
 			continue
 		}
 
-		if sf.PkgPath != "" {
-			continue
+		v, err := NewValue(f.Interface())
+		if err != nil {
+			return nil, err
 		}
 
 		field := strings.ToLower(sf.Name)
@@ -154,13 +154,7 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 			if gtag == "-" {
 				continue
 			}
-
 			field = gtag
-		}
-
-		v, err := NewValue(f.Interface())
-		if err != nil {
-			return nil, err
 		}
 
 		fb.Add(field, v)
