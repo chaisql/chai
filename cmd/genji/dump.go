@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
@@ -17,22 +15,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/shell"
 )
 
-func executeDump(ctx context.Context, f string, tables []string, e string, dbPath string, w io.Writer) error {
-	if dbPath == "" {
-		return errors.New("db path should be specified")
-	}
-
-	if f != "" {
-		file, err := os.Create(f)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		// file as io.writer for the RunDumpCmd function.
-		w = file
-	}
-
+func executeDump(ctx context.Context, w io.Writer, tables []string, e, dbPath string) error {
 	var (
 		ng  engine.Engine
 		err error
@@ -50,12 +33,11 @@ func executeDump(ctx context.Context, f string, tables []string, e string, dbPat
 		return err
 	}
 
-	// dbPath cannot be empty it is checked in the main.
 	db, err := genji.New(ctx, ng)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	return shell.RunDumpCmd(db.WithContext(ctx), tables, w)
+	return shell.RunDumpCmd(db.WithContext(ctx), w, tables)
 }

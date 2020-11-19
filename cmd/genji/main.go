@@ -1,8 +1,9 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime/debug"
 
@@ -116,7 +117,6 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			Name:      "dump",
 			Usage:     "Dump a database or a list of tables as a text file.",
 			UsageText: `genji dump [options] dbpath`,
-
 			Description: ` The dump command can dump a database as a text file.
 
   By default, the content of the database is sent to the standard output:
@@ -152,15 +152,28 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			},
 			Action: func(c *cli.Context) error {
 				table := c.StringSlice("table")
-				file := c.String("file")
+				f := c.String("file")
 				engine := c.String("engine")
-				args := c.Args().First()
-
-				if err := executeDump(context.Background(), file, table, engine, args, os.Stdout); err != nil {
-					cli.ShowCommandHelpAndExit(c, c.Command.Name, 2)
+				dbPath := c.Args().First()
+				if dbPath == "" {
+					return errors.New("expected db path, got empty")
 				}
 
-				return nil
+				var w io.Writer
+				w = os.Stdout
+
+				if f != "" {
+					file, err := os.Create(f)
+					if err != nil {
+						return err
+					}
+					defer file.Close()
+
+					// file as io.writer for the RunDumpCmd function.
+					w = file
+				}
+
+				return executeDump(c.Context, w, table, engine, dbPath)
 			},
 		},
 	}
