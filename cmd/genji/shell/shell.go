@@ -487,7 +487,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return err
 		}
 
-		return RunDumpCmd(db, cmd[1:], os.Stdout)
+		return RunDumpCmd(db, os.Stdout, cmd[1:])
 	case ".save":
 		db, err := sh.getDB(ctx)
 		if err != nil {

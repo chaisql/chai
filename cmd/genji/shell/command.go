@@ -307,7 +307,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 }
 
 // RunDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
-func RunDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
+func RunDumpCmd(db *genji.DB, w io.Writer, tables []string) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -380,9 +380,13 @@ func RunDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	return err
 }
 
-// RunSaveCmd saves the currently opened database at the given path.
+// runSaveCommand saves the currently opened database at the given path.
 // If a path already exists, existing values in the target database will be overwritten.
-func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, path string) error {
+func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath string) error {
+	if dbPath == "" {
+		return errors.New("expected db path, got empty")
+	}
+
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -394,12 +398,12 @@ func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, path strin
 
 	switch engineName {
 	case "bolt":
-		otherNg, err = boltengine.NewEngine(path, 0660, nil)
+		otherNg, err = boltengine.NewEngine(dbPath, 0660, nil)
 		if err != nil {
 			return err
 		}
 	case "badger":
-		otherNg, err = badgerengine.NewEngine(badger.DefaultOptions(path).WithLogger(nil))
+		otherNg, err = badgerengine.NewEngine(badger.DefaultOptions(dbPath).WithLogger(nil))
 		if err != nil {
 			return err
 		}

@@ -117,7 +117,7 @@ func TestRunDumpCmd(t *testing.T) {
 				bwant.WriteString(tx)
 				ci := "COMMIT;\n"
 				if withConstraints {
-					q := fmt.Sprintf("CREATE TABLE test (\n  a %s\n);\n", tt.fieldConstraint)
+					q := fmt.Sprintf("CREATE TABLE test (\n a %s\n);\n", tt.fieldConstraint)
 					err := db.Exec(q)
 					require.NoError(t, err)
 					bwant.WriteString(q)
@@ -159,7 +159,7 @@ func TestRunDumpCmd(t *testing.T) {
 				bwant.WriteString(tt.want)
 
 				var buf bytes.Buffer
-				err = RunDumpCmd(db, []string{`test`}, &buf)
+				err = RunDumpCmd(db, &buf, []string{`test`})
 				require.NoError(t, err)
 				bwant.WriteString(ci)
 				require.Equal(t, bwant.String(), buf.String())
