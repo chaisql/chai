@@ -78,9 +78,9 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 	var alen int
 	var err error
 
-	vb, ok := a.(document.ValueBuffer)
+	vb, ok := a.(*document.ValueBuffer)
 	if ok {
-		alen = len(vb)
+		alen = vb.Len()
 	} else {
 		alen, err = document.ArrayLength(a)
 		if err != nil {

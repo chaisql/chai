@@ -113,7 +113,7 @@ func (l LiteralExprList) String() string {
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 	var err error
-	values := make(document.ValueBuffer, len(l))
+	values := make([]document.Value, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(stack)
 		if err != nil {
@@ -121,7 +121,7 @@ func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
 		}
 	}
 
-	return document.NewArrayValue(values), nil
+	return document.NewArrayValue(document.NewValueBuffer(values...)), nil
 }
 
 // KVPair associates an identifier with an expression.

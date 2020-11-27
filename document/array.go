@@ -25,8 +25,8 @@ type Array interface {
 
 // ArrayLength returns the length of an array.
 func ArrayLength(a Array) (int, error) {
-	if vb, ok := a.(ValueBuffer); ok {
-		return len(vb), nil
+	if vb, ok := a.(*ValueBuffer); ok {
+		return len(vb.values), nil
 	}
 
 	var len int
@@ -64,21 +64,18 @@ func ArrayContains(a Array, v Value) (bool, error) {
 }
 
 // ValueBuffer is an array that holds values in memory.
-type ValueBuffer []Value
+type ValueBuffer struct {
+	values []Value
+}
 
 // NewValueBuffer creates a buffer of values.
-func NewValueBuffer(values ...Value) ValueBuffer {
-	if len(values) == 0 {
-		// If called with no values return a non-nil slice.
-		return ValueBuffer{}
-	}
-
-	return ValueBuffer(values)
+func NewValueBuffer(values ...Value) *ValueBuffer {
+	return &ValueBuffer{values: values}
 }
 
 // Iterate over all the values of the buffer. It implements the Array interface.
-func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
-	for i, v := range vb {
+func (vb *ValueBuffer) Iterate(fn func(i int, value Value) error) error {
+	for i, v := range vb.values {
 		err := fn(i, v)
 		if err != nil {
 			return err
@@ -89,44 +86,46 @@ func (vb ValueBuffer) Iterate(fn func(i int, value Value) error) error {
 }
 
 // GetByIndex returns a value set at the given index. If the index is out of range it returns an error.
-func (vb ValueBuffer) GetByIndex(i int) (Value, error) {
-	if i >= len(vb) {
+func (vb *ValueBuffer) GetByIndex(i int) (Value, error) {
+	if i >= len(vb.values) {
 		return Value{}, ErrFieldNotFound
 	}
 
-	return vb[i], nil
+	return vb.values[i], nil
+}
+
+// Len returns the length the of array
+func (vb *ValueBuffer) Len() int {
+	return len(vb.values)
 }
 
 // Append a value to the buffer and return a new buffer.
-func (vb ValueBuffer) Append(v Value) ValueBuffer {
-	return append(vb, v)
+func (vb *ValueBuffer) Append(v Value) *ValueBuffer {
+	vb.values = append(vb.values, v)
+	return vb
 }
 
 // ScanArray copies all the values of a to the buffer.
 func (vb *ValueBuffer) ScanArray(a Array) error {
 	return a.Iterate(func(i int, v Value) error {
-		*vb = append(*vb, v)
+		vb.values = append(vb.values, v)
 		return nil
 	})
 }
 
 // Copy deep copies all the values from the given array.
-// If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
+// If a value is a document or an array, it will be stored as a *FieldBuffer or *ValueBuffer respectively.
 func (vb *ValueBuffer) Copy(a Array) error {
 	err := vb.ScanArray(a)
 	if err != nil {
 		return err
 	}
 
-	// if there is nothing to copy
-	// exit early and make sure the array
-	// is not nil but an empty array.
-	if len(*vb) == 0 {
-		*vb = ValueBuffer{}
+	if len(vb.values) == 0 {
 		return nil
 	}
 
-	for i, v := range *vb {
+	for i, v := range vb.values {
 		switch v.Type {
 		case DocumentValue:
 			var buf FieldBuffer
@@ -146,7 +145,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 				return err
 			}
 
-			err = vb.Replace(i, NewArrayValue(buf))
+			err = vb.Replace(i, NewArrayValue(&buf))
 			if err != nil {
 				return err
 			}
@@ -160,7 +159,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 func (vb *ValueBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 	path := Path{PathFragment{}}
 
-	for i, v := range *vb {
+	for i, v := range vb.values {
 		path[0].ArrayIndex = i
 
 		switch v.Type {
@@ -180,9 +179,9 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 			if err != nil {
 				return err
 			}
-			(*vb)[i] = NewDocumentValue(buf)
+			vb.values[i] = NewDocumentValue(buf)
 		case ArrayValue:
-			buf, ok := v.V.(ValueBuffer)
+			buf, ok := v.V.(*ValueBuffer)
 			if !ok {
 				buf = NewValueBuffer()
 				err := buf.Copy(v.V.(Array))
@@ -197,14 +196,14 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 			if err != nil {
 				return err
 			}
-			(*vb)[i] = NewArrayValue(buf)
+			vb.values[i] = NewArrayValue(buf)
 		default:
 			var err error
 			v, err = fn(path, v)
 			if err != nil {
 				return err
 			}
-			(*vb)[i] = v
+			vb.values[i] = v
 		}
 	}
 
@@ -213,17 +212,17 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 
 // Replace the value of the index by v.
 func (vb *ValueBuffer) Replace(index int, v Value) error {
-	if len(*vb) <= index {
+	if len(vb.values) <= index {
 		return ErrFieldNotFound
 	}
 
-	(*vb)[index] = v
+	vb.values[index] = v
 	return nil
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (vb *ValueBuffer) MarshalJSON() ([]byte, error) {
-	return jsonArray{Array: vb}.MarshalJSON()
+func (vb ValueBuffer) MarshalJSON() ([]byte, error) {
+	return jsonArray{Array: &vb}.MarshalJSON()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -236,7 +235,7 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 			return
 		}
 
-		*vb = vb.Append(v)
+		vb.values = append(vb.values, v)
 	})
 	if err != nil {
 		return err
@@ -254,10 +253,12 @@ type sortableArray struct {
 }
 
 func (a sortableArray) Len() int {
-	return len(a.vb)
+	return len(a.vb.values)
 }
 
-func (a *sortableArray) Swap(i, j int) { a.vb[i], a.vb[j] = a.vb[j], a.vb[i] }
+func (a *sortableArray) Swap(i, j int) {
+	a.vb.values[i], a.vb.values[j] = a.vb.values[j], a.vb.values[i]
+}
 
 var typeSortOrder = map[ValueType]int{
 	NullValue:     0,
@@ -269,9 +270,9 @@ var typeSortOrder = map[ValueType]int{
 }
 
 func (a *sortableArray) Less(i, j int) (ok bool) {
-	it, jt := a.vb[i].Type, a.vb[j].Type
+	it, jt := a.vb.values[i].Type, a.vb.values[j].Type
 	if it == jt {
-		ok, a.err = a.vb[i].IsLesserThan(a.vb[j])
+		ok, a.err = a.vb.values[i].IsLesserThan(a.vb.values[j])
 		return
 	}
 
@@ -290,7 +291,7 @@ func (a *sortableArray) Less(i, j int) (ok bool) {
 	}
 
 	if typeSortOrder[it] == typeSortOrder[jt] {
-		ok, a.err = a.vb[i].IsLesserThan(a.vb[j])
+		ok, a.err = a.vb.values[i].IsLesserThan(a.vb.values[j])
 		return
 	}
 

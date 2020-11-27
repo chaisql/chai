@@ -175,7 +175,7 @@ func (v Value) CastAsArray() (Value, error) {
 			return Value{}, fmt.Errorf(`cannot cast %q as array: %w`, v.V, err)
 		}
 
-		return NewArrayValue(vb), nil
+		return NewArrayValue(&vb), nil
 	}
 
 	return Value{}, fmt.Errorf("cannot cast %s as array", v.Type)

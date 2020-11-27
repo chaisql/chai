@@ -46,7 +46,7 @@ func jsonToArray(t testing.TB, x string) document.Value {
 	err := json.Unmarshal([]byte(x), &vb)
 	require.NoError(t, err)
 
-	return document.NewArrayValue(vb)
+	return document.NewArrayValue(&vb)
 }
 
 func jsonToDocument(t testing.TB, x string) document.Value {

@@ -145,12 +145,12 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 		// if literalsOnly is still true, it means we have a list of constant expressions
 		// (ex: [1, 4, true]). We can transform that into a document.Array.
 		if literalsOnly {
-			vb := make(document.ValueBuffer, len(t))
+			values := make([]document.Value, len(t))
 			for i := range t {
-				vb[i] = document.Value(t[i].(expr.LiteralValue))
+				values[i] = document.Value(t[i].(expr.LiteralValue))
 			}
 
-			return expr.ArrayValue(&vb)
+			return expr.ArrayValue(document.NewValueBuffer(values...))
 		}
 
 	case expr.KVPairs:

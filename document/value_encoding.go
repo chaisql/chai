@@ -245,7 +245,7 @@ func decodeArray(data []byte) (Array, int, error) {
 			return nil, i, err
 		}
 
-		vb = vb.Append(v)
+		vb.Append(v)
 
 		// skip the delimiter
 		if data[i] == arrayValueDelim {
@@ -260,7 +260,7 @@ func decodeArray(data []byte) (Array, int, error) {
 	// skip the array end character
 	readCount++
 
-	return vb, readCount, nil
+	return &vb, readCount, nil
 }
 
 func decodeDocument(data []byte) (Document, int, error) {

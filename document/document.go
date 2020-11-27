@@ -289,7 +289,7 @@ func (fb *FieldBuffer) Copy(d Document) error {
 				return err
 			}
 
-			fb.fields[i].Value = NewArrayValue(buf)
+			fb.fields[i].Value = NewArrayValue(&buf)
 		}
 	}
 
@@ -329,7 +329,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 			}
 			fb.fields[i].Value = NewDocumentValue(buf)
 		case ArrayValue:
-			buf, ok := f.Value.V.(ValueBuffer)
+			buf, ok := f.Value.V.(*ValueBuffer)
 			if !ok {
 				buf = NewValueBuffer()
 				err := buf.Copy(f.Value.V.(Array))

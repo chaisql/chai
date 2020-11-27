@@ -45,7 +45,7 @@ func TestSortArray(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var arr ValueBuffer
 			require.NoError(t, arr.UnmarshalJSON([]byte(test.arr)))
-			output, err := SortArray(arr)
+			output, err := SortArray(&arr)
 			require.NoError(t, err)
 			actual, err := json.Marshal(output)
 			require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestValueBufferCopy(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var from, to ValueBuffer
 			require.NoError(t, from.UnmarshalJSON([]byte(test.want)))
-			err := to.Copy(from)
+			err := to.Copy(&from)
 			require.NoError(t, err)
 			got, err := json.Marshal(to)
 			require.NoError(t, err)
