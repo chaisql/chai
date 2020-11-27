@@ -432,7 +432,7 @@ func (n *unsetNode) toStream(st document.Stream) (document.Stream, error) {
 			return nil, err
 		}
 
-		err = fb.Delete(n.field)
+		err = fb.Delete(document.Path{document.PathFragment{FieldName: n.field}})
 		if err != nil {
 			return nil, err
 		}

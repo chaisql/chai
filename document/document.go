@@ -241,15 +241,56 @@ func (fb FieldBuffer) Iterate(fn func(field string, value Value) error) error {
 }
 
 // Delete a field from the buffer.
-func (fb *FieldBuffer) Delete(field string) error {
-	for i := range fb.fields {
-		if fb.fields[i].Field == field {
-			fb.fields = append(fb.fields[0:i], fb.fields[i+1:]...)
-			return nil
+func (fb *FieldBuffer) Delete(path Path) error {
+	if len(path) == 1 {
+		for i := range fb.fields {
+			if fb.fields[i].Field == path[0].FieldName {
+				fb.fields = append(fb.fields[0:i], fb.fields[i+1:]...)
+				return nil
+			}
 		}
 	}
 
-	return ErrFieldNotFound
+	parentPath := path[:len(path)-1]
+	lastFragment := path[len(path)-1]
+
+	// get parent doc or array
+	v, err := parentPath.getValueFromDocument(fb)
+	if err != nil {
+		return err
+	}
+	switch v.Type {
+	case DocumentValue:
+		subBuf, ok := v.V.(*FieldBuffer)
+		if !ok {
+			return errors.New("Delete doesn't support non buffered document")
+		}
+
+		for i := range subBuf.fields {
+			if subBuf.fields[i].Field == lastFragment.FieldName {
+				subBuf.fields = append(subBuf.fields[0:i], subBuf.fields[i+1:]...)
+				return nil
+			}
+		}
+
+		return ErrFieldNotFound
+	case ArrayValue:
+		subBuf, ok := v.V.(*ValueBuffer)
+		if !ok {
+			return errors.New("Delete doesn't support non buffered array")
+		}
+
+		idx := path[len(path)-1].ArrayIndex
+		if idx >= len(subBuf.values) {
+			return ErrFieldNotFound
+		}
+		subBuf.values = append(subBuf.values[0:idx], subBuf.values[idx+1:]...)
+		parentPath[:len(parentPath)-1].GetValue(fb)
+	default:
+		return ErrFieldNotFound
+	}
+
+	return nil
 }
 
 // Replace the value of the field by v.

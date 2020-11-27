@@ -13,6 +13,12 @@ import (
 
 var _ document.Document = new(document.FieldBuffer)
 
+func parsePath(t testing.TB, p string) document.Path {
+	path, err := parser.ParsePath(p)
+	require.NoError(t, err)
+	return path
+}
+
 func TestFieldBuffer(t *testing.T) {
 	var buf document.FieldBuffer
 	buf.Add("a", document.NewIntegerValue(10))
@@ -138,24 +144,40 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		var buf document.FieldBuffer
-		buf.Add("a", document.NewIntegerValue(10))
-		buf.Add("b", document.NewTextValue("hello"))
+		tests := []struct {
+			document   string
+			deletePath string
+			expected   string
+			fails      bool
+		}{
+			{`{"a": 10, "b": "hello"}`, "a", `{"b": "hello"}`, false},
+			{`{"a": 10, "b": "hello"}`, "c", ``, true},
+			{`{"a": [1], "b": "hello"}`, "a[0]", `{"a": [], "b": "hello"}`, false},
+			{`{"a": [1, 2], "b": "hello"}`, "a[0]", `{"a": [2], "b": "hello"}`, false},
+			{`{"a": [1, 2], "b": "hello"}`, "a[5]", ``, true},
+			{`{"a": [1, {"c": [1]}], "b": "hello"}`, "a[1].c", `{"a": [1, {}], "b": "hello"}`, false},
+			{`{"a": [1, {"c": [1]}], "b": "hello"}`, "a[1].d", ``, true},
+		}
 
-		err := buf.Delete("a")
-		require.NoError(t, err)
-		require.Equal(t, 1, buf.Len())
-		v, _ := buf.GetByField("b")
-		require.Equal(t, document.NewTextValue("hello"), v)
-		_, err = buf.GetByField("a")
-		require.Error(t, err)
+		for _, test := range tests {
+			t.Run(test.document, func(t *testing.T) {
+				var buf document.FieldBuffer
+				err := json.Unmarshal([]byte(test.document), &buf)
+				require.NoError(t, err)
 
-		err = buf.Delete("b")
-		require.NoError(t, err)
-		require.Equal(t, 0, buf.Len())
+				path := parsePath(t, test.deletePath)
 
-		err = buf.Delete("b")
-		require.Error(t, err)
+				err = buf.Delete(path)
+				if test.fails {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+					got, err := json.Marshal(&buf)
+					require.NoError(t, err)
+					require.JSONEq(t, test.expected, string(got))
+				}
+			})
+		}
 	})
 
 	t.Run("Replace", func(t *testing.T) {
