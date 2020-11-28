@@ -39,3 +39,41 @@ func TestOrdering(t *testing.T) {
 		})
 	}
 }
+
+func TestTwoWays(t *testing.T) {
+	tests := []struct {
+		name string
+		want interface{}
+		enc  func([]byte, interface{}) []byte
+		dec  func([]byte) (interface{}, error)
+	}{
+		{"bool", true,
+			func(buf []byte, v interface{}) []byte { return AppendBool(buf, v.(bool)) },
+			func(buf []byte) (interface{}, error) { return DecodeBool(buf) },
+		},
+		{"uint64", uint64(10),
+			func(buf []byte, v interface{}) []byte { return AppendUint64(buf, v.(uint64)) },
+			func(buf []byte) (interface{}, error) { return DecodeUint64(buf) },
+		},
+		{"int64", int64(10),
+			func(buf []byte, v interface{}) []byte { return AppendInt64(buf, v.(int64)) },
+			func(buf []byte) (interface{}, error) { return DecodeInt64(buf) },
+		},
+		{"float64", float64(10),
+			func(buf []byte, v interface{}) []byte { return AppendFloat64(buf, v.(float64)) },
+			func(buf []byte) (interface{}, error) { return DecodeFloat64(buf) },
+		},
+		{"base64", []byte("hello"),
+			func(buf []byte, v interface{}) []byte { res, _ := AppendBase64(buf, v.([]byte)); return res },
+			func(buf []byte) (interface{}, error) { return DecodeBase64(buf) },
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := test.dec(test.enc(nil, test.want))
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
