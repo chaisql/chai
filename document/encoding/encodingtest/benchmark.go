@@ -44,7 +44,9 @@ func benchmarkEncodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var buf bytes.Buffer
-		codec.NewEncoder(&buf).EncodeDocument(&fb)
+		enc := codec.NewEncoder(&buf)
+		enc.EncodeDocument(&fb)
+		enc.Close()
 	}
 }
 

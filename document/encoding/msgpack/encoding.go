@@ -3,45 +3,11 @@ package msgpack
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/genjidb/genji/document"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/codes"
 )
-
-// EncodeDocument takes a document and encodes it
-// in MessagePack.
-func EncodeDocument(d document.Document) ([]byte, error) {
-	if ec, ok := d.(EncodedDocument); ok {
-		return ec, nil
-	}
-
-	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
-	defer enc.Close()
-
-	err := enc.EncodeDocument(d)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-// DecodeDocument takes a byte slice and returns a lazily decoded document.
-// If buf is malformed, an error will be returned when calling one of the document method.
-func DecodeDocument(buf []byte) document.Document {
-	return EncodedDocument(buf)
-}
-
-// EncodeValue encodes any value to MessagePack.
-func EncodeValue(w io.Writer, v document.Value) error {
-	enc := NewEncoder(w)
-	defer enc.Close()
-
-	return enc.EncodeValue(v)
-}
 
 // An EncodedDocument implements the document.Document
 // interface on top of an encoded representation of a
@@ -61,25 +27,6 @@ func bytesLen(c codes.Code, dec *msgpack.Decoder) (int, error) {
 
 	if codes.IsFixedString(c) {
 		return int(c & codes.FixedStrMask), nil
-	}
-
-	switch c {
-	case codes.Str8, codes.Bin8:
-		var b [1]byte
-		err := dec.ReadFull(b[:])
-		return int(b[0]), err
-	case codes.Str16, codes.Bin16:
-		var b [2]byte
-		err := dec.ReadFull(b[:])
-		return int((uint16(b[0]) << 8) | uint16(b[1])), err
-	case codes.Str32, codes.Bin32:
-		var b [4]byte
-		err := dec.ReadFull(b[:])
-		n := (uint32(b[0]) << 24) |
-			(uint32(b[1]) << 16) |
-			(uint32(b[2]) << 8) |
-			uint32(b[3])
-		return int(n), err
 	}
 
 	return 0, fmt.Errorf("msgpack: invalid code=%x decoding bytes length", c)
@@ -257,36 +204,4 @@ func (e EncodedArray) GetByIndex(idx int) (v document.Value, err error) {
 // MarshalJSON implements the json.Marshaler interface.
 func (e EncodedArray) MarshalJSON() ([]byte, error) {
 	return document.MarshalJSONArray(e)
-}
-
-// EncodeArray encodes a document.Array into its binary representation.
-func EncodeArray(a document.Array) ([]byte, error) {
-	if ea, ok := a.(EncodedArray); ok {
-		return ea, nil
-	}
-
-	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
-	defer enc.Close()
-
-	err := enc.EncodeArray(a)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-// DecodeArray takes a byte slice and returns a lazily decoded array.
-// If buf is malformed, an error will be returned when calling one of the array method.
-func DecodeArray(buf []byte) document.Array {
-	return EncodedArray(buf)
-}
-
-// DecodeValue takes some encoded data and decodes it into its concrete value.
-func DecodeValue(data []byte) (document.Value, error) {
-	dec := NewDecoder(bytes.NewReader(data))
-	defer dec.Close()
-
-	return dec.DecodeValue()
 }

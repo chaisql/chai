@@ -282,7 +282,9 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 	}
 
 	var buf bytes.Buffer
-	err = t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
+	enc := t.db.Codec.NewEncoder(&buf)
+	defer enc.Close()
+	err = enc.EncodeDocument(info.ToDocument())
 	if err != nil {
 		return err
 	}
@@ -363,7 +365,9 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 // Replace replaces tableName table information with the new info.
 func (t *tableInfoStore) Replace(tx *Transaction, tableName string, info *TableInfo) error {
 	var buf bytes.Buffer
-	err := t.db.Codec.NewEncoder(&buf).EncodeDocument(info.ToDocument())
+	enc := t.db.Codec.NewEncoder(&buf)
+	defer enc.Close()
+	err := enc.EncodeDocument(info.ToDocument())
 	if err != nil {
 		return err
 	}
@@ -471,7 +475,9 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 	}
 
 	var buf bytes.Buffer
-	err = t.db.Codec.NewEncoder(&buf).EncodeDocument(cfg.ToDocument())
+	enc := t.db.Codec.NewEncoder(&buf)
+	defer enc.Close()
+	err = enc.EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}
@@ -500,7 +506,9 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 
 func (t *indexStore) Replace(indexName string, cfg IndexConfig) error {
 	var buf bytes.Buffer
-	err := t.db.Codec.NewEncoder(&buf).EncodeDocument(cfg.ToDocument())
+	enc := t.db.Codec.NewEncoder(&buf)
+	defer enc.Close()
+	err := enc.EncodeDocument(cfg.ToDocument())
 	if err != nil {
 		return err
 	}

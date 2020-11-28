@@ -70,7 +70,9 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(fb)
+	enc := t.tx.db.Codec.NewEncoder(&buf)
+	defer enc.Close()
+	err = enc.EncodeDocument(fb)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode document: %w", err)
 	}
@@ -189,7 +191,9 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// encode new document
 	var buf bytes.Buffer
-	err = t.tx.db.Codec.NewEncoder(&buf).EncodeDocument(d)
+	enc := t.tx.db.Codec.NewEncoder(&buf)
+	defer enc.Close()
+	err = enc.EncodeDocument(d)
 	if err != nil {
 		return fmt.Errorf("failed to encode document: %w", err)
 	}

@@ -22,4 +22,6 @@ type Codec interface {
 // An Encoder encodes one document to the underlying writer.
 type Encoder interface {
 	EncodeDocument(d document.Document) error
+	// Close the encoder to release any resource.
+	Close()
 }

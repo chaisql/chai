@@ -53,6 +53,11 @@ func (e *Encoder) EncodeDocument(d document.Document) error {
 	return err
 }
 
+// Close does nothing.
+func (e *Encoder) Close() {
+	return
+}
+
 // EncodeDocument takes a document and encodes it using the encoding.Format type.
 func EncodeDocument(d document.Document) ([]byte, error) {
 	if ec, ok := d.(EncodedDocument); ok {
@@ -211,7 +216,12 @@ func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error 
 
 // GetByIndex returns a value by index of the array.
 func (e EncodedArray) GetByIndex(i int) (document.Value, error) {
-	return decodeValueFromDocument(e, string(encodeInt64(int64(i))))
+	v, err := decodeValueFromDocument(e, string(encodeInt64(int64(i))))
+	if err == document.ErrFieldNotFound {
+		return v, document.ErrValueNotFound
+	}
+
+	return v, err
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -248,7 +258,7 @@ func decodeValueFromDocument(data []byte, field string) (document.Value, error) 
 		}
 	}
 
-	return document.Value{}, document.ErrValueNotFound
+	return document.Value{}, document.ErrFieldNotFound
 }
 
 // EncodeArray encodes a into its binary representation.
