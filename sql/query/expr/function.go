@@ -1,7 +1,6 @@
 package expr
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -83,18 +82,16 @@ type PKFunc struct{}
 
 // Eval returns the primary key of the current document.
 func (k PKFunc) Eval(ctx EvalStack) (document.Value, error) {
-	if ctx.Info == nil {
-		return document.Value{}, errors.New("no table specified")
+	if ctx.Document == nil {
+		return nullLitteral, nil
 	}
 
-	pk := ctx.Info.GetPrimaryKey()
-	if pk != nil {
-		return pk.Path.GetValue(ctx.Document)
+	keyer, ok := ctx.Document.(document.Keyer)
+	if !ok {
+		return nullLitteral, nil
 	}
 
-	i, _ := binary.Uvarint(ctx.Document.(document.Keyer).Key())
-
-	return document.NewIntegerValue(int64(i)), nil
+	return keyer.Key()
 }
 
 // IsEqual compares this expression with the other expression and returns

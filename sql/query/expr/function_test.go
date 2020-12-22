@@ -12,16 +12,15 @@ func TestPkExpr(t *testing.T) {
 		name  string
 		stack expr.EvalStack
 		res   document.Value
-		fails bool
 	}{
-		{"empty stack", expr.EvalStack{}, nullLitteral, true},
-		{"stack with doc", stackWithDoc, nullLitteral, true},
-		{"stack with doc and info", stackWithDocAndInfo, document.NewIntegerValue(1), false},
+		{"empty stack", expr.EvalStack{}, nullLitteral},
+		{"stack with doc", stackWithDoc, nullLitteral},
+		{"stack with doc and key", stackWithDocAndKey, document.NewIntegerValue(1)},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			testExpr(t, "pk()", test.stack, test.res, test.fails)
+			testExpr(t, "pk()", test.stack, test.res, false)
 		})
 	}
 }

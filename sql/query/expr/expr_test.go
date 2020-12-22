@@ -20,8 +20,28 @@ var doc document.Document = func() document.Document {
 	}`))
 }()
 
+var docWithKey document.Document = func() document.Document {
+	fb := document.NewFieldBuffer()
+	err := fb.Copy(doc)
+	if err != nil {
+		panic(err)
+	}
+
+	fb.DecodedKey = document.NewIntegerValue(1)
+	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	return fb
+}()
+
 var stackWithDoc = expr.EvalStack{
 	Document: doc,
+}
+
+var stackWithDocAndKey = expr.EvalStack{
+	Document: docWithKey,
 }
 
 var fakeTableInfo = &database.TableInfo{
@@ -29,10 +49,6 @@ var fakeTableInfo = &database.TableInfo{
 		{Path: document.Path{document.PathFragment{FieldName: "c"}, document.PathFragment{ArrayIndex: 0}}, IsPrimaryKey: true},
 		{Path: document.Path{document.PathFragment{FieldName: "c"}, document.PathFragment{ArrayIndex: 1}}},
 	},
-}
-var stackWithDocAndInfo = expr.EvalStack{
-	Document: doc,
-	Info:     fakeTableInfo,
 }
 
 var nullLitteral = document.NewNullValue()

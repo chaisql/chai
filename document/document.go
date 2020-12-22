@@ -38,7 +38,8 @@ func MarshalJSONArray(a Array) ([]byte, error) {
 // A Keyer returns the key identifying documents in their storage.
 // This is usually implemented by documents read from storages.
 type Keyer interface {
-	Key() []byte
+	RawKey() []byte
+	Key() (Value, error)
 }
 
 // Length returns the length of a document.
@@ -77,8 +78,9 @@ func Fields(d Document) ([]string, error) {
 
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
 type FieldBuffer struct {
-	fields []fieldValue
-	key    []byte
+	fields     []fieldValue
+	EncodedKey []byte
+	DecodedKey Value
 }
 
 // NewFieldBuffer creates a FieldBuffer.
@@ -117,8 +119,13 @@ func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
 
 // ScanDocument copies all the fields of d to the buffer.
 func (fb *FieldBuffer) ScanDocument(d Document) error {
+	var err error
 	if k, ok := d.(Keyer); ok {
-		fb.key = k.Key()
+		fb.EncodedKey = k.RawKey()
+		fb.DecodedKey, err = k.Key()
+		if err != nil {
+			return err
+		}
 	}
 
 	return d.Iterate(func(f string, v Value) error {
@@ -402,9 +409,14 @@ func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
 }
 
-// Key of the document if any.
-func (fb *FieldBuffer) Key() []byte {
-	return fb.key
+// RawKey returns the encoded key of the document, if any.
+func (fb *FieldBuffer) RawKey() []byte {
+	return fb.EncodedKey
+}
+
+// Key of the document, if any.
+func (fb *FieldBuffer) Key() (Value, error) {
+	return fb.DecodedKey, nil
 }
 
 // Fields returns a sorted list of root field names.

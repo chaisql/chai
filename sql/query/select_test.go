@@ -27,7 +27,7 @@ func TestSelectStmt(t *testing.T) {
 		{"No table, BitwiseAnd", "SELECT 10 & 6", false, `[{"10 & 6":2}]`, nil},
 		{"No table, BitwiseOr", "SELECT 10 | 6", false, `[{"10 | 6":14}]`, nil},
 		{"No table, BitwiseXor", "SELECT 10 ^ 6", false, `[{"10 ^ 6":12}]`, nil},
-		{"No table, function pk()", "SELECT pk()", true, ``, nil},
+		{"No table, function pk()", "SELECT pk()", false, `[{"pk()":null}]`, nil},
 		{"No table, field", "SELECT a", true, ``, nil},
 		{"No table, wildcard", "SELECT *", true, ``, nil},
 		{"No table, document", "SELECT {a: 1, b: 2 + 1}", false, `[{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}]`, nil},

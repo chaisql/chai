@@ -274,10 +274,20 @@ type encodedDocumentWithKey struct {
 	document.Document
 
 	key []byte
+	pk  *FieldConstraint
 }
 
-func (e encodedDocumentWithKey) Key() []byte {
+func (e encodedDocumentWithKey) RawKey() []byte {
 	return e.key
+}
+
+func (e encodedDocumentWithKey) Key() (document.Value, error) {
+	if e.pk == nil {
+		docid, _ := binary.Uvarint(e.key)
+		return document.NewIntegerValue(int64(docid)), nil
+	}
+
+	return e.pk.Path.GetValue(&e)
 }
 
 // This document implementation waits until
@@ -290,6 +300,7 @@ type lazilyDecodedDocument struct {
 	item  engine.Item
 	buf   []byte
 	codec encoding.Codec
+	pk    *FieldConstraint
 }
 
 func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err error) {
@@ -314,8 +325,18 @@ func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Val
 	return d.codec.NewDocument(d.buf).Iterate(fn)
 }
 
-func (d *lazilyDecodedDocument) Key() []byte {
+func (d *lazilyDecodedDocument) RawKey() []byte {
 	return d.item.Key()
+}
+
+func (d *lazilyDecodedDocument) Key() (document.Value, error) {
+	k := d.item.Key()
+	if d.pk == nil {
+		docid, _ := binary.Uvarint(k)
+		return document.NewIntegerValue(int64(docid)), nil
+	}
+
+	return d.pk.Path.GetValue(d)
 }
 
 func (d *lazilyDecodedDocument) Reset() {
@@ -339,10 +360,15 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 		codec: t.tx.db.Codec,
 	}
 
+	info, err := t.Info()
+	if err != nil {
+		return err
+	}
+	d.pk = info.GetPrimaryKey()
+
 	it := t.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
-	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
 		d.Reset()
 		d.item = it.Item()
@@ -371,9 +397,15 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
+	info, err := t.Info()
+	if err != nil {
+		return nil, err
+	}
+
 	var d encodedDocumentWithKey
 	d.Document = t.tx.db.Codec.NewDocument(v)
 	d.key = key
+	d.pk = info.GetPrimaryKey()
 	return &d, err
 }
 

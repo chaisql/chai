@@ -44,7 +44,6 @@ type EvalStack struct {
 	Tx       *database.Transaction
 	Document document.Document
 	Params   []Param
-	Info     *database.TableInfo
 }
 
 type simpleOperator struct {

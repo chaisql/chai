@@ -333,7 +333,7 @@ func (tx *Transaction) ReIndex(indexName string) error {
 			return err
 		}
 
-		return idx.Set(v, d.(document.Keyer).Key())
+		return idx.Set(v, d.(document.Keyer).RawKey())
 	})
 }
 

@@ -110,7 +110,6 @@ func (r documentMask) GetByField(field string) (v document.Value, err error) {
 
 			stack := expr.EvalStack{
 				Document: r.d,
-				Info:     r.info,
 			}
 			var found bool
 			err = rf.Iterate(stack, func(f string, value document.Value) error {
@@ -134,7 +133,6 @@ func (r documentMask) GetByField(field string) (v document.Value, err error) {
 func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
 	stack := expr.EvalStack{
 		Document: r.d,
-		Info:     r.info,
 	}
 
 	for _, rf := range r.resultFields {

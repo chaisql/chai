@@ -65,7 +65,7 @@ func TestTableIterate(t *testing.T) {
 
 		m := make(map[string]int)
 		err := tb.Iterate(func(d document.Document) error {
-			m[string(d.(document.Keyer).Key())]++
+			m[string(d.(document.Keyer).RawKey())]++
 			return nil
 		})
 		require.NoError(t, err)

@@ -59,7 +59,7 @@ func (n *deletionNode) toStream(st document.Stream) (document.Stream, error) {
 				return errors.New("attempt to delete document without key")
 			}
 			// copy the key and reuse the buffer
-			keys[i] = append(keys[i][0:0], k.Key()...)
+			keys[i] = append(keys[i][0:0], k.RawKey()...)
 			i++
 			return nil
 		})

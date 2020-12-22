@@ -76,7 +76,7 @@ func (n *replacementNode) toStream(st document.Stream) (document.Stream, error) 
 			}
 
 			// copy the key and reuse the buffer
-			keys[i] = append(keys[i][0:0], rk.Key()...)
+			keys[i] = append(keys[i][0:0], rk.RawKey()...)
 			i++
 
 			return nil
