@@ -105,7 +105,7 @@ func (n *indexInputNode) Bind(tx *database.Transaction, params []expr.Param) (er
 	n.params = params
 
 	// evaluate the filter expression
-	n.evaluatedFilter, err = n.filter.Eval(expr.EvalStack{
+	n.evaluatedFilter, err = n.filter.Eval(&expr.Environment{
 		Params: n.params,
 	})
 	if err != nil {

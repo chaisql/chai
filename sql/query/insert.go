@@ -39,22 +39,22 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 		return res, err
 	}
 
-	stack := expr.EvalStack{
+	env := expr.Environment{
 		Params: args,
 	}
 
 	if len(stmt.FieldNames) > 0 {
-		return stmt.insertExprList(t, stack)
+		return stmt.insertExprList(t, &env)
 	}
 
-	return stmt.insertDocuments(t, stack)
+	return stmt.insertDocuments(t, &env)
 }
 
-func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) (Result, error) {
+func (stmt InsertStmt) insertDocuments(t *database.Table, env *expr.Environment) (Result, error) {
 	var res Result
 
 	for _, e := range stmt.Values {
-		v, err := e.Eval(stack)
+		v, err := e.Eval(env)
 		if err != nil {
 			return res, err
 		}
@@ -74,14 +74,14 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, stack expr.EvalStack) 
 	return res, nil
 }
 
-func (stmt InsertStmt) insertExprList(t *database.Table, stack expr.EvalStack) (Result, error) {
+func (stmt InsertStmt) insertExprList(t *database.Table, env *expr.Environment) (Result, error) {
 	var res Result
 
 	// iterate over all of the documents (r1, r2, r3, ...)
 	for _, e := range stmt.Values {
 		var fb document.FieldBuffer
 
-		v, err := e.Eval(stack)
+		v, err := e.Eval(env)
 		if err != nil {
 			return res, err
 		}

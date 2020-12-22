@@ -28,8 +28,8 @@ func Add(a, b Expr) Expr {
 	return &addOp{&simpleOperator{a, b, scanner.ADD}}
 }
 
-func (op addOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op addOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -50,8 +50,8 @@ func Sub(a, b Expr) Expr {
 	return &subOp{&simpleOperator{a, b, scanner.SUB}}
 }
 
-func (op subOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op subOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -72,8 +72,8 @@ func Mul(a, b Expr) Expr {
 	return &mulOp{&simpleOperator{a, b, scanner.MUL}}
 }
 
-func (op mulOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op mulOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -94,8 +94,8 @@ func Div(a, b Expr) Expr {
 	return &divOp{&simpleOperator{a, b, scanner.DIV}}
 }
 
-func (op divOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op divOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -116,8 +116,8 @@ func Mod(a, b Expr) Expr {
 	return &modOp{&simpleOperator{a, b, scanner.MOD}}
 }
 
-func (op modOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op modOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -138,8 +138,8 @@ func BitwiseAnd(a, b Expr) Expr {
 	return &bitwiseAndOp{&simpleOperator{a, b, scanner.BITWISEAND}}
 }
 
-func (op bitwiseAndOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op bitwiseAndOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -160,8 +160,8 @@ func BitwiseOr(a, b Expr) Expr {
 	return &bitwiseOrOp{&simpleOperator{a, b, scanner.BITWISEOR}}
 }
 
-func (op bitwiseOrOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op bitwiseOrOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -182,8 +182,8 @@ func BitwiseXor(a, b Expr) Expr {
 	return &bitwiseXorOp{&simpleOperator{a, b, scanner.BITWISEXOR}}
 }
 
-func (op bitwiseXorOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op bitwiseXorOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}

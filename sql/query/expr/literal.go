@@ -67,7 +67,7 @@ func ArrayValue(a document.Array) LiteralValue {
 }
 
 // Eval returns l. It implements the Expr interface.
-func (v LiteralValue) Eval(EvalStack) (document.Value, error) {
+func (v LiteralValue) Eval(*Environment) (document.Value, error) {
 	return document.Value(v), nil
 }
 
@@ -111,11 +111,11 @@ func (l LiteralExprList) String() string {
 }
 
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
-func (l LiteralExprList) Eval(stack EvalStack) (document.Value, error) {
+func (l LiteralExprList) Eval(env *Environment) (document.Value, error) {
 	var err error
 	values := make([]document.Value, len(l))
 	for i, e := range l {
-		values[i], err = e.Eval(stack)
+		values[i], err = e.Eval(env)
 		if err != nil {
 			return nullLitteral, err
 		}
@@ -162,14 +162,14 @@ func (kvp KVPairs) IsEqual(other Expr) bool {
 }
 
 // Eval turns a list of KVPairs into a document.
-func (kvp KVPairs) Eval(ctx EvalStack) (document.Value, error) {
+func (kvp KVPairs) Eval(env *Environment) (document.Value, error) {
 	var fb document.FieldBuffer
-	if ctx.Document == nil {
-		ctx.Document = &fb
+	if env.V.Type == 0 {
+		env.V = document.NewDocumentValue(&fb)
 	}
 
 	for _, kv := range kvp {
-		v, err := kv.V.Eval(ctx)
+		v, err := kv.V.Eval(env)
 		if err != nil {
 			return document.Value{}, err
 		}

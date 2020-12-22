@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -36,29 +35,22 @@ var docWithKey document.Document = func() document.Document {
 	return fb
 }()
 
-var stackWithDoc = expr.EvalStack{
-	Document: doc,
+var envWithDoc = expr.Environment{
+	V: document.NewDocumentValue(doc),
 }
 
-var stackWithDocAndKey = expr.EvalStack{
-	Document: docWithKey,
-}
-
-var fakeTableInfo = &database.TableInfo{
-	FieldConstraints: []database.FieldConstraint{
-		{Path: document.Path{document.PathFragment{FieldName: "c"}, document.PathFragment{ArrayIndex: 0}}, IsPrimaryKey: true},
-		{Path: document.Path{document.PathFragment{FieldName: "c"}, document.PathFragment{ArrayIndex: 1}}},
-	},
+var envWithDocAndKey = expr.Environment{
+	V: document.NewDocumentValue(docWithKey),
 }
 
 var nullLitteral = document.NewNullValue()
 
-func testExpr(t testing.TB, exprStr string, stack expr.EvalStack, want document.Value, fails bool) {
+func testExpr(t testing.TB, exprStr string, env *expr.Environment, want document.Value, fails bool) {
 	t.Helper()
 
 	e, _, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
 	require.NoError(t, err)
-	res, err := e.Eval(stack)
+	res, err := e.Eval(env)
 	if fails {
 		require.Error(t, err)
 	} else {

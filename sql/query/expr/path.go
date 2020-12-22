@@ -9,12 +9,15 @@ type Path document.Path
 
 // Eval extracts the document from the context and selects the right value.
 // It implements the Expr interface.
-func (p Path) Eval(stack EvalStack) (document.Value, error) {
-	if stack.Document == nil {
+func (p Path) Eval(env *Environment) (document.Value, error) {
+	if env.V.Type == 0 {
 		return nullLitteral, document.ErrFieldNotFound
 	}
+	if env.V.Type != document.DocumentValue {
+		return nullLitteral, nil
+	}
 
-	v, err := document.Path(p).GetValue(stack.Document)
+	v, err := document.Path(p).GetValue(env.V.V.(document.Document))
 	if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
 		return nullLitteral, nil
 	}

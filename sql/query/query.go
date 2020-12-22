@@ -159,21 +159,3 @@ func (r *Result) Close() (err error) {
 
 	return err
 }
-
-func whereClause(e expr.Expr, stack expr.EvalStack) func(d document.Document) (bool, error) {
-	if e == nil {
-		return func(d document.Document) (bool, error) {
-			return true, nil
-		}
-	}
-
-	return func(d document.Document) (bool, error) {
-		stack.Document = d
-		v, err := e.Eval(stack)
-		if err != nil {
-			return false, err
-		}
-
-		return v.IsTruthy()
-	}
-}

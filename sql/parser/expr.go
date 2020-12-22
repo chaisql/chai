@@ -15,14 +15,14 @@ type dummyOperator struct {
 	leftHand, rightHand expr.Expr
 }
 
-func (d *dummyOperator) Token() scanner.Token                        { panic("not implemented") }
-func (d *dummyOperator) Equal(expr.Expr) bool                        { panic("not implemented") }
-func (d *dummyOperator) Eval(expr.EvalStack) (document.Value, error) { panic("not implemented") }
-func (d *dummyOperator) Precedence() int                             { panic("not implemented") }
-func (d *dummyOperator) LeftHand() expr.Expr                         { panic("not implemented") }
-func (d *dummyOperator) RightHand() expr.Expr                        { return d.rightHand }
-func (d *dummyOperator) SetLeftHandExpr(e expr.Expr)                 { panic("not implemented") }
-func (d *dummyOperator) SetRightHandExpr(e expr.Expr)                { d.rightHand = e }
+func (d *dummyOperator) Token() scanner.Token                           { panic("not implemented") }
+func (d *dummyOperator) Equal(expr.Expr) bool                           { panic("not implemented") }
+func (d *dummyOperator) Eval(*expr.Environment) (document.Value, error) { panic("not implemented") }
+func (d *dummyOperator) Precedence() int                                { panic("not implemented") }
+func (d *dummyOperator) LeftHand() expr.Expr                            { panic("not implemented") }
+func (d *dummyOperator) RightHand() expr.Expr                           { return d.rightHand }
+func (d *dummyOperator) SetLeftHandExpr(e expr.Expr)                    { panic("not implemented") }
+func (d *dummyOperator) SetRightHandExpr(e expr.Expr)                   { d.rightHand = e }
 
 // ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {

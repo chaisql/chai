@@ -319,7 +319,7 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 	}
 
 	if cfg.OffsetExpr != nil {
-		v, err := cfg.OffsetExpr.Eval(expr.EvalStack{})
+		v, err := cfg.OffsetExpr.Eval(&expr.Environment{})
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +337,7 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 	}
 
 	if cfg.LimitExpr != nil {
-		v, err := cfg.LimitExpr.Eval(expr.EvalStack{})
+		v, err := cfg.LimitExpr.Eval(&expr.Environment{})
 		if err != nil {
 			return nil, err
 		}

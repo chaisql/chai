@@ -3,6 +3,7 @@ package expr
 import (
 	"errors"
 	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/glob"
 	"github.com/genjidb/genji/sql/scanner"
@@ -21,8 +22,8 @@ func Like(a, b Expr) Expr {
 	return &likeOp{&simpleOperator{a, b, scanner.LIKE}}
 }
 
-func (op likeOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op likeOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -51,8 +52,8 @@ func NotLike(a, b Expr) Expr {
 	return &notLikeOp{likeOp{&simpleOperator{a, b, scanner.LIKE}}}
 }
 
-func (op notLikeOp) Eval(ctx EvalStack) (document.Value, error) {
-	return invertBoolResult(op.likeOp.Eval)(ctx)
+func (op notLikeOp) Eval(env *Environment) (document.Value, error) {
+	return invertBoolResult(op.likeOp.Eval)(env)
 }
 
 func (op notLikeOp) String() string {

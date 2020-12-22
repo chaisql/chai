@@ -43,12 +43,12 @@ func TestPathExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, expr.EvalStack{Document: d}, test.res, test.fails)
+			testExpr(t, test.expr, &expr.Environment{V: document.NewDocumentValue(d)}, test.res, test.fails)
 		})
 	}
 
-	t.Run("empty stack", func(t *testing.T) {
-		testExpr(t, "a", expr.EvalStack{}, nullLitteral, true)
+	t.Run("empty env", func(t *testing.T) {
+		testExpr(t, "a", &expr.Environment{}, nullLitteral, true)
 	})
 }
 

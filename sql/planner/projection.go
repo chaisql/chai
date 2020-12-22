@@ -108,11 +108,12 @@ func (r documentMask) GetByField(field string) (v document.Value, err error) {
 				return
 			}
 
-			stack := expr.EvalStack{
-				Document: r.d,
+			var env expr.Environment
+			if r.d != nil {
+				env.V = document.NewDocumentValue(r.d)
 			}
 			var found bool
-			err = rf.Iterate(stack, func(f string, value document.Value) error {
+			err = rf.Iterate(&env, func(f string, value document.Value) error {
 				if f == field {
 					v = value
 					found = true
@@ -131,12 +132,13 @@ func (r documentMask) GetByField(field string) (v document.Value, err error) {
 }
 
 func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
-	stack := expr.EvalStack{
-		Document: r.d,
+	var env expr.Environment
+	if r.d != nil {
+		env.V = document.NewDocumentValue(r.d)
 	}
 
 	for _, rf := range r.resultFields {
-		err := rf.Iterate(stack, fn)
+		err := rf.Iterate(&env, fn)
 		if err != nil {
 			return err
 		}
@@ -152,7 +154,7 @@ func (r documentMask) MarshalJSON() ([]byte, error) {
 
 // A ProjectedField is a field that will be part of the projected document that will be returned at the end of a Select statement.
 type ProjectedField interface {
-	Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error
+	Iterate(env *expr.Environment, fn func(field string, value document.Value) error) error
 	Name() string
 }
 
@@ -169,8 +171,8 @@ func (r ProjectedExpr) Name() string {
 }
 
 // Iterate evaluates Expr and calls fn once with the result.
-func (r ProjectedExpr) Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error {
-	v, err := r.Expr.Eval(stack)
+func (r ProjectedExpr) Iterate(env *expr.Environment, fn func(field string, value document.Value) error) error {
+	v, err := r.Expr.Eval(env)
 	if err != nil {
 		return err
 	}
@@ -195,10 +197,10 @@ func (w Wildcard) String() string {
 }
 
 // Iterate call the document iterate method.
-func (w Wildcard) Iterate(stack expr.EvalStack, fn func(field string, value document.Value) error) error {
-	if stack.Document == nil {
+func (w Wildcard) Iterate(env *expr.Environment, fn func(field string, value document.Value) error) error {
+	if env.V.Type != document.DocumentValue {
 		return errors.New("no table specified")
 	}
 
-	return stack.Document.Iterate(fn)
+	return env.V.V.(document.Document).Iterate(fn)
 }

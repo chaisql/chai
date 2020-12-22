@@ -170,7 +170,7 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 				return err
 			}
 
-			d, err := e.Eval(expr.EvalStack{})
+			d, err := e.Eval(&expr.Environment{})
 			if err != nil {
 				return err
 			}

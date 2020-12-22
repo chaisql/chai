@@ -230,13 +230,13 @@ func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 		return st, nil
 	}
 
-	stack := expr.EvalStack{
+	env := expr.Environment{
 		Params: n.params,
 	}
 
 	return st.Filter(func(d document.Document) (bool, error) {
-		stack.Document = d
-		v, err := n.cond.Eval(stack)
+		env.V = document.NewDocumentValue(d)
+		v, err := n.cond.Eval(&env)
 		if err != nil {
 			return false, err
 		}
@@ -360,13 +360,13 @@ func (n *setNode) String() string {
 func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 	var fb document.FieldBuffer
 
-	stack := expr.EvalStack{
+	env := expr.Environment{
 		Params: n.params,
 	}
 
 	return st.Map(func(d document.Document) (document.Document, error) {
-		stack.Document = d
-		ev, err := n.e.Eval(stack)
+		env.V = document.NewDocumentValue(d)
+		ev, err := n.e.Eval(&env)
 		if err != nil && err != document.ErrFieldNotFound {
 			return nil, err
 		}
@@ -476,9 +476,9 @@ func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 // the result.
 func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 	return st.GroupBy(func(d document.Document) (document.Value, error) {
-		return n.Expr.Eval(expr.EvalStack{
-			Params:   n.Params,
-			Document: d,
+		return n.Expr.Eval(&expr.Environment{
+			Params: n.Params,
+			V:      document.NewDocumentValue(d),
 		})
 	}), nil
 }

@@ -13,7 +13,7 @@ var (
 
 // An Expr evaluates to a value.
 type Expr interface {
-	Eval(EvalStack) (document.Value, error)
+	Eval(*Environment) (document.Value, error)
 }
 
 type isEqualer interface {
@@ -34,14 +34,6 @@ func Equal(a, b Expr) bool {
 	}
 
 	return a == b
-}
-
-// EvalStack contains information about the context in which
-// the expression is evaluated.
-// Any of the members can be nil except the transaction.
-type EvalStack struct {
-	Document document.Document
-	Params   []Param
 }
 
 type simpleOperator struct {
@@ -73,13 +65,13 @@ func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
 }
 
-func (op *simpleOperator) eval(ctx EvalStack) (document.Value, document.Value, error) {
-	va, err := op.a.Eval(ctx)
+func (op *simpleOperator) eval(env *Environment) (document.Value, document.Value, error) {
+	va, err := op.a.Eval(env)
 	if err != nil {
 		return nullLitteral, nullLitteral, err
 	}
 
-	vb, err := op.b.Eval(ctx)
+	vb, err := op.b.Eval(env)
 	if err != nil {
 		return nullLitteral, nullLitteral, err
 	}
@@ -126,13 +118,13 @@ type Parentheses struct {
 }
 
 // Eval calls the underlying expression Eval method.
-func (p Parentheses) Eval(es EvalStack) (document.Value, error) {
-	return p.E.Eval(es)
+func (p Parentheses) Eval(env *Environment) (document.Value, error) {
+	return p.E.Eval(env)
 }
 
-func invertBoolResult(f func(ctx EvalStack) (document.Value, error)) func(ctx EvalStack) (document.Value, error) {
-	return func(ctx EvalStack) (document.Value, error) {
-		v, err := f(ctx)
+func invertBoolResult(f func(env *Environment) (document.Value, error)) func(env *Environment) (document.Value, error) {
+	return func(env *Environment) (document.Value, error) {
+		v, err := f(env)
 
 		if err != nil {
 			return v, err

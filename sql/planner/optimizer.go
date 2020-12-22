@@ -197,7 +197,7 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 		_, rightIsLit := rh.(expr.LiteralValue)
 		// if both operands are literals, we can precalculate them now
 		if leftIsLit && rightIsLit {
-			v, err := t.Eval(expr.EvalStack{})
+			v, err := t.Eval(&expr.Environment{})
 			// any error encountered here is unexpected
 			if err != nil {
 				panic(err)

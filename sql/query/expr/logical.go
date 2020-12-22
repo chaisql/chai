@@ -19,8 +19,8 @@ func And(a, b Expr) Expr {
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if both evaluate
 // to true.
-func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
-	s, err := op.a.Eval(ctx)
+func (op *AndOp) Eval(env *Environment) (document.Value, error) {
+	s, err := op.a.Eval(env)
 	if err != nil {
 		return falseLitteral, err
 	}
@@ -29,7 +29,7 @@ func (op *AndOp) Eval(ctx EvalStack) (document.Value, error) {
 		return falseLitteral, err
 	}
 
-	s, err = op.b.Eval(ctx)
+	s, err = op.b.Eval(env)
 	if err != nil {
 		return falseLitteral, err
 	}
@@ -58,8 +58,8 @@ func Or(a, b Expr) Expr {
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if a or b evalutate
 // to true.
-func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
-	s, err := op.a.Eval(ctx)
+func (op *OrOp) Eval(env *Environment) (document.Value, error) {
+	s, err := op.a.Eval(env)
 	if err != nil {
 		return falseLitteral, err
 	}
@@ -71,7 +71,7 @@ func (op *OrOp) Eval(ctx EvalStack) (document.Value, error) {
 		return trueLitteral, nil
 	}
 
-	s, err = op.b.Eval(ctx)
+	s, err = op.b.Eval(env)
 	if err != nil {
 		return falseLitteral, err
 	}

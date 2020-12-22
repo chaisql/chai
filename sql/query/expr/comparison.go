@@ -387,8 +387,8 @@ func (op lteOp) String() string {
 // Eval compares a and b together using the operator specified when constructing the CmpOp
 // and returns the result of the comparison.
 // Comparing with NULL always evaluates to NULL.
-func (op cmpOp) Eval(ctx EvalStack) (document.Value, error) {
-	v1, v2, err := op.simpleOperator.eval(ctx)
+func (op cmpOp) Eval(env *Environment) (document.Value, error) {
+	v1, v2, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return falseLitteral, err
 	}
@@ -463,8 +463,8 @@ func In(a, b Expr) Expr {
 	return inOp{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op inOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op inOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -544,8 +544,8 @@ func NotIn(a, b Expr) Expr {
 	return &notInOp{inOp{&simpleOperator{a, b, scanner.IN}}}
 }
 
-func (op notInOp) Eval(ctx EvalStack) (document.Value, error) {
-	return invertBoolResult(op.inOp.Eval)(ctx)
+func (op notInOp) Eval(env *Environment) (document.Value, error) {
+	return invertBoolResult(op.inOp.Eval)(env)
 }
 
 func (op notInOp) String() string {
@@ -561,8 +561,8 @@ func Is(a, b Expr) Expr {
 	return &isOp{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op isOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op isOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}
@@ -591,8 +591,8 @@ func IsNot(a, b Expr) Expr {
 	return &isNotOp{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op isNotOp) Eval(ctx EvalStack) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(ctx)
+func (op isNotOp) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
 	}

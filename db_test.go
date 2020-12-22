@@ -86,6 +86,7 @@ func TestQueryDocument(t *testing.T) {
 		var b string
 
 		r, err := db.QueryDocument("SELECT * FROM test")
+		require.NoError(t, err)
 		err = document.Scan(r, &a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
