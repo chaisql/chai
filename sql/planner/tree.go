@@ -231,7 +231,6 @@ func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 	}
 
 	stack := expr.EvalStack{
-		Tx:     n.tx,
 		Params: n.params,
 	}
 
@@ -362,7 +361,6 @@ func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 	var fb document.FieldBuffer
 
 	stack := expr.EvalStack{
-		Tx:     n.tx,
 		Params: n.params,
 	}
 
@@ -479,7 +477,6 @@ func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 	return st.GroupBy(func(d document.Document) (document.Value, error) {
 		return n.Expr.Eval(expr.EvalStack{
-			Tx:       n.Tx,
 			Params:   n.Params,
 			Document: d,
 		})

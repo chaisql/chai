@@ -40,7 +40,6 @@ func (stmt InsertStmt) Run(tx *database.Transaction, args []expr.Param) (Result,
 	}
 
 	stack := expr.EvalStack{
-		Tx:     tx,
 		Params: args,
 	}
 

@@ -1,7 +1,6 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -41,7 +40,6 @@ func Equal(a, b Expr) bool {
 // the expression is evaluated.
 // Any of the members can be nil except the transaction.
 type EvalStack struct {
-	Tx       *database.Transaction
 	Document document.Document
 	Params   []Param
 }
