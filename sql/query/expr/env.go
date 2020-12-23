@@ -7,14 +7,14 @@ import (
 )
 
 const (
-	currentValueKey = "$v"
+	currentValueKey = "_v"
 )
 
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
 	Params []Param
-	fb     *document.FieldBuffer
+	Buf    *document.FieldBuffer
 
 	Outer *Environment
 }
@@ -25,7 +25,7 @@ func NewEnvironment(v document.Value, params ...Param) *Environment {
 	}
 
 	if v.Type != 0 {
-		env.fb = document.NewFieldBuffer()
+		env.Buf = document.NewFieldBuffer()
 		env.Set(currentValueKey, v)
 	}
 
@@ -33,8 +33,8 @@ func NewEnvironment(v document.Value, params ...Param) *Environment {
 }
 
 func (e *Environment) Get(name string) (v document.Value, ok bool) {
-	if e.fb != nil {
-		v, err := e.fb.GetByField(name)
+	if e.Buf != nil {
+		v, err := e.Buf.GetByField(name)
 		if err == nil {
 			return v, true
 		}
@@ -48,11 +48,11 @@ func (e *Environment) Get(name string) (v document.Value, ok bool) {
 }
 
 func (e *Environment) Set(name string, v document.Value) {
-	if e.fb == nil {
-		e.fb = document.NewFieldBuffer()
+	if e.Buf == nil {
+		e.Buf = document.NewFieldBuffer()
 	}
 
-	e.fb.Set(document.Path{document.PathFragment{FieldName: name}}, v)
+	e.Buf.Set(document.Path{document.PathFragment{FieldName: name}}, v)
 }
 
 func (e *Environment) GetCurrentValue() (document.Value, bool) {

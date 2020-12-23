@@ -10,9 +10,21 @@ type Path document.Path
 // Eval extracts the document from the context and selects the right value.
 // It implements the Expr interface.
 func (p Path) Eval(env *Environment) (document.Value, error) {
+	if len(p) == 0 {
+		return nullLitteral, nil
+	}
+
 	v, ok := env.GetCurrentValue()
 	if !ok {
 		return nullLitteral, document.ErrFieldNotFound
+	}
+
+	if p[0].FieldName == currentValueKey {
+		p = p[1:]
+
+		if len(p) == 0 {
+			return v, nil
+		}
 	}
 
 	v, err := document.Path(p).GetValue(v)
