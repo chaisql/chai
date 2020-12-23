@@ -14,8 +14,8 @@ func TestPkExpr(t *testing.T) {
 		res  document.Value
 	}{
 		{"empty env", &expr.Environment{}, nullLitteral},
-		{"env with doc", &envWithDoc, nullLitteral},
-		{"env with doc and key", &envWithDocAndKey, document.NewIntegerValue(1)},
+		{"env with doc", envWithDoc, nullLitteral},
+		{"env with doc and key", envWithDocAndKey, document.NewIntegerValue(1)},
 	}
 
 	for _, test := range tests {

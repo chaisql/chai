@@ -164,8 +164,9 @@ func (kvp KVPairs) IsEqual(other Expr) bool {
 // Eval turns a list of KVPairs into a document.
 func (kvp KVPairs) Eval(env *Environment) (document.Value, error) {
 	var fb document.FieldBuffer
-	if env.V.Type == 0 {
-		env.V = document.NewDocumentValue(&fb)
+	doc := document.NewDocumentValue(&fb)
+	if _, ok := env.GetCurrentValue(); !ok {
+		env.SetCurrentValue(doc)
 	}
 
 	for _, kv := range kvp {
@@ -177,7 +178,7 @@ func (kvp KVPairs) Eval(env *Environment) (document.Value, error) {
 		fb.Add(kv.K, v)
 	}
 
-	return document.NewDocumentValue(&fb), nil
+	return doc, nil
 }
 
 // String implements the fmt.Stringer interface.

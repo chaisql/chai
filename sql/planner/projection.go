@@ -100,17 +100,17 @@ type documentMask struct {
 
 var _ document.Document = documentMask{}
 
-func (r documentMask) GetByField(field string) (v document.Value, err error) {
-	for _, rf := range r.resultFields {
+func (d documentMask) GetByField(field string) (v document.Value, err error) {
+	for _, rf := range d.resultFields {
 		if rf.Name() == field || rf.Name() == "*" {
-			v, err = r.d.GetByField(field)
+			v, err = d.d.GetByField(field)
 			if err != document.ErrFieldNotFound {
 				return
 			}
 
 			var env expr.Environment
-			if r.d != nil {
-				env.V = document.NewDocumentValue(r.d)
+			if d.d != nil {
+				env.SetCurrentValue(document.NewDocumentValue(d.d))
 			}
 			var found bool
 			err = rf.Iterate(&env, func(f string, value document.Value) error {
@@ -131,13 +131,13 @@ func (r documentMask) GetByField(field string) (v document.Value, err error) {
 	return
 }
 
-func (r documentMask) Iterate(fn func(field string, value document.Value) error) error {
+func (d documentMask) Iterate(fn func(field string, value document.Value) error) error {
 	var env expr.Environment
-	if r.d != nil {
-		env.V = document.NewDocumentValue(r.d)
+	if d.d != nil {
+		env.SetCurrentValue(document.NewDocumentValue(d.d))
 	}
 
-	for _, rf := range r.resultFields {
+	for _, rf := range d.resultFields {
 		err := rf.Iterate(&env, fn)
 		if err != nil {
 			return err
@@ -148,8 +148,8 @@ func (r documentMask) Iterate(fn func(field string, value document.Value) error)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (r documentMask) MarshalJSON() ([]byte, error) {
-	return document.MarshalJSON(r)
+func (d documentMask) MarshalJSON() ([]byte, error) {
+	return document.MarshalJSON(d)
 }
 
 // A ProjectedField is a field that will be part of the projected document that will be returned at the end of a Select statement.
@@ -198,9 +198,10 @@ func (w Wildcard) String() string {
 
 // Iterate call the document iterate method.
 func (w Wildcard) Iterate(env *expr.Environment, fn func(field string, value document.Value) error) error {
-	if env.V.Type != document.DocumentValue {
+	v, ok := env.GetCurrentValue()
+	if !ok || v.Type != document.DocumentValue {
 		return errors.New("no table specified")
 	}
 
-	return env.V.V.(document.Document).Iterate(fn)
+	return v.V.(document.Document).Iterate(fn)
 }

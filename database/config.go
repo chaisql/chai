@@ -92,7 +92,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 
 	// ensure no field is missing
 	for _, fc := range f {
-		v, err := fc.Path.GetValue(fb)
+		v, err := fc.Path.GetValueFromDocument(fb)
 		if err == nil {
 			// if field is found, it has already been converted
 			// to the right type above.

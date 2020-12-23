@@ -38,7 +38,7 @@ func TestComparisonExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &envWithDoc, test.res, test.fails)
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -63,7 +63,7 @@ func TestComparisonINExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &envWithDoc, test.res, test.fails)
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -87,7 +87,7 @@ func TestComparisonNOTINExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &envWithDoc, test.res, test.fails)
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -107,7 +107,7 @@ func TestComparisonISExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &envWithDoc, test.res, test.fails)
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -127,7 +127,7 @@ func TestComparisonISNOTExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &envWithDoc, test.res, test.fails)
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }

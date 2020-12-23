@@ -235,7 +235,7 @@ func (n *selectionNode) toStream(st document.Stream) (document.Stream, error) {
 	}
 
 	return st.Filter(func(d document.Document) (bool, error) {
-		env.V = document.NewDocumentValue(d)
+		env.SetCurrentValue(document.NewDocumentValue(d))
 		v, err := n.cond.Eval(&env)
 		if err != nil {
 			return false, err
@@ -365,7 +365,7 @@ func (n *setNode) toStream(st document.Stream) (document.Stream, error) {
 	}
 
 	return st.Map(func(d document.Document) (document.Document, error) {
-		env.V = document.NewDocumentValue(d)
+		env.SetCurrentValue(document.NewDocumentValue(d))
 		ev, err := n.e.Eval(&env)
 		if err != nil && err != document.ErrFieldNotFound {
 			return nil, err
@@ -476,10 +476,7 @@ func (n *GroupingNode) Bind(tx *database.Transaction, params []expr.Param) (err 
 // the result.
 func (n *GroupingNode) toStream(st document.Stream) (document.Stream, error) {
 	return st.GroupBy(func(d document.Document) (document.Value, error) {
-		return n.Expr.Eval(&expr.Environment{
-			Params: n.Params,
-			V:      document.NewDocumentValue(d),
-		})
+		return n.Expr.Eval(expr.NewEnvironment(document.NewDocumentValue(d), n.Params...))
 	}), nil
 }
 

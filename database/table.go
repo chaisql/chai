@@ -88,7 +88,7 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(fb)
+		v, err := idx.Opts.Path.GetValueFromDocument(fb)
 		if err != nil {
 			v = document.NewNullValue()
 		}
@@ -129,7 +129,7 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValueFromDocument(d)
 		if err != nil {
 			return err
 		}
@@ -178,7 +178,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(old)
+		v, err := idx.Opts.Path.GetValueFromDocument(old)
 		if err != nil {
 			return err
 		}
@@ -206,7 +206,7 @@ func (t *Table) replace(indexes map[string]Index, key []byte, d document.Documen
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValue(d)
+		v, err := idx.Opts.Path.GetValueFromDocument(d)
 		if err != nil {
 			continue
 		}
@@ -287,7 +287,7 @@ func (e encodedDocumentWithKey) Key() (document.Value, error) {
 		return document.NewIntegerValue(int64(docid)), nil
 	}
 
-	return e.pk.Path.GetValue(&e)
+	return e.pk.Path.GetValueFromDocument(&e)
 }
 
 // This document implementation waits until
@@ -336,7 +336,7 @@ func (d *lazilyDecodedDocument) Key() (document.Value, error) {
 		return document.NewIntegerValue(int64(docid)), nil
 	}
 
-	return d.pk.Path.GetValue(d)
+	return d.pk.Path.GetValueFromDocument(d)
 }
 
 func (d *lazilyDecodedDocument) Reset() {
@@ -418,7 +418,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 func (t *Table) generateKey(info *TableInfo, fb *document.FieldBuffer) ([]byte, error) {
 	if pk := info.GetPrimaryKey(); pk != nil {
 
-		v, err := pk.Path.GetValue(fb)
+		v, err := pk.Path.GetValueFromDocument(fb)
 		if err == document.ErrFieldNotFound {
 			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
 		}

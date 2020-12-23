@@ -43,7 +43,7 @@ func TestPathExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &expr.Environment{V: document.NewDocumentValue(d)}, test.res, test.fails)
+			testExpr(t, test.expr, expr.NewEnvironment(document.NewDocumentValue(d)), test.res, test.fails)
 		})
 	}
 

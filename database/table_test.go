@@ -254,7 +254,7 @@ func TestTableInsert(t *testing.T) {
 		d, err := tb.GetDocument(key)
 		require.NoError(t, err)
 
-		v, err := parsePath(t, "foo[0]").GetValue(d)
+		v, err := parsePath(t, "foo[0]").GetValueFromDocument(d)
 		require.NoError(t, err)
 		require.Equal(t, document.NewIntegerValue(100), v)
 	})

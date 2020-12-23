@@ -41,7 +41,7 @@ func TestArithmeticExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, &envWithDoc, test.res, test.fails)
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -66,9 +66,9 @@ func TestArithmeticExprNodocument(t *testing.T) {
 		t.Run(test.expr, func(t *testing.T) {
 			for _, test := range tests {
 				t.Run(test.expr, func(t *testing.T) {
-					var emptyenv expr.Environment
+					emptyenv := expr.NewEnvironment(document.Value{})
 
-					testExpr(t, test.expr, &emptyenv, test.res, test.fails)
+					testExpr(t, test.expr, emptyenv, test.res, test.fails)
 				})
 			}
 		})

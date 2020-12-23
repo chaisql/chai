@@ -45,6 +45,22 @@ func ParsePath(s string) (document.Path, error) {
 	return NewParser(strings.NewReader(s)).parsePath()
 }
 
+// ParseExpr parses an expression.
+func ParseExpr(s string) (expr.Expr, error) {
+	e, _, err := NewParser(strings.NewReader(s)).ParseExpr()
+	return e, err
+}
+
+// MustParseExpr calls ParseExpr and panics if it returns an error.
+func MustParseExpr(s string) expr.Expr {
+	e, err := ParseExpr(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return e
+}
+
 // ParseQuery parses a Genji SQL string and returns a Query.
 func (p *Parser) ParseQuery() (query.Query, error) {
 	var statements []query.Statement

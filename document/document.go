@@ -262,7 +262,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 	lastFragment := path[len(path)-1]
 
 	// get parent doc or array
-	v, err := parentPath.getValueFromDocument(fb)
+	v, err := parentPath.GetValueFromDocument(fb)
 	if err != nil {
 		return err
 	}
@@ -292,7 +292,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 			return ErrFieldNotFound
 		}
 		subBuf.values = append(subBuf.values[0:idx], subBuf.values[idx+1:]...)
-		parentPath[:len(parentPath)-1].GetValue(fb)
+		parentPath[:len(parentPath)-1].GetValue(NewDocumentValue(fb))
 	default:
 		return ErrFieldNotFound
 	}
@@ -474,12 +474,13 @@ func (p Path) IsEqual(other Path) bool {
 	return true
 }
 
-// GetValue from a document.
-func (p Path) GetValue(d Document) (Value, error) {
-	return p.getValueFromDocument(d)
+// GetValue returns the value at path p.
+func (p Path) GetValue(v Value) (Value, error) {
+	return p.getValueFromValue(v)
 }
 
-func (p Path) getValueFromDocument(d Document) (Value, error) {
+// GetValueFromDocument returns the value at path p from d.
+func (p Path) GetValueFromDocument(d Document) (Value, error) {
 	if len(p) == 0 {
 		return Value{}, ErrFieldNotFound
 	}
@@ -499,7 +500,8 @@ func (p Path) getValueFromDocument(d Document) (Value, error) {
 	return p[1:].getValueFromValue(v)
 }
 
-func (p Path) getValueFromArray(a Array) (Value, error) {
+// GetValueFromArray returns the value at path p from a.
+func (p Path) GetValueFromArray(a Array) (Value, error) {
 	if len(p) == 0 {
 		return Value{}, ErrFieldNotFound
 	}
@@ -526,9 +528,9 @@ func (p Path) getValueFromArray(a Array) (Value, error) {
 func (p Path) getValueFromValue(v Value) (Value, error) {
 	switch v.Type {
 	case DocumentValue:
-		return p.getValueFromDocument(v.V.(Document))
+		return p.GetValueFromDocument(v.V.(Document))
 	case ArrayValue:
-		return p.getValueFromArray(v.V.(Array))
+		return p.GetValueFromArray(v.V.(Array))
 	}
 
 	return Value{}, ErrFieldNotFound
