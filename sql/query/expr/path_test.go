@@ -26,6 +26,7 @@ func TestPathExpr(t *testing.T) {
 		}(),
 			false},
 		{"b.`foo bar`[0]", document.NewIntegerValue(1), false},
+		{"_v.b.`foo bar`[0]", document.NewIntegerValue(1), false},
 		{"b.`foo bar`[1]", document.NewIntegerValue(2), false},
 		{"b.`foo bar`[2]", nullLitteral, false},
 		{"b[0]", nullLitteral, false},
