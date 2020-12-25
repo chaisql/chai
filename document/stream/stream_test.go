@@ -82,3 +82,58 @@ func TestMap(t *testing.T) {
 		require.Equal(t, stream.Map(parser.MustParseExpr("1")).String(), "map(1)")
 	})
 }
+
+func TestFilter(t *testing.T) {
+	tests := []struct {
+		e       expr.Expr
+		in, out *expr.Environment
+		fails   bool
+	}{
+		{
+			parser.MustParseExpr("1"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			false,
+		},
+		{
+			parser.MustParseExpr("_v > 1"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			nil,
+			false,
+		},
+		{
+			parser.MustParseExpr("_v >= 1"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			false,
+		},
+		{
+			parser.MustParseExpr("null"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			nil,
+			false,
+		},
+		{
+			parser.MustParseExpr("a"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			nil,
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+			env, err := stream.Filter(test.e).Op()(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.out, env)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.Filter(parser.MustParseExpr("1")).String(), "filter(1)")
+	})
+}
