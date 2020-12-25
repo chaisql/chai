@@ -69,6 +69,9 @@ func (s Stream) Iterate(fn func(env *expr.Environment) error) error {
 		if err != nil {
 			return err
 		}
+		if env == nil {
+			return nil
+		}
 
 		return fn(env)
 	})
@@ -107,4 +110,39 @@ func (m *MapOperator) Op() func(env *expr.Environment) (*expr.Environment, error
 
 func (m *MapOperator) String() string {
 	return fmt.Sprintf("map(%s)", m.E)
+}
+
+// A FilterOperator applies an expression on each value of the stream and returns a new value.
+type FilterOperator struct {
+	E expr.Expr
+}
+
+// Filter creates a FilterOperator.
+func Filter(e expr.Expr) *FilterOperator {
+	return &FilterOperator{E: e}
+}
+
+// Op implements the Operator interface.
+func (m *FilterOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		v, err := m.E.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+
+		ok, err := v.IsTruthy()
+		if err != nil {
+			return nil, err
+		}
+
+		if !ok {
+			return nil, nil
+		}
+
+		return env, nil
+	}
+}
+
+func (m *FilterOperator) String() string {
+	return fmt.Sprintf("filter(%s)", m.E)
 }
