@@ -188,3 +188,44 @@ func (m *TakeOperator) Op() func(env *expr.Environment) (*expr.Environment, erro
 func (m *TakeOperator) String() string {
 	return fmt.Sprintf("take(%s)", m.E)
 }
+
+// A SkipOperator applies an expression on each value of the stream and returns a new value.
+type SkipOperator struct {
+	E expr.Expr
+}
+
+// Skip creates a SkipOperator.
+func Skip(e expr.Expr) *SkipOperator {
+	return &SkipOperator{E: e}
+}
+
+// Op implements the Operator interface.
+func (m *SkipOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+	var n, skipped int64
+	v, err := m.E.Eval(&expr.Environment{})
+	if err == nil {
+		if v.Type != document.IntegerValue {
+			v, err = v.CastAsInteger()
+		}
+		if err == nil {
+			n = v.V.(int64)
+		}
+	}
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		if err != nil {
+			return nil, err
+		}
+
+		if skipped < n {
+			skipped++
+			return nil, nil
+		}
+
+		return env, nil
+	}
+}
+
+func (m *SkipOperator) String() string {
+	return fmt.Sprintf("skip(%s)", m.E)
+}
