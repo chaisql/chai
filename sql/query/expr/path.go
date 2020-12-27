@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"errors"
+
 	"github.com/genjidb/genji/document"
 )
 
@@ -52,4 +54,15 @@ func (p Path) IsEqual(other Expr) bool {
 
 func (p Path) String() string {
 	return document.Path(p).String()
+}
+
+// A Wildcard is an expression that iterates over all the fields of a document.
+type Wildcard struct{}
+
+func (w Wildcard) String() string {
+	return "*"
+}
+
+func (w Wildcard) Eval(env *Environment) (document.Value, error) {
+	return document.Value{}, errors.New("no table specified")
 }
