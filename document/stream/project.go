@@ -64,6 +64,10 @@ func (d maskDocument) GetByField(field string) (v document.Value, err error) {
 			}
 
 			if cv.Type != document.DocumentValue {
+				if cv.String() == field {
+					return cv, nil
+				}
+
 				continue
 			}
 

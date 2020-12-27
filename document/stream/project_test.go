@@ -77,6 +77,17 @@ func TestProject(t *testing.T) {
 				require.Equal(t, &inEnv, env.Outer)
 				got, _ := json.Marshal(env.Buf)
 				require.Equal(t, test.out, string(got))
+
+				v, _ := env.GetCurrentValue()
+				d := v.V.(document.Document)
+				err = d.Iterate(func(field string, want document.Value) error {
+					fmt.Println(field, want)
+					got, err := d.GetByField(field)
+					require.NoError(t, err)
+					require.Equal(t, want, got)
+					return nil
+				})
+				require.NoError(t, err)
 			}
 		})
 	}
