@@ -137,3 +137,49 @@ func TestFilter(t *testing.T) {
 		require.Equal(t, stream.Filter(parser.MustParseExpr("1")).String(), "filter(1)")
 	})
 }
+
+func TestTake(t *testing.T) {
+	tests := []struct {
+		inNumber int64
+		n        expr.Expr
+		output   int
+		fails    bool
+	}{
+		{5, parser.MustParseExpr("1"), 1, false},
+		{5, parser.MustParseExpr("7"), 5, false},
+		{5, parser.MustParseExpr("1.1"), 1, false},
+		{5, parser.MustParseExpr("true"), 1, false},
+		{5, parser.MustParseExpr("1 + 1"), 2, false},
+		{5, parser.MustParseExpr("a"), 1, true},
+		{5, parser.MustParseExpr("'hello'"), 1, true},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d/%s", test.inNumber, test.n), func(t *testing.T) {
+			var values []document.Value
+
+			for i := int64(0); i < test.inNumber; i++ {
+				values = append(values, document.NewIntegerValue(i))
+			}
+
+			s := stream.New(stream.NewValueIterator(values...))
+			s = s.Pipe(stream.Take(test.n))
+
+			var count int
+			err := s.Iterate(func(env *expr.Environment) error {
+				count++
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.output, count)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.Take(parser.MustParseExpr("1")).String(), "take(1)")
+	})
+}

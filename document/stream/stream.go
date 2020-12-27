@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
@@ -145,4 +146,45 @@ func (m *FilterOperator) Op() func(env *expr.Environment) (*expr.Environment, er
 
 func (m *FilterOperator) String() string {
 	return fmt.Sprintf("filter(%s)", m.E)
+}
+
+// A TakeOperator applies an expression on each value of the stream and returns a new value.
+type TakeOperator struct {
+	E expr.Expr
+}
+
+// Take creates a TakeOperator.
+func Take(e expr.Expr) *TakeOperator {
+	return &TakeOperator{E: e}
+}
+
+// Op implements the Operator interface.
+func (m *TakeOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+	var n, count int64
+	v, err := m.E.Eval(&expr.Environment{})
+	if err == nil {
+		if v.Type != document.IntegerValue {
+			v, err = v.CastAsInteger()
+		}
+		if err == nil {
+			n = v.V.(int64)
+		}
+	}
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		if err != nil {
+			return nil, err
+		}
+
+		if count < n {
+			count++
+			return env, nil
+		}
+
+		return nil, ErrStreamClosed
+	}
+}
+
+func (m *TakeOperator) String() string {
+	return fmt.Sprintf("take(%s)", m.E)
 }
