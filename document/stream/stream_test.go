@@ -68,7 +68,9 @@ func TestMap(t *testing.T) {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
 			test.out.Outer = test.in
 
-			env, err := stream.Map(test.e).Op()(test.in)
+			op, err := stream.Map(test.e).Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -123,7 +125,10 @@ func TestFilter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
-			env, err := stream.Filter(test.e).Op()(test.in)
+			op, err := stream.Filter(test.e).Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
+
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -275,7 +280,9 @@ func TestGroupBy(t *testing.T) {
 			want.Outer = test.in
 			want.Set("$group", test.group)
 
-			env, err := stream.GroupBy(test.e).Op()(test.in)
+			op, err := stream.GroupBy(test.e).Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
 			if test.fails {
 				require.Error(t, err)
 			} else {
