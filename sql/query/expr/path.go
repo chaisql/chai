@@ -16,25 +16,16 @@ func (p Path) Eval(env *Environment) (document.Value, error) {
 		return nullLitteral, nil
 	}
 
-	v, ok := env.GetCurrentValue()
-	if !ok {
+	if _, ok := env.GetCurrentValue(); !ok {
 		return nullLitteral, document.ErrFieldNotFound
 	}
 
-	if p[0].FieldName == currentValueKey {
-		p = p[1:]
-
-		if len(p) == 0 {
-			return v, nil
-		}
-	}
-
-	v, err := document.Path(p).GetValue(v)
-	if err == document.ErrFieldNotFound || err == document.ErrValueNotFound {
+	v, ok := env.Get(document.Path(p))
+	if !ok {
 		return nullLitteral, nil
 	}
 
-	return v, err
+	return v, nil
 }
 
 // IsEqual compares this expression with the other expression and returns

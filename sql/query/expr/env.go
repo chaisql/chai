@@ -32,16 +32,16 @@ func NewEnvironment(v document.Value, params ...Param) *Environment {
 	return &env
 }
 
-func (e *Environment) Get(name string) (v document.Value, ok bool) {
+func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
 	if e.Buf != nil {
-		v, err := e.Buf.GetByField(name)
+		v, err := path.GetValueFromDocument(e.Buf)
 		if err == nil {
 			return v, true
 		}
 
 		v, err = e.Buf.GetByField(currentValueKey)
-		if err == nil && v.Type == document.DocumentValue {
-			v, err = v.V.(document.Document).GetByField(name)
+		if err == nil {
+			v, err = path.GetValue(v)
 			if err == nil {
 				return v, true
 			}
@@ -49,7 +49,7 @@ func (e *Environment) Get(name string) (v document.Value, ok bool) {
 	}
 
 	if e.Outer != nil {
-		return e.Outer.Get(name)
+		return e.Outer.Get(path)
 	}
 
 	return
@@ -64,7 +64,7 @@ func (e *Environment) Set(name string, v document.Value) {
 }
 
 func (e *Environment) GetCurrentValue() (document.Value, bool) {
-	return e.Get(currentValueKey)
+	return e.Get(document.Path{document.PathFragment{FieldName: currentValueKey}})
 }
 
 func (e *Environment) SetCurrentValue(v document.Value) {
