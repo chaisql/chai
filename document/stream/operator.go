@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/genjidb/genji/document"
@@ -212,7 +213,6 @@ func (op *GroupByOperator) String() string {
 // To reduce incoming values, reduce
 type ReduceOperator struct {
 	Seed, Accumulator expr.Expr
-	Stream            Stream
 }
 
 // Reduce consumes the incoming stream and outputs one value per group.
@@ -229,44 +229,99 @@ func Reduce(seed, accumulator expr.Expr) *ReduceOperator {
 
 // Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
 func (op *ReduceOperator) Pipe(s Stream) Stream {
-	op.Stream = s
-
 	return Stream{
-		it: s,
-		op: op,
+		it: IteratorFunc(func(fn func(env *expr.Environment) error) error {
+			return op.iterate(s, fn)
+		}),
 	}
 }
 
-// Op implements the Operator interface.
+// Op implements the Operator interface but should never be called by Stream.
 func (op *ReduceOperator) Op() (OperatorFunc, error) {
-	var newEnv expr.Environment
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		return env, nil
+	}, nil
+}
 
-	seed, err := op.Seed.Eval(&newEnv)
+func (op *ReduceOperator) iterate(s Stream, fn func(env *expr.Environment) error) error {
+	var b bytes.Buffer
+	enc := document.NewValueEncoder(&b)
+
+	nullValue := document.NewNullValue()
+	err := enc.Encode(nullValue)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	nullKey := b.String()
+	b.Reset()
+
+	groups := make(map[string]*expr.Environment)
+	var groupKeys []string
+
+	mkGroup := func(outer *expr.Environment, groupValue document.Value, groupKey string) (*expr.Environment, error) {
+		var groupEnv expr.Environment
+		groupEnv.Outer = outer
+		groups[groupKey] = &groupEnv
+		groupKeys = append(groupKeys, groupKey)
+
+		seed, err := op.Seed.Eval(&groupEnv)
+		if err != nil {
+			return nil, err
+		}
+		groupEnv.Set(accEnvKey, seed)
+
+		return &groupEnv, nil
 	}
 
-	newEnv.Set(accEnvKey, seed)
-	err = op.Stream.Iterate(func(env *expr.Environment) error {
-		newEnv.Outer = env
-		v, err := op.Accumulator.Eval(&newEnv)
+	err = s.Iterate(func(env *expr.Environment) error {
+		groupValue, ok := env.Get(document.NewPath(groupEnvKey))
+		if !ok {
+			groupValue = nullValue
+		}
+
+		b.Reset()
+		err := enc.Encode(groupValue)
 		if err != nil {
 			return err
 		}
 
-		newEnv.Set(accEnvKey, v)
+		groupName := b.String()
+		genv, ok := groups[groupName]
+		if !ok {
+			genv, err = mkGroup(env, groupValue, groupName)
+			if err != nil {
+				return err
+			}
+		}
+
+		v, err := op.Accumulator.Eval(genv)
+		if err != nil {
+			return err
+		}
+
+		genv.Set(accEnvKey, v)
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		v, _ := newEnv.Get(document.Path{document.PathFragment{FieldName: accEnvKey}})
-		newEnv.SetCurrentValue(v)
-		newEnv.Outer = env
-		return &newEnv, nil
-	}, nil
+	if len(groups) == 0 {
+		// create one group by default if there was no input
+		mkGroup(nil, nullValue, nullKey)
+	}
+
+	for _, groupKey := range groupKeys {
+		genv := groups[groupKey]
+		acc, _ := genv.Get(document.NewPath(accEnvKey))
+		genv.SetCurrentValue(acc)
+		err = fn(genv)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (op *ReduceOperator) String() string {

@@ -12,6 +12,15 @@ type Iterator interface {
 	Iterate(fn func(env *expr.Environment) error) error
 }
 
+// The IteratorFunc type is an adapter to allow the use of ordinary functions as Iterators.
+// If f is a function with the appropriate signature, IteratorFunc(f) is an Iterator that calls f.
+type IteratorFunc func(fn func(env *expr.Environment) error) error
+
+// Iterate calls f(fn).
+func (f IteratorFunc) Iterate(fn func(env *expr.Environment) error) error {
+	return f(fn)
+}
+
 type valueIterator []document.Value
 
 func (it valueIterator) Iterate(fn func(env *expr.Environment) error) error {

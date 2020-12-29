@@ -30,6 +30,7 @@ type Piper interface {
 
 // Pipe creates a new Stream who can read its data from s and apply
 // op to every value passed by its Iterate method.
+// If op implements the Piper interface, it will call its Pipe method instead.
 func (s Stream) Pipe(op Operator) Stream {
 	if p, ok := op.(Piper); ok {
 		return p.Pipe(s)
