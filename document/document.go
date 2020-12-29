@@ -434,6 +434,23 @@ func (fb *FieldBuffer) Fields() []string {
 // A Path represents the path to a particular value within a document.
 type Path []PathFragment
 
+// NewPath creates a path from a list of strings representing either a field name
+// or an array index in string form.
+func NewPath(fragments ...string) Path {
+	var path Path
+
+	for _, frag := range fragments {
+		idx, err := strconv.Atoi(frag)
+		if err != nil {
+			path = append(path, PathFragment{FieldName: frag})
+		} else {
+			path = append(path, PathFragment{ArrayIndex: idx})
+		}
+	}
+
+	return path
+}
+
 // PathFragment is a fragment of a path representing either a field name or
 // the index of an array.
 type PathFragment struct {

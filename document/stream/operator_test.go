@@ -276,9 +276,18 @@ func TestGroupBy(t *testing.T) {
 	})
 }
 
+func generateSeqValues(max int64) (values []document.Value) {
+	for i := int64(0); i < max; i++ {
+		values = append(values, document.NewIntegerValue(i))
+	}
+
+	return values
+}
+
 func TestReduce(t *testing.T) {
 	tests := []struct {
 		name      string
+		groupBy   expr.Expr
 		seed, acc expr.Expr
 		values    []document.Value
 		want      []document.Value
@@ -286,10 +295,29 @@ func TestReduce(t *testing.T) {
 	}{
 		{
 			"count",
+			nil,
 			parser.MustParseExpr("0"),
 			parser.MustParseExpr("_acc + 1"),
 			[]document.Value{document.NewIntegerValue(0)},
 			[]document.Value{document.NewIntegerValue(1)},
+			false,
+		},
+		{
+			"count/groupBy",
+			parser.MustParseExpr("_v % 2"),
+			parser.MustParseExpr("0"),
+			parser.MustParseExpr("_acc + 1"),
+			generateSeqValues(10),
+			[]document.Value{document.NewIntegerValue(5), document.NewIntegerValue(5)},
+			false,
+		},
+		{
+			"count/noInput",
+			nil,
+			parser.MustParseExpr("0"),
+			parser.MustParseExpr("_acc + 1"),
+			nil,
+			[]document.Value{document.NewIntegerValue(0)},
 			false,
 		},
 	}
@@ -297,6 +325,9 @@ func TestReduce(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stream.New(stream.NewValueIterator(test.values...))
+			if test.groupBy != nil {
+				s = s.Pipe(stream.GroupBy(test.groupBy))
+			}
 			s = s.Pipe(stream.Reduce(test.seed, test.acc))
 
 			var got []document.Value
