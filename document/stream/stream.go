@@ -11,6 +11,8 @@ import (
 // ErrStreamClosed is used to indicate that a stream must be closed.
 var ErrStreamClosed = errors.New("stream closed")
 
+const groupEnvKey = "$group"
+
 // An Operator is used to modify a stream.
 // It takes an environment containing the current value as well as any other metadata and returns
 // a new environment which will be passed to the next operator.
@@ -228,4 +230,34 @@ func (m *SkipOperator) Op() func(env *expr.Environment) (*expr.Environment, erro
 
 func (m *SkipOperator) String() string {
 	return fmt.Sprintf("skip(%s)", m.E)
+}
+
+// A GroupByOperator applies an expression on each value of the stream and returns a new value.
+type GroupByOperator struct {
+	E expr.Expr
+}
+
+// GroupBy creates a GroupByOperator.
+func GroupBy(e expr.Expr) *GroupByOperator {
+	return &GroupByOperator{E: e}
+}
+
+// Op implements the Operator interface.
+func (op *GroupByOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+	var newEnv expr.Environment
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		v, err := op.E.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+
+		newEnv.Set(groupEnvKey, v)
+		newEnv.Outer = env
+		return &newEnv, nil
+	}
+}
+
+func (op *GroupByOperator) String() string {
+	return fmt.Sprintf("groupBy(%s)", op.E)
 }
