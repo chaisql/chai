@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -11,7 +12,10 @@ import (
 // ErrStreamClosed is used to indicate that a stream must be closed.
 var ErrStreamClosed = errors.New("stream closed")
 
-const groupEnvKey = "$group"
+const (
+	groupEnvKey = "_group"
+	accEnvKey   = "_acc"
+)
 
 // An Operator is used to modify a stream.
 // It takes an environment containing the current value as well as any other metadata and returns
@@ -24,6 +28,10 @@ const groupEnvKey = "$group"
 // unless the nature of the operator prevents that.
 type Operator interface {
 	Op() (OperatorFunc, error)
+}
+
+type Piper interface {
+	Pipe(Stream) Stream
 }
 
 type OperatorFunc func(env *expr.Environment) (*expr.Environment, error)
@@ -45,6 +53,10 @@ func New(it Iterator) Stream {
 // Pipe creates a new Stream who can read its data from s and apply
 // op to every value passed by its Iterate method.
 func (s Stream) Pipe(op Operator) Stream {
+	if p, ok := op.(Piper); ok {
+		return p.Pipe(s)
+	}
+
 	return Stream{
 		it: s,
 		op: op,
@@ -261,4 +273,65 @@ func (op *GroupByOperator) Op() (OperatorFunc, error) {
 
 func (op *GroupByOperator) String() string {
 	return fmt.Sprintf("groupBy(%s)", op.E)
+}
+
+// A ReduceOperator applies an expression on each value of the stream and returns a new value.
+type ReduceOperator struct {
+	Seed, Accumulator expr.Expr
+	Stream            Stream
+}
+
+// Reduce creates a ReduceOperator.
+func Reduce(seed, accumulator expr.Expr) *ReduceOperator {
+	return &ReduceOperator{Seed: seed, Accumulator: accumulator}
+}
+
+func (op *ReduceOperator) Pipe(s Stream) Stream {
+	op.Stream = s
+
+	return Stream{
+		it: s,
+		op: op,
+	}
+}
+
+// Op implements the Operator interface.
+func (op *ReduceOperator) Op() (OperatorFunc, error) {
+	var newEnv expr.Environment
+
+	seed, err := op.Seed.Eval(&newEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	newEnv.Set(accEnvKey, seed)
+	data, _ := json.MarshalIndent(newEnv, "", "  ")
+	fmt.Println(string(data))
+
+	err = op.Stream.Iterate(func(env *expr.Environment) error {
+		newEnv.Outer = env
+		v, err := op.Accumulator.Eval(&newEnv)
+		if err != nil {
+			return err
+		}
+
+		newEnv.Set(accEnvKey, v)
+		data, _ := json.MarshalIndent(newEnv, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		v, _ := newEnv.Get(accEnvKey)
+		newEnv.SetCurrentValue(v)
+		newEnv.Outer = env
+		return &newEnv, nil
+	}, nil
+}
+
+func (op *ReduceOperator) String() string {
+	return fmt.Sprintf("reduce(%s, %s)", op.Seed, op.Accumulator)
 }

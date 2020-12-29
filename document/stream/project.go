@@ -19,7 +19,7 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 }
 
 // Op implements the Operator interface.
-func (m *ProjectOperator) Op() (OperatorFunc, error) {
+func (m *ProjectOperator) Op(s Stream) (OperatorFunc, error) {
 	var mask maskDocument
 	v := document.Value{
 		Type: document.DocumentValue,
