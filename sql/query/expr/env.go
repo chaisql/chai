@@ -38,6 +38,14 @@ func (e *Environment) Get(name string) (v document.Value, ok bool) {
 		if err == nil {
 			return v, true
 		}
+
+		v, err = e.Buf.GetByField(currentValueKey)
+		if err == nil && v.Type == document.DocumentValue {
+			v, err = v.V.(document.Document).GetByField(name)
+			if err == nil {
+				return v, true
+			}
+		}
 	}
 
 	if e.Outer != nil {

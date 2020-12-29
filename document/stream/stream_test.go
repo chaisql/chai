@@ -278,7 +278,7 @@ func TestGroupBy(t *testing.T) {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
 			var want expr.Environment
 			want.Outer = test.in
-			want.Set("$group", test.group)
+			want.Set("_group", test.group)
 
 			op, err := stream.GroupBy(test.e).Op()
 			require.NoError(t, err)
@@ -294,5 +294,49 @@ func TestGroupBy(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, stream.GroupBy(parser.MustParseExpr("1")).String(), "groupBy(1)")
+	})
+}
+
+func TestReduce(t *testing.T) {
+	tests := []struct {
+		name      string
+		seed, acc expr.Expr
+		values    []document.Value
+		want      []document.Value
+		fails     bool
+	}{
+		{
+			"count",
+			parser.MustParseExpr("0"),
+			parser.MustParseExpr("_acc + 1"),
+			[]document.Value{document.NewIntegerValue(0)},
+			[]document.Value{document.NewIntegerValue(1)},
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := stream.New(stream.NewValueIterator(test.values...))
+			s = s.Pipe(stream.Reduce(test.seed, test.acc))
+
+			var got []document.Value
+			err := s.Iterate(func(env *expr.Environment) error {
+				v, ok := env.GetCurrentValue()
+				require.True(t, ok)
+				got = append(got, v)
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.want, got)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, `reduce({"count": 0}, {"count": _acc + 1})`, stream.Reduce(parser.MustParseExpr("{count: 0}"), parser.MustParseExpr("{count: _acc +1}")).String())
 	})
 }
