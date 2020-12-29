@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -305,9 +304,6 @@ func (op *ReduceOperator) Op() (OperatorFunc, error) {
 	}
 
 	newEnv.Set(accEnvKey, seed)
-	data, _ := json.MarshalIndent(newEnv, "", "  ")
-	fmt.Println(string(data))
-
 	err = op.Stream.Iterate(func(env *expr.Environment) error {
 		newEnv.Outer = env
 		v, err := op.Accumulator.Eval(&newEnv)
@@ -316,8 +312,6 @@ func (op *ReduceOperator) Op() (OperatorFunc, error) {
 		}
 
 		newEnv.Set(accEnvKey, v)
-		data, _ := json.MarshalIndent(newEnv, "", "  ")
-		fmt.Println(string(data))
 		return nil
 	})
 	if err != nil {
