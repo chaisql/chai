@@ -23,8 +23,10 @@ const groupEnvKey = "$group"
 // Stream operators can be reused, and thus, any state or side effect should be kept within the Op closure
 // unless the nature of the operator prevents that.
 type Operator interface {
-	Op() func(env *expr.Environment) (*expr.Environment, error)
+	Op() (OperatorFunc, error)
 }
+
+type OperatorFunc func(env *expr.Environment) (*expr.Environment, error)
 
 // Stream reads values from an iterator one by one and passes them
 // through a list of operators for transformation.
@@ -65,9 +67,12 @@ func (s Stream) Iterate(fn func(env *expr.Environment) error) error {
 		return s.it.Iterate(fn)
 	}
 
-	opFn := s.op.Op()
+	opFn, err := s.op.Op()
+	if err != nil {
+		return err
+	}
 
-	err := s.it.Iterate(func(env *expr.Environment) error {
+	err = s.it.Iterate(func(env *expr.Environment) error {
 		env, err := opFn(env)
 		if err != nil {
 			return err
@@ -96,7 +101,7 @@ func Map(e expr.Expr) *MapOperator {
 }
 
 // Op implements the Operator interface.
-func (m *MapOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+func (m *MapOperator) Op() (OperatorFunc, error) {
 	var newEnv expr.Environment
 
 	return func(env *expr.Environment) (*expr.Environment, error) {
@@ -108,7 +113,7 @@ func (m *MapOperator) Op() func(env *expr.Environment) (*expr.Environment, error
 		newEnv.SetCurrentValue(v)
 		newEnv.Outer = env
 		return &newEnv, nil
-	}
+	}, nil
 }
 
 func (m *MapOperator) String() string {
@@ -126,7 +131,7 @@ func Filter(e expr.Expr) *FilterOperator {
 }
 
 // Op implements the Operator interface.
-func (m *FilterOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+func (m *FilterOperator) Op() (OperatorFunc, error) {
 	return func(env *expr.Environment) (*expr.Environment, error) {
 		v, err := m.E.Eval(env)
 		if err != nil {
@@ -143,7 +148,7 @@ func (m *FilterOperator) Op() func(env *expr.Environment) (*expr.Environment, er
 		}
 
 		return env, nil
-	}
+	}, nil
 }
 
 func (m *FilterOperator) String() string {
@@ -161,30 +166,28 @@ func Take(e expr.Expr) *TakeOperator {
 }
 
 // Op implements the Operator interface.
-func (m *TakeOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+func (m *TakeOperator) Op() (OperatorFunc, error) {
 	var n, count int64
 	v, err := m.E.Eval(&expr.Environment{})
-	if err == nil {
-		if v.Type != document.IntegerValue {
-			v, err = v.CastAsInteger()
-		}
-		if err == nil {
-			n = v.V.(int64)
-		}
+	if err != nil {
+		return nil, err
 	}
-
-	return func(env *expr.Environment) (*expr.Environment, error) {
+	if v.Type != document.IntegerValue {
+		v, err = v.CastAsInteger()
 		if err != nil {
 			return nil, err
 		}
+	}
+	n = v.V.(int64)
 
+	return func(env *expr.Environment) (*expr.Environment, error) {
 		if count < n {
 			count++
 			return env, nil
 		}
 
 		return nil, ErrStreamClosed
-	}
+	}, nil
 }
 
 func (m *TakeOperator) String() string {
@@ -202,30 +205,28 @@ func Skip(e expr.Expr) *SkipOperator {
 }
 
 // Op implements the Operator interface.
-func (m *SkipOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+func (m *SkipOperator) Op() (OperatorFunc, error) {
 	var n, skipped int64
 	v, err := m.E.Eval(&expr.Environment{})
-	if err == nil {
-		if v.Type != document.IntegerValue {
-			v, err = v.CastAsInteger()
-		}
-		if err == nil {
-			n = v.V.(int64)
-		}
+	if err != nil {
+		return nil, err
 	}
-
-	return func(env *expr.Environment) (*expr.Environment, error) {
+	if v.Type != document.IntegerValue {
+		v, err = v.CastAsInteger()
 		if err != nil {
 			return nil, err
 		}
+	}
+	n = v.V.(int64)
 
+	return func(env *expr.Environment) (*expr.Environment, error) {
 		if skipped < n {
 			skipped++
 			return nil, nil
 		}
 
 		return env, nil
-	}
+	}, nil
 }
 
 func (m *SkipOperator) String() string {
@@ -243,7 +244,7 @@ func GroupBy(e expr.Expr) *GroupByOperator {
 }
 
 // Op implements the Operator interface.
-func (op *GroupByOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+func (op *GroupByOperator) Op() (OperatorFunc, error) {
 	var newEnv expr.Environment
 
 	return func(env *expr.Environment) (*expr.Environment, error) {
@@ -255,7 +256,7 @@ func (op *GroupByOperator) Op() func(env *expr.Environment) (*expr.Environment, 
 		newEnv.Set(groupEnvKey, v)
 		newEnv.Outer = env
 		return &newEnv, nil
-	}
+	}, nil
 }
 
 func (op *GroupByOperator) String() string {

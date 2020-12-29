@@ -69,7 +69,9 @@ func TestProject(t *testing.T) {
 			var inEnv expr.Environment
 			inEnv.SetCurrentValue(test.in)
 
-			env, err := stream.Project(test.exprs...).Op()(&inEnv)
+			op, err := stream.Project(test.exprs...).Op()
+			require.NoError(t, err)
+			env, err := op(&inEnv)
 			if test.fails {
 				require.Error(t, err)
 			} else {

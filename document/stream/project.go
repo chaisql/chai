@@ -19,7 +19,7 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 }
 
 // Op implements the Operator interface.
-func (m *ProjectOperator) Op() func(env *expr.Environment) (*expr.Environment, error) {
+func (m *ProjectOperator) Op() (OperatorFunc, error) {
 	var mask maskDocument
 	v := document.Value{
 		Type: document.DocumentValue,
@@ -33,7 +33,7 @@ func (m *ProjectOperator) Op() func(env *expr.Environment) (*expr.Environment, e
 		newEnv.SetCurrentValue(v)
 		newEnv.Outer = env
 		return &newEnv, nil
-	}
+	}, nil
 }
 
 func (m *ProjectOperator) String() string {
