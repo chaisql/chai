@@ -325,7 +325,7 @@ func (op *ReduceOperator) Op() (OperatorFunc, error) {
 	}
 
 	return func(env *expr.Environment) (*expr.Environment, error) {
-		v, _ := newEnv.Get(accEnvKey)
+		v, _ := newEnv.Get(document.Path{document.PathFragment{FieldName: accEnvKey}})
 		newEnv.SetCurrentValue(v)
 		newEnv.Outer = env
 		return &newEnv, nil
