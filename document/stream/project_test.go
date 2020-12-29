@@ -81,7 +81,6 @@ func TestProject(t *testing.T) {
 				v, _ := env.GetCurrentValue()
 				d := v.V.(document.Document)
 				err = d.Iterate(func(field string, want document.Value) error {
-					fmt.Println(field, want)
 					got, err := d.GetByField(field)
 					require.NoError(t, err)
 					require.Equal(t, want, got)

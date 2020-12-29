@@ -229,3 +229,63 @@ func TestSkip(t *testing.T) {
 		require.Equal(t, stream.Skip(parser.MustParseExpr("1")).String(), "skip(1)")
 	})
 }
+
+func TestGroupBy(t *testing.T) {
+	tests := []struct {
+		e     expr.Expr
+		in    *expr.Environment
+		group document.Value
+		fails bool
+	}{
+		{
+			parser.MustParseExpr("10"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			document.NewIntegerValue(10),
+			false,
+		},
+		{
+			parser.MustParseExpr("null"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			document.NewNullValue(),
+			false,
+		},
+		{
+			parser.MustParseExpr("a"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			document.NewNullValue(),
+			false,
+		},
+		{
+			parser.MustParseExpr("_v"),
+			expr.NewEnvironment(document.NewIntegerValue(1)),
+			document.NewIntegerValue(1),
+			false,
+		},
+		{
+			parser.MustParseExpr("a"),
+			expr.NewEnvironment(document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(1)))),
+			document.NewIntegerValue(1),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+			var want expr.Environment
+			want.Outer = test.in
+			want.Set("$group", test.group)
+
+			env, err := stream.GroupBy(test.e).Op()(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, &want, env)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.GroupBy(parser.MustParseExpr("1")).String(), "groupBy(1)")
+	})
+}
