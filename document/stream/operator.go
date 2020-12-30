@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bytes"
+	"container/heap"
 	"fmt"
 
 	"github.com/genjidb/genji/document"
@@ -326,4 +327,120 @@ func (op *ReduceOperator) iterate(s Stream, fn func(env *expr.Environment) error
 
 func (op *ReduceOperator) String() string {
 	return fmt.Sprintf("reduce(%s, %s)", op.Seed, op.Accumulator)
+}
+
+// A SortOperator consumes every value of the stream and outputs them in order.
+type SortOperator struct {
+	Expr expr.Expr
+}
+
+// Sort consumes every value of the stream and outputs them in order.
+// It operates a partial sort on the iterator using a heap.
+// This ensures a O(k+n log n) time complexity, where k is the sum of
+// Take() + Skip() operators, if provided, otherwise k = n.
+// If the sorting is in ascending order, a min-heap will be used
+// otherwise a max-heap will be used instead.
+// Once the heap is filled entirely with the content of the incoming stream, a stream is returned.
+// During iteration, the stream will pop the k-smallest or k-largest elements, depending on
+// the chosen sorting order (ASC or DESC).
+// This function is not memory efficient as it is loading the entire stream in memory before
+// returning the k-smallest or k-largest elements.
+func Sort(e expr.Expr) *SortOperator {
+	return &SortOperator{Expr: e}
+}
+
+// Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
+func (op *SortOperator) Pipe(s Stream) Stream {
+	return Stream{
+		it: IteratorFunc(func(fn func(env *expr.Environment) error) error {
+			return op.iterate(s, fn)
+		}),
+	}
+}
+
+// Op implements the Operator interface but should never be called by Stream.
+func (op *SortOperator) Op() (OperatorFunc, error) {
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		return env, nil
+	}, nil
+}
+
+func (op *SortOperator) iterate(s Stream, fn func(env *expr.Environment) error) error {
+	h, err := op.sortStream(s)
+	if err != nil {
+		return err
+	}
+
+	for h.Len() > 0 {
+		node := heap.Pop(h).(heapNode)
+		err := fn(node.data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (op *SortOperator) sortStream(st Stream) (heap.Interface, error) {
+	h := new(minHeap)
+
+	heap.Init(h)
+
+	return h, st.Iterate(func(env *expr.Environment) error {
+		sortV, err := op.Expr.Eval(env)
+		if err != nil {
+			return err
+		}
+
+		// We need to make sure sort behaviour
+		// is the same with or without indexes.
+		// To achieve that, the value must be encoded using the same method
+		// as what the index package would do.
+		var buf bytes.Buffer
+
+		err = document.NewValueEncoder(&buf).Encode(sortV)
+		if err != nil {
+			return err
+		}
+
+		node := heapNode{
+			value: buf.Bytes(),
+		}
+		node.data, err = env.Clone()
+		if err != nil {
+			return err
+		}
+
+		heap.Push(h, node)
+
+		return nil
+	})
+}
+
+func (op *SortOperator) String() string {
+	return fmt.Sprintf("sort(%s)", op.Expr)
+}
+
+type heapNode struct {
+	value []byte
+	data  *expr.Environment
+}
+
+type minHeap []heapNode
+
+func (h minHeap) Len() int           { return len(h) }
+func (h minHeap) Less(i, j int) bool { return bytes.Compare(h[i].value, h[j].value) < 0 }
+func (h minHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *minHeap) Push(x interface{}) {
+	*h = append(*h, x.(heapNode))
+}
+
+func (h *minHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
 }
