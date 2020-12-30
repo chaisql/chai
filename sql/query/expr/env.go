@@ -101,3 +101,25 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 
 	return document.NewValue(e.Params[idx].Value)
 }
+
+func (e *Environment) Clone() (*Environment, error) {
+	newEnv := Environment{
+		Params: e.Params,
+		Buf:    document.NewFieldBuffer(),
+	}
+
+	err := newEnv.Buf.Copy(e.Buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if e.Outer != nil {
+		newOuter, err := e.Outer.Clone()
+		if err != nil {
+			return nil, err
+		}
+		newEnv.Outer = newOuter
+	}
+
+	return &newEnv, nil
+}

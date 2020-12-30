@@ -350,3 +350,54 @@ func TestReduce(t *testing.T) {
 		require.Equal(t, `reduce({"count": 0}, {"count": _acc + 1})`, stream.Reduce(parser.MustParseExpr("{count: 0}"), parser.MustParseExpr("{count: _acc +1}")).String())
 	})
 }
+
+func TestSort(t *testing.T) {
+	tests := []struct {
+		name     string
+		sortExpr expr.Expr
+		values   []document.Value
+		want     []document.Value
+		fails    bool
+	}{
+		{
+			"count",
+			parser.MustParseExpr("_v"),
+			[]document.Value{
+				document.NewIntegerValue(0),
+				document.NewNullValue(),
+				document.NewBoolValue(true),
+			},
+			[]document.Value{
+				document.NewNullValue(),
+				document.NewBoolValue(true),
+				document.NewIntegerValue(0),
+			},
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := stream.New(stream.NewValueIterator(test.values...))
+			s = s.Pipe(stream.Sort(test.sortExpr))
+
+			var got []document.Value
+			err := s.Iterate(func(env *expr.Environment) error {
+				v, ok := env.GetCurrentValue()
+				require.True(t, ok)
+				got = append(got, v)
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.want, got)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, `sort(a)`, stream.Sort(parser.MustParseExpr("a")).String())
+	})
+}
