@@ -358,9 +358,10 @@ func TestSort(t *testing.T) {
 		values   []document.Value
 		want     []document.Value
 		fails    bool
+		desc     bool
 	}{
 		{
-			"count",
+			"ASC",
 			parser.MustParseExpr("_v"),
 			[]document.Value{
 				document.NewIntegerValue(0),
@@ -373,13 +374,34 @@ func TestSort(t *testing.T) {
 				document.NewIntegerValue(0),
 			},
 			false,
+			false,
+		},
+		{
+			"DESC",
+			parser.MustParseExpr("_v"),
+			[]document.Value{
+				document.NewIntegerValue(0),
+				document.NewNullValue(),
+				document.NewBoolValue(true),
+			},
+			[]document.Value{
+				document.NewIntegerValue(0),
+				document.NewBoolValue(true),
+				document.NewNullValue(),
+			},
+			false,
+			true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stream.New(stream.NewValueIterator(test.values...))
-			s = s.Pipe(stream.Sort(test.sortExpr))
+			if test.desc {
+				s = s.Pipe(stream.SortReverse(test.sortExpr))
+			} else {
+				s = s.Pipe(stream.Sort(test.sortExpr))
+			}
 
 			var got []document.Value
 			err := s.Iterate(func(env *expr.Environment) error {

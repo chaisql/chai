@@ -332,6 +332,7 @@ func (op *ReduceOperator) String() string {
 // A SortOperator consumes every value of the stream and outputs them in order.
 type SortOperator struct {
 	Expr expr.Expr
+	Desc bool
 }
 
 // Sort consumes every value of the stream and outputs them in order.
@@ -347,6 +348,11 @@ type SortOperator struct {
 // returning the k-smallest or k-largest elements.
 func Sort(e expr.Expr) *SortOperator {
 	return &SortOperator{Expr: e}
+}
+
+// SortReverse does the same as Sort but in descending order.
+func SortReverse(e expr.Expr) *SortOperator {
+	return &SortOperator{Expr: e, Desc: true}
 }
 
 // Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
@@ -383,7 +389,12 @@ func (op *SortOperator) iterate(s Stream, fn func(env *expr.Environment) error) 
 }
 
 func (op *SortOperator) sortStream(st Stream) (heap.Interface, error) {
-	h := new(minHeap)
+	var h heap.Interface
+	if op.Desc {
+		h = new(maxHeap)
+	} else {
+		h = new(minHeap)
+	}
 
 	heap.Init(h)
 
@@ -443,4 +454,12 @@ func (h *minHeap) Pop() interface{} {
 	x := old[n-1]
 	*h = old[0 : n-1]
 	return x
+}
+
+type maxHeap struct {
+	minHeap
+}
+
+func (h maxHeap) Less(i, j int) bool {
+	return bytes.Compare(h.minHeap[i].value, h.minHeap[j].value) > 0
 }
