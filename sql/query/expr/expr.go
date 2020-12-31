@@ -122,6 +122,21 @@ func (p Parentheses) Eval(env *Environment) (document.Value, error) {
 	return p.E.Eval(env)
 }
 
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (p Parentheses) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(Parentheses)
+	if !ok {
+		return false
+	}
+
+	return Equal(p.E, o)
+}
+
 func invertBoolResult(f func(env *Environment) (document.Value, error)) func(env *Environment) (document.Value, error) {
 	return func(env *Environment) (document.Value, error) {
 		v, err := f(env)
