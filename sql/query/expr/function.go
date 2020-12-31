@@ -82,12 +82,12 @@ type PKFunc struct{}
 
 // Eval returns the primary key of the current document.
 func (k PKFunc) Eval(env *Environment) (document.Value, error) {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return nullLitteral, nil
 	}
 
-	keyer, ok := v.V.(document.Keyer)
+	keyer, ok := d.(document.Keyer)
 	if !ok {
 		return nullLitteral, nil
 	}
@@ -157,12 +157,12 @@ type CountFunc struct {
 }
 
 func (c *CountFunc) Eval(env *Environment) (document.Value, error) {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function COUNT()")
 	}
 
-	return v.V.(document.Document).GetByField(c.String())
+	return d.GetByField(c.String())
 }
 
 func (c *CountFunc) SetAlias(alias string) {
@@ -219,7 +219,7 @@ func (c *CountAggregator) Add(d document.Document) error {
 		return nil
 	}
 
-	v, err := c.Fn.Expr.Eval(NewEnvironment(document.NewDocumentValue(d)))
+	v, err := c.Fn.Expr.Eval(NewEnvironment(d))
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -244,12 +244,12 @@ type MinFunc struct {
 
 // Eval extracts the min value from the given document and returns it.
 func (m *MinFunc) Eval(env *Environment) (document.Value, error) {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function MIN()")
 	}
 
-	return v.V.(document.Document).GetByField(m.String())
+	return d.GetByField(m.String())
 }
 
 // SetAlias implements the planner.AggregatorBuilder interface.
@@ -298,7 +298,7 @@ type MinAggregator struct {
 // Add stores the minimum value. Values are compared based on their types,
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MinAggregator) Add(d document.Document) error {
-	v, err := m.Fn.Expr.Eval(NewEnvironment(document.NewDocumentValue(d)))
+	v, err := m.Fn.Expr.Eval(NewEnvironment(d))
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -348,12 +348,12 @@ type MaxFunc struct {
 
 // Eval extracts the max value from the given document and returns it.
 func (m *MaxFunc) Eval(env *Environment) (document.Value, error) {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function MAX()")
 	}
 
-	return v.V.(document.Document).GetByField(m.String())
+	return d.GetByField(m.String())
 }
 
 // SetAlias implements the planner.AggregatorBuilder interface.
@@ -402,7 +402,7 @@ type MaxAggregator struct {
 // Add stores the maximum value. Values are compared based on their types,
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MaxAggregator) Add(d document.Document) error {
-	v, err := m.Fn.Expr.Eval(NewEnvironment(document.NewDocumentValue(d)))
+	v, err := m.Fn.Expr.Eval(NewEnvironment(d))
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -452,12 +452,12 @@ type SumFunc struct {
 
 // Eval extracts the sum value from the given document and returns it.
 func (s *SumFunc) Eval(env *Environment) (document.Value, error) {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function SUM()")
 	}
 
-	return v.V.(document.Document).GetByField(s.String())
+	return d.GetByField(s.String())
 }
 
 // SetAlias implements the planner.AggregatorBuilder interface.
@@ -508,7 +508,7 @@ type SumAggregator struct {
 // The result is an integer value if all summed values are integers.
 // If any of the value is a double, the returned result will be a double.
 func (s *SumAggregator) Add(d document.Document) error {
-	v, err := s.Fn.Expr.Eval(NewEnvironment(document.NewDocumentValue(d)))
+	v, err := s.Fn.Expr.Eval(NewEnvironment(d))
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -567,12 +567,12 @@ type AvgFunc struct {
 
 // Eval extracts the average value from the given document and returns it.
 func (s *AvgFunc) Eval(env *Environment) (document.Value, error) {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function AVG()")
 	}
 
-	return v.V.(document.Document).GetByField(s.String())
+	return d.GetByField(s.String())
 }
 
 // SetAlias implements the planner.AggregatorBuilder interface.
@@ -621,7 +621,7 @@ type AvgAggregator struct {
 
 // Add stores the average value of all non-NULL numeric values in the group.
 func (s *AvgAggregator) Add(d document.Document) error {
-	v, err := s.Fn.Expr.Eval(NewEnvironment(document.NewDocumentValue(d)))
+	v, err := s.Fn.Expr.Eval(NewEnvironment(d))
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}

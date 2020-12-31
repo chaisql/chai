@@ -110,7 +110,7 @@ func (d documentMask) GetByField(field string) (v document.Value, err error) {
 
 			var env expr.Environment
 			if d.d != nil {
-				env.SetCurrentValue(document.NewDocumentValue(d.d))
+				env.SetDocument(d.d)
 			}
 			var found bool
 			err = rf.Iterate(&env, func(f string, value document.Value) error {
@@ -134,7 +134,7 @@ func (d documentMask) GetByField(field string) (v document.Value, err error) {
 func (d documentMask) Iterate(fn func(field string, value document.Value) error) error {
 	var env expr.Environment
 	if d.d != nil {
-		env.SetCurrentValue(document.NewDocumentValue(d.d))
+		env.SetDocument(d.d)
 	}
 
 	for _, rf := range d.resultFields {
@@ -198,10 +198,10 @@ func (w Wildcard) String() string {
 
 // Iterate call the document iterate method.
 func (w Wildcard) Iterate(env *expr.Environment, fn func(field string, value document.Value) error) error {
-	v, ok := env.GetCurrentValue()
-	if !ok || v.Type != document.DocumentValue {
+	d, ok := env.GetDocument()
+	if !ok {
 		return errors.New("no table specified")
 	}
 
-	return v.V.(document.Document).Iterate(fn)
+	return d.Iterate(fn)
 }

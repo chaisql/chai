@@ -9,23 +9,31 @@ import (
 // A Path is an expression that extracts a value from a document at a given path.
 type Path document.Path
 
-// Eval extracts the document from the context and selects the right value.
+// Eval extracts the current value from the environment and returns the value stored at p.
 // It implements the Expr interface.
 func (p Path) Eval(env *Environment) (document.Value, error) {
 	if len(p) == 0 {
 		return nullLitteral, nil
 	}
 
-	if _, ok := env.GetCurrentValue(); !ok {
+	d, ok := env.GetDocument()
+	if !ok {
 		return nullLitteral, document.ErrFieldNotFound
 	}
 
-	v, ok := env.Get(document.Path(p))
-	if !ok {
+	dp := document.Path(p)
+
+	v, ok := env.Get(dp)
+	if ok {
+		return v, nil
+	}
+
+	v, err := dp.GetValueFromDocument(d)
+	if err == document.ErrFieldNotFound {
 		return nullLitteral, nil
 	}
 
-	return v, nil
+	return v, err
 }
 
 // IsEqual compares this expression with the other expression and returns

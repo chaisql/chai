@@ -66,7 +66,7 @@ func TestArithmeticExprNodocument(t *testing.T) {
 		t.Run(test.expr, func(t *testing.T) {
 			for _, test := range tests {
 				t.Run(test.expr, func(t *testing.T) {
-					emptyenv := expr.NewEnvironment(document.Value{})
+					emptyenv := expr.NewEnvironment(nil)
 
 					testExpr(t, test.expr, emptyenv, test.res, test.fails)
 				})

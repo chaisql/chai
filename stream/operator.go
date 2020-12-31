@@ -3,6 +3,7 @@ package stream
 import (
 	"bytes"
 	"container/heap"
+	"errors"
 	"fmt"
 
 	"github.com/genjidb/genji/document"
@@ -13,6 +14,8 @@ const (
 	groupEnvKey = "_group"
 	accEnvKey   = "_acc"
 )
+
+var ErrInvalidResult = errors.New("expression must evaluate to a document")
 
 // An Operator is used to modify a stream.
 // It takes an environment containing the current value as well as any other metadata
@@ -50,7 +53,11 @@ func (m *MapOperator) Op() (OperatorFunc, error) {
 			return nil, err
 		}
 
-		newEnv.SetCurrentValue(v)
+		if v.Type != document.DocumentValue {
+			return nil, ErrInvalidResult
+		}
+
+		newEnv.SetDocument(v.V.(document.Document))
 		newEnv.Outer = env
 		return &newEnv, nil
 	}, nil
@@ -248,6 +255,7 @@ func (op *ReduceOperator) iterate(s Stream, fn func(env *expr.Environment) error
 	var b bytes.Buffer
 	enc := document.NewValueEncoder(&b)
 
+	// encode null
 	nullValue := document.NewNullValue()
 	err := enc.Encode(nullValue)
 	if err != nil {
@@ -315,7 +323,11 @@ func (op *ReduceOperator) iterate(s Stream, fn func(env *expr.Environment) error
 	for _, groupKey := range groupKeys {
 		genv := groups[groupKey]
 		acc, _ := genv.Get(document.NewPath(accEnvKey))
-		genv.SetCurrentValue(acc)
+		if acc.Type != document.DocumentValue {
+			return ErrInvalidResult
+		}
+
+		genv.SetDocument(acc.V.(document.Document))
 		err = fn(genv)
 		if err != nil {
 			return err

@@ -6,45 +6,30 @@ import (
 	"github.com/genjidb/genji/document"
 )
 
-const (
-	currentValueKey = "_v"
-)
-
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
 	Params []Param
-	Buf    *document.FieldBuffer
+	Vars   *document.FieldBuffer
+	Doc    document.Document
 
 	Outer *Environment
 }
 
-func NewEnvironment(v document.Value, params ...Param) *Environment {
+func NewEnvironment(d document.Document, params ...Param) *Environment {
 	env := Environment{
 		Params: params,
-	}
-
-	if v.Type != 0 {
-		env.Buf = document.NewFieldBuffer()
-		env.Set(currentValueKey, v)
+		Doc:    d,
 	}
 
 	return &env
 }
 
 func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
-	if e.Buf != nil {
-		v, err := path.GetValueFromDocument(e.Buf)
+	if e.Vars != nil {
+		v, err := path.GetValueFromDocument(e.Vars)
 		if err == nil {
 			return v, true
-		}
-
-		v, err = e.Buf.GetByField(currentValueKey)
-		if err == nil {
-			v, err = path.GetValue(v)
-			if err == nil {
-				return v, true
-			}
 		}
 	}
 
@@ -56,19 +41,19 @@ func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
 }
 
 func (e *Environment) Set(name string, v document.Value) {
-	if e.Buf == nil {
-		e.Buf = document.NewFieldBuffer()
+	if e.Vars == nil {
+		e.Vars = document.NewFieldBuffer()
 	}
 
-	e.Buf.Set(document.Path{document.PathFragment{FieldName: name}}, v)
+	e.Vars.Set(document.Path{document.PathFragment{FieldName: name}}, v)
 }
 
-func (e *Environment) GetCurrentValue() (document.Value, bool) {
-	return e.Get(document.Path{document.PathFragment{FieldName: currentValueKey}})
+func (e *Environment) GetDocument() (document.Document, bool) {
+	return e.Doc, e.Doc != nil
 }
 
-func (e *Environment) SetCurrentValue(v document.Value) {
-	e.Set(currentValueKey, v)
+func (e *Environment) SetDocument(d document.Document) {
+	e.Doc = d
 }
 
 func (e *Environment) GetParamByName(name string) (v document.Value, err error) {
@@ -105,12 +90,27 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 func (e *Environment) Clone() (*Environment, error) {
 	newEnv := Environment{
 		Params: e.Params,
-		Buf:    document.NewFieldBuffer(),
+		Vars:   document.NewFieldBuffer(),
 	}
 
-	err := newEnv.Buf.Copy(e.Buf)
-	if err != nil {
-		return nil, err
+	if e.Doc != nil {
+		fb := document.NewFieldBuffer()
+		err := fb.Copy(e.Doc)
+		if err != nil {
+			return nil, err
+		}
+
+		newEnv.Doc = fb
+	}
+
+	if e.Vars != nil {
+		fb := document.NewFieldBuffer()
+		err := fb.Copy(e.Doc)
+		if err != nil {
+			return nil, err
+		}
+
+		newEnv.Vars = fb
 	}
 
 	if e.Outer != nil {

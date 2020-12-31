@@ -2,6 +2,7 @@ package stream_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -11,6 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func docFromJSON(d string) document.Document {
+	var fb document.FieldBuffer
+
+	err := fb.UnmarshalJSON([]byte(d))
+	if err != nil {
+		panic(err)
+	}
+
+	return &fb
+}
+
 func TestMap(t *testing.T) {
 	tests := []struct {
 		e       expr.Expr
@@ -18,34 +30,30 @@ func TestMap(t *testing.T) {
 		fails   bool
 	}{
 		{
-			parser.MustParseExpr("10"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			expr.NewEnvironment(document.NewIntegerValue(10)),
+			parser.MustParseExpr(`{a: 10}`),
+			expr.NewEnvironment(docFromJSON(`{"b": 3}`)),
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			expr.NewEnvironment(document.NewNullValue()),
-			false,
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			nil,
+			true,
 		},
 		{
-			parser.MustParseExpr("a"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			expr.NewEnvironment(document.NewNullValue()),
-			false,
-		},
-		{
-			parser.MustParseExpr("a"),
-			expr.NewEnvironment(document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(1)))),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			parser.MustParseExpr("{a: b}"),
+			expr.NewEnvironment(docFromJSON(`{"b": 3}`)),
+			expr.NewEnvironment(docFromJSON(`{"a": 3}`)),
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
-			test.out.Outer = test.in
+			if test.out != nil {
+				test.out.Outer = test.in
+			}
 
 			op, err := stream.Map(test.e).Op()
 			require.NoError(t, err)
@@ -72,31 +80,25 @@ func TestFilter(t *testing.T) {
 	}{
 		{
 			parser.MustParseExpr("1"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
+			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
 			false,
 		},
 		{
-			parser.MustParseExpr("_v > 1"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			parser.MustParseExpr("a > 1"),
+			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
 			nil,
 			false,
 		},
 		{
-			parser.MustParseExpr("_v >= 1"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			parser.MustParseExpr("a >= 1"),
+			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
+			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			nil,
-			false,
-		},
-		{
-			parser.MustParseExpr("a"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
 			nil,
 			false,
 		},
@@ -124,7 +126,7 @@ func TestFilter(t *testing.T) {
 
 func TestTake(t *testing.T) {
 	tests := []struct {
-		inNumber int64
+		inNumber int
 		n        expr.Expr
 		output   int
 		fails    bool
@@ -140,13 +142,13 @@ func TestTake(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d/%s", test.inNumber, test.n), func(t *testing.T) {
-			var values []document.Value
+			var docs []document.Document
 
-			for i := int64(0); i < test.inNumber; i++ {
-				values = append(values, document.NewIntegerValue(i))
+			for i := 0; i < test.inNumber; i++ {
+				docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(stream.NewValueIterator(values...))
+			s := stream.New(stream.NewDocumentIterator(docs...))
 			s = s.Pipe(stream.Take(test.n))
 
 			var count int
@@ -170,7 +172,7 @@ func TestTake(t *testing.T) {
 
 func TestSkip(t *testing.T) {
 	tests := []struct {
-		inNumber int64
+		inNumber int
 		n        expr.Expr
 		output   int
 		fails    bool
@@ -186,13 +188,13 @@ func TestSkip(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d/%s", test.inNumber, test.n), func(t *testing.T) {
-			var values []document.Value
+			var docs []document.Document
 
-			for i := int64(0); i < test.inNumber; i++ {
-				values = append(values, document.NewIntegerValue(i))
+			for i := 0; i < test.inNumber; i++ {
+				docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(stream.NewValueIterator(values...))
+			s := stream.New(stream.NewDocumentIterator(docs...))
 			s = s.Pipe(stream.Skip(test.n))
 
 			var count int
@@ -223,32 +225,26 @@ func TestGroupBy(t *testing.T) {
 	}{
 		{
 			parser.MustParseExpr("10"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
 			document.NewIntegerValue(10),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
 			document.NewNullValue(),
 			false,
 		},
 		{
 			parser.MustParseExpr("a"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			document.NewIntegerValue(10),
+			false,
+		},
+		{
+			parser.MustParseExpr("b"),
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
 			document.NewNullValue(),
-			false,
-		},
-		{
-			parser.MustParseExpr("_v"),
-			expr.NewEnvironment(document.NewIntegerValue(1)),
-			document.NewIntegerValue(1),
-			false,
-		},
-		{
-			parser.MustParseExpr("a"),
-			expr.NewEnvironment(document.NewDocumentValue(document.NewFieldBuffer().Add("a", document.NewIntegerValue(1)))),
-			document.NewIntegerValue(1),
 			false,
 		},
 	}
@@ -276,12 +272,12 @@ func TestGroupBy(t *testing.T) {
 	})
 }
 
-func generateSeqValues(max int64) (values []document.Value) {
-	for i := int64(0); i < max; i++ {
-		values = append(values, document.NewIntegerValue(i))
+func generateSeqDocs(max int) (docs []document.Document) {
+	for i := 0; i < max; i++ {
+		docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
 	}
 
-	return values
+	return docs
 }
 
 func TestReduce(t *testing.T) {
@@ -289,52 +285,52 @@ func TestReduce(t *testing.T) {
 		name      string
 		groupBy   expr.Expr
 		seed, acc expr.Expr
-		values    []document.Value
-		want      []document.Value
+		in        []document.Document
+		want      []document.Document
 		fails     bool
 	}{
 		{
 			"count",
 			nil,
-			parser.MustParseExpr("0"),
-			parser.MustParseExpr("_acc + 1"),
-			[]document.Value{document.NewIntegerValue(0)},
-			[]document.Value{document.NewIntegerValue(1)},
+			parser.MustParseExpr("{count: 0}"),
+			parser.MustParseExpr("{count: _acc.count + 1}"),
+			[]document.Document{docFromJSON(`{"a": 10}`)},
+			[]document.Document{docFromJSON(`{"count": 1}`)},
 			false,
 		},
 		{
 			"count/groupBy",
-			parser.MustParseExpr("_v % 2"),
-			parser.MustParseExpr("0"),
-			parser.MustParseExpr("_acc + 1"),
-			generateSeqValues(10),
-			[]document.Value{document.NewIntegerValue(5), document.NewIntegerValue(5)},
+			parser.MustParseExpr("a % 2"),
+			parser.MustParseExpr(`{count: 0, "group": _group}`),
+			parser.MustParseExpr(`{count: _acc.count + 1, "group": _group}`),
+			generateSeqDocs(10),
+			[]document.Document{docFromJSON(`{"count": 5, "group": 0}`), docFromJSON(`{"count": 5, "group": 1}`)},
 			false,
 		},
 		{
 			"count/noInput",
 			nil,
-			parser.MustParseExpr("0"),
-			parser.MustParseExpr("_acc + 1"),
+			parser.MustParseExpr(`{count: 0, "group": _group}`),
+			parser.MustParseExpr(`{count: _acc.count + 1, "group": _group}`),
 			nil,
-			[]document.Value{document.NewIntegerValue(0)},
+			[]document.Document{docFromJSON(`{"count": 0, "group": null}`)},
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.NewValueIterator(test.values...))
+			s := stream.New(stream.NewDocumentIterator(test.in...))
 			if test.groupBy != nil {
 				s = s.Pipe(stream.GroupBy(test.groupBy))
 			}
 			s = s.Pipe(stream.Reduce(test.seed, test.acc))
 
-			var got []document.Value
+			var got []document.Document
 			err := s.Iterate(func(env *expr.Environment) error {
-				v, ok := env.GetCurrentValue()
+				d, ok := env.GetDocument()
 				require.True(t, ok)
-				got = append(got, v)
+				got = append(got, d)
 				return nil
 			})
 			if test.fails {
@@ -355,39 +351,39 @@ func TestSort(t *testing.T) {
 	tests := []struct {
 		name     string
 		sortExpr expr.Expr
-		values   []document.Value
-		want     []document.Value
+		values   []document.Document
+		want     []document.Document
 		fails    bool
 		desc     bool
 	}{
 		{
 			"ASC",
-			parser.MustParseExpr("_v"),
-			[]document.Value{
-				document.NewIntegerValue(0),
-				document.NewNullValue(),
-				document.NewBoolValue(true),
+			parser.MustParseExpr("a"),
+			[]document.Document{
+				docFromJSON(`{"a": 0}`),
+				docFromJSON(`{"a": null}`),
+				docFromJSON(`{"a": true}`),
 			},
-			[]document.Value{
-				document.NewNullValue(),
-				document.NewBoolValue(true),
-				document.NewIntegerValue(0),
+			[]document.Document{
+				docFromJSON(`{"a": null}`),
+				docFromJSON(`{"a": true}`),
+				docFromJSON(`{"a": 0}`),
 			},
 			false,
 			false,
 		},
 		{
 			"DESC",
-			parser.MustParseExpr("_v"),
-			[]document.Value{
-				document.NewIntegerValue(0),
-				document.NewNullValue(),
-				document.NewBoolValue(true),
+			parser.MustParseExpr("a"),
+			[]document.Document{
+				docFromJSON(`{"a": 0}`),
+				docFromJSON(`{"a": null}`),
+				docFromJSON(`{"a": true}`),
 			},
-			[]document.Value{
-				document.NewIntegerValue(0),
-				document.NewBoolValue(true),
-				document.NewNullValue(),
+			[]document.Document{
+				docFromJSON(`{"a": 0}`),
+				docFromJSON(`{"a": true}`),
+				docFromJSON(`{"a": null}`),
 			},
 			false,
 			true,
@@ -396,18 +392,18 @@ func TestSort(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.NewValueIterator(test.values...))
+			s := stream.New(stream.NewDocumentIterator(test.values...))
 			if test.desc {
 				s = s.Pipe(stream.SortReverse(test.sortExpr))
 			} else {
 				s = s.Pipe(stream.Sort(test.sortExpr))
 			}
 
-			var got []document.Value
+			var got []document.Document
 			err := s.Iterate(func(env *expr.Environment) error {
-				v, ok := env.GetCurrentValue()
+				d, ok := env.GetDocument()
 				require.True(t, ok)
-				got = append(got, v)
+				got = append(got, d)
 				return nil
 			})
 			if test.fails {

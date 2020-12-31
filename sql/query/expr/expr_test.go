@@ -35,9 +35,9 @@ var docWithKey document.Document = func() document.Document {
 	return fb
 }()
 
-var envWithDoc = expr.NewEnvironment(document.NewDocumentValue(doc))
+var envWithDoc = expr.NewEnvironment(doc)
 
-var envWithDocAndKey = expr.NewEnvironment(document.NewDocumentValue(docWithKey))
+var envWithDocAndKey = expr.NewEnvironment(docWithKey)
 
 var nullLitteral = document.NewNullValue()
 

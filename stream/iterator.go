@@ -21,13 +21,13 @@ func (f IteratorFunc) Iterate(fn func(env *expr.Environment) error) error {
 	return f(fn)
 }
 
-type valueIterator []document.Value
+type documentIterator []document.Document
 
-func (it valueIterator) Iterate(fn func(env *expr.Environment) error) error {
+func (it documentIterator) Iterate(fn func(env *expr.Environment) error) error {
 	var env expr.Environment
 
-	for _, v := range it {
-		env.SetCurrentValue(v)
+	for _, d := range it {
+		env.SetDocument(d)
 		err := fn(&env)
 		if err != nil {
 			return err
@@ -37,25 +37,7 @@ func (it valueIterator) Iterate(fn func(env *expr.Environment) error) error {
 	return nil
 }
 
-// NewValueIterator creates an iterator that iterates over the given values.
-func NewValueIterator(values ...document.Value) Iterator {
-	return valueIterator(values)
-}
-
-type arrayIterator struct {
-	arr document.Array
-}
-
-func (it *arrayIterator) Iterate(fn func(env *expr.Environment) error) error {
-	var env expr.Environment
-
-	return it.arr.Iterate(func(i int, value document.Value) error {
-		env.SetCurrentValue(value)
-		return fn(&env)
-	})
-}
-
-// NewArrayIterator creats an iterator that iterates over each values of the given array.
-func NewArrayIterator(a document.Array) Iterator {
-	return &arrayIterator{arr: a}
+// NewDocumentIterator creates an iterator that iterates over the given values.
+func NewDocumentIterator(documents ...document.Document) Iterator {
+	return documentIterator(documents)
 }
