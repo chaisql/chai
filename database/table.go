@@ -354,22 +354,93 @@ func (d *lazilyDecodedDocument) copyFromItem() error {
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (t *Table) Iterate(fn func(d document.Document) error) error {
+	return t.AscendGreaterOrEqual(document.Value{}, fn)
+}
+
+func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, error) {
+	var err error
+
+	pk := info.GetPrimaryKey()
+	if pk == nil {
+		// if no primary key was defined, convert the pivot to an integer then to an unsigned integer
+		// and encode it as a varint
+		v, err = v.CastAsInteger()
+		if err != nil {
+			return nil, err
+		}
+
+		docid := uint64(v.V.(int64))
+
+		buf := make([]byte, binary.MaxVarintLen64)
+		n := binary.PutUvarint(buf, docid)
+		return buf[:n], nil
+	}
+
+	// if a primary key was defined and the primary is typed, convert the value to the right type.
+	if !pk.Type.IsZero() {
+		v, err = v.CastAs(pk.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		return v.MarshalBinary()
+	}
+
+	// it no primary key type is specified,
+	// encode keys regardless of type.
+	var buf bytes.Buffer
+	err = document.NewValueEncoder(&buf).Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// AscendGreaterOrEqual iterates over the documents of the table whose key
+// is greater than or equal to the pivot.
+// The pivot is converted to the type of the primary key, if any, prior to iteration.
+// If the pivot is empty, it iterates from the beginning of the table.
+func (t *Table) AscendGreaterOrEqual(pivot document.Value, fn func(d document.Document) error) error {
+	return t.iterate(pivot, false, fn)
+}
+
+// DescendLessOrEqual iterates over the documents of the table whose key
+// is less than or equal to the pivot, in reverse order.
+// The pivot is converted to the type of the primary key, if any, prior to iteration.
+// If the pivot is empty, it iterates from the end of the table in reverse order.
+func (t *Table) DescendLessOrEqual(pivot document.Value, fn func(d document.Document) error) error {
+	return t.iterate(pivot, true, fn)
+}
+
+func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.Document) error) error {
+	var seek []byte
+
+	info, err := t.Info()
+	if err != nil {
+		return err
+	}
+
+	// if there is a pivot, convert it to the right type
+	if !pivot.Type.IsZero() {
+		var err error
+		seek, err = t.encodeValueToKey(info, pivot)
+		if err != nil {
+			return err
+		}
+	}
+
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
 	d := lazilyDecodedDocument{
 		codec: t.tx.db.Codec,
 	}
 
-	info, err := t.Info()
-	if err != nil {
-		return err
-	}
 	d.pk = info.GetPrimaryKey()
 
 	it := t.Store.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
-	for it.Seek(nil); it.Valid(); it.Next() {
+	for it.Seek(seek); it.Valid(); it.Next() {
 		d.Reset()
 		d.item = it.Item()
 		// d must be passed as pointer, not value,

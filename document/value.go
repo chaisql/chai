@@ -90,6 +90,11 @@ func (t ValueType) IsNumber() bool {
 	return t == IntegerValue || t == DoubleValue
 }
 
+// IsZero returns whether this is a valid type.
+func (t ValueType) IsZero() bool {
+	return t == 0
+}
+
 // A Value stores encoded data alongside its type.
 type Value struct {
 	Type ValueType
