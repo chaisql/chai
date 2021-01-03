@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
@@ -12,14 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func docFromJSON(d string) document.Document {
+func docFromJSON(d string) *document.FieldBuffer {
 	var fb document.FieldBuffer
 
 	err := fb.UnmarshalJSON([]byte(d))
 	if err != nil {
 		panic(err)
 	}
-
 	return &fb
 }
 
@@ -417,5 +417,64 @@ func TestSort(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, `sort(a)`, stream.Sort(parser.MustParseExpr("a")).String())
+	})
+}
+
+func TestTableInsert(t *testing.T) {
+	tests := []struct {
+		name    string
+		in, out *expr.Environment
+		docid   int
+		fails   bool
+	}{
+		{
+			"doc with no key",
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			1,
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec("CREATE TABLE test (a INTEGER)")
+			require.NoError(t, err)
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			if test.out != nil {
+				test.out.Outer = test.in
+				tb, err := tx.GetTable("test")
+				require.NoError(t, err)
+				k, err := tb.EncodeValueToKey(document.NewIntegerValue(1))
+				require.NoError(t, err)
+				test.out.Doc.(*document.FieldBuffer).EncodedKey = k
+			}
+
+			ti := stream.TableInsert("test")
+			err = ti.Bind(tx.Transaction, nil)
+			require.NoError(t, err)
+
+			op, err := ti.Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.out, env)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.TableInsert("test").String(), "tableInsert('test')")
 	})
 }

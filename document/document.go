@@ -344,6 +344,14 @@ func (fb *FieldBuffer) Copy(d Document) error {
 	return nil
 }
 
+// Clone the buffer.
+func (fb *FieldBuffer) Clone() *FieldBuffer {
+	var newFb FieldBuffer
+
+	_ = newFb.Copy(fb)
+	return &newFb
+}
+
 // Apply a function to all the values of the buffer.
 func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 	path := Path{PathFragment{}}

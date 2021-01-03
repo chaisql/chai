@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
 )
@@ -474,4 +475,48 @@ type maxHeap struct {
 
 func (h maxHeap) Less(i, j int) bool {
 	return bytes.Compare(h.minHeap[i].value, h.minHeap[j].value) > 0
+}
+
+// A TableInsertOperator inserts incoming documents to the table.
+type TableInsertOperator struct {
+	Name  string
+	Table *database.Table
+}
+
+// TableInsert inserts incoming documents to the table.
+func TableInsert(name string) *TableInsertOperator {
+	return &TableInsertOperator{Name: name}
+}
+
+// Bind the iterator to the table and parameters.
+func (op *TableInsertOperator) Bind(tx *database.Transaction, params []expr.Param) error {
+	var err error
+
+	op.Table, err = tx.GetTable(op.Name)
+	return err
+}
+
+// Op implements the Operator interface.
+func (op *TableInsertOperator) Op() (OperatorFunc, error) {
+	var newEnv expr.Environment
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		d, ok := env.GetDocument()
+		if !ok {
+			return nil, errors.New("missing document")
+		}
+
+		d, err := op.Table.Insert(d)
+		if err != nil {
+			return nil, err
+		}
+
+		newEnv.SetDocument(d)
+		newEnv.Outer = env
+		return &newEnv, nil
+	}, nil
+}
+
+func (op *TableInsertOperator) String() string {
+	return fmt.Sprintf("tableInsert('%s')", op.Name)
 }
