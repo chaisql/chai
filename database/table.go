@@ -44,7 +44,8 @@ func (t *Table) Truncate() error {
 // If a primary key has been specified during the table creation, the field is expected to be present
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-func (t *Table) Insert(d document.Document) ([]byte, error) {
+// It returns the inserted document alongside its key. They key can be accessed using the document.Keyer interface.
+func (t *Table) Insert(d document.Document) (document.Document, error) {
 	info, err := t.Info()
 	if err != nil {
 		return nil, err
@@ -103,7 +104,16 @@ func (t *Table) Insert(d document.Document) ([]byte, error) {
 		}
 	}
 
-	return key, nil
+	if fb, ok := d.(*document.FieldBuffer); ok {
+		fb.EncodedKey = key
+		return fb, nil
+	}
+
+	return documentWithKey{
+		Document: d,
+		key:      key,
+		pk:       info.GetPrimaryKey(),
+	}, nil
 }
 
 // Delete a document by key.
@@ -270,18 +280,18 @@ func (t *Table) Indexes() (map[string]Index, error) {
 	return indexes, nil
 }
 
-type encodedDocumentWithKey struct {
+type documentWithKey struct {
 	document.Document
 
 	key []byte
 	pk  *FieldConstraint
 }
 
-func (e encodedDocumentWithKey) RawKey() []byte {
+func (e documentWithKey) RawKey() []byte {
 	return e.key
 }
 
-func (e encodedDocumentWithKey) Key() (document.Value, error) {
+func (e documentWithKey) Key() (document.Value, error) {
 	if e.pk == nil {
 		docid, _ := binary.Uvarint(e.key)
 		return document.NewIntegerValue(int64(docid)), nil
@@ -486,7 +496,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 		return nil, err
 	}
 
-	var d encodedDocumentWithKey
+	var d documentWithKey
 	d.Document = t.tx.db.Codec.NewDocument(v)
 	d.key = key
 	d.pk = info.GetPrimaryKey()

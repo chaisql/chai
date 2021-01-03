@@ -118,13 +118,13 @@ func TestTableGetDocument(t *testing.T) {
 		doc1.Add("fieldc", vc)
 		doc2 := newDocument()
 
-		key1, err := tb.Insert(doc1)
+		d, err := tb.Insert(doc1)
 		require.NoError(t, err)
 		_, err = tb.Insert(doc2)
 		require.NoError(t, err)
 
 		// fetch doc1 and make sure it returns the right one
-		res, err := tb.GetDocument(key1)
+		res, err := tb.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		fc, err := res.GetByField("fieldc")
 		require.NoError(t, err)
@@ -139,15 +139,15 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		doc := newDocument()
-		key1, err := tb.Insert(doc)
+		d1, err := tb.Insert(doc.Clone())
 		require.NoError(t, err)
-		require.NotEmpty(t, key1)
+		require.NotEmpty(t, d1.(document.Keyer).RawKey())
 
-		key2, err := tb.Insert(doc)
+		d2, err := tb.Insert(doc.Clone())
 		require.NoError(t, err)
-		require.NotEmpty(t, key2)
+		require.NotEmpty(t, d2.(document.Keyer).RawKey())
 
-		require.NotEqual(t, key1, key2)
+		require.NotEqual(t, d1.(document.Keyer).RawKey(), d2.(document.Keyer).RawKey())
 	})
 
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
@@ -168,14 +168,14 @@ func TestTableInsert(t *testing.T) {
 			require.NoError(t, err)
 
 			doc := newDocument()
-			key, err := tb.Insert(doc)
+			d, err := tb.Insert(doc)
 			require.NoError(t, err)
-			require.NotEmpty(t, key)
+			require.NotEmpty(t, d.(document.Keyer).RawKey())
 
 			err = tx.Commit()
 			require.NoError(t, err)
 
-			return key
+			return d.(document.Keyer).RawKey()
 		}
 
 		key1 := insertDoc(db)
@@ -216,16 +216,16 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// insert
-		k, err := tb.Insert(doc)
+		d, err := tb.Insert(doc)
 		require.NoError(t, err)
-		require.Equal(t, binarysort.AppendInt64(nil, 10), k)
+		require.Equal(t, binarysort.AppendInt64(nil, 10), d.(document.Keyer).RawKey())
 
 		// make sure the document is fetchable using the returned key
-		_, err = tb.GetDocument(k)
+		_, err = tb.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 
 		// insert again
-		k, err = tb.Insert(doc)
+		d, err = tb.Insert(doc)
 		require.Equal(t, database.ErrDuplicateDocument, err)
 	})
 
@@ -248,10 +248,10 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// insert
-		key, err := tb.Insert(doc)
+		d, err := tb.Insert(doc)
 		require.NoError(t, err)
 
-		d, err := tb.GetDocument(key)
+		d, err = tb.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 
 		v, err := parsePath(t, "foo[0]").GetValueFromDocument(d)
@@ -314,9 +314,9 @@ func TestTableInsert(t *testing.T) {
 		// create one document without the foo field
 		doc2 := newDocument()
 
-		key1, err := tb.Insert(doc1)
+		d1, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		key2, err := tb.Insert(doc2)
+		d2, err := tb.Insert(doc2)
 		require.NoError(t, err)
 
 		var count int
@@ -325,9 +325,9 @@ func TestTableInsert(t *testing.T) {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
 				// as null values are the smallest possible values
-				require.Equal(t, key2, k)
+				require.Equal(t, d2.(document.Keyer).RawKey(), k)
 			case 1:
-				require.Equal(t, key1, k)
+				require.Equal(t, d1.(document.Keyer).RawKey(), k)
 			}
 			count++
 			return nil
@@ -357,11 +357,11 @@ func TestTableInsert(t *testing.T) {
 			Add("bat", document.NewIntegerValue(20))
 
 		// insert
-		key, err := tb.Insert(doc)
+		d, err := tb.Insert(doc)
 		require.NoError(t, err)
 
 		// make sure the fields have been converted to the right types
-		d, err := tb.GetDocument(key)
+		d, err = tb.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
@@ -478,11 +478,11 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// insert with empty foo field shouldn't fail
-		k, err := tb1.Insert(document.NewFieldBuffer().
+		d, err := tb1.Insert(document.NewFieldBuffer().
 			Add("bar", document.NewDoubleValue(1)))
 		require.NoError(t, err)
 
-		d, err := tb1.GetDocument(k)
+		d, err = tb1.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
@@ -499,11 +499,11 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// insert with empty foo field shouldn't fail
-		k, err = tb2.Insert(document.NewFieldBuffer().
+		d, err = tb2.Insert(document.NewFieldBuffer().
 			Add("bar", document.NewIntegerValue(1)))
 		require.NoError(t, err)
 
-		d, err = tb2.GetDocument(k)
+		d, err = tb2.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		v, err = d.GetByField("foo")
 		require.NoError(t, err)
@@ -563,21 +563,21 @@ func TestTableDelete(t *testing.T) {
 		doc1.Add("fieldc", document.NewIntegerValue(40))
 		doc2 := newDocument()
 
-		key1, err := tb.Insert(doc1)
+		d1, err := tb.Insert(doc1.Clone())
 		require.NoError(t, err)
-		key2, err := tb.Insert(doc2)
+		d2, err := tb.Insert(doc2.Clone())
 		require.NoError(t, err)
 
 		// delete the document
-		err = tb.Delete([]byte(key1))
+		err = tb.Delete([]byte(d1.(document.Keyer).RawKey()))
 		require.NoError(t, err)
 
 		// try again, should fail
-		err = tb.Delete([]byte(key1))
+		err = tb.Delete([]byte(d1.(document.Keyer).RawKey()))
 		require.Equal(t, database.ErrDocumentNotFound, err)
 
 		// make sure it didn't also delete the other one
-		res, err := tb.GetDocument(key2)
+		res, err := tb.GetDocument(d2.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		_, err = res.GetByField("fieldc")
 		require.Error(t, err)
@@ -604,9 +604,9 @@ func TestTableReplace(t *testing.T) {
 			Add("fielda", document.NewTextValue("c")).
 			Add("fieldb", document.NewTextValue("d"))
 
-		key1, err := tb.Insert(doc1)
+		d1, err := tb.Insert(doc1)
 		require.NoError(t, err)
-		key2, err := tb.Insert(doc2)
+		d2, err := tb.Insert(doc2)
 		require.NoError(t, err)
 
 		// create a third document
@@ -615,18 +615,18 @@ func TestTableReplace(t *testing.T) {
 			Add("fieldb", document.NewTextValue("f"))
 
 		// replace doc1 with doc3
-		err = tb.Replace(key1, doc3)
+		err = tb.Replace(d1.(document.Keyer).RawKey(), doc3)
 		require.NoError(t, err)
 
 		// make sure it replaced it cordoctly
-		res, err := tb.GetDocument(key1)
+		res, err := tb.GetDocument(d1.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", f.V.(string))
 
 		// make sure it didn't also replace the other one
-		res, err = tb.GetDocument(key2)
+		res, err = tb.GetDocument(d2.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
