@@ -47,13 +47,37 @@ func NewDocumentIterator(documents ...document.Document) Iterator {
 
 // A TableIterator iterates over the documents of a table.
 type TableIterator struct {
-	Table  *database.Table
-	Params []expr.Param
+	Name     string
+	Table    *database.Table
+	Params   []expr.Param
+	Operator expr.Operator
 }
 
 // NewTableIterator creats an iterator that iterates over each document of the given table.
-func NewTableIterator(t *database.Table, params []expr.Param) *TableIterator {
-	return &TableIterator{Table: t, Params: params}
+func NewTableIterator(name string) *TableIterator {
+	return &TableIterator{Name: name}
+}
+
+// TableIteratorOptions are used to control the iteration range and direction.
+type TableIteratorOptions struct {
+	Start, End document.Value
+	Reverse    bool
+}
+
+// NewTableIteratorWithOptions creates an iterator that iterates over each document of the given table.
+func NewTableIteratorWithOptions(name string, opt TableIteratorOptions) *TableIterator {
+	return &TableIterator{Name: name}
+}
+
+func (it *TableIterator) Bind(tx *database.Transaction, params []expr.Param) error {
+	var err error
+
+	it.Table, err = tx.GetTable(it.Name)
+	if err != nil {
+		return err
+	}
+	it.Params = params
+	return nil
 }
 
 // Iterate over the documents of the table. Each document is stored in the environment
@@ -61,7 +85,7 @@ func NewTableIterator(t *database.Table, params []expr.Param) *TableIterator {
 func (it *TableIterator) Iterate(fn func(env *expr.Environment) error) error {
 	var env expr.Environment
 	env.Params = it.Params
-	return it.Table.Iterate(func(d document.Document) error {
+	return it.Table.AscendGreaterOrEqual(func(d document.Document) error {
 		env.SetDocument(d)
 		return fn(&env)
 	})
