@@ -48,6 +48,10 @@ func (j jsonEncodedDocument) GetByField(field string) (Value, error) {
 	return parseJSONValue(dt, v)
 }
 
+func (j jsonEncodedDocument) MarshalJSON() ([]byte, error) {
+	return j.data, nil
+}
+
 // NewFromMap creates a document from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
 func NewFromMap(m interface{}) (Document, error) {

@@ -357,6 +357,19 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 	return t.AscendGreaterOrEqual(document.Value{}, fn)
 }
 
+// EncodeValueToKey encodes a value following primary key constraints.
+// It returns a binary representation of the key as used in the store.
+// It can be used to manually add a new entry to the store or to compare
+// with other keys during table iteration.
+func (t *Table) EncodeValueToKey(v document.Value) ([]byte, error) {
+	info, err := t.Info()
+	if err != nil {
+		return nil, err
+	}
+
+	return t.encodeValueToKey(info, v)
+}
+
 func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, error) {
 	var err error
 
@@ -437,7 +450,7 @@ func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.D
 
 	d.pk = info.GetPrimaryKey()
 
-	it := t.Store.Iterator(engine.IteratorOptions{})
+	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {

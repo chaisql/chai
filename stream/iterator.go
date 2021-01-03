@@ -1,6 +1,8 @@
 package stream
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/genjidb/genji/database"
@@ -51,6 +53,9 @@ type TableIterator struct {
 	Table    *database.Table
 	Params   []expr.Param
 	Operator expr.Operator
+	Min      document.Value
+	Max      document.Value
+	Reverse  bool
 }
 
 // NewTableIterator creats an iterator that iterates over each document of the given table.
@@ -60,15 +65,22 @@ func NewTableIterator(name string) *TableIterator {
 
 // TableIteratorOptions are used to control the iteration range and direction.
 type TableIteratorOptions struct {
-	Start, End document.Value
-	Reverse    bool
+	Min     document.Value
+	Max     document.Value
+	Reverse bool
 }
 
 // NewTableIteratorWithOptions creates an iterator that iterates over each document of the given table.
 func NewTableIteratorWithOptions(name string, opt TableIteratorOptions) *TableIterator {
-	return &TableIterator{Name: name}
+	return &TableIterator{
+		Name:    name,
+		Min:     opt.Min,
+		Max:     opt.Max,
+		Reverse: opt.Reverse,
+	}
 }
 
+// Bind the iterator to the table and parameters.
 func (it *TableIterator) Bind(tx *database.Transaction, params []expr.Param) error {
 	var err error
 
@@ -85,12 +97,87 @@ func (it *TableIterator) Bind(tx *database.Transaction, params []expr.Param) err
 func (it *TableIterator) Iterate(fn func(env *expr.Environment) error) error {
 	var env expr.Environment
 	env.Params = it.Params
-	return it.Table.AscendGreaterOrEqual(func(d document.Document) error {
+
+	var min, max []byte
+	var err error
+
+	if !it.Min.Type.IsZero() {
+		min, err = it.Table.EncodeValueToKey(it.Min)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !it.Max.Type.IsZero() {
+		max, err = it.Table.EncodeValueToKey(it.Max)
+		if err != nil {
+			return err
+		}
+	}
+
+	errStop := errors.New("stop")
+
+	if !it.Reverse {
+		if max == nil {
+			return it.Table.AscendGreaterOrEqual(it.Min, func(d document.Document) error {
+				env.SetDocument(d)
+				return fn(&env)
+			})
+		}
+		err := it.Table.AscendGreaterOrEqual(it.Min, func(d document.Document) error {
+			k := d.(document.Keyer).RawKey()
+
+			// if there is an upper bound, iterate until we reach the max key
+			if bytes.Compare(k, max) >= 0 {
+				return errStop
+			}
+
+			env.SetDocument(d)
+			return fn(&env)
+		})
+		if err == errStop {
+			err = nil
+		}
+		return err
+	}
+
+	if min == nil {
+		return it.Table.DescendLessOrEqual(it.Max, func(d document.Document) error {
+			env.SetDocument(d)
+			return fn(&env)
+		})
+	}
+
+	err = it.Table.DescendLessOrEqual(it.Max, func(d document.Document) error {
+		k := d.(document.Keyer).RawKey()
+
+		// if there is a lower bound, iterate until we reach the min key
+		if bytes.Compare(k, min) <= 0 {
+			return errStop
+		}
+
 		env.SetDocument(d)
 		return fn(&env)
 	})
+	if err == errStop {
+		err = nil
+	}
+	return err
 }
 
 func (it *TableIterator) String() string {
-	return fmt.Sprintf(".%s()", it.Table.Name())
+	var min, max, reverse string
+	if !it.Min.Type.IsZero() {
+		min = it.Min.String()
+	}
+	if !it.Max.Type.IsZero() {
+		max = it.Max.String()
+	}
+
+	reverse = "+"
+	if it.Reverse {
+		reverse = "-"
+	}
+
+	return fmt.Sprintf("%s%s[%s:%s]", reverse, it.Name, min, max)
 }
