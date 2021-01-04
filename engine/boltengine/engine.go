@@ -3,6 +3,7 @@ package boltengine
 
 import (
 	"context"
+	"encoding/binary"
 	"os"
 
 	"github.com/genjidb/genji/engine"
@@ -11,6 +12,8 @@ import (
 
 const (
 	separator byte = 0x1F
+	// name of the bucket used to mark keys for deletion
+	binBucket = "__bin"
 )
 
 // Engine represents a BoltDB engine. Each store is stored in a dedicated bucket.
@@ -60,6 +63,9 @@ type Transaction struct {
 	ctx      context.Context
 	tx       *bolt.Tx
 	writable bool
+	// if set to true,
+	// the __bin bucket will be cleanup on commit.
+	cleanupBin bool
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -87,6 +93,14 @@ func (t *Transaction) Commit() error {
 	default:
 	}
 
+	// remove keys marked for deletion
+	if t.cleanupBin {
+		err := t.cleanupBinBucket()
+		if err != nil {
+			return err
+		}
+	}
+
 	return t.tx.Commit()
 }
 
@@ -106,6 +120,7 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 	return &Store{
 		bucket: b,
 		tx:     t.tx,
+		ngTx:   t,
 		name:   name,
 		ctx:    t.ctx,
 	}, nil
@@ -150,4 +165,54 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	return err
+}
+
+func (t *Transaction) markForDeletion(bucketName, key []byte) error {
+	// create the bin bucket
+	bb, err := t.tx.CreateBucketIfNotExists([]byte(binBucket))
+	if err != nil {
+		return err
+	}
+
+	// store the key in the bin bucket.
+	// store the offset of the key in the value.
+	var buf [binary.MaxVarintLen64]byte
+	n := binary.PutUvarint(buf[:], uint64(len(bucketName)))
+	err = bb.Put(append(bucketName, key...), buf[:n])
+	if err != nil {
+		return err
+	}
+
+	// tell the transaction to cleanup on commit
+	t.cleanupBin = true
+	return nil
+}
+
+func (t *Transaction) cleanupBinBucket() error {
+	buckets := make(map[string]*bolt.Bucket)
+
+	c := t.tx.Bucket([]byte(binBucket)).Cursor()
+	for k, v := c.Seek(nil); k != nil; k, v = c.Next() {
+		offset, _ := binary.Uvarint(v)
+		bucketName, key := k[:int(offset)], k[int(offset):]
+		b, ok := buckets[string(bucketName)]
+		if !ok {
+			b = t.tx.Bucket(bucketName)
+			// if b is nil, the bucket must have been deleted during this transaction
+			// after having deleted some of its keys, we can ignore it.
+			if b == nil {
+				continue
+			}
+
+			buckets[string(bucketName)] = b
+		}
+
+		err := b.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+
+	// we can now drop the bin bucket
+	return t.tx.DeleteBucket([]byte(binBucket))
 }

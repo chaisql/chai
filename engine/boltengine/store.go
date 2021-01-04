@@ -3,6 +3,7 @@ package boltengine
 import (
 	"bytes"
 	"context"
+	"errors"
 
 	"github.com/genjidb/genji/engine"
 	bolt "go.etcd.io/bbolt"
@@ -12,6 +13,7 @@ import (
 type Store struct {
 	bucket *bolt.Bucket
 	tx     *bolt.Tx
+	ngTx   *Transaction
 	name   []byte
 	ctx    context.Context
 }
@@ -26,6 +28,10 @@ func (s *Store) Put(k, v []byte) error {
 
 	if !s.bucket.Writable() {
 		return engine.ErrTransactionReadOnly
+	}
+
+	if len(k) == 0 || len(v) == 0 {
+		return errors.New("empty key or value")
 	}
 
 	return s.bucket.Put(k, v)
@@ -48,6 +54,9 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 }
 
 // Delete a record by key. If not found, returns table.ErrDocumentNotFound.
+// It hides the key without deleting the actual node from the tree, to tree rebalancing during iterations.
+// It then adds it to a sub bucket containing the list of keys to delete when the transaction
+// is committed.
 func (s *Store) Delete(k []byte) error {
 	select {
 	case <-s.ctx.Done():
@@ -64,7 +73,15 @@ func (s *Store) Delete(k []byte) error {
 		return engine.ErrKeyNotFound
 	}
 
-	return s.bucket.Delete(k)
+	// setting the value to nil hides the key
+	// without deleting the actual node from the tree.
+	err := s.bucket.Put(k, nil)
+	if err != nil {
+		return err
+	}
+
+	// mark the key for deletion on commit
+	return s.ngTx.markForDeletion(s.name, k)
 }
 
 // Truncate deletes all the records of the store.
@@ -130,17 +147,23 @@ func (it *iterator) Seek(pivot []byte) {
 
 	if !it.reverse {
 		it.item.k, it.item.v = it.c.Seek(pivot)
+		if it.item.v == nil {
+			it.getKey(it.c.Next)
+		}
 		return
 	}
 
 	if len(pivot) == 0 {
 		it.item.k, it.item.v = it.c.Last()
+		if it.item.v == nil {
+			it.getKey(it.c.Prev)
+		}
 		return
 	}
 
 	it.item.k, it.item.v = it.c.Seek(pivot)
 	if it.item.k != nil {
-		for bytes.Compare(it.item.k, pivot) > 0 {
+		for bytes.Compare(it.item.k, pivot) > 0 || (len(it.item.k) > 0 && len(it.item.v) == 0) {
 			it.item.k, it.item.v = it.c.Prev()
 		}
 	}
@@ -152,9 +175,21 @@ func (it *iterator) Valid() bool {
 
 func (it *iterator) Next() {
 	if it.reverse {
-		it.item.k, it.item.v = it.c.Prev()
+		it.getKey(it.c.Prev)
 	} else {
-		it.item.k, it.item.v = it.c.Next()
+		it.getKey(it.c.Next)
+	}
+}
+
+func (it *iterator) getKey(fn func() (key []byte, value []byte)) {
+	// skip items with nil value.
+	// these items have been soft-deleted and will be removed on commit.
+	for {
+		it.item.k, it.item.v = fn()
+
+		if it.item.k == nil || len(it.item.v) != 0 {
+			break
+		}
 	}
 }
 
