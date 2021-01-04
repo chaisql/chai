@@ -57,6 +57,10 @@ func (s *storeTx) Put(k, v []byte) error {
 		return errors.New("empty keys are forbidden")
 	}
 
+	if len(v) == 0 {
+		return errors.New("empty values are forbidden")
+	}
+
 	it := &item{k: k}
 	// if there is an existing value, fetch it
 	// and overwrite it directly using the pointer.
