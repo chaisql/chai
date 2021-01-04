@@ -520,3 +520,53 @@ func (op *TableInsertOperator) Op() (OperatorFunc, error) {
 func (op *TableInsertOperator) String() string {
 	return fmt.Sprintf("tableInsert('%s')", op.Name)
 }
+
+// A TableReplaceOperator replaces documents in the table
+type TableReplaceOperator struct {
+	Name  string
+	Table *database.Table
+}
+
+// TableReplace replaces documents in the table. Incoming documents must implement the document.Keyer interface.
+func TableReplace(name string) *TableReplaceOperator {
+	return &TableReplaceOperator{Name: name}
+}
+
+// Bind the iterator to the table and parameters.
+func (op *TableReplaceOperator) Bind(tx *database.Transaction, params []expr.Param) error {
+	var err error
+
+	op.Table, err = tx.GetTable(op.Name)
+	return err
+}
+
+// Op implements the Operator interface.
+func (op *TableReplaceOperator) Op() (OperatorFunc, error) {
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		d, ok := env.GetDocument()
+		if !ok {
+			return nil, errors.New("missing document")
+		}
+
+		ker, ok := d.(document.Keyer)
+		if !ok {
+			return nil, errors.New("missing key")
+		}
+
+		k := ker.RawKey()
+		if k == nil {
+			return nil, errors.New("missing key")
+		}
+
+		err := op.Table.Replace(ker.RawKey(), d)
+		if err != nil {
+			return nil, err
+		}
+
+		return env, nil
+	}, nil
+}
+
+func (op *TableReplaceOperator) String() string {
+	return fmt.Sprintf("tableReplace('%s')", op.Name)
+}
