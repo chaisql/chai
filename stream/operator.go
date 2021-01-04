@@ -620,3 +620,57 @@ func (op *TableDeleteOperator) Op() (OperatorFunc, error) {
 func (op *TableDeleteOperator) String() string {
 	return fmt.Sprintf("tableDelete('%s')", op.Name)
 }
+
+// A DistinctOperator filters duplicate documents.
+type DistinctOperator struct{}
+
+// Distinct filters duplicate documents based on one or more expressions.
+func Distinct(exprs ...expr.Expr) *DistinctOperator {
+	return &DistinctOperator{}
+}
+
+// Op implements the Operator interface.
+func (op *DistinctOperator) Op() (OperatorFunc, error) {
+	var buf bytes.Buffer
+	enc := document.NewValueEncoder(&buf)
+	m := make(map[string]struct{})
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		buf.Reset()
+
+		d, ok := env.GetDocument()
+		if !ok {
+			return nil, errors.New("missing document")
+		}
+
+		fields, err := document.Fields(d)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, field := range fields {
+			value, err := d.GetByField(field)
+			if err != nil {
+				return nil, err
+			}
+
+			err = enc.Encode(value)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		_, ok = m[string(buf.Bytes())]
+		// if value already exists, filter it out
+		if ok {
+			return nil, nil
+		}
+
+		m[buf.String()] = struct{}{}
+		return env, nil
+	}, nil
+}
+
+func (op *DistinctOperator) String() string {
+	return "distinct()"
+}
