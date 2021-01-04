@@ -66,6 +66,7 @@ type Store interface {
 	// Get returns a value associated with the given key. If no key is not found, it returns ErrKeyNotFound.
 	Get(k []byte) ([]byte, error)
 	// Put stores a key value pair. If it already exists, it overrides it.
+	// Both k and v must be not nil.
 	Put(k, v []byte) error
 	// Delete a key value pair. If the key is not found, returns ErrKeyNotFound.
 	Delete(k []byte) error
