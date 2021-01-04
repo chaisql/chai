@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -476,5 +477,69 @@ func TestTableInsert(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, stream.TableInsert("test").String(), "tableInsert('test')")
+	})
+}
+
+func TestTableReplace(t *testing.T) {
+	tests := []struct {
+		name                  string
+		docsInTable, expected testutil.Docs
+		in                    *expr.Environment
+		fails                 bool
+	}{
+		{
+			"doc with key",
+			testutil.MakeDocuments(`{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(`{"a": 1, "b": 2}`),
+			expr.NewEnvironment(docFromJSON(`{"a": 1, "b": 2}`)),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec("CREATE TABLE test (a INTEGER PRIMARY KEY)")
+			require.NoError(t, err)
+
+			for _, doc := range test.docsInTable {
+				err = db.Exec("INSERT INTO test VALUES ?", doc)
+				require.NoError(t, err)
+			}
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			tb, err := tx.GetTable("test")
+			require.NoError(t, err)
+			kk, err := test.in.Doc.GetByField("a")
+			require.NoError(t, err)
+
+			k, err := tb.EncodeValueToKey(kk)
+			require.NoError(t, err)
+			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
+
+			ti := stream.TableReplace("test")
+			err = ti.Bind(tx.Transaction, nil)
+			require.NoError(t, err)
+
+			op, err := ti.Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.in, env)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.TableReplace("test").String(), "tableReplace('test')")
 	})
 }
