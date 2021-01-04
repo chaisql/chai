@@ -899,15 +899,15 @@ func TestStorePut(t *testing.T, builder Builder) {
 		require.Error(t, err)
 	})
 
-	t.Run("Should succeed when value is nil or empty", func(t *testing.T) {
+	t.Run("Should fail when value is nil or empty", func(t *testing.T) {
 		st, cleanup := storeBuilder(t, builder)
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), nil)
-		require.NoError(t, err)
+		require.Error(t, err)
 
 		err = st.Put([]byte("foo"), []byte(""))
-		require.NoError(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -992,17 +992,26 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		require.Equal(t, []byte("FOO"), v)
 
 		// delete the key
-		err = st.Delete([]byte("foo"))
+		err = st.Delete([]byte("bar"))
 		require.NoError(t, err)
 
 		// try again, should fail
-		err = st.Delete([]byte("foo"))
+		err = st.Delete([]byte("bar"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 
 		// make sure it didn't also delete the other one
-		v, err = st.Get([]byte("bar"))
+		v, err = st.Get([]byte("foo"))
 		require.NoError(t, err)
-		require.Equal(t, []byte("BAR"), v)
+		require.Equal(t, []byte("FOO"), v)
+
+		// the deleted key must not appear on iteration
+		it := st.Iterator(engine.IteratorOptions{})
+		i := 0
+		for it.Seek(nil); it.Valid(); it.Next() {
+			require.Equal(t, []byte("foo"), it.Item().Key())
+			i++
+		}
+		require.Equal(t, 1, i)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
