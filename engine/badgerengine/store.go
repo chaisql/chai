@@ -50,6 +50,10 @@ func (s *Store) Put(k, v []byte) error {
 		return errors.New("cannot store empty key")
 	}
 
+	if len(v) == 0 {
+		return errors.New("cannot store empty value")
+	}
+
 	return s.tx.Set(buildKey(s.prefix, k), v)
 }
 
