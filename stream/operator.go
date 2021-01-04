@@ -484,8 +484,8 @@ type TableInsertOperator struct {
 }
 
 // TableInsert inserts incoming documents to the table.
-func TableInsert(name string) *TableInsertOperator {
-	return &TableInsertOperator{Name: name}
+func TableInsert(tableName string) *TableInsertOperator {
+	return &TableInsertOperator{Name: tableName}
 }
 
 // Bind the iterator to the table and parameters.
@@ -528,8 +528,8 @@ type TableReplaceOperator struct {
 }
 
 // TableReplace replaces documents in the table. Incoming documents must implement the document.Keyer interface.
-func TableReplace(name string) *TableReplaceOperator {
-	return &TableReplaceOperator{Name: name}
+func TableReplace(tableName string) *TableReplaceOperator {
+	return &TableReplaceOperator{Name: tableName}
 }
 
 // Bind the iterator to the table and parameters.
@@ -569,4 +569,54 @@ func (op *TableReplaceOperator) Op() (OperatorFunc, error) {
 
 func (op *TableReplaceOperator) String() string {
 	return fmt.Sprintf("tableReplace('%s')", op.Name)
+}
+
+// A TableDeleteOperator replaces documents in the table
+type TableDeleteOperator struct {
+	Name  string
+	Table *database.Table
+}
+
+// TableDelete deletes documents from the table. Incoming documents must implement the document.Keyer interface.
+func TableDelete(tableName string) *TableDeleteOperator {
+	return &TableDeleteOperator{Name: tableName}
+}
+
+// Bind the iterator to the table and parameters.
+func (op *TableDeleteOperator) Bind(tx *database.Transaction, params []expr.Param) error {
+	var err error
+
+	op.Table, err = tx.GetTable(op.Name)
+	return err
+}
+
+// Op implements the Operator interface.
+func (op *TableDeleteOperator) Op() (OperatorFunc, error) {
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		d, ok := env.GetDocument()
+		if !ok {
+			return nil, errors.New("missing document")
+		}
+
+		ker, ok := d.(document.Keyer)
+		if !ok {
+			return nil, errors.New("missing key")
+		}
+
+		k := ker.RawKey()
+		if k == nil {
+			return nil, errors.New("missing key")
+		}
+
+		err := op.Table.Delete(ker.RawKey())
+		if err != nil {
+			return nil, err
+		}
+
+		return env, nil
+	}, nil
+}
+
+func (op *TableDeleteOperator) String() string {
+	return fmt.Sprintf("tableDelete('%s')", op.Name)
 }

@@ -331,7 +331,9 @@ func TestReduce(t *testing.T) {
 			err := s.Iterate(func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
-				got = append(got, d)
+				var fb document.FieldBuffer
+				fb.Copy(d)
+				got = append(got, &fb)
 				return nil
 			})
 			if test.fails {
@@ -502,7 +504,7 @@ func TestTableReplace(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test (a INTEGER PRIMARY KEY)")
+			err = db.Exec("CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
 			require.NoError(t, err)
 
 			for _, doc := range test.docsInTable {
@@ -532,14 +534,106 @@ func TestTableReplace(t *testing.T) {
 			env, err := op(test.in)
 			if test.fails {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, test.in, env)
+				return
 			}
+			require.NoError(t, err)
+			require.Equal(t, test.in, env)
+
+			res, err := tx.Query("SELECT * FROM test")
+			require.NoError(t, err)
+			defer res.Close()
+
+			var got []document.Document
+			err = res.Iterate(func(d document.Document) error {
+				var fb document.FieldBuffer
+				fb.Copy(d)
+				got = append(got, fb)
+				return nil
+			})
+			require.NoError(t, err)
+			test.expected.RequireEqual(t, got)
 		})
 	}
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, stream.TableReplace("test").String(), "tableReplace('test')")
+	})
+}
+
+func TestTableDelete(t *testing.T) {
+	tests := []struct {
+		name                  string
+		docsInTable, expected testutil.Docs
+		in                    *expr.Environment
+		fails                 bool
+	}{
+		{
+			"doc with key",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 3}`),
+			expr.NewEnvironment(docFromJSON(`{"a": 2}`)),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec("CREATE TABLE test (a INTEGER PRIMARY KEY)")
+			require.NoError(t, err)
+
+			for _, doc := range test.docsInTable {
+				err = db.Exec("INSERT INTO test VALUES ?", doc)
+				require.NoError(t, err)
+			}
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			tb, err := tx.GetTable("test")
+			require.NoError(t, err)
+			kk, err := test.in.Doc.GetByField("a")
+			require.NoError(t, err)
+
+			k, err := tb.EncodeValueToKey(kk)
+			require.NoError(t, err)
+			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
+
+			ti := stream.TableDelete("test")
+			err = ti.Bind(tx.Transaction, nil)
+			require.NoError(t, err)
+
+			op, err := ti.Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.in, env)
+			}
+
+			res, err := tx.Query("SELECT * FROM test")
+			require.NoError(t, err)
+			defer res.Close()
+
+			var got []document.Document
+			err = res.Iterate(func(d document.Document) error {
+				var fb document.FieldBuffer
+				fb.Copy(d)
+				got = append(got, fb)
+				return nil
+			})
+			require.NoError(t, err)
+			test.expected.RequireEqual(t, got)
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.TableDelete("test").String(), "tableDelete('test')")
 	})
 }
