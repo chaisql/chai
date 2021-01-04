@@ -294,6 +294,15 @@ func (it *iterator) runIterator(pivot []byte) {
 }
 
 func (it *iterator) Valid() bool {
+	if it.err != nil {
+		return false
+	}
+	select {
+	case <-it.tx.ctx.Done():
+		it.err = it.tx.ctx.Err()
+	default:
+	}
+
 	return it.item != nil && it.err == nil
 }
 
