@@ -3,6 +3,7 @@ package expr
 import (
 	"fmt"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 )
 
@@ -12,6 +13,7 @@ type Environment struct {
 	Params []Param
 	Vars   *document.FieldBuffer
 	Doc    document.Document
+	Tx     *database.Transaction
 
 	Outer *Environment
 }
@@ -85,6 +87,18 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 	}
 
 	return document.NewValue(e.Params[idx].Value)
+}
+
+func (e *Environment) GetTx() *database.Transaction {
+	if e.Tx != nil {
+		return e.Tx
+	}
+
+	if e.Outer != nil {
+		return e.Outer.GetTx()
+	}
+
+	return nil
 }
 
 func (e *Environment) Clone() (*Environment, error) {

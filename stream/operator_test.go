@@ -153,7 +153,7 @@ func TestTake(t *testing.T) {
 			s = s.Pipe(stream.Take(test.n))
 
 			var count int
-			err := s.Iterate(func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				count++
 				return nil
 			})
@@ -199,7 +199,7 @@ func TestSkip(t *testing.T) {
 			s = s.Pipe(stream.Skip(test.n))
 
 			var count int
-			err := s.Iterate(func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				count++
 				return nil
 			})
@@ -328,7 +328,7 @@ func TestReduce(t *testing.T) {
 			s = s.Pipe(stream.Reduce(test.seed, test.acc))
 
 			var got []document.Document
-			err := s.Iterate(func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -403,7 +403,7 @@ func TestSort(t *testing.T) {
 			}
 
 			var got []document.Document
-			err := s.Iterate(func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				got = append(got, d)
@@ -452,6 +452,8 @@ func TestTableInsert(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
+			test.in.Tx = tx.Transaction
+
 			if test.out != nil {
 				test.out.Outer = test.in
 				tb, err := tx.GetTable("test")
@@ -462,8 +464,6 @@ func TestTableInsert(t *testing.T) {
 			}
 
 			ti := stream.TableInsert("test")
-			err = ti.Bind(tx.Transaction, nil)
-			require.NoError(t, err)
 
 			op, err := ti.Op()
 			require.NoError(t, err)
@@ -516,6 +516,7 @@ func TestTableReplace(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
+			test.in.Tx = tx.Transaction
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
 			kk, err := test.in.Doc.GetByField("a")
@@ -526,8 +527,6 @@ func TestTableReplace(t *testing.T) {
 			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
 
 			ti := stream.TableReplace("test")
-			err = ti.Bind(tx.Transaction, nil)
-			require.NoError(t, err)
 
 			op, err := ti.Op()
 			require.NoError(t, err)
@@ -594,6 +593,8 @@ func TestTableDelete(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
+			test.in.Tx = tx.Transaction
+
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
 			kk, err := test.in.Doc.GetByField("a")
@@ -604,8 +605,6 @@ func TestTableDelete(t *testing.T) {
 			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
 
 			ti := stream.TableDelete("test")
-			err = ti.Bind(tx.Transaction, nil)
-			require.NoError(t, err)
 
 			op, err := ti.Op()
 			require.NoError(t, err)
@@ -665,7 +664,7 @@ func TestDistinct(t *testing.T) {
 			s = s.Pipe(stream.Distinct())
 
 			var got []document.Document
-			err := s.Iterate(func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer

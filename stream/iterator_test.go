@@ -104,13 +104,14 @@ func TestTableIterator(t *testing.T) {
 				opts.Max = *test.max
 			}
 			it := stream.NewTableIteratorWithOptions("test", opts)
-			err = it.Bind(tx.Transaction, []expr.Param{{Name: "foo", Value: 1}})
-			require.NoError(t, err)
 			s := stream.New(it)
+			var env expr.Environment
+			env.Tx = tx.Transaction
+			env.Params = []expr.Param{{Name: "foo", Value: 1}}
 
 			var i int
 			var got testutil.Docs
-			err = s.Iterate(func(env *expr.Environment) error {
+			err = s.Iterate(&env, func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -245,13 +246,14 @@ func TestIndexIterator(t *testing.T) {
 				opts.Max = *test.max
 			}
 			it := stream.NewIndexIteratorWithOptions("idx_test_a", opts)
-			err = it.Bind(tx.Transaction, []expr.Param{{Name: "foo", Value: 1}})
-			require.NoError(t, err)
+			var env expr.Environment
+			env.Tx = tx.Transaction
+			env.Params = []expr.Param{{Name: "foo", Value: 1}}
 			s := stream.New(it)
 
 			var i int
 			var got testutil.Docs
-			err = s.Iterate(func(env *expr.Environment) error {
+			err = s.Iterate(&env, func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer

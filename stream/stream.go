@@ -49,13 +49,13 @@ func (s Stream) Pipe(op Operator) Stream {
 // and returned by fn, unless that error is ErrStreamClosed, in which case
 // the Iterate method will stop the iteration and return nil.
 // It implements the Iterator interface.
-func (s Stream) Iterate(fn func(env *expr.Environment) error) error {
+func (s Stream) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
 	if s.it == nil {
 		return nil
 	}
 
 	if s.op == nil {
-		return s.it.Iterate(fn)
+		return s.it.Iterate(env, fn)
 	}
 
 	opFn, err := s.op.Op()
@@ -63,7 +63,7 @@ func (s Stream) Iterate(fn func(env *expr.Environment) error) error {
 		return err
 	}
 
-	err = s.it.Iterate(func(env *expr.Environment) error {
+	err = s.it.Iterate(env, func(env *expr.Environment) error {
 		env, err := opFn(env)
 		if err != nil {
 			return err
