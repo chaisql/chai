@@ -16,6 +16,8 @@ const (
 	accEnvKey   = "_acc"
 )
 
+// ErrInvalidResult is returned when an expression supposed to evaluate to a document
+// returns something else.
 var ErrInvalidResult = errors.New("expression must evaluate to a document")
 
 // An Operator is used to modify a stream.
@@ -239,8 +241,8 @@ func Reduce(seed, accumulator expr.Expr) *ReduceOperator {
 // Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
 func (op *ReduceOperator) Pipe(s Stream) Stream {
 	return Stream{
-		it: IteratorFunc(func(fn func(env *expr.Environment) error) error {
-			return op.iterate(s, fn)
+		it: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
+			return op.iterate(s, env, fn)
 		}),
 	}
 }
@@ -252,7 +254,7 @@ func (op *ReduceOperator) Op() (OperatorFunc, error) {
 	}, nil
 }
 
-func (op *ReduceOperator) iterate(s Stream, fn func(env *expr.Environment) error) error {
+func (op *ReduceOperator) iterate(s Stream, env *expr.Environment, fn func(env *expr.Environment) error) error {
 	var b bytes.Buffer
 	enc := document.NewValueEncoder(&b)
 
@@ -283,7 +285,7 @@ func (op *ReduceOperator) iterate(s Stream, fn func(env *expr.Environment) error
 		return &groupEnv, nil
 	}
 
-	err = s.Iterate(func(env *expr.Environment) error {
+	err = s.Iterate(env, func(env *expr.Environment) error {
 		groupValue, ok := env.Get(document.NewPath(groupEnvKey))
 		if !ok {
 			groupValue = nullValue
@@ -371,8 +373,8 @@ func SortReverse(e expr.Expr) *SortOperator {
 // Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
 func (op *SortOperator) Pipe(s Stream) Stream {
 	return Stream{
-		it: IteratorFunc(func(fn func(env *expr.Environment) error) error {
-			return op.iterate(s, fn)
+		it: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
+			return op.iterate(s, env, fn)
 		}),
 	}
 }
@@ -384,8 +386,8 @@ func (op *SortOperator) Op() (OperatorFunc, error) {
 	}, nil
 }
 
-func (op *SortOperator) iterate(s Stream, fn func(env *expr.Environment) error) error {
-	h, err := op.sortStream(s)
+func (op *SortOperator) iterate(s Stream, env *expr.Environment, fn func(env *expr.Environment) error) error {
+	h, err := op.sortStream(s, env)
 	if err != nil {
 		return err
 	}
@@ -401,7 +403,7 @@ func (op *SortOperator) iterate(s Stream, fn func(env *expr.Environment) error) 
 	return nil
 }
 
-func (op *SortOperator) sortStream(st Stream) (heap.Interface, error) {
+func (op *SortOperator) sortStream(st Stream, env *expr.Environment) (heap.Interface, error) {
 	var h heap.Interface
 	if op.Desc {
 		h = new(maxHeap)
@@ -411,7 +413,7 @@ func (op *SortOperator) sortStream(st Stream) (heap.Interface, error) {
 
 	heap.Init(h)
 
-	return h, st.Iterate(func(env *expr.Environment) error {
+	return h, st.Iterate(env, func(env *expr.Environment) error {
 		sortV, err := op.Expr.Eval(env)
 		if err != nil {
 			return err
@@ -479,8 +481,7 @@ func (h maxHeap) Less(i, j int) bool {
 
 // A TableInsertOperator inserts incoming documents to the table.
 type TableInsertOperator struct {
-	Name  string
-	Table *database.Table
+	Name string
 }
 
 // TableInsert inserts incoming documents to the table.
@@ -488,25 +489,26 @@ func TableInsert(tableName string) *TableInsertOperator {
 	return &TableInsertOperator{Name: tableName}
 }
 
-// Bind the iterator to the table and parameters.
-func (op *TableInsertOperator) Bind(tx *database.Transaction, params []expr.Param) error {
-	var err error
-
-	op.Table, err = tx.GetTable(op.Name)
-	return err
-}
-
 // Op implements the Operator interface.
 func (op *TableInsertOperator) Op() (OperatorFunc, error) {
 	var newEnv expr.Environment
 
+	var table *database.Table
 	return func(env *expr.Environment) (*expr.Environment, error) {
 		d, ok := env.GetDocument()
 		if !ok {
 			return nil, errors.New("missing document")
 		}
 
-		d, err := op.Table.Insert(d)
+		if table == nil {
+			var err error
+			table, err = env.GetTx().GetTable(op.Name)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		d, err := table.Insert(d)
 		if err != nil {
 			return nil, err
 		}
@@ -523,8 +525,7 @@ func (op *TableInsertOperator) String() string {
 
 // A TableReplaceOperator replaces documents in the table
 type TableReplaceOperator struct {
-	Name  string
-	Table *database.Table
+	Name string
 }
 
 // TableReplace replaces documents in the table. Incoming documents must implement the document.Keyer interface.
@@ -532,20 +533,22 @@ func TableReplace(tableName string) *TableReplaceOperator {
 	return &TableReplaceOperator{Name: tableName}
 }
 
-// Bind the iterator to the table and parameters.
-func (op *TableReplaceOperator) Bind(tx *database.Transaction, params []expr.Param) error {
-	var err error
-
-	op.Table, err = tx.GetTable(op.Name)
-	return err
-}
-
 // Op implements the Operator interface.
 func (op *TableReplaceOperator) Op() (OperatorFunc, error) {
+	var table *database.Table
+
 	return func(env *expr.Environment) (*expr.Environment, error) {
 		d, ok := env.GetDocument()
 		if !ok {
 			return nil, errors.New("missing document")
+		}
+
+		if table == nil {
+			var err error
+			table, err = env.GetTx().GetTable(op.Name)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		ker, ok := d.(document.Keyer)
@@ -558,7 +561,7 @@ func (op *TableReplaceOperator) Op() (OperatorFunc, error) {
 			return nil, errors.New("missing key")
 		}
 
-		err := op.Table.Replace(ker.RawKey(), d)
+		err := table.Replace(ker.RawKey(), d)
 		if err != nil {
 			return nil, err
 		}
@@ -573,8 +576,7 @@ func (op *TableReplaceOperator) String() string {
 
 // A TableDeleteOperator replaces documents in the table
 type TableDeleteOperator struct {
-	Name  string
-	Table *database.Table
+	Name string
 }
 
 // TableDelete deletes documents from the table. Incoming documents must implement the document.Keyer interface.
@@ -582,20 +584,22 @@ func TableDelete(tableName string) *TableDeleteOperator {
 	return &TableDeleteOperator{Name: tableName}
 }
 
-// Bind the iterator to the table and parameters.
-func (op *TableDeleteOperator) Bind(tx *database.Transaction, params []expr.Param) error {
-	var err error
-
-	op.Table, err = tx.GetTable(op.Name)
-	return err
-}
-
 // Op implements the Operator interface.
 func (op *TableDeleteOperator) Op() (OperatorFunc, error) {
+	var table *database.Table
+
 	return func(env *expr.Environment) (*expr.Environment, error) {
 		d, ok := env.GetDocument()
 		if !ok {
 			return nil, errors.New("missing document")
+		}
+
+		if table == nil {
+			var err error
+			table, err = env.GetTx().GetTable(op.Name)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		ker, ok := d.(document.Keyer)
@@ -608,7 +612,7 @@ func (op *TableDeleteOperator) Op() (OperatorFunc, error) {
 			return nil, errors.New("missing key")
 		}
 
-		err := op.Table.Delete(ker.RawKey())
+		err := table.Delete(ker.RawKey())
 		if err != nil {
 			return nil, err
 		}
