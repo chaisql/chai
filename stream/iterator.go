@@ -27,6 +27,11 @@ func (f IteratorFunc) Iterate(env *expr.Environment, fn func(env *expr.Environme
 
 type documentIterator []document.Document
 
+// NewDocumentIterator creates an iterator that iterates over the given values.
+func NewDocumentIterator(documents ...document.Document) Iterator {
+	return documentIterator(documents)
+}
+
 func (it documentIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
 	for _, d := range it {
 		env.SetDocument(d)
@@ -37,11 +42,6 @@ func (it documentIterator) Iterate(env *expr.Environment, fn func(env *expr.Envi
 	}
 
 	return nil
-}
-
-// NewDocumentIterator creates an iterator that iterates over the given values.
-func NewDocumentIterator(documents ...document.Document) Iterator {
-	return documentIterator(documents)
 }
 
 // A TableIterator iterates over the documents of a table.
