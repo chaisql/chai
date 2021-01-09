@@ -12,17 +12,17 @@ import (
 
 func TestAggregate(t *testing.T) {
 	tests := []struct {
-		name    string
-		groupBy expr.Expr
-		aggs    []stream.HashAggregator
-		in      []document.Document
-		want    []document.Document
-		fails   bool
+		name     string
+		groupBy  expr.Expr
+		builders []expr.AggregatorBuilder
+		in       []document.Document
+		want     []document.Document
+		fails    bool
 	}{
 		{
 			"count",
 			nil,
-			makeAggregators("agg"),
+			makeAggregatorBuilders("agg"),
 			[]document.Document{docFromJSON(`{"a": 10}`)},
 			[]document.Document{docFromJSON(`{"agg": 1}`)},
 			false,
@@ -30,15 +30,15 @@ func TestAggregate(t *testing.T) {
 		{
 			"count/groupBy",
 			parser.MustParseExpr("a % 2"),
-			makeAggregators("agg1", "agg2"),
+			makeAggregatorBuilders("agg1", "agg2"),
 			generateSeqDocs(10),
-			[]document.Document{docFromJSON(`{"agg1": 5, "agg2": 5}`), docFromJSON(`{"agg1": 5, "agg2": 5}`)},
+			[]document.Document{docFromJSON(`{"agg1": 5, "agg2": 5, "a % 2": 0}`), docFromJSON(`{"agg1": 5, "agg2": 5, "a % 2": 0}`)},
 			false,
 		},
 		{
 			"count/noInput",
 			nil,
-			makeAggregators("agg1", "agg2"),
+			makeAggregatorBuilders("agg1", "agg2"),
 			nil,
 			[]document.Document{docFromJSON(`{"agg1": 0, "agg2": 0}`)},
 			false,
@@ -52,7 +52,7 @@ func TestAggregate(t *testing.T) {
 				s = s.Pipe(stream.GroupBy(test.groupBy))
 			}
 
-			s = s.Pipe(stream.HashAggregate(test.aggs...))
+			s = s.Pipe(stream.HashAggregate(test.builders...))
 
 			var got []document.Document
 			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
@@ -73,7 +73,7 @@ func TestAggregate(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `aggregate(a(), b())`, stream.HashAggregate(makeAggregators("a()", "b()")...).String())
+		require.Equal(t, `aggregate(a(), b())`, stream.HashAggregate(makeAggregatorBuilders("a()", "b()")...).String())
 	})
 }
 
@@ -95,16 +95,20 @@ func (f *fakeAggregator) Name() string {
 	return f.name
 }
 
-// Clone creates a new aggregator will its internal state initialized.
-func (f fakeAggregator) Clone() stream.HashAggregator {
-	f.count = 0
-	return &f
+type fakeAggretatorBuilder struct {
+	name string
 }
 
-func makeAggregators(names ...string) []stream.HashAggregator {
-	aggs := make([]stream.HashAggregator, len(names))
+func (f *fakeAggretatorBuilder) Aggregator() expr.Aggregator {
+	return &fakeAggregator{
+		name: f.name,
+	}
+}
+
+func makeAggregatorBuilders(names ...string) []expr.AggregatorBuilder {
+	aggs := make([]expr.AggregatorBuilder, len(names))
 	for i := range names {
-		aggs[i] = &fakeAggregator{
+		aggs[i] = &fakeAggretatorBuilder{
 			name: names[i],
 		}
 	}

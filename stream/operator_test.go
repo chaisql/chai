@@ -128,21 +128,17 @@ func TestFilter(t *testing.T) {
 func TestTake(t *testing.T) {
 	tests := []struct {
 		inNumber int
-		n        expr.Expr
+		n        int64
 		output   int
 		fails    bool
 	}{
-		{5, parser.MustParseExpr("1"), 1, false},
-		{5, parser.MustParseExpr("7"), 5, false},
-		{5, parser.MustParseExpr("1.1"), 1, false},
-		{5, parser.MustParseExpr("true"), 1, false},
-		{5, parser.MustParseExpr("1 + 1"), 2, false},
-		{5, parser.MustParseExpr("a"), 1, true},
-		{5, parser.MustParseExpr("'hello'"), 1, true},
+		{5, 1, 1, false},
+		{5, 7, 5, false},
+		{5, -1, 1, false},
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%d/%s", test.inNumber, test.n), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d/%d", test.inNumber, test.n), func(t *testing.T) {
 			var docs []document.Document
 
 			for i := 0; i < test.inNumber; i++ {
@@ -167,28 +163,24 @@ func TestTake(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.Take(parser.MustParseExpr("1")).String(), "take(1)")
+		require.Equal(t, stream.Take(1).String(), "take(1)")
 	})
 }
 
 func TestSkip(t *testing.T) {
 	tests := []struct {
 		inNumber int
-		n        expr.Expr
+		n        int64
 		output   int
 		fails    bool
 	}{
-		{5, parser.MustParseExpr("1"), 4, false},
-		{5, parser.MustParseExpr("7"), 0, false},
-		{5, parser.MustParseExpr("1.1"), 4, false},
-		{5, parser.MustParseExpr("true"), 4, false},
-		{5, parser.MustParseExpr("1 + 1"), 3, false},
-		{5, parser.MustParseExpr("a"), 1, true},
-		{5, parser.MustParseExpr("'hello'"), 1, true},
+		{5, 1, 4, false},
+		{5, 7, 0, false},
+		{5, -1, 5, false},
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%d/%s", test.inNumber, test.n), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d/%d", test.inNumber, test.n), func(t *testing.T) {
 			var docs []document.Document
 
 			for i := 0; i < test.inNumber; i++ {
@@ -213,7 +205,7 @@ func TestSkip(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.Skip(parser.MustParseExpr("1")).String(), "skip(1)")
+		require.Equal(t, stream.Skip(1).String(), "skip(1)")
 	})
 }
 
@@ -255,6 +247,7 @@ func TestGroupBy(t *testing.T) {
 			var want expr.Environment
 			want.Outer = test.in
 			want.Set("_group", test.group)
+			want.Set("_group_expr", document.NewTextValue(fmt.Sprintf("%s", test.e)))
 
 			op, err := stream.GroupBy(test.e).Op()
 			require.NoError(t, err)
@@ -615,5 +608,83 @@ func TestDistinct(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, `distinct()`, stream.Distinct().String())
+	})
+}
+
+func TestSet(t *testing.T) {
+	tests := []struct {
+		path    string
+		e       expr.Expr
+		in, out *expr.Environment
+		fails   bool
+	}{
+		{
+			"a[0].b",
+			parser.MustParseExpr(`10`),
+			expr.NewEnvironment(docFromJSON(`{"a": [{}]}`)),
+			expr.NewEnvironment(docFromJSON(`{"a": [{"b": 10}]}`)),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+			if test.out != nil {
+				test.out.Outer = test.in
+			}
+
+			p, err := parser.ParsePath(test.path)
+			require.NoError(t, err)
+			op, err := stream.Set(p, test.e).Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.out, env)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.Set(document.NewPath("a", "b"), parser.MustParseExpr("1")).String(), "set(a.b, 1)")
+	})
+}
+
+func TestUnset(t *testing.T) {
+	tests := []struct {
+		path    string
+		in, out *expr.Environment
+		fails   bool
+	}{
+		{
+			"a",
+			expr.NewEnvironment(docFromJSON(`{"a": 10, "b": 20}`)),
+			expr.NewEnvironment(docFromJSON(`{"b": 20}`)),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s", test.path), func(t *testing.T) {
+			if test.out != nil {
+				test.out.Outer = test.in
+			}
+
+			op, err := stream.Unset(test.path).Op()
+			require.NoError(t, err)
+			env, err := op(test.in)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.out, env)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.Set(document.NewPath("a", "b"), parser.MustParseExpr("1")).String(), "unset(a)")
 	})
 }
