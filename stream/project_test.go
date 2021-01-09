@@ -47,7 +47,7 @@ func TestProject(t *testing.T) {
 			var inEnv expr.Environment
 			inEnv.SetDocument(test.in)
 
-			op, err := stream.Project(test.exprs...).Op(stream.Stream{})
+			op, err := stream.Project(test.exprs...).Op()
 			require.NoError(t, err)
 			env, err := op(&inEnv)
 			if test.fails {

@@ -3,6 +3,9 @@ package stream
 import (
 	"errors"
 
+	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
@@ -11,15 +14,16 @@ var ErrStreamClosed = errors.New("stream closed")
 
 // Stream reads values from an iterator one by one and passes them
 // through a list of operators for transformation.
+// Streams can be cached and reused between transactions, they don't hold any state.
 type Stream struct {
-	it Iterator
-	op Operator
+	It Iterator
+	Op Operator
 }
 
 // New creates a stream using the given iterator.
 func New(it Iterator) Stream {
 	return Stream{
-		it: it,
+		It: it,
 	}
 }
 
@@ -37,8 +41,8 @@ func (s Stream) Pipe(op Operator) Stream {
 	}
 
 	return Stream{
-		it: s,
-		op: op,
+		It: s,
+		Op: op,
 	}
 }
 
@@ -50,20 +54,20 @@ func (s Stream) Pipe(op Operator) Stream {
 // the Iterate method will stop the iteration and return nil.
 // It implements the Iterator interface.
 func (s Stream) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
-	if s.it == nil {
+	if s.It == nil {
 		return nil
 	}
 
-	if s.op == nil {
-		return s.it.Iterate(env, fn)
+	if s.Op == nil {
+		return s.It.Iterate(env, fn)
 	}
 
-	opFn, err := s.op.Op()
+	opFn, err := s.Op.Op()
 	if err != nil {
 		return err
 	}
 
-	err = s.it.Iterate(env, func(env *expr.Environment) error {
+	err = s.It.Iterate(env, func(env *expr.Environment) error {
 		env, err := opFn(env)
 		if err != nil {
 			return err
@@ -79,4 +83,36 @@ func (s Stream) Iterate(env *expr.Environment, fn func(env *expr.Environment) er
 	}
 
 	return nil
+}
+
+// Statement is a query.Statement using a Stream.
+type Statement struct {
+	Stream   Stream
+	ReadOnly bool
+}
+
+// Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
+// the result.
+func (s Statement) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
+	env := expr.Environment{
+		Tx:     tx,
+		Params: params,
+	}
+
+	return query.Result{
+		Iterator: document.IteratorFunc(func(fn func(d document.Document) error) error {
+			return s.Stream.Iterate(&env, func(env *expr.Environment) error {
+				d, ok := env.GetDocument()
+				if !ok {
+					return nil
+				}
+
+				return fn(d)
+			})
+		}),
+	}, nil
+}
+
+func (s Statement) IsReadOnly() bool {
+	return s.ReadOnly
 }

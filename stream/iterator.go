@@ -33,9 +33,43 @@ func NewDocumentIterator(documents ...document.Document) Iterator {
 }
 
 func (it documentIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
+	var newEnv expr.Environment
+	newEnv.Outer = env
+
 	for _, d := range it {
-		env.SetDocument(d)
-		err := fn(env)
+		newEnv.SetDocument(d)
+		err := fn(&newEnv)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type exprIterator []expr.Expr
+
+// NewExprIterator creates an iterator that iterates over the given expressions.
+// Each expression must evaluate to a document.
+func NewExprIterator(exprs ...expr.Expr) Iterator {
+	return exprIterator(exprs)
+}
+
+func (it exprIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
+	var newEnv expr.Environment
+	newEnv.Outer = env
+
+	for _, e := range it {
+		v, err := e.Eval(&newEnv)
+		if err != nil {
+			return err
+		}
+		if v.Type != document.DocumentValue {
+			return ErrInvalidResult
+		}
+
+		env.SetDocument(v.V.(document.Document))
+		err = fn(&newEnv)
 		if err != nil {
 			return err
 		}

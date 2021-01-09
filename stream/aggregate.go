@@ -14,17 +14,7 @@ import (
 // to assign each value. If no _group variable is available, it will assume all
 // values are part of the same group and aggregate them into one value.
 type HashAggregateOperator struct {
-	Aggregators []HashAggregator
-}
-
-// A HashAggregator is an expression that
-type HashAggregator interface {
-	expr.Expr
-
-	Aggregate(env *expr.Environment) error
-	Name() string
-	// Clone creates a new aggregator will its internal state initialized.
-	Clone() HashAggregator
+	Builders []expr.AggregatorBuilder
 }
 
 // HashAggregate consumes the incoming stream and outputs one value per group.
@@ -33,14 +23,14 @@ type HashAggregator interface {
 // values are part of the same group and aggregate them into one value.
 // HashAggregate assumes that the stream is not sorted per group and uses a hash map
 // to group aggregates per _group value.
-func HashAggregate(aggregators ...HashAggregator) *HashAggregateOperator {
-	return &HashAggregateOperator{Aggregators: aggregators}
+func HashAggregate(builders ...expr.AggregatorBuilder) *HashAggregateOperator {
+	return &HashAggregateOperator{Builders: builders}
 }
 
 // Pipe stores s in the operator and return a new Stream with the HashAggregate operator appended. It implements the Piper interface.
 func (op *HashAggregateOperator) Pipe(s Stream) Stream {
 	return Stream{
-		it: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
+		It: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
 			return op.iterate(s, env, fn)
 		}),
 	}
@@ -77,7 +67,7 @@ func (op *HashAggregateOperator) iterate(s Stream, env *expr.Environment, fn fun
 		// get the group aggregator from the map or create a new one.
 		a, ok := aggregators[groupName]
 		if !ok {
-			a = newGroupAggregator(env, op.Aggregators)
+			a = newGroupAggregator(env, op.Builders)
 			aggregators[groupName] = a
 			encGroupNames = append(encGroupNames, groupName)
 		}
@@ -96,7 +86,7 @@ func (op *HashAggregateOperator) iterate(s Stream, env *expr.Environment, fn fun
 	// we want the following result:
 	// {"COUNT(*)": 0}
 	if len(aggregators) == 0 {
-		aggregators["_"] = newGroupAggregator(nil, op.Aggregators)
+		aggregators["_"] = newGroupAggregator(nil, op.Builders)
 		encGroupNames = append(encGroupNames, "_")
 	}
 
@@ -119,9 +109,9 @@ func (op *HashAggregateOperator) iterate(s Stream, env *expr.Environment, fn fun
 func (op *HashAggregateOperator) String() string {
 	var sb strings.Builder
 
-	for i, agg := range op.Aggregators {
-		sb.WriteString(agg.Name())
-		if i+1 < len(op.Aggregators) {
+	for i, agg := range op.Builders {
+		fmt.Fprintf(&sb, "%s", agg)
+		if i+1 < len(op.Builders) {
 			sb.WriteString(", ")
 		}
 	}
@@ -162,23 +152,37 @@ func newGroupEncoder() (func(env *expr.Environment) (string, error), error) {
 // It applies all the aggregators for each documents and returns a new document with the
 // result of the aggregation.
 type groupAggregator struct {
+	group       document.Value
+	groupExpr   string
 	env         *expr.Environment
-	aggregators []HashAggregator
+	aggregators []expr.Aggregator
 }
 
-func newGroupAggregator(outerEnv *expr.Environment, aggregators []HashAggregator) *groupAggregator {
+func newGroupAggregator(outerEnv *expr.Environment, builders []expr.AggregatorBuilder) *groupAggregator {
 	var env expr.Environment
 	env.Outer = outerEnv
 
-	newAggregators := make([]HashAggregator, len(aggregators))
-	for i, agg := range aggregators {
-		newAggregators[i] = agg.Clone()
+	newAggregators := make([]expr.Aggregator, len(builders))
+	for i, b := range builders {
+		newAggregators[i] = b.Aggregator()
 	}
 
-	return &groupAggregator{
+	ga := groupAggregator{
 		env:         &env,
 		aggregators: newAggregators,
 	}
+
+	var ok bool
+	ga.group, ok = outerEnv.Get(document.NewPath(groupEnvKey))
+	if !ok {
+		ga.group = document.NewNullValue()
+		return &ga
+	}
+
+	groupExprValue, _ := outerEnv.Get(document.NewPath(groupExprEnvKey))
+	ga.groupExpr = groupExprValue.V.(string)
+
+	return &ga
 }
 
 func (g *groupAggregator) Aggregate(env *expr.Environment) error {
@@ -195,12 +199,17 @@ func (g *groupAggregator) Aggregate(env *expr.Environment) error {
 func (g *groupAggregator) Flush(env *expr.Environment) (*expr.Environment, error) {
 	fb := document.NewFieldBuffer()
 
+	// add the current group to the document
+	if g.groupExpr != "" {
+		fb.Add(groupEnvKey, g.group)
+	}
+
 	for _, agg := range g.aggregators {
 		v, err := agg.Eval(env)
 		if err != nil {
 			return nil, err
 		}
-		fb.Add(agg.Name(), v)
+		fb.Add(fmt.Sprintf("%s", agg), v)
 	}
 
 	var newEnv expr.Environment

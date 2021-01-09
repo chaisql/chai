@@ -19,8 +19,8 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 }
 
 // Op implements the Operator interface.
-func (m *ProjectOperator) Op(s Stream) (OperatorFunc, error) {
-	var mask maskDocument
+func (m *ProjectOperator) Op() (OperatorFunc, error) {
+	var mask MaskDocument
 	var newEnv expr.Environment
 
 	return func(env *expr.Environment) (*expr.Environment, error) {
@@ -46,16 +46,19 @@ func (m *ProjectOperator) String() string {
 	return b.String()
 }
 
-type maskDocument struct {
+type MaskDocument struct {
 	Env   *expr.Environment
 	Exprs []expr.Expr
 }
 
-func (d maskDocument) GetByField(field string) (v document.Value, err error) {
-	for _, e := range d.Exprs {
+func (d MaskDocument) GetByField(field string) (v document.Value, err error) {
+	for i := len(d.Exprs); i >= 0; i-- {
+		e := d.Exprs[i]
+
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()
 			if !ok {
+				// TODO: SELECT 1, * LIMIT 10; -> "no tables specified";
 				continue
 			}
 
@@ -75,15 +78,26 @@ func (d maskDocument) GetByField(field string) (v document.Value, err error) {
 	return
 }
 
-func (d maskDocument) Iterate(fn func(field string, value document.Value) error) error {
-	for _, e := range d.Exprs {
+func (d MaskDocument) Iterate(fn func(field string, value document.Value) error) error {
+	fields := make(map[string]struct{})
+
+	for i := len(d.Exprs); i >= 0; i-- {
+		e := d.Exprs[i]
+
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()
 			if !ok {
 				return nil
 			}
 
-			err := d.Iterate(fn)
+			err := d.Iterate(func(field string, value document.Value) error {
+				if _, ok := fields[field]; ok {
+					return nil
+				}
+
+				fields[field] = struct{}{}
+				return fn(field, value)
+			})
 			if err != nil {
 				return err
 			}
@@ -91,12 +105,18 @@ func (d maskDocument) Iterate(fn func(field string, value document.Value) error)
 			continue
 		}
 
+		field := e.(fmt.Stringer).String()
+		if _, ok := fields[field]; ok {
+			continue
+		}
+		fields[field] = struct{}{}
+
 		v, err := e.Eval(d.Env)
 		if err != nil {
 			return err
 		}
 
-		err = fn(e.(fmt.Stringer).String(), v)
+		err = fn(field, v)
 		if err != nil {
 			return err
 		}

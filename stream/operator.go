@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	groupEnvKey = "_group"
-	accEnvKey   = "_acc"
+	groupEnvKey     = "_group"
+	groupExprEnvKey = "_group_expr"
+	accEnvKey       = "_acc"
 )
 
 // ErrInvalidResult is returned when an expression supposed to evaluate to a document
@@ -107,32 +108,20 @@ func (m *FilterOperator) String() string {
 
 // A TakeOperator closes the stream after a certain number of values.
 type TakeOperator struct {
-	E expr.Expr
+	N int64
 }
 
 // Take closes the stream after n values have passed through the operator.
-// n must evaluate to a number or to a value that can be converted to an integer.
-func Take(n expr.Expr) *TakeOperator {
-	return &TakeOperator{E: n}
+func Take(n int64) *TakeOperator {
+	return &TakeOperator{N: n}
 }
 
 // Op implements the Operator interface.
 func (m *TakeOperator) Op() (OperatorFunc, error) {
-	var n, count int64
-	v, err := m.E.Eval(&expr.Environment{})
-	if err != nil {
-		return nil, err
-	}
-	if v.Type != document.IntegerValue {
-		v, err = v.CastAsInteger()
-		if err != nil {
-			return nil, err
-		}
-	}
-	n = v.V.(int64)
+	var count int64
 
 	return func(env *expr.Environment) (*expr.Environment, error) {
-		if count < n {
+		if count < m.N {
 			count++
 			return env, nil
 		}
@@ -142,37 +131,25 @@ func (m *TakeOperator) Op() (OperatorFunc, error) {
 }
 
 func (m *TakeOperator) String() string {
-	return fmt.Sprintf("take(%s)", m.E)
+	return fmt.Sprintf("take(%d)", m.N)
 }
 
 // A SkipOperator skips the n first values of the stream.
 type SkipOperator struct {
-	E expr.Expr
+	N int64
 }
 
 // Skip ignores the first n values of the stream.
-// n must evaluate to a number or to a value that can be converted to an integer.
-func Skip(n expr.Expr) *SkipOperator {
-	return &SkipOperator{E: n}
+func Skip(n int64) *SkipOperator {
+	return &SkipOperator{N: n}
 }
 
 // Op implements the Operator interface.
 func (m *SkipOperator) Op() (OperatorFunc, error) {
-	var n, skipped int64
-	v, err := m.E.Eval(&expr.Environment{})
-	if err != nil {
-		return nil, err
-	}
-	if v.Type != document.IntegerValue {
-		v, err = v.CastAsInteger()
-		if err != nil {
-			return nil, err
-		}
-	}
-	n = v.V.(int64)
+	var skipped int64
 
 	return func(env *expr.Environment) (*expr.Environment, error) {
-		if skipped < n {
+		if skipped < m.N {
 			skipped++
 			return nil, nil
 		}
@@ -182,7 +159,7 @@ func (m *SkipOperator) Op() (OperatorFunc, error) {
 }
 
 func (m *SkipOperator) String() string {
-	return fmt.Sprintf("skip(%s)", m.E)
+	return fmt.Sprintf("skip(%d)", m.N)
 }
 
 // A GroupByOperator applies an expression on each value of the stream and stores the result in the _group
@@ -208,6 +185,7 @@ func (op *GroupByOperator) Op() (OperatorFunc, error) {
 		}
 
 		newEnv.Set(groupEnvKey, v)
+		newEnv.Set(groupExprEnvKey, document.NewTextValue(fmt.Sprintf("%s", op.E)))
 		newEnv.Outer = env
 		return &newEnv, nil
 	}, nil
@@ -246,7 +224,7 @@ func SortReverse(e expr.Expr) *SortOperator {
 // Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
 func (op *SortOperator) Pipe(s Stream) Stream {
 	return Stream{
-		it: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
+		It: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
 			return op.iterate(s, env, fn)
 		}),
 	}
@@ -502,7 +480,7 @@ func (op *TableDeleteOperator) String() string {
 type DistinctOperator struct{}
 
 // Distinct filters duplicate documents based on one or more expressions.
-func Distinct(exprs ...expr.Expr) *DistinctOperator {
+func Distinct() *DistinctOperator {
 	return &DistinctOperator{}
 }
 
@@ -550,4 +528,111 @@ func (op *DistinctOperator) Op() (OperatorFunc, error) {
 
 func (op *DistinctOperator) String() string {
 	return "distinct()"
+}
+
+// A SetOperator filters duplicate documents.
+type SetOperator struct {
+	Path document.Path
+	E    expr.Expr
+}
+
+// Set filters duplicate documents based on one or more expressions.
+func Set(path document.Path, e expr.Expr) *SetOperator {
+	return &SetOperator{
+		Path: path,
+		E:    e,
+	}
+}
+
+// Op implements the Operator interface.
+func (op *SetOperator) Op() (OperatorFunc, error) {
+	var fb document.FieldBuffer
+	var newEnv expr.Environment
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		d, ok := env.GetDocument()
+		if !ok {
+			return nil, errors.New("missing document")
+		}
+
+		v, err := op.E.Eval(env)
+		if err != nil && err != document.ErrFieldNotFound {
+			return nil, err
+		}
+
+		fb.Reset()
+		err = fb.ScanDocument(d)
+		if err != nil {
+			return nil, err
+		}
+
+		err = fb.Set(op.Path, v)
+		if err != nil {
+			return nil, err
+		}
+
+		newEnv.Outer = env
+		newEnv.SetDocument(&fb)
+
+		return &newEnv, nil
+	}, nil
+}
+
+func (op *SetOperator) String() string {
+	return fmt.Sprintf("set(%s, %s)", op.Path, op.E)
+}
+
+// A UnsetOperator filters duplicate documents.
+type UnsetOperator struct {
+	Field string
+}
+
+// Unset filters duplicate documents based on one or more expressions.
+func Unset(field string) *UnsetOperator {
+	return &UnsetOperator{
+		Field: field,
+	}
+}
+
+// Op implements the Operator interface.
+func (op *UnsetOperator) Op() (OperatorFunc, error) {
+	var fb document.FieldBuffer
+	var newEnv expr.Environment
+
+	return func(env *expr.Environment) (*expr.Environment, error) {
+		fb.Reset()
+
+		d, ok := env.GetDocument()
+		if !ok {
+			return nil, errors.New("missing document")
+		}
+
+		_, err := d.GetByField(op.Field)
+		if err != nil {
+			if err != document.ErrFieldNotFound {
+				return nil, err
+			}
+
+			return env, nil
+		}
+
+		err = fb.ScanDocument(d)
+		if err != nil {
+			return nil, err
+		}
+
+		err = fb.Delete(document.NewPath(op.Field))
+		if err != nil {
+			return nil, err
+		}
+
+		newEnv.Outer = env
+		newEnv.SetDocument(&fb)
+
+		return &newEnv, nil
+	}, nil
+}
+
+func (op *UnsetOperator) String() string {
+	return fmt.Sprintf("unset(%s)", op.Field)
 }
