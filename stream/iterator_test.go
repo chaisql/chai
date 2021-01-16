@@ -94,7 +94,7 @@ func TestTableIterator(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			opts := stream.TableIteratorOptions{
+			opts := stream.SeqScanOptions{
 				Reverse: test.reverse,
 			}
 			if test.min != nil {
@@ -103,7 +103,7 @@ func TestTableIterator(t *testing.T) {
 			if test.max != nil {
 				opts.Max = *test.max
 			}
-			it := stream.NewTableIteratorWithOptions("test", opts)
+			it := stream.SeqScanWithOptions("test", opts)
 			s := stream.New(it)
 			var env expr.Environment
 			env.Tx = tx.Transaction
@@ -137,17 +137,17 @@ func TestTableIterator(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `+test[1:2]`, stream.NewTableIteratorWithOptions("test", stream.TableIteratorOptions{
+		require.Equal(t, `+test[1:2]`, stream.SeqScanWithOptions("test", stream.SeqScanOptions{
 			Min: *testutil.MakeValue(t, 1),
 			Max: *testutil.MakeValue(t, 2),
 		}).String())
 
-		require.Equal(t, `-test[1:]`, stream.NewTableIteratorWithOptions("test", stream.TableIteratorOptions{
+		require.Equal(t, `-test[1:]`, stream.SeqScanWithOptions("test", stream.SeqScanOptions{
 			Min:     *testutil.MakeValue(t, 1),
 			Reverse: true,
 		}).String())
 
-		require.Equal(t, `-test[:]`, stream.NewTableIteratorWithOptions("test", stream.TableIteratorOptions{
+		require.Equal(t, `-test[:]`, stream.SeqScanWithOptions("test", stream.SeqScanOptions{
 			Reverse: true,
 		}).String())
 	})
@@ -236,7 +236,7 @@ func TestIndexIterator(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			opts := stream.IndexIteratorOptions{
+			opts := stream.IndexScanOptions{
 				Reverse: test.reverse,
 			}
 			if test.min != nil {
@@ -245,7 +245,7 @@ func TestIndexIterator(t *testing.T) {
 			if test.max != nil {
 				opts.Max = *test.max
 			}
-			it := stream.NewIndexIteratorWithOptions("idx_test_a", opts)
+			it := stream.IndexScanWithOptions("idx_test_a", opts)
 			var env expr.Environment
 			env.Tx = tx.Transaction
 			env.Params = []expr.Param{{Name: "foo", Value: 1}}
@@ -279,17 +279,17 @@ func TestIndexIterator(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `+test[1:2]`, stream.NewIndexIteratorWithOptions("test", stream.IndexIteratorOptions{
+		require.Equal(t, `+test[1:2]`, stream.IndexScanWithOptions("test", stream.IndexScanOptions{
 			Min: *testutil.MakeValue(t, 1),
 			Max: *testutil.MakeValue(t, 2),
 		}).String())
 
-		require.Equal(t, `-test[1:]`, stream.NewIndexIteratorWithOptions("test", stream.IndexIteratorOptions{
+		require.Equal(t, `-test[1:]`, stream.IndexScanWithOptions("test", stream.IndexScanOptions{
 			Min:     *testutil.MakeValue(t, 1),
 			Reverse: true,
 		}).String())
 
-		require.Equal(t, `-test[:]`, stream.NewIndexIteratorWithOptions("test", stream.IndexIteratorOptions{
+		require.Equal(t, `-test[:]`, stream.IndexScanWithOptions("test", stream.IndexScanOptions{
 			Reverse: true,
 		}).String())
 	})

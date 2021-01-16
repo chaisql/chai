@@ -127,11 +127,9 @@ type Statement interface {
 
 // Result of a query.
 type Result struct {
-	document.Stream
-	RowsAffected  int64
-	LastInsertKey []byte
-	Tx            *database.Transaction
-	closed        bool
+	document.Iterator
+	Tx     *database.Transaction
+	closed bool
 }
 
 // Close the result stream.

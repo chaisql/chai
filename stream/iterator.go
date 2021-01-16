@@ -9,34 +9,23 @@ import (
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
-// An Iterator can iterate over values.
-type Iterator interface {
-	// Iterate goes through all the values and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error
+type DocumentsOperator struct {
+	baseOperator
+	Docs []document.Document
 }
-
-// The IteratorFunc type is an adapter to allow the use of ordinary functions as Iterators.
-// If f is a function with the appropriate signature, IteratorFunc(f) is an Iterator that calls f.
-type IteratorFunc func(env *expr.Environment, fn func(env *expr.Environment) error) error
-
-// Iterate calls f(fn).
-func (f IteratorFunc) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
-	return f(env, fn)
-}
-
-type documentIterator []document.Document
 
 // NewDocumentIterator creates an iterator that iterates over the given values.
-func NewDocumentIterator(documents ...document.Document) Iterator {
-	return documentIterator(documents)
+func Documents(documents ...document.Document) *DocumentsOperator {
+	return &DocumentsOperator{
+		Docs: documents,
+	}
 }
 
-func (it documentIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
+func (op *DocumentsOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
-	newEnv.Outer = env
+	newEnv.Outer = in
 
-	for _, d := range it {
+	for _, d := range op.Docs {
 		newEnv.SetDocument(d)
 		err := fn(&newEnv)
 		if err != nil {
@@ -47,19 +36,22 @@ func (it documentIterator) Iterate(env *expr.Environment, fn func(env *expr.Envi
 	return nil
 }
 
-type exprIterator []expr.Expr
+type ExprsOperator struct {
+	baseOperator
+	Exprs []expr.Expr
+}
 
 // NewExprIterator creates an iterator that iterates over the given expressions.
 // Each expression must evaluate to a document.
-func NewExprIterator(exprs ...expr.Expr) Iterator {
-	return exprIterator(exprs)
+func Expressions(exprs ...expr.Expr) *ExprsOperator {
+	return &ExprsOperator{Exprs: exprs}
 }
 
-func (it exprIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
+func (op *ExprsOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
-	newEnv.Outer = env
+	newEnv.Outer = in
 
-	for _, e := range it {
+	for _, e := range op.Exprs {
 		v, err := e.Eval(&newEnv)
 		if err != nil {
 			return err
@@ -68,7 +60,7 @@ func (it exprIterator) Iterate(env *expr.Environment, fn func(env *expr.Environm
 			return ErrInvalidResult
 		}
 
-		env.SetDocument(v.V.(document.Document))
+		newEnv.SetDocument(v.V.(document.Document))
 		err = fn(&newEnv)
 		if err != nil {
 			return err
@@ -78,29 +70,30 @@ func (it exprIterator) Iterate(env *expr.Environment, fn func(env *expr.Environm
 	return nil
 }
 
-// A TableIterator iterates over the documents of a table.
-type TableIterator struct {
+// A SeqScanOperator iterates over the documents of a table.
+type SeqScanOperator struct {
+	baseOperator
 	Name    string
 	Min     document.Value
 	Max     document.Value
 	Reverse bool
 }
 
-// NewTableIterator creates an iterator that iterates over each document of the given table.
-func NewTableIterator(name string) *TableIterator {
-	return &TableIterator{Name: name}
+// SeqScan creates an iterator that iterates over each document of the given table.
+func SeqScan(name string) *SeqScanOperator {
+	return &SeqScanOperator{Name: name}
 }
 
-// TableIteratorOptions are used to control the iteration range and direction.
-type TableIteratorOptions struct {
+// SeqScanOptions are used to control the iteration range and direction.
+type SeqScanOptions struct {
 	Min     document.Value
 	Max     document.Value
 	Reverse bool
 }
 
-// NewTableIteratorWithOptions creates an iterator that iterates over each document of the given table.
-func NewTableIteratorWithOptions(name string, opt TableIteratorOptions) *TableIterator {
-	return &TableIterator{
+// SeqScanWithOptions creates an iterator that iterates over each document of the given table.
+func SeqScanWithOptions(name string, opt SeqScanOptions) *SeqScanOperator {
+	return &SeqScanOperator{
 		Name:    name,
 		Min:     opt.Min,
 		Max:     opt.Max,
@@ -110,10 +103,10 @@ func NewTableIteratorWithOptions(name string, opt TableIteratorOptions) *TableIt
 
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
-func (it *TableIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
+func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
 	var min, max []byte
 
-	table, err := env.GetTx().GetTable(it.Name)
+	table, err := in.GetTx().GetTable(it.Name)
 	if err != nil {
 		return err
 	}
@@ -134,11 +127,14 @@ func (it *TableIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 
 	errStop := errors.New("stop")
 
+	var newEnv expr.Environment
+	newEnv.Outer = in
+
 	if !it.Reverse {
 		if max == nil {
 			return table.AscendGreaterOrEqual(it.Min, func(d document.Document) error {
-				env.SetDocument(d)
-				return fn(env)
+				newEnv.SetDocument(d)
+				return fn(&newEnv)
 			})
 		}
 		err := table.AscendGreaterOrEqual(it.Min, func(d document.Document) error {
@@ -149,8 +145,8 @@ func (it *TableIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 				return errStop
 			}
 
-			env.SetDocument(d)
-			return fn(env)
+			newEnv.SetDocument(d)
+			return fn(&newEnv)
 		})
 		if err == errStop {
 			err = nil
@@ -160,8 +156,8 @@ func (it *TableIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 
 	if min == nil {
 		return table.DescendLessOrEqual(it.Max, func(d document.Document) error {
-			env.SetDocument(d)
-			return fn(env)
+			newEnv.SetDocument(d)
+			return fn(&newEnv)
 		})
 	}
 
@@ -173,8 +169,8 @@ func (it *TableIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 			return errStop
 		}
 
-		env.SetDocument(d)
-		return fn(env)
+		newEnv.SetDocument(d)
+		return fn(&newEnv)
 	})
 	if err == errStop {
 		err = nil
@@ -182,7 +178,7 @@ func (it *TableIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 	return err
 }
 
-func (it *TableIterator) String() string {
+func (it *SeqScanOperator) String() string {
 	var min, max, reverse string
 	if !it.Min.Type.IsZero() {
 		min = it.Min.String()
@@ -199,29 +195,29 @@ func (it *TableIterator) String() string {
 	return fmt.Sprintf("%s%s[%s:%s]", reverse, it.Name, min, max)
 }
 
-// A IndexIterator iterates over the documents of an index.
-type IndexIterator struct {
+// A IndexScanIterator iterates over the documents of an index.
+type IndexScanIterator struct {
 	Name    string
-	Min     document.Value
-	Max     document.Value
+	Min     expr.Expr
+	Max     expr.Expr
 	Reverse bool
 }
 
-// NewIndexIterator creates an iterator that iterates over each document of the given table.
-func NewIndexIterator(name string) *IndexIterator {
-	return &IndexIterator{Name: name}
+// IndexScan creates an iterator that iterates over each document of the given table.
+func IndexScan(name string) *IndexScanIterator {
+	return &IndexScanIterator{Name: name}
 }
 
-// IndexIteratorOptions are used to control the iteration range and direction.
-type IndexIteratorOptions struct {
-	Min     document.Value
-	Max     document.Value
+// IndexScanOptions are used to control the iteration range and direction.
+type IndexScanOptions struct {
+	Min     expr.Expr
+	Max     expr.Expr
 	Reverse bool
 }
 
-// NewIndexIteratorWithOptions creates an iterator that iterates over each document of the given table.
-func NewIndexIteratorWithOptions(name string, opt IndexIteratorOptions) *IndexIterator {
-	return &IndexIterator{
+// IndexScanWithOptions creates an iterator that iterates over each document of the given table.
+func IndexScanWithOptions(name string, opt IndexScanOptions) *IndexScanIterator {
+	return &IndexScanIterator{
 		Name:    name,
 		Min:     opt.Min,
 		Max:     opt.Max,
@@ -229,47 +225,48 @@ func NewIndexIteratorWithOptions(name string, opt IndexIteratorOptions) *IndexIt
 	}
 }
 
-func (it *IndexIterator) String() string {
-	var min, max, reverse string
-	if !it.Min.Type.IsZero() {
-		min = it.Min.String()
-	}
-	if !it.Max.Type.IsZero() {
-		max = it.Max.String()
-	}
-
-	reverse = "+"
+func (it *IndexScanIterator) String() string {
+	reverse := "+"
 	if it.Reverse {
 		reverse = "-"
 	}
 
-	return fmt.Sprintf("%s%s[%s:%s]", reverse, it.Name, min, max)
+	return fmt.Sprintf("%s%s[%s:%s]", reverse, it.Name, it.Min, it.Max)
 }
 
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
-func (it *IndexIterator) Iterate(env *expr.Environment, fn func(env *expr.Environment) error) error {
-	var min, max []byte
+func (it *IndexScanIterator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+	var min, max document.Value
+	var bmin, bmax []byte
 
-	index, err := env.GetTx().GetIndex(it.Name)
+	index, err := in.GetTx().GetIndex(it.Name)
 	if err != nil {
 		return err
 	}
 
-	table, err := env.GetTx().GetTable(index.Opts.TableName)
+	table, err := in.GetTx().GetTable(index.Opts.TableName)
 	if err != nil {
 		return err
 	}
 
-	if !it.Min.Type.IsZero() {
-		min, err = index.EncodeValue(it.Min)
+	if it.Min != nil {
+		min, err = it.Min.Eval(in)
+		if err != nil {
+			return err
+		}
+		bmin, err = index.EncodeValue(min)
 		if err != nil {
 			return err
 		}
 	}
 
-	if !it.Max.Type.IsZero() {
-		max, err = index.EncodeValue(it.Max)
+	if it.Max != nil {
+		max, err := it.Max.Eval(in)
+		if err != nil {
+			return err
+		}
+		bmax, err = index.EncodeValue(max)
 		if err != nil {
 			return err
 		}
@@ -277,21 +274,24 @@ func (it *IndexIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 
 	errStop := errors.New("stop")
 
+	var newEnv expr.Environment
+	newEnv.Outer = in
+
 	if !it.Reverse {
-		if max == nil {
-			return index.AscendGreaterOrEqual(it.Min, func(val, key []byte, isEqual bool) error {
+		if bmax == nil {
+			return index.AscendGreaterOrEqual(min, func(val, key []byte, isEqual bool) error {
 				d, err := table.GetDocument(key)
 				if err != nil {
 					return err
 				}
 
-				env.SetDocument(d)
-				return fn(env)
+				newEnv.SetDocument(d)
+				return fn(&newEnv)
 			})
 		}
-		err := index.AscendGreaterOrEqual(it.Min, func(val, key []byte, isEqual bool) error {
+		err := index.AscendGreaterOrEqual(min, func(val, key []byte, isEqual bool) error {
 			// if there is an upper bound, iterate until we reach the max key
-			if bytes.Compare(val, max) >= 0 {
+			if bytes.Compare(val, bmax) >= 0 {
 				return errStop
 			}
 
@@ -300,8 +300,8 @@ func (it *IndexIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 				return err
 			}
 
-			env.SetDocument(d)
-			return fn(env)
+			newEnv.SetDocument(d)
+			return fn(&newEnv)
 		})
 		if err == errStop {
 			err = nil
@@ -309,21 +309,21 @@ func (it *IndexIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 		return err
 	}
 
-	if min == nil {
-		return index.DescendLessOrEqual(it.Max, func(val, key []byte, isEqual bool) error {
+	if bmin == nil {
+		return index.DescendLessOrEqual(max, func(val, key []byte, isEqual bool) error {
 			d, err := table.GetDocument(key)
 			if err != nil {
 				return err
 			}
 
-			env.SetDocument(d)
-			return fn(env)
+			newEnv.SetDocument(d)
+			return fn(&newEnv)
 		})
 	}
 
-	err = index.DescendLessOrEqual(it.Max, func(val, key []byte, isEqual bool) error {
+	err = index.DescendLessOrEqual(max, func(val, key []byte, isEqual bool) error {
 		// if there is a lower bound, iterate until we reach the min key
-		if bytes.Compare(val, min) <= 0 {
+		if bytes.Compare(val, bmin) <= 0 {
 			return errStop
 		}
 
@@ -331,8 +331,8 @@ func (it *IndexIterator) Iterate(env *expr.Environment, fn func(env *expr.Enviro
 		if err != nil {
 			return err
 		}
-		env.SetDocument(d)
-		return fn(env)
+		newEnv.SetDocument(d)
+		return fn(&newEnv)
 	})
 	if err == errStop {
 		err = nil
