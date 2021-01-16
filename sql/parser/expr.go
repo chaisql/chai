@@ -348,7 +348,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 }
 
 // parseDocument parses a document
-func (p *Parser) parseDocument() (expr.Expr, error) {
+func (p *Parser) parseDocument() (expr.KVPairs, error) {
 	// Parse { token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"{"}, pos)
