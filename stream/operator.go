@@ -3,6 +3,7 @@ package stream
 import (
 	"bytes"
 	"container/heap"
+	"container/list"
 	"errors"
 	"fmt"
 
@@ -31,14 +32,50 @@ var ErrInvalidResult = errors.New("expression must evaluate to a document")
 // Stream operators can be reused, and thus, any state or side effect should be kept within the Op closure
 // unless the nature of the operator prevents that.
 type Operator interface {
-	Op() (OperatorFunc, error)
+	Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error
+	SetPrev(prev Operator)
+	SetNext(next Operator)
+	GetNext() Operator
+	GetPrev() Operator
+	String() string
 }
 
 // An OperatorFunc is the function that will receive each value of the stream.
-type OperatorFunc func(env *expr.Environment) (*expr.Environment, error)
+type OperatorFunc func(func(env *expr.Environment) error) error
+
+func Pipe(ops ...Operator) Operator {
+	for i := len(ops) - 1; i > 0; i-- {
+		ops[i].SetPrev(ops[i-1])
+		ops[i-1].SetNext(ops[i])
+	}
+
+	return ops[len(ops)-1]
+}
+
+type baseOperator struct {
+	Prev Operator
+	Next Operator
+}
+
+func (op *baseOperator) SetPrev(o Operator) {
+	op.Prev = o
+}
+
+func (op *baseOperator) SetNext(o Operator) {
+	op.Next = o
+}
+
+func (op *baseOperator) GetPrev() Operator {
+	return op.Prev
+}
+
+func (op *baseOperator) GetNext() Operator {
+	return op.Next
+}
 
 // A MapOperator applies an expression on each value of the stream and returns a new value.
 type MapOperator struct {
+	baseOperator
 	E expr.Expr
 }
 
@@ -48,23 +85,24 @@ func Map(e expr.Expr) *MapOperator {
 }
 
 // Op implements the Operator interface.
-func (m *MapOperator) Op() (OperatorFunc, error) {
+func (op *MapOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		v, err := m.E.Eval(env)
+	list.New()
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		v, err := op.E.Eval(out)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if v.Type != document.DocumentValue {
-			return nil, ErrInvalidResult
+			return ErrInvalidResult
 		}
 
 		newEnv.SetDocument(v.V.(document.Document))
-		newEnv.Outer = env
-		return &newEnv, nil
-	}, nil
+		newEnv.Outer = out
+		return f(&newEnv)
+	})
 }
 
 func (m *MapOperator) String() string {
@@ -73,6 +111,7 @@ func (m *MapOperator) String() string {
 
 // A FilterOperator filters values based on a given expression.
 type FilterOperator struct {
+	baseOperator
 	E expr.Expr
 }
 
@@ -82,32 +121,29 @@ func Filter(e expr.Expr) *FilterOperator {
 }
 
 // Op implements the Operator interface.
-func (m *FilterOperator) Op() (OperatorFunc, error) {
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		v, err := m.E.Eval(env)
+func (op *FilterOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		v, err := op.E.Eval(out)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		ok, err := v.IsTruthy()
-		if err != nil {
-			return nil, err
+		if err != nil || !ok {
+			return err
 		}
 
-		if !ok {
-			return nil, nil
-		}
-
-		return env, nil
-	}, nil
+		return f(out)
+	})
 }
 
-func (m *FilterOperator) String() string {
-	return fmt.Sprintf("filter(%s)", m.E)
+func (op *FilterOperator) String() string {
+	return fmt.Sprintf("filter(%s)", op.E)
 }
 
 // A TakeOperator closes the stream after a certain number of values.
 type TakeOperator struct {
+	baseOperator
 	N int64
 }
 
@@ -117,25 +153,25 @@ func Take(n int64) *TakeOperator {
 }
 
 // Op implements the Operator interface.
-func (m *TakeOperator) Op() (OperatorFunc, error) {
+func (op *TakeOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var count int64
-
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		if count < m.N {
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		if count < op.N {
 			count++
-			return env, nil
+			return f(out)
 		}
 
-		return nil, ErrStreamClosed
-	}, nil
+		return ErrStreamClosed
+	})
 }
 
-func (m *TakeOperator) String() string {
-	return fmt.Sprintf("take(%d)", m.N)
+func (op *TakeOperator) String() string {
+	return fmt.Sprintf("take(%d)", op.N)
 }
 
 // A SkipOperator skips the n first values of the stream.
 type SkipOperator struct {
+	baseOperator
 	N int64
 }
 
@@ -145,26 +181,27 @@ func Skip(n int64) *SkipOperator {
 }
 
 // Op implements the Operator interface.
-func (m *SkipOperator) Op() (OperatorFunc, error) {
+func (op *SkipOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var skipped int64
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		if skipped < m.N {
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		if skipped < op.N {
 			skipped++
-			return nil, nil
+			return nil
 		}
 
-		return env, nil
-	}, nil
+		return f(out)
+	})
 }
 
-func (m *SkipOperator) String() string {
-	return fmt.Sprintf("skip(%d)", m.N)
+func (op *SkipOperator) String() string {
+	return fmt.Sprintf("skip(%d)", op.N)
 }
 
 // A GroupByOperator applies an expression on each value of the stream and stores the result in the _group
 // variable in the output stream.
 type GroupByOperator struct {
+	baseOperator
 	E expr.Expr
 }
 
@@ -175,20 +212,20 @@ func GroupBy(e expr.Expr) *GroupByOperator {
 }
 
 // Op implements the Operator interface.
-func (op *GroupByOperator) Op() (OperatorFunc, error) {
+func (op *GroupByOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		v, err := op.E.Eval(env)
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		v, err := op.E.Eval(out)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		newEnv.Set(groupEnvKey, v)
 		newEnv.Set(groupExprEnvKey, document.NewTextValue(fmt.Sprintf("%s", op.E)))
-		newEnv.Outer = env
-		return &newEnv, nil
-	}, nil
+		newEnv.Outer = out
+		return f(&newEnv)
+	})
 }
 
 func (op *GroupByOperator) String() string {
@@ -197,6 +234,7 @@ func (op *GroupByOperator) String() string {
 
 // A SortOperator consumes every value of the stream and outputs them in order.
 type SortOperator struct {
+	baseOperator
 	Expr expr.Expr
 	Desc bool
 }
@@ -221,31 +259,15 @@ func SortReverse(e expr.Expr) *SortOperator {
 	return &SortOperator{Expr: e, Desc: true}
 }
 
-// Pipe stores s in the operator and return a new Stream with the reduce operator appended. It implements the Piper interface.
-func (op *SortOperator) Pipe(s Stream) Stream {
-	return Stream{
-		It: IteratorFunc(func(env *expr.Environment, fn func(env *expr.Environment) error) error {
-			return op.iterate(s, env, fn)
-		}),
-	}
-}
-
-// Op implements the Operator interface but should never be called by Stream.
-func (op *SortOperator) Op() (OperatorFunc, error) {
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		return env, nil
-	}, nil
-}
-
-func (op *SortOperator) iterate(s Stream, env *expr.Environment, fn func(env *expr.Environment) error) error {
-	h, err := op.sortStream(s, env)
+func (op *SortOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
+	h, err := op.sortStream(op.Prev, in)
 	if err != nil {
 		return err
 	}
 
 	for h.Len() > 0 {
 		node := heap.Pop(h).(heapNode)
-		err := fn(node.data)
+		err := f(node.data)
 		if err != nil {
 			return err
 		}
@@ -254,7 +276,7 @@ func (op *SortOperator) iterate(s Stream, env *expr.Environment, fn func(env *ex
 	return nil
 }
 
-func (op *SortOperator) sortStream(st Stream, env *expr.Environment) (heap.Interface, error) {
+func (op *SortOperator) sortStream(prev Operator, in *expr.Environment) (heap.Interface, error) {
 	var h heap.Interface
 	if op.Desc {
 		h = new(maxHeap)
@@ -264,7 +286,7 @@ func (op *SortOperator) sortStream(st Stream, env *expr.Environment) (heap.Inter
 
 	heap.Init(h)
 
-	return h, st.Iterate(env, func(env *expr.Environment) error {
+	return h, prev.Iterate(in, func(env *expr.Environment) error {
 		sortV, err := op.Expr.Eval(env)
 		if err != nil {
 			return err
@@ -332,6 +354,7 @@ func (h maxHeap) Less(i, j int) bool {
 
 // A TableInsertOperator inserts incoming documents to the table.
 type TableInsertOperator struct {
+	baseOperator
 	Name string
 }
 
@@ -341,33 +364,33 @@ func TableInsert(tableName string) *TableInsertOperator {
 }
 
 // Op implements the Operator interface.
-func (op *TableInsertOperator) Op() (OperatorFunc, error) {
+func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
 	var table *database.Table
-	return func(env *expr.Environment) (*expr.Environment, error) {
+	return op.Prev.Iterate(in, func(env *expr.Environment) error {
 		d, ok := env.GetDocument()
 		if !ok {
-			return nil, errors.New("missing document")
+			return errors.New("missing document")
 		}
 
 		if table == nil {
 			var err error
 			table, err = env.GetTx().GetTable(op.Name)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		d, err := table.Insert(d)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		newEnv.SetDocument(d)
 		newEnv.Outer = env
-		return &newEnv, nil
-	}, nil
+		return f(&newEnv)
+	})
 }
 
 func (op *TableInsertOperator) String() string {
@@ -376,6 +399,7 @@ func (op *TableInsertOperator) String() string {
 
 // A TableReplaceOperator replaces documents in the table
 type TableReplaceOperator struct {
+	baseOperator
 	Name string
 }
 
@@ -385,40 +409,40 @@ func TableReplace(tableName string) *TableReplaceOperator {
 }
 
 // Op implements the Operator interface.
-func (op *TableReplaceOperator) Op() (OperatorFunc, error) {
+func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var table *database.Table
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		d, ok := env.GetDocument()
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		d, ok := out.GetDocument()
 		if !ok {
-			return nil, errors.New("missing document")
+			return errors.New("missing document")
 		}
 
 		if table == nil {
 			var err error
-			table, err = env.GetTx().GetTable(op.Name)
+			table, err = out.GetTx().GetTable(op.Name)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		ker, ok := d.(document.Keyer)
 		if !ok {
-			return nil, errors.New("missing key")
+			return errors.New("missing key")
 		}
 
 		k := ker.RawKey()
 		if k == nil {
-			return nil, errors.New("missing key")
+			return errors.New("missing key")
 		}
 
 		err := table.Replace(ker.RawKey(), d)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		return env, nil
-	}, nil
+		return f(out)
+	})
 }
 
 func (op *TableReplaceOperator) String() string {
@@ -427,6 +451,7 @@ func (op *TableReplaceOperator) String() string {
 
 // A TableDeleteOperator replaces documents in the table
 type TableDeleteOperator struct {
+	baseOperator
 	Name string
 }
 
@@ -436,40 +461,40 @@ func TableDelete(tableName string) *TableDeleteOperator {
 }
 
 // Op implements the Operator interface.
-func (op *TableDeleteOperator) Op() (OperatorFunc, error) {
+func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var table *database.Table
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		d, ok := env.GetDocument()
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		d, ok := out.GetDocument()
 		if !ok {
-			return nil, errors.New("missing document")
+			return errors.New("missing document")
 		}
 
 		if table == nil {
 			var err error
-			table, err = env.GetTx().GetTable(op.Name)
+			table, err = out.GetTx().GetTable(op.Name)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		ker, ok := d.(document.Keyer)
 		if !ok {
-			return nil, errors.New("missing key")
+			return errors.New("missing key")
 		}
 
 		k := ker.RawKey()
 		if k == nil {
-			return nil, errors.New("missing key")
+			return errors.New("missing key")
 		}
 
 		err := table.Delete(ker.RawKey())
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		return env, nil
-	}, nil
+		return f(out)
+	})
 }
 
 func (op *TableDeleteOperator) String() string {
@@ -477,7 +502,9 @@ func (op *TableDeleteOperator) String() string {
 }
 
 // A DistinctOperator filters duplicate documents.
-type DistinctOperator struct{}
+type DistinctOperator struct {
+	baseOperator
+}
 
 // Distinct filters duplicate documents based on one or more expressions.
 func Distinct() *DistinctOperator {
@@ -485,45 +512,46 @@ func Distinct() *DistinctOperator {
 }
 
 // Op implements the Operator interface.
-func (op *DistinctOperator) Op() (OperatorFunc, error) {
+func (op *DistinctOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var buf bytes.Buffer
 	enc := document.NewValueEncoder(&buf)
 	m := make(map[string]struct{})
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
 		buf.Reset()
 
-		d, ok := env.GetDocument()
+		d, ok := out.GetDocument()
 		if !ok {
-			return nil, errors.New("missing document")
+			return errors.New("missing document")
 		}
 
 		fields, err := document.Fields(d)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, field := range fields {
 			value, err := d.GetByField(field)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			err = enc.Encode(value)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		_, ok = m[string(buf.Bytes())]
 		// if value already exists, filter it out
 		if ok {
-			return nil, nil
+			return nil
 		}
 
 		m[buf.String()] = struct{}{}
-		return env, nil
-	}, nil
+
+		return f(out)
+	})
 }
 
 func (op *DistinctOperator) String() string {
@@ -532,6 +560,7 @@ func (op *DistinctOperator) String() string {
 
 // A SetOperator filters duplicate documents.
 type SetOperator struct {
+	baseOperator
 	Path document.Path
 	E    expr.Expr
 }
@@ -545,37 +574,37 @@ func Set(path document.Path, e expr.Expr) *SetOperator {
 }
 
 // Op implements the Operator interface.
-func (op *SetOperator) Op() (OperatorFunc, error) {
+func (op *SetOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var fb document.FieldBuffer
 	var newEnv expr.Environment
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
-		d, ok := env.GetDocument()
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		d, ok := out.GetDocument()
 		if !ok {
-			return nil, errors.New("missing document")
+			return errors.New("missing document")
 		}
 
-		v, err := op.E.Eval(env)
+		v, err := op.E.Eval(out)
 		if err != nil && err != document.ErrFieldNotFound {
-			return nil, err
+			return err
 		}
 
 		fb.Reset()
 		err = fb.ScanDocument(d)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		err = fb.Set(op.Path, v)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		newEnv.Outer = env
+		newEnv.Outer = out
 		newEnv.SetDocument(&fb)
 
-		return &newEnv, nil
-	}, nil
+		return f(&newEnv)
+	})
 }
 
 func (op *SetOperator) String() string {
@@ -584,6 +613,7 @@ func (op *SetOperator) String() string {
 
 // A UnsetOperator filters duplicate documents.
 type UnsetOperator struct {
+	baseOperator
 	Field string
 }
 
@@ -595,42 +625,42 @@ func Unset(field string) *UnsetOperator {
 }
 
 // Op implements the Operator interface.
-func (op *UnsetOperator) Op() (OperatorFunc, error) {
+func (op *UnsetOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var fb document.FieldBuffer
 	var newEnv expr.Environment
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
 		fb.Reset()
 
-		d, ok := env.GetDocument()
+		d, ok := out.GetDocument()
 		if !ok {
-			return nil, errors.New("missing document")
+			return errors.New("missing document")
 		}
 
 		_, err := d.GetByField(op.Field)
 		if err != nil {
 			if err != document.ErrFieldNotFound {
-				return nil, err
+				return err
 			}
 
-			return env, nil
+			return f(out)
 		}
 
 		err = fb.ScanDocument(d)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		err = fb.Delete(document.NewPath(op.Field))
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		newEnv.Outer = env
+		newEnv.Outer = out
 		newEnv.SetDocument(&fb)
 
-		return &newEnv, nil
-	}, nil
+		return f(&newEnv)
+	})
 }
 
 func (op *UnsetOperator) String() string {

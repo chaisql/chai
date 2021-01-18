@@ -10,6 +10,7 @@ import (
 
 // A ProjectOperator applies an expression on each value of the stream and returns a new value.
 type ProjectOperator struct {
+	baseOperator
 	Exprs []expr.Expr
 }
 
@@ -19,17 +20,17 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 }
 
 // Op implements the Operator interface.
-func (m *ProjectOperator) Op() (OperatorFunc, error) {
+func (op *ProjectOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var mask MaskDocument
 	var newEnv expr.Environment
 
-	return func(env *expr.Environment) (*expr.Environment, error) {
+	return op.Prev.Iterate(in, func(env *expr.Environment) error {
 		mask.Env = env
-		mask.Exprs = m.Exprs
+		mask.Exprs = op.Exprs
 		newEnv.SetDocument(&mask)
 		newEnv.Outer = env
-		return &newEnv, nil
-	}, nil
+		return f(&newEnv)
+	})
 }
 
 func (m *ProjectOperator) String() string {
