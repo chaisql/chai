@@ -3,103 +3,94 @@ package parser
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stream"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (query.InsertStmt, error) {
-	var stmt query.InsertStmt
+func (p *Parser) parseInsertStatement() (*stream.Statement, error) {
+	var cfg insertConfig
 	var err error
 
 	// Parse "INTO".
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTO {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"INTO"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"INTO"}, pos)
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.parseIdent()
+	cfg.TableName, err = p.parseIdent()
 	if err != nil {
 		pErr := err.(*ParseError)
 		pErr.Expected = []string{"table_name"}
-		return stmt, pErr
+		return nil, pErr
 	}
-
-	valueParser := p.parseParamOrDocument
 
 	// Parse path list: (a, b, c)
-	fields, withFields, err := p.parseFieldList()
+	fields, err := p.parseFieldList()
 	if err != nil {
-		return stmt, err
-	}
-	if withFields {
-		valueParser = func() (expr.Expr, error) {
-			// expect an expression list
-			return p.parseExprList(scanner.LPAREN, scanner.RPAREN)
-		}
-		stmt.FieldNames = fields
+		return nil, err
 	}
 
 	// Parse VALUES (v1, v2, v3)
-	values, err := p.parseValues(valueParser)
+	cfg.Values, err = p.parseValues(fields)
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
-	// ensure the length of path list is the same as the length of values
-	if withFields {
-		for _, l := range values {
-			el := l.(expr.LiteralExprList)
-			if len(el) != len(stmt.FieldNames) {
-				return stmt, fmt.Errorf("%d values for %d fields", len(el), len(stmt.FieldNames))
-			}
-		}
-	}
-
-	stmt.Values = values
-	return stmt, nil
+	return cfg.ToStream(), nil
 }
 
-// parseFieldList parses a list of fields in the form: (path, path, ...), if exists
-func (p *Parser) parseFieldList() ([]string, bool, error) {
+// parseFieldList parses a list of fields in the form: (path, path, ...), if exists.
+// If the list is empty, it returns an error.
+func (p *Parser) parseFieldList() ([]string, error) {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
-		return nil, false, nil
+		return nil, nil
 	}
 
 	// Parse path list.
 	var fields []string
 	var err error
 	if fields, err = p.parseIdentList(); err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	// Parse required ) token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, false, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 	}
 
-	return fields, true, nil
+	return fields, nil
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseValues(valueParser func() (expr.Expr, error)) (expr.LiteralExprList, error) {
+func (p *Parser) parseValues(fields []string) ([]expr.Expr, error) {
 	// Check if the VALUES token exists.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES"}, pos)
 	}
 
-	var valuesList expr.LiteralExprList
+	if len(fields) > 0 {
+		return p.parseDocumentsWithFields(fields)
+	}
+
+	return p.parseLiteralDocOrParamList()
+}
+
+// parseExprListValues parses the "VALUES" clause of the query, if it exists.
+func (p *Parser) parseDocumentsWithFields(fields []string) ([]expr.Expr, error) {
+	var docs []expr.Expr
+
 	// Parse first (required) value list.
-	d, err := valueParser()
+	doc, err := p.parseExprListWithFields(fields)
 	if err != nil {
 		return nil, err
 	}
 
-	valuesList = append(valuesList, d)
+	docs = append(docs, doc)
 
 	// Parse remaining (optional) values.
 	for {
@@ -108,15 +99,66 @@ func (p *Parser) parseValues(valueParser func() (expr.Expr, error)) (expr.Litera
 			break
 		}
 
-		d, err := valueParser()
+		doc, err := p.parseExprListWithFields(fields)
 		if err != nil {
 			return nil, err
 		}
 
-		valuesList = append(valuesList, d)
+		docs = append(docs, doc)
 	}
 
-	return valuesList, nil
+	return docs, nil
+}
+
+// parseParamOrDocument parses either a parameter or a document.
+func (p *Parser) parseExprListWithFields(fields []string) (expr.KVPairs, error) {
+	list, err := p.parseExprList(scanner.LPAREN, scanner.RPAREN)
+	if err != nil {
+		return nil, err
+	}
+
+	pairs := make(expr.KVPairs, len(list))
+
+	if len(fields) != len(list) {
+		return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
+	}
+
+	for i := range list {
+		pairs[i].K = fields[i]
+		pairs[i].V = list[i]
+	}
+
+	return pairs, nil
+}
+
+// parseExprListValues parses the "VALUES" clause of the query, if it exists.
+func (p *Parser) parseLiteralDocOrParamList() ([]expr.Expr, error) {
+	var docs []expr.Expr
+
+	// Parse first (required) value list.
+	doc, err := p.parseParamOrDocument()
+	if err != nil {
+		return nil, err
+	}
+
+	docs = append(docs, doc)
+
+	// Parse remaining (optional) values.
+	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
+
+		doc, err := p.parseParamOrDocument()
+		if err != nil {
+			return nil, err
+		}
+
+		docs = append(docs, doc)
+	}
+
+	return docs, nil
 }
 
 // parseParamOrDocument parses either a parameter or a document.
@@ -135,4 +177,21 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 
 	// Expect a document
 	return p.parseDocument()
+}
+
+// insertConfig holds INSERT configuration.
+type insertConfig struct {
+	TableName string
+	Values    []expr.Expr
+}
+
+func (cfg *insertConfig) ToStream() *stream.Statement {
+	s := stream.New(stream.Expressions(cfg.Values...))
+
+	s = s.Pipe(stream.TableInsert(cfg.TableName))
+
+	return &stream.Statement{
+		Stream:   s,
+		ReadOnly: false,
+	}
 }

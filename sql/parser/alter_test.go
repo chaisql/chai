@@ -45,25 +45,25 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 	}{
 		{"Basic", "ALTER TABLE foo ADD FIELD bar", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path: parsePath(t, "bar"),
+				Path: document.Path(parsePath(t, "bar")),
 			},
 		}, false},
 		{"With type", "ALTER TABLE foo ADD FIELD bar integer", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path: parsePath(t, "bar"),
+				Path: document.Path(parsePath(t, "bar")),
 				Type: document.IntegerValue,
 			},
 		}, false},
 		{"With not null", "ALTER TABLE foo ADD FIELD bar NOT NULL", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path:      parsePath(t, "bar"),
+				Path:      document.Path(parsePath(t, "bar")),
 				IsNotNull: true,
 			},
 		}, false},
 		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", query.AlterTableAddField{}, true},
 		{"With multiple constraints", "ALTER TABLE foo ADD FIELD bar integer NOT NULL DEFAULT 0", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path:         parsePath(t, "bar"),
+				Path:         document.Path(parsePath(t, "bar")),
 				Type:         document.IntegerValue,
 				IsNotNull:    true,
 				DefaultValue: document.NewIntegerValue(0),

@@ -2,14 +2,14 @@ package parser
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stream"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (*planner.Tree, error) {
+func (p *Parser) parseUpdateStatement() (*stream.Statement, error) {
 	var cfg updateConfig
 	var err error
 
@@ -41,7 +41,7 @@ func (p *Parser) parseUpdateStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 
-	return cfg.ToTree(), nil
+	return cfg.ToStream(), nil
 }
 
 // parseSetClause parses the "SET" clause of the query.
@@ -132,25 +132,28 @@ type updateSetPair struct {
 	e    expr.Expr
 }
 
-// ToTree turns the statement into an expression tree.
-func (cfg updateConfig) ToTree() *planner.Tree {
-	t := planner.NewTableInputNode(cfg.TableName)
+// ToTree turns the statement into a stream.
+func (cfg updateConfig) ToStream() *stream.Statement {
+	s := stream.New(stream.SeqScan(cfg.TableName))
 
 	if cfg.WhereExpr != nil {
-		t = planner.NewSelectionNode(t, cfg.WhereExpr)
+		s = s.Pipe(stream.Filter(cfg.WhereExpr))
 	}
 
 	if cfg.SetPairs != nil {
 		for _, pair := range cfg.SetPairs {
-			t = planner.NewSetNode(t, pair.path, pair.e)
+			s = s.Pipe(stream.Set(pair.path, pair.e))
 		}
 	} else if cfg.UnsetFields != nil {
 		for _, name := range cfg.UnsetFields {
-			t = planner.NewUnsetNode(t, name)
+			s = s.Pipe(stream.Unset(name))
 		}
 	}
 
-	t = planner.NewReplacementNode(t, cfg.TableName)
+	s = s.Pipe(stream.TableReplace(cfg.TableName))
 
-	return &planner.Tree{Root: t}
+	return &stream.Statement{
+		Stream:   s,
+		ReadOnly: false,
+	}
 }

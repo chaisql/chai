@@ -1,14 +1,14 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stream"
 )
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
 // This function assumes the DELETE token has already been consumed.
-func (p *Parser) parseDeleteStatement() (*planner.Tree, error) {
+func (p *Parser) parseDeleteStatement() (*stream.Statement, error) {
 	var cfg deleteConfig
 	var err error
 
@@ -31,7 +31,7 @@ func (p *Parser) parseDeleteStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 
-	return cfg.ToTree(), nil
+	return cfg.ToStream(), nil
 }
 
 // DeleteConfig holds DELETE configuration.
@@ -40,15 +40,17 @@ type deleteConfig struct {
 	WhereExpr expr.Expr
 }
 
-// ToTree turns the statement into an expression tree.
-func (cfg deleteConfig) ToTree() *planner.Tree {
-	t := planner.NewTableInputNode(cfg.TableName)
+func (cfg deleteConfig) ToStream() *stream.Statement {
+	s := stream.New(stream.SeqScan(cfg.TableName))
 
 	if cfg.WhereExpr != nil {
-		t = planner.NewSelectionNode(t, cfg.WhereExpr)
+		s = s.Pipe(stream.Filter(cfg.WhereExpr))
 	}
 
-	t = planner.NewDeletionNode(t, cfg.TableName)
+	s = s.Pipe(stream.TableDelete(cfg.TableName))
 
-	return &planner.Tree{Root: t}
+	return &stream.Statement{
+		Stream:   s,
+		ReadOnly: false,
+	}
 }

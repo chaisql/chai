@@ -3,240 +3,144 @@ package parser
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
-	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
 )
+
+func parseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
+	t.Helper()
+
+	e, err := ParseExpr(s)
+	require.NoError(t, err)
+
+	ne := expr.NamedExpr{
+		Expr:     e,
+		ExprName: s,
+	}
+
+	if len(name) > 0 {
+		ne.ExprName = name[0]
+	}
+
+	return &ne
+}
 
 func TestParserSelect(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected *planner.Tree
+		expected *stream.Stream
 		mustFail bool
 	}{
 		{"NoTable", "SELECT 1",
-			planner.NewTree(planner.NewProjectionNode(nil,
-				[]planner.ProjectedField{
-					planner.ProjectedExpr{Expr: expr.IntegerValue(1), ExprName: "1"},
-				}, "")),
+			stream.New(stream.Project(parseNamedExpr(t, "1"))),
 			false,
 		},
+		{"Wildcard with no FORM", "SELECT *", nil, true},
 		{"NoTableWithTuple", "SELECT (1, 2)",
-			planner.NewTree(planner.NewProjectionNode(nil,
-				[]planner.ProjectedField{
-					planner.ProjectedExpr{Expr: expr.LiteralExprList{
-						expr.IntegerValue(1),
-						expr.IntegerValue(2),
-					}, ExprName: "(1, 2)"},
-				}, "")),
+			stream.New(stream.Project(parseNamedExpr(t, "(1, 2)"))),
 			false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
-			planner.NewTree(planner.NewProjectionNode(nil,
-				[]planner.ProjectedField{
-					planner.ProjectedExpr{Expr: expr.LiteralExprList{
-						expr.IntegerValue(1),
-						expr.IntegerValue(2),
-					}, ExprName: "[1, 2]"},
-				}, "")),
+			stream.New(stream.Project(parseNamedExpr(t, "[1, 2]"))),
 			false,
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
-			planner.NewTree(planner.NewProjectionNode(nil,
-				[]planner.ProjectedField{
-					planner.ProjectedExpr{
-						Expr: expr.In(expr.IntegerValue(1), expr.LiteralExprList{
-							expr.IntegerValue(1),
-							expr.IntegerValue(2),
-						}),
-						ExprName: "1 in (1, 2)",
-					},
-					planner.ProjectedExpr{Expr: expr.IntegerValue(3), ExprName: "3"},
-				}, "")),
+			stream.New(stream.Project(
+				parseNamedExpr(t, "1 in (1, 2)"),
+				parseNamedExpr(t, "3"),
+			)),
 			false,
 		},
 		{"NoCond", "SELECT * FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.Wildcard{}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(expr.Wildcard{})),
+			false,
+		},
 		{"WithFields", "SELECT a, b FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "a")), ExprName: "a"}, planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "b")), ExprName: "b"}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"))),
+			false,
+		},
 		{"WithFieldsWithQuotes", "SELECT `long \"path\"` FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "`long \"path\"`")), ExprName: "long \"path\""}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "`long \"path\"`", "long \"path\""))),
+			false,
+		},
 		{"WithAlias", "SELECT a AS A, b FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "a")), ExprName: "A"}, planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "b")), ExprName: "b"}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a", "A"), parseNamedExpr(t, "b"))),
+			false,
+		},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "a")), ExprName: "a"}, planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "b")), ExprName: "b"}, planner.Wildcard{}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"), expr.Wildcard{})),
+			false,
+		},
 		{"WithExpr", "SELECT a    > 1 FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewTableInputNode("test"),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Gt(expr.Path(parsePath(t, "a")), expr.IntegerValue(1)), ExprName: "a    > 1"}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a > 1", "a    > 1"))),
+			false,
+		},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewSelectionNode(
-						planner.NewTableInputNode("test"),
-						expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-					),
-					[]planner.ProjectedField{planner.Wildcard{}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})),
+			false,
+		},
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewAggregationNode(
-						planner.NewGroupingNode(
-							planner.NewSelectionNode(
-								planner.NewTableInputNode("test"),
-								expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-							),
-							expr.Path(parsePath(t, "a.b.c")),
-						),
-						[]document.AggregatorBuilder{&planner.ProjectedGroupAggregatorBuilder{Expr: expr.Path(parsePath(t, "a.b.c"))}},
-					),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: expr.Path(parsePath(t, "a.b.c")), ExprName: "a.b.c"}},
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.GroupBy(MustParseExpr("a.b.c"))).
+				Pipe(stream.HashAggregate()).
+				Pipe(stream.Project(parseNamedExpr(t, "a.b.c"))),
+			false,
+		},
 		{"With Invalid GroupBy: Wildcard", "SELECT * FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
 		{"With Invalid GroupBy: a.b", "SELECT a.b FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
-			planner.NewTree(
-				planner.NewSortNode(
-					planner.NewProjectionNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-						),
-						[]planner.ProjectedField{planner.Wildcard{}},
-						"test",
-					),
-					expr.Path(parsePath(t, "a.b.c")),
-					scanner.ASC,
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.Sort(parsePath(t, "a.b.c"))),
+			false,
+		},
 		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
-			planner.NewTree(
-				planner.NewSortNode(
-					planner.NewProjectionNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-						),
-						[]planner.ProjectedField{planner.Wildcard{}},
-						"test",
-					),
-					expr.Path(parsePath(t, "a.b.c")),
-					scanner.ASC,
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.Sort(parsePath(t, "a.b.c"))),
+			false,
+		},
 		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
-			planner.NewTree(
-				planner.NewSortNode(
-					planner.NewProjectionNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-						),
-						[]planner.ProjectedField{planner.Wildcard{}},
-						"test",
-					),
-					expr.Path(parsePath(t, "a.b.c")),
-					scanner.DESC,
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.SortReverse(parsePath(t, "a.b.c"))),
+			false,
+		},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
-			planner.NewTree(
-				planner.NewLimitNode(
-					planner.NewProjectionNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-						),
-						[]planner.ProjectedField{planner.Wildcard{}},
-						"test",
-					),
-					20,
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.Take(20)),
+			false,
+		},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
-			planner.NewTree(
-				planner.NewOffsetNode(
-					planner.NewProjectionNode(
-						planner.NewSelectionNode(
-							planner.NewTableInputNode("test"),
-							expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-						),
-						[]planner.ProjectedField{planner.Wildcard{}},
-						"test",
-					),
-					20,
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.Skip(20)),
+			false,
+		},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
-			planner.NewTree(
-				planner.NewLimitNode(
-					planner.NewOffsetNode(
-						planner.NewProjectionNode(
-							planner.NewSelectionNode(
-								planner.NewTableInputNode("test"),
-								expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-							),
-							[]planner.ProjectedField{planner.Wildcard{}},
-							"test",
-						),
-						20,
-					),
-					10,
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.Skip(20)).
+				Pipe(stream.Take(10)),
+			false,
+		},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
-			planner.NewTree(
-				planner.NewProjectionNode(
-					planner.NewAggregationNode(
-						planner.NewTableInputNode("test"),
-						[]document.AggregatorBuilder{&expr.CountFunc{Wildcard: true}},
-					),
-					[]planner.ProjectedField{planner.ProjectedExpr{Expr: &expr.CountFunc{Wildcard: true}, ExprName: "COUNT(*)"}},
-					"test",
-				)),
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.HashAggregate(&expr.CountFunc{Wildcard: true})).
+				Pipe(stream.Project(parseNamedExpr(t, "COUNT(*)"))),
 			false},
 		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", nil, true},
 		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET x(*)", nil, true},
@@ -251,7 +155,7 @@ func TestParserSelect(t *testing.T) {
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)
-				require.EqualValues(t, test.expected, q.Statements[0])
+				require.EqualValues(t, &stream.Statement{Stream: test.expected, ReadOnly: true}, q.Statements[0])
 			} else {
 				require.Error(t, err)
 			}

@@ -1,17 +1,18 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/planner"
+	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stream"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
+func (p *Parser) parseSelectStatement() (query.Statement, error) {
 	var cfg selectConfig
 	var err error
 
@@ -21,7 +22,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 	}
 
 	// Parse path list or query.Wildcard
-	cfg.ProjectionExprs, err = p.parseResultFields()
+	cfg.ProjectionExprs, err = p.parseProjectedExprs()
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 	if !found {
-		return cfg.ToTree()
+		return cfg.ToStream()
 	}
 
 	// Parse condition: "WHERE expr".
@@ -66,66 +67,72 @@ func (p *Parser) parseSelectStatement() (*planner.Tree, error) {
 		return nil, err
 	}
 
-	return cfg.ToTree()
+	return cfg.ToStream()
 }
 
-// parseResultFields parses the list of result fields.
-func (p *Parser) parseResultFields() ([]planner.ProjectedField, error) {
+// parseProjectedExprs parses the list of projected fields.
+func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 	// Parse first (required) result path.
-	rf, err := p.parseResultField()
+	pe, name, err := p.parseProjectedExpr()
 	if err != nil {
 		return nil, err
 	}
-	rfields := []planner.ProjectedField{rf}
+	pexprs := []expr.Expr{pe}
+	// keep track of all projected field names to avoid duplicates
+	names := map[string]struct{}{name: {}}
 
 	// Parse remaining (optional) result fields.
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
-			return rfields, nil
+			return pexprs, nil
 		}
 
-		if rf, err = p.parseResultField(); err != nil {
+		if pe, name, err = p.parseProjectedExpr(); err != nil {
 			return nil, err
 		}
 
-		rfields = append(rfields, rf)
+		if _, ok := names[name]; ok {
+			return nil, fmt.Errorf("duplicate result name %q", name)
+		}
+		names[name] = struct{}{}
+		pexprs = append(pexprs, pe)
 	}
 }
 
-// parseResultField parses the list of result fields.
-func (p *Parser) parseResultField() (planner.ProjectedField, error) {
+// parseProjectedExpr parses one projected expression.
+func (p *Parser) parseProjectedExpr() (expr.Expr, string, error) {
 	// Check if the * token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return planner.Wildcard{}, nil
+	if tok, _, lit := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
+		return expr.Wildcard{}, lit, nil
 	}
 	p.Unscan()
 
 	e, lit, err := p.ParseExpr()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	// Paths may be quoted, we make sure we name the result path
+	// Paths may be quoted, we make sure we name the result field
 	// with the unquoted name instead.
 	if fs, ok := e.(expr.Path); ok {
 		lit = fs.String()
 	}
 
-	rf := planner.ProjectedExpr{Expr: e, ExprName: lit}
+	rf := &expr.NamedExpr{Expr: e, ExprName: lit}
 
 	// Check if the AS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
 		rf.ExprName, err = p.parseIdent()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
-		return rf, nil
+		return rf, rf.ExprName, nil
 	}
 	p.Unscan()
 
-	return rf, nil
+	return rf, rf.ExprName, nil
 }
 
 func (p *Parser) parseDistinct() (bool, error) {
@@ -230,51 +237,49 @@ type selectConfig struct {
 	OrderByDirection scanner.Token
 	OffsetExpr       expr.Expr
 	LimitExpr        expr.Expr
-	ProjectionExprs  []planner.ProjectedField
+	ProjectionExprs  []expr.Expr
 }
 
-// ToTree turns the statement into an expression tree.
-func (cfg selectConfig) ToTree() (*planner.Tree, error) {
-	var n planner.Node
+func (cfg selectConfig) ToStream() (*stream.Statement, error) {
+	var s *stream.Stream
 
 	if cfg.TableName != "" {
-		n = planner.NewTableInputNode(cfg.TableName)
+		s = stream.New(stream.SeqScan(cfg.TableName))
 	}
 
 	if cfg.WhereExpr != nil {
-		n = planner.NewSelectionNode(n, cfg.WhereExpr)
+		s = s.Pipe(stream.Filter(cfg.WhereExpr))
 	}
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
 	if cfg.GroupByExpr != nil {
 		// add Group node
-		n = planner.NewGroupingNode(n, cfg.GroupByExpr)
+		s = s.Pipe(stream.GroupBy(cfg.GroupByExpr))
 
-		var invalidProjectedField planner.ProjectedField
-		var aggregators []document.AggregatorBuilder
+		var invalidProjectedField expr.Expr
+		var aggregators []expr.AggregatorBuilder
 
 		for _, pe := range cfg.ProjectionExprs {
-			pre, ok := pe.(planner.ProjectedExpr)
+			ne, ok := pe.(*expr.NamedExpr)
 			if !ok {
 				invalidProjectedField = pe
 				break
 			}
-			e := pre.Expr
+			e := ne.Expr
 
 			// check if the projected expression is an aggregation function
-			if agg, ok := e.(document.AggregatorBuilder); ok {
+			if agg, ok := e.(expr.AggregatorBuilder); ok {
 				aggregators = append(aggregators, agg)
 				continue
 			}
 
 			// check if this is the same expression as the one used in the GROUP BY clause
 			if expr.Equal(e, cfg.GroupByExpr) {
-				aggregators = append(aggregators, &planner.ProjectedGroupAggregatorBuilder{Expr: pre.Expr})
 				continue
 			}
 
 			// otherwise it's an error
-			invalidProjectedField = pre
+			invalidProjectedField = ne
 			break
 		}
 
@@ -283,39 +288,52 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 		}
 
 		// add Aggregation node
-		n = planner.NewAggregationNode(n, aggregators)
+		s = s.Pipe(stream.HashAggregate(aggregators...))
 	} else {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
-		var aggregators []document.AggregatorBuilder
+		var aggregators []expr.AggregatorBuilder
 
 		for _, pe := range cfg.ProjectionExprs {
-			pre, ok := pe.(planner.ProjectedExpr)
+			ne, ok := pe.(*expr.NamedExpr)
 			if !ok {
 				continue
 			}
-			e := pre.Expr
+			e := ne.Expr
 
 			// check if the projected expression is an aggregation function
-			if agg, ok := e.(document.AggregatorBuilder); ok {
+			if agg, ok := e.(expr.AggregatorBuilder); ok {
 				aggregators = append(aggregators, agg)
 			}
 		}
 
 		// add Aggregation node
 		if len(aggregators) > 0 {
-			n = planner.NewAggregationNode(n, aggregators)
+			s = s.Pipe(stream.HashAggregate(aggregators...))
 		}
 	}
 
-	n = planner.NewProjectionNode(n, cfg.ProjectionExprs, cfg.TableName)
+	// If there is no FROM clause ensure there is no wildcard
+	if cfg.TableName == "" {
+		for _, e := range cfg.ProjectionExprs {
+			if _, ok := e.(expr.Wildcard); ok {
+				return nil, errors.New("no tables specified")
+			}
+		}
+	}
+
+	s = s.Pipe(stream.Project(cfg.ProjectionExprs...))
 
 	if cfg.Distinct {
-		n = planner.NewDedupNode(n, cfg.TableName)
+		s = s.Pipe(stream.Distinct())
 	}
 
 	if cfg.OrderBy != nil {
-		n = planner.NewSortNode(n, cfg.OrderBy, cfg.OrderByDirection)
+		if cfg.OrderByDirection == scanner.DESC {
+			s = s.Pipe(stream.SortReverse(cfg.OrderBy))
+		} else {
+			s = s.Pipe(stream.Sort(cfg.OrderBy))
+		}
 	}
 
 	if cfg.OffsetExpr != nil {
@@ -333,7 +351,7 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			return nil, err
 		}
 
-		n = planner.NewOffsetNode(n, int(v.V.(int64)))
+		s = s.Pipe(stream.Skip(v.V.(int64)))
 	}
 
 	if cfg.LimitExpr != nil {
@@ -351,8 +369,11 @@ func (cfg selectConfig) ToTree() (*planner.Tree, error) {
 			return nil, err
 		}
 
-		n = planner.NewLimitNode(n, int(v.V.(int64)))
+		s = s.Pipe(stream.Take(v.V.(int64)))
 	}
 
-	return &planner.Tree{Root: n}, nil
+	return &stream.Statement{
+		Stream:   s,
+		ReadOnly: true,
+	}, nil
 }
