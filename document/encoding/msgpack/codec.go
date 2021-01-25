@@ -7,7 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/vmihailenco/msgpack/v5/codes"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 // A Codec is a MessagePack implementation of an encoding.Codec.
@@ -161,7 +161,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 	}
 
 	// decode array
-	if (codes.IsFixedArray(c)) || (c == codes.Array16) || (c == codes.Array32) {
+	if (msgpcode.IsFixedArray(c)) || (c == msgpcode.Array16) || (c == msgpcode.Array32) {
 		var a document.Array
 		a, err = d.DecodeArray()
 		if err != nil {
@@ -173,7 +173,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 	}
 
 	// decode document
-	if (codes.IsFixedMap(c)) || (c == codes.Map16) || (c == codes.Map32) {
+	if (msgpcode.IsFixedMap(c)) || (c == msgpcode.Map16) || (c == msgpcode.Map32) {
 		var doc document.Document
 		doc, err = d.DecodeDocument()
 		if err != nil {
@@ -185,7 +185,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 	}
 
 	// decode string
-	if codes.IsString(c) {
+	if msgpcode.IsString(c) {
 		var s string
 		s, err = d.dec.DecodeString()
 		if err != nil {
@@ -197,35 +197,35 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 
 	// decode the rest
 	switch c {
-	case codes.Nil:
+	case msgpcode.Nil:
 		err = d.dec.DecodeNil()
 		if err != nil {
 			return
 		}
 		v.Type = document.NullValue
 		return
-	case codes.Bin8, codes.Bin16, codes.Bin32:
+	case msgpcode.Bin8, msgpcode.Bin16, msgpcode.Bin32:
 		v.V, err = d.dec.DecodeBytes()
 		if err != nil {
 			return
 		}
 		v.Type = document.BlobValue
 		return
-	case codes.True, codes.False:
+	case msgpcode.True, msgpcode.False:
 		v.V, err = d.dec.DecodeBool()
 		if err != nil {
 			return
 		}
 		v.Type = document.BoolValue
 		return
-	case codes.Int8, codes.Int16, codes.Int32, codes.Int64, codes.Uint8, codes.Uint16, codes.Uint32, codes.Uint64:
+	case msgpcode.Int8, msgpcode.Int16, msgpcode.Int32, msgpcode.Int64, msgpcode.Uint8, msgpcode.Uint16, msgpcode.Uint32, msgpcode.Uint64:
 		v.V, err = d.dec.DecodeInt64()
 		if err != nil {
 			return
 		}
 		v.Type = document.IntegerValue
 		return
-	case codes.Double:
+	case msgpcode.Double:
 		v.V, err = d.dec.DecodeFloat64()
 		if err != nil {
 			return

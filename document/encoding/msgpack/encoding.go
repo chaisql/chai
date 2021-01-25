@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/vmihailenco/msgpack/v5/codes"
+	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
 // An EncodedDocument implements the document.Document
@@ -20,13 +20,13 @@ type EncodedDocument []byte
 // based on c.
 // It is originally copied from https://github.com/vmihailenco/msgpack/blob/e7759683b74a27e455669b525427cfd9aec0790e/decode_string.go#L10:19
 // then adapted to our needs.
-func bytesLen(c codes.Code, dec *msgpack.Decoder) (int, error) {
-	if c == codes.Nil {
+func bytesLen(c byte, dec *msgpack.Decoder) (int, error) {
+	if c == msgpcode.Nil {
 		return -1, nil
 	}
 
-	if codes.IsFixedString(c) {
-		return int(c & codes.FixedStrMask), nil
+	if msgpcode.IsFixedString(c) {
+		return int(c & msgpcode.FixedStrMask), nil
 	}
 
 	return 0, fmt.Errorf("msgpack: invalid code=%x decoding bytes length", c)
@@ -46,7 +46,7 @@ func (e EncodedDocument) GetByField(field string) (v document.Value, err error) 
 
 	buf := make([]byte, 32)
 
-	var c codes.Code
+	var c byte
 	var n int
 	for i := 0; i < l; i++ {
 		// this loop does basically two things:
