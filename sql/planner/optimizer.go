@@ -1,56 +1,56 @@
 package planner
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
-	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stream"
 )
 
-var optimizerRules = []func(t *Tree) (*Tree, error){
+var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error){
 	SplitANDConditionRule,
 	PrecalculateExprRule,
-	RemoveUnnecessarySelectionNodesRule,
-	RemoveUnnecessaryDedupNodeRule,
-	UseIndexBasedOnSelectionNodeRule,
+	RemoveUnnecessaryFilterNodesRule,
+	RemoveUnnecessaryDistinctNodeRule,
+	UseIndexBasedOnFilterNodeRule,
 }
 
 // Optimize takes a tree, applies a list of optimization rules
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(t *Tree) (*Tree, error) {
+func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
 	var err error
 
 	for _, rule := range optimizerRules {
-		t, err = rule(t)
+		s, err = rule(s, tx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return t, nil
+	return s, nil
 }
 
-// SplitANDConditionRule splits any selection node whose condition
-// is one or more AND operators into one or more selection nodes.
+// SplitANDConditionRule splits any filter node whose condition
+// is one or more AND operators into one or more filter nodes.
 // The condition won't be split if the expression tree contains an OR
 // operation.
 // Example:
 //   this:
-//     σ(a > 2 AND b != 3 AND c < 2)
+//     filter(a > 2 AND b != 3 AND c < 2)
 //   becomes this:
-//     σ(a > 2)
-//     σ(b != 3)
-//     σ(c < 2)
-func SplitANDConditionRule(t *Tree) (*Tree, error) {
-	n := t.Root
-	var prev Node
+//     filter(a > 2)
+//     filter(b != 3)
+//     filter(c < 2)
+func SplitANDConditionRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+	n := s.Op
 
 	for n != nil {
-		if n.Operation() == Selection {
-			sn := n.(*selectionNode)
-			cond := sn.cond
+		if f, ok := n.(*stream.FilterOperator); ok {
+			cond := f.E
 			if cond != nil {
 				// The AND operator has one of the lowest precedence,
 				// only OR has a lower precedence,
@@ -59,34 +59,24 @@ func SplitANDConditionRule(t *Tree) (*Tree, error) {
 				if op, ok := cond.(expr.Operator); ok && expr.IsAndOperator(op) {
 					exprs := splitANDExpr(cond)
 
-					cur := n.Left()
-					i := len(exprs) - 1
-					var newNode Node
-					for i >= 0 {
-						newNode = NewSelectionNode(cur, exprs[i])
-						err := newNode.Bind(sn.tx, sn.params)
-						if err != nil {
-							return nil, err
-						}
-						cur = newNode
+					cur := n.GetPrev()
+					s.Remove(n)
 
-						i--
+					for _, e := range exprs {
+						cur = stream.InsertAfter(cur, stream.Filter(e))
 					}
 
-					if prev != nil {
-						prev.SetLeft(newNode)
-					} else {
-						t.Root = newNode
+					if s.Op == nil {
+						s.Op = cur
 					}
 				}
 			}
 		}
 
-		prev = n
-		n = n.Left()
+		n = n.GetPrev()
 	}
 
-	return t, nil
+	return s, nil
 }
 
 // splitANDExpr takes an expression and splits it by AND operator.
@@ -109,19 +99,23 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(t *Tree) (*Tree, error) {
-	n := t.Root
+func PrecalculateExprRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+	n := s.Op
 
 	for n != nil {
-		if n.Operation() == Selection {
-			sn := n.(*selectionNode)
-			sn.cond = precalculateExpr(sn.cond)
+		switch t := n.(type) {
+		case *stream.FilterOperator:
+			t.E = precalculateExpr(t.E)
+		case *stream.ProjectOperator:
+			for i, e := range t.Exprs {
+				t.Exprs[i] = precalculateExpr(e)
+			}
 		}
 
-		n = n.Left()
+		n = n.GetPrev()
 	}
 
-	return t, nil
+	return s, nil
 }
 
 // precalculateExpr is a recursive function that tries to precalculate
@@ -210,84 +204,119 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 	return e
 }
 
-// RemoveUnnecessarySelectionNodesRule removes any selection node whose
+// RemoveUnnecessaryFilterNodesRule removes any selection node whose
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessarySelectionNodesRule(t *Tree) (*Tree, error) {
-	n := t.Root
-	var prev Node
+func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+	n := s.Op
 
 	for n != nil {
-		if n.Operation() == Selection {
-			sn := n.(*selectionNode)
-			if sn.cond != nil {
-				if lit, ok := sn.cond.(expr.LiteralValue); ok {
+		if f, ok := n.(*stream.FilterOperator); ok {
+			if f.E != nil {
+				switch t := f.E.(type) {
+				case expr.LiteralValue:
+					// Constant expression
+					// ex: WHERE 1
+
 					// if the expr is falsy, we return an empty tree
-					ok, err := document.Value(lit).IsTruthy()
+					ok, err := document.Value(t).IsTruthy()
 					if err != nil {
 						return nil, err
 					}
 					if !ok {
-						return &Tree{}, nil
+						return &stream.Stream{}, nil
 					}
+
 					// if the expr is truthy, we remove the node from the tree
-					if prev != nil {
-						prev.SetLeft(n.Left())
-					} else {
-						t.Root = n.Left()
+					n = n.GetPrev()
+					s.Remove(n)
+					continue
+				case *expr.InOperator:
+					// IN operator with empty array
+					// ex: WHERE a IN []
+					lv, ok := t.RightHand().(expr.LiteralValue)
+					if ok && lv.Type == document.ArrayValue {
+						l, err := document.ArrayLength(lv.V.(document.Array))
+						if err != nil {
+							return nil, err
+						}
+						// if the array is empty, we return an empty tree
+						if l == 0 {
+							return &stream.Stream{}, nil
+						}
 					}
 				}
-
 			}
 		}
 
-		prev = n
-		n = n.Left()
+		n = n.GetPrev()
 	}
 
-	return t, nil
+	return s, nil
 }
 
-// RemoveUnnecessaryDedupNodeRule removes any Dedup nodes
+// RemoveUnnecessaryDistinctNodeRule removes any Dedup nodes
 // where projection is already unique.
-func RemoveUnnecessaryDedupNodeRule(t *Tree) (*Tree, error) {
-	n := t.Root
-	var prev Node
+func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+	n := s.Op
+	var indexes map[string]database.Index
+
+	// we assume that if we are reading from a table, the first
+	// operator of the stream has to be a SeqScanOperator
+	firstNode := s.First()
+	if firstNode == nil {
+		return s, nil
+	}
+	st, ok := firstNode.(*stream.SeqScanOperator)
+	if !ok {
+		return s, nil
+	}
+
+	t, err := tx.GetTable(st.TableName)
+	if err != nil {
+		return nil, err
+	}
+	info, err := t.Info()
+	if err != nil {
+		return nil, err
+	}
 
 	for n != nil {
-		if n.Operation() == Dedup {
-			d, ok := n.(*dedupNode)
+		if d, ok := n.(*stream.DistinctOperator); ok {
+			prev := d.GetPrev()
+			if prev == nil {
+				continue
+			}
+			pn, ok := prev.(*stream.ProjectOperator)
 			if !ok {
 				continue
 			}
 
-			pn, ok := d.left.(*ProjectionNode)
-			if !ok {
-				continue
+			if indexes == nil {
+				indexes, err = t.Indexes()
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			// if the projection is unique, we remove the node from the tree
-			if isProjectionUnique(d.indexes, pn) {
-				if prev != nil {
-					prev.SetLeft(n.Left())
-				} else {
-					t.Root = n.Left()
-				}
+			if isProjectionUnique(indexes, pn, info.GetPrimaryKey()) {
+				n = prev
+				s.Remove(n)
+				continue
 			}
 		}
 
-		prev = n
-		n = n.Left()
+		n = n.GetPrev()
 	}
 
-	return t, nil
+	return s, nil
 }
 
-func isProjectionUnique(indexes map[string]database.Index, pn *ProjectionNode) bool {
-	pk := pn.info.GetPrimaryKey()
-	for _, field := range pn.Expressions {
-		e, ok := field.(ProjectedExpr)
+func isProjectionUnique(indexes map[string]database.Index, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
+	for _, field := range po.Exprs {
+		e, ok := field.(*expr.NamedExpr)
 		if !ok {
 			return false
 		}
@@ -311,59 +340,66 @@ func isProjectionUnique(indexes map[string]database.Index, pn *ProjectionNode) b
 	return true
 }
 
-// UseIndexBasedOnSelectionNodeRule scans the tree for the first selection node whose condition is an
+// UseIndexBasedOnFilterNodeRule scans the tree for the first filter node whose condition is an
 // operator that satisfies the following criterias:
-// - implements the indexIteratorOperator interface
+// - is a comparison operator
 // - one of its operands is a path expression that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
-func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
-	n := t.Root
-	var prev Node
-	var inputNode Node
+func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+	n := s.Op
 
-	// first we lookup for the input node
-	for n != nil {
-		if n.Operation() == Input {
-			inputNode = n
-			break
-		}
-
-		n = n.Left()
-	}
-
-	if inputNode == nil {
-		return t, nil
-	}
-
+	// first we lookup for the seq scan node.
 	// Here we will assume that at this point
-	// inputNodes can only be instances of tableInputNode.
-	inpn := inputNode.(*tableInputNode)
+	// if there is one it has to be the
+	// first node of the stream.
+	firstNode := s.First()
+	if firstNode == nil {
+		return s, nil
+	}
+	fmt.Println("first node", firstNode)
+	st, ok := firstNode.(*stream.SeqScanOperator)
+	if !ok {
+		return s, nil
+	}
+	t, err := tx.GetTable(st.TableName)
+	if err != nil {
+		return nil, err
+	}
+
+	var indexes map[string]database.Index
 
 	type candidate struct {
-		prevNode, nextNode Node
-		in                 *indexInputNode
+		filterOp *stream.FilterOperator
+		in       *stream.IndexScanOperator
+		index    *database.Index
 	}
 
 	var candidates []candidate
 
-	n = t.Root
 	// look for all selection nodes that satisfy our requirements
 	for n != nil {
-		if n.Operation() == Selection {
-			sn := n.(*selectionNode)
-			indexedNode := selectionNodeValidForIndex(sn, inpn.tableName, inpn.indexes)
+		if f, ok := n.(*stream.FilterOperator); ok {
+			if indexes == nil {
+				indexes, err = t.Indexes()
+				if err != nil {
+					return nil, err
+				}
+			}
+			indexedNode, idx, err := filterNodeValidForIndex(f, st.TableName, indexes)
+			if err != nil {
+				return nil, err
+			}
 			if indexedNode != nil {
 				candidates = append(candidates, candidate{
-					prevNode: prev,
-					nextNode: n.Left(),
+					filterOp: f,
 					in:       indexedNode,
+					index:    idx,
 				})
 			}
 		}
 
-		prev = n
-		n = n.Left()
+		n = n.GetPrev()
 	}
 
 	// determine which index is the most interesting and replace it in the tree.
@@ -379,107 +415,159 @@ func UseIndexBasedOnSelectionNodeRule(t *Tree) (*Tree, error) {
 
 		// if the candidate's related index is a unique index,
 		// select it.
-		idx := candidate.in.index
-		if idx.Unique {
+		if candidate.index.Unique {
 			selectedCandidate = &candidates[i]
 		}
 	}
 
 	if selectedCandidate == nil {
-		return t, nil
+		return s, nil
 	}
 
-	// we make sure the new IndexInputNode is bound
-	if err := selectedCandidate.in.Bind(inpn.tx, inpn.params); err != nil {
-		return nil, err
-	}
+	fmt.Println("1", s, "candidate", selectedCandidate.filterOp)
 
-	// we remove the selection node from the tree
-	if selectedCandidate.prevNode == nil {
-		t.Root = selectedCandidate.nextNode
-	} else {
-		selectedCandidate.prevNode.SetLeft(selectedCandidate.nextNode)
-	}
+	// remove the selection node from the tree
+	s.Remove(selectedCandidate.filterOp)
 
-	n = t.Root
-	prev = nil
-	// we lookup again for the input node and the node that is right before.
-	for n != nil {
-		if n.Operation() == Input {
-			break
-		}
+	fmt.Println("2", s)
 
-		prev = n
-		n = n.Left()
-	}
+	// we replace the seq scan node by the selected index scan node
+	s.InsertBefore(s.First(), selectedCandidate.in)
 
-	// we replace the table input node by the selected indexInputNode
-	if prev == nil {
-		t.Root = selectedCandidate.in
-	} else {
-		prev.SetLeft(selectedCandidate.in)
-	}
+	fmt.Println("3", s)
+	s.Remove(s.First().GetNext())
+	fmt.Println(s)
 
-	return t, nil
+	return s, nil
 }
 
-func selectionNodeValidForIndex(sn *selectionNode, tableName string, indexes map[string]database.Index) *indexInputNode {
-	if sn.cond == nil {
-		return nil
+func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexes map[string]database.Index) (*stream.IndexScanOperator, *database.Index, error) {
+	fmt.Println(1)
+
+	if sn.E == nil {
+		fmt.Println(2)
+		return nil, nil, nil
 	}
 
 	// the root of the condition must be an operator
-	op, ok := sn.cond.(expr.Operator)
+	op, ok := sn.E.(expr.Operator)
 	if !ok {
-		return nil
+		fmt.Println(3)
+
+		return nil, nil, nil
 	}
 
 	// determine if the operator can read from the index
-	iop, ok := op.(IndexIteratorOperator)
-	if !ok {
-		return nil
+	if !expr.OperatorIsIndexCompatible(op) {
+		fmt.Println(4)
+
+		return nil, nil, nil
 	}
 
 	// determine if the operator can benefit from an index
 	ok, path, e := opCanUseIndex(op)
 	if !ok {
-		return nil
+		fmt.Println(5)
+		return nil, nil, nil
 	}
 
 	// analyse the other operand to make sure it's a literal or a param
 	if !isLiteralOrParam(e) {
-		return nil
+		fmt.Println(6)
+		return nil, nil, nil
 	}
 
 	// now, we look if an index exists for that path
 	idx, ok := indexes[path.String()]
 	if !ok {
-		return nil
+		fmt.Println(7)
+		return nil, nil, nil
 	}
 
-	in := NewIndexInputNode(tableName, idx.Opts.IndexName, iop, path, e, scanner.ASC).(*indexInputNode)
-	in.index = &idx
+	var ranges []stream.Range
 
-	return in
+	switch op.(type) {
+	case *expr.EqOperator:
+		ranges = append(ranges, stream.Range{
+			Min:   e,
+			Exact: true,
+		})
+	case *expr.GtOperator:
+		ranges = append(ranges, stream.Range{
+			Min:       e,
+			Exclusive: true,
+		})
+	case *expr.GteOperator:
+		ranges = append(ranges, stream.Range{
+			Min: e,
+		})
+	case *expr.LtOperator:
+		ranges = append(ranges, stream.Range{
+			Max:       e,
+			Exclusive: true,
+		})
+	case *expr.LteOperator:
+		ranges = append(ranges, stream.Range{
+			Max: e,
+		})
+	case *expr.InOperator:
+		// opCanUseIndex made sure e is an array.
+		a := e.(expr.LiteralValue).V.(document.Array)
+		err := a.Iterate(func(i int, value document.Value) error {
+			ranges = append(ranges, stream.Range{
+				Min:   expr.LiteralValue(value),
+				Exact: true,
+			})
+			return nil
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	default:
+		panic(fmt.Sprintf("unknown operator %#v", op))
+	}
+
+	node := stream.IndexScan(idx.Opts.IndexName)
+	node.Ranges = ranges
+
+	return node, &idx, nil
 }
 
 func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
 	lf, leftIsField := op.LeftHand().(expr.Path)
 	rf, rightIsField := op.RightHand().(expr.Path)
 
+	// Special case for IN operator: only left operand is valid for index usage
+	// valid:   a IN [1, 2, 3]
+	// invalid: 1 IN a
+	if expr.IsInOperator(op) && leftIsField && !rightIsField {
+		fmt.Println("a")
+		rh := op.RightHand()
+		// The IN operator can use indexes only if the right hand side is an array with constants.
+		// At this point, we know that PrecalculateExprRule has converted any constant expression into
+		// actual values, so we can check if the right hand side is an array.
+		fmt.Printf("%#v\n", rh)
+		lv, ok := rh.(expr.LiteralValue)
+		if !ok || lv.Type != document.ArrayValue {
+			return false, nil, nil
+		}
+
+		return true, lf, rh
+	}
+
 	// path OP expr
 	if leftIsField && !rightIsField {
+		fmt.Println("b")
 		return true, lf, op.RightHand()
 	}
 
 	// expr OP path
-	// Special case for IN operator: only left operand is valid for index usage
-	// valid:   a IN [1, 2, 3]
-	// invalid: 1 IN a
-	if rightIsField && !leftIsField && !expr.IsInOperator(op) {
+	if rightIsField && !leftIsField {
+		fmt.Println("c")
 		return true, rf, op.LeftHand()
 	}
 
+	fmt.Println("d")
 	return false, nil, nil
 }
 

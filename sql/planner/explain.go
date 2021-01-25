@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/stream"
 )
 
 // ExplainStmt is a query.Statement that
@@ -17,35 +17,31 @@ type ExplainStmt struct {
 }
 
 // Run analyses the inner statement and displays its execution plan.
-// If the statement is a tree, Bind and Optimize will be called prior to
+// If the statement is a stream, Optimize will be called prior to
 // displaying all the operations.
-// Explain currently only works on SELECT, UPDATE and DELETE statements.
+// Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
 func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
 	switch t := s.Statement.(type) {
-	case *Tree:
-		err := Bind(t, tx, params)
+	case *stream.Statement:
+		s, err := Optimize(t.Stream, tx)
 		if err != nil {
 			return query.Result{}, err
 		}
 
-		t, err = Optimize(t)
-		if err != nil {
-			return query.Result{}, err
+		newStatement := stream.Statement{
+			Stream: &stream.Stream{
+				Op: stream.Project(
+					&expr.NamedExpr{
+						ExprName: "plan",
+						Expr:     expr.TextValue(s.String()),
+					}),
+			},
+			ReadOnly: true,
 		}
-
-		return s.createResult(t.String())
+		return newStatement.Run(tx, params)
 	}
 
-	return query.Result{}, errors.New("EXPLAIN only works on SELECT, UPDATE AND DELETE statements")
-}
-
-func (s *ExplainStmt) createResult(text string) (query.Result, error) {
-	return query.Result{
-		Stream: document.NewStream(
-			document.NewIterator(
-				document.NewFieldBuffer().
-					Add("plan", document.NewTextValue(text)))),
-	}, nil
+	return query.Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
 }
 
 // IsReadOnly indicates that this statement doesn't write anything into
