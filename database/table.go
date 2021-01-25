@@ -245,34 +245,34 @@ func (t *Table) Indexes() (map[string]Index, error) {
 
 	indexes := make(map[string]Index)
 
-	err = document.NewStream(&tb).
-		Filter(func(d document.Document) (bool, error) {
-			v, err := d.GetByField("table_name")
-			if err != nil {
-				return false, err
-			}
+	err = tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+		v, err := d.GetByField("table_name")
+		if err != nil {
+			return err
+		}
 
-			return v.V.(string) == t.name, nil
-		}).
-		Iterate(func(d document.Document) error {
-			var opts IndexConfig
-			err := opts.ScanDocument(d)
-			if err != nil {
-				return err
-			}
-
-			idx := index.New(t.tx.tx, opts.IndexName, index.Options{
-				Unique: opts.Unique,
-				Type:   opts.Type,
-			})
-
-			indexes[opts.Path.String()] = Index{
-				Index: idx,
-				Opts:  opts,
-			}
-
+		if v.V.(string) != t.name {
 			return nil
+		}
+
+		var opts IndexConfig
+		err = opts.ScanDocument(d)
+		if err != nil {
+			return err
+		}
+
+		idx := index.New(t.tx.tx, opts.IndexName, index.Options{
+			Unique: opts.Unique,
+			Type:   opts.Type,
 		})
+
+		indexes[opts.Path.String()] = Index{
+			Index: idx,
+			Opts:  opts,
+		}
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -367,11 +367,11 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 	return t.AscendGreaterOrEqual(document.Value{}, fn)
 }
 
-// EncodeValueToKey encodes a value following primary key constraints.
+// EncodeValue encodes a value following primary key constraints.
 // It returns a binary representation of the key as used in the store.
 // It can be used to manually add a new entry to the store or to compare
 // with other keys during table iteration.
-func (t *Table) EncodeValueToKey(v document.Value) ([]byte, error) {
+func (t *Table) EncodeValue(v document.Value) ([]byte, error) {
 	info, err := t.Info()
 	if err != nil {
 		return nil, err
