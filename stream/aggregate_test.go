@@ -47,7 +47,7 @@ func TestAggregate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.NewDocumentIterator(test.in...))
+			s := stream.New(stream.Documents(test.in...))
 			if test.groupBy != nil {
 				s = s.Pipe(stream.GroupBy(test.groupBy))
 			}
@@ -55,7 +55,7 @@ func TestAggregate(t *testing.T) {
 			s = s.Pipe(stream.HashAggregate(test.builders...))
 
 			var got []document.Document
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer

@@ -22,11 +22,18 @@ func New(op Operator) *Stream {
 }
 
 func (s *Stream) Pipe(op Operator) *Stream {
+	if s == nil || s.Op == nil {
+		return New(op)
+	}
 	s.Op = Pipe(s.Op, op)
 	return s
 }
 
 func (s *Stream) Remove(op Operator) {
+	if op == nil {
+		return
+	}
+
 	next := op.GetNext()
 	prev := op.GetPrev()
 	if prev != nil {
@@ -39,7 +46,7 @@ func (s *Stream) Remove(op Operator) {
 	op.SetPrev(nil) // avoid memory leaks
 
 	if op == s.Op {
-		s.Op = nil
+		s.Op = prev
 	}
 }
 
@@ -51,6 +58,21 @@ func (s *Stream) First() Operator {
 	}
 
 	return n
+}
+
+func (s *Stream) InsertBefore(op, newOp Operator) Operator {
+	if op != nil {
+		prev := op.GetPrev()
+		if prev != nil {
+			prev.SetNext(newOp)
+			newOp.SetPrev(prev)
+		}
+
+		op.SetPrev(newOp)
+		newOp.SetNext(op)
+	}
+
+	return newOp
 }
 
 func (s *Stream) String() string {

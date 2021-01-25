@@ -3,9 +3,9 @@ package stream
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/query/expr"
 )
@@ -57,7 +57,7 @@ type ExprsOperator struct {
 	Exprs []expr.Expr
 }
 
-// NewExprIterator creates an iterator that iterates over the given expressions.
+// Expressions creates an operator that iterates over the given expressions.
 // Each expression must evaluate to a document.
 func Expressions(exprs ...expr.Expr) *ExprsOperator {
 	return &ExprsOperator{Exprs: exprs}
@@ -104,33 +104,89 @@ func (op *ExprsOperator) String() string {
 type SeqScanOperator struct {
 	baseOperator
 	TableName string
-	Ranges    Ranges
-	Reverse   bool
 }
 
 // SeqScan creates an iterator that iterates over each document of the given table.
-func SeqScan(tableName string, ranges ...Range) *SeqScanOperator {
-	return &SeqScanOperator{TableName: tableName, Ranges: ranges}
+func SeqScan(tableName string) *SeqScanOperator {
+	return &SeqScanOperator{TableName: tableName}
 }
 
-func (it *SeqScanOperator) String() string {
-	reverse := "+"
-	if it.Reverse {
-		reverse = "-"
-	}
-
-	return fmt.Sprintf("%s%s(%s)", reverse, it.TableName, it.Ranges)
-}
-
-// Iterate over the documents of the table. Each document is stored in the environment
-// that is passed to the fn function, using SetCurrentValue.
 func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
 	table, err := in.GetTx().GetTable(it.TableName)
 	if err != nil {
 		return err
 	}
 
-	ranges, err := it.Ranges.Encode(index, in)
+	var newEnv expr.Environment
+	newEnv.Outer = in
+
+	return table.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+		newEnv.SetDocument(d)
+		return fn(&newEnv)
+	})
+}
+
+func (it *SeqScanOperator) String() string {
+	return fmt.Sprintf("seqScan(%s)", it.TableName)
+}
+
+// A PkScanOperator iterates over the documents of a table.
+type PkScanOperator struct {
+	baseOperator
+	TableName string
+	Ranges    Ranges
+	Reverse   bool
+}
+
+// PkScan creates an iterator that iterates over each document of the given table.
+func PkScan(tableName string, ranges ...Range) *PkScanOperator {
+	return &PkScanOperator{TableName: tableName, Ranges: ranges}
+}
+
+// PkScanReverse creates an iterator that iterates over each document of the given table in reverse order.
+func PkScanReverse(tableName string, ranges ...Range) *PkScanOperator {
+	return &PkScanOperator{TableName: tableName, Ranges: ranges, Reverse: true}
+}
+
+func (it *PkScanOperator) String() string {
+	var s strings.Builder
+
+	s.WriteString("pkScan")
+	if it.Reverse {
+		s.WriteString("Reverse")
+	}
+
+	s.WriteRune('(')
+
+	s.WriteString(strconv.Quote(it.TableName))
+	if len(it.Ranges) > 0 {
+		s.WriteString(", ")
+		for i, r := range it.Ranges {
+			s.WriteString(r.String())
+			if i+1 < len(it.Ranges) {
+				s.WriteString(", ")
+			}
+		}
+	}
+
+	s.WriteString(")")
+
+	return s.String()
+}
+
+// Iterate over the documents of the table. Each document is stored in the environment
+// that is passed to the fn function, using SetCurrentValue.
+func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+	if len(it.Ranges) == 0 {
+		return SeqScan(it.TableName).Iterate(in, fn)
+	}
+
+	table, err := in.GetTx().GetTable(it.TableName)
+	if err != nil {
+		return err
+	}
+
+	ranges, err := it.Ranges.Encode(table, in)
 	if err != nil {
 		return err
 	}
@@ -146,10 +202,10 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 		return err
 	}
 
-	var iterator func(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error
+	var iterator func(pivot document.Value, fn func(d document.Document) error) error
 
 	if !it.Reverse {
-		iterator = index.AscendGreaterOrEqual
+		iterator = table.AscendGreaterOrEqual
 		if lower != nil {
 			start = *lower
 		}
@@ -157,11 +213,11 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 			end = *upper
 		}
 	} else {
-		iterator = index.DescendLessOrEqual
+		iterator = table.DescendLessOrEqual
 		if upper != nil {
 			start = *upper
 		}
-		if upper != nil {
+		if lower != nil {
 			end = *lower
 		}
 	}
@@ -169,37 +225,21 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 	var newEnv expr.Environment
 	newEnv.Outer = in
 
-	// if there are no ranges or if both the global lower bound and upper bound are nil, use a simpler and faster iteration function
-	if len(it.Ranges) == 0 || (lower == nil && upper == nil) {
-		return iterator(document.Value{}, func(val, key []byte, isEqual bool) error {
-			d, err := table.GetDocument(key)
-			if err != nil {
-				return err
-			}
-
-			newEnv.SetDocument(d)
-			return fn(&newEnv)
-		})
-	}
-
 	var encEnd []byte
 	if !end.Type.IsZero() {
-		encEnd, err = index.EncodeValue(end)
+		encEnd, err = table.EncodeValue(end)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = iterator(start, func(val, key []byte, isEqual bool) error {
+	err = iterator(start, func(d document.Document) error {
+		key := d.(document.Keyer).RawKey()
+
 		// if the indexed value satisfies at least one
 		// range, it gets outputted.
-		if !ranges.valueIsInRange(val) {
+		if !ranges.valueIsInRange(key) {
 			return nil
-		}
-
-		d, err := table.GetDocument(key)
-		if err != nil {
-			return err
 		}
 
 		newEnv.SetDocument(d)
@@ -209,7 +249,7 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 		}
 
 		// if we reached the end of our global range, we can stop iterating.
-		if bytes.Compare(val, encEnd) < 0 {
+		if bytes.Compare(key, encEnd) < 0 {
 			return ErrStreamClosed
 		}
 
@@ -225,29 +265,51 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 type IndexScanOperator struct {
 	baseOperator
 
-	Name    string
-	Ranges  Ranges
-	Reverse bool
+	IndexName string
+	Ranges    Ranges
+	Reverse   bool
 }
 
 // IndexScan creates an iterator that iterates over each document of the given table.
 func IndexScan(name string, ranges ...Range) *IndexScanOperator {
-	return &IndexScanOperator{Name: name, Ranges: ranges}
+	return &IndexScanOperator{IndexName: name, Ranges: ranges}
+}
+
+// IndexScanReverse creates an iterator that iterates over each document of the given table in reverse order.
+func IndexScanReverse(name string, ranges ...Range) *IndexScanOperator {
+	return &IndexScanOperator{IndexName: name, Ranges: ranges, Reverse: true}
 }
 
 func (it *IndexScanOperator) String() string {
-	reverse := "+"
+	var s strings.Builder
+
+	s.WriteString("indexScan")
 	if it.Reverse {
-		reverse = "-"
+		s.WriteString("Reverse")
 	}
 
-	return fmt.Sprintf("%s%s(%s)", reverse, it.Name, it.Ranges)
+	s.WriteRune('(')
+
+	s.WriteString(strconv.Quote(it.IndexName))
+	if len(it.Ranges) > 0 {
+		s.WriteString(", ")
+		for i, r := range it.Ranges {
+			s.WriteString(r.String())
+			if i+1 < len(it.Ranges) {
+				s.WriteString(", ")
+			}
+		}
+	}
+
+	s.WriteString(")")
+
+	return s.String()
 }
 
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
-	index, err := in.GetTx().GetIndex(it.Name)
+	index, err := in.GetTx().GetIndex(it.IndexName)
 	if err != nil {
 		return err
 	}
@@ -273,7 +335,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		return err
 	}
 
-	var iterator func(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error
+	var iterator func(pivot document.Value, fn func(val, key []byte) error) error
 
 	if !it.Reverse {
 		iterator = index.AscendGreaterOrEqual
@@ -288,7 +350,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		if upper != nil {
 			start = *upper
 		}
-		if upper != nil {
+		if lower != nil {
 			end = *lower
 		}
 	}
@@ -298,7 +360,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 
 	// if there are no ranges or if both the global lower bound and upper bound are nil, use a simpler and faster iteration function
 	if len(it.Ranges) == 0 || (lower == nil && upper == nil) {
-		return iterator(document.Value{}, func(val, key []byte, isEqual bool) error {
+		return iterator(document.Value{}, func(val, key []byte) error {
 			d, err := table.GetDocument(key)
 			if err != nil {
 				return err
@@ -317,7 +379,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		}
 	}
 
-	err = iterator(start, func(val, key []byte, isEqual bool) error {
+	err = iterator(start, func(val, key []byte) error {
 		// if the indexed value satisfies at least one
 		// range, it gets outputted.
 		if !ranges.valueIsInRange(val) {
@@ -361,37 +423,55 @@ type Range struct {
 }
 
 func (r *Range) String() string {
-	if r.Exclusive {
-		return fmt.Sprintf("]%v:%v[", r.Min, r.Max)
-	}
 	if r.Exact {
 		return fmt.Sprintf("%v", r.Min)
 	}
+
+	min, max := r.Min, r.Max
+	if min == nil {
+		min = expr.IntegerValue(-1)
+	}
+	if max == nil {
+		max = expr.IntegerValue(-1)
+	}
+
+	if r.Exclusive {
+		return fmt.Sprintf("[%v, %v, true]", min, max)
+	}
+
 	return fmt.Sprintf("[%v:%v]", r.Min, r.Max)
 }
 
 type Ranges []Range
 
-func (r Ranges) Encode(index *database.Index, env *expr.Environment) (encodedRanges, error) {
+type ValueEncoder interface {
+	EncodeValue(v document.Value) ([]byte, error)
+}
+
+func (r Ranges) Encode(encoder ValueEncoder, env *expr.Environment) (encodedRanges, error) {
 	enc := make([]encodedRange, len(r))
 	for i := range r {
-		minVal, err := r[i].Min.Eval(env)
-		if err != nil {
-			return nil, err
+		if r[i].Min != nil {
+			minVal, err := r[i].Min.Eval(env)
+			if err != nil {
+				return nil, err
+			}
+			enc[i].minVal = &minVal
+			enc[i].min, err = encoder.EncodeValue(minVal)
+			if err != nil {
+				return nil, err
+			}
 		}
-		enc[i].minVal = &minVal
-		enc[i].min, err = index.EncodeValue(minVal)
-		if err != nil {
-			return nil, err
-		}
-		maxVal, err := r[i].Max.Eval(env)
-		if err != nil {
-			return nil, err
-		}
-		enc[i].maxVal = &maxVal
-		enc[i].max, err = index.EncodeValue(maxVal)
-		if err != nil {
-			return nil, err
+		if r[i].Max != nil {
+			maxVal, err := r[i].Max.Eval(env)
+			if err != nil {
+				return nil, err
+			}
+			enc[i].maxVal = &maxVal
+			enc[i].max, err = encoder.EncodeValue(maxVal)
+			if err != nil {
+				return nil, err
+			}
 		}
 		enc[i].exclusive = r[i].Exclusive
 		enc[i].exact = r[i].Exact
