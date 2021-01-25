@@ -19,10 +19,18 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 	return &ProjectOperator{Exprs: exprs}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *ProjectOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var mask MaskDocument
 	var newEnv expr.Environment
+
+	if op.Prev == nil {
+		mask.Env = in
+		mask.Exprs = op.Exprs
+		newEnv.SetDocument(&mask)
+		newEnv.Outer = in
+		return f(&newEnv)
+	}
 
 	return op.Prev.Iterate(in, func(env *expr.Environment) error {
 		mask.Env = env
@@ -52,14 +60,13 @@ type MaskDocument struct {
 	Exprs []expr.Expr
 }
 
-func (d MaskDocument) GetByField(field string) (v document.Value, err error) {
-	for i := len(d.Exprs); i >= 0; i-- {
+func (d *MaskDocument) GetByField(field string) (v document.Value, err error) {
+	for i := len(d.Exprs) - 1; i >= 0; i-- {
 		e := d.Exprs[i]
 
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()
 			if !ok {
-				// TODO: SELECT 1, * LIMIT 10; -> "no tables specified";
 				continue
 			}
 
@@ -68,6 +75,10 @@ func (d MaskDocument) GetByField(field string) (v document.Value, err error) {
 				continue
 			}
 			return
+		}
+
+		if ne, ok := e.(*expr.NamedExpr); ok && ne.Name() == field {
+			return e.Eval(d.Env)
 		}
 
 		if e.(fmt.Stringer).String() == field {
@@ -79,10 +90,10 @@ func (d MaskDocument) GetByField(field string) (v document.Value, err error) {
 	return
 }
 
-func (d MaskDocument) Iterate(fn func(field string, value document.Value) error) error {
+func (d *MaskDocument) Iterate(fn func(field string, value document.Value) error) error {
 	fields := make(map[string]struct{})
 
-	for i := len(d.Exprs); i >= 0; i-- {
+	for i := len(d.Exprs) - 1; i >= 0; i-- {
 		e := d.Exprs[i]
 
 		if _, ok := e.(expr.Wildcard); ok {
@@ -106,7 +117,13 @@ func (d MaskDocument) Iterate(fn func(field string, value document.Value) error)
 			continue
 		}
 
-		field := e.(fmt.Stringer).String()
+		var field string
+		if ne, ok := e.(*expr.NamedExpr); ok {
+			field = ne.Name()
+		} else {
+			field = e.(fmt.Stringer).String()
+		}
+
 		if _, ok := fields[field]; ok {
 			continue
 		}
@@ -124,4 +141,9 @@ func (d MaskDocument) Iterate(fn func(field string, value document.Value) error)
 	}
 
 	return nil
+}
+
+func (d *MaskDocument) String() string {
+	b, _ := document.MarshalJSON(d)
+	return string(b)
 }
