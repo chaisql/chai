@@ -32,7 +32,7 @@ func TestAggregate(t *testing.T) {
 			parser.MustParseExpr("a % 2"),
 			makeAggregatorBuilders("agg1", "agg2"),
 			generateSeqDocs(10),
-			[]document.Document{docFromJSON(`{"agg1": 5, "agg2": 5, "a % 2": 0}`), docFromJSON(`{"agg1": 5, "agg2": 5, "a % 2": 0}`)},
+			[]document.Document{docFromJSON(`{"a % 2": 0, "agg1": 5, "agg2": 5}`), docFromJSON(`{"a % 2": 1, "agg1": 5, "agg2": 5}`)},
 			false,
 		},
 		{
@@ -95,6 +95,10 @@ func (f *fakeAggregator) Name() string {
 	return f.name
 }
 
+func (f *fakeAggregator) String() string {
+	return f.name
+}
+
 type fakeAggretatorBuilder struct {
 	name string
 }
@@ -103,6 +107,10 @@ func (f *fakeAggretatorBuilder) Aggregator() expr.Aggregator {
 	return &fakeAggregator{
 		name: f.name,
 	}
+}
+
+func (f *fakeAggretatorBuilder) String() string {
+	return f.name
 }
 
 func makeAggregatorBuilders(names ...string) []expr.AggregatorBuilder {
