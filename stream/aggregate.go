@@ -157,6 +157,10 @@ func newGroupAggregator(outerEnv *expr.Environment, builders []expr.AggregatorBu
 		aggregators: newAggregators,
 	}
 
+	if outerEnv == nil {
+		return &ga
+	}
+
 	var ok bool
 	ga.group, ok = outerEnv.Get(document.NewPath(groupEnvKey))
 	if !ok {
@@ -186,7 +190,7 @@ func (g *groupAggregator) Flush(env *expr.Environment) (*expr.Environment, error
 
 	// add the current group to the document
 	if g.groupExpr != "" {
-		fb.Add(groupEnvKey, g.group)
+		fb.Add(g.groupExpr, g.group)
 	}
 
 	for _, agg := range g.aggregators {
