@@ -1180,17 +1180,16 @@ func TestQueries(t *testing.T, builder Builder) {
 		db, err := genji.New(context.Background(), ng)
 		require.NoError(t, err)
 
-		st, err := db.Query(`
+		d, err := db.QueryDocument(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
-			SELECT * FROM test;
+			SELECT COUNT(*) FROM test;
 		`)
 		require.NoError(t, err)
-		n, err := st.Count()
+		var count int
+		err = document.Scan(d, &count)
 		require.NoError(t, err)
-		require.Equal(t, 4, n)
-		err = st.Close()
-		require.NoError(t, err)
+		require.Equal(t, 4, count)
 
 		t.Run("ORDER BY", func(t *testing.T) {
 			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
@@ -1273,15 +1272,15 @@ func TestQueries(t *testing.T, builder Builder) {
 		})
 		require.NoError(t, err)
 
-		st, err := db.Query(`
+		d, err := db.QueryDocument(`
 			DELETE FROM test WHERE a > 2;
-			SELECT * FROM test;
+			SELECT COUNT(*) FROM test;
 		`)
 		require.NoError(t, err)
-		defer st.Close()
-		n, err := st.Count()
+		var count int
+		err = document.Scan(d, &count)
 		require.NoError(t, err)
-		require.Equal(t, 2, n)
+		require.Equal(t, 2, count)
 	})
 }
 
@@ -1298,16 +1297,16 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(`
+			d, err := tx.QueryDocument(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
-				SELECT * FROM test;
+				SELECT COUNT(*) FROM test;
 			`)
 			require.NoError(t, err)
-			defer st.Close()
-			n, err := st.Count()
+			var count int
+			err = document.Scan(d, &count)
 			require.NoError(t, err)
-			require.Equal(t, 4, n)
+			require.Equal(t, 4, count)
 			return nil
 		})
 		require.NoError(t, err)
@@ -1373,17 +1372,17 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			st, err := tx.Query(`
+			d, err := tx.QueryDocument(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;
-			SELECT * FROM test;
+			SELECT COUNT(*) FROM test;
 		`)
 			require.NoError(t, err)
-			defer st.Close()
-			n, err := st.Count()
+			var count int
+			document.Scan(d, &count)
 			require.NoError(t, err)
-			require.Equal(t, 2, n)
+			require.Equal(t, 2, count)
 			return nil
 		})
 		require.NoError(t, err)

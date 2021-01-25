@@ -1,9 +1,7 @@
 package genji_test
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
@@ -81,65 +79,8 @@ func Example() {
 		panic(err)
 	}
 
-	// Count results
-	count, err := stream.Count()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Count:", count)
-
-	// Get first document from the results
-	d, err := stream.First()
-	if err != nil {
-		panic(err)
-	}
-
-	// Scan into a struct
-	var u User
-	err = document.StructScan(d, &u)
-	if err != nil {
-		panic(err)
-	}
-
-	enc := json.NewEncoder(os.Stdout)
-
-	// Apply some manual transformations
-	err = stream.
-		// Filter all even ids
-		Filter(func(d document.Document) (bool, error) {
-			v, err := d.GetByField("id")
-			if err != nil {
-				return false, err
-			}
-			return int64(v.V.(float64))%2 == 0, err
-		}).
-		// Enrich the documents with a new field
-		Map(func(d document.Document) (document.Document, error) {
-			var fb document.FieldBuffer
-
-			err := fb.ScanDocument(d)
-			if err != nil {
-				return nil, err
-			}
-
-			fb.Add("group", document.NewTextValue("admin"))
-			return &fb, nil
-		}).
-		// Iterate on them
-		Iterate(func(d document.Document) error {
-			return enc.Encode(d)
-		})
-
-	if err != nil {
-		panic(err)
-	}
-
 	// Output:
 	// {10 foo 15 { }}
 	// {12 bar 16 {Lyon 69001}}
 	// {2 bat 0 { }}
-	// Count: 3
-	// {"id":10,"name":"foo","age":15,"group":"admin"}
-	// {"id":12,"name":"bar","age":16,"address":{"city":"Lyon","zipcode":"69001"},"group":"admin"}
-	// {"id":2,"name":"bat","age":0,"address":{"city":"","zipcode":""},"group":"admin"}
 }

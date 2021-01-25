@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query"
+	"github.com/genjidb/genji/stream"
 )
 
 // DB represents a collection of tables stored in the underlying engine.
@@ -101,17 +102,25 @@ func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, e
 	}
 	defer res.Close()
 
-	r, err := res.First()
+	return scanDocument(res)
+}
+
+func scanDocument(res *query.Result) (document.Document, error) {
+	var d document.Document
+	err := res.Iterate(func(doc document.Document) error {
+		d = doc
+		return stream.ErrStreamClosed
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if r == nil {
+	if d == nil {
 		return nil, database.ErrDocumentNotFound
 	}
 
 	var fb document.FieldBuffer
-	err = fb.ScanDocument(r)
+	err = fb.Copy(d)
 	if err != nil {
 		return nil, err
 	}
@@ -147,15 +156,7 @@ func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, e
 	}
 	defer res.Close()
 
-	r, err := res.First()
-	if err != nil {
-		return nil, err
-	}
-	if r == nil {
-		return nil, database.ErrDocumentNotFound
-	}
-
-	return r, nil
+	return scanDocument(res)
 }
 
 // Exec a query against the database within tx and without returning the result.
