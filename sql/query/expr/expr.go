@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -109,6 +111,16 @@ type Operator interface {
 	Token() scanner.Token
 }
 
+// OperatorIsIndexCompatible returns whether the operator can be used to read from an index.
+func OperatorIsIndexCompatible(op Operator) bool {
+	switch op.(type) {
+	case *EqOperator, *GtOperator, *GteOperator, *LtOperator, *LteOperator, *InOperator:
+		return true
+	}
+
+	return false
+}
+
 // Parentheses is a special expression which turns
 // any sub-expression as unary.
 // It hides the underlying operator, if any, from the parser
@@ -152,4 +164,20 @@ func invertBoolResult(f func(env *Environment) (document.Value, error)) func(env
 		}
 		return v, nil
 	}
+}
+
+// NamedExpr is an expression with a name.
+type NamedExpr struct {
+	Expr
+
+	ExprName string
+}
+
+// Name returns ExprName.
+func (e NamedExpr) Name() string {
+	return e.ExprName
+}
+
+func (e NamedExpr) String() string {
+	return fmt.Sprintf("%s", e.Expr)
 }

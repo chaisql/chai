@@ -63,13 +63,13 @@ func (stmt InsertStmt) insertDocuments(t *database.Table, env *expr.Environment)
 			return res, fmt.Errorf("expected document, got %s", v.Type)
 		}
 
-		d, err := t.Insert(v.V.(document.Document))
+		_, err = t.Insert(v.V.(document.Document))
 		if err != nil {
 			return res, err
 		}
-		res.LastInsertKey = d.(document.Keyer).RawKey()
+		// res.LastInsertKey = d.(document.Keyer).RawKey()
 
-		res.RowsAffected++
+		// res.RowsAffected++
 	}
 
 	return res, nil
@@ -104,14 +104,14 @@ func (stmt InsertStmt) insertExprList(t *database.Table, env *expr.Environment) 
 			return nil
 		})
 
-		d, err := t.Insert(&fb)
+		_, err = t.Insert(&fb)
 		if err != nil {
 			return res, err
 		}
 
-		res.LastInsertKey = d.(document.Keyer).RawKey()
+		// res.LastInsertKey = d.(document.Keyer).RawKey()
 
-		res.RowsAffected++
+		// res.RowsAffected++
 	}
 
 	return res, nil

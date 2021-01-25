@@ -65,3 +65,13 @@ func (w Wildcard) String() string {
 func (w Wildcard) Eval(env *Environment) (document.Value, error) {
 	return document.Value{}, errors.New("no table specified")
 }
+
+// Iterate call the document iterate method.
+func (w Wildcard) Iterate(env *Environment, fn func(field string, value document.Value) error) error {
+	d, ok := env.GetDocument()
+	if !ok {
+		return errors.New("no table specified")
+	}
+
+	return d.Iterate(fn)
+}
