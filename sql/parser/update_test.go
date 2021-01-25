@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
 )
@@ -17,36 +18,34 @@ func TestParserUpdate(t *testing.T) {
 	}{
 		{"SET/No cond", "UPDATE test SET a = 1",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Set(document.Path(parsePath(t, "a")), MustParseExpr("1"))).
-				Pipe(stream.TableReplace("foo")),
+				Pipe(stream.Set(document.Path(parsePath(t, "a")), expr.IntegerValue(1))).
+				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(MustParseExpr("age = 10"))).
-				Pipe(stream.Set(document.Path(parsePath(t, "a")), MustParseExpr("1"))).
+				Pipe(stream.Set(document.Path(parsePath(t, "a")), expr.IntegerValue(1))).
 				Pipe(stream.Set(document.Path(parsePath(t, "b")), MustParseExpr("2"))).
-				Pipe(stream.TableReplace("foo")),
+				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
-				Pipe(stream.Set(document.Path(parsePath(t, "`   some \"path\" `")), MustParseExpr("1"))).
-				Pipe(stream.TableReplace("foo")),
+				Pipe(stream.Set(document.Path(parsePath(t, "`   some \"path\" `")), expr.IntegerValue(1))).
+				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
-				Pipe(stream.Set(document.Path(parsePath(t, "a.b")), MustParseExpr("1"))).
-				Pipe(stream.TableReplace("foo")),
+				Pipe(stream.Set(document.Path(parsePath(t, "a.b")), expr.IntegerValue(1))).
+				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"UNSET/No cond", "UPDATE test UNSET a",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Unset("a")).
-				Pipe(stream.TableReplace("foo")),
+				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
@@ -54,7 +53,7 @@ func TestParserUpdate(t *testing.T) {
 				Pipe(stream.Filter(MustParseExpr("age = 10"))).
 				Pipe(stream.Unset("a")).
 				Pipe(stream.Unset("b")).
-				Pipe(stream.TableReplace("foo")),
+				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},
@@ -74,7 +73,9 @@ func TestParserUpdate(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, test.expected, q.Statements[0])
+			stmt := q.Statements[0].(*stream.Statement)
+			require.False(t, stmt.ReadOnly)
+			require.EqualValues(t, test.expected, stmt.Stream)
 		})
 	}
 }
