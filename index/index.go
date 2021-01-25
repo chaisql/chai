@@ -15,17 +15,6 @@ const (
 	storePrefix = "i"
 )
 
-var valueTypes = []document.ValueType{
-	document.NullValue,
-	document.BoolValue,
-	document.IntegerValue,
-	document.DoubleValue,
-	document.TextValue,
-	document.BlobValue,
-	document.ArrayValue,
-	document.DocumentValue,
-}
-
 var (
 	// ErrDuplicate is returned when a value is already associated with a key
 	ErrDuplicate = errors.New("duplicate")
@@ -160,18 +149,18 @@ func (idx *Index) Delete(v document.Value, k []byte) error {
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is empty, starts from the beginning.
-func (idx *Index) AscendGreaterOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
+func (idx *Index) AscendGreaterOrEqual(pivot document.Value, fn func(val, key []byte) error) error {
 	return idx.iterateOnStore(pivot, false, fn)
 }
 
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is empty, starts from the end.
-func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []byte, isEqual bool) error) error {
+func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []byte) error) error {
 	return idx.iterateOnStore(pivot, true, fn)
 }
 
-func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte, isEqual bool) error) error {
+func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte) error) error {
 	// if index and pivot are typed but not of the same type
 	// return no result
 	if idx.Type != 0 && pivot.Type != 0 && idx.Type != pivot.Type {
@@ -184,14 +173,6 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 	}
 	if st == nil {
 		return nil
-	}
-
-	var enc []byte
-	if pivot.V != nil {
-		enc, err = idx.EncodeValue(pivot)
-		if err != nil {
-			return err
-		}
 	}
 
 	var buf []byte
@@ -212,7 +193,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 			return err
 		}
 
-		return fn(k, buf, bytes.Equal(k, enc))
+		return fn(k, buf)
 	})
 }
 
