@@ -71,7 +71,7 @@ func compare(op operator, l, r Value) (bool, error) {
 	switch {
 	// deal with nil
 	case l.Type == NullValue || r.Type == NullValue:
-		return compareWithNull(op, l, r)
+		return compareWithNull(op, l, r), nil
 
 	// compare booleans together
 	case l.Type == BoolValue && r.Type == BoolValue:
@@ -91,7 +91,7 @@ func compare(op operator, l, r Value) (bool, error) {
 
 	// compare numbers together
 	case l.Type.IsNumber() && r.Type.IsNumber():
-		return compareNumbers(op, l, r)
+		return compareNumbers(op, l, r), nil
 
 	// compare arrays together
 	case l.Type == ArrayValue && r.Type == ArrayValue:
@@ -105,15 +105,15 @@ func compare(op operator, l, r Value) (bool, error) {
 	return false, nil
 }
 
-func compareWithNull(op operator, l, r Value) (bool, error) {
+func compareWithNull(op operator, l, r Value) bool {
 	switch op {
 	case operatorEq, operatorGte, operatorLte:
-		return l.Type == r.Type, nil
+		return l.Type == r.Type
 	case operatorGt, operatorLt:
-		return false, nil
+		return false
 	}
 
-	return false, nil
+	return false
 }
 
 func compareBooleans(op operator, a, b bool) bool {
@@ -184,17 +184,9 @@ func compareIntegers(op operator, l, r int64) bool {
 	return false
 }
 
-func compareNumbers(op operator, l, r Value) (bool, error) {
-	var err error
-
-	l, err = l.CastAsDouble()
-	if err != nil {
-		return false, err
-	}
-	r, err = r.CastAsDouble()
-	if err != nil {
-		return false, err
-	}
+func compareNumbers(op operator, l, r Value) bool {
+	l, _ = l.CastAsDouble()
+	r, _ = r.CastAsDouble()
 
 	af := l.V.(float64)
 	bf := r.V.(float64)
@@ -214,7 +206,7 @@ func compareNumbers(op operator, l, r Value) (bool, error) {
 		ok = af <= bf
 	}
 
-	return ok, nil
+	return ok
 }
 
 func compareArrays(op operator, l Array, r Array) (bool, error) {
