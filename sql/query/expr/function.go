@@ -76,6 +76,18 @@ func (f Functions) GetFunc(name string, args ...Expr) (Expr, error) {
 	return fn(args...)
 }
 
+// A Aggregator is an expression that aggregates documents into one result.
+type Aggregator interface {
+	Expr
+
+	Aggregate(env *Environment) error
+}
+
+// An AggregatorBuilder is a type that can create aggregators.
+type AggregatorBuilder interface {
+	Aggregator() Aggregator
+}
+
 // PKFunc represents the pk() function.
 // It returns the primary key of the current document.
 type PKFunc struct{}
@@ -149,11 +161,12 @@ func (c CastFunc) String() string {
 	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
 
-// CountFunc is the COUNT aggregator function. It aggregates documents
+// CountFunc is the COUNT aggregator function. It counts the number of documents
+// in a stream.
 type CountFunc struct {
 	Expr     Expr
-	Alias    string
 	Wildcard bool
+	Count    int64
 }
 
 func (c *CountFunc) Eval(env *Environment) (document.Value, error) {
@@ -163,16 +176,6 @@ func (c *CountFunc) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return d.GetByField(c.String())
-}
-
-func (c *CountFunc) SetAlias(alias string) {
-	c.Alias = alias
-}
-
-func (c *CountFunc) Aggregator(group document.Value) document.Aggregator {
-	return &CountAggregator{
-		Fn: c,
-	}
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -195,15 +198,18 @@ func (c *CountFunc) IsEqual(other Expr) bool {
 }
 
 func (c *CountFunc) String() string {
-	if c.Alias != "" {
-		return c.Alias
-	}
-
 	if c.Wildcard {
 		return "COUNT(*)"
 	}
 
 	return fmt.Sprintf("COUNT(%v)", c.Expr)
+}
+
+// Aggregator returns a CountAggregator. It implements the AggregatorBuilder interface.
+func (c *CountFunc) Aggregator() Aggregator {
+	return &CountAggregator{
+		Fn: c,
+	}
 }
 
 // CountAggregator is an aggregator that counts non-null expressions.
@@ -212,14 +218,14 @@ type CountAggregator struct {
 	Count int64
 }
 
-// Add increments the counter if the count expression evaluates to a non-null value.
-func (c *CountAggregator) Add(d document.Document) error {
+// Aggregate increments the counter if the count expression evaluates to a non-null value.
+func (c *CountAggregator) Aggregate(env *Environment) error {
 	if c.Fn.Wildcard {
 		c.Count++
 		return nil
 	}
 
-	v, err := c.Fn.Expr.Eval(NewEnvironment(d))
+	v, err := c.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -230,16 +236,18 @@ func (c *CountAggregator) Add(d document.Document) error {
 	return nil
 }
 
-// Aggregate adds a field to the given buffer with the value of the counter.
-func (c *CountAggregator) Aggregate(fb *document.FieldBuffer) error {
-	fb.Add(c.Fn.String(), document.NewIntegerValue(c.Count))
-	return nil
+// Eval returns the result of the aggregation as an integer.
+func (c *CountAggregator) Eval(env *Environment) (document.Value, error) {
+	return document.NewIntegerValue(c.Count), nil
+}
+
+func (c *CountAggregator) String() string {
+	return c.Fn.String()
 }
 
 // MinFunc is the MIN aggregator function.
 type MinFunc struct {
-	Expr  Expr
-	Alias string
+	Expr Expr
 }
 
 // Eval extracts the min value from the given document and returns it.
@@ -250,18 +258,6 @@ func (m *MinFunc) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return d.GetByField(m.String())
-}
-
-// SetAlias implements the planner.AggregatorBuilder interface.
-func (m *MinFunc) SetAlias(alias string) {
-	m.Alias = alias
-}
-
-// Aggregator implements the planner.AggregatorBuilder interface.
-func (m *MinFunc) Aggregator(group document.Value) document.Aggregator {
-	return &MinAggregator{
-		Fn: m,
-	}
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -282,11 +278,14 @@ func (m *MinFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *MinFunc) String() string {
-	if m.Alias != "" {
-		return m.Alias
-	}
-
 	return fmt.Sprintf("MIN(%v)", m.Expr)
+}
+
+// Aggregator returns a MinAggregator. It implements the AggregatorBuilder interface.
+func (m *MinFunc) Aggregator() Aggregator {
+	return &MinAggregator{
+		Fn: m,
+	}
 }
 
 // MinAggregator is an aggregator that returns the minimum non-null value.
@@ -295,10 +294,10 @@ type MinAggregator struct {
 	Min document.Value
 }
 
-// Add stores the minimum value. Values are compared based on their types,
+// Aggregate stores the minimum value. Values are compared based on their types,
 // then if the type is equal their value is compared. Numbers are considered of the same type.
-func (m *MinAggregator) Add(d document.Document) error {
-	v, err := m.Fn.Expr.Eval(NewEnvironment(d))
+func (m *MinAggregator) Aggregate(env *Environment) error {
+	v, err := m.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -330,20 +329,17 @@ func (m *MinAggregator) Add(d document.Document) error {
 	return nil
 }
 
-// Aggregate adds a field to the given buffer with the minimum value.
-func (m *MinAggregator) Aggregate(fb *document.FieldBuffer) error {
+// Eval return the minimum value.
+func (m *MinAggregator) Eval(env *Environment) (document.Value, error) {
 	if m.Min.Type == 0 {
-		fb.Add(m.Fn.String(), document.NewNullValue())
-	} else {
-		fb.Add(m.Fn.String(), m.Min)
+		return document.NewNullValue(), nil
 	}
-	return nil
+	return m.Min, nil
 }
 
 // MaxFunc is the MAX aggregator function.
 type MaxFunc struct {
-	Expr  Expr
-	Alias string
+	Expr Expr
 }
 
 // Eval extracts the max value from the given document and returns it.
@@ -354,18 +350,6 @@ func (m *MaxFunc) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return d.GetByField(m.String())
-}
-
-// SetAlias implements the planner.AggregatorBuilder interface.
-func (m *MaxFunc) SetAlias(alias string) {
-	m.Alias = alias
-}
-
-// Aggregator implements the planner.AggregatorBuilder interface.
-func (m *MaxFunc) Aggregator(group document.Value) document.Aggregator {
-	return &MaxAggregator{
-		Fn: m,
-	}
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -386,11 +370,14 @@ func (m *MaxFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *MaxFunc) String() string {
-	if m.Alias != "" {
-		return m.Alias
-	}
-
 	return fmt.Sprintf("MAX(%v)", m.Expr)
+}
+
+// Aggregator returns a MaxAggregator. It implements the AggregatorBuilder interface.
+func (m *MaxFunc) Aggregator() Aggregator {
+	return &MaxAggregator{
+		Fn: m,
+	}
 }
 
 // MaxAggregator is an aggregator that returns the minimum non-null value.
@@ -399,10 +386,10 @@ type MaxAggregator struct {
 	Max document.Value
 }
 
-// Add stores the maximum value. Values are compared based on their types,
+// Aggregate stores the maximum value. Values are compared based on their types,
 // then if the type is equal their value is compared. Numbers are considered of the same type.
-func (m *MaxAggregator) Add(d document.Document) error {
-	v, err := m.Fn.Expr.Eval(NewEnvironment(d))
+func (m *MaxAggregator) Aggregate(env *Environment) error {
+	v, err := m.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -434,20 +421,18 @@ func (m *MaxAggregator) Add(d document.Document) error {
 	return nil
 }
 
-// Aggregate adds a field to the given buffer with the maximum value.
-func (m *MaxAggregator) Aggregate(fb *document.FieldBuffer) error {
+// Eval return the maximum value.
+func (m *MaxAggregator) Eval(env *Environment) (document.Value, error) {
 	if m.Max.Type == 0 {
-		fb.Add(m.Fn.String(), document.NewNullValue())
-	} else {
-		fb.Add(m.Fn.String(), m.Max)
+		return document.NewNullValue(), nil
 	}
-	return nil
+
+	return m.Max, nil
 }
 
 // SumFunc is the SUM aggregator function.
 type SumFunc struct {
-	Expr  Expr
-	Alias string
+	Expr Expr
 }
 
 // Eval extracts the sum value from the given document and returns it.
@@ -458,18 +443,6 @@ func (s *SumFunc) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return d.GetByField(s.String())
-}
-
-// SetAlias implements the planner.AggregatorBuilder interface.
-func (s *SumFunc) SetAlias(alias string) {
-	s.Alias = alias
-}
-
-// Aggregator implements the planner.AggregatorBuilder interface.
-func (s *SumFunc) Aggregator(group document.Value) document.Aggregator {
-	return &SumAggregator{
-		Fn: s,
-	}
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -490,11 +463,14 @@ func (s *SumFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (s *SumFunc) String() string {
-	if s.Alias != "" {
-		return s.Alias
-	}
-
 	return fmt.Sprintf("SUM(%v)", s.Expr)
+}
+
+// Aggregator returns a SumFunc. It implements the AggregatorBuilder interface.
+func (s *SumFunc) Aggregator() Aggregator {
+	return &SumAggregator{
+		Fn: s,
+	}
 }
 
 // SumAggregator is an aggregator that returns the minimum non-null value.
@@ -504,11 +480,11 @@ type SumAggregator struct {
 	SumF *float64
 }
 
-// Add stores the sum of all non-NULL numeric values in the group.
+// Aggregate stores the sum of all non-NULL numeric values in the group.
 // The result is an integer value if all summed values are integers.
 // If any of the value is a double, the returned result will be a double.
-func (s *SumAggregator) Add(d document.Document) error {
-	v, err := s.Fn.Expr.Eval(NewEnvironment(d))
+func (s *SumAggregator) Aggregate(env *Environment) error {
+	v, err := s.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -546,23 +522,21 @@ func (s *SumAggregator) Add(d document.Document) error {
 	return nil
 }
 
-// Aggregate adds a field to the given buffer with the maximum value.
-func (s *SumAggregator) Aggregate(fb *document.FieldBuffer) error {
+// Eval return the aggregated sum.
+func (s *SumAggregator) Eval(env *Environment) (document.Value, error) {
 	if s.SumF != nil {
-		fb.Add(s.Fn.String(), document.NewDoubleValue(*s.SumF))
-	} else if s.SumI != nil {
-		fb.Add(s.Fn.String(), document.NewIntegerValue(*s.SumI))
-	} else {
-		fb.Add(s.Fn.String(), document.NewNullValue())
+		return document.NewDoubleValue(*s.SumF), nil
+	}
+	if s.SumI != nil {
+		return document.NewIntegerValue(*s.SumI), nil
 	}
 
-	return nil
+	return document.NewNullValue(), nil
 }
 
 // AvgFunc is the AVG aggregator function.
 type AvgFunc struct {
-	Expr  Expr
-	Alias string
+	Expr Expr
 }
 
 // Eval extracts the average value from the given document and returns it.
@@ -573,18 +547,6 @@ func (s *AvgFunc) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return d.GetByField(s.String())
-}
-
-// SetAlias implements the planner.AggregatorBuilder interface.
-func (s *AvgFunc) SetAlias(alias string) {
-	s.Alias = alias
-}
-
-// Aggregator implements the planner.AggregatorBuilder interface.
-func (s *AvgFunc) Aggregator(group document.Value) document.Aggregator {
-	return &AvgAggregator{
-		Fn: s,
-	}
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -605,11 +567,14 @@ func (s *AvgFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the average expression.
 func (s *AvgFunc) String() string {
-	if s.Alias != "" {
-		return s.Alias
-	}
-
 	return fmt.Sprintf("AVG(%v)", s.Expr)
+}
+
+// Aggregator returns a AvgFunc. It implements the AggregatorBuilder interface.
+func (s *AvgFunc) Aggregator() Aggregator {
+	return &AvgAggregator{
+		Fn: s,
+	}
 }
 
 // AvgAggregator is an aggregator that returns the average non-null value.
@@ -619,9 +584,9 @@ type AvgAggregator struct {
 	Counter int64
 }
 
-// Add stores the average value of all non-NULL numeric values in the group.
-func (s *AvgAggregator) Add(d document.Document) error {
-	v, err := s.Fn.Expr.Eval(NewEnvironment(d))
+// Aggregate stores the average value of all non-NULL numeric values in the group.
+func (s *AvgAggregator) Aggregate(env *Environment) error {
+	v, err := s.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
@@ -639,13 +604,11 @@ func (s *AvgAggregator) Add(d document.Document) error {
 	return nil
 }
 
-// Aggregate adds a field to the given buffer with the maximum value.
-func (s *AvgAggregator) Aggregate(fb *document.FieldBuffer) error {
+// Eval returns the aggregated average as a double.
+func (s *AvgAggregator) Eval(env *Environment) (document.Value, error) {
 	if s.Counter == 0 {
-		fb.Add(s.Fn.String(), document.NewDoubleValue(0))
-	} else {
-		fb.Add(s.Fn.String(), document.NewDoubleValue(s.Avg/float64(s.Counter)))
+		return document.NewDoubleValue(0), nil
 	}
 
-	return nil
+	return document.NewDoubleValue(s.Avg / float64(s.Counter)), nil
 }

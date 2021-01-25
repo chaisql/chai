@@ -1,13 +1,9 @@
 package expr
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
@@ -21,366 +17,81 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 	return &cmpOp{&simpleOperator{a, b, t}}
 }
 
-type eqOp struct {
+type EqOperator struct {
 	*cmpOp
 }
 
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
-	return eqOp{newCmpOp(a, b, scanner.EQ)}
+	return &EqOperator{newCmpOp(a, b, scanner.EQ)}
 }
 
-var errStop = errors.New("errStop")
-
-func (op eqOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
-		if isEqual {
-			d, err := tb.GetDocument(key)
-			if err != nil {
-				return err
-			}
-
-			return fn(d)
-		}
-
-		return errStop
-	})
-
-	if err != nil && err != errStop {
-		return err
-	}
-
-	return nil
-}
-
-func (op eqOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.CastAs(pkType)
-	if err != nil {
-		return nil
-	}
-
-	var buf bytes.Buffer
-	err = document.NewValueEncoder(&buf).Encode(v)
-	if err != nil {
-		return err
-	}
-
-	val, err := tb.Store.Get(buf.Bytes())
-	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return nil
-		}
-
-		return err
-	}
-	return fn(tb.Tx().DB().Codec.NewDocument(val))
-}
-
-func (op eqOp) String() string {
+func (op *EqOperator) String() string {
 	return fmt.Sprintf("%v = %v", op.a, op.b)
 }
 
-type neqOp struct {
+type NeqOperator struct {
 	*cmpOp
 }
 
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) Expr {
-	return neqOp{newCmpOp(a, b, scanner.NEQ)}
+	return &NeqOperator{newCmpOp(a, b, scanner.NEQ)}
 }
 
-func (op neqOp) String() string {
+func (op *NeqOperator) String() string {
 	return fmt.Sprintf("%v != %v", op.a, op.b)
 }
 
-type gtOp struct {
+type GtOperator struct {
 	*cmpOp
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) Expr {
-	return gtOp{newCmpOp(a, b, scanner.GT)}
+	return &GtOperator{newCmpOp(a, b, scanner.GT)}
 }
 
-func (op gtOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
-		if isEqual {
-			return nil
-		}
-
-		d, err := tb.GetDocument(key)
-		if err != nil {
-			return err
-		}
-
-		return fn(d)
-	})
-
-	if err != nil && err != errStop {
-		return err
-	}
-
-	return nil
-}
-
-func (op gtOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.CastAs(pkType)
-	if err != nil {
-		return err
-	}
-
-	var b bytes.Buffer
-	err = document.NewValueEncoder(&b).Encode(v)
-	if err != nil {
-		return err
-	}
-	data := b.Bytes()
-
-	it := tb.Store.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	var buf []byte
-	for it.Seek(data); it.Valid(); it.Next() {
-		buf, err = it.Item().ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-		if bytes.Equal(data, buf) {
-			return nil
-		}
-
-		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
-		if err != nil {
-			return err
-		}
-	}
-	if err := it.Err(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op gtOp) String() string {
+func (op *GtOperator) String() string {
 	return fmt.Sprintf("%v > %v", op.a, op.b)
 }
 
-type gteOp struct {
+type GteOperator struct {
 	*cmpOp
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
-	return gteOp{newCmpOp(a, b, scanner.GTE)}
+	return &GteOperator{newCmpOp(a, b, scanner.GTE)}
 }
 
-func (op gteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	err := idx.AscendGreaterOrEqual(v, func(val, key []byte, isEqual bool) error {
-		d, err := tb.GetDocument(key)
-		if err != nil {
-			return err
-		}
-
-		return fn(d)
-	})
-
-	if err != nil && err != errStop {
-		return err
-	}
-
-	return nil
-}
-
-func (op gteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.CastAs(pkType)
-	if err != nil {
-		return err
-	}
-
-	var b bytes.Buffer
-	err = document.NewValueEncoder(&b).Encode(v)
-	if err != nil {
-		return err
-	}
-	data := b.Bytes()
-
-	it := tb.Store.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	var buf []byte
-	for it.Seek(data); it.Valid(); it.Next() {
-		buf, err = it.Item().ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-
-		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
-		if err != nil {
-			return err
-		}
-	}
-	if err := it.Err(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op gteOp) String() string {
+func (op *GteOperator) String() string {
 	return fmt.Sprintf("%v >= %v", op.a, op.b)
 }
 
-type ltOp struct {
+type LtOperator struct {
 	*cmpOp
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) Expr {
-	return ltOp{newCmpOp(a, b, scanner.LT)}
+	return &LtOperator{newCmpOp(a, b, scanner.LT)}
 }
 
-func (op ltOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	enc, err := idx.EncodeValue(v)
-	if err != nil {
-		return err
-	}
-
-	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
-		if bytes.Compare(enc, val) <= 0 {
-			return errStop
-		}
-
-		d, err := tb.GetDocument(key)
-		if err != nil {
-			return err
-		}
-
-		return fn(d)
-	})
-
-	if err != nil && err != errStop {
-		return err
-	}
-
-	return nil
-}
-
-func (op ltOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.CastAs(pkType)
-	if err != nil {
-		return err
-	}
-
-	var b bytes.Buffer
-	err = document.NewValueEncoder(&b).Encode(v)
-	if err != nil {
-		return err
-	}
-	data := b.Bytes()
-
-	it := tb.Store.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	var buf []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
-		buf, err = it.Item().ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-		if bytes.Compare(data, buf) <= 0 {
-			break
-		}
-
-		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
-		if err != nil {
-			return err
-		}
-	}
-	if err := it.Err(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op ltOp) String() string {
+func (op *LtOperator) String() string {
 	return fmt.Sprintf("%v < %v", op.a, op.b)
 }
 
-type lteOp struct {
+type LteOperator struct {
 	*cmpOp
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
-	return lteOp{newCmpOp(a, b, scanner.LTE)}
+	return &LteOperator{newCmpOp(a, b, scanner.LTE)}
 }
 
-func (op lteOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	enc, err := idx.EncodeValue(v)
-	if err != nil {
-		return err
-	}
-
-	err = idx.AscendGreaterOrEqual(document.Value{Type: v.Type}, func(val, key []byte, isEqual bool) error {
-		if bytes.Compare(enc, val) < 0 {
-			return errStop
-		}
-
-		d, err := tb.GetDocument(key)
-		if err != nil {
-			return err
-		}
-
-		return fn(d)
-	})
-
-	if err != nil && err != errStop {
-		return err
-	}
-
-	return nil
-}
-
-func (op lteOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	v, err := v.CastAs(pkType)
-	if err != nil {
-		return err
-	}
-
-	var b bytes.Buffer
-	err = document.NewValueEncoder(&b).Encode(v)
-	if err != nil {
-		return err
-	}
-	data := b.Bytes()
-
-	it := tb.Store.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	var buf []byte
-	for it.Seek(nil); it.Valid(); it.Next() {
-		buf, err = it.Item().ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-		if bytes.Compare(data, buf) < 0 {
-			break
-		}
-
-		err = fn(tb.Tx().DB().Codec.NewDocument(buf))
-		if err != nil {
-			return err
-		}
-	}
-	if err := it.Err(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op lteOp) String() string {
+func (op *LteOperator) String() string {
 	return fmt.Sprintf("%v <= %v", op.a, op.b)
 }
 
@@ -428,8 +139,8 @@ func (op cmpOp) compare(l, r document.Value) (bool, error) {
 // =, !=, >, >=, <, <=, IS, IS NOT, IN, or NOT IN operators.
 func IsComparisonOperator(op Operator) bool {
 	switch op.(type) {
-	case eqOp, neqOp, gtOp, gteOp, ltOp, lteOp,
-		isOp, isNotOp, inOp, notInOp, likeOp, notLikeOp:
+	case *EqOperator, *NeqOperator, *GtOperator, *GteOperator, *LtOperator, *LteOperator,
+		*IsOperator, *IsNotOperator, *InOperator, *NotInOperator, *LikeOperator, *NotLikeOperator:
 		return true
 	}
 
@@ -450,20 +161,20 @@ func IsOrOperator(e Expr) bool {
 
 // IsInOperator reports if e is the IN operator.
 func IsInOperator(e Expr) bool {
-	_, ok := e.(inOp)
+	_, ok := e.(*InOperator)
 	return ok
 }
 
-type inOp struct {
+type InOperator struct {
 	*simpleOperator
 }
 
 // In creates an expression that evaluates to the result of a IN b.
 func In(a, b Expr) Expr {
-	return inOp{&simpleOperator{a, b, scanner.IN}}
+	return &InOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op inOp) Eval(env *Environment) (document.Value, error) {
+func (op *InOperator) Eval(env *Environment) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
@@ -488,80 +199,37 @@ func (op inOp) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op inOp) IterateIndex(idx *database.Index, tb *database.Table, v document.Value, fn func(d document.Document) error) error {
-	if v.Type != document.ArrayValue {
-		return errors.New("IN operator takes an array")
-	}
-
-	var eq eqOp
-	return v.V.(document.Array).Iterate(func(i int, value document.Value) error {
-		return eq.IterateIndex(idx, tb, value, fn)
-	})
-}
-
-// IteratePK implements the query.pkIterator interface. It expects v to be an array,
-// iterates over it, and for each value, gets it from the underlying store of tb.
-func (op inOp) IteratePK(tb *database.Table, v document.Value, pkType document.ValueType, fn func(d document.Document) error) error {
-	if v.Type != document.ArrayValue {
-		return errors.New("IN operator takes an array")
-	}
-
-	return v.V.(document.Array).Iterate(func(i int, value document.Value) error {
-		val, err := value.CastAs(pkType)
-		if err != nil {
-			return nil
-		}
-
-		var b bytes.Buffer
-		err = document.NewValueEncoder(&b).Encode(val)
-		if err != nil {
-			return err
-		}
-		data := b.Bytes()
-
-		v, err := tb.Store.Get(data)
-		if err != nil {
-			if err == engine.ErrKeyNotFound {
-				return nil
-			}
-
-			return err
-		}
-		return fn(tb.Tx().DB().Codec.NewDocument(v))
-	})
-}
-
-func (op inOp) String() string {
+func (op InOperator) String() string {
 	return fmt.Sprintf("%v IN %v", op.a, op.b)
 }
 
-type notInOp struct {
-	inOp
+type NotInOperator struct {
+	InOperator
 }
 
 // NotIn creates an expression that evaluates to the result of a NOT IN b.
 func NotIn(a, b Expr) Expr {
-	return &notInOp{inOp{&simpleOperator{a, b, scanner.IN}}}
+	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.IN}}}
 }
 
-func (op notInOp) Eval(env *Environment) (document.Value, error) {
-	return invertBoolResult(op.inOp.Eval)(env)
+func (op *NotInOperator) Eval(env *Environment) (document.Value, error) {
+	return invertBoolResult(op.InOperator.Eval)(env)
 }
 
-func (op notInOp) String() string {
+func (op *NotInOperator) String() string {
 	return fmt.Sprintf("%v NOT IN %v", op.a, op.b)
 }
 
-type isOp struct {
+type IsOperator struct {
 	*simpleOperator
 }
 
 // Is creates an expression that evaluates to the result of a IS b.
 func Is(a, b Expr) Expr {
-	return &isOp{&simpleOperator{a, b, scanner.IN}}
+	return &IsOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op isOp) Eval(env *Environment) (document.Value, error) {
+func (op *IsOperator) Eval(env *Environment) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
@@ -578,20 +246,20 @@ func (op isOp) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op isOp) String() string {
+func (op *IsOperator) String() string {
 	return fmt.Sprintf("%v IS %v", op.a, op.b)
 }
 
-type isNotOp struct {
+type IsNotOperator struct {
 	*simpleOperator
 }
 
 // IsNot creates an expression that evaluates to the result of a IS NOT b.
 func IsNot(a, b Expr) Expr {
-	return &isNotOp{&simpleOperator{a, b, scanner.IN}}
+	return &IsNotOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op isNotOp) Eval(env *Environment) (document.Value, error) {
+func (op *IsNotOperator) Eval(env *Environment) (document.Value, error) {
 	a, b, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return nullLitteral, err
@@ -608,6 +276,6 @@ func (op isNotOp) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op isNotOp) String() string {
+func (op *IsNotOperator) String() string {
 	return fmt.Sprintf("%v IS NOT %v", op.a, op.b)
 }

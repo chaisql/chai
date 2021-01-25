@@ -327,9 +327,13 @@ func TestDistinct(t *testing.T) {
 					require.NoError(t, err)
 					defer q.Close()
 
-					c, err := q.Count()
+					var i int
+					err = q.Iterate(func(d document.Document) error {
+						i++
+						return nil
+					})
 					require.NoError(t, err)
-					require.Equal(t, test.expectedCount, c)
+					require.Equal(t, test.expectedCount, i)
 				})
 			}
 		})
