@@ -288,10 +288,10 @@ func (fb *FieldBuffer) Delete(path Path) error {
 		}
 
 		idx := path[len(path)-1].ArrayIndex
-		if idx >= len(subBuf.values) {
+		if idx >= len(subBuf.Values) {
 			return ErrFieldNotFound
 		}
-		subBuf.values = append(subBuf.values[0:idx], subBuf.values[idx+1:]...)
+		subBuf.Values = append(subBuf.Values[0:idx], subBuf.Values[idx+1:]...)
 		parentPath[:len(parentPath)-1].GetValue(NewDocumentValue(fb))
 	default:
 		return ErrFieldNotFound

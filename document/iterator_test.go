@@ -12,49 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ExampleStream_First() {
-	db, err := genji.Open(":memory:")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	err = db.Exec("CREATE TABLE user")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	result, err := db.Query("SELECT id, name, age FROM user WHERE name = ?", "foo")
-	if err != nil {
-		panic(err)
-	}
-	defer result.Close()
-
-	d, err := result.First()
-	if err != nil {
-		panic(err)
-	}
-
-	var id uint64
-	var name string
-	var age uint8
-
-	err = document.Scan(d, &id, &name, &age)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(id, name, age)
-
-	// Output:
-	// 10 foo 15
-}
-
 func ExampleStream_Iterate() {
 	type User struct {
 		ID      int64
