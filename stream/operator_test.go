@@ -56,14 +56,14 @@ func TestMap(t *testing.T) {
 				test.out.Outer = test.in
 			}
 
-			op, err := stream.Map(test.e).Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err := stream.Map(test.e).Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.out, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.out, env)
 			}
 		})
 	}
@@ -107,15 +107,15 @@ func TestFilter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
-			op, err := stream.Filter(test.e).Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
-
+			err := stream.Filter(test.e).Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.out, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.out, env)
+
 			}
 		})
 	}
@@ -145,11 +145,11 @@ func TestTake(t *testing.T) {
 				docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(stream.NewDocumentIterator(docs...))
+			s := stream.New(stream.Documents(docs...))
 			s = s.Pipe(stream.Take(test.n))
 
 			var count int
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				count++
 				return nil
 			})
@@ -187,11 +187,11 @@ func TestSkip(t *testing.T) {
 				docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(stream.NewDocumentIterator(docs...))
+			s := stream.New(stream.Documents(docs...))
 			s = s.Pipe(stream.Skip(test.n))
 
 			var count int
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				count++
 				return nil
 			})
@@ -249,14 +249,14 @@ func TestGroupBy(t *testing.T) {
 			want.Set("_group", test.group)
 			want.Set("_group_expr", document.NewTextValue(fmt.Sprintf("%s", test.e)))
 
-			op, err := stream.GroupBy(test.e).Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err := stream.GroupBy(test.e).Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, &want, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &want, env)
 			}
 		})
 	}
@@ -319,7 +319,7 @@ func TestSort(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.NewDocumentIterator(test.values...))
+			s := stream.New(stream.Documents(test.values...))
 			if test.desc {
 				s = s.Pipe(stream.SortReverse(test.sortExpr))
 			} else {
@@ -327,7 +327,7 @@ func TestSort(t *testing.T) {
 			}
 
 			var got []document.Document
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				got = append(got, d)
@@ -382,21 +382,21 @@ func TestTableInsert(t *testing.T) {
 				test.out.Outer = test.in
 				tb, err := tx.GetTable("test")
 				require.NoError(t, err)
-				k, err := tb.EncodeValueToKey(document.NewIntegerValue(1))
+				k, err := tb.EncodeValue(document.NewIntegerValue(1))
 				require.NoError(t, err)
 				test.out.Doc.(*document.FieldBuffer).EncodedKey = k
 			}
 
 			ti := stream.TableInsert("test")
 
-			op, err := ti.Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err = ti.Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.out, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.out, env)
 			}
 		})
 	}
@@ -446,21 +446,21 @@ func TestTableReplace(t *testing.T) {
 			kk, err := test.in.Doc.GetByField("a")
 			require.NoError(t, err)
 
-			k, err := tb.EncodeValueToKey(kk)
+			k, err := tb.EncodeValue(kk)
 			require.NoError(t, err)
 			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
 
 			ti := stream.TableReplace("test")
 
-			op, err := ti.Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err = ti.Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.in, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, test.in, env)
 
 			res, err := tx.Query("SELECT * FROM test")
 			require.NoError(t, err)
@@ -524,20 +524,20 @@ func TestTableDelete(t *testing.T) {
 			kk, err := test.in.Doc.GetByField("a")
 			require.NoError(t, err)
 
-			k, err := tb.EncodeValueToKey(kk)
+			k, err := tb.EncodeValue(kk)
 			require.NoError(t, err)
 			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
 
 			ti := stream.TableDelete("test")
 
-			op, err := ti.Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err = ti.Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.in, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.in, env)
 			}
 
 			res, err := tx.Query("SELECT * FROM test")
@@ -584,11 +584,11 @@ func TestDistinct(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.NewDocumentIterator(test.values...))
+			s := stream.New(stream.Documents(test.values...))
 			s = s.Pipe(stream.Distinct())
 
 			var got []document.Document
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -635,14 +635,14 @@ func TestSet(t *testing.T) {
 
 			p, err := parser.ParsePath(test.path)
 			require.NoError(t, err)
-			op, err := stream.Set(p, test.e).Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err = stream.Set(p, test.e).Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.out, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.out, env)
 			}
 		})
 	}
@@ -672,14 +672,14 @@ func TestUnset(t *testing.T) {
 				test.out.Outer = test.in
 			}
 
-			op, err := stream.Unset(test.path).Op()
-			require.NoError(t, err)
-			env, err := op(test.in)
+			err := stream.Unset(test.path).Iterate(test.in, func(out *expr.Environment) error {
+				require.Equal(t, test.out, out)
+				return nil
+			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, test.out, env)
 			}
 		})
 	}

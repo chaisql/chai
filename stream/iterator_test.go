@@ -5,74 +5,25 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTableIterator(t *testing.T) {
+func TestSeqScan(t *testing.T) {
 	tests := []struct {
 		name                  string
 		docsInTable, expected testutil.Docs
-		min, max              *document.Value
-		reverse               bool
 		fails                 bool
 	}{
 		{name: "empty"},
 		{
-			"no range",
+			"ok",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			nil, nil, false, false,
-		},
-		{
-			"max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`),
-			nil, testutil.MakeValue(t, 2),
-			false, false,
-		},
-		{
-			"min",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeValue(t, 1), nil,
-			false, false,
-		},
-		{
-			"min/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`),
-			testutil.MakeValue(t, 1), testutil.MakeValue(t, 2),
-			false, false,
-		},
-		{
-			"reverse/no range",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
-			nil, nil, true, false,
-		},
-		{
-			"reverse/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
-			nil, testutil.MakeValue(t, 2),
-			true, false,
-		},
-		{
-			"reverse/min",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`),
-			testutil.MakeValue(t, 1), nil,
-			true, false,
-		},
-		{
-			"reverse/min/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`),
-			testutil.MakeValue(t, 1), testutil.MakeValue(t, 2),
-			true, false,
+			false,
 		},
 	}
 
@@ -94,24 +45,141 @@ func TestTableIterator(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			opts := stream.SeqScanOptions{
-				Reverse: test.reverse,
+			op := stream.SeqScan("test")
+			var in expr.Environment
+			in.Tx = tx.Transaction
+
+			var i int
+			var got testutil.Docs
+			err = op.Iterate(&in, func(env *expr.Environment) error {
+				d, ok := env.GetDocument()
+				require.True(t, ok)
+				var fb document.FieldBuffer
+				err = fb.Copy(d)
+				require.NoError(t, err)
+				got = append(got, &fb)
+				i++
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, len(test.expected), i)
+				test.expected.RequireEqual(t, got)
 			}
-			if test.min != nil {
-				opts.Min = *test.min
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, `seqScan(test)`, stream.SeqScan("test").String())
+	})
+}
+
+func TestPkScan(t *testing.T) {
+	tests := []struct {
+		name                  string
+		docsInTable, expected testutil.Docs
+		ranges                stream.Ranges
+		reverse               bool
+		fails                 bool
+	}{
+		{name: "empty"},
+		{
+			"no range",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			nil, false, false,
+		},
+		{
+			"max",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 1}`),
+			stream.Ranges{
+				{Max: parser.MustParseExpr("2")},
+			},
+			false, false,
+		},
+		{
+			"min",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1")},
+			},
+			false, false,
+		},
+		{
+			"min/max",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 1}`),
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+			},
+			false, false,
+		},
+		{
+			"reverse/no range",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
+			nil, true, false,
+		},
+		{
+			"reverse/max",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
+			stream.Ranges{
+				{Max: parser.MustParseExpr("2")},
+			},
+			true, false,
+		},
+		{
+			"reverse/min",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 2}`),
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1")},
+			},
+			true, false,
+		},
+		{
+			"reverse/min/max",
+			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(`{"a": 2}`),
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+			},
+			true, false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec("CREATE TABLE test (a INTEGER NOT NULL PRIMARY KEY)")
+			require.NoError(t, err)
+
+			for _, doc := range test.docsInTable {
+				err = db.Exec("INSERT INTO test VALUES ?", doc)
+				require.NoError(t, err)
 			}
-			if test.max != nil {
-				opts.Max = *test.max
-			}
-			it := stream.SeqScanWithOptions("test", opts)
-			s := stream.New(it)
+
+			tx, err := db.Begin(false)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			op := stream.PkScan("test", test.ranges...)
+			op.Reverse = test.reverse
 			var env expr.Environment
 			env.Tx = tx.Transaction
 			env.Params = []expr.Param{{Name: "foo", Value: 1}}
 
 			var i int
 			var got testutil.Docs
-			err = s.Iterate(&env, func(env *expr.Environment) error {
+			err = op.Iterate(&env, func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -137,27 +205,26 @@ func TestTableIterator(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `+test[1:2]`, stream.SeqScanWithOptions("test", stream.SeqScanOptions{
-			Min: *testutil.MakeValue(t, 1),
-			Max: *testutil.MakeValue(t, 2),
+		require.Equal(t, `pkScan('test', [1, 2])`, stream.PkScan("test", stream.Range{
+			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
 		}).String())
 
-		require.Equal(t, `-test[1:]`, stream.SeqScanWithOptions("test", stream.SeqScanOptions{
-			Min:     *testutil.MakeValue(t, 1),
-			Reverse: true,
-		}).String())
+		op := stream.PkScan("test",
+			stream.Range{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"), Exclusive: true},
+			stream.Range{Min: parser.MustParseExpr("10"), Exact: true},
+			stream.Range{Min: parser.MustParseExpr("100")},
+		)
+		op.Reverse = true
 
-		require.Equal(t, `-test[:]`, stream.SeqScanWithOptions("test", stream.SeqScanOptions{
-			Reverse: true,
-		}).String())
+		require.Equal(t, `pkScanReverse('test', [1, 2, true], 10, [100, -1])`, op.String())
 	})
 }
 
-func TestIndexIterator(t *testing.T) {
+func TestIndexScan(t *testing.T) {
 	tests := []struct {
 		name                  string
 		docsInTable, expected testutil.Docs
-		min, max              *document.Value
+		ranges                stream.Ranges
 		reverse               bool
 		fails                 bool
 	}{
@@ -166,54 +233,66 @@ func TestIndexIterator(t *testing.T) {
 			"no range",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			nil, nil, false, false,
+			nil, false, false,
 		},
 		{
 			"max",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 1}`),
-			nil, testutil.MakeValue(t, 2),
+			stream.Ranges{
+				{Max: parser.MustParseExpr("2")},
+			},
 			false, false,
 		},
 		{
 			"min",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeValue(t, 1), nil,
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1")},
+			},
 			false, false,
 		},
 		{
 			"min/max",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 1}`),
-			testutil.MakeValue(t, 1), testutil.MakeValue(t, 2),
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+			},
 			false, false,
 		},
 		{
 			"reverse/no range",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
-			nil, nil, true, false,
+			nil, true, false,
 		},
 		{
 			"reverse/max",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
-			nil, testutil.MakeValue(t, 2),
+			stream.Ranges{
+				{Max: parser.MustParseExpr("2")},
+			},
 			true, false,
 		},
 		{
 			"reverse/min",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 2}`),
-			testutil.MakeValue(t, 1), nil,
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1")},
+			},
 			true, false,
 		},
 		{
 			"reverse/min/max",
 			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(`{"a": 2}`),
-			testutil.MakeValue(t, 1), testutil.MakeValue(t, 2),
+			stream.Ranges{
+				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+			},
 			true, false,
 		},
 	}
@@ -236,24 +315,15 @@ func TestIndexIterator(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			opts := stream.IndexScanOptions{
-				Reverse: test.reverse,
-			}
-			if test.min != nil {
-				opts.Min = *test.min
-			}
-			if test.max != nil {
-				opts.Max = *test.max
-			}
-			it := stream.IndexScanWithOptions("idx_test_a", opts)
+			op := stream.IndexScan("test", test.ranges...)
+			op.Reverse = test.reverse
 			var env expr.Environment
 			env.Tx = tx.Transaction
 			env.Params = []expr.Param{{Name: "foo", Value: 1}}
-			s := stream.New(it)
 
 			var i int
 			var got testutil.Docs
-			err = s.Iterate(&env, func(env *expr.Environment) error {
+			err = op.Iterate(&env, func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -279,18 +349,15 @@ func TestIndexIterator(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `+test[1:2]`, stream.IndexScanWithOptions("test", stream.IndexScanOptions{
-			Min: *testutil.MakeValue(t, 1),
-			Max: *testutil.MakeValue(t, 2),
+		require.Equal(t, `+test[1:2]`, stream.PkScan("test", stream.Range{
+			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
 		}).String())
 
-		require.Equal(t, `-test[1:]`, stream.IndexScanWithOptions("test", stream.IndexScanOptions{
-			Min:     *testutil.MakeValue(t, 1),
-			Reverse: true,
-		}).String())
+		op := stream.PkScan("test", stream.Range{
+			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
+		})
+		op.Reverse = true
 
-		require.Equal(t, `-test[:]`, stream.IndexScanWithOptions("test", stream.IndexScanOptions{
-			Reverse: true,
-		}).String())
+		require.Equal(t, `-test[1:]`, op.String())
 	})
 }
