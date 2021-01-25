@@ -3,8 +3,8 @@ package parser
 import (
 	"testing"
 
-	"github.com/genjidb/genji/sql/planner"
-	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,111 +12,51 @@ func TestParserUpdate(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected *planner.Tree
+		expected *stream.Stream
 		errored  bool
 	}{
 		{"SET/No cond", "UPDATE test SET a = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						parsePath(t, "a"), expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Set(document.Path(parsePath(t, "a")), MustParseExpr("1"))).
+				Pipe(stream.TableReplace("foo")),
+			false,
+		},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewSetNode(
-							planner.NewSelectionNode(
-								planner.NewTableInputNode("test"),
-								expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-							),
-							parsePath(t, "a"), expr.IntegerValue(1),
-						),
-						parsePath(t, "b"), expr.IntegerValue(2),
-					),
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Set(document.Path(parsePath(t, "a")), MustParseExpr("1"))).
+				Pipe(stream.Set(document.Path(parsePath(t, "b")), MustParseExpr("2"))).
+				Pipe(stream.TableReplace("foo")),
+			false,
+		},
 		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						parsePath(t, "`   some \"path\" `"), expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Set(document.Path(parsePath(t, "`   some \"path\" `")), MustParseExpr("1"))).
+				Pipe(stream.TableReplace("foo")),
+			false,
+		},
 		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						parsePath(t, "a.b"), expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
-		{"SET/No cond nested path with backquotes", "UPDATE test SET a.` b `.c = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						parsePath(t, "a.` b `.c"), expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
-		{"SET/No cond array index", "UPDATE test SET a[1] = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						parsePath(t, "a[1]"), expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
-		{"SET/No cond nested array index", "UPDATE test SET a.b[100][10].c = 1",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewSetNode(
-						planner.NewTableInputNode("test"),
-						parsePath(t, "a.b[100][10].c"), expr.IntegerValue(1),
-					),
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Set(document.Path(parsePath(t, "a.b")), MustParseExpr("1"))).
+				Pipe(stream.TableReplace("foo")),
+			false,
+		},
 		{"UNSET/No cond", "UPDATE test UNSET a",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewUnsetNode(
-						planner.NewTableInputNode("test"),
-						"a",
-					),
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Unset("a")).
+				Pipe(stream.TableReplace("foo")),
+			false,
+		},
 		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
-			planner.NewTree(
-				planner.NewReplacementNode(
-					planner.NewUnsetNode(
-						planner.NewUnsetNode(
-							planner.NewSelectionNode(
-								planner.NewTableInputNode("test"),
-								expr.Eq(expr.Path(parsePath(t, "age")), expr.IntegerValue(10)),
-							),
-							"a",
-						),
-						"b",
-					),
-					"test",
-				)),
-			false},
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Unset("a")).
+				Pipe(stream.Unset("b")).
+				Pipe(stream.TableReplace("foo")),
+			false,
+		},
 		{"Trailing comma", "UPDATE test SET a = 1, WHERE age = 10", nil, true},
 		{"No SET", "UPDATE test WHERE age = 10", nil, true},
 		{"No pair", "UPDATE test SET WHERE age = 10", nil, true},

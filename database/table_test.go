@@ -320,7 +320,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual(document.Value{}, func(val, k []byte, isEqual bool) error {
+		err = idx.AscendGreaterOrEqual(document.Value{}, func(val, k []byte) error {
 			switch count {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
@@ -730,7 +730,7 @@ func TestTableReIndex(t *testing.T) {
 
 		countIndexElems := func(idx *database.Index) int {
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
+			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
 				i++
 				return nil
 			})
