@@ -156,11 +156,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 				return err
 			}
 
-			if stp.Elem().Kind() == reflect.Ptr {
-				sref = reflect.Append(sref, newV)
-			} else {
-				sref = reflect.Append(sref, reflect.Indirect(newV))
-			}
+			sref = reflect.Append(sref, reflect.Indirect(newV))
 		}
 
 		return nil
