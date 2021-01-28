@@ -10,6 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func strPtr(s string) *string {
+	return &s
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 func TestScan(t *testing.T) {
 	now := time.Now()
 
@@ -67,7 +75,32 @@ func TestScan(t *testing.T) {
 		)).
 		Add("o", document.NewNullValue()).
 		Add("p", document.NewTextValue(now.Format(time.RFC3339Nano))).
-		Add("r", document.NewDocumentValue(codec.NewDocument(buf.Bytes())))
+		Add("r", document.NewDocumentValue(codec.NewDocument(buf.Bytes()))).
+		Add("s", document.NewArrayValue(document.NewValueBuffer(document.NewBoolValue(true), document.NewBoolValue(false)))).
+		Add("u", document.NewArrayValue(document.NewValueBuffer(
+			document.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo", document.NewTextValue("a")).
+					Add("bar", document.NewTextValue("b")),
+			),
+			document.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo", document.NewTextValue("c")).
+					Add("bar", document.NewTextValue("d")),
+			),
+		))).
+		Add("v", document.NewArrayValue(document.NewValueBuffer(
+			document.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo", document.NewTextValue("a")).
+					Add("bar", document.NewTextValue("b")),
+			),
+			document.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo", document.NewTextValue("c")).
+					Add("bar", document.NewTextValue("d")),
+			),
+		)))
 
 	type foo struct {
 		Foo string
@@ -92,8 +125,11 @@ func TestScan(t *testing.T) {
 	var o []int = []int{1, 2, 3}
 	var p time.Time
 	var r map[string]interface{}
+	var s []*bool
+	var u []foo
+	var v []*foo
 
-	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r)
+	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v)
 	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -105,10 +141,9 @@ func TestScan(t *testing.T) {
 	require.Equal(t, h, int64(10))
 	require.Equal(t, i, float64(10.5))
 	require.Equal(t, j, []bool{true})
-	bar := "bar"
-	require.Equal(t, foo{Foo: "foo", Pub: &bar}, k)
-	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, l)
-	require.Equal(t, &foo{Foo: "foo", Pub: &bar}, m)
+	require.Equal(t, foo{Foo: "foo", Pub: strPtr("bar")}, k)
+	require.Equal(t, &foo{Foo: "foo", Pub: strPtr("bar")}, l)
+	require.Equal(t, &foo{Foo: "foo", Pub: strPtr("bar")}, m)
 	require.Equal(t, map[string]string{"foo": "foo", "bar": "bar"}, n)
 	require.Equal(t, []int(nil), o)
 	require.Equal(t, now.Format(time.RFC3339Nano), p.Format(time.RFC3339Nano))
@@ -121,6 +156,10 @@ func TestScan(t *testing.T) {
 			},
 		},
 	}, r)
+	require.Equal(t, []*bool{boolPtr(true), boolPtr(false)}, s)
+	require.Equal(t, foo{Foo: "foo", Pub: strPtr("bar")}, k)
+	require.Equal(t, []foo{{Foo: "a", Pub: strPtr("b")}, {Foo: "c", Pub: strPtr("d")}}, u)
+	require.Equal(t, []*foo{{Foo: "a", Pub: strPtr("b")}, {Foo: "c", Pub: strPtr("d")}}, v)
 
 	t.Run("DocumentScanner", func(t *testing.T) {
 		var ds documentScanner
@@ -136,14 +175,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
 		require.NoError(t, err)
-		require.Len(t, m, 17)
+		require.Len(t, m, 20)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
 		require.NoError(t, err)
-		require.Len(t, m, 17)
+		require.Len(t, m, 20)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {
