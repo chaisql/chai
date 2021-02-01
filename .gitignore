@@ -23,3 +23,6 @@ profile.*
 # Databases
 *.db
 cmd/genji/genji
+
+# VS Code config
+.vscode/

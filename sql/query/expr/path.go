@@ -20,7 +20,6 @@ func (p Path) Eval(env *Environment) (document.Value, error) {
 	if !ok {
 		return nullLitteral, document.ErrFieldNotFound
 	}
-
 	dp := document.Path(p)
 
 	v, ok := env.Get(dp)

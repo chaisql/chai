@@ -267,7 +267,7 @@ func (a *sortableArray) Less(i, j int) (ok bool) {
 		return
 	}
 
-	return it-jt < 0
+	return it < jt
 }
 
 // SortArray creates a new sorted array.

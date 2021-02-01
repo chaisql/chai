@@ -4,9 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 )
 
@@ -27,6 +24,14 @@ func (s *Stream) Pipe(op Operator) *Stream {
 	}
 	s.Op = Pipe(s.Op, op)
 	return s
+}
+
+func (s *Stream) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+	if s.Op == nil {
+		return nil
+	}
+
+	return s.Op.Iterate(in, fn)
 }
 
 func (s *Stream) Remove(op Operator) {
@@ -76,6 +81,10 @@ func (s *Stream) InsertBefore(op, newOp Operator) Operator {
 }
 
 func (s *Stream) String() string {
+	if s.Op == nil {
+		return ""
+	}
+
 	var sb strings.Builder
 
 	for op := s.First(); op != nil; op = op.GetNext() {
@@ -102,45 +111,4 @@ func InsertAfter(op, newOp Operator) Operator {
 	newOp.SetPrev(op)
 
 	return newOp
-}
-
-// Statement is a query.Statement using a Stream.
-type Statement struct {
-	Stream   *Stream
-	ReadOnly bool
-}
-
-// Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
-// the result.
-func (s *Statement) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
-	env := expr.Environment{
-		Tx:     tx,
-		Params: params,
-	}
-
-	return query.Result{
-		Iterator: document.IteratorFunc(func(fn func(d document.Document) error) error {
-			err := s.Stream.Op.Iterate(&env, func(env *expr.Environment) error {
-				d, ok := env.GetDocument()
-				if !ok {
-					return nil
-				}
-
-				return fn(d)
-			})
-			if err == ErrStreamClosed {
-				err = nil
-			}
-			return err
-		}),
-	}, nil
-}
-
-// IsReadOnly reports whether the stream will modify the database or only read it.
-func (s *Statement) IsReadOnly() bool {
-	return s.ReadOnly
-}
-
-func (s *Statement) String() string {
-	return s.Stream.String()
 }

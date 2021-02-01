@@ -145,21 +145,21 @@ func TestPrecalculateExprRule(t *testing.T) {
 		},
 		{
 			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
-			expr.KVPairs{
+			&expr.KVPairs{Pairs: []expr.KVPair{
 				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
 				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
-			},
-			expr.KVPairs{
+			}},
+			&expr.KVPairs{Pairs: []expr.KVPair{
 				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
 				{K: "b", V: expr.DoubleValue(-39)},
-			},
+			}},
 		},
 		{
 			`constant kvpair: {"a": 3, "b": 1 - 40} -> document({"a": 3, "b": -39})`,
-			expr.KVPairs{
+			&expr.KVPairs{Pairs: []expr.KVPair{
 				{K: "a", V: expr.IntegerValue(3)},
 				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
-			},
+			}},
 			expr.LiteralValue(document.NewDocumentValue(document.NewFieldBuffer().
 				Add("a", document.NewIntegerValue(3)).
 				Add("b", document.NewDoubleValue(-39)),
@@ -194,9 +194,17 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 			stream.New(stream.SeqScan("foo")),
 		},
 		{
+			"truthy constant expr with IN",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(expr.In(
+				expr.Path(document.NewPath("a")),
+				expr.ArrayValue(document.NewValueBuffer()),
+			))),
+			&stream.Stream{},
+		},
+		{
 			"falsy constant expr",
 			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("0"))),
-			nil,
+			&stream.Stream{},
 		},
 	}
 
@@ -234,6 +242,14 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 				Pipe(stream.Distinct()),
 			stream.New(stream.SeqScan("foo")).
 				Pipe(stream.Project(parser.MustParseExpr("a"))),
+		},
+		{
+			"primary key with alias",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(parser.MustParseExpr("a AS A"))).
+				Pipe(stream.Distinct()),
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(parser.MustParseExpr("a AS A"))),
 		},
 		{
 			"unique index",
@@ -285,65 +301,70 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 		name           string
 		root, expected *stream.Stream
 	}{
-		// {
-		// 	"non-indexed path",
-		// 	stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("d = 1"))),
-		// 	stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("d = 1"))),
-		// },
-		// {
-		// 	"FROM foo WHERE a = 1",
-		// 	stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
-		// 	stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("1"), Exact: true})),
-		// },
-		// {
-		// 	"FROM foo WHERE a = 1 AND b = 2",
-		// 	stream.New(stream.SeqScan("foo")).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-		// 	stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: parser.MustParseExpr("2"), Exact: true})).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
-		// },
-		// {
-		// 	"FROM foo WHERE c = 3 AND b = 2",
-		// 	stream.New(stream.SeqScan("foo")).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("c = 3"))).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-		// 	stream.New(stream.IndexScan("idx_foo_c", st.Range{Min: parser.MustParseExpr("3"), Exact: true})).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-		// },
-		// {
-		// 	"FROM foo WHERE c > 3 AND b = 2",
-		// 	stream.New(stream.SeqScan("foo")).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("c > 3"))).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-		// 	stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: parser.MustParseExpr("2"), Exact: true})).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("c > 3"))),
-		// },
-		// {
-		// 	"SELECT a FROM foo WHERE c = 3 AND b = 2",
-		// 	stream.New(stream.SeqScan("foo")).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("c = 3"))).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
-		// 		Pipe(stream.Project(parser.MustParseExpr("a"))),
-		// 	stream.New(stream.IndexScan("idx_foo_c", st.Range{Min: parser.MustParseExpr("3"), Exact: true})).
-		// 		Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
-		// 		Pipe(stream.Project(parser.MustParseExpr("a"))),
-		// },
+		{
+			"non-indexed path",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("d = 1"))),
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("d = 1"))),
+		},
+		{
+			"FROM foo WHERE a = 1",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
+			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("1"), Exact: true})),
+		},
+		{
+			"FROM foo WHERE a = 1 AND b = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+			stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: parser.MustParseExpr("2"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
+		},
+		{
+			"FROM foo WHERE c = 3 AND b = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("c = 3"))).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+			stream.New(stream.IndexScan("idx_foo_c", st.Range{Min: parser.MustParseExpr("3"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+		},
+		{
+			"FROM foo WHERE c > 3 AND b = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("c > 3"))).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+			stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: parser.MustParseExpr("2"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("c > 3"))),
+		},
+		{
+			"SELECT a FROM foo WHERE c = 3 AND b = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("c = 3"))).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			stream.New(stream.IndexScan("idx_foo_c", st.Range{Min: parser.MustParseExpr("3"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(stream.Project(parser.MustParseExpr("a"))),
+		},
 		{
 			"FROM foo WHERE a IN [1, 2]",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a IN [1, 2]"))),
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(
+				expr.In(
+					parser.MustParseExpr("a"),
+					expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+				),
+			)),
 			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("1"), Exact: true}, st.Range{Min: parser.MustParseExpr("2"), Exact: true})),
 		},
-		// {
-		// 	"FROM foo WHERE 1 IN a",
-		// 	stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
-		// 	stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
-		// },
-		// {
-		// 	"FROM foo WHERE a > 10",
-		// 	stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a > 10"))),
-		// 	stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("10"), Exclusive: true})),
-		// },
+		{
+			"FROM foo WHERE 1 IN a",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
+		},
+		{
+			"FROM foo WHERE a > 10",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a > 10"))),
+			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("10"), Exclusive: true})),
+		},
 	}
 
 	for _, test := range tests {
@@ -357,14 +378,14 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			defer tx.Rollback()
 
 			err = tx.Exec(`
-				CREATE TABLE foo;
+				CREATE TABLE foo (k INT PRIMARY KEY);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
-				INSERT INTO foo (a, b, c, d) VALUES
-					(1, 1, 1, 1),
-					(2, 2, 2, 2),
-					(3, 3, 3, 3)
+				INSERT INTO foo (k, a, b, c, d) VALUES
+					(1, 1, 1, 1, 1),
+					(2, 2, 2, 2, 2),
+					(3, 3, 3, 3, 3)
 			`)
 			require.NoError(t, err)
 

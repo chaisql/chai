@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,28 +23,28 @@ func TestProject(t *testing.T) {
 		{
 			"Constant",
 			[]expr.Expr{parser.MustParseExpr("10")},
-			docFromJSON(`{"a":1,"b":[true]}`),
+			testutil.MakeDocument(t, `{"a":1,"b":[true]}`),
 			`{"10":10}`,
 			false,
 		},
 		{
 			"Wildcard",
 			[]expr.Expr{expr.Wildcard{}},
-			docFromJSON(`{"a":1,"b":[true]}`),
+			testutil.MakeDocument(t, `{"a":1,"b":[true]}`),
 			`{"a":1,"b":[true]}`,
 			false,
 		},
 		{
 			"Multiple",
 			[]expr.Expr{expr.Wildcard{}, expr.Wildcard{}, parser.MustParseExpr("10")},
-			docFromJSON(`{"a":1,"b":[true]}`),
+			testutil.MakeDocument(t, `{"a":1,"b":[true]}`),
 			`{"a":1,"b":[true],"a":1,"b":[true],"10":10}`,
 			false,
 		},
 		{
 			"Named",
 			[]expr.Expr{&expr.NamedExpr{Expr: parser.MustParseExpr("10"), ExprName: "foo"}},
-			docFromJSON(`{"a":1,"b":[true]}`),
+			testutil.MakeDocument(t, `{"a":1,"b":[true]}`),
 			`{"foo":10}`,
 			false,
 		},

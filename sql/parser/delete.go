@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
@@ -8,7 +9,7 @@ import (
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
 // This function assumes the DELETE token has already been consumed.
-func (p *Parser) parseDeleteStatement() (*stream.Statement, error) {
+func (p *Parser) parseDeleteStatement() (*planner.Statement, error) {
 	var cfg deleteConfig
 	var err error
 
@@ -40,7 +41,7 @@ type deleteConfig struct {
 	WhereExpr expr.Expr
 }
 
-func (cfg deleteConfig) ToStream() *stream.Statement {
+func (cfg deleteConfig) ToStream() *planner.Statement {
 	s := stream.New(stream.SeqScan(cfg.TableName))
 
 	if cfg.WhereExpr != nil {
@@ -49,7 +50,7 @@ func (cfg deleteConfig) ToStream() *stream.Statement {
 
 	s = s.Pipe(stream.TableDelete(cfg.TableName))
 
-	return &stream.Statement{
+	return &planner.Statement{
 		Stream:   s,
 		ReadOnly: false,
 	}

@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
@@ -10,7 +11,7 @@ import (
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (*stream.Statement, error) {
+func (p *Parser) parseInsertStatement() (*planner.Statement, error) {
 	var cfg insertConfig
 	var err error
 
@@ -111,24 +112,25 @@ func (p *Parser) parseDocumentsWithFields(fields []string) ([]expr.Expr, error) 
 }
 
 // parseParamOrDocument parses either a parameter or a document.
-func (p *Parser) parseExprListWithFields(fields []string) (expr.KVPairs, error) {
+func (p *Parser) parseExprListWithFields(fields []string) (*expr.KVPairs, error) {
 	list, err := p.parseExprList(scanner.LPAREN, scanner.RPAREN)
 	if err != nil {
 		return nil, err
 	}
 
-	pairs := make(expr.KVPairs, len(list))
+	var pairs expr.KVPairs
+	pairs.Pairs = make([]expr.KVPair, len(list))
 
 	if len(fields) != len(list) {
 		return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
 	}
 
 	for i := range list {
-		pairs[i].K = fields[i]
-		pairs[i].V = list[i]
+		pairs.Pairs[i].K = fields[i]
+		pairs.Pairs[i].V = list[i]
 	}
 
-	return pairs, nil
+	return &pairs, nil
 }
 
 // parseExprListValues parses the "VALUES" clause of the query, if it exists.
@@ -185,12 +187,12 @@ type insertConfig struct {
 	Values    []expr.Expr
 }
 
-func (cfg *insertConfig) ToStream() *stream.Statement {
+func (cfg *insertConfig) ToStream() *planner.Statement {
 	s := stream.New(stream.Expressions(cfg.Values...))
 
 	s = s.Pipe(stream.TableInsert(cfg.TableName))
 
-	return &stream.Statement{
+	return &planner.Statement{
 		Stream:   s,
 		ReadOnly: false,
 	}

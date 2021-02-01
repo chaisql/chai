@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
@@ -9,7 +10,7 @@ import (
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (*stream.Statement, error) {
+func (p *Parser) parseUpdateStatement() (*planner.Statement, error) {
 	var cfg updateConfig
 	var err error
 
@@ -133,7 +134,7 @@ type updateSetPair struct {
 }
 
 // ToTree turns the statement into a stream.
-func (cfg updateConfig) ToStream() *stream.Statement {
+func (cfg updateConfig) ToStream() *planner.Statement {
 	s := stream.New(stream.SeqScan(cfg.TableName))
 
 	if cfg.WhereExpr != nil {
@@ -152,7 +153,7 @@ func (cfg updateConfig) ToStream() *stream.Statement {
 
 	s = s.Pipe(stream.TableReplace(cfg.TableName))
 
-	return &stream.Statement{
+	return &planner.Statement{
 		Stream:   s,
 		ReadOnly: false,
 	}

@@ -136,24 +136,31 @@ func (p KVPair) String() string {
 }
 
 // KVPairs is a list of KVPair.
-type KVPairs []KVPair
+type KVPairs struct {
+	Pairs          []KVPair
+	SelfReferenced bool
+}
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (kvp KVPairs) IsEqual(other Expr) bool {
-	o, ok := other.(KVPairs)
+func (kvp *KVPairs) IsEqual(other Expr) bool {
+	o, ok := other.(*KVPairs)
 	if !ok {
 		return false
 	}
-	if len(kvp) != len(o) {
+	if kvp.SelfReferenced != o.SelfReferenced {
 		return false
 	}
 
-	for i := range kvp {
-		if kvp[i].K != o[i].K {
+	if len(kvp.Pairs) != len(o.Pairs) {
+		return false
+	}
+
+	for i := range kvp.Pairs {
+		if kvp.Pairs[i].K != o.Pairs[i].K {
 			return false
 		}
-		if !Equal(kvp[i].V, o[i].V) {
+		if !Equal(kvp.Pairs[i].V, o.Pairs[i].V) {
 			return false
 		}
 	}
@@ -164,11 +171,13 @@ func (kvp KVPairs) IsEqual(other Expr) bool {
 // Eval turns a list of KVPairs into a document.
 func (kvp KVPairs) Eval(env *Environment) (document.Value, error) {
 	var fb document.FieldBuffer
-	if _, ok := env.GetDocument(); !ok {
-		env.SetDocument(&fb)
+	if kvp.SelfReferenced {
+		if _, ok := env.GetDocument(); !ok {
+			env.SetDocument(&fb)
+		}
 	}
 
-	for _, kv := range kvp {
+	for _, kv := range kvp.Pairs {
 		v, err := kv.V.Eval(env)
 		if err != nil {
 			return document.Value{}, err
@@ -185,7 +194,7 @@ func (kvp KVPairs) String() string {
 	var b strings.Builder
 
 	b.WriteRune('{')
-	for i, p := range kvp {
+	for i, p := range kvp.Pairs {
 		if i > 0 {
 			b.WriteString(", ")
 		}

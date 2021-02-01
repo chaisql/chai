@@ -117,3 +117,49 @@ func TestQueryDocument(t *testing.T) {
 		require.Nil(t, r)
 	})
 }
+
+func BenchmarkSelect(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
+			db, err := genji.Open(":memory:")
+			require.NoError(b, err)
+
+			err = db.Exec("CREATE TABLE foo")
+			require.NoError(b, err)
+
+			for i := 0; i < size; i++ {
+				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
+				require.NoError(b, err)
+			}
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				res, _ := db.Query("SELECT * FROM foo")
+				res.Iterate(func(d document.Document) error { return nil })
+			}
+		})
+	}
+}
+
+func BenchmarkSelectWhere(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
+			db, err := genji.Open(":memory:")
+			require.NoError(b, err)
+
+			err = db.Exec("CREATE TABLE foo")
+			require.NoError(b, err)
+
+			for i := 0; i < size; i++ {
+				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
+				require.NoError(b, err)
+			}
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				res, _ := db.Query("SELECT b FROM foo WHERE a > 0")
+				res.Iterate(func(d document.Document) error { return nil })
+			}
+		})
+	}
+}

@@ -361,6 +361,10 @@ func (d *lazilyDecodedDocument) copyFromItem() error {
 	return err
 }
 
+func (d *lazilyDecodedDocument) MarshalJSON() ([]byte, error) {
+	return document.MarshalJSON(d)
+}
+
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (t *Table) Iterate(fn func(d document.Document) error) error {
@@ -410,7 +414,16 @@ func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, err
 	}
 
 	// it no primary key type is specified,
-	// encode keys regardless of type.
+	// and the value to encode is an integer
+	// convert it to a double.
+	if v.Type == document.IntegerValue {
+		v, err = v.CastAsDouble()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// encode key regardless of type.
 	var buf bytes.Buffer
 	err = document.NewValueEncoder(&buf).Encode(v)
 	if err != nil {
@@ -444,7 +457,7 @@ func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.D
 	}
 
 	// if there is a pivot, convert it to the right type
-	if !pivot.Type.IsZero() {
+	if !pivot.Type.IsZero() && pivot.V != nil {
 		var err error
 		seek, err = t.encodeValueToKey(info, pivot)
 		if err != nil {

@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,14 @@ func TestParserSelect(t *testing.T) {
 		{"NoTable", "SELECT 1",
 			stream.New(stream.Project(parseNamedExpr(t, "1"))),
 			false,
+		},
+		{"NoTable/path", "SELECT a",
+			nil,
+			true,
+		},
+		{"NoTable/wildcard", "SELECT *",
+			nil,
+			true,
 		},
 		{"Wildcard with no FORM", "SELECT *", nil, true},
 		{"NoTableWithTuple", "SELECT (1, 2)",
@@ -155,7 +164,7 @@ func TestParserSelect(t *testing.T) {
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)
-				require.EqualValues(t, &stream.Statement{Stream: test.expected, ReadOnly: true}, q.Statements[0])
+				require.EqualValues(t, &planner.Statement{Stream: test.expected, ReadOnly: true}, q.Statements[0])
 			} else {
 				require.Error(t, err)
 			}

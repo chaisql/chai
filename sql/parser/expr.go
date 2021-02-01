@@ -348,15 +348,18 @@ func (p *Parser) parseType() (document.ValueType, error) {
 }
 
 // parseDocument parses a document
-func (p *Parser) parseDocument() (expr.KVPairs, error) {
+func (p *Parser) parseDocument() (*expr.KVPairs, error) {
 	// Parse { token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"{"}, pos)
 	}
 
 	var pairs expr.KVPairs
+	pairs.SelfReferenced = true
 	var pair expr.KVPair
 	var err error
+
+	fields := make(map[string]struct{})
 
 	// Parse kv pairs.
 	for {
@@ -365,7 +368,12 @@ func (p *Parser) parseDocument() (expr.KVPairs, error) {
 			break
 		}
 
-		pairs = append(pairs, pair)
+		if _, ok := fields[pair.K]; ok {
+			return nil, fmt.Errorf("duplicate field %q", pair.K)
+		}
+		fields[pair.K] = struct{}{}
+
+		pairs.Pairs = append(pairs.Pairs, pair)
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
@@ -378,7 +386,7 @@ func (p *Parser) parseDocument() (expr.KVPairs, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"}"}, pos)
 	}
 
-	return pairs, nil
+	return &pairs, nil
 }
 
 // parseKV parses a key-value pair in the form IDENT : Expr.

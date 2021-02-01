@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -12,17 +13,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestExpressions(t *testing.T) {
+	tests := []struct {
+		e      expr.Expr
+		output document.Document
+		fails  bool
+	}{
+		{parser.MustParseExpr("3 + 4"), nil, true},
+		{parser.MustParseExpr("{a: 3 + 4}"), testutil.MakeDocument(t, `{"a": 7}`), false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+			s := stream.New(stream.Expressions(test.e))
+
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+				d, ok := env.GetDocument()
+				require.True(t, ok)
+				require.Equal(t, d, test.output)
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.Expressions(parser.MustParseExpr("1 + 1"), parser.MustParseExpr("pk()")).String(), "exprs(1 + 1, pk())")
+	})
+}
+
 func TestSeqScan(t *testing.T) {
 	tests := []struct {
 		name                  string
 		docsInTable, expected testutil.Docs
+		reverse               bool
 		fails                 bool
 	}{
 		{name: "empty"},
 		{
 			"ok",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			false,
+			false,
+		},
+		{
+			"reverse",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			true,
 			false,
 		},
 	}
@@ -46,6 +89,7 @@ func TestSeqScan(t *testing.T) {
 			defer tx.Rollback()
 
 			op := stream.SeqScan("test")
+			op.Reverse = test.reverse
 			var in expr.Environment
 			in.Tx = tx.Transaction
 
@@ -87,23 +131,32 @@ func TestPkScan(t *testing.T) {
 		{name: "empty"},
 		{
 			"no range",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			nil, false, false,
 		},
 		{
-			"max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`),
+			"max:2",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				{Max: parser.MustParseExpr("2")},
 			},
 			false, false,
 		},
 		{
+			"max:1",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			stream.Ranges{
+				{Max: parser.MustParseExpr("1")},
+			},
+			false, false,
+		},
+		{
 			"min",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1")},
 			},
@@ -111,8 +164,8 @@ func TestPkScan(t *testing.T) {
 		},
 		{
 			"min/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
 			},
@@ -120,14 +173,14 @@ func TestPkScan(t *testing.T) {
 		},
 		{
 			"reverse/no range",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			nil, true, false,
 		},
 		{
 			"reverse/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				{Max: parser.MustParseExpr("2")},
 			},
@@ -135,8 +188,8 @@ func TestPkScan(t *testing.T) {
 		},
 		{
 			"reverse/min",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1")},
 			},
@@ -144,8 +197,8 @@ func TestPkScan(t *testing.T) {
 		},
 		{
 			"reverse/min/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
 			},
@@ -205,7 +258,7 @@ func TestPkScan(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `pkScan('test', [1, 2])`, stream.PkScan("test", stream.Range{
+		require.Equal(t, `pkScan("test", [1, 2])`, stream.PkScan("test", stream.Range{
 			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
 		}).String())
 
@@ -216,7 +269,7 @@ func TestPkScan(t *testing.T) {
 		)
 		op.Reverse = true
 
-		require.Equal(t, `pkScanReverse('test', [1, 2, true], 10, [100, -1])`, op.String())
+		require.Equal(t, `pkScanReverse("test", [1, 2, true], 10, [100, -1])`, op.String())
 	})
 }
 
@@ -231,23 +284,32 @@ func TestIndexScan(t *testing.T) {
 		{name: "empty"},
 		{
 			"no range",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			nil, false, false,
 		},
 		{
-			"max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`),
+			"max:2",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				{Max: parser.MustParseExpr("2")},
 			},
 			false, false,
 		},
 		{
+			"max:1",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			stream.Ranges{
+				{Max: parser.MustParseExpr("1")},
+			},
+			false, false,
+		},
+		{
 			"min",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1")},
 			},
@@ -255,8 +317,8 @@ func TestIndexScan(t *testing.T) {
 		},
 		{
 			"min/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
 			},
@@ -264,14 +326,14 @@ func TestIndexScan(t *testing.T) {
 		},
 		{
 			"reverse/no range",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			nil, true, false,
 		},
 		{
 			"reverse/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				{Max: parser.MustParseExpr("2")},
 			},
@@ -279,8 +341,8 @@ func TestIndexScan(t *testing.T) {
 		},
 		{
 			"reverse/min",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1")},
 			},
@@ -288,8 +350,8 @@ func TestIndexScan(t *testing.T) {
 		},
 		{
 			"reverse/min/max",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(`{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
 			},
@@ -315,7 +377,7 @@ func TestIndexScan(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			op := stream.IndexScan("test", test.ranges...)
+			op := stream.IndexScan("idx_test_a", test.ranges...)
 			op.Reverse = test.reverse
 			var env expr.Environment
 			env.Tx = tx.Transaction
@@ -349,15 +411,15 @@ func TestIndexScan(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `+test[1:2]`, stream.PkScan("test", stream.Range{
+		require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.Range{
 			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
 		}).String())
 
-		op := stream.PkScan("test", stream.Range{
+		op := stream.IndexScan("idx_test_a", stream.Range{
 			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
 		})
 		op.Reverse = true
 
-		require.Equal(t, `-test[1:]`, op.String())
+		require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
 	})
 }

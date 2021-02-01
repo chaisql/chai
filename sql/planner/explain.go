@@ -22,18 +22,25 @@ type ExplainStmt struct {
 // Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
 func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
 	switch t := s.Statement.(type) {
-	case *stream.Statement:
+	case *Statement:
 		s, err := Optimize(t.Stream, tx)
 		if err != nil {
 			return query.Result{}, err
 		}
 
-		newStatement := stream.Statement{
+		var plan string
+		if s != nil {
+			plan = s.String()
+		} else {
+			plan = "<no exec>"
+		}
+
+		newStatement := Statement{
 			Stream: &stream.Stream{
 				Op: stream.Project(
 					&expr.NamedExpr{
 						ExprName: "plan",
-						Expr:     expr.TextValue(s.String()),
+						Expr:     expr.TextValue(plan),
 					}),
 			},
 			ReadOnly: true,
