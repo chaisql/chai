@@ -101,7 +101,7 @@ func (op *HashAggregateOperator) String() string {
 		}
 	}
 
-	return fmt.Sprintf("aggregate(%s)", sb.String())
+	return fmt.Sprintf("hashAggregate(%s)", sb.String())
 }
 
 // newGroupEncoder returns a function that encodes the _group environment variable using a document.ValueEncoder.

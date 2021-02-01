@@ -78,8 +78,16 @@ func (db *DB) Exec(q string, args ...interface{}) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		er := res.Close()
+		if err == nil {
+			err = er
+		}
+	}()
 
-	return res.Close()
+	return res.Iterate(func(d document.Document) error {
+		return nil
+	})
 }
 
 // Query the database and return the result.
@@ -160,11 +168,19 @@ func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, e
 }
 
 // Exec a query against the database within tx and without returning the result.
-func (tx *Tx) Exec(q string, args ...interface{}) error {
+func (tx *Tx) Exec(q string, args ...interface{}) (err error) {
 	res, err := tx.Query(q, args...)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		er := res.Close()
+		if err == nil {
+			err = er
+		}
+	}()
 
-	return res.Close()
+	return res.Iterate(func(d document.Document) error {
+		return nil
+	})
 }

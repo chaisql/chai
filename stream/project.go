@@ -41,13 +41,13 @@ func (op *ProjectOperator) Iterate(in *expr.Environment, f func(out *expr.Enviro
 	})
 }
 
-func (m *ProjectOperator) String() string {
+func (op *ProjectOperator) String() string {
 	var b strings.Builder
 
 	b.WriteString("project(")
-	for i, e := range m.Exprs {
+	for i, e := range op.Exprs {
 		b.WriteString(e.(fmt.Stringer).String())
-		if i+1 < len(m.Exprs) {
+		if i+1 < len(op.Exprs) {
 			b.WriteString(", ")
 		}
 	}
@@ -61,9 +61,7 @@ type MaskDocument struct {
 }
 
 func (d *MaskDocument) GetByField(field string) (v document.Value, err error) {
-	for i := len(d.Exprs) - 1; i >= 0; i-- {
-		e := d.Exprs[i]
-
+	for _, e := range d.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()
 			if !ok {
@@ -91,25 +89,14 @@ func (d *MaskDocument) GetByField(field string) (v document.Value, err error) {
 }
 
 func (d *MaskDocument) Iterate(fn func(field string, value document.Value) error) error {
-	fields := make(map[string]struct{})
-
-	for i := len(d.Exprs) - 1; i >= 0; i-- {
-		e := d.Exprs[i]
-
+	for _, e := range d.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()
 			if !ok {
 				return nil
 			}
 
-			err := d.Iterate(func(field string, value document.Value) error {
-				if _, ok := fields[field]; ok {
-					return nil
-				}
-
-				fields[field] = struct{}{}
-				return fn(field, value)
-			})
+			err := d.Iterate(fn)
 			if err != nil {
 				return err
 			}
@@ -123,11 +110,6 @@ func (d *MaskDocument) Iterate(fn func(field string, value document.Value) error
 		} else {
 			field = e.(fmt.Stringer).String()
 		}
-
-		if _, ok := fields[field]; ok {
-			continue
-		}
-		fields[field] = struct{}{}
 
 		v, err := e.Eval(d.Env)
 		if err != nil {
@@ -146,4 +128,8 @@ func (d *MaskDocument) Iterate(fn func(field string, value document.Value) error
 func (d *MaskDocument) String() string {
 	b, _ := document.MarshalJSON(d)
 	return string(b)
+}
+
+func (d *MaskDocument) MarshalJSON() ([]byte, error) {
+	return document.MarshalJSON(d)
 }

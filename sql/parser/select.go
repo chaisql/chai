@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -73,13 +74,11 @@ func (p *Parser) parseSelectStatement() (query.Statement, error) {
 // parseProjectedExprs parses the list of projected fields.
 func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 	// Parse first (required) result path.
-	pe, name, err := p.parseProjectedExpr()
+	pe, _, err := p.parseProjectedExpr()
 	if err != nil {
 		return nil, err
 	}
 	pexprs := []expr.Expr{pe}
-	// keep track of all projected field names to avoid duplicates
-	names := map[string]struct{}{name: {}}
 
 	// Parse remaining (optional) result fields.
 	for {
@@ -88,14 +87,10 @@ func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 			return pexprs, nil
 		}
 
-		if pe, name, err = p.parseProjectedExpr(); err != nil {
+		if pe, _, err = p.parseProjectedExpr(); err != nil {
 			return nil, err
 		}
 
-		if _, ok := names[name]; ok {
-			return nil, fmt.Errorf("duplicate result name %q", name)
-		}
-		names[name] = struct{}{}
 		pexprs = append(pexprs, pe)
 	}
 }
@@ -103,8 +98,8 @@ func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 // parseProjectedExpr parses one projected expression.
 func (p *Parser) parseProjectedExpr() (expr.Expr, string, error) {
 	// Check if the * token exists.
-	if tok, _, lit := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return expr.Wildcard{}, lit, nil
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
+		return expr.Wildcard{}, "*", nil
 	}
 	p.Unscan()
 
@@ -240,7 +235,7 @@ type selectConfig struct {
 	ProjectionExprs  []expr.Expr
 }
 
-func (cfg selectConfig) ToStream() (*stream.Statement, error) {
+func (cfg selectConfig) ToStream() (*planner.Statement, error) {
 	var s *stream.Stream
 
 	if cfg.TableName != "" {
@@ -313,11 +308,22 @@ func (cfg selectConfig) ToStream() (*stream.Statement, error) {
 		}
 	}
 
-	// If there is no FROM clause ensure there is no wildcard
+	// If there is no FROM clause ensure there is no wildcard or path
 	if cfg.TableName == "" {
+		var err error
+
 		for _, e := range cfg.ProjectionExprs {
-			if _, ok := e.(expr.Wildcard); ok {
-				return nil, errors.New("no tables specified")
+			expr.Walk(e, func(e expr.Expr) bool {
+				switch e.(type) {
+				case expr.Path, expr.Wildcard:
+					err = errors.New("no tables specified")
+					return false
+				default:
+					return true
+				}
+			})
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -372,7 +378,7 @@ func (cfg selectConfig) ToStream() (*stream.Statement, error) {
 		s = s.Pipe(stream.Take(v.V.(int64)))
 	}
 
-	return &stream.Statement{
+	return &planner.Statement{
 		Stream:   s,
 		ReadOnly: true,
 	}, nil

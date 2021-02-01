@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"testing"
@@ -14,50 +15,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func docFromJSON(d string) *document.FieldBuffer {
-	var fb document.FieldBuffer
-
-	err := fb.UnmarshalJSON([]byte(d))
-	if err != nil {
-		panic(err)
-	}
-	return &fb
-}
-
 func TestMap(t *testing.T) {
 	tests := []struct {
-		e       expr.Expr
-		in, out *expr.Environment
-		fails   bool
+		e     expr.Expr
+		in    []document.Document
+		out   []document.Document
+		fails bool
 	}{
 		{
 			parser.MustParseExpr(`{a: 10}`),
-			expr.NewEnvironment(docFromJSON(`{"b": 3}`)),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			testutil.MakeDocuments(t, `{"b": 3}`),
+			testutil.MakeDocuments(t, `{"a": 10}`),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			testutil.MakeDocuments(t, `{"a": 10}`),
 			nil,
 			true,
 		},
 		{
 			parser.MustParseExpr("{a: b}"),
-			expr.NewEnvironment(docFromJSON(`{"b": 3}`)),
-			expr.NewEnvironment(docFromJSON(`{"a": 3}`)),
+			testutil.MakeDocuments(t, `{"b": 3}`),
+			testutil.MakeDocuments(t, `{"a": 3}`),
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
-			if test.out != nil {
-				test.out.Outer = test.in
-			}
 
-			err := stream.Map(test.e).Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.out, out)
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Map(test.e))
+			i := 0
+			err := s.Iterate(nil, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				require.Equal(t, test.out[i], d)
+				i++
 				return nil
 			})
 			if test.fails {
@@ -75,31 +68,32 @@ func TestMap(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	tests := []struct {
-		e       expr.Expr
-		in, out *expr.Environment
-		fails   bool
+		e     expr.Expr
+		in    []document.Document
+		out   []document.Document
+		fails bool
 	}{
 		{
 			parser.MustParseExpr("1"),
-			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
-			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
 			false,
 		},
 		{
 			parser.MustParseExpr("a > 1"),
-			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
+			testutil.MakeDocuments(t, `{"a": 1}`),
 			nil,
 			false,
 		},
 		{
 			parser.MustParseExpr("a >= 1"),
-			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
-			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
-			expr.NewEnvironment(docFromJSON(`{"a": 1}`)),
+			testutil.MakeDocuments(t, `{"a": 1}`),
 			nil,
 			false,
 		},
@@ -107,8 +101,12 @@ func TestFilter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
-			err := stream.Filter(test.e).Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.out, out)
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Filter(test.e))
+			i := 0
+			err := s.Iterate(nil, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				require.Equal(t, test.out[i], d)
+				i++
 				return nil
 			})
 			if test.fails {
@@ -134,7 +132,7 @@ func TestTake(t *testing.T) {
 	}{
 		{5, 1, 1, false},
 		{5, 7, 5, false},
-		{5, -1, 1, false},
+		{5, -1, 0, false},
 	}
 
 	for _, test := range tests {
@@ -142,20 +140,23 @@ func TestTake(t *testing.T) {
 			var docs []document.Document
 
 			for i := 0; i < test.inNumber; i++ {
-				docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
+				docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
 			s := stream.New(stream.Documents(docs...))
 			s = s.Pipe(stream.Take(test.n))
 
 			var count int
-			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				count++
 				return nil
 			})
 			if test.fails {
 				require.Error(t, err)
 			} else {
+				if err == stream.ErrStreamClosed {
+					err = nil
+				}
 				require.NoError(t, err)
 				require.Equal(t, test.output, count)
 			}
@@ -184,14 +185,14 @@ func TestSkip(t *testing.T) {
 			var docs []document.Document
 
 			for i := 0; i < test.inNumber; i++ {
-				docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
+				docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
 			s := stream.New(stream.Documents(docs...))
 			s = s.Pipe(stream.Skip(test.n))
 
 			var count int
-			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				count++
 				return nil
 			})
@@ -212,31 +213,31 @@ func TestSkip(t *testing.T) {
 func TestGroupBy(t *testing.T) {
 	tests := []struct {
 		e     expr.Expr
-		in    *expr.Environment
+		in    []document.Document
 		group document.Value
 		fails bool
 	}{
 		{
 			parser.MustParseExpr("10"),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			testutil.MakeDocuments(t, `{"a": 10}`),
 			document.NewIntegerValue(10),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			testutil.MakeDocuments(t, `{"a": 10}`),
 			document.NewNullValue(),
 			false,
 		},
 		{
 			parser.MustParseExpr("a"),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			testutil.MakeDocuments(t, `{"a": 10}`),
 			document.NewIntegerValue(10),
 			false,
 		},
 		{
 			parser.MustParseExpr("b"),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			testutil.MakeDocuments(t, `{"a": 10}`),
 			document.NewNullValue(),
 			false,
 		},
@@ -245,11 +246,12 @@ func TestGroupBy(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
 			var want expr.Environment
-			want.Outer = test.in
 			want.Set("_group", test.group)
 			want.Set("_group_expr", document.NewTextValue(fmt.Sprintf("%s", test.e)))
 
-			err := stream.GroupBy(test.e).Iterate(test.in, func(out *expr.Environment) error {
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.GroupBy(test.e))
+			err := s.Iterate(nil, func(out *expr.Environment) error {
+				out.Outer = nil
 				require.Equal(t, &want, out)
 				return nil
 			})
@@ -266,9 +268,11 @@ func TestGroupBy(t *testing.T) {
 	})
 }
 
-func generateSeqDocs(max int) (docs []document.Document) {
+func generateSeqDocs(t testing.TB, max int) (docs []document.Document) {
+	t.Helper()
+
 	for i := 0; i < max; i++ {
-		docs = append(docs, docFromJSON(`{"a": `+strconv.Itoa(i)+`}`))
+		docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
 	}
 
 	return docs
@@ -287,14 +291,14 @@ func TestSort(t *testing.T) {
 			"ASC",
 			parser.MustParseExpr("a"),
 			[]document.Document{
-				docFromJSON(`{"a": 0}`),
-				docFromJSON(`{"a": null}`),
-				docFromJSON(`{"a": true}`),
+				testutil.MakeDocument(t, `{"a": 0}`),
+				testutil.MakeDocument(t, `{"a": null}`),
+				testutil.MakeDocument(t, `{"a": true}`),
 			},
 			[]document.Document{
-				docFromJSON(`{"a": null}`),
-				docFromJSON(`{"a": true}`),
-				docFromJSON(`{"a": 0}`),
+				testutil.MakeDocument(t, `{"a": null}`),
+				testutil.MakeDocument(t, `{"a": true}`),
+				testutil.MakeDocument(t, `{"a": 0}`),
 			},
 			false,
 			false,
@@ -303,14 +307,14 @@ func TestSort(t *testing.T) {
 			"DESC",
 			parser.MustParseExpr("a"),
 			[]document.Document{
-				docFromJSON(`{"a": 0}`),
-				docFromJSON(`{"a": null}`),
-				docFromJSON(`{"a": true}`),
+				testutil.MakeDocument(t, `{"a": 0}`),
+				testutil.MakeDocument(t, `{"a": null}`),
+				testutil.MakeDocument(t, `{"a": true}`),
 			},
 			[]document.Document{
-				docFromJSON(`{"a": 0}`),
-				docFromJSON(`{"a": true}`),
-				docFromJSON(`{"a": null}`),
+				testutil.MakeDocument(t, `{"a": 0}`),
+				testutil.MakeDocument(t, `{"a": true}`),
+				testutil.MakeDocument(t, `{"a": null}`),
 			},
 			false,
 			true,
@@ -327,7 +331,7 @@ func TestSort(t *testing.T) {
 			}
 
 			var got []document.Document
-			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				got = append(got, d)
@@ -349,15 +353,16 @@ func TestSort(t *testing.T) {
 
 func TestTableInsert(t *testing.T) {
 	tests := []struct {
-		name    string
-		in, out *expr.Environment
-		docid   int
-		fails   bool
+		name  string
+		in    stream.Operator
+		out   []document.Document
+		docid int
+		fails bool
 	}{
 		{
 			"doc with no key",
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
-			expr.NewEnvironment(docFromJSON(`{"a": 10}`)),
+			stream.Documents(testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)),
+			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)},
 			1,
 			false,
 		},
@@ -376,21 +381,19 @@ func TestTableInsert(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			test.in.Tx = tx.Transaction
+			in := expr.NewEnvironment(nil)
+			in.Tx = tx.Transaction
 
-			if test.out != nil {
-				test.out.Outer = test.in
-				tb, err := tx.GetTable("test")
-				require.NoError(t, err)
-				k, err := tb.EncodeValue(document.NewIntegerValue(1))
-				require.NoError(t, err)
-				test.out.Doc.(*document.FieldBuffer).EncodedKey = k
-			}
+			s := stream.New(test.in).Pipe(stream.TableInsert("test"))
 
-			ti := stream.TableInsert("test")
+			var i int
+			err = s.Iterate(in, func(out *expr.Environment) error {
+				d, ok := out.GetDocument()
+				require.True(t, ok)
 
-			err = ti.Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.out, out)
+				test.out[i].(*document.FieldBuffer).EncodedKey = d.(*document.FieldBuffer).EncodedKey
+				require.Equal(t, test.out[i], d)
+				i++
 				return nil
 			})
 			if test.fails {
@@ -408,16 +411,15 @@ func TestTableInsert(t *testing.T) {
 
 func TestTableReplace(t *testing.T) {
 	tests := []struct {
-		name                  string
-		docsInTable, expected testutil.Docs
-		in                    *expr.Environment
-		fails                 bool
+		name                      string
+		docsInTable, in, expected testutil.Docs
+		fails                     bool
 	}{
 		{
 			"doc with key",
-			testutil.MakeDocuments(`{"a": 1, "b": 1}`),
-			testutil.MakeDocuments(`{"a": 1, "b": 2}`),
-			expr.NewEnvironment(docFromJSON(`{"a": 1, "b": 2}`)),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
 			false,
 		},
 	}
@@ -431,29 +433,39 @@ func TestTableReplace(t *testing.T) {
 			err = db.Exec("CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
 			require.NoError(t, err)
 
-			for _, doc := range test.docsInTable {
-				err = db.Exec("INSERT INTO test VALUES ?", doc)
-				require.NoError(t, err)
-			}
-
 			tx, err := db.Begin(true)
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			test.in.Tx = tx.Transaction
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
-			kk, err := test.in.Doc.GetByField("a")
-			require.NoError(t, err)
 
-			k, err := tb.EncodeValue(kk)
-			require.NoError(t, err)
-			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
+			for i, doc := range test.docsInTable {
+				err = tx.Exec("INSERT INTO test VALUES ?", doc)
+				require.NoError(t, err)
+				kk, err := doc.GetByField("a")
+				require.NoError(t, err)
+				k, err := tb.EncodeValue(kk)
+				require.NoError(t, err)
+				test.in[i].(*document.FieldBuffer).EncodedKey = k
+			}
 
-			ti := stream.TableReplace("test")
+			var in expr.Environment
+			in.Tx = tx.Transaction
 
-			err = ti.Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.in, out)
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.TableReplace("test"))
+
+			var i int
+			err = s.Iterate(&in, func(out *expr.Environment) error {
+				d, ok := out.GetDocument()
+				require.True(t, ok)
+
+				got, err := json.Marshal(d)
+				require.NoError(t, err)
+				want, err := json.Marshal(test.expected[i])
+				require.NoError(t, err)
+				require.JSONEq(t, string(want), string(got))
+				i++
 				return nil
 			})
 			if test.fails {
@@ -487,14 +499,14 @@ func TestTableDelete(t *testing.T) {
 	tests := []struct {
 		name                  string
 		docsInTable, expected testutil.Docs
-		in                    *expr.Environment
+		in                    document.Document
 		fails                 bool
 	}{
 		{
 			"doc with key",
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
-			testutil.MakeDocuments(`{"a": 1}`, `{"a": 3}`),
-			expr.NewEnvironment(docFromJSON(`{"a": 2}`)),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 3}`),
+			testutil.MakeDocument(t, `{"a": 2}`),
 			false,
 		},
 	}
@@ -517,21 +529,23 @@ func TestTableDelete(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			test.in.Tx = tx.Transaction
+			var env expr.Environment
+			env.Tx = tx.Transaction
 
 			tb, err := tx.GetTable("test")
 			require.NoError(t, err)
-			kk, err := test.in.Doc.GetByField("a")
+			kk, err := test.in.GetByField("a")
 			require.NoError(t, err)
 
 			k, err := tb.EncodeValue(kk)
 			require.NoError(t, err)
-			test.in.Doc.(*document.FieldBuffer).EncodedKey = k
+			test.in.(*document.FieldBuffer).EncodedKey = k
 
-			ti := stream.TableDelete("test")
+			s := stream.New(stream.Documents(test.in)).Pipe(stream.TableDelete("test"))
 
-			err = ti.Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.in, out)
+			err = s.Iterate(&env, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				require.Equal(t, test.in, d)
 				return nil
 			})
 			if test.fails {
@@ -570,14 +584,14 @@ func TestDistinct(t *testing.T) {
 	}{
 		{
 			"all different",
-			testutil.MakeDocuments(`{"a": 0}`, `{"a": null}`, `{"a": true}`),
-			testutil.MakeDocuments(`{"a": 0}`, `{"a": null}`, `{"a": true}`),
+			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": null}`, `{"a": true}`),
+			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": null}`, `{"a": true}`),
 			false,
 		},
 		{
 			"some duplicates",
-			testutil.MakeDocuments(`{"a": 0}`, `{"a": 0}`, `{"a": null}`, `{"a": null}`, `{"a": true}`, `{"a": true}`, `{"a": [1, 2]}`, `{"a": [1, 2]}`),
-			testutil.MakeDocuments(`{"a": 0}`, `{"a": null}`, `{"a": true}`, `{"a": [1, 2]}`),
+			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": 0}`, `{"a": null}`, `{"a": null}`, `{"a": true}`, `{"a": true}`, `{"a": [1, 2]}`, `{"a": [1, 2]}`),
+			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": null}`, `{"a": true}`, `{"a": [1, 2]}`),
 			false,
 		},
 	}
@@ -588,7 +602,7 @@ func TestDistinct(t *testing.T) {
 			s = s.Pipe(stream.Distinct())
 
 			var got []document.Document
-			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -615,28 +629,35 @@ func TestSet(t *testing.T) {
 	tests := []struct {
 		path    string
 		e       expr.Expr
-		in, out *expr.Environment
+		in, out []document.Document
 		fails   bool
 	}{
 		{
 			"a[0].b",
 			parser.MustParseExpr(`10`),
-			expr.NewEnvironment(docFromJSON(`{"a": [{}]}`)),
-			expr.NewEnvironment(docFromJSON(`{"a": [{"b": 10}]}`)),
+			testutil.MakeDocuments(t, `{"a": [{}]}`),
+			testutil.MakeDocuments(t, `{"a": [{"b": 10}]}`),
+			false,
+		},
+		{
+			"a[2]",
+			parser.MustParseExpr(`10`),
+			testutil.MakeDocuments(t, `{"a": [1]}`, `{"a": [1, 2, 3]}`),
+			testutil.MakeDocuments(t, `{"a": [1, 2, 10]}`),
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
-			if test.out != nil {
-				test.out.Outer = test.in
-			}
-
 			p, err := parser.ParsePath(test.path)
 			require.NoError(t, err)
-			err = stream.Set(p, test.e).Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.out, out)
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Set(p, test.e))
+			i := 0
+			err = s.Iterate(nil, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				require.Equal(t, test.out[i], d)
+				i++
 				return nil
 			})
 			if test.fails {
@@ -655,25 +676,25 @@ func TestSet(t *testing.T) {
 func TestUnset(t *testing.T) {
 	tests := []struct {
 		path    string
-		in, out *expr.Environment
+		in, out []document.Document
 		fails   bool
 	}{
 		{
 			"a",
-			expr.NewEnvironment(docFromJSON(`{"a": 10, "b": 20}`)),
-			expr.NewEnvironment(docFromJSON(`{"b": 20}`)),
+			testutil.MakeDocuments(t, `{"a": 10, "b": 20}`),
+			testutil.MakeDocuments(t, `{"b": 20}`),
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.path), func(t *testing.T) {
-			if test.out != nil {
-				test.out.Outer = test.in
-			}
-
-			err := stream.Unset(test.path).Iterate(test.in, func(out *expr.Environment) error {
-				require.Equal(t, test.out, out)
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Unset(test.path))
+			i := 0
+			err := s.Iterate(nil, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				require.Equal(t, test.out[i], d)
+				i++
 				return nil
 			})
 			if test.fails {
@@ -685,6 +706,6 @@ func TestUnset(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.Set(document.NewPath("a", "b"), parser.MustParseExpr("1")).String(), "unset(a)")
+		require.Equal(t, stream.Unset("a").String(), "unset(a)")
 	})
 }

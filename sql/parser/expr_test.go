@@ -46,35 +46,29 @@ func TestParserExpr(t *testing.T) {
 		{"single quoted string", "'-10.0'", expr.TextValue("-10.0"), false},
 
 		// documents
-		{"empty document", `{}`, expr.KVPairs(nil), false},
+		{"empty document", `{}`, &expr.KVPairs{SelfReferenced: true}, false},
 		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
-			expr.KVPairs{
-				expr.KVPair{K: "a", V: expr.IntegerValue(1)},
-				expr.KVPair{K: "b", V: expr.DoubleValue(1)},
-				expr.KVPair{K: "c", V: expr.BoolValue(true)},
-				expr.KVPair{K: "d", V: expr.TextValue("string")},
-				expr.KVPair{K: "e", V: expr.TextValue("string")},
-				expr.KVPair{K: "f", V: expr.KVPairs{
-					expr.KVPair{K: "foo", V: expr.TextValue("bar")},
-				}},
-				expr.KVPair{K: "g", V: parsePath(t, "h.i.j")},
-				expr.KVPair{K: "k", V: expr.LiteralExprList{expr.IntegerValue(1), expr.IntegerValue(2), expr.IntegerValue(3)}},
-			},
+			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
+				{K: "a", V: expr.IntegerValue(1)},
+				{K: "b", V: expr.DoubleValue(1)},
+				{K: "c", V: expr.BoolValue(true)},
+				{K: "d", V: expr.TextValue("string")},
+				{K: "e", V: expr.TextValue("string")},
+				{K: "f", V: &expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
+					{K: "foo", V: expr.TextValue("bar")},
+				}}},
+				{K: "g", V: parsePath(t, "h.i.j")},
+				{K: "k", V: expr.LiteralExprList{expr.IntegerValue(1), expr.IntegerValue(2), expr.IntegerValue(3)}},
+			}},
 			false},
 		{"document keys", `{a: 1, "foo bar __&&))": 1, 'ola ': 1}`,
-			expr.KVPairs{
-				expr.KVPair{K: "a", V: expr.IntegerValue(1)},
-				expr.KVPair{K: "foo bar __&&))", V: expr.IntegerValue(1)},
-				expr.KVPair{K: "ola ", V: expr.IntegerValue(1)},
-			},
+			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
+				{K: "a", V: expr.IntegerValue(1)},
+				{K: "foo bar __&&))", V: expr.IntegerValue(1)},
+				{K: "ola ", V: expr.IntegerValue(1)},
+			}},
 			false},
-		{"document keys: same key", `{a: 1, a: 2, "a": 3}`,
-			expr.KVPairs{
-				expr.KVPair{K: "a", V: expr.IntegerValue(1)},
-				expr.KVPair{K: "a", V: expr.IntegerValue(2)},
-				expr.KVPair{K: "a", V: expr.IntegerValue(3)},
-			},
-			false},
+		{"bad document keys: same key", `{a: 1, a: 2, "a": 3}`, nil, true},
 		{"bad document keys: param", `{?: 1}`, nil, true},
 		{"bad document keys: dot", `{a.b: 1}`, nil, true},
 		{"bad document keys: space", `{a b: 1}`, nil, true},
@@ -107,7 +101,7 @@ func TestParserExpr(t *testing.T) {
 			expr.LiteralExprList{
 				expr.IntegerValue(1),
 				expr.BoolValue(true),
-				expr.KVPairs{expr.KVPair{K: "a", V: expr.IntegerValue(1)}},
+				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: expr.IntegerValue(1)}}},
 				parsePath(t, "a.b.c"),
 				expr.Parentheses{E: expr.IntegerValue(-1)},
 				expr.LiteralExprList{expr.IntegerValue(-1)},

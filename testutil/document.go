@@ -18,14 +18,21 @@ func MakeValue(t testing.TB, v interface{}) *document.Value {
 }
 
 // MakeDocument creates a document from a json string.
-func MakeDocument(jsonDoc string) document.Document {
-	return document.NewFromJSON([]byte(jsonDoc))
+func MakeDocument(t testing.TB, jsonDoc string) document.Document {
+	t.Helper()
+
+	var fb document.FieldBuffer
+
+	err := fb.UnmarshalJSON([]byte(jsonDoc))
+	require.NoError(t, err)
+
+	return &fb
 }
 
 // MakeDocuments creates a slice of document from json strings.
-func MakeDocuments(jsonDocs ...string) (docs Docs) {
+func MakeDocuments(t testing.TB, jsonDocs ...string) (docs Docs) {
 	for _, jsonDoc := range jsonDocs {
-		docs = append(docs, MakeDocument(jsonDoc))
+		docs = append(docs, MakeDocument(t, jsonDoc))
 	}
 	return
 }

@@ -14,6 +14,7 @@ var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream
 	PrecalculateExprRule,
 	RemoveUnnecessaryFilterNodesRule,
 	RemoveUnnecessaryDistinctNodeRule,
+	RemoveUnnecessaryProjection,
 	UseIndexBasedOnFilterNodeRule,
 }
 
@@ -28,6 +29,9 @@ func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error
 		s, err = rule(s, tx)
 		if err != nil {
 			return nil, err
+		}
+		if s.Op == nil {
+			break
 		}
 	}
 
@@ -45,7 +49,7 @@ func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error
 //     filter(a > 2)
 //     filter(b != 3)
 //     filter(c < 2)
-func SplitANDConditionRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func SplitANDConditionRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -99,7 +103,7 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func PrecalculateExprRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -147,17 +151,17 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 			return expr.ArrayValue(document.NewValueBuffer(values...))
 		}
 
-	case expr.KVPairs:
+	case *expr.KVPairs:
 		// we assume that the list of kvpairs contains only literals
 		// until proven wrong.
 		literalsOnly := true
 
-		for i, kv := range t {
+		for i, kv := range t.Pairs {
 			kv.V = precalculateExpr(kv.V)
 			if _, ok := kv.V.(expr.LiteralValue); !ok {
 				literalsOnly = false
 			}
-			t[i] = kv
+			t.Pairs[i] = kv
 		}
 
 		// if literalsOnly is still true, it means we have a list of kvpairs
@@ -165,8 +169,8 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 		// We can transform that into a document.Document.
 		if literalsOnly {
 			var fb document.FieldBuffer
-			for i := range t {
-				fb.Add(t[i].K, document.Value(t[i].V.(expr.LiteralValue)))
+			for i := range t.Pairs {
+				fb.Add(t.Pairs[i].K, document.Value(t.Pairs[i].V.(expr.LiteralValue)))
 			}
 
 			return expr.LiteralValue(document.NewDocumentValue(&fb))
@@ -204,11 +208,11 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 	return e
 }
 
-// RemoveUnnecessaryFilterNodesRule removes any selection node whose
+// RemoveUnnecessaryFilterNodesRule removes any filter node whose
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -228,9 +232,10 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, tx *database.Transaction
 						return &stream.Stream{}, nil
 					}
 
-					// if the expr is truthy, we remove the node from the tree
-					n = n.GetPrev()
+					// if the expr is truthy, we remove the node from the stream
+					prev := n.GetPrev()
 					s.Remove(n)
+					n = prev
 					continue
 				case *expr.InOperator:
 					// IN operator with empty array
@@ -241,11 +246,33 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, tx *database.Transaction
 						if err != nil {
 							return nil, err
 						}
-						// if the array is empty, we return an empty tree
+						// if the array is empty, we return an empty stream
 						if l == 0 {
 							return &stream.Stream{}, nil
 						}
 					}
+				}
+			}
+		}
+
+		n = n.GetPrev()
+	}
+
+	return s, nil
+}
+
+// RemoveUnnecessaryProjection removes any project node whose
+// expression is a wildcard only.
+func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+	n := s.Op
+
+	for n != nil {
+		if p, ok := n.(*stream.ProjectOperator); ok {
+			if len(p.Exprs) == 1 {
+				if _, ok := p.Exprs[0].(expr.Wildcard); ok {
+					prev := n.GetPrev()
+					s.Remove(n)
+					n = prev
 				}
 			}
 		}
@@ -282,29 +309,28 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 		return nil, err
 	}
 
+	// this optimization applies to project operators that immediately follow distinct
 	for n != nil {
 		if d, ok := n.(*stream.DistinctOperator); ok {
 			prev := d.GetPrev()
-			if prev == nil {
-				continue
-			}
-			pn, ok := prev.(*stream.ProjectOperator)
-			if !ok {
-				continue
-			}
+			if prev != nil {
+				pn, ok := prev.(*stream.ProjectOperator)
+				if ok {
 
-			if indexes == nil {
-				indexes, err = t.Indexes()
-				if err != nil {
-					return nil, err
+					if indexes == nil {
+						indexes, err = t.Indexes()
+						if err != nil {
+							return nil, err
+						}
+					}
+
+					// if the projection is unique, we remove the node from the tree
+					if isProjectionUnique(indexes, pn, info.GetPrimaryKey()) {
+						s.Remove(n)
+						n = prev
+						continue
+					}
 				}
-			}
-
-			// if the projection is unique, we remove the node from the tree
-			if isProjectionUnique(indexes, pn, info.GetPrimaryKey()) {
-				n = prev
-				s.Remove(n)
-				continue
 			}
 		}
 
@@ -317,11 +343,12 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 func isProjectionUnique(indexes map[string]database.Index, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
 	for _, field := range po.Exprs {
 		e, ok := field.(*expr.NamedExpr)
-		if !ok {
+		if ok {
+			field = e.Expr
 			return false
 		}
 
-		switch v := e.Expr.(type) {
+		switch v := field.(type) {
 		case expr.Path:
 			if pk != nil && pk.Path.IsEqual(document.Path(v)) {
 				continue
@@ -330,7 +357,7 @@ func isProjectionUnique(indexes map[string]database.Index, po *stream.ProjectOpe
 			if idx, ok := indexes[v.String()]; ok && idx.Unique {
 				continue
 			}
-		case expr.PKFunc:
+		case *expr.PKFunc:
 			continue
 		}
 
@@ -346,6 +373,7 @@ func isProjectionUnique(indexes map[string]database.Index, po *stream.ProjectOpe
 // - one of its operands is a path expression that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
+// TODO(asdine): add support for ORDER BY and primary keys
 func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
 	n := s.Op
 
@@ -357,7 +385,6 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	if firstNode == nil {
 		return s, nil
 	}
-	fmt.Println("first node", firstNode)
 	st, ok := firstNode.(*stream.SeqScanOperator)
 	if !ok {
 		return s, nil
@@ -406,16 +433,25 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	// we will assume that unique indexes are more interesting than list indexes
 	// because they usually have less elements.
 	var selectedCandidate *candidate
+	var cost int
 
 	for i, candidate := range candidates {
+		currentCost := candidate.in.Ranges.Cost()
+
 		if selectedCandidate == nil {
 			selectedCandidate = &candidates[i]
+			cost = currentCost
 			continue
 		}
 
-		// if the candidate's related index is a unique index,
+		if currentCost < cost {
+			selectedCandidate = &candidates[i]
+			cost = currentCost
+		}
+
+		// if the cost is the same and the candidate's related index is a unique index,
 		// select it.
-		if candidate.index.Unique {
+		if currentCost == cost && candidate.index.Unique {
 			selectedCandidate = &candidates[i]
 		}
 	}
@@ -424,63 +460,47 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 		return s, nil
 	}
 
-	fmt.Println("1", s, "candidate", selectedCandidate.filterOp)
-
 	// remove the selection node from the tree
 	s.Remove(selectedCandidate.filterOp)
-
-	fmt.Println("2", s)
 
 	// we replace the seq scan node by the selected index scan node
 	s.InsertBefore(s.First(), selectedCandidate.in)
 
-	fmt.Println("3", s)
 	s.Remove(s.First().GetNext())
-	fmt.Println(s)
 
 	return s, nil
 }
 
 func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexes map[string]database.Index) (*stream.IndexScanOperator, *database.Index, error) {
-	fmt.Println(1)
-
 	if sn.E == nil {
-		fmt.Println(2)
 		return nil, nil, nil
 	}
 
 	// the root of the condition must be an operator
 	op, ok := sn.E.(expr.Operator)
 	if !ok {
-		fmt.Println(3)
-
 		return nil, nil, nil
 	}
 
 	// determine if the operator can read from the index
 	if !expr.OperatorIsIndexCompatible(op) {
-		fmt.Println(4)
-
 		return nil, nil, nil
 	}
 
 	// determine if the operator can benefit from an index
 	ok, path, e := opCanUseIndex(op)
 	if !ok {
-		fmt.Println(5)
 		return nil, nil, nil
 	}
 
 	// analyse the other operand to make sure it's a literal or a param
 	if !isLiteralOrParam(e) {
-		fmt.Println(6)
 		return nil, nil, nil
 	}
 
 	// now, we look if an index exists for that path
 	idx, ok := indexes[path.String()]
 	if !ok {
-		fmt.Println(7)
 		return nil, nil, nil
 	}
 
@@ -540,34 +560,33 @@ func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
 	// Special case for IN operator: only left operand is valid for index usage
 	// valid:   a IN [1, 2, 3]
 	// invalid: 1 IN a
-	if expr.IsInOperator(op) && leftIsField && !rightIsField {
-		fmt.Println("a")
-		rh := op.RightHand()
-		// The IN operator can use indexes only if the right hand side is an array with constants.
-		// At this point, we know that PrecalculateExprRule has converted any constant expression into
-		// actual values, so we can check if the right hand side is an array.
-		fmt.Printf("%#v\n", rh)
-		lv, ok := rh.(expr.LiteralValue)
-		if !ok || lv.Type != document.ArrayValue {
-			return false, nil, nil
+	if expr.IsInOperator(op) {
+		if leftIsField && !rightIsField {
+			rh := op.RightHand()
+			// The IN operator can use indexes only if the right hand side is an array with constants.
+			// At this point, we know that PrecalculateExprRule has converted any constant expression into
+			// actual values, so we can check if the right hand side is an array.
+			lv, ok := rh.(expr.LiteralValue)
+			if !ok || lv.Type != document.ArrayValue {
+				return false, nil, nil
+			}
+
+			return true, lf, rh
 		}
 
-		return true, lf, rh
+		return false, nil, nil
 	}
 
 	// path OP expr
 	if leftIsField && !rightIsField {
-		fmt.Println("b")
 		return true, lf, op.RightHand()
 	}
 
 	// expr OP path
 	if rightIsField && !leftIsField {
-		fmt.Println("c")
 		return true, rf, op.LeftHand()
 	}
 
-	fmt.Println("d")
 	return false, nil, nil
 }
 

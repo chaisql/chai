@@ -57,6 +57,7 @@ func TestInsertStmt(t *testing.T) {
 					`)
 					require.NoError(t, err)
 				}
+
 				err = db.Exec(test.query, test.params...)
 				if test.fails {
 					require.Error(t, err)

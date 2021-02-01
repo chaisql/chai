@@ -51,7 +51,15 @@ func (e *Environment) Set(name string, v document.Value) {
 }
 
 func (e *Environment) GetDocument() (document.Document, bool) {
-	return e.Doc, e.Doc != nil
+	if e.Doc != nil {
+		return e.Doc, true
+	}
+
+	if e.Outer != nil {
+		return e.Outer.GetDocument()
+	}
+
+	return nil, false
 }
 
 func (e *Environment) SetDocument(d document.Document) {

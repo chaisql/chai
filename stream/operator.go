@@ -84,7 +84,7 @@ func Map(e expr.Expr) *MapOperator {
 	return &MapOperator{E: e}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *MapOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
@@ -105,8 +105,8 @@ func (op *MapOperator) Iterate(in *expr.Environment, f func(out *expr.Environmen
 	})
 }
 
-func (m *MapOperator) String() string {
-	return fmt.Sprintf("map(%s)", m.E)
+func (op *MapOperator) String() string {
+	return fmt.Sprintf("map(%s)", op.E)
 }
 
 // A FilterOperator filters values based on a given expression.
@@ -120,7 +120,7 @@ func Filter(e expr.Expr) *FilterOperator {
 	return &FilterOperator{E: e}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *FilterOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	return op.Prev.Iterate(in, func(out *expr.Environment) error {
 		v, err := op.E.Eval(out)
@@ -152,7 +152,7 @@ func Take(n int64) *TakeOperator {
 	return &TakeOperator{N: n}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *TakeOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var count int64
 	return op.Prev.Iterate(in, func(out *expr.Environment) error {
@@ -180,7 +180,7 @@ func Skip(n int64) *SkipOperator {
 	return &SkipOperator{N: n}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *SkipOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var skipped int64
 
@@ -211,7 +211,7 @@ func GroupBy(e expr.Expr) *GroupByOperator {
 	return &GroupByOperator{E: e}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *GroupByOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
@@ -286,8 +286,30 @@ func (op *SortOperator) sortStream(prev Operator, in *expr.Environment) (heap.In
 
 	heap.Init(h)
 
+	getValue := op.Expr.Eval
+	if p, ok := op.Expr.(expr.Path); ok {
+		getValue = func(env *expr.Environment) (document.Value, error) {
+			for env != nil {
+				d, ok := env.GetDocument()
+				if !ok {
+					env = env.Outer
+					continue
+				}
+
+				v, err := document.Path(p).GetValueFromDocument(d)
+				if err == document.ErrFieldNotFound {
+					env = env.Outer
+					continue
+				}
+				return v, err
+			}
+
+			return document.NewNullValue(), nil
+		}
+	}
+
 	return h, prev.Iterate(in, func(env *expr.Environment) error {
-		sortV, err := op.Expr.Eval(env)
+		sortV, err := getValue(env)
 		if err != nil {
 			return err
 		}
@@ -318,6 +340,10 @@ func (op *SortOperator) sortStream(prev Operator, in *expr.Environment) (heap.In
 }
 
 func (op *SortOperator) String() string {
+	if op.Desc {
+		return fmt.Sprintf("sortReverse(%s)", op.Expr)
+	}
+
 	return fmt.Sprintf("sort(%s)", op.Expr)
 }
 
@@ -363,7 +389,7 @@ func TableInsert(tableName string) *TableInsertOperator {
 	return &TableInsertOperator{Name: tableName}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
@@ -387,7 +413,6 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 			return err
 		}
 
-		newEnv.SetDocument(d)
 		newEnv.Outer = env
 		return f(&newEnv)
 	})
@@ -408,9 +433,10 @@ func TableReplace(tableName string) *TableReplaceOperator {
 	return &TableReplaceOperator{Name: tableName}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var table *database.Table
+	var newEnv expr.Environment
 
 	return op.Prev.Iterate(in, func(out *expr.Environment) error {
 		d, ok := out.GetDocument()
@@ -441,7 +467,8 @@ func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.E
 			return err
 		}
 
-		return f(out)
+		newEnv.Outer = out
+		return f(&newEnv)
 	})
 }
 
@@ -460,9 +487,10 @@ func TableDelete(tableName string) *TableDeleteOperator {
 	return &TableDeleteOperator{Name: tableName}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var table *database.Table
+	var newEnv expr.Environment
 
 	return op.Prev.Iterate(in, func(out *expr.Environment) error {
 		d, ok := out.GetDocument()
@@ -493,7 +521,8 @@ func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.En
 			return err
 		}
 
-		return f(out)
+		newEnv.Outer = out
+		return f(&newEnv)
 	})
 }
 
@@ -511,7 +540,7 @@ func Distinct() *DistinctOperator {
 	return &DistinctOperator{}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *DistinctOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var buf bytes.Buffer
 	enc := document.NewValueEncoder(&buf)
@@ -573,7 +602,7 @@ func Set(path document.Path, e expr.Expr) *SetOperator {
 	}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *SetOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var fb document.FieldBuffer
 	var newEnv expr.Environment
@@ -596,6 +625,9 @@ func (op *SetOperator) Iterate(in *expr.Environment, f func(out *expr.Environmen
 		}
 
 		err = fb.Set(op.Path, v)
+		if err == document.ErrFieldNotFound {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -624,7 +656,7 @@ func Unset(field string) *UnsetOperator {
 	}
 }
 
-// Op implements the Operator interface.
+// Iterate implements the Operator interface.
 func (op *UnsetOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var fb document.FieldBuffer
 	var newEnv expr.Environment

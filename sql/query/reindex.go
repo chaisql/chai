@@ -2,7 +2,7 @@ package query
 
 import (
 	"errors"
-	
+
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/sql/query/expr"
 )

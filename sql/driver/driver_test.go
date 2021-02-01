@@ -25,15 +25,12 @@ func TestDriver(t *testing.T) {
 	res, err := db.Exec("CREATE TABLE test")
 	require.NoError(t, err)
 	n, err := res.RowsAffected()
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
 		res, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i, []int{i + 1, i + 2, i + 3}, &foo{Foo: "bar"})
 		require.NoError(t, err)
-		n, err = res.RowsAffected()
-		require.NoError(t, err)
-		require.EqualValues(t, 1, n)
 	}
 
 	t.Run("Wildcard", func(t *testing.T) {

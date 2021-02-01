@@ -72,6 +72,16 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 			return nil, err
 		}
 
+		// if there are still statements to be executed,
+		// and the current statement is not read-only,
+		// iterate over the result.
+		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
+			err = res.Iterate(func(d document.Document) error { return nil })
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// it there is an opened transaction but there are still statements
 		// to be executed, close the current transaction.
 		if q.tx != nil && q.autoCommit && i+1 < len(q.Statements) {
@@ -104,10 +114,20 @@ func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*Result, error
 	var res Result
 	var err error
 
-	for _, stmt := range q.Statements {
+	for i, stmt := range q.Statements {
 		res, err = stmt.Run(tx, args)
 		if err != nil {
 			return nil, err
+		}
+
+		// if there are still statements to be executed,
+		// and the current statement is not read-only,
+		// iterate over the result.
+		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
+			err = res.Iterate(func(d document.Document) error { return nil })
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -127,9 +147,17 @@ type Statement interface {
 
 // Result of a query.
 type Result struct {
-	document.Iterator
-	Tx     *database.Transaction
-	closed bool
+	Iterator document.Iterator
+	Tx       *database.Transaction
+	closed   bool
+}
+
+func (r *Result) Iterate(fn func(d document.Document) error) error {
+	if r.Iterator == nil {
+		return nil
+	}
+
+	return r.Iterator.Iterate(fn)
 }
 
 // Close the result stream.

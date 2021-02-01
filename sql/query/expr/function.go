@@ -161,6 +161,8 @@ func (c CastFunc) String() string {
 	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
 
+var _ AggregatorBuilder = (*CountFunc)(nil)
+
 // CountFunc is the COUNT aggregator function. It counts the number of documents
 // in a stream.
 type CountFunc struct {
@@ -337,6 +339,10 @@ func (m *MinAggregator) Eval(env *Environment) (document.Value, error) {
 	return m.Min, nil
 }
 
+func (m *MinAggregator) String() string {
+	return m.Fn.String()
+}
+
 // MaxFunc is the MAX aggregator function.
 type MaxFunc struct {
 	Expr Expr
@@ -428,6 +434,10 @@ func (m *MaxAggregator) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return m.Max, nil
+}
+
+func (m *MaxAggregator) String() string {
+	return m.Fn.String()
 }
 
 // SumFunc is the SUM aggregator function.
@@ -534,6 +544,10 @@ func (s *SumAggregator) Eval(env *Environment) (document.Value, error) {
 	return document.NewNullValue(), nil
 }
 
+func (s *SumAggregator) String() string {
+	return s.Fn.String()
+}
+
 // AvgFunc is the AVG aggregator function.
 type AvgFunc struct {
 	Expr Expr
@@ -611,4 +625,8 @@ func (s *AvgAggregator) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return document.NewDoubleValue(s.Avg / float64(s.Counter)), nil
+}
+
+func (s *AvgAggregator) String() string {
+	return s.Fn.String()
 }

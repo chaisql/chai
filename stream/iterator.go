@@ -68,7 +68,7 @@ func (op *ExprsOperator) Iterate(in *expr.Environment, fn func(out *expr.Environ
 	newEnv.Outer = in
 
 	for _, e := range op.Exprs {
-		v, err := e.Eval(&newEnv)
+		v, err := e.Eval(in)
 		if err != nil {
 			return err
 		}
@@ -96,6 +96,7 @@ func (op *ExprsOperator) String() string {
 		}
 		fmt.Fprintf(&sb, "%v", e)
 	}
+	sb.WriteByte(')')
 
 	return sb.String()
 }
@@ -104,11 +105,17 @@ func (op *ExprsOperator) String() string {
 type SeqScanOperator struct {
 	baseOperator
 	TableName string
+	Reverse   bool
 }
 
 // SeqScan creates an iterator that iterates over each document of the given table.
 func SeqScan(tableName string) *SeqScanOperator {
 	return &SeqScanOperator{TableName: tableName}
+}
+
+// SeqScanReverse creates an iterator that iterates over each document of the given table in reverse order.
+func SeqScanReverse(tableName string) *SeqScanOperator {
+	return &SeqScanOperator{TableName: tableName, Reverse: true}
 }
 
 func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
@@ -120,14 +127,24 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 	var newEnv expr.Environment
 	newEnv.Outer = in
 
-	return table.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+	var iterator func(pivot document.Value, fn func(d document.Document) error) error
+	if !it.Reverse {
+		iterator = table.AscendGreaterOrEqual
+	} else {
+		iterator = table.DescendLessOrEqual
+	}
+
+	return iterator(document.Value{}, func(d document.Document) error {
 		newEnv.SetDocument(d)
 		return fn(&newEnv)
 	})
 }
 
 func (it *SeqScanOperator) String() string {
-	return fmt.Sprintf("seqScan(%s)", it.TableName)
+	if !it.Reverse {
+		return fmt.Sprintf("seqScan(%s)", it.TableName)
+	}
+	return fmt.Sprintf("seqScanReverse(%s)", it.TableName)
 }
 
 // A PkScanOperator iterates over the documents of a table.
@@ -177,9 +194,15 @@ func (it *PkScanOperator) String() string {
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+	// if there are no ranges,  use a simpler and faster iteration function
 	if len(it.Ranges) == 0 {
-		return SeqScan(it.TableName).Iterate(in, fn)
+		s := SeqScan(it.TableName)
+		s.Reverse = it.Reverse
+		return s.Iterate(in, fn)
 	}
+
+	var newEnv expr.Environment
+	newEnv.Outer = in
 
 	table, err := in.GetTx().GetTable(it.TableName)
 	if err != nil {
@@ -190,75 +213,62 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 	if err != nil {
 		return err
 	}
-	// To avoid reading the entire index, we determine what is the global range we want to read.
-	var start, end document.Value
-
-	lower, err := ranges.lowerBound()
-	if err != nil {
-		return err
-	}
-	upper, err := ranges.upperBound()
-	if err != nil {
-		return err
-	}
 
 	var iterator func(pivot document.Value, fn func(d document.Document) error) error
 
 	if !it.Reverse {
 		iterator = table.AscendGreaterOrEqual
-		if lower != nil {
-			start = *lower
-		}
-		if upper != nil {
-			end = *upper
-		}
 	} else {
 		iterator = table.DescendLessOrEqual
-		if upper != nil {
-			start = *upper
-		}
-		if lower != nil {
-			end = *lower
-		}
 	}
 
-	var newEnv expr.Environment
-	newEnv.Outer = in
+	for _, rng := range ranges {
+		var start, end document.Value
+		if !it.Reverse {
+			start = rng.minVal
+			end = rng.maxVal
+		} else {
+			start = rng.maxVal
+			end = rng.minVal
+		}
 
-	var encEnd []byte
-	if !end.Type.IsZero() {
-		encEnd, err = table.EncodeValue(end)
+		var encEnd []byte
+		if !end.Type.IsZero() && end.V != nil {
+			encEnd, err = table.EncodeValue(end)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = iterator(start, func(d document.Document) error {
+			key := d.(document.Keyer).RawKey()
+
+			if !rng.IsInRange(key) {
+				// if we reached the end of our range, we can stop iterating.
+				if encEnd == nil {
+					return nil
+				}
+				cmp := bytes.Compare(key, encEnd)
+				if !it.Reverse && cmp > 0 {
+					return ErrStreamClosed
+				}
+				if it.Reverse && cmp < 0 {
+					return ErrStreamClosed
+				}
+				return nil
+			}
+
+			newEnv.SetDocument(d)
+			return fn(&newEnv)
+		})
+		if err == ErrStreamClosed {
+			err = nil
+		}
 		if err != nil {
 			return err
 		}
 	}
-
-	err = iterator(start, func(d document.Document) error {
-		key := d.(document.Keyer).RawKey()
-
-		// if the indexed value satisfies at least one
-		// range, it gets outputted.
-		if !ranges.valueIsInRange(key) {
-			return nil
-		}
-
-		newEnv.SetDocument(d)
-		err = fn(&newEnv)
-		if err != nil {
-			return err
-		}
-
-		// if we reached the end of our global range, we can stop iterating.
-		if bytes.Compare(key, encEnd) < 0 {
-			return ErrStreamClosed
-		}
-
-		return nil
-	})
-	if err == ErrStreamClosed {
-		err = nil
-	}
-	return err
+	return nil
 }
 
 // A IndexScanOperator iterates over the documents of an index.
@@ -309,6 +319,9 @@ func (it *IndexScanOperator) String() string {
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+	var newEnv expr.Environment
+	newEnv.Outer = in
+
 	index, err := in.GetTx().GetIndex(it.IndexName)
 	if err != nil {
 		return err
@@ -323,43 +336,17 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 	if err != nil {
 		return err
 	}
-	// To avoid reading the entire index, we determine what is the global range we want to read.
-	var start, end document.Value
-
-	lower, err := ranges.lowerBound()
-	if err != nil {
-		return err
-	}
-	upper, err := ranges.upperBound()
-	if err != nil {
-		return err
-	}
 
 	var iterator func(pivot document.Value, fn func(val, key []byte) error) error
 
 	if !it.Reverse {
 		iterator = index.AscendGreaterOrEqual
-		if lower != nil {
-			start = *lower
-		}
-		if upper != nil {
-			end = *upper
-		}
 	} else {
 		iterator = index.DescendLessOrEqual
-		if upper != nil {
-			start = *upper
-		}
-		if lower != nil {
-			end = *lower
-		}
 	}
 
-	var newEnv expr.Environment
-	newEnv.Outer = in
-
-	// if there are no ranges or if both the global lower bound and upper bound are nil, use a simpler and faster iteration function
-	if len(it.Ranges) == 0 || (lower == nil && upper == nil) {
+	// if there are no ranges use a simpler and faster iteration function
+	if len(it.Ranges) == 0 {
 		return iterator(document.Value{}, func(val, key []byte) error {
 			d, err := table.GetDocument(key)
 			if err != nil {
@@ -371,43 +358,57 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		})
 	}
 
-	var encEnd []byte
-	if !end.Type.IsZero() {
-		encEnd, err = index.EncodeValue(end)
+	for _, rng := range ranges {
+		var start, end document.Value
+		if !it.Reverse {
+			start = rng.minVal
+			end = rng.maxVal
+		} else {
+			start = rng.maxVal
+			end = rng.minVal
+		}
+
+		var encEnd []byte
+		if !end.Type.IsZero() && end.V != nil {
+			encEnd, err = index.EncodeValue(end)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = iterator(start, func(val, key []byte) error {
+			if !rng.IsInRange(val) {
+				// if we reached the end of our range, we can stop iterating.
+				if encEnd == nil {
+					return nil
+				}
+				cmp := bytes.Compare(val, encEnd)
+				if !it.Reverse && cmp > 0 {
+					return ErrStreamClosed
+				}
+				if it.Reverse && cmp < 0 {
+					return ErrStreamClosed
+				}
+				return nil
+			}
+
+			d, err := table.GetDocument(key)
+			if err != nil {
+				return err
+			}
+
+			newEnv.SetDocument(d)
+			return fn(&newEnv)
+		})
+		if err == ErrStreamClosed {
+			err = nil
+		}
 		if err != nil {
 			return err
 		}
 	}
 
-	err = iterator(start, func(val, key []byte) error {
-		// if the indexed value satisfies at least one
-		// range, it gets outputted.
-		if !ranges.valueIsInRange(val) {
-			return nil
-		}
-
-		d, err := table.GetDocument(key)
-		if err != nil {
-			return err
-		}
-
-		newEnv.SetDocument(d)
-		err = fn(&newEnv)
-		if err != nil {
-			return err
-		}
-
-		// if we reached the end of our global range, we can stop iterating.
-		if bytes.Compare(val, encEnd) < 0 {
-			return ErrStreamClosed
-		}
-
-		return nil
-	})
-	if err == ErrStreamClosed {
-		err = nil
-	}
-	return err
+	return nil
 }
 
 type Range struct {
@@ -420,6 +421,55 @@ type Range struct {
 	// If set to true, Max will be ignored for comparison
 	// and for determining the global upper bound.
 	Exact bool
+}
+
+func (r *Range) encode(er *encodedRange, encoder ValueEncoder, env *expr.Environment) error {
+	// first we evaluate Min and Max
+	if r.Min != nil {
+		minVal, err := r.Min.Eval(env)
+		if err != nil {
+			return err
+		}
+		er.minVal = minVal
+		er.min, err = encoder.EncodeValue(minVal)
+		if err != nil {
+			return err
+		}
+		er.rangeType = er.minVal.Type
+	}
+	if r.Max != nil {
+		maxVal, err := r.Max.Eval(env)
+		if err != nil {
+			return err
+		}
+		er.maxVal = maxVal
+		er.max, err = encoder.EncodeValue(maxVal)
+		if err != nil {
+			return err
+		}
+		if !er.rangeType.IsZero() && er.rangeType != maxVal.Type {
+			panic("range contain values of different type")
+		}
+
+		er.rangeType = er.maxVal.Type
+	}
+
+	// ensure boundaries are typed
+	if er.minVal.Type.IsZero() {
+		er.minVal.Type = er.rangeType
+	}
+	if er.maxVal.Type.IsZero() {
+		er.maxVal.Type = er.rangeType
+	}
+
+	er.exclusive = r.Exclusive
+	er.exact = r.Exact
+
+	if er.exclusive && er.exact {
+		panic("exclusive and exact cannot both be true")
+	}
+
+	return nil
 }
 
 func (r *Range) String() string {
@@ -439,7 +489,7 @@ func (r *Range) String() string {
 		return fmt.Sprintf("[%v, %v, true]", min, max)
 	}
 
-	return fmt.Sprintf("[%v:%v]", r.Min, r.Max)
+	return fmt.Sprintf("[%v, %v]", min, max)
 }
 
 type Ranges []Range
@@ -451,32 +501,9 @@ type ValueEncoder interface {
 func (r Ranges) Encode(encoder ValueEncoder, env *expr.Environment) (encodedRanges, error) {
 	enc := make([]encodedRange, len(r))
 	for i := range r {
-		if r[i].Min != nil {
-			minVal, err := r[i].Min.Eval(env)
-			if err != nil {
-				return nil, err
-			}
-			enc[i].minVal = &minVal
-			enc[i].min, err = encoder.EncodeValue(minVal)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if r[i].Max != nil {
-			maxVal, err := r[i].Max.Eval(env)
-			if err != nil {
-				return nil, err
-			}
-			enc[i].maxVal = &maxVal
-			enc[i].max, err = encoder.EncodeValue(maxVal)
-			if err != nil {
-				return nil, err
-			}
-		}
-		enc[i].exclusive = r[i].Exclusive
-		enc[i].exact = r[i].Exact
-		if enc[i].exclusive && enc[i].exact {
-			panic("exclusive and exact cannot both be true")
+		err := r[i].encode(&enc[i], encoder, env)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -497,8 +524,40 @@ func (r Ranges) String() string {
 	return sb.String()
 }
 
+// Cost is a best effort function to determine the cost of
+// a range lookup.
+func (r Ranges) Cost() int {
+	var cost int
+
+	for _, rng := range r {
+		// if we are looking for an exact value
+		// increment by 1
+		if rng.Exact {
+			cost++
+			continue
+		}
+
+		// if there are two boundaries, increment by 50
+		if rng.Min != nil && rng.Max != nil {
+			cost += 50
+		}
+
+		// if there is only one boundary, increment by 100
+		if (rng.Min != nil && rng.Max == nil) || (rng.Min == nil && rng.Max != nil) {
+			cost += 100
+			continue
+		}
+
+		// if there are no boundaries, increment by 200
+		cost += 200
+	}
+
+	return cost
+}
+
 type encodedRange struct {
-	minVal, maxVal *document.Value
+	minVal, maxVal document.Value
+	rangeType      document.ValueType
 	min, max       []byte
 	exclusive      bool
 	exact          bool
@@ -535,67 +594,7 @@ func (e *encodedRange) IsInRange(value []byte) bool {
 		return false
 	}
 
-	return true
+	return cmpMax <= 0
 }
 
 type encodedRanges []encodedRange
-
-func (e encodedRanges) valueIsInRange(value []byte) bool {
-	for _, r := range e {
-		if r.IsInRange(value) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// lowerBound returns the minimum value to read.
-func (e encodedRanges) lowerBound() (*document.Value, error) {
-	var m *document.Value
-	for i := range e {
-		if e[i].minVal == nil {
-			return nil, nil
-		}
-
-		if m == nil {
-			m = e[i].minVal
-			continue
-		}
-
-		ok, err := m.IsLesserThan(*e[i].minVal)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			m = e[i].minVal
-		}
-	}
-
-	return m, nil
-}
-
-// upperBoundRanges returns the maximum value to read.
-func (e encodedRanges) upperBound() (*document.Value, error) {
-	var m *document.Value
-	for i := range e {
-		if e[i].maxVal == nil {
-			return nil, nil
-		}
-
-		if m == nil {
-			m = e[i].maxVal
-			continue
-		}
-
-		ok, err := m.IsLesserThan(*e[i].maxVal)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			m = e[i].maxVal
-		}
-	}
-
-	return m, nil
-}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"io"
 	"runtime"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/stream"
 )
 
 func init() {
@@ -211,26 +213,28 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 		return nil, err
 	}
 
+	err = res.Iterate(func(d document.Document) error { return nil })
+	if err != nil {
+		return nil, err
+	}
+
 	// s.q.Run might return a stream if the last Statement is a Select,
 	// make sure the result is closed before returning so any transaction
 	// created by s.q.Run is closed.
-	return result{res}, res.Close()
+	return result{}, res.Close()
 }
 
 type result struct {
-	*query.Result
 }
 
 // LastInsertId is not supported and returns an error.
-// Use LastInsertKey instead.
 func (r result) LastInsertId() (int64, error) {
-	return driver.RowsAffected(r.Result.RowsAffected).LastInsertId()
+	return 0, errors.New("not supported")
 }
 
-// RowsAffected returns the number of rows affected by the
-// query.
+// RowsAffected is not supported and returns an error.
 func (r result) RowsAffected() (int64, error) {
-	return driver.RowsAffected(r.Result.RowsAffected).RowsAffected()
+	return 0, errors.New("not supported")
 }
 
 func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
@@ -268,16 +272,25 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
-	tree, ok := lastStmt.(*planner.Tree)
+	stmt, ok := lastStmt.(*planner.Statement)
 	if !ok {
 		return rs, nil
 	}
 
-	if pn, ok := tree.Root.(*planner.ProjectionNode); ok && len(pn.Expressions) > 0 {
-		rs.fields = make([]string, len(pn.Expressions))
-		for i := range pn.Expressions {
-			rs.fields[i] = pn.Expressions[i].Name()
+	if stmt.Stream.Op == nil {
+		return rs, nil
+	}
+
+	if po, ok := stmt.Stream.Op.(*stream.ProjectOperator); ok && len(po.Exprs) > 0 {
+		rs.fields = make([]string, len(po.Exprs))
+		for i := range po.Exprs {
+			rs.fields[i] = fmt.Sprintf("%s", po.Exprs[i])
 		}
+	}
+
+	// if fields is empty, the stream will output documents in a single field
+	if len(rs.fields) == 0 {
+		rs.fields = []string{"*"}
 	}
 
 	return rs, nil

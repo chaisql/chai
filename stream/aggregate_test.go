@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,27 +21,35 @@ func TestAggregate(t *testing.T) {
 		fails    bool
 	}{
 		{
-			"count",
+			"fake count",
 			nil,
 			makeAggregatorBuilders("agg"),
-			[]document.Document{docFromJSON(`{"a": 10}`)},
-			[]document.Document{docFromJSON(`{"agg": 1}`)},
+			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`)},
+			[]document.Document{testutil.MakeDocument(t, `{"agg": 1}`)},
+			false,
+		},
+		{
+			"count",
+			nil,
+			[]expr.AggregatorBuilder{&expr.CountFunc{Wildcard: true}},
+			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`)},
+			[]document.Document{testutil.MakeDocument(t, `{"COUNT(*)": 1}`)},
 			false,
 		},
 		{
 			"count/groupBy",
 			parser.MustParseExpr("a % 2"),
-			makeAggregatorBuilders("agg1", "agg2"),
-			generateSeqDocs(10),
-			[]document.Document{docFromJSON(`{"a % 2": 0, "agg1": 5, "agg2": 5}`), docFromJSON(`{"a % 2": 1, "agg1": 5, "agg2": 5}`)},
+			[]expr.AggregatorBuilder{&expr.CountFunc{Expr: parser.MustParseExpr("a")}, &expr.AvgFunc{Expr: parser.MustParseExpr("a")}},
+			generateSeqDocs(t, 10),
+			[]document.Document{testutil.MakeDocument(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeDocument(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
 			false,
 		},
 		{
 			"count/noInput",
 			nil,
-			makeAggregatorBuilders("agg1", "agg2"),
+			[]expr.AggregatorBuilder{&expr.CountFunc{Expr: parser.MustParseExpr("a")}, &expr.AvgFunc{Expr: parser.MustParseExpr("a")}},
 			nil,
-			[]document.Document{docFromJSON(`{"agg1": 0, "agg2": 0}`)},
+			[]document.Document{testutil.MakeDocument(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
 			false,
 		},
 	}
@@ -55,7 +64,7 @@ func TestAggregate(t *testing.T) {
 			s = s.Pipe(stream.HashAggregate(test.builders...))
 
 			var got []document.Document
-			err := s.Op.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -73,7 +82,7 @@ func TestAggregate(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `aggregate(a(), b())`, stream.HashAggregate(makeAggregatorBuilders("a()", "b()")...).String())
+		require.Equal(t, `hashAggregate(a(), b())`, stream.HashAggregate(makeAggregatorBuilders("a()", "b()")...).String())
 	})
 }
 

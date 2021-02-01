@@ -76,16 +76,17 @@ func TestIndexDelete(t *testing.T) {
 		require.NoError(t, idx.Set(document.NewDoubleValue(10), []byte("key")))
 		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("other-key")))
 		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("yet-another-key")))
+		require.NoError(t, idx.Set(document.NewTextValue("hello"), []byte("yet-another-different-key")))
 		require.NoError(t, idx.Delete(document.NewDoubleValue(10), []byte("key")))
 
 		pivot := document.NewIntegerValue(10)
 		i := 0
 		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte) error {
 			if i == 0 {
-				requireEqualEncoded(t, document.NewIntegerValue(10), v)
+				requireEqualEncoded(t, document.NewDoubleValue(10), v)
 				require.Equal(t, "other-key", string(k))
 			} else if i == 1 {
-				requireEqualEncoded(t, document.NewIntegerValue(11), v)
+				requireEqualEncoded(t, document.NewDoubleValue(11), v)
 				require.Equal(t, "yet-another-key", string(k))
 			} else {
 				return errors.New("should not reach this point")
@@ -111,10 +112,10 @@ func TestIndexDelete(t *testing.T) {
 		err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(v, k []byte) error {
 			switch i {
 			case 0:
-				requireEqualEncoded(t, document.NewIntegerValue(10), v)
+				requireEqualEncoded(t, document.NewDoubleValue(10), v)
 				require.Equal(t, "key1", string(k))
 			case 1:
-				requireEqualEncoded(t, document.NewIntegerValue(12), v)
+				requireEqualEncoded(t, document.NewDoubleValue(12), v)
 				require.Equal(t, "key3", string(k))
 			default:
 				return errors.New("should not reach this point")
@@ -191,7 +192,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					err := idx.AscendGreaterOrEqual(test.pivot, func(val, rid []byte) error {
 						switch test.t {
 						case document.IntegerValue:
-							requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
+							requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
 						case document.DoubleValue:
 							requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
 						case document.TextValue:
@@ -239,19 +240,14 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			defer cleanup()
 
 			for i := int64(0); i < 10; i++ {
-				require.NoError(t, idx.Set(document.NewIntegerValue(i), []byte{'i', 'a' + byte(i)}))
 				require.NoError(t, idx.Set(document.NewDoubleValue(float64(i)), []byte{'d', 'a' + byte(i)}))
 				require.NoError(t, idx.Set(document.NewTextValue(strconv.Itoa(int(i))), []byte{'s', 'a' + byte(i)}))
 			}
 
-			var ints, doubles, texts int
+			var doubles, texts int
 			var count int
 			err := idx.AscendGreaterOrEqual(document.Value{}, func(val, rid []byte) error {
 				if count < 10 {
-					requireEqualEncoded(t, document.NewIntegerValue(int64(ints)), val)
-					require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
-					ints++
-				} else if count < 20 {
 					requireEqualEncoded(t, document.NewDoubleValue(float64(doubles)), val)
 					require.Equal(t, []byte{'d', 'a' + byte(doubles)}, rid)
 					doubles++
@@ -264,8 +260,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				return nil
 			})
 			require.NoError(t, err)
-			require.Equal(t, 30, count)
-			require.Equal(t, 10, ints)
+			require.Equal(t, 10, doubles)
 			require.Equal(t, 10, texts)
 		})
 
@@ -302,13 +297,13 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.NoError(t, idx.Set(document.NewTextValue("1"), binarysort.AppendInt64(nil, i)))
 		}
 
-		var ints, texts int
+		var doubles, texts int
 		i := int64(0)
 		err := idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, rid []byte) error {
-			requireEqualEncoded(t, document.NewIntegerValue(1), val)
+			requireEqualEncoded(t, document.NewDoubleValue(1), val)
 			require.Equal(t, binarysort.AppendInt64(nil, i), rid)
 			i++
-			ints++
+			doubles++
 			return nil
 		})
 
@@ -321,7 +316,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 100, ints)
+		require.Equal(t, 100, doubles)
 		require.Equal(t, 100, texts)
 	})
 }
@@ -354,7 +349,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			var i uint8 = 8
 			var count int
 			err := idx.DescendLessOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte) error {
-				requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
+				requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
 				require.Equal(t, []byte{'a' + i}, key)
 
 				i -= 2
@@ -405,7 +400,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					require.Equal(t, []byte{'s', 'a' + byte(texts)}, rid)
 					texts--
 				} else {
-					requireEqualEncoded(t, document.NewIntegerValue(int64(ints)), val)
+					requireEqualEncoded(t, document.NewDoubleValue(float64(ints)), val)
 					require.Equal(t, []byte{'i', 'a' + byte(ints)}, rid)
 					ints--
 				}
