@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"context"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
@@ -257,7 +258,7 @@ func TestSaveCommand(t *testing.T) {
 
 			// check that by iterating through the index and finding the previously inserted values
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte, isEqual bool) error {
+			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
 				i++
 				return nil
 			})
