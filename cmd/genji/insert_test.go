@@ -126,7 +126,11 @@ func TestExecuteInsertCommand(t *testing.T) {
 			return nil
 		})
 
-		wantCount, err := res.Count()
+		wantCount := 0
+		err = res.Iterate(func(d document.Document) error {
+			wantCount++
+			return nil
+		})
 		require.NoError(t, err)
 		require.Equal(t, wantCount, i)
 	})
