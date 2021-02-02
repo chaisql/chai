@@ -29,6 +29,10 @@ type Transaction struct {
 
 	tableInfoStore *tableInfoStore
 	indexStore     *indexStore
+
+	// these functions are run after a successful rollback or commit.
+	onRollbackHooks []func()
+	onCommitHooks   []func()
 }
 
 // DB returns the underlying database that created the transaction.
@@ -52,6 +56,10 @@ func (tx *Transaction) Rollback() error {
 		}
 	}
 
+	for _, fn := range tx.onRollbackHooks {
+		fn()
+	}
+
 	return nil
 }
 
@@ -70,6 +78,10 @@ func (tx *Transaction) Commit() error {
 		if tx.db.attachedTransaction != nil {
 			tx.db.attachedTransaction = nil
 		}
+	}
+
+	for _, fn := range tx.onCommitHooks {
+		fn()
 	}
 
 	return nil
