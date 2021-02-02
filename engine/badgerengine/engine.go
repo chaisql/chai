@@ -4,6 +4,7 @@ package badgerengine
 import (
 	"bytes"
 	"context"
+	"sync"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/genjidb/genji/engine"
@@ -18,6 +19,8 @@ const (
 // Engine represents a Badger engine.
 type Engine struct {
 	DB *badger.DB
+
+	m sync.RWMutex
 }
 
 // NewEngine creates a Badger engine. It takes the same argument as Badger's Open function.
@@ -38,6 +41,12 @@ func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Trans
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
+	}
+
+	if opts.Writable {
+		e.m.Lock()
+	} else {
+		e.m.RLock()
 	}
 
 	tx := e.DB.NewTransaction(opts.Writable)
@@ -64,11 +73,26 @@ type Transaction struct {
 	discarded bool
 }
 
+func (t *Transaction) unlock() {
+	if t.writable {
+		t.ng.m.Unlock()
+	} else {
+		t.ng.m.RUnlock()
+	}
+}
+
 // Rollback the transaction. Can be used safely after commit.
 func (t *Transaction) Rollback() error {
 	t.tx.Discard()
 
+	if t.discarded {
+		return badger.ErrDiscardedTxn
+	}
+
 	t.discarded = true
+
+	t.unlock()
+
 	select {
 	case <-t.ctx.Done():
 		return t.ctx.Err()
@@ -95,6 +119,8 @@ func (t *Transaction) Commit() error {
 	}
 
 	t.discarded = true
+	defer t.unlock()
+
 	return t.tx.Commit()
 }
 
