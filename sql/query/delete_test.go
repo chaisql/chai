@@ -19,6 +19,7 @@ func TestDeleteStmt(t *testing.T) {
 	}{
 		{"No cond", `DELETE FROM test`, false, "", nil},
 		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `{"d": "foo3", "b": "bar2", "e": "bar3"}`, nil},
+		{"With offset", "DELETE FROM test OFFSET 1", false, `{"a":"foo1", "b":"bar1", "c":"baz1"}`, nil},
 		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "", nil},
 		{"Read-only table", "DELETE FROM __genji_tables", true, "", nil},
 	}

@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/sql/planner"
 	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
@@ -32,20 +34,45 @@ func (p *Parser) parseDeleteStatement() (*planner.Statement, error) {
 		return nil, err
 	}
 
-	return cfg.ToStream(), nil
+	// Parse offset: "OFFSET expr"
+	cfg.OffsetExpr, err = p.parseOffset()
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg.ToStream()
 }
 
 // DeleteConfig holds DELETE configuration.
 type deleteConfig struct {
-	TableName string
-	WhereExpr expr.Expr
+	TableName  string
+	WhereExpr  expr.Expr
+	OffsetExpr expr.Expr
 }
 
-func (cfg deleteConfig) ToStream() *planner.Statement {
+func (cfg deleteConfig) ToStream() (*planner.Statement, error) {
 	s := stream.New(stream.SeqScan(cfg.TableName))
 
 	if cfg.WhereExpr != nil {
 		s = s.Pipe(stream.Filter(cfg.WhereExpr))
+	}
+
+	if cfg.OffsetExpr != nil {
+		v, err := cfg.OffsetExpr.Eval(&expr.Environment{})
+		if err != nil {
+			return nil, err
+		}
+
+		if !v.Type.IsNumber() {
+			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+		}
+
+		v, err = v.CastAsInteger()
+		if err != nil {
+			return nil, err
+		}
+
+		s = s.Pipe(stream.Skip(v.V.(int64)))
 	}
 
 	s = s.Pipe(stream.TableDelete(cfg.TableName))
@@ -53,5 +80,5 @@ func (cfg deleteConfig) ToStream() *planner.Statement {
 	return &planner.Statement{
 		Stream:   s,
 		ReadOnly: false,
-	}
+	}, nil
 }
