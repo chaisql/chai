@@ -430,80 +430,23 @@ func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, path strin
 			return err
 		}
 
-		table, err := tx.GetTable(tableName)
-		if err != nil {
+		var buf bytes.Buffer
+		if err := dumpTable(tx, tableName, &buf); err != nil {
 			return err
 		}
 
-		ti, err := table.Info()
-		if err != nil {
-			return err
-		}
-
-		err = otherTx.CreateTable(tableName, ti)
-		if err != nil {
-			return err
-		}
-		otherTable, err := otherTx.GetTable(tableName)
-		if err != nil {
-			return err
-		}
-
-		it := table.Store.Iterator(engine.IteratorOptions{})
-		defer it.Close()
-
-		var b []byte
-		for it.Seek(nil); it.Valid(); it.Next() {
-			itm := it.Item()
-			b, err := itm.ValueCopy(b)
-			if err != nil {
-				return err
-			}
-
-			err = otherTable.Store.Put(itm.Key(), b)
-			if err != nil {
+		queries := strings.Split(buf.String(), ";")
+		for _, q := range queries {
+			if err := otherTx.Exec(q); err != nil {
 				return err
 			}
 		}
 
-		if err := it.Err(); err != nil {
-			return err
-		}
-
 		return nil
 	})
-
-	// Find all indexes
-	indexes, err := tx.Query("SELECT * FROM __genji_indexes")
-	if err != nil {
-		return err
-	}
-	defer indexes.Close()
-
-	err = indexes.Iterate(func(d document.Document) error {
-		var index database.IndexConfig
-
-		if err := index.ScanDocument(d); err != nil {
-			return err
-		}
-
-		err = otherTx.CreateIndex(index)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	err = otherTx.ReIndexAll()
 	if err != nil {
 		return err
 	}
 
-	err = otherTx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return otherTx.Commit()
 }
