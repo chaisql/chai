@@ -292,7 +292,7 @@ genji --badger pathToData
 
 Contributions are welcome!
 
-See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+See [ARCHITECTURE.md](./ARCHITECTURE.md) and [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 Thank you, [contributors](https://github.com/genjidb/genji/graphs/contributors)!
 
