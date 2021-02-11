@@ -17,13 +17,15 @@ func TestDeleteStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", `DELETE FROM test`, false, "", nil},
-		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `{"d": "foo3", "b": "bar2", "e": "bar3", "n": 1}`, nil},
-		{"With offset", "DELETE FROM test OFFSET 1", false, `{"a":"foo1", "b":"bar1", "c":"baz1", "n": 3}`, nil},
-		{"With order by then offset", "DELETE FROM test ORDER BY n OFFSET 1", false, `{"d":"foo3", "b":"bar2", "e":"bar3", "n": 1}`, nil},
-		{"With order DESC by then offset", "DELETE FROM test ORDER BY n DESC OFFSET 1", false, `{"a": "foo1", "b": "bar1", "c": "baz1", "n": 3}`, nil},
-		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "", nil},
-		{"Read-only table", "DELETE FROM __genji_tables", true, "", nil},
+		{"No cond", `DELETE FROM test`, false, "[]", nil},
+		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `[{"d": "foo3", "b": "bar2", "e": "bar3", "n": 1}]`, nil},
+		{"With offset", "DELETE FROM test OFFSET 1", false, `[{"a":"foo1", "b":"bar1", "c":"baz1", "n": 3}]`, nil},
+		{"With order by then offset", "DELETE FROM test ORDER BY n OFFSET 1", false, `[{"d":"foo3", "b":"bar2", "e":"bar3", "n": 1}]`, nil},
+		{"With order by DESC then offset", "DELETE FROM test ORDER BY n DESC OFFSET 1", false, `[{"a": "foo1", "b": "bar1", "c": "baz1", "n": 3}]`, nil},
+		{"With limit", "DELETE FROM test ORDER BY n LIMIT 2", false, `[{"a":"foo1", "b":"bar1", "c":"baz1", "n": 3}]`, nil},
+		{"With order by then limit then offset", "DELETE FROM test ORDER BY n LIMIT 1 OFFSET 1", false, `[{"a": "foo1", "b": "bar1", "c": "baz1", "n": 3}, {"d": "foo3", "b": "bar2", "e": "bar3", "n": 1}]`, nil},
+		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "[]", nil},
+		{"Read-only table", "DELETE FROM __genji_tables", true, "[]", nil},
 	}
 
 	for _, test := range tests {
@@ -53,13 +55,9 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = document.IteratorToJSON(&buf, st)
+			err = document.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
-			if len(test.expected) == 0 {
-				require.Equal(t, 0, buf.Len())
-			} else {
-				require.JSONEq(t, test.expected, buf.String())
-			}
+			require.JSONEq(t, test.expected, buf.String())
 		})
 	}
 }

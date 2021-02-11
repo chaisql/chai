@@ -40,6 +40,12 @@ func (p *Parser) parseDeleteStatement() (*planner.Statement, error) {
 		return nil, err
 	}
 
+	// Parse limit: "LIMIT expr"
+	cfg.LimitExpr, err = p.parseLimit()
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse offset: "OFFSET expr"
 	cfg.OffsetExpr, err = p.parseOffset()
 	if err != nil {
@@ -55,6 +61,7 @@ type deleteConfig struct {
 	WhereExpr        expr.Expr
 	OffsetExpr       expr.Expr
 	OrderBy          expr.Path
+	LimitExpr        expr.Expr
 	OrderByDirection scanner.Token
 }
 
@@ -89,6 +96,24 @@ func (cfg deleteConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		s = s.Pipe(stream.Skip(v.V.(int64)))
+	}
+
+	if cfg.LimitExpr != nil {
+		v, err := cfg.LimitExpr.Eval(&expr.Environment{})
+		if err != nil {
+			return nil, err
+		}
+
+		if !v.Type.IsNumber() {
+			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+		}
+
+		v, err = v.CastAsInteger()
+		if err != nil {
+			return nil, err
+		}
+
+		s = s.Pipe(stream.Take(v.V.(int64)))
 	}
 
 	s = s.Pipe(stream.TableDelete(cfg.TableName))
