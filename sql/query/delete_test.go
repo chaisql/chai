@@ -18,8 +18,10 @@ func TestDeleteStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No cond", `DELETE FROM test`, false, "", nil},
-		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `{"d": "foo3", "b": "bar2", "e": "bar3"}`, nil},
-		{"With offset", "DELETE FROM test OFFSET 1", false, `{"a":"foo1", "b":"bar1", "c":"baz1"}`, nil},
+		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `{"d": "foo3", "b": "bar2", "e": "bar3", "n": 1}`, nil},
+		{"With offset", "DELETE FROM test OFFSET 1", false, `{"a":"foo1", "b":"bar1", "c":"baz1", "n": 3}`, nil},
+		{"With order by then offset", "DELETE FROM test ORDER BY n OFFSET 1", false, `{"d":"foo3", "b":"bar2", "e":"bar3", "n": 1}`, nil},
+		{"With order DESC by then offset", "DELETE FROM test ORDER BY n DESC OFFSET 1", false, `{"a": "foo1", "b": "bar1", "c": "baz1", "n": 3}`, nil},
 		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "", nil},
 		{"Read-only table", "DELETE FROM __genji_tables", true, "", nil},
 	}
@@ -32,11 +34,11 @@ func TestDeleteStmt(t *testing.T) {
 
 			err = db.Exec("CREATE TABLE test")
 			require.NoError(t, err)
-			err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
+			err = db.Exec("INSERT INTO test (a, b, c, n) VALUES ('foo1', 'bar1', 'baz1', 3)")
 			require.NoError(t, err)
-			err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar1')")
+			err = db.Exec("INSERT INTO test (a, b, n) VALUES ('foo2', 'bar1', 2)")
 			require.NoError(t, err)
-			err = db.Exec("INSERT INTO test (d, b, e) VALUES ('foo3', 'bar2', 'bar3')")
+			err = db.Exec("INSERT INTO test (d, b, e, n) VALUES ('foo3', 'bar2', 'bar3', 1)")
 			require.NoError(t, err)
 
 			err = db.Exec(test.query, test.params...)

@@ -34,6 +34,12 @@ func (p *Parser) parseDeleteStatement() (*planner.Statement, error) {
 		return nil, err
 	}
 
+	// Parse order by: "ORDER BY path [ASC|DESC]?"
+	cfg.OrderBy, cfg.OrderByDirection, err = p.parseOrderBy()
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse offset: "OFFSET expr"
 	cfg.OffsetExpr, err = p.parseOffset()
 	if err != nil {
@@ -45,9 +51,11 @@ func (p *Parser) parseDeleteStatement() (*planner.Statement, error) {
 
 // DeleteConfig holds DELETE configuration.
 type deleteConfig struct {
-	TableName  string
-	WhereExpr  expr.Expr
-	OffsetExpr expr.Expr
+	TableName        string
+	WhereExpr        expr.Expr
+	OffsetExpr       expr.Expr
+	OrderBy          expr.Path
+	OrderByDirection scanner.Token
 }
 
 func (cfg deleteConfig) ToStream() (*planner.Statement, error) {
@@ -55,6 +63,14 @@ func (cfg deleteConfig) ToStream() (*planner.Statement, error) {
 
 	if cfg.WhereExpr != nil {
 		s = s.Pipe(stream.Filter(cfg.WhereExpr))
+	}
+
+	if cfg.OrderBy != nil {
+		if cfg.OrderByDirection == scanner.DESC {
+			s = s.Pipe(stream.SortReverse(cfg.OrderBy))
+		} else {
+			s = s.Pipe(stream.Sort(cfg.OrderBy))
+		}
 	}
 
 	if cfg.OffsetExpr != nil {
