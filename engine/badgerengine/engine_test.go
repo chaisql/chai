@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/enginetest"
