@@ -6,7 +6,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/engine"
 )
 
@@ -85,13 +85,11 @@ func (t *Transaction) unlock() {
 func (t *Transaction) Rollback() error {
 	t.tx.Discard()
 
-	if t.discarded {
-		return badger.ErrDiscardedTxn
+	if !t.discarded {
+		t.unlock()
 	}
 
 	t.discarded = true
-
-	t.unlock()
 
 	select {
 	case <-t.ctx.Done():
