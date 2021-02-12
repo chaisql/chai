@@ -112,8 +112,9 @@ func (e *Environment) GetTx() *database.Transaction {
 func (e *Environment) Clone() (*Environment, error) {
 	newEnv := Environment{
 		Params: e.Params,
-		Vars:   document.NewFieldBuffer(),
 	}
+
+	newEnv.Tx = e.Tx
 
 	if e.Doc != nil {
 		fb := document.NewFieldBuffer()
@@ -127,7 +128,7 @@ func (e *Environment) Clone() (*Environment, error) {
 
 	if e.Vars != nil {
 		fb := document.NewFieldBuffer()
-		err := fb.Copy(e.Doc)
+		err := fb.Copy(e.Vars)
 		if err != nil {
 			return nil, err
 		}
