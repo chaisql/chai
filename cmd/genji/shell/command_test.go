@@ -105,7 +105,6 @@ func TestRunDumpCmd(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
 		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				db, err := genji.Open(":memory:")
@@ -160,7 +159,7 @@ func TestRunDumpCmd(t *testing.T) {
 				bwant.WriteString(tt.want)
 
 				var buf bytes.Buffer
-				err = runDumpCmd(db, []string{`test`}, &buf)
+				err = RunDumpCmd(db, []string{`test`}, &buf)
 				require.NoError(t, err)
 				bwant.WriteString(ci)
 				require.Equal(t, bwant.String(), buf.String())
@@ -207,7 +206,7 @@ func TestSaveCommand(t *testing.T) {
 			require.NoError(t, err)
 
 			// save the dummy database
-			err = runSaveCmd(context.Background(), db, tt.engine, tt.path)
+			err = RunSaveCmd(context.Background(), db, tt.engine, tt.path)
 			require.NoError(t, err)
 
 			if tt.engine == "badger" {

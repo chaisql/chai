@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -108,6 +109,57 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 					break
 				}
 				fmt.Printf("Genji %v\nGenji CLI %v\n", genjiVersion, cliVersion)
+				return nil
+			},
+		},
+		{
+			Name:      "dump",
+			Usage:     "Dump a database or a list of tables as a text file.",
+			UsageText: `genji dump [options] dbpath`,
+
+			Description: ` The dump command can dump a database as a text file.
+
+  By default, the content of the database is sent to the standard output:
+
+  $ genji dump my.db
+  CREATE TABLE foo;
+  ...
+
+  It is possible to specify a list of tables to output:
+
+  $ genji dump -t foo -f bar my.db
+
+  The dump command can also write directly into a file:
+
+  $ genji dump -f dump.sql my.db`,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "file",
+					Aliases: []string{"f"},
+					Usage:   "name of the file to output to. Defaults to STDOUT.",
+				},
+				&cli.StringSliceFlag{
+					Name:    "table",
+					Aliases: []string{"t"},
+					Usage:   "name of the table, it must already exist. Default to all tables.",
+				},
+				&cli.StringFlag{
+					Name:    "engine",
+					Aliases: []string{"e"},
+					Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
+					Value:   "bolt",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				table := c.StringSlice("table")
+				file := c.String("file")
+				engine := c.String("engine")
+				args := c.Args().First()
+
+				if err := executeDump(context.Background(), file, table, engine, args, os.Stdout); err != nil {
+					cli.ShowCommandHelpAndExit(c, c.Command.Name, 2)
+				}
+
 				return nil
 			},
 		},

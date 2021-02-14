@@ -233,7 +233,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 			buf.WriteString(",\n")
 		}
 
-		buf.WriteString("  " + fcs[i].Path.String() + " ")
+		buf.WriteString(" " + fcs[i].Path.String() + " ")
 		buf.WriteString(strings.ToUpper(fcs[i].Type.String()))
 		if fc.IsPrimaryKey {
 			buf.WriteString(" PRIMARY KEY")
@@ -298,7 +298,6 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		}
 		buf.Write(data)
 		buf.WriteString(";\n")
-
 		if _, err = buf.WriteTo(w); err != nil {
 			return err
 		}
@@ -307,8 +306,8 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	})
 }
 
-// runDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
-func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
+// RunDumpCmd dumps the given tables if provided, otherwise it dumps the whole database.
+func RunDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -320,22 +319,22 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	}
 
 	for i, table := range tables {
-		err = dumpTable(tx, table, w)
-		if err != nil {
-			// If table doesn’t exist we skip it.
-			if errors.Is(err, database.ErrTableNotFound) {
-				continue
-			}
-			_, err = fmt.Fprintln(w, "COMMIT;")
-			return err
-		}
-
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
 				return err
 			}
 		}
+
+		if err = dumpTable(tx, table, w); err != nil {
+			// If table doesn’t exist we skip it.
+			if errors.Is(err, database.ErrTableNotFound) {
+				continue
+			}
+			_, err = fmt.Fprintln(w, "ROLLBACK;")
+			return err
+		}
+
 	}
 
 	// tables slice argument is not empty, all args tables has been displayed.
@@ -381,9 +380,9 @@ func runDumpCmd(db *genji.DB, tables []string, w io.Writer) error {
 	return err
 }
 
-// runSaveCommand saves the currently opened database at the given path.
+// RunSaveCmd saves the currently opened database at the given path.
 // If a path already exists, existing values in the target database will be overwritten.
-func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, path string) error {
+func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, path string) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err

@@ -487,7 +487,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return err
 		}
 
-		return runDumpCmd(db, cmd[1:], os.Stdout)
+		return RunDumpCmd(db, cmd[1:], os.Stdout)
 	case ".save":
 		db, err := sh.getDB(ctx)
 		if err != nil {
@@ -505,7 +505,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return fmt.Errorf("Can't save without output path")
 		}
 
-		return runSaveCmd(ctx, db, engine, path)
+		return RunSaveCmd(ctx, db, engine, path)
 
 	default:
 		return displaySuggestions(in)
