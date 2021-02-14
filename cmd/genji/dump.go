@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/engine"
 
 	"github.com/genjidb/genji"
