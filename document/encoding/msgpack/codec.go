@@ -124,7 +124,7 @@ func (e *Encoder) EncodeValue(v document.Value) error {
 	case document.BoolValue:
 		return e.enc.EncodeBool(v.V.(bool))
 	case document.IntegerValue:
-		return e.enc.EncodeInt64(v.V.(int64))
+		return e.enc.EncodeInt(v.V.(int64))
 	case document.DoubleValue:
 		return e.enc.EncodeFloat64(v.V.(float64))
 	}
@@ -192,6 +192,18 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 			return
 		}
 		v = document.NewTextValue(s)
+		return
+	}
+
+	// decode fixnum (the msgpack size optimization to encode low value integers)
+	// https://github.com/msgpack/msgpack/blob/master/spec.md#int-format-family
+	if msgpcode.IsFixedNum(c) {
+		v.V, err = d.dec.DecodeInt64()
+		if err != nil {
+			return
+		}
+
+		v.Type = document.IntegerValue
 		return
 	}
 
