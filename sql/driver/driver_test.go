@@ -70,6 +70,59 @@ func TestDriver(t *testing.T) {
 		require.Equal(t, 10, count)
 	})
 
+	t.Run("Multiple fields with ORDER BY", func(t *testing.T) {
+		rows, err := db.Query("SELECT a, c FROM test ORDER BY a")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var a int
+		var c foo
+		for rows.Next() {
+			err = rows.Scan(&a, Scanner(&c))
+			require.NoError(t, err)
+			require.Equal(t, count, a)
+			require.Equal(t, foo{Foo: "bar"}, c)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
+
+	t.Run("Wilcards with ORDER BY", func(t *testing.T) {
+		rows, err := db.Query("SELECT * FROM test ORDER BY a")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var dt doctest
+		for rows.Next() {
+			err = rows.Scan(Scanner(&dt))
+			require.NoError(t, err)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 10, count)
+	})
+
+	t.Run("Wilcards with ORDER BY and LIMIT", func(t *testing.T) {
+		rows, err := db.Query("SELECT * FROM test ORDER BY a LIMIT 5")
+		require.NoError(t, err)
+		defer rows.Close()
+
+		var count int
+		var dt doctest
+		for rows.Next() {
+			err = rows.Scan(Scanner(&dt))
+			require.NoError(t, err)
+			require.Equal(t, doctest{count, []int{count + 1, count + 2, count + 3}, foo{Foo: "bar"}}, dt)
+			count++
+		}
+		require.NoError(t, rows.Err())
+		require.Equal(t, 5, count)
+	})
+
 	t.Run("Multiple fields and wildcards", func(t *testing.T) {
 		rows, err := db.Query("SELECT a, a, *, b, c, * FROM test")
 		require.NoError(t, err)
