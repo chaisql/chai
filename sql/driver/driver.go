@@ -273,18 +273,23 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	lastStmt := s.q.Statements[len(s.q.Statements)-1]
 
 	stmt, ok := lastStmt.(*planner.Statement)
-	if !ok {
+	if !ok || stmt.Stream.Op == nil {
 		return rs, nil
 	}
 
-	if stmt.Stream.Op == nil {
-		return rs, nil
-	}
+	// Search the ProjectOperator.
+	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
+		if po, ok := op.(*stream.ProjectOperator); ok {
+			if len(po.Exprs) == 0 {
+				break
+			}
 
-	if po, ok := stmt.Stream.Op.(*stream.ProjectOperator); ok && len(po.Exprs) > 0 {
-		rs.fields = make([]string, len(po.Exprs))
-		for i := range po.Exprs {
-			rs.fields[i] = fmt.Sprintf("%s", po.Exprs[i])
+			rs.fields = make([]string, len(po.Exprs))
+			for i := range po.Exprs {
+				rs.fields[i] = fmt.Sprintf("%s", po.Exprs[i])
+			}
+
+			return rs, nil
 		}
 	}
 
@@ -311,7 +316,7 @@ func (s stmt) Close() error {
 	return nil
 }
 
-var errStop = errors.New("stop")
+var ErrStop = errors.New("stop")
 
 type documentStream struct {
 	res      *query.Result
@@ -354,28 +359,29 @@ func (rs *documentStream) iterate(ctx context.Context) {
 	err := rs.res.Iterate(func(d document.Document) error {
 		select {
 		case <-ctx.Done():
-			return errStop
+			return ErrStop
 		case rs.c <- doc{
 			d: d,
 		}:
 
 			select {
 			case <-ctx.Done():
-				return errStop
+				return ErrStop
 			case <-rs.c:
 				return nil
 			}
 		}
 	})
 
-	if err == errStop || err == nil {
-		return
-	}
 	if err != nil {
+		if err == ErrStop {
+			return
+		}
+
 		rs.c <- doc{
 			err: err,
 		}
-		return
+
 	}
 }
 
