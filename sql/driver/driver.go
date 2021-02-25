@@ -316,7 +316,7 @@ func (s stmt) Close() error {
 	return nil
 }
 
-var ErrStop = errors.New("stop")
+var errStop = errors.New("stop")
 
 type documentStream struct {
 	res      *query.Result
@@ -359,29 +359,28 @@ func (rs *documentStream) iterate(ctx context.Context) {
 	err := rs.res.Iterate(func(d document.Document) error {
 		select {
 		case <-ctx.Done():
-			return ErrStop
+			return errStop
 		case rs.c <- doc{
 			d: d,
 		}:
 
 			select {
 			case <-ctx.Done():
-				return ErrStop
+				return errStop
 			case <-rs.c:
 				return nil
 			}
 		}
 	})
 
+	if err == errStop || err == nil {
+		return
+	}
 	if err != nil {
-		if err == ErrStop {
-			return
-		}
-
 		rs.c <- doc{
 			err: err,
 		}
-
+		return
 	}
 }
 
