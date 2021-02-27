@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/genjidb/genji/sql/planner"
+	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
 )
