@@ -31,6 +31,9 @@ type Database struct {
 
 	// table and index catalog.
 	catalog *Catalog
+
+	// This controls concurrency on read-only and read/write transactions.
+	txmu sync.RWMutex
 }
 
 type Options struct {
@@ -116,6 +119,12 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = new(TxOptions)
+	}
+
+	if !opts.ReadOnly {
+		db.txmu.Lock()
+	} else {
+		db.txmu.RLock()
 	}
 
 	db.attachedTxMu.Lock()

@@ -40,6 +40,14 @@ func (tx *Transaction) Rollback() error {
 		return err
 	}
 
+	defer func() {
+		if tx.writable {
+			tx.db.txmu.Unlock()
+		} else {
+			tx.db.txmu.RUnlock()
+		}
+	}()
+
 	if tx.attached {
 		tx.db.attachedTxMu.Lock()
 		defer tx.db.attachedTxMu.Unlock()
@@ -59,10 +67,19 @@ func (tx *Transaction) Rollback() error {
 // Commit the transaction. Calling this method on read-only transactions
 // will return an error.
 func (tx *Transaction) Commit() error {
+
 	err := tx.tx.Commit()
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if tx.writable {
+			tx.db.txmu.Unlock()
+		} else {
+			tx.db.txmu.RUnlock()
+		}
+	}()
 
 	if tx.attached {
 		tx.db.attachedTxMu.Lock()

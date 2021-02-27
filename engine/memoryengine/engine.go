@@ -21,7 +21,6 @@ type Engine struct {
 	closed    bool
 	stores    map[string]*btree.BTree
 	sequences map[string]uint64
-	mu        sync.RWMutex
 }
 
 // NewEngine creates an in-memory engine.
@@ -40,12 +39,6 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 	default:
 	}
 
-	if opts.Writable {
-		ng.mu.Lock()
-	} else {
-		ng.mu.RLock()
-	}
-
 	if ng.closed {
 		return nil, errors.New("engine closed")
 	}
@@ -55,8 +48,6 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 
 // Close the engine.
 func (ng *Engine) Close() error {
-	ng.mu.Lock()
-	defer ng.mu.Unlock()
 	if ng.closed {
 		return errors.New("engine already closed")
 	}
@@ -93,9 +84,6 @@ func (tx *transaction) Rollback() error {
 		for _, undo := range tx.onRollback {
 			undo()
 		}
-		tx.ng.mu.Unlock()
-	} else {
-		tx.ng.mu.RUnlock()
 	}
 
 	select {
@@ -133,8 +121,6 @@ func (tx *transaction) Commit() error {
 	for _, fn := range tx.onCommit {
 		fn()
 	}
-
-	tx.ng.mu.Unlock()
 
 	return nil
 }
