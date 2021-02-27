@@ -5,8 +5,8 @@ import (
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/stream"
 )
 

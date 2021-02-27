@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/query/expr"
 )
 
 // BeginStmt is a statement that creates a new transaction.

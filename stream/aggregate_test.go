@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/query/expr"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/sql/query/expr"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/query/expr"
 )
 
 // AlterStmt is a DSL that allows creating a full ALTER TABLE query.

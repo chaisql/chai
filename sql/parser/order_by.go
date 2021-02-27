@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
 

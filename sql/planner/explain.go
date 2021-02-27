@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/sql/query"
-	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/query/expr"
 	"github.com/genjidb/genji/stream"
 )
 

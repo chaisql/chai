@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/query/glob"
+	"github.com/genjidb/genji/query/glob"
 	"github.com/genjidb/genji/sql/scanner"
 )
 

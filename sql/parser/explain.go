@@ -1,8 +1,8 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/planner"
-	"github.com/genjidb/genji/sql/query"
 	"github.com/genjidb/genji/sql/scanner"
 )
 

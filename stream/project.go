@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/query/expr"
+	"github.com/genjidb/genji/query/expr"
 )
 
 // A ProjectOperator applies an expression on each value of the stream and returns a new value.
