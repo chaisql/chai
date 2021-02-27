@@ -56,29 +56,24 @@ func TestTableInfoStore(t *testing.T) {
 		}
 
 		// Inserting one TableInfo should work.
-		err = tx.tableInfoStore.Insert(tx, "foo1", info)
+		err = tx.getTableStore().Insert(tx, "foo1", info)
 		require.NoError(t, err)
 
 		// Inserting an existing TableInfo should not work.
-		err = tx.tableInfoStore.Insert(tx, "foo1", info)
+		err = tx.getTableStore().Insert(tx, "foo1", info)
 		require.Equal(t, err, ErrTableAlreadyExists)
 
-		// Getting an existing TableInfo should work.
-		_, err = tx.tableInfoStore.Get(tx, "foo1")
+		// Getting an the list of TableInfo should work.
+		list, err := tx.getTableStore().ListAll()
 		require.NoError(t, err)
-
-		// Getting a non-existing TableInfo should not work.
-		_, err = tx.tableInfoStore.Get(tx, "unknown")
-		if !errors.Is(err, ErrTableNotFound) {
-			require.Equal(t, err, ErrTableNotFound)
-		}
+		require.Len(t, list, 1)
 
 		// Deleting an existing TableInfo should work.
-		err = tx.tableInfoStore.Delete(tx, "foo1")
+		err = tx.getTableStore().Delete(tx, "foo1")
 		require.NoError(t, err)
 
 		// Deleting a non-existing TableInfo should not work.
-		err = tx.tableInfoStore.Delete(tx, "foo1")
+		err = tx.getTableStore().Delete(tx, "foo1")
 		if !errors.Is(err, ErrTableNotFound) {
 			require.Equal(t, err, ErrTableNotFound)
 		}
@@ -103,7 +98,7 @@ func TestTableInfoStore(t *testing.T) {
 		insertAndRollback := func() {
 			tx, err := db.Begin(true)
 			require.NoError(t, err)
-			err = tx.tableInfoStore.Insert(tx, "foo", info)
+			err = tx.getTableStore().Insert(tx, "foo", info)
 			require.NoError(t, err)
 			err = tx.Rollback()
 			require.NoError(t, err)
@@ -134,7 +129,7 @@ func TestTableInfoStore(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.tableInfoStore.Insert(tx, "foo", info)
+			err = tx.getTableStore().Insert(tx, "foo", info)
 			if err != nil {
 				return err
 			}
@@ -164,7 +159,7 @@ func TestIndexStore(t *testing.T) {
 	idxs := indexStore{db: &Database{Codec: msgpack.NewCodec()}, st: st}
 
 	t.Run("Basic operations", func(t *testing.T) {
-		cfg := IndexConfig{
+		cfg := IndexInfo{
 			TableName: "test",
 			IndexName: "idx_test",
 			Unique:    true,
@@ -199,7 +194,7 @@ func TestIndexStore(t *testing.T) {
 	})
 
 	t.Run("List all indexes", func(t *testing.T) {
-		idxcfgs := []*IndexConfig{
+		idxcfgs := []*IndexInfo{
 			{TableName: "test1", IndexName: "idx_test1", Unique: true},
 			{TableName: "test2", IndexName: "idx_test2", Unique: true},
 			{TableName: "test3", IndexName: "idx_test3", Unique: true},

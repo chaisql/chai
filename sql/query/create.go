@@ -74,7 +74,7 @@ func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 		return res, errors.New("missing path")
 	}
 
-	err := tx.CreateIndex(database.IndexConfig{
+	err := tx.CreateIndex(database.IndexInfo{
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,

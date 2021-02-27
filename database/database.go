@@ -28,6 +28,9 @@ type Database struct {
 
 	// Codec used to encode documents. Defaults to MessagePack.
 	Codec encoding.Codec
+
+	// table and index catalog.
+	catalog *Catalog
 }
 
 type Options struct {
@@ -45,20 +48,18 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 		Codec: opts.Codec,
 	}
 
-	ntx, err := db.ng.Begin(ctx, engine.TxOptions{
-		Writable: true,
-	})
+	tx, err := db.BeginTx(ctx, &TxOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer ntx.Rollback()
+	defer tx.Rollback()
 
-	err = db.initInternalStores(ntx)
+	err = db.initCatalog(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = ntx.Commit()
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -66,20 +67,31 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	return &db, nil
 }
 
-func (db *Database) initInternalStores(tx engine.Transaction) error {
-	_, err := tx.GetStore([]byte(tableInfoStoreName))
+func (db *Database) initCatalog(tx *Transaction) error {
+	_, err := tx.tx.GetStore([]byte(tableInfoStoreName))
 	if err == engine.ErrStoreNotFound {
-		err = tx.CreateStore([]byte(tableInfoStoreName))
+		err = tx.tx.CreateStore([]byte(tableInfoStoreName))
 	}
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.GetStore([]byte(indexStoreName))
+	_, err = tx.tx.GetStore([]byte(indexStoreName))
 	if err == engine.ErrStoreNotFound {
-		err = tx.CreateStore([]byte(indexStoreName))
+		err = tx.tx.CreateStore([]byte(indexStoreName))
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	c := NewCatalog()
+	err = c.Load(tx)
+	if err != nil {
+		return err
+	}
+
+	db.catalog = c
+	return nil
 }
 
 // Close the underlying engine.
@@ -127,16 +139,6 @@ func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		attached: opts.Attached,
 	}
 
-	tx.tableInfoStore, err = tx.getTableInfoStore()
-	if err != nil {
-		return nil, err
-	}
-
-	tx.indexStore, err = tx.getIndexStore()
-	if err != nil {
-		return nil, err
-	}
-
 	if opts.Attached {
 		db.attachedTransaction = &tx
 	}
@@ -162,4 +164,8 @@ func (db *Database) GetAttachedTx() *Transaction {
 	defer db.attachedTxMu.Unlock()
 
 	return db.attachedTransaction
+}
+
+func (db *Database) Catalog() *Catalog {
+	return db.catalog
 }

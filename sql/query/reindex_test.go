@@ -19,7 +19,7 @@ func TestReIndex(t *testing.T) {
 		{"ReIndex table", `REINDEX test2`, []string{"idx_test2_a", "idx_test2_b"}, false},
 		{"ReIndex index", `REINDEX idx_test1_a`, []string{"idx_test1_a"}, false},
 		{"ReIndex unknown", `REINDEX doesntexist`, []string{}, true},
-		{"ReIndex read-only", `REINDEX __genji_tables`, []string{}, true},
+		{"ReIndex read-only", `REINDEX __genji_tables`, []string{}, false},
 	}
 
 	for _, test := range tests {
@@ -50,11 +50,10 @@ func TestReIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				idxList, err := tx.ListIndexes()
-				require.NoError(t, err)
+				idxList := tx.ListIndexes()
 
-				for _, cfg := range idxList {
-					idx, err := tx.GetIndex(cfg.IndexName)
+				for _, idxName := range idxList {
+					idx, err := tx.GetIndex(idxName)
 					require.NoError(t, err)
 
 					shouldBeIndexed := false

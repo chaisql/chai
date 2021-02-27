@@ -71,7 +71,10 @@ type Transaction struct {
 // Rollback the transaction. Can be used safely after commit.
 func (t *Transaction) Rollback() error {
 	err := t.tx.Rollback()
-	if err != nil && err != bolt.ErrTxClosed {
+	if err == bolt.ErrTxClosed {
+		return engine.ErrTransactionDiscarded
+	}
+	if err != nil {
 		return err
 	}
 
@@ -101,7 +104,11 @@ func (t *Transaction) Commit() error {
 		}
 	}
 
-	return t.tx.Commit()
+	err := t.tx.Commit()
+	if err == bolt.ErrTxClosed {
+		return engine.ErrTransactionDiscarded
+	}
+	return err
 }
 
 // GetStore returns a store by name. The store uses a Bolt bucket.

@@ -137,11 +137,15 @@ func TestRunDumpCmd(t *testing.T) {
 					err = db.View(func(tx *genji.Tx) error {
 						// indexes is unordered, we cannot guess the order.
 						// we have to test only one index creation.
-						indexes, err := tx.ListIndexes()
+						indexNames := tx.ListIndexes()
 						require.NoError(t, err)
-						for _, index := range indexes {
-							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", index.IndexName, index.TableName,
-								index.Path)
+						for _, indexName := range indexNames {
+							idx, err := tx.GetIndex(indexName)
+							if err != nil {
+								return err
+							}
+							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", idx.Opts.IndexName, idx.Opts.TableName,
+								idx.Opts.Path)
 							bwant.WriteString(info)
 						}
 						return nil
@@ -236,11 +240,9 @@ func TestSaveCommand(t *testing.T) {
 
 			// ensure that the index has been created
 			err = db.View(func(tx *genji.Tx) error {
-				indexes, err := tx.ListIndexes()
-				require.NoError(t, err)
+				indexes := tx.ListIndexes()
 				require.Len(t, indexes, 1)
-				require.Equal(t, "idx_a", indexes[0].IndexName)
-				require.Equal(t, "test", indexes[0].TableName)
+				require.Equal(t, "idx_a", indexes[0])
 
 				return nil
 			})

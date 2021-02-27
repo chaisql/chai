@@ -23,7 +23,7 @@ func parsePath(t testing.TB, str string) document.Path {
 }
 
 func newTestTable(t testing.TB) (*database.Table, func()) {
-	tx, fn := newTestDB(t)
+	_, tx, fn := newTestTx(t)
 
 	err := tx.CreateTable("test", nil)
 	require.NoError(t, err)
@@ -158,28 +158,25 @@ func TestTableInsert(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		insertDoc := func(db *database.Database) []byte {
-			tx, err := db.Begin(true)
-			require.NoError(t, err)
+		insertDoc := func(db *database.Database) (rawKey []byte) {
+			update(t, db, func(tx *database.Transaction) error {
+				// create table if not exists
+				_ = tx.CreateTable("test", nil)
 
-			_ = tx.CreateTable("test", &database.TableInfo{})
+				tb, err := tx.GetTable("test")
+				require.NoError(t, err)
 
-			tb, err := tx.GetTable("test")
-			require.NoError(t, err)
-
-			doc := newDocument()
-			d, err := tb.Insert(doc)
-			require.NoError(t, err)
-			require.NotEmpty(t, d.(document.Keyer).RawKey())
-
-			err = tx.Commit()
-			require.NoError(t, err)
-
-			return d.(document.Keyer).RawKey()
+				doc := newDocument()
+				d, err := tb.Insert(doc)
+				require.NoError(t, err)
+				require.NotEmpty(t, d.(document.Keyer).RawKey())
+				rawKey = d.(document.Keyer).RawKey()
+				return nil
+			})
+			return
 		}
 
 		key1 := insertDoc(db)
-		require.NoError(t, err)
 
 		// create new database object
 		db, err = database.New(context.Background(), ng, database.Options{
@@ -199,7 +196,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should use the right field if primary key is specified", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
@@ -230,7 +227,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should convert values into the right types if there are constraints", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
@@ -260,7 +257,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if Pk not found in document or empty", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
@@ -290,13 +287,13 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should update indexes if there are indexed fields", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(database.IndexInfo{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.NoError(t, err)
@@ -337,7 +334,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should convert the fields if FieldsConstraints are specified", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
@@ -378,7 +375,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if the fields cannot be converted to specified field constraints", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
@@ -399,7 +396,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if there is a not null field constraint on a document field and the field is null or missing", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		// no enforced type, not null
@@ -454,7 +451,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Shouldn't fail if there is a not null field and default constraint on a document field and the field is null or missing", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		// no enforced type, not null
@@ -521,7 +518,7 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if there is a not null field constraint on an array value and the value is null", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test1", &database.TableInfo{
@@ -668,131 +665,40 @@ func TestTableTruncate(t *testing.T) {
 	})
 }
 
-func TestTableReIndex(t *testing.T) {
-	t.Run("Should succeed if table has no index", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		err := tb.ReIndex()
-		require.NoError(t, err)
-	})
-
-	t.Run("Should reindex the right indexes", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
-		defer cleanup()
-
-		err := tx.CreateTable("test1", nil)
-		require.NoError(t, err)
-		err = tx.CreateTable("test2", nil)
-		require.NoError(t, err)
-		tb1, err := tx.GetTable("test1")
-		require.NoError(t, err)
-		tb2, err := tx.GetTable("test2")
-		require.NoError(t, err)
-
-		for i := int64(0); i < 10; i++ {
-			doc := document.NewFieldBuffer().
-				Add("a", document.NewIntegerValue(i)).
-				Add("b", document.NewIntegerValue(i*10))
-			_, err = tb1.Insert(doc)
-			require.NoError(t, err)
-			_, err = tb2.Insert(doc)
-			require.NoError(t, err)
-		}
-
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "test1a",
-			TableName: "test1",
-			Path:      parsePath(t, "a"),
-		})
-		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "test1b",
-			TableName: "test1",
-			Path:      parsePath(t, "b"),
-		})
-		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "test2a",
-			TableName: "test2",
-			Path:      parsePath(t, "a"),
-		})
-		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
-			IndexName: "test2b",
-			TableName: "test2",
-			Path:      parsePath(t, "b"),
-		})
-		require.NoError(t, err)
-
-		err = tb1.ReIndex()
-		require.NoError(t, err)
-
-		countIndexElems := func(idx *database.Index) int {
-			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
-				i++
-				return nil
-			})
-			require.NoError(t, err)
-			return i
-		}
-
-		idx, err := tx.GetIndex("test1a")
-		require.NoError(t, err)
-		require.Equal(t, 10, countIndexElems(idx))
-
-		idx, err = tx.GetIndex("test1b")
-		require.NoError(t, err)
-		require.Equal(t, 10, countIndexElems(idx))
-
-		idx, err = tx.GetIndex("test2a")
-		require.NoError(t, err)
-		require.Equal(t, 0, countIndexElems(idx))
-
-		idx, err = tx.GetIndex("test2b")
-		require.NoError(t, err)
-		require.Equal(t, 0, countIndexElems(idx))
-	})
-}
-
 func TestTableIndexes(t *testing.T) {
 	t.Run("Should succeed if table has no indexes", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		m, err := tb.Indexes()
-		require.NoError(t, err)
+		m := tb.Indexes()
 		require.Empty(t, m)
 	})
 
-	t.Run("Should return a map of all the indexes", func(t *testing.T) {
-		tx, cleanup := newTestDB(t)
+	t.Run("Should return a list of all the indexes", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		err := tx.CreateTable("test1", nil)
-		require.NoError(t, err)
-		tb, err := tx.GetTable("test1")
 		require.NoError(t, err)
 
 		err = tx.CreateTable("test2", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(database.IndexInfo{
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
 			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
 			Path:      parsePath(t, "b"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexConfig{
+		err = tx.CreateIndex(database.IndexInfo{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",
@@ -800,15 +706,12 @@ func TestTableIndexes(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		m, err := tb.Indexes()
+		tb, err := tx.GetTable("test1")
+		require.NoError(t, err)
+
+		m := tb.Indexes()
 		require.NoError(t, err)
 		require.Len(t, m, 2)
-		idx1a, ok := m["a"]
-		require.True(t, ok)
-		require.NotNil(t, idx1a)
-		idx1b, ok := m["b"]
-		require.True(t, ok)
-		require.NotNil(t, idx1b)
 	})
 }
 
