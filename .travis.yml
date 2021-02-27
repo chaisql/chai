@@ -4,8 +4,8 @@ env:
   - GO111MODULE=on
 
 go:
-  - "1.14.x"
   - "1.15.x"
+  - "1.16.x"
   - tip
 
 matrix:
@@ -17,10 +17,8 @@ script:
   - make
   - make gen
   - go test -mod vendor -race -cover -coverprofile=coverage.txt -covermode=atomic -timeout=2m ./...
-  - go test -mod vendor -race -cover -timeout=2m -tags=tinygo ./...
   - cd ./cmd/genji && go test -race ./... && cd -
   - cd ./engine/badgerengine && go test -race ./... && cd -
-
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
