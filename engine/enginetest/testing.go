@@ -124,7 +124,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.Error(t, err)
 	})
 
-	t.Run("Rollback after commit should not fail", func(t *testing.T) {
+	t.Run("Rollback after commit should return ErrTransactionDiscarded", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
@@ -135,10 +135,10 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Rollback()
-		require.NoError(t, err)
+		require.Equal(t, engine.ErrTransactionDiscarded, err)
 	})
 
-	t.Run("Commit after commit should fail", func(t *testing.T) {
+	t.Run("Commit after commit should return ErrTransactionDiscarded", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
@@ -149,10 +149,10 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Commit()
-		require.Error(t, err)
+		require.Equal(t, engine.ErrTransactionDiscarded, err)
 	})
 
-	t.Run("Rollback after rollback should not fail", func(t *testing.T) {
+	t.Run("Rollback after rollback should should return ErrTransactionDiscarded", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
@@ -163,7 +163,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Rollback()
-		require.NoError(t, err)
+		require.Equal(t, engine.ErrTransactionDiscarded, err)
 	})
 
 	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {

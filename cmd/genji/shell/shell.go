@@ -599,21 +599,9 @@ func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
 
 	var listName []string
 	err = db.View(func(tx *genji.Tx) error {
-		indexes, err := tx.ListIndexes()
-		if err != nil {
-			return err
-		}
-
-		for _, idx := range indexes {
-			listName = append(listName, idx.IndexName)
-		}
-
+		listName = tx.ListIndexes()
 		return nil
 	})
-
-	if len(listName) == 0 {
-		listName = append(listName, "index_name")
-	}
 
 	return listName, err
 }

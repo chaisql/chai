@@ -89,6 +89,10 @@ func (t *Transaction) Rollback() error {
 		t.unlock()
 	}
 
+	if t.discarded {
+		return engine.ErrTransactionDiscarded
+	}
+
 	t.discarded = true
 
 	select {
@@ -109,7 +113,7 @@ func (t *Transaction) Commit() error {
 	}
 
 	if t.discarded {
-		return badger.ErrDiscardedTxn
+		return engine.ErrTransactionDiscarded
 	}
 
 	if !t.writable {

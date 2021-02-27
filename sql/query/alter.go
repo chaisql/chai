@@ -62,6 +62,6 @@ func (stmt AlterTableAddField) Run(tx *database.Transaction, _ []expr.Param) (Re
 		return res, errors.New("missing field name")
 	}
 
-	err := tx.AddField(stmt.TableName, stmt.Constraint)
+	err := tx.AddFieldConstraint(stmt.TableName, stmt.Constraint)
 	return res, err
 }

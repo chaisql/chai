@@ -11,6 +11,9 @@ var (
 	// ErrTransactionReadOnly is returned when attempting to call write methods on a read-only transaction.
 	ErrTransactionReadOnly = errors.New("transaction is read-only")
 
+	// ErrTransactionDiscarded is returned when calling Rollback or Commit after a transaction is no longer valid.
+	ErrTransactionDiscarded = errors.New("transaction has been discarded")
+
 	// ErrStoreNotFound is returned when the targeted store doesn't exist.
 	ErrStoreNotFound = errors.New("store not found")
 

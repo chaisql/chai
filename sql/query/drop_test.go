@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
@@ -65,14 +64,11 @@ func TestDropIndex(t *testing.T) {
 	require.NoError(t, err)
 
 	// Assert that the good index has been dropped.
-	var indexes []*database.IndexConfig
+	var indexes []string
 	err = db.View(func(tx *genji.Tx) error {
-		var err error
-		indexes, err = tx.ListIndexes()
-		return err
+		indexes = tx.ListIndexes()
+		return nil
 	})
 	require.Len(t, indexes, 1)
-	require.Equal(t, "test1", indexes[0].TableName)
-	require.Equal(t, "idx_test1_foo", indexes[0].IndexName)
-	require.Equal(t, false, indexes[0].Unique)
+	require.Equal(t, "idx_test1_foo", indexes[0])
 }

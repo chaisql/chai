@@ -104,7 +104,7 @@ func displayTableIndex(db *genji.DB, tableName string) error {
 		defer res.Close()
 
 		return res.Iterate(func(d document.Document) error {
-			var index database.IndexConfig
+			var index database.IndexInfo
 
 			if err := index.ScanDocument(d); err != nil {
 				return err
@@ -126,7 +126,7 @@ func displayAllIndexes(db *genji.DB) error {
 	defer res.Close()
 
 	return res.Iterate(func(d document.Document) error {
-		var index database.IndexConfig
+		var index database.IndexInfo
 
 		if err := index.ScanDocument(d); err != nil {
 			return err
@@ -216,10 +216,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		return err
 	}
 
-	ti, err := t.Info()
-	if err != nil {
-		return err
-	}
+	ti := t.Info()
 
 	fcs := ti.FieldConstraints
 	// Fields constraints should be displayed between parenthesis.
@@ -262,10 +259,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 	}
 
 	// Indexes statements.
-	indexes, err := t.Indexes()
-	if err != nil {
-		return err
-	}
+	indexes := t.Indexes()
 
 	for _, index := range indexes {
 		u := ""
@@ -443,10 +437,7 @@ func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 			return err
 		}
 
-		ti, err := table.Info()
-		if err != nil {
-			return err
-		}
+		ti := table.Info()
 
 		err = otherTx.CreateTable(tableName, ti)
 		if err != nil {
@@ -489,7 +480,7 @@ func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 	defer indexes.Close()
 
 	err = indexes.Iterate(func(d document.Document) error {
-		var index database.IndexConfig
+		var index database.IndexInfo
 
 		if err := index.ScanDocument(d); err != nil {
 			return err

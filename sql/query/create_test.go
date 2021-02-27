@@ -77,10 +77,7 @@ func TestCreateTable(t *testing.T) {
 					return err
 				}
 
-				info, err := tb.Info()
-				if err != nil {
-					return err
-				}
+				info := tb.Info()
 
 				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "d"), Type: document.DoubleValue},
@@ -105,10 +102,7 @@ func TestCreateTable(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				info, err := tb.Info()
-				if err != nil {
-					return err
-				}
+				info := tb.Info()
 
 				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
@@ -139,10 +133,7 @@ func TestCreateTable(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				info, err := tb.Info()
-				if err != nil {
-					return err
-				}
+				info := tb.Info()
 
 				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
@@ -189,10 +180,7 @@ func TestCreateTable(t *testing.T) {
 
 					err = db.View(func(tx *genji.Tx) error {
 						tb, err := tx.GetTable("test")
-						info, err := tb.Info()
-						if err != nil {
-							return err
-						}
+						info := tb.Info()
 
 						require.Equal(t, test.constraints, info.FieldConstraints)
 						return err

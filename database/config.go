@@ -249,17 +249,58 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 	return nil
 }
 
-// tableInfoStore manages table information.
+// Clone creates another tableInfo with the same values.
+func (ti *TableInfo) Clone() *TableInfo {
+	cp := *ti
+	cp.FieldConstraints = nil
+	for _, fc := range ti.FieldConstraints {
+		cp.FieldConstraints = append(cp.FieldConstraints, fc)
+	}
+	return &cp
+}
+
+// tableStore manages table information.
 // It loads table information during database startup
 // and holds it in memory.
-type tableInfoStore struct {
+type tableStore struct {
 	db *Database
 	st engine.Store
 }
 
+// List all tables.
+func (t *tableStore) ListAll() ([]*TableInfo, error) {
+	it := t.st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
+
+	var list []*TableInfo
+	var buf []byte
+	var err error
+
+	for it.Seek(nil); it.Valid(); it.Next() {
+		itm := it.Item()
+		buf, err = itm.ValueCopy(buf)
+		if err != nil {
+			return nil, err
+		}
+
+		var ti TableInfo
+		err = ti.ScanDocument(t.db.Codec.NewDocument(buf))
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, &ti)
+	}
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
 // Insert a new tableInfo for the given table name.
 // If info.storeName is nil, it generates one and stores it in info.
-func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
+func (t *tableStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
 	tblName := []byte(tableName)
 
 	_, err := t.st.Get(tblName)
@@ -297,59 +338,7 @@ func (t *tableInfoStore) Insert(tx *Transaction, tableName string, info *TableIn
 	return nil
 }
 
-func (t *tableInfoStore) Get(tx *Transaction, tableName string) (*TableInfo, error) {
-	if tableName == tableInfoStoreName {
-		return &TableInfo{
-			storeName: []byte(tableInfoStoreName),
-			readOnly:  true,
-			FieldConstraints: []FieldConstraint{
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "table_name",
-						},
-					},
-					IsPrimaryKey: true,
-				},
-			},
-		}, nil
-	}
-	if tableName == indexStoreName {
-		return &TableInfo{
-			storeName: []byte(indexStoreName),
-			readOnly:  true,
-			FieldConstraints: []FieldConstraint{
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "index_name",
-						},
-					},
-					IsPrimaryKey: true,
-				},
-			},
-		}, nil
-	}
-
-	v, err := t.st.Get([]byte(tableName))
-	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return nil, fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
-		}
-
-		return nil, err
-	}
-
-	var ti TableInfo
-	err = ti.ScanDocument(t.db.Codec.NewDocument(v))
-	if err != nil {
-		return nil, err
-	}
-
-	return &ti, nil
-}
-
-func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
+func (t *tableStore) Delete(tx *Transaction, tableName string) error {
 	err := t.st.Delete([]byte(tableName))
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
@@ -363,7 +352,7 @@ func (t *tableInfoStore) Delete(tx *Transaction, tableName string) error {
 }
 
 // Replace replaces tableName table information with the new info.
-func (t *tableInfoStore) Replace(tx *Transaction, tableName string, info *TableInfo) error {
+func (t *tableStore) Replace(tx *Transaction, tableName string, info *TableInfo) error {
 	var buf bytes.Buffer
 	enc := t.db.Codec.NewEncoder(&buf)
 	defer enc.Close()
@@ -385,8 +374,8 @@ func (t *tableInfoStore) Replace(tx *Transaction, tableName string, info *TableI
 	return t.st.Put(tbName, buf.Bytes())
 }
 
-// IndexConfig holds the configuration of an index.
-type IndexConfig struct {
+// IndexInfo holds the configuration of an index.
+type IndexInfo struct {
 	TableName string
 	IndexName string
 	Path      document.Path
@@ -399,7 +388,7 @@ type IndexConfig struct {
 }
 
 // ToDocument creates a document from an IndexConfig.
-func (i *IndexConfig) ToDocument() document.Document {
+func (i *IndexInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 
 	buf.Add("unique", document.NewBoolValue(i.Unique))
@@ -413,7 +402,7 @@ func (i *IndexConfig) ToDocument() document.Document {
 }
 
 // ScanDocument implements the document.Scanner interface.
-func (i *IndexConfig) ScanDocument(d document.Document) error {
+func (i *IndexInfo) ScanDocument(d document.Document) error {
 	v, err := d.GetByField("unique")
 	if err != nil {
 		return err
@@ -452,11 +441,16 @@ func (i *IndexConfig) ScanDocument(d document.Document) error {
 	return nil
 }
 
+// Clone returns a copy of the index information.
+func (i IndexInfo) Clone() *IndexInfo {
+	return &i
+}
+
 // Index of a table field. Contains information about
 // the index configuration and provides methods to manipulate the index.
 type Index struct {
 	*index.Index
-	Opts IndexConfig
+	Opts IndexInfo
 }
 
 type indexStore struct {
@@ -464,7 +458,7 @@ type indexStore struct {
 	st engine.Store
 }
 
-func (t *indexStore) Insert(cfg IndexConfig) error {
+func (t *indexStore) Insert(cfg IndexInfo) error {
 	key := []byte(cfg.IndexName)
 	_, err := t.st.Get(key)
 	if err == nil {
@@ -485,7 +479,7 @@ func (t *indexStore) Insert(cfg IndexConfig) error {
 	return t.st.Put(key, buf.Bytes())
 }
 
-func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
+func (t *indexStore) Get(indexName string) (*IndexInfo, error) {
 	key := []byte(indexName)
 	v, err := t.st.Get(key)
 	if err == engine.ErrKeyNotFound {
@@ -495,7 +489,7 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 		return nil, err
 	}
 
-	var idxopts IndexConfig
+	var idxopts IndexInfo
 	err = idxopts.ScanDocument(t.db.Codec.NewDocument(v))
 	if err != nil {
 		return nil, err
@@ -504,7 +498,7 @@ func (t *indexStore) Get(indexName string) (*IndexConfig, error) {
 	return &idxopts, nil
 }
 
-func (t *indexStore) Replace(indexName string, cfg IndexConfig) error {
+func (t *indexStore) Replace(indexName string, cfg IndexInfo) error {
 	var buf bytes.Buffer
 	enc := t.db.Codec.NewEncoder(&buf)
 	defer enc.Close()
@@ -525,11 +519,11 @@ func (t *indexStore) Delete(indexName string) error {
 	return err
 }
 
-func (t *indexStore) ListAll() ([]*IndexConfig, error) {
+func (t *indexStore) ListAll() ([]*IndexInfo, error) {
 	it := t.st.Iterator(engine.IteratorOptions{})
 	defer it.Close()
 
-	var idxList []*IndexConfig
+	var idxList []*IndexInfo
 	var buf []byte
 	var err error
 	for it.Seek(nil); it.Valid(); it.Next() {
@@ -539,7 +533,7 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 			return nil, err
 		}
 
-		var opts IndexConfig
+		var opts IndexInfo
 		err = opts.ScanDocument(t.db.Codec.NewDocument(buf))
 		if err != nil {
 			return nil, err
@@ -552,6 +546,28 @@ func (t *indexStore) ListAll() ([]*IndexConfig, error) {
 	}
 
 	return idxList, nil
+}
+
+type Indexes []*Index
+
+func (i Indexes) GetIndex(name string) *Index {
+	for _, idx := range i {
+		if idx.Opts.IndexName == name {
+			return idx
+		}
+	}
+
+	return nil
+}
+
+func (i Indexes) GetIndexByPath(p document.Path) *Index {
+	for _, idx := range i {
+		if idx.Opts.Path.IsEqual(p) {
+			return idx
+		}
+	}
+
+	return nil
 }
 
 func arrayToPath(a document.Array) (document.Path, error) {

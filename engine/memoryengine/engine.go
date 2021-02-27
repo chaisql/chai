@@ -82,7 +82,7 @@ type transaction struct {
 // of the transaction.
 func (tx *transaction) Rollback() error {
 	if tx.terminated {
-		return nil
+		return engine.ErrTransactionDiscarded
 	}
 
 	tx.terminated = true
@@ -113,7 +113,7 @@ func (tx *transaction) Rollback() error {
 // of the transaction.
 func (tx *transaction) Commit() error {
 	if tx.terminated {
-		return errors.New("transaction already terminated")
+		return engine.ErrTransactionDiscarded
 	}
 
 	if !tx.writable {

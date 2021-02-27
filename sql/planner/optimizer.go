@@ -287,7 +287,6 @@ func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction) (*st
 // where projection is already unique.
 func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
 	n := s.Op
-	var indexes map[string]database.Index
 
 	// we assume that if we are reading from a table, the first
 	// operator of the stream has to be a SeqScanOperator
@@ -304,10 +303,8 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 	if err != nil {
 		return nil, err
 	}
-	info, err := t.Info()
-	if err != nil {
-		return nil, err
-	}
+	info := t.Info()
+	indexes := t.Indexes()
 
 	// this optimization applies to project operators that immediately follow distinct
 	for n != nil {
@@ -316,13 +313,6 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 			if prev != nil {
 				pn, ok := prev.(*stream.ProjectOperator)
 				if ok {
-
-					if indexes == nil {
-						indexes, err = t.Indexes()
-						if err != nil {
-							return nil, err
-						}
-					}
 
 					// if the projection is unique, we remove the node from the tree
 					if isProjectionUnique(indexes, pn, info.GetPrimaryKey()) {
@@ -340,7 +330,7 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 	return s, nil
 }
 
-func isProjectionUnique(indexes map[string]database.Index, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
+func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
 	for _, field := range po.Exprs {
 		e, ok := field.(*expr.NamedExpr)
 		if ok {
@@ -354,7 +344,7 @@ func isProjectionUnique(indexes map[string]database.Index, po *stream.ProjectOpe
 				continue
 			}
 
-			if idx, ok := indexes[v.String()]; ok && idx.Unique {
+			if idx := indexes.GetIndexByPath(document.Path(v)); idx != nil && idx.Unique {
 				continue
 			}
 		case *expr.PKFunc:
@@ -394,7 +384,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 		return nil, err
 	}
 
-	var indexes map[string]database.Index
+	indexes := t.Indexes()
 
 	type candidate struct {
 		filterOp *stream.FilterOperator
@@ -407,12 +397,6 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	// look for all selection nodes that satisfy our requirements
 	for n != nil {
 		if f, ok := n.(*stream.FilterOperator); ok {
-			if indexes == nil {
-				indexes, err = t.Indexes()
-				if err != nil {
-					return nil, err
-				}
-			}
 			indexedNode, idx, err := filterNodeValidForIndex(f, st.TableName, indexes)
 			if err != nil {
 				return nil, err
@@ -471,7 +455,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	return s, nil
 }
 
-func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexes map[string]database.Index) (*stream.IndexScanOperator, *database.Index, error) {
+func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexes database.Indexes) (*stream.IndexScanOperator, *database.Index, error) {
 	if sn.E == nil {
 		return nil, nil, nil
 	}
@@ -499,8 +483,8 @@ func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexe
 	}
 
 	// now, we look if an index exists for that path
-	idx, ok := indexes[path.String()]
-	if !ok {
+	idx := indexes.GetIndexByPath(document.Path(path))
+	if idx == nil {
 		return nil, nil, nil
 	}
 
@@ -550,7 +534,7 @@ func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexe
 	node := stream.IndexScan(idx.Opts.IndexName)
 	node.Ranges = ranges
 
-	return node, &idx, nil
+	return node, idx, nil
 }
 
 func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
