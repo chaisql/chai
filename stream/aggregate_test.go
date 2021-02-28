@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/query/expr"
+	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/testutil"

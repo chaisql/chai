@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/query/expr"
+	"github.com/genjidb/genji/expr"
 )
 
 type DocumentsOperator struct {

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/query/expr"
+	"github.com/genjidb/genji/expr"
 )
 
 // A HashAggregateOperator consumes the given stream and outputs one value per group.

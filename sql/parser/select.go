@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
-	"github.com/genjidb/genji/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
 )

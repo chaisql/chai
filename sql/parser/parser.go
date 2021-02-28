@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/query"
-	"github.com/genjidb/genji/query/expr"
 	"github.com/genjidb/genji/sql/scanner"
 )
 
