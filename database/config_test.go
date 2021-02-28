@@ -218,3 +218,62 @@ func TestIndexStore(t *testing.T) {
 		require.Len(t, list, len(idxcfgs)-1)
 	})
 }
+
+func TestFieldConstraintsInfer(t *testing.T) {
+	tests := []struct {
+		name      string
+		got, want FieldConstraints
+	}{
+		{
+			"No change",
+			[]FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			[]FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+		},
+		{
+			"Array",
+			[]FieldConstraint{{Path: document.NewPath("a", "0"), Type: document.IntegerValue}},
+			[]FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.ArrayValue},
+				{Path: document.NewPath("a", "0"), Type: document.IntegerValue},
+			},
+		},
+		{
+			"Document",
+			[]FieldConstraint{{Path: document.NewPath("a", "b"), Type: document.IntegerValue}},
+			[]FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+			},
+		},
+		{
+			"Complex path",
+			[]FieldConstraint{{Path: document.NewPath("a", "b", "3", "1", "c"), Type: document.IntegerValue}},
+			[]FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b"), Type: document.ArrayValue},
+				{Path: document.NewPath("a", "b", "3"), Type: document.ArrayValue},
+				{Path: document.NewPath("a", "b", "3", "1"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b", "3", "1", "c"), Type: document.IntegerValue},
+			},
+		},
+		{
+			"Overlaping constraints",
+			[]FieldConstraint{
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+				{Path: document.NewPath("a", "c"), Type: document.IntegerValue},
+			},
+			[]FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+				{Path: document.NewPath("a", "c"), Type: document.IntegerValue},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := test.got.Infer()
+			require.Equal(t, test.want, got)
+		})
+	}
+}

@@ -163,6 +163,59 @@ func (f FieldConstraints) Convert(d document.Document) (*document.FieldBuffer, e
 	return fb, err
 }
 
+// Infer additional constraints based on user defined ones.
+// For example, given the following table:
+//   CREATE TABLE foo (a.b[0] TEXT)
+// this function will return a TableInfo that behaves as if the table
+// had been created like this:
+//   CREATE TABLE foo(
+//      a DOCUMENT
+//      a.b ARRAY
+//      a.b[0] TEXT
+//   )
+func (f FieldConstraints) Infer() FieldConstraints {
+	newConstraints := make(FieldConstraints, 0, len(f))
+
+	for _, fc := range f {
+		if len(fc.Path) > 1 {
+			for i := range fc.Path {
+				if i+1 == len(fc.Path) {
+					break
+				}
+
+				path := fc.Path[:i+1]
+				newFc := FieldConstraint{
+					Path: path,
+				}
+				if fc.Path[i+1].FieldName != "" {
+					newFc.Type = document.DocumentValue
+				} else {
+					newFc.Type = document.ArrayValue
+				}
+
+				newConstraints.AddOrReplace(path, &newFc)
+			}
+		}
+
+		newConstraints = append(newConstraints, fc)
+	}
+
+	return newConstraints
+}
+
+// AddOrReplace looks up for a field constraint for the given path and replaces it by the given one.
+// If not found, it adds it to the list.
+func (f *FieldConstraints) AddOrReplace(path document.Path, newFc *FieldConstraint) {
+	for i, fc := range *f {
+		if fc.Path.IsEqual(path) {
+			(*f)[i] = *newFc
+			return
+		}
+	}
+
+	*f = append(*f, *newFc)
+}
+
 // TableInfo contains information about a table.
 type TableInfo struct {
 	// name of the table.

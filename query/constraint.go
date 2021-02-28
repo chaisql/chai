@@ -73,15 +73,15 @@ func (n *constraintNode) insert(path document.Path, typ document.ValueType) erro
 	// when type is explicitly set and does not have array or document type
 	case n.typ != 0 && n.typ != document.ArrayValue && n.typ != document.DocumentValue:
 		p := append(n.getPath(), path[1]).String()
-		return fmt.Errorf("%q already exists as type %s, but trying add %q constraint", n.getPath().String(), n.typ.String(), p)
+		return fmt.Errorf("%q already exists as type %s, but trying to add %q constraint", n.getPath().String(), n.typ.String(), p)
 	// when constraint tries to set document constraint for path, but there is already a array constraint
 	case path[1].FieldName != "" && n.typ == document.ArrayValue:
 		p := append(n.getPath(), path[1]).String()
-		return fmt.Errorf("%q already exists as array, but trying add %q constraint", n.getPath().String(), p)
+		return fmt.Errorf("%q already exists as array, but trying to add %q constraint", n.getPath().String(), p)
 	// when constraint tries to set array constraint for path, but there is already a document constraint
 	case path[1].FieldName == "" && n.typ == document.DocumentValue:
 		p := append(n.getPath(), path[1]).String()
-		return fmt.Errorf("%q already exists as document, but trying add %q constraint", n.getPath().String(), p)
+		return fmt.Errorf("%q already exists as document, but trying to add %q constraint", n.getPath().String(), p)
 	}
 
 	for _, sub := range n.sub {
