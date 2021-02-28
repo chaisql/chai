@@ -176,6 +176,48 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				return executeDump(c.Context, w, table, engine, dbPath)
 			},
 		},
+		{
+			Name:      "restore",
+			Usage:     "Restore a database from a file created by genji dump",
+			UsageText: `genji restore dumpFile dbPath`,
+			Description: `The restore command can restore a database from a text file.
+
+		$ genji restore -f dump.sql -e bolt my.db`,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "file",
+					Aliases: []string{"f"},
+					Usage:   "name of the source file restoration.",
+				},
+				&cli.StringFlag{
+					Name:    "engine",
+					Aliases: []string{"e"},
+					Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
+					Value:   "bolt",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				f := c.String("file")
+				engine := c.String("engine")
+				dbPath := c.Args().First()
+				if dbPath == "" {
+					return errors.New("expected db path, got empty")
+				}
+
+				var r io.Reader
+				if f != "" {
+					file, err := os.Open(f)
+					if err != nil {
+						return err
+					}
+					defer file.Close()
+
+					r = file
+				}
+
+				return executeRestore(c.Context, r, engine, dbPath)
+			},
+		},
 	}
 
 	// Root command
