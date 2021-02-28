@@ -1,4 +1,4 @@
-package index
+package database
 
 import (
 	"bytes"
@@ -11,40 +11,30 @@ import (
 )
 
 const (
-	// storePrefix is the prefix used to name the index stores.
-	storePrefix = "i"
+	// indexStorePrefix is the prefix used to name the index stores.
+	indexStorePrefix = "i"
 )
 
 var (
-	// ErrDuplicate is returned when a value is already associated with a key
-	ErrDuplicate = errors.New("duplicate")
+	// ErrIndexDuplicateValue is returned when a value is already associated with a key
+	ErrIndexDuplicateValue = errors.New("duplicate")
 )
 
 // An Index associates encoded values with keys.
 // It is sorted by value following the lexicographic order.
 type Index struct {
-	Unique bool
-	Type   document.ValueType
+	Info *IndexInfo
 
 	tx        engine.Transaction
 	storeName []byte
 }
 
-// Options of the index.
-type Options struct {
-	Unique bool
-
-	// If specified, the indexed expects only one type.
-	Type document.ValueType
-}
-
-// New creates an index that associates a value with a list of keys.
-func New(tx engine.Transaction, idxName string, opts Options) *Index {
+// NewIndex creates an index that associates a value with a list of keys.
+func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 	return &Index{
 		tx:        tx,
-		storeName: append([]byte(storePrefix), idxName...),
-		Unique:    opts.Unique,
-		Type:      opts.Type,
+		storeName: append([]byte(indexStorePrefix), idxName...),
+		Info:      opts,
 	}
 }
 
@@ -60,8 +50,8 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 		return errors.New("cannot index value without a key")
 	}
 
-	if idx.Type != 0 && idx.Type != v.Type {
-		return fmt.Errorf("cannot index value of type %s in %s index", v.Type, idx.Type)
+	if idx.Info.Type != 0 && idx.Info.Type != v.Type {
+		return fmt.Errorf("cannot index value of type %s in %s index", v.Type, idx.Info.Type)
 	}
 
 	st, err := getOrCreateStore(idx.tx, idx.storeName)
@@ -79,7 +69,7 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 	var lookupKey = buf
 
 	// every value of a non-unique index ends with a byte that starts at zero.
-	if !idx.Unique {
+	if !idx.Info.Unique {
 		lookupKey = append(lookupKey, 0)
 	}
 
@@ -88,8 +78,8 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 	case nil:
 		// the value already exists
 		// if this is a unique index, return an error
-		if idx.Unique {
-			return ErrDuplicate
+		if idx.Info.Unique {
+			return ErrIndexDuplicateValue
 		}
 
 		// the value already exists
@@ -163,7 +153,7 @@ func (idx *Index) DescendLessOrEqual(pivot document.Value, fn func(val, key []by
 func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val, key []byte) error) error {
 	// if index and pivot are typed but not of the same type
 	// return no result
-	if idx.Type != 0 && pivot.Type != 0 && idx.Type != pivot.Type {
+	if idx.Info.Type != 0 && pivot.Type != 0 && idx.Info.Type != pivot.Type {
 		return nil
 	}
 
@@ -183,7 +173,7 @@ func (idx *Index) iterateOnStore(pivot document.Value, reverse bool, fn func(val
 
 		// the last byte of the key of a non-unique index is the size of the varint.
 		// if that byte is 0, it means that key is not duplicated.
-		if !idx.Unique {
+		if !idx.Info.Unique {
 			n := k[len(k)-1]
 			k = k[:len(k)-int(n)-1]
 		}
@@ -212,7 +202,7 @@ func (idx *Index) Truncate() error {
 // the presence of other types.
 // Ff not, encode so that order is preserved regardless of the type.
 func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
-	if idx.Type != 0 {
+	if idx.Info.Type != 0 {
 		return v.MarshalBinary()
 	}
 
@@ -258,7 +248,7 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 	var seek []byte
 	var err error
 
-	if idx.Type == 0 && pivot.Type == document.IntegerValue {
+	if idx.Info.Type == 0 && pivot.Type == document.IntegerValue {
 		if pivot.V == nil {
 			pivot.Type = document.DoubleValue
 		} else {
@@ -280,7 +270,7 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		}
 	}
 
-	if idx.Type == 0 && pivot.Type != 0 && pivot.V == nil {
+	if idx.Info.Type == 0 && pivot.Type != 0 && pivot.V == nil {
 		seek = []byte{byte(pivot.Type)}
 
 		if reverse {
@@ -295,7 +285,7 @@ func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, f
 		itm := it.Item()
 
 		// if index is untyped and pivot is typed, only iterate on values with the same type as pivot
-		if idx.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
+		if idx.Info.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
 			return nil
 		}
 

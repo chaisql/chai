@@ -263,12 +263,12 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 
 	for _, index := range indexes {
 		u := ""
-		if index.Opts.Unique {
+		if index.Info.Unique {
 			u = " UNIQUE"
 		}
 
-		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Opts.IndexName, index.Opts.TableName,
-			index.Opts.Path)
+		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Info.IndexName, index.Info.TableName,
+			index.Info.Path)
 		if err != nil {
 			return err
 		}

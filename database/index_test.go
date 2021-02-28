@@ -1,5 +1,4 @@
-// Package indextest defines a list of tests that can be used to test index implementations.
-package index_test
+package database_test
 
 import (
 	"bytes"
@@ -10,21 +9,21 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/binarysort"
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/index"
 	"github.com/stretchr/testify/require"
 )
 
-func getIndex(t testing.TB, unique bool) (*index.Index, func()) {
+func getIndex(t testing.TB, unique bool) (*database.Index, func()) {
 	ng := memoryengine.NewEngine()
 	tx, err := ng.Begin(context.Background(), engine.TxOptions{
 		Writable: true,
 	})
 	require.NoError(t, err)
 
-	idx := index.New(tx, "foo", index.Options{Unique: unique})
+	idx := database.NewIndex(tx, "foo", &database.IndexInfo{Unique: unique})
 
 	return idx, func() {
 		tx.Rollback()
@@ -54,17 +53,17 @@ func TestIndexSet(t *testing.T) {
 
 		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
 		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
-		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(document.NewIntegerValue(10), []byte("key")))
 	})
 
 	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
 		idx, cleanup := getIndex(t, true)
-		idx.Type = document.IntegerValue
+		idx.Info.Type = document.IntegerValue
 		defer cleanup()
 
 		require.NoError(t, idx.Set(document.NewIntegerValue(10), []byte("key")))
 		require.NoError(t, idx.Set(document.NewIntegerValue(11), []byte("key")))
-		require.Equal(t, index.ErrDuplicate, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(document.NewIntegerValue(10), []byte("key")))
 	})
 }
 
@@ -266,7 +265,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 		t.Run(text+"With no pivot and typed index, should iterate over all documents in order", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
-			idx.Type = document.IntegerValue
+			idx.Info.Type = document.IntegerValue
 			defer cleanup()
 
 			for i := int64(0); i < 10; i++ {

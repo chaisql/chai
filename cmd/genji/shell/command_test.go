@@ -144,8 +144,8 @@ func TestRunDumpCmd(t *testing.T) {
 							if err != nil {
 								return err
 							}
-							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", idx.Opts.IndexName, idx.Opts.TableName,
-								idx.Opts.Path)
+							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", idx.Info.IndexName, idx.Info.TableName,
+								idx.Info.Path)
 							bwant.WriteString(info)
 						}
 						return nil

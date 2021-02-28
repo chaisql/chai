@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/index"
 )
 
 // Catalog holds all table and index informations.
@@ -91,14 +90,8 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 	idxInfos := c.cache.GetTableIndexes(tableName)
 	indexes := make([]*Index, 0, len(idxInfos))
 
-	for _, ii := range idxInfos {
-		indexes = append(indexes, &Index{
-			Index: index.New(tx.tx, ii.IndexName, index.Options{
-				Unique: ii.Unique,
-				Type:   ii.Type,
-			}),
-			Opts: *ii,
-		})
+	for i := range idxInfos {
+		indexes = append(indexes, NewIndex(tx.tx, idxInfos[i].IndexName, idxInfos[i]))
 	}
 
 	return &Table{
@@ -180,15 +173,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 		return nil, err
 	}
 
-	idx := index.New(tx.tx, info.IndexName, index.Options{
-		Unique: info.Unique,
-		Type:   info.Type,
-	})
-
-	return &Index{
-		Index: idx,
-		Opts:  *info,
-	}, nil
+	return NewIndex(tx.tx, info.IndexName, info), nil
 }
 
 // ListIndexes returns an index by name.
@@ -227,10 +212,7 @@ func (c *Catalog) dropIndex(tx *Transaction, name string) error {
 		return err
 	}
 
-	idx := index.New(tx.tx, opts.IndexName, index.Options{
-		Unique: opts.Unique,
-		Type:   opts.Type,
-	})
+	idx := NewIndex(tx.tx, opts.IndexName, opts)
 
 	return idx.Truncate()
 }
@@ -302,7 +284,7 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 		return err
 	}
 
-	tb, err := c.GetTable(tx, idx.Opts.TableName)
+	tb, err := c.GetTable(tx, idx.Info.TableName)
 	if err != nil {
 		return err
 	}
@@ -313,7 +295,7 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 	}
 
 	return tb.Iterate(func(d document.Document) error {
-		v, err := idx.Opts.Path.GetValueFromDocument(d)
+		v, err := idx.Info.Path.GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {
 			return nil
 		}

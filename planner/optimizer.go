@@ -344,7 +344,7 @@ func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk
 				continue
 			}
 
-			if idx := indexes.GetIndexByPath(document.Path(v)); idx != nil && idx.Unique {
+			if idx := indexes.GetIndexByPath(document.Path(v)); idx != nil && idx.Info.Unique {
 				continue
 			}
 		case *expr.PKFunc:
@@ -435,7 +435,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 
 		// if the cost is the same and the candidate's related index is a unique index,
 		// select it.
-		if currentCost == cost && candidate.index.Unique {
+		if currentCost == cost && candidate.index.Info.Unique {
 			selectedCandidate = &candidates[i]
 		}
 	}
@@ -531,7 +531,7 @@ func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexe
 		panic(fmt.Sprintf("unknown operator %#v", op))
 	}
 
-	node := stream.IndexScan(idx.Opts.IndexName)
+	node := stream.IndexScan(idx.Info.IndexName)
 	node.Ranges = ranges
 
 	return node, idx, nil

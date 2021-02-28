@@ -327,7 +327,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		return err
 	}
 
-	table, err := in.GetTx().GetTable(index.Opts.TableName)
+	table, err := in.GetTx().GetTable(index.Info.TableName)
 	if err != nil {
 		return err
 	}

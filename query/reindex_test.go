@@ -58,7 +58,7 @@ func TestReIndex(t *testing.T) {
 
 					shouldBeIndexed := false
 					for _, name := range test.expectReIndexed {
-						if name == idx.Opts.IndexName {
+						if name == idx.Info.IndexName {
 							shouldBeIndexed = true
 							break
 						}

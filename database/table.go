@@ -9,7 +9,6 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/index"
 )
 
 // A Table represents a collection of documents.
@@ -93,14 +92,14 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValueFromDocument(fb)
+		v, err := idx.Info.Path.GetValueFromDocument(fb)
 		if err != nil {
 			v = document.NewNullValue()
 		}
 
 		err = idx.Set(v, key)
 		if err != nil {
-			if err == index.ErrDuplicate {
+			if err == ErrIndexDuplicateValue {
 				return nil, ErrDuplicateDocument
 			}
 
@@ -137,7 +136,7 @@ func (t *Table) Delete(key []byte) error {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValueFromDocument(d)
+		v, err := idx.Info.Path.GetValueFromDocument(d)
 		if err != nil {
 			return err
 		}
@@ -180,7 +179,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValueFromDocument(old)
+		v, err := idx.Info.Path.GetValueFromDocument(old)
 		if err != nil {
 			return err
 		}
@@ -208,7 +207,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := idx.Opts.Path.GetValueFromDocument(d)
+		v, err := idx.Info.Path.GetValueFromDocument(d)
 		if err != nil {
 			continue
 		}

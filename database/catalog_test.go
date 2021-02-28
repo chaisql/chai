@@ -188,7 +188,7 @@ func TestCatalogTable(t *testing.T) {
 			for _, name := range idxs {
 				idx, err := tx.GetIndex(name)
 				require.NoError(t, err)
-				require.Equal(t, "zoo", idx.Opts.TableName)
+				require.Equal(t, "zoo", idx.Info.TableName)
 			}
 
 			// Renaming a non existing table should return an error

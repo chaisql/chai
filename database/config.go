@@ -7,7 +7,6 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/index"
 )
 
 const storePrefix = 't'
@@ -446,13 +445,6 @@ func (i IndexInfo) Clone() *IndexInfo {
 	return &i
 }
 
-// Index of a table field. Contains information about
-// the index configuration and provides methods to manipulate the index.
-type Index struct {
-	*index.Index
-	Opts IndexInfo
-}
-
 type indexStore struct {
 	db *Database
 	st engine.Store
@@ -552,7 +544,7 @@ type Indexes []*Index
 
 func (i Indexes) GetIndex(name string) *Index {
 	for _, idx := range i {
-		if idx.Opts.IndexName == name {
+		if idx.Info.IndexName == name {
 			return idx
 		}
 	}
@@ -562,7 +554,7 @@ func (i Indexes) GetIndex(name string) *Index {
 
 func (i Indexes) GetIndexByPath(p document.Path) *Index {
 	for _, idx := range i {
-		if idx.Opts.Path.IsEqual(p) {
+		if idx.Info.Path.IsEqual(p) {
 			return idx
 		}
 	}
