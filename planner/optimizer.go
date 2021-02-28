@@ -448,7 +448,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	s.Remove(selectedCandidate.filterOp)
 
 	// we replace the seq scan node by the selected index scan node
-	s.InsertBefore(s.First(), selectedCandidate.in)
+	stream.InsertBefore(s.First(), selectedCandidate.in)
 
 	s.Remove(s.First().GetNext())
 

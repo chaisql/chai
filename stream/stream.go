@@ -65,21 +65,6 @@ func (s *Stream) First() Operator {
 	return n
 }
 
-func (s *Stream) InsertBefore(op, newOp Operator) Operator {
-	if op != nil {
-		prev := op.GetPrev()
-		if prev != nil {
-			prev.SetNext(newOp)
-			newOp.SetPrev(prev)
-		}
-
-		op.SetPrev(newOp)
-		newOp.SetNext(op)
-	}
-
-	return newOp
-}
-
 func (s *Stream) String() string {
 	if s.Op == nil {
 		return ""
@@ -95,6 +80,21 @@ func (s *Stream) String() string {
 	}
 
 	return sb.String()
+}
+
+func InsertBefore(op, newOp Operator) Operator {
+	if op != nil {
+		prev := op.GetPrev()
+		if prev != nil {
+			prev.SetNext(newOp)
+			newOp.SetPrev(prev)
+		}
+
+		op.SetPrev(newOp)
+		newOp.SetNext(op)
+	}
+
+	return newOp
 }
 
 func InsertAfter(op, newOp Operator) Operator {
