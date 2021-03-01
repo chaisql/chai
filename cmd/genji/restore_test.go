@@ -22,11 +22,10 @@ func TestExecuteRestore(t *testing.T) {
 		target string
 		fail   bool
 	}{
-		{"without engine", "", os.TempDir() + "/test.db", os.TempDir() + "restored.db", true},
-		{"error with bad engine", "test", os.TempDir(), os.TempDir() + "restored.db", true},
-		{"error without db path", "bolt", "", os.TempDir(), true},
-		{"with bolt", "bolt", os.TempDir() + "/test.db", os.TempDir() + "restored.db", false},
-		{"with badger", "badger", os.TempDir(), os.TempDir(), false},
+		{"without engine", "", "", "", true},
+		{"error with bad engine", "test", "", "", true},
+		{"error without db path", "bolt", "", "", true},
+		{"with bolt", "bolt", "test.db", "restored.db", false},
 	}
 
 	for _, tt := range tests {
@@ -40,8 +39,10 @@ func TestExecuteRestore(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(`CREATE TABLE test (a);
-					CREATE INDEX idx_a ON test (a);`)
+			err = db.Exec(`CREATE TABLE test;`)
+			require.NoError(t, err)
+
+			err = db.Exec(`CREATE INDEX idx_a ON test (a);`)
 			require.NoError(t, err)
 
 			err = db.Exec(`INSERT INTO test (a, b) VALUES (?, ?)`, 1, 2)
@@ -55,7 +56,7 @@ func TestExecuteRestore(t *testing.T) {
 			var buf bytes.Buffer
 			err = shell.RunDumpCmd(db, &buf, []string{"test"})
 			require.NoError(t, err)
-			
+
 			// Use the dump.
 			r := &buf
 			err = executeRestore(context.Background(), r, tt.engine, tt.target)
