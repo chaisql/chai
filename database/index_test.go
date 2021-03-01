@@ -305,6 +305,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			doubles++
 			return nil
 		})
+		require.NoError(t, err)
 
 		i = 0
 		err = idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(val, rid []byte) error {
@@ -445,12 +446,12 @@ func BenchmarkIndexIteration(b *testing.B) {
 
 			for i := 0; i < size; i++ {
 				k := []byte(fmt.Sprintf("name-%d", i))
-				idx.Set(document.NewTextValue(string(k)), k)
+				_ = idx.Set(document.NewTextValue(string(k)), k)
 			}
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(_, _ []byte) error {
+				_ = idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(_, _ []byte) error {
 					return nil
 				})
 			}
