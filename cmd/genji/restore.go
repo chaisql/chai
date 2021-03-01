@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -15,10 +14,6 @@ import (
 )
 
 func executeRestore(ctx context.Context, r io.Reader, e, dbPath string) error {
-	if dbPath == "" {
-		return errors.New("expected db path, got empty")
-	}
-
 	var (
 		ng  engine.Engine
 		err error
