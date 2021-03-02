@@ -236,7 +236,7 @@ type IndexInfo struct {
 	Unique bool
 
 	// If set, the index is typed and only accepts that type
-	Type document.ValueType
+	Types []document.ValueType
 }
 
 // ToDocument creates a document from an IndexConfig.
