@@ -228,7 +228,7 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 					newFc.Type = document.ArrayValue
 				}
 
-				err := newConstraints.Add(&newFc)
+				err := newConstraints.Add(&newFc, true)
 				if err != nil {
 					return nil, err
 				}
@@ -238,7 +238,7 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 		// add the non inferred path to the list
 		// and ensure there are no conflicts with
 		// existing ones.
-		err := newConstraints.Add(fc)
+		err := newConstraints.Add(fc, true)
 		if err != nil {
 			return nil, err
 		}
@@ -251,9 +251,13 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 // and they are equal, newFc will be ignored. Otherwise an error will be returned.
 // If newFc has been inferred by another constraint and another constraint exists with the same
 // path, their InferredBy member will be merged.
-func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
+func (f *FieldConstraints) Add(newFc *FieldConstraint, merge bool) error {
 	for i, c := range *f {
 		if c.Path.IsEqual(newFc.Path) {
+			if !merge {
+				return fmt.Errorf("conflicting constraints: constraint already exists for path %q", c.Path.String())
+			}
+
 			ok, err := c.IsEqual(newFc)
 			if err != nil {
 				return err
@@ -275,10 +279,16 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 
 			// if existing one is inferred, and newFc is not,
 			// replace it
-			if !newFc.IsInferred && c.IsInferred {
-				(*f)[i] = newFc
-				return nil
-			}
+			(*f)[i] = newFc
+			return nil
+		}
+
+		// ensure we don't have duplicate primary keys
+		if c.IsPrimaryKey && newFc.IsPrimaryKey {
+			return fmt.Errorf(
+				"multiple primary keys are not allowed (%q is primary key)",
+				c.Path.String(),
+			)
 		}
 	}
 
