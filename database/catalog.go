@@ -228,7 +228,7 @@ func (c *Catalog) dropIndex(tx *Transaction, name string) error {
 // AddFieldConstraint adds a field constraint to a table.
 func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc FieldConstraint) error {
 	newTi, _, err := c.cache.updateTable(tx, tableName, func(clone *TableInfo) error {
-		return clone.FieldConstraints.Add(&fc, false)
+		return clone.FieldConstraints.Add(&fc)
 	})
 	if err != nil {
 		return err
