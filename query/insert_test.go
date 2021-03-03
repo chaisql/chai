@@ -175,6 +175,19 @@ func TestInsertStmt(t *testing.T) {
 		  }`, buf.String())
 	})
 
+	// cf issue: https://github.com/genjidb/genji/issues/328
+	t.Run("with inferred constraints", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test(a INTEGER, s.b TEXT)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test VALUES {s: 1}`)
+		require.Error(t, err)
+	})
+
 	t.Run("with tests that require an error", func(t *testing.T) {
 		tests := []struct {
 			name            string
