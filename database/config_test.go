@@ -394,6 +394,26 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"Default value conversion, typed constraint",
+			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			FieldConstraint{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: document.NewDoubleValue(5)},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+				{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: document.NewIntegerValue(5)},
+			},
+			false,
+		},
+		{
+			"Default value conversion, untyped constraint",
+			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			FieldConstraint{Path: document.NewPath("b"), DefaultValue: document.NewIntegerValue(5)},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+				{Path: document.NewPath("b"), DefaultValue: document.NewDoubleValue(5)},
+			},
+			false,
+		},
 	}
 
 	for _, test := range tests {

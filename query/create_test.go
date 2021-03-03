@@ -28,11 +28,11 @@ func TestCreateTable(t *testing.T) {
 		{"If not exists, twice", "CREATE TABLE IF NOT EXISTS test;CREATE TABLE IF NOT EXISTS test", false},
 		{"With primary key", "CREATE TABLE test(foo TEXT PRIMARY KEY)", false},
 		{"With field constraints", "CREATE TABLE test(foo.a[1][2] TEXT primary key, bar[4][0].bat INTEGER not null, baz not null)", false},
-		{"With no constraints", "CREATE TABLE test(a, b)", false},
+		{"With no constraints", "CREATE TABLE test(a, b)", true},
 		{"With coherent constraint(common)", "CREATE TABLE test(a DOCUMENT, a.b ARRAY, a.b[0] TEXT);", false},
-		{"With coherent constraint(any)", "CREATE TABLE test(a, a.b[0] TEXT);", false},
 		{"With coherent constraint(document)", "CREATE TABLE test(a DOCUMENT, a.b TEXT);", false},
 		{"With coherent constraint(array)", "CREATE TABLE test(a ARRAY, a[0] TEXT);", false},
+		{"With incoherent constraint(any)", "CREATE TABLE test(a, a.b[0] TEXT);", true},
 		{"With incoherent constraint(common)", "CREATE TABLE test(a INTEGER, a.b[0] TEXT);", true},
 		{"With incoherent constraint(common)", "CREATE TABLE test(a DOCUMENT, a.b[0] TEXT, a.b.c TEXT);", true},
 		{"With incoherent constraint(common)", "CREATE TABLE test(a DOCUMENT, a.b.c TEXT, a.b[0] TEXT);", true},
@@ -105,8 +105,41 @@ func TestCreateTable(t *testing.T) {
 				info := tb.Info()
 
 				require.Equal(t, database.FieldConstraints{
+					{Path: parsePath(t, "foo"), Type: document.DocumentValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.bar[1].hello"),
+							parsePath(t, "foo.a[1][2]"),
+						}},
+					{Path: parsePath(t, "foo.bar"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.bar[1].hello"),
+						}},
+					{Path: parsePath(t, "foo.bar[1]"), Type: document.DocumentValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.bar[1].hello"),
+						}},
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Path: parsePath(t, "foo.a"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.a[1][2]"),
+						}},
+					{Path: parsePath(t, "foo.a[1]"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.a[1][2]"),
+						}},
 					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Path: parsePath(t, "bar"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "bar[4][0].bat"),
+						}},
+					{Path: parsePath(t, "bar[4]"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "bar[4][0].bat"),
+						}},
+					{Path: parsePath(t, "bar[4][0]"), Type: document.DocumentValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "bar[4][0].bat"),
+						}},
 					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
 					{Path: parsePath(t, "b"), Type: document.BlobValue},
 					{Path: parsePath(t, "t"), Type: document.TextValue},
@@ -135,9 +168,41 @@ func TestCreateTable(t *testing.T) {
 				}
 				info := tb.Info()
 
-				require.Equal(t, database.FieldConstraints{
+				require.Equal(t, database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.DocumentValue, IsInferred: true,
+					InferredBy: []document.Path{
+						parsePath(t, "foo.bar[1].hello"),
+						parsePath(t, "foo.a[1][2]"),
+					}},
+					{Path: parsePath(t, "foo.bar"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.bar[1].hello"),
+						}},
+					{Path: parsePath(t, "foo.bar[1]"), Type: document.DocumentValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.bar[1].hello"),
+						}},
 					{Path: parsePath(t, "foo.bar[1].hello"), Type: document.BlobValue, IsPrimaryKey: true},
+					{Path: parsePath(t, "foo.a"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.a[1][2]"),
+						}},
+					{Path: parsePath(t, "foo.a[1]"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "foo.a[1][2]"),
+						}},
 					{Path: parsePath(t, "foo.a[1][2]"), Type: document.TextValue, IsNotNull: true},
+					{Path: parsePath(t, "bar"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "bar[4][0].bat"),
+						}},
+					{Path: parsePath(t, "bar[4]"), Type: document.ArrayValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "bar[4][0].bat"),
+						}},
+					{Path: parsePath(t, "bar[4][0]"), Type: document.DocumentValue, IsInferred: true,
+						InferredBy: []document.Path{
+							parsePath(t, "bar[4][0].bat"),
+						}},
 					{Path: parsePath(t, "bar[4][0].bat"), Type: document.IntegerValue},
 					{Path: parsePath(t, "dp"), Type: document.DoubleValue},
 					{Path: parsePath(t, "r"), Type: document.DoubleValue},

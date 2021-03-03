@@ -185,7 +185,7 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 				return err
 			}
 
-			// if it's already default value we return an error
+			// if it has already a default value we return an error
 			if fc.HasDefaultValue() {
 				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 			}

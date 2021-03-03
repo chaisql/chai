@@ -487,7 +487,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
-		require.Equal(t, v.V.(int64), int64(42))
+		require.Equal(t, v.V.(float64), float64(42))
 
 		// insert with explicit null foo field should fail
 		_, err = tb1.Insert(document.NewFieldBuffer().
