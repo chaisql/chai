@@ -471,6 +471,9 @@ func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	// Find all indexes
 	indexes, err := tx.Query("SELECT * FROM __genji_indexes")
@@ -493,6 +496,9 @@ func RunSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	err = otherTx.ReIndexAll()
 	if err != nil {
