@@ -300,7 +300,7 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 }
 
 func (p *Parser) parseType() (document.ValueType, error) {
-	tok, _, _ := p.ScanIgnoreWhitespace()
+	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEARRAY:
 		return document.ArrayValue, nil
@@ -343,8 +343,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 		return document.TextValue, nil
 	}
 
-	p.Unscan()
-	return 0, nil
+	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 }
 
 // parseDocument parses a document
@@ -588,16 +587,10 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"AS"}, pos)
 	}
 
-	// Parse require typename.
+	// Parse required typename.
 	tp, err := p.parseType()
 	if err != nil {
 		return nil, err
-	}
-
-	if tp == 0 {
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		p.Unscan()
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 	}
 
 	// Parse required ) token.
