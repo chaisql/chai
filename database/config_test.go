@@ -223,11 +223,13 @@ func TestFieldConstraintsInfer(t *testing.T) {
 	tests := []struct {
 		name      string
 		got, want FieldConstraints
+		fails     bool
 	}{
 		{
 			"No change",
 			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
 			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			false,
 		},
 		{
 			"Array",
@@ -236,6 +238,7 @@ func TestFieldConstraintsInfer(t *testing.T) {
 				{Path: document.NewPath("a"), Type: document.ArrayValue, IsInferred: true, InferredBy: []document.Path{document.NewPath("a", "0")}},
 				{Path: document.NewPath("a", "0"), Type: document.IntegerValue},
 			},
+			false,
 		},
 		{
 			"Document",
@@ -244,6 +247,7 @@ func TestFieldConstraintsInfer(t *testing.T) {
 				{Path: document.NewPath("a"), Type: document.DocumentValue, IsInferred: true, InferredBy: []document.Path{document.NewPath("a", "b")}},
 				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
 			},
+			false,
 		},
 		{
 			"Complex path",
@@ -255,6 +259,7 @@ func TestFieldConstraintsInfer(t *testing.T) {
 				{Path: document.NewPath("a", "b", "3", "1"), Type: document.DocumentValue, IsInferred: true, InferredBy: []document.Path{document.NewPath("a", "b", "3", "1", "c")}},
 				{Path: document.NewPath("a", "b", "3", "1", "c"), Type: document.IntegerValue},
 			},
+			false,
 		},
 		{
 			"Overlaping constraints",
@@ -267,14 +272,92 @@ func TestFieldConstraintsInfer(t *testing.T) {
 				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
 				{Path: document.NewPath("a", "c"), Type: document.IntegerValue},
 			},
+			false,
+		},
+		{
+			"Same path inferred and non inferred: inferred first",
+			[]*FieldConstraint{
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+			},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+			},
+			false,
+		},
+		{
+			"Same path inferred and non inferred: inferred last",
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+			},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+			},
+			false,
+		},
+		{
+			"Complex case",
+			[]*FieldConstraint{
+				{Path: document.NewPath("a", "b", "3", "1", "c"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b", "3", "1", "c", "d"), Type: document.IntegerValue},
+				{Path: document.NewPath("a", "b", "2"), Type: document.IntegerValue},
+			},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.DocumentValue, IsInferred: true,
+					InferredBy: []document.Path{document.NewPath("a", "b", "3", "1", "c"), document.NewPath("a", "b", "3", "1", "c", "d"), document.NewPath("a", "b", "2")}},
+				{Path: document.NewPath("a", "b"), Type: document.ArrayValue, IsInferred: true,
+					InferredBy: []document.Path{document.NewPath("a", "b", "3", "1", "c"), document.NewPath("a", "b", "3", "1", "c", "d"), document.NewPath("a", "b", "2")}},
+				{Path: document.NewPath("a", "b", "3"), Type: document.ArrayValue, IsInferred: true,
+					InferredBy: []document.Path{document.NewPath("a", "b", "3", "1", "c"), document.NewPath("a", "b", "3", "1", "c", "d")}},
+				{Path: document.NewPath("a", "b", "3", "1"), Type: document.DocumentValue, IsInferred: true,
+					InferredBy: []document.Path{document.NewPath("a", "b", "3", "1", "c"), document.NewPath("a", "b", "3", "1", "c", "d")}},
+				{Path: document.NewPath("a", "b", "3", "1", "c"), Type: document.DocumentValue},
+				{Path: document.NewPath("a", "b", "3", "1", "c", "d"), Type: document.IntegerValue},
+				{Path: document.NewPath("a", "b", "2"), Type: document.IntegerValue},
+			},
+			false,
+		},
+		{
+			"Same path, different constraint",
+			[]*FieldConstraint{
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+				{Path: document.NewPath("a", "b"), Type: document.DoubleValue},
+			},
+			nil,
+			true,
+		},
+		{
+			"Inferred constraint first, conflict with non inferred",
+			[]*FieldConstraint{
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+			},
+			nil,
+			true,
+		},
+		{
+			"Non inferred constraint first, conflict with inferred",
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+				{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+			},
+			nil,
+			true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := test.got.Infer()
-			require.NoError(t, err)
-			require.Equal(t, test.want, got)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.want, got)
+			}
 		})
 	}
 }

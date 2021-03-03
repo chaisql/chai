@@ -208,8 +208,12 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 	newConstraints := make(FieldConstraints, 0, len(f))
 
 	for _, fc := range f {
+		// loop over all the path fragments and
+		// create intermediary inferred constraints.
 		if len(fc.Path) > 1 {
 			for i := range fc.Path {
+				// stop before reaching the last fragment
+				// which will be added outside of this loop
 				if i+1 == len(fc.Path) {
 					break
 				}
@@ -232,6 +236,9 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 			}
 		}
 
+		// add the non inferred path to the list
+		// and ensure there are no conflicts with
+		// existing ones.
 		err := newConstraints.Add(fc)
 		if err != nil {
 			return nil, err
@@ -263,15 +270,13 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			}
 
 			// if existing one is not inferred, ignore newFc
-			if newFc.IsInferred && c.IsInferred {
+			if newFc.IsInferred && !c.IsInferred {
 				return nil
 			}
 
 			// if existing one is inferred, and newFc is not,
 			// replace it
-
-			// if existing one is not inferred, ignore newFc
-			if newFc.IsInferred && c.IsInferred {
+			if !newFc.IsInferred && c.IsInferred {
 				(*f)[i] = newFc
 				return nil
 			}
