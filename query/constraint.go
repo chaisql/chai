@@ -130,7 +130,7 @@ func (tree *constraintTree) search(path document.Path) *constraintNode {
 	return nil
 }
 
-func checkConstraints(constraints []database.FieldConstraint) error {
+func checkConstraints(constraints []*database.FieldConstraint) error {
 	var err error
 
 	tree := constraintTree{}

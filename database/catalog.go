@@ -35,7 +35,7 @@ func (c *Catalog) Load(tx *Transaction) error {
 		tableName: tableInfoStoreName,
 		storeName: []byte(tableInfoStoreName),
 		readOnly:  true,
-		FieldConstraints: []FieldConstraint{
+		FieldConstraints: []*FieldConstraint{
 			{
 				Path: document.Path{
 					document.PathFragment{
@@ -51,7 +51,7 @@ func (c *Catalog) Load(tx *Transaction) error {
 		tableName: indexStoreName,
 		storeName: []byte(indexStoreName),
 		readOnly:  true,
-		FieldConstraints: []FieldConstraint{
+		FieldConstraints: []*FieldConstraint{
 			{
 				Path: document.Path{
 					document.PathFragment{
@@ -232,7 +232,7 @@ func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc Field
 			}
 		}
 
-		clone.FieldConstraints = append(clone.FieldConstraints, fc)
+		clone.FieldConstraints = append(clone.FieldConstraints, &fc)
 		return nil
 	})
 	if err != nil {

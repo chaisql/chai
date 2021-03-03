@@ -200,7 +200,7 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
+			FieldConstraints: []*database.FieldConstraint{
 				{Path: parsePath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
@@ -231,7 +231,7 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
+			FieldConstraints: []*database.FieldConstraint{
 				{Path: parsePath(t, "foo"), Type: document.ArrayValue},
 				{Path: parsePath(t, "foo[0]"), Type: document.IntegerValue},
 			},
@@ -261,7 +261,7 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
+			FieldConstraints: []*database.FieldConstraint{
 				{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
@@ -338,9 +338,9 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, false, document.Value{}},
-				{parsePath(t, "bar"), document.IntegerValue, false, false, document.Value{}},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo"), document.DocumentValue, false, false, document.Value{}, true, []document.Path{parsePath(t, "foo.bar")}},
+				{parsePath(t, "foo.bar"), document.IntegerValue, false, false, document.Value{}, true, []document.Path{parsePath(t, "foo")}},
 			},
 		})
 		require.NoError(t, err)
@@ -348,7 +348,9 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(1)).
+			Add("foo", document.NewDocumentValue(
+				document.NewFieldBuffer().Add("bar", document.NewDoubleValue(10)),
+			)).
 			Add("bar", document.NewDoubleValue(10)).
 			Add("baz", document.NewTextValue("baz")).
 			Add("bat", document.NewIntegerValue(20))
@@ -362,10 +364,12 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(1), v)
-		v, err = d.GetByField("bar")
+		v, err = v.V.(document.Document).GetByField("bar")
 		require.NoError(t, err)
 		require.Equal(t, document.NewIntegerValue(10), v)
+		v, err = d.GetByField("bar")
+		require.NoError(t, err)
+		require.Equal(t, document.NewDoubleValue(10), v)
 		v, err = d.GetByField("baz")
 		require.NoError(t, err)
 		require.Equal(t, document.NewTextValue("baz"), v)
@@ -379,8 +383,8 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.DoubleValue, false, false, document.Value{}},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo"), document.DoubleValue, false, false, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
@@ -401,8 +405,8 @@ func TestTableInsert(t *testing.T) {
 
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true, document.Value{}},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo"), 0, false, true, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
@@ -411,8 +415,8 @@ func TestTableInsert(t *testing.T) {
 
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true, document.Value{}},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo"), document.IntegerValue, false, true, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
@@ -456,8 +460,8 @@ func TestTableInsert(t *testing.T) {
 
 		// no enforced type, not null
 		err := tx.CreateTable("test1", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true, document.NewIntegerValue(42)},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo"), 0, false, true, document.NewIntegerValue(42), false, nil},
 			},
 		})
 		require.NoError(t, err)
@@ -466,8 +470,8 @@ func TestTableInsert(t *testing.T) {
 
 		// enforced type, not null
 		err = tx.CreateTable("test2", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true, document.NewIntegerValue(42)},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo"), document.IntegerValue, false, true, document.NewIntegerValue(42), false, nil},
 			},
 		})
 		require.NoError(t, err)
@@ -522,8 +526,8 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		err := tx.CreateTable("test1", &database.TableInfo{
-			FieldConstraints: []database.FieldConstraint{
-				{parsePath(t, "foo[1]"), 0, false, true, document.Value{}},
+			FieldConstraints: []*database.FieldConstraint{
+				{parsePath(t, "foo[1]"), 0, false, true, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
