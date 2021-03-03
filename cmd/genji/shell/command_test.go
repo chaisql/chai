@@ -2,12 +2,13 @@ package shell
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"context"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
@@ -16,35 +17,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRunTablesCmd(t *testing.T) {
-	tests := []struct {
-		name    string
-		in      []string
-		wantErr bool
-	}{
-		{
-			"Table",
-			strings.Fields(".tables"),
-			false,
-		},
-		{
-			"Table with options",
-			strings.Fields(".tables test"),
-			true,
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
-			require.NoError(t, err)
-			defer db.Close()
+// func TestRunTablesCmd(t *testing.T) {
+// 	tests := []struct {
+// 		name    string
+// 		in      []string
+// 		wantErr bool
+// 	}{
+// 		{
+// 			"Table",
+// 			strings.Fields(".tables"),
+// 			false,
+// 		},
+// 		{
+// 			"Table with options",
+// 			strings.Fields(".tables test"),
+// 			true,
+// 		},
+// 	}
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			db, err := genji.Open(":memory:")
+// 			require.NoError(t, err)
+// 			defer db.Close()
 
-			if err := runTablesCmd(db, test.in); (err != nil) != test.wantErr {
-				require.Errorf(t, err, "", test.wantErr)
-			}
-		})
-	}
-}
+// 			if err := runTablesCmd(db, test.in); (err != nil) != test.wantErr {
+// 				require.Errorf(t, err, "", test.wantErr)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestIndexesCmd(t *testing.T) {
 	tests := []struct {
@@ -99,7 +100,7 @@ func TestRunDumpCmd(t *testing.T) {
 		fails           bool
 		params          []interface{}
 	}{
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, ``, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
+		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
 		{"text / not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT NOT NULL`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
 		{"text / pk and not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT PRIMARY KEY NOT NULL DEFAULT "foo"`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
 	}
@@ -175,16 +176,19 @@ func TestRunDumpCmd(t *testing.T) {
 		t.Run("With Index/"+tt.name, testFn(true, false))
 		t.Run("With FieldsConstraints/"+tt.name, testFn(true, true))
 	}
-
 }
 
 func TestSaveCommand(t *testing.T) {
+	dir, err := ioutil.TempDir("", "genji")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
 	tests := []struct {
 		engine string
 		path   string
 	}{
-		{"bolt", os.TempDir() + "/test.db"},
-		{"badger", os.TempDir()},
+		{"bolt", filepath.Join(dir, "/test.db")},
+		{"badger", filepath.Join(dir, "/badger")},
 	}
 
 	for _, tt := range tests {
@@ -198,7 +202,7 @@ func TestSaveCommand(t *testing.T) {
 			defer db.Close()
 
 			err = db.Exec(`
-				CREATE TABLE test (a);
+				CREATE TABLE test (a DOUBLE);
 				CREATE INDEX idx_a ON test (a);
 			`)
 			require.NoError(t, err)
