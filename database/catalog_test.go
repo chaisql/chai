@@ -37,48 +37,6 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 // - RenameTable
 // - AddFieldConstraint
 func TestCatalogTable(t *testing.T) {
-	t.Run("Create", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
-		defer cleanup()
-
-		catalog := db.Catalog()
-
-		clone := catalog.Clone()
-
-		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", nil)
-			require.NoError(t, err)
-
-			// Creating a table that already exists should fail.
-			err = catalog.CreateTable(tx, "test", nil)
-			require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
-
-			// Creating a table that starts with __genji_ should fail.
-			err = catalog.CreateTable(tx, "__genji_foo", nil)
-			require.Error(t, err)
-
-			return errDontCommit
-		})
-
-		require.Equal(t, clone, catalog)
-	})
-
-	t.Run("Create and rollback", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
-		defer cleanup()
-
-		check := func() {
-			update(t, db, func(tx *database.Transaction) error {
-				err := db.Catalog().CreateTable(tx, "test", nil)
-				require.NoError(t, err)
-
-				return errDontCommit
-			})
-		}
-
-		check()
-		check()
-	})
 
 	t.Run("Get", func(t *testing.T) {
 		db, cleanup := newTestDB(t)
@@ -145,7 +103,7 @@ func TestCatalogTable(t *testing.T) {
 
 		catalog := db.Catalog()
 
-		ti := &database.TableInfo{FieldConstraints: []database.FieldConstraint{
+		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
 			{Path: parsePath(t, "name"), Type: document.TextValue, IsNotNull: true},
 			{Path: parsePath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
 			{Path: parsePath(t, "gender"), Type: document.TextValue},
@@ -209,7 +167,7 @@ func TestCatalogTable(t *testing.T) {
 
 		catalog := db.Catalog()
 
-		ti := &database.TableInfo{FieldConstraints: []database.FieldConstraint{
+		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
 			{Path: parsePath(t, "name"), Type: document.TextValue, IsNotNull: true},
 			{Path: parsePath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
 			{Path: parsePath(t, "gender"), Type: document.TextValue},
@@ -236,7 +194,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// The field constraints should not be the same.
 			info := tb.Info()
-			require.Contains(t, info.FieldConstraints, fieldToAdd)
+			require.Contains(t, info.FieldConstraints, &fieldToAdd)
 
 			// Renaming a non existing table should return an error
 			err = tx.AddFieldConstraint("bar", fieldToAdd)
@@ -245,7 +203,7 @@ func TestCatalogTable(t *testing.T) {
 			}
 
 			// Adding a existing field should return an error
-			err = tx.AddFieldConstraint("foo", ti.FieldConstraints[0])
+			err = tx.AddFieldConstraint("foo", *ti.FieldConstraints[0])
 			require.Error(t, err)
 
 			// Adding a second primary key should return an error
@@ -259,6 +217,51 @@ func TestCatalogTable(t *testing.T) {
 		})
 
 		require.Equal(t, clone, catalog)
+	})
+}
+
+func TestCatalogCreate(t *testing.T) {
+	t.Run("Same table name", func(t *testing.T) {
+		db, cleanup := newTestDB(t)
+		defer cleanup()
+
+		catalog := db.Catalog()
+
+		clone := catalog.Clone()
+
+		update(t, db, func(tx *database.Transaction) error {
+			err := catalog.CreateTable(tx, "test", nil)
+			require.NoError(t, err)
+
+			// Creating a table that already exists should fail.
+			err = catalog.CreateTable(tx, "test", nil)
+			require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
+
+			// Creating a table that starts with __genji_ should fail.
+			err = catalog.CreateTable(tx, "__genji_foo", nil)
+			require.Error(t, err)
+
+			return errDontCommit
+		})
+
+		require.Equal(t, clone, catalog)
+	})
+
+	t.Run("Create and rollback", func(t *testing.T) {
+		db, cleanup := newTestDB(t)
+		defer cleanup()
+
+		check := func() {
+			update(t, db, func(tx *database.Transaction) error {
+				err := db.Catalog().CreateTable(tx, "test", nil)
+				require.NoError(t, err)
+
+				return errDontCommit
+			})
+		}
+
+		check()
+		check()
 	})
 }
 
