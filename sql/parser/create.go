@@ -108,7 +108,7 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 			return err
 		}
 
-		info.FieldConstraints = append(info.FieldConstraints, fc)
+		info.FieldConstraints = append(info.FieldConstraints, &fc)
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
