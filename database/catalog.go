@@ -228,20 +228,7 @@ func (c *Catalog) dropIndex(tx *Transaction, name string) error {
 // AddFieldConstraint adds a field constraint to a table.
 func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc FieldConstraint) error {
 	newTi, _, err := c.cache.updateTable(tx, tableName, func(clone *TableInfo) error {
-		for _, field := range clone.FieldConstraints {
-			if field.Path.IsEqual(fc.Path) {
-				return fmt.Errorf("field %q already exists", fc.Path.String())
-			}
-			if field.IsPrimaryKey && fc.IsPrimaryKey {
-				return fmt.Errorf(
-					"multiple primary keys are not allowed (%q is primary key)",
-					field.Path.String(),
-				)
-			}
-		}
-
-		clone.FieldConstraints = append(clone.FieldConstraints, &fc)
-		return nil
+		return clone.FieldConstraints.Add(&fc, false)
 	})
 	if err != nil {
 		return err

@@ -361,3 +361,64 @@ func TestFieldConstraintsInfer(t *testing.T) {
 		})
 	}
 }
+
+func TestFieldConstraintsAdd(t *testing.T) {
+	tests := []struct {
+		name  string
+		got   FieldConstraints
+		add   FieldConstraint
+		want  FieldConstraints
+		merge bool
+		fails bool
+	}{
+		{
+			"Same path",
+			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			FieldConstraint{Path: document.NewPath("a"), Type: document.IntegerValue},
+			nil,
+			false,
+			true,
+		},
+		{
+			"Duplicate primary key",
+			[]*FieldConstraint{{Path: document.NewPath("a"), IsPrimaryKey: true, Type: document.IntegerValue}},
+			FieldConstraint{Path: document.NewPath("b"), IsPrimaryKey: true, Type: document.IntegerValue},
+			nil,
+			false,
+			true,
+		},
+		{
+			"Different path",
+			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			FieldConstraint{Path: document.NewPath("b"), Type: document.IntegerValue},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+				{Path: document.NewPath("b"), Type: document.IntegerValue},
+			},
+			false,
+			false,
+		},
+		{
+			"Conflict, with merge",
+			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			FieldConstraint{Path: document.NewPath("a"), Type: document.IntegerValue},
+			[]*FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+			},
+			true,
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.got.Add(&test.add, test.merge)
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.want, test.got)
+			}
+		})
+	}
+}
