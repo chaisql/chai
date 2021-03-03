@@ -115,7 +115,15 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 	}
 	info.tableName = tableName
 
-	err := c.cache.AddTable(tx, info)
+	var err error
+
+	// replace user-defined constraints by inferred list of constraints
+	info.FieldConstraints, err = info.FieldConstraints.Infer()
+	if err != nil {
+		return err
+	}
+
+	err = c.cache.AddTable(tx, info)
 	if err != nil {
 		return err
 	}
