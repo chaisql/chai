@@ -18,6 +18,7 @@ func TestParserCreateTable(t *testing.T) {
 	}{
 		{"Basic", "CREATE TABLE test", query.CreateTableStmt{TableName: "test"}, false},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", query.CreateTableStmt{TableName: "test", IfNotExists: true}, false},
+		{"Path only", "CREATE TABLE test(a)", query.CreateTableStmt{}, true},
 		{"With primary key", "CREATE TABLE test(foo INTEGER PRIMARY KEY)",
 			query.CreateTableStmt{
 				TableName: "test",

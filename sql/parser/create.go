@@ -84,10 +84,20 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 
 	fc.Type, err = p.parseType()
 	if err != nil {
+		p.Unscan()
+	}
+
+	err = p.parseFieldConstraint(fc)
+	if err != nil {
 		return err
 	}
 
-	return p.parseFieldConstraint(fc)
+	if fc.Type == 0 && fc.DefaultValue.Type.IsZero() && !fc.IsNotNull && !fc.IsPrimaryKey {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		return newParseError(scanner.Tokstr(tok, lit), []string{"TYPE", "CONSTRAINT"}, pos)
+	}
+
+	return nil
 }
 
 func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {

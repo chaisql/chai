@@ -44,10 +44,8 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 		errored  bool
 	}{
 		{"Basic", "ALTER TABLE foo ADD FIELD bar", query.AlterTableAddField{TableName: "foo",
-			Constraint: database.FieldConstraint{
-				Path: document.Path(parsePath(t, "bar")),
-			},
-		}, false},
+			Constraint: database.FieldConstraint{},
+		}, true},
 		{"With type", "ALTER TABLE foo ADD FIELD bar integer", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
 				Path: document.Path(parsePath(t, "bar")),
