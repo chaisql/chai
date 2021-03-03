@@ -368,7 +368,6 @@ func TestFieldConstraintsAdd(t *testing.T) {
 		got   FieldConstraints
 		add   FieldConstraint
 		want  FieldConstraints
-		merge bool
 		fails bool
 	}{
 		{
@@ -376,7 +375,6 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
 			FieldConstraint{Path: document.NewPath("a"), Type: document.IntegerValue},
 			nil,
-			false,
 			true,
 		},
 		{
@@ -384,7 +382,6 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			[]*FieldConstraint{{Path: document.NewPath("a"), IsPrimaryKey: true, Type: document.IntegerValue}},
 			FieldConstraint{Path: document.NewPath("b"), IsPrimaryKey: true, Type: document.IntegerValue},
 			nil,
-			false,
 			true,
 		},
 		{
@@ -396,23 +393,12 @@ func TestFieldConstraintsAdd(t *testing.T) {
 				{Path: document.NewPath("b"), Type: document.IntegerValue},
 			},
 			false,
-			false,
-		},
-		{
-			"Conflict, with merge",
-			[]*FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
-			FieldConstraint{Path: document.NewPath("a"), Type: document.IntegerValue},
-			[]*FieldConstraint{
-				{Path: document.NewPath("a"), Type: document.IntegerValue},
-			},
-			true,
-			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.got.Add(&test.add, test.merge)
+			err := test.got.Add(&test.add)
 			if test.fails {
 				require.Error(t, err)
 			} else {
