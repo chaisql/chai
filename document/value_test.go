@@ -389,13 +389,24 @@ func TestValueBinaryMarshaling(t *testing.T) {
 		{"array", document.NewArrayValue(document.NewValueBuffer(
 			document.NewBoolValue(true),
 			document.NewIntegerValue(55),
+			document.NewIntegerValue(56),
+			document.NewIntegerValue(57),
 			document.NewDoubleValue(789.58),
+			document.NewDoubleValue(790.58),
+			document.NewDoubleValue(791.58),
 			document.NewArrayValue(document.NewValueBuffer(
 				document.NewBoolValue(false),
 				document.NewIntegerValue(100),
 				document.NewTextValue("baz"),
 			)),
-			document.NewBlobValue([]byte("loo")),
+			document.NewArrayValue(document.NewValueBuffer(
+				document.NewBoolValue(true),
+				document.NewIntegerValue(101),
+				document.NewTextValue("bax"),
+			)),
+			document.NewBlobValue([]byte("coc")),
+			document.NewBlobValue([]byte("ori")),
+			document.NewBlobValue([]byte("co!")),
 			document.NewDocumentValue(
 				document.NewFieldBuffer().
 					Add("foo1", document.NewBoolValue(true)).
