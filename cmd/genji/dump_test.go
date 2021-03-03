@@ -48,7 +48,7 @@ func TestExecuteDump(t *testing.T) {
 					b.WriteString("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (\n a \n);", table)
+				q := fmt.Sprintf("CREATE TABLE %s (\n a INTEGER\n);", table)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				b.WriteString(q + "\n")
