@@ -190,8 +190,7 @@ type FieldConstraints []*FieldConstraint
 // NewFieldConstraints takes user-defined field constraints, validates them, infers additional
 // constraints if needed, and returns a valid FieldConstraints type that can be assigned to a table.
 func NewFieldConstraints(userConstraints []*FieldConstraint) (FieldConstraints, error) {
-	// ensure no duplicate
-	return nil, nil
+	return FieldConstraints(userConstraints).Infer()
 }
 
 // Infer additional constraints based on user defined ones.

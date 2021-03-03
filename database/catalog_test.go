@@ -263,6 +263,28 @@ func TestCatalogCreate(t *testing.T) {
 		check()
 		check()
 	})
+
+	t.Run("Invalid constraints", func(t *testing.T) {
+		db, cleanup := newTestDB(t)
+		defer cleanup()
+
+		catalog := db.Catalog()
+
+		clone := catalog.Clone()
+
+		update(t, db, func(tx *database.Transaction) error {
+			err := catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: []*database.FieldConstraint{
+					{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
+					{Path: document.NewPath("a"), Type: document.IntegerValue},
+				},
+			})
+			require.Error(t, err)
+			return errDontCommit
+		})
+
+		require.Equal(t, clone, catalog)
+	})
 }
 
 func TestTxCreateIndex(t *testing.T) {
