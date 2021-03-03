@@ -218,7 +218,7 @@ func decodeValueUntil(data []byte, delim, end byte) (Value, int, error) {
 	case BoolValue:
 		i++
 	case IntegerValue, DoubleValue:
-		if i+8 < len(data) && data[i+8] == delim {
+		if i+8 < len(data) && (data[i+8] == delim || data[i+8] == end) {
 			i += 8
 		} else {
 			return Value{}, 0, errors.New("malformed " + t.String())
