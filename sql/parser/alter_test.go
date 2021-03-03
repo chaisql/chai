@@ -36,7 +36,7 @@ func TestParserAlterTable(t *testing.T) {
 	}
 }
 
-func TestParserAlterTableAddColumn(t *testing.T) {
+func TestParserAlterTableAddField(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string

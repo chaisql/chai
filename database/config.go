@@ -295,6 +295,21 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		}
 	}
 
+	// convert default values to the right types
+	targetType := newFc.Type
+
+	// if there is no type constraint, numbers must be converted to double
+	if newFc.DefaultValue.Type == document.IntegerValue && newFc.Type == 0 {
+		targetType = document.DoubleValue
+	}
+	if newFc.DefaultValue.Type != 0 && targetType != 0 {
+		var err error
+		newFc.DefaultValue, err = newFc.DefaultValue.CastAs(targetType)
+		if err != nil {
+			return err
+		}
+	}
+
 	*f = append(*f, newFc)
 	return nil
 }
