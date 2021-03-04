@@ -32,9 +32,9 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 		if fc.IsUnique {
 			err = tx.CreateIndex(&database.IndexInfo{
 				TableName: stmt.TableName,
-				Path:      fc.Path,
+				Paths:     []document.Path{fc.Path},
 				Unique:    true,
-				Type:      fc.Type,
+				Types:     []document.ValueType{fc.Type},
 			})
 			if err != nil {
 				return res, err
@@ -50,7 +50,7 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 type CreateIndexStmt struct {
 	IndexName   string
 	TableName   string
-	Path        document.Path
+	Paths       []document.Path
 	IfNotExists bool
 	Unique      bool
 }
@@ -69,7 +69,7 @@ func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 		Unique:    stmt.Unique,
 		IndexName: stmt.IndexName,
 		TableName: stmt.TableName,
-		Path:      stmt.Path,
+		Paths:     stmt.Paths,
 	})
 	if stmt.IfNotExists && err == database.ErrIndexAlreadyExists {
 		err = nil

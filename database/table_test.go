@@ -295,7 +295,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(&database.IndexInfo{
-			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+			IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 		})
 		require.NoError(t, err)
 		idx, err := tx.GetIndex("idxFoo")
@@ -318,7 +318,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual(document.Value{}, func(val, k []byte) error {
+		err = idx.AscendGreaterOrEqual([]document.Value{document.Value{}}, func(val, k []byte) error {
 			switch count {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
@@ -739,21 +739,21 @@ func TestTableIndexes(t *testing.T) {
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
-			Path:      parsePath(t, "a"),
+			Paths:     []document.Path{parsePath(t, "a")},
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(&database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
-			Path:      parsePath(t, "b"),
+			Paths:     []document.Path{parsePath(t, "b")},
 		})
 		require.NoError(t, err)
 		err = tx.CreateIndex(&database.IndexInfo{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",
-			Path:      parsePath(t, "a"),
+			Paths:     []document.Path{parsePath(t, "a")},
 		})
 		require.NoError(t, err)
 

@@ -288,17 +288,17 @@ func TestCreateTable(t *testing.T) {
 
 				idx, err := tx.GetIndex("__genji_autoindex_test_1")
 				require.NoError(t, err)
-				require.Equal(t, document.IntegerValue, idx.Info.Type)
+				require.Equal(t, document.IntegerValue, idx.Info.Types[0])
 				require.True(t, idx.Info.Unique)
 
 				idx, err = tx.GetIndex("__genji_autoindex_test_2")
 				require.NoError(t, err)
-				require.Equal(t, document.DoubleValue, idx.Info.Type)
+				require.Equal(t, document.DoubleValue, idx.Info.Types[0])
 				require.True(t, idx.Info.Unique)
 
 				idx, err = tx.GetIndex("__genji_autoindex_test_3")
 				require.NoError(t, err)
-				require.Zero(t, idx.Info.Type)
+				require.Zero(t, idx.Info.Types[0])
 				require.True(t, idx.Info.Unique)
 				return nil
 			})

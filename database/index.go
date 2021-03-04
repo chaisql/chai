@@ -13,6 +13,12 @@ import (
 const (
 	// indexStorePrefix is the prefix used to name the index stores.
 	indexStorePrefix = "i"
+
+	// untypedValue is the placeholder type for keys of an index which aren't typed.
+	// CREATE TABLE foo;
+	// CREATE INDEX idx_foo_a_b ON foo(a,b);
+	// document.ValueType of a and b will be untypedValue.
+	untypedValue = document.ValueType(0)
 )
 
 var (
@@ -33,12 +39,12 @@ type Index struct {
 func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 	if opts == nil {
 		opts = &IndexInfo{
-			Types: []document.ValueType{document.ValueType(0)}
+			Types: []document.ValueType{untypedValue},
 		}
 	}
 
 	if opts.Types == nil {
-			opts.Types= []document.ValueType{document.ValueType(0)}
+		opts.Types = []document.ValueType{untypedValue}
 	}
 
 	return &Index{
@@ -49,6 +55,14 @@ func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 }
 
 var errStop = errors.New("stop")
+
+func (idx *Index) IsComposite() bool {
+	return len(idx.Info.Types) > 1
+}
+
+func (idx *Index) Arity() int {
+	return len(idx.Info.Types)
+}
 
 // Set associates a value with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
@@ -64,13 +78,13 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 		return errors.New("cannot index without a value")
 	}
 
-	if len(vs) > len(idx.Types) {
-		return errors.New("cannot index more values than what the index supports")
+	if len(vs) != len(idx.Info.Types) {
+		return fmt.Errorf("cannot index %d values on an index of arity %d", len(vs), len(idx.Info.Types))
 	}
 
-	for i, typ := range idx.Types {
+	for i, typ := range idx.Info.Types {
 		// it is possible to set an index(a,b) on (a), it will be assumed that b is null in that case
-		if typ != 0 && i < len(vs) && typ != vs[i].Type {
+		if typ != untypedValue && i < len(vs) && typ != vs[i].Type {
 			// TODO use the full version to clarify the error
 			return fmt.Errorf("cannot index value of type %s in %s index", vs[i].Type, typ)
 		}
@@ -82,7 +96,14 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	}
 
 	// encode the value we are going to use as a key
-	buf, err := idx.EncodeValues(vs)
+	var buf []byte
+	if len(vs) > 1 {
+		wrappedVs := document.NewValueBuffer(vs...)
+		buf, err = idx.EncodeValue(document.NewArrayValue(wrappedVs))
+	} else {
+		buf, err = idx.EncodeValue(vs[0])
+	}
+
 	if err != nil {
 		return err
 	}
@@ -179,13 +200,20 @@ func (idx *Index) iterateOnStore(pivots []document.Value, reverse bool, fn func(
 		return errors.New("cannot iterate without a pivot")
 	}
 
-	if len(pivots) > len(idx.Types) {
-		return errors.New("cannot iterate with more values than what the index supports")
-	}
+	// if len(pivots) != len(idx.Info.Types) {
+	// 	return errors.New("cannot iterate without the same number of values than what the index supports")
+	// 	// return errors.New("cannot iterate with more values than what the index supports")
+	// }
 
-	for i, typ := range idx.Types {
+	for i, typ := range idx.Info.Types {
 		// if index and pivot are typed but not of the same type
 		// return no result
+		//
+		// don't try to check in case we have less pivots than values
+		if i >= len(pivots) {
+			break
+		}
+
 		if typ != 0 && pivots[i].Type != 0 && typ != pivots[i].Type {
 			return nil
 		}
@@ -237,7 +265,45 @@ func (idx *Index) Truncate() error {
 // the presence of other types.
 // If not, encode so that order is preserved regardless of the type.
 func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
-	if idx.Types[0] != 0 {
+	if idx.IsComposite() {
+		// v has been turned into an array of values being indexed
+		// TODO add a check
+		array := v.V.(*document.ValueBuffer)
+
+		// in the case of one of the index keys being untyped and the corresponding
+		// value being an integer, convert it into a double.
+		err := array.Iterate(func(i int, vi document.Value) error {
+			if idx.Info.Types[i] != untypedValue {
+				return nil
+			}
+
+			var err error
+			if vi.Type == document.IntegerValue {
+				if vi.V == nil {
+					vi.Type = document.DoubleValue
+				} else {
+					vi, err = vi.CastAsDouble()
+					if err != nil {
+						return err
+					}
+				}
+
+				// update the value with its new type
+				return array.Replace(i, vi)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		// encode the array
+		return v.MarshalBinary()
+	}
+
+	if idx.Info.Types[0] != 0 {
 		return v.MarshalBinary()
 	}
 
@@ -248,45 +314,6 @@ func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// TODO
-func (idx *Index) EncodeValues(vs []document.Value) ([]byte, error) {
-	buf := []byte{}
-
-	for i, v := range vs {
-		if idx.Types[i] != 0 {
-			b, err := v.MarshalBinary()
-			if err != nil {
-				return nil, err
-			}
-
-			buf = append(buf, b...)
-			continue
-		}
-
-		var err error
-		if v.Type == document.IntegerValue {
-			if v.V == nil {
-				v.Type = document.DoubleValue
-			} else {
-				v, err = v.CastAsDouble()
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		var bbuf bytes.Buffer
-		err = document.NewValueEncoder(&bbuf).Encode(v)
-		if err != nil {
-			return nil, err
-		}
-		b := bbuf.Bytes()
-		buf = append(buf, b...)
-	}
-
-	return buf, nil
 }
 
 func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) {
@@ -311,7 +338,7 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 	var seek []byte
 	var err error
 
-	for i, typ := range idx.Types {
+	for i, typ := range idx.Info.Types {
 		if typ == 0 && pivots[i].Type == document.IntegerValue {
 			if pivots[i].V == nil {
 				pivots[i].Type = document.DoubleValue
@@ -324,35 +351,59 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 		}
 	}
 
-	if pivots[0].V != nil {
-		seek, err = idx.EncodeValues(pivots)
-		if err != nil {
-			return err
-		}
-
-		if reverse {
-			seek = append(seek, 0xFF)
-		}
-	} else {
-		// this is pretty surely wrong as it does not allow to select t1t2 is there are values on t1
-		buf := []byte{}
-		for i, typ := range idx.Types {
-			if typ == 0 && pivots[i].Type != 0 && pivots[i].V == nil {
-				buf = append(buf, byte(pivots[i].Type))
+	if idx.IsComposite() {
+		// if we have n valueless and typeless pivots, we just iterate
+		all := true
+		for _, pivot := range pivots {
+			if pivot.Type == 0 && pivot.V == nil {
+				all = all && true
+			} else {
+				all = false
 			}
 		}
 
-		seek = buf
-		if reverse {
-			seek = append(seek, 0xFF)
-		}
-		// if idx.Type == 0 && pivot.Type != 0 && pivot.V == nil {
-		// 	seek = []byte{byte(pivot.Type)}
+		vb := document.NewValueBuffer(pivots...)
 
-		// 	if reverse {
-		// 		seek = append(seek, 0xFF)
-		// 	}
-		// }
+		// we do have pivot values, so let's use them to seek in the index
+		if !all {
+			seek, err = idx.EncodeValue(document.NewArrayValue(vb))
+
+			if err != nil {
+				return err
+			}
+		} else { // we don't, let's start at the beginning
+			seek = []byte{}
+		}
+
+		if reverse {
+			// if we are reverse on a pivot with less arity, we will get 30 255, which is lower than 31
+			// and such will ignore all values. Let's drop the separator in that case
+			if len(seek) > 0 {
+				seek = append(seek[:len(seek)-1], 0xFF)
+			} else {
+				seek = append(seek, 0xFF)
+			}
+
+		}
+	} else {
+		if pivots[0].V != nil {
+			seek, err = idx.EncodeValue(pivots[0])
+			if err != nil {
+				return err
+			}
+
+			if reverse {
+				seek = append(seek, 0xFF)
+			}
+		} else {
+			if idx.Info.Types[0] == untypedValue && pivots[0].Type != untypedValue && pivots[0].V == nil {
+				seek = []byte{byte(pivots[0].Type)}
+
+				if reverse {
+					seek = append(seek, 0xFF)
+				}
+			}
+		}
 	}
 
 	it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
@@ -367,7 +418,7 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 		// }
 
 		// this is wrong and only handle the first type
-		for i, typ := range idx.Types {
+		for i, typ := range idx.Info.Types {
 			if typ == 0 && pivots[i].Type != 0 && itm.Key()[0] != byte(pivots[i].Type) {
 				return nil
 			}

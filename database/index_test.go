@@ -20,34 +20,226 @@ func values(vs ...document.Value) []document.Value {
 	return vs
 }
 
-func getIndex(t testing.TB, unique bool) (*database.Index, func()) {
+func prefixAV(b []byte) []byte {
+	return append([]byte{byte(document.ArrayValue)}, b...)
+}
+
+func getIndex(t testing.TB, unique bool, types ...document.ValueType) (*database.Index, func()) {
 	ng := memoryengine.NewEngine()
 	tx, err := ng.Begin(context.Background(), engine.TxOptions{
 		Writable: true,
 	})
 	require.NoError(t, err)
 
-	idx := database.NewIndex(tx, "foo", &database.IndexInfo{Unique: unique})
+	idx := database.NewIndex(tx, "foo", &database.IndexInfo{Unique: unique, Types: types})
 
 	return idx, func() {
 		tx.Rollback()
 	}
 }
 
+func TestCompositeIndexSet(t *testing.T) {
+	idx, cleanup := getIndex(t, false, document.IntegerValue, document.IntegerValue)
+	defer cleanup()
+	require.Error(t, idx.Set(values(document.NewIntegerValue(42), document.NewIntegerValue(43)), nil))
+	require.NoError(t, idx.Set(values(document.NewIntegerValue(42), document.NewIntegerValue(43)), []byte("key")))
+}
+
+func TestCompositeIndexIterateAsc1(t *testing.T) {
+	idx, cleanup := getIndex(t, false, document.IntegerValue, document.IntegerValue)
+	defer cleanup()
+
+	for i := 0; i < 10; i++ {
+		require.NoError(t, idx.Set(values(
+			document.NewIntegerValue(int64(i)),
+			document.NewIntegerValue(int64(100-i))),
+			[]byte{'a' + byte(i)}))
+	}
+
+	var i int = 2
+	var count int
+	pivots := values(document.NewIntegerValue(int64(2)), document.NewIntegerValue(0))
+	err := idx.AscendGreaterOrEqual(pivots, func(val, rid []byte) error {
+		array := document.NewValueBuffer(
+			document.NewIntegerValue(int64(i)),
+			document.NewIntegerValue(int64(100-i)),
+		)
+
+		val = prefixAV(val)
+		// the missing array type is annoying
+		// vvv := document.Value{Type: document.ArrayValue}
+		// e := vvv.UnmarshalBinary(val)
+		// require.NoError(t, e)
+		// fmt.Println(vvv.V)
+
+		requireEqualEncoded(t, document.NewArrayValue(array), val)
+		require.Equal(t, []byte{'a' + byte(i)}, rid)
+
+		i++
+		count++
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 8, count)
+}
+
+func TestCompositeIndexIterateAsc2(t *testing.T) {
+	idx, cleanup := getIndex(t, false, document.ValueType(0), document.IntegerValue)
+	defer cleanup()
+
+	for i := 0; i < 10; i++ {
+		require.NoError(t, idx.Set(values(
+			document.NewDoubleValue(float64(i)),
+			document.NewIntegerValue(int64(100-i))),
+			binarysort.AppendInt64(nil, int64(i))))
+
+		require.NoError(t, idx.Set(values(
+			document.NewTextValue(strconv.Itoa(i)),
+			document.NewIntegerValue(int64(100-i))),
+			binarysort.AppendInt64(nil, int64(i))))
+	}
+
+	var i int = 2
+	var count int
+	pivots := values(document.NewIntegerValue(int64(2)), document.NewIntegerValue(0))
+	err := idx.AscendGreaterOrEqual(pivots, func(val, rid []byte) error {
+		array := document.NewValueBuffer(
+			document.NewDoubleValue(float64(i)),
+			document.NewIntegerValue(int64(100-i)),
+		)
+
+		// deal with the skipped array value type byte
+		vval := []byte{byte(document.ArrayValue)}
+		vval = append(vval, val...)
+
+		requireEqualEncoded(t, document.NewArrayValue(array), vval)
+		require.Equal(t, binarysort.AppendInt64(nil, int64(i)), rid)
+
+		i++
+		count++
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 8, count)
+}
+
+func TestCompositeIndexIterateDesc(t *testing.T) {
+	idx, cleanup := getIndex(t, false, document.IntegerValue, document.IntegerValue)
+	defer cleanup()
+
+	for i := 0; i < 10; i++ {
+		require.NoError(t, idx.Set(values(
+			document.NewIntegerValue(int64(i)),
+			document.NewIntegerValue(int64(100-i))),
+			[]byte{'a' + byte(i)}))
+	}
+
+	var i int = 4
+	var count int
+	pivots := values(document.NewIntegerValue(int64(4)), document.NewIntegerValue(96))
+	err := idx.DescendLessOrEqual(pivots, func(val, rid []byte) error {
+		array := document.NewValueBuffer(
+			document.NewIntegerValue(int64(i)),
+			document.NewIntegerValue(int64(100-i)),
+		)
+
+		// deal with the skipped array value type byte
+		vval := []byte{byte(document.ArrayValue)}
+		vval = append(vval, val...)
+
+		requireEqualEncoded(t, document.NewArrayValue(array), vval)
+		require.Equal(t, []byte{'a' + byte(i)}, rid)
+
+		i--
+		count++
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 5, count)
+}
+
+func TestCompositeIndexIterateDesc2(t *testing.T) {
+	idx, cleanup := getIndex(t, false, document.ValueType(0), document.IntegerValue)
+	defer cleanup()
+
+	for i := 0; i < 10; i++ {
+		require.NoError(t, idx.Set(values(
+			document.NewDoubleValue(float64(i)),
+			document.NewIntegerValue(int64(100-i))),
+			binarysort.AppendInt64(nil, int64(i))))
+
+		require.NoError(t, idx.Set(values(
+			document.NewTextValue(strconv.Itoa(i)),
+			document.NewIntegerValue(int64(100-i))),
+			binarysort.AppendInt64(nil, int64(i))))
+	}
+
+	var i int = 4
+	var count int
+	pivots := values(document.NewIntegerValue(int64(4)), document.NewIntegerValue(96))
+	err := idx.DescendLessOrEqual(pivots, func(val, rid []byte) error {
+		array := document.NewValueBuffer(
+			document.NewDoubleValue(float64(i)),
+			document.NewIntegerValue(int64(100-i)),
+		)
+
+		// deal with the skipped array value type byte
+		vval := []byte{byte(document.ArrayValue)}
+		vval = append(vval, val...)
+
+		requireEqualEncoded(t, document.NewArrayValue(array), vval)
+		require.Equal(t, binarysort.AppendInt64(nil, int64(i)), rid)
+
+		i--
+		count++
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 5, count)
+}
+
 func TestIndexSet(t *testing.T) {
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
-		t.Run(text+"Set nil key falls", func(t *testing.T) {
+		t.Run(text+"Set nil key falls (arity=1)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 			require.Error(t, idx.Set(values(document.NewBoolValue(true)), nil))
 		})
 
-		t.Run(text+"Set value and key succeeds", func(t *testing.T) {
+		t.Run(text+"Set value and key succeeds (arity=1)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 			require.NoError(t, idx.Set(values(document.NewBoolValue(true)), []byte("key")))
+		})
+
+		t.Run(text+"Set two values and key succeeds (arity=2)", func(t *testing.T) {
+			idx, cleanup := getIndex(t, unique, document.ValueType(0), document.ValueType(0))
+			defer cleanup()
+			require.NoError(t, idx.Set(values(document.NewBoolValue(true), document.NewBoolValue(true)), []byte("key")))
+		})
+
+		t.Run(text+"Set one value and key on two values index fails", func(t *testing.T) {
+			idx, cleanup := getIndex(t, unique, document.ValueType(0), document.ValueType(0))
+			defer cleanup()
+			require.Error(t, idx.Set(values(document.NewBoolValue(true)), []byte("key")))
+		})
+
+		t.Run(text+"Set two values and key on non composite index fails", func(t *testing.T) {
+			idx, cleanup := getIndex(t, unique, document.ValueType(0))
+			defer cleanup()
+			require.Error(t, idx.Set(values(document.NewBoolValue(true), document.NewBoolValue(true)), []byte("key")))
+		})
+
+		t.Run(text+"Set three values and key on two values index fails", func(t *testing.T) {
+			idx, cleanup := getIndex(t, unique, document.ValueType(0), document.ValueType(0))
+			defer cleanup()
+			require.Error(t, idx.Set(values(document.NewBoolValue(true), document.NewBoolValue(true), document.NewBoolValue(true)), []byte("key")))
 		})
 	}
 
@@ -57,20 +249,29 @@ func TestIndexSet(t *testing.T) {
 
 		require.NoError(t, idx.Set(values(document.NewIntegerValue(10)), []byte("key")))
 		require.NoError(t, idx.Set(values(document.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(document.NewIntegerValue(10)), []byte("key")))
 	})
 
 	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true)
-		idx.Info.Types = []document.ValueType{document.IntegerValue}
+		idx, cleanup := getIndex(t, true, document.IntegerValue)
 		defer cleanup()
 
 		require.NoError(t, idx.Set(values(document.NewIntegerValue(10)), []byte("key")))
 		require.NoError(t, idx.Set(values(document.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(document.NewIntegerValue(10), []byte("key")))
+		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(document.NewIntegerValue(10)), []byte("key")))
+	})
+
+	t.Run("Unique: true, Type: (integer, integer) Duplicate,", func(t *testing.T) {
+		idx, cleanup := getIndex(t, true, document.IntegerValue, document.IntegerValue)
+		defer cleanup()
+
+		require.NoError(t, idx.Set(values(document.NewIntegerValue(10), document.NewIntegerValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(document.NewIntegerValue(11), document.NewIntegerValue(11)), []byte("key")))
+		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(document.NewIntegerValue(10), document.NewIntegerValue(10)), []byte("key")))
 	})
 }
 
+// TODO add composite test cases
 func TestIndexDelete(t *testing.T) {
 	t.Run("Unique: false, Delete valid key succeeds", func(t *testing.T) {
 		idx, cleanup := getIndex(t, false)
@@ -171,28 +372,61 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 		t.Run(text+"With typed empty pivot, should iterate over all documents of the pivot type in order", func(t *testing.T) {
 			tests := []struct {
-				name  string
-				val   func(i int) document.Value
-				t     document.ValueType
-				pivot document.Value
+				name       string
+				val        func(i int) []document.Value
+				t          document.ValueType
+				indexTypes []document.ValueType
+				pivots     []document.Value
 			}{
-				{"integers", func(i int) document.Value { return document.NewIntegerValue(int64(i)) }, document.IntegerValue, document.Value{Type: document.IntegerValue}},
-				{"doubles", func(i int) document.Value { return document.NewDoubleValue(float64(i) + float64(i)/2) }, document.DoubleValue, document.Value{Type: document.DoubleValue}},
-				{"texts", func(i int) document.Value { return document.NewTextValue(strconv.Itoa(i)) }, document.TextValue, document.Value{Type: document.TextValue}},
+				{"integer",
+					func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
+					document.IntegerValue,
+					nil,
+					values(document.Value{Type: document.IntegerValue})},
+				{"double",
+					func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
+					document.DoubleValue,
+					nil,
+					values(document.Value{Type: document.DoubleValue})},
+				{"text",
+					func(i int) []document.Value { return values(document.NewTextValue(strconv.Itoa(i))) },
+					document.TextValue,
+					nil,
+					values(document.Value{Type: document.TextValue})},
+				{"(integer, integer)",
+					func(i int) []document.Value {
+						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
+					},
+					document.ArrayValue, // of integers
+					[]document.ValueType{0, 0},
+					values(document.Value{Type: document.IntegerValue, V: int64(0)}, document.Value{Type: document.IntegerValue, V: int64(0)})},
 			}
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					idx, cleanup := getIndex(t, unique)
+					idx, cleanup := getIndex(t, unique, test.indexTypes...)
 					defer cleanup()
 
 					for i := 0; i < 10; i += 2 {
-						require.NoError(t, idx.Set(values(test.val(i)), []byte{'a' + byte(i)}))
+						require.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
+
+						// the case where we have other types in the list was missing from this test
+						// ugly, TODO refactor
+						ovs := []document.Value{}
+						for range test.indexTypes {
+							ovs = append(ovs, document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
+						}
+
+						if test.indexTypes == nil {
+							ovs = append(ovs, document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
+						}
+
+						require.NoError(t, idx.Set(ovs, []byte{'a' + byte(i)}))
 					}
 
 					var i uint8
 					var count int
-					err := idx.AscendGreaterOrEqual(values(test.pivot), func(val, rid []byte) error {
+					err := idx.AscendGreaterOrEqual(test.pivots, func(val, rid []byte) error {
 						switch test.t {
 						case document.IntegerValue:
 							requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
@@ -202,6 +436,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 							requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
 						case document.BoolValue:
 							requireEqualEncoded(t, document.NewBoolValue(i > 0), val)
+						case document.ArrayValue: // of integers
+							array := document.NewValueBuffer(document.NewDoubleValue(float64(i)), document.NewDoubleValue(float64(i+1)))
+							requireEqualEncoded(t, document.NewArrayValue(array), prefixAV(val))
 						}
 						require.Equal(t, []byte{'a' + i}, rid)
 
@@ -238,24 +475,65 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.Equal(t, 4, count)
 		})
 
-		t.Run(text+"With no pivot, should iterate over all documents in order, regardless of their type", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+		t.Run(text+"With composite pivot, should iterate over some documents in order", func(t *testing.T) {
+
+			idx, cleanup := getIndex(t, false, document.IntegerValue, document.IntegerValue)
+			defer cleanup()
+
+			for i := 0; i < 10; i++ {
+				require.NoError(t, idx.Set(values(
+					document.NewIntegerValue(int64(i)),
+					document.NewIntegerValue(int64(100-i))),
+					[]byte{'a' + byte(i)}))
+			}
+
+			var i int = 2
+			var count int
+			pivots := values(document.NewIntegerValue(int64(2)), document.NewIntegerValue(0))
+			err := idx.AscendGreaterOrEqual(pivots, func(val, rid []byte) error {
+				array := document.NewValueBuffer(
+					document.NewIntegerValue(int64(i)),
+					document.NewIntegerValue(int64(100-i)),
+				)
+
+				requireEqualEncoded(t, document.NewArrayValue(array), prefixAV(val))
+				require.Equal(t, []byte{'a' + byte(i)}, rid)
+
+				i++
+				count++
+				return nil
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, 8, count)
+		})
+
+		t.Run(text+"With no pivot but a composite index, should iterate over all documents in order, regardless of their type", func(t *testing.T) {
+			idx, cleanup := getIndex(t, unique, document.ValueType(0), document.ValueType(0))
 			defer cleanup()
 
 			for i := int64(0); i < 10; i++ {
-				require.NoError(t, idx.Set(values(document.NewDoubleValue(float64(i))), []byte{'d', 'a' + byte(i)}))
-				require.NoError(t, idx.Set(values(document.NewTextValue(strconv.Itoa(int(i)))), []byte{'s', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(values(document.NewDoubleValue(float64(i)), document.NewBlobValue([]byte{byte(i)})), []byte{'d', 'a' + byte(i)}))
+				require.NoError(t, idx.Set(values(document.NewTextValue(strconv.Itoa(int(i))), document.NewDoubleValue(float64(i))), []byte{'s', 'a' + byte(i)}))
 			}
 
 			var doubles, texts int
 			var count int
-			err := idx.AscendGreaterOrEqual(values(document.Value{}), func(val, rid []byte) error {
+			err := idx.AscendGreaterOrEqual(values(document.Value{}, document.Value{}), func(val, rid []byte) error {
 				if count < 10 {
-					requireEqualEncoded(t, document.NewDoubleValue(float64(doubles)), val)
+					array := document.NewValueBuffer(
+						document.NewDoubleValue(float64(doubles)),
+						document.NewBlobValue([]byte{byte(doubles)}))
+
+					requireEqualEncoded(t, document.NewArrayValue(array), prefixAV(val))
 					require.Equal(t, []byte{'d', 'a' + byte(doubles)}, rid)
 					doubles++
 				} else {
-					requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(texts))), val)
+					array := document.NewValueBuffer(
+						document.NewTextValue(strconv.Itoa(int(texts))),
+						document.NewDoubleValue(float64(texts)))
+
+					requireEqualEncoded(t, document.NewArrayValue(array), prefixAV(val))
 					require.Equal(t, []byte{'s', 'a' + byte(texts)}, rid)
 					texts++
 				}
@@ -267,7 +545,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			require.Equal(t, 10, texts)
 		})
 
-		t.Run(text+"With no pivot and typed index, should iterate over all documents in order", func(t *testing.T) {
+		t.Run(text+"With no pivot and a typed index, should iterate over all documents in order", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			idx.Info.Types = []document.ValueType{document.IntegerValue}
 			defer cleanup()
@@ -455,7 +733,7 @@ func BenchmarkIndexIteration(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = idx.AscendGreaterOrEqual(document.Value{Type: document.TextValue}, func(_, _ []byte) error {
+				_ = idx.AscendGreaterOrEqual(values(document.Value{Type: document.TextValue}), func(_, _ []byte) error {
 					return nil
 				})
 			}

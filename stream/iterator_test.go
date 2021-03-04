@@ -276,20 +276,27 @@ func TestPkScan(t *testing.T) {
 func TestIndexScan(t *testing.T) {
 	tests := []struct {
 		name                  string
+		indexOn               string
 		docsInTable, expected testutil.Docs
 		ranges                stream.Ranges
 		reverse               bool
 		fails                 bool
 	}{
-		{name: "empty"},
+		{name: "empty", indexOn: "a"},
 		{
-			"no range",
+			"no range", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			nil, false, false,
 		},
 		{
-			"max:2",
+			"no range", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			nil, false, false,
+		},
+		{
+			"max:2", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
@@ -298,7 +305,16 @@ func TestIndexScan(t *testing.T) {
 			false, false,
 		},
 		{
-			"max:1",
+			"max:[2, 2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			stream.Ranges{
+				{Max: testutil.MakeArray(t, 2, 2)},
+			},
+			false, false,
+		},
+		{
+			"max:1", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
@@ -307,7 +323,16 @@ func TestIndexScan(t *testing.T) {
 			false, false,
 		},
 		{
-			"min",
+			"max:[1, 2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			stream.Ranges{
+				{Max: testutil.MakeArray(t, 1, 2)},
+			},
+			false, false,
+		},
+		{
+			"min", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
@@ -316,7 +341,16 @@ func TestIndexScan(t *testing.T) {
 			false, false,
 		},
 		{
-			"min/max",
+			"min:[2, 1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 2, 1)},
+			},
+			false, false,
+		},
+		{
+			"min/max", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
@@ -325,13 +359,31 @@ func TestIndexScan(t *testing.T) {
 			false, false,
 		},
 		{
-			"reverse/no range",
+			"min:[1, 1], max:[2,2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1, 1), Max: testutil.MakeArray(t, 2, 2)},
+			},
+			false, false,
+		},
+		{
+			"min:[1, 1], max:[2,2] bis", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`), // [1, 3] < [2, 2]
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1, 1), Max: testutil.MakeArray(t, 2, 2)},
+			},
+			false, false,
+		},
+		{
+			"reverse/no range", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			nil, true, false,
 		},
 		{
-			"reverse/max",
+			"reverse/max", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
@@ -340,7 +392,16 @@ func TestIndexScan(t *testing.T) {
 			true, false,
 		},
 		{
-			"reverse/min",
+			"reverse/max", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Max: testutil.MakeArray(t, 2, 2)},
+			},
+			true, false,
+		},
+		{
+			"reverse/min", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
@@ -349,7 +410,25 @@ func TestIndexScan(t *testing.T) {
 			true, false,
 		},
 		{
-			"reverse/min/max",
+			"reverse/min neg", "a",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": -2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			stream.Ranges{
+				{Min: document.NewIntegerValue(1)},
+			},
+			true, false,
+		},
+		{
+			"reverse/min", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1, 1)},
+			},
+			true, false,
+		},
+		{
+			"reverse/min/max", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
@@ -357,15 +436,88 @@ func TestIndexScan(t *testing.T) {
 			},
 			true, false,
 		},
+		{
+			"reverse/min/max", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1, 1), Max: testutil.MakeArray(t, 2, 2)},
+			},
+			true, false,
+		},
+		{
+			"max:[1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
+			stream.Ranges{
+				{Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 1)},
+			},
+			false, false,
+		},
+		{
+			"reverse max:[1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 1)},
+			},
+			true, false,
+		},
+		{
+			"max:[1, 2]", "a, b, c",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			stream.Ranges{
+				{Arity: 3, ArityMax: 2, Max: testutil.MakeArray(t, 1, 2)},
+			},
+			false, false,
+		},
+		// todo a,b,c and [1]
+		{
+			"min:[1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1)},
+			},
+			false, false,
+		},
+		{
+			"reverse min:[1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1)},
+			},
+			true, false,
+		},
+		{
+			"min:[1], max[2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 2, "b": 42}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1), Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 2)},
+			},
+			false, false,
+		},
+		{
+			"reverse min:[1], max[2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 42}`, `{"a": 1, "b": -2}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1), Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 2)},
+			},
+			true, false,
+		},
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		t.Run(test.name+"index on "+test.indexOn, func(t *testing.T) {
 			db, err := genji.Open(":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test (a INTEGER); CREATE INDEX idx_test_a ON test(a)")
+			err = db.Exec("CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER); CREATE INDEX idx_test_a ON test(" + test.indexOn + ")")
 			require.NoError(t, err)
 
 			for _, doc := range test.docsInTable {
@@ -404,6 +556,11 @@ func TestIndexScan(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+				fmt.Println("expected: ")
+				test.expected.Print()
+				fmt.Println("got: ")
+				got.Print()
+				fmt.Println("end test")
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
@@ -411,15 +568,30 @@ func TestIndexScan(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.Range{
-			Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
-		}).String())
+		t.Run("idx_test_a", func(t *testing.T) {
+			require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.Range{
+				Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
+			}).String())
 
-		op := stream.IndexScan("idx_test_a", stream.Range{
-			Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
+			op := stream.IndexScan("idx_test_a", stream.Range{
+				Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
+			})
+			op.Reverse = true
+
+			require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
 		})
-		op.Reverse = true
 
-		require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
+		t.Run("idx_test_a_b", func(t *testing.T) {
+			require.Equal(t, `indexScan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.Range{
+				Min: testutil.MakeArray(t, 1, 1), Max: testutil.MakeArray(t, 2, 2),
+			}).String())
+
+			op := stream.IndexScan("idx_test_a_b", stream.Range{
+				Min: testutil.MakeArray(t, 1, 1), Max: testutil.MakeArray(t, 2, 2),
+			})
+			op.Reverse = true
+
+			require.Equal(t, `indexScanReverse("idx_test_a_b", [[1, 1], [2, 2]])`, op.String())
+		})
 	})
 }
