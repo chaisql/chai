@@ -92,12 +92,18 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		v, err := idx.Info.Path.GetValueFromDocument(fb)
-		if err != nil {
-			v = document.NewNullValue()
+		vals := make([]document.Value, len(idx.Info.Paths))
+
+		for i, path := range idx.Info.Paths {
+			v, err := path.GetValueFromDocument(fb)
+			if err != nil {
+				v = document.NewNullValue()
+			}
+
+			vals[i] = v
 		}
 
-		err = idx.Set(v, key)
+		err = idx.Set(vals, key)
 		if err != nil {
 			if err == ErrIndexDuplicateValue {
 				return nil, ErrDuplicateDocument
@@ -136,12 +142,13 @@ func (t *Table) Delete(key []byte) error {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		v, err := idx.Info.Path.GetValueFromDocument(d)
+		// TODO only support one path
+		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
 		if err != nil {
 			return err
 		}
 
-		err = idx.Delete(v, key)
+		err = idx.Delete([]document.Value{v}, key)
 		if err != nil {
 			return err
 		}
@@ -179,12 +186,13 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		v, err := idx.Info.Path.GetValueFromDocument(old)
+		// TODO only support one path
+		v, err := idx.Info.Paths[0].GetValueFromDocument(old)
 		if err != nil {
 			v = document.NewNullValue()
 		}
 
-		err = idx.Delete(v, key)
+		err = idx.Delete([]document.Value{v}, key)
 		if err != nil {
 			return err
 		}
@@ -207,12 +215,13 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// update indexes
 	for _, idx := range indexes {
-		v, err := idx.Info.Path.GetValueFromDocument(d)
+		// only support one path
+		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
 		if err != nil {
 			v = document.NewNullValue()
 		}
 
-		err = idx.Set(v, key)
+		err = idx.Set([]document.Value{v}, key)
 		if err != nil {
 			if err == ErrIndexDuplicateValue {
 				return ErrDuplicateDocument

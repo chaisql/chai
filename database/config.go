@@ -230,7 +230,7 @@ func (t *tableStore) Replace(tx *Transaction, tableName string, info *TableInfo)
 type IndexInfo struct {
 	TableName string
 	IndexName string
-	Path      document.Path
+	Paths     []document.Path
 
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
@@ -246,9 +246,21 @@ func (i *IndexInfo) ToDocument() document.Document {
 	buf.Add("unique", document.NewBoolValue(i.Unique))
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
-	buf.Add("path", document.NewArrayValue(pathToArray(i.Path)))
-	if i.Type != 0 {
-		buf.Add("type", document.NewIntegerValue(int64(i.Type)))
+
+	// TODO check that
+	vb := document.NewValueBuffer()
+	for _, path := range i.Paths {
+		vb.Append(document.NewArrayValue(pathToArray(path)))
+	}
+
+	buf.Add("paths", document.NewArrayValue(vb))
+	// TODO check that
+	if i.Types != nil {
+		types := make([]document.Value, 0, len(i.Types))
+		for _, typ := range i.Types {
+			types = append(types, document.NewIntegerValue(int64(typ)))
+		}
+		buf.Add("types", document.NewArrayValue(document.NewValueBuffer(types...)))
 	}
 	return buf
 }
@@ -273,21 +285,45 @@ func (i *IndexInfo) ScanDocument(d document.Document) error {
 	}
 	i.TableName = string(v.V.(string))
 
-	v, err = d.GetByField("path")
-	if err != nil {
-		return err
-	}
-	i.Path, err = arrayToPath(v.V.(document.Array))
+	v, err = d.GetByField("paths")
 	if err != nil {
 		return err
 	}
 
-	v, err = d.GetByField("type")
+	err = v.V.(document.Array).Iterate(func(ii int, pval document.Value) error {
+		p, err := arrayToPath(pval.V.(document.Array))
+		if err != nil {
+			return err
+		}
+
+		i.Paths = append(i.Paths, p)
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// i.Paths, err = arrayToPath(v.V.(document.Array))
+	// if err != nil {
+	// 	return err
+	// }
+
+	v, err = d.GetByField("types")
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
+
+	// TODO refacto
 	if err == nil {
-		i.Type = document.ValueType(v.V.(int64))
+		err = v.V.(document.Array).Iterate(func(ii int, tval document.Value) error {
+			i.Types = append(i.Types, document.ValueType(tval.V.(int64)))
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -407,7 +443,8 @@ func (i Indexes) GetIndex(name string) *Index {
 
 func (i Indexes) GetIndexByPath(p document.Path) *Index {
 	for _, idx := range i {
-		if idx.Info.Path.IsEqual(p) {
+		// TODO
+		if idx.Info.Paths[0].IsEqual(p) {
 			return idx
 		}
 	}

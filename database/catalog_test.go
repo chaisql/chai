@@ -115,9 +115,9 @@ func TestCatalogTable(t *testing.T) {
 			err := catalog.CreateTable(tx, "foo", ti)
 			require.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{Path: parsePath(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
+			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{parsePath(t, "gender")}, IndexName: "idx_gender", TableName: "foo"})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{Path: parsePath(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
+			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{parsePath(t, "city")}, IndexName: "idx_city", TableName: "foo", Unique: true})
 			require.NoError(t, err)
 
 			return nil
@@ -318,7 +318,7 @@ func TestTxCreateIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idx_a", TableName: "test", Path: parsePath(t, "a"),
+				IndexName: "idx_a", TableName: "test", Paths: []document.Path{parsePath(t, "a")},
 			})
 			require.NoError(t, err)
 			idx, err := tx.GetIndex("idx_a")
@@ -355,12 +355,12 @@ func TestTxCreateIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 			})
 			require.NoError(t, err)
 
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 			})
 			require.Equal(t, database.ErrIndexAlreadyExists, err)
 			return nil
@@ -373,7 +373,7 @@ func TestTxCreateIndex(t *testing.T) {
 		catalog := db.Catalog()
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 			})
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
@@ -394,7 +394,7 @@ func TestTxCreateIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: "test", Path: parsePath(t, "foo"),
+				TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 			})
 			require.NoError(t, err)
 
@@ -403,7 +403,7 @@ func TestTxCreateIndex(t *testing.T) {
 
 			// create another one
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: "test", Path: parsePath(t, "foo"),
+				TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 			})
 			require.NoError(t, err)
 
@@ -424,11 +424,11 @@ func TestTxDropIndex(t *testing.T) {
 			err := catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
 			})
 			require.NoError(t, err)
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxBar", TableName: "test", Path: parsePath(t, "bar"),
+				IndexName: "idxBar", TableName: "test", Paths: []document.Path{parsePath(t, "bar")},
 			})
 			require.NoError(t, err)
 			return nil
@@ -489,13 +489,13 @@ func TestCatalogReIndex(t *testing.T) {
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "a",
 				TableName: "test",
-				Path:      parsePath(t, "a"),
+				Paths:     []document.Path{parsePath(t, "a")},
 			})
 			require.NoError(t, err)
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "b",
 				TableName: "test",
-				Path:      parsePath(t, "b"),
+				Paths:     []document.Path{parsePath(t, "b")},
 			})
 			require.NoError(t, err)
 
@@ -537,7 +537,7 @@ func TestCatalogReIndex(t *testing.T) {
 			return catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "b",
 				TableName: "test",
-				Path:      parsePath(t, "b"),
+				Paths:     []document.Path{parsePath(t, "b")},
 			})
 		})
 
@@ -570,7 +570,7 @@ func TestCatalogReIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)
@@ -638,13 +638,13 @@ func TestReIndexAll(t *testing.T) {
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "t1a",
 				TableName: "test1",
-				Path:      parsePath(t, "a"),
+				Paths:     []document.Path{parsePath(t, "a")},
 			})
 			require.NoError(t, err)
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "t2a",
 				TableName: "test2",
-				Path:      parsePath(t, "a"),
+				Paths:     []document.Path{parsePath(t, "a")},
 			})
 			require.NoError(t, err)
 
@@ -660,7 +660,7 @@ func TestReIndexAll(t *testing.T) {
 			require.NoError(t, err)
 
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)
@@ -676,7 +676,7 @@ func TestReIndexAll(t *testing.T) {
 			require.NoError(t, err)
 
 			i = 0
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)

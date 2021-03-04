@@ -325,7 +325,8 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 
 func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 	return table.Iterate(func(d document.Document) error {
-		v, err := idx.Info.Path.GetValueFromDocument(d)
+		// TODO
+		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {
 			return nil
 		}
@@ -333,7 +334,8 @@ func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 			return err
 		}
 
-		err = idx.Set(v, d.(document.Keyer).RawKey())
+		// TODO
+		err = idx.Set([]document.Value{v}, d.(document.Keyer).RawKey())
 		if err != nil {
 			return stringutil.Errorf("error while building the index: %w", err)
 		}
@@ -493,12 +495,15 @@ func (c *catalogCache) AddIndex(tx *Transaction, info *IndexInfo) error {
 	// if the index is created on a field on which we know the type,
 	// create a typed index.
 	for _, fc := range ti.FieldConstraints {
-		if fc.Path.IsEqual(info.Path) {
-			if fc.Type != 0 {
-				info.Type = fc.Type
-			}
+		for _, path := range info.Paths {
+			if fc.Path.IsEqual(path) {
+				if fc.Type != 0 {
+					// TODO
+					info.Types = append(info.Types, document.ValueType(fc.Type))
+				}
 
-			break
+				break
+			}
 		}
 	}
 

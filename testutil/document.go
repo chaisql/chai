@@ -11,12 +11,25 @@ import (
 )
 
 // MakeValue turns v into a document.Value.
-func MakeValue(t testing.TB, v interface{}) *document.Value {
+func MakeValue(t testing.TB, v interface{}) document.Value {
 	t.Helper()
 
 	vv, err := document.NewValue(v)
 	require.NoError(t, err)
-	return &vv
+	return vv
+}
+
+func MakeArray(t testing.TB, vs ...interface{}) document.Value {
+	t.Helper()
+
+	vvs := []document.Value{}
+	for _, v := range vs {
+		vvs = append(vvs, MakeValue(t, v))
+	}
+
+	vb := document.NewValueBuffer(vvs...)
+
+	return document.NewArrayValue(vb)
 }
 
 // MakeDocument creates a document from a json string.
@@ -52,6 +65,15 @@ func MakeArray(t testing.TB, jsonArray string) document.Array {
 }
 
 type Docs []document.Document
+
+func (docs Docs) Print() {
+	fmt.Println("----")
+	for _, d := range docs {
+		dv := document.NewDocumentValue(d)
+		fmt.Println(dv)
+	}
+	fmt.Println("----")
+}
 
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	t.Helper()

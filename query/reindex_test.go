@@ -82,7 +82,7 @@ func TestReIndex(t *testing.T) {
 					}
 
 					i := 0
-					err = idx.AscendGreaterOrEqual(document.Value{}, func(val []byte, key []byte) error {
+					err = idx.AscendGreaterOrEqual([]document.Value{document.Value{}}, func(val []byte, key []byte) error {
 						i++
 						return nil
 					})

@@ -547,7 +547,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	// if not, check if an index exists for that path
 	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
 		// check if the operand can be used and convert it when possible
-		v, ok, err := operandCanUseIndex(idx.Info.Type, idx.Info.Path, info.FieldConstraints, v)
+		v, ok, err := operandCanUseIndex(idx.Info.Types[0], idx.Info.Paths[0], info.FieldConstraints, v)
 		if err != nil || !ok {
 			return nil, err
 		}

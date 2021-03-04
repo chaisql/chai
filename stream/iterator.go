@@ -332,7 +332,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		return err
 	}
 
-	var iterator func(pivot document.Value, fn func(val, key []byte) error) error
+	var iterator func(pivots []document.Value, fn func(val, key []byte) error) error
 
 	if !it.Reverse {
 		iterator = index.AscendGreaterOrEqual
@@ -342,7 +342,8 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 
 	// if there are no ranges use a simpler and faster iteration function
 	if len(it.Ranges) == 0 {
-		return iterator(document.Value{}, func(val, key []byte) error {
+		vs := make([]document.Value, len(index.Info.Types))
+		return iterator(vs, func(val, key []byte) error {
 			d, err := table.GetDocument(key)
 			if err != nil {
 				return err
@@ -354,52 +355,119 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 	}
 
 	for _, rng := range it.Ranges {
-		var start, end document.Value
-		if !it.Reverse {
-			start = rng.Min
-			end = rng.Max
-		} else {
-			start = rng.Max
-			end = rng.Min
-		}
 
-		var encEnd []byte
-		if !end.Type.IsZero() && end.V != nil {
-			encEnd, err = index.EncodeValue(end)
-			if err != nil {
-				return err
+		if index.IsComposite() {
+			var start, end document.Value
+			if !it.Reverse {
+				start = rng.Min
+				end = rng.Max
+			} else {
+				start = rng.Max
+				end = rng.Min
 			}
-		}
 
-		err = iterator(start, func(val, key []byte) error {
-			if !rng.IsInRange(val) {
-				// if we reached the end of our range, we can stop iterating.
-				if encEnd == nil {
+			var encEnd []byte
+
+			// deal with the fact that we can't have a zero then values
+			// TODO(JH)
+			if !end.Type.IsZero() && end.V != nil {
+				encEnd, err = index.EncodeValue(end)
+				if err != nil {
+					return err
+				}
+			}
+
+			pivots := []document.Value{}
+			if start.V != nil {
+				start.V.(document.Array).Iterate(func(i int, value document.Value) error {
+					pivots = append(pivots, value)
+					return nil
+				})
+			} else {
+				for i := 0; i < index.Arity(); i++ {
+					pivots = append(pivots, document.Value{})
+				}
+			}
+
+			err = iterator(pivots, func(val, key []byte) error {
+				if !rng.IsInRange(val) {
+					// if we reached the end of our range, we can stop iterating.
+					if encEnd == nil {
+						return nil
+					}
+					cmp := bytes.Compare(val, encEnd)
+					if !it.Reverse && cmp > 0 {
+						return ErrStreamClosed
+					}
+					if it.Reverse && cmp < 0 {
+						return ErrStreamClosed
+					}
 					return nil
 				}
-				cmp := bytes.Compare(val, encEnd)
-				if !it.Reverse && cmp > 0 {
-					return ErrStreamClosed
-				}
-				if it.Reverse && cmp < 0 {
-					return ErrStreamClosed
-				}
-				return nil
-			}
 
-			d, err := table.GetDocument(key)
+				d, err := table.GetDocument(key)
+				if err != nil {
+					return err
+				}
+
+				newEnv.SetDocument(d)
+				return fn(&newEnv)
+			})
+			if err == ErrStreamClosed {
+				err = nil
+			}
 			if err != nil {
 				return err
 			}
 
-			newEnv.SetDocument(d)
-			return fn(&newEnv)
-		})
-		if err == ErrStreamClosed {
-			err = nil
-		}
-		if err != nil {
-			return err
+		} else {
+			var start, end document.Value
+			if !it.Reverse {
+				start = rng.Min
+				end = rng.Max
+			} else {
+				start = rng.Max
+				end = rng.Min
+			}
+
+			var encEnd []byte
+			if !end.Type.IsZero() && end.V != nil {
+				encEnd, err = index.EncodeValue(end)
+				if err != nil {
+					return err
+				}
+			}
+
+			err = iterator([]document.Value{start}, func(val, key []byte) error {
+				if !rng.IsInRange(val) {
+					// if we reached the end of our range, we can stop iterating.
+					if encEnd == nil {
+						return nil
+					}
+					cmp := bytes.Compare(val, encEnd)
+					if !it.Reverse && cmp > 0 {
+						return ErrStreamClosed
+					}
+					if it.Reverse && cmp < 0 {
+						return ErrStreamClosed
+					}
+					return nil
+				}
+
+				d, err := table.GetDocument(key)
+				if err != nil {
+					return err
+				}
+
+				newEnv.SetDocument(d)
+				return fn(&newEnv)
+			})
+			if err == ErrStreamClosed {
+				err = nil
+			}
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -417,6 +485,8 @@ type Range struct {
 	// and for determining the global upper bound.
 	Exact bool
 
+	Arity                  int
+	ArityMax               int
 	encodedMin, encodedMax []byte
 	rangeType              document.ValueType
 }
@@ -615,7 +685,13 @@ func (r *Range) IsInRange(value []byte) bool {
 	// the value is bigger than the lower bound,
 	// see if it matches the upper bound.
 	if r.encodedMax != nil {
-		cmpMax = bytes.Compare(value, r.encodedMax)
+		if r.ArityMax < r.Arity {
+			fmt.Println("val", value)
+			fmt.Println("max", r.encodedMax)
+			cmpMax = bytes.Compare(value[:len(r.encodedMax)-1], r.encodedMax)
+		} else {
+			cmpMax = bytes.Compare(value, r.encodedMax)
+		}
 	}
 
 	// if boundaries are strict, ignore values equal to the max
@@ -623,5 +699,5 @@ func (r *Range) IsInRange(value []byte) bool {
 		return false
 	}
 
-	return cmpMax <= 0
+	return cmpMin >= 0 && cmpMax <= 0
 }
