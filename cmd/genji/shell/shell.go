@@ -3,7 +3,6 @@ package shell
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,9 +13,11 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/agnivade/levenshtein"
 	"github.com/c-bata/go-prompt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
@@ -90,14 +91,6 @@ func (o *Options) validate() error {
 	return nil
 }
 
-func stdinFromTerminal() bool {
-	fi, _ := os.Stdin.Stat()
-	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		return false // data is from pipe
-	}
-	return true // data is from terminal
-}
-
 // Run a shell.
 func Run(ctx context.Context, opts *Options) error {
 	if opts == nil {
@@ -113,25 +106,15 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
-	if stdinFromTerminal() {
-		switch opts.Engine {
-		case "memory":
-			fmt.Println("Opened an in-memory database.")
-		case "bolt":
-			fmt.Printf("On-disk database using BoltDB engine at path %s.\n", opts.DBPath)
-		case "badger":
-			fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
-		}
-		fmt.Println("Enter \".help\" for usage hints.")
+	switch opts.Engine {
+	case "memory":
+		fmt.Println("Opened an in-memory database.")
+	case "bolt":
+		fmt.Printf("On-disk database using BoltDB engine at path %s.\n", opts.DBPath)
+	case "badger":
+		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
 	}
-
-	ran, err := sh.runPipedInput(ctx)
-	if err != nil {
-		return err
-	}
-	if ran {
-		return nil
-	}
+	fmt.Println("Enter \".help\" for usage hints.")
 
 	defer func() {
 		if sh.db != nil {
@@ -300,7 +283,7 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 		// under specific conditions.
 		input := pt.Input()
 
-		// go-prompt ignores ctrl D it if it was pressed while the line is not empty.
+		// go-prompt ignores ctrl D if it was pressed while the line is not empty.
 		// However, it returns if the line is empty and sets lastKeyStroke to prompt.ControlD.
 		// if so, we must stop the program.
 		if lastKeyStroke == prompt.ControlD {
@@ -463,12 +446,16 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 	case ".help", "help":
 		return runHelpCmd()
 	case ".tables":
+		if len(cmd) > 1 {
+			return fmt.Errorf("usage: .tables")
+		}
+
 		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
 
-		return runTablesCmd(db, cmd)
+		return runTablesCmd(db, os.Stdout)
 	case ".exit", "exit":
 		if len(cmd) > 1 {
 			return fmt.Errorf("usage: .exit")
@@ -476,18 +463,28 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 
 		return errExitCommand
 	case ".indexes":
+		if len(cmd) > 2 {
+			return fmt.Errorf("usage: .indexes [tablename]")
+		}
+
+		var tableName string
+		if len(cmd) > 1 {
+			tableName = cmd[0]
+		}
+
 		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
-		return runIndexesCmd(db, cmd)
+
+		return runIndexesCmd(db, tableName, os.Stdout)
 	case ".dump":
 		db, err := sh.getDB(ctx)
 		if err != nil {
 			return err
 		}
 
-		return RunDumpCmd(db, os.Stdout, cmd[1:])
+		return dbutil.Dump(ctx, db, os.Stdout, cmd[1:]...)
 	case ".save":
 		db, err := sh.getDB(ctx)
 		if err != nil {
@@ -505,7 +502,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return fmt.Errorf("Can't save without output path")
 		}
 
-		return RunSaveCmd(ctx, db, engine, path)
+		return runSaveCmd(ctx, db, engine, path)
 
 	default:
 		return displaySuggestions(in)
@@ -518,25 +515,12 @@ func (sh *Shell) runQuery(ctx context.Context, q string) error {
 		return err
 	}
 
-	res, err := db.Query(q)
-	if err != nil {
-		return err
+	err = dbutil.ExecSQL(ctx, db, strings.NewReader(q), os.Stdout)
+	if err == context.Canceled {
+		return errors.New("interrupted")
 	}
 
-	defer res.Close()
-
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return res.Iterate(func(d document.Document) error {
-		select {
-		case <-ctx.Done():
-			return errors.New("interrupted")
-		default:
-		}
-
-		return enc.Encode(d)
-	})
+	return err
 }
 
 func (sh *Shell) getDB(ctx context.Context) (*genji.DB, error) {
@@ -671,4 +655,42 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 	}
 
 	return []prompt.Suggest{}
+}
+
+func shouldDisplaySuggestion(name, in string) bool {
+	// input should be at least half the command size to get a suggestion.
+	d := levenshtein.ComputeDistance(name, in)
+	return d < (len(name) / 2)
+}
+
+// displaySuggestions shows suggestions.
+func displaySuggestions(in string) error {
+	var suggestions []string
+	for _, c := range commands {
+		if shouldDisplaySuggestion(c.Name, in) {
+			suggestions = append(suggestions, c.Name)
+		}
+
+		for _, alias := range c.Aliases {
+			if shouldDisplaySuggestion(alias, in) {
+				suggestions = append(suggestions, alias)
+			}
+		}
+	}
+
+	if len(suggestions) == 0 {
+		return fmt.Errorf("Unknown command %q. Enter \".help\" for help.", in)
+	}
+
+	fmt.Printf("\"%s\" is not a command. Did you mean: ", in)
+	for i := range suggestions {
+		if i > 0 {
+			fmt.Printf(", ")
+		}
+
+		fmt.Printf("%q", suggestions[i])
+	}
+
+	fmt.Println()
+	return nil
 }
