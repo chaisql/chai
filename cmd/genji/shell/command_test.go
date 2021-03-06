@@ -3,11 +3,9 @@ package shell
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/dgraph-io/badger/v3"
@@ -17,56 +15,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// func TestRunTablesCmd(t *testing.T) {
-// 	tests := []struct {
-// 		name    string
-// 		in      []string
-// 		wantErr bool
-// 	}{
-// 		{
-// 			"Table",
-// 			strings.Fields(".tables"),
-// 			false,
-// 		},
-// 		{
-// 			"Table with options",
-// 			strings.Fields(".tables test"),
-// 			true,
-// 		},
-// 	}
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			db, err := genji.Open(":memory:")
-// 			require.NoError(t, err)
-// 			defer db.Close()
-
-// 			if err := runTablesCmd(db, test.in); (err != nil) != test.wantErr {
-// 				require.Errorf(t, err, "", test.wantErr)
-// 			}
-// 		})
-// 	}
-// }
-
-func TestIndexesCmd(t *testing.T) {
+func TestRunTablesCmd(t *testing.T) {
 	tests := []struct {
-		name    string
-		in      []string
-		wantErr bool
+		name   string
+		tables []string
+		want   string
 	}{
 		{
-			".Indexes",
-			strings.Fields(".indexes"),
-			false,
+			"No table",
+			nil,
+			"",
 		},
 		{
-			"Indexes with table name",
-			strings.Fields(".indexes test"),
-			false,
-		},
-		{
-			"Indexes with nonexistent table name",
-			strings.Fields(".indexes foo"),
-			true,
+			"With tables",
+			[]string{"foo", "bar"},
+			"bar\nfoo\n",
 		},
 	}
 
@@ -76,105 +39,56 @@ func TestIndexesCmd(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test")
-			require.NoError(t, err)
-			err = db.Exec(`
-						CREATE INDEX idx_a ON test (a);
-						CREATE INDEX idx_b ON test (b);
-						CREATE INDEX idx_c ON test (c);
-					`)
-			require.NoError(t, err)
-			if err := runIndexesCmd(db, test.in); (err != nil) != test.wantErr {
-				require.Errorf(t, err, "", test.wantErr)
+			for _, tb := range test.tables {
+				err := db.Exec("CREATE TABLE " + tb)
+				require.NoError(t, err)
 			}
+
+			var buf bytes.Buffer
+			err = runTablesCmd(db, &buf)
+			require.NoError(t, err)
+
+			require.Equal(t, test.want, buf.String())
 		})
 	}
 }
 
-func TestRunDumpCmd(t *testing.T) {
+func TestIndexesCmd(t *testing.T) {
 	tests := []struct {
-		name            string
-		query           string
-		fieldConstraint string
-		want            string
-		fails           bool
-		params          []interface{}
+		name      string
+		tableName string
+		want      string
+		fails     bool
 	}{
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
-		{"text / not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT NOT NULL`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
-		{"text / pk and not null with type constraint", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, `TEXT PRIMARY KEY NOT NULL DEFAULT "foo"`, `INSERT INTO test VALUES {"a": "a", "b": "b", "c": "c"};`, false, nil},
+		{"All", "", "idx_bar_a ON bar (a)\nidx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
+		{"With table name", "foo", "idx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
+		{"With nonexistent table name", "baz", "", true},
 	}
 
-	for _, tt := range tests {
-		testFn := func(withIndexes, withConstraints bool) func(t *testing.T) {
-			return func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec(`
+				CREATE TABLE foo;
+				CREATE INDEX idx_foo_a ON foo (a);
+				CREATE INDEX idx_foo_b ON foo (b);
+				CREATE TABLE bar;
+				CREATE INDEX idx_bar_a ON bar (a);
+			`)
+			require.NoError(t, err)
+
+			var buf bytes.Buffer
+			err = runIndexesCmd(db, test.tableName, &buf)
+			if test.fails {
+				require.Error(t, err)
+			} else {
 				require.NoError(t, err)
-				defer db.Close()
-
-				var bwant bytes.Buffer
-
-				tx := "BEGIN TRANSACTION;\n"
-				bwant.WriteString(tx)
-				ci := "COMMIT;\n"
-				if withConstraints {
-					q := fmt.Sprintf("CREATE TABLE test (\n a %s\n);\n", tt.fieldConstraint)
-					err := db.Exec(q)
-					require.NoError(t, err)
-					bwant.WriteString(q)
-				} else {
-					q := `CREATE TABLE test;`
-					err = db.Exec(q)
-					require.NoError(t, err)
-					q = fmt.Sprintf("%s\n", q)
-					bwant.WriteString(q)
-				}
-
-				if withIndexes {
-					err = db.Exec(`
-						CREATE INDEX idx_a ON test (a);
-					`)
-					require.NoError(t, err)
-					err = db.View(func(tx *genji.Tx) error {
-						// indexes is unordered, we cannot guess the order.
-						// we have to test only one index creation.
-						indexNames := tx.ListIndexes()
-						require.NoError(t, err)
-						for _, indexName := range indexNames {
-							idx, err := tx.GetIndex(indexName)
-							if err != nil {
-								return err
-							}
-							info := fmt.Sprintf("CREATE INDEX %s ON %s (%s);\n", idx.Info.IndexName, idx.Info.TableName,
-								idx.Info.Path)
-							bwant.WriteString(info)
-						}
-						return nil
-					})
-					require.NoError(t, err)
-
-				}
-				err = db.Exec(tt.query, tt.params...)
-				if tt.fails {
-					require.Error(t, err)
-					return
-				}
-				require.NoError(t, err)
-				tt.want = fmt.Sprintf("%s\n", strings.TrimSpace(tt.want))
-				bwant.WriteString(tt.want)
-
-				var buf bytes.Buffer
-				err = RunDumpCmd(db, &buf, []string{`test`})
-				require.NoError(t, err)
-				bwant.WriteString(ci)
-				require.Equal(t, bwant.String(), buf.String())
-
+				require.Equal(t, test.want, buf.String())
 			}
-		}
-
-		t.Run("No Index/"+tt.name, testFn(false, false))
-		t.Run("With Index/"+tt.name, testFn(true, false))
-		t.Run("With FieldsConstraints/"+tt.name, testFn(true, true))
+		})
 	}
 }
 
@@ -214,7 +128,7 @@ func TestSaveCommand(t *testing.T) {
 			require.NoError(t, err)
 
 			// save the dummy database
-			err = RunSaveCmd(context.Background(), db, tt.engine, tt.path)
+			err = runSaveCmd(context.Background(), db, tt.engine, tt.path)
 			require.NoError(t, err)
 
 			if tt.engine == "badger" {

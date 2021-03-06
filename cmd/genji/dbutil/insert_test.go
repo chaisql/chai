@@ -1,4 +1,4 @@
-package main
+package dbutil
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExecuteInsertCommand(t *testing.T) {
+func TestInsertJSON(t *testing.T) {
 	tests := []struct {
 		name  string
 		data  string
@@ -34,7 +34,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 
 			err = db.Exec(`CREATE TABLE foo`)
 			require.NoError(t, err)
-			err = executeInsertCommand(db, "foo", strings.NewReader(tt.data))
+			err = InsertJSON(db, "foo", strings.NewReader(tt.data))
 			if tt.fails {
 				require.Error(t, err)
 				return
@@ -74,7 +74,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 
 		err = db.Exec(`CREATE TABLE foo`)
 		require.NoError(t, err)
-		err = executeInsertCommand(db, "foo", strings.NewReader(jsonArray))
+		err = InsertJSON(db, "foo", strings.NewReader(jsonArray))
 		require.NoError(t, err)
 		res, err := db.Query("SELECT * FROM foo")
 		defer res.Close()
@@ -110,7 +110,7 @@ func TestExecuteInsertCommand(t *testing.T) {
 		err = db.Exec(`CREATE TABLE foo`)
 		require.NoError(t, err)
 
-		err = executeInsertCommand(db, "foo", strings.NewReader(jsonStream))
+		err = InsertJSON(db, "foo", strings.NewReader(jsonStream))
 		require.NoError(t, err)
 
 		res, err := db.Query("SELECT * FROM foo")
@@ -134,5 +134,4 @@ func TestExecuteInsertCommand(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, wantCount, i)
 	})
-
 }
