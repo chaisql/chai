@@ -7,9 +7,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/genjidb/genji/document"
-
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
+	"go.uber.org/multierr"
 )
 
 // Dump takes a database and dumps its content as SQL queries in the given writer.
@@ -32,8 +32,8 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 
 	res, err := tx.Query(query, tables)
 	if err != nil {
-		_, err = fmt.Fprintln(w, "ROLLBACK;")
-		return err
+		_, er := fmt.Fprintln(w, "ROLLBACK;")
+		return multierr.Append(err, er)
 	}
 	defer res.Close()
 
@@ -56,8 +56,8 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 		return dumpTable(tx, tableName, w)
 	})
 	if err != nil {
-		_, err = fmt.Fprintln(w, "ROLLBACK;")
-		return err
+		_, er := fmt.Fprintln(w, "ROLLBACK;")
+		return multierr.Append(err, er)
 	}
 
 	_, err = fmt.Fprintln(w, "COMMIT;")
