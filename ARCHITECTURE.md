@@ -23,12 +23,12 @@ Genji, in a bird's-eye view is structured in the following layers:
 1. Genji parses SQL and turns into a Stream
 
    - the `parser` will use the `scanner` to turn the SQL into a basic, unoptimized `Stream`
-   - packages: `sql/driver`, `sql/scanner`, `sql/parser`, `sql/query`, `sql/query/expr`, `document`
+   - packages: `sql/driver`, `sql/scanner`, `sql/parser`, `query`, `expr`, `document`
 
 2. the `Planner` will analyze that `Stream` and will optimize it if possible
 
    - which index to use, removing redundant loads, compute constant expressions, ...
-   - packages: `sql/planner`, `stream`
+   - packages: `planner`, `stream`
 
 3. That `Stream` will be executed against the `database`, reading and/or modifying indexes, tables
 
@@ -48,8 +48,8 @@ Presently, in the current state of development, the following trade offs are con
 
 - _Concurrency_: one writer, multiple readers
   - what: no concurrent writes (serialized), but reads are concurrent
-  - why: it simplifies greatly the implementation and avoids dealing with concurrent accesses, which is supported with varying semantics by the underlying store. A solution would be to implement the MVCC layer within Genji, which is a lot of work and isn't the current priority.
+  - why: it simplifies greatly the implementation and avoids dealing with concurrent access, which is supported with varying semantics by the underlying store. A solution would be to implement a MVCC layer within Genji, which is a lot of work and isn't the current priority.
 - _Performances_: overall, the focus is more on features than on last mile optimizations
 - _SQL standards_: not bothering to respect them
-  - what: don't expect Genji'sql to be portable, it's not.
+  - what: don't expect Genji's SQL to be portable, it's not.
   - why: documents are really different than rows and colums and Genji's SQL syntax is designed for documents
