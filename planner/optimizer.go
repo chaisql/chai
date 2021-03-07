@@ -526,6 +526,11 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 
 	// we'll start with checking if the path is the primary key of the table
 	if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
+		// if both types are different, don't select this scanner
+		if pk.Type != v.Type {
+			return nil, nil
+		}
+
 		cd.isPk = true
 		cd.priority = 3
 
@@ -541,6 +546,11 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 
 	// if not, check if an index exists for that path
 	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
+		// if both types are different, don't select this scanner
+		if !idx.Info.Type.IsZero() && idx.Info.Type != v.Type {
+			return nil, nil
+		}
+
 		cd.isIndex = true
 		if idx.Info.Unique {
 			cd.priority = 2

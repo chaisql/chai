@@ -356,6 +356,27 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 				Pipe(stream.Project(parser.MustParseExpr("a"))),
 		},
 		{
+			"SELECT a FROM foo WHERE c = 'hello' AND b = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(stream.Project(parser.MustParseExpr("a"))),
+		},
+		{
+			"SELECT a FROM foo WHERE c = 'hello' AND d = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(stream.Filter(parser.MustParseExpr("d = 2"))).
+				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(stream.Filter(parser.MustParseExpr("d = 2"))).
+				Pipe(stream.Project(parser.MustParseExpr("a"))),
+		},
+		{
 			"FROM foo WHERE a IN [1, 2]",
 			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(
 				expr.In(
@@ -404,6 +425,14 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
 				Pipe(stream.Filter(parser.MustParseExpr("k < 2"))),
 		},
+		{
+			"FROM foo WHERE a = 1 AND k = 'hello'",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(stream.Filter(parser.MustParseExpr("k = 'hello'"))),
+			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("k = 'hello'"))),
+		},
 	}
 
 	for _, test := range tests {
@@ -417,7 +446,7 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			defer tx.Rollback()
 
 			err = tx.Exec(`
-				CREATE TABLE foo (k INT PRIMARY KEY);
+				CREATE TABLE foo (k INT PRIMARY KEY, c INT);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
