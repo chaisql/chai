@@ -386,23 +386,17 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 
 	indexes := t.Indexes()
 
-	var candidates []candidate
+	var candidates []*candidate
 
 	// look for all selection nodes that satisfy our requirements
 	for n != nil {
 		if f, ok := n.(*stream.FilterOperator); ok {
-			indexedNode, idx, err := filterNodeValidForIndex(f, st.TableName, indexes)
+			candidate, err := getCandidateFromfilterNode(f, st.TableName, indexes)
 			if err != nil {
 				return nil, err
 			}
-			if indexedNode != nil {
-				candidates = append(candidates, candidate{
-					filterOp:      f,
-					newOp:         indexedNode,
-					cost:          indexedNode.Ranges.Cost(),
-					isIndex:       true,
-					isUniqueIndex: idx.Info.Unique,
-				})
+			if candidate != nil {
+				candidates = append(candidates, candidate)
 			}
 		}
 
@@ -419,20 +413,20 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 		currentCost := candidate.cost
 
 		if selectedCandidate == nil {
-			selectedCandidate = &candidates[i]
+			selectedCandidate = candidates[i]
 			cost = currentCost
 			continue
 		}
 
 		if currentCost < cost {
-			selectedCandidate = &candidates[i]
+			selectedCandidate = candidates[i]
 			cost = currentCost
 		}
 
 		// if the cost is the same and the candidate's related index is a unique index,
 		// select it.
 		if currentCost == cost && candidate.isUniqueIndex {
-			selectedCandidate = &candidates[i]
+			selectedCandidate = candidates[i]
 		}
 	}
 
@@ -467,37 +461,38 @@ type candidate struct {
 	isPk bool
 }
 
-func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexes database.Indexes) (*stream.IndexScanOperator, *database.Index, error) {
-	if sn.E == nil {
-		return nil, nil, nil
+// getCandidateFromfilterNode analyses f and determines if it can be replaced by an indexScan or pkScan operator.
+func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, indexes database.Indexes) (*candidate, error) {
+	if f.E == nil {
+		return nil, nil
 	}
 
 	// the root of the condition must be an operator
-	op, ok := sn.E.(expr.Operator)
+	op, ok := f.E.(expr.Operator)
 	if !ok {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// determine if the operator can read from the index
 	if !expr.OperatorIsIndexCompatible(op) {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// determine if the operator can benefit from an index
 	ok, path, e := opCanUseIndex(op)
 	if !ok {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// analyse the other operand to make sure it's a literal or a param
 	if !isLiteralOrParam(e) {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// now, we look if an index exists for that path
 	idx := indexes.GetIndexByPath(document.Path(path))
 	if idx == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	var ranges []stream.Range
@@ -537,7 +532,7 @@ func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexe
 			return nil
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	default:
 		panic(fmt.Sprintf("unknown operator %#v", op))
@@ -546,7 +541,13 @@ func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexe
 	node := stream.IndexScan(idx.Info.IndexName)
 	node.Ranges = ranges
 
-	return node, idx, nil
+	return &candidate{
+		filterOp:      f,
+		newOp:         node,
+		cost:          node.Ranges.Cost(),
+		isIndex:       true,
+		isUniqueIndex: idx.Info.Unique,
+	}, nil
 }
 
 func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
