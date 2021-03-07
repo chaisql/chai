@@ -140,7 +140,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Max: parser.MustParseExpr("2")},
+				{Max: document.NewIntegerValue(2)},
 			},
 			false, false,
 		},
@@ -149,7 +149,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Max: parser.MustParseExpr("1")},
+				{Max: document.NewIntegerValue(1)},
 			},
 			false, false,
 		},
@@ -158,7 +158,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1")},
+				{Min: document.NewIntegerValue(1)},
 			},
 			false, false,
 		},
@@ -167,7 +167,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+				{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2)},
 			},
 			false, false,
 		},
@@ -182,7 +182,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Max: parser.MustParseExpr("2")},
+				{Max: document.NewIntegerValue(2)},
 			},
 			true, false,
 		},
@@ -191,7 +191,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1")},
+				{Min: document.NewIntegerValue(1)},
 			},
 			true, false,
 		},
@@ -200,7 +200,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+				{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2)},
 			},
 			true, false,
 		},
@@ -259,13 +259,13 @@ func TestPkScan(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, `pkScan("test", [1, 2])`, stream.PkScan("test", stream.Range{
-			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
+			Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
 		}).String())
 
 		op := stream.PkScan("test",
-			stream.Range{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"), Exclusive: true},
-			stream.Range{Min: parser.MustParseExpr("10"), Exact: true},
-			stream.Range{Min: parser.MustParseExpr("100")},
+			stream.Range{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2), Exclusive: true},
+			stream.Range{Min: document.NewIntegerValue(10), Exact: true},
+			stream.Range{Min: document.NewIntegerValue(100)},
 		)
 		op.Reverse = true
 
@@ -293,7 +293,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Max: parser.MustParseExpr("2")},
+				{Max: document.NewIntegerValue(2)},
 			},
 			false, false,
 		},
@@ -302,7 +302,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Max: parser.MustParseExpr("1")},
+				{Max: document.NewIntegerValue(1)},
 			},
 			false, false,
 		},
@@ -311,7 +311,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1")},
+				{Min: document.NewIntegerValue(1)},
 			},
 			false, false,
 		},
@@ -320,7 +320,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+				{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2)},
 			},
 			false, false,
 		},
@@ -335,7 +335,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Max: parser.MustParseExpr("2")},
+				{Max: document.NewIntegerValue(2)},
 			},
 			true, false,
 		},
@@ -344,7 +344,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1")},
+				{Min: document.NewIntegerValue(1)},
 			},
 			true, false,
 		},
@@ -353,7 +353,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2")},
+				{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2)},
 			},
 			true, false,
 		},
@@ -412,11 +412,11 @@ func TestIndexScan(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.Range{
-			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
+			Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
 		}).String())
 
 		op := stream.IndexScan("idx_test_a", stream.Range{
-			Min: parser.MustParseExpr("1"), Max: parser.MustParseExpr("2"),
+			Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
 		})
 		op.Reverse = true
 
