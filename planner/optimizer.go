@@ -389,7 +389,7 @@ func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk
 // - one of its operands is a path expression that is indexed
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
-// TODO(asdine): add support for ORDER BY and primary keys
+// TODO(asdine): add support for ORDER BY
 func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
