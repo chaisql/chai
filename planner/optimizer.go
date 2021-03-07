@@ -386,12 +386,6 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 
 	indexes := t.Indexes()
 
-	type candidate struct {
-		filterOp *stream.FilterOperator
-		in       *stream.IndexScanOperator
-		index    *database.Index
-	}
-
 	var candidates []candidate
 
 	// look for all selection nodes that satisfy our requirements
@@ -403,9 +397,11 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 			}
 			if indexedNode != nil {
 				candidates = append(candidates, candidate{
-					filterOp: f,
-					in:       indexedNode,
-					index:    idx,
+					filterOp:      f,
+					newOp:         indexedNode,
+					cost:          indexedNode.Ranges.Cost(),
+					isIndex:       true,
+					isUniqueIndex: idx.Info.Unique,
 				})
 			}
 		}
@@ -420,7 +416,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	var cost int
 
 	for i, candidate := range candidates {
-		currentCost := candidate.in.Ranges.Cost()
+		currentCost := candidate.cost
 
 		if selectedCandidate == nil {
 			selectedCandidate = &candidates[i]
@@ -435,7 +431,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 
 		// if the cost is the same and the candidate's related index is a unique index,
 		// select it.
-		if currentCost == cost && candidate.index.Info.Unique {
+		if currentCost == cost && candidate.isUniqueIndex {
 			selectedCandidate = &candidates[i]
 		}
 	}
@@ -448,11 +444,27 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	s.Remove(selectedCandidate.filterOp)
 
 	// we replace the seq scan node by the selected index scan node
-	stream.InsertBefore(s.First(), selectedCandidate.in)
+	stream.InsertBefore(s.First(), selectedCandidate.newOp)
 
 	s.Remove(s.First().GetNext())
 
 	return s, nil
+}
+
+type candidate struct {
+	// filter operator to remove and replace by either an indexScan
+	// or pkScan operators.
+	filterOp *stream.FilterOperator
+	// the candidate indexScan or pkScan operator
+	newOp stream.Operator
+	// the cost of the candidate
+	cost int
+	// is this candidate reading from an index
+	isIndex bool
+	// is this candidate reading from a unique index
+	isUniqueIndex bool
+	// is this candidate reading primary key ranges
+	isPk bool
 }
 
 func filterNodeValidForIndex(sn *stream.FilterOperator, tableName string, indexes database.Indexes) (*stream.IndexScanOperator, *database.Index, error) {
