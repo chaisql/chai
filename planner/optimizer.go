@@ -384,6 +384,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 		return nil, err
 	}
 
+	info := t.Info()
 	indexes := t.Indexes()
 
 	var candidates []*candidate
@@ -391,7 +392,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	// look for all selection nodes that satisfy our requirements
 	for n != nil {
 		if f, ok := n.(*stream.FilterOperator); ok {
-			candidate, err := getCandidateFromfilterNode(f, st.TableName, indexes)
+			candidate, err := getCandidateFromfilterNode(f, st.TableName, info, indexes)
 			if err != nil {
 				return nil, err
 			}
@@ -462,7 +463,7 @@ type candidate struct {
 }
 
 // getCandidateFromfilterNode analyses f and determines if it can be replaced by an indexScan or pkScan operator.
-func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, indexes database.Indexes) (*candidate, error) {
+func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info *database.TableInfo, indexes database.Indexes) (*candidate, error) {
 	if f.E == nil {
 		return nil, nil
 	}
@@ -490,11 +491,90 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, inde
 	}
 
 	// now, we look if an index exists for that path
-	idx := indexes.GetIndexByPath(document.Path(path))
-	if idx == nil {
-		return nil, nil
+	cd := candidate{
+		filterOp: f,
 	}
 
+	// we'll start with checking if the path is the primary key of the table
+	if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
+		cd.isPk = true
+
+		ranges, err := getRangesFromOp(op, e)
+		if err != nil {
+			return nil, err
+		}
+
+		cd.newOp = stream.PkScan(tableName, ranges...)
+		cd.cost = ranges.Cost()
+		return &cd, nil
+	}
+
+	// if not, check if an index exists for that path
+	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
+		cd.isIndex = true
+		cd.isUniqueIndex = idx.Info.Unique
+
+		ranges, err := getRangesFromOp(op, e)
+		if err != nil {
+			return nil, err
+		}
+
+		cd.newOp = stream.IndexScan(idx.Info.IndexName, ranges...)
+		cd.cost = ranges.Cost()
+
+		return &cd, nil
+	}
+
+	return nil, nil
+}
+
+func opCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
+	lf, leftIsField := op.LeftHand().(expr.Path)
+	rf, rightIsField := op.RightHand().(expr.Path)
+
+	// Special case for IN operator: only left operand is valid for index usage
+	// valid:   a IN [1, 2, 3]
+	// invalid: 1 IN a
+	if expr.IsInOperator(op) {
+		if leftIsField && !rightIsField {
+			rh := op.RightHand()
+			// The IN operator can use indexes only if the right hand side is an array with constants.
+			// At this point, we know that PrecalculateExprRule has converted any constant expression into
+			// actual values, so we can check if the right hand side is an array.
+			lv, ok := rh.(expr.LiteralValue)
+			if !ok || lv.Type != document.ArrayValue {
+				return false, nil, nil
+			}
+
+			return true, document.Path(lf), rh
+		}
+
+		return false, nil, nil
+	}
+
+	// path OP expr
+	if leftIsField && !rightIsField {
+		return true, document.Path(lf), op.RightHand()
+	}
+
+	// expr OP path
+	if rightIsField && !leftIsField {
+		return true, document.Path(rf), op.LeftHand()
+	}
+
+	return false, nil, nil
+}
+
+func isLiteralOrParam(e expr.Expr) (ok bool) {
+	switch e.(type) {
+	case expr.LiteralValue, expr.NamedParam, expr.PositionalParam:
+		return true
+	}
+
+	return false
+}
+
+func getRangesFromOp(op expr.Operator, e expr.Expr) (stream.Ranges, error) {
 	var ranges []stream.Range
 
 	switch op.(type) {
@@ -538,60 +618,5 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, inde
 		panic(fmt.Sprintf("unknown operator %#v", op))
 	}
 
-	node := stream.IndexScan(idx.Info.IndexName)
-	node.Ranges = ranges
-
-	return &candidate{
-		filterOp:      f,
-		newOp:         node,
-		cost:          node.Ranges.Cost(),
-		isIndex:       true,
-		isUniqueIndex: idx.Info.Unique,
-	}, nil
-}
-
-func opCanUseIndex(op expr.Operator) (bool, expr.Path, expr.Expr) {
-	lf, leftIsField := op.LeftHand().(expr.Path)
-	rf, rightIsField := op.RightHand().(expr.Path)
-
-	// Special case for IN operator: only left operand is valid for index usage
-	// valid:   a IN [1, 2, 3]
-	// invalid: 1 IN a
-	if expr.IsInOperator(op) {
-		if leftIsField && !rightIsField {
-			rh := op.RightHand()
-			// The IN operator can use indexes only if the right hand side is an array with constants.
-			// At this point, we know that PrecalculateExprRule has converted any constant expression into
-			// actual values, so we can check if the right hand side is an array.
-			lv, ok := rh.(expr.LiteralValue)
-			if !ok || lv.Type != document.ArrayValue {
-				return false, nil, nil
-			}
-
-			return true, lf, rh
-		}
-
-		return false, nil, nil
-	}
-
-	// path OP expr
-	if leftIsField && !rightIsField {
-		return true, lf, op.RightHand()
-	}
-
-	// expr OP path
-	if rightIsField && !leftIsField {
-		return true, rf, op.LeftHand()
-	}
-
-	return false, nil, nil
-}
-
-func isLiteralOrParam(e expr.Expr) (ok bool) {
-	switch e.(type) {
-	case expr.LiteralValue, expr.NamedParam, expr.PositionalParam:
-		return true
-	}
-
-	return false
+	return ranges, nil
 }
