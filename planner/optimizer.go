@@ -499,7 +499,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	// we'll start with checking if the path is the primary key of the table
 	if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
 		cd.isPk = true
-		cd.priority = 2
+		cd.priority = 3
 
 		ranges, err := getRangesFromOp(op, e)
 		if err != nil {
@@ -514,7 +514,11 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	// if not, check if an index exists for that path
 	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
 		cd.isIndex = true
-		cd.priority = 1
+		if idx.Info.Unique {
+			cd.priority = 2
+		} else {
+			cd.priority = 1
+		}
 
 		ranges, err := getRangesFromOp(op, e)
 		if err != nil {

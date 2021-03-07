@@ -361,9 +361,38 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
 		},
 		{
-			"FROM foo WHERE a > 10",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a > 10"))),
-			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("10"), Exclusive: true})),
+			"FROM foo WHERE a >= 10",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a >= 10"))),
+			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("10")})),
+		},
+		{
+			"FROM foo WHERE k = 1",
+			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("k = 1"))),
+			stream.New(stream.PkScan("foo", st.Range{Min: parser.MustParseExpr("1"), Exact: true})),
+		},
+		{
+			"FROM foo WHERE k = 1 AND b = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("k = 1"))).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+			stream.New(stream.PkScan("foo", st.Range{Min: parser.MustParseExpr("1"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+		},
+		{
+			"FROM foo WHERE a = 1 AND k = 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(stream.Filter(parser.MustParseExpr("2 = k"))),
+			stream.New(stream.PkScan("foo", st.Range{Min: parser.MustParseExpr("2"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
+		},
+		{
+			"FROM foo WHERE a = 1 AND k < 2",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(stream.Filter(parser.MustParseExpr("k < 2"))),
+			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: parser.MustParseExpr("1"), Exact: true})).
+				Pipe(stream.Filter(parser.MustParseExpr("k < 2"))),
 		},
 	}
 
