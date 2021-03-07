@@ -424,9 +424,9 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 			cost = currentCost
 		}
 
-		// if the cost is the same and the candidate's related index is a unique index,
+		// if the cost is the same and the candidate's related index has a higher priority,
 		// select it.
-		if currentCost == cost && candidate.isUniqueIndex {
+		if currentCost == cost && selectedCandidate.priority < candidate.priority {
 			selectedCandidate = candidates[i]
 		}
 	}
@@ -456,10 +456,11 @@ type candidate struct {
 	cost int
 	// is this candidate reading from an index
 	isIndex bool
-	// is this candidate reading from a unique index
-	isUniqueIndex bool
 	// is this candidate reading primary key ranges
 	isPk bool
+	// if the costs of two candidates are equal,
+	// this number determines which node will be prioritized
+	priority int
 }
 
 // getCandidateFromfilterNode analyses f and determines if it can be replaced by an indexScan or pkScan operator.
@@ -498,6 +499,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	// we'll start with checking if the path is the primary key of the table
 	if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
 		cd.isPk = true
+		cd.priority = 2
 
 		ranges, err := getRangesFromOp(op, e)
 		if err != nil {
@@ -512,7 +514,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	// if not, check if an index exists for that path
 	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
 		cd.isIndex = true
-		cd.isUniqueIndex = idx.Info.Unique
+		cd.priority = 1
 
 		ranges, err := getRangesFromOp(op, e)
 		if err != nil {
