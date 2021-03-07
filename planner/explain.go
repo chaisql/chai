@@ -23,7 +23,7 @@ type ExplainStmt struct {
 func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
 	switch t := s.Statement.(type) {
 	case *Statement:
-		s, err := Optimize(t.Stream, tx)
+		s, err := Optimize(t.Stream, tx, params)
 		if err != nil {
 			return query.Result{}, err
 		}

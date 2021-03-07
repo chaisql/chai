@@ -209,7 +209,7 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 		return err
 	}
 
-	ranges, err := it.Ranges.Encode(table, in)
+	err = it.Ranges.Encode(table, in)
 	if err != nil {
 		return err
 	}
@@ -222,14 +222,14 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 		iterator = table.DescendLessOrEqual
 	}
 
-	for _, rng := range ranges {
+	for _, rng := range it.Ranges {
 		var start, end document.Value
 		if !it.Reverse {
-			start = rng.minVal
-			end = rng.maxVal
+			start = rng.Min
+			end = rng.Max
 		} else {
-			start = rng.maxVal
-			end = rng.minVal
+			start = rng.Max
+			end = rng.Min
 		}
 
 		var encEnd []byte
@@ -303,12 +303,7 @@ func (it *IndexScanOperator) String() string {
 	s.WriteString(strconv.Quote(it.IndexName))
 	if len(it.Ranges) > 0 {
 		s.WriteString(", ")
-		for i, r := range it.Ranges {
-			s.WriteString(r.String())
-			if i+1 < len(it.Ranges) {
-				s.WriteString(", ")
-			}
-		}
+		s.WriteString(it.Ranges.String())
 	}
 
 	s.WriteString(")")
@@ -332,7 +327,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		return err
 	}
 
-	ranges, err := it.Ranges.Encode(index, in)
+	err = it.Ranges.Encode(index, in)
 	if err != nil {
 		return err
 	}
@@ -358,14 +353,14 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		})
 	}
 
-	for _, rng := range ranges {
+	for _, rng := range it.Ranges {
 		var start, end document.Value
 		if !it.Reverse {
-			start = rng.minVal
-			end = rng.maxVal
+			start = rng.Min
+			end = rng.Max
 		} else {
-			start = rng.maxVal
-			end = rng.minVal
+			start = rng.Max
+			end = rng.Min
 		}
 
 		var encEnd []byte
@@ -412,7 +407,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 }
 
 type Range struct {
-	Min, Max expr.Expr
+	Min, Max document.Value
 	// Exclude Min and Max from the results.
 	// By default, min and max are inclusive.
 	// Exclusive and Exact cannot be set to true at the same time.
@@ -421,51 +416,43 @@ type Range struct {
 	// If set to true, Max will be ignored for comparison
 	// and for determining the global upper bound.
 	Exact bool
+
+	encodedMin, encodedMax []byte
+	rangeType              document.ValueType
 }
 
-func (r *Range) encode(er *encodedRange, encoder ValueEncoder, env *expr.Environment) error {
+func (r *Range) encode(encoder ValueEncoder, env *expr.Environment) error {
+	var err error
+
 	// first we evaluate Min and Max
-	if r.Min != nil {
-		minVal, err := r.Min.Eval(env)
+	if !r.Min.Type.IsZero() {
+		r.encodedMin, err = encoder.EncodeValue(r.Min)
 		if err != nil {
 			return err
 		}
-		er.minVal = minVal
-		er.min, err = encoder.EncodeValue(minVal)
-		if err != nil {
-			return err
-		}
-		er.rangeType = er.minVal.Type
+		r.rangeType = r.Min.Type
 	}
-	if r.Max != nil {
-		maxVal, err := r.Max.Eval(env)
+	if !r.Max.Type.IsZero() {
+		r.encodedMax, err = encoder.EncodeValue(r.Max)
 		if err != nil {
 			return err
 		}
-		er.maxVal = maxVal
-		er.max, err = encoder.EncodeValue(maxVal)
-		if err != nil {
-			return err
-		}
-		if !er.rangeType.IsZero() && er.rangeType != maxVal.Type {
-			panic("range contain values of different type")
+		if !r.rangeType.IsZero() && r.rangeType != r.Max.Type {
+			panic("range contain values of different types")
 		}
 
-		er.rangeType = er.maxVal.Type
+		r.rangeType = r.Max.Type
 	}
 
 	// ensure boundaries are typed
-	if er.minVal.Type.IsZero() {
-		er.minVal.Type = er.rangeType
+	if r.Min.Type.IsZero() {
+		r.Min.Type = r.rangeType
 	}
-	if er.maxVal.Type.IsZero() {
-		er.maxVal.Type = er.rangeType
+	if r.Max.Type.IsZero() {
+		r.Max.Type = r.rangeType
 	}
 
-	er.exclusive = r.Exclusive
-	er.exact = r.Exact
-
-	if er.exclusive && er.exact {
+	if r.Exclusive && r.Exact {
 		panic("exclusive and exact cannot both be true")
 	}
 
@@ -477,37 +464,87 @@ func (r *Range) String() string {
 		return fmt.Sprintf("%v", r.Min)
 	}
 
-	min, max := r.Min, r.Max
-	if min == nil {
-		min = expr.IntegerValue(-1)
+	if r.Min.Type.IsZero() {
+		r.Min = document.NewIntegerValue(-1)
 	}
-	if max == nil {
-		max = expr.IntegerValue(-1)
+	if r.Max.Type.IsZero() {
+		r.Max = document.NewIntegerValue(-1)
 	}
 
 	if r.Exclusive {
-		return fmt.Sprintf("[%v, %v, true]", min, max)
+		return fmt.Sprintf("[%v, %v, true]", r.Min, r.Max)
 	}
 
-	return fmt.Sprintf("[%v, %v]", min, max)
+	return fmt.Sprintf("[%v, %v]", r.Min, r.Max)
+}
+
+func (r *Range) IsEqual(other *Range) bool {
+	if r.Exact != other.Exact {
+		return false
+	}
+
+	if r.rangeType != r.rangeType {
+		return false
+	}
+
+	if r.Exclusive != r.Exclusive {
+		return false
+	}
+
+	if r.Min.Type != other.Min.Type {
+		return false
+	}
+	ok, err := r.Min.IsEqual(other.Min)
+	if err != nil || !ok {
+		return false
+	}
+
+	if r.Max.Type != other.Max.Type {
+		return false
+	}
+	ok, err = r.Max.IsEqual(other.Max)
+	if err != nil || !ok {
+		return false
+	}
+
+	return true
 }
 
 type Ranges []Range
+
+// Append rng to r and return the new slice.
+// Duplicate ranges are ignored.
+func (r Ranges) Append(rng Range) Ranges {
+	// ensure we don't keep duplicate ranges
+	isDuplicate := false
+	for _, e := range r {
+		if e.IsEqual(&rng) {
+			isDuplicate = true
+			break
+		}
+	}
+
+	if isDuplicate {
+		return r
+	}
+
+	return append(r, rng)
+}
 
 type ValueEncoder interface {
 	EncodeValue(v document.Value) ([]byte, error)
 }
 
-func (r Ranges) Encode(encoder ValueEncoder, env *expr.Environment) (encodedRanges, error) {
-	enc := make([]encodedRange, len(r))
+// Encode each range using the given value encoder.
+func (r Ranges) Encode(encoder ValueEncoder, env *expr.Environment) error {
 	for i := range r {
-		err := r[i].encode(&enc[i], encoder, env)
+		err := r[i].encode(encoder, env)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return enc, nil
+	return nil
 }
 
 func (r Ranges) String() string {
@@ -538,12 +575,12 @@ func (r Ranges) Cost() int {
 		}
 
 		// if there are two boundaries, increment by 50
-		if rng.Min != nil && rng.Max != nil {
+		if !rng.Min.Type.IsZero() && !rng.Max.Type.IsZero() {
 			cost += 50
 		}
 
 		// if there is only one boundary, increment by 100
-		if (rng.Min != nil && rng.Max == nil) || (rng.Min == nil && rng.Max != nil) {
+		if (!rng.Min.Type.IsZero() && rng.Max.Type.IsZero()) || (rng.Min.Type.IsZero() && !rng.Max.Type.IsZero()) {
 			cost += 100
 			continue
 		}
@@ -555,46 +592,36 @@ func (r Ranges) Cost() int {
 	return cost
 }
 
-type encodedRange struct {
-	minVal, maxVal document.Value
-	rangeType      document.ValueType
-	min, max       []byte
-	exclusive      bool
-	exact          bool
-}
-
-func (e *encodedRange) IsInRange(value []byte) bool {
+func (r *Range) IsInRange(value []byte) bool {
 	// by default, we consider the value within range
 	cmpMin, cmpMax := 1, -1
 
 	// we compare with the lower bound and see if it matches
-	if e.min != nil {
-		cmpMin = bytes.Compare(value, e.min)
+	if r.encodedMin != nil {
+		cmpMin = bytes.Compare(value, r.encodedMin)
 	}
 
 	// if exact is true the value has to be equal to the lower bound.
-	if e.exact {
+	if r.Exact {
 		return cmpMin == 0
 	}
 
 	// if exclusive and the value is equal to the lower bound
 	// we can ignore it
-	if e.exclusive && cmpMin == 0 {
+	if r.Exclusive && cmpMin == 0 {
 		return false
 	}
 
 	// the value is bigger than the lower bound,
 	// see if it matches the upper bound.
-	if e.max != nil {
-		cmpMax = bytes.Compare(value, e.max)
+	if r.encodedMax != nil {
+		cmpMax = bytes.Compare(value, r.encodedMax)
 	}
 
 	// if boundaries are strict, ignore values equal to the max
-	if e.exclusive && cmpMax == 0 {
+	if r.Exclusive && cmpMax == 0 {
 		return false
 	}
 
 	return cmpMax <= 0
 }
-
-type encodedRanges []encodedRange

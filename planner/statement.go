@@ -17,7 +17,7 @@ type Statement struct {
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
 func (s *Statement) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
-	st, err := Optimize(s.Stream, tx)
+	st, err := Optimize(s.Stream, tx, params)
 	if err != nil || st == nil {
 		return query.Result{}, err
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/stream"
 )
 
-var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error){
+var optimizerRules = []func(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error){
 	SplitANDConditionRule,
 	PrecalculateExprRule,
 	RemoveUnnecessaryFilterNodesRule,
@@ -22,11 +22,11 @@ var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func Optimize(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error) {
 	var err error
 
 	for _, rule := range optimizerRules {
-		s, err = rule(s, tx)
+		s, err = rule(s, tx, params)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +49,7 @@ func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error
 //     filter(a > 2)
 //     filter(b != 3)
 //     filter(c < 2)
-func SplitANDConditionRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func SplitANDConditionRule(s *stream.Stream, _ *database.Transaction, _ []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -103,16 +103,23 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func PrecalculateExprRule(s *stream.Stream, _ *database.Transaction, params []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
+	var err error
 	for n != nil {
 		switch t := n.(type) {
 		case *stream.FilterOperator:
-			t.E = precalculateExpr(t.E)
+			t.E, err = precalculateExpr(t.E, params)
+			if err != nil {
+				return nil, err
+			}
 		case *stream.ProjectOperator:
 			for i, e := range t.Exprs {
-				t.Exprs[i] = precalculateExpr(e)
+				t.Exprs[i], err = precalculateExpr(e, params)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
@@ -126,14 +133,17 @@ func PrecalculateExprRule(s *stream.Stream, _ *database.Transaction) (*stream.St
 // expression nodes when possible.
 // it returns a new expression with simplified nodes.
 // if no simplification is possible it returns the same expression.
-func precalculateExpr(e expr.Expr) expr.Expr {
+func precalculateExpr(e expr.Expr, params []expr.Param) (expr.Expr, error) {
 	switch t := e.(type) {
 	case expr.LiteralExprList:
 		// we assume that the list of expressions contains only literals
 		// until proven wrong.
 		literalsOnly := true
 		for i, te := range t {
-			newExpr := precalculateExpr(te)
+			newExpr, err := precalculateExpr(te, params)
+			if err != nil {
+				return nil, err
+			}
 			if _, ok := newExpr.(expr.LiteralValue); !ok {
 				literalsOnly = false
 			}
@@ -148,7 +158,7 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 				values[i] = document.Value(t[i].(expr.LiteralValue))
 			}
 
-			return expr.ArrayValue(document.NewValueBuffer(values...))
+			return expr.ArrayValue(document.NewValueBuffer(values...)), nil
 		}
 
 	case *expr.KVPairs:
@@ -156,8 +166,12 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 		// until proven wrong.
 		literalsOnly := true
 
+		var err error
 		for i, kv := range t.Pairs {
-			kv.V = precalculateExpr(kv.V)
+			kv.V, err = precalculateExpr(kv.V, params)
+			if err != nil {
+				return nil, err
+			}
 			if _, ok := kv.V.(expr.LiteralValue); !ok {
 				literalsOnly = false
 			}
@@ -173,7 +187,7 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 				fb.Add(t.Pairs[i].K, document.Value(t.Pairs[i].V.(expr.LiteralValue)))
 			}
 
-			return expr.LiteralValue(document.NewDocumentValue(&fb))
+			return expr.LiteralValue(document.NewDocumentValue(&fb)), nil
 		}
 	case expr.Operator:
 		// since expr.Operator is an interface,
@@ -183,11 +197,17 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 			!expr.IsOrOperator(t) &&
 			!expr.IsArithmeticOperator(t) &&
 			!expr.IsComparisonOperator(t) {
-			return e
+			return e, nil
 		}
 
-		lh := precalculateExpr(t.LeftHand())
-		rh := precalculateExpr(t.RightHand())
+		lh, err := precalculateExpr(t.LeftHand(), params)
+		if err != nil {
+			return nil, err
+		}
+		rh, err := precalculateExpr(t.RightHand(), params)
+		if err != nil {
+			return nil, err
+		}
 		t.SetLeftHandExpr(lh)
 		t.SetRightHandExpr(rh)
 
@@ -201,18 +221,24 @@ func precalculateExpr(e expr.Expr) expr.Expr {
 				panic(err)
 			}
 			// we replace this expression with the result of its evaluation
-			return expr.LiteralValue(v)
+			return expr.LiteralValue(v), nil
 		}
+	case expr.PositionalParam, expr.NamedParam:
+		v, err := e.Eval(&expr.Environment{Params: params})
+		if err != nil {
+			return nil, err
+		}
+		return expr.LiteralValue(v), nil
 	}
 
-	return e
+	return e, nil
 }
 
 // RemoveUnnecessaryFilterNodesRule removes any filter node whose
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Transaction, _ []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -263,7 +289,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Transaction)
 
 // RemoveUnnecessaryProjection removes any project node whose
 // expression is a wildcard only.
-func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction, _ []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -285,7 +311,7 @@ func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction) (*st
 
 // RemoveUnnecessaryDistinctNodeRule removes any Dedup nodes
 // where projection is already unique.
-func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transaction, _ []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
 	// we assume that if we are reading from a table, the first
@@ -364,7 +390,7 @@ func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk
 // - the other operand is a literal value or a parameter
 // If found, it will replace the input node by an indexInputNode using this index.
 // TODO(asdine): add support for ORDER BY and primary keys
-func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error) {
 	n := s.Op
 
 	// first we lookup for the seq scan node.
@@ -486,10 +512,12 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 		return nil, nil
 	}
 
-	// analyse the other operand to make sure it's a literal or a param
-	if !isLiteralOrParam(e) {
+	// analyse the other operand to make sure it's a literal
+	ev, ok := e.(expr.LiteralValue)
+	if !ok {
 		return nil, nil
 	}
+	v := document.Value(ev)
 
 	// now, we look if an index exists for that path
 	cd := candidate{
@@ -501,7 +529,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 		cd.isPk = true
 		cd.priority = 3
 
-		ranges, err := getRangesFromOp(op, e)
+		ranges, err := getRangesFromOp(op, v)
 		if err != nil {
 			return nil, err
 		}
@@ -520,7 +548,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 			cd.priority = 1
 		}
 
-		ranges, err := getRangesFromOp(op, e)
+		ranges, err := getRangesFromOp(op, v)
 		if err != nil {
 			return nil, err
 		}
@@ -571,48 +599,39 @@ func opCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 	return false, nil, nil
 }
 
-func isLiteralOrParam(e expr.Expr) (ok bool) {
-	switch e.(type) {
-	case expr.LiteralValue, expr.NamedParam, expr.PositionalParam:
-		return true
-	}
-
-	return false
-}
-
-func getRangesFromOp(op expr.Operator, e expr.Expr) (stream.Ranges, error) {
-	var ranges []stream.Range
+func getRangesFromOp(op expr.Operator, v document.Value) (stream.Ranges, error) {
+	var ranges stream.Ranges
 
 	switch op.(type) {
 	case *expr.EqOperator:
-		ranges = append(ranges, stream.Range{
-			Min:   e,
+		ranges = ranges.Append(stream.Range{
+			Min:   v,
 			Exact: true,
 		})
 	case *expr.GtOperator:
-		ranges = append(ranges, stream.Range{
-			Min:       e,
+		ranges = ranges.Append(stream.Range{
+			Min:       v,
 			Exclusive: true,
 		})
 	case *expr.GteOperator:
-		ranges = append(ranges, stream.Range{
-			Min: e,
+		ranges = ranges.Append(stream.Range{
+			Min: v,
 		})
 	case *expr.LtOperator:
-		ranges = append(ranges, stream.Range{
-			Max:       e,
+		ranges = ranges.Append(stream.Range{
+			Max:       v,
 			Exclusive: true,
 		})
 	case *expr.LteOperator:
-		ranges = append(ranges, stream.Range{
-			Max: e,
+		ranges = ranges.Append(stream.Range{
+			Max: v,
 		})
 	case *expr.InOperator:
 		// opCanUseIndex made sure e is an array.
-		a := e.(expr.LiteralValue).V.(document.Array)
+		a := v.V.(document.Array)
 		err := a.Iterate(func(i int, value document.Value) error {
-			ranges = append(ranges, stream.Range{
-				Min:   expr.LiteralValue(value),
+			ranges = ranges.Append(stream.Range{
+				Min:   value,
 				Exact: true,
 			})
 			return nil

@@ -200,7 +200,7 @@ func (idx *Index) Truncate() error {
 // EncodeValue encodes the value we are going to use as a key,
 // If the index is typed, encode the value without expecting
 // the presence of other types.
-// Ff not, encode so that order is preserved regardless of the type.
+// If not, encode so that order is preserved regardless of the type.
 func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
 	if idx.Info.Type != 0 {
 		return v.MarshalBinary()
