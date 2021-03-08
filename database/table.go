@@ -181,7 +181,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 	for _, idx := range indexes {
 		v, err := idx.Info.Path.GetValueFromDocument(old)
 		if err != nil {
-			return err
+			v = document.NewNullValue()
 		}
 
 		err = idx.Delete(v, key)
@@ -209,16 +209,20 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 	for _, idx := range indexes {
 		v, err := idx.Info.Path.GetValueFromDocument(d)
 		if err != nil {
-			continue
+			v = document.NewNullValue()
 		}
 
 		err = idx.Set(v, key)
 		if err != nil {
+			if err == ErrIndexDuplicateValue {
+				return ErrDuplicateDocument
+			}
+
 			return err
 		}
 	}
 
-	return err
+	return nil
 }
 
 type documentWithKey struct {
