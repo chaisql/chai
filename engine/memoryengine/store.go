@@ -158,7 +158,9 @@ func (s *storeTx) Delete(k []byte) error {
 
 	// on commit, remove the item from the tree.
 	s.tx.onCommit = append(s.tx.onCommit, func() {
-		s.tr.Delete(i)
+		if i.deleted {
+			s.tr.Delete(i)
+		}
 	})
 	return nil
 }

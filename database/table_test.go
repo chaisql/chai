@@ -13,6 +13,7 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -632,6 +633,52 @@ func TestTableReplace(t *testing.T) {
 		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "c", f.V.(string))
+	})
+
+	t.Run("Should update indexes", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.CreateTable("test", nil)
+		require.NoError(t, err)
+
+		err = tx.CreateIndex(database.IndexInfo{
+			Path:      document.NewPath("a"),
+			Unique:    true,
+			TableName: "test",
+			IndexName: "idx_foo_a",
+		})
+		require.NoError(t, err)
+
+		tb, err := tx.GetTable("test")
+		require.NoError(t, err)
+
+		// insert two different documents
+		d1, err := tb.Insert(testutil.MakeDocument(t, `{"a": 1, "b": 1}`))
+		require.NoError(t, err)
+		d2, err := tb.Insert(testutil.MakeDocument(t, `{"a": 2, "b": 2}`))
+		require.NoError(t, err)
+
+		before := testutil.GetIndexContent(t, tx, "idx_foo_a")
+
+		// replace doc 1 without modifying indexed key
+		err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 1, "b": 3}`))
+		require.NoError(t, err)
+		// index should be the same as before
+		require.Equal(t, before, testutil.GetIndexContent(t, tx, "idx_foo_a"))
+
+		// replace doc 2 and modify indexed key
+		err = tb.Replace(d2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
+		require.NoError(t, err)
+		// index should be different for doc 2
+		got := testutil.GetIndexContent(t, tx, "idx_foo_a")
+		require.Equal(t, before[0], got[0])
+		require.NotEqual(t, before[1], got[1])
+
+		// replace doc 1 with duplicate indexed key
+		err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
+		// index should be the same as before
+		require.Equal(t, database.ErrDuplicateDocument, err)
 	})
 }
 

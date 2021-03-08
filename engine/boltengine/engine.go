@@ -214,9 +214,13 @@ func (t *Transaction) cleanupBinBucket() error {
 			buckets[string(bucketName)] = b
 		}
 
-		err := b.Delete(key)
-		if err != nil {
-			return err
+		// if the key has been rewritten during the lifecycle of the transaction
+		// do not delete it
+		if b.Get(key) == nil {
+			err := b.Delete(key)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

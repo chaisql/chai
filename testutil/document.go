@@ -1,7 +1,9 @@
 package testutil
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -53,4 +55,14 @@ func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 			require.Equal(t, l, r)
 		}
 	}
+}
+
+// Dump a json representation of v to os.Stdout.
+func Dump(t testing.TB, v interface{}) {
+	t.Helper()
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(v)
+	require.NoError(t, err)
 }

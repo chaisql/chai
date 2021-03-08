@@ -1015,6 +1015,48 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		require.Equal(t, 1, i)
 	})
 
+	t.Run("Should not rollback document if deleted then put", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{Writable: true})
+		require.NoError(t, err)
+		err = tx.CreateStore([]byte("test"))
+		require.NoError(t, err)
+		st, err := tx.GetStore([]byte("test"))
+		require.NoError(t, err)
+
+		err = st.Put([]byte("foo"), []byte("FOO"))
+		require.NoError(t, err)
+
+		// delete the key
+		err = st.Delete([]byte("foo"))
+		require.NoError(t, err)
+
+		v, err := st.Get([]byte("foo"))
+		require.Equal(t, engine.ErrKeyNotFound, err)
+
+		err = st.Put([]byte("foo"), []byte("bar"))
+		require.NoError(t, err)
+
+		v, err = st.Get([]byte("foo"))
+		require.Equal(t, []byte("bar"), v)
+
+		// commit and reopen a transaction
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		tx, err = ng.Begin(context.Background(), engine.TxOptions{Writable: false})
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		st, err = tx.GetStore([]byte("test"))
+		require.NoError(t, err)
+
+		v, err = st.Get([]byte("foo"))
+		require.Equal(t, []byte("bar"), v)
+	})
+
 	t.Run("Should fail if context canceled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
