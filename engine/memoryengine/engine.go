@@ -16,7 +16,7 @@ import (
 const btreeDegree = 12
 
 // Engine is a simple memory engine implementation that stores data in
-// an in-memory Btree. It allows multiple readers and one single writer.
+// an in-memory Btree. It is not thread safe.
 type Engine struct {
 	closed    bool
 	stores    map[string]*btree.BTree
