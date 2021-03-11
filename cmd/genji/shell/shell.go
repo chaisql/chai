@@ -15,14 +15,9 @@ import (
 
 	"github.com/agnivade/levenshtein"
 	"github.com/c-bata/go-prompt"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/engine/badgerengine"
-	"github.com/genjidb/genji/engine/boltengine"
-	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/sql/parser"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
@@ -106,6 +101,18 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
+	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, sh.opts.Engine)
+	if err != nil {
+		return err
+	}
+	sh.db = db.WithContext(ctx)
+	defer func() {
+		closeErr := sh.db.Close()
+		if closeErr != nil {
+			err = multierr.Append(err, closeErr)
+		}
+	}()
+
 	switch opts.Engine {
 	case "memory":
 		fmt.Println("Opened an in-memory database.")
@@ -115,15 +122,6 @@ func Run(ctx context.Context, opts *Options) error {
 		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
 	}
 	fmt.Println("Enter \".help\" for usage hints.")
-
-	defer func() {
-		if sh.db != nil {
-			closeErr := sh.db.Close()
-			if closeErr != nil {
-				err = multierr.Append(err, closeErr)
-			}
-		}
-	}()
 
 	defer func() {
 		dumpErr := sh.dumpHistory()
@@ -450,12 +448,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return fmt.Errorf("usage: .tables")
 		}
 
-		db, err := sh.getDB(ctx)
-		if err != nil {
-			return err
-		}
-
-		return runTablesCmd(db, os.Stdout)
+		return runTablesCmd(sh.db, os.Stdout)
 	case ".exit", "exit":
 		if len(cmd) > 1 {
 			return fmt.Errorf("usage: .exit")
@@ -472,25 +465,10 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			tableName = cmd[0]
 		}
 
-		db, err := sh.getDB(ctx)
-		if err != nil {
-			return err
-		}
-
-		return runIndexesCmd(db, tableName, os.Stdout)
+		return runIndexesCmd(sh.db, tableName, os.Stdout)
 	case ".dump":
-		db, err := sh.getDB(ctx)
-		if err != nil {
-			return err
-		}
-
-		return dbutil.Dump(ctx, db, os.Stdout, cmd[1:]...)
+		return dbutil.Dump(ctx, sh.db, os.Stdout, cmd[1:]...)
 	case ".save":
-		db, err := sh.getDB(ctx)
-		if err != nil {
-			return err
-		}
-
 		var engine, path string
 		if len(cmd) > 2 {
 			engine = cmd[1]
@@ -502,7 +480,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return fmt.Errorf("Can't save without output path")
 		}
 
-		return runSaveCmd(ctx, db, engine, path)
+		return runSaveCmd(ctx, sh.db, engine, path)
 
 	default:
 		return displaySuggestions(in)
@@ -510,45 +488,12 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 }
 
 func (sh *Shell) runQuery(ctx context.Context, q string) error {
-	db, err := sh.getDB(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = dbutil.ExecSQL(ctx, db, strings.NewReader(q), os.Stdout)
+	err := dbutil.ExecSQL(ctx, sh.db, strings.NewReader(q), os.Stdout)
 	if err == context.Canceled {
 		return errors.New("interrupted")
 	}
 
 	return err
-}
-
-func (sh *Shell) getDB(ctx context.Context) (*genji.DB, error) {
-	if sh.db != nil {
-		return sh.db.WithContext(ctx), nil
-	}
-
-	var ng engine.Engine
-	var err error
-
-	switch sh.opts.Engine {
-	case "memory":
-		ng = memoryengine.NewEngine()
-	case "bolt":
-		ng, err = boltengine.NewEngine(sh.opts.DBPath, 0660, nil)
-	case "badger":
-		ng, err = badgerengine.NewEngine(badger.DefaultOptions(sh.opts.DBPath).WithLogger(nil))
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	sh.db, err = genji.New(ctx, ng)
-	if err != nil {
-		return nil, err
-	}
-
-	return sh.db.WithContext(ctx), nil
 }
 
 func (sh *Shell) runPipedInput(ctx context.Context) (ran bool, err error) {
@@ -576,13 +521,8 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 }
 
 func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
-	db, err := sh.getDB(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	var listName []string
-	err = db.View(func(tx *genji.Tx) error {
+	err := sh.db.View(func(tx *genji.Tx) error {
 		listName = tx.ListIndexes()
 		return nil
 	})
@@ -593,8 +533,8 @@ func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
 // getTables returns all the tables of the database
 func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	var tables []string
-	db, _ := sh.getDB(ctx)
-	res, err := db.Query("SELECT table_name FROM __genji_tables")
+
+	res, err := sh.db.Query("SELECT table_name FROM __genji_tables")
 	if err != nil {
 		return nil, err
 	}
