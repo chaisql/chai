@@ -37,7 +37,6 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 // - RenameTable
 // - AddFieldConstraint
 func TestCatalogTable(t *testing.T) {
-
 	t.Run("Get", func(t *testing.T) {
 		db, cleanup := newTestDB(t)
 		defer cleanup()
@@ -362,9 +361,15 @@ func TestTxDropIndex(t *testing.T) {
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
-			return catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 			})
+			require.NoError(t, err)
+			err = catalog.CreateIndex(tx, database.IndexInfo{
+				IndexName: "idxBar", TableName: "test", Path: parsePath(t, "bar"),
+			})
+			require.NoError(t, err)
+			return nil
 		})
 
 		clone := catalog.Clone()
@@ -374,6 +379,13 @@ func TestTxDropIndex(t *testing.T) {
 
 			_, err = tx.GetIndex("idxFoo")
 			require.Error(t, err)
+
+			_, err = tx.GetIndex("idxBar")
+			require.NoError(t, err)
+
+			// cf: https://github.com/genjidb/genji/issues/360
+			_, err = tx.GetTable("test")
+			require.NoError(t, err)
 
 			return errDontCommit
 		})
