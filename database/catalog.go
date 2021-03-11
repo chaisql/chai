@@ -486,13 +486,18 @@ func (c *catalogCache) DeleteIndex(tx *Transaction, indexName string) (*IndexInf
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// check if the index exists
 	info, ok := c.indexes[indexName]
 	if !ok {
 		return nil, ErrIndexNotFound
 	}
 
+	// remove it from the global map of indexes
 	delete(c.indexes, indexName)
-	newIndexlist := make([]*IndexInfo, len(c.indexesPerTables[info.TableName]))
+
+	// build a new list of indexes for the related table.
+	// the previous list must not be modified.
+	newIndexlist := make([]*IndexInfo, 0, len(c.indexesPerTables[info.TableName]))
 	for _, idx := range c.indexesPerTables[info.TableName] {
 		if idx.IndexName != indexName {
 			newIndexlist = append(newIndexlist, idx)
