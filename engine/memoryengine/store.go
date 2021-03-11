@@ -37,7 +37,7 @@ func (i *item) Less(than btree.Item) bool {
 
 // storeTx implements an engine.Store.
 type storeTx struct {
-	tr   *btree.BTree
+	tr   *tree
 	tx   *transaction
 	name string
 }
@@ -180,7 +180,7 @@ func (s *storeTx) Truncate() error {
 	}
 
 	old := s.tr
-	s.tr = btree.New(btreeDegree)
+	s.tr = &tree{bt: btree.New(btreeDegree)}
 
 	// on rollback replace the new tree by the old one.
 	s.tx.onRollback = append(s.tx.onRollback, func() {
@@ -222,7 +222,7 @@ func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 type iterator struct {
 	tx      *transaction
 	reverse bool
-	tr      *btree.BTree
+	tr      *tree
 	item    *item // current item
 	ch      chan *item
 	closed  chan struct{} // closed by the goroutine when it's shutdown
@@ -254,7 +254,7 @@ func (it *iterator) Seek(pivot []byte) {
 func (it *iterator) runIterator(pivot []byte) {
 	it.tx.wg.Add(1)
 
-	go func(ctx context.Context, ch chan *item, tr *btree.BTree) {
+	go func(ctx context.Context, ch chan *item, tr *tree) {
 		defer it.tx.wg.Done()
 		defer close(ch)
 		defer close(it.closed)
