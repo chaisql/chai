@@ -857,6 +857,28 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		require.True(t, it.Valid())
 		require.Equal(t, it.Item().Key(), k)
 	})
+
+	t.Run("Iterating while deleting current key should work", func(t *testing.T) {
+		st, cleanup := storeBuilder(t, builder)
+		defer cleanup()
+
+		for i := 0; i < 50; i++ {
+			err := st.Put([]byte{byte(i)}, []byte{byte(i)})
+			require.NoError(t, err)
+		}
+
+		i := 0
+		it := st.Iterator(engine.IteratorOptions{})
+		defer it.Close()
+
+		for it.Seek(nil); it.Valid() && i < 50; it.Next() {
+			require.Equal(t, []byte{byte(i)}, it.Item().Key())
+
+			err := st.Delete([]byte{byte(i)})
+			require.NoError(t, err)
+			i++
+		}
+	})
 }
 
 // TestStorePut verifies Put behaviour.

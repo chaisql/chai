@@ -67,7 +67,6 @@ func (tx *Transaction) Rollback() error {
 // Commit the transaction. Calling this method on read-only transactions
 // will return an error.
 func (tx *Transaction) Commit() error {
-
 	err := tx.tx.Commit()
 	if err != nil {
 		return err

@@ -236,11 +236,11 @@ func (it *iterator) Seek(pivot []byte) {
 	// is closed before creating a new one
 	if it.cancel != nil {
 		it.cancel()
-		it.ch = make(chan *item)
 		<-it.closed
-		it.closed = make(chan struct{})
 	}
 
+	it.ch = make(chan *item)
+	it.closed = make(chan struct{})
 	it.ctx, it.cancel = context.WithCancel(it.tx.ctx)
 
 	it.runIterator(pivot)
