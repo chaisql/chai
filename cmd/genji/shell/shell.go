@@ -482,7 +482,8 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		}
 
 		return runSaveCmd(ctx, sh.db, engine, path)
-
+	case ".schema":
+		return dbutil.DumpSchema(ctx, sh.db, os.Stdout, cmd[1:]...)
 	default:
 		return displaySuggestions(in)
 	}

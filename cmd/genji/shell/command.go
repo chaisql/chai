@@ -55,6 +55,12 @@ var commands = []struct {
 		DisplayName: ".save",
 		Description: "Save database content in the specified file.",
 	},
+	{
+		Name:        ".schema",
+		Options:     "[table_name]",
+		DisplayName: ".schema",
+		Description: "Show the CREATE statements matching pattern of a database or the given tables.",
+	},
 }
 
 // runHelpCmd shows all available commands.
