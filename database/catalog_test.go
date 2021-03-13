@@ -287,25 +287,55 @@ func TestCatalogCreate(t *testing.T) {
 }
 
 func TestTxCreateIndex(t *testing.T) {
-	t.Run("Should create an index and return it", func(t *testing.T) {
+	t.Run("Should create an index, build it and return it", func(t *testing.T) {
 		db, cleanup := newTestDB(t)
 		defer cleanup()
 		catalog := db.Catalog()
 
 		update(t, db, func(tx *database.Transaction) error {
-			return catalog.CreateTable(tx, "test", nil)
+			err := catalog.CreateTable(tx, "test", nil)
+			if err != nil {
+				return err
+			}
+
+			tb, err := tx.GetTable("test")
+			require.NoError(t, err)
+
+			for i := int64(0); i < 10; i++ {
+				_, err = tb.Insert(document.NewFieldBuffer().
+					Add("a", document.NewIntegerValue(i)).
+					Add("b", document.NewIntegerValue(i*10)),
+				)
+				require.NoError(t, err)
+			}
+
+			return nil
 		})
 
 		clone := catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateIndex(tx, database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
+				IndexName: "idx_a", TableName: "test", Path: parsePath(t, "a"),
 			})
 			require.NoError(t, err)
-			idx, err := tx.GetIndex("idxFoo")
+			idx, err := tx.GetIndex("idx_a")
 			require.NoError(t, err)
 			require.NotNil(t, idx)
+
+			var i int
+			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
+				var buf bytes.Buffer
+				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
+				require.NoError(t, err)
+				enc := buf.Bytes()
+				require.Equal(t, enc, v)
+				i++
+				return nil
+			})
+			require.Equal(t, 10, i)
+			require.NoError(t, err)
+
 			return errDontCommit
 		})
 
@@ -491,7 +521,7 @@ func TestCatalogReIndex(t *testing.T) {
 		require.Equal(t, clone, catalog)
 	})
 
-	t.Run("Should reindex the right index", func(t *testing.T) {
+	t.Run("Should reindex the index", func(t *testing.T) {
 		db, cleanup := newTestDB(t)
 		defer cleanup()
 
@@ -522,14 +552,6 @@ func TestCatalogReIndex(t *testing.T) {
 
 			idx, err = tx.GetIndex("b")
 			require.NoError(t, err)
-
-			i = 0
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.IntegerValue}, func(val, key []byte) error {
-				i++
-				return nil
-			})
-			require.NoError(t, err)
-			require.Zero(t, i)
 
 			return errDontCommit
 		})

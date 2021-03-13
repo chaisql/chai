@@ -132,7 +132,12 @@ func (tx *Transaction) DropTable(name string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrIndexAlreadyExists.
 func (tx *Transaction) CreateIndex(opts IndexInfo) error {
-	return tx.db.catalog.CreateIndex(tx, opts)
+	err := tx.db.catalog.CreateIndex(tx, opts)
+	if err != nil {
+		return err
+	}
+
+	return tx.ReIndex(opts.IndexName)
 }
 
 // GetIndex returns an index by name.

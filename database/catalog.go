@@ -171,7 +171,22 @@ func (c *Catalog) CreateIndex(tx *Transaction, opts IndexInfo) error {
 		return err
 	}
 
-	return tx.getIndexStore().Insert(opts)
+	err = tx.getIndexStore().Insert(opts)
+	if err != nil {
+		return err
+	}
+
+	idx, err := c.GetIndex(tx, opts.IndexName)
+	if err != nil {
+		return err
+	}
+
+	tb, err := c.GetTable(tx, opts.TableName)
+	if err != nil {
+		return err
+	}
+
+	return c.buildIndex(tx, idx, tb)
 }
 
 // GetIndex returns an index by name.
@@ -289,7 +304,11 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 		return err
 	}
 
-	return tb.Iterate(func(d document.Document) error {
+	return c.buildIndex(tx, idx, tb)
+}
+
+func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
+	return table.Iterate(func(d document.Document) error {
 		v, err := idx.Info.Path.GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {
 			return nil
