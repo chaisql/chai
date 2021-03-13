@@ -549,6 +549,9 @@ func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 		tables = append(tables, tableName)
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// if there is no table return table as a suggestion
 	if len(tables) == 0 {
