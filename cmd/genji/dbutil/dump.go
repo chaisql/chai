@@ -53,7 +53,7 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 			return err
 		}
 
-		return dumpTable(tx, tableName, w)
+		return dumpTableContent(tx, w, tableName)
 	})
 	if err != nil {
 		_, er := fmt.Fprintln(w, "ROLLBACK;")
@@ -64,10 +64,86 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 	return err
 }
 
-// dumpTable displays the content of the given table as SQL statements.
-func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
+// dumpTableContent displays the content of the given table as SQL statements.
+func dumpTableContent(tx *genji.Tx, w io.Writer, tableName string) error {
+	// Dump schema first.
+	if err := dumpSchema(tx, w, tableName); err != nil {
+		return err
+	}
+
+	t, err := tx.GetTable(tableName)
+	if err != nil {
+		return err
+	}
+
+	q := fmt.Sprintf("SELECT * FROM %s", t.Name())
+	res, err := tx.Query(q)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
 	var buf bytes.Buffer
 
+	// Inserts statements.
+	insert := fmt.Sprintf("INSERT INTO %s VALUES ", t.Name())
+	return res.Iterate(func(d document.Document) error {
+		buf.WriteString(insert)
+
+		data, err := document.MarshalJSON(d)
+		if err != nil {
+			return err
+		}
+
+		buf.Write(data)
+		buf.WriteString(";\n")
+		_, err = buf.WriteTo(w)
+		return err
+	})
+}
+
+// DumpSchema takes a database and dumps its schema as SQL queries in the given writer.
+// If tables is provided, only selected tables will be outputted.
+func DumpSchema(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) error {
+	tx, err := db.Begin(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := "SELECT table_name FROM __genji_tables"
+	if len(tables) > 0 {
+		query += " WHERE table_name IN ?"
+	}
+
+	res, err := tx.Query(query, tables)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	i := 0
+	return res.Iterate(func(d document.Document) error {
+		// Blank separation between tables.
+		if i > 0 {
+			if _, err := fmt.Fprintln(w, ""); err != nil {
+				return err
+			}
+		}
+		i++
+
+		// Get table name.
+		var tableName string
+		if err := document.Scan(d, &tableName); err != nil {
+			return err
+		}
+
+		return dumpSchema(tx, w, tableName)
+	})
+}
+
+// dumpSchema displays the schema of the given table as SQL statements.
+func dumpSchema(tx *genji.Tx, w io.Writer, tableName string) error {
 	t, err := tx.GetTable(tableName)
 	if err != nil {
 		return err
@@ -79,6 +155,7 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 
 	ti := t.Info()
 
+	var buf bytes.Buffer
 	fcs := ti.FieldConstraints
 	// Fields constraints should be displayed between parenthesis.
 	if len(fcs) > 0 {
@@ -135,25 +212,5 @@ func dumpTable(tx *genji.Tx, tableName string, w io.Writer) error {
 		}
 	}
 
-	q := fmt.Sprintf("SELECT * FROM %s", t.Name())
-	res, err := tx.Query(q)
-	if err != nil {
-		return err
-	}
-	defer res.Close()
-
-	// Inserts statements.
-	insert := fmt.Sprintf("INSERT INTO %s VALUES ", t.Name())
-	return res.Iterate(func(d document.Document) error {
-		buf.WriteString(insert)
-
-		data, err := document.MarshalJSON(d)
-		if err != nil {
-			return err
-		}
-		buf.Write(data)
-		buf.WriteString(";\n")
-		_, err = buf.WriteTo(w)
-		return err
-	})
+	return nil
 }
