@@ -17,7 +17,7 @@ const (
 
 var (
 	// ErrIndexDuplicateValue is returned when a value is already associated with a key
-	ErrIndexDuplicateValue = errors.New("duplicate")
+	ErrIndexDuplicateValue = errors.New("duplicate value")
 )
 
 // An Index associates encoded values with keys.
