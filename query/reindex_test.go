@@ -32,14 +32,33 @@ func TestReIndex(t *testing.T) {
 				CREATE TABLE test1;
 				CREATE TABLE test2;
 
-				INSERT INTO test1(a, b) VALUES (1, 'a'), (2, 'b');
-				INSERT INTO test2(a, b) VALUES (3, 'c'), (4, 'd');
-
 				CREATE INDEX idx_test1_a ON test1(a);
 				CREATE INDEX idx_test1_b ON test1(b);
 				CREATE INDEX idx_test2_a ON test2(a);
 				CREATE INDEX idx_test2_b ON test2(b);
+
+				INSERT INTO test1(a, b) VALUES (1, 'a'), (2, 'b');
+				INSERT INTO test2(a, b) VALUES (3, 'c'), (4, 'd');
 			`)
+			require.NoError(t, err)
+
+			// truncate all indexes
+			err = db.Update(func(tx *genji.Tx) error {
+				c := tx.DB().Catalog()
+				for _, idxName := range c.ListIndexes("") {
+					idx, err := c.GetIndex(tx.Transaction, idxName)
+					if err != nil {
+						return err
+					}
+
+					err = idx.Truncate()
+					if err != nil {
+						return err
+					}
+				}
+
+				return nil
+			})
 			require.NoError(t, err)
 
 			err = db.Exec(test.query)
@@ -50,9 +69,7 @@ func TestReIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				idxList := tx.ListIndexes()
-
-				for _, idxName := range idxList {
+				for _, idxName := range tx.ListIndexes() {
 					idx, err := tx.GetIndex(idxName)
 					require.NoError(t, err)
 
@@ -82,5 +99,4 @@ func TestReIndex(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-
 }
