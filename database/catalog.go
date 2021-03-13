@@ -317,7 +317,12 @@ func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 			return err
 		}
 
-		return idx.Set(v, d.(document.Keyer).RawKey())
+		err = idx.Set(v, d.(document.Keyer).RawKey())
+		if err != nil {
+			return fmt.Errorf("error while building the index: %w", err)
+		}
+
+		return nil
 	})
 }
 
