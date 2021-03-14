@@ -100,7 +100,14 @@ func TestScan(t *testing.T) {
 					Add("foo", document.NewTextValue("c")).
 					Add("bar", document.NewTextValue("d")),
 			),
-		)))
+		))).
+		Add("w", document.NewArrayValue(document.NewValueBuffer(
+			document.NewIntegerValue(1),
+			document.NewIntegerValue(2),
+			document.NewIntegerValue(3),
+			document.NewIntegerValue(4),
+		))).
+		Add("x", document.NewBlobValue([]byte{1, 2, 3, 4}))
 
 	type foo struct {
 		Foo string
@@ -128,8 +135,10 @@ func TestScan(t *testing.T) {
 	var s []*bool
 	var u []foo
 	var v []*foo
+	var w [4]int
+	var x [4]uint8
 
-	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v)
+	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x)
 	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -160,6 +169,8 @@ func TestScan(t *testing.T) {
 	require.Equal(t, foo{Foo: "foo", Pub: strPtr("bar")}, k)
 	require.Equal(t, []foo{{Foo: "a", Pub: strPtr("b")}, {Foo: "c", Pub: strPtr("d")}}, u)
 	require.Equal(t, []*foo{{Foo: "a", Pub: strPtr("b")}, {Foo: "c", Pub: strPtr("d")}}, v)
+	require.Equal(t, [4]int{1, 2, 3, 4}, w)
+	require.Equal(t, [4]uint8{1, 2, 3, 4}, x)
 
 	t.Run("DocumentScanner", func(t *testing.T) {
 		var ds documentScanner
@@ -175,14 +186,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
 		require.NoError(t, err)
-		require.Len(t, m, 20)
+		require.Len(t, m, 22)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
 		require.NoError(t, err)
-		require.Len(t, m, 20)
+		require.Len(t, m, 22)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {
