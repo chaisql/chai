@@ -348,6 +348,20 @@ func scanValue(v Value, ref reflect.Value) error {
 		}
 
 		return sliceScan(v.V.(Array), ref.Addr())
+	case reflect.Array:
+		if ref.Type().Elem().Kind() == reflect.Uint8 {
+			if v.Type != TextValue && v.Type != BlobValue {
+				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type)
+			}
+			reflect.Copy(ref, reflect.ValueOf(v.V))
+			return nil
+		}
+		v, err := v.CastAsArray()
+		if err != nil {
+			return err
+		}
+
+		return sliceScan(v.V.(Array), ref.Addr())
 	case reflect.Map:
 		v, err := v.CastAsDocument()
 		if err != nil {
