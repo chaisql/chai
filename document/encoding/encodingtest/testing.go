@@ -49,6 +49,7 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 		Append(document.NewBoolValue(true)).
 		Append(document.NewIntegerValue(-40)).
 		Append(document.NewDoubleValue(-3.14)).
+		Append(document.NewDoubleValue(3)).
 		Append(document.NewBlobValue([]byte("blob"))).
 		Append(document.NewTextValue("hello")).
 		Append(document.NewDocumentValue(addressMapDoc)).
@@ -78,7 +79,7 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 				Add("name", document.NewTextValue("john")).
 				Add("address", document.NewDocumentValue(addressMapDoc)).
 				Add("array", document.NewArrayValue(complexArray)),
-			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}, "array": [true, -40, -3.14, "YmxvYg==", "hello", {"city": "Ajaccio", "country": "France"}, [11]]}`,
+			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}, "array": [true, -40, -3.14, 3, "YmxvYg==", "hello", {"city": "Ajaccio", "country": "France"}, [11]]}`,
 		},
 	}
 
@@ -89,6 +90,9 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 			codec := codecBuilder()
 			err := codec.NewEncoder(&buf).EncodeDocument(test.d)
 			require.NoError(t, err)
+			ok, err := document.NewDocumentValue(test.d).IsEqual(document.NewDocumentValue(codec.NewDocument(buf.Bytes())))
+			require.NoError(t, err)
+			require.True(t, ok)
 			data, err := document.MarshalJSON(codec.NewDocument(buf.Bytes()))
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, string(data))
