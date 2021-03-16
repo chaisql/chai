@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/stringutil"
 )
 
 const (
@@ -51,7 +51,7 @@ func (idx *Index) Set(v document.Value, k []byte) error {
 	}
 
 	if idx.Info.Type != 0 && idx.Info.Type != v.Type {
-		return fmt.Errorf("cannot index value of type %s in %s index", v.Type, idx.Info.Type)
+		return stringutil.Errorf("cannot index value of type %s in %s index", v.Type, idx.Info.Type)
 	}
 
 	st, err := getOrCreateStore(idx.tx, idx.storeName)

@@ -2,13 +2,13 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
@@ -230,7 +230,7 @@ func (cfg selectConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		if invalidProjectedField != nil {
-			return nil, fmt.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
+			return nil, stringutil.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
 
 		// add Aggregation node
@@ -300,7 +300,7 @@ func (cfg selectConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		if !v.Type.IsNumber() {
-			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type)
 		}
 
 		v, err = v.CastAsInteger()
@@ -318,7 +318,7 @@ func (cfg selectConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		if !v.Type.IsNumber() {
-			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type)
 		}
 
 		v, err = v.CastAsInteger()

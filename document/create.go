@@ -4,13 +4,13 @@ package document
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // NewFromJSON creates a document from raw JSON data.
@@ -198,7 +198,7 @@ func NewValue(x interface{}) (Value, error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		x := v.Uint()
 		if x > math.MaxInt64 {
-			return Value{}, fmt.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
+			return Value{}, stringutil.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
 		}
 		return NewIntegerValue(int64(x)), nil
 	case reflect.Float32, reflect.Float64:

@@ -223,7 +223,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		// insert again
-		d, err = tb.Insert(doc)
+		_, err = tb.Insert(doc)
 		require.Equal(t, database.ErrDuplicateDocument, err)
 	})
 

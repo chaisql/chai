@@ -14,11 +14,6 @@ import (
 type Database struct {
 	ng engine.Engine
 
-	// This stores the last transaction id created.
-	// It starts at 0 at database startup and is
-	// incremented atomically every time Begin is called.
-	lastTransactionID int64
-
 	// If this is non-nil, the user is running an explicit transaction
 	// using the BEGIN statement.
 	// Only one attached transaction can be run at a time and any calls to DB.Begin()

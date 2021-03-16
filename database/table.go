@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // A Table represents a collection of documents.
@@ -81,7 +81,7 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 	defer enc.Close()
 	err = enc.EncodeDocument(fb)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode document: %w", err)
+		return nil, stringutil.Errorf("failed to encode document: %w", err)
 	}
 
 	err = t.Store.Put(key, buf.Bytes())
@@ -196,7 +196,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 	defer enc.Close()
 	err = enc.EncodeDocument(d)
 	if err != nil {
-		return fmt.Errorf("failed to encode document: %w", err)
+		return stringutil.Errorf("failed to encode document: %w", err)
 	}
 
 	// replace old document with new document
@@ -440,7 +440,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 		if err == engine.ErrKeyNotFound {
 			return nil, ErrDocumentNotFound
 		}
-		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
+		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
 	info := t.Info()
@@ -463,7 +463,7 @@ func (t *Table) generateKey(info *TableInfo, fb *document.FieldBuffer) ([]byte, 
 
 		v, err := pk.Path.GetValueFromDocument(fb)
 		if err == document.ErrFieldNotFound {
-			return nil, fmt.Errorf("missing primary key at path %q", pk.Path)
+			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)
 		}
 		if err != nil {
 			return nil, err

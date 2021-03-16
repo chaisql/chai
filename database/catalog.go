@@ -2,11 +2,11 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // Catalog holds all table and index informations.
@@ -107,7 +107,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 // If it already exists, returns ErrTableAlreadyExists.
 func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo) error {
 	if strings.HasPrefix(tableName, internalPrefix) {
-		return fmt.Errorf("table name must not start with %s", internalPrefix)
+		return stringutil.Errorf("table name must not start with %s", internalPrefix)
 	}
 
 	if info == nil {
@@ -135,7 +135,7 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 
 	err = tx.tx.CreateStore(info.storeName)
 	if err != nil {
-		return fmt.Errorf("failed to create table %q: %w", tableName, err)
+		return stringutil.Errorf("failed to create table %q: %w", tableName, err)
 	}
 
 	return nil
@@ -319,7 +319,7 @@ func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 
 		err = idx.Set(v, d.(document.Keyer).RawKey())
 		if err != nil {
-			return fmt.Errorf("error while building the index: %w", err)
+			return stringutil.Errorf("error while building the index: %w", err)
 		}
 
 		return nil

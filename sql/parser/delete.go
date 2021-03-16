@@ -1,12 +1,11 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
@@ -87,7 +86,7 @@ func (cfg deleteConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		if !v.Type.IsNumber() {
-			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type)
 		}
 
 		v, err = v.CastAsInteger()
@@ -105,7 +104,7 @@ func (cfg deleteConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		if !v.Type.IsNumber() {
-			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type)
 		}
 
 		v, err = v.CastAsInteger()

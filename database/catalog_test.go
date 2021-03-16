@@ -550,7 +550,7 @@ func TestCatalogReIndex(t *testing.T) {
 			require.Equal(t, 10, i)
 			require.NoError(t, err)
 
-			idx, err = tx.GetIndex("b")
+			_, err = tx.GetIndex("b")
 			require.NoError(t, err)
 
 			return errDontCommit

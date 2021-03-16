@@ -1,10 +1,9 @@
 package expr
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // Environment contains information about the context in which
@@ -79,7 +78,7 @@ func (e *Environment) GetParamByName(name string) (v document.Value, err error) 
 		}
 	}
 
-	return document.Value{}, fmt.Errorf("param %s not found", name)
+	return document.Value{}, stringutil.Errorf("param %s not found", name)
 }
 
 func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
@@ -91,7 +90,7 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 
 	idx := int(pos - 1)
 	if idx >= len(e.Params) {
-		return document.Value{}, fmt.Errorf("cannot find param number %d", pos)
+		return document.Value{}, stringutil.Errorf("cannot find param number %d", pos)
 	}
 
 	return document.NewValue(e.Params[idx].Value)

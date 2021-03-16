@@ -19,6 +19,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/stringutil"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 )
@@ -80,7 +81,7 @@ func (o *Options) validate() error {
 	switch o.Engine {
 	case "bolt", "badger", "memory":
 	default:
-		return fmt.Errorf("unsupported engine %q", o.Engine)
+		return stringutil.Errorf("unsupported engine %q", o.Engine)
 	}
 
 	return nil
@@ -445,19 +446,19 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		return runHelpCmd()
 	case ".tables":
 		if len(cmd) > 1 {
-			return fmt.Errorf("usage: .tables")
+			return stringutil.Errorf("usage: .tables")
 		}
 
 		return runTablesCmd(sh.db, os.Stdout)
 	case ".exit", "exit":
 		if len(cmd) > 1 {
-			return fmt.Errorf("usage: .exit")
+			return stringutil.Errorf("usage: .exit")
 		}
 
 		return errExitCommand
 	case ".indexes":
 		if len(cmd) > 2 {
-			return fmt.Errorf("usage: .indexes [tablename]")
+			return stringutil.Errorf("usage: .indexes [tablename]")
 		}
 
 		var tableName string
@@ -477,7 +478,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			engine = "bolt"
 			path = cmd[1]
 		} else {
-			return fmt.Errorf("Can't save without output path")
+			return stringutil.Errorf("Can't save without output path")
 		}
 
 		return runSaveCmd(ctx, sh.db, engine, path)
@@ -506,11 +507,11 @@ func (sh *Shell) runPipedInput(ctx context.Context) (ran bool, err error) {
 	}
 	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		return true, fmt.Errorf("Unable to read piped input: %w", err)
+		return true, stringutil.Errorf("Unable to read piped input: %w", err)
 	}
 	err = sh.runQuery(ctx, string(data))
 	if err != nil {
-		return true, fmt.Errorf("Unable to execute provided sql statements: %w", err)
+		return true, stringutil.Errorf("Unable to execute provided sql statements: %w", err)
 	}
 
 	return true, nil
@@ -622,7 +623,7 @@ func displaySuggestions(in string) error {
 	}
 
 	if len(suggestions) == 0 {
-		return fmt.Errorf("Unknown command %q. Enter \".help\" for help.", in)
+		return stringutil.Errorf("Unknown command %q. Enter \".help\" for help.", in)
 	}
 
 	fmt.Printf("\"%s\" is not a command. Did you mean: ", in)

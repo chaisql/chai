@@ -3,11 +3,11 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/stringutil"
 )
 
 const storePrefix = 't'
@@ -261,12 +261,12 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 
 			// if constraints are different
 			if !ok {
-				return fmt.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
+				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
 			}
 
 			// if both non inferred, they are duplicate
 			if !newFc.IsInferred && !c.IsInferred {
-				return fmt.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
+				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
 			}
 
 			// if both inferred, merge the InferredBy member
@@ -288,7 +288,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 
 		// ensure we don't have duplicate primary keys
 		if c.IsPrimaryKey && newFc.IsPrimaryKey {
-			return fmt.Errorf(
+			return stringutil.Errorf(
 				"multiple primary keys are not allowed (%q is primary key)",
 				c.Path.String(),
 			)
@@ -329,7 +329,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 			// to the right type above.
 			// check if it is required but null.
 			if v.Type == document.NullValue && fc.IsNotNull {
-				return nil, fmt.Errorf("field %q is required and must be not null", fc.Path)
+				return nil, stringutil.Errorf("field %q is required and must be not null", fc.Path)
 			}
 			continue
 		}
@@ -348,7 +348,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 			// if there is no default value
 			// check if field is required
 		} else if fc.IsNotNull {
-			return nil, fmt.Errorf("field %q is required and must be not null", fc.Path)
+			return nil, stringutil.Errorf("field %q is required and must be not null", fc.Path)
 		}
 	}
 
@@ -580,7 +580,7 @@ func (t *tableStore) Delete(tx *Transaction, tableName string) error {
 	err := t.st.Delete([]byte(tableName))
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
-			return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+			return stringutil.Errorf("%w: %q", ErrTableNotFound, tableName)
 		}
 
 		return err
@@ -603,7 +603,7 @@ func (t *tableStore) Replace(tx *Transaction, tableName string, info *TableInfo)
 	_, err = t.st.Get(tbName)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
-			return fmt.Errorf("%w: %q", ErrTableNotFound, tableName)
+			return stringutil.Errorf("%w: %q", ErrTableNotFound, tableName)
 		}
 
 		return err

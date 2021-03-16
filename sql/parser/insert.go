@@ -1,12 +1,11 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
@@ -122,7 +121,7 @@ func (p *Parser) parseExprListWithFields(fields []string) (*expr.KVPairs, error)
 	pairs.Pairs = make([]expr.KVPair, len(list))
 
 	if len(fields) != len(list) {
-		return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
+		return nil, stringutil.Errorf("%d values for %d fields", len(list), len(fields))
 	}
 
 	for i := range list {

@@ -3,9 +3,10 @@ package scanner
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"unicode/utf8"
+
+	"github.com/genjidb/genji/stringutil"
 )
 
 // Code heavily inspired by the influxdata/influxql repository
@@ -534,7 +535,7 @@ func ScanDelimited(r io.RuneScanner, start, end rune, escapes map[rune]rune, esc
 	if ch, _, err := r.ReadRune(); err != nil {
 		return nil, err
 	} else if ch != start {
-		return nil, fmt.Errorf("expected %s; found %s", string(start), string(ch))
+		return nil, stringutil.Errorf("expected %s; found %s", string(start), string(ch))
 	}
 
 	var buf bytes.Buffer

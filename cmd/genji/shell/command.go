@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/stringutil"
 )
 
 var commands = []struct {
@@ -98,7 +99,7 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 			_, err := tx.QueryDocument("SELECT 1 FROM __genji_tables WHERE table_name = ? LIMIT 1", tableName)
 			if err != nil {
 				if err == database.ErrDocumentNotFound {
-					return fmt.Errorf("%w: %q", database.ErrTableNotFound, tableName)
+					return stringutil.Errorf("%w: %q", database.ErrTableNotFound, tableName)
 				}
 				return err
 			}

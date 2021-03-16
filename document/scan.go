@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/genjidb/genji/stringutil"
 )
 
 // A Scanner can iterate over a document and scan all the fields.
@@ -268,7 +270,7 @@ func scanValue(v Value, ref reflect.Value) error {
 		}
 		x := v.V.(int64)
 		if x < 0 {
-			return fmt.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
+			return stringutil.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
 		}
 		ref.SetUint(uint64(x))
 		return nil
@@ -333,7 +335,7 @@ func scanValue(v Value, ref reflect.Value) error {
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type != TextValue && v.Type != BlobValue {
-				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type)
+				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type)
 			}
 			if v.Type == TextValue {
 				ref.SetBytes([]byte(v.V.(string)))
@@ -351,7 +353,7 @@ func scanValue(v Value, ref reflect.Value) error {
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type != TextValue && v.Type != BlobValue {
-				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type)
+				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type)
 			}
 			reflect.Copy(ref, reflect.ValueOf(v.V))
 			return nil

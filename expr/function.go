@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // Functions represents a map of builtin SQL functions.
@@ -18,37 +19,37 @@ func BuiltinFunctions() map[string]func(args ...Expr) (Expr, error) {
 	return map[string]func(args ...Expr) (Expr, error){
 		"pk": func(args ...Expr) (Expr, error) {
 			if len(args) != 0 {
-				return nil, fmt.Errorf("pk() takes no arguments")
+				return nil, stringutil.Errorf("pk() takes no arguments")
 			}
 			return new(PKFunc), nil
 		},
 		"count": func(args ...Expr) (Expr, error) {
 			if len(args) != 1 {
-				return nil, fmt.Errorf("COUNT() takes 1 argument")
+				return nil, stringutil.Errorf("COUNT() takes 1 argument")
 			}
 			return &CountFunc{Expr: args[0]}, nil
 		},
 		"min": func(args ...Expr) (Expr, error) {
 			if len(args) != 1 {
-				return nil, fmt.Errorf("MIN() takes 1 argument")
+				return nil, stringutil.Errorf("MIN() takes 1 argument")
 			}
 			return &MinFunc{Expr: args[0]}, nil
 		},
 		"max": func(args ...Expr) (Expr, error) {
 			if len(args) != 1 {
-				return nil, fmt.Errorf("MAX() takes 1 argument")
+				return nil, stringutil.Errorf("MAX() takes 1 argument")
 			}
 			return &MaxFunc{Expr: args[0]}, nil
 		},
 		"sum": func(args ...Expr) (Expr, error) {
 			if len(args) != 1 {
-				return nil, fmt.Errorf("SUM() takes 1 argument")
+				return nil, stringutil.Errorf("SUM() takes 1 argument")
 			}
 			return &SumFunc{Expr: args[0]}, nil
 		},
 		"avg": func(args ...Expr) (Expr, error) {
 			if len(args) != 1 {
-				return nil, fmt.Errorf("AVG() takes 1 argument")
+				return nil, stringutil.Errorf("AVG() takes 1 argument")
 			}
 			return &AvgFunc{Expr: args[0]}, nil
 		},
@@ -70,7 +71,7 @@ func (f Functions) AddFunc(name string, fn func(args ...Expr) (Expr, error)) {
 func (f Functions) GetFunc(name string, args ...Expr) (Expr, error) {
 	fn, ok := f.m[strings.ToLower(name)]
 	if !ok {
-		return nil, fmt.Errorf("no such function: %q", name)
+		return nil, stringutil.Errorf("no such function: %q", name)
 	}
 
 	return fn(args...)

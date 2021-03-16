@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
+	"github.com/genjidb/genji/stringutil"
 	"github.com/urfave/cli/v2"
 )
 
@@ -75,7 +75,7 @@ func executeRestore(ctx context.Context, r io.Reader, e, dbPath string) error {
 	case "badger":
 		ng, err = badgerengine.NewEngine(badger.DefaultOptions(dbPath).WithLogger(nil))
 	default:
-		return fmt.Errorf(`engine should be "bolt" or "badger, got %q`, e)
+		return stringutil.Errorf(`engine should be "bolt" or "badger, got %q`, e)
 	}
 	if err != nil {
 		return err

@@ -2,9 +2,9 @@ package msgpack
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stringutil"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
@@ -29,7 +29,7 @@ func bytesLen(c byte, dec *msgpack.Decoder) (int, error) {
 		return int(c & msgpcode.FixedStrMask), nil
 	}
 
-	return 0, fmt.Errorf("msgpack: invalid code=%x decoding bytes length", c)
+	return 0, stringutil.Errorf("msgpack: invalid code=%x decoding bytes length", c)
 }
 
 // GetByField decodes the selected field from the buffer.
