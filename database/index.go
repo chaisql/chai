@@ -181,6 +181,38 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 	return engine.ErrKeyNotFound
 }
 
+// validatePivots returns an error when the pivots are unsuitable for the index:
+// - no pivots at all
+// - having pivots length superior to the index arity
+// - having the first pivot without a value when the subsequent ones do have values
+func (idx *Index) validatePivots(pivots []document.Value) error {
+	if len(pivots) == 0 {
+		return errors.New("cannot iterate without a pivot")
+	}
+
+	if len(pivots) > idx.Arity() {
+		// TODO panic
+		return errors.New("cannot iterate with a pivot whose size is superior to the index arity")
+	}
+
+	if idx.IsComposite() {
+		if pivots[0].V == nil {
+			return errors.New("cannot iterate on a composite index with a pivot whose first item has no value")
+		}
+
+		previousPivotHasValue := true
+		for _, p := range pivots[1:] {
+			if previousPivotHasValue {
+				previousPivotHasValue = p.V != nil
+			} else {
+				return errors.New("cannot iterate on a composite index with a pivot that has holes")
+			}
+		}
+	}
+
+	return nil
+}
+
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot is empty, starts from the beginning.
@@ -196,14 +228,10 @@ func (idx *Index) DescendLessOrEqual(pivots []document.Value, fn func(val, key [
 }
 
 func (idx *Index) iterateOnStore(pivots []document.Value, reverse bool, fn func(val, key []byte) error) error {
-	if len(pivots) == 0 {
-		return errors.New("cannot iterate without a pivot")
+	err := idx.validatePivots(pivots)
+	if err != nil {
+		return err
 	}
-
-	// if len(pivots) != len(idx.Info.Types) {
-	// 	return errors.New("cannot iterate without the same number of values than what the index supports")
-	// 	// return errors.New("cannot iterate with more values than what the index supports")
-	// }
 
 	for i, typ := range idx.Info.Types {
 		// if index and pivot are typed but not of the same type
@@ -217,7 +245,6 @@ func (idx *Index) iterateOnStore(pivots []document.Value, reverse bool, fn func(
 		if typ != 0 && pivots[i].Type != 0 && typ != pivots[i].Type {
 			return nil
 		}
-
 	}
 
 	st, err := idx.tx.GetStore(idx.storeName)
@@ -339,7 +366,7 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 	var err error
 
 	for i, typ := range idx.Info.Types {
-		if typ == 0 && pivots[i].Type == document.IntegerValue {
+		if i < len(pivots) && typ == 0 && pivots[i].Type == document.IntegerValue {
 			if pivots[i].V == nil {
 				pivots[i].Type = document.DoubleValue
 			} else {
@@ -359,17 +386,24 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 				all = all && true
 			} else {
 				all = false
+				break
 			}
 		}
 
-		vb := document.NewValueBuffer(pivots...)
-
-		// we do have pivot values, so let's use them to seek in the index
+		// we do have pivot values/types, so let's use them to seek in the index
 		if !all {
-			seek, err = idx.EncodeValue(document.NewArrayValue(vb))
+			// TODO delete
+			// if the first pivot is valueless but typed, we iterate but filter out the types we don't want
+			// but just for the first pivot.
+			if pivots[0].Type != 0 && pivots[0].V == nil {
+				seek = []byte{byte(pivots[0].Type)}
+			} else {
+				vb := document.NewValueBuffer(pivots...)
+				seek, err = idx.EncodeValue(document.NewArrayValue(vb))
 
-			if err != nil {
-				return err
+				if err != nil {
+					return err
+				}
 			}
 		} else { // we don't, let's start at the beginning
 			seek = []byte{}
@@ -413,13 +447,18 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 		itm := it.Item()
 
 		// if index is untyped and pivot is typed, only iterate on values with the same type as pivot
-		// if idx.Type == 0 && pivot.Type != 0 && itm.Key()[0] != byte(pivot.Type) {
-		// 	return nil
-		// }
+		if idx.IsComposite() {
+			// for now, we only check the first element
+			if idx.Info.Types[0] == 0 && pivots[0].Type != 0 && itm.Key()[0] != byte(pivots[0].Type) {
+				return nil
+			}
+		} else {
+			var typ document.ValueType
+			if len(idx.Info.Types) > 0 {
+				typ = idx.Info.Types[0]
+			}
 
-		// this is wrong and only handle the first type
-		for i, typ := range idx.Info.Types {
-			if typ == 0 && pivots[i].Type != 0 && itm.Key()[0] != byte(pivots[i].Type) {
+			if (typ == 0) && pivots[0].Type != 0 && itm.Key()[0] != byte(pivots[0].Type) {
 				return nil
 			}
 		}
