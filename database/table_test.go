@@ -643,7 +643,7 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 
 		err = tx.CreateIndex(&database.IndexInfo{
-			Path:      document.NewPath("a"),
+			Paths:     []document.Path{document.NewPath("a")},
 			Unique:    true,
 			TableName: "test",
 			IndexName: "idx_foo_a",

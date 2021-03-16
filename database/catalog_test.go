@@ -326,7 +326,7 @@ func TestTxCreateIndex(t *testing.T) {
 			require.NotNil(t, idx)
 
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual(values(document.Value{Type: document.DoubleValue}), func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)
