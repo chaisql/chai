@@ -491,9 +491,7 @@ func (ti *TableInfo) ScanDocument(d document.Document) error {
 func (ti *TableInfo) Clone() *TableInfo {
 	cp := *ti
 	cp.FieldConstraints = nil
-	for _, fc := range ti.FieldConstraints {
-		cp.FieldConstraints = append(cp.FieldConstraints, fc)
-	}
+	cp.FieldConstraints = append(cp.FieldConstraints, ti.FieldConstraints...)
 	return &cp
 }
 

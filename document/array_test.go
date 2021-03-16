@@ -88,5 +88,6 @@ func TestValueBufferApply(t *testing.T) {
 	require.NoError(t, err)
 
 	got, err := json.Marshal(buf)
+	require.NoError(t, err)
 	require.JSONEq(t, `[6, [6, 6], {"4": 6}]`, string(got))
 }

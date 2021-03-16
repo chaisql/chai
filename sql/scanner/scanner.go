@@ -1,9 +1,11 @@
 package scanner
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"io"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/genjidb/genji/stringutil"
@@ -12,10 +14,25 @@ import (
 // Code heavily inspired by the influxdata/influxql repository
 // https://github.com/influxdata/influxql/blob/57f403b00b124eb900835c0c944e9b60d848db5e/scanner.go#L12
 
+func init() {
+	keywords = make(map[string]Token)
+	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
+		keywords[strings.ToLower(tokens[tok])] = tok
+	}
+	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN, IS, LIKE} {
+		keywords[strings.ToLower(tokens[tok])] = tok
+	}
+}
+
 // Scanner represents a lexical scanner for Genji.
 type Scanner struct {
 	r   *reader
 	buf bytes.Buffer
+}
+
+// NewScanner returns a new instance of Scanner.
+func NewScanner(r io.Reader) *Scanner {
+	return &Scanner{r: &reader{r: bufio.NewReaderSize(r, 128)}}
 }
 
 func (s *Scanner) read() (ch rune, pos Pos) {
@@ -386,9 +403,6 @@ func isDigit(ch rune) bool { return (ch >= '0' && ch <= '9') }
 
 // isIdentChar returns true if the rune can be used in an unquoted identifier.
 func isIdentChar(ch rune) bool { return isLetter(ch) || isDigit(ch) || ch == '_' }
-
-// isIdentFirstChar returns true if the rune can be used as the first char in an unquoted identifer.
-func isIdentFirstChar(ch rune) bool { return isLetter(ch) || ch == '_' }
 
 // BufScanner represents a wrapper for scanner to add a buffer.
 // It provides a fixed-length circular buffer that can be unread.

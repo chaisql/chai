@@ -36,31 +36,6 @@ func (rr documentsIterator) Iterate(fn func(d Document) error) error {
 	return nil
 }
 
-// The IteratorFunc type is an adapter to allow the use of ordinary functions as Iterators.
-// If f is a function with the appropriate signature, IteratorFunc(f) is an Iterator that calls f.
-type IteratorFunc func(fn func(d Document) error) error
-
-// Iterate calls f(fn).
-func (f IteratorFunc) Iterate(fn func(d Document) error) error {
-	return f(fn)
-}
-
-// IteratorToJSON encodes all the documents of an iterator to JSON stream.
-func IteratorToJSON(w io.Writer, s Iterator) error {
-	buf := bufio.NewWriter(w)
-	defer buf.Flush()
-
-	return s.Iterate(func(d Document) error {
-		data, err := jsonDocument{d}.MarshalJSON()
-		if err != nil {
-			return err
-		}
-
-		_, err = buf.Write(data)
-		return err
-	})
-}
-
 // IteratorToJSONArray encodes all the documents of an iterator to a JSON array.
 func IteratorToJSONArray(w io.Writer, s Iterator) error {
 	buf := bufio.NewWriter(w)

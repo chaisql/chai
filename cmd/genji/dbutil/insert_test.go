@@ -17,11 +17,11 @@ func TestInsertJSON(t *testing.T) {
 		want  string
 		fails bool
 	}{
-		{"Simple Json", `{"a": 1}`, `{"a": 1}`, false},
-		{"JSON object", `{"a": {"b": [1, 2, 3]}}`, `{"a": {"b": [1, 2, 3]}}`, false},
-		{"nested document", `{"a": {"b": [1, 2, 3]}}`, `{"a": {"b": [1, 2, 3]}}`, false},
-		{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, false},
-		{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `{"a": [{"b":"foo"}, 2, 3]}`, false},
+		{"Simple Json", `{"a": 1}`, `[{"a": 1}]`, false},
+		{"JSON object", `{"a": {"b": [1, 2, 3]}}`, `[{"a": {"b": [1, 2, 3]}}]`, false},
+		{"nested document", `{"a": {"b": [1, 2, 3]}}`, `[{"a": {"b": [1, 2, 3]}}]`, false},
+		{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `[{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}]`, false},
+		{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `[{"a": [{"b":"foo"}, 2, 3]}]`, false},
 		{"Non closed json array", `[{"foo":"bar"}`, ``, true},
 		{"Non closed json stream", `{"foo":"bar"`, ``, true},
 	}
@@ -46,7 +46,7 @@ func TestInsertJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			var buf bytes.Buffer
-			err = document.IteratorToJSON(&buf, res)
+			err = document.IteratorToJSONArray(&buf, res)
 			require.NoError(t, err)
 			require.JSONEq(t, tt.want, buf.String())
 

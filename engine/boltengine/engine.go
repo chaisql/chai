@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	separator byte = 0x1F
 	// name of the bucket used to mark keys for deletion
 	binBucket = "__bin"
 )

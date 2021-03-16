@@ -1,10 +1,3 @@
-// The author disclaims copyright to this source code.  In place of
-// a legal notice, here is a blessing:
-//
-//    May you do good and not evil.
-//    May you find forgiveness for yourself and forgive others.
-//    May you share freely, never taking more than you give.
-//
 // This is an optimized Go port of the SQLite’s icuLikeCompare routine using backtracking.
 // See https://sqlite.org/src/file?name=ext%2Ficu%2Ficu.c&ln=117-195&ci=54b54f02c66c5aea
 

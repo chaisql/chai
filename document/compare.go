@@ -121,13 +121,13 @@ func compareBooleans(op operator, a, b bool) bool {
 	case operatorEq:
 		return a == b
 	case operatorGt:
-		return a == true && b == false
+		return a && !b
 	case operatorGte:
-		return a == b || a == true
+		return a == b || a
 	case operatorLt:
-		return a == false && b == true
+		return !a && b
 	case operatorLte:
-		return a == b || a == false
+		return a == b || !a
 	}
 
 	return false

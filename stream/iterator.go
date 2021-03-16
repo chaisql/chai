@@ -483,11 +483,11 @@ func (r *Range) IsEqual(other *Range) bool {
 		return false
 	}
 
-	if r.rangeType != r.rangeType {
+	if r.rangeType != other.rangeType {
 		return false
 	}
 
-	if r.Exclusive != r.Exclusive {
+	if r.Exclusive != other.Exclusive {
 		return false
 	}
 

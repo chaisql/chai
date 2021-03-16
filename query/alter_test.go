@@ -36,6 +36,7 @@ func TestAlterTable(t *testing.T) {
 	}
 
 	d, err := db.QueryDocument("SELECT * FROM bar")
+	require.NoError(t, err)
 	data, err := document.MarshalJSON(d)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, string(data))

@@ -39,7 +39,7 @@ func (stmt BeginStmt) Run(tx *database.Transaction, args []expr.Param) (Result, 
 type RollbackStmt struct{}
 
 func (stmt RollbackStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
-	if q.tx == nil || q.autoCommit == true {
+	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot rollback with no active transaction")
 	}
 
@@ -63,7 +63,7 @@ func (stmt RollbackStmt) Run(tx *database.Transaction, args []expr.Param) (Resul
 type CommitStmt struct{}
 
 func (stmt CommitStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
-	if q.tx == nil || q.autoCommit == true {
+	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot commit with no active transaction")
 	}
 

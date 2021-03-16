@@ -21,22 +21,22 @@ func TestInsertStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"Values / No columns", `INSERT INTO test VALUES ("a", 'b', 'c')`, true, ``, nil},
-		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, false, `{"pk()":1,"a":"a","b":"b","c":"c"}`, nil},
+		{"Values / With columns", `INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c')`, false, `[{"pk()":1,"a":"a","b":"b","c":"c"}]`, nil},
 		{"Values / Ident", `INSERT INTO test (a) VALUES (a)`, true, ``, nil},
 		{"Values / Ident string", "INSERT INTO test (a) VALUES (`a`)", true, ``, nil},
-		{"Values / With fields ident string", "INSERT INTO test (a, `foo bar`) VALUES ('c', 'd')", false, `{"pk()":1,"a":"c","foo bar":"d"}`, nil},
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `{"pk()":1,"a":"d","b":"e","c":"f"}`, []interface{}{"d", "f"}},
-		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `{"pk()":1,"a":"d","b":"e","c":"f"}`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
+		{"Values / With fields ident string", "INSERT INTO test (a, `foo bar`) VALUES ('c', 'd')", false, `[{"pk()":1,"a":"c","foo bar":"d"}]`, nil},
+		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"pk()":1,"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
+		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"pk()":1,"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
-		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', [1, 2, 3])`, false, `{"pk()":1,"a":"a","b":"b","c":[1,2,3]}`, nil},
-		{"Values / Document", `INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1})`, false, `{"pk()":1,"a":"a","b":"b","c":{"c":1,"d":2}}`, nil},
-		{"Documents", "INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1}", false, `{"pk()":1,"a":"a","b":2.3,"c":true}`, nil},
-		{"Documents / Positional Params", "INSERT INTO test VALUES {a: ?, b: 2.3, c: ?}", false, `{"pk()":1,"a":"a","b":2.3,"c":true}`, []interface{}{"a", true}},
-		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `{"pk()":1,"a":1,"b":2.3,"c":true}`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Documents / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `{"pk()":1,"a":[1,2,3]}`, nil},
-		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, false, `{"pk()":1,"a":"a","b":2.3}`, nil},
-		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, `{"pk()":1,"a":"b"}`, nil},
-		{"Documents / with reference to other fields", `INSERT INTO test VALUES {a: 400, b: a * 4}`, false, `{"pk()":1,"a":400,"b":1600}`, nil},
+		{"Values / List", `INSERT INTO test (a, b, c) VALUES ("a", 'b', [1, 2, 3])`, false, `[{"pk()":1,"a":"a","b":"b","c":[1,2,3]}]`, nil},
+		{"Values / Document", `INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1})`, false, `[{"pk()":1,"a":"a","b":"b","c":{"c":1,"d":2}}]`, nil},
+		{"Documents", "INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1}", false, `[{"pk()":1,"a":"a","b":2.3,"c":true}]`, nil},
+		{"Documents / Positional Params", "INSERT INTO test VALUES {a: ?, b: 2.3, c: ?}", false, `[{"pk()":1,"a":"a","b":2.3,"c":true}]`, []interface{}{"a", true}},
+		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":1,"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
+		{"Documents / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":1,"a":[1,2,3]}]`, nil},
+		{"Documents / strings", `INSERT INTO test VALUES {'a': 'a', b: 2.3}`, false, `[{"pk()":1,"a":"a","b":2.3}]`, nil},
+		{"Documents / double quotes", `INSERT INTO test VALUES {"a": "b"}`, false, `[{"pk()":1,"a":"b"}]`, nil},
+		{"Documents / with reference to other fields", `INSERT INTO test VALUES {a: 400, b: a * 4}`, false, `[{"pk()":1,"a":400,"b":1600}]`, nil},
 		{"Read-only tables", `INSERT INTO __genji_tables VALUES {a: 400, b: a * 4}`, true, ``, nil},
 	}
 
@@ -70,7 +70,7 @@ func TestInsertStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = document.IteratorToJSON(&buf, st)
+				err = document.IteratorToJSONArray(&buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -129,9 +129,9 @@ func TestInsertStmt(t *testing.T) {
 
 		require.NoError(t, err)
 		var buf bytes.Buffer
-		err = document.IteratorToJSON(&buf, res)
+		err = document.IteratorToJSONArray(&buf, res)
 		require.NoError(t, err)
-		require.JSONEq(t, `{"a": "a", "b-b": "b"}`, buf.String())
+		require.JSONEq(t, `[{"a": "a", "b-b": "b"}]`, buf.String())
 	})
 
 	t.Run("with types constraints", func(t *testing.T) {
@@ -158,12 +158,13 @@ func TestInsertStmt(t *testing.T) {
 
 		res, err := db.Query("SELECT * FROM test")
 		defer res.Close()
+
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSON(&buf, res)
+		err = document.IteratorToJSONArray(&buf, res)
 		require.NoError(t, err)
-		require.JSONEq(t, `{
+		require.JSONEq(t, `[{
 			"i": 10000000000,
 			"db": 21.21,
 			"b": true,
@@ -172,7 +173,7 @@ func TestInsertStmt(t *testing.T) {
 			"t": "text",
 			"a": [1, "foo", true],
 			"d": {"foo": "bar"}
-		  }`, buf.String())
+		  }]`, buf.String())
 	})
 
 	// cf issue: https://github.com/genjidb/genji/issues/328

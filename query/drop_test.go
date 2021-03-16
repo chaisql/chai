@@ -69,6 +69,7 @@ func TestDropIndex(t *testing.T) {
 		indexes = tx.ListIndexes()
 		return nil
 	})
+	require.NoError(t, err)
 	require.Len(t, indexes, 1)
 	require.Equal(t, "idx_test1_foo", indexes[0])
 }

@@ -205,6 +205,9 @@ func setValueAtPath(v Value, p Path, newValue Value) (Value, error) {
 		}
 
 		va, err = setValueAtPath(va, p[1:], newValue)
+		if err != nil {
+			return v, err
+		}
 		err = vb.Replace(p[0].ArrayIndex, va)
 		return NewArrayValue(&vb), err
 	}

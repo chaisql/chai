@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -51,7 +50,7 @@ func TestProject(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.name), func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			var inEnv expr.Environment
 			inEnv.SetDocument(test.in)
 

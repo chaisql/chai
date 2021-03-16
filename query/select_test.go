@@ -150,8 +150,11 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
+		require.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
+		require.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
+		require.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
 		require.NoError(t, err)
 

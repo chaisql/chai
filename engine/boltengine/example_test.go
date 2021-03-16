@@ -19,10 +19,10 @@ func Example() {
 	defer os.RemoveAll(dir)
 
 	db, err := genji.Open(filepath.Join(dir, "my.db"))
-	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 }
 
 func ExampleNewEngine() {
@@ -38,8 +38,8 @@ func ExampleNewEngine() {
 	}
 
 	db, err := genji.New(context.Background(), ng)
-	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 }

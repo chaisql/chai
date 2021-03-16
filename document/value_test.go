@@ -35,13 +35,8 @@ func TestValueString(t *testing.T) {
 }
 
 func TestNewValue(t *testing.T) {
-	type st struct {
-		A int
-		B string
-	}
 	type myBytes []byte
 	type myString string
-	type myBool bool
 	type myUint uint
 	type myUint16 uint16
 	type myUint32 uint32

@@ -215,6 +215,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.NoError(t, err)
 
 		got, err := json.Marshal(buf)
+		require.NoError(t, err)
 		require.JSONEq(t, `{"a": 1, "c": [1, 1], "f": {"g": 1}}`, string(got))
 	})
 
@@ -345,6 +346,7 @@ func TestNewFromStruct(t *testing.T) {
 			Ig: 100,
 		},
 		BB: time.Date(2020, 11, 15, 16, 37, 10, 20, time.UTC),
+		t:  99,
 	}
 
 	q := 5

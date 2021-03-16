@@ -228,9 +228,8 @@ func (vb ValueBuffer) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 	var err error
-	_, perr := jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		var v Value
-		v, err = parseJSONValue(dataType, value)
+	_, perr := jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, _ error) {
+		v, err := parseJSONValue(dataType, value)
 		if err != nil {
 			return
 		}

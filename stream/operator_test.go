@@ -688,7 +688,7 @@ func TestUnset(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.path), func(t *testing.T) {
+		t.Run(test.path, func(t *testing.T) {
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Unset(test.path))
 			i := 0
 			err := s.Iterate(nil, func(out *expr.Environment) error {

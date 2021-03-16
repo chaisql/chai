@@ -15,7 +15,6 @@ const (
 	WS
 	COMMENT
 
-	literalBeg
 	// IDENT and the following are Genji SQL literal tokens.
 	IDENT           // main
 	NAMEDPARAM      // $param
@@ -265,16 +264,6 @@ var tokens = [...]string{
 }
 
 var keywords map[string]Token
-
-func initKeywords() {
-	keywords = make(map[string]Token)
-	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
-		keywords[strings.ToLower(tokens[tok])] = tok
-	}
-	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN, IS, LIKE} {
-		keywords[strings.ToLower(tokens[tok])] = tok
-	}
-}
 
 // String returns the string representation of the token.
 func (tok Token) String() string {

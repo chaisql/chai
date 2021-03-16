@@ -12,7 +12,7 @@ import (
 )
 
 type dummyOperator struct {
-	leftHand, rightHand expr.Expr
+	rightHand expr.Expr
 }
 
 func (d *dummyOperator) Token() scanner.Token                           { panic("not implemented") }

@@ -29,7 +29,7 @@ func TestDriver(t *testing.T) {
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
-		res, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i, []int{i + 1, i + 2, i + 3}, &foo{Foo: "bar"})
+		_, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i, []int{i + 1, i + 2, i + 3}, &foo{Foo: "bar"})
 		require.NoError(t, err)
 	}
 

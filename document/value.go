@@ -13,13 +13,11 @@ import (
 )
 
 var (
-	boolZeroValue     = NewZeroValue(BoolValue)
-	integerZeroValue  = NewZeroValue(IntegerValue)
-	doubleZeroValue   = NewZeroValue(DoubleValue)
-	blobZeroValue     = NewZeroValue(BlobValue)
-	textZeroValue     = NewZeroValue(TextValue)
-	arrayZeroValue    = NewZeroValue(ArrayValue)
-	documentZeroValue = NewZeroValue(DocumentValue)
+	boolZeroValue    = NewZeroValue(BoolValue)
+	integerZeroValue = NewZeroValue(IntegerValue)
+	doubleZeroValue  = NewZeroValue(DoubleValue)
+	blobZeroValue    = NewZeroValue(BlobValue)
+	textZeroValue    = NewZeroValue(TextValue)
 )
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
@@ -211,7 +209,7 @@ func (v Value) IsZeroValue() (bool, error) {
 	case DoubleValue:
 		return v.V == doubleZeroValue.V, nil
 	case BlobValue:
-		return bytes.Compare(v.V.([]byte), blobZeroValue.V.([]byte)) == 0, nil
+		return bytes.Equal(v.V.([]byte), blobZeroValue.V.([]byte)), nil
 	case TextValue:
 		return v.V == textZeroValue.V, nil
 	case ArrayValue:
@@ -462,26 +460,6 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	}
 
 	return NewNullValue(), nil
-}
-
-func convertNumberToInt64(v Value) (int64, error) {
-	var i int64
-
-	switch v.Type {
-	case IntegerValue:
-		return v.V.(int64), nil
-	case DoubleValue:
-		f := v.V.(float64)
-		if f > math.MaxInt64 {
-			return i, errors.New(`cannot convert "double" to "integer" without overflowing`)
-		}
-		if math.Trunc(f) != f {
-			return 0, errors.New(`cannot convert "double" value to "integer" without loss of precision`)
-		}
-		i = int64(f)
-	}
-
-	return i, nil
 }
 
 func calculateIntegers(a, b Value, operator byte) (res Value, err error) {

@@ -8,16 +8,9 @@ import (
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/stream"
 	st "github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
 )
-
-func parsePath(t testing.TB, str string) document.Path {
-	vp, err := parser.ParsePath(str)
-	require.NoError(t, err)
-	return vp
-}
 
 func TestSplitANDConditionRule(t *testing.T) {
 	tests := []struct {
@@ -179,11 +172,11 @@ func TestPrecalculateExprRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(test.e))
+			s := st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(test.e))
 			res, err := planner.PrecalculateExprRule(s, nil, test.params)
 			require.NoError(t, err)
-			require.Equal(t, stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(test.expected)).String(), res.String())
+			require.Equal(t, st.New(st.SeqScan("foo")).Pipe(st.Filter(test.expected)).String(), res.String())
 		})
 	}
 }
@@ -191,30 +184,30 @@ func TestPrecalculateExprRule(t *testing.T) {
 func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 	tests := []struct {
 		name           string
-		root, expected *stream.Stream
+		root, expected *st.Stream
 	}{
 		{
 			"non-constant expr",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a"))),
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a"))),
 		},
 		{
 			"truthy constant expr",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("10"))),
-			stream.New(stream.SeqScan("foo")),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("10"))),
+			st.New(st.SeqScan("foo")),
 		},
 		{
 			"truthy constant expr with IN",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(expr.In(
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(expr.In(
 				expr.Path(document.NewPath("a")),
 				expr.ArrayValue(document.NewValueBuffer()),
 			))),
-			&stream.Stream{},
+			&st.Stream{},
 		},
 		{
 			"falsy constant expr",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("0"))),
-			&stream.Stream{},
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("0"))),
+			&st.Stream{},
 		},
 	}
 
@@ -234,48 +227,48 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 	tests := []struct {
 		name           string
-		root, expected *stream.Stream
+		root, expected *st.Stream
 	}{
 		{
 			"non-unique key",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("b"))).
-				Pipe(stream.Distinct()),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("b"))).
-				Pipe(stream.Distinct()),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("b"))).
+				Pipe(st.Distinct()),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("b"))).
+				Pipe(st.Distinct()),
 		},
 		{
 			"primary key",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("a"))).
-				Pipe(stream.Distinct()),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("a"))).
+				Pipe(st.Distinct()),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
 		{
 			"primary key with alias",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("a AS A"))).
-				Pipe(stream.Distinct()),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("a AS A"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("a AS A"))).
+				Pipe(st.Distinct()),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("a AS A"))),
 		},
 		{
 			"unique index",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("c"))).
-				Pipe(stream.Distinct()),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("c"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("c"))).
+				Pipe(st.Distinct()),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("c"))),
 		},
 		{
 			"pk() function",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("pk()"))).
-				Pipe(stream.Distinct()),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("pk()"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("pk()"))).
+				Pipe(st.Distinct()),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Project(parser.MustParseExpr("pk()"))),
 		},
 	}
 
@@ -309,129 +302,129 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 	tests := []struct {
 		name           string
-		root, expected *stream.Stream
+		root, expected *st.Stream
 	}{
 		{
 			"non-indexed path",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("d = 1"))),
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("d = 1"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("d = 1"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("d = 1"))),
 		},
 		{
 			"FROM foo WHERE a = 1",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
-			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-			stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{
 			"FROM foo WHERE c = 3 AND b = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("c = 3"))).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-			stream.New(stream.IndexScan("idx_foo_c", st.Range{Min: document.NewIntegerValue(3), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("c = 3"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: document.NewIntegerValue(3), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
 			"FROM foo WHERE c > 3 AND b = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("c > 3"))).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-			stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("c > 3"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("c > 3"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("c > 3"))),
 		},
 		{
 			"SELECT a FROM foo WHERE c = 3 AND b = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("c = 3"))).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
-			stream.New(stream.IndexScan("idx_foo_c", st.Range{Min: document.NewIntegerValue(3), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("c = 3"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: document.NewIntegerValue(3), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
 		{
 			"SELECT a FROM foo WHERE c = 'hello' AND b = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
-			stream.New(stream.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
+			st.New(st.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
 		{
 			"SELECT a FROM foo WHERE c = 'hello' AND d = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
-				Pipe(stream.Filter(parser.MustParseExpr("d = 2"))).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("c = 'hello'"))).
-				Pipe(stream.Filter(parser.MustParseExpr("d = 2"))).
-				Pipe(stream.Project(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
+				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
 		{
 			"FROM foo WHERE a IN [1, 2]",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(
 				expr.In(
 					parser.MustParseExpr("a"),
 					expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 				),
 			)),
-			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true}, st.Range{Min: document.NewIntegerValue(2), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true}, st.Range{Min: document.NewIntegerValue(2), Exact: true})),
 		},
 		{
 			"FROM foo WHERE 1 IN a",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("1 IN a"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("1 IN a"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("1 IN a"))),
 		},
 		{
 			"FROM foo WHERE a >= 10",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("a >= 10"))),
-			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(10)})),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a >= 10"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(10)})),
 		},
 		{
 			"FROM foo WHERE k = 1",
-			stream.New(stream.SeqScan("foo")).Pipe(stream.Filter(parser.MustParseExpr("k = 1"))),
-			stream.New(stream.PkScan("foo", st.Range{Min: document.NewIntegerValue(1), Exact: true})),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = 1"))),
+			st.New(st.PkScan("foo", st.Range{Min: document.NewIntegerValue(1), Exact: true})),
 		},
 		{
 			"FROM foo WHERE k = 1 AND b = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("k = 1"))).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
-			stream.New(stream.PkScan("foo", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("k = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.PkScan("foo", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND k = 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
-				Pipe(stream.Filter(parser.MustParseExpr("2 = k"))),
-			stream.New(stream.PkScan("foo", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("2 = k"))),
+			st.New(st.PkScan("foo", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND k < 2",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
-				Pipe(stream.Filter(parser.MustParseExpr("k < 2"))),
-			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("k < 2"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("k < 2"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("k < 2"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND k = 'hello'",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Filter(parser.MustParseExpr("a = 1"))).
-				Pipe(stream.Filter(parser.MustParseExpr("k = 'hello'"))),
-			stream.New(stream.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
-				Pipe(stream.Filter(parser.MustParseExpr("k = 'hello'"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("k = 'hello'"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("k = 'hello'"))),
 		},
 	}
 

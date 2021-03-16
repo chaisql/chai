@@ -408,7 +408,7 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 			}
 		}
 
-		d, err := table.Insert(d)
+		_, err := table.Insert(d)
 		if err != nil {
 			return err
 		}
