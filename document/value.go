@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"math"
 	"strconv"
 
 	"github.com/buger/jsonparser"
 	"github.com/genjidb/genji/binarysort"
+	"github.com/genjidb/genji/stringutil"
 )
 
 var (
@@ -29,7 +29,7 @@ type ErrUnsupportedType struct {
 }
 
 func (e *ErrUnsupportedType) Error() string {
-	return fmt.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
+	return stringutil.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
 }
 
 // ValueType represents a value type supported by the database.
@@ -295,7 +295,7 @@ func (v Value) String() string {
 	case TextValue:
 		return strconv.Quote(v.V.(string))
 	case BlobValue:
-		return fmt.Sprintf("%v", v.V)
+		return stringutil.Sprintf("%v", v.V)
 	}
 
 	d, _ := v.MarshalJSON()
@@ -547,7 +547,7 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 	case '^':
 		return NewIntegerValue(xa ^ xb), nil
 	default:
-		panic(fmt.Sprintf("unknown operator %c", operator))
+		panic(stringutil.Sprintf("unknown operator %c", operator))
 	}
 }
 
@@ -597,7 +597,7 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 		ia, ib := int64(xa), int64(xb)
 		return NewIntegerValue(ia ^ ib), nil
 	default:
-		panic(fmt.Sprintf("unknown operator %c", operator))
+		panic(stringutil.Sprintf("unknown operator %c", operator))
 	}
 }
 

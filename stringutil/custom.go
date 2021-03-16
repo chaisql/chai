@@ -6,11 +6,11 @@ import (
 	"strings"
 )
 
-type stringer interface {
+type Stringer interface {
 	String() string
 }
 
-func errorF(msg string, args ...interface{}) error {
+func sprintf(msg string, args ...interface{}) string {
 	var count int
 	var b strings.Builder
 
@@ -37,7 +37,7 @@ func errorF(msg string, args ...interface{}) error {
 		b.WriteByte(msg[i])
 	}
 
-	return errors.New(b.String())
+	return b.String()
 }
 
 func toString(v interface{}) string {
@@ -59,7 +59,7 @@ func toString(v interface{}) string {
 		}
 		b.WriteByte(']')
 		return b.String()
-	case stringer:
+	case Stringer:
 		return t.String()
 	case int:
 		return strconv.Itoa(t)
@@ -68,4 +68,8 @@ func toString(v interface{}) string {
 	default:
 		panic("incompatible type")
 	}
+}
+
+func errorf(msg string, args ...interface{}) error {
+	return errors.New(sprintf(msg, args...))
 }

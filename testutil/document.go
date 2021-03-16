@@ -2,11 +2,11 @@ package testutil
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stringutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +44,7 @@ type Docs []document.Document
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	t.Helper()
 
-	require.Equal(t, len(docs), len(others), fmt.Sprintf("expected len %d, got %d", len(docs), len(others)))
+	require.Equal(t, len(docs), len(others), stringutil.Sprintf("expected len %d, got %d", len(docs), len(others)))
 
 	for i, d := range docs {
 		l := document.NewDocumentValue(d)

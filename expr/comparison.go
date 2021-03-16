@@ -1,10 +1,9 @@
 package expr
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // A cmpOp is a comparison operator.
@@ -27,7 +26,7 @@ func Eq(a, b Expr) Expr {
 }
 
 func (op *EqOperator) String() string {
-	return fmt.Sprintf("%v = %v", op.a, op.b)
+	return stringutil.Sprintf("%v = %v", op.a, op.b)
 }
 
 type NeqOperator struct {
@@ -40,7 +39,7 @@ func Neq(a, b Expr) Expr {
 }
 
 func (op *NeqOperator) String() string {
-	return fmt.Sprintf("%v != %v", op.a, op.b)
+	return stringutil.Sprintf("%v != %v", op.a, op.b)
 }
 
 type GtOperator struct {
@@ -53,7 +52,7 @@ func Gt(a, b Expr) Expr {
 }
 
 func (op *GtOperator) String() string {
-	return fmt.Sprintf("%v > %v", op.a, op.b)
+	return stringutil.Sprintf("%v > %v", op.a, op.b)
 }
 
 type GteOperator struct {
@@ -66,7 +65,7 @@ func Gte(a, b Expr) Expr {
 }
 
 func (op *GteOperator) String() string {
-	return fmt.Sprintf("%v >= %v", op.a, op.b)
+	return stringutil.Sprintf("%v >= %v", op.a, op.b)
 }
 
 type LtOperator struct {
@@ -79,7 +78,7 @@ func Lt(a, b Expr) Expr {
 }
 
 func (op *LtOperator) String() string {
-	return fmt.Sprintf("%v < %v", op.a, op.b)
+	return stringutil.Sprintf("%v < %v", op.a, op.b)
 }
 
 type LteOperator struct {
@@ -92,7 +91,7 @@ func Lte(a, b Expr) Expr {
 }
 
 func (op *LteOperator) String() string {
-	return fmt.Sprintf("%v <= %v", op.a, op.b)
+	return stringutil.Sprintf("%v <= %v", op.a, op.b)
 }
 
 // Eval compares a and b together using the operator specified when constructing the CmpOp
@@ -131,7 +130,7 @@ func (op cmpOp) compare(l, r document.Value) (bool, error) {
 	case scanner.LTE:
 		return l.IsLesserThanOrEqual(r)
 	default:
-		panic(fmt.Sprintf("unknown token %v", op.Tok))
+		panic(stringutil.Sprintf("unknown token %v", op.Tok))
 	}
 }
 
@@ -200,7 +199,7 @@ func (op *InOperator) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op InOperator) String() string {
-	return fmt.Sprintf("%v IN %v", op.a, op.b)
+	return stringutil.Sprintf("%v IN %v", op.a, op.b)
 }
 
 type NotInOperator struct {
@@ -217,7 +216,7 @@ func (op *NotInOperator) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op *NotInOperator) String() string {
-	return fmt.Sprintf("%v NOT IN %v", op.a, op.b)
+	return stringutil.Sprintf("%v NOT IN %v", op.a, op.b)
 }
 
 type IsOperator struct {
@@ -247,7 +246,7 @@ func (op *IsOperator) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op *IsOperator) String() string {
-	return fmt.Sprintf("%v IS %v", op.a, op.b)
+	return stringutil.Sprintf("%v IS %v", op.a, op.b)
 }
 
 type IsNotOperator struct {
@@ -277,5 +276,5 @@ func (op *IsNotOperator) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op *IsNotOperator) String() string {
-	return fmt.Sprintf("%v IS NOT %v", op.a, op.b)
+	return stringutil.Sprintf("%v IS NOT %v", op.a, op.b)
 }

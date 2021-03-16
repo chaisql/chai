@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	"fmt"
 	"io"
 	"runtime"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/stringutil"
 )
 
 func init() {
@@ -286,7 +286,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 
 			rs.fields = make([]string, len(po.Exprs))
 			for i := range po.Exprs {
-				rs.fields[i] = fmt.Sprintf("%s", po.Exprs[i])
+				rs.fields[i] = stringutil.Sprintf("%s", po.Exprs[i])
 			}
 
 			return rs, nil

@@ -1,11 +1,11 @@
 package msgpack
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/stringutil"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
@@ -246,7 +246,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		return
 	}
 
-	panic(fmt.Sprintf("unsupported type %v", c))
+	panic(stringutil.Sprintf("unsupported type %v", c))
 }
 
 // DecodeDocument decodes one document from the reader.

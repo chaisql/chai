@@ -1,9 +1,8 @@
 package database
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/stringutil"
 )
 
 var (
@@ -168,7 +167,7 @@ func (tx *Transaction) ReIndexAll() error {
 func (tx *Transaction) getTableStore() *tableStore {
 	st, err := tx.tx.GetStore([]byte(tableInfoStoreName))
 	if err != nil {
-		panic(fmt.Sprintf("database incorrectly setup: missing %q table: %v", tableInfoStoreName, err))
+		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", tableInfoStoreName, err))
 	}
 
 	return &tableStore{
@@ -180,7 +179,7 @@ func (tx *Transaction) getTableStore() *tableStore {
 func (tx *Transaction) getIndexStore() *indexStore {
 	st, err := tx.tx.GetStore([]byte(indexStoreName))
 	if err != nil {
-		panic(fmt.Sprintf("database incorrectly setup: missing %q table: %v", indexStoreName, err))
+		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", indexStoreName, err))
 	}
 
 	return &indexStore{

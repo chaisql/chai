@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -146,7 +145,7 @@ func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.To
 		return expr.Like, op, nil
 	}
 
-	panic(fmt.Sprintf("unknown operator %q", op))
+	panic(stringutil.Sprintf("unknown operator %q", op))
 }
 
 // parseUnaryExpr parses an non-binary expression.

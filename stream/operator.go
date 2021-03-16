@@ -5,11 +5,11 @@ import (
 	"container/heap"
 	"container/list"
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/stringutil"
 )
 
 const (
@@ -106,7 +106,7 @@ func (op *MapOperator) Iterate(in *expr.Environment, f func(out *expr.Environmen
 }
 
 func (op *MapOperator) String() string {
-	return fmt.Sprintf("map(%s)", op.E)
+	return stringutil.Sprintf("map(%s)", op.E)
 }
 
 // A FilterOperator filters values based on a given expression.
@@ -138,7 +138,7 @@ func (op *FilterOperator) Iterate(in *expr.Environment, f func(out *expr.Environ
 }
 
 func (op *FilterOperator) String() string {
-	return fmt.Sprintf("filter(%s)", op.E)
+	return stringutil.Sprintf("filter(%s)", op.E)
 }
 
 // A TakeOperator closes the stream after a certain number of values.
@@ -166,7 +166,7 @@ func (op *TakeOperator) Iterate(in *expr.Environment, f func(out *expr.Environme
 }
 
 func (op *TakeOperator) String() string {
-	return fmt.Sprintf("take(%d)", op.N)
+	return stringutil.Sprintf("take(%d)", op.N)
 }
 
 // A SkipOperator skips the n first values of the stream.
@@ -195,7 +195,7 @@ func (op *SkipOperator) Iterate(in *expr.Environment, f func(out *expr.Environme
 }
 
 func (op *SkipOperator) String() string {
-	return fmt.Sprintf("skip(%d)", op.N)
+	return stringutil.Sprintf("skip(%d)", op.N)
 }
 
 // A GroupByOperator applies an expression on each value of the stream and stores the result in the _group
@@ -222,14 +222,14 @@ func (op *GroupByOperator) Iterate(in *expr.Environment, f func(out *expr.Enviro
 		}
 
 		newEnv.Set(groupEnvKey, v)
-		newEnv.Set(groupExprEnvKey, document.NewTextValue(fmt.Sprintf("%s", op.E)))
+		newEnv.Set(groupExprEnvKey, document.NewTextValue(stringutil.Sprintf("%s", op.E)))
 		newEnv.Outer = out
 		return f(&newEnv)
 	})
 }
 
 func (op *GroupByOperator) String() string {
-	return fmt.Sprintf("groupBy(%s)", op.E)
+	return stringutil.Sprintf("groupBy(%s)", op.E)
 }
 
 // A SortOperator consumes every value of the stream and outputs them in order.
@@ -341,10 +341,10 @@ func (op *SortOperator) sortStream(prev Operator, in *expr.Environment) (heap.In
 
 func (op *SortOperator) String() string {
 	if op.Desc {
-		return fmt.Sprintf("sortReverse(%s)", op.Expr)
+		return stringutil.Sprintf("sortReverse(%s)", op.Expr)
 	}
 
-	return fmt.Sprintf("sort(%s)", op.Expr)
+	return stringutil.Sprintf("sort(%s)", op.Expr)
 }
 
 type heapNode struct {
@@ -419,7 +419,7 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 }
 
 func (op *TableInsertOperator) String() string {
-	return fmt.Sprintf("tableInsert('%s')", op.Name)
+	return stringutil.Sprintf("tableInsert('%s')", op.Name)
 }
 
 // A TableReplaceOperator replaces documents in the table
@@ -473,7 +473,7 @@ func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.E
 }
 
 func (op *TableReplaceOperator) String() string {
-	return fmt.Sprintf("tableReplace('%s')", op.Name)
+	return stringutil.Sprintf("tableReplace('%s')", op.Name)
 }
 
 // A TableDeleteOperator replaces documents in the table
@@ -527,7 +527,7 @@ func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.En
 }
 
 func (op *TableDeleteOperator) String() string {
-	return fmt.Sprintf("tableDelete('%s')", op.Name)
+	return stringutil.Sprintf("tableDelete('%s')", op.Name)
 }
 
 // A DistinctOperator filters duplicate documents.
@@ -640,7 +640,7 @@ func (op *SetOperator) Iterate(in *expr.Environment, f func(out *expr.Environmen
 }
 
 func (op *SetOperator) String() string {
-	return fmt.Sprintf("set(%s, %s)", op.Path, op.E)
+	return stringutil.Sprintf("set(%s, %s)", op.Path, op.E)
 }
 
 // A UnsetOperator filters duplicate documents.
@@ -696,5 +696,5 @@ func (op *UnsetOperator) Iterate(in *expr.Environment, f func(out *expr.Environm
 }
 
 func (op *UnsetOperator) String() string {
-	return fmt.Sprintf("unset(%s)", op.Field)
+	return stringutil.Sprintf("unset(%s)", op.Field)
 }

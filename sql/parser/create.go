@@ -1,12 +1,11 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
@@ -139,7 +138,7 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 		}
 	}
 	if pkCount > 1 {
-		return &ParseError{Message: fmt.Sprintf("only one primary key is allowed, got %d", pkCount)}
+		return &ParseError{Message: stringutil.Sprintf("only one primary key is allowed, got %d", pkCount)}
 	}
 
 	return nil

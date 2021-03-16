@@ -2,7 +2,6 @@ package expr
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -159,7 +158,7 @@ func (c CastFunc) IsEqual(other Expr) bool {
 }
 
 func (c CastFunc) String() string {
-	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
+	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
 
 var _ AggregatorBuilder = (*CountFunc)(nil)
@@ -205,7 +204,7 @@ func (c *CountFunc) String() string {
 		return "COUNT(*)"
 	}
 
-	return fmt.Sprintf("COUNT(%v)", c.Expr)
+	return stringutil.Sprintf("COUNT(%v)", c.Expr)
 }
 
 // Aggregator returns a CountAggregator. It implements the AggregatorBuilder interface.
@@ -281,7 +280,7 @@ func (m *MinFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *MinFunc) String() string {
-	return fmt.Sprintf("MIN(%v)", m.Expr)
+	return stringutil.Sprintf("MIN(%v)", m.Expr)
 }
 
 // Aggregator returns a MinAggregator. It implements the AggregatorBuilder interface.
@@ -377,7 +376,7 @@ func (m *MaxFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *MaxFunc) String() string {
-	return fmt.Sprintf("MAX(%v)", m.Expr)
+	return stringutil.Sprintf("MAX(%v)", m.Expr)
 }
 
 // Aggregator returns a MaxAggregator. It implements the AggregatorBuilder interface.
@@ -474,7 +473,7 @@ func (s *SumFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (s *SumFunc) String() string {
-	return fmt.Sprintf("SUM(%v)", s.Expr)
+	return stringutil.Sprintf("SUM(%v)", s.Expr)
 }
 
 // Aggregator returns a SumFunc. It implements the AggregatorBuilder interface.
@@ -582,7 +581,7 @@ func (s *AvgFunc) IsEqual(other Expr) bool {
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the average expression.
 func (s *AvgFunc) String() string {
-	return fmt.Sprintf("AVG(%v)", s.Expr)
+	return stringutil.Sprintf("AVG(%v)", s.Expr)
 }
 
 // Aggregator returns a AvgFunc. It implements the AggregatorBuilder interface.

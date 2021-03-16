@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // Parser represents an Genji SQL Parser.
@@ -226,7 +226,7 @@ func newParseError(found string, expected []string, pos scanner.Pos) *ParseError
 // Error returns the string representation of the error.
 func (e *ParseError) Error() string {
 	if e.Message != "" {
-		return fmt.Sprintf("%s at line %d, char %d", e.Message, e.Pos.Line+1, e.Pos.Char+1)
+		return stringutil.Sprintf("%s at line %d, char %d", e.Message, e.Pos.Line+1, e.Pos.Char+1)
 	}
-	return fmt.Sprintf("found %s, expected %s at line %d, char %d", e.Found, strings.Join(e.Expected, ", "), e.Pos.Line+1, e.Pos.Char+1)
+	return stringutil.Sprintf("found %s, expected %s at line %d, char %d", e.Found, strings.Join(e.Expected, ", "), e.Pos.Line+1, e.Pos.Char+1)
 }

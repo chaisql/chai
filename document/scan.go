@@ -4,7 +4,6 @@ package document
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -31,7 +30,7 @@ func Scan(d Document, targets ...interface{}) error {
 
 		ref := reflect.ValueOf(target)
 		if !ref.IsValid() {
-			return &ErrUnsupportedType{target, fmt.Sprintf("Parameter %d is not valid", i)}
+			return &ErrUnsupportedType{target, stringutil.Sprintf("Parameter %d is not valid", i)}
 		}
 
 		return scanValue(v, ref)

@@ -2,11 +2,11 @@ package stream
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // A HashAggregateOperator consumes the given stream and outputs one value per group.
@@ -95,13 +95,13 @@ func (op *HashAggregateOperator) String() string {
 	var sb strings.Builder
 
 	for i, agg := range op.Builders {
-		fmt.Fprintf(&sb, "%s", agg)
+		sb.WriteString(agg.(stringutil.Stringer).String())
 		if i+1 < len(op.Builders) {
 			sb.WriteString(", ")
 		}
 	}
 
-	return fmt.Sprintf("hashAggregate(%s)", sb.String())
+	return stringutil.Sprintf("hashAggregate(%s)", sb.String())
 }
 
 // newGroupEncoder returns a function that encodes the _group environment variable using a document.ValueEncoder.
@@ -198,7 +198,7 @@ func (g *groupAggregator) Flush(env *expr.Environment) (*expr.Environment, error
 		if err != nil {
 			return nil, err
 		}
-		fb.Add(fmt.Sprintf("%s", agg), v)
+		fb.Add(stringutil.Sprintf("%s", agg), v)
 	}
 
 	var newEnv expr.Environment

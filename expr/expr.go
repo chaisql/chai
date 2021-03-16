@@ -1,9 +1,8 @@
 package expr
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/stringutil"
 )
 
 var (
@@ -95,7 +94,7 @@ func (e NamedExpr) Name() string {
 }
 
 func (e NamedExpr) String() string {
-	return fmt.Sprintf("%s", e.Expr)
+	return stringutil.Sprintf("%s", e.Expr)
 }
 
 func Walk(e Expr, fn func(Expr) bool) bool {

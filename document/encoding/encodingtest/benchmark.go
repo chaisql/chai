@@ -3,11 +3,11 @@ package encodingtest
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/stringutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +36,7 @@ func benchmarkEncodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -54,7 +54,7 @@ func benchmarkDocumentGetByField(b *testing.B, codecBuilder func() encoding.Code
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -72,7 +72,7 @@ func benchmarkDocumentIterate(b *testing.B, codecBuilder func() encoding.Codec) 
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -94,7 +94,7 @@ func benchmarkDecodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -115,7 +115,7 @@ func benchmarkEncodeDocumentJSON(b *testing.B, codecBuilder func() encoding.Code
 	m := make(map[string]int64)
 
 	for i := int64(0); i < 100; i++ {
-		m[fmt.Sprintf("name-%d", i)] = i
+		m[stringutil.Sprintf("name-%d", i)] = i
 	}
 
 	b.ResetTimer()
@@ -128,7 +128,7 @@ func benchmarkDecodeDocumentJSON(b *testing.B, codecBuilder func() encoding.Code
 	m := make(map[string]int64)
 
 	for i := int64(0); i < 100; i++ {
-		m[fmt.Sprintf("name-%d", i)] = i
+		m[stringutil.Sprintf("name-%d", i)] = i
 	}
 
 	d, err := json.Marshal(m)

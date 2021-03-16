@@ -1,11 +1,11 @@
 package stream
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // A ProjectOperator applies an expression on each value of the stream and returns a new value.
@@ -46,7 +46,7 @@ func (op *ProjectOperator) String() string {
 
 	b.WriteString("project(")
 	for i, e := range op.Exprs {
-		b.WriteString(e.(fmt.Stringer).String())
+		b.WriteString(e.(stringutil.Stringer).String())
 		if i+1 < len(op.Exprs) {
 			b.WriteString(", ")
 		}
@@ -79,7 +79,7 @@ func (d *MaskDocument) GetByField(field string) (v document.Value, err error) {
 			return e.Eval(d.Env)
 		}
 
-		if e.(fmt.Stringer).String() == field {
+		if e.(stringutil.Stringer).String() == field {
 			return e.Eval(d.Env)
 		}
 	}
@@ -108,7 +108,7 @@ func (d *MaskDocument) Iterate(fn func(field string, value document.Value) error
 		if ne, ok := e.(*expr.NamedExpr); ok {
 			field = ne.Name()
 		} else {
-			field = e.(fmt.Stringer).String()
+			field = e.(stringutil.Stringer).String()
 		}
 
 		v, err := e.Eval(d.Env)

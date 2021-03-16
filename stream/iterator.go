@@ -2,12 +2,12 @@ package stream
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/stringutil"
 )
 
 type DocumentsOperator struct {
@@ -45,7 +45,7 @@ func (op *DocumentsOperator) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		fmt.Fprintf(&sb, "%s", d)
+		sb.WriteString(d.(stringutil.Stringer).String())
 	}
 	sb.WriteString(")")
 
@@ -94,7 +94,7 @@ func (op *ExprsOperator) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		fmt.Fprintf(&sb, "%v", e)
+		sb.WriteString(e.(stringutil.Stringer).String())
 	}
 	sb.WriteByte(')')
 
@@ -142,9 +142,9 @@ func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Envir
 
 func (it *SeqScanOperator) String() string {
 	if !it.Reverse {
-		return fmt.Sprintf("seqScan(%s)", it.TableName)
+		return stringutil.Sprintf("seqScan(%s)", it.TableName)
 	}
-	return fmt.Sprintf("seqScanReverse(%s)", it.TableName)
+	return stringutil.Sprintf("seqScanReverse(%s)", it.TableName)
 }
 
 // A PkScanOperator iterates over the documents of a table.
@@ -461,7 +461,7 @@ func (r *Range) encode(encoder ValueEncoder, env *expr.Environment) error {
 
 func (r *Range) String() string {
 	if r.Exact {
-		return fmt.Sprintf("%v", r.Min)
+		return stringutil.Sprintf("%v", r.Min)
 	}
 
 	if r.Min.Type.IsZero() {
@@ -472,10 +472,10 @@ func (r *Range) String() string {
 	}
 
 	if r.Exclusive {
-		return fmt.Sprintf("[%v, %v, true]", r.Min, r.Max)
+		return stringutil.Sprintf("[%v, %v, true]", r.Min, r.Max)
 	}
 
-	return fmt.Sprintf("[%v, %v]", r.Min, r.Max)
+	return stringutil.Sprintf("[%v, %v]", r.Min, r.Max)
 }
 
 func (r *Range) IsEqual(other *Range) bool {

@@ -1,10 +1,9 @@
 package expr
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // IsArithmeticOperator returns true if e is one of
@@ -38,7 +37,7 @@ func (op addOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op addOp) String() string {
-	return fmt.Sprintf("%v + %v", op.a, op.b)
+	return stringutil.Sprintf("%v + %v", op.a, op.b)
 }
 
 type subOp struct {
@@ -60,7 +59,7 @@ func (op subOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op subOp) String() string {
-	return fmt.Sprintf("%v - %v", op.a, op.b)
+	return stringutil.Sprintf("%v - %v", op.a, op.b)
 }
 
 type mulOp struct {
@@ -82,7 +81,7 @@ func (op mulOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op mulOp) String() string {
-	return fmt.Sprintf("%v * %v", op.a, op.b)
+	return stringutil.Sprintf("%v * %v", op.a, op.b)
 }
 
 type divOp struct {
@@ -104,7 +103,7 @@ func (op divOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op divOp) String() string {
-	return fmt.Sprintf("%v / %v", op.a, op.b)
+	return stringutil.Sprintf("%v / %v", op.a, op.b)
 }
 
 type modOp struct {
@@ -126,7 +125,7 @@ func (op modOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op modOp) String() string {
-	return fmt.Sprintf("%v %% %v", op.a, op.b)
+	return stringutil.Sprintf("%v %% %v", op.a, op.b)
 }
 
 type bitwiseAndOp struct {
@@ -148,7 +147,7 @@ func (op bitwiseAndOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op bitwiseAndOp) String() string {
-	return fmt.Sprintf("%v & %v", op.a, op.b)
+	return stringutil.Sprintf("%v & %v", op.a, op.b)
 }
 
 type bitwiseOrOp struct {
@@ -170,7 +169,7 @@ func (op bitwiseOrOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op bitwiseOrOp) String() string {
-	return fmt.Sprintf("%v | %v", op.a, op.b)
+	return stringutil.Sprintf("%v | %v", op.a, op.b)
 }
 
 type bitwiseXorOp struct {
@@ -192,5 +191,5 @@ func (op bitwiseXorOp) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op bitwiseXorOp) String() string {
-	return fmt.Sprintf("%v ^ %v", op.a, op.b)
+	return stringutil.Sprintf("%v ^ %v", op.a, op.b)
 }

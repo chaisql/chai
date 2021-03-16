@@ -1,12 +1,11 @@
 package planner
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/stringutil"
 )
 
 var optimizerRules = []func(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error){
@@ -650,7 +649,7 @@ func getRangesFromOp(op expr.Operator, v document.Value) (stream.Ranges, error) 
 			return nil, err
 		}
 	default:
-		panic(fmt.Sprintf("unknown operator %#v", op))
+		panic(stringutil.Sprintf("unknown operator %#v", op))
 	}
 
 	return ranges, nil

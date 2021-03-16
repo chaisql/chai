@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestErrorf(t *testing.T) {
+func TestSprintf(t *testing.T) {
 	tests := []struct {
 		name     string
 		msg      string
@@ -25,8 +25,8 @@ func TestErrorf(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := errorF(test.msg, test.args...)
-			require.EqualError(t, err, test.expected)
+			got := sprintf(test.msg, test.args...)
+			require.Equal(t, got, test.expected)
 		})
 	}
 }

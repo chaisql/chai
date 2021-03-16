@@ -2,11 +2,11 @@ package expr
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/query/glob"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 func like(pattern, text string) bool {
@@ -40,7 +40,7 @@ func (op *LikeOperator) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op *LikeOperator) String() string {
-	return fmt.Sprintf("%v LIKE %v", op.a, op.b)
+	return stringutil.Sprintf("%v LIKE %v", op.a, op.b)
 }
 
 type NotLikeOperator struct {
@@ -57,5 +57,5 @@ func (op *NotLikeOperator) Eval(env *Environment) (document.Value, error) {
 }
 
 func (op *NotLikeOperator) String() string {
-	return fmt.Sprintf("%v NOT LIKE %v", op.a, op.b)
+	return stringutil.Sprintf("%v NOT LIKE %v", op.a, op.b)
 }

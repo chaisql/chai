@@ -1,10 +1,9 @@
 package expr
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // AndOp is the And operator.
@@ -41,9 +40,9 @@ func (op *AndOp) Eval(env *Environment) (document.Value, error) {
 	return trueLitteral, nil
 }
 
-// String implements the fmt.Stringer interface.
+// String implements the stringutil.Stringer interface.
 func (op *AndOp) String() string {
-	return fmt.Sprintf("%v AND %v", op.a, op.b)
+	return stringutil.Sprintf("%v AND %v", op.a, op.b)
 }
 
 // OrOp is the And operator.
@@ -86,7 +85,7 @@ func (op *OrOp) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-// String implements the fmt.Stringer interface.
+// String implements the stringutil.Stringer interface.
 func (op *OrOp) String() string {
-	return fmt.Sprintf("%v OR %v", op.a, op.b)
+	return stringutil.Sprintf("%v OR %v", op.a, op.b)
 }
