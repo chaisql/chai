@@ -319,7 +319,7 @@ func TestCreateIndex(t *testing.T) {
 		{"No name", "CREATE UNIQUE INDEX ON test (foo[1])", false},
 		{"No name if not exists", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[1])", true},
 		{"No fields", "CREATE INDEX idx ON test", true},
-		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", true},
+		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", false}, // TODO(JH) this is yet to be tested
 	}
 
 	for _, test := range tests {

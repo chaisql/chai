@@ -309,6 +309,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				return []document.Value{document.NewIntegerValue(int64(i))}
 			}
 
+			noCallEq := func(t *testing.T, i uint8, key []byte, val []byte) {
+				require.Fail(t, "equality test should not be called here")
+			}
+
 			// the following tests will use that constant to determine how many values needs to be inserted
 			// with the value and noise generators.
 			total := 5
@@ -368,6 +372,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					pivots:        values(document.NewIntegerValue(10)),
 					val:           func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
 					noise:         noiseBlob,
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 				{name: "index=integer, vals=integers, pivot=integer:2",
@@ -408,6 +413,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					indexTypes:    []document.ValueType{document.IntegerValue},
 					pivots:        values(document.Value{Type: document.DoubleValue}),
 					val:           func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 
@@ -459,6 +465,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					indexTypes:    nil,
 					pivots:        values(document.NewDoubleValue(10.8)),
 					val:           func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 
@@ -502,6 +509,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					pivots:        values(document.NewTextValue("foo")),
 					val:           func(i int) []document.Value { return values(document.NewTextValue(strconv.Itoa(i))) },
 					noise:         noiseInts,
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 				{name: "index=text, vals=text, pivot=text('2')",
@@ -516,14 +524,31 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedCount: 3,
 				},
 				// composite --------------------------------------------------
-				// composite indexes must have at least have one value
+				// composite indexes can have empty pivots to iterate on the whole indexed data
+				{name: "index=[untyped, untyped], vals=[int, int], pivot=[nil,nil]",
+					indexTypes: []document.ValueType{0, 0},
+					pivots:     values(document.Value{}, document.Value{}),
+					val: func(i int) []document.Value {
+						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
+					},
+					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+						array := document.NewValueBuffer(
+							document.NewDoubleValue(float64(i)),
+							document.NewDoubleValue(float64(i+1)))
+						requireEqualBinary(t, document.NewArrayValue(array), val)
+					},
+					expectedCount: 5,
+				},
+
+				// composite indexes must have at least have one value if typed
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, int]",
 					indexTypes: []document.ValueType{0, 0},
 					pivots:     values(document.Value{Type: document.IntegerValue}, document.Value{Type: document.IntegerValue}),
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					expectedEq: noCallEq,
+					fail:       true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int]",
 					indexTypes: []document.ValueType{0, 0},
@@ -531,7 +556,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					expectedEq: noCallEq,
+					fail:       true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
 					indexTypes: []document.ValueType{0, 0, 0},
@@ -539,7 +565,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					expectedEq: noCallEq,
+					fail:       true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
 					indexTypes: []document.ValueType{0, 0},
@@ -547,7 +574,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					expectedEq: noCallEq,
+					fail:       true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
 					indexTypes: []document.ValueType{0, 0},
@@ -842,6 +870,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				return []document.Value{document.NewIntegerValue(int64(i))}
 			}
 
+			noCallEq := func(t *testing.T, i uint8, key []byte, val []byte) {
+				require.Fail(t, "equality test should not be called here")
+			}
+
 			// the following tests will use that constant to determine how many values needs to be inserted
 			// with the value and noise generators.
 			total := 5
@@ -901,6 +933,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					pivots:        values(document.NewIntegerValue(-10)),
 					val:           func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
 					noise:         noiseBlob,
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 				{name: "index=integer, vals=integers, pivot=integer:2",
@@ -941,6 +974,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					indexTypes:    []document.ValueType{document.IntegerValue},
 					pivots:        values(document.Value{Type: document.DoubleValue}),
 					val:           func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 
@@ -992,6 +1026,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					indexTypes:    nil,
 					pivots:        values(document.NewDoubleValue(-10.8)),
 					val:           func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 
@@ -1095,6 +1130,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					noise: func(i int) []document.Value {
 						return values(document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[5, 5]",
@@ -1246,12 +1282,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
-					},
+					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 				{name: "index=[int, int], vals=[int, int], pivot=[5, 6]",

@@ -289,13 +289,12 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			nil, false, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"no range", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
-		// 	nil, false, false,
-		// },
+		{
+			"no range", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			nil, false, false,
+		},
 		{
 			"max:2", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
@@ -305,16 +304,15 @@ func TestIndexScan(t *testing.T) {
 			},
 			false, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"max:[2, 2]", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-		// 	stream.Ranges{
-		// 		{Max: testutil.MakeArray(t, 2, 2)},
-		// 	},
-		// 	false, false,
-		// },
+		{
+			"max:[2, 2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			stream.Ranges{
+				{Max: testutil.MakeArray(t, 2, 2)},
+			},
+			false, false,
+		},
 		{
 			"max:1", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
@@ -324,16 +322,15 @@ func TestIndexScan(t *testing.T) {
 			},
 			false, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"max:[1, 2]", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
-		// 	stream.Ranges{
-		// 		{Max: testutil.MakeArray(t, 1, 2)},
-		// 	},
-		// 	false, false,
-		// },
+		{
+			"max:[1, 2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			stream.Ranges{
+				{Max: testutil.MakeArray(t, 1, 2)},
+			},
+			false, false,
+		},
 		{
 			"min", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
@@ -394,16 +391,15 @@ func TestIndexScan(t *testing.T) {
 			},
 			true, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"reverse/max", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-		// 	testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
-		// 	stream.Ranges{
-		// 		{Max: testutil.MakeArray(t, 2, 2)},
-		// 	},
-		// 	true, false,
-		// },
+		{
+			"reverse/max", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Max: testutil.MakeArray(t, 2, 2)},
+			},
+			true, false,
+		},
 		{
 			"reverse/min", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
@@ -422,16 +418,15 @@ func TestIndexScan(t *testing.T) {
 			},
 			true, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"reverse/min", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-		// 	testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
-		// 	stream.Ranges{
-		// 		{Min: testutil.MakeArray(t, 1, 1)},
-		// 	},
-		// 	true, false,
-		// },
+		{
+			"reverse/min", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1, 1)},
+			},
+			true, false,
+		},
 		{
 			"reverse/min/max", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
@@ -450,16 +445,15 @@ func TestIndexScan(t *testing.T) {
 			},
 			true, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"max:[1]", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
-		// 	stream.Ranges{
-		// 		{Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 1)},
-		// 	},
-		// 	false, false,
-		// },
+		{
+			"max:[1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
+			stream.Ranges{
+				{Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 1)},
+			},
+			false, false,
+		},
 		{
 			"reverse max:[1]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
@@ -469,17 +463,15 @@ func TestIndexScan(t *testing.T) {
 			},
 			true, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"max:[1, 2]", "a, b, c",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
-		// 	stream.Ranges{
-		// 		{Arity: 3, ArityMax: 2, Max: testutil.MakeArray(t, 1, 2)},
-		// 	},
-		// 	false, false,
-		// },
-		// todo a,b,c and [1]
+		{
+			"max:[1, 2]", "a, b, c",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			stream.Ranges{
+				{Arity: 3, ArityMax: 2, Max: testutil.MakeArray(t, 1, 2)},
+			},
+			false, false,
+		},
 		{
 			"min:[1]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
@@ -489,16 +481,24 @@ func TestIndexScan(t *testing.T) {
 			},
 			false, false,
 		},
-		// because composite indexes must have at least a defined in [a, b], this case won't happen
-		// {
-		// 	"reverse min:[1]", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
-		// 	stream.Ranges{
-		// 		{Min: testutil.MakeArray(t, 1)},
-		// 	},
-		// 	true, false,
-		// },
+		{
+			"min:[1]", "a, b, c",
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": -2, "b": 2, "c": 1}`, `{"a": 1, "b": 1, "c": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": 1, "b": 1, "c": 2}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1)},
+			},
+			false, false,
+		},
+		{
+			"reverse min:[1]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
+			stream.Ranges{
+				{Min: testutil.MakeArray(t, 1)},
+			},
+			true, false,
+		},
 		{
 			"min:[1], max[2]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
@@ -564,11 +564,11 @@ func TestIndexScan(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				fmt.Println("expected: ")
-				test.expected.Print()
-				fmt.Println("got: ")
-				got.Print()
-				fmt.Println("end test")
+				// fmt.Println("expected: ")
+				// test.expected.Print()
+				// fmt.Println("got: ")
+				// got.Print()
+				// fmt.Println("end test")
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
