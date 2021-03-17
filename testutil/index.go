@@ -16,7 +16,7 @@ func GetIndexContent(t testing.TB, tx *database.Transaction, indexName string) [
 	require.NoError(t, err)
 
 	var content []KV
-	err = idx.AscendGreaterOrEqual(document.Value{}, func(val, key []byte) error {
+	err = idx.AscendGreaterOrEqual([]document.Value{{}}, func(val, key []byte) error {
 		content = append(content, KV{
 			Key:   append([]byte{}, val...),
 			Value: append([]byte{}, key...),

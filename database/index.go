@@ -196,18 +196,31 @@ func (idx *Index) validatePivots(pivots []document.Value) error {
 	}
 
 	if idx.IsComposite() {
+		allNil := true
+		prevV := true
+		for _, p := range pivots {
+			allNil = allNil && p.V == nil
+			if prevV {
+				prevV = prevV && p.V != nil
+			} else {
+				if !allNil {
+					return errors.New("cannot iterate on a composite index with a pivot that has holes")
+				}
+			}
+		}
+
 		if pivots[0].V == nil {
 			return errors.New("cannot iterate on a composite index with a pivot whose first item has no value")
 		}
 
-		previousPivotHasValue := true
-		for _, p := range pivots[1:] {
-			if previousPivotHasValue {
-				previousPivotHasValue = p.V != nil
-			} else {
-				return errors.New("cannot iterate on a composite index with a pivot that has holes")
-			}
-		}
+		// previousPivotHasValue := true
+		// for _, p := range pivots[1:] {
+		// 	if previousPivotHasValue {
+		// 		previousPivotHasValue = p.V != nil
+		// 	} else {
+		// 		return errors.New("cannot iterate on a composite index with a pivot that has holes")
+		// 	}
+		// }
 	}
 
 	return nil
@@ -398,8 +411,24 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 			if pivots[0].Type != 0 && pivots[0].V == nil {
 				seek = []byte{byte(pivots[0].Type)}
 			} else {
-				vb := document.NewValueBuffer(pivots...)
+				ppivots := make([]document.Value, 0, len(pivots))
+				var last *document.Value
+				for _, p := range pivots {
+					if p.V != nil {
+						ppivots = append(ppivots, p)
+					} else {
+						last = &p
+						break
+					}
+				}
+
+				vb := document.NewValueBuffer(ppivots...)
 				seek, err = idx.EncodeValue(document.NewArrayValue(vb))
+
+				// if we have a [2, int] case, let's just add the type
+				if last != nil {
+					seek = append(seek[:len(seek)-1], byte(0x1f), byte(last.Type), byte(0x1e))
+				}
 
 				if err != nil {
 					return err
