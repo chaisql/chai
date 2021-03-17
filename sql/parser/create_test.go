@@ -264,13 +264,22 @@ func TestParserCreateIndex(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.Path(parsePath(t, "foo"))}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.Path(parsePath(t, "foo.bar[1]")), IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.Path(parsePath(t, "foo[3].baz")), IfNotExists: true, Unique: true}, false},
-		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Path: document.Path(parsePath(t, "foo[3].baz")), Unique: true}, false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo"))}}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo.bar[1]"))}, IfNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo[3].baz"))}, IfNotExists: true, Unique: true}, false},
+		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo[3].baz"))}, Unique: true}, false},
 		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
+		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)",
+			query.CreateIndexStmt(query.CreateIndexStmt{
+				IndexName: "idx",
+				TableName: "test",
+				Paths: []document.Path{
+					document.Path(parsePath(t, "foo")),
+					document.Path(parsePath(t, "bar")),
+				},
+			}),
+			false},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
-		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}
 
 	for _, test := range tests {

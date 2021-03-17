@@ -181,6 +181,18 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 	return engine.ErrKeyNotFound
 }
 
+func allEmpty(pivots []document.Value) bool {
+	res := true
+	for _, p := range pivots {
+		res = res && p.Type == 0
+		if !res {
+			break
+		}
+	}
+
+	return res
+}
+
 // validatePivots returns an error when the pivots are unsuitable for the index:
 // - no pivots at all
 // - having pivots length superior to the index arity
@@ -196,31 +208,32 @@ func (idx *Index) validatePivots(pivots []document.Value) error {
 	}
 
 	if idx.IsComposite() {
-		allNil := true
-		prevV := true
-		for _, p := range pivots {
-			allNil = allNil && p.V == nil
-			if prevV {
-				prevV = prevV && p.V != nil
-			} else {
-				if !allNil {
+		if !allEmpty(pivots) {
+			// the first pivot must have a value
+			if pivots[0].V == nil {
+				return errors.New("cannot iterate on a composite index whose first pivot has no value")
+			}
+
+			// it's acceptable for the last pivot to just have a type and no value
+			hasValue := true
+			for _, p := range pivots {
+				// if on the previous pivot we have a value
+				if hasValue {
+					hasValue = p.V != nil
+
+					// if we have no value, we at least need a type
+					if !hasValue {
+						if p.Type == 0 {
+							return errors.New("cannot iterate on a composite index with a pivot that has holes")
+						}
+					}
+				} else {
 					return errors.New("cannot iterate on a composite index with a pivot that has holes")
 				}
 			}
+		} else {
+			return nil
 		}
-
-		if pivots[0].V == nil {
-			return errors.New("cannot iterate on a composite index with a pivot whose first item has no value")
-		}
-
-		// previousPivotHasValue := true
-		// for _, p := range pivots[1:] {
-		// 	if previousPivotHasValue {
-		// 		previousPivotHasValue = p.V != nil
-		// 	} else {
-		// 		return errors.New("cannot iterate on a composite index with a pivot that has holes")
-		// 	}
-		// }
 	}
 
 	return nil
