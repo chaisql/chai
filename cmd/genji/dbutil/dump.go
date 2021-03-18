@@ -211,7 +211,7 @@ func dumpSchema(tx *genji.Tx, w io.Writer, tableName string) error {
 		}
 
 		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Info.IndexName, index.Info.TableName,
-			index.Info.Paths)
+			index.Info.Paths[0])
 		if err != nil {
 			return err
 		}

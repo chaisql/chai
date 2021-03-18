@@ -558,6 +558,12 @@ func (p Path) GetValueFromArray(a Array) (Value, error) {
 	return p[1:].getValueFromValue(v)
 }
 
+func (p Path) Clone() Path {
+	c := make(Path, len(p))
+	copy(c, p)
+	return c
+}
+
 func (p Path) getValueFromValue(v Value) (Value, error) {
 	switch v.Type {
 	case DocumentValue:

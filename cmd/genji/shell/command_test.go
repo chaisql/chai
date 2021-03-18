@@ -162,6 +162,10 @@ func TestSaveCommand(t *testing.T) {
 				require.Len(t, indexes, 1)
 				require.Equal(t, "idx_a", indexes[0])
 
+				index, err := tx.GetIndex("idx_a")
+				require.NoError(t, err)
+				require.Equal(t, []document.ValueType{document.DoubleValue}, index.Info.Types)
+
 				return nil
 			})
 			require.NoError(t, err)
@@ -177,7 +181,7 @@ func TestSaveCommand(t *testing.T) {
 
 			// check that by iterating through the index and finding the previously inserted values
 			var i int
-			err = idx.AscendGreaterOrEqual(document.Value{Type: document.DoubleValue}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
 				i++
 				return nil
 			})
