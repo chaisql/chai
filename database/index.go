@@ -89,7 +89,6 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	for i, typ := range idx.Info.Types {
 		// it is possible to set an index(a,b) on (a), it will be assumed that b is null in that case
 		if typ != 0 && i < len(vs) && typ != vs[i].Type {
-			// TODO use the full version to clarify the error
 			return fmt.Errorf("cannot index value of type %s in %s index", vs[i].Type, typ)
 		}
 	}
@@ -188,21 +187,20 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 // - no pivots at all
 // - having pivots length superior to the index arity
 // - having the first pivot without a value when the subsequent ones do have values
-func (idx *Index) validatePivots(pivots []document.Value) error {
+func (idx *Index) validatePivots(pivots []document.Value) {
 	if len(pivots) == 0 {
-		return errors.New("cannot iterate without a pivot")
+		panic("cannot iterate without a pivot")
 	}
 
 	if len(pivots) > idx.Arity() {
-		// TODO panic
-		return errors.New("cannot iterate with a pivot whose size is superior to the index arity")
+		panic("cannot iterate with a pivot whose size is superior to the index arity")
 	}
 
 	if idx.IsComposite() {
 		if !allEmpty(pivots) {
 			// the first pivot must have a value
 			if pivots[0].V == nil {
-				return errors.New("cannot iterate on a composite index whose first pivot has no value")
+				panic("cannot iterate on a composite index whose first pivot has no value")
 			}
 
 			// it's acceptable for the last pivot to just have a type and no value
@@ -215,19 +213,15 @@ func (idx *Index) validatePivots(pivots []document.Value) error {
 					// if we have no value, we at least need a type
 					if !hasValue {
 						if p.Type == 0 {
-							return errors.New("cannot iterate on a composite index with a pivot that has holes")
+							panic("cannot iterate on a composite index with a pivot with both values and nil values")
 						}
 					}
 				} else {
-					return errors.New("cannot iterate on a composite index with a pivot that has holes")
+					panic("cannot iterate on a composite index with a pivot with both values and nil values")
 				}
 			}
-		} else {
-			return nil
 		}
 	}
-
-	return nil
 }
 
 // allEmpty returns true when all pivots are valueless and untyped.
@@ -264,10 +258,7 @@ func (idx *Index) DescendLessOrEqual(pivots []document.Value, fn func(val, key [
 }
 
 func (idx *Index) iterateOnStore(pivots []document.Value, reverse bool, fn func(val, key []byte) error) error {
-	err := idx.validatePivots(pivots)
-	if err != nil {
-		return err
-	}
+	idx.validatePivots(pivots)
 
 	// If index and pivot are typed but not of the same type, return no results.
 	for i, p := range pivots {
