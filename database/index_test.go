@@ -331,7 +331,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				expectedEq func(t *testing.T, i uint8, key []byte, val []byte)
 				// the total count of iteration that should happen
 				expectedCount int
-				fail          bool
+				mustPanic     bool
 			}{
 				// integers ---------------------------------------------------
 				{name: "index=untyped, vals=integers, pivot=integer",
@@ -548,7 +548,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: noCallEq,
-					fail:       true,
+					mustPanic:  true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int]",
 					indexTypes: []document.ValueType{0, 0},
@@ -557,7 +557,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: noCallEq,
-					fail:       true,
+					mustPanic:  true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
 					indexTypes: []document.ValueType{0, 0, 0},
@@ -566,7 +566,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: noCallEq,
-					fail:       true,
+					mustPanic:  true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, nil]",
 					indexTypes: []document.ValueType{0, 0, 0},
@@ -575,7 +575,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: noCallEq,
-					fail:       true,
+					mustPanic:  true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
 					indexTypes: []document.ValueType{0, 0},
@@ -584,7 +584,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: noCallEq,
-					fail:       true,
+					mustPanic:  true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
 					indexTypes: []document.ValueType{0, 0},
@@ -834,15 +834,18 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 					var i uint8
 					var count int
-					err := idx.AscendGreaterOrEqual(test.pivots, func(val, rid []byte) error {
-						test.expectedEq(t, i, rid, val)
-						i++
-						count++
-						return nil
-					})
-					if test.fail {
-						require.Error(t, err)
+					fn := func() error {
+						return idx.AscendGreaterOrEqual(test.pivots, func(val, rid []byte) error {
+							test.expectedEq(t, i, rid, val)
+							i++
+							count++
+							return nil
+						})
+					}
+					if test.mustPanic {
+						require.Panics(t, func() { _ = fn() })
 					} else {
+						err := fn()
 						require.NoError(t, err)
 						require.Equal(t, test.expectedCount, count)
 					}
@@ -901,7 +904,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				expectedEq func(t *testing.T, i uint8, key []byte, val []byte)
 				// the total count of iteration that should happen
 				expectedCount int
-				fail          bool
+				mustPanic     bool
 			}{
 				// integers ---------------------------------------------------
 				{name: "index=untyped, vals=integers, pivot=integer",
@@ -1104,7 +1107,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					mustPanic: true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int]",
 					indexTypes: []document.ValueType{0, 0},
@@ -1112,7 +1115,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					mustPanic: true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
 					indexTypes: []document.ValueType{0, 0, 0},
@@ -1120,7 +1123,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					mustPanic: true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
 					indexTypes: []document.ValueType{0, 0},
@@ -1128,7 +1131,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					fail: true,
+					mustPanic: true,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
 					indexTypes: []document.ValueType{0, 0},
@@ -1395,15 +1398,22 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 					var i uint8
 					var count int
-					err := idx.DescendLessOrEqual(test.pivots, func(val, rid []byte) error {
-						test.expectedEq(t, uint8(total-1)-i, rid, val)
-						i++
-						count++
-						return nil
-					})
-					if test.fail {
-						require.Error(t, err)
+
+					fn := func() error {
+						t.Helper()
+						return idx.DescendLessOrEqual(test.pivots, func(val, rid []byte) error {
+							test.expectedEq(t, uint8(total-1)-i, rid, val)
+							i++
+							count++
+							return nil
+						})
+					}
+					if test.mustPanic {
+						require.Panics(t, func() {
+							_ = fn()
+						})
 					} else {
+						err := fn()
 						require.NoError(t, err)
 						require.Equal(t, test.expectedCount, count)
 					}
