@@ -235,7 +235,7 @@ type IndexInfo struct {
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
 
-	// If set, the index is typed and only accepts that type
+	// If set, the index is typed and only accepts values of those types.
 	Types []document.ValueType
 }
 
