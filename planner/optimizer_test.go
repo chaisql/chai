@@ -271,14 +271,6 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Project(parser.MustParseExpr("pk()"))),
 		},
-		{
-			"lolol",
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("c as C"))).
-				Pipe(stream.Distinct()),
-			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parser.MustParseExpr("c as C"))),
-		},
 	}
 
 	for _, test := range tests {
