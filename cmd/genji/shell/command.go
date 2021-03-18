@@ -126,7 +126,7 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 				return err
 			}
 
-			fmt.Fprintf(w, "%s ON %s (%s)\n", index.IndexName, index.TableName, index.Paths)
+			fmt.Fprintf(w, "%s ON %s (%s)\n", index.IndexName, index.TableName, index.Paths[0])
 
 			return nil
 		})

@@ -323,9 +323,10 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 	return c.buildIndex(tx, idx, tb)
 }
 
+// TODO not yet compatible with composite index
 func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 	return table.Iterate(func(d document.Document) error {
-		// TODO
+		// TODO(JH)
 		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {
 			return nil
@@ -334,7 +335,6 @@ func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 			return err
 		}
 
-		// TODO
 		err = idx.Set([]document.Value{v}, d.(document.Keyer).RawKey())
 		if err != nil {
 			return stringutil.Errorf("error while building the index: %w", err)
@@ -492,13 +492,13 @@ func (c *catalogCache) AddIndex(tx *Transaction, info *IndexInfo) error {
 		return ErrTableNotFound
 	}
 
-	// if the index is created on a field on which we know the type,
-	// create a typed index.
+	// if the index is created on a field on which we know the type then create a typed index.
+	// if the given info contained existing types, they are overriden.
+	info.Types = nil
 	for _, fc := range ti.FieldConstraints {
 		for _, path := range info.Paths {
 			if fc.Path.IsEqual(path) {
 				if fc.Type != 0 {
-					// TODO
 					info.Types = append(info.Types, document.ValueType(fc.Type))
 				}
 

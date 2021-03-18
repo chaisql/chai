@@ -235,7 +235,7 @@ type IndexInfo struct {
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
 
-	// If set, the index is typed and only accepts values of those types.
+	// If set, the index is typed and only accepts values of those types	.
 	Types []document.ValueType
 }
 
@@ -247,14 +247,12 @@ func (i *IndexInfo) ToDocument() document.Document {
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
 
-	// TODO check that
 	vb := document.NewValueBuffer()
 	for _, path := range i.Paths {
 		vb.Append(document.NewArrayValue(pathToArray(path)))
 	}
 
 	buf.Add("paths", document.NewArrayValue(vb))
-	// TODO check that
 	if i.Types != nil {
 		types := make([]document.Value, 0, len(i.Types))
 		for _, typ := range i.Types {
@@ -290,6 +288,7 @@ func (i *IndexInfo) ScanDocument(d document.Document) error {
 		return err
 	}
 
+	i.Paths = nil
 	err = v.V.(document.Array).Iterate(func(ii int, pval document.Value) error {
 		p, err := arrayToPath(pval.V.(document.Array))
 		if err != nil {
@@ -304,18 +303,13 @@ func (i *IndexInfo) ScanDocument(d document.Document) error {
 		return err
 	}
 
-	// i.Paths, err = arrayToPath(v.V.(document.Array))
-	// if err != nil {
-	// 	return err
-	// }
-
 	v, err = d.GetByField("types")
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
 
-	// TODO refacto
 	if err == nil {
+		i.Types = nil
 		err = v.V.(document.Array).Iterate(func(ii int, tval document.Value) error {
 			i.Types = append(i.Types, document.ValueType(tval.V.(int64)))
 			return nil
@@ -331,7 +325,17 @@ func (i *IndexInfo) ScanDocument(d document.Document) error {
 
 // Clone returns a copy of the index information.
 func (i IndexInfo) Clone() *IndexInfo {
-	return &i
+	c := i
+
+	c.Paths = make([]document.Path, len(i.Paths))
+	for i, p := range i.Paths {
+		c.Paths[i] = p.Clone()
+	}
+
+	c.Types = make([]document.ValueType, len(i.Types))
+	copy(c.Types, i.Types)
+
+	return &c
 }
 
 type indexStore struct {
