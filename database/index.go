@@ -83,13 +83,13 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	}
 
 	if len(vs) != idx.Arity() {
-		return fmt.Errorf("cannot index %d values on an index of arity %d", len(vs), len(idx.Info.Types))
+		return stringutil.Errorf("cannot index %d values on an index of arity %d", len(vs), len(idx.Info.Types))
 	}
 
 	for i, typ := range idx.Info.Types {
 		// it is possible to set an index(a,b) on (a), it will be assumed that b is null in that case
 		if typ != 0 && i < len(vs) && typ != vs[i].Type {
-			return fmt.Errorf("cannot index value of type %s in %s index", vs[i].Type, typ)
+			return stringutil.Errorf("cannot index value of type %s in %s index", vs[i].Type, typ)
 		}
 	}
 

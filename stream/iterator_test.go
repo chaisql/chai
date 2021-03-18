@@ -564,11 +564,6 @@ func TestIndexScan(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				// fmt.Println("expected: ")
-				// test.expected.Print()
-				// fmt.Println("got: ")
-				// got.Print()
-				// fmt.Println("end test")
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}

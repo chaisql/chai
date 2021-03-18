@@ -66,15 +66,6 @@ func MakeArray(t testing.TB, jsonArray string) document.Array {
 
 type Docs []document.Document
 
-func (docs Docs) Print() {
-	fmt.Println("----")
-	for _, d := range docs {
-		dv := document.NewDocumentValue(d)
-		fmt.Println(dv)
-	}
-	fmt.Println("----")
-}
-
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	t.Helper()
 
