@@ -568,6 +568,15 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: noCallEq,
 					fail:       true,
 				},
+				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, nil]",
+					indexTypes: []document.ValueType{0, 0, 0},
+					pivots:     values(document.NewIntegerValue(0), document.Value{Type: document.IntegerValue}, document.NewIntegerValue(0), document.Value{}),
+					val: func(i int) []document.Value {
+						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)), document.NewIntegerValue(int64(i+1)))
+					},
+					expectedEq: noCallEq,
+					fail:       true,
+				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
 					indexTypes: []document.ValueType{0, 0},
 					pivots:     values(document.Value{Type: document.IntegerValue}, document.NewIntegerValue(0)),

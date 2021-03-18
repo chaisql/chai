@@ -450,7 +450,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
 			stream.Ranges{
-				{Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 1)},
+				{Arity: 2, IndexArityMax: 1, Max: testutil.MakeArray(t, 1)},
 			},
 			false, false,
 		},
@@ -459,7 +459,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
-				{Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 1)},
+				{Arity: 2, IndexArityMax: 1, Max: testutil.MakeArray(t, 1)},
 			},
 			true, false,
 		},
@@ -468,7 +468,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			stream.Ranges{
-				{Arity: 3, ArityMax: 2, Max: testutil.MakeArray(t, 1, 2)},
+				{Arity: 3, IndexArityMax: 2, Max: testutil.MakeArray(t, 1, 2)},
 			},
 			false, false,
 		},
@@ -504,7 +504,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 2, "b": 42}`),
 			stream.Ranges{
-				{Min: testutil.MakeArray(t, 1), Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 2)},
+				{Min: testutil.MakeArray(t, 1), Arity: 2, IndexArityMax: 1, Max: testutil.MakeArray(t, 2)},
 			},
 			false, false,
 		},
@@ -513,7 +513,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 42}`, `{"a": 1, "b": -2}`),
 			stream.Ranges{
-				{Min: testutil.MakeArray(t, 1), Arity: 2, ArityMax: 1, Max: testutil.MakeArray(t, 2)},
+				{Min: testutil.MakeArray(t, 1), Arity: 2, IndexArityMax: 1, Max: testutil.MakeArray(t, 2)},
 			},
 			true, false,
 		},

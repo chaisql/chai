@@ -275,9 +275,13 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 type IndexScanOperator struct {
 	baseOperator
 
+	// IndexName references the index that will be used to perform the scan
 	IndexName string
-	Ranges    Ranges
-	Reverse   bool
+	// Ranges defines the boundaries of the scan, each corresponding to one value of the group of values
+	// being indexed in the case of a composite index.
+	Ranges Ranges
+	// Reverse indicates the direction used to traverse the index.
+	Reverse bool
 }
 
 // IndexScan creates an iterator that iterates over each document of the given table.
@@ -355,72 +359,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 	}
 
 	for _, rng := range it.Ranges {
-
-		if index.IsComposite() {
-			var start, end document.Value
-			if !it.Reverse {
-				start = rng.Min
-				end = rng.Max
-			} else {
-				start = rng.Max
-				end = rng.Min
-			}
-
-			var encEnd []byte
-
-			// deal with the fact that we can't have a zero then values
-			// TODO(JH)
-			if !end.Type.IsZero() && end.V != nil {
-				encEnd, err = index.EncodeValue(end)
-				if err != nil {
-					return err
-				}
-			}
-
-			pivots := []document.Value{}
-			if start.V != nil {
-				start.V.(document.Array).Iterate(func(i int, value document.Value) error {
-					pivots = append(pivots, value)
-					return nil
-				})
-			} else {
-				for i := 0; i < index.Arity(); i++ {
-					pivots = append(pivots, document.Value{})
-				}
-			}
-
-			err = iterator(pivots, func(val, key []byte) error {
-				if !rng.IsInRange(val) {
-					// if we reached the end of our range, we can stop iterating.
-					if encEnd == nil {
-						return nil
-					}
-					cmp := bytes.Compare(val, encEnd)
-					if !it.Reverse && cmp > 0 {
-						return ErrStreamClosed
-					}
-					if it.Reverse && cmp < 0 {
-						return ErrStreamClosed
-					}
-					return nil
-				}
-
-				d, err := table.GetDocument(key)
-				if err != nil {
-					return err
-				}
-
-				newEnv.SetDocument(d)
-				return fn(&newEnv)
-			})
-			if err == ErrStreamClosed {
-				err = nil
-			}
-			if err != nil {
-				return err
-			}
-
-		} else {
+		if !index.IsComposite() {
 			var start, end document.Value
 			if !it.Reverse {
 				start = rng.Min
@@ -468,6 +407,69 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 			if err != nil {
 				return err
 			}
+		} else {
+			var start, end document.Value
+			if !it.Reverse {
+				start = rng.Min
+				end = rng.Max
+			} else {
+				start = rng.Max
+				end = rng.Min
+			}
+
+			var encEnd []byte
+			if end.V != nil {
+				encEnd, err = index.EncodeValue(end)
+				if err != nil {
+					return err
+				}
+			}
+
+			// extract the pivots from the range, which in the case of a composite index is an array
+			pivots := []document.Value{}
+			if start.V != nil {
+				start.V.(document.Array).Iterate(func(i int, value document.Value) error {
+					pivots = append(pivots, value)
+					return nil
+				})
+			} else {
+				for i := 0; i < index.Arity(); i++ {
+					pivots = append(pivots, document.Value{})
+				}
+			}
+
+			err = iterator(pivots, func(val, key []byte) error {
+				if !rng.IsInRange(val) {
+					// if we reached the end of our range, we can stop iterating.
+					if encEnd == nil {
+						return nil
+					}
+					cmp := bytes.Compare(val, encEnd)
+					if !it.Reverse && cmp > 0 {
+						return ErrStreamClosed
+					}
+					if it.Reverse && cmp < 0 {
+						return ErrStreamClosed
+					}
+					return nil
+				}
+
+				d, err := table.GetDocument(key)
+				if err != nil {
+					return err
+				}
+
+				newEnv.SetDocument(d)
+				return fn(&newEnv)
+			})
+
+			if err == ErrStreamClosed {
+				err = nil
+			}
+			if err != nil {
+				return err
+			}
+
 		}
 	}
 
@@ -485,8 +487,23 @@ type Range struct {
 	// and for determining the global upper bound.
 	Exact bool
 
-	Arity                  int
-	ArityMax               int
+	// Arity represents the range arity in the case of comparing the range
+	// to a composite index. With IndexArityMax, it enables to deal with the
+	// cases of a composite range specifying boundaries partially, ie:
+	// - Index on (a, b, c)
+	// - Range is defining a max only for a and b
+	// Then Arity is set to 2 and IndexArityMax is set to 3
+	//
+	// On
+	// This field is subject to change when the support for composite index is added
+	// to the query planner in an ulterior pull-request.
+	Arity int
+
+	// IndexArityMax represents the underlying Index arity.
+	//
+	// This field is subject to change when the support for composite index is added
+	// to the query planner in an ulterior pull-request.
+	IndexArityMax          int
 	encodedMin, encodedMax []byte
 	rangeType              document.ValueType
 }
@@ -685,9 +702,7 @@ func (r *Range) IsInRange(value []byte) bool {
 	// the value is bigger than the lower bound,
 	// see if it matches the upper bound.
 	if r.encodedMax != nil {
-		if r.ArityMax < r.Arity {
-			fmt.Println("val", value)
-			fmt.Println("max", r.encodedMax)
+		if r.IndexArityMax < r.Arity {
 			cmpMax = bytes.Compare(value[:len(r.encodedMax)-1], r.encodedMax)
 		} else {
 			cmpMax = bytes.Compare(value, r.encodedMax)
