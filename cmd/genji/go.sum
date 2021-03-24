@@ -39,6 +39,10 @@ github.com/dgryski/trifles v0.0.0-20200323201526-dd97f9abfb48/go.mod h1:if7Fbed8
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
+github.com/genjidb/genji v0.11.0 h1:PdVwdyG2cczslmS2qe4XYC95IhZSzrFIpekR0yTRWzI=
+github.com/genjidb/genji v0.11.0/go.mod h1:Nr2LDXX097HXSMprmMwd30bRsKg/zi01et1IZNlyGpI=
+github.com/genjidb/genji/engine/badgerengine v0.11.0 h1:MfgIqAstJ1kkx/MDRWHaeN27ZdlcKOdqGjhUGZ9DGG8=
+github.com/genjidb/genji/engine/badgerengine v0.11.0/go.mod h1:LNyRkvSjx8WsPlmzNjyZf3pJscPkPZnuOv57YYWofsU=
 github.com/go-delve/delve v1.5.0/go.mod h1:c6b3a1Gry6x8a4LGCe/CWzrocrfaHvkUxCj3k4bvSUQ=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 h1:ZgQEtGgCBiWRM39fZuwSd1LwSqqSW0hOdXCYYDX0R3I=
