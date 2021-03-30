@@ -19,7 +19,7 @@ func MakeValue(t testing.TB, v interface{}) document.Value {
 	return vv
 }
 
-func MakeArray(t testing.TB, vs ...interface{}) document.Value {
+func MakeArrayValue(t testing.TB, vs ...interface{}) document.Value {
 	t.Helper()
 
 	vvs := []document.Value{}

@@ -334,37 +334,6 @@ func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
 func (idx *Index) compositeEncodeValue(v document.Value) ([]byte, error) {
 	// v has been turned into an array of values being indexed
 	// if we reach this point, array *must* be a document.ValueBuffer
-	array := v.V.(*document.ValueBuffer)
-
-	// in the case of one of the index types being 0 (untyped) and the corresponding
-	// value being an integer, convert it into a double.
-	err := array.Iterate(func(i int, vi document.Value) error {
-		if idx.Info.Types[i] != 0 {
-			return nil
-		}
-
-		var err error
-		if vi.Type == document.IntegerValue {
-			if vi.V == nil {
-				vi.Type = document.DoubleValue
-			} else {
-				vi, err = vi.CastAsDouble()
-				if err != nil {
-					return err
-				}
-			}
-
-			// update the value
-			return array.Replace(i, vi)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
 	return v.MarshalBinary()
 }
 
@@ -475,19 +444,6 @@ func (idx *Index) buildSeek(pivots []document.Value, reverse bool) ([]byte, erro
 
 func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool, fn func(item engine.Item) error) error {
 	var err error
-	// Convert values into doubles if they are integers and the index is untyped
-	for i, typ := range idx.Info.Types {
-		if i < len(pivots) && typ == 0 && pivots[i].Type == document.IntegerValue {
-			if pivots[i].V == nil {
-				pivots[i].Type = document.DoubleValue
-			} else {
-				pivots[i], err = pivots[i].CastAsDouble()
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
 
 	seek, err := idx.buildSeek(pivots, reverse)
 	if err != nil {

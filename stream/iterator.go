@@ -664,6 +664,7 @@ func (r Ranges) Cost() int {
 		// if there are two boundaries, increment by 50
 		if !rng.Min.Type.IsZero() && !rng.Max.Type.IsZero() {
 			cost += 50
+			continue
 		}
 
 		// if there is only one boundary, increment by 100
