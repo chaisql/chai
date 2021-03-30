@@ -300,7 +300,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 	}
 }
 
-func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
+func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 	tests := []struct {
 		name           string
 		root, expected *st.Stream
@@ -320,8 +320,8 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_b", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
-				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
 			"FROM foo WHERE c = 3 AND b = 2",
@@ -529,4 +529,123 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
+	tests := []struct {
+		name           string
+		root, expected *st.Stream
+	}{
+		{
+			"FROM foo WHERE a = 1 AND d = 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("d = 2"))),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.MakeArrayValue(t, 1, 2), Exact: true})),
+		},
+		{
+			"FROM foo WHERE a = 1 AND d > 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.MakeArrayValue(t, 1, 2), Exclusive: true})),
+		},
+		{
+			"FROM foo WHERE a = 1 AND d >= 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("d >= 2"))),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.MakeArrayValue(t, 1, 2)})),
+		},
+		{
+			"FROM foo WHERE a > 1 AND d > 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a > 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exclusive: true})).
+				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
+		},
+		{
+			"FROM foo WHERE a = 1 AND b = 2 AND c = 3",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Filter(parser.MustParseExpr("c = 3"))),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.MakeArrayValue(t, 1, 2, 3), Exact: true})),
+		},
+		{
+			"FROM foo WHERE a = 1 AND b = 2", // c is omitted, but it can still use idx_foo_a_b_c
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.MakeArrayValue(t, 1, 2), Exact: true})),
+		},
+		{
+			"FROM foo WHERE a = 1 AND b = 2 and k = 3", // c is omitted, but it can still use idx_foo_a_b_c
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.MakeArrayValue(t, 1, 2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
+		},
+		{
+			"FROM foo WHERE a = 1 AND c = 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("c = 2"))),
+			// c will be picked because it's a unique index and thus has a lower cost
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
+		},
+		{
+			"FROM foo WHERE b = 1 AND c = 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("b = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("c = 2"))),
+			// c will be picked because it's a unique index and thus has a lower cost
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: document.NewIntegerValue(2), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 1"))),
+		},
+		{
+			"FROM foo WHERE a = 1 AND b = 2 AND c = 'a'", // c is from the wrong type and will prevent the index to be picked
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Filter(parser.MustParseExpr("c = 'a'"))),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
+				Pipe(st.Filter(parser.MustParseExpr("c = 'a'"))),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			tx, err := db.Begin(true)
+			require.NoError(t, err)
+			defer tx.Rollback()
+
+			err = tx.Exec(`
+				CREATE TABLE foo (k INT PRIMARY KEY, c INT);
+				CREATE INDEX idx_foo_a ON foo(a);
+				CREATE INDEX idx_foo_b ON foo(b);
+				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
+				CREATE INDEX idx_foo_a_d ON foo(a, d);
+				CREATE INDEX idx_foo_a_b_c ON foo(a, b, c);
+				INSERT INTO foo (k, a, b, c, d) VALUES
+					(1, 1, 1, 1, 1),
+					(2, 2, 2, 2, 2),
+					(3, 3, 3, 3, 3)
+			`)
+			require.NoError(t, err)
+
+			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx.Transaction, nil)
+			require.NoError(t, err)
+			require.Equal(t, test.expected.String(), res.String())
+		})
+	}
 }

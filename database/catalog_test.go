@@ -708,5 +708,5 @@ func TestReadOnlyTables(t *testing.T) {
 	doc, err = db.QueryDocument(`CREATE INDEX idx_foo_a ON foo(a); SELECT * FROM __genji_indexes`)
 	require.NoError(t, err)
 
-	testutil.RequireDocJSONEq(t, doc, `{"index_name":"idx_foo_a", "path":["a"], "table_name":"foo", "unique":false}`)
+	testutil.RequireDocJSONEq(t, doc, `{"index_name":"idx_foo_a", "paths":[["a"]], "table_name":"foo", "types":[0], "unique":false}`)
 }

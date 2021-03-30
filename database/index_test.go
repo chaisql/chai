@@ -159,15 +159,15 @@ func TestIndexDelete(t *testing.T) {
 		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte) error {
 			if i == 0 {
 				expected := document.NewArrayValue(document.NewValueBuffer(
-					document.NewDoubleValue(10),
-					document.NewDoubleValue(10),
+					document.NewIntegerValue(10),
+					document.NewIntegerValue(10),
 				))
 				requireEqualBinary(t, expected, v)
 				require.Equal(t, "other-key", string(k))
 			} else if i == 1 {
 				expected := document.NewArrayValue(document.NewValueBuffer(
-					document.NewDoubleValue(11),
-					document.NewDoubleValue(11),
+					document.NewIntegerValue(11),
+					document.NewIntegerValue(11),
 				))
 				requireEqualBinary(t, expected, v)
 				require.Equal(t, "yet-another-key", string(k))
@@ -228,15 +228,15 @@ func TestIndexDelete(t *testing.T) {
 			switch i {
 			case 0:
 				expected := document.NewArrayValue(document.NewValueBuffer(
-					document.NewDoubleValue(10),
-					document.NewDoubleValue(10),
+					document.NewIntegerValue(10),
+					document.NewIntegerValue(10),
 				))
 				requireEqualBinary(t, expected, v)
 				require.Equal(t, "key1", string(k))
 			case 1:
 				expected := document.NewArrayValue(document.NewValueBuffer(
-					document.NewDoubleValue(12),
-					document.NewDoubleValue(12),
+					document.NewIntegerValue(12),
+					document.NewIntegerValue(12),
 				))
 				requireEqualBinary(t, expected, v)
 				require.Equal(t, "key3", string(k))
@@ -341,7 +341,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					noise:      noiseBlob,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
+						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
 					},
 					expectedCount: 5,
 				},
@@ -363,7 +363,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
+						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
 					},
 					expectedCount: 3,
 				},
@@ -386,29 +386,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedCount: 3,
 				},
-				// integers, when the index isn't typed can be iterated as doubles
-				{name: "index=untyped, vals=integers, pivot=double",
-					indexTypes: nil,
-					pivots:     values(document.Value{Type: document.DoubleValue}),
-					val:        func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=untyped, vals=integers, pivot=double:1.8",
-					indexTypes: nil,
-					pivots:     values(document.NewDoubleValue(1.8)),
-					val:        func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
-					},
-					expectedCount: 3,
-				},
-				// but not when the index is typed to integers, although it won't yield an error
+				// TODO but not when the index is typed to integers, although it won't yield an error
 				{name: "index=integer, vals=integers, pivot=double",
 					indexTypes:    []document.ValueType{document.IntegerValue},
 					pivots:        values(document.Value{Type: document.DoubleValue}),
@@ -421,17 +399,6 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				{name: "index=untyped, vals=doubles, pivot=double",
 					indexTypes: nil,
 					pivots:     values(document.Value{Type: document.DoubleValue}),
-					val:        func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
-					},
-					expectedCount: 5,
-				},
-				// when iterating on doubles, but passing an integer pivot, it'll be casted as a double
-				{name: "index=untyped, vals=doubles, pivot=integers",
-					indexTypes: nil,
-					pivots:     values(document.Value{Type: document.IntegerValue}),
 					val:        func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
@@ -533,8 +500,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 5,
@@ -597,8 +564,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 5,
@@ -615,8 +582,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 3,
@@ -633,8 +600,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 3,
@@ -657,8 +624,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 3,
@@ -676,7 +643,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
+							document.NewIntegerValue(int64(i)),
 							document.NewBlobValue([]byte{byte('a' + uint8(i))}))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
@@ -727,8 +694,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						if i%2 == 0 {
 							i = i / 2
 							array := document.NewValueBuffer(
-								document.NewDoubleValue(float64(i)),
-								document.NewDoubleValue(float64(i+1)))
+								document.NewIntegerValue(int64(i)),
+								document.NewIntegerValue(int64(i+1)))
 							requireEqualBinary(t, document.NewArrayValue(array), val)
 						}
 					},
@@ -914,7 +881,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					noise:      noiseBlob,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
+						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
 					},
 					expectedCount: 5,
 				},
@@ -936,7 +903,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
+						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
 					},
 					expectedCount: 3,
 				},
@@ -959,29 +926,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedCount: 3,
 				},
-				// integers, when the index isn't typed can be iterated as doubles
-				{name: "index=untyped, vals=integers, pivot=double",
-					indexTypes: nil,
-					pivots:     values(document.Value{Type: document.DoubleValue}),
-					val:        func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=untyped, vals=integers, pivot=double:1.8",
-					indexTypes: nil,
-					pivots:     values(document.NewDoubleValue(1.8)),
-					val:        func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i -= 3
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)), val)
-					},
-					expectedCount: 2,
-				},
-				// but not when the index is typed to integers, although it won't yield an error
+				// TODO but not when the index is typed to integers, although it won't yield an error
 				{name: "index=integer, vals=integers, pivot=double",
 					indexTypes:    []document.ValueType{document.IntegerValue},
 					pivots:        values(document.Value{Type: document.DoubleValue}),
@@ -994,17 +939,6 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				{name: "index=untyped, vals=doubles, pivot=double",
 					indexTypes: nil,
 					pivots:     values(document.Value{Type: document.DoubleValue}),
-					val:        func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
-					},
-					expectedCount: 5,
-				},
-				// when iterating on doubles, but passing an integer pivot, it'll be casted as a double
-				{name: "index=untyped, vals=doubles, pivot=integers",
-					indexTypes: nil,
-					pivots:     values(document.Value{Type: document.IntegerValue}),
 					val:        func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
@@ -1156,8 +1090,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 5,
@@ -1175,8 +1109,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 2,
@@ -1194,8 +1128,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
@@ -1219,8 +1153,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
-							document.NewDoubleValue(float64(i+1)))
+							document.NewIntegerValue(int64(i)),
+							document.NewIntegerValue(int64(i+1)))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},
 					expectedCount: 3,
@@ -1238,7 +1172,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						array := document.NewValueBuffer(
-							document.NewDoubleValue(float64(i)),
+							document.NewIntegerValue(int64(i)),
 							document.NewBlobValue([]byte{byte('a' + uint8(i))}))
 						requireEqualBinary(t, document.NewArrayValue(array), val)
 					},

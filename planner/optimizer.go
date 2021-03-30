@@ -382,16 +382,24 @@ func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk
 	return true
 }
 
-// UseIndexBasedOnFilterNodeRule scans the tree for the first filter node whose condition is an
-// operator that satisfies the following criterias:
+type filterNode struct {
+	path document.Path
+	v    document.Value
+	f    *stream.FilterOperator
+}
+
+// UseIndexBasedOnFilterNodeRule scans the tree for filter nodes whose conditions are
+// operators that satisfies the following criterias:
 // - is a comparison operator
 // - one of its operands is a path expression that is indexed
 // - the other operand is a literal value or a parameter
-// If found, it will replace the input node by an indexInputNode using this index.
+//
+// If one or many are found, it will replace the input node by an indexInputNode using this index,
+// removing the now irrelevant filter nodes.
+//
 // TODO(asdine): add support for ORDER BY
+// TODO(jh): clarify ranges and cost code in composite indexes case
 func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error) {
-	n := s.Op
-
 	// first we lookup for the seq scan node.
 	// Here we will assume that at this point
 	// if there is one it has to be the
@@ -413,20 +421,209 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 	indexes := t.Indexes()
 
 	var candidates []*candidate
+	var filterNodes []filterNode
 
-	// look for all selection nodes that satisfy our requirements
-	for n != nil {
+	// then we collect all usable filter nodes, in order to see what index (or PK) can be
+	// used to replace them.
+	for n := s.Op; n != nil; n = n.GetPrev() {
 		if f, ok := n.(*stream.FilterOperator); ok {
-			candidate, err := getCandidateFromfilterNode(f, st.TableName, info, indexes)
-			if err != nil {
-				return nil, err
+			if f.E == nil {
+				continue
 			}
-			if candidate != nil {
-				candidates = append(candidates, candidate)
+
+			op, ok := f.E.(expr.Operator)
+			if !ok {
+				continue
+			}
+
+			if !expr.OperatorIsIndexCompatible(op) {
+				continue
+			}
+
+			// determine if the operator could benefit from an index
+			ok, path, e := operatorCanUseIndex(op)
+			if !ok {
+				continue
+			}
+
+			ev, ok := e.(expr.LiteralValue)
+			if !ok {
+				continue
+			}
+
+			v := document.Value(ev)
+
+			filterNodes = append(filterNodes, filterNode{path: path, v: v, f: f})
+
+			// check for primary keys scan while iterating on the filter nodes
+			if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
+				// if both types are different, don't select this scanner
+				v, ok, err := operandCanUseIndex(pk.Type, pk.Path, info.FieldConstraints, v)
+				if err != nil {
+					return nil, err
+				}
+
+				if !ok {
+					continue
+				} else {
+					cd := candidate{
+						filterOps: []*stream.FilterOperator{f},
+						isPk:      true,
+						priority:  3,
+					}
+
+					ranges, err := getRangesFromOp(op, v)
+					if err != nil {
+						return nil, err
+					}
+
+					cd.newOp = stream.PkScan(st.TableName, ranges...)
+					cd.cost = ranges.Cost()
+
+					candidates = append(candidates, &cd)
+				}
+			}
+		}
+	}
+
+	findByPath := func(path document.Path) *filterNode {
+		for _, fno := range filterNodes {
+			if fno.path.IsEqual(path) {
+				return &fno
 			}
 		}
 
-		n = n.GetPrev()
+		return nil
+	}
+
+	isNodeEq := func(fno *filterNode) bool {
+		op := fno.f.E.(expr.Operator)
+		return expr.IsEqualOperator(op)
+	}
+	isNodeComp := func(fno *filterNode, includeInOp bool) bool {
+		op := fno.f.E.(expr.Operator)
+		if includeInOp {
+			return expr.IsComparisonOperator(op)
+		} else {
+			return expr.IsComparisonOperator(op) && !expr.IsInOperator(op) && !expr.IsNotInOperator(op)
+		}
+	}
+
+	// iterate on all indexes for that table, checking for each of them if its paths are matching
+	// the filter nodes of the given query.
+outer:
+	for _, idx := range indexes {
+		// order filter nodes by how the index paths order them; if absent, nil in still inserted
+		found := make([]*filterNode, len(idx.Info.Paths))
+		for i, path := range idx.Info.Paths {
+			fno := findByPath(path)
+
+			if fno != nil {
+				// mark this path from the index as found
+				found[i] = fno
+			}
+		}
+
+		// Iterate on all the nodes for the given index, checking for each of its path, their is a corresponding node.
+		// It's possible for an index to be selected if not all of its paths are covered by the nodes, if and only if
+		// those are contiguous, relatively to the paths, i.e:
+		//   - given idx_foo_abc(a, b, c)
+		//   - given a query SELECT ... WHERE a = 1 AND b > 2
+		//     - the paths a and b are contiguous in the index definition, this index can be used
+		//   - given a query SELECT ... WHERE a = 1 AND c > 2
+		//     - the paths a and c are not contiguous in the index definition, this index cannot be used
+		var fops []*stream.FilterOperator
+		var rranges []stream.Ranges
+		contiguous := true
+		for i, fno := range found {
+			if contiguous {
+				if fno == nil {
+					contiguous = false
+					continue
+				}
+
+				// is looking ahead at the next node possible?
+				if i+1 < len(found) {
+					// is there another node found after this one?
+					if found[i+1] != nil {
+						// current one must be an eq node then
+						if !isNodeEq(fno) {
+							continue outer
+						}
+					} else {
+						// the next node is the last one found, so the current one can also be a comparison and not just eq
+						if !isNodeComp(fno, false) {
+							continue outer
+						}
+					}
+				} else {
+					// that's the last filter node, it can be a comparison,
+					// in the case of a potentially using a simple index, also a IN operator
+					if !isNodeComp(fno, len(found) == 1) {
+						continue outer
+					}
+				}
+
+				// what the index says this node type must be
+				typ := idx.Info.Types[i]
+
+				fno.v, ok, err = operandCanUseIndex(typ, fno.path, info.FieldConstraints, fno.v)
+				if err != nil {
+					return nil, err
+				}
+				if !ok {
+					continue outer
+				}
+			} else {
+				// if on the index idx_abc(a,b,c), a is found, b isn't but c is
+				if fno != nil {
+					// then idx_abc cannot be used, it's not possible to use the index without a value for b
+					continue outer
+				} else {
+					continue
+				}
+			}
+
+			op := fno.f.E.(expr.Operator)
+			ranges, err := getRangesFromOp(op, fno.v)
+			if err != nil {
+				return nil, err
+			}
+
+			rranges = append(rranges, ranges)
+			fops = append(fops, fno.f)
+		}
+
+		// no nodes for the index has been found
+		if found[0] == nil {
+			continue outer
+		}
+
+		cd := candidate{
+			filterOps: fops,
+			isIndex:   true,
+		}
+
+		// there are probably less values to iterate on if the index is unique
+		if idx.Info.Unique {
+			cd.priority = 2
+		} else {
+			cd.priority = 1
+		}
+
+		// merges the ranges inferred from each filter op into a single one
+		var ranges stream.Ranges
+		if idx.IsComposite() {
+			rng := compactCompIndexRanges(rranges, idx.Arity())
+			ranges = ranges.Append(rng)
+		} else {
+			ranges = rranges[0]
+		}
+
+		cd.newOp = stream.IndexScan(idx.Info.IndexName, ranges...)
+		cd.cost = ranges.Cost()
+
+		candidates = append(candidates, &cd)
 	}
 
 	// determine which index is the most interesting and replace it in the tree.
@@ -444,15 +641,27 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 			continue
 		}
 
-		if currentCost < cost {
+		// With the current cost be computing on ranges, it's a bit hard to know what's best in
+		// between indexes. So, before looking at the cost, we look at how many filter ops would
+		// be replaced.
+		if len(selectedCandidate.filterOps) < len(candidate.filterOps) {
 			selectedCandidate = candidates[i]
 			cost = currentCost
-		}
+			continue
+		} else if len(selectedCandidate.filterOps) == len(candidate.filterOps) {
+			if currentCost < cost {
+				selectedCandidate = candidates[i]
+				cost = currentCost
+				continue
+			}
 
-		// if the cost is the same and the candidate's related index has a higher priority,
-		// select it.
-		if currentCost == cost && selectedCandidate.priority < candidate.priority {
-			selectedCandidate = candidates[i]
+			// if the cost is the same and the candidate's related index has a higher priority,
+			// select it.
+			if currentCost == cost {
+				if selectedCandidate.priority < candidate.priority {
+					selectedCandidate = candidates[i]
+				}
+			}
 		}
 	}
 
@@ -461,7 +670,9 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 	}
 
 	// remove the selection node from the tree
-	s.Remove(selectedCandidate.filterOp)
+	for _, f := range selectedCandidate.filterOps {
+		s.Remove(f)
+	}
 
 	// we replace the seq scan node by the selected index scan node
 	stream.InsertBefore(s.First(), selectedCandidate.newOp)
@@ -471,10 +682,37 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 	return s, nil
 }
 
+func compactCompIndexRanges(rangesList []stream.Ranges, indexArity int) stream.Range {
+	var rng stream.Range
+	for _, rs := range rangesList {
+		if rs[0].Min.V != nil {
+			if rng.Min.V == nil {
+				rng.Min = document.NewArrayValue(document.NewValueBuffer())
+			}
+
+			rng.Min.V.(*document.ValueBuffer).Append(rs[0].Min)
+		}
+
+		if rs[0].Max.V != nil {
+			if rng.Max.V == nil {
+				rng.Max = document.NewArrayValue(document.NewValueBuffer())
+			}
+
+			rng.Max.V.(*document.ValueBuffer).Append(rs[0].Max)
+		}
+	}
+
+	rng.Exact = rangesList[len(rangesList)-1][0].Exact
+	rng.Exclusive = rangesList[len(rangesList)-1][0].Exclusive
+	rng.Arity = indexArity
+
+	return rng
+}
+
 type candidate struct {
-	// filter operator to remove and replace by either an indexScan
+	// filter operators to remove and replace by either an indexScan
 	// or pkScan operators.
-	filterOp *stream.FilterOperator
+	filterOps []*stream.FilterOperator
 	// the candidate indexScan or pkScan operator
 	newOp stream.Operator
 	// the cost of the candidate
@@ -486,91 +724,6 @@ type candidate struct {
 	// if the costs of two candidates are equal,
 	// this number determines which node will be prioritized
 	priority int
-}
-
-// getCandidateFromfilterNode analyses f and determines if it can be replaced by an indexScan or pkScan operator.
-func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info *database.TableInfo, indexes database.Indexes) (*candidate, error) {
-	if f.E == nil {
-		return nil, nil
-	}
-
-	// the root of the condition must be an operator
-	op, ok := f.E.(expr.Operator)
-	if !ok {
-		return nil, nil
-	}
-
-	// determine if the operator can read from the index
-	if !expr.OperatorIsIndexCompatible(op) {
-		return nil, nil
-	}
-
-	// determine if the operator can benefit from an index
-	ok, path, e := operatorCanUseIndex(op)
-	if !ok {
-		return nil, nil
-	}
-
-	// analyse the other operand to make sure it's a literal
-	ev, ok := e.(expr.LiteralValue)
-	if !ok {
-		return nil, nil
-	}
-	v := document.Value(ev)
-
-	// now, we look if an index exists for that path
-	cd := candidate{
-		filterOp: f,
-	}
-
-	// we'll start with checking if the path is the primary key of the table
-	if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
-		// check if the operand can be used and convert it when possible
-		v, ok, err := operandCanUseIndex(pk.Type, pk.Path, info.FieldConstraints, v)
-		if err != nil || !ok {
-			return nil, err
-		}
-
-		cd.isPk = true
-		cd.priority = 3
-
-		ranges, err := getRangesFromOp(op, v)
-		if err != nil {
-			return nil, err
-		}
-
-		cd.newOp = stream.PkScan(tableName, ranges...)
-		cd.cost = ranges.Cost()
-		return &cd, nil
-	}
-
-	// if not, check if an index exists for that path
-	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
-		// check if the operand can be used and convert it when possible
-		v, ok, err := operandCanUseIndex(idx.Info.Types[0], idx.Info.Paths[0], info.FieldConstraints, v)
-		if err != nil || !ok {
-			return nil, err
-		}
-
-		cd.isIndex = true
-		if idx.Info.Unique {
-			cd.priority = 2
-		} else {
-			cd.priority = 1
-		}
-
-		ranges, err := getRangesFromOp(op, v)
-		if err != nil {
-			return nil, err
-		}
-
-		cd.newOp = stream.IndexScan(idx.Info.IndexName, ranges...)
-		cd.cost = ranges.Cost()
-
-		return &cd, nil
-	}
-
-	return nil, nil
 }
 
 func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
@@ -656,7 +809,7 @@ func getRangesFromOp(op expr.Operator, v document.Value) (stream.Ranges, error) 
 			Max: v,
 		})
 	case *expr.InOperator:
-		// opCanUseIndex made sure e is an array.
+		// operatorCanUseIndex made sure e is an array.
 		a := v.V.(document.Array)
 		err := a.Iterate(func(i int, value document.Value) error {
 			ranges = ranges.Append(stream.Range{

@@ -495,16 +495,22 @@ func (c *catalogCache) AddIndex(tx *Transaction, info *IndexInfo) error {
 	// if the index is created on a field on which we know the type then create a typed index.
 	// if the given info contained existing types, they are overriden.
 	info.Types = nil
-	for _, fc := range ti.FieldConstraints {
-		for _, path := range info.Paths {
+
+OUTER:
+	for _, path := range info.Paths {
+		for _, fc := range ti.FieldConstraints {
 			if fc.Path.IsEqual(path) {
+				// a constraint may or may enforce a type
 				if fc.Type != 0 {
 					info.Types = append(info.Types, document.ValueType(fc.Type))
 				}
 
-				break
+				continue OUTER
 			}
 		}
+
+		// no type was inferred for that path, add it to the index as untyped
+		info.Types = append(info.Types, document.ValueType(0))
 	}
 
 	c.indexes[info.IndexName] = info

@@ -447,7 +447,6 @@ func (i Indexes) GetIndex(name string) *Index {
 
 func (i Indexes) GetIndexByPath(p document.Path) *Index {
 	for _, idx := range i {
-		// TODO
 		if idx.Info.Paths[0].IsEqual(p) {
 			return idx
 		}

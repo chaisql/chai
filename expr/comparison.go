@@ -146,6 +146,12 @@ func IsComparisonOperator(op Operator) bool {
 	return false
 }
 
+// IsEqualOperator returns true if e is the = operator
+func IsEqualOperator(op Operator) bool {
+	_, ok := op.(*EqOperator)
+	return ok
+}
+
 // IsAndOperator reports if e is the AND operator.
 func IsAndOperator(op Operator) bool {
 	_, ok := op.(*AndOp)
@@ -161,6 +167,12 @@ func IsOrOperator(e Expr) bool {
 // IsInOperator reports if e is the IN operator.
 func IsInOperator(e Expr) bool {
 	_, ok := e.(*InOperator)
+	return ok
+}
+
+// IsNotInOperator reports if e is the NOT IN operator.
+func IsNotInOperator(e Expr) bool {
+	_, ok := e.(*NotInOperator)
 	return ok
 }
 
