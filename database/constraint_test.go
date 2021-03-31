@@ -41,6 +41,18 @@ func TestFieldConstraintsInfer(t *testing.T) {
 			false,
 		},
 		{
+			"Primary key",
+			[]*database.FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.ArrayValue, IsPrimaryKey: true},
+				{Path: document.NewPath("a", "0"), Type: document.IntegerValue},
+			},
+			[]*database.FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.ArrayValue, IsPrimaryKey: true},
+				{Path: document.NewPath("a", "0"), Type: document.IntegerValue},
+			},
+			false,
+		},
+		{
 			"Complex path",
 			[]*database.FieldConstraint{{Path: document.NewPath("a", "b", "3", "1", "c"), Type: document.IntegerValue}},
 			[]*database.FieldConstraint{
