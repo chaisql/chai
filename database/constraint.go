@@ -340,7 +340,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 			// ConvertDocument converted any compatible field to the right type.
 			// If there is a type constraint and the type of v is different
 			// it means it's incompatible and the document must be rejected.
-			if !fc.Type.IsZero() && fc.Type != v.Type {
+			if !fc.Type.IsZero() && fc.Type != v.Type && v.Type != document.NullValue {
 				return nil, stringutil.Errorf("field %q must be of type %q, got %q", fc.Path, fc.Type, v.Type)
 			}
 			continue
