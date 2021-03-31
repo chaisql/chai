@@ -360,39 +360,75 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 // If there is no constraint on an integer field or value, it converts it into a double.
 // Default values on missing fields are not applied.
 func (f FieldConstraints) ConvertDocument(d document.Document) (*document.FieldBuffer, error) {
+	return f.convertDocumentAtPath(nil, d)
+}
+
+// ConvertValueAtPath converts the value using the field constraints that are applicable
+// at the given path.
+func (f FieldConstraints) ConvertValueAtPath(path document.Path, v document.Value) (document.Value, error) {
+	switch v.Type {
+	case document.ArrayValue:
+		vb, err := f.convertArrayAtPath(path, v.V.(document.Array))
+		return document.NewArrayValue(vb), err
+	case document.DocumentValue:
+		fb, err := f.convertDocumentAtPath(path, v.V.(document.Document))
+		return document.NewDocumentValue(fb), err
+	}
+	return f.convertScalarAtPath(path, v)
+}
+
+// convert the value using field constraints type information.
+// if there is a type constraint on a path, apply it.
+// if a value is an integer and has no constraint, convert it to double.
+func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Value) (document.Value, error) {
+	for _, fc := range f {
+		if !fc.Path.IsEqual(path) {
+			continue
+		}
+
+		// check if the constraint enforce a particular type
+		// and if so convert the value to the new type.
+		if fc.Type != 0 {
+			return v.CastAs(fc.Type)
+		}
+		break
+	}
+
+	// no constraint have been found for this path.
+	// check if this is an integer and convert it to double.
+	if v.Type == document.IntegerValue {
+		return v.CastAsDouble()
+	}
+
+	return v, nil
+}
+
+func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.Document) (*document.FieldBuffer, error) {
 	fb := document.NewFieldBuffer()
 	err := fb.Copy(d)
 	if err != nil {
 		return nil, err
 	}
 
-	// convert the document using field constraints type information.
-	// if there is a type constraint on a path, apply it.
-	// if a value is an integer and has no constraint, convert it to double.
 	err = fb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
-		for _, fc := range f {
-			if !fc.Path.IsEqual(p) {
-				continue
-			}
-
-			// check if the constraint enforce a particular type
-			// and if so convert the value to the new type.
-			if fc.Type != 0 {
-				return v.CastAs(fc.Type)
-			}
-			break
-		}
-
-		// no constraint have been found for this path.
-		// check if this is an integer and convert it to double.
-		if v.Type == document.IntegerValue {
-			return v.CastAsDouble()
-		}
-
-		return v, nil
+		return f.convertScalarAtPath(append(path, p...), v)
 	})
 
 	return fb, err
+}
+
+func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Array) (*document.ValueBuffer, error) {
+	vb := document.NewValueBuffer()
+	err := vb.Copy(a)
+	if err != nil {
+		return nil, err
+	}
+
+	err = vb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+		return f.convertScalarAtPath(append(path, p...), v)
+	})
+
+	return vb, err
 }
 
 // TableInfo contains information about a table.
