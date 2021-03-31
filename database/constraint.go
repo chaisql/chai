@@ -332,17 +332,13 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 	for _, fc := range f {
 		v, err := fc.Path.GetValueFromDocument(fb)
 		if err == nil {
+			// if field is found, it has already been converted
+			// to the right type above.
 			// check if it is required but null.
 			if v.Type == document.NullValue && fc.IsNotNull {
 				return nil, stringutil.Errorf("field %q is required and must be not null", fc.Path)
 			}
 
-			// ConvertDocument converted any compatible field to the right type.
-			// If there is a type constraint and the type of v is different
-			// it means it's incompatible and the document must be rejected.
-			if !fc.Type.IsZero() && fc.Type != v.Type && v.Type != document.NullValue {
-				return nil, stringutil.Errorf("field %q must be of type %q, got %q", fc.Path, fc.Type, v.Type)
-			}
 			continue
 		}
 
@@ -368,33 +364,61 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 }
 
 // ConvertDocument the document using the field constraints.
-// It converts any path that has a field constraint on it into the specified type.
+// It converts any path that has a field constraint on it into the specified type using CAST.
 // If there is no constraint on an integer field or value, it converts it into a double.
 // Default values on missing fields are not applied.
-// If a type constraint is defined and the associated field cannot be converted, the error is ignored
-// and the field is returned as is. Use ValidateDocument to ensure the document is satisfies the constraints.
 func (f FieldConstraints) ConvertDocument(d document.Document) (*document.FieldBuffer, error) {
-	return f.convertDocumentAtPath(nil, d)
+	return f.convertDocumentAtPath(nil, d, CastConversion)
+}
+
+// ConversionFunc is called when the type of a value is different than the expected type
+// and the value needs to be converted.
+type ConversionFunc func(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error)
+
+// CastConversion is a ConversionFunc that casts the value to the target type.
+func CastConversion(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
+	newV, err := v.CastAs(targetType)
+	if err != nil {
+		return v, stringutil.Errorf("field %q must be of type %q, got %q", path, targetType, v.Type)
+	}
+
+	return newV, nil
+}
+
+// LosslessConversion is a ConversionFunc that only converts numbers if there is no precision loss in the process.
+func LosslessNumbersConversion(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
+	if v.Type == document.IntegerValue && targetType == document.DoubleValue {
+		return v.CastAsDouble()
+	}
+
+	if v.Type == document.DoubleValue && targetType == document.IntegerValue {
+		f := v.V.(float64)
+		if float64(int64(f)) == f {
+			return v.CastAsInteger()
+		}
+	}
+
+	return v, nil
 }
 
 // ConvertValueAtPath converts the value using the field constraints that are applicable
 // at the given path.
-func (f FieldConstraints) ConvertValueAtPath(path document.Path, v document.Value) (document.Value, error) {
+func (f FieldConstraints) ConvertValueAtPath(path document.Path, v document.Value, conversionFn ConversionFunc) (document.Value, error) {
 	switch v.Type {
 	case document.ArrayValue:
-		vb, err := f.convertArrayAtPath(path, v.V.(document.Array))
+		vb, err := f.convertArrayAtPath(path, v.V.(document.Array), conversionFn)
 		return document.NewArrayValue(vb), err
 	case document.DocumentValue:
-		fb, err := f.convertDocumentAtPath(path, v.V.(document.Document))
+		fb, err := f.convertDocumentAtPath(path, v.V.(document.Document), conversionFn)
 		return document.NewDocumentValue(fb), err
 	}
-	return f.convertScalarAtPath(path, v), nil
+	return f.convertScalarAtPath(path, v, conversionFn)
 }
 
 // convert the value using field constraints type information.
 // if there is a type constraint on a path, apply it.
 // if a value is an integer and has no constraint, convert it to double.
-func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Value) document.Value {
+func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Value, conversionFn ConversionFunc) (document.Value, error) {
 	for _, fc := range f {
 		if !fc.Path.IsEqual(path) {
 			continue
@@ -402,14 +426,13 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Val
 
 		// check if the constraint enforce a particular type
 		// and if so convert the value to the new type.
-		// If the cast fails, ignore the value and return it as is.
 		if fc.Type != 0 {
-			newV, err := v.CastAs(fc.Type)
+			newV, err := conversionFn(v, fc.Path, fc.Type)
 			if err != nil {
-				return v
+				return v, err
 			}
 
-			return newV
+			return newV, nil
 		}
 		break
 	}
@@ -418,13 +441,13 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Val
 	// check if this is an integer and convert it to double.
 	if v.Type == document.IntegerValue {
 		newV, _ := v.CastAsDouble()
-		return newV
+		return newV, nil
 	}
 
-	return v
+	return v, nil
 }
 
-func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.Document) (*document.FieldBuffer, error) {
+func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.Document, conversionFn ConversionFunc) (*document.FieldBuffer, error) {
 	fb := document.NewFieldBuffer()
 	err := fb.Copy(d)
 	if err != nil {
@@ -432,13 +455,13 @@ func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.D
 	}
 
 	err = fb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
-		return f.convertScalarAtPath(append(path, p...), v), nil
+		return f.convertScalarAtPath(append(path, p...), v, conversionFn)
 	})
 
 	return fb, err
 }
 
-func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Array) (*document.ValueBuffer, error) {
+func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Array, conversionFn ConversionFunc) (*document.ValueBuffer, error) {
 	vb := document.NewValueBuffer()
 	err := vb.Copy(a)
 	if err != nil {
@@ -446,7 +469,7 @@ func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Arra
 	}
 
 	err = vb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
-		return f.convertScalarAtPath(append(path, p...), v), nil
+		return f.convertScalarAtPath(append(path, p...), v, conversionFn)
 	})
 
 	return vb, err

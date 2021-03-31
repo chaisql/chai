@@ -279,7 +279,7 @@ func TestFieldConstraintsConvert(t *testing.T) {
 			document.NewPath("a"),
 			document.NewTextValue("foo"),
 			document.NewTextValue("foo"),
-			false,
+			true,
 		},
 		{
 			database.FieldConstraints{{Path: document.NewPath("a"), DefaultValue: document.NewIntegerValue(10)}},
@@ -292,7 +292,7 @@ func TestFieldConstraintsConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s / %v to %v", test.path, test.in, test.want), func(t *testing.T) {
-			got, err := test.constraints.ConvertValueAtPath(test.path, test.in)
+			got, err := test.constraints.ConvertValueAtPath(test.path, test.in, database.CastConversion)
 			if test.fails {
 				require.Error(t, err)
 			} else {
