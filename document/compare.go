@@ -224,7 +224,7 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
-		if lv.Type == rv.Type {
+		if lv.Type == rv.Type || (lv.Type.IsNumber() && rv.Type.IsNumber()) {
 			isEq, err := compare(operatorEq, lv, rv)
 			if err != nil {
 				return false, err
@@ -341,7 +341,7 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
-		if lv.Type == rv.Type {
+		if lv.Type == rv.Type || (lv.Type.IsNumber() && rv.Type.IsNumber()) {
 			isEq, err := compare(operatorEq, lv, rv)
 			if err != nil {
 				return false, err
