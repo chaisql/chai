@@ -207,17 +207,6 @@ func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
 	}
 
 	var err error
-	if v.Type == document.IntegerValue {
-		if v.V == nil {
-			v.Type = document.DoubleValue
-		} else {
-			v, err = v.CastAsDouble()
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	var buf bytes.Buffer
 	err = document.NewValueEncoder(&buf).Encode(v)
 	if err != nil {
@@ -247,17 +236,6 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 func (idx *Index) iterate(st engine.Store, pivot document.Value, reverse bool, fn func(item engine.Item) error) error {
 	var seek []byte
 	var err error
-
-	if idx.Info.Type == 0 && pivot.Type == document.IntegerValue {
-		if pivot.V == nil {
-			pivot.Type = document.DoubleValue
-		} else {
-			pivot, err = pivot.CastAsDouble()
-			if err != nil {
-				return err
-			}
-		}
-	}
 
 	if pivot.V != nil {
 		seek, err = idx.EncodeValue(pivot)
