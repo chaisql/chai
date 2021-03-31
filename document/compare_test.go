@@ -158,7 +158,7 @@ func TestCompare(t *testing.T) {
 		{"=", `[]`, `[]`, true, jsonToArray},
 		{"=", `[1]`, `[1]`, true, jsonToArray},
 		{"=", `[1]`, `[]`, false, jsonToArray},
-		{"=", `[1.0, 2]`, `[1, 2]`, false, jsonToArray},
+		{"=", `[1.0, 2]`, `[1, 2]`, true, jsonToArray},
 		{"=", `[1,2,3]`, `[1,2,3]`, true, jsonToArray},
 		{"!=", `[1]`, `[5]`, true, jsonToArray},
 		{"!=", `[1]`, `[1, 1]`, true, jsonToArray},
@@ -210,6 +210,7 @@ func TestCompare(t *testing.T) {
 		// document
 		{"=", `{}`, `{}`, true, jsonToDocument},
 		{"=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
+		{"=", `{"a": 1.0}`, `{"a": 1}`, true, jsonToDocument},
 		{"=", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true, jsonToDocument},
 		{"=", `{"a": 1, "b": {"a": 1}}`, `{"b": {"a": 1}, "a": 1}`, true, jsonToDocument},
 		{">", `{"a": 2}`, `{"a": 1}`, true, jsonToDocument},
@@ -226,7 +227,7 @@ func TestCompare(t *testing.T) {
 
 	for _, test := range tests {
 		a, b := test.converter(t, test.a), test.converter(t, test.b)
-		t.Run(fmt.Sprintf("%s/%v%v%v", a.Type.String(), a, test.op, b), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s/%v%v%v", a.Type.String(), test.a, test.op, test.b), func(t *testing.T) {
 			var ok bool
 			var err error
 
