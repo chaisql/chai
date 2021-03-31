@@ -265,6 +265,37 @@ func TestSelectStmt(t *testing.T) {
 
 		require.JSONEq(t, `{"MAX(a)": null, "MIN(b)": null, "COUNT(*)": 0, "SUM(id)": null}`, string(enc))
 	})
+
+	t.Run("array number comparison with no constraints", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES ([1,2,3]), ([4, 5, 6]);
+		`)
+		require.NoError(t, err)
+
+		check := func() {
+			t.Helper()
+
+			d, err := db.QueryDocument("SELECT * FROM test WHERE a = [1,2,3];")
+			require.NoError(t, err)
+
+			enc, err := json.Marshal(d)
+			require.NoError(t, err)
+
+			require.JSONEq(t, `{"a": [1, 2, 3]}`, string(enc))
+		}
+
+		check()
+
+		err = db.Exec("CREATE INDEX idx_test_a ON test(a);")
+		require.NoError(t, err)
+
+		check()
+	})
 }
 
 func TestDistinct(t *testing.T) {
