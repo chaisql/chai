@@ -506,7 +506,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	}
 
 	// determine if the operator can benefit from an index
-	ok, path, e := opCanUseIndex(op)
+	ok, path, e := operatorCanUseIndex(op)
 	if !ok {
 		return nil, nil
 	}
@@ -525,9 +525,10 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 
 	// we'll start with checking if the path is the primary key of the table
 	if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
-		// if both types are different, don't select this scanner
-		if pk.Type != v.Type {
-			return nil, nil
+		// check if the operand can be used and convert it when possible
+		v, ok, err := operandCanUseIndex(pk.Type, pk.Path, info.FieldConstraints, v)
+		if err != nil || !ok {
+			return nil, err
 		}
 
 		cd.isPk = true
@@ -545,9 +546,10 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 
 	// if not, check if an index exists for that path
 	if idx := indexes.GetIndexByPath(document.Path(path)); idx != nil {
-		// if both types are different, don't select this scanner
-		if !idx.Info.Type.IsZero() && idx.Info.Type != v.Type {
-			return nil, nil
+		// check if the operand can be used and convert it when possible
+		v, ok, err := operandCanUseIndex(idx.Info.Type, idx.Info.Path, info.FieldConstraints, v)
+		if err != nil || !ok {
+			return nil, err
 		}
 
 		cd.isIndex = true
@@ -571,7 +573,7 @@ func getCandidateFromfilterNode(f *stream.FilterOperator, tableName string, info
 	return nil, nil
 }
 
-func opCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
+func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 	lf, leftIsField := op.LeftHand().(expr.Path)
 	rf, rightIsField := op.RightHand().(expr.Path)
 
@@ -606,6 +608,24 @@ func opCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 	}
 
 	return false, nil, nil
+}
+
+func operandCanUseIndex(indexType document.ValueType, path document.Path, fc database.FieldConstraints, v document.Value) (document.Value, bool, error) {
+	// ensure the operand satisfies all the constraints, index can work only on exact types.
+	// if a number is encountered, try to convert it to the right type if and only if the conversion
+	// is lossless.
+	converted, err := fc.ConvertValueAtPath(path, v, database.LosslessNumbersConversion)
+	if err != nil {
+		return v, false, err
+	}
+
+	// if the index is not typed, any operand can work
+	if indexType.IsZero() {
+		return converted, true, nil
+	}
+
+	// if the index is typed, it must be of the same type as the converted value
+	return converted, indexType == converted.Type, nil
 }
 
 func getRangesFromOp(op expr.Operator, v document.Value) (stream.Ranges, error) {

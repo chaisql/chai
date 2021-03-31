@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/sql/parser"
 	st "github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -426,6 +427,11 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewIntegerValue(1), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("k = 'hello'"))),
 		},
+		{ // c is an INT, 1.1 cannot be converted to int without precision loss, don't use the index
+			"FROM foo WHERE c < 1.1",
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c < 1.1"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c < 1.1"))),
+		},
 	}
 
 	for _, test := range tests {
@@ -455,4 +461,72 @@ func TestUseIndexBasedOnSelectionNodeRule(t *testing.T) {
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
+
+	t.Run("array indexes", func(t *testing.T) {
+		tests := []struct {
+			name           string
+			root, expected *st.Stream
+		}{
+			{
+				"non-indexed path",
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("b = [1, 1]"))),
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("b = [1, 1]"))),
+			},
+			{
+				"FROM foo WHERE k = [1, 1]",
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = [1, 1]"))),
+				st.New(st.PkScan("foo", st.Range{Min: document.NewArrayValue(testutil.MakeArray(t, `[1, 1]`)), Exact: true})),
+			},
+			{ // constraint on k[0] INT should not modify the operand
+				"FROM foo WHERE k = [1.5, 1.5]",
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = [1.5, 1.5]"))),
+				st.New(st.PkScan("foo", st.Range{Min: document.NewArrayValue(testutil.MakeArray(t, `[1.5, 1.5]`)), Exact: true})),
+			},
+			{
+				"FROM foo WHERE a = [1, 1]",
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))),
+				st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewArrayValue(testutil.MakeArray(t, `[1, 1]`)), Exact: true})),
+			},
+			{ // constraint on a[0] DOUBLE should modify the operand because it's lossless
+				"FROM foo WHERE a = [1, 1.5]",
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1.5]"))),
+				st.New(st.IndexScan("idx_foo_a", st.Range{Min: document.NewArrayValue(testutil.MakeArray(t, `[1.0, 1.5]`)), Exact: true})),
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				db, err := genji.Open(":memory:")
+				require.NoError(t, err)
+				defer db.Close()
+
+				tx, err := db.Begin(true)
+				require.NoError(t, err)
+				defer tx.Rollback()
+
+				err = tx.Exec(`
+					CREATE TABLE foo (
+						k ARRAY PRIMARY KEY,
+						k[0] INT,
+						a ARRAY,
+						a[0] DOUBLE
+					);
+					CREATE INDEX idx_foo_a ON foo(a);
+					CREATE INDEX idx_foo_a0 ON foo(a[0]);
+					INSERT INTO foo (k, a, b) VALUES
+						([1, 1], [1, 1], [1, 1]),
+						([2, 2], [2, 2], [2, 2]),
+						([3, 3], [3, 3], [3, 3])
+				`)
+				require.NoError(t, err)
+
+				res, err := planner.PrecalculateExprRule(test.root, tx.Transaction, nil)
+				require.NoError(t, err)
+
+				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx.Transaction, nil)
+				require.NoError(t, err)
+				require.Equal(t, test.expected.String(), res.String())
+			})
+		}
+	})
 }
