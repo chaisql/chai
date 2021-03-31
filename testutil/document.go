@@ -39,6 +39,18 @@ func MakeDocuments(t testing.TB, jsonDocs ...string) (docs Docs) {
 	return
 }
 
+// MakeArray creates an array from a json string.
+func MakeArray(t testing.TB, jsonArray string) document.Array {
+	t.Helper()
+
+	var vb document.ValueBuffer
+
+	err := vb.UnmarshalJSON([]byte(jsonArray))
+	require.NoError(t, err)
+
+	return &vb
+}
+
 type Docs []document.Document
 
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
