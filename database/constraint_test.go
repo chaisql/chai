@@ -267,7 +267,7 @@ func TestFieldConstraintsConvert(t *testing.T) {
 			document.NewPath("a"),
 			document.NewTextValue("foo"),
 			document.NewTextValue("foo"),
-			true,
+			false,
 		},
 		{
 			database.FieldConstraints{{Path: document.NewPath("a"), DefaultValue: document.NewIntegerValue(10)}},
