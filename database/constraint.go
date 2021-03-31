@@ -249,6 +249,23 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 	for i, c := range *f {
 		if c.Path.IsEqual(newFc.Path) {
+			// if both non inferred, they are duplicate
+			if !newFc.IsInferred && !c.IsInferred {
+				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
+			}
+
+			// determine which one is inferred
+			inferredFc, nonInferredFc := c, newFc
+			if newFc.IsInferred {
+				inferredFc, nonInferredFc = nonInferredFc, inferredFc
+			}
+
+			// the inferred one may have less constraints that the user-defined one
+			inferredFc.DefaultValue = nonInferredFc.DefaultValue
+			inferredFc.IsNotNull = nonInferredFc.IsNotNull
+			inferredFc.IsPrimaryKey = nonInferredFc.IsPrimaryKey
+
+			// safe-guard in case we add more fields to the struct
 			ok, err := c.IsEqual(newFc)
 			if err != nil {
 				return err
@@ -256,11 +273,6 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 
 			// if constraints are different
 			if !ok {
-				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
-			}
-
-			// if both non inferred, they are duplicate
-			if !newFc.IsInferred && !c.IsInferred {
 				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
 			}
 
