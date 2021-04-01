@@ -78,3 +78,11 @@ func Dump(t testing.TB, v interface{}) {
 	err := enc.Encode(v)
 	require.NoError(t, err)
 }
+
+func RequireDocJSONEq(t testing.TB, d document.Document, expected string) {
+	t.Helper()
+
+	data, err := json.Marshal(d)
+	require.NoError(t, err)
+	require.JSONEq(t, expected, string(data))
+}

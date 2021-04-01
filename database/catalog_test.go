@@ -5,8 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -661,4 +663,20 @@ func TestReIndexAll(t *testing.T) {
 
 		require.Equal(t, clone, catalog)
 	})
+}
+
+func TestReadOnlyTables(t *testing.T) {
+	db, err := genji.Open(":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	doc, err := db.QueryDocument(`CREATE TABLE foo; SELECT * FROM __genji_tables`)
+	require.NoError(t, err)
+
+	testutil.RequireDocJSONEq(t, doc, `{"field_constraints": [], "read_only":false, "store_name":"dAE=", "table_name":"foo"}`)
+
+	doc, err = db.QueryDocument(`CREATE INDEX idx_foo_a ON foo(a); SELECT * FROM __genji_indexes`)
+	require.NoError(t, err)
+
+	testutil.RequireDocJSONEq(t, doc, `{"index_name":"idx_foo_a", "path":["a"], "table_name":"foo", "unique":false}`)
 }
