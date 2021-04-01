@@ -3,7 +3,6 @@ package encodingtest
 
 import (
 	"bytes"
-	"encoding/json"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -20,9 +19,7 @@ func TestCodec(t *testing.T, codecBuilder func() encoding.Codec) {
 		{"EncodeDecode", testEncodeDecode},
 		{"NewDocument", testDecodeDocument},
 		{"Document/GetByField", testDocumentGetByField},
-		{"Document/JSON", testDocumentJSON},
 		{"Array/GetByIndex", testArrayGetByIndex},
-		{"Array/JSON", testArrayJSON},
 	}
 
 	for _, test := range tests {
@@ -132,26 +129,6 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.Equal(t, document.ErrFieldNotFound, err)
 }
 
-func testDocumentJSON(t *testing.T, codecBuilder func() encoding.Codec) {
-	codec := codecBuilder()
-
-	fb := document.NewFieldBuffer().
-		Add("a", document.NewIntegerValue(10)).
-		Add("b", document.NewNullValue()).
-		Add("c", document.NewTextValue("john"))
-
-	var buf bytes.Buffer
-
-	err := codec.NewEncoder(&buf).EncodeDocument(fb)
-	require.NoError(t, err)
-
-	d := codec.NewDocument(buf.Bytes())
-
-	jsonDoc, err := json.Marshal(d)
-	require.NoError(t, err)
-	require.JSONEq(t, `{"a": 10, "b": null, "c": "john"}`, string(jsonDoc))
-}
-
 func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	codec := codecBuilder()
 
@@ -186,29 +163,6 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 
 	v, err = a.GetByIndex(1000)
 	require.Equal(t, document.ErrValueNotFound, err)
-}
-
-func testArrayJSON(t *testing.T, codecBuilder func() encoding.Codec) {
-	codec := codecBuilder()
-
-	arr := document.NewValueBuffer().
-		Append(document.NewIntegerValue(10)).
-		Append(document.NewNullValue()).
-		Append(document.NewTextValue("john"))
-
-	var buf bytes.Buffer
-
-	err := codec.NewEncoder(&buf).EncodeDocument(document.NewFieldBuffer().Add("a", document.NewArrayValue(arr)))
-	require.NoError(t, err)
-
-	d := codec.NewDocument(buf.Bytes())
-
-	a, err := d.GetByField("a")
-	require.NoError(t, err)
-
-	jsonDoc, err := json.Marshal(a.V)
-	require.NoError(t, err)
-	require.JSONEq(t, `[10,  null, "john"]`, string(jsonDoc))
 }
 
 func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {

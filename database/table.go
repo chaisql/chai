@@ -232,6 +232,10 @@ type documentWithKey struct {
 	pk  *FieldConstraint
 }
 
+func (e documentWithKey) MarshalJSON() ([]byte, error) {
+	return document.MarshalJSON(e)
+}
+
 func (e documentWithKey) RawKey() []byte {
 	return e.key
 }
