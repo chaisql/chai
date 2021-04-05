@@ -533,7 +533,7 @@ outer:
 		//   - given a query SELECT ... WHERE a = 1 AND c > 2
 		//     - the paths a and c are not contiguous in the index definition, this index cannot be used
 		var fops []*stream.FilterOperator
-		var rranges []stream.Ranges
+		var usableFilterNodes []*filterNode
 		contiguous := true
 		for i, fno := range found {
 			if contiguous {
@@ -584,13 +584,7 @@ outer:
 				}
 			}
 
-			op := fno.f.E.(expr.Operator)
-			ranges, err := getRangesFromOp(op, fno.v)
-			if err != nil {
-				return nil, err
-			}
-
-			rranges = append(rranges, ranges)
+			usableFilterNodes = append(usableFilterNodes, fno)
 			fops = append(fops, fno.f)
 		}
 
@@ -611,13 +605,9 @@ outer:
 			cd.priority = 1
 		}
 
-		// merges the ranges inferred from each filter op into a single one
-		var ranges stream.Ranges
-		if idx.IsComposite() {
-			rng := compactCompIndexRanges(rranges, idx.Arity())
-			ranges = ranges.Append(rng)
-		} else {
-			ranges = rranges[0]
+		ranges, err := getRangesFromFilterNodes(usableFilterNodes, idx.Arity())
+		if err != nil {
+			return nil, err
 		}
 
 		cd.newOp = stream.IndexScan(idx.Info.IndexName, ranges...)
@@ -680,33 +670,6 @@ outer:
 	s.Remove(s.First().GetNext())
 
 	return s, nil
-}
-
-func compactCompIndexRanges(rangesList []stream.Ranges, indexArity int) stream.Range {
-	var rng stream.Range
-	for _, rs := range rangesList {
-		if rs[0].Min.V != nil {
-			if rng.Min.V == nil {
-				rng.Min = document.NewArrayValue(document.NewValueBuffer())
-			}
-
-			rng.Min.V.(*document.ValueBuffer).Append(rs[0].Min)
-		}
-
-		if rs[0].Max.V != nil {
-			if rng.Max.V == nil {
-				rng.Max = document.NewArrayValue(document.NewValueBuffer())
-			}
-
-			rng.Max.V.(*document.ValueBuffer).Append(rs[0].Max)
-		}
-	}
-
-	rng.Exact = rangesList[len(rangesList)-1][0].Exact
-	rng.Exclusive = rangesList[len(rangesList)-1][0].Exclusive
-	rng.Arity = indexArity
-
-	return rng
 }
 
 type candidate struct {
@@ -779,6 +742,52 @@ func operandCanUseIndex(indexType document.ValueType, path document.Path, fc dat
 
 	// if the index is typed, it must be of the same type as the converted value
 	return converted, indexType == converted.Type, nil
+}
+
+func getRangesFromFilterNodes(fnodes []*filterNode, indexArity int) (stream.Ranges, error) {
+	if indexArity <= 1 {
+		op := fnodes[0].f.E.(expr.Operator)
+		return getRangesFromOp(op, fnodes[0].v)
+	}
+
+	vb := document.NewValueBuffer()
+	for _, fno := range fnodes {
+		op := fno.f.E.(expr.Operator)
+		v := fno.v
+
+		switch op.(type) {
+		case *expr.EqOperator, *expr.GtOperator, *expr.GteOperator, *expr.LtOperator, *expr.LteOperator:
+			vb = vb.Append(v)
+		case *expr.InOperator:
+			// an index like idx_foo_a_b on (a,b) and a query like
+			// WHERE a IN [1, 1] and b IN [2, 2]
+			// would lead to [1, 1] x [2, 2] = [[1,1], [1,2], [2,1], [2,2]]
+			// which could eventually be added later.
+			panic("unsupported operator IN for composite indexes")
+		default:
+			panic(stringutil.Sprintf("unknown operator %#v", op))
+		}
+	}
+
+	rng := stream.Range{
+		Min: document.NewArrayValue(vb),
+	}
+
+	// the last node is the only one that can be a comparison operator, so
+	// it's the one setting the range behaviour
+	last := fnodes[len(fnodes)-1]
+	op := last.f.E.(expr.Operator)
+
+	switch op.(type) {
+	case *expr.EqOperator:
+		rng.Exact = true
+	case *expr.GtOperator:
+		rng.Exclusive = true
+	case *expr.LtOperator:
+		rng.Exclusive = true
+	}
+
+	return stream.Ranges{rng}, nil
 }
 
 func getRangesFromOp(op expr.Operator, v document.Value) (stream.Ranges, error) {
