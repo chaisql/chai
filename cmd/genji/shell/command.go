@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
@@ -126,7 +127,12 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 				return err
 			}
 
-			fmt.Fprintf(w, "%s ON %s (%s)\n", index.IndexName, index.TableName, index.Paths[0])
+			var paths []string
+			for _, path := range index.Paths {
+				paths = append(paths, path.String())
+			}
+
+			fmt.Fprintf(w, "%s ON %s (%s)\n", index.IndexName, index.TableName, strings.Join(paths, ", "))
 
 			return nil
 		})

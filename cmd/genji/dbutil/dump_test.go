@@ -58,22 +58,27 @@ func TestDump(t *testing.T) {
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`CREATE INDEX idx_a_%s ON %s (a);`, table, table)
+				q = fmt.Sprintf(`CREATE INDEX idx_%s_a ON %s (a);`, table, table)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d};`, table, 1, 2)
+				q = fmt.Sprintf(`CREATE INDEX idx_%s_b_c ON %s (a);`, table, table)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d};`, table, 2, 2)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 1, 2, 3)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d};`, table, 3, 2)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 2, 2, 2)
+				err = db.Exec(q)
+				require.NoError(t, err)
+				writeToBuf(q + "\n")
+
+				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 3, 2, 1)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")

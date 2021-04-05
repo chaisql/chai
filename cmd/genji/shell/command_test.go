@@ -60,7 +60,7 @@ func TestIndexesCmd(t *testing.T) {
 		want      string
 		fails     bool
 	}{
-		{"All", "", "idx_bar_a ON bar (a)\nidx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
+		{"All", "", "idx_bar_a_b ON bar (a, b)\nidx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
 		{"With table name", "foo", "idx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
 		{"With nonexistent table name", "baz", "", true},
 	}
@@ -76,7 +76,7 @@ func TestIndexesCmd(t *testing.T) {
 				CREATE INDEX idx_foo_a ON foo (a);
 				CREATE INDEX idx_foo_b ON foo (b);
 				CREATE TABLE bar;
-				CREATE INDEX idx_bar_a ON bar (a);
+				CREATE INDEX idx_bar_a_b ON bar (a, b);
 			`)
 			require.NoError(t, err)
 
@@ -117,7 +117,7 @@ func TestSaveCommand(t *testing.T) {
 
 			err = db.Exec(`
 				CREATE TABLE test (a DOUBLE);
-				CREATE INDEX idx_a ON test (a);
+				CREATE INDEX idx_a_b ON test (a, b);
 			`)
 			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 1, 2)
@@ -160,11 +160,11 @@ func TestSaveCommand(t *testing.T) {
 			err = db.View(func(tx *genji.Tx) error {
 				indexes := tx.ListIndexes()
 				require.Len(t, indexes, 1)
-				require.Equal(t, "idx_a", indexes[0])
+				require.Equal(t, "idx_a_b", indexes[0])
 
-				index, err := tx.GetIndex("idx_a")
+				index, err := tx.GetIndex("idx_a_b")
 				require.NoError(t, err)
-				require.Equal(t, []document.ValueType{document.DoubleValue}, index.Info.Types)
+				require.Equal(t, []document.ValueType{document.DoubleValue, 0}, index.Info.Types)
 
 				return nil
 			})
@@ -176,12 +176,12 @@ func TestSaveCommand(t *testing.T) {
 
 			defer tx.Rollback()
 
-			idx, err := tx.GetIndex("idx_a")
+			idx, err := tx.GetIndex("idx_a_b")
 			require.NoError(t, err)
 
 			// check that by iterating through the index and finding the previously inserted values
 			var i int
-			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{document.NewDoubleValue(0)}, func(v, k []byte) error {
 				i++
 				return nil
 			})
