@@ -331,12 +331,6 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 	}
 
-	// TODO(JH) clean when updating the optimizer.
-	// Uncommented, it breaks the index scan iterator.
-	// if len(paths) != 1 {
-	// 	return stmt, &ParseError{Message: "indexes on more than one path are not supported"}
-	// }
-
 	stmt.Paths = paths
 
 	return stmt, nil

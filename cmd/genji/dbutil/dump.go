@@ -210,8 +210,12 @@ func dumpSchema(tx *genji.Tx, w io.Writer, tableName string) error {
 			u = " UNIQUE"
 		}
 
-		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Info.IndexName, index.Info.TableName,
-			index.Info.Paths[0])
+		var paths []string
+		for _, path := range index.Info.Paths {
+			paths = append(paths, path.String())
+		}
+
+		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Info.IndexName, index.Info.TableName, strings.Join(paths, ", "))
 		if err != nil {
 			return err
 		}

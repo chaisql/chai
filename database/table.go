@@ -142,13 +142,15 @@ func (t *Table) Delete(key []byte) error {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		// TODO only support one path
-		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
-		if err != nil {
-			return err
+		values := make([]document.Value, len(idx.Info.Paths))
+		for i, path := range idx.Info.Paths {
+			values[i], err = path.GetValueFromDocument(d)
+			if err != nil {
+				return err
+			}
 		}
 
-		err = idx.Delete([]document.Value{v}, key)
+		err = idx.Delete(values, key)
 		if err != nil {
 			return err
 		}
@@ -186,13 +188,15 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		// TODO only support one path
-		v, err := idx.Info.Paths[0].GetValueFromDocument(old)
-		if err != nil {
-			v = document.NewNullValue()
+		values := make([]document.Value, len(idx.Info.Paths))
+		for i, path := range idx.Info.Paths {
+			values[i], err = path.GetValueFromDocument(old)
+			if err != nil {
+				values[i] = document.NewNullValue()
+			}
 		}
 
-		err = idx.Delete([]document.Value{v}, key)
+		err = idx.Delete(values, key)
 		if err != nil {
 			return err
 		}

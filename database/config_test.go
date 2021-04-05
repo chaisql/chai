@@ -163,8 +163,7 @@ func TestIndexStore(t *testing.T) {
 			TableName: "test",
 			IndexName: "idx_test",
 			Unique:    true,
-			// TODO
-			Types: []document.ValueType{document.BoolValue},
+			Types:     []document.ValueType{document.BoolValue},
 		}
 
 		err = idxs.Insert(&cfg)

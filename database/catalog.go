@@ -323,19 +323,21 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 	return c.buildIndex(tx, idx, tb)
 }
 
-// TODO not yet compatible with composite index
 func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
 	return table.Iterate(func(d document.Document) error {
-		// TODO(JH)
-		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
-		if err == document.ErrFieldNotFound {
-			return nil
-		}
-		if err != nil {
-			return err
+		var err error
+		values := make([]document.Value, len(idx.Info.Paths))
+		for i, path := range idx.Info.Paths {
+			values[i], err = path.GetValueFromDocument(d)
+			if err == document.ErrFieldNotFound {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
 		}
 
-		err = idx.Set([]document.Value{v}, d.(document.Keyer).RawKey())
+		err = idx.Set(values, d.(document.Keyer).RawKey())
 		if err != nil {
 			return stringutil.Errorf("error while building the index: %w", err)
 		}
