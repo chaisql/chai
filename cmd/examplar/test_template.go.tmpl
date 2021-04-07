@@ -1,0 +1,42 @@
+package {{ .Package }}
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/genjidb/genji"
+	"github.com/stretchr/testify/require"
+)
+
+func Test{{ .TestName }}(t *testing.T) {
+	db, err := genji.Open(":memory:")
+	require.NoError(t, err)
+
+	// teardown extest1.sql:4
+	t.Cleanup(func() {
+		err := db.Exec("{{ .Teardown }}")
+		require.NoError(t, err)
+		defer db.Close()
+	})
+
+	// setup extest1.sql:1
+	err = db.Exec("{{ .Setup }}")
+	require.NoError(t, err)
+    {{- range .Statements }}
+    {{- if .EqAssertion }}
+	// extest1.sql:9
+	doc, err := db.QueryDocument("{{ .Code }}")
+	require.NoError(t, err)
+
+	data, err := json.Marshal(doc)
+	require.NoError(t, err)
+
+	expected := `{{ .EqAssertion }}`
+	require.JSONEq(t, expected, string(data))
+    {{- else}}
+	// extest1.sql:8
+	err = db.Exec("{{ .Code }}")
+	require.NoError(t, err)
+    {{- end }}
+    {{- end }}
+}

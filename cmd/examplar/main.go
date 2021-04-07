@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"strings"
+	"text/template"
 )
 
 const comment = "---"
@@ -20,18 +21,23 @@ const (
 
 type example struct {
 	name       string
-	statements []string
-	assertions []string
+	statements []*Statement
 }
 
 type examplar struct {
+	name     string
 	setup    []string
 	teardown []string
 	examples []*example
 }
 
-func parse(r io.Reader) (*examplar, error) {
-	var ex examplar
+type Statement struct {
+	Code        string
+	EqAssertion string
+}
+
+func parse(r io.Reader, name string) (*examplar, error) {
+	ex := examplar{name: name}
 	var state State
 
 	s := bufio.NewScanner(r)
@@ -67,8 +73,8 @@ func parse(r io.Reader) (*examplar, error) {
 				expected = strings.TrimSuffix(expected, "`")
 
 				t := ex.examples[len(ex.examples)-1]
-				t.assertions = append(t.assertions, expected)
-
+				stmt := t.statements[len(t.statements)-1]
+				stmt.EqAssertion = expected
 			default:
 				state = ILLEGAL
 			}
@@ -80,7 +86,9 @@ func parse(r io.Reader) (*examplar, error) {
 				ex.teardown = append(ex.teardown, line)
 			case TEST:
 				t := ex.examples[len(ex.examples)-1]
-				t.statements = append(t.statements, line)
+				t.statements = append(t.statements, &Statement{
+					Code: line,
+				})
 			case ASSERT_EQ:
 			case ILLEGAL:
 				panic(line)
@@ -93,6 +101,32 @@ func parse(r io.Reader) (*examplar, error) {
 	}
 
 	return &ex, nil
+}
+
+func normalizeTestName(name string) string {
+	name = strings.TrimSpace(name)
+	name = strings.Title(name)
+	return strings.ReplaceAll(name, " ", "")
+}
+
+func generate(ex *examplar, w io.Writer) error {
+	tmpl := template.Must(template.ParseFiles("test_template.go.tmpl"))
+
+	bindings := struct {
+		Package    string
+		TestName   string
+		Setup      string
+		Teardown   string
+		Statements []*Statement
+	}{
+		"integration_test",
+		normalizeTestName(ex.examples[0].name),
+		strings.Join(ex.setup, "\n"),
+		strings.Join(ex.teardown, "\n"),
+		ex.examples[0].statements,
+	}
+
+	return tmpl.Execute(w, bindings)
 }
 
 func main() {
