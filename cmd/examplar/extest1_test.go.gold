@@ -1,0 +1,37 @@
+package integration_test
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/genjidb/genji"
+	"github.com/stretchr/testify/require"
+)
+
+func TestInsertSomething(t *testing.T) {
+	db, err := genji.Open(":memory:")
+	require.NoError(t, err)
+
+	// teardown extest1.sql:4
+	t.Cleanup(func() {
+		err := db.Exec("DROP TABLE foo;")
+		require.NoError(t, err)
+		defer db.Close()
+	})
+
+	// setup extest1.sql:1
+	err = db.Exec("CREATE TABLE foo (a int);")
+	require.NoError(t, err)
+	// extest1.sql:8
+	err = db.Exec("INSERT INTO foo (a) VALUES (1);")
+	require.NoError(t, err)
+	// extest1.sql:9
+	doc, err := db.QueryDocument("SELECT * FROM foo;")
+	require.NoError(t, err)
+
+	data, err := json.Marshal(doc)
+	require.NoError(t, err)
+
+	expected := `{"a": 1}`
+	require.JSONEq(t, expected, string(data))
+}

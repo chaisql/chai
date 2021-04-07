@@ -5,6 +5,6 @@ CREATE TABLE foo (a int);
 DROP TABLE foo;
 
 --- test: insert something
-INSERT INTO foo (1);
---- `1`
-
+INSERT INTO foo (a) VALUES (1);
+SELECT * FROM foo;
+--- `{"a": 1}`
