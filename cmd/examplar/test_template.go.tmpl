@@ -1,42 +1,72 @@
 package {{ .Package }}
 
 import (
-	"encoding/json"
-	"testing"
+    "encoding/json"
+    "testing"
 
-	"github.com/genjidb/genji"
-	"github.com/stretchr/testify/require"
+    "github.com/genjidb/genji"
+    "github.com/genjidb/genji/document"
+    "github.com/stretchr/testify/require"
 )
 
 func Test{{ .TestName }}(t *testing.T) {
-	db, err := genji.Open(":memory:")
-	require.NoError(t, err)
+    db, err := genji.Open(":memory:")
+    require.NoError(t, err)
+    defer db.Close()
 
-	// teardown extest1.sql:4
-	t.Cleanup(func() {
-		err := db.Exec("{{ .Teardown }}")
-		require.NoError(t, err)
-		defer db.Close()
-	})
+    // teardown
+    teardown := func() {
+        var err error
+        {{- range .Teardown }}
+        err = db.Exec("{{ .Text }}") // orig:{{ .Num }}
+        require.NoError(t, err)
+        {{- end }}
+    }
 
-	// setup extest1.sql:1
-	err = db.Exec("{{ .Setup }}")
-	require.NoError(t, err)
-    {{- range .Statements }}
-    {{- if .Expectation }}
-	// extest1.sql:9
-	doc, err := db.QueryDocument("{{ .Code }}")
-	require.NoError(t, err)
+    // setup
+    setup := func() {
+        {{- range .Setup }}
+        err = db.Exec("{{ .Text }}") // orig:{{ .Num }}
+        require.NoError(t, err)
+        {{- end }}
+        }
+    {{ "" }}
+    {{- range .Tests }}
+    // orig:{{ .Num }}
+    t.Run("{{ .Name }}", func(t *testing.T) {
+        t.Cleanup(teardown)
+        setup()
 
-	data, err := json.Marshal(doc)
-	require.NoError(t, err)
+        var err error
+        var doc document.Document
+        var data []byte
+        var expected string
+        {{ "" }}
+        {{- range .Statements }}
+        {{- if gt (len .Expectation) 0 }}
+        doc, err = db.QueryDocument("{{ .Code.Text }}") // orig:{{ .Code.Num }}
+        require.NoError(t, err)
 
-	expected := `{{ .Expectation }}`
-	require.JSONEq(t, expected, string(data))
-    {{- else}}
-	// extest1.sql:8
-	err = db.Exec("{{ .Code }}")
-	require.NoError(t, err)
+        data, err = json.Marshal(doc)
+        require.NoError(t, err)
+        {{ "" }}
+        {{- if gt (len .Expectation) 1 }}
+        // orig: {{ (index .Expectation 0).Num }}
+        expected = `
+        {{- range .Expectation }}
+        {{ .Text }}
+        {{- end  }}
+        `
+        {{- else }}
+        expected = `{{ (index .Expectation 0).Text }}` // orig:{{ (index .Expectation 0).Num }}
+        {{- end }}
+        require.JSONEq(t, expected, string(data))
+        {{- else}}
+        err = db.Exec("{{ .Code.Text }}") // orig:{{ .Code.Num }}
+        require.NoError(t, err)
+        {{- end }}
+        {{- end }}
+    })
+    {{ "" }}
     {{- end }}
-    {{- end }}
-}
+ }

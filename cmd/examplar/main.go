@@ -19,23 +19,38 @@ const (
 	TEST
 )
 
+type Line struct {
+	Num  int
+	Text string
+}
+
 // Test is a list of statements.
 type Test struct {
-	name       string
-	statements []*Statement
+	Name       string
+	Num        int
+	Statements []*Statement
 }
 
 // Statement is a pair composed of a line of code and an expectation on its result when evaluated.
 type Statement struct {
-	Code        string
-	Expectation string
+	Code        Line
+	Expectation []Line
+}
+
+func (s Statement) expectationText() string {
+	var text string
+	for _, e := range s.Expectation {
+		text += e.Text + "\n"
+	}
+
+	return text
 }
 
 // Examplar represents a group of tests and can optionally include setup code and teardown code.
 type Examplar struct {
-	name     string
-	setup    []string
-	teardown []string
+	Name     string
+	setup    []Line
+	teardown []Line
 	examples []*Test
 }
 
@@ -49,9 +64,10 @@ func (ex *Examplar) HasTeardown() bool {
 	return len(ex.teardown) > 0
 }
 
-func (ex *Examplar) appendTest(name string) {
+func (ex *Examplar) appendTest(name string, num int) {
 	ex.examples = append(ex.examples, &Test{
-		name: name,
+		Name: name,
+		Num:  num,
 	})
 }
 
@@ -59,10 +75,20 @@ func (ex *Examplar) currentTest() *Test {
 	return ex.examples[len(ex.examples)-1]
 }
 
+func (ex *Examplar) currentStatement() *Statement {
+	test := ex.currentTest()
+	return test.Statements[len(test.Statements)-1]
+}
+
+func (ex *Examplar) currentExpectation() *[]Line {
+	return &ex.currentStatement().Expectation
+}
+
 type stateFn func(*Scanner) stateFn
 
 type Scanner struct {
 	line string
+	num  int
 	ex   *Examplar
 }
 
@@ -74,7 +100,7 @@ func initialState(s *Scanner) stateFn {
 		case TEARDOWN:
 			return teardownState
 		case TEST:
-			s.ex.appendTest(data)
+			s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
@@ -94,12 +120,12 @@ func setupState(s *Scanner) stateFn {
 				return teardownState
 			}
 		case TEST:
-			s.ex.appendTest(data)
+			s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
 
-	s.ex.setup = append(s.ex.setup, s.line)
+	s.ex.setup = append(s.ex.setup, Line{s.num, s.line})
 	return setupState
 }
 
@@ -115,12 +141,12 @@ func teardownState(s *Scanner) stateFn {
 		case TEARDOWN:
 			return errorState
 		case TEST:
-			s.ex.appendTest(data)
+			s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
 
-	s.ex.teardown = append(s.ex.teardown, s.line)
+	s.ex.teardown = append(s.ex.teardown, Line{s.num, s.line})
 	return teardownState
 }
 
@@ -132,7 +158,7 @@ func testState(s *Scanner) stateFn {
 		case TEARDOWN:
 			return errorState
 		case TEST:
-			s.ex.appendTest(data)
+			s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
@@ -144,20 +170,22 @@ func testState(s *Scanner) stateFn {
 	}
 
 	if assertion := parseSingleAssertion(s.line); len(assertion) > 0 {
-		stmt := test.statements[len(test.statements)-1]
-		stmt.Expectation = assertion
+		exp := s.ex.currentExpectation()
+		*exp = []Line{{s.num, assertion}}
 		return testState
 	}
 
-	test.statements = append(test.statements, &Statement{
-		Code: s.line,
+	test.Statements = append(test.Statements, &Statement{
+		Code: Line{s.num, s.line},
 	})
 
 	return testState
 }
 
+// TODO check that all lines are sharing the same amount of space, if yes
+// trim them, so everything is aligned perfectly in the resulting test file.
 func multilineAssertionState(s *Scanner) stateFn {
-	re := regexp.MustCompile(`^\s*` + commentPrefix + `\s*(.*)`)
+	re := regexp.MustCompile(`^\s*` + commentPrefix + `(.*)`)
 	matches := re.FindStringSubmatch(s.line)
 
 	if matches == nil {
@@ -166,12 +194,13 @@ func multilineAssertionState(s *Scanner) stateFn {
 
 	code := strings.TrimRight(matches[1], " \t")
 
-	if code == "```" {
+	if strings.TrimSpace(matches[1]) == "```" {
 		return testState
 	}
 
-	test := s.ex.currentTest()
-	test.statements[len(test.statements)-1].Expectation += code + "\n"
+	exp := s.ex.currentExpectation()
+	*exp = append(*exp, Line{s.num, code})
+
 	return multilineAssertionState
 }
 
@@ -185,6 +214,8 @@ func (s *Scanner) Run(io *bufio.Scanner) *Examplar {
 	for state := initialState; io.Scan(); {
 		s.line = io.Text()
 		s.line = strings.TrimSpace(s.line)
+		s.num++
+
 		if s.line == "" {
 			continue
 		}
@@ -235,7 +266,7 @@ func Parse(r io.Reader, name string) (*Examplar, error) {
 	scanner := &Scanner{}
 
 	ex := scanner.Run(bufio.NewScanner(r))
-	ex.name = name
+	ex.Name = name
 
 	return ex, nil
 }
@@ -250,17 +281,17 @@ func Generate(ex *Examplar, w io.Writer) error {
 	tmpl := template.Must(template.ParseFiles("test_template.go.tmpl"))
 
 	bindings := struct {
-		Package    string
-		TestName   string
-		Setup      string
-		Teardown   string
-		Statements []*Statement
+		Package  string
+		TestName string
+		Setup    []Line
+		Teardown []Line
+		Tests    []*Test
 	}{
-		"integration_test",
-		normalizeTestName(ex.examples[0].name),
-		strings.Join(ex.setup, "\n"),
-		strings.Join(ex.teardown, "\n"),
-		ex.examples[0].statements,
+		"main",
+		normalizeTestName("Foo Bar"),
+		ex.setup,
+		ex.teardown,
+		ex.examples,
 	}
 
 	return tmpl.Execute(w, bindings)
