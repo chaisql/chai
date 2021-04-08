@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -15,7 +14,7 @@ func TestParse(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ex, err := parse(f, "extest1")
+	ex, err := Parse(f, "extest1")
 	require.NoError(t, err)
 
 	require.Equal(t, ex.setup, []string{"CREATE TABLE foo (a int);"})
@@ -23,14 +22,18 @@ func TestParse(t *testing.T) {
 
 	example := ex.examples[0]
 	require.NotNil(t, example)
-	require.Equal(t, example.name, "insert something")
+	require.Equal(t, "insert something", example.name)
 
 	stmt := example.statements[0]
-	require.Equal(t, stmt.Code, "INSERT INTO foo (a) VALUES (1);")
+	require.Equal(t, "INSERT INTO foo (a) VALUES (1);", stmt.Code)
 
 	stmt = example.statements[1]
-	require.Equal(t, stmt.Code, "SELECT * FROM foo;")
-	require.Equal(t, stmt.EqAssertion, `{"a": 1}`)
+	require.Equal(t, "SELECT * FROM foo;", stmt.Code)
+	require.Equal(t, `{"a": 1}`, stmt.Expectation)
+
+	stmt = example.statements[2]
+	require.Equal(t, "SELECT a, b FROM foo;", stmt.Code)
+	require.JSONEq(t, `{"a": 1, "b": null}`, stmt.Expectation)
 }
 
 func TestTemplate(t *testing.T) {
@@ -47,14 +50,13 @@ func TestTemplate(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ex, err := parse(f, "extest1")
+	ex, err := Parse(f, "extest1")
 	require.NoError(t, err)
 
 	var b strings.Builder
 
-	err = generate(ex, &b)
+	err = Generate(ex, &b)
 	require.NoError(t, err)
 
-	fmt.Printf(b.String() + "\n")
 	require.Equal(t, strings.Split(gold, "\n"), strings.Split(b.String(), "\n"))
 }
