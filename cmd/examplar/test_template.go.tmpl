@@ -23,7 +23,7 @@ func Test{{ .TestName }}(t *testing.T) {
 	err = db.Exec("{{ .Setup }}")
 	require.NoError(t, err)
     {{- range .Statements }}
-    {{- if .EqAssertion }}
+    {{- if .Expectation }}
 	// extest1.sql:9
 	doc, err := db.QueryDocument("{{ .Code }}")
 	require.NoError(t, err)
@@ -31,7 +31,7 @@ func Test{{ .TestName }}(t *testing.T) {
 	data, err := json.Marshal(doc)
 	require.NoError(t, err)
 
-	expected := `{{ .EqAssertion }}`
+	expected := `{{ .Expectation }}`
 	require.JSONEq(t, expected, string(data))
     {{- else}}
 	// extest1.sql:8
