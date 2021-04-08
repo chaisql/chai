@@ -1,37 +1,96 @@
-package integration_test
+package main
 
 import (
-	"encoding/json"
-	"testing"
+    "encoding/json"
+    "testing"
 
-	"github.com/genjidb/genji"
-	"github.com/stretchr/testify/require"
+    "github.com/genjidb/genji"
+    "github.com/genjidb/genji/document"
+    "github.com/stretchr/testify/require"
 )
 
-func TestInsertSomething(t *testing.T) {
-	db, err := genji.Open(":memory:")
-	require.NoError(t, err)
+func TestFooBar(t *testing.T) {
+    db, err := genji.Open(":memory:")
+    require.NoError(t, err)
+    defer db.Close()
 
-	// teardown extest1.sql:4
-	t.Cleanup(func() {
-		err := db.Exec("DROP TABLE foo;")
-		require.NoError(t, err)
-		defer db.Close()
-	})
+    // teardown
+    teardown := func() {
+        var err error
+        err = db.Exec("DROP TABLE foo;") // orig:5
+        require.NoError(t, err)
+    }
 
-	// setup extest1.sql:1
-	err = db.Exec("CREATE TABLE foo (a int);")
-	require.NoError(t, err)
-	// extest1.sql:8
-	err = db.Exec("INSERT INTO foo (a) VALUES (1);")
-	require.NoError(t, err)
-	// extest1.sql:9
-	doc, err := db.QueryDocument("SELECT * FROM foo;")
-	require.NoError(t, err)
+    // setup
+    setup := func() {
+        err = db.Exec("CREATE TABLE foo (a int);") // orig:2
+        require.NoError(t, err)
+        }
+    
+    // orig:7
+    t.Run("insert something", func(t *testing.T) {
+        t.Cleanup(teardown)
+        setup()
 
-	data, err := json.Marshal(doc)
-	require.NoError(t, err)
+        var err error
+        var doc document.Document
+        var data []byte
+        var expected string
+        
+        err = db.Exec("INSERT INTO foo (a) VALUES (1);") // orig:8
+        require.NoError(t, err)
+        doc, err = db.QueryDocument("SELECT * FROM foo;") // orig:9
+        require.NoError(t, err)
 
-	expected := `{"a": 1}`
-	require.JSONEq(t, expected, string(data))
-}
+        data, err = json.Marshal(doc)
+        require.NoError(t, err)
+        
+        expected = `{"a": 1}` // orig:10
+        require.JSONEq(t, expected, string(data))
+        doc, err = db.QueryDocument("SELECT a, b FROM foo;") // orig:12
+        require.NoError(t, err)
+
+        data, err = json.Marshal(doc)
+        require.NoError(t, err)
+        
+        // orig: 14
+        expected = `
+         {
+           "a": 1,
+           "b": null
+         }
+        `
+        require.JSONEq(t, expected, string(data))
+        doc, err = db.QueryDocument("SELECT z FROM foo;") // orig:20
+        require.NoError(t, err)
+
+        data, err = json.Marshal(doc)
+        require.NoError(t, err)
+        
+        expected = `{"z": null}` // orig:21
+        require.JSONEq(t, expected, string(data))
+    })
+    
+    // orig:23
+    t.Run("something else", func(t *testing.T) {
+        t.Cleanup(teardown)
+        setup()
+
+        var err error
+        var doc document.Document
+        var data []byte
+        var expected string
+        
+        err = db.Exec("INSERT INTO foo (c) VALUES (3);") // orig:24
+        require.NoError(t, err)
+        doc, err = db.QueryDocument("SELECT * FROM foo;") // orig:25
+        require.NoError(t, err)
+
+        data, err = json.Marshal(doc)
+        require.NoError(t, err)
+        
+        expected = `{"c": 3}` // orig:26
+        require.JSONEq(t, expected, string(data))
+    })
+    
+ }

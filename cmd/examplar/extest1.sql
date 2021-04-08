@@ -16,3 +16,11 @@ SELECT a, b FROM foo;
 ---   "b": null
 --- }
 --- ```
+
+SELECT z FROM foo;
+--- `{"z": null}`
+
+--- test: something else
+INSERT INTO foo (c) VALUES (3);
+SELECT * FROM foo;
+--- `{"c": 3}`
