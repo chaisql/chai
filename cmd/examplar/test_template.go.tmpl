@@ -29,7 +29,7 @@ func Test{{ .TestName }}(t *testing.T) {
         err = db.Exec("{{ .Text }}") // orig:{{ .Num }}
         require.NoError(t, err)
         {{- end }}
-        }
+    }
     {{ "" }}
     {{- range .Tests }}
     // orig:{{ .Num }}
