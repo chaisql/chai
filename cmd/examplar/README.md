@@ -49,15 +49,29 @@ func TestSelecting(t *testing.T) {
 
 ## Usage
 
-To populate tests living in the `integration` package, create a go file in folder named `integration` with the following code:
+To populate tests that would be in an `integration` package, create a go file in folder named `integration` with the following code:
 
 ```go
 package integration
 
-// go:generate go run examplar.go -- -package=integration fixtures/sql/*
+//go:generate examplar -package=integration fixtures/sql/*.sql
 ```
 
-Building the code will generate tests files in the `integration` folder. Those tests files can be run like any normal tests.
+Assuming `fixtures/sql/` contains the following files:
+
+```
+extest1.sql
+extest2.sql
+```
+
+Running `go generate` will generate these tests files in the `integration` folder:
+
+```
+extest1_test.go
+extest2_test.go
+```
+
+Those tests files can be run like any normal tests.
 
 ## How it works
 
@@ -83,8 +97,6 @@ be followed by a keyword specified in the list below followed by a `:` or specia
 
 :bulb: `setup` and `teardown` blocks will generate code being ran around **each indidual** `test` block.
 They are optional and can be declared in no particular order, but there can only be one of each.
-
-    \_
 
 - `test: [TEST NAME]`
   - all lines up to the next annotation are to be considered as individual statements for this test block. Each line can be followed by the special expectation annotation.

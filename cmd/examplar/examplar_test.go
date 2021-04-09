@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -15,8 +14,7 @@ func TestParse(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ex, err := Parse(f, "extest1")
-	require.NoError(t, err)
+	ex := Parse(f, "extest1")
 
 	require.Equal(t, []Line{{2, "CREATE TABLE foo (a int);"}}, ex.setup)
 	require.Equal(t, []Line{{5, "DROP TABLE foo;"}}, ex.teardown)
@@ -35,7 +33,6 @@ func TestParse(t *testing.T) {
 
 	stmt = example.Statements[2]
 	require.Equal(t, "SELECT a, b FROM foo;", stmt.Code.Text)
-	fmt.Println("---", len(stmt.Expectation))
 	require.JSONEq(t, `{"a": 1, "b": null}`, stmt.expectationText())
 
 	stmt = example.Statements[3]
@@ -69,12 +66,11 @@ func TestTemplate(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ex, err := Parse(f, "extest1")
-	require.NoError(t, err)
+	ex := Parse(f, "foo bar")
 
 	var b strings.Builder
 
-	err = Generate(ex, &b)
+	err = Generate(ex, "main", &b)
 	require.NoError(t, err)
 
 	// some code to generate the gold version if needed
