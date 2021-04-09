@@ -77,11 +77,9 @@ func TestTemplate(t *testing.T) {
 	err = Generate(ex, &b)
 	require.NoError(t, err)
 
-	// some code to generate the gold version
-	// o, err := os.OpenFile("trace_test.go", os.O_CREATE|os.O_WRONLY, 0777)
+	// some code to generate the gold version if needed
+	// err = ioutil.WriteFile("trace_test.go", []byte(b.String()), 0644)
 	// require.NoError(t, err)
-	// o.WriteString(b.String())
-	// defer o.Close()
 
 	require.Equal(t, strings.Split(gold, "\n"), strings.Split(b.String(), "\n"))
 }

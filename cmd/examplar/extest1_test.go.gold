@@ -25,7 +25,7 @@ func TestFooBar(t *testing.T) {
     setup := func() {
         err = db.Exec("CREATE TABLE foo (a int);") // orig:2
         require.NoError(t, err)
-        }
+    }
     
     // orig:7
     t.Run("insert something", func(t *testing.T) {
