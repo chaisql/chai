@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
@@ -47,7 +48,7 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	}
 
 	// parse field constraints
-	err = p.parseFieldConstraints(&stmt.Info)
+	err = p.parseConstraints(&stmt)
 	if err != nil {
 		return stmt, err
 	}
@@ -99,25 +100,64 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 	return nil
 }
 
-func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
+func (p *Parser) parseConstraints(stmt *query.CreateTableStmt) error {
 	// Parse ( token.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 		p.Unscan()
 		return nil
 	}
 
-	var err error
+	// if set to true, the parser must no longer
+	// expect field definitions, but only table constraints.
+	var parsingTableConstraints bool
 
 	// Parse constraints.
 	for {
-		var fc database.FieldConstraint
-
-		err = p.parseFieldDefinition(&fc)
+		// we start by checking if it is a table constraint,
+		// as it's easier to determine
+		tc, err := p.parseTableConstraint()
 		if err != nil {
 			return err
 		}
 
-		info.FieldConstraints = append(info.FieldConstraints, &fc)
+		// no table constraint found
+		if tc == nil && parsingTableConstraints {
+			tok, pos, lit := p.ScanIgnoreWhitespace()
+			return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+		}
+
+		// only PRIMARY KEY(path) is currently supported.
+		if tc != nil {
+			parsingTableConstraints = true
+
+			if pk := stmt.Info.GetPrimaryKey(); pk != nil {
+				return stringutil.Errorf("table %q has more than one primary key", stmt.TableName)
+			}
+			fc := stmt.Info.FieldConstraints.Get(tc.primaryKey)
+			if fc == nil {
+				err = stmt.Info.FieldConstraints.Add(&database.FieldConstraint{
+					Path:         tc.primaryKey,
+					IsPrimaryKey: true,
+				})
+				if err != nil {
+					return err
+				}
+			} else {
+				fc.IsPrimaryKey = true
+			}
+		}
+
+		// if set to false, we are still parsing field definitions
+		if !parsingTableConstraints {
+			var fc database.FieldConstraint
+
+			err = p.parseFieldDefinition(&fc)
+			if err != nil {
+				return err
+			}
+
+			stmt.Info.FieldConstraints = append(stmt.Info.FieldConstraints, &fc)
+		}
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
@@ -131,14 +171,15 @@ func (p *Parser) parseFieldConstraints(info *database.TableInfo) error {
 	}
 
 	// ensure only one primary key
-	var pkCount int
-	for _, fc := range info.FieldConstraints {
+	var pkFound bool
+	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsPrimaryKey {
-			pkCount++
+			if pkFound {
+				return stringutil.Errorf("table %q has more than one primary key", stmt.TableName)
+			}
+
+			pkFound = true
 		}
-	}
-	if pkCount > 1 {
-		return &ParseError{Message: stringutil.Sprintf("only one primary key is allowed, got %d", pkCount)}
 	}
 
 	return nil
@@ -194,6 +235,40 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 			p.Unscan()
 			return nil
 		}
+	}
+}
+
+func (p *Parser) parseTableConstraint() (*tableConstraint, error) {
+	var tc tableConstraint
+	var err error
+
+	tok, _, _ := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.PRIMARY:
+		// Parse "KEY"
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+		}
+
+		// Parse "("
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+		}
+
+		tc.primaryKey, err = p.parsePath()
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse ")"
+		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		}
+
+		return &tc, nil
+	default:
+		p.Unscan()
+		return nil, nil
 	}
 }
 
@@ -255,4 +330,8 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	stmt.Path = paths[0]
 
 	return stmt, nil
+}
+
+type tableConstraint struct {
+	primaryKey document.Path
 }

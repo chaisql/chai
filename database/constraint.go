@@ -188,6 +188,17 @@ func NewFieldConstraints(userConstraints []*FieldConstraint) (FieldConstraints, 
 	return FieldConstraints(userConstraints).Infer()
 }
 
+// Get a field constraint by path. Returns nil if not found.
+func (f FieldConstraints) Get(path document.Path) *FieldConstraint {
+	for _, fc := range f {
+		if fc.Path.IsEqual(path) {
+			return fc
+		}
+	}
+
+	return nil
+}
+
 // Infer additional constraints based on user defined ones.
 // For example, given the following table:
 //   CREATE TABLE foo (a.b[0] TEXT)
