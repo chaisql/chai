@@ -99,6 +99,29 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With table constraints / PK on defined field", "CREATE TABLE test(foo INTEGER, bar NOT NULL, PRIMARY KEY (foo))",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(parsePath(t, "bar")), IsNotNull: true},
+					},
+				},
+			}, false},
+		{"With table constraints / PK on undefined field", "CREATE TABLE test(foo INTEGER, PRIMARY KEY (bar))",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue},
+						{Path: document.Path(parsePath(t, "bar")), IsPrimaryKey: true},
+					},
+				},
+			}, false},
+		{"With table constraints / field constraint after table constraint", "CREATE TABLE test(PRIMARY KEY (bar), foo INTEGER)", nil, true},
+		{"With table constraints / duplicate pk", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (bar))", nil, true},
+		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
 		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
 			query.CreateTableStmt{}, true},
 		{"With all supported fixed size data types",
@@ -155,7 +178,6 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
-
 		{"With text aliases types",
 			"CREATE TABLE test(v VARCHAR(255), c CHARACTER(64), t TEXT)",
 			query.CreateTableStmt{
@@ -168,7 +190,6 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
-
 		{"With errored text aliases types",
 			"CREATE TABLE test(v VARCHAR(1 IN [1, 2, 3] AND foo > 4) )",
 			query.CreateTableStmt{
