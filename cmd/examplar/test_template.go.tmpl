@@ -31,7 +31,7 @@ func Test{{ .TestName }}(t *testing.T) {
 
     // teardown
     teardown := func() {
-        // orig:{{ (index .Teardown 0).Num }}
+        // {{ (index .Teardown 0).Orig }}
         q := `
         {{- range .Teardown }}
         {{ .Text }}
@@ -43,7 +43,7 @@ func Test{{ .TestName }}(t *testing.T) {
 
     // setup
     setup := func() {
-        // orig:{{ (index .Setup 0).Num }}
+        // {{ (index .Setup 0).Orig }}
         q := `
         {{- range .Setup }}
         {{ .Text }}
@@ -54,7 +54,7 @@ func Test{{ .TestName }}(t *testing.T) {
     }
     {{ "" }}
     {{- range .Tests }}
-    // orig:{{ .Num }}
+    // {{ .Orig }}
     t.Run("{{ .Name }}", func(t *testing.T) {
         t.Cleanup(teardown)
         setup()
@@ -67,7 +67,7 @@ func Test{{ .TestName }}(t *testing.T) {
         {{ "" }}
 
         {{- range .Statements }}
-        // orig:{{ (index .Code 0).Num }}
+        // {{ (index .Code 0).Orig }}
         q = `
         {{- range .Code }}
         {{ .Text }}
@@ -82,14 +82,14 @@ func Test{{ .TestName }}(t *testing.T) {
         require.NoError(t, err)
         {{ "" }}
         {{- if gt (len .Expectation) 1 }}
-        // orig: {{ (index .Expectation 0).Num }}
+        // {{ (index .Expectation 0).Orig }}
         expected = `
         {{- range .Expectation }}
         {{ .Text }}
         {{- end  }}
         `
         {{- else }}
-        expected = `{{ (index .Expectation 0).Text }}` // orig:{{ (index .Expectation 0).Num }}
+        expected = `{{ (index .Expectation 0).Text }}` // {{ (index .Expectation 0).Orig }}
         {{- end }}
         require.JSONEq(t, expected, string(data))
         {{- end }}

@@ -31,7 +31,7 @@ func TestFooBar(t *testing.T) {
 
     // teardown
     teardown := func() {
-        // orig:5
+        // extest1.sql:5
         q := `
         DROP TABLE foo;
         `
@@ -41,7 +41,7 @@ func TestFooBar(t *testing.T) {
 
     // setup
     setup := func() {
-        // orig:2
+        // extest1.sql:2
         q := `
         CREATE TABLE foo (a int);
         `
@@ -49,7 +49,7 @@ func TestFooBar(t *testing.T) {
         require.NoError(t, err)
     }
     
-    // orig:7
+    // extest1.sql:7
     t.Run("insert something", func(t *testing.T) {
         t.Cleanup(teardown)
         setup()
@@ -60,7 +60,7 @@ func TestFooBar(t *testing.T) {
         var q string
         var res *query.Result
         
-        // orig:8
+        // extest1.sql:8
         q = `
         INSERT INTO foo (a) VALUES (1);
         SELECT * FROM foo;
@@ -73,9 +73,9 @@ func TestFooBar(t *testing.T) {
         data = jsonResult(t, res)
         require.NoError(t, err)
         
-        expected = `[{"a": 1}]` // orig:10
+        expected = `[{"a": 1}]` // extest1.sql:10
         require.JSONEq(t, expected, string(data))
-        // orig:12
+        // extest1.sql:12
         q = `
         SELECT a, b FROM foo;
         `
@@ -87,7 +87,7 @@ func TestFooBar(t *testing.T) {
         data = jsonResult(t, res)
         require.NoError(t, err)
         
-        // orig: 14
+        // extest1.sql:14
         expected = `
          [{
            "a": 1,
@@ -95,7 +95,7 @@ func TestFooBar(t *testing.T) {
          }]
         `
         require.JSONEq(t, expected, string(data))
-        // orig:20
+        // extest1.sql:20
         q = `
         SELECT z FROM foo;
         `
@@ -107,11 +107,11 @@ func TestFooBar(t *testing.T) {
         data = jsonResult(t, res)
         require.NoError(t, err)
         
-        expected = `[{"z": null}]` // orig:21
+        expected = `[{"z": null}]` // extest1.sql:21
         require.JSONEq(t, expected, string(data))
     })
     
-    // orig:23
+    // extest1.sql:23
     t.Run("something else", func(t *testing.T) {
         t.Cleanup(teardown)
         setup()
@@ -122,7 +122,7 @@ func TestFooBar(t *testing.T) {
         var q string
         var res *query.Result
         
-        // orig:24
+        // extest1.sql:24
         q = `
         INSERT INTO foo (c) VALUES (3);
         SELECT * FROM foo;
@@ -135,7 +135,7 @@ func TestFooBar(t *testing.T) {
         data = jsonResult(t, res)
         require.NoError(t, err)
         
-        expected = `[{"c": 3}]` // orig:26
+        expected = `[{"c": 3}]` // extest1.sql:26
         require.JSONEq(t, expected, string(data))
     })
     
