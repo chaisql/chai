@@ -12,7 +12,7 @@ DROP TABLE foo;
 --- test: insert something
 INSERT INTO foo (a) VALUES (1);
 SELECT * FROM foo;
---- `{"a": 1}`
+--- `[{"a": 1}]`
 ```
 
 Gets transformed into (abbreviated):
@@ -33,15 +33,16 @@ func TestSelecting(t *testing.T) {
         t.Cleanup(teardown)
         setup()
 
-        err := db.Exec("INSERT INTO foo (a) VALUES (1);")
+        res, err := db.Query(
+          "INSERT INTO foo (a) VALUES (1);" +
+          "SELECT * FROM foo;"
+        )
         require.NoError(t, err)
+        defer res.Close()
 
-        doc, err = db.QueryDocument("SELECT * FROM foo;")
-        require.NoError(t, err)
+        data := jsonResult(t, res)
 
-        data, err = json.Marshal(doc)
-        require.NoError(t, err)
-        expected = `{"a": 1}`
+        expected = `[{"a": 1}]`
         require.JSONEq(t, expected, string(data))
     }
 }
@@ -75,7 +76,7 @@ Those tests files can be run like any normal tests.
 
 ## How it works
 
-Examplar reads a SQL file, line by line (1), looking either for raw text or annotations that specifies what those lines are supposed to do from a testing perpective.
+Examplar reads a SQL file, looking either for raw text or annotations that specifies what those lines are supposed to do from a testing perpective.
 
 Once a SQL file has been parsed, it generates a `(...)_test.go` file that looks similar to the handwritten test that would have been written.
 
@@ -90,28 +91,28 @@ be followed by a keyword specified in the list below followed by a `:` or specia
 
 - `setup:`
 
-  - all lines up to the next annotation are to be considered as individual statements for the setup block.
+  - all lines up to the next annotation are to be considered as one single statement for the setup block.
 
 - `teardown:`
-  - all lines up to the next annotation are to be considered as individual statements for the teardown block.
+  - all lines up to the next annotation are to be considered as single statement for the teardown block.
 
 :bulb: `setup` and `teardown` blocks will generate code being ran around **each indidual** `test` block.
 They are optional and can be declared in no particular order, but there can only be one of each.
 
 - `test: [TEST NAME]`
-  - all lines up to the next annotation are to be considered as individual statements for this test block. Each line can be followed by the special expectation annotation.
+  - a test is composed of one or many statements; a statement composed of one or multiple lines and is terminated by an expectation (see below).
 
 :bulb: Each `test` block will generate an individual `t.Run("[TEST NAME]", ...)` function. At least one test block must be present.
 
 - `` `[JSON]` ``
 
-  - the previous line evaluation result will be compared to the given `[JSON]` value.
+  - the statement above this annotation will be compared to `[JSON]` when evaluated at the runtime.
   - Invalid JSON won't yield an error ar generate time, but the generated test will always fail at runtime.
 
 - ` ``` `
-  - all the following lines until another triple backtick annoattion is found are to be considered as a multiline JSON data.
-  - The line preceding the the opening triple backticks will be evaluation result will be compared to the given JSON data.
-  - Indentation will be preserved in the generating test file for readablilty. Similarly, invalid JSON will only yield an error when the resulting test is evaluated.
+  - the statement above this annotation will be compared to `[JSON]` when evaluated at the runtime.
+  - all the following lines until another triple backtick annoattion is found are to be considered as part of a single multiline JSON data.
+  - indentation will be preserved in the generating test file for readablilty. Similarly, invalid JSON will only yield an error when the resulting test is evaluated.
 
 ## Goals and non-goals
 
@@ -125,9 +126,5 @@ A breaking change in the API has only
 For now, let's observe how useful Examplar can and what we can make out of it.
 Then we can then see if it's worth addressing the following limitations:
 
-- (1) Multilines SQL statements are not yet supported.
-  A potential solutions would be to introduce a reducing function, that would multilines statement by the final `;` character on the last line of the statement.
-
 - Expecting an error instead of JSON is not supported.
-
 - Error messages on failed expectations do not reference the orignal file directly, which could be useful on complex examples sql files.

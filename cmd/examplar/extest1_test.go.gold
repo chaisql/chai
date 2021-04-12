@@ -6,6 +6,7 @@ import (
 
     "github.com/genjidb/genji"
     "github.com/genjidb/genji/document"
+    "github.com/genjidb/genji/query"
     "github.com/stretchr/testify/require"
 )
 
@@ -14,16 +15,37 @@ func TestFooBar(t *testing.T) {
     require.NoError(t, err)
     defer db.Close()
 
+    // query results wrapper
+    jsonResult := func(t *testing.T, res *query.Result) []byte {
+        t.Helper()
+        vb := document.NewValueBuffer()
+        err = res.Iterate(func(d document.Document) error {
+            vb = vb.Append(document.NewDocumentValue(d))
+            return nil
+        })
+        require.NoError(t, err)
+        data, err := json.Marshal(vb)
+        require.NoError(t, err)
+        return data
+    }
+
     // teardown
     teardown := func() {
-        var err error
-        err = db.Exec("DROP TABLE foo;") // orig:5
+        // orig:5
+        q := `
+        DROP TABLE foo;
+        `
+        err := db.Exec(q)
         require.NoError(t, err)
     }
 
     // setup
     setup := func() {
-        err = db.Exec("CREATE TABLE foo (a int);") // orig:2
+        // orig:2
+        q := `
+        CREATE TABLE foo (a int);
+        `
+        err := db.Exec(q)
         require.NoError(t, err)
     }
     
@@ -33,41 +55,59 @@ func TestFooBar(t *testing.T) {
         setup()
 
         var err error
-        var doc document.Document
         var data []byte
         var expected string
+        var q string
+        var res *query.Result
         
-        err = db.Exec("INSERT INTO foo (a) VALUES (1);") // orig:8
-        require.NoError(t, err)
-        doc, err = db.QueryDocument("SELECT * FROM foo;") // orig:9
-        require.NoError(t, err)
+        // orig:8
+        q = `
+        INSERT INTO foo (a) VALUES (1);
+        SELECT * FROM foo;
+        `
 
-        data, err = json.Marshal(doc)
+        res, err = db.Query(q)
+        require.NoError(t, err)
+        defer res.Close()
+
+        data = jsonResult(t, res)
         require.NoError(t, err)
         
-        expected = `{"a": 1}` // orig:10
+        expected = `[{"a": 1}]` // orig:10
         require.JSONEq(t, expected, string(data))
-        doc, err = db.QueryDocument("SELECT a, b FROM foo;") // orig:12
-        require.NoError(t, err)
+        // orig:12
+        q = `
+        SELECT a, b FROM foo;
+        `
 
-        data, err = json.Marshal(doc)
+        res, err = db.Query(q)
+        require.NoError(t, err)
+        defer res.Close()
+
+        data = jsonResult(t, res)
         require.NoError(t, err)
         
         // orig: 14
         expected = `
-         {
+         [{
            "a": 1,
            "b": null
-         }
+         }]
         `
         require.JSONEq(t, expected, string(data))
-        doc, err = db.QueryDocument("SELECT z FROM foo;") // orig:20
-        require.NoError(t, err)
+        // orig:20
+        q = `
+        SELECT z FROM foo;
+        `
 
-        data, err = json.Marshal(doc)
+        res, err = db.Query(q)
+        require.NoError(t, err)
+        defer res.Close()
+
+        data = jsonResult(t, res)
         require.NoError(t, err)
         
-        expected = `{"z": null}` // orig:21
+        expected = `[{"z": null}]` // orig:21
         require.JSONEq(t, expected, string(data))
     })
     
@@ -77,19 +117,25 @@ func TestFooBar(t *testing.T) {
         setup()
 
         var err error
-        var doc document.Document
         var data []byte
         var expected string
+        var q string
+        var res *query.Result
         
-        err = db.Exec("INSERT INTO foo (c) VALUES (3);") // orig:24
-        require.NoError(t, err)
-        doc, err = db.QueryDocument("SELECT * FROM foo;") // orig:25
-        require.NoError(t, err)
+        // orig:24
+        q = `
+        INSERT INTO foo (c) VALUES (3);
+        SELECT * FROM foo;
+        `
 
-        data, err = json.Marshal(doc)
+        res, err = db.Query(q)
+        require.NoError(t, err)
+        defer res.Close()
+
+        data = jsonResult(t, res)
         require.NoError(t, err)
         
-        expected = `{"c": 3}` // orig:26
+        expected = `[{"c": 3}]` // orig:26
         require.JSONEq(t, expected, string(data))
     })
     

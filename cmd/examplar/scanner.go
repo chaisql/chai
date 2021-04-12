@@ -23,6 +23,9 @@ type Scanner struct {
 	line string
 	num  int
 	ex   *Examplar
+
+	curTest *Test
+	curStmt *Statement
 }
 
 func initialState(s *Scanner) stateFn {
@@ -33,7 +36,7 @@ func initialState(s *Scanner) stateFn {
 		case TEARDOWN:
 			return teardownState
 		case TEST:
-			s.ex.appendTest(data, s.num)
+			s.curTest = s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
@@ -53,7 +56,7 @@ func setupState(s *Scanner) stateFn {
 				return teardownState
 			}
 		case TEST:
-			s.ex.appendTest(data, s.num)
+			s.curTest = s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
@@ -74,7 +77,7 @@ func teardownState(s *Scanner) stateFn {
 		case TEARDOWN:
 			return errorState
 		case TEST:
-			s.ex.appendTest(data, s.num)
+			s.curTest = s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
@@ -91,26 +94,31 @@ func testState(s *Scanner) stateFn {
 		case TEARDOWN:
 			return errorState
 		case TEST:
-			s.ex.appendTest(data, s.num)
+			s.curTest = s.ex.appendTest(data, s.num)
 			return testState
 		}
 	}
 
-	test := s.ex.currentTest()
+	if s.curStmt == nil {
+		stmt := &Statement{}
+		s.curTest.Statements = append(s.curTest.Statements, stmt)
+		s.curStmt = stmt
+	}
 
 	if hasMultilineAssertionTag(s.line) {
 		return multilineAssertionState
 	}
 
 	if assertion := parseSingleAssertion(s.line); len(assertion) > 0 {
-		exp := s.ex.currentExpectation()
+		exp := &s.curStmt.Expectation
 		*exp = []Line{{s.num, assertion}}
+
+		// current statement is now finished
+		s.curStmt = nil
 		return testState
 	}
 
-	test.Statements = append(test.Statements, &Statement{
-		Code: Line{s.num, s.line},
-	})
+	s.curStmt.Code = append(s.curStmt.Code, Line{s.num, s.line})
 
 	return testState
 }
@@ -127,11 +135,13 @@ func multilineAssertionState(s *Scanner) stateFn {
 
 	code := strings.TrimRight(matches[1], " \t")
 
+	// final triple backtick, go back to testState
 	if strings.TrimSpace(matches[1]) == "```" {
+		s.curStmt = nil
 		return testState
 	}
 
-	exp := s.ex.currentExpectation()
+	exp := &s.curStmt.Expectation
 	*exp = append(*exp, Line{s.num, code})
 
 	return multilineAssertionState
