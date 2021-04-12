@@ -21,7 +21,7 @@ type Test struct {
 
 // Statement is a pair composed of a line of code and an expectation on its result when evaluated.
 type Statement struct {
-	Code        Line
+	Code        []Line
 	Expectation []Line
 }
 
@@ -52,25 +52,28 @@ func (ex *Examplar) HasTeardown() bool {
 	return len(ex.teardown) > 0
 }
 
-func (ex *Examplar) appendTest(name string, num int) {
-	ex.examples = append(ex.examples, &Test{
+func (ex *Examplar) appendTest(name string, num int) *Test {
+	test := Test{
 		Name: name,
 		Num:  num,
-	})
+	}
+	ex.examples = append(ex.examples, &test)
+
+	return &test
 }
 
-func (ex *Examplar) currentTest() *Test {
-	return ex.examples[len(ex.examples)-1]
-}
+// func (ex *Examplar) currentTest() *Test {
+// 	return ex.examples[len(ex.examples)-1]
+// }
 
-func (ex *Examplar) currentStatement() *Statement {
-	test := ex.currentTest()
-	return test.Statements[len(test.Statements)-1]
-}
+// func (ex *Examplar) currentStatement() *Statement {
+// 	test := ex.currentTest()
+// 	return test.Statements[len(test.Statements)-1]
+// }
 
-func (ex *Examplar) currentExpectation() *[]Line {
-	return &ex.currentStatement().Expectation
-}
+// func (ex *Examplar) currentExpectation() *[]Line {
+// 	return &ex.currentStatement().Expectation
+// }
 
 // Parse reads annotated textual data and transforms it into a
 // structured representation. Only annotations are parsed, the

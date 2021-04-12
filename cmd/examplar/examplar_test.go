@@ -23,33 +23,31 @@ func TestParse(t *testing.T) {
 	example := ex.examples[0]
 	require.NotNil(t, example)
 	require.Equal(t, "insert something", example.Name)
+	require.Equal(t, 3, len(example.Statements))
 
 	stmt := example.Statements[0]
-	require.Equal(t, "INSERT INTO foo (a) VALUES (1);", stmt.Code.Text)
+	require.Equal(t, "INSERT INTO foo (a) VALUES (1);", stmt.Code[0].Text)
+	require.Equal(t, "SELECT * FROM foo;", stmt.Code[1].Text)
+	require.Equal(t, `[{"a": 1}]`, stmt.Expectation[0].Text)
 
 	stmt = example.Statements[1]
-	require.Equal(t, "SELECT * FROM foo;", stmt.Code.Text)
-	require.Equal(t, `{"a": 1}`, stmt.Expectation[0].Text)
+	require.Equal(t, "SELECT a, b FROM foo;", stmt.Code[0].Text)
+	require.JSONEq(t, `[{"a": 1, "b": null}]`, stmt.expectationText())
 
 	stmt = example.Statements[2]
-	require.Equal(t, "SELECT a, b FROM foo;", stmt.Code.Text)
-	require.JSONEq(t, `{"a": 1, "b": null}`, stmt.expectationText())
-
-	stmt = example.Statements[3]
-	require.Equal(t, "SELECT z FROM foo;", stmt.Code.Text)
-	require.Equal(t, `{"z": null}`, stmt.Expectation[0].Text)
+	require.Equal(t, "SELECT z FROM foo;", stmt.Code[0].Text)
+	require.Equal(t, `[{"z": null}]`, stmt.Expectation[0].Text)
 
 	// second test
 	example = ex.examples[1]
 	require.NotNil(t, example)
 	require.Equal(t, "something else", example.Name)
 
+	require.Equal(t, 1, len(example.Statements))
 	stmt = example.Statements[0]
-	require.Equal(t, "INSERT INTO foo (c) VALUES (3);", stmt.Code.Text)
-
-	stmt = example.Statements[1]
-	require.Equal(t, "SELECT * FROM foo;", stmt.Code.Text)
-	require.Equal(t, `{"c": 3}`, stmt.Expectation[0].Text)
+	require.Equal(t, "INSERT INTO foo (c) VALUES (3);", stmt.Code[0].Text)
+	require.Equal(t, "SELECT * FROM foo;", stmt.Code[1].Text)
+	require.Equal(t, `[{"c": 3}]`, stmt.Expectation[0].Text)
 }
 
 func TestTemplate(t *testing.T) {
