@@ -25,15 +25,9 @@ func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
 	var stmt query.DropTableStmt
 	var err error
 
-	// Parse "IF"
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.IF {
-		// Parse "EXISTS"
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
-			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
-		}
-		stmt.IfExists = true
-	} else {
-		p.Unscan()
+	stmt.IfExists, err = p.parseOptional(scanner.IF, scanner.EXISTS)
+	if err != nil {
+		return stmt, err
 	}
 
 	// Parse table name
@@ -53,15 +47,9 @@ func (p *Parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
 	var stmt query.DropIndexStmt
 	var err error
 
-	// Parse "IF"
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.IF {
-		// Parse "EXISTS"
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
-			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
-		}
-		stmt.IfExists = true
-	} else {
-		p.Unscan()
+	stmt.IfExists, err = p.parseOptional(scanner.IF, scanner.EXISTS)
+	if err != nil {
+		return stmt, err
 	}
 
 	// Parse index name

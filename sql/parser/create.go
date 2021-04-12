@@ -36,7 +36,7 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	var err error
 
 	// Parse IF NOT EXISTS
-	stmt.IfNotExists, err = p.parseIfNotExists()
+	stmt.IfNotExists, err = p.parseOptional(scanner.IF, scanner.NOT, scanner.EXISTS)
 	if err != nil {
 		return stmt, err
 	}
@@ -54,26 +54,6 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	}
 
 	return stmt, nil
-}
-
-func (p *Parser) parseIfNotExists() (bool, error) {
-	// Parse "IF"
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.IF {
-		p.Unscan()
-		return false, nil
-	}
-
-	// Parse "NOT"
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.NOT {
-		return false, newParseError(scanner.Tokstr(tok, lit), []string{"NOT", "EXISTS"}, pos)
-	}
-
-	// Parse "EXISTS"
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
-		return false, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
-	}
-
-	return true, nil
 }
 
 func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) {
@@ -280,21 +260,10 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		Unique: unique,
 	}
 
-	// Parse "IF"
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.IF {
-		// Parse "NOT"
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.NOT {
-			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"NOT", "EXISTS"}, pos)
-		}
-
-		// Parse "EXISTS"
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EXISTS {
-			return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"EXISTS"}, pos)
-		}
-
-		stmt.IfNotExists = true
-	} else {
-		p.Unscan()
+	// Parse IF NOT EXISTS
+	stmt.IfNotExists, err = p.parseOptional(scanner.IF, scanner.NOT, scanner.EXISTS)
+	if err != nil {
+		return stmt, err
 	}
 
 	// Parse index name

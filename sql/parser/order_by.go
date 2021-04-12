@@ -7,14 +7,9 @@ import (
 
 func (p *Parser) parseOrderBy() (expr.Path, scanner.Token, error) {
 	// parse ORDER token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.ORDER {
-		p.Unscan()
-		return nil, 0, nil
-	}
-
-	// parse BY token
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.BY {
-		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"BY"}, pos)
+	ok, err := p.parseOptional(scanner.ORDER, scanner.BY)
+	if err != nil || !ok {
+		return nil, 0, err
 	}
 
 	// parse path

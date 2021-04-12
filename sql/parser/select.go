@@ -157,15 +157,9 @@ func (p *Parser) parseFrom() (string, bool, error) {
 }
 
 func (p *Parser) parseGroupBy() (expr.Expr, error) {
-	// parse GROUP token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.GROUP {
-		p.Unscan()
-		return nil, nil
-	}
-
-	// parse BY token
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.BY {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"BY"}, pos)
+	ok, err := p.parseOptional(scanner.GROUP, scanner.BY)
+	if err != nil || !ok {
+		return nil, err
 	}
 
 	// parse expr
