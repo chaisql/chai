@@ -426,15 +426,15 @@ func (rs *documentStream) Next(dest []driver.Value) error {
 }
 
 type valueScanner struct {
-	v interface{}
+	dest interface{}
 }
 
 func (v valueScanner) Scan(src interface{}) error {
 	switch t := src.(type) {
 	case document.Document:
-		return document.StructScan(t, v.v)
+		return document.StructScan(t, v.dest)
 	case document.Array:
-		return document.SliceScan(t, v.v)
+		return document.SliceScan(t, v.dest)
 	case document.Value:
 		return document.ScanValue(t, src)
 	}
@@ -444,7 +444,7 @@ func (v valueScanner) Scan(src interface{}) error {
 		return err
 	}
 
-	return document.ScanValue(vv, &src)
+	return document.ScanValue(vv, v.dest)
 }
 
 // Scanner turns a variable into a sql.Scanner.

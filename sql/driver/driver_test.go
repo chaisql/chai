@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/genjidb/genji/engine"
 	"github.com/stretchr/testify/require"
@@ -261,4 +262,23 @@ func TestDriver(t *testing.T) {
 		`)
 		require.Equal(t, err, engine.ErrTransactionReadOnly)
 	})
+}
+
+func TestDriverWithTimeValues(t *testing.T) {
+	db, err := sql.Open("genji", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	now := time.Now().UTC()
+	_, err = db.Exec("CREATE TABLE test; INSERT INTO test (a) VALUES (?)", now)
+	require.NoError(t, err)
+
+	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
+	require.NoError(t, err)
+	defer tx.Rollback()
+
+	var tt time.Time
+	err = tx.QueryRow(`SELECT a FROM test`).Scan(Scanner(&tt))
+	require.NoError(t, err)
+	require.Equal(t, now, tt)
 }
