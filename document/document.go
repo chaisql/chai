@@ -106,6 +106,11 @@ func (fb *FieldBuffer) UnmarshalJSON(data []byte) error {
 	})
 }
 
+func (fb *FieldBuffer) String() string {
+	s, _ := fb.MarshalJSON()
+	return string(s)
+}
+
 type fieldValue struct {
 	Field string
 	Value Value

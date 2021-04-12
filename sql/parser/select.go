@@ -5,7 +5,6 @@ import (
 
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
-	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/stringutil"
@@ -13,7 +12,7 @@ import (
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (query.Statement, error) {
+func (p *Parser) parseSelectStatement() (*planner.Statement, error) {
 	var cfg selectConfig
 	var err error
 

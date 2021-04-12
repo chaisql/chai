@@ -709,3 +709,52 @@ func TestUnset(t *testing.T) {
 		require.Equal(t, stream.Unset("a").String(), "unset(a)")
 	})
 }
+
+func TestIterRename(t *testing.T) {
+	tests := []struct {
+		fieldNames []string
+		in, out    []document.Document
+		fails      bool
+	}{
+		{
+			[]string{"c", "d"},
+			testutil.MakeDocuments(t, `{"a": 10, "b": 20}`),
+			testutil.MakeDocuments(t, `{"c": 10, "d": 20}`),
+			false,
+		},
+		{
+			[]string{"c", "d", "e"},
+			testutil.MakeDocuments(t, `{"a": 10, "b": 20}`),
+			nil,
+			true,
+		},
+		{
+			[]string{"c"},
+			testutil.MakeDocuments(t, `{"a": 10, "b": 20}`),
+			nil,
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		s := stream.New(stream.Documents(test.in...)).Pipe(stream.IterRename(test.fieldNames...))
+		t.Run(s.String(), func(t *testing.T) {
+			i := 0
+			err := s.Iterate(nil, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				require.Equal(t, test.out[i], d)
+				i++
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
+	t.Run("String", func(t *testing.T) {
+		require.Equal(t, stream.IterRename("a", "b", "c").String(), "iterRename(a, b, c)")
+	})
+}

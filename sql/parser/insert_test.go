@@ -76,6 +76,36 @@ func TestParserInsert(t *testing.T) {
 			nil, true},
 		{"Values / Without fields / Wrong values", "INSERT INTO test VALUES {a: 1}, ('e', 'f')",
 			nil, true},
+		{"Select / same table", "INSERT INTO test SELECT * FROM test",
+			nil, true},
+		{"Select / Without fields", "INSERT INTO test SELECT * FROM foo",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.TableInsert("test")),
+			false},
+		{"Select / Without fields / With projection", "INSERT INTO test SELECT a, b FROM foo",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"))).
+				Pipe(stream.TableInsert("test")),
+			false},
+		{"Select / With fields", "INSERT INTO test (a, b) SELECT * FROM foo",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(expr.Wildcard{})).
+				Pipe(stream.IterRename("a", "b")).
+				Pipe(stream.TableInsert("test")),
+			false},
+		{"Select / With fields / With projection", "INSERT INTO test (a, b) SELECT a, b FROM foo",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"))).
+				Pipe(stream.IterRename("a", "b")).
+				Pipe(stream.TableInsert("test")),
+			false},
+		{"Select / With fields / With projection / different fields", "INSERT INTO test (a, b) SELECT c, d FROM foo",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(parseNamedExpr(t, "c"), parseNamedExpr(t, "d"))).
+				Pipe(stream.IterRename("a", "b")).
+				Pipe(stream.TableInsert("test")),
+			false},
 	}
 
 	for _, test := range tests {
@@ -89,7 +119,7 @@ func TestParserInsert(t *testing.T) {
 			require.Len(t, q.Statements, 1)
 			stmt := q.Statements[0].(*planner.Statement)
 			require.False(t, stmt.ReadOnly)
-			require.EqualValues(t, test.expected, stmt.Stream)
+			require.EqualValues(t, test.expected.String(), stmt.Stream.String())
 		})
 	}
 }
