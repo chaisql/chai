@@ -5,6 +5,7 @@ import (
 	"container/heap"
 	"container/list"
 	"errors"
+	"strings"
 
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
@@ -697,4 +698,71 @@ func (op *UnsetOperator) Iterate(in *expr.Environment, f func(out *expr.Environm
 
 func (op *UnsetOperator) String() string {
 	return stringutil.Sprintf("unset(%s)", op.Field)
+}
+
+// An IterRenameOperator iterates over all fields of the incoming document in order and renames them.
+type IterRenameOperator struct {
+	baseOperator
+	FieldNames []string
+}
+
+// IterRename iterates over all fields of the incoming document in order and renames them.
+// If the number of fields of the incoming document doesn't match the number of expected fields,
+// it returns an error.
+func IterRename(fieldNames ...string) *IterRenameOperator {
+	return &IterRenameOperator{
+		FieldNames: fieldNames,
+	}
+}
+
+// Iterate implements the Operator interface.
+func (op *IterRenameOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
+	var fb document.FieldBuffer
+	var newEnv expr.Environment
+
+	return op.Prev.Iterate(in, func(out *expr.Environment) error {
+		fb.Reset()
+
+		d, ok := out.GetDocument()
+		if !ok {
+			return errors.New("missing document")
+		}
+
+		var i int
+		err := d.Iterate(func(field string, value document.Value) error {
+			// if there are too many fields in the incoming document
+			if i >= len(op.FieldNames) {
+				n, err := document.Length(d)
+				if err != nil {
+					return err
+				}
+				return stringutil.Errorf("%d values for %d fields", n, len(op.FieldNames))
+			}
+
+			fb.Add(op.FieldNames[i], value)
+			i++
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		// if there are too few fields in the incoming document
+		if i < len(op.FieldNames) {
+			n, err := document.Length(d)
+			if err != nil {
+				return err
+			}
+			return stringutil.Errorf("%d values for %d fields", n, len(op.FieldNames))
+		}
+
+		newEnv.Outer = out
+		newEnv.SetDocument(&fb)
+
+		return f(&newEnv)
+	})
+}
+
+func (op *IterRenameOperator) String() string {
+	return stringutil.Sprintf("iterRename(%s)", strings.Join(op.FieldNames, ", "))
 }

@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"errors"
+
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/sql/scanner"
@@ -28,18 +30,30 @@ func (p *Parser) parseInsertStatement() (*planner.Statement, error) {
 	}
 
 	// Parse path list: (a, b, c)
-	fields, err := p.parseFieldList()
+	cfg.Fields, err = p.parseFieldList()
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse VALUES (v1, v2, v3)
-	cfg.Values, err = p.parseValues(fields)
-	if err != nil {
-		return nil, err
+	// Check if VALUES or SELECT token exists.
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.VALUES:
+		// Parse VALUES (v1, v2, v3)
+		cfg.Values, err = p.parseValues(cfg.Fields)
+		if err != nil {
+			return nil, err
+		}
+	case scanner.SELECT:
+		cfg.SelectStmt, err = p.parseSelectStatement()
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "SELECT"}, pos)
 	}
 
-	return cfg.ToStream(), nil
+	return cfg.ToStream()
 }
 
 // parseFieldList parses a list of fields in the form: (path, path, ...), if exists.
@@ -68,11 +82,6 @@ func (p *Parser) parseFieldList() ([]string, error) {
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
 func (p *Parser) parseValues(fields []string) ([]expr.Expr, error) {
-	// Check if the VALUES token exists.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.VALUES {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES"}, pos)
-	}
-
 	if len(fields) > 0 {
 		return p.parseDocumentsWithFields(fields)
 	}
@@ -182,17 +191,35 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 
 // insertConfig holds INSERT configuration.
 type insertConfig struct {
-	TableName string
-	Values    []expr.Expr
+	TableName  string
+	Values     []expr.Expr
+	Fields     []string
+	SelectStmt *planner.Statement
 }
 
-func (cfg *insertConfig) ToStream() *planner.Statement {
-	s := stream.New(stream.Expressions(cfg.Values...))
+func (cfg *insertConfig) ToStream() (*planner.Statement, error) {
+	var s *stream.Stream
+	if cfg.Values != nil {
+		s = stream.New(stream.Expressions(cfg.Values...))
 
-	s = s.Pipe(stream.TableInsert(cfg.TableName))
+		s = s.Pipe(stream.TableInsert(cfg.TableName))
+	} else {
+		s = cfg.SelectStmt.Stream
+
+		// ensure we are not reading and writing to the same table.
+		if s.First().(*stream.SeqScanOperator).TableName == cfg.TableName {
+			return nil, errors.New("cannot read and write to the same table")
+		}
+
+		if len(cfg.Fields) > 0 {
+			s = s.Pipe(stream.IterRename(cfg.Fields...))
+		}
+
+		s = s.Pipe(stream.TableInsert(cfg.TableName))
+	}
 
 	return &planner.Statement{
 		Stream:   s,
 		ReadOnly: false,
-	}
+	}, nil
 }

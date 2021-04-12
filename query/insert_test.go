@@ -276,3 +276,54 @@ func TestInsertStmt(t *testing.T) {
 		}
 	})
 }
+
+func TestInsertSelect(t *testing.T) {
+	tests := []struct {
+		name     string
+		query    string
+		fails    bool
+		expected string
+		params   []interface{}
+	}{
+		{"Same table", `INSERT INTO foo SELECT * FROM foo`, true, ``, nil},
+		{"No fields / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"pk()":1, "a":1, "b":10}]`, nil},
+		{"No fields / Projection", `INSERT INTO foo SELECT a FROM bar`, false, `[{"pk()":1, "a":1}]`, nil},
+		{"With fields / No Projection", `INSERT INTO foo (a, b) SELECT * FROM bar`, false, `[{"pk()":1, "a":1, "b":10}]`, nil},
+		{"With fields / Projection", `INSERT INTO foo (c, d) SELECT a, b FROM bar`, false, `[{"pk()":1, "c":1, "d":10}]`, nil},
+		{"Too many fields / No Projection", `INSERT INTO foo (c) SELECT * FROM bar`, true, ``, nil},
+		{"Too many fields / Projection", `INSERT INTO foo (c, d) SELECT a, b, c FROM bar`, true, ``, nil},
+		{"Too few fields / No Projection", `INSERT INTO foo (c, d, e) SELECT * FROM bar`, true, ``, nil},
+		{"Too few fields / Projection", `INSERT INTO foo (c, d) SELECT a FROM bar`, true, ``, nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec(`
+				CREATE TABLE foo;
+				CREATE TABLE bar;
+				INSERT INTO bar (a, b) VALUES (1, 10)
+			`)
+			require.NoError(t, err)
+
+			err = db.Exec(test.query, test.params...)
+			if test.fails {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			st, err := db.Query("SELECT pk(), * FROM foo")
+			require.NoError(t, err)
+			defer st.Close()
+
+			var buf bytes.Buffer
+			err = document.IteratorToJSONArray(&buf, st)
+			require.NoError(t, err)
+			require.JSONEq(t, test.expected, buf.String())
+		})
+	}
+}
