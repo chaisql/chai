@@ -59,7 +59,7 @@ var commands = []struct {
 		Name:        ".schema",
 		Options:     "[table_name]",
 		DisplayName: ".schema",
-		Description: "Show the CREATE statements matching pattern of a database or the given tables.",
+		Description: "Show the CREATE statements of all tables or of the selected ones.",
 	},
 }
 
