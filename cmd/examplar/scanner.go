@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -23,9 +24,14 @@ type Scanner struct {
 	line string
 	num  int
 	ex   *Examplar
+	err  error
 
 	curTest *Test
 	curStmt *Statement
+}
+
+func (s *Scanner) origLoc() string {
+	return s.ex.origLoc(s.num)
 }
 
 func initialState(s *Scanner) stateFn {
@@ -61,7 +67,7 @@ func setupState(s *Scanner) stateFn {
 		}
 	}
 
-	s.ex.setup = append(s.ex.setup, Line{s.num, s.line})
+	s.ex.setup = append(s.ex.setup, Line{s.origLoc(), s.line})
 	return setupState
 }
 
@@ -82,7 +88,7 @@ func teardownState(s *Scanner) stateFn {
 		}
 	}
 
-	s.ex.teardown = append(s.ex.teardown, Line{s.num, s.line})
+	s.ex.teardown = append(s.ex.teardown, Line{s.origLoc(), s.line})
 	return teardownState
 }
 
@@ -111,14 +117,14 @@ func testState(s *Scanner) stateFn {
 
 	if assertion := parseSingleAssertion(s.line); len(assertion) > 0 {
 		exp := &s.curStmt.Expectation
-		*exp = []Line{{s.num, assertion}}
+		*exp = []Line{{s.origLoc(), assertion}}
 
 		// current statement is now finished
 		s.curStmt = nil
 		return testState
 	}
 
-	s.curStmt.Code = append(s.curStmt.Code, Line{s.num, s.line})
+	s.curStmt.Code = append(s.curStmt.Code, Line{s.origLoc(), s.line})
 
 	return testState
 }
@@ -142,18 +148,17 @@ func multilineAssertionState(s *Scanner) stateFn {
 	}
 
 	exp := &s.curStmt.Expectation
-	*exp = append(*exp, Line{s.num, code})
+	*exp = append(*exp, Line{s.origLoc(), code})
 
 	return multilineAssertionState
 }
 
 func errorState(s *Scanner) stateFn {
-	panic(s.line)
+	s.err = fmt.Errorf(s.line)
+	return errorState
 }
 
-func (s *Scanner) Run(io *bufio.Scanner) *Examplar {
-	s.ex = &Examplar{}
-
+func (s *Scanner) Run(io *bufio.Scanner) error {
 	for state := initialState; io.Scan(); {
 		s.line = io.Text()
 		s.line = strings.TrimSpace(s.line)
@@ -165,7 +170,7 @@ func (s *Scanner) Run(io *bufio.Scanner) *Examplar {
 		state = state(s)
 	}
 
-	return s.ex
+	return s.err
 }
 
 func parseTag(line string) (Tag, string) {

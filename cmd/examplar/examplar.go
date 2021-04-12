@@ -2,20 +2,21 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 	"text/template"
 )
 
 type Line struct {
-	Num  int
+	Orig string
 	Text string
 }
 
 // Test is a list of statements.
 type Test struct {
 	Name       string
-	Num        int
+	Orig       string
 	Statements []*Statement
 }
 
@@ -36,10 +37,15 @@ func (s Statement) expectationText() string {
 
 // Examplar represents a group of tests and can optionally include setup code and teardown code.
 type Examplar struct {
-	Name     string
-	setup    []Line
-	teardown []Line
-	examples []*Test
+	Name             string
+	originalFilename string
+	setup            []Line
+	teardown         []Line
+	examples         []*Test
+}
+
+func (ex *Examplar) origLoc(num int) string {
+	return fmt.Sprintf("%s:%d", ex.originalFilename, num)
 }
 
 // HasSetup returns true if setup code is provided.
@@ -55,38 +61,28 @@ func (ex *Examplar) HasTeardown() bool {
 func (ex *Examplar) appendTest(name string, num int) *Test {
 	test := Test{
 		Name: name,
-		Num:  num,
+		Orig: ex.origLoc(num),
 	}
 	ex.examples = append(ex.examples, &test)
 
 	return &test
 }
 
-// func (ex *Examplar) currentTest() *Test {
-// 	return ex.examples[len(ex.examples)-1]
-// }
-
-// func (ex *Examplar) currentStatement() *Statement {
-// 	test := ex.currentTest()
-// 	return test.Statements[len(test.Statements)-1]
-// }
-
-// func (ex *Examplar) currentExpectation() *[]Line {
-// 	return &ex.currentStatement().Expectation
-// }
-
 // Parse reads annotated textual data and transforms it into a
 // structured representation. Only annotations are parsed, the
 // textual data itself is irrelevant to this function.
 //
 // It will panic if an error is encountered.
-func Parse(r io.Reader, name string) *Examplar {
-	scanner := &Scanner{}
+func Parse(r io.Reader, name string, originalFilename string) *Examplar {
+	ex := Examplar{
+		Name:             name,
+		originalFilename: originalFilename,
+	}
 
-	ex := scanner.Run(bufio.NewScanner(r))
-	ex.Name = name
+	scanner := &Scanner{ex: &ex}
+	scanner.Run(bufio.NewScanner(r))
 
-	return ex
+	return &ex
 }
 
 func normalizeTestName(name string) string {

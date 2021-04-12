@@ -32,7 +32,6 @@ func main() {
 	}
 
 	paths := os.Args[2:]
-	fmt.Println(paths)
 	if len(paths) < 1 {
 		flag.Usage()
 		os.Exit(-1)
@@ -69,7 +68,7 @@ func genFile(p string, packageName string) error {
 	base := path.Base(p)
 	name := strings.TrimSuffix(base, path.Ext(p))
 
-	ex := Parse(in, name)
+	ex := Parse(in, name, base)
 
 	out, err := os.OpenFile(name+"_test.go", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {

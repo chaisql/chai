@@ -12,12 +12,12 @@ import (
 func TestParse(t *testing.T) {
 	f, err := os.Open("extest1.sql")
 	require.NoError(t, err)
+
 	defer f.Close()
+	ex := Parse(f, "extest1", "extest1.sql")
 
-	ex := Parse(f, "extest1")
-
-	require.Equal(t, []Line{{2, "CREATE TABLE foo (a int);"}}, ex.setup)
-	require.Equal(t, []Line{{5, "DROP TABLE foo;"}}, ex.teardown)
+	require.Equal(t, []Line{{"extest1.sql:2", "CREATE TABLE foo (a int);"}}, ex.setup)
+	require.Equal(t, []Line{{"extest1.sql:5", "DROP TABLE foo;"}}, ex.teardown)
 
 	// first test
 	example := ex.examples[0]
@@ -64,7 +64,7 @@ func TestTemplate(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ex := Parse(f, "foo bar")
+	ex := Parse(f, "foo bar", "extest1.sql")
 
 	var b strings.Builder
 
