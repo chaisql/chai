@@ -10,6 +10,7 @@ $(NAME):
 	cd ./cmd/$@ && go install
 
 gen: $(NAME)
+	cd cmd/examplar && go build && cd ../..
 	go generate ./...
 
 test:

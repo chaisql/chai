@@ -1,7 +1,7 @@
 package {{ .Package }}
 
 import (
-    "encoding/json"
+    "bytes"
     "testing"
 
     "github.com/genjidb/genji"
@@ -18,15 +18,10 @@ func Test{{ .TestName }}(t *testing.T) {
     // query results wrapper
     jsonResult := func(t *testing.T, res *query.Result) []byte {
         t.Helper()
-        vb := document.NewValueBuffer()
-        err = res.Iterate(func(d document.Document) error {
-            vb = vb.Append(document.NewDocumentValue(d))
-            return nil
-        })
+        var buf bytes.Buffer
+        err := document.IteratorToJSONArray(&buf, res)
         require.NoError(t, err)
-        data, err := json.Marshal(vb)
-        require.NoError(t, err)
-        return data
+        return buf.Bytes()
     }
 
     // teardown
