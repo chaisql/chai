@@ -382,6 +382,36 @@ func TestTxCreateIndex(t *testing.T) {
 			return nil
 		})
 	})
+
+	t.Run("Should generate a name if not provided", func(t *testing.T) {
+		db, cleanup := newTestDB(t)
+		defer cleanup()
+		catalog := db.Catalog()
+
+		update(t, db, func(tx *database.Transaction) error {
+			return catalog.CreateTable(tx, "test", nil)
+		})
+
+		update(t, db, func(tx *database.Transaction) error {
+			err := catalog.CreateIndex(tx, database.IndexInfo{
+				TableName: "test", Path: parsePath(t, "foo"),
+			})
+			require.NoError(t, err)
+
+			_, err = catalog.GetIndex(tx, "__genji_autoindex_test_1")
+			require.NoError(t, err)
+
+			// create another one
+			err = catalog.CreateIndex(tx, database.IndexInfo{
+				TableName: "test", Path: parsePath(t, "foo"),
+			})
+			require.NoError(t, err)
+
+			_, err = catalog.GetIndex(tx, "__genji_autoindex_test_2")
+			require.NoError(t, err)
+			return nil
+		})
+	})
 }
 
 func TestTxDropIndex(t *testing.T) {
