@@ -2,7 +2,6 @@ package parser
 
 import (
 	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
@@ -95,36 +94,20 @@ func (p *Parser) parseConstraints(stmt *query.CreateTableStmt) error {
 	for {
 		// we start by checking if it is a table constraint,
 		// as it's easier to determine
-		tc, err := p.parseTableConstraint()
+		ok, err := p.parseTableConstraint(stmt)
 		if err != nil {
 			return err
 		}
 
 		// no table constraint found
-		if tc == nil && parsingTableConstraints {
+		if !ok && parsingTableConstraints {
 			tok, pos, lit := p.ScanIgnoreWhitespace()
 			return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 		}
 
 		// only PRIMARY KEY(path) is currently supported.
-		if tc != nil {
+		if ok {
 			parsingTableConstraints = true
-
-			if pk := stmt.Info.GetPrimaryKey(); pk != nil {
-				return stringutil.Errorf("table %q has more than one primary key", stmt.TableName)
-			}
-			fc := stmt.Info.FieldConstraints.Get(tc.primaryKey)
-			if fc == nil {
-				err = stmt.Info.FieldConstraints.Add(&database.FieldConstraint{
-					Path:         tc.primaryKey,
-					IsPrimaryKey: true,
-				})
-				if err != nil {
-					return err
-				}
-			} else {
-				fc.IsPrimaryKey = true
-			}
 		}
 
 		// if set to false, we are still parsing field definitions
@@ -225,37 +208,81 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 	}
 }
 
-func (p *Parser) parseTableConstraint() (*tableConstraint, error) {
-	var tc tableConstraint
+func (p *Parser) parseTableConstraint(stmt *query.CreateTableStmt) (bool, error) {
 	var err error
 
 	tok, _, _ := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.PRIMARY:
-		// Parse "KEY"
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
-		}
-
-		// Parse "("
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
-		}
-
-		tc.primaryKey, err = p.parsePath()
+		// Parse "KEY ("
+		err = p.parseTokens(scanner.KEY, scanner.LPAREN)
 		if err != nil {
-			return nil, err
+			return false, err
+		}
+
+		primaryKeyPath, err := p.parsePath()
+		if err != nil {
+			return false, err
 		}
 
 		// Parse ")"
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+		err = p.parseTokens(scanner.RPAREN)
+		if err != nil {
+			return false, err
 		}
 
-		return &tc, nil
+		if pk := stmt.Info.GetPrimaryKey(); pk != nil {
+			return false, stringutil.Errorf("table %q has more than one primary key", stmt.TableName)
+		}
+		fc := stmt.Info.FieldConstraints.Get(primaryKeyPath)
+		if fc == nil {
+			err = stmt.Info.FieldConstraints.Add(&database.FieldConstraint{
+				Path:         primaryKeyPath,
+				IsPrimaryKey: true,
+			})
+			if err != nil {
+				return false, err
+			}
+		} else {
+			fc.IsPrimaryKey = true
+		}
+
+		return true, nil
+	case scanner.UNIQUE:
+		// Parse "("
+		err = p.parseTokens(scanner.LPAREN)
+		if err != nil {
+			return false, err
+		}
+
+		uniquePath, err := p.parsePath()
+		if err != nil {
+			return false, err
+		}
+
+		// Parse ")"
+		err = p.parseTokens(scanner.RPAREN)
+		if err != nil {
+			return false, err
+		}
+
+		fc := stmt.Info.FieldConstraints.Get(uniquePath)
+		if fc == nil {
+			err = stmt.Info.FieldConstraints.Add(&database.FieldConstraint{
+				Path:     uniquePath,
+				IsUnique: true,
+			})
+			if err != nil {
+				return false, err
+			}
+		} else {
+			fc.IsUnique = true
+		}
+
+		return true, nil
 	default:
 		p.Unscan()
-		return nil, nil
+		return false, nil
 	}
 }
 
@@ -311,8 +338,4 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	stmt.Path = paths[0]
 
 	return stmt, nil
-}
-
-type tableConstraint struct {
-	primaryKey document.Path
 }
