@@ -9,22 +9,6 @@
   Document-oriented, embedded, SQL database
 </p>
 
-## Table of contents
-
-- [Table of contents](#table-of-contents)
-- [Introduction](#introduction)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Using Genji's API](#using-genjis-api)
-  - [Using database/sql](#using-databasesql)
-- [Engines](#engines)
-  - [Using the BoltDB engine](#using-the-boltdb-engine)
-  - [Using the memory engine](#using-the-memory-engine)
-  - [Using the Badger engine](#using-the-badger-engine)
-- [Genji shell](#genji-shell)
-- [Contributing](#contributing)
-
 ## Introduction
 
 [![Build Status](https://travis-ci.org/genjidb/genji.svg)](https://travis-ci.org/genjidb/genji)
