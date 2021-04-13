@@ -269,6 +269,11 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	// Parse optional index name
 	stmt.IndexName, err = p.parseIdent()
 	if err != nil {
+		// if IF NOT EXISTS is set, index name is mandatory
+		if stmt.IfNotExists {
+			return stmt, err
+		}
+
 		p.Unscan()
 	}
 

@@ -1,8 +1,6 @@
 package query
 
 import (
-	"errors"
-
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
@@ -24,10 +22,6 @@ func (stmt CreateTableStmt) IsReadOnly() bool {
 // It implements the Statement interface.
 func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
-
-	if stmt.TableName == "" {
-		return res, errors.New("missing table name")
-	}
 
 	err := tx.CreateTable(stmt.TableName, &stmt.Info)
 	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
@@ -56,18 +50,6 @@ func (stmt CreateIndexStmt) IsReadOnly() bool {
 // It implements the Statement interface.
 func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
-
-	if stmt.TableName == "" {
-		return res, errors.New("missing table name")
-	}
-
-	if stmt.IfNotExists && len(stmt.IndexName) == 0 {
-		return res, errors.New("missing index name with IF NOT EXISTS clause")
-	}
-
-	if len(stmt.Path) == 0 {
-		return res, errors.New("missing path")
-	}
 
 	err := tx.CreateIndex(&database.IndexInfo{
 		Unique:    stmt.Unique,
