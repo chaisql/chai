@@ -254,6 +254,56 @@ func TestCreateTable(t *testing.T) {
 				})
 			}
 		})
+
+		t.Run("unique", func(t *testing.T) {
+			db, err := genji.Open(":memory:")
+			require.NoError(t, err)
+			defer db.Close()
+
+			err = db.Exec("CREATE TABLE test (a INT UNIQUE, b DOUBLE UNIQUE, c UNIQUE)")
+			require.NoError(t, err)
+
+			err = db.View(func(tx *genji.Tx) error {
+				tb, err := tx.GetTable("test")
+				require.NoError(t, err)
+				info := tb.Info()
+				require.Len(t, info.FieldConstraints, 3)
+
+				require.Equal(t, &database.FieldConstraint{
+					Path:     parsePath(t, "a"),
+					Type:     document.IntegerValue,
+					IsUnique: true,
+				}, info.FieldConstraints[0])
+
+				require.Equal(t, &database.FieldConstraint{
+					Path:     parsePath(t, "b"),
+					Type:     document.DoubleValue,
+					IsUnique: true,
+				}, info.FieldConstraints[1])
+
+				require.Equal(t, &database.FieldConstraint{
+					Path:     parsePath(t, "c"),
+					IsUnique: true,
+				}, info.FieldConstraints[2])
+
+				idx, err := tx.GetIndex("__genji_autoindex_test_1")
+				require.NoError(t, err)
+				require.Equal(t, document.IntegerValue, idx.Info.Type)
+				require.True(t, idx.Info.Unique)
+
+				idx, err = tx.GetIndex("__genji_autoindex_test_2")
+				require.NoError(t, err)
+				require.Equal(t, document.DoubleValue, idx.Info.Type)
+				require.True(t, idx.Info.Unique)
+
+				idx, err = tx.GetIndex("__genji_autoindex_test_3")
+				require.NoError(t, err)
+				require.Zero(t, idx.Info.Type)
+				require.True(t, idx.Info.Unique)
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 }
 

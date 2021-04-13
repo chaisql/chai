@@ -72,9 +72,9 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 		return err
 	}
 
-	if fc.Type == 0 && fc.DefaultValue.Type.IsZero() && !fc.IsNotNull && !fc.IsPrimaryKey {
+	if fc.Type == 0 && fc.DefaultValue.Type.IsZero() && !fc.IsNotNull && !fc.IsPrimaryKey && !fc.IsUnique {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
-		return newParseError(scanner.Tokstr(tok, lit), []string{"TYPE", "CONSTRAINT"}, pos)
+		return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", "TYPE"}, pos)
 	}
 
 	return nil
@@ -211,6 +211,13 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 			}
 
 			fc.DefaultValue = d
+		case scanner.UNIQUE:
+			// if it's already unique we return an error
+			if fc.IsUnique {
+				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+			}
+
+			fc.IsUnique = true
 		default:
 			p.Unscan()
 			return nil

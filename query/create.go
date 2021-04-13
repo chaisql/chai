@@ -28,6 +28,20 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 		err = nil
 	}
 
+	for _, fc := range stmt.Info.FieldConstraints {
+		if fc.IsUnique {
+			err = tx.CreateIndex(&database.IndexInfo{
+				TableName: stmt.TableName,
+				Path:      fc.Path,
+				Unique:    true,
+				Type:      fc.Type,
+			})
+			if err != nil {
+				return res, err
+			}
+		}
+	}
+
 	return res, err
 }
 
