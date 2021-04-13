@@ -266,10 +266,10 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		return stmt, err
 	}
 
-	// Parse index name
+	// Parse optional index name
 	stmt.IndexName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		p.Unscan()
 	}
 
 	// Parse "ON"
