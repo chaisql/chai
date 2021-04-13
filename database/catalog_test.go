@@ -115,9 +115,9 @@ func TestCatalogTable(t *testing.T) {
 			err := catalog.CreateTable(tx, "foo", ti)
 			require.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, database.IndexInfo{Path: parsePath(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
+			err = catalog.CreateIndex(tx, &database.IndexInfo{Path: parsePath(t, "gender"), IndexName: "idx_gender", TableName: "foo"})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, database.IndexInfo{Path: parsePath(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
+			err = catalog.CreateIndex(tx, &database.IndexInfo{Path: parsePath(t, "city"), IndexName: "idx_city", TableName: "foo", Unique: true})
 			require.NoError(t, err)
 
 			return nil
@@ -317,7 +317,7 @@ func TestTxCreateIndex(t *testing.T) {
 		clone := catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, database.IndexInfo{
+			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idx_a", TableName: "test", Path: parsePath(t, "a"),
 			})
 			require.NoError(t, err)
@@ -354,12 +354,12 @@ func TestTxCreateIndex(t *testing.T) {
 		})
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, database.IndexInfo{
+			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 			})
 			require.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 			})
 			require.Equal(t, database.ErrIndexAlreadyExists, err)
@@ -372,7 +372,7 @@ func TestTxCreateIndex(t *testing.T) {
 		defer cleanup()
 		catalog := db.Catalog()
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, database.IndexInfo{
+			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 			})
 			if !errors.Is(err, database.ErrTableNotFound) {
@@ -393,7 +393,7 @@ func TestTxCreateIndex(t *testing.T) {
 		})
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, database.IndexInfo{
+			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				TableName: "test", Path: parsePath(t, "foo"),
 			})
 			require.NoError(t, err)
@@ -402,7 +402,7 @@ func TestTxCreateIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			// create another one
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				TableName: "test", Path: parsePath(t, "foo"),
 			})
 			require.NoError(t, err)
@@ -423,11 +423,11 @@ func TestTxDropIndex(t *testing.T) {
 		update(t, db, func(tx *database.Transaction) error {
 			err := catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 			})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxBar", TableName: "test", Path: parsePath(t, "bar"),
 			})
 			require.NoError(t, err)
@@ -486,13 +486,13 @@ func TestCatalogReIndex(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "a",
 				TableName: "test",
 				Path:      parsePath(t, "a"),
 			})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "b",
 				TableName: "test",
 				Path:      parsePath(t, "b"),
@@ -534,7 +534,7 @@ func TestCatalogReIndex(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			return catalog.CreateIndex(tx, database.IndexInfo{
+			return catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "b",
 				TableName: "test",
 				Path:      parsePath(t, "b"),
@@ -635,13 +635,13 @@ func TestReIndexAll(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "t1a",
 				TableName: "test1",
 				Path:      parsePath(t, "a"),
 			})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, database.IndexInfo{
+			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "t2a",
 				TableName: "test2",
 				Path:      parsePath(t, "a"),

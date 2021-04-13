@@ -266,6 +266,8 @@ func TestCreateIndex(t *testing.T) {
 		{"Basic", "CREATE INDEX idx ON test (foo)", false},
 		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar)", false},
 		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[1])", false},
+		{"No name", "CREATE UNIQUE INDEX ON test (foo[1])", false},
+		{"No name if not exists", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[1])", true},
 		{"No fields", "CREATE INDEX idx ON test", true},
 		{"More than 1 field", "CREATE INDEX idx ON test (foo, bar)", true},
 	}
