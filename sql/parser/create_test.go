@@ -226,7 +226,8 @@ func TestParserCreateIndex(t *testing.T) {
 		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.Path(parsePath(t, "foo"))}, false},
 		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.Path(parsePath(t, "foo.bar[1]")), IfNotExists: true}, false},
 		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Path: document.Path(parsePath(t, "foo[3].baz")), IfNotExists: true, Unique: true}, false},
-		{"No name", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Path: document.Path(parsePath(t, "foo[3].baz")), IfNotExists: true, Unique: true}, false},
+		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Path: document.Path(parsePath(t, "foo[3].baz")), Unique: true}, false},
+		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
 		{"No fields", "CREATE INDEX idx ON test", nil, true},
 		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)", nil, true},
 	}
