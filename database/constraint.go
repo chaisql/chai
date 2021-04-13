@@ -13,6 +13,7 @@ type FieldConstraint struct {
 	Type         document.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
+	IsUnique     bool // not stored, only set during table creation
 	DefaultValue document.Value
 	IsInferred   bool
 	InferredBy   []document.Path

@@ -57,9 +57,20 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With unique", "CREATE TABLE test(foo UNIQUE)",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(parsePath(t, "foo")), IsUnique: true},
+					},
+				},
+			}, false},
 		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)",
 			query.CreateTableStmt{}, true},
 		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)",
+			query.CreateTableStmt{}, true},
+		{"With unique twice", "CREATE TABLE test(foo UNIQUE UNIQUE)",
 			query.CreateTableStmt{}, true},
 		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
 			query.CreateTableStmt{
