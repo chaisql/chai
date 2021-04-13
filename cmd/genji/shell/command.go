@@ -223,7 +223,7 @@ func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 			return err
 		}
 
-		err = otherTx.CreateIndex(index)
+		err = otherTx.CreateIndex(&index)
 		if err != nil {
 			return err
 		}

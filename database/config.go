@@ -303,7 +303,7 @@ type indexStore struct {
 	st engine.Store
 }
 
-func (t *indexStore) Insert(cfg IndexInfo) error {
+func (t *indexStore) Insert(cfg *IndexInfo) error {
 	key := []byte(cfg.IndexName)
 	_, err := t.st.Get(key)
 	if err == nil {

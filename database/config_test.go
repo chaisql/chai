@@ -166,11 +166,11 @@ func TestIndexStore(t *testing.T) {
 			Type:      document.BoolValue,
 		}
 
-		err = idxs.Insert(cfg)
+		err = idxs.Insert(&cfg)
 		require.NoError(t, err)
 
 		// Inserting the same index should fail.
-		err = idxs.Insert(cfg)
+		err = idxs.Insert(&cfg)
 		require.EqualError(t, err, ErrIndexAlreadyExists.Error())
 
 		idxcfg, err := idxs.Get("idx_test")
@@ -200,7 +200,7 @@ func TestIndexStore(t *testing.T) {
 			{TableName: "test3", IndexName: "idx_test3", Unique: true},
 		}
 		for _, v := range idxcfgs {
-			err = idxs.Insert(*v)
+			err = idxs.Insert(v)
 			require.NoError(t, err)
 		}
 

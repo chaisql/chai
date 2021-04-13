@@ -294,7 +294,7 @@ func TestTableInsert(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexInfo{
+		err = tx.CreateIndex(&database.IndexInfo{
 			IndexName: "idxFoo", TableName: "test", Path: parsePath(t, "foo"),
 		})
 		require.NoError(t, err)
@@ -642,7 +642,7 @@ func TestTableReplace(t *testing.T) {
 		err := tx.CreateTable("test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexInfo{
+		err = tx.CreateIndex(&database.IndexInfo{
 			Path:      document.NewPath("a"),
 			Unique:    true,
 			TableName: "test",
@@ -735,21 +735,21 @@ func TestTableIndexes(t *testing.T) {
 		err = tx.CreateTable("test2", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(database.IndexInfo{
+		err = tx.CreateIndex(&database.IndexInfo{
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
 			Path:      parsePath(t, "a"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexInfo{
+		err = tx.CreateIndex(&database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
 			Path:      parsePath(t, "b"),
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(database.IndexInfo{
+		err = tx.CreateIndex(&database.IndexInfo{
 			Unique:    false,
 			IndexName: "ifx2a",
 			TableName: "test2",

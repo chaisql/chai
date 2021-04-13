@@ -167,7 +167,7 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns ErrIndexAlreadyExists.
-func (c *Catalog) CreateIndex(tx *Transaction, opts IndexInfo) error {
+func (c *Catalog) CreateIndex(tx *Transaction, opts *IndexInfo) error {
 	if strings.HasPrefix(opts.IndexName, internalPrefix) {
 		return stringutil.Errorf("table name must not start with %s", internalPrefix)
 	}
@@ -182,7 +182,7 @@ func (c *Catalog) CreateIndex(tx *Transaction, opts IndexInfo) error {
 		opts.IndexName = stringutil.Sprintf("%sautoindex_%s_%d", internalPrefix, opts.TableName, seq)
 	}
 
-	err := c.cache.AddIndex(tx, &opts)
+	err := c.cache.AddIndex(tx, opts)
 	if err != nil {
 		return err
 	}
