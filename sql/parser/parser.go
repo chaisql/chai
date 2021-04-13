@@ -210,9 +210,9 @@ func (p *Parser) Unscan() {
 	p.s.Unscan()
 }
 
-// parseConsecutiveTokens parses all the given tokens one after the other.
+// parseTokens parses all the given tokens one after the other.
 // It returns an error if one of the token is missing.
-func (p *Parser) parseConsecutiveTokens(tokens ...scanner.Token) error {
+func (p *Parser) parseTokens(tokens ...scanner.Token) error {
 	for _, t := range tokens {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != t {
 			return newParseError(scanner.Tokstr(tok, lit), []string{t.String()}, pos)
@@ -236,7 +236,7 @@ func (p *Parser) parseOptional(tokens ...scanner.Token) (bool, error) {
 		return true, nil
 	}
 
-	err := p.parseConsecutiveTokens(tokens[1:]...)
+	err := p.parseTokens(tokens[1:]...)
 	return err == nil, err
 }
 

@@ -133,6 +133,36 @@ func TestParserCreateTable(t *testing.T) {
 		{"With table constraints / field constraint after table constraint", "CREATE TABLE test(PRIMARY KEY (bar), foo INTEGER)", nil, true},
 		{"With table constraints / duplicate pk", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (bar))", nil, true},
 		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
+		{"With table constraints / UNIQUE on defined field", "CREATE TABLE test(foo INTEGER, bar NOT NULL, UNIQUE (foo))",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
+						{Path: document.Path(parsePath(t, "bar")), IsNotNull: true},
+					},
+				},
+			}, false},
+		{"With table constraints / UNIQUE on undefined field", "CREATE TABLE test(foo INTEGER, UNIQUE (bar))",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue},
+						{Path: document.Path(parsePath(t, "bar")), IsUnique: true},
+					},
+				},
+			}, false},
+		{"With table constraints / UNIQUE twice", "CREATE TABLE test(foo INTEGER UNIQUE, UNIQUE (foo))",
+			query.CreateTableStmt{
+				TableName: "test",
+				Info: database.TableInfo{
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
+					},
+				},
+			}, false},
+		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
 		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
 			query.CreateTableStmt{}, true},
 		{"With all supported fixed size data types",
