@@ -68,7 +68,7 @@ func (idx *Index) Arity() int {
 	return len(idx.Info.Types)
 }
 
-// Set associates a value with a key. If Unique is set to false, it is
+// Set associates a list of values with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
 func (idx *Index) Set(vs []document.Value, k []byte) error {
@@ -320,8 +320,6 @@ func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
 		return v.MarshalBinary()
 	}
 
-	// in the case of one of the index keys being untyped and the corresponding
-	// value being an integer, convert it into a double.
 	var err error
 	var buf bytes.Buffer
 	err = document.NewValueEncoder(&buf).Encode(v)
