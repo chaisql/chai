@@ -50,7 +50,7 @@ type Shell struct {
 
 	cmdSuggestions []prompt.Suggest
 
-	// context used for execution cancelation,
+	// context used for execution cancellation,
 	// these must not be used manually.
 	// Use getExecContext and cancelExecContext instead.
 	execContext  context.Context
@@ -146,7 +146,7 @@ func Run(ctx context.Context, opts *Options) error {
 		return sh.runExecutor(ctx, promptExecCh)
 	})
 
-	// Because go-prompt doesn't handle cancelation
+	// Because go-prompt doesn't handle cancellation
 	// it is impossible to ask it to stop when the prompt.Input function
 	// is running.
 	// We run it in a non-managed goroutine with no graceful shutdown
@@ -295,7 +295,7 @@ func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
 			continue
 		}
 
-		// deleguate execution to the sh.runExecutor goroutine
+		// delegate execution to the sh.runExecutor goroutine
 		execCh <- input
 		// and wait for it to finish to display another prompt.
 		<-execCh
