@@ -12,6 +12,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -128,10 +129,10 @@ func TestIndexDelete(t *testing.T) {
 		i := 0
 		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte) error {
 			if i == 0 {
-				requireEqualEncoded(t, document.NewIntegerValue(10), v)
+				requireEqualBinary(t, testutil.MakeArrayValue(t, 10), v)
 				require.Equal(t, "other-key", string(k))
 			} else if i == 1 {
-				requireEqualEncoded(t, document.NewIntegerValue(11), v)
+				requireEqualBinary(t, testutil.MakeArrayValue(t, 11), v)
 				require.Equal(t, "yet-another-key", string(k))
 			} else {
 				return errors.New("should not reach this point")
@@ -195,10 +196,10 @@ func TestIndexDelete(t *testing.T) {
 		err := idx.AscendGreaterOrEqual(values(document.Value{Type: document.IntegerValue}), func(v, k []byte) error {
 			switch i {
 			case 0:
-				requireEqualEncoded(t, document.NewIntegerValue(10), v)
+				requireEqualBinary(t, testutil.MakeArrayValue(t, 10), v)
 				require.Equal(t, "key1", string(k))
 			case 1:
-				requireEqualEncoded(t, document.NewIntegerValue(12), v)
+				requireEqualBinary(t, testutil.MakeArrayValue(t, 12), v)
 				require.Equal(t, "key3", string(k))
 			default:
 				return errors.New("should not reach this point")
@@ -269,7 +270,7 @@ func requireEqualBinary(t *testing.T, expected document.Value, actual []byte) {
 
 	buf, err := expected.MarshalBinary()
 	require.NoError(t, err)
-	require.Equal(t, buf, actual)
+	require.Equal(t, buf[:len(buf)-1], actual)
 }
 
 // requireEqualEncoded asserts equality, assuming that the value is encoded with document.ValueEncoder
@@ -280,6 +281,39 @@ func requireEqualEncoded(t *testing.T, expected document.Value, actual []byte) {
 	err := document.NewValueEncoder(&buf).Encode(expected)
 	require.NoError(t, err)
 	require.Equal(t, buf.Bytes(), actual)
+}
+
+type encValue struct {
+	skipType bool
+	document.Value
+}
+
+func req(t *testing.T, evs ...encValue) func([]byte) {
+	t.Helper()
+
+	var buf bytes.Buffer
+	for i, ev := range evs {
+		if !ev.skipType {
+			err := buf.WriteByte(byte(ev.Value.Type))
+			require.NoError(t, err)
+		}
+
+		b, err := ev.Value.MarshalBinary()
+		require.NoError(t, err)
+
+		_, err = buf.Write(b)
+		require.NoError(t, err)
+
+		// TODO
+		if i < len(evs)-1 {
+			err = buf.WriteByte(0x1f)
+		}
+		require.NoError(t, err)
+	}
+
+	return func(actual []byte) {
+		require.Equal(t, buf.Bytes(), actual)
+	}
 }
 
 func TestIndexAscendGreaterThan(t *testing.T) {
@@ -341,7 +375,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					noise:      noiseBlob,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -351,7 +387,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					val:        func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -363,7 +401,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -382,7 +422,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -402,7 +444,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					val:        func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
+						req(t,
+							encValue{false, document.NewDoubleValue(float64(i) + float64(i)/2)},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -413,7 +457,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
+						req(t,
+							encValue{false, document.NewDoubleValue(float64(i) + float64(i)/2)},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -424,7 +470,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
+						req(t,
+							encValue{true, document.NewDoubleValue(float64(i) + float64(i)/2)},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -444,7 +492,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					noise:      noiseInts,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -456,7 +506,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -467,7 +519,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					noise:      noiseInts,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -486,7 +540,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{true, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -499,10 +555,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -563,10 +619,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -581,10 +637,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -599,10 +655,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -623,10 +679,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -642,10 +698,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewBlobValue([]byte{byte('a' + uint8(i))}))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewBlobValue([]byte{byte('a' + uint8(i))})},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -693,10 +749,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						if i%2 == 0 {
 							i = i / 2
-							array := document.NewValueBuffer(
-								document.NewIntegerValue(int64(i)),
-								document.NewIntegerValue(int64(i+1)))
-							requireEqualBinary(t, document.NewArrayValue(array), val)
+							req(t,
+								encValue{false, document.NewIntegerValue(int64(i))},
+								encValue{false, document.NewIntegerValue(int64(i + 1))},
+							)(val)
 						}
 					},
 					expectedCount: 9, // 10 elements, but pivot skipped the initial [0, true]
@@ -709,10 +765,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -724,10 +780,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -740,10 +796,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewBlobValue([]byte{byte('a' + uint8(i))}))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewBlobValue([]byte{byte('a' + uint8(i))})},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -755,10 +811,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -770,10 +826,10 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -881,7 +937,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					noise:      noiseBlob,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
+						requireEqualBinary(t, testutil.MakeArrayValue(t, int64(i)), val)
 					},
 					expectedCount: 5,
 				},
@@ -891,7 +947,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val:        func(i int) []document.Value { return values(document.NewIntegerValue(int64(i))) },
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -903,7 +961,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -922,7 +982,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewIntegerValue(int64(i)), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -942,7 +1004,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					val:        func(i int) []document.Value { return values(document.NewDoubleValue(float64(i) + float64(i)/2)) },
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
+						req(t,
+							encValue{false, document.NewDoubleValue(float64(i) + float64(i)/2)},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -953,7 +1017,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
+						req(t,
+							encValue{false, document.NewDoubleValue(float64(i) + float64(i)/2)},
+						)(val)
 					},
 					expectedCount: 2,
 				},
@@ -964,7 +1030,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewDoubleValue(float64(i)+float64(i)/2), val)
+						req(t,
+							encValue{true, document.NewDoubleValue(float64(i) + float64(i)/2)},
+						)(val)
 					},
 					expectedCount: 2,
 				},
@@ -984,7 +1052,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					noise:      noiseInts,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
+
 					},
 					expectedCount: 5,
 				},
@@ -996,7 +1067,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -1007,7 +1080,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					noise:      noiseInts,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -1018,7 +1093,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					noise:      noiseInts,
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualEncoded(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{false, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -1029,11 +1106,28 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, document.NewTextValue(strconv.Itoa(int(i))), val)
+						req(t,
+							encValue{true, document.NewTextValue(strconv.Itoa(int(i)))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
 				// composite --------------------------------------------------
+				// composite indexes can have empty pivots to iterate on the whole indexed data
+				{name: "index=[untyped, untyped], vals=[int, int], pivot=[nil,nil]",
+					indexTypes: []document.ValueType{0, 0},
+					pivots:     values(document.Value{}, document.Value{}),
+					val: func(i int) []document.Value {
+						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
+					},
+					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
+					},
+					expectedCount: 5,
+				},
 				// composite indexes must have at least have one value
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, int]",
 					indexTypes: []document.ValueType{0, 0},
@@ -1089,10 +1183,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						return values(document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -1108,10 +1202,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 2,
 				},
@@ -1127,11 +1221,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -1152,10 +1245,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},
@@ -1164,17 +1257,48 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					indexTypes: []document.ValueType{0, 0},
 					pivots:     values(document.NewIntegerValue(2), document.NewBlobValue([]byte{byte('a')})),
 					val: func(i int) []document.Value {
-						return values(document.NewIntegerValue(int64(i)), document.NewBlobValue([]byte{byte('a' + uint8(i))}))
+						return values(
+							document.NewIntegerValue(int64(i)),
+							document.NewBlobValue([]byte{byte('a' + uint8(i))}),
+						)
 					},
 					noise: func(i int) []document.Value {
-						return values(document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
+						return values(
+							document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
+							document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
+						)
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
-						array := document.NewValueBuffer(
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewBlobValue([]byte{byte('a' + uint8(i))})},
+						)(val)
+					},
+					expectedCount: 2,
+				},
+				// only one of the indexed value is typed
+				{name: "index=[untyped, blob], vals=[int, blob], noise=[blob, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
+					indexTypes: []document.ValueType{0, document.BlobValue},
+					pivots:     values(document.NewIntegerValue(2), document.NewBlobValue([]byte{byte('a')})),
+					val: func(i int) []document.Value {
+						return values(
 							document.NewIntegerValue(int64(i)),
-							document.NewBlobValue([]byte{byte('a' + uint8(i))}))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+							document.NewBlobValue([]byte{byte('a' + uint8(i))}),
+						)
+					},
+					noise: func(i int) []document.Value {
+						return values(
+							document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
+							document.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
+						)
+					},
+					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+						i -= 3
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewBlobValue([]byte{byte('a' + uint8(i))})},
+						)(val)
 					},
 					expectedCount: 2,
 				},
@@ -1238,10 +1362,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 5,
 				},
@@ -1253,10 +1377,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 2,
 				},
@@ -1269,10 +1393,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewBlobValue([]byte{byte('a' + uint8(i))}))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewBlobValue([]byte{byte('a' + uint8(i))})},
+						)(val)
 					},
 					expectedCount: 2,
 				},
@@ -1285,10 +1409,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 4
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 1,
 				},
@@ -1301,10 +1425,10 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
-						array := document.NewValueBuffer(
-							document.NewIntegerValue(int64(i)),
-							document.NewIntegerValue(int64(i+1)))
-						requireEqualBinary(t, document.NewArrayValue(array), val)
+						req(t,
+							encValue{true, document.NewIntegerValue(int64(i))},
+							encValue{true, document.NewIntegerValue(int64(i + 1))},
+						)(val)
 					},
 					expectedCount: 3,
 				},

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -33,6 +34,50 @@ type Index struct {
 
 	tx        engine.Transaction
 	storeName []byte
+}
+
+type indexValueEncoder struct {
+	typ document.ValueType
+}
+
+func (e *indexValueEncoder) EncodeValue(v document.Value) ([]byte, error) {
+	// if the index has no type constraint, encode the value with its type
+	if e.typ.IsZero() {
+		var buf bytes.Buffer
+
+		// prepend with the type
+		err := buf.WriteByte(byte(v.Type))
+		if err != nil {
+			return nil, err
+		}
+
+		// marshal the value, if it exists, just return the type otherwise
+		if v.V != nil {
+			b, err := v.MarshalBinary()
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = buf.Write(b)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return buf.Bytes(), nil
+	}
+
+	// this should never happen, but if it does, something is very wrong
+	if v.Type != e.typ {
+		panic("incompatible index type")
+	}
+
+	if v.V == nil {
+		return nil, nil
+	}
+
+	// there is a type constraint, so a shorter form can be used as the type is always the same
+	return v.MarshalBinary()
 }
 
 // NewIndex creates an index that associates values with a list of keys.
@@ -68,7 +113,7 @@ func (idx *Index) Arity() int {
 	return len(idx.Info.Types)
 }
 
-// Set associates a list of values with a key. If Unique is set to false, it is
+// Set associates a value with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
 func (idx *Index) Set(vs []document.Value, k []byte) error {
@@ -100,12 +145,8 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 
 	// encode the value we are going to use as a key
 	var buf []byte
-	if len(vs) > 1 {
-		wrappedVs := document.NewValueBuffer(vs...)
-		buf, err = idx.EncodeValue(document.NewArrayValue(wrappedVs))
-	} else {
-		buf, err = idx.EncodeValue(vs[0])
-	}
+	vb := document.NewValueBuffer(vs...)
+	buf, err = idx.EncodeValueBuffer(vb)
 
 	if err != nil {
 		return err
@@ -307,32 +348,47 @@ func (idx *Index) Truncate() error {
 	return nil
 }
 
-// EncodeValue encodes the value we are going to use as a key,
+// EncodeValue encodes the value buffer we are going to use as a key,
+// TODO
 // If the index is typed, encode the value without expecting
 // the presence of other types.
 // If not, encode so that order is preserved regardless of the type.
-func (idx *Index) EncodeValue(v document.Value) ([]byte, error) {
-	if idx.IsComposite() {
-		return idx.compositeEncodeValue(v)
+func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
+	if vb.Len() > idx.Arity() {
+		// TODO
+		return nil, fmt.Errorf("todo")
 	}
 
-	if idx.Info.Types[0] != 0 {
-		return v.MarshalBinary()
-	}
-
-	var err error
 	var buf bytes.Buffer
-	err = document.NewValueEncoder(&buf).Encode(v)
+
+	err := vb.Iterate(func(i int, value document.Value) error {
+		enc := &indexValueEncoder{idx.Info.Types[i]}
+		b, err := enc.EncodeValue(value)
+		if err != nil {
+			return err
+		}
+
+		_, err = buf.Write(b)
+		if err != nil {
+			return err
+		}
+
+		// if it's not the last value, append the seperator
+		if i < vb.Len()-1 {
+			err = buf.WriteByte(0x1f) // TODO
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
-}
 
-func (idx *Index) compositeEncodeValue(v document.Value) ([]byte, error) {
-	// v has been turned into an array of values being indexed
-	// if we reach this point, array *must* be a document.ValueBuffer
-	return v.MarshalBinary()
+	return buf.Bytes(), nil
 }
 
 func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) {
@@ -360,6 +416,7 @@ func (idx *Index) buildSeek(pivots []document.Value, reverse bool) ([]byte, erro
 	var seek []byte
 	var err error
 
+	// TODO rework
 	// if we have valueless and typeless pivots, we just iterate
 	if allEmpty(pivots) {
 		return []byte{}, nil
@@ -377,64 +434,39 @@ func (idx *Index) buildSeek(pivots []document.Value, reverse bool) ([]byte, erro
 		return seek, nil
 	}
 
-	if !idx.IsComposite() {
-		if pivots[0].V != nil {
-			seek, err = idx.EncodeValue(pivots[0])
-			if err != nil {
-				return nil, err
-			}
+	// if !idx.IsComposite() {
+	// 	if pivots[0].V != nil {
+	// 		seek, err = idx.EncodeValue(document.NewValueBuffer(pivots...))
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
 
-			if reverse {
-				// appending 0xFF turns the pivot into the upper bound of that value.
-				seek = append(seek, 0xFF)
-			}
-		} else {
-			if idx.Info.Types[0] == 0 && pivots[0].Type != 0 && pivots[0].V == nil {
-				seek = []byte{byte(pivots[0].Type)}
+	// 		if reverse {
+	// 			// appending 0xFF turns the pivot into the upper bound of that value.
+	// 			seek = append(seek, 0xFF)
+	// 		}
+	// 	} else {
+	// 		if idx.Info.Types[0] == 0 && pivots[0].Type != 0 && pivots[0].V == nil {
+	// 			seek = []byte{byte(pivots[0].Type)}
 
-				if reverse {
-					seek = append(seek, 0xFF)
-				}
-			}
-		}
-	} else {
-		// [2,3,4,int] is a valid pivot, in which case the last pivot, a valueless typed pivot
-		// it handled separatedly
-		valuePivots := make([]document.Value, 0, len(pivots))
-		var valuelessPivot *document.Value
-		for _, p := range pivots {
-			if p.V != nil {
-				valuePivots = append(valuePivots, p)
-			} else {
-				valuelessPivot = &p
-				break
-			}
-		}
+	// 			if reverse {
+	// 				seek = append(seek, 0xFF)
+	// 			}
+	// 		}
+	// 	}
+	// } else {
+	// [2,3,4,int] is a valid pivot, in which case the last pivot, a valueless typed pivot
+	// it handled separatedly
 
-		vb := document.NewValueBuffer(valuePivots...)
-		seek, err = idx.EncodeValue(document.NewArrayValue(vb))
+	vb := document.NewValueBuffer(pivots...)
+	seek, err = idx.EncodeValueBuffer(vb)
 
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
 
-		// if we have a [2, int] case, let's just add the type
-		if valuelessPivot != nil {
-			seek = append(seek[:len(seek)-1], byte(0x1f), byte(valuelessPivot.Type), byte(0x1e))
-		}
-
-		if reverse {
-			// if we are seeking in reverse on a pivot with lower arity, the comparison will be in between
-			// arrays of different sizes, the pivot being shorter than the indexed values.
-			// Because the element separator 0x1F is greater than the array end separator 0x1E,
-			// the reverse byte 0xFF must be appended before the end separator in order to be able
-			// to be compared correctly.
-			if len(seek) > 0 {
-				seek = append(seek[:len(seek)-1], 0xFF)
-			} else {
-				seek = append(seek, 0xFF)
-			}
-		}
+	if reverse {
+		seek = append(seek, 0xFF)
 	}
 
 	return seek, nil
@@ -444,6 +476,8 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 	var err error
 
 	seek, err := idx.buildSeek(pivots, reverse)
+	fmt.Println("pivots", pivots)
+	fmt.Println("seek", seek)
 	if err != nil {
 		return err
 	}
