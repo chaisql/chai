@@ -605,7 +605,7 @@ outer:
 			cd.priority = 1
 		}
 
-		ranges, err := getRangesFromFilterNodes(usableFilterNodes, idx.Arity())
+		ranges, err := getRangesFromFilterNodes(usableFilterNodes)
 		if err != nil {
 			return nil, err
 		}
@@ -744,12 +744,7 @@ func operandCanUseIndex(indexType document.ValueType, path document.Path, fc dat
 	return converted, indexType == converted.Type, nil
 }
 
-func getRangesFromFilterNodes(fnodes []*filterNode, indexArity int) (stream.Ranges, error) {
-	if indexArity <= 1 {
-		op := fnodes[0].f.E.(expr.Operator)
-		return getRangesFromOp(op, fnodes[0].v)
-	}
-
+func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) {
 	vb := document.NewValueBuffer()
 	for _, fno := range fnodes {
 		op := fno.f.E.(expr.Operator)
@@ -759,6 +754,7 @@ func getRangesFromFilterNodes(fnodes []*filterNode, indexArity int) (stream.Rang
 		case *expr.EqOperator, *expr.GtOperator, *expr.GteOperator, *expr.LtOperator, *expr.LteOperator:
 			vb = vb.Append(v)
 		case *expr.InOperator:
+			// TODO(JH)
 			// an index like idx_foo_a_b on (a,b) and a query like
 			// WHERE a IN [1, 1] and b IN [2, 2]
 			// would lead to [1, 1] x [2, 2] = [[1,1], [1,2], [2,1], [2,2]]
@@ -769,8 +765,8 @@ func getRangesFromFilterNodes(fnodes []*filterNode, indexArity int) (stream.Rang
 		}
 	}
 
-	rng := stream.Range{
-		Min: document.NewArrayValue(vb),
+	rng := stream.IndexRange{
+		Min: vb,
 	}
 
 	// the last node is the only one that can be a comparison operator, so
@@ -787,41 +783,41 @@ func getRangesFromFilterNodes(fnodes []*filterNode, indexArity int) (stream.Rang
 		rng.Exclusive = true
 	}
 
-	return stream.Ranges{rng}, nil
+	return stream.IndexRanges{rng}, nil
 }
 
-func getRangesFromOp(op expr.Operator, v document.Value) (stream.Ranges, error) {
-	var ranges stream.Ranges
+func getRangesFromOp(op expr.Operator, v document.Value) (stream.ValueRanges, error) {
+	var ranges stream.ValueRanges
 
 	switch op.(type) {
 	case *expr.EqOperator:
-		ranges = ranges.Append(stream.Range{
+		ranges = ranges.Append(stream.ValueRange{
 			Min:   v,
 			Exact: true,
 		})
 	case *expr.GtOperator:
-		ranges = ranges.Append(stream.Range{
+		ranges = ranges.Append(stream.ValueRange{
 			Min:       v,
 			Exclusive: true,
 		})
 	case *expr.GteOperator:
-		ranges = ranges.Append(stream.Range{
+		ranges = ranges.Append(stream.ValueRange{
 			Min: v,
 		})
 	case *expr.LtOperator:
-		ranges = ranges.Append(stream.Range{
+		ranges = ranges.Append(stream.ValueRange{
 			Max:       v,
 			Exclusive: true,
 		})
 	case *expr.LteOperator:
-		ranges = ranges.Append(stream.Range{
+		ranges = ranges.Append(stream.ValueRange{
 			Max: v,
 		})
 	case *expr.InOperator:
 		// operatorCanUseIndex made sure e is an array.
 		a := v.V.(document.Array)
 		err := a.Iterate(func(i int, value document.Value) error {
-			ranges = ranges.Append(stream.Range{
+			ranges = ranges.Append(stream.ValueRange{
 				Min:   value,
 				Exact: true,
 			})

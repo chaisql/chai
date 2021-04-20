@@ -246,6 +246,41 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (vb *ValueBuffer) Types() []ValueType {
+	types := make([]ValueType, len(vb.Values))
+
+	for i, v := range vb.Values {
+		types[i] = v.Type
+	}
+
+	return types
+}
+
+// IsEqual compares two ValueBuffer and returns true if and only if
+// both each values and types are respectively equal.
+func (vb *ValueBuffer) IsEqual(other *ValueBuffer) bool {
+	if vb.Len() != other.Len() {
+		return false
+	}
+
+	otherTypes := other.Types()
+	types := vb.Types()
+
+	for i, typ := range types {
+		if typ != otherTypes[i] {
+			return false
+		}
+	}
+
+	for i, v := range vb.Values {
+		if eq, err := v.IsEqual(other.Values[i]); err != nil || !eq {
+			return false
+		}
+	}
+
+	return true
+}
+
 type sortableArray struct {
 	vb  *ValueBuffer
 	err error
