@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -359,56 +360,6 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 	}
 
 	for _, rng := range it.Ranges {
-		// if !index.IsComposite() {
-		// 	var start, end *document.ValueBuffer
-		// 	if !it.Reverse {
-		// 		start = rng.Min
-		// 		end = rng.Max
-		// 	} else {
-		// 		start = rng.Max
-		// 		end = rng.Min
-		// 	}
-
-		// 	var encEnd []byte
-		// 	// if !end.Type.IsZero() && end.V != nil {
-		// 	if end.Len() > 0 {
-		// 		encEnd, err = index.EncodeValueBuffer(end)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 	}
-
-		// 	err = iterator([]document.Value{start}, func(val, key []byte) error {
-		// 		if !rng.IsInRange(val) {
-		// 			// if we reached the end of our range, we can stop iterating.
-		// 			if encEnd == nil {
-		// 				return nil
-		// 			}
-		// 			cmp := bytes.Compare(val, encEnd)
-		// 			if !it.Reverse && cmp > 0 {
-		// 				return ErrStreamClosed
-		// 			}
-		// 			if it.Reverse && cmp < 0 {
-		// 				return ErrStreamClosed
-		// 			}
-		// 			return nil
-		// 		}
-
-		// 		d, err := table.GetDocument(key)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-
-		// 		newEnv.SetDocument(d)
-		// 		return fn(&newEnv)
-		// 	})
-		// 	if err == ErrStreamClosed {
-		// 		err = nil
-		// 	}
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// } else {
 		var start, end *document.ValueBuffer
 		if !it.Reverse {
 			start = rng.Min
@@ -426,15 +377,15 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 			}
 		}
 
-		// extract the pivots from the range, which in the case of a composite index is an array
-		pivots := []document.Value{}
-		if start.Len() > 0 {
+		var pivots []document.Value
+		if start != nil {
 			pivots = start.Values
-		} else {
-			for i := 0; i < index.Arity(); i++ {
-				pivots = append(pivots, document.Value{})
-			}
 		}
+
+		for i, p := range pivots {
+			fmt.Println("pivot[", i, "], type:", p.Type, "v:", p)
+		}
+		fmt.Println("encEnd", encEnd)
 
 		err = iterator(pivots, func(val, key []byte) error {
 			if !rng.IsInRange(val) {
@@ -442,6 +393,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 				if encEnd == nil {
 					return nil
 				}
+
 				cmp := bytes.Compare(val, encEnd)
 				if !it.Reverse && cmp > 0 {
 					return ErrStreamClosed

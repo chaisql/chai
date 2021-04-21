@@ -96,6 +96,10 @@ func (vb *ValueBuffer) GetByIndex(i int) (Value, error) {
 
 // Len returns the length the of array
 func (vb *ValueBuffer) Len() int {
+	if vb == nil {
+		return 0
+	}
+
 	return len(vb.Values)
 }
 
@@ -247,6 +251,11 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 }
 
 func (vb *ValueBuffer) Types() []ValueType {
+	// TODO check that
+	if vb == nil {
+		return nil
+	}
+
 	types := make([]ValueType, len(vb.Values))
 
 	for i, v := range vb.Values {

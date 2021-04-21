@@ -754,20 +754,30 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 		case *expr.EqOperator, *expr.GtOperator, *expr.GteOperator, *expr.LtOperator, *expr.LteOperator:
 			vb = vb.Append(v)
 		case *expr.InOperator:
+			// a := v.V.(document.Array)
+			// err := a.Iterate(func(i int, value document.Value) error {
+			// 	ranges = ranges.Append(stream.ValueRange{
+			// 		Min:   value,
+			// 		Exact: true,
+			// 	})
+			// 	return nil
+			// })
+			// if err != nil {
+			// 	return nil, err
+			// }
 			// TODO(JH)
 			// an index like idx_foo_a_b on (a,b) and a query like
 			// WHERE a IN [1, 1] and b IN [2, 2]
 			// would lead to [1, 1] x [2, 2] = [[1,1], [1,2], [2,1], [2,2]]
 			// which could eventually be added later.
-			panic("unsupported operator IN for composite indexes")
+			// panic("unsupported operator IN for composite indexes")
+
 		default:
 			panic(stringutil.Sprintf("unknown operator %#v", op))
 		}
 	}
 
-	rng := stream.IndexRange{
-		Min: vb,
-	}
+	var rng stream.IndexRange
 
 	// the last node is the only one that can be a comparison operator, so
 	// it's the one setting the range behaviour
@@ -777,10 +787,17 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 	switch op.(type) {
 	case *expr.EqOperator:
 		rng.Exact = true
+		rng.Min = vb
 	case *expr.GtOperator:
 		rng.Exclusive = true
+		rng.Min = vb
+	case *expr.GteOperator:
+		rng.Min = vb
 	case *expr.LtOperator:
 		rng.Exclusive = true
+		rng.Max = vb
+	case *expr.LteOperator:
+		rng.Max = vb
 	}
 
 	return stream.IndexRanges{rng}, nil

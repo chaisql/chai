@@ -67,9 +67,13 @@ func (e *indexValueEncoder) EncodeValue(v document.Value) ([]byte, error) {
 		return buf.Bytes(), nil
 	}
 
-	// this should never happen, but if it does, something is very wrong
 	if v.Type != e.typ {
-		panic("incompatible index type")
+		if v.Type == 0 {
+			v.Type = e.typ
+		} else {
+			// this should never happen, but if it does, something is very wrong
+			panic("incompatible index type")
+		}
 	}
 
 	if v.V == nil {
@@ -229,20 +233,17 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 // - having pivots length superior to the index arity
 // - having the first pivot without a value when the subsequent ones do have values
 func (idx *Index) validatePivots(pivots []document.Value) {
-	if len(pivots) == 0 {
-		panic("cannot iterate without a pivot")
-	}
-
 	if len(pivots) > idx.Arity() {
 		panic("cannot iterate with a pivot whose size is superior to the index arity")
 	}
 
 	if idx.IsComposite() {
 		if !allEmpty(pivots) {
+			// fmt.Println("here", pivots)
 			// the first pivot must have a value
-			if pivots[0].V == nil {
-				panic("cannot iterate on a composite index whose first pivot has no value")
-			}
+			// if pivots[0].V == nil {
+			// 	panic("cannot iterate on a composite index whose first pivot has no value")
+			// }
 
 			// it's acceptable for the last pivot to just have a type and no value
 			hasValue := true
@@ -251,12 +252,12 @@ func (idx *Index) validatePivots(pivots []document.Value) {
 				if hasValue {
 					hasValue = p.V != nil
 
-					// if we have no value, we at least need a type
-					if !hasValue {
-						if p.Type == 0 {
-							panic("cannot iterate on a composite index with a pivot with both values and nil values")
-						}
-					}
+					// // if we have no value, we at least need a type
+					// if !hasValue {
+					// 	if p.Type == 0 {
+					// 		panic("cannot iterate on a composite index with a pivot with both values and nil values")
+					// 	}
+					// }
 				} else {
 					panic("cannot iterate on a composite index with a pivot with both values and nil values")
 				}
@@ -318,6 +319,7 @@ func (idx *Index) iterateOnStore(pivots []document.Value, reverse bool, fn func(
 
 	var buf []byte
 	return idx.iterate(st, pivots, reverse, func(item engine.Item) error {
+		fmt.Println("idx.iterate")
 		var err error
 
 		k := item.Key()
@@ -434,30 +436,6 @@ func (idx *Index) buildSeek(pivots []document.Value, reverse bool) ([]byte, erro
 		return seek, nil
 	}
 
-	// if !idx.IsComposite() {
-	// 	if pivots[0].V != nil {
-	// 		seek, err = idx.EncodeValue(document.NewValueBuffer(pivots...))
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-
-	// 		if reverse {
-	// 			// appending 0xFF turns the pivot into the upper bound of that value.
-	// 			seek = append(seek, 0xFF)
-	// 		}
-	// 	} else {
-	// 		if idx.Info.Types[0] == 0 && pivots[0].Type != 0 && pivots[0].V == nil {
-	// 			seek = []byte{byte(pivots[0].Type)}
-
-	// 			if reverse {
-	// 				seek = append(seek, 0xFF)
-	// 			}
-	// 		}
-	// 	}
-	// } else {
-	// [2,3,4,int] is a valid pivot, in which case the last pivot, a valueless typed pivot
-	// it handled separatedly
-
 	vb := document.NewValueBuffer(pivots...)
 	seek, err = idx.EncodeValueBuffer(vb)
 
@@ -485,25 +463,20 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 	it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
+	for it.Seek([]byte{}); it.Valid(); it.Next() {
+		fmt.Println("----------", it.Item().Key())
+	}
+
+	it = st.Iterator(engine.IteratorOptions{Reverse: reverse})
+	defer it.Close()
+
 	for it.Seek(seek); it.Valid(); it.Next() {
 		itm := it.Item()
 
-		// If index is untyped and pivot is typed, only iterate on values with the same type as pivot
-		if !idx.IsComposite() {
-			var typ document.ValueType
-			if len(idx.Info.Types) > 0 {
-				typ = idx.Info.Types[0]
-			}
-
-			if (typ == 0) && pivots[0].Type != 0 && itm.Key()[0] != byte(pivots[0].Type) {
-				return nil
-			}
-		} else {
-			// If the index is composite, same logic applies but for now, we only check the first pivot type.
-			// A possible optimization would be to check the types of the remaining values here.
-			if idx.Info.Types[0] == 0 && pivots[0].Type != 0 && itm.Key()[0] != byte(pivots[0].Type) {
-				return nil
-			}
+		// If index is untyped and pivot first element is typed, only iterate on values with the same type as the first pivot
+		// TODO(JH) possible optimization, check for the other types
+		if len(pivots) > 0 && idx.Info.Types[0] == 0 && pivots[0].Type != 0 && itm.Key()[0] != byte(pivots[0].Type) {
+			return nil
 		}
 
 		err := fn(itm)
