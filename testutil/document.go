@@ -64,6 +64,17 @@ func MakeArray(t testing.TB, jsonArray string) document.Array {
 	return &vb
 }
 
+func MakeValueBuffer(t testing.TB, jsonArray string) *document.ValueBuffer {
+	t.Helper()
+
+	var vb document.ValueBuffer
+
+	err := vb.UnmarshalJSON([]byte(jsonArray))
+	require.NoError(t, err)
+
+	return &vb
+}
+
 type Docs []document.Document
 
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {

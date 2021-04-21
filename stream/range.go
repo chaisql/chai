@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -300,14 +301,24 @@ func (r *IndexRange) encode(encoder ValueBufferEncoder, env *expr.Environment) e
 		r.rangeTypes = r.Max.Types()
 	}
 
-	// ensure boundaries are typed
-	// TODO(JH)
-	// if r.Min.Type.IsZero() {
-	// 	r.Min.Type = r.rangeType
-	// }
-	// if r.Max.Type.IsZero() {
-	// 	r.Max.Type = r.rangeType
-	// }
+	// Ensure boundaries are typed, at least with the first type
+	if r.Max.Len() == 0 && r.Min.Len() > 0 {
+		v, err := r.Min.GetByIndex(0)
+		if err != nil {
+			return err
+		}
+
+		r.Max = document.NewValueBuffer(document.Value{Type: v.Type})
+	}
+
+	if r.Min.Len() == 0 && r.Max.Len() > 0 {
+		v, err := r.Max.GetByIndex(0)
+		if err != nil {
+			return err
+		}
+
+		r.Min = document.NewValueBuffer(document.Value{Type: v.Type})
+	}
 
 	if r.Exclusive && r.Exact {
 		panic("exclusive and exact cannot both be true")
@@ -318,14 +329,14 @@ func (r *IndexRange) encode(encoder ValueBufferEncoder, env *expr.Environment) e
 
 func (r *IndexRange) String() string {
 	if r.Exact {
-		return stringutil.Sprintf("%v", r.Min)
+		return stringutil.Sprintf("%v", document.Array(r.Min))
 	}
 
 	if r.Exclusive {
-		return stringutil.Sprintf("[%v, %v, true]", r.Min.Types(), r.Max.Types())
+		return stringutil.Sprintf("[%v, %v, true]", document.Array(r.Min), document.Array(r.Max))
 	}
 
-	return stringutil.Sprintf("[%v, %v]", r.Min.Types(), r.Max.Types())
+	return stringutil.Sprintf("[%v, %v]", document.Array(r.Min), document.Array(r.Max))
 }
 
 func (r *IndexRange) IsEqual(other *IndexRange) bool {
@@ -449,6 +460,10 @@ func (r *IndexRange) IsInRange(value []byte) bool {
 	// by default, we consider the value within range
 	cmpMin, cmpMax := 1, -1
 
+	fmt.Println("encodedMin", r.encodedMin)
+	fmt.Println("encodedVal", value)
+	fmt.Println("encodedMax", r.encodedMax)
+
 	// we compare with the lower bound and see if it matches
 	if r.encodedMin != nil {
 		cmpMin = bytes.Compare(value, r.encodedMin)
@@ -469,7 +484,7 @@ func (r *IndexRange) IsInRange(value []byte) bool {
 	// see if it matches the upper bound.
 	if r.encodedMax != nil {
 		if r.IndexArityMax < r.Arity {
-			cmpMax = bytes.Compare(value[:len(r.encodedMax)-1], r.encodedMax)
+			cmpMax = bytes.Compare(value[:len(r.encodedMax)], r.encodedMax)
 		} else {
 			cmpMax = bytes.Compare(value, r.encodedMax)
 		}
