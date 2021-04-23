@@ -2,7 +2,6 @@ package stream
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -328,15 +327,31 @@ func (r *IndexRange) encode(encoder ValueBufferEncoder, env *expr.Environment) e
 }
 
 func (r *IndexRange) String() string {
+	format := func(vb *document.ValueBuffer) string {
+		switch vb.Len() {
+		case 0:
+			return "-1"
+		case 1:
+			return vb.Values[0].String()
+		default:
+			b, err := vb.MarshalJSON()
+			if err != nil {
+				return "err"
+			}
+
+			return string(b)
+		}
+	}
+
 	if r.Exact {
-		return stringutil.Sprintf("%v", document.Array(r.Min))
+		return stringutil.Sprintf("%v", format(r.Min))
 	}
 
 	if r.Exclusive {
-		return stringutil.Sprintf("[%v, %v, true]", document.Array(r.Min), document.Array(r.Max))
+		return stringutil.Sprintf("[%v, %v, true]", format(r.Min), format(r.Max))
 	}
 
-	return stringutil.Sprintf("[%v, %v]", document.Array(r.Min), document.Array(r.Max))
+	return stringutil.Sprintf("[%v, %v]", format(r.Min), format(r.Max))
 }
 
 func (r *IndexRange) IsEqual(other *IndexRange) bool {
@@ -459,10 +474,6 @@ func (r IndexRanges) Cost() int {
 func (r *IndexRange) IsInRange(value []byte) bool {
 	// by default, we consider the value within range
 	cmpMin, cmpMax := 1, -1
-
-	fmt.Println("encodedMin", r.encodedMin)
-	fmt.Println("encodedVal", value)
-	fmt.Println("encodedMax", r.encodedMax)
 
 	// we compare with the lower bound and see if it matches
 	if r.encodedMin != nil {
