@@ -319,7 +319,6 @@ func (idx *Index) iterateOnStore(pivots []document.Value, reverse bool, fn func(
 
 	var buf []byte
 	return idx.iterate(st, pivots, reverse, func(item engine.Item) error {
-		fmt.Println("idx.iterate")
 		var err error
 
 		k := item.Key()
@@ -454,20 +453,11 @@ func (idx *Index) iterate(st engine.Store, pivots []document.Value, reverse bool
 	var err error
 
 	seek, err := idx.buildSeek(pivots, reverse)
-	fmt.Println("pivots", pivots)
-	fmt.Println("seek", seek)
 	if err != nil {
 		return err
 	}
 
 	it := st.Iterator(engine.IteratorOptions{Reverse: reverse})
-	defer it.Close()
-
-	for it.Seek([]byte{}); it.Valid(); it.Next() {
-		fmt.Println("----------", it.Item().Key())
-	}
-
-	it = st.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
 	for it.Seek(seek); it.Valid(); it.Next() {
