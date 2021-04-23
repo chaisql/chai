@@ -2,7 +2,6 @@ package stream
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -381,11 +380,6 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		if start != nil {
 			pivots = start.Values
 		}
-
-		for i, p := range pivots {
-			fmt.Println("pivot[", i, "], type:", p.Type, "v:", p)
-		}
-		fmt.Println("encEnd", encEnd)
 
 		err = iterator(pivots, func(val, key []byte) error {
 			if !rng.IsInRange(val) {
