@@ -579,8 +579,13 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: noCallEq,
-					mustPanic:  true,
+					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
+					},
+					expectedCount: 5,
 				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
 					indexTypes: []document.ValueType{0, 0, 0},
@@ -866,6 +871,11 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						})
 					}
 					if test.mustPanic {
+						// let's avoid panicking because expectedEq wasn't defined, which would
+						// be a false positive.
+						if test.expectedEq == nil {
+							test.expectedEq = func(t *testing.T, i uint8, key, val []byte) {}
+						}
 						require.Panics(t, func() { _ = fn() })
 					} else {
 						err := fn()
@@ -1128,18 +1138,24 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedCount: 5,
 				},
-				// composite indexes must have at least have one value
-				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, int]",
-					indexTypes: []document.ValueType{0, 0},
-					pivots:     values(document.Value{Type: document.IntegerValue}, document.Value{Type: document.IntegerValue}),
-					val: func(i int) []document.Value {
-						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
-					},
-					mustPanic: true,
-				},
 				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int]",
 					indexTypes: []document.ValueType{0, 0},
 					pivots:     values(document.Value{Type: document.IntegerValue}),
+					val: func(i int) []document.Value {
+						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
+					},
+					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+						req(t,
+							encValue{false, document.NewIntegerValue(int64(i))},
+							encValue{false, document.NewIntegerValue(int64(i + 1))},
+						)(val)
+					},
+					expectedCount: 5,
+				},
+				// composite indexes cannot have values with type past the first element
+				{name: "index=[untyped, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, int]",
+					indexTypes: []document.ValueType{0, 0},
+					pivots:     values(document.Value{Type: document.IntegerValue}, document.Value{Type: document.IntegerValue}),
 					val: func(i int) []document.Value {
 						return values(document.NewIntegerValue(int64(i)), document.NewIntegerValue(int64(i+1)))
 					},
@@ -1467,6 +1483,11 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						})
 					}
 					if test.mustPanic {
+						// let's avoid panicking because expectedEq wasn't defined, which would
+						// be a false positive.
+						if test.expectedEq == nil {
+							test.expectedEq = func(t *testing.T, i uint8, key, val []byte) {}
+						}
 						require.Panics(t, func() {
 							_ = fn()
 						})
