@@ -8,8 +8,12 @@ import (
 )
 
 const (
-	arrayValueDelim    = 0x1f
-	arrayEnd           = 0x1e
+	// ArrayValueDelim is a separator used when encoding document.Array in
+	// binary reprsentation
+	ArrayValueDelim = 0x1f
+	// ArrayEnd is the final separator used when encoding document.Array in
+	// binary reprsentation.
+	ArrayEnd           = 0x1e
 	documentValueDelim = 0x1c
 	documentEnd        = 0x1d
 )
@@ -83,7 +87,7 @@ func (ve *ValueEncoder) appendValue(v Value) error {
 func (ve *ValueEncoder) appendArray(a Array) error {
 	err := a.Iterate(func(i int, value Value) error {
 		if i > 0 {
-			err := ve.append(arrayValueDelim)
+			err := ve.append(ArrayValueDelim)
 			if err != nil {
 				return err
 			}
@@ -95,7 +99,7 @@ func (ve *ValueEncoder) appendArray(a Array) error {
 		return err
 	}
 
-	return ve.append(arrayEnd)
+	return ve.append(ArrayEnd)
 }
 
 // appendDocument encodes a document into a sort-ordered binary representation.
@@ -239,8 +243,8 @@ func decodeArray(data []byte) (Array, int, error) {
 	var vb ValueBuffer
 
 	var readCount int
-	for len(data) > 0 && data[0] != arrayEnd {
-		v, i, err := decodeValueUntil(data, arrayValueDelim, arrayEnd)
+	for len(data) > 0 && data[0] != ArrayEnd {
+		v, i, err := decodeValueUntil(data, ArrayValueDelim, ArrayEnd)
 		if err != nil {
 			return nil, i, err
 		}
@@ -248,7 +252,7 @@ func decodeArray(data []byte) (Array, int, error) {
 		vb.Append(v)
 
 		// skip the delimiter
-		if data[i] == arrayValueDelim {
+		if data[i] == ArrayValueDelim {
 			i++
 		}
 

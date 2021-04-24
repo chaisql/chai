@@ -304,9 +304,8 @@ func req(t *testing.T, evs ...encValue) func([]byte) {
 		_, err = buf.Write(b)
 		require.NoError(t, err)
 
-		// TODO
 		if i < len(evs)-1 {
-			err = buf.WriteByte(0x1f)
+			err = buf.WriteByte(document.ArrayValueDelim)
 		}
 		require.NoError(t, err)
 	}
