@@ -376,7 +376,7 @@ func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 
 		// if it's not the last value, append the seperator
 		if i < vb.Len()-1 {
-			err = buf.WriteByte(0x1f) // TODO
+			err = buf.WriteByte(document.ArrayValueDelim)
 			if err != nil {
 				return err
 			}
