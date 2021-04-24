@@ -614,33 +614,33 @@ func TestIndexScan(t *testing.T) {
 		})
 	}
 
-	// t.Run("String", func(t *testing.T) {
-	// 	t.Run("idx_test_a", func(t *testing.T) {
-	// 		require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.IndexRange{
-	// 			Min: newVB(document.NewIntegerValue(1)), Max: newVB(document.NewIntegerValue(2)),
-	// 		}).String())
+	t.Run("String", func(t *testing.T) {
+		t.Run("idx_test_a", func(t *testing.T) {
+			require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.IndexRange{
+				Min: newVB(document.NewIntegerValue(1)), Max: newVB(document.NewIntegerValue(2)),
+			}).String())
 
-	// 		op := stream.IndexScan("idx_test_a", stream.IndexRange{
-	// 			Min: newVB(document.NewIntegerValue(1)), Max: newVB(document.NewIntegerValue(2)),
-	// 		})
-	// 		op.Reverse = true
+			op := stream.IndexScan("idx_test_a", stream.IndexRange{
+				Min: newVB(document.NewIntegerValue(1)), Max: newVB(document.NewIntegerValue(2)),
+			})
+			op.Reverse = true
 
-	// 		require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
-	// 	})
+			require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
+		})
 
-	// 	t.Run("idx_test_a_b", func(t *testing.T) {
-	// 		require.Equal(t, `indexScan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.IndexRange{
-	// 			Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-	// 			Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
-	// 		}).String())
+		t.Run("idx_test_a_b", func(t *testing.T) {
+			require.Equal(t, `indexScan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.IndexRange{
+				Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
+				Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+			}).String())
 
-	// 		op := stream.IndexScan("idx_test_a_b", stream.IndexRange{
-	// 			Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-	// 			Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
-	// 		})
-	// 		op.Reverse = true
+			op := stream.IndexScan("idx_test_a_b", stream.IndexRange{
+				Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
+				Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+			})
+			op.Reverse = true
 
-	// 		require.Equal(t, `indexScanReverse("idx_test_a_b", [[1, 1], [2, 2]])`, op.String())
-	// 	})
-	// })
+			require.Equal(t, `indexScanReverse("idx_test_a_b", [[1, 1], [2, 2]])`, op.String())
+		})
+	})
 }
