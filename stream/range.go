@@ -238,6 +238,7 @@ func (r *ValueRange) IsInRange(value []byte) bool {
 // are composite as well.
 type IndexRange struct {
 	Min, Max *document.ValueBuffer
+
 	// Exclude Min and Max from the results.
 	// By default, min and max are inclusive.
 	// Exclusive and Exact cannot be set to true at the same time.
@@ -247,23 +248,10 @@ type IndexRange struct {
 	// and for determining the global upper bound.
 	Exact bool
 
-	// Arity represents the range arity in the case of comparing the range
-	// to a composite index. With IndexArityMax, it enables to deal with the
-	// cases of a composite range specifying boundaries partially, ie:
-	// - Index on (a, b, c)
-	// - Range is defining a max only for a and b
-	// Then Arity is set to 2 and IndexArityMax is set to 3
-	//
-	// On
-	// This field is subject to change when the support for composite index is added
-	// to the query planner in an ulterior pull-request.
-	Arity int
+	// IndexArity is the underlying index arity, which can be greater
+	// than the boundaries of this range.
+	IndexArity int
 
-	// IndexArityMax represents the underlying Index arity.
-	//
-	// This field is subject to change when the support for composite index is added
-	// to the query planner in an ulterior pull-request.
-	IndexArityMax          int
 	encodedMin, encodedMax []byte
 	rangeTypes             []document.ValueType
 }
@@ -497,7 +485,7 @@ func (r *IndexRange) IsInRange(value []byte) bool {
 	// the value is bigger than the lower bound,
 	// see if it matches the upper bound.
 	if r.encodedMax != nil {
-		if r.IndexArityMax < r.Arity {
+		if r.Max.Len() < r.IndexArity {
 			cmpMax = bytes.Compare(value[:len(r.encodedMax)], r.encodedMax)
 		} else {
 			cmpMax = bytes.Compare(value, r.encodedMax)
