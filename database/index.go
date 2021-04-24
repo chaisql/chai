@@ -39,6 +39,9 @@ type Index struct {
 	storeName []byte
 }
 
+// indexValueEncoder encodes a field based on its type; if a type is provided,
+// the value is encoded as is, without any type information. Otherwise, the
+// type is prepended to the value.
 type indexValueEncoder struct {
 	typ document.ValueType
 }
