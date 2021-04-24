@@ -479,9 +479,8 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
 			stream.IndexRanges{
 				{
-					Arity:         2,
-					IndexArityMax: 1,
-					Max:           newVB(document.NewIntegerValue(1)),
+					IndexArity: 2,
+					Max:        newVB(document.NewIntegerValue(1)),
 				},
 			},
 			false, false,
@@ -492,11 +491,10 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
 			stream.IndexRanges{
 				{
-					Max:           newVB(document.NewIntegerValue(1)),
-					Exclusive:     false,
-					Exact:         false,
-					Arity:         2,
-					IndexArityMax: 1,
+					Max:        newVB(document.NewIntegerValue(1)),
+					Exclusive:  false,
+					Exact:      false,
+					IndexArity: 2,
 				},
 			},
 			true, false,
@@ -506,7 +504,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			stream.IndexRanges{
-				{Arity: 3, IndexArityMax: 2, Max: newVB(document.NewIntegerValue(1), document.NewIntegerValue(2))},
+				{IndexArity: 3, Max: newVB(document.NewIntegerValue(1), document.NewIntegerValue(2))},
 			},
 			false, false,
 		},
@@ -543,10 +541,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 2, "b": 42}`),
 			stream.IndexRanges{
 				{
-					Arity:         2,
-					IndexArityMax: 1,
-					Min:           newVB(document.NewIntegerValue(1)),
-					Max:           newVB(document.NewIntegerValue(2)),
+					IndexArity: 2,
+					Min:        newVB(document.NewIntegerValue(1)),
+					Max:        newVB(document.NewIntegerValue(2)),
 				},
 			},
 			false, false,
@@ -557,10 +554,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 2, "b": 42}`, `{"a": 1, "b": -2}`),
 			stream.IndexRanges{
 				{
-					Arity:         2,
-					IndexArityMax: 1,
-					Min:           newVB(document.NewIntegerValue(1)),
-					Max:           newVB(document.NewIntegerValue(2)),
+					IndexArity: 2,
+					Min:        newVB(document.NewIntegerValue(1)),
+					Max:        newVB(document.NewIntegerValue(2)),
 				},
 			},
 			true, false,
