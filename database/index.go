@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -19,6 +18,10 @@ const (
 var (
 	// ErrIndexDuplicateValue is returned when a value is already associated with a key
 	ErrIndexDuplicateValue = errors.New("duplicate value")
+
+	// ErrIndexWrongArity is returned when trying to index more values that what an
+	// index supports.
+	ErrIndexWrongArity = errors.New("wrong index arity")
 )
 
 // An Index associates encoded values with keys.
@@ -349,15 +352,18 @@ func (idx *Index) Truncate() error {
 	return nil
 }
 
-// EncodeValue encodes the value buffer we are going to use as a key,
-// TODO
-// If the index is typed, encode the value without expecting
-// the presence of other types.
-// If not, encode so that order is preserved regardless of the type.
+// EncodeValueBuffer encodes the value buffer containing a single or
+// multiple values being indexed into a byte array, keeping the
+// order of the original values.
+//
+// The values are marshalled and separated with a document.ArrayValueDelim,
+// *without* a trailing document.ArrayEnd, which enables to handle cases
+// where only some of the values are being provided and still perform lookups.
+//
+// See IndexValueEncoder for details about how the value themselves are encoded.
 func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 	if vb.Len() > idx.Arity() {
-		// TODO
-		return nil, fmt.Errorf("todo")
+		return nil, ErrIndexWrongArity
 	}
 
 	var buf bytes.Buffer
