@@ -251,11 +251,6 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 }
 
 func (vb *ValueBuffer) Types() []ValueType {
-	// TODO check that
-	if vb == nil {
-		return nil
-	}
-
 	types := make([]ValueType, len(vb.Values))
 
 	for i, v := range vb.Values {

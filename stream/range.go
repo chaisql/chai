@@ -233,6 +233,9 @@ func (r *ValueRange) IsInRange(value []byte) bool {
 	return cmpMax <= 0
 }
 
+// IndexRange represents a range to select indexed values after or before
+// a given boundary. Because indexes can be composites, IndexRange boundaries
+// are composite as well.
 type IndexRange struct {
 	Min, Max *document.ValueBuffer
 	// Exclude Min and Max from the results.
@@ -369,18 +372,18 @@ func (r *IndexRange) IsEqual(other *IndexRange) bool {
 		return false
 	}
 
-	// TODO(JH) may or may not this
-	// if r.Min.Type != other.Min.Type {
-	// 	return false
-	// }
+	if r.Min.Len() != other.Min.Len() {
+		return false
+	}
+
+	if r.Max.Len() != other.Max.Len() {
+		return false
+	}
 
 	if !r.Min.IsEqual(other.Min) {
 		return false
 	}
 
-	// if r.Max.Type != other.Max.Type {
-	// 	return false
-	// }
 	if !r.Max.IsEqual(other.Max) {
 		return false
 	}
