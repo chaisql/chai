@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/stringutil"
@@ -336,7 +337,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		return err
 	}
 
-	var iterator func(pivots []document.Value, fn func(val, key []byte) error) error
+	var iterator func(pivot database.Pivot, fn func(val, key []byte) error) error
 
 	if !it.Reverse {
 		iterator = index.AscendGreaterOrEqual
@@ -376,12 +377,12 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 			}
 		}
 
-		var pivots []document.Value
+		var pivot database.Pivot
 		if start != nil {
-			pivots = start.Values
+			pivot = start.Values
 		}
 
-		err = iterator(pivots, func(val, key []byte) error {
+		err = iterator(pivot, func(val, key []byte) error {
 			if !rng.IsInRange(val) {
 				// if we reached the end of our range, we can stop iterating.
 				if encEnd == nil {
