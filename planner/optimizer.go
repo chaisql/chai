@@ -498,7 +498,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 
 	isNodeEq := func(fno *filterNode) bool {
 		op := fno.f.E.(expr.Operator)
-		return expr.IsEqualOperator(op)
+		return expr.IsEqualOperator(op) || expr.IsInOperator(op)
 	}
 	isNodeComp := func(fno *filterNode, includeInOp bool) bool {
 		op := fno.f.E.(expr.Operator)
@@ -510,7 +510,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 	}
 
 	// iterate on all indexes for that table, checking for each of them if its paths are matching
-	// the filter nodes of the given query.
+	// the filter nodes of the given query. The resulting nodes are ordered like the index paths.
 outer:
 	for _, idx := range indexes {
 		// order filter nodes by how the index paths order them; if absent, nil in still inserted
@@ -745,8 +745,12 @@ func operandCanUseIndex(indexType document.ValueType, path document.Path, fc dat
 }
 
 func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) {
+	var ranges stream.IndexRanges
 	vb := document.NewValueBuffer()
-	for _, fno := range fnodes {
+	// store in Operands of a given position
+	inOperands := make(map[int]document.Array)
+
+	for i, fno := range fnodes {
 		op := fno.f.E.(expr.Operator)
 		v := fno.v
 
@@ -754,51 +758,84 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 		case *expr.EqOperator, *expr.GtOperator, *expr.GteOperator, *expr.LtOperator, *expr.LteOperator:
 			vb = vb.Append(v)
 		case *expr.InOperator:
-			// a := v.V.(document.Array)
-			// err := a.Iterate(func(i int, value document.Value) error {
-			// 	ranges = ranges.Append(stream.ValueRange{
-			// 		Min:   value,
-			// 		Exact: true,
-			// 	})
-			// 	return nil
-			// })
-			// if err != nil {
-			// 	return nil, err
-			// }
-			// TODO(JH)
-			// an index like idx_foo_a_b on (a,b) and a query like
-			// WHERE a IN [1, 1] and b IN [2, 2]
-			// would lead to [1, 1] x [2, 2] = [[1,1], [1,2], [2,1], [2,2]]
-			// which could eventually be added later.
-			// panic("unsupported operator IN for composite indexes")
+			// mark where the IN operator values are supposed to go is in the buffer
+			// and what are the value needed to generate the ranges.
+			inOperands[i] = v.V.(document.Array)
 
+			// placeholder for when we'll explode the IN operands in multiple ranges
+			vb = vb.Append(document.Value{})
 		default:
 			panic(stringutil.Sprintf("unknown operator %#v", op))
 		}
 	}
 
-	var rng stream.IndexRange
+	if len(inOperands) > 1 {
+		// TODO(JH) Github issue
+		panic("unsupported operation: multiple IN operators on a composite index")
+	}
+
+	// a small helper func to create a range based on an operator type
+	buildRange := func(op expr.Operator, vb *document.ValueBuffer) stream.IndexRange {
+		var rng stream.IndexRange
+
+		switch op.(type) {
+		case *expr.EqOperator, *expr.InOperator:
+			rng.Exact = true
+			rng.Min = vb
+		case *expr.GtOperator:
+			rng.Exclusive = true
+			rng.Min = vb
+		case *expr.GteOperator:
+			rng.Min = vb
+		case *expr.LtOperator:
+			rng.Exclusive = true
+			rng.Max = vb
+		case *expr.LteOperator:
+			rng.Max = vb
+		}
+
+		return rng
+	}
+
+	// explode the IN operator values in multiple ranges
+	for pos, operands := range inOperands {
+		err := operands.Iterate(func(j int, value document.Value) error {
+			newVB := document.NewValueBuffer()
+			err := newVB.Copy(vb)
+			if err != nil {
+				return err
+			}
+
+			// insert IN operand at the right position, replacing the placeholder value
+			newVB.Values[pos] = value
+
+			// the last node is the only one that can be a comparison operator, so
+			// it's the one setting the range behaviour
+			last := fnodes[len(fnodes)-1]
+			op := last.f.E.(expr.Operator)
+
+			rng := buildRange(op, newVB)
+
+			ranges = ranges.Append(rng)
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Were there any IN operators requiring multiple ranges?
+	// If yes, we're done here.
+	if len(ranges) > 0 {
+		return ranges, nil
+	}
 
 	// the last node is the only one that can be a comparison operator, so
 	// it's the one setting the range behaviour
 	last := fnodes[len(fnodes)-1]
 	op := last.f.E.(expr.Operator)
-
-	switch op.(type) {
-	case *expr.EqOperator:
-		rng.Exact = true
-		rng.Min = vb
-	case *expr.GtOperator:
-		rng.Exclusive = true
-		rng.Min = vb
-	case *expr.GteOperator:
-		rng.Min = vb
-	case *expr.LtOperator:
-		rng.Exclusive = true
-		rng.Max = vb
-	case *expr.LteOperator:
-		rng.Max = vb
-	}
+	rng := buildRange(op, vb)
 
 	return stream.IndexRanges{rng}, nil
 }
