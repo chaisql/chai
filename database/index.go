@@ -29,9 +29,6 @@ var (
 // The association is performed by encoding the values in a binary format that preserve
 // ordering when compared lexicographically. For the implementation, see the binarysort
 // package and the document.ValueEncoder.
-//
-// When the index is composite, the values are wrapped into a document.Array before
-// being encoded.
 type Index struct {
 	Info *IndexInfo
 
@@ -120,12 +117,12 @@ func (idx *Index) IsComposite() bool {
 }
 
 // Arity returns how many values the indexed is operating on.
-// CREATE INDEX idx_a_b ON foo (a, b) -> arity: 2
+// For example, an index created with `CREATE INDEX idx_a_b ON foo (a, b)` has an arity of 2.
 func (idx *Index) Arity() int {
 	return len(idx.Info.Types)
 }
 
-// Set associates a value with a key. If Unique is set to false, it is
+// Set associates values with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
 func (idx *Index) Set(vs []document.Value, k []byte) error {
@@ -275,6 +272,7 @@ func (pivot Pivot) IsAny() bool {
 // AscendGreaterOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in increasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot(s) is/are empty, starts from the beginning.
+//
 // When the index is simple (arity=1) and untyped, the pivot can have a nil value but a type; in that case, iteration will only yield values of that type.
 // When the index is composite (arity>1) and untyped, the same logic applies, but only for the first pivot; iteration will only yield values whose first element
 // is of that type, without restriction on the type of the following elements.
@@ -285,6 +283,7 @@ func (idx *Index) AscendGreaterOrEqual(pivot Pivot, fn func(val, key []byte) err
 // DescendLessOrEqual seeks for the pivot and then goes through all the subsequent key value pairs in descreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot(s) is/are empty, starts from the end.
+//
 // When the index is simple (arity=1) and untyped, the pivot can have a nil value but a type; in that case, iteration will only yield values of that type.
 // When the index is composite (arity>1) and untyped, the same logic applies, but only for the first pivot; iteration will only yield values whose first element
 // is of that type, without restriction on the type of the following elements.
@@ -348,7 +347,8 @@ func (idx *Index) Truncate() error {
 //
 // The values are marshalled and separated with a document.ArrayValueDelim,
 // *without* a trailing document.ArrayEnd, which enables to handle cases
-// where only some of the values are being provided and still perform lookups.
+// where only some of the values are being provided and still perform lookups
+// (like index_foo_a_b_c and providing only a and b).
 //
 // See IndexValueEncoder for details about how the value themselves are encoded.
 func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
@@ -411,7 +411,6 @@ func (idx *Index) buildSeek(pivot Pivot, reverse bool) ([]byte, error) {
 	var seek []byte
 	var err error
 
-	// TODO rework
 	// if we have valueless and typeless pivot, we just iterate
 	if pivot.IsAny() {
 		return []byte{}, nil
