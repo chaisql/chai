@@ -736,7 +736,7 @@ func operandCanUseIndex(indexType document.ValueType, path document.Path, fc dat
 	}
 
 	// if the index is not typed, any operand can work
-	if indexType.IsZero() {
+	if indexType.IsAny() {
 		return converted, true, nil
 	}
 

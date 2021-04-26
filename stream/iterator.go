@@ -234,7 +234,7 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 		}
 
 		var encEnd []byte
-		if !end.Type.IsZero() && end.V != nil {
+		if !end.Type.IsAny() && end.V != nil {
 			encEnd, err = table.EncodeValue(end)
 			if err != nil {
 				return err

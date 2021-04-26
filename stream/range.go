@@ -32,19 +32,19 @@ func (r *ValueRange) encode(encoder ValueEncoder, env *expr.Environment) error {
 	var err error
 
 	// first we evaluate Min and Max
-	if !r.Min.Type.IsZero() {
+	if !r.Min.Type.IsAny() {
 		r.encodedMin, err = encoder.EncodeValue(r.Min)
 		if err != nil {
 			return err
 		}
 		r.rangeType = r.Min.Type
 	}
-	if !r.Max.Type.IsZero() {
+	if !r.Max.Type.IsAny() {
 		r.encodedMax, err = encoder.EncodeValue(r.Max)
 		if err != nil {
 			return err
 		}
-		if !r.rangeType.IsZero() && r.rangeType != r.Max.Type {
+		if !r.rangeType.IsAny() && r.rangeType != r.Max.Type {
 			panic("range contain values of different types")
 		}
 
@@ -52,10 +52,10 @@ func (r *ValueRange) encode(encoder ValueEncoder, env *expr.Environment) error {
 	}
 
 	// ensure boundaries are typed
-	if r.Min.Type.IsZero() {
+	if r.Min.Type.IsAny() {
 		r.Min.Type = r.rangeType
 	}
-	if r.Max.Type.IsZero() {
+	if r.Max.Type.IsAny() {
 		r.Max.Type = r.rangeType
 	}
 
@@ -71,10 +71,10 @@ func (r *ValueRange) String() string {
 		return stringutil.Sprintf("%v", r.Min)
 	}
 
-	if r.Min.Type.IsZero() {
+	if r.Min.Type.IsAny() {
 		r.Min = document.NewIntegerValue(-1)
 	}
-	if r.Max.Type.IsZero() {
+	if r.Max.Type.IsAny() {
 		r.Max = document.NewIntegerValue(-1)
 	}
 
@@ -182,12 +182,12 @@ func (r ValueRanges) Cost() int {
 		}
 
 		// if there are two boundaries, increment by 50
-		if !rng.Min.Type.IsZero() && !rng.Max.Type.IsZero() {
+		if !rng.Min.Type.IsAny() && !rng.Max.Type.IsAny() {
 			cost += 50
 		}
 
 		// if there is only one boundary, increment by 100
-		if (!rng.Min.Type.IsZero() && rng.Max.Type.IsZero()) || (rng.Min.Type.IsZero() && !rng.Max.Type.IsZero()) {
+		if (!rng.Min.Type.IsAny() && rng.Max.Type.IsAny()) || (rng.Min.Type.IsAny() && !rng.Max.Type.IsAny()) {
 			cost += 100
 			continue
 		}

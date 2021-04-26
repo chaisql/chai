@@ -363,7 +363,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, err
 	}
 
 	// if a primary key was defined and the primary is typed, convert the value to the right type.
-	if !pk.Type.IsZero() {
+	if !pk.Type.IsAny() {
 		v, err = v.CastAs(pk.Type)
 		if err != nil {
 			return nil, err
@@ -413,7 +413,7 @@ func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.D
 	info := t.Info()
 
 	// if there is a pivot, convert it to the right type
-	if !pivot.Type.IsZero() && pivot.V != nil {
+	if !pivot.Type.IsAny() && pivot.V != nil {
 		var err error
 		seek, err = t.encodeValueToKey(info, pivot)
 		if err != nil {
