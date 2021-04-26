@@ -760,6 +760,7 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 		case *expr.InOperator:
 			// mark where the IN operator values are supposed to go is in the buffer
 			// and what are the value needed to generate the ranges.
+			// operatorCanUseIndex made sure v is an array.
 			inOperands[i] = v.V.(document.Array)
 
 			// placeholder for when we'll explode the IN operands in multiple ranges
