@@ -267,6 +267,11 @@ func (vb *ValueBuffer) IsEqual(other *ValueBuffer) bool {
 		return false
 	}
 
+	// empty buffers are always equal eh
+	if vb.Len() == 0 && other.Len() == 0 {
+		return true
+	}
+
 	otherTypes := other.Types()
 	types := vb.Types()
 

@@ -371,21 +371,21 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
-		// {
-		// 	"FROM foo WHERE a IN [1, 2]",
-		// 	st.New(st.SeqScan("foo")).Pipe(st.Filter(
-		// 		expr.In(
-		// 			parser.MustParseExpr("a"),
-		// 			expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
-		// 		),
-		// 	)),
-		// 	st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true}, st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})),
-		// },
-		// {
-		// 	"FROM foo WHERE 1 IN a",
-		// 	st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("1 IN a"))),
-		// 	st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("1 IN a"))),
-		// },
+		{
+			"FROM foo WHERE a IN [1, 2]",
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(
+				expr.In(
+					parser.MustParseExpr("a"),
+					expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+				),
+			)),
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true}, st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})),
+		},
+		{
+			"FROM foo WHERE 1 IN a",
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("1 IN a"))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("1 IN a"))),
+		},
 		{
 			"FROM foo WHERE a >= 10",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a >= 10"))),
@@ -553,6 +553,20 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
+			"FROM foo WHERE a = 1 AND d < 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("d < 2"))),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
+		},
+		{
+			"FROM foo WHERE a = 1 AND d <= 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("d <= 2"))),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 2]`)})),
+		},
+		{
 			"FROM foo WHERE a = 1 AND d >= 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
@@ -590,6 +604,13 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
+			"FROM foo WHERE a = 1 AND b < 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("b < 2"))),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
+		},
+		{
 			"FROM foo WHERE a = 1 AND b = 2 and k = 3", // c is omitted, but it can still use idx_foo_a_b_c
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
@@ -625,6 +646,102 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 'a'"))),
+		},
+
+		{
+			"FROM foo WHERE a IN [1, 2] AND d = 4",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(
+					expr.In(
+						parser.MustParseExpr("a"),
+						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+					),
+				)).
+				Pipe(st.Filter(parser.MustParseExpr("d = 4"))),
+			st.New(st.IndexScan("idx_foo_a_d",
+				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[2, 4]`), Exact: true},
+			)),
+		},
+		{
+			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c = 4",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(
+					expr.In(
+						parser.MustParseExpr("a"),
+						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+					),
+				)).
+				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
+				Pipe(st.Filter(parser.MustParseExpr("c = 4"))),
+			st.New(st.IndexScan("idx_foo_a_b_c",
+				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 3, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[2, 3, 4]`), Exact: true},
+			)),
+		},
+		{
+			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c > 4",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(
+					expr.In(
+						parser.MustParseExpr("a"),
+						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+					),
+				)).
+				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
+				Pipe(st.Filter(parser.MustParseExpr("c > 4"))),
+			st.New(st.IndexScan("idx_foo_a_b_c",
+				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 3, 4]`), Exclusive: true},
+				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[2, 3, 4]`), Exclusive: true},
+			)),
+		},
+		{
+			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c < 4",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(
+					expr.In(
+						parser.MustParseExpr("a"),
+						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+					),
+				)).
+				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
+				Pipe(st.Filter(parser.MustParseExpr("c < 4"))),
+			st.New(st.IndexScan("idx_foo_a_b_c",
+				st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 3, 4]`), Exclusive: true},
+				st.IndexRange{Max: testutil.MakeValueBuffer(t, `[2, 3, 4]`), Exclusive: true},
+			)),
+		},
+		// {
+		// 	"FROM foo WHERE a IN [1, 2] AND b IN [3, 4] AND c > 5",
+		// 	st.New(st.SeqScan("foo")).
+		// 		Pipe(st.Filter(
+		// 			expr.In(
+		// 				parser.MustParseExpr("a"),
+		// 				expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+		// 			),
+		// 		)).
+		// 		Pipe(st.Filter(
+		// 			expr.In(
+		// 				parser.MustParseExpr("b"),
+		// 				expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(3), document.NewIntegerValue(4))),
+		// 			),
+		// 		)).
+		// 		Pipe(st.Filter(parser.MustParseExpr("c < 5"))),
+		// 	st.New(st.IndexScan("idx_foo_a_b_c",
+		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 3, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[2, 3, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 4, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[2, 4, 5]`), Exclusive: true},
+		// 	)),
+		// },
+		{
+			"FROM foo WHERE 1 IN a AND d = 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("1 IN a"))).
+				Pipe(st.Filter(parser.MustParseExpr("d = 4"))),
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("1 IN a"))).
+				Pipe(st.Filter(parser.MustParseExpr("d = 4"))),
 		},
 	}
 
