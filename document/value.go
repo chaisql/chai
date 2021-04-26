@@ -37,6 +37,9 @@ type ValueType uint8
 // These types are separated by family so that when
 // new types are introduced we don't need to modify them.
 const (
+	// denote the absence of type
+	AnyType ValueType = 0x0
+
 	NullValue ValueType = 0x80
 
 	BoolValue ValueType = 0x81
@@ -88,9 +91,9 @@ func (t ValueType) IsNumber() bool {
 	return t == IntegerValue || t == DoubleValue
 }
 
-// IsZero returns whether this is a valid type.
-func (t ValueType) IsZero() bool {
-	return t == 0
+// IsAny returns whether this is type is Any or a real type
+func (t ValueType) IsAny() bool {
+	return t == AnyType
 }
 
 // A Value stores encoded data alongside its type.

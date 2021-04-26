@@ -71,7 +71,7 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 		return err
 	}
 
-	if fc.Type == 0 && fc.DefaultValue.Type.IsZero() && !fc.IsNotNull && !fc.IsPrimaryKey && !fc.IsUnique {
+	if fc.Type.IsAny() && fc.DefaultValue.Type.IsAny() && !fc.IsNotNull && !fc.IsPrimaryKey && !fc.IsUnique {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", "TYPE"}, pos)
 	}
