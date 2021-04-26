@@ -775,64 +775,62 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 		})
 	}
 
-	// 	t.Run("array indexes", func(t *testing.T) {
-	// 		tests := []struct {
-	// 			name           string
-	// 			root, expected *st.Stream
-	// 		}{
-	// 			{
-	// 				"FROM foo WHERE a = [1, 1] AND b = [2, 2]",
-	// 				st.New(st.SeqScan("foo")).
-	// 					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
-	// 					Pipe(st.Filter(parser.MustParseExpr("b = [2, 2]"))),
-	// 				st.New(st.IndexScan("idx_foo_a_b", st.Range{
-	// 					Min: document.NewArrayValue(
-	// 						testutil.MakeArray(t, `[[1, 1], [2, 2]]`)),
-	// 					Exact: true})),
-	// 			},
-	// 			{
-	// 				"FROM foo WHERE a = [1, 1] AND b > [2, 2]",
-	// 				st.New(st.SeqScan("foo")).
-	// 					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
-	// 					Pipe(st.Filter(parser.MustParseExpr("b > [2, 2]"))),
-	// 				st.New(st.IndexScan("idx_foo_a_b", st.Range{
-	// 					Min: document.NewArrayValue(
-	// 						testutil.MakeArray(t, `[[1, 1], [2, 2]]`)),
-	// 					Exclusive: true})),
-	// 			},
-	// 		}
+	t.Run("array indexes", func(t *testing.T) {
+		tests := []struct {
+			name           string
+			root, expected *st.Stream
+		}{
+			{
+				"FROM foo WHERE a = [1, 1] AND b = [2, 2]",
+				st.New(st.SeqScan("foo")).
+					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
+					Pipe(st.Filter(parser.MustParseExpr("b = [2, 2]"))),
+				st.New(st.IndexScan("idx_foo_a_b", st.IndexRange{
+					Min:   testutil.MakeValueBuffer(t, `[[1, 1], [2, 2]]`),
+					Exact: true})),
+			},
+			{
+				"FROM foo WHERE a = [1, 1] AND b > [2, 2]",
+				st.New(st.SeqScan("foo")).
+					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
+					Pipe(st.Filter(parser.MustParseExpr("b > [2, 2]"))),
+				st.New(st.IndexScan("idx_foo_a_b", st.IndexRange{
+					Min:       testutil.MakeValueBuffer(t, `[[1, 1], [2, 2]]`),
+					Exclusive: true})),
+			},
+		}
 
-	// 		for _, test := range tests {
-	// 			t.Run(test.name, func(t *testing.T) {
-	// 				db, err := genji.Open(":memory:")
-	// 				require.NoError(t, err)
-	// 				defer db.Close()
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				db, err := genji.Open(":memory:")
+				require.NoError(t, err)
+				defer db.Close()
 
-	// 				tx, err := db.Begin(true)
-	// 				require.NoError(t, err)
-	// 				defer tx.Rollback()
+				tx, err := db.Begin(true)
+				require.NoError(t, err)
+				defer tx.Rollback()
 
-	// 				err = tx.Exec(`
-	// 					CREATE TABLE foo (
-	// 						k ARRAY PRIMARY KEY,
-	// 						a ARRAY
-	// 					);
-	// 					CREATE INDEX idx_foo_a_b ON foo(a, b);
-	// 					CREATE INDEX idx_foo_a0 ON foo(a[0]);
-	// 					INSERT INTO foo (k, a, b) VALUES
-	// 						([1, 1], [1, 1], [1, 1]),
-	// 						([2, 2], [2, 2], [2, 2]),
-	// 						([3, 3], [3, 3], [3, 3])
-	// `)
-	// 				require.NoError(t, err)
+				err = tx.Exec(`
+						CREATE TABLE foo (
+							k ARRAY PRIMARY KEY,
+							a ARRAY
+						);
+						CREATE INDEX idx_foo_a_b ON foo(a, b);
+						CREATE INDEX idx_foo_a0 ON foo(a[0]);
+						INSERT INTO foo (k, a, b) VALUES
+							([1, 1], [1, 1], [1, 1]),
+							([2, 2], [2, 2], [2, 2]),
+							([3, 3], [3, 3], [3, 3])
+	`)
+				require.NoError(t, err)
 
-	// 				res, err := planner.PrecalculateExprRule(test.root, tx.Transaction, nil)
-	// 				require.NoError(t, err)
+				res, err := planner.PrecalculateExprRule(test.root, tx.Transaction, nil)
+				require.NoError(t, err)
 
-	// 				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx.Transaction, nil)
-	// 				require.NoError(t, err)
-	// 				require.Equal(t, test.expected.String(), res.String())
-	// 			})
-	// 		}
-	// 	})
+				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx.Transaction, nil)
+				require.NoError(t, err)
+				require.Equal(t, test.expected.String(), res.String())
+			})
+		}
+	})
 }
