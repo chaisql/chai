@@ -1799,7 +1799,7 @@ func BenchmarkCompositeIndexSet(b *testing.B) {
 func BenchmarkCompositeIndexIteration(b *testing.B) {
 	for size := 10; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			idx, cleanup := getIndex(b, false)
+			idx, cleanup := getIndex(b, false, document.AnyType, document.AnyType)
 			defer cleanup()
 
 			for i := 0; i < size; i++ {
