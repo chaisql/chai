@@ -398,7 +398,7 @@ type filterNode struct {
 // removing the now irrelevant filter nodes.
 //
 // TODO(asdine): add support for ORDER BY
-// TODO(jh): clarify ranges and cost code in composite indexes case
+// TODO(jh): clarify cost code in composite indexes case
 func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error) {
 	// first we lookup for the seq scan node.
 	// Here we will assume that at this point
@@ -500,13 +500,9 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 		op := fno.f.E.(expr.Operator)
 		return expr.IsEqualOperator(op) || expr.IsInOperator(op)
 	}
-	isNodeComp := func(fno *filterNode, includeInOp bool) bool {
+	isNodeComp := func(fno *filterNode) bool {
 		op := fno.f.E.(expr.Operator)
-		if includeInOp {
-			return expr.IsComparisonOperator(op)
-		} else {
-			return expr.IsComparisonOperator(op) && !expr.IsInOperator(op) && !expr.IsNotInOperator(op)
-		}
+		return expr.IsComparisonOperator(op)
 	}
 
 	// iterate on all indexes for that table, checking for each of them if its paths are matching
@@ -552,14 +548,13 @@ outer:
 						}
 					} else {
 						// the next node is the last one found, so the current one can also be a comparison and not just eq
-						if !isNodeComp(fno, false) {
+						if !isNodeComp(fno) {
 							continue outer
 						}
 					}
 				} else {
 					// that's the last filter node, it can be a comparison,
-					// in the case of a potentially using a simple index, also a IN operator
-					if !isNodeComp(fno, len(found) == 1) {
+					if !isNodeComp(fno) {
 						continue outer
 					}
 				}
