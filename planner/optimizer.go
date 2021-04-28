@@ -747,7 +747,7 @@ func operandCanUseIndex(indexType document.ValueType, path document.Path, fc dat
 func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) {
 	var ranges stream.IndexRanges
 	vb := document.NewValueBuffer()
-	// store in Operands of a given position
+	// store IN operands with their position (in the index paths) as a key
 	inOperands := make(map[int]document.Array)
 
 	for i, fno := range fnodes {
@@ -771,7 +771,7 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 	}
 
 	if len(inOperands) > 1 {
-		// TODO(JH) Github issue
+		// TODO FEATURE https://github.com/genjidb/genji/issues/392
 		panic("unsupported operation: multiple IN operators on a composite index")
 	}
 
