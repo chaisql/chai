@@ -36,8 +36,6 @@ type Index struct {
 	storeName []byte
 }
 
-type Pivot []document.Value
-
 // indexValueEncoder encodes a field based on its type; if a type is provided,
 // the value is encoded as is, without any type information. Otherwise, the
 // type is prepended to the value.
@@ -93,13 +91,13 @@ func (e *indexValueEncoder) EncodeValue(v document.Value) ([]byte, error) {
 func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 	if opts == nil {
 		opts = &IndexInfo{
-			Types: []document.ValueType{0},
+			Types: []document.ValueType{document.AnyType},
 		}
 	}
 
 	// if no types are provided, it implies that it's an index for single untyped values
 	if opts.Types == nil {
-		opts.Types = []document.ValueType{0}
+		opts.Types = []document.ValueType{document.AnyType}
 	}
 
 	return &Index{
@@ -141,8 +139,7 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	}
 
 	for i, typ := range idx.Info.Types {
-		// it is possible to set an index(a,b) on (a), it will be assumed that b is null in that case
-		if typ != 0 && i < len(vs) && typ != vs[i].Type {
+		if !typ.IsAny() && typ != vs[i].Type {
 			return stringutil.Errorf("cannot index value of type %s in %s index", vs[i].Type, typ)
 		}
 	}
@@ -233,17 +230,18 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 	return engine.ErrKeyNotFound
 }
 
+type Pivot []document.Value
+
 // validate panics when the pivot values are unsuitable for the index:
-// - no pivot values at all
 // - having pivot length superior to the index arity
-// - having the first pivot value without a value when the subsequent ones do have values
+// - having the first pivot element without a value when the subsequent ones do have values
 func (pivot Pivot) validate(idx *Index) {
 	if len(pivot) > idx.Arity() {
 		panic("cannot iterate with a pivot whose size is superior to the index arity")
 	}
 
 	if idx.IsComposite() && !pivot.IsAny() {
-		// it's acceptable for the last pivot to just have a type and no value
+		// it's acceptable for the last pivot element to just have a type and no value
 		hasValue := true
 		for _, p := range pivot {
 			// if on the previous pivot we have a value
@@ -273,9 +271,18 @@ func (pivot Pivot) IsAny() bool {
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot(s) is/are empty, starts from the beginning.
 //
-// When the index is simple (arity=1) and untyped, the pivot can have a nil value but a type; in that case, iteration will only yield values of that type.
-// When the index is composite (arity>1) and untyped, the same logic applies, but only for the first pivot; iteration will only yield values whose first element
-// is of that type, without restriction on the type of the following elements.
+// Valid pivots are:
+// - zero value pivot
+//   - iterate on everything
+// - n elements pivot (where n is the index arity) with each element having a value and a type
+//   - iterate starting at the closest index value
+//   - optionally, the last pivot element can have just a type and no value, which will scope the value of that element to that type
+// - less than n elements pivot, with each element having a value and a type
+//   - iterate starting at the closest index value, using the first known value for missing elements
+//   - optionally, the last pivot element can have just a type and no value, which will scope the value of that element to that type
+// - a single element with a type but nil value: will iterate on everything of that type
+//
+// Any other variation of a pivot are invalid and will panic.
 func (idx *Index) AscendGreaterOrEqual(pivot Pivot, fn func(val, key []byte) error) error {
 	return idx.iterateOnStore(pivot, false, fn)
 }
@@ -284,9 +291,18 @@ func (idx *Index) AscendGreaterOrEqual(pivot Pivot, fn func(val, key []byte) err
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot(s) is/are empty, starts from the end.
 //
-// When the index is simple (arity=1) and untyped, the pivot can have a nil value but a type; in that case, iteration will only yield values of that type.
-// When the index is composite (arity>1) and untyped, the same logic applies, but only for the first pivot; iteration will only yield values whose first element
-// is of that type, without restriction on the type of the following elements.
+// Valid pivots are:
+// - zero value pivot
+//   - iterate on everything
+// - n elements pivot (where n is the index arity) with each element having a value and a type
+//   - iterate starting at the closest index value
+//   - optionally, the last pivot element can have just a type and no value, which will scope the value of that element to that type
+// - less than n elements pivot, with each element having a value and a type
+//   - iterate starting at the closest index value, using the last known value for missing elements
+//   - optionally, the last pivot element can have just a type and no value, which will scope the value of that element to that type
+// - a single element with a type but nil value: will iterate on everything of that type
+//
+// Any other variation of a pivot are invalid and will panic.
 func (idx *Index) DescendLessOrEqual(pivot Pivot, fn func(val, key []byte) error) error {
 	return idx.iterateOnStore(pivot, true, fn)
 }
@@ -418,7 +434,7 @@ func (idx *Index) buildSeek(pivot Pivot, reverse bool) ([]byte, error) {
 
 	// if the index is without type and the first pivot is valueless but typed, iterate but filter out the types we don't want,
 	// but just for the first pivot; subsequent pivot values cannot be filtered this way.
-	if idx.Info.Types[0] == 0 && pivot[0].Type != 0 && pivot[0].V == nil {
+	if idx.Info.Types[0].IsAny() && !pivot[0].Type.IsAny() && pivot[0].V == nil {
 		seek = []byte{byte(pivot[0].Type)}
 
 		if reverse {
@@ -457,7 +473,6 @@ func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(it
 		itm := it.Item()
 
 		// If index is untyped and pivot first element is typed, only iterate on values with the same type as the first pivot
-		// TODO(JH) possible optimization, check for the other types
 		if len(pivot) > 0 && idx.Info.Types[0].IsAny() && !pivot[0].Type.IsAny() && itm.Key()[0] != byte(pivot[0].Type) {
 			return nil
 		}
