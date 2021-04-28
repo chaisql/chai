@@ -576,12 +576,8 @@ outer:
 				}
 			} else {
 				// if on the index idx_abc(a,b,c), a is found, b isn't but c is
-				if fno != nil {
-					// then idx_abc cannot be used, it's not possible to use the index without a value for b
-					continue outer
-				} else {
-					continue
-				}
+				// then idx_abc is valid but just with a, c will use a filter node instead
+				continue
 			}
 
 			usableFilterNodes = append(usableFilterNodes, fno)

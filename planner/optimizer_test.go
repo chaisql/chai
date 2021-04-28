@@ -619,6 +619,16 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
 		},
+		// If a path is missing from the query, we can still the index, with paths after the missing one are
+		// using filter nodes rather than the index.
+		{
+			"FROM foo WHERE x = 1 AND z = 2",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("x = 1"))).
+				Pipe(st.Filter(parser.MustParseExpr("z = 2"))),
+			st.New(st.IndexScan("idx_foo_x_y_z", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("z = 2"))),
+		},
 		{
 			"FROM foo WHERE a = 1 AND c = 2",
 			st.New(st.SeqScan("foo")).
@@ -762,6 +772,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
 				CREATE INDEX idx_foo_a_d ON foo(a, d);
 				CREATE INDEX idx_foo_a_b_c ON foo(a, b, c);
+				CREATE INDEX idx_foo_x_y_z ON foo(x, y, z);
 				INSERT INTO foo (k, a, b, c, d) VALUES
 					(1, 1, 1, 1, 1),
 					(2, 2, 2, 2, 2),
