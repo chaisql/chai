@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -41,33 +42,32 @@ type Index struct {
 // type is prepended to the value.
 type indexValueEncoder struct {
 	typ document.ValueType
+	w   io.Writer
 }
 
-func (e *indexValueEncoder) EncodeValue(v document.Value) ([]byte, error) {
+func (e *indexValueEncoder) EncodeValue(v document.Value) error {
 	// if the index has no type constraint, encode the value with its type
 	if e.typ.IsAny() {
-		var buf bytes.Buffer
-
 		// prepend with the type
-		err := buf.WriteByte(byte(v.Type))
+		_, err := e.w.Write([]byte{byte(v.Type)})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		// marshal the value, if it exists, just return the type otherwise
 		if v.V != nil {
 			b, err := v.MarshalBinary()
 			if err != nil {
-				return nil, err
+				return err
 			}
 
-			_, err = buf.Write(b)
+			_, err = e.w.Write(b)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
-		return buf.Bytes(), nil
+		return nil
 	}
 
 	if v.Type != e.typ {
@@ -80,11 +80,17 @@ func (e *indexValueEncoder) EncodeValue(v document.Value) ([]byte, error) {
 	}
 
 	if v.V == nil {
-		return nil, nil
+		return nil
 	}
 
 	// there is a type constraint, so a shorter form can be used as the type is always the same
-	return v.MarshalBinary()
+	b, err := v.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	_, err = e.w.Write(b)
+	return err
 }
 
 // NewIndex creates an index that associates values with a list of keys.
@@ -375,13 +381,8 @@ func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 	var buf bytes.Buffer
 
 	err := vb.Iterate(func(i int, value document.Value) error {
-		enc := &indexValueEncoder{idx.Info.Types[i]}
-		b, err := enc.EncodeValue(value)
-		if err != nil {
-			return err
-		}
-
-		_, err = buf.Write(b)
+		enc := &indexValueEncoder{typ: idx.Info.Types[i], w: &buf}
+		err := enc.EncodeValue(value)
 		if err != nil {
 			return err
 		}
