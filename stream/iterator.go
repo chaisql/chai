@@ -347,8 +347,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 
 	// if there are no ranges use a simpler and faster iteration function
 	if len(it.Ranges) == 0 {
-		vs := make([]document.Value, len(index.Info.Types))
-		return iterator(vs, func(val, key []byte) error {
+		return iterator(nil, func(val, key []byte) error {
 			d, err := table.GetDocument(key)
 			if err != nil {
 				return err
