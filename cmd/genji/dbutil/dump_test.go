@@ -63,7 +63,7 @@ func TestDump(t *testing.T) {
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`CREATE INDEX idx_%s_b_c ON %s (a);`, table, table)
+				q = fmt.Sprintf(`CREATE INDEX idx_%s_b_c ON %s (b, c);`, table, table)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")

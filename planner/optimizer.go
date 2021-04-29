@@ -527,7 +527,8 @@ outer:
 		//   - given a query SELECT ... WHERE a = 1 AND b > 2
 		//     - the paths a and b are contiguous in the index definition, this index can be used
 		//   - given a query SELECT ... WHERE a = 1 AND c > 2
-		//     - the paths a and c are not contiguous in the index definition, this index cannot be used
+		//     - the paths a and c are not contiguous in the index definition, this index cannot be used for both values
+		//       but it will be used with a and c with a normal filter node.
 		var fops []*stream.FilterOperator
 		var usableFilterNodes []*filterNode
 		contiguous := true

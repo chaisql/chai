@@ -120,7 +120,7 @@ func (idx *Index) IsComposite() bool {
 	return len(idx.Info.Types) > 1
 }
 
-// Arity returns how many values the indexed is operating on.
+// Arity returns how many values the index is operating on.
 // For example, an index created with `CREATE INDEX idx_a_b ON foo (a, b)` has an arity of 2.
 func (idx *Index) Arity() int {
 	return len(idx.Info.Types)
