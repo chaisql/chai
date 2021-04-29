@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,7 +81,7 @@ func TestReIndex(t *testing.T) {
 					}
 
 					i := 0
-					err = idx.AscendGreaterOrEqual([]document.Value{document.Value{}}, func(val []byte, key []byte) error {
+					err = idx.AscendGreaterOrEqual(nil, func(val []byte, key []byte) error {
 						i++
 						return nil
 					})
