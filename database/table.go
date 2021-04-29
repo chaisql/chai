@@ -92,18 +92,18 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		vals := make([]document.Value, len(idx.Info.Paths))
+		vs := make([]document.Value, 0, len(idx.Info.Paths))
 
-		for i, path := range idx.Info.Paths {
+		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(fb)
 			if err != nil {
 				v = document.NewNullValue()
 			}
 
-			vals[i] = v
+			vs = append(vs, v)
 		}
 
-		err = idx.Set(vals, key)
+		err = idx.Set(vs, key)
 		if err != nil {
 			if err == ErrIndexDuplicateValue {
 				return nil, ErrDuplicateDocument
@@ -142,15 +142,21 @@ func (t *Table) Delete(key []byte) error {
 	indexes := t.Indexes()
 
 	for _, idx := range indexes {
-		values := make([]document.Value, len(idx.Info.Paths))
-		for i, path := range idx.Info.Paths {
-			values[i], err = path.GetValueFromDocument(d)
+		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		for _, path := range idx.Info.Paths {
+			v, err := path.GetValueFromDocument(d)
 			if err != nil {
-				return err
+				if err == document.ErrFieldNotFound {
+					v = document.NewNullValue()
+				} else {
+					return err
+				}
 			}
+
+			vs = append(vs, v)
 		}
 
-		err = idx.Delete(values, key)
+		err = idx.Delete(vs, key)
 		if err != nil {
 			return err
 		}
@@ -188,15 +194,16 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		values := make([]document.Value, len(idx.Info.Paths))
-		for i, path := range idx.Info.Paths {
-			values[i], err = path.GetValueFromDocument(old)
+		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		for _, path := range idx.Info.Paths {
+			v, err := path.GetValueFromDocument(old)
 			if err != nil {
-				values[i] = document.NewNullValue()
+				v = document.NewNullValue()
 			}
+			vs = append(vs, v)
 		}
 
-		err = idx.Delete(values, key)
+		err := idx.Delete(vs, key)
 		if err != nil {
 			return err
 		}
@@ -219,13 +226,17 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// update indexes
 	for _, idx := range indexes {
-		// only support one path
-		v, err := idx.Info.Paths[0].GetValueFromDocument(d)
-		if err != nil {
-			v = document.NewNullValue()
+		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		for _, path := range idx.Info.Paths {
+			v, err := path.GetValueFromDocument(d)
+			if err != nil {
+				v = document.NewNullValue()
+			}
+
+			vs = append(vs, v)
 		}
 
-		err = idx.Set([]document.Value{v}, key)
+		err = idx.Set(vs, key)
 		if err != nil {
 			if err == ErrIndexDuplicateValue {
 				return ErrDuplicateDocument
