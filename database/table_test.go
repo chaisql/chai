@@ -639,18 +639,31 @@ func TestTableReplace(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.CreateTable("test1", nil)
 		require.NoError(t, err)
 
+		err = tx.CreateTable("test2", nil)
+		require.NoError(t, err)
+
+		// simple indexes
 		err = tx.CreateIndex(&database.IndexInfo{
 			Paths:     []document.Path{document.NewPath("a")},
 			Unique:    true,
-			TableName: "test",
+			TableName: "test1",
 			IndexName: "idx_foo_a",
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.GetTable("test")
+		// composite indexes
+		err = tx.CreateIndex(&database.IndexInfo{
+			Paths:     []document.Path{document.NewPath("x"), document.NewPath("y")},
+			Unique:    true,
+			TableName: "test2",
+			IndexName: "idx_foo_x_y",
+		})
+		require.NoError(t, err)
+
+		tb, err := tx.GetTable("test1")
 		require.NoError(t, err)
 
 		// insert two different documents
@@ -659,26 +672,63 @@ func TestTableReplace(t *testing.T) {
 		d2, err := tb.Insert(testutil.MakeDocument(t, `{"a": 2, "b": 2}`))
 		require.NoError(t, err)
 
-		before := testutil.GetIndexContent(t, tx, "idx_foo_a")
+		beforeIdxA := testutil.GetIndexContent(t, tx, "idx_foo_a")
 
-		// replace doc 1 without modifying indexed key
+		// --- a
+		// replace d1 without modifying indexed key
 		err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 1, "b": 3}`))
 		require.NoError(t, err)
-		// index should be the same as before
-		require.Equal(t, before, testutil.GetIndexContent(t, tx, "idx_foo_a"))
 
-		// replace doc 2 and modify indexed key
+		// indexes should be the same as before
+		require.Equal(t, beforeIdxA, testutil.GetIndexContent(t, tx, "idx_foo_a"))
+
+		// replace d2 and modify indexed key
 		err = tb.Replace(d2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
 		require.NoError(t, err)
-		// index should be different for doc 2
-		got := testutil.GetIndexContent(t, tx, "idx_foo_a")
-		require.Equal(t, before[0], got[0])
-		require.NotEqual(t, before[1], got[1])
 
-		// replace doc 1 with duplicate indexed key
+		// indexes should be different for d2
+		got := testutil.GetIndexContent(t, tx, "idx_foo_a")
+		require.Equal(t, beforeIdxA[0], got[0])
+		require.NotEqual(t, beforeIdxA[1], got[1])
+
+		// replace d1 with duplicate indexed key
 		err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
+
 		// index should be the same as before
 		require.Equal(t, database.ErrDuplicateDocument, err)
+
+		// --- x, y
+		tb, err = tx.GetTable("test2")
+		require.NoError(t, err)
+		// insert two different documents
+		dc1, err := tb.Insert(testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 1}`))
+		require.NoError(t, err)
+		dc2, err := tb.Insert(testutil.MakeDocument(t, `{"x": 2, "y": 2, "z": 2}`))
+		require.NoError(t, err)
+
+		beforeIdxXY := testutil.GetIndexContent(t, tx, "idx_foo_x_y")
+		// replace dc1 without modifying indexed key
+		err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 2}`))
+		require.NoError(t, err)
+
+		// index should be the same as before
+		require.Equal(t, beforeIdxXY, testutil.GetIndexContent(t, tx, "idx_foo_x_y"))
+
+		// replace dc2 and modify indexed key
+		err = tb.Replace(dc2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
+		require.NoError(t, err)
+
+		// indexes should be different for d2
+		got = testutil.GetIndexContent(t, tx, "idx_foo_x_y")
+		require.Equal(t, beforeIdxXY[0], got[0])
+		require.NotEqual(t, beforeIdxXY[1], got[1])
+
+		// replace dc2 with duplicate indexed key
+		err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
+
+		// index should be the same as before
+		require.Equal(t, database.ErrDuplicateDocument, err)
+
 	})
 }
 
@@ -751,7 +801,14 @@ func TestTableIndexes(t *testing.T) {
 		require.NoError(t, err)
 		err = tx.CreateIndex(&database.IndexInfo{
 			Unique:    false,
-			IndexName: "ifx2a",
+			IndexName: "idx1ab",
+			TableName: "test1",
+			Paths:     []document.Path{parsePath(t, "a"), parsePath(t, "b")},
+		})
+		require.NoError(t, err)
+		err = tx.CreateIndex(&database.IndexInfo{
+			Unique:    false,
+			IndexName: "idx2a",
 			TableName: "test2",
 			Paths:     []document.Path{parsePath(t, "a")},
 		})
@@ -762,7 +819,7 @@ func TestTableIndexes(t *testing.T) {
 
 		m := tb.Indexes()
 		require.NoError(t, err)
-		require.Len(t, m, 2)
+		require.Len(t, m, 3)
 	})
 }
 
