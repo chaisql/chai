@@ -157,7 +157,7 @@ func precalculateExpr(e expr.Expr, params []expr.Param) (expr.Expr, error) {
 				values[i] = document.Value(t[i].(expr.LiteralValue))
 			}
 
-			return expr.ArrayValue(document.NewValueBuffer(values...)), nil
+			return expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer(values...))), nil
 		}
 
 	case *expr.KVPairs:

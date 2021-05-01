@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,27 +19,27 @@ func TestParserUpdate(t *testing.T) {
 	}{
 		{"SET/No cond", "UPDATE test SET a = 1",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Set(document.Path(parsePath(t, "a")), expr.IntegerValue(1))).
+				Pipe(stream.Set(document.Path(parsePath(t, "a")), testutil.IntegerValue(1))).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(MustParseExpr("age = 10"))).
-				Pipe(stream.Set(document.Path(parsePath(t, "a")), expr.IntegerValue(1))).
+				Pipe(stream.Set(document.Path(parsePath(t, "a")), testutil.IntegerValue(1))).
 				Pipe(stream.Set(document.Path(parsePath(t, "b")), MustParseExpr("2"))).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Set(document.Path(parsePath(t, "`   some \"path\" `")), expr.IntegerValue(1))).
+				Pipe(stream.Set(document.Path(parsePath(t, "`   some \"path\" `")), testutil.IntegerValue(1))).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Set(document.Path(parsePath(t, "a.b")), expr.IntegerValue(1))).
+				Pipe(stream.Set(document.Path(parsePath(t, "a.b")), testutil.IntegerValue(1))).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},

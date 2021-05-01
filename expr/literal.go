@@ -26,46 +26,6 @@ func (v LiteralValue) String() string {
 	return document.Value(v).String()
 }
 
-// BlobValue creates a litteral value of type Blob.
-func BlobValue(v []byte) LiteralValue {
-	return LiteralValue(document.NewBlobValue(v))
-}
-
-// TextValue creates a litteral value of type Text.
-func TextValue(v string) LiteralValue {
-	return LiteralValue(document.NewTextValue(v))
-}
-
-// BoolValue creates a litteral value of type Bool.
-func BoolValue(v bool) LiteralValue {
-	return LiteralValue(document.NewBoolValue(v))
-}
-
-// IntegerValue creates a litteral value of type Integer.
-func IntegerValue(v int64) LiteralValue {
-	return LiteralValue(document.NewIntegerValue(v))
-}
-
-// DoubleValue creates a litteral value of type Double.
-func DoubleValue(v float64) LiteralValue {
-	return LiteralValue(document.NewDoubleValue(v))
-}
-
-// NullValue creates a litteral value of type Null.
-func NullValue() LiteralValue {
-	return LiteralValue(document.NewNullValue())
-}
-
-// DocumentValue creates a litteral value of type Document.
-func DocumentValue(d document.Document) LiteralValue {
-	return LiteralValue(document.NewDocumentValue(d))
-}
-
-// ArrayValue creates a litteral value of type Array.
-func ArrayValue(a document.Array) LiteralValue {
-	return LiteralValue(document.NewArrayValue(a))
-}
-
 // Eval returns l. It implements the Expr interface.
 func (v LiteralValue) Eval(*Environment) (document.Value, error) {
 	return document.Value(v), nil

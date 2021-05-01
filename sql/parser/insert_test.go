@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,12 +20,12 @@ func TestParserInsert(t *testing.T) {
 		{"Documents", `INSERT INTO test VALUES {a: 1, "b": "foo", c: 'bar', d: 1 = 1, e: {f: "baz"}}`,
 			stream.New(stream.Expressions(
 				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
-					{K: "a", V: expr.IntegerValue(1)},
-					{K: "b", V: expr.TextValue("foo")},
-					{K: "c", V: expr.TextValue("bar")},
-					{K: "d", V: expr.Eq(expr.IntegerValue(1), expr.IntegerValue(1))},
+					{K: "a", V: testutil.IntegerValue(1)},
+					{K: "b", V: testutil.TextValue("foo")},
+					{K: "c", V: testutil.TextValue("bar")},
+					{K: "d", V: expr.Eq(testutil.IntegerValue(1), testutil.IntegerValue(1))},
 					{K: "e", V: &expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
-						{K: "f", V: expr.TextValue("baz")},
+						{K: "f", V: testutil.TextValue("baz")},
 					}}},
 				}},
 			)).Pipe(stream.TableInsert("test")),
@@ -32,10 +33,10 @@ func TestParserInsert(t *testing.T) {
 		{"Documents / Multiple", `INSERT INTO test VALUES {"a": 'a', b: -2.3}, {a: 1, d: true}`,
 			stream.New(stream.Expressions(
 				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
-					{K: "a", V: expr.TextValue("a")},
-					{K: "b", V: expr.DoubleValue(-2.3)},
+					{K: "a", V: testutil.TextValue("a")},
+					{K: "b", V: testutil.DoubleValue(-2.3)},
 				}},
-				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: expr.IntegerValue(1)}, {K: "d", V: expr.BoolValue(true)}}},
+				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: testutil.IntegerValue(1)}, {K: "d", V: testutil.BoolValue(true)}}},
 			)).Pipe(stream.TableInsert("test")),
 			false},
 		{"Documents / Positional Param", "INSERT INTO test VALUES ?, ?",
@@ -53,8 +54,8 @@ func TestParserInsert(t *testing.T) {
 		{"Values / With fields", "INSERT INTO test (a, b) VALUES ('c', 'd')",
 			stream.New(stream.Expressions(
 				&expr.KVPairs{Pairs: []expr.KVPair{
-					{K: "a", V: expr.TextValue("c")},
-					{K: "b", V: expr.TextValue("d")},
+					{K: "a", V: testutil.TextValue("c")},
+					{K: "b", V: testutil.TextValue("d")},
 				}},
 			)).Pipe(stream.TableInsert("test")),
 			false},
@@ -63,12 +64,12 @@ func TestParserInsert(t *testing.T) {
 		{"Values / Multiple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
 			stream.New(stream.Expressions(
 				&expr.KVPairs{Pairs: []expr.KVPair{
-					{K: "a", V: expr.TextValue("c")},
-					{K: "b", V: expr.TextValue("d")},
+					{K: "a", V: testutil.TextValue("c")},
+					{K: "b", V: testutil.TextValue("d")},
 				}},
 				&expr.KVPairs{Pairs: []expr.KVPair{
-					{K: "a", V: expr.TextValue("e")},
-					{K: "b", V: expr.TextValue("f")},
+					{K: "a", V: testutil.TextValue("e")},
+					{K: "b", V: testutil.TextValue("f")},
 				}},
 			)).Pipe(stream.TableInsert("test")),
 			false},

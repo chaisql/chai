@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/database"
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/stream"
@@ -40,7 +41,7 @@ func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.
 				Op: stream.Project(
 					&expr.NamedExpr{
 						ExprName: "plan",
-						Expr:     expr.TextValue(plan),
+						Expr:     expr.LiteralValue(document.NewTextValue(plan)),
 					}),
 			},
 			ReadOnly: true,

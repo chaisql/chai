@@ -20,34 +20,34 @@ func TestSplitANDConditionRule(t *testing.T) {
 	}{
 		{
 			"no and",
-			st.New(st.SeqScan("foo")).Pipe(st.Filter(expr.BoolValue(true))),
-			st.New(st.SeqScan("foo")).Pipe(st.Filter(expr.BoolValue(true))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(testutil.BoolValue(true))),
+			st.New(st.SeqScan("foo")).Pipe(st.Filter(testutil.BoolValue(true))),
 		},
 		{
 			"and / top-level selection node",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(
 				expr.And(
-					expr.BoolValue(true),
-					expr.BoolValue(false),
+					testutil.BoolValue(true),
+					testutil.BoolValue(false),
 				),
 			)),
 			st.New(st.SeqScan("foo")).
-				Pipe(st.Filter(expr.BoolValue(true))).
-				Pipe(st.Filter(expr.BoolValue(false))),
+				Pipe(st.Filter(testutil.BoolValue(true))).
+				Pipe(st.Filter(testutil.BoolValue(false))),
 		},
 		{
 			"and / middle-level selection node",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(
 					expr.And(
-						expr.BoolValue(true),
-						expr.BoolValue(false),
+						testutil.BoolValue(true),
+						testutil.BoolValue(false),
 					),
 				)).
 				Pipe(st.Take(1)),
 			st.New(st.SeqScan("foo")).
-				Pipe(st.Filter(expr.BoolValue(true))).
-				Pipe(st.Filter(expr.BoolValue(false))).
+				Pipe(st.Filter(testutil.BoolValue(true))).
+				Pipe(st.Filter(testutil.BoolValue(false))).
 				Pipe(st.Take(1)),
 		},
 		{
@@ -56,21 +56,21 @@ func TestSplitANDConditionRule(t *testing.T) {
 				Pipe(st.Filter(
 					expr.And(
 						expr.And(
-							expr.IntegerValue(1),
-							expr.IntegerValue(2),
+							testutil.IntegerValue(1),
+							testutil.IntegerValue(2),
 						),
 						expr.And(
-							expr.IntegerValue(3),
-							expr.IntegerValue(4),
+							testutil.IntegerValue(3),
+							testutil.IntegerValue(4),
 						),
 					),
 				)).
 				Pipe(st.Take(10)),
 			st.New(st.SeqScan("foo")).
-				Pipe(st.Filter(expr.IntegerValue(1))).
-				Pipe(st.Filter(expr.IntegerValue(2))).
-				Pipe(st.Filter(expr.IntegerValue(3))).
-				Pipe(st.Filter(expr.IntegerValue(4))).
+				Pipe(st.Filter(testutil.IntegerValue(1))).
+				Pipe(st.Filter(testutil.IntegerValue(2))).
+				Pipe(st.Filter(testutil.IntegerValue(3))).
+				Pipe(st.Filter(testutil.IntegerValue(4))).
 				Pipe(st.Take(10)),
 		},
 	}
@@ -92,31 +92,31 @@ func TestPrecalculateExprRule(t *testing.T) {
 	}{
 		{
 			"constant expr: 3 -> 3",
-			expr.IntegerValue(3),
-			expr.IntegerValue(3),
+			testutil.IntegerValue(3),
+			testutil.IntegerValue(3),
 			nil,
 		},
 		{
 			"operator with two constant operands: 3 + 2.4 -> 5.4",
-			expr.Add(expr.IntegerValue(3), expr.PositionalParam(1)),
-			expr.DoubleValue(5.4),
+			expr.Add(testutil.IntegerValue(3), expr.PositionalParam(1)),
+			testutil.DoubleValue(5.4),
 			[]expr.Param{{Value: 2.4}},
 		},
 		{
 			"operator with constant nested operands: 3 > 1 - 40 -> true",
-			expr.Gt(expr.DoubleValue(3), expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))),
-			expr.BoolValue(true),
+			expr.Gt(testutil.DoubleValue(3), expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
+			testutil.BoolValue(true),
 			nil,
 		},
 		{
 			"constant sub-expr: a > 1 - 40 -> a > -39",
-			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))),
-			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, expr.DoubleValue(-39)),
+			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
+			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, testutil.DoubleValue(-39)),
 			nil,
 		},
 		{
 			"constant sub-expr: a IN [1, 2] -> a IN array([1, 2])",
-			expr.In(expr.Path{document.PathFragment{FieldName: "a"}}, expr.LiteralExprList{expr.IntegerValue(1), expr.IntegerValue(2)}),
+			expr.In(expr.Path{document.PathFragment{FieldName: "a"}}, expr.LiteralExprList{testutil.IntegerValue(1), testutil.IntegerValue(2)}),
 			expr.In(expr.Path{document.PathFragment{FieldName: "a"}}, expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer().
 				Append(document.NewIntegerValue(1)).
 				Append(document.NewIntegerValue(2))))),
@@ -126,19 +126,19 @@ func TestPrecalculateExprRule(t *testing.T) {
 			"non-constant expr list: [a, 1 - 40] -> [a, -39]",
 			expr.LiteralExprList{
 				expr.Path{document.PathFragment{FieldName: "a"}},
-				expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40)),
+				expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40)),
 			},
 			expr.LiteralExprList{
 				expr.Path{document.PathFragment{FieldName: "a"}},
-				expr.DoubleValue(-39),
+				testutil.DoubleValue(-39),
 			},
 			nil,
 		},
 		{
 			"constant expr list: [3, 1 - 40] -> array([3, -39])",
 			expr.LiteralExprList{
-				expr.IntegerValue(3),
-				expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40)),
+				testutil.IntegerValue(3),
+				expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40)),
 			},
 			expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer().
 				Append(document.NewIntegerValue(3)).
@@ -149,19 +149,19 @@ func TestPrecalculateExprRule(t *testing.T) {
 			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
 			&expr.KVPairs{Pairs: []expr.KVPair{
 				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
-				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
+				{K: "b", V: expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))},
 			}},
 			&expr.KVPairs{Pairs: []expr.KVPair{
 				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
-				{K: "b", V: expr.DoubleValue(-39)},
+				{K: "b", V: testutil.DoubleValue(-39)},
 			}},
 			nil,
 		},
 		{
 			`constant kvpair: {"a": 3, "b": 1 - 40} -> document({"a": 3, "b": -39})`,
 			&expr.KVPairs{Pairs: []expr.KVPair{
-				{K: "a", V: expr.IntegerValue(3)},
-				{K: "b", V: expr.Sub(expr.IntegerValue(1), expr.DoubleValue(40))},
+				{K: "a", V: testutil.IntegerValue(3)},
+				{K: "b", V: expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))},
 			}},
 			expr.LiteralValue(document.NewDocumentValue(document.NewFieldBuffer().
 				Add("a", document.NewIntegerValue(3)).
@@ -201,7 +201,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 			"truthy constant expr with IN",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(expr.In(
 				expr.Path(document.NewPath("a")),
-				expr.ArrayValue(document.NewValueBuffer()),
+				testutil.ArrayValue(document.NewValueBuffer()),
 			))),
 			&st.Stream{},
 		},
@@ -376,7 +376,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(
 				expr.In(
 					parser.MustParseExpr("a"),
-					expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+					testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 				),
 			)),
 			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true}, st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})),
@@ -664,7 +664,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("d = 4"))),
@@ -679,7 +679,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
@@ -695,7 +695,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
@@ -711,7 +711,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
@@ -727,13 +727,13 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 		// 		Pipe(st.Filter(
 		// 			expr.In(
 		// 				parser.MustParseExpr("a"),
-		// 				expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+		// 				testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
 		// 			),
 		// 		)).
 		// 		Pipe(st.Filter(
 		// 			expr.In(
 		// 				parser.MustParseExpr("b"),
-		// 				expr.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(3), document.NewIntegerValue(4))),
+		// 				testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(3), document.NewIntegerValue(4))),
 		// 			),
 		// 		)).
 		// 		Pipe(st.Filter(parser.MustParseExpr("c < 5"))),

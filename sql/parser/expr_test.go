@@ -6,6 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,47 +26,47 @@ func TestParserExpr(t *testing.T) {
 		fails    bool
 	}{
 		// integers
-		{"+int8", "10", expr.IntegerValue(10), false},
-		{"-int8", "-10", expr.IntegerValue(-10), false},
-		{"+int16", "1000", expr.IntegerValue(1000), false},
-		{"-int16", "-1000", expr.IntegerValue(-1000), false},
-		{"+int32", "10000000", expr.IntegerValue(10000000), false},
-		{"-int32", "-10000000", expr.IntegerValue(-10000000), false},
-		{"+int64", "10000000000", expr.IntegerValue(10000000000), false},
-		{"-int64", "-10000000000", expr.IntegerValue(-10000000000), false},
-		{"> max int64 -> float64", "10000000000000000000", expr.DoubleValue(10000000000000000000), false},
-		{"< min int64 -> float64", "-10000000000000000000", expr.DoubleValue(-10000000000000000000), false},
-		{"very large int", "100000000000000000000000000000000000000000000000", expr.DoubleValue(100000000000000000000000000000000000000000000000), false},
+		{"+int8", "10", testutil.IntegerValue(10), false},
+		{"-int8", "-10", testutil.IntegerValue(-10), false},
+		{"+int16", "1000", testutil.IntegerValue(1000), false},
+		{"-int16", "-1000", testutil.IntegerValue(-1000), false},
+		{"+int32", "10000000", testutil.IntegerValue(10000000), false},
+		{"-int32", "-10000000", testutil.IntegerValue(-10000000), false},
+		{"+int64", "10000000000", testutil.IntegerValue(10000000000), false},
+		{"-int64", "-10000000000", testutil.IntegerValue(-10000000000), false},
+		{"> max int64 -> float64", "10000000000000000000", testutil.DoubleValue(10000000000000000000), false},
+		{"< min int64 -> float64", "-10000000000000000000", testutil.DoubleValue(-10000000000000000000), false},
+		{"very large int", "100000000000000000000000000000000000000000000000", testutil.DoubleValue(100000000000000000000000000000000000000000000000), false},
 
 		// floats
-		{"+float64", "10.0", expr.DoubleValue(10), false},
-		{"-float64", "-10.0", expr.DoubleValue(-10), false},
+		{"+float64", "10.0", testutil.DoubleValue(10), false},
+		{"-float64", "-10.0", testutil.DoubleValue(-10), false},
 
 		// strings
-		{"double quoted string", `"10.0"`, expr.TextValue("10.0"), false},
-		{"single quoted string", "'-10.0'", expr.TextValue("-10.0"), false},
+		{"double quoted string", `"10.0"`, testutil.TextValue("10.0"), false},
+		{"single quoted string", "'-10.0'", testutil.TextValue("-10.0"), false},
 
 		// documents
 		{"empty document", `{}`, &expr.KVPairs{SelfReferenced: true}, false},
 		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
 			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
-				{K: "a", V: expr.IntegerValue(1)},
-				{K: "b", V: expr.DoubleValue(1)},
-				{K: "c", V: expr.BoolValue(true)},
-				{K: "d", V: expr.TextValue("string")},
-				{K: "e", V: expr.TextValue("string")},
+				{K: "a", V: testutil.IntegerValue(1)},
+				{K: "b", V: testutil.DoubleValue(1)},
+				{K: "c", V: testutil.BoolValue(true)},
+				{K: "d", V: testutil.TextValue("string")},
+				{K: "e", V: testutil.TextValue("string")},
 				{K: "f", V: &expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
-					{K: "foo", V: expr.TextValue("bar")},
+					{K: "foo", V: testutil.TextValue("bar")},
 				}}},
 				{K: "g", V: parsePath(t, "h.i.j")},
-				{K: "k", V: expr.LiteralExprList{expr.IntegerValue(1), expr.IntegerValue(2), expr.IntegerValue(3)}},
+				{K: "k", V: expr.LiteralExprList{testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.IntegerValue(3)}},
 			}},
 			false},
 		{"document keys", `{a: 1, "foo bar __&&))": 1, 'ola ': 1}`,
 			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
-				{K: "a", V: expr.IntegerValue(1)},
-				{K: "foo bar __&&))", V: expr.IntegerValue(1)},
-				{K: "ola ", V: expr.IntegerValue(1)},
+				{K: "a", V: testutil.IntegerValue(1)},
+				{K: "foo bar __&&))", V: testutil.IntegerValue(1)},
+				{K: "ola ", V: testutil.IntegerValue(1)},
 			}},
 			false},
 		{"bad document keys: same key", `{a: 1, a: 2, "a": 3}`, nil, true},
@@ -79,18 +80,18 @@ func TestParserExpr(t *testing.T) {
 		{"parentheses: empty", "()", nil, true},
 		{"parentheses: values", `(1)`,
 			expr.Parentheses{
-				E: expr.IntegerValue(1),
+				E: testutil.IntegerValue(1),
 			}, false},
 		{"parentheses: expr", `(1 + true * (4 + 3))`,
 			expr.Parentheses{
 				E: expr.Add(
-					expr.IntegerValue(1),
+					testutil.IntegerValue(1),
 					expr.Mul(
-						expr.BoolValue(true),
+						testutil.BoolValue(true),
 						expr.Parentheses{
 							E: expr.Add(
-								expr.IntegerValue(4),
-								expr.IntegerValue(3),
+								testutil.IntegerValue(4),
+								testutil.IntegerValue(3),
 							),
 						},
 					),
@@ -99,69 +100,69 @@ func TestParserExpr(t *testing.T) {
 		{"list with brackets: empty", "[]", expr.LiteralExprList(nil), false},
 		{"list with brackets: values", `[1, true, {a: 1}, a.b.c, (-1), [-1]]`,
 			expr.LiteralExprList{
-				expr.IntegerValue(1),
-				expr.BoolValue(true),
-				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: expr.IntegerValue(1)}}},
+				testutil.IntegerValue(1),
+				testutil.BoolValue(true),
+				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: testutil.IntegerValue(1)}}},
 				parsePath(t, "a.b.c"),
-				expr.Parentheses{E: expr.IntegerValue(-1)},
-				expr.LiteralExprList{expr.IntegerValue(-1)},
+				expr.Parentheses{E: testutil.IntegerValue(-1)},
+				expr.LiteralExprList{testutil.IntegerValue(-1)},
 			}, false},
 		{"list with brackets: missing bracket", `[1, true, {a: 1}, a.b.c, (-1), [-1]`, nil, true},
 
 		// operators
-		{"=", "age = 10", expr.Eq(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"!=", "age != 10", expr.Neq(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{">", "age > 10", expr.Gt(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{">=", "age >= 10", expr.Gte(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"<", "age < 10", expr.Lt(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"<=", "age <= 10", expr.Lte(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"BETWEEN", "1 BETWEEN 10 AND 11", expr.Between(expr.IntegerValue(10))(expr.IntegerValue(1), expr.IntegerValue(11)), false},
-		{"+", "age + 10", expr.Add(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"-", "age - 10", expr.Sub(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"*", "age * 10", expr.Mul(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"/", "age / 10", expr.Div(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"%", "age % 10", expr.Mod(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"&", "age & 10", expr.BitwiseAnd(parsePath(t, "age"), expr.IntegerValue(10)), false},
-		{"||", "name || 'foo'", expr.Concat(parsePath(t, "name"), expr.TextValue("foo")), false},
+		{"=", "age = 10", expr.Eq(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"!=", "age != 10", expr.Neq(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{">", "age > 10", expr.Gt(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{">=", "age >= 10", expr.Gte(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"<", "age < 10", expr.Lt(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"<=", "age <= 10", expr.Lte(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"BETWEEN", "1 BETWEEN 10 AND 11", expr.Between(testutil.IntegerValue(10))(testutil.IntegerValue(1), testutil.IntegerValue(11)), false},
+		{"+", "age + 10", expr.Add(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"-", "age - 10", expr.Sub(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"*", "age * 10", expr.Mul(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"/", "age / 10", expr.Div(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"%", "age % 10", expr.Mod(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"&", "age & 10", expr.BitwiseAnd(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"||", "name || 'foo'", expr.Concat(parsePath(t, "name"), testutil.TextValue("foo")), false},
 		{"IN", "age IN ages", expr.In(parsePath(t, "age"), parsePath(t, "ages")), false},
 		{"NOT IN", "age NOT IN ages", expr.NotIn(parsePath(t, "age"), parsePath(t, "ages")), false},
-		{"IS", "age IS NULL", expr.Is(parsePath(t, "age"), expr.NullValue()), false},
-		{"IS NOT", "age IS NOT NULL", expr.IsNot(parsePath(t, "age"), expr.NullValue()), false},
-		{"LIKE", "name LIKE 'foo'", expr.Like(parsePath(t, "name"), expr.TextValue("foo")), false},
-		{"NOT LIKE", "name NOT LIKE 'foo'", expr.NotLike(parsePath(t, "name"), expr.TextValue("foo")), false},
+		{"IS", "age IS NULL", expr.Is(parsePath(t, "age"), testutil.NullValue()), false},
+		{"IS NOT", "age IS NOT NULL", expr.IsNot(parsePath(t, "age"), testutil.NullValue()), false},
+		{"LIKE", "name LIKE 'foo'", expr.Like(parsePath(t, "name"), testutil.TextValue("foo")), false},
+		{"NOT LIKE", "name NOT LIKE 'foo'", expr.NotLike(parsePath(t, "name"), testutil.TextValue("foo")), false},
 		{"NOT =", "name NOT = 'foo'", nil, true},
 		{"precedence", "4 > 1 + 2", expr.Gt(
-			expr.IntegerValue(4),
+			testutil.IntegerValue(4),
 			expr.Add(
-				expr.IntegerValue(1),
-				expr.IntegerValue(2),
+				testutil.IntegerValue(1),
+				testutil.IntegerValue(2),
 			),
 		), false},
 		{"AND", "age = 10 AND age <= 11",
 			expr.And(
-				expr.Eq(parsePath(t, "age"), expr.IntegerValue(10)),
-				expr.Lte(parsePath(t, "age"), expr.IntegerValue(11)),
+				expr.Eq(parsePath(t, "age"), testutil.IntegerValue(10)),
+				expr.Lte(parsePath(t, "age"), testutil.IntegerValue(11)),
 			), false},
 		{"OR", "age = 10 OR age = 11",
 			expr.Or(
-				expr.Eq(parsePath(t, "age"), expr.IntegerValue(10)),
-				expr.Eq(parsePath(t, "age"), expr.IntegerValue(11)),
+				expr.Eq(parsePath(t, "age"), testutil.IntegerValue(10)),
+				expr.Eq(parsePath(t, "age"), testutil.IntegerValue(11)),
 			), false},
 		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
 			expr.Or(
 				expr.And(
-					expr.Gte(parsePath(t, "age"), expr.IntegerValue(10)),
+					expr.Gte(parsePath(t, "age"), testutil.IntegerValue(10)),
 					expr.Gt(parsePath(t, "age"), expr.NamedParam("age")),
 				),
-				expr.Lt(parsePath(t, "age"), expr.DoubleValue(10.4)),
+				expr.Lt(parsePath(t, "age"), testutil.DoubleValue(10.4)),
 			), false},
-		{"with NULL", "age > NULL", expr.Gt(parsePath(t, "age"), expr.NullValue()), false},
+		{"with NULL", "age > NULL", expr.Gt(parsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
 		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: parsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
-		{"NOT", "NOT 10", expr.Not(expr.IntegerValue(10)), false},
+		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
-		{"NOT", "NOT NOT 10", expr.Not(expr.Not(expr.IntegerValue(10))), false},
+		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},
 
 		// functions
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
