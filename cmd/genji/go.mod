@@ -14,8 +14,3 @@ require (
 	go.uber.org/multierr v1.6.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 )
-
-replace (
-	github.com/genjidb/genji v0.12.0 => ../../
-	github.com/genjidb/genji/engine/badgerengine v0.12.0 => ../../engine/badgerengine
-)
