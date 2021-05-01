@@ -177,7 +177,9 @@ func TestParserExpr(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.EqualValues(t, test.expected, ex)
+				if !expr.Equal(test.expected, ex) {
+					require.EqualValues(t, test.expected, ex)
+				}
 				require.Equal(t, test.s, lit)
 			}
 		})

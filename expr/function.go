@@ -101,7 +101,7 @@ type AggregatorBuilder interface {
 type PKFunc struct{}
 
 // Eval returns the primary key of the current document.
-func (k PKFunc) Eval(env *Environment) (document.Value, error) {
+func (k *PKFunc) Eval(env *Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return nullLitteral, nil
@@ -115,16 +115,16 @@ func (k PKFunc) Eval(env *Environment) (document.Value, error) {
 	return keyer.Key()
 }
 
-func (PKFunc) Params() []Expr { return nil }
+func (*PKFunc) Params() []Expr { return nil }
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (k PKFunc) IsEqual(other Expr) bool {
-	_, ok := other.(PKFunc)
+func (k *PKFunc) IsEqual(other Expr) bool {
+	_, ok := other.(*PKFunc)
 	return ok
 }
 
-func (k PKFunc) String() string {
+func (k *PKFunc) String() string {
 	return "pk()"
 }
 

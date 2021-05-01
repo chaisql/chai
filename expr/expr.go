@@ -62,7 +62,7 @@ func (p Parentheses) IsEqual(other Expr) bool {
 		return false
 	}
 
-	return Equal(p.E, o)
+	return Equal(p.E, o.E)
 }
 
 func (p Parentheses) String() string {

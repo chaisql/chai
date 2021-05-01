@@ -8,115 +8,75 @@ import (
 // IsArithmeticOperator returns true if e is one of
 // +, -, *, /, %, &, |, or ^ operators.
 func IsArithmeticOperator(op Operator) bool {
-	switch op.(type) {
-	case *addOp, *subOp, *mulOp, *divOp, *modOp,
-		*bitwiseAndOp, *bitwiseOrOp, *bitwiseXorOp:
-		return true
-	}
-
-	return false
+	_, ok := op.(*arithmeticOperator)
+	return ok
 }
 
-type addOp struct {
+type arithmeticOperator struct {
 	*simpleOperator
+}
+
+func (op *arithmeticOperator) Eval(env *Environment) (document.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		switch op.simpleOperator.Tok {
+		case scanner.ADD:
+			return a.Add(b)
+		case scanner.SUB:
+			return a.Sub(b)
+		case scanner.MUL:
+			return a.Mul(b)
+		case scanner.DIV:
+			return a.Div(b)
+		case scanner.MOD:
+			return a.Mod(b)
+		case scanner.BITWISEAND:
+			return a.BitwiseAnd(b)
+		case scanner.BITWISEOR:
+			return a.BitwiseOr(b)
+		case scanner.BITWISEXOR:
+			return a.BitwiseXor(b)
+		}
+
+		panic("unknown arithmetic token")
+	})
 }
 
 // Add creates an expression thats evaluates to the result of a + b.
 func Add(a, b Expr) Expr {
-	return &addOp{&simpleOperator{a, b, scanner.ADD}}
-}
-
-func (op addOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Add(b) })
-}
-
-type subOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.ADD}}
 }
 
 // Sub creates an expression thats evaluates to the result of a - b.
 func Sub(a, b Expr) Expr {
-	return &subOp{&simpleOperator{a, b, scanner.SUB}}
-}
-
-func (op subOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Sub(b) })
-}
-
-type mulOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.SUB}}
 }
 
 // Mul creates an expression thats evaluates to the result of a * b.
 func Mul(a, b Expr) Expr {
-	return &mulOp{&simpleOperator{a, b, scanner.MUL}}
-}
-
-func (op mulOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Mul(b) })
-}
-
-type divOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.MUL}}
 }
 
 // Div creates an expression thats evaluates to the result of a / b.
 func Div(a, b Expr) Expr {
-	return &divOp{&simpleOperator{a, b, scanner.DIV}}
-}
-
-func (op divOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Div(b) })
-}
-
-type modOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.DIV}}
 }
 
 // Mod creates an expression thats evaluates to the result of a % b.
 func Mod(a, b Expr) Expr {
-	return &modOp{&simpleOperator{a, b, scanner.MOD}}
-}
-
-func (op modOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Mod(b) })
-}
-
-type bitwiseAndOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.MOD}}
 }
 
 // BitwiseAnd creates an expression thats evaluates to the result of a & b.
 func BitwiseAnd(a, b Expr) Expr {
-	return &bitwiseAndOp{&simpleOperator{a, b, scanner.BITWISEAND}}
-}
-
-func (op bitwiseAndOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.BitwiseAnd(b) })
-}
-
-type bitwiseOrOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.BITWISEAND}}
 }
 
 // BitwiseOr creates an expression thats evaluates to the result of a | b.
 func BitwiseOr(a, b Expr) Expr {
-	return &bitwiseOrOp{&simpleOperator{a, b, scanner.BITWISEOR}}
-}
-
-func (op bitwiseOrOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.BitwiseOr(b) })
-}
-
-type bitwiseXorOp struct {
-	*simpleOperator
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.BITWISEOR}}
 }
 
 // BitwiseXor creates an expression thats evaluates to the result of a ^ b.
 func BitwiseXor(a, b Expr) Expr {
-	return &bitwiseXorOp{&simpleOperator{a, b, scanner.BITWISEXOR}}
-}
-
-func (op bitwiseXorOp) Eval(env *Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.BitwiseXor(b) })
+	return &arithmeticOperator{&simpleOperator{a, b, scanner.BITWISEXOR}}
 }
