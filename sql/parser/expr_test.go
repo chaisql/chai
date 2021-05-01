@@ -115,6 +115,7 @@ func TestParserExpr(t *testing.T) {
 		{">=", "age >= 10", expr.Gte(parsePath(t, "age"), expr.IntegerValue(10)), false},
 		{"<", "age < 10", expr.Lt(parsePath(t, "age"), expr.IntegerValue(10)), false},
 		{"<=", "age <= 10", expr.Lte(parsePath(t, "age"), expr.IntegerValue(10)), false},
+		{"BETWEEN", "1 BETWEEN 10 AND 11", expr.Between(expr.IntegerValue(10))(expr.IntegerValue(1), expr.IntegerValue(11)), false},
 		{"+", "age + 10", expr.Add(parsePath(t, "age"), expr.IntegerValue(10)), false},
 		{"-", "age - 10", expr.Sub(parsePath(t, "age"), expr.IntegerValue(10)), false},
 		{"*", "age * 10", expr.Mul(parsePath(t, "age"), expr.IntegerValue(10)), false},

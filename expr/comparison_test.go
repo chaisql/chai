@@ -158,3 +158,27 @@ func TestComparisonExprNodocument(t *testing.T) {
 		})
 	}
 }
+
+func TestComparisonBetweenExpr(t *testing.T) {
+	tests := []struct {
+		expr  string
+		res   document.Value
+		fails bool
+	}{
+		{"1 BETWEEN 0 AND 2", document.NewBoolValue(true), false},
+		{"1 BETWEEN 0 AND 1", document.NewBoolValue(true), false},
+		{"1 BETWEEN 1 AND 2", document.NewBoolValue(true), false},
+		{"1 BETWEEN NULL AND 2", document.NewNullValue(), false},
+		{"1 BETWEEN 0 AND 'foo'", document.NewBoolValue(false), false},
+		{"1 BETWEEN 'foo' AND 2", document.NewBoolValue(false), false},
+		{"1 BETWEEN '1' AND 2", document.NewBoolValue(false), false},
+		{"1 BETWEEN CAST('1' AS int) AND 2", document.NewBoolValue(true), false},
+		{"1 BETWEEN CAST('1' AS double) AND 2", document.NewBoolValue(true), false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.expr, func(t *testing.T) {
+			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+		})
+	}
+}

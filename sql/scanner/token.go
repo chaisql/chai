@@ -41,6 +41,7 @@ const (
 	BITWISEAND // &
 	BITWISEOR  // |
 	BITWISEXOR // ^
+	BETWEEN    // BETWEEN
 
 	AND // AND
 	OR  // OR
@@ -168,6 +169,7 @@ var tokens = [...]string{
 	BITWISEAND: "&",
 	BITWISEOR:  "|",
 	BITWISEXOR: "^",
+	BETWEEN:    "BETWEEN",
 
 	AND: "AND",
 	OR:  "OR",
@@ -281,7 +283,7 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case EQ, NEQ, IS, IN, LIKE, EQREGEX, NEQREGEX:
+	case EQ, NEQ, IS, IN, LIKE, EQREGEX, NEQREGEX, BETWEEN:
 		return 3
 	case LT, LTE, GT, GTE:
 		return 4

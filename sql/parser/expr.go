@@ -26,6 +26,10 @@ func (d *dummyOperator) SetRightHandExpr(e expr.Expr)                   { d.righ
 
 // ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
+	return p.parseExprWithMinPrecedence(0)
+}
+
+func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, lit string, err error) {
 	// enable the expression buffer to store the literal representation
 	// of the parsed expression
 	if p.buf == nil {
@@ -47,7 +51,7 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	// Loop over operations and unary exprs and build a tree based on precedence.
 	for {
 		// If the next token is NOT an operator then return the expression.
-		op, tok, err := p.parseOperator()
+		op, tok, err := p.parseOperator(precedence)
 		if err != nil {
 			return nil, "", err
 		}
@@ -77,7 +81,7 @@ func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
 	}
 }
 
-func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, error) {
+func (p *Parser) parseOperator(minPrecedence int) (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, error) {
 	op, _, _ := p.ScanIgnoreWhitespace()
 	if !op.IsOperator() && op != scanner.NOT {
 		p.Unscan()
@@ -90,64 +94,77 @@ func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.To
 		return nil, 0, nil
 	}
 
-	switch op {
-	case scanner.EQ:
+	switch {
+	case op == scanner.EQ && op.Precedence() >= minPrecedence:
 		return expr.Eq, op, nil
-	case scanner.NEQ:
+	case op == scanner.NEQ && op.Precedence() >= minPrecedence:
 		return expr.Neq, op, nil
-	case scanner.GT:
+	case op == scanner.GT && op.Precedence() >= minPrecedence:
 		return expr.Gt, op, nil
-	case scanner.GTE:
+	case op == scanner.GTE && op.Precedence() >= minPrecedence:
 		return expr.Gte, op, nil
-	case scanner.LT:
+	case op == scanner.LT && op.Precedence() >= minPrecedence:
 		return expr.Lt, op, nil
-	case scanner.LTE:
+	case op == scanner.LTE && op.Precedence() >= minPrecedence:
 		return expr.Lte, op, nil
-	case scanner.AND:
+	case op == scanner.AND && op.Precedence() >= minPrecedence:
 		return expr.And, op, nil
-	case scanner.OR:
+	case op == scanner.OR && op.Precedence() >= minPrecedence:
 		return expr.Or, op, nil
-	case scanner.ADD:
+	case op == scanner.ADD && op.Precedence() >= minPrecedence:
 		return expr.Add, op, nil
-	case scanner.SUB:
+	case op == scanner.SUB && op.Precedence() >= minPrecedence:
 		return expr.Sub, op, nil
-	case scanner.MUL:
+	case op == scanner.MUL && op.Precedence() >= minPrecedence:
 		return expr.Mul, op, nil
-	case scanner.DIV:
+	case op == scanner.DIV && op.Precedence() >= minPrecedence:
 		return expr.Div, op, nil
-	case scanner.MOD:
+	case op == scanner.MOD && op.Precedence() >= minPrecedence:
 		return expr.Mod, op, nil
-	case scanner.BITWISEAND:
+	case op == scanner.BITWISEAND && op.Precedence() >= minPrecedence:
 		return expr.BitwiseAnd, op, nil
-	case scanner.BITWISEOR:
+	case op == scanner.BITWISEOR && op.Precedence() >= minPrecedence:
 		return expr.BitwiseOr, op, nil
-	case scanner.BITWISEXOR:
+	case op == scanner.BITWISEXOR && op.Precedence() >= minPrecedence:
 		return expr.BitwiseXor, op, nil
-	case scanner.IN:
+	case op == scanner.IN && op.Precedence() >= minPrecedence:
 		return expr.In, op, nil
-	case scanner.IS:
+	case op == scanner.IS && op.Precedence() >= minPrecedence:
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.NOT {
 			return expr.IsNot, op, nil
 		}
 		p.Unscan()
 		return expr.Is, op, nil
-	case scanner.NOT:
+	case op == scanner.NOT:
 		tok, pos, lit := p.ScanIgnoreWhitespace()
-		switch tok {
-		case scanner.IN:
+		switch {
+		case tok == scanner.IN && tok.Precedence() >= minPrecedence:
 			return expr.NotIn, op, nil
-		case scanner.LIKE:
+		case tok == scanner.LIKE && tok.Precedence() >= minPrecedence:
 			return expr.NotLike, op, nil
 		}
 
 		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN, LIKE"}, pos)
-	case scanner.LIKE:
+	case op == scanner.LIKE && op.Precedence() >= minPrecedence:
 		return expr.Like, op, nil
-	case scanner.CONCAT:
+	case op == scanner.CONCAT && op.Precedence() >= minPrecedence:
 		return expr.Concat, op, nil
+	case op == scanner.BETWEEN && op.Precedence() >= minPrecedence:
+		a, _, err := p.parseExprWithMinPrecedence(op.Precedence())
+		if err != nil {
+			return nil, op, err
+		}
+		err = p.parseTokens(scanner.AND)
+		if err != nil {
+			return nil, op, err
+		}
+
+		return expr.Between(a), op, nil
 	}
 
-	panic(stringutil.Sprintf("unknown operator %q", op))
+	p.Unscan()
+
+	return nil, 0, nil
 }
 
 // parseUnaryExpr parses an non-binary expression.

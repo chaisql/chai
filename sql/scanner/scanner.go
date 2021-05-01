@@ -19,7 +19,7 @@ func init() {
 	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
-	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN, IS, LIKE} {
+	for _, tok := range []Token{AND, OR, TRUE, FALSE, NULL, IN, IS, LIKE, BETWEEN} {
 		keywords[strings.ToLower(tokens[tok])] = tok
 	}
 }

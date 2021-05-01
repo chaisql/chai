@@ -16,6 +16,46 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 	return &cmpOp{&simpleOperator{a, b, t}}
 }
 
+// Eval compares a and b together using the operator specified when constructing the CmpOp
+// and returns the result of the comparison.
+// Comparing with NULL always evaluates to NULL.
+func (op cmpOp) Eval(env *Environment) (document.Value, error) {
+	v1, v2, err := op.simpleOperator.eval(env)
+	if err != nil {
+		return falseLitteral, err
+	}
+
+	if v1.Type == document.NullValue || v2.Type == document.NullValue {
+		return nullLitteral, nil
+	}
+
+	ok, err := op.compare(v1, v2)
+	if ok {
+		return trueLitteral, err
+	}
+
+	return falseLitteral, err
+}
+
+func (op cmpOp) compare(l, r document.Value) (bool, error) {
+	switch op.Tok {
+	case scanner.EQ:
+		return l.IsEqual(r)
+	case scanner.NEQ:
+		return l.IsNotEqual(r)
+	case scanner.GT:
+		return l.IsGreaterThan(r)
+	case scanner.GTE:
+		return l.IsGreaterThanOrEqual(r)
+	case scanner.LT:
+		return l.IsLesserThan(r)
+	case scanner.LTE:
+		return l.IsLesserThanOrEqual(r)
+	default:
+		panic(stringutil.Sprintf("unknown token %v", op.Tok))
+	}
+}
+
 type EqOperator struct {
 	*cmpOp
 }
@@ -94,10 +134,25 @@ func (op *LteOperator) String() string {
 	return stringutil.Sprintf("%v <= %v", op.a, op.b)
 }
 
-// Eval compares a and b together using the operator specified when constructing the CmpOp
-// and returns the result of the comparison.
-// Comparing with NULL always evaluates to NULL.
-func (op cmpOp) Eval(env *Environment) (document.Value, error) {
+type BetweenOperator struct {
+	*simpleOperator
+	X Expr
+}
+
+// Between returns a function that creates a BETWEEN operator that
+// returns true if x is between a and b.
+func Between(a Expr) func(x, b Expr) Expr {
+	return func(x, b Expr) Expr {
+		return &BetweenOperator{&simpleOperator{a, b, scanner.BETWEEN}, x}
+	}
+}
+
+func (op *BetweenOperator) Eval(env *Environment) (document.Value, error) {
+	x, err := op.X.Eval(env)
+	if err != nil {
+		return falseLitteral, err
+	}
+
 	v1, v2, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return falseLitteral, err
@@ -107,31 +162,21 @@ func (op cmpOp) Eval(env *Environment) (document.Value, error) {
 		return nullLitteral, nil
 	}
 
-	ok, err := op.compare(v1, v2)
-	if ok {
-		return trueLitteral, err
+	ok, err := x.IsGreaterThanOrEqual(v1)
+	if !ok || err != nil {
+		return falseLitteral, err
 	}
 
-	return falseLitteral, err
+	ok, err = x.IsLesserThanOrEqual(v2)
+	if !ok || err != nil {
+		return falseLitteral, err
+	}
+
+	return trueLitteral, nil
 }
 
-func (op cmpOp) compare(l, r document.Value) (bool, error) {
-	switch op.Tok {
-	case scanner.EQ:
-		return l.IsEqual(r)
-	case scanner.NEQ:
-		return l.IsNotEqual(r)
-	case scanner.GT:
-		return l.IsGreaterThan(r)
-	case scanner.GTE:
-		return l.IsGreaterThanOrEqual(r)
-	case scanner.LT:
-		return l.IsLesserThan(r)
-	case scanner.LTE:
-		return l.IsLesserThanOrEqual(r)
-	default:
-		panic(stringutil.Sprintf("unknown token %v", op.Tok))
-	}
+func (op *BetweenOperator) String() string {
+	return stringutil.Sprintf("%v BETWEEN %v AND %v", op.X, op.a, op.b)
 }
 
 // IsComparisonOperator returns true if e is one of
@@ -173,6 +218,12 @@ func IsInOperator(e Expr) bool {
 // IsNotInOperator reports if e is the NOT IN operator.
 func IsNotInOperator(e Expr) bool {
 	_, ok := e.(*NotInOperator)
+	return ok
+}
+
+// IsBetweenOperator reports if e is the BETWEEN operator.
+func IsBetweenOperator(e Expr) bool {
+	_, ok := e.(*BetweenOperator)
 	return ok
 }
 
