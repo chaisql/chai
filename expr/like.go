@@ -1,8 +1,6 @@
 package expr
 
 import (
-	"errors"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/query/glob"
 	"github.com/genjidb/genji/sql/scanner"
@@ -29,7 +27,7 @@ func (op *LikeOperator) Eval(env *Environment) (document.Value, error) {
 	}
 
 	if a.Type != document.TextValue || b.Type != document.TextValue {
-		return nullLitteral, errors.New("LIKE operator takes a text")
+		return nullLitteral, nil
 	}
 
 	if like(b.V.(string), a.V.(string)) {

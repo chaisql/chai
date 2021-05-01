@@ -3,6 +3,7 @@ package expr
 import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/stringutil"
 )
 
 type simpleOperator struct {
@@ -86,4 +87,31 @@ func OperatorIsIndexCompatible(op Operator) bool {
 	}
 
 	return false
+}
+
+type ConcatOperator struct {
+	*simpleOperator
+}
+
+// Concat creates an expression that concatenates two text values together.
+// It returns null if one of the values is not a text.
+func Concat(a, b Expr) Expr {
+	return &ConcatOperator{&simpleOperator{a, b, scanner.CONCAT}}
+}
+
+func (op *ConcatOperator) Eval(env *Environment) (document.Value, error) {
+	a, b, err := op.simpleOperator.eval(env)
+	if err != nil {
+		return nullLitteral, err
+	}
+
+	if a.Type != document.TextValue || b.Type != document.TextValue {
+		return nullLitteral, nil
+	}
+
+	return document.NewTextValue(a.V.(string) + b.V.(string)), nil
+}
+
+func (op *ConcatOperator) String() string {
+	return stringutil.Sprintf("%v || %v", op.a, op.b)
 }

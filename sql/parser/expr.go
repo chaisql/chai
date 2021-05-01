@@ -143,6 +143,8 @@ func (p *Parser) parseOperator() (func(lhs, rhs expr.Expr) expr.Expr, scanner.To
 		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN, LIKE"}, pos)
 	case scanner.LIKE:
 		return expr.Like, op, nil
+	case scanner.CONCAT:
+		return expr.Concat, op, nil
 	}
 
 	panic(stringutil.Sprintf("unknown operator %q", op))
