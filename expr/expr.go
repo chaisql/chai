@@ -14,6 +14,7 @@ var (
 // An Expr evaluates to a value.
 type Expr interface {
 	Eval(*Environment) (document.Value, error)
+	String() string
 }
 
 type isEqualer interface {
@@ -62,6 +63,10 @@ func (p Parentheses) IsEqual(other Expr) bool {
 	}
 
 	return Equal(p.E, o)
+}
+
+func (p Parentheses) String() string {
+	return stringutil.Sprintf("(%v)", p.E)
 }
 
 func invertBoolResult(f func(env *Environment) (document.Value, error)) func(env *Environment) (document.Value, error) {

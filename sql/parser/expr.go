@@ -18,6 +18,7 @@ type dummyOperator struct {
 func (d *dummyOperator) Token() scanner.Token                           { panic("not implemented") }
 func (d *dummyOperator) Equal(expr.Expr) bool                           { panic("not implemented") }
 func (d *dummyOperator) Eval(*expr.Environment) (document.Value, error) { panic("not implemented") }
+func (d *dummyOperator) String() string                                 { panic("not implemented") }
 func (d *dummyOperator) Precedence() int                                { panic("not implemented") }
 func (d *dummyOperator) LeftHand() expr.Expr                            { panic("not implemented") }
 func (d *dummyOperator) RightHand() expr.Expr                           { return d.rightHand }
