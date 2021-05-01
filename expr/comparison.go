@@ -20,21 +20,18 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 // and returns the result of the comparison.
 // Comparing with NULL always evaluates to NULL.
 func (op *cmpOp) Eval(env *Environment) (document.Value, error) {
-	v1, v2, err := op.simpleOperator.eval(env)
-	if err != nil {
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		if a.Type == document.NullValue || b.Type == document.NullValue {
+			return nullLitteral, nil
+		}
+
+		ok, err := op.compare(a, b)
+		if ok {
+			return trueLitteral, err
+		}
+
 		return falseLitteral, err
-	}
-
-	if v1.Type == document.NullValue || v2.Type == document.NullValue {
-		return nullLitteral, nil
-	}
-
-	ok, err := op.compare(v1, v2)
-	if ok {
-		return trueLitteral, err
-	}
-
-	return falseLitteral, err
+	})
 }
 
 func (op *cmpOp) compare(l, r document.Value) (bool, error) {
@@ -129,26 +126,23 @@ func (op *BetweenOperator) Eval(env *Environment) (document.Value, error) {
 		return falseLitteral, err
 	}
 
-	v1, v2, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return falseLitteral, err
-	}
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		if a.Type == document.NullValue || b.Type == document.NullValue {
+			return nullLitteral, nil
+		}
 
-	if v1.Type == document.NullValue || v2.Type == document.NullValue {
-		return nullLitteral, nil
-	}
+		ok, err := x.IsGreaterThanOrEqual(a)
+		if !ok || err != nil {
+			return falseLitteral, err
+		}
 
-	ok, err := x.IsGreaterThanOrEqual(v1)
-	if !ok || err != nil {
-		return falseLitteral, err
-	}
+		ok, err = x.IsLesserThanOrEqual(b)
+		if !ok || err != nil {
+			return falseLitteral, err
+		}
 
-	ok, err = x.IsLesserThanOrEqual(v2)
-	if !ok || err != nil {
-		return falseLitteral, err
-	}
-
-	return trueLitteral, nil
+		return trueLitteral, nil
+	})
 }
 
 func (op *BetweenOperator) String() string {
@@ -213,28 +207,25 @@ func In(a, b Expr) Expr {
 }
 
 func (op *InOperator) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		if a.Type == document.NullValue || b.Type == document.NullValue {
+			return nullLitteral, nil
+		}
 
-	if a.Type == document.NullValue || b.Type == document.NullValue {
-		return nullLitteral, nil
-	}
+		if b.Type != document.ArrayValue {
+			return falseLitteral, nil
+		}
 
-	if b.Type != document.ArrayValue {
+		ok, err := document.ArrayContains(b.V.(document.Array), a)
+		if err != nil {
+			return nullLitteral, err
+		}
+
+		if ok {
+			return trueLitteral, nil
+		}
 		return falseLitteral, nil
-	}
-
-	ok, err := document.ArrayContains(b.V.(document.Array), a)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	if ok {
-		return trueLitteral, nil
-	}
-	return falseLitteral, nil
+	})
 }
 
 type NotInOperator struct {
@@ -264,20 +255,17 @@ func Is(a, b Expr) Expr {
 }
 
 func (op *IsOperator) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		ok, err := a.IsEqual(b)
+		if err != nil {
+			return nullLitteral, err
+		}
+		if ok {
+			return trueLitteral, nil
+		}
 
-	ok, err := a.IsEqual(b)
-	if err != nil {
-		return nullLitteral, err
-	}
-	if ok {
-		return trueLitteral, nil
-	}
-
-	return falseLitteral, nil
+		return falseLitteral, nil
+	})
 }
 
 type IsNotOperator struct {
@@ -290,20 +278,17 @@ func IsNot(a, b Expr) Expr {
 }
 
 func (op *IsNotOperator) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		ok, err := a.IsNotEqual(b)
+		if err != nil {
+			return nullLitteral, err
+		}
+		if ok {
+			return trueLitteral, nil
+		}
 
-	ok, err := a.IsNotEqual(b)
-	if err != nil {
-		return nullLitteral, err
-	}
-	if ok {
-		return trueLitteral, nil
-	}
-
-	return falseLitteral, nil
+		return falseLitteral, nil
+	})
 }
 
 func (op *IsNotOperator) String() string {

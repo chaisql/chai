@@ -21,20 +21,17 @@ func Like(a, b Expr) Expr {
 }
 
 func (op *LikeOperator) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		if a.Type != document.TextValue || b.Type != document.TextValue {
+			return nullLitteral, nil
+		}
 
-	if a.Type != document.TextValue || b.Type != document.TextValue {
-		return nullLitteral, nil
-	}
+		if like(b.V.(string), a.V.(string)) {
+			return trueLitteral, nil
+		}
 
-	if like(b.V.(string), a.V.(string)) {
-		return trueLitteral, nil
-	}
-
-	return falseLitteral, nil
+		return falseLitteral, nil
+	})
 }
 
 type NotLikeOperator struct {

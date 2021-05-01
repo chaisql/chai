@@ -27,12 +27,7 @@ func Add(a, b Expr) Expr {
 }
 
 func (op addOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.Add(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Add(b) })
 }
 
 type subOp struct {
@@ -45,12 +40,7 @@ func Sub(a, b Expr) Expr {
 }
 
 func (op subOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.Sub(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Sub(b) })
 }
 
 type mulOp struct {
@@ -63,12 +53,7 @@ func Mul(a, b Expr) Expr {
 }
 
 func (op mulOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.Mul(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Mul(b) })
 }
 
 type divOp struct {
@@ -81,12 +66,7 @@ func Div(a, b Expr) Expr {
 }
 
 func (op divOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.Div(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Div(b) })
 }
 
 type modOp struct {
@@ -99,12 +79,7 @@ func Mod(a, b Expr) Expr {
 }
 
 func (op modOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.Mod(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.Mod(b) })
 }
 
 type bitwiseAndOp struct {
@@ -117,12 +92,7 @@ func BitwiseAnd(a, b Expr) Expr {
 }
 
 func (op bitwiseAndOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.BitwiseAnd(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.BitwiseAnd(b) })
 }
 
 type bitwiseOrOp struct {
@@ -135,12 +105,7 @@ func BitwiseOr(a, b Expr) Expr {
 }
 
 func (op bitwiseOrOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.BitwiseOr(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.BitwiseOr(b) })
 }
 
 type bitwiseXorOp struct {
@@ -153,10 +118,5 @@ func BitwiseXor(a, b Expr) Expr {
 }
 
 func (op bitwiseXorOp) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
-
-	return a.BitwiseXor(b)
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) { return a.BitwiseXor(b) })
 }

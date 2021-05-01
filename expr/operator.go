@@ -35,18 +35,18 @@ func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
 }
 
-func (op *simpleOperator) eval(env *Environment) (document.Value, document.Value, error) {
+func (op *simpleOperator) eval(env *Environment, fn func(a, b document.Value) (document.Value, error)) (document.Value, error) {
 	va, err := op.a.Eval(env)
 	if err != nil {
-		return nullLitteral, nullLitteral, err
+		return nullLitteral, err
 	}
 
 	vb, err := op.b.Eval(env)
 	if err != nil {
-		return nullLitteral, nullLitteral, err
+		return nullLitteral, err
 	}
 
-	return va, vb, nil
+	return fn(va, vb)
 }
 
 // Equal compares this expression with the other expression and returns
@@ -104,18 +104,11 @@ func Concat(a, b Expr) Expr {
 }
 
 func (op *ConcatOperator) Eval(env *Environment) (document.Value, error) {
-	a, b, err := op.simpleOperator.eval(env)
-	if err != nil {
-		return nullLitteral, err
-	}
+	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+		if a.Type != document.TextValue || b.Type != document.TextValue {
+			return nullLitteral, nil
+		}
 
-	if a.Type != document.TextValue || b.Type != document.TextValue {
-		return nullLitteral, nil
-	}
-
-	return document.NewTextValue(a.V.(string) + b.V.(string)), nil
-}
-
-func (op *ConcatOperator) String() string {
-	return stringutil.Sprintf("%v || %v", op.a, op.b)
+		return document.NewTextValue(a.V.(string) + b.V.(string)), nil
+	})
 }
