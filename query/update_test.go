@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,7 +77,7 @@ func TestUpdateStmt(t *testing.T) {
 
 				var buf bytes.Buffer
 
-				err = document.IteratorToJSONArray(&buf, st)
+				err = testutil.IteratorToJSONArray(&buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -130,7 +130,7 @@ func TestUpdateStmt(t *testing.T) {
 
 				var buf bytes.Buffer
 
-				err = document.IteratorToJSONArray(&buf, st)
+				err = testutil.IteratorToJSONArray(&buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, tt.expected, buf.String())
 			})

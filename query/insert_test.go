@@ -8,7 +8,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/database"
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +70,7 @@ func TestInsertStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = document.IteratorToJSONArray(&buf, st)
+				err = testutil.IteratorToJSONArray(&buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -129,7 +129,7 @@ func TestInsertStmt(t *testing.T) {
 
 		require.NoError(t, err)
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, res)
+		err = testutil.IteratorToJSONArray(&buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"a": "a", "b-b": "b"}]`, buf.String())
 	})
@@ -162,7 +162,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, res)
+		err = testutil.IteratorToJSONArray(&buf, res)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{
 			"i": 10000000000,
@@ -321,7 +321,7 @@ func TestInsertSelect(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = document.IteratorToJSONArray(&buf, st)
+			err = testutil.IteratorToJSONArray(&buf, st)
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})

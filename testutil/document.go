@@ -1,7 +1,9 @@
 package testutil
 
 import (
+	"bufio"
 	"encoding/json"
+	"io"
 	"os"
 	"testing"
 
@@ -109,4 +111,34 @@ func RequireDocJSONEq(t testing.TB, d document.Document, expected string) {
 	data, err := json.Marshal(d)
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
+}
+
+// IteratorToJSONArray encodes all the documents of an iterator to a JSON array.
+func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
+	buf := bufio.NewWriter(w)
+
+	buf.WriteByte('[')
+
+	first := true
+	err := s.Iterate(func(d document.Document) error {
+		if !first {
+			buf.WriteString(", ")
+		} else {
+			first = false
+		}
+
+		data, err := document.MarshalJSON(d)
+		if err != nil {
+			return err
+		}
+
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	buf.WriteByte(']')
+	return buf.Flush()
 }

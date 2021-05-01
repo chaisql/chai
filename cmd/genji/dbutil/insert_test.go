@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,10 +47,9 @@ func TestInsertJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			var buf bytes.Buffer
-			err = document.IteratorToJSONArray(&buf, res)
+			err = testutil.IteratorToJSONArray(&buf, res)
 			require.NoError(t, err)
 			require.JSONEq(t, tt.want, buf.String())
-
 		})
 	}
 

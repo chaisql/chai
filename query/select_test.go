@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -133,7 +134,7 @@ func TestSelectStmt(t *testing.T) {
 				require.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = document.IteratorToJSONArray(&buf, st)
+				err = testutil.IteratorToJSONArray(&buf, st)
 				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -164,7 +165,7 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, st)
+		err = testutil.IteratorToJSONArray(&buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
 	})
@@ -227,7 +228,7 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = document.IteratorToJSONArray(&buf, st)
+		err = testutil.IteratorToJSONArray(&buf, st)
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
