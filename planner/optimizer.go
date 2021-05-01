@@ -4,6 +4,7 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/stringutil"
 )
@@ -59,7 +60,7 @@ func SplitANDConditionRule(s *stream.Stream, _ *database.Transaction, _ []expr.P
 				// only OR has a lower precedence,
 				// which means that if AND is used without OR, it will be at
 				// the top of the expression tree.
-				if op, ok := cond.(expr.Operator); ok && expr.IsAndOperator(op) {
+				if op, ok := cond.(expr.Operator); ok && op.Token() == scanner.AND {
 					exprs := splitANDExpr(cond)
 
 					cur := n.GetPrev()
@@ -85,7 +86,7 @@ func SplitANDConditionRule(s *stream.Stream, _ *database.Transaction, _ []expr.P
 // splitANDExpr takes an expression and splits it by AND operator.
 func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 	op, ok := cond.(expr.Operator)
-	if ok && expr.IsAndOperator(op) {
+	if ok && op.Token() == scanner.AND {
 		exprs = append(exprs, splitANDExpr(op.LeftHand())...)
 		exprs = append(exprs, splitANDExpr(op.RightHand())...)
 		return
@@ -192,8 +193,9 @@ func precalculateExpr(e expr.Expr, params []expr.Param) (expr.Expr, error) {
 		// since expr.Operator is an interface,
 		// this optimization must only be applied to
 		// a few selected operators that we know about.
-		if !expr.IsAndOperator(t) &&
-			!expr.IsOrOperator(t) &&
+		tok := t.Token()
+		if tok != scanner.AND &&
+			tok != scanner.OR &&
 			!expr.IsArithmeticOperator(t) &&
 			!expr.IsComparisonOperator(t) {
 			return e, nil
@@ -498,7 +500,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 
 	isNodeEq := func(fno *filterNode) bool {
 		op := fno.f.E.(expr.Operator)
-		return expr.IsEqualOperator(op) || expr.IsInOperator(op)
+		return op.Token() == scanner.EQ || op.Token() == scanner.IN
 	}
 	isNodeComp := func(fno *filterNode) bool {
 		op := fno.f.E.(expr.Operator)
@@ -688,7 +690,7 @@ func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 	// Special case for IN operator: only left operand is valid for index usage
 	// valid:   a IN [1, 2, 3]
 	// invalid: 1 IN a
-	if expr.IsInOperator(op) {
+	if op.Token() == scanner.IN {
 		if leftIsField && !rightIsField {
 			rh := op.RightHand()
 			// The IN operator can use indexes only if the right hand side is an array with constants.
@@ -746,10 +748,8 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 		op := fno.f.E.(expr.Operator)
 		v := fno.v
 
-		switch op.(type) {
-		case *expr.EqOperator, *expr.GtOperator, *expr.GteOperator, *expr.LtOperator, *expr.LteOperator:
-			vb = vb.Append(v)
-		case *expr.InOperator:
+		switch {
+		case op.Token() == scanner.IN:
 			// mark where the IN operator values are supposed to go is in the buffer
 			// and what are the value needed to generate the ranges.
 			// operatorCanUseIndex made sure v is an array.
@@ -757,6 +757,8 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 
 			// placeholder for when we'll explode the IN operands in multiple ranges
 			vb = vb.Append(document.Value{})
+		case expr.IsComparisonOperator(op):
+			vb = vb.Append(v)
 		default:
 			panic(stringutil.Sprintf("unknown operator %#v", op))
 		}
@@ -771,19 +773,19 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 	buildRange := func(op expr.Operator, vb *document.ValueBuffer) stream.IndexRange {
 		var rng stream.IndexRange
 
-		switch op.(type) {
-		case *expr.EqOperator, *expr.InOperator:
+		switch op.Token() {
+		case scanner.EQ, scanner.IN:
 			rng.Exact = true
 			rng.Min = vb
-		case *expr.GtOperator:
+		case scanner.GT:
 			rng.Exclusive = true
 			rng.Min = vb
-		case *expr.GteOperator:
+		case scanner.GTE:
 			rng.Min = vb
-		case *expr.LtOperator:
+		case scanner.LT:
 			rng.Exclusive = true
 			rng.Max = vb
-		case *expr.LteOperator:
+		case scanner.LTE:
 			rng.Max = vb
 		}
 
@@ -836,31 +838,31 @@ func getRangesFromFilterNodes(fnodes []*filterNode) (stream.IndexRanges, error) 
 func getRangesFromOp(op expr.Operator, v document.Value) (stream.ValueRanges, error) {
 	var ranges stream.ValueRanges
 
-	switch op.(type) {
-	case *expr.EqOperator:
+	switch op.Token() {
+	case scanner.EQ:
 		ranges = ranges.Append(stream.ValueRange{
 			Min:   v,
 			Exact: true,
 		})
-	case *expr.GtOperator:
+	case scanner.GT:
 		ranges = ranges.Append(stream.ValueRange{
 			Min:       v,
 			Exclusive: true,
 		})
-	case *expr.GteOperator:
+	case scanner.GTE:
 		ranges = ranges.Append(stream.ValueRange{
 			Min: v,
 		})
-	case *expr.LtOperator:
+	case scanner.LT:
 		ranges = ranges.Append(stream.ValueRange{
 			Max:       v,
 			Exclusive: true,
 		})
-	case *expr.LteOperator:
+	case scanner.LTE:
 		ranges = ranges.Append(stream.ValueRange{
 			Max: v,
 		})
-	case *expr.InOperator:
+	case scanner.IN:
 		// operatorCanUseIndex made sure e is an array.
 		a := v.V.(document.Array)
 		err := a.Iterate(func(i int, value document.Value) error {

@@ -55,7 +55,9 @@ const (
 	GT       // >
 	GTE      // >=
 	IN       // IN
+	NIN      // NOT IN
 	IS       // IS
+	ISN      // IS NOT
 	LIKE     // LIKE
 	CONCAT   // ||
 	operatorEnd

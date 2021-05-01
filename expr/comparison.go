@@ -53,58 +53,34 @@ func (op *cmpOp) compare(l, r document.Value) (bool, error) {
 	}
 }
 
-type EqOperator struct {
-	*cmpOp
-}
-
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
-	return &EqOperator{newCmpOp(a, b, scanner.EQ)}
-}
-
-type NeqOperator struct {
-	*cmpOp
+	return newCmpOp(a, b, scanner.EQ)
 }
 
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) Expr {
-	return &NeqOperator{newCmpOp(a, b, scanner.NEQ)}
-}
-
-type GtOperator struct {
-	*cmpOp
+	return newCmpOp(a, b, scanner.NEQ)
 }
 
 // Gt creates an expression that returns true if a is greater than b.
 func Gt(a, b Expr) Expr {
-	return &GtOperator{newCmpOp(a, b, scanner.GT)}
-}
-
-type GteOperator struct {
-	*cmpOp
+	return newCmpOp(a, b, scanner.GT)
 }
 
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
-	return &GteOperator{newCmpOp(a, b, scanner.GTE)}
-}
-
-type LtOperator struct {
-	*cmpOp
+	return newCmpOp(a, b, scanner.GTE)
 }
 
 // Lt creates an expression that returns true if a is lesser than b.
 func Lt(a, b Expr) Expr {
-	return &LtOperator{newCmpOp(a, b, scanner.LT)}
-}
-
-type LteOperator struct {
-	*cmpOp
+	return newCmpOp(a, b, scanner.LT)
 }
 
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
-	return &LteOperator{newCmpOp(a, b, scanner.LTE)}
+	return newCmpOp(a, b, scanner.LTE)
 }
 
 type BetweenOperator struct {
@@ -153,48 +129,11 @@ func (op *BetweenOperator) String() string {
 // =, !=, >, >=, <, <=, IS, IS NOT, IN, or NOT IN operators.
 func IsComparisonOperator(op Operator) bool {
 	switch op.(type) {
-	case *EqOperator, *NeqOperator, *GtOperator, *GteOperator, *LtOperator, *LteOperator,
-		*IsOperator, *IsNotOperator, *InOperator, *NotInOperator, *LikeOperator, *NotLikeOperator, *BetweenOperator:
+	case *cmpOp, *IsOperator, *IsNotOperator, *InOperator, *NotInOperator, *LikeOperator, *NotLikeOperator, *BetweenOperator:
 		return true
 	}
 
 	return false
-}
-
-// IsEqualOperator returns true if e is the = operator
-func IsEqualOperator(op Operator) bool {
-	_, ok := op.(*EqOperator)
-	return ok
-}
-
-// IsAndOperator reports if e is the AND operator.
-func IsAndOperator(op Operator) bool {
-	_, ok := op.(*AndOp)
-	return ok
-}
-
-// IsOrOperator reports if e is the OR operator.
-func IsOrOperator(e Expr) bool {
-	_, ok := e.(*OrOp)
-	return ok
-}
-
-// IsInOperator reports if e is the IN operator.
-func IsInOperator(e Expr) bool {
-	_, ok := e.(*InOperator)
-	return ok
-}
-
-// IsNotInOperator reports if e is the NOT IN operator.
-func IsNotInOperator(e Expr) bool {
-	_, ok := e.(*NotInOperator)
-	return ok
-}
-
-// IsBetweenOperator reports if e is the BETWEEN operator.
-func IsBetweenOperator(e Expr) bool {
-	_, ok := e.(*BetweenOperator)
-	return ok
 }
 
 type InOperator struct {
@@ -234,7 +173,7 @@ type NotInOperator struct {
 
 // NotIn creates an expression that evaluates to the result of a NOT IN b.
 func NotIn(a, b Expr) Expr {
-	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.IN}}}
+	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.NIN}}}
 }
 
 func (op *NotInOperator) Eval(env *Environment) (document.Value, error) {
@@ -274,7 +213,7 @@ type IsNotOperator struct {
 
 // IsNot creates an expression that evaluates to the result of a IS NOT b.
 func IsNot(a, b Expr) Expr {
-	return &IsNotOperator{&simpleOperator{a, b, scanner.IN}}
+	return &IsNotOperator{&simpleOperator{a, b, scanner.ISN}}
 }
 
 func (op *IsNotOperator) Eval(env *Environment) (document.Value, error) {
