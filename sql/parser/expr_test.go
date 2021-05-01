@@ -121,9 +121,14 @@ func TestParserExpr(t *testing.T) {
 		{"/", "age / 10", expr.Div(parsePath(t, "age"), expr.IntegerValue(10)), false},
 		{"%", "age % 10", expr.Mod(parsePath(t, "age"), expr.IntegerValue(10)), false},
 		{"&", "age & 10", expr.BitwiseAnd(parsePath(t, "age"), expr.IntegerValue(10)), false},
+		{"||", "name || 'foo'", expr.Concat(parsePath(t, "name"), expr.TextValue("foo")), false},
 		{"IN", "age IN ages", expr.In(parsePath(t, "age"), parsePath(t, "ages")), false},
+		{"NOT IN", "age NOT IN ages", expr.NotIn(parsePath(t, "age"), parsePath(t, "ages")), false},
 		{"IS", "age IS NULL", expr.Is(parsePath(t, "age"), expr.NullValue()), false},
 		{"IS NOT", "age IS NOT NULL", expr.IsNot(parsePath(t, "age"), expr.NullValue()), false},
+		{"LIKE", "name LIKE 'foo'", expr.Like(parsePath(t, "name"), expr.TextValue("foo")), false},
+		{"NOT LIKE", "name NOT LIKE 'foo'", expr.NotLike(parsePath(t, "name"), expr.TextValue("foo")), false},
+		{"NOT =", "name NOT = 'foo'", nil, true},
 		{"precedence", "4 > 1 + 2", expr.Gt(
 			expr.IntegerValue(4),
 			expr.Add(
@@ -150,10 +155,17 @@ func TestParserExpr(t *testing.T) {
 				expr.Lt(parsePath(t, "age"), expr.DoubleValue(10.4)),
 			), false},
 		{"with NULL", "age > NULL", expr.Gt(parsePath(t, "age"), expr.NullValue()), false},
+
+		// unary operators
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: parsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
+		{"NOT", "NOT 10", expr.Not(expr.IntegerValue(10)), false},
+		{"NOT", "NOT NOT", nil, true},
+		{"NOT", "NOT NOT 10", expr.Not(expr.Not(expr.IntegerValue(10))), false},
+
+		// functions
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
 		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: parsePath(t, "a")}, false},
 		{"count(*) function", "count(*)", &expr.CountFunc{Wildcard: true}, false},
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: parsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
 	}
 
 	for _, test := range tests {

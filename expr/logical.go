@@ -45,7 +45,7 @@ func (op *AndOp) String() string {
 	return stringutil.Sprintf("%v AND %v", op.a, op.b)
 }
 
-// OrOp is the And operator.
+// OrOp is the Or operator.
 type OrOp struct {
 	*simpleOperator
 }
@@ -88,4 +88,37 @@ func (op *OrOp) Eval(env *Environment) (document.Value, error) {
 // String implements the stringutil.Stringer interface.
 func (op *OrOp) String() string {
 	return stringutil.Sprintf("%v OR %v", op.a, op.b)
+}
+
+// NotOp is the NOT unary operator.
+type NotOp struct {
+	*simpleOperator
+}
+
+// Not creates an expression that returns true if e is falsy.
+func Not(e Expr) Expr {
+	return &NotOp{&simpleOperator{a: e}}
+}
+
+// Eval implements the Expr interface. It evaluates e and returns true if b is falsy
+func (op *NotOp) Eval(env *Environment) (document.Value, error) {
+	s, err := op.a.Eval(env)
+	if err != nil {
+		return falseLitteral, err
+	}
+
+	isTruthy, err := s.IsTruthy()
+	if err != nil {
+		return falseLitteral, err
+	}
+	if isTruthy {
+		return falseLitteral, nil
+	}
+
+	return trueLitteral, nil
+}
+
+// String implements the stringutil.Stringer interface.
+func (op *NotOp) String() string {
+	return stringutil.Sprintf("NOT %v", op.a)
 }

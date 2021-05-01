@@ -238,6 +238,12 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		}
 
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")", ","}, pos)
+	case scanner.NOT:
+		e, _, err := p.ParseExpr()
+		if err != nil {
+			return nil, err
+		}
+		return expr.Not(e), nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
