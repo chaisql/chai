@@ -144,6 +144,11 @@ func (s *Scanner) Scan() TokenInfo {
 	case '&':
 		return TokenInfo{BITWISEAND, pos, "", s.unbuffer()}
 	case '|':
+		ch1, _ := s.read()
+		if ch1 == '|' {
+			return TokenInfo{CONCAT, pos, "", s.unbuffer()}
+		}
+		s.unread()
 		return TokenInfo{BITWISEOR, pos, "", s.unbuffer()}
 	case '^':
 		return TokenInfo{BITWISEXOR, pos, "", s.unbuffer()}

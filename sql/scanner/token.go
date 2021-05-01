@@ -56,6 +56,7 @@ const (
 	IN       // IN
 	IS       // IS
 	LIKE     // LIKE
+	CONCAT   // ||
 	operatorEnd
 
 	LPAREN      // (
@@ -290,6 +291,8 @@ func (tok Token) Precedence() int {
 		return 6
 	case MUL, DIV, MOD:
 		return 7
+	case CONCAT:
+		return 8
 	}
 	return 0
 }
