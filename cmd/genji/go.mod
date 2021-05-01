@@ -1,6 +1,6 @@
 module github.com/genjidb/genji/cmd/genji
 
-go 1.15
+go 1.16
 
 require (
 	github.com/agnivade/levenshtein v1.1.0
