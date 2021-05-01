@@ -307,7 +307,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 			return ErrFieldNotFound
 		}
 		subBuf.Values = append(subBuf.Values[0:idx], subBuf.Values[idx+1:]...)
-		parentPath[:len(parentPath)-1].GetValue(NewDocumentValue(fb))
+		parentPath[:len(parentPath)-1].GetValueFromDocument(fb)
 	default:
 		return ErrFieldNotFound
 	}
@@ -512,11 +512,6 @@ func (p Path) IsEqual(other Path) bool {
 	}
 
 	return true
-}
-
-// GetValue returns the value at path p.
-func (p Path) GetValue(v Value) (Value, error) {
-	return p.getValueFromValue(v)
 }
 
 // GetValueFromDocument returns the value at path p from d.

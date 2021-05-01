@@ -12,14 +12,6 @@ import (
 	"github.com/genjidb/genji/stringutil"
 )
 
-var (
-	boolZeroValue    = NewZeroValue(BoolValue)
-	integerZeroValue = NewZeroValue(IntegerValue)
-	doubleZeroValue  = NewZeroValue(DoubleValue)
-	blobZeroValue    = NewZeroValue(BlobValue)
-	textZeroValue    = NewZeroValue(TextValue)
-)
-
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
 type ErrUnsupportedType struct {
 	Value interface{}
@@ -166,31 +158,6 @@ func NewDocumentValue(d Document) Value {
 	}
 }
 
-// NewZeroValue returns a value whose value is equal to the Go zero value
-// of the selected type.
-func NewZeroValue(t ValueType) Value {
-	switch t {
-	case NullValue:
-		return NewNullValue()
-	case BoolValue:
-		return NewBoolValue(false)
-	case IntegerValue:
-		return NewIntegerValue(0)
-	case DoubleValue:
-		return NewDoubleValue(0)
-	case BlobValue:
-		return NewBlobValue(nil)
-	case TextValue:
-		return NewTextValue("")
-	case ArrayValue:
-		return NewArrayValue(NewValueBuffer())
-	case DocumentValue:
-		return NewDocumentValue(NewFieldBuffer())
-	}
-
-	return Value{}
-}
-
 // IsTruthy returns whether v is not equal to the zero value of its type.
 func (v Value) IsTruthy() (bool, error) {
 	if v.Type == NullValue {
@@ -206,15 +173,15 @@ func (v Value) IsTruthy() (bool, error) {
 func (v Value) IsZeroValue() (bool, error) {
 	switch v.Type {
 	case BoolValue:
-		return v.V == boolZeroValue.V, nil
+		return v.V == false, nil
 	case IntegerValue:
-		return v.V == integerZeroValue.V, nil
+		return v.V == int64(0), nil
 	case DoubleValue:
-		return v.V == doubleZeroValue.V, nil
+		return v.V == float64(0), nil
 	case BlobValue:
-		return bytes.Equal(v.V.([]byte), blobZeroValue.V.([]byte)), nil
+		return v.V == nil, nil
 	case TextValue:
-		return v.V == textZeroValue.V, nil
+		return v.V == "", nil
 	case ArrayValue:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
@@ -342,52 +309,6 @@ func (v Value) Append(buf []byte) ([]byte, error) {
 // The encoded value doesn't include type information.
 func (v Value) MarshalBinary() ([]byte, error) {
 	return v.Append(nil)
-}
-
-// UnmarshalBinary decodes data to v. Data must not contain type information,
-// instead, v.Type must be set.
-func (v *Value) UnmarshalBinary(data []byte) error {
-	switch v.Type {
-	case NullValue:
-	case BlobValue:
-		v.V = data
-	case TextValue:
-		v.V = string(data)
-	case BoolValue:
-		x, err := binarysort.DecodeBool(data)
-		if err != nil {
-			return err
-		}
-		v.V = x
-	case IntegerValue:
-		x, err := binarysort.DecodeInt64(data)
-		if err != nil {
-			return err
-		}
-		v.V = x
-	case DoubleValue:
-		x, err := binarysort.DecodeFloat64(data)
-		if err != nil {
-			return err
-		}
-		v.V = x
-	case ArrayValue:
-		a, _, err := decodeArray(data)
-		if err != nil {
-			return err
-		}
-		v.V = a
-	case DocumentValue:
-		d, _, err := decodeDocument(data)
-		if err != nil {
-			return err
-		}
-		v.V = d
-	default:
-		return errors.New("unknown type")
-	}
-
-	return nil
 }
 
 // Add u to v and return the result.

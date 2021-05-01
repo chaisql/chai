@@ -596,7 +596,7 @@ func TestPath(t *testing.T) {
 			require.NoError(t, err)
 			p, err := parser.ParsePath(test.path)
 			require.NoError(t, err)
-			v, err := p.GetValue(document.NewDocumentValue(&buf))
+			v, err := p.GetValueFromDocument(&buf)
 			if test.fails {
 				require.Error(t, err)
 			} else {
