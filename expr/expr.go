@@ -98,6 +98,9 @@ func (e NamedExpr) String() string {
 }
 
 func Walk(e Expr, fn func(Expr) bool) bool {
+	if e == nil {
+		return true
+	}
 	if !fn(e) {
 		return false
 	}
@@ -112,6 +115,12 @@ func Walk(e Expr, fn func(Expr) bool) bool {
 		}
 	case *NamedExpr:
 		return Walk(t.Expr, fn)
+	case Function:
+		for _, p := range t.Params() {
+			if !Walk(p, fn) {
+				return false
+			}
+		}
 	}
 
 	return false

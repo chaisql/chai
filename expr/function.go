@@ -8,6 +8,14 @@ import (
 	"github.com/genjidb/genji/stringutil"
 )
 
+// A Function is an expression that execute some arbitrary code.
+type Function interface {
+	Expr
+
+	// Returns the list of parameters this function has received.
+	Params() []Expr
+}
+
 // Functions represents a map of builtin SQL functions.
 type Functions struct {
 	m map[string]func(args ...Expr) (Expr, error)
@@ -107,6 +115,8 @@ func (k PKFunc) Eval(env *Environment) (document.Value, error) {
 	return keyer.Key()
 }
 
+func (PKFunc) Params() []Expr { return nil }
+
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
 func (k PKFunc) IsEqual(other Expr) bool {
@@ -157,6 +167,8 @@ func (c CastFunc) IsEqual(other Expr) bool {
 	return o.Expr != nil
 }
 
+func (c CastFunc) Params() []Expr { return []Expr{c.Expr} }
+
 func (c CastFunc) String() string {
 	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
@@ -198,6 +210,8 @@ func (c *CountFunc) IsEqual(other Expr) bool {
 
 	return Equal(c.Expr, o.Expr)
 }
+
+func (c *CountFunc) Params() []Expr { return []Expr{c.Expr} }
 
 func (c *CountFunc) String() string {
 	if c.Wildcard {
@@ -276,6 +290,8 @@ func (m *MinFunc) IsEqual(other Expr) bool {
 
 	return Equal(m.Expr, o.Expr)
 }
+
+func (m *MinFunc) Params() []Expr { return []Expr{m.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
@@ -373,6 +389,8 @@ func (m *MaxFunc) IsEqual(other Expr) bool {
 	return Equal(m.Expr, o.Expr)
 }
 
+func (m *MaxFunc) Params() []Expr { return []Expr{m.Expr} }
+
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *MaxFunc) String() string {
@@ -469,6 +487,8 @@ func (s *SumFunc) IsEqual(other Expr) bool {
 
 	return Equal(s.Expr, o.Expr)
 }
+
+func (s *SumFunc) Params() []Expr { return []Expr{s.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
@@ -577,6 +597,8 @@ func (s *AvgFunc) IsEqual(other Expr) bool {
 
 	return Equal(s.Expr, o.Expr)
 }
+
+func (s *AvgFunc) Params() []Expr { return []Expr{s.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the average expression.
