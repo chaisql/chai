@@ -66,6 +66,10 @@ func (op *simpleOperator) IsEqual(other Expr) bool {
 		Equal(op.b, oop.RightHand())
 }
 
+func (op *simpleOperator) String() string {
+	return stringutil.Sprintf("%v %v %v", op.a, op.Tok, op.b)
+}
+
 // An Operator is a binary expression that
 // takes two operands and executes an operation on them.
 type Operator interface {

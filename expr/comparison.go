@@ -19,7 +19,7 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 // Eval compares a and b together using the operator specified when constructing the CmpOp
 // and returns the result of the comparison.
 // Comparing with NULL always evaluates to NULL.
-func (op cmpOp) Eval(env *Environment) (document.Value, error) {
+func (op *cmpOp) Eval(env *Environment) (document.Value, error) {
 	v1, v2, err := op.simpleOperator.eval(env)
 	if err != nil {
 		return falseLitteral, err
@@ -37,7 +37,7 @@ func (op cmpOp) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, err
 }
 
-func (op cmpOp) compare(l, r document.Value) (bool, error) {
+func (op *cmpOp) compare(l, r document.Value) (bool, error) {
 	switch op.Tok {
 	case scanner.EQ:
 		return l.IsEqual(r)
@@ -65,10 +65,6 @@ func Eq(a, b Expr) Expr {
 	return &EqOperator{newCmpOp(a, b, scanner.EQ)}
 }
 
-func (op *EqOperator) String() string {
-	return stringutil.Sprintf("%v = %v", op.a, op.b)
-}
-
 type NeqOperator struct {
 	*cmpOp
 }
@@ -76,10 +72,6 @@ type NeqOperator struct {
 // Neq creates an expression that returns true if a equals b.
 func Neq(a, b Expr) Expr {
 	return &NeqOperator{newCmpOp(a, b, scanner.NEQ)}
-}
-
-func (op *NeqOperator) String() string {
-	return stringutil.Sprintf("%v != %v", op.a, op.b)
 }
 
 type GtOperator struct {
@@ -91,10 +83,6 @@ func Gt(a, b Expr) Expr {
 	return &GtOperator{newCmpOp(a, b, scanner.GT)}
 }
 
-func (op *GtOperator) String() string {
-	return stringutil.Sprintf("%v > %v", op.a, op.b)
-}
-
 type GteOperator struct {
 	*cmpOp
 }
@@ -102,10 +90,6 @@ type GteOperator struct {
 // Gte creates an expression that returns true if a is greater than or equal to b.
 func Gte(a, b Expr) Expr {
 	return &GteOperator{newCmpOp(a, b, scanner.GTE)}
-}
-
-func (op *GteOperator) String() string {
-	return stringutil.Sprintf("%v >= %v", op.a, op.b)
 }
 
 type LtOperator struct {
@@ -117,10 +101,6 @@ func Lt(a, b Expr) Expr {
 	return &LtOperator{newCmpOp(a, b, scanner.LT)}
 }
 
-func (op *LtOperator) String() string {
-	return stringutil.Sprintf("%v < %v", op.a, op.b)
-}
-
 type LteOperator struct {
 	*cmpOp
 }
@@ -128,10 +108,6 @@ type LteOperator struct {
 // Lte creates an expression that returns true if a is lesser than or equal to b.
 func Lte(a, b Expr) Expr {
 	return &LteOperator{newCmpOp(a, b, scanner.LTE)}
-}
-
-func (op *LteOperator) String() string {
-	return stringutil.Sprintf("%v <= %v", op.a, op.b)
 }
 
 type BetweenOperator struct {
@@ -184,7 +160,7 @@ func (op *BetweenOperator) String() string {
 func IsComparisonOperator(op Operator) bool {
 	switch op.(type) {
 	case *EqOperator, *NeqOperator, *GtOperator, *GteOperator, *LtOperator, *LteOperator,
-		*IsOperator, *IsNotOperator, *InOperator, *NotInOperator, *LikeOperator, *NotLikeOperator:
+		*IsOperator, *IsNotOperator, *InOperator, *NotInOperator, *LikeOperator, *NotLikeOperator, *BetweenOperator:
 		return true
 	}
 
@@ -261,10 +237,6 @@ func (op *InOperator) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op InOperator) String() string {
-	return stringutil.Sprintf("%v IN %v", op.a, op.b)
-}
-
 type NotInOperator struct {
 	InOperator
 }
@@ -306,10 +278,6 @@ func (op *IsOperator) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return falseLitteral, nil
-}
-
-func (op *IsOperator) String() string {
-	return stringutil.Sprintf("%v IS %v", op.a, op.b)
 }
 
 type IsNotOperator struct {

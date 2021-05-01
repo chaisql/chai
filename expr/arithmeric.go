@@ -3,7 +3,6 @@ package expr
 import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/scanner"
-	"github.com/genjidb/genji/stringutil"
 )
 
 // IsArithmeticOperator returns true if e is one of
@@ -36,10 +35,6 @@ func (op addOp) Eval(env *Environment) (document.Value, error) {
 	return a.Add(b)
 }
 
-func (op addOp) String() string {
-	return stringutil.Sprintf("%v + %v", op.a, op.b)
-}
-
 type subOp struct {
 	*simpleOperator
 }
@@ -56,10 +51,6 @@ func (op subOp) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return a.Sub(b)
-}
-
-func (op subOp) String() string {
-	return stringutil.Sprintf("%v - %v", op.a, op.b)
 }
 
 type mulOp struct {
@@ -80,10 +71,6 @@ func (op mulOp) Eval(env *Environment) (document.Value, error) {
 	return a.Mul(b)
 }
 
-func (op mulOp) String() string {
-	return stringutil.Sprintf("%v * %v", op.a, op.b)
-}
-
 type divOp struct {
 	*simpleOperator
 }
@@ -100,10 +87,6 @@ func (op divOp) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return a.Div(b)
-}
-
-func (op divOp) String() string {
-	return stringutil.Sprintf("%v / %v", op.a, op.b)
 }
 
 type modOp struct {
@@ -124,10 +107,6 @@ func (op modOp) Eval(env *Environment) (document.Value, error) {
 	return a.Mod(b)
 }
 
-func (op modOp) String() string {
-	return stringutil.Sprintf("%v %% %v", op.a, op.b)
-}
-
 type bitwiseAndOp struct {
 	*simpleOperator
 }
@@ -144,10 +123,6 @@ func (op bitwiseAndOp) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return a.BitwiseAnd(b)
-}
-
-func (op bitwiseAndOp) String() string {
-	return stringutil.Sprintf("%v & %v", op.a, op.b)
 }
 
 type bitwiseOrOp struct {
@@ -168,10 +143,6 @@ func (op bitwiseOrOp) Eval(env *Environment) (document.Value, error) {
 	return a.BitwiseOr(b)
 }
 
-func (op bitwiseOrOp) String() string {
-	return stringutil.Sprintf("%v | %v", op.a, op.b)
-}
-
 type bitwiseXorOp struct {
 	*simpleOperator
 }
@@ -188,8 +159,4 @@ func (op bitwiseXorOp) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return a.BitwiseXor(b)
-}
-
-func (op bitwiseXorOp) String() string {
-	return stringutil.Sprintf("%v ^ %v", op.a, op.b)
 }

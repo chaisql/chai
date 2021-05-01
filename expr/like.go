@@ -37,10 +37,6 @@ func (op *LikeOperator) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
-func (op *LikeOperator) String() string {
-	return stringutil.Sprintf("%v LIKE %v", op.a, op.b)
-}
-
 type NotLikeOperator struct {
 	LikeOperator
 }
