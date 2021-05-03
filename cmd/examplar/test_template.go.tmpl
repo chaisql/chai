@@ -24,18 +24,6 @@ func Test{{ .TestName }}(t *testing.T) {
         return buf.Bytes()
     }
 
-    // teardown
-    teardown := func() {
-        // {{ (index .Teardown 0).Orig }}
-        q := `
-        {{- range .Teardown }}
-        {{ .Text }}
-        {{- end}}
-        `
-        err := db.Exec(q)
-        require.NoError(t, err)
-    }
-
     // setup
     setup := func() {
         // {{ (index .Setup 0).Orig }}
@@ -51,7 +39,6 @@ func Test{{ .TestName }}(t *testing.T) {
     {{- range .Tests }}
     // {{ .Orig }}
     t.Run("{{ .Name }}", func(t *testing.T) {
-        t.Cleanup(teardown)
         setup()
 
         var err error

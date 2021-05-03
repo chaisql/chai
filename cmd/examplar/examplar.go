@@ -35,12 +35,11 @@ func (s Statement) expectationText() string {
 	return text
 }
 
-// Examplar represents a group of tests and can optionally include setup code and teardown code.
+// Examplar represents a group of tests and can optionally include setup code.
 type Examplar struct {
 	Name             string
 	originalFilename string
 	setup            []Line
-	teardown         []Line
 	examples         []*Test
 }
 
@@ -51,11 +50,6 @@ func (ex *Examplar) origLoc(num int) string {
 // HasSetup returns true if setup code is provided.
 func (ex *Examplar) HasSetup() bool {
 	return len(ex.setup) > 0
-}
-
-// HasSetup returns true if teardown code is provided.
-func (ex *Examplar) HasTeardown() bool {
-	return len(ex.teardown) > 0
 }
 
 func (ex *Examplar) appendTest(name string, num int) *Test {
@@ -100,13 +94,11 @@ func Generate(ex *Examplar, packageName string, w io.Writer) error {
 		Package  string
 		TestName string
 		Setup    []Line
-		Teardown []Line
 		Tests    []*Test
 	}{
 		packageName,
 		normalizeTestName(ex.Name),
 		ex.setup,
-		ex.teardown,
 		ex.examples,
 	}
 

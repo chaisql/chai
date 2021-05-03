@@ -14,7 +14,6 @@ type Tag int
 const (
 	UNKNOWN Tag = iota
 	SETUP
-	TEARDOWN
 	TEST
 )
 
@@ -39,8 +38,6 @@ func initialState(s *Scanner) stateFn {
 		switch tag {
 		case SETUP:
 			return setupState
-		case TEARDOWN:
-			return teardownState
 		case TEST:
 			s.curTest = s.ex.appendTest(data, s.num)
 			return testState
@@ -55,12 +52,6 @@ func setupState(s *Scanner) stateFn {
 		switch tag {
 		case SETUP:
 			return errorState
-		case TEARDOWN:
-			if s.ex.HasTeardown() {
-				return errorState
-			} else {
-				return teardownState
-			}
 		case TEST:
 			s.curTest = s.ex.appendTest(data, s.num)
 			return testState
@@ -71,33 +62,10 @@ func setupState(s *Scanner) stateFn {
 	return setupState
 }
 
-func teardownState(s *Scanner) stateFn {
-	if tag, data := parseTag(s.line); tag != UNKNOWN {
-		switch tag {
-		case SETUP:
-			if s.ex.HasSetup() {
-				return errorState
-			} else {
-				return setupState
-			}
-		case TEARDOWN:
-			return errorState
-		case TEST:
-			s.curTest = s.ex.appendTest(data, s.num)
-			return testState
-		}
-	}
-
-	s.ex.teardown = append(s.ex.teardown, Line{s.origLoc(), s.line})
-	return teardownState
-}
-
 func testState(s *Scanner) stateFn {
 	if tag, data := parseTag(s.line); tag != UNKNOWN {
 		switch tag {
 		case SETUP:
-			return errorState
-		case TEARDOWN:
 			return errorState
 		case TEST:
 			s.curTest = s.ex.appendTest(data, s.num)
@@ -184,8 +152,6 @@ func parseTag(line string) (Tag, string) {
 	switch strings.ToLower(matches[1]) {
 	case "setup":
 		tag = SETUP
-	case "teardown":
-		tag = TEARDOWN
 	case "test":
 		tag = TEST
 	default:

@@ -17,7 +17,6 @@ func TestParse(t *testing.T) {
 	ex := Parse(f, "extest1", "extest1.sql")
 
 	require.Equal(t, []Line{{"extest1.sql:2", "CREATE TABLE foo (a int);"}}, ex.setup)
-	require.Equal(t, []Line{{"extest1.sql:5", "DROP TABLE foo;"}}, ex.teardown)
 
 	// first test
 	example := ex.examples[0]
