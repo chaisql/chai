@@ -1,0 +1,59 @@
+package {{ .Package }}
+
+import (
+	"testing"
+
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/testutil"
+	"github.com/stretchr/testify/require"
+)
+
+func Test{{ .TestName }}(t *testing.T) {
+	setup := func(t *testing.T, db *genji.DB) {
+		t.Helper()
+
+		q := `
+{{- range .Suite.Setup }}
+{{ . }}
+{{- end }}
+`
+        err := db.Exec(q)
+        require.NoError(t, err)
+    }
+    {{""}}
+    {{- range .Suite.Tests }}
+    // --------------------------------------------------------------------------
+    t.Run("{{ .Name }}", func(t *testing.T) {
+        db, err := genji.Open(":memory:")
+        require.NoError(t, err)
+        defer db.Close()
+
+        setup(t, db)
+        var res *query.Result
+        var q, raw string
+
+        {{- range .Statements }}
+        q = `
+{{- range .Expr }}
+{{ . }}
+{{- end }}
+`
+
+        res, err = db.Query(q)
+        require.NoError(t, err)
+        defer res.Close()
+
+        {{- if gt (len .Result) 0 }}
+        raw = `
+{{- range .Result }}
+{{ . }}
+{{- end}}
+`
+        testutil.RequireStreamEq(t, raw, res)
+        {{- end }}
+        {{- end }}
+    })
+    {{""}}
+    {{- end }}
+}
