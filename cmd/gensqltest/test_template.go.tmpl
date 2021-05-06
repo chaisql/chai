@@ -1,6 +1,7 @@
 package {{ .Package }}
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -40,6 +41,10 @@ func Test{{ .TestName }}(t *testing.T) {
 {{- end }}
 `
 
+        {{- if ne .Error "" }}
+        _, err = db.Query(q)
+		require.Regexp(t, regexp.MustCompile(`^\s*found SELECTARRRR`), err.Error())
+        {{- else }}
         res, err = db.Query(q)
         require.NoError(t, err)
         defer res.Close()
@@ -51,6 +56,7 @@ func Test{{ .TestName }}(t *testing.T) {
 {{- end}}
 `
         testutil.RequireStreamEq(t, raw, res)
+        {{- end }}
         {{- end }}
         {{- end }}
     })

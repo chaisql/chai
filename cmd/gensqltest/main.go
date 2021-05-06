@@ -15,6 +15,7 @@ var tmplFS embed.FS
 type statement struct {
 	Expr   []string
 	Result []string
+	Error  string
 }
 
 type test struct {
@@ -72,6 +73,11 @@ func parse(r io.Reader, filename string, origName string) *testSuite {
 
 		case strings.HasPrefix(line, "-- result:"):
 			readingResult = true
+
+		case strings.HasPrefix(line, "-- error:"):
+			error := strings.TrimPrefix(line, "-- error: ")
+			curStmt.Error = error
+			curStmt = nil
 
 		case strings.HasPrefix(line, "--"): // ignore normal comments
 

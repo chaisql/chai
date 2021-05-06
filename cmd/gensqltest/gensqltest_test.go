@@ -39,6 +39,9 @@ INSERT INTO foo (c) VALUES (3);
 SELECT * FROM foo;
 -- result:
 {"c": 3}
+
+SELECTARRRR z FROM foo;
+-- error: SELECTARRRR
 `
 
 func TestParse(t *testing.T) {
@@ -89,6 +92,12 @@ func TestParse(t *testing.T) {
 	require.Equal(t, "SELECT * FROM foo;", stmt.Expr[1])
 	want = []string{`{"c": 3}`}
 	require.Equal(t, want, stmt.Result)
+
+	// second block
+	stmt = ts.Tests[1].Statements[1]
+	require.Equal(t, "SELECTARRRR z FROM foo;", stmt.Expr[0])
+	wantErr := "SELECTARRRR"
+	require.Equal(t, wantErr, stmt.Error)
 }
 
 func TestGegenerate(t *testing.T) {
@@ -96,7 +105,6 @@ func TestGegenerate(t *testing.T) {
 	ts := parse(r, "foobar", "foobar.sqlexpr")
 
 	var out bytes.Buffer
-
 	err := generate(ts, "Something", &out)
 	require.NoError(t, err)
 
