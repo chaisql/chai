@@ -186,7 +186,7 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 	p.Unscan()
 
 	// Expect a document
-	return p.parseDocument()
+	return p.ParseDocument()
 }
 
 // insertConfig holds INSERT configuration.
