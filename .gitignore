@@ -27,4 +27,8 @@ cmd/genji/genji
 # VS Code config
 .vscode/
 
+# gopls log
 gopls.log
+
+# generated tests
+gen_*_test.go
