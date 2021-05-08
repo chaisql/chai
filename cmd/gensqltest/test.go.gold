@@ -1,0 +1,118 @@
+package main
+
+import (
+	"testing"
+
+	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/testutil"
+	"github.com/stretchr/testify/require"
+)
+
+func TestGold(t *testing.T) {
+	setup := func(t *testing.T, db *genji.DB) {
+		t.Helper()
+
+		q := `
+CREATE TABLE foo (a int);
+CREATE TABLE bar;
+`
+        err := db.Exec(q)
+        require.NoError(t, err)
+    }
+    
+    // --------------------------------------------------------------------------
+    t.Run("insert something", func(t *testing.T) {
+        db, err := genji.Open(":memory:")
+        require.NoError(t, err)
+        defer db.Close()
+
+        setup(t, db)
+        
+        t.Run(`INSERT INTO foo (a) VALUES (1);`, func(t *testing.T) {
+            q := `
+INSERT INTO foo (a) VALUES (1);
+SELECT * FROM foo;
+`
+            res, err := db.Query(q)
+            require.NoError(t, err)
+            defer res.Close()
+            raw := `
+{
+  "a": 1
+}
+`
+            testutil.RequireStreamEq(t, raw, res)
+        })
+        
+        t.Run(`SELECT a, b FROM foo;`, func(t *testing.T) {
+            q := `
+SELECT a, b FROM foo;
+`
+            res, err := db.Query(q)
+            require.NoError(t, err)
+            defer res.Close()
+            raw := `
+{
+  "a": 1,
+  "b": null
+}
+`
+            testutil.RequireStreamEq(t, raw, res)
+        })
+        
+        t.Run(`SELECT z FROM foo;`, func(t *testing.T) {
+            q := `
+SELECT z FROM foo;
+`
+            res, err := db.Query(q)
+            require.NoError(t, err)
+            defer res.Close()
+            raw := `
+{"z": null}
+`
+            testutil.RequireStreamEq(t, raw, res)
+        })
+        
+    })
+    
+    // --------------------------------------------------------------------------
+    t.Run("something else", func(t *testing.T) {
+        db, err := genji.Open(":memory:")
+        require.NoError(t, err)
+        defer db.Close()
+
+        setup(t, db)
+        
+        t.Run(`INSERT INTO foo (c) VALUES (3);`, func(t *testing.T) {
+            q := `
+INSERT INTO foo (c) VALUES (3);
+SELECT * FROM foo;
+`
+            res, err := db.Query(q)
+            require.NoError(t, err)
+            defer res.Close()
+            raw := `
+{"c": 3}
+`
+            testutil.RequireStreamEq(t, raw, res)
+        })
+        
+        t.Run(`SELECTARRRR z FROM foo;`, func(t *testing.T) {
+            q := `
+SELECTARRRR z FROM foo;
+`
+            err := db.Exec(q)
+            testutil.RequireErrorMatch(t, "SELECTARRRR", err)
+        })
+        
+        t.Run(`INVALID;`, func(t *testing.T) {
+            q := `
+INVALID;
+`
+            err := db.Exec(q)
+            testutil.RequireFails(t, q, err)
+        })
+        
+    })
+    
+}

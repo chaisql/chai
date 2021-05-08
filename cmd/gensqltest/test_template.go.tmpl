@@ -1,11 +1,9 @@
 package {{ .Package }}
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -31,33 +29,38 @@ func Test{{ .TestName }}(t *testing.T) {
         defer db.Close()
 
         setup(t, db)
-        var res *query.Result
-        var q, raw string
+        {{ "" }}
 
         {{- range .Statements }}
-        q = `
+        t.Run(`{{ escapeBackticks (index .Expr 0) }}`, func(t *testing.T) {
+            q := `
 {{- range .Expr }}
-{{ . }}
+{{ escapeBackticks . }}
 {{- end }}
 `
+            {{- if .Fails }}
+            err := db.Exec(q)
+                {{- if .ErrorMatch }}
+            testutil.RequireErrorMatch(t, "{{ .ErrorMatch }}", err)
+                {{- else }}
+            testutil.RequireFails(t, q, err)
+                {{- end }}
+            {{- else }}
+            res, err := db.Query(q)
+            require.NoError(t, err)
+            defer res.Close()
 
-        {{- if ne .Error "" }}
-        _, err = db.Query(q)
-		require.Regexp(t, regexp.MustCompile(`^\s*found SELECTARRRR`), err.Error())
-        {{- else }}
-        res, err = db.Query(q)
-        require.NoError(t, err)
-        defer res.Close()
-
-        {{- if gt (len .Result) 0 }}
-        raw = `
+            {{- if gt (len .Result) 0 }}
+            raw := `
 {{- range .Result }}
-{{ . }}
+{{ escapeBackticks . }}
 {{- end}}
 `
-        testutil.RequireStreamEq(t, raw, res)
-        {{- end }}
-        {{- end }}
+            testutil.RequireStreamEq(t, raw, res)
+            {{- end }}
+            {{- end }}
+        })
+        {{ "" }}
         {{- end }}
     })
     {{""}}

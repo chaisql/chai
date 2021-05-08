@@ -2,7 +2,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	// "io/fs"
+	"os"
 	"strings"
 	"testing"
 
@@ -18,35 +19,42 @@ CREATE TABLE bar;
 INSERT INTO foo (a) VALUES (1);
 
 SELECT * FROM foo;
--- result:
+/* result:
 {
   "a": 1
 }
+*/
 
 SELECT a, b FROM foo;
--- result:
+/* result:
 {
   "a": 1,
   "b": null
 }
+*/
 
 SELECT z FROM foo;
--- result:
+/* result:
 {"z": null}
+*/
 
 -- test: something else
 INSERT INTO foo (c) VALUES (3);
 SELECT * FROM foo;
--- result:
+/* result:
 {"c": 3}
+*/
 
 SELECTARRRR z FROM foo;
 -- error: SELECTARRRR
+
+INVALID;
+-- error:
 `
 
 func TestParse(t *testing.T) {
 	r := strings.NewReader(program)
-	ts := parse(r, "foobar", "foobar.sqlexpr")
+	ts := parse(r, "foobar")
 
 	// setup
 	require.Equal(t, "CREATE TABLE foo (a int);", ts.Setup[0])
@@ -97,16 +105,28 @@ func TestParse(t *testing.T) {
 	stmt = ts.Tests[1].Statements[1]
 	require.Equal(t, "SELECTARRRR z FROM foo;", stmt.Expr[0])
 	wantErr := "SELECTARRRR"
-	require.Equal(t, wantErr, stmt.Error)
+	require.Equal(t, wantErr, stmt.ErrorMatch)
+	require.True(t, stmt.Fails)
+
+	// third block
+	stmt = ts.Tests[1].Statements[2]
+	require.Equal(t, "INVALID;", stmt.Expr[0])
+	require.True(t, stmt.Fails)
 }
 
 func TestGegenerate(t *testing.T) {
 	r := strings.NewReader(program)
-	ts := parse(r, "foobar", "foobar.sqlexpr")
+	ts := parse(r, "gold")
 
 	var out bytes.Buffer
-	err := generate(ts, "Something", &out)
+	err := generate(ts, "main", &out)
 	require.NoError(t, err)
 
-	fmt.Println(out.String())
+	// uncomment below to regenerate the gold file
+	// os.WriteFile("test.go.gold", out.Bytes(), fs.FileMode(os.O_WRONLY))
+
+	b, err := os.ReadFile("test.go.gold")
+	require.NoError(t, err)
+
+	require.Equal(t, string(b), out.String())
 }
