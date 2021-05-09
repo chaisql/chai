@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
@@ -38,15 +37,6 @@ func ParseDocsStream(stream string) *DocsStream {
 	return &DocsStream{p, env}
 }
 
-func RequireErrorMatch(t *testing.T, regxp string, err error) {
-	require.NotNil(t, err, "expected error, got nil")
-	require.Regexp(t, regexp.MustCompile(regxp), err.Error())
-}
-
-func RequireFails(t *testing.T, q string, err error) {
-	require.Errorf(t, err, "expected%s to raise an error but got none", q)
-}
-
 func RequireStreamEq(t *testing.T, raw string, res *query.Result) {
 	t.Helper()
 	var count int
@@ -61,7 +51,7 @@ func RequireStreamEq(t *testing.T, raw string, res *query.Result) {
 		eq, err := want.IsEqual(got)
 
 		require.NoError(t, err, "comparing %s and %s yielded an error: %e", want, got, err)
-		require.Truef(t, eq, "expected vales to be equal\nwant %s to eq got %s", want.String(), got.String())
+		require.Truef(t, eq, "want %s, got %s", want.String(), got.String())
 		return err
 	})
 	require.NoError(t, err)

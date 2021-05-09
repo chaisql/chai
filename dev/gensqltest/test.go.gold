@@ -1,6 +1,11 @@
+/*
+* CODE GENERATED AUTOMATICALLY WITH github.com/genjidb/genji/dev/gensqltest
+* THIS FILE SHOULD NOT BE EDITED BY HAND
+ */
 package main
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -16,103 +21,104 @@ func TestGold(t *testing.T) {
 CREATE TABLE foo (a int);
 CREATE TABLE bar;
 `
-        err := db.Exec(q)
-        require.NoError(t, err)
-    }
-    
-    // --------------------------------------------------------------------------
-    t.Run("insert something", func(t *testing.T) {
-        db, err := genji.Open(":memory:")
-        require.NoError(t, err)
-        defer db.Close()
+		err := db.Exec(q)
+		require.NoError(t, err)
+	}
 
-        setup(t, db)
-        
-        t.Run(`INSERT INTO foo (a) VALUES (1);`, func(t *testing.T) {
-            q := `
+	// --------------------------------------------------------------------------
+	t.Run("insert something", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`INSERT INTO foo (a) VALUES (1);`, func(t *testing.T) {
+			q := `
 INSERT INTO foo (a) VALUES (1);
 SELECT * FROM foo;
 `
-            res, err := db.Query(q)
-            require.NoError(t, err)
-            defer res.Close()
-            raw := `
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
 {
   "a": 1
 }
 `
-            testutil.RequireStreamEq(t, raw, res)
-        })
-        
-        t.Run(`SELECT a, b FROM foo;`, func(t *testing.T) {
-            q := `
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+		t.Run(`SELECT a, b FROM foo;`, func(t *testing.T) {
+			q := `
 SELECT a, b FROM foo;
 `
-            res, err := db.Query(q)
-            require.NoError(t, err)
-            defer res.Close()
-            raw := `
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
 {
   "a": 1,
   "b": null
 }
 `
-            testutil.RequireStreamEq(t, raw, res)
-        })
-        
-        t.Run(`SELECT z FROM foo;`, func(t *testing.T) {
-            q := `
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+		t.Run(`SELECT z FROM foo;`, func(t *testing.T) {
+			q := `
 SELECT z FROM foo;
 `
-            res, err := db.Query(q)
-            require.NoError(t, err)
-            defer res.Close()
-            raw := `
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
 {"z": null}
 `
-            testutil.RequireStreamEq(t, raw, res)
-        })
-        
-    })
-    
-    // --------------------------------------------------------------------------
-    t.Run("something else", func(t *testing.T) {
-        db, err := genji.Open(":memory:")
-        require.NoError(t, err)
-        defer db.Close()
+			testutil.RequireStreamEq(t, raw, res)
+		})
 
-        setup(t, db)
-        
-        t.Run(`INSERT INTO foo (c) VALUES (3);`, func(t *testing.T) {
-            q := `
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("something else", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`INSERT INTO foo (c) VALUES (3);`, func(t *testing.T) {
+			q := `
 INSERT INTO foo (c) VALUES (3);
 SELECT * FROM foo;
 `
-            res, err := db.Query(q)
-            require.NoError(t, err)
-            defer res.Close()
-            raw := `
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
 {"c": 3}
 `
-            testutil.RequireStreamEq(t, raw, res)
-        })
-        
-        t.Run(`SELECTARRRR z FROM foo;`, func(t *testing.T) {
-            q := `
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+		t.Run(`SELECTARRRR z FROM foo;`, func(t *testing.T) {
+			q := `
 SELECTARRRR z FROM foo;
 `
-            err := db.Exec(q)
-            testutil.RequireErrorMatch(t, "SELECTARRRR", err)
-        })
-        
-        t.Run(`INVALID;`, func(t *testing.T) {
-            q := `
+			err := db.Exec(q)
+			require.NotNil(t, err, "expected error, got nil")
+			require.Regexp(t, regexp.MustCompile("SELECTARRRR"), err.Error())
+		})
+
+		t.Run(`INVALID;`, func(t *testing.T) {
+			q := `
 INVALID;
 `
-            err := db.Exec(q)
-            testutil.RequireFails(t, q, err)
-        })
-        
-    })
-    
+			err := db.Exec(q)
+			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+		})
+
+	})
+
 }

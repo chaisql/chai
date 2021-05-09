@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"embed"
 	"flag"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 //go:embed "test_template.go.tmpl"
@@ -146,7 +149,24 @@ func generate(ts *testSuite, packageName string, w io.Writer) error {
 		ts,
 	}
 
-	return tmpl.Execute(w, bindings)
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, bindings)
+	if err != nil {
+		return err
+	}
+
+	output, err := imports.Process("", buf.Bytes(), &imports.Options{
+		TabWidth:  8,
+		TabIndent: true,
+		Comments:  true,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(output)
+	return err
 }
 
 // normalize transforms "/foo/bar/my_foo_test.sql" into "my_foo"

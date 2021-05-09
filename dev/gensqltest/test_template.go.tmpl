@@ -1,3 +1,7 @@
+/*
+* CODE GENERATED AUTOMATICALLY WITH github.com/genjidb/genji/dev/gensqltest
+* THIS FILE SHOULD NOT BE EDITED BY HAND
+*/
 package {{ .Package }}
 
 import (
@@ -41,9 +45,10 @@ func Test{{ .TestName }}(t *testing.T) {
             {{- if .Fails }}
             err := db.Exec(q)
                 {{- if .ErrorMatch }}
-            testutil.RequireErrorMatch(t, "{{ .ErrorMatch }}", err)
+            require.NotNil(t, err, "expected error, got nil")
+            require.Regexp(t, regexp.MustCompile("{{ .ErrorMatch }}"), err.Error())
                 {{- else }}
-            testutil.RequireFails(t, q, err)
+            require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
                 {{- end }}
             {{- else }}
             res, err := db.Query(q)
