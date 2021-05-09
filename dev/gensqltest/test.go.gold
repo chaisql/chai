@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/testutil"
+	"github.com/genjidb/genji/testutil/testgen"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,7 +46,7 @@ SELECT * FROM foo;
   "a": 1
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testgen.RequireStreamEq(t, raw, res)
 		})
 
 		t.Run(`SELECT a, b FROM foo;`, func(t *testing.T) {
@@ -62,7 +62,7 @@ SELECT a, b FROM foo;
   "b": null
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testgen.RequireStreamEq(t, raw, res)
 		})
 
 		t.Run(`SELECT z FROM foo;`, func(t *testing.T) {
@@ -75,7 +75,7 @@ SELECT z FROM foo;
 			raw := `
 {"z": null}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testgen.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -99,7 +99,7 @@ SELECT * FROM foo;
 			raw := `
 {"c": 3}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testgen.RequireStreamEq(t, raw, res)
 		})
 
 		t.Run(`SELECTARRRR z FROM foo;`, func(t *testing.T) {
