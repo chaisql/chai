@@ -181,7 +181,7 @@ var packageName string
 func init() {
 	flag.StringVar(&packageName, "package", "", "package name for the generated files")
 	flag.Usage = func() {
-		fmt.Println("Usage: ./examplar -package=[NAME] input1 input2 ...")
+		fmt.Println("Usage: ./gensqltest -package=[NAME] input1 input2 ...")
 	}
 }
 
@@ -227,6 +227,11 @@ func main() {
 			}
 
 			err = generate(ts, packageName, out)
+			if err != nil {
+				panic(err)
+			}
+
+			err = out.Close()
 			if err != nil {
 				panic(err)
 			}
