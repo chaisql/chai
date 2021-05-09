@@ -276,8 +276,8 @@ SELECT * FROM test_tc;
   "i": 10000000000,
   "db": 21.21,
   "b": true,
-  "bb": "YmxvYlZhbHVlCg==",
-  "byt": "Ynl0ZXNWYWx1ZQ==",
+  "bb": CAST("YmxvYlZhbHVlCg==" AS BLOB),
+  "byt": CAST("Ynl0ZXNWYWx1ZQ==" AS BYTES),
   "t": "text",
   "a": [
     1,
