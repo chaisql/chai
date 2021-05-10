@@ -229,7 +229,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		return expr.LiteralValue(document.NewNullValue()), nil
 	case scanner.LBRACKET:
 		p.Unscan()
-		e, err := p.parseDocument()
+		e, err := p.ParseDocument()
 		return e, err
 	case scanner.LSBRACKET:
 		p.Unscan()
@@ -372,8 +372,8 @@ func (p *Parser) parseType() (document.ValueType, error) {
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 }
 
-// parseDocument parses a document
-func (p *Parser) parseDocument() (*expr.KVPairs, error) {
+// ParseDocument parses a document
+func (p *Parser) ParseDocument() (*expr.KVPairs, error) {
 	// Parse { token.
 	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"{"}, pos)

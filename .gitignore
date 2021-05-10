@@ -27,4 +27,5 @@ cmd/genji/genji
 # VS Code config
 .vscode/
 
+# gopls log
 gopls.log

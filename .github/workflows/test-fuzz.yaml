@@ -11,8 +11,8 @@ jobs:
     env:
       GOOS: ${{ matrix.goos }}
       GOARCH: ${{ matrix.goarch }}
-      GOFLAGS: '-trimpath -mod=readonly'
-      GO111MODULE: 'on'
+      GOFLAGS: "-trimpath" # -mod=readonly
+      GO111MODULE: "on"
     strategy:
       fail-fast: false
       matrix:
