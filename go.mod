@@ -8,5 +8,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/vmihailenco/msgpack/v5 v5.1.4
 	go.etcd.io/bbolt v1.3.5
-	golang.org/x/tools v0.1.0 // indirect
+	golang.org/x/tools v0.1.0
 )
