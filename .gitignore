@@ -29,6 +29,3 @@ cmd/genji/genji
 
 # gopls log
 gopls.log
-
-# generated tests
-gen_*_test.go
