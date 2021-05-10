@@ -1,4 +1,4 @@
-package testgen
+package testutil
 
 import (
 	"strings"
