@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/testutil/testgen"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,7 +62,7 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "a":1, "b":10}
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -86,7 +86,7 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "a":1}
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -110,7 +110,7 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "a":1, "b":10}
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -134,7 +134,7 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "c":1, "d":10}
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})

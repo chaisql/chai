@@ -1,10 +1,11 @@
-package parser
+package parser_test
 
 import (
 	"testing"
 
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
@@ -86,7 +87,7 @@ func TestParserInsert(t *testing.T) {
 			false},
 		{"Select / Without fields / With projection", "INSERT INTO test SELECT a, b FROM foo",
 			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"))).
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / With fields", "INSERT INTO test (a, b) SELECT * FROM foo",
@@ -97,13 +98,13 @@ func TestParserInsert(t *testing.T) {
 			false},
 		{"Select / With fields / With projection", "INSERT INTO test (a, b) SELECT a, b FROM foo",
 			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"))).
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / With fields / With projection / different fields", "INSERT INTO test (a, b) SELECT c, d FROM foo",
 			stream.New(stream.SeqScan("foo")).
-				Pipe(stream.Project(parseNamedExpr(t, "c"), parseNamedExpr(t, "d"))).
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableInsert("test")),
 			false},
@@ -111,7 +112,7 @@ func TestParserInsert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if test.fails {
 				require.Error(t, err)
 				return

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/testutil/testgen"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +70,7 @@ SELECT pk(), * FROM test;
   "c":"c"
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -136,7 +136,7 @@ SELECT pk(), * FROM test;
   "foo bar": "d"
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -165,7 +165,7 @@ SELECT pk(), * FROM test;
   "c": [1 , 2, 3]
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -197,7 +197,7 @@ SELECT pk(), * FROM test;
   }
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -226,7 +226,7 @@ SELECT pk(), * FROM test;
   "c": true
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -258,7 +258,7 @@ SELECT pk(), * FROM test;
   ]
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -312,7 +312,7 @@ SELECT pk(), * FROM test;
   "a": "b"
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -336,7 +336,7 @@ SELECT pk(), * FROM test;
 			raw := `
 {"pk()":1,"a":400,"b":1600}
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -383,7 +383,7 @@ SELECT pk(), * FROM test_idx;
   "c":"c"
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -449,7 +449,7 @@ SELECT pk(), * FROM test_idx;
   "foo bar": "d"
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -478,7 +478,7 @@ SELECT pk(), * FROM test_idx;
   "c": [1 , 2, 3]
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -510,7 +510,7 @@ SELECT pk(), * FROM test_idx;
   }
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -539,7 +539,7 @@ SELECT pk(), * FROM test_idx;
   "c": true
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -571,7 +571,7 @@ SELECT pk(), * FROM test_idx;
   ]
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -625,7 +625,7 @@ SELECT pk(), * FROM test_idx;
   "a": "b"
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -649,7 +649,7 @@ SELECT pk(), * FROM test_idx;
 			raw := `
 {"pk()":1,"a":400,"b":1600}
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})
@@ -765,7 +765,7 @@ SELECT * FROM test_tc;
   }
 }
 `
-			testgen.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res)
 		})
 
 	})

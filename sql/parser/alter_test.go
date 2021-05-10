@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +26,7 @@ func TestParserAlterTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return
@@ -48,20 +50,20 @@ func TestParserAlterTableAddField(t *testing.T) {
 		}, true},
 		{"With type", "ALTER TABLE foo ADD FIELD bar integer", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path: document.Path(parsePath(t, "bar")),
+				Path: document.Path(testutil.ParsePath(t, "bar")),
 				Type: document.IntegerValue,
 			},
 		}, false},
 		{"With not null", "ALTER TABLE foo ADD FIELD bar NOT NULL", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path:      document.Path(parsePath(t, "bar")),
+				Path:      document.Path(testutil.ParsePath(t, "bar")),
 				IsNotNull: true,
 			},
 		}, false},
 		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", query.AlterTableAddField{}, true},
 		{"With multiple constraints", "ALTER TABLE foo ADD FIELD bar integer NOT NULL DEFAULT 0", query.AlterTableAddField{TableName: "foo",
 			Constraint: database.FieldConstraint{
-				Path:         document.Path(parsePath(t, "bar")),
+				Path:         document.Path(testutil.ParsePath(t, "bar")),
 				Type:         document.IntegerValue,
 				IsNotNull:    true,
 				DefaultValue: document.NewIntegerValue(0),
@@ -73,7 +75,7 @@ func TestParserAlterTableAddField(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

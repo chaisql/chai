@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"testing"
@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
 )
 
@@ -31,7 +32,7 @@ func TestParserMultiStatement(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			require.NoError(t, err)
 			require.EqualValues(t, test.expected, q.Statements)
 		})
@@ -41,6 +42,6 @@ func TestParserMultiStatement(t *testing.T) {
 func TestParserDivideByZero(t *testing.T) {
 	// See https://github.com/genjidb/genji/issues/268
 	require.NotPanics(t, func() {
-		_, _ = ParseQuery("SELECT * FROM t LIMIT 0 % .5")
+		_, _ = parser.ParseQuery("SELECT * FROM t LIMIT 0 % .5")
 	})
 }
