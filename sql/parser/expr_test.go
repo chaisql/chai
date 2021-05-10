@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"strings"
@@ -6,17 +6,10 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
-
-func parsePath(t testing.TB, p string) expr.Path {
-	t.Helper()
-
-	vp, err := ParsePath(p)
-	require.NoError(t, err)
-	return expr.Path(vp)
-}
 
 func TestParserExpr(t *testing.T) {
 	tests := []struct {
@@ -58,7 +51,7 @@ func TestParserExpr(t *testing.T) {
 				{K: "f", V: &expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
 					{K: "foo", V: testutil.TextValue("bar")},
 				}}},
-				{K: "g", V: parsePath(t, "h.i.j")},
+				{K: "g", V: testutil.ParsePath(t, "h.i.j")},
 				{K: "k", V: expr.LiteralExprList{testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.IntegerValue(3)}},
 			}},
 			false},
@@ -103,33 +96,33 @@ func TestParserExpr(t *testing.T) {
 				testutil.IntegerValue(1),
 				testutil.BoolValue(true),
 				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: testutil.IntegerValue(1)}}},
-				parsePath(t, "a.b.c"),
+				testutil.ParsePath(t, "a.b.c"),
 				expr.Parentheses{E: testutil.IntegerValue(-1)},
 				expr.LiteralExprList{testutil.IntegerValue(-1)},
 			}, false},
 		{"list with brackets: missing bracket", `[1, true, {a: 1}, a.b.c, (-1), [-1]`, nil, true},
 
 		// operators
-		{"=", "age = 10", expr.Eq(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"!=", "age != 10", expr.Neq(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{">", "age > 10", expr.Gt(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{">=", "age >= 10", expr.Gte(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"<", "age < 10", expr.Lt(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"<=", "age <= 10", expr.Lte(parsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"=", "age = 10", expr.Eq(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"!=", "age != 10", expr.Neq(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{">", "age > 10", expr.Gt(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{">=", "age >= 10", expr.Gte(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"<", "age < 10", expr.Lt(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"<=", "age <= 10", expr.Lte(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
 		{"BETWEEN", "1 BETWEEN 10 AND 11", expr.Between(testutil.IntegerValue(10))(testutil.IntegerValue(1), testutil.IntegerValue(11)), false},
-		{"+", "age + 10", expr.Add(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"-", "age - 10", expr.Sub(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"*", "age * 10", expr.Mul(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"/", "age / 10", expr.Div(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"%", "age % 10", expr.Mod(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"&", "age & 10", expr.BitwiseAnd(parsePath(t, "age"), testutil.IntegerValue(10)), false},
-		{"||", "name || 'foo'", expr.Concat(parsePath(t, "name"), testutil.TextValue("foo")), false},
-		{"IN", "age IN ages", expr.In(parsePath(t, "age"), parsePath(t, "ages")), false},
-		{"NOT IN", "age NOT IN ages", expr.NotIn(parsePath(t, "age"), parsePath(t, "ages")), false},
-		{"IS", "age IS NULL", expr.Is(parsePath(t, "age"), testutil.NullValue()), false},
-		{"IS NOT", "age IS NOT NULL", expr.IsNot(parsePath(t, "age"), testutil.NullValue()), false},
-		{"LIKE", "name LIKE 'foo'", expr.Like(parsePath(t, "name"), testutil.TextValue("foo")), false},
-		{"NOT LIKE", "name NOT LIKE 'foo'", expr.NotLike(parsePath(t, "name"), testutil.TextValue("foo")), false},
+		{"+", "age + 10", expr.Add(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"-", "age - 10", expr.Sub(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"*", "age * 10", expr.Mul(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"/", "age / 10", expr.Div(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"%", "age % 10", expr.Mod(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"&", "age & 10", expr.BitwiseAnd(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)), false},
+		{"||", "name || 'foo'", expr.Concat(testutil.ParsePath(t, "name"), testutil.TextValue("foo")), false},
+		{"IN", "age IN ages", expr.In(testutil.ParsePath(t, "age"), testutil.ParsePath(t, "ages")), false},
+		{"NOT IN", "age NOT IN ages", expr.NotIn(testutil.ParsePath(t, "age"), testutil.ParsePath(t, "ages")), false},
+		{"IS", "age IS NULL", expr.Is(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
+		{"IS NOT", "age IS NOT NULL", expr.IsNot(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
+		{"LIKE", "name LIKE 'foo'", expr.Like(testutil.ParsePath(t, "name"), testutil.TextValue("foo")), false},
+		{"NOT LIKE", "name NOT LIKE 'foo'", expr.NotLike(testutil.ParsePath(t, "name"), testutil.TextValue("foo")), false},
 		{"NOT =", "name NOT = 'foo'", nil, true},
 		{"precedence", "4 > 1 + 2", expr.Gt(
 			testutil.IntegerValue(4),
@@ -140,39 +133,39 @@ func TestParserExpr(t *testing.T) {
 		), false},
 		{"AND", "age = 10 AND age <= 11",
 			expr.And(
-				expr.Eq(parsePath(t, "age"), testutil.IntegerValue(10)),
-				expr.Lte(parsePath(t, "age"), testutil.IntegerValue(11)),
+				expr.Eq(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)),
+				expr.Lte(testutil.ParsePath(t, "age"), testutil.IntegerValue(11)),
 			), false},
 		{"OR", "age = 10 OR age = 11",
 			expr.Or(
-				expr.Eq(parsePath(t, "age"), testutil.IntegerValue(10)),
-				expr.Eq(parsePath(t, "age"), testutil.IntegerValue(11)),
+				expr.Eq(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)),
+				expr.Eq(testutil.ParsePath(t, "age"), testutil.IntegerValue(11)),
 			), false},
 		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
 			expr.Or(
 				expr.And(
-					expr.Gte(parsePath(t, "age"), testutil.IntegerValue(10)),
-					expr.Gt(parsePath(t, "age"), expr.NamedParam("age")),
+					expr.Gte(testutil.ParsePath(t, "age"), testutil.IntegerValue(10)),
+					expr.Gt(testutil.ParsePath(t, "age"), expr.NamedParam("age")),
 				),
-				expr.Lt(parsePath(t, "age"), testutil.DoubleValue(10.4)),
+				expr.Lt(testutil.ParsePath(t, "age"), testutil.DoubleValue(10.4)),
 			), false},
-		{"with NULL", "age > NULL", expr.Gt(parsePath(t, "age"), testutil.NullValue()), false},
+		{"with NULL", "age > NULL", expr.Gt(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: parsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},
 
 		// functions
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
-		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: parsePath(t, "a")}, false},
+		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: testutil.ParsePath(t, "a")}, false},
 		{"count(*) function", "count(*)", &expr.CountFunc{Wildcard: true}, false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, lit, err := NewParser(strings.NewReader(test.s)).ParseExpr()
+			ex, lit, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -220,7 +213,7 @@ func TestParsePath(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			vp, err := ParsePath(test.s)
+			vp, err := parser.ParsePath(test.s)
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -238,24 +231,24 @@ func TestParserParams(t *testing.T) {
 		expected expr.Expr
 		errored  bool
 	}{
-		{"one positional", "age = ?", expr.Eq(parsePath(t, "age"), expr.PositionalParam(1)), false},
+		{"one positional", "age = ?", expr.Eq(testutil.ParsePath(t, "age"), expr.PositionalParam(1)), false},
 		{"multiple positional", "age = ? AND age <= ?",
 			expr.And(
-				expr.Eq(parsePath(t, "age"), expr.PositionalParam(1)),
-				expr.Lte(parsePath(t, "age"), expr.PositionalParam(2)),
+				expr.Eq(testutil.ParsePath(t, "age"), expr.PositionalParam(1)),
+				expr.Lte(testutil.ParsePath(t, "age"), expr.PositionalParam(2)),
 			), false},
-		{"one named", "age = $age", expr.Eq(parsePath(t, "age"), expr.NamedParam("age")), false},
+		{"one named", "age = $age", expr.Eq(testutil.ParsePath(t, "age"), expr.NamedParam("age")), false},
 		{"multiple named", "age = $foo OR age = $bar",
 			expr.Or(
-				expr.Eq(parsePath(t, "age"), expr.NamedParam("foo")),
-				expr.Eq(parsePath(t, "age"), expr.NamedParam("bar")),
+				expr.Eq(testutil.ParsePath(t, "age"), expr.NamedParam("foo")),
+				expr.Eq(testutil.ParsePath(t, "age"), expr.NamedParam("bar")),
 			), false},
 		{"mixed", "age >= ? AND age > $foo OR age < ?", nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, lit, err := NewParser(strings.NewReader(test.s)).ParseExpr()
+			ex, lit, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
 				require.Error(t, err)
 			} else {

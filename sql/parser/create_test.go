@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +26,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
 					},
 				},
 			}, false},
@@ -35,7 +37,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue},
 					},
 				},
 			}, false},
@@ -44,7 +46,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), IsNotNull: true},
 					},
 				},
 			}, false},
@@ -53,7 +55,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), DefaultValue: document.NewTextValue("10")},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), DefaultValue: document.NewTextValue("10")},
 					},
 				},
 			}, false},
@@ -62,7 +64,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), IsUnique: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), IsUnique: true},
 					},
 				},
 			}, false},
@@ -77,7 +79,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -86,7 +88,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -95,7 +97,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
 				},
 			}, false},
@@ -104,9 +106,9 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
-						{Path: document.Path(parsePath(t, "bar")), Type: document.IntegerValue, IsNotNull: true},
-						{Path: document.Path(parsePath(t, "baz[4][1].bat")), Type: document.TextValue},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "bar")), Type: document.IntegerValue, IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "baz[4][1].bat")), Type: document.TextValue},
 					},
 				},
 			}, false},
@@ -115,8 +117,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
-						{Path: document.Path(parsePath(t, "bar")), IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "bar")), IsNotNull: true},
 					},
 				},
 			}, false},
@@ -125,8 +127,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "bar")), IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "bar")), IsPrimaryKey: true},
 					},
 				},
 			}, false},
@@ -138,8 +140,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
-						{Path: document.Path(parsePath(t, "bar")), IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
+						{Path: document.Path(testutil.ParsePath(t, "bar")), IsNotNull: true},
 					},
 				},
 			}, false},
@@ -148,8 +150,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "bar")), IsUnique: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "bar")), IsUnique: true},
 					},
 				},
 			}, false},
@@ -158,7 +160,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
 					},
 				},
 			}, false},
@@ -171,8 +173,8 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "d")), Type: document.DoubleValue},
-						{Path: document.Path(parsePath(t, "b")), Type: document.BoolValue},
+						{Path: document.Path(testutil.ParsePath(t, "d")), Type: document.DoubleValue},
+						{Path: document.Path(testutil.ParsePath(t, "b")), Type: document.BoolValue},
 					},
 				},
 			}, false},
@@ -182,12 +184,12 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "i")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "b")), Type: document.BlobValue},
-						{Path: document.Path(parsePath(t, "byt")), Type: document.BlobValue},
-						{Path: document.Path(parsePath(t, "t")), Type: document.TextValue},
-						{Path: document.Path(parsePath(t, "a")), Type: document.ArrayValue},
-						{Path: document.Path(parsePath(t, "d")), Type: document.DocumentValue},
+						{Path: document.Path(testutil.ParsePath(t, "i")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "b")), Type: document.BlobValue},
+						{Path: document.Path(testutil.ParsePath(t, "byt")), Type: document.BlobValue},
+						{Path: document.Path(testutil.ParsePath(t, "t")), Type: document.TextValue},
+						{Path: document.Path(testutil.ParsePath(t, "a")), Type: document.ArrayValue},
+						{Path: document.Path(testutil.ParsePath(t, "d")), Type: document.DocumentValue},
 					},
 				},
 			}, false},
@@ -197,13 +199,13 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "i")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "ii")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "ei")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "m")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "s")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "b")), Type: document.IntegerValue},
-						{Path: document.Path(parsePath(t, "t")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "i")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "ii")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "ei")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "m")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "s")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "b")), Type: document.IntegerValue},
+						{Path: document.Path(testutil.ParsePath(t, "t")), Type: document.IntegerValue},
 					},
 				},
 			}, false},
@@ -213,9 +215,9 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "dp")), Type: document.DoubleValue},
-						{Path: document.Path(parsePath(t, "r")), Type: document.DoubleValue},
-						{Path: document.Path(parsePath(t, "d")), Type: document.DoubleValue},
+						{Path: document.Path(testutil.ParsePath(t, "dp")), Type: document.DoubleValue},
+						{Path: document.Path(testutil.ParsePath(t, "r")), Type: document.DoubleValue},
+						{Path: document.Path(testutil.ParsePath(t, "d")), Type: document.DoubleValue},
 					},
 				},
 			}, false},
@@ -225,9 +227,9 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "v")), Type: document.TextValue},
-						{Path: document.Path(parsePath(t, "c")), Type: document.TextValue},
-						{Path: document.Path(parsePath(t, "t")), Type: document.TextValue},
+						{Path: document.Path(testutil.ParsePath(t, "v")), Type: document.TextValue},
+						{Path: document.Path(testutil.ParsePath(t, "c")), Type: document.TextValue},
+						{Path: document.Path(testutil.ParsePath(t, "t")), Type: document.TextValue},
 					},
 				},
 			}, false},
@@ -237,7 +239,7 @@ func TestParserCreateTable(t *testing.T) {
 				TableName: "test",
 				Info: database.TableInfo{
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(parsePath(t, "v")), Type: document.TextValue},
+						{Path: document.Path(testutil.ParsePath(t, "v")), Type: document.TextValue},
 					},
 				},
 			}, true},
@@ -245,7 +247,7 @@ func TestParserCreateTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return
@@ -264,18 +266,18 @@ func TestParserCreateIndex(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo"))}}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo.bar[1]"))}, IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo[3].baz"))}, IfNotExists: true, Unique: true}, false},
-		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Paths: []document.Path{document.Path(parsePath(t, "foo[3].baz"))}, Unique: true}, false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo"))}}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo.bar[1]"))}, IfNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, IfNotExists: true, Unique: true}, false},
+		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, Unique: true}, false},
 		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
 		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)",
 			query.CreateIndexStmt(query.CreateIndexStmt{
 				IndexName: "idx",
 				TableName: "test",
 				Paths: []document.Path{
-					document.Path(parsePath(t, "foo")),
-					document.Path(parsePath(t, "bar")),
+					document.Path(testutil.ParsePath(t, "foo")),
+					document.Path(testutil.ParsePath(t, "bar")),
 				},
 			}),
 			false},
@@ -284,7 +286,7 @@ func TestParserCreateIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

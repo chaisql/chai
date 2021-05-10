@@ -1,10 +1,11 @@
-package parser
+package parser_test
 
 import (
 	"testing"
 
 	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func TestParserExplain(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return

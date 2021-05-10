@@ -1,8 +1,12 @@
 package testutil
 
 import (
+	"testing"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/sql/parser"
+	"github.com/stretchr/testify/require"
 )
 
 // BlobValue creates a litteral value of type Blob.
@@ -43,4 +47,30 @@ func DocumentValue(d document.Document) expr.LiteralValue {
 // ArrayValue creates a litteral value of type Array.
 func ArrayValue(a document.Array) expr.LiteralValue {
 	return expr.LiteralValue(document.NewArrayValue(a))
+}
+
+func ParsePath(t testing.TB, p string) expr.Path {
+	t.Helper()
+
+	vp, err := parser.ParsePath(p)
+	require.NoError(t, err)
+	return expr.Path(vp)
+}
+
+func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
+	t.Helper()
+
+	e, err := parser.ParseExpr(s)
+	require.NoError(t, err)
+
+	ne := expr.NamedExpr{
+		Expr:     e,
+		ExprName: s,
+	}
+
+	if len(name) > 0 {
+		ne.ExprName = name[0]
+	}
+
+	return &ne
 }

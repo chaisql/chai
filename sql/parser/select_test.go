@@ -1,31 +1,15 @@
-package parser
+package parser_test
 
 import (
 	"testing"
 
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
-
-func parseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
-	t.Helper()
-
-	e, err := ParseExpr(s)
-	require.NoError(t, err)
-
-	ne := expr.NamedExpr{
-		Expr:     e,
-		ExprName: s,
-	}
-
-	if len(name) > 0 {
-		ne.ExprName = name[0]
-	}
-
-	return &ne
-}
 
 func TestParserSelect(t *testing.T) {
 	tests := []struct {
@@ -35,7 +19,7 @@ func TestParserSelect(t *testing.T) {
 		mustFail bool
 	}{
 		{"NoTable", "SELECT 1",
-			stream.New(stream.Project(parseNamedExpr(t, "1"))),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "1"))),
 			false,
 		},
 		{"NoTable/path", "SELECT a",
@@ -48,17 +32,17 @@ func TestParserSelect(t *testing.T) {
 		},
 		{"Wildcard with no FORM", "SELECT *", nil, true},
 		{"NoTableWithTuple", "SELECT (1, 2)",
-			stream.New(stream.Project(parseNamedExpr(t, "(1, 2)"))),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "(1, 2)"))),
 			false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
-			stream.New(stream.Project(parseNamedExpr(t, "[1, 2]"))),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			false,
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
 			stream.New(stream.Project(
-				parseNamedExpr(t, "1 in (1, 2)"),
-				parseNamedExpr(t, "3"),
+				testutil.ParseNamedExpr(t, "1 in (1, 2)"),
+				testutil.ParseNamedExpr(t, "3"),
 			)),
 			false,
 		},
@@ -67,79 +51,79 @@ func TestParserSelect(t *testing.T) {
 			false,
 		},
 		{"WithFields", "SELECT a, b FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"))),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))),
 			false,
 		},
 		{"WithFieldsWithQuotes", "SELECT `long \"path\"` FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "`long \"path\"`", "long \"path\""))),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "`long \"path\"`", "long \"path\""))),
 			false,
 		},
 		{"WithAlias", "SELECT a AS A, b FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a", "A"), parseNamedExpr(t, "b"))),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a", "A"), testutil.ParseNamedExpr(t, "b"))),
 			false,
 		},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a"), parseNamedExpr(t, "b"), expr.Wildcard{})),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"), expr.Wildcard{})),
 			false,
 		},
 		{"WithExpr", "SELECT a    > 1 FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(parseNamedExpr(t, "a > 1", "a    > 1"))),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a > 1", "a    > 1"))),
 			false,
 		},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})),
 			false,
 		},
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
-				Pipe(stream.GroupBy(MustParseExpr("a.b.c"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(stream.GroupBy(parser.MustParseExpr("a.b.c"))).
 				Pipe(stream.HashAggregate()).
-				Pipe(stream.Project(parseNamedExpr(t, "a.b.c"))),
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a.b.c"))),
 			false,
 		},
 		{"With Invalid GroupBy: Wildcard", "SELECT * FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
 		{"With Invalid GroupBy: a.b", "SELECT a.b FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
-				Pipe(stream.Sort(parsePath(t, "a.b.c"))),
+				Pipe(stream.Sort(testutil.ParsePath(t, "a.b.c"))),
 			false,
 		},
 		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
-				Pipe(stream.Sort(parsePath(t, "a.b.c"))),
+				Pipe(stream.Sort(testutil.ParsePath(t, "a.b.c"))),
 			false,
 		},
 		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
-				Pipe(stream.SortReverse(parsePath(t, "a.b.c"))),
+				Pipe(stream.SortReverse(testutil.ParsePath(t, "a.b.c"))),
 			false,
 		},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Take(20)),
 			false,
 		},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Skip(20)),
 			false,
 		},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.Filter(MustParseExpr("age = 10"))).
+				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Skip(20)).
 				Pipe(stream.Take(10)),
@@ -149,7 +133,7 @@ func TestParserSelect(t *testing.T) {
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.HashAggregate(&expr.CountFunc{Wildcard: true})).
-				Pipe(stream.Project(parseNamedExpr(t, "COUNT(*)"))),
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			false},
 		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", nil, true},
 		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET x(*)", nil, true},
@@ -160,7 +144,7 @@ func TestParserSelect(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := ParseQuery(test.s)
+			q, err := parser.ParseQuery(test.s)
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)
