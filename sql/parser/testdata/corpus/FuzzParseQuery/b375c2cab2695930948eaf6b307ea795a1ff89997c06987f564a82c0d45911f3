@@ -1,0 +1,2 @@
+go test fuzz v1
+string("SELECT * FROM test WHERE age = 10 LIMIT 20")

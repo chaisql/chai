@@ -1,0 +1,2 @@
+go test fuzz v1
+string("CREATE TABLE test(dp DOUBLE PRECISION, r real, d double)")

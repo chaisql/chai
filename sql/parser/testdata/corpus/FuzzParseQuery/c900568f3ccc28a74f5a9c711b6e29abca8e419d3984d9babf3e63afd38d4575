@@ -1,0 +1,2 @@
+go test fuzz v1
+string("SELECT a > 1 FROM test")
