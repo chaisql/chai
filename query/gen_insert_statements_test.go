@@ -162,7 +162,7 @@ SELECT pk(), * FROM test;
   "pk()": 1,
   "a": "a",
   "b":"b",
-  "c": [1 , 2, 3]
+  "c": [1.0, 2.0, 3.0]
 }
 `
 			testutil.RequireStreamEq(t, raw, res)
@@ -192,8 +192,8 @@ SELECT pk(), * FROM test;
   "a": "a",
   "b": "b",
   "c": {
-    "c": 1,
-    "d": 2
+    "c": 1.0,
+    "d": 2.0
   }
 }
 `
@@ -251,10 +251,9 @@ SELECT pk(), * FROM test;
 {
   "pk()": 1,
   "a": [
-    1,
-    2
-,
-    3
+    1.0,
+    2.0,
+    3.0
   ]
 }
 `
@@ -334,7 +333,7 @@ SELECT pk(), * FROM test;
 			require.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"pk()":1,"a":400,"b":1600}
+{"pk()":1,"a":400.0,"b":1600.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -380,7 +379,7 @@ SELECT pk(), * FROM test_idx;
   "pk()": 1,
   "a": "a",
   "b": "b",
-  "c":"c"
+  "c": "c"
 }
 `
 			testutil.RequireStreamEq(t, raw, res)
@@ -475,7 +474,7 @@ SELECT pk(), * FROM test_idx;
   "pk()": 1,
   "a": "a",
   "b":"b",
-  "c": [1 , 2, 3]
+  "c": [1.0, 2.0, 3.0]
 }
 `
 			testutil.RequireStreamEq(t, raw, res)
@@ -505,8 +504,8 @@ SELECT pk(), * FROM test_idx;
   "a": "a",
   "b": "b",
   "c": {
-    "c": 1,
-    "d": 2
+    "c": 1.0,
+    "d": 2.0
   }
 }
 `
@@ -564,10 +563,9 @@ SELECT pk(), * FROM test_idx;
 {
   "pk()": 1,
   "a": [
-    1,
-    2
-,
-    3
+    1.0,
+    2.0,
+    3.0
   ]
 }
 `
@@ -647,7 +645,7 @@ SELECT pk(), * FROM test_idx;
 			require.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"pk()":1,"a":400,"b":1600}
+{"pk()":1,"a":400.0,"b":1600.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -756,7 +754,7 @@ SELECT * FROM test_tc;
   "byt": CAST("Ynl0ZXNWYWx1ZQ==" AS BYTES),
   "t": "text",
   "a": [
-    1,
+    1.0,
     "foo",
     true
   ],

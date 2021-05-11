@@ -11,28 +11,28 @@ INSERT INTO foo SELECT * FROM foo;
 INSERT INTO foo SELECT * FROM bar;
 SELECT pk(), * FROM foo;
 /* result:
-{"pk()":1, "a":1, "b":10}
+{"pk()":1, "a":1.0, "b":10.0}
 */
 
 -- test: No fields / Projection
 INSERT INTO foo SELECT a FROM bar;
 SELECT pk(), * FROM foo;
 /* result:
-{"pk()":1, "a":1}
+{"pk()":1, "a":1.0}
 */
 
 -- test: With fields / No Projection
 INSERT INTO foo (a, b) SELECT * FROM bar;
 SELECT pk(), * FROM foo;
 /* result:
-{"pk()":1, "a":1, "b":10}
+{"pk()":1, "a":1.0, "b":10.0}
 */
 
 -- test: With fields / Projection
 INSERT INTO foo (c, d) SELECT a, b FROM bar;
 SELECT pk(), * FROM foo;
 /* result:
-{"pk()":1, "c":1, "d":10}
+{"pk()":1, "c":1.0, "d":10.0}
 */
 
 -- test: Too many fields / No Projection
