@@ -60,7 +60,7 @@ SELECT pk(), * FROM foo;
 			require.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"pk()":1, "a":1, "b":10}
+{"pk()":1, "a":1.0, "b":10.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -84,7 +84,7 @@ SELECT pk(), * FROM foo;
 			require.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"pk()":1, "a":1}
+{"pk()":1, "a":1.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -108,7 +108,7 @@ SELECT pk(), * FROM foo;
 			require.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"pk()":1, "a":1, "b":10}
+{"pk()":1, "a":1.0, "b":10.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -132,7 +132,7 @@ SELECT pk(), * FROM foo;
 			require.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"pk()":1, "c":1, "d":10}
+{"pk()":1, "c":1.0, "d":10.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
