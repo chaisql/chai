@@ -101,7 +101,7 @@ func structScan(d Document, ref reflect.Value) error {
 // to a valid slice or array.
 //
 // It t is a slice pointer and its capacity is too low, a new slice will be allocated.
-// Otherwise, its length is set to 0 so that its content is overrided.
+// Otherwise, its length is set to 0 so that its content is overwritten.
 //
 // If t is an array pointer, its capacity must be bigger than the length of a, otherwise an error is
 // returned.
@@ -378,4 +378,58 @@ func scanValue(v Value, ref reflect.Value) error {
 // Scan v into t.
 func (v Value) Scan(t interface{}) error {
 	return scanValue(v, reflect.ValueOf(t))
+}
+
+// ScanDocument scans a document into dest which must be either a struct pointer, a map or a map pointer.
+func ScanDocument(d Document, t interface{}) error {
+	ref := reflect.ValueOf(t)
+
+	if !ref.IsValid() {
+		return errors.New("target must be pointer to a valid Go type")
+	}
+
+	switch reflect.Indirect(ref).Kind() {
+	case reflect.Map:
+		return mapScan(d, ref)
+	case reflect.Struct:
+		if ref.IsNil() {
+			ref.Set(reflect.New(ref.Type().Elem()))
+		}
+		return structScan(d, ref)
+	default:
+		return errors.New("target must be a either a pointer to struct, a map or a map pointer")
+	}
+}
+
+// ScanIterator scans a document iterator into a slice or fixed size array. t must be a pointer
+// to a valid slice or array.
+//
+// It t is a slice pointer and its capacity is too low, a new slice will be allocated.
+// Otherwise, its length is set to 0 so that its content is overwritten.
+//
+// If t is an array pointer, its capacity must be bigger than the length of a, otherwise an error is
+// returned.
+func ScanIterator(it Iterator, t interface{}) error {
+	a := iteratorArray{it: it}
+	return SliceScan(&a, t)
+}
+
+type iteratorArray struct {
+	it Iterator
+}
+
+func (it *iteratorArray) Iterate(fn func(i int, value Value) error) error {
+	count := 0
+	return it.it.Iterate(func(d Document) error {
+		err := fn(count, NewDocumentValue(d))
+		if err != nil {
+			return err
+		}
+		count++
+		return nil
+	})
+}
+
+func (it *iteratorArray) GetByIndex(i int) (Value, error) {
+	panic("not implemented")
 }
