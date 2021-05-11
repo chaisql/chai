@@ -401,15 +401,15 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 			return errors.New("missing document")
 		}
 
+		var err error
 		if table == nil {
-			var err error
 			table, err = env.GetTx().GetTable(op.Name)
 			if err != nil {
 				return err
 			}
 		}
 
-		_, err := table.Insert(d)
+		newEnv.Doc, err = table.Insert(d)
 		if err != nil {
 			return err
 		}

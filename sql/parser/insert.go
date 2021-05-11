@@ -53,6 +53,11 @@ func (p *Parser) parseInsertStatement() (*planner.Statement, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "SELECT"}, pos)
 	}
 
+	cfg.Returning, err = p.parseReturning()
+	if err != nil {
+		return nil, err
+	}
+
 	return cfg.ToStream()
 }
 
@@ -189,12 +194,23 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 	return p.ParseDocument()
 }
 
+func (p *Parser) parseReturning() ([]expr.Expr, error) {
+	// Parse RETURNING clause: RETURNING expr [AS alias]
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RETURNING {
+		p.Unscan()
+		return nil, nil
+	}
+
+	return p.parseProjectedExprs()
+}
+
 // insertConfig holds INSERT configuration.
 type insertConfig struct {
 	TableName  string
 	Values     []expr.Expr
 	Fields     []string
 	SelectStmt *planner.Statement
+	Returning  []expr.Expr
 }
 
 func (cfg *insertConfig) ToStream() (*planner.Statement, error) {
@@ -216,6 +232,10 @@ func (cfg *insertConfig) ToStream() (*planner.Statement, error) {
 		}
 
 		s = s.Pipe(stream.TableInsert(cfg.TableName))
+	}
+
+	if len(cfg.Returning) > 0 {
+		s = s.Pipe(stream.Project(cfg.Returning...))
 	}
 
 	return &planner.Statement{

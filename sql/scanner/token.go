@@ -111,6 +111,7 @@ const (
 	READ
 	REINDEX
 	RENAME
+	RETURNING
 	ROLLBACK
 	SELECT
 	SET
@@ -235,6 +236,7 @@ var tokens = [...]string{
 	READ:        "READ",
 	REINDEX:     "REINDEX",
 	RENAME:      "RENAME",
+	RETURNING:   "RETURNING",
 	ROLLBACK:    "ROLLBACK",
 	SELECT:      "SELECT",
 	SET:         "SET",

@@ -391,8 +391,7 @@ func TestTableInsert(t *testing.T) {
 				d, ok := out.GetDocument()
 				require.True(t, ok)
 
-				test.out[i].(*document.FieldBuffer).EncodedKey = d.(*document.FieldBuffer).EncodedKey
-				require.Equal(t, test.out[i], d)
+				testutil.RequireDocEqual(t, test.out[i], d)
 				i++
 				return nil
 			})

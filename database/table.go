@@ -113,11 +113,6 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 		}
 	}
 
-	if fb, ok := d.(*document.FieldBuffer); ok {
-		fb.EncodedKey = key
-		return fb, nil
-	}
-
 	return documentWithKey{
 		Document: d,
 		key:      key,

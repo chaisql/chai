@@ -74,6 +74,15 @@ func TestParserInsert(t *testing.T) {
 				}},
 			)).Pipe(stream.TableInsert("test")),
 			false},
+		{"Values / Returning", "INSERT INTO test (a, b) VALUES ('c', 'd') RETURNING *, a, b as B, c",
+			stream.New(stream.Expressions(
+				&expr.KVPairs{Pairs: []expr.KVPair{
+					{K: "a", V: testutil.TextValue("c")},
+					{K: "b", V: testutil.TextValue("d")},
+				}},
+			)).Pipe(stream.TableInsert("test")).
+				Pipe(stream.Project(expr.Wildcard{}, testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b", "B"), testutil.ParseNamedExpr(t, "c"))),
+			false},
 		{"Values / With fields / Wrong values", "INSERT INTO test (a, b) VALUES {a: 1}, ('e', 'f')",
 			nil, true},
 		{"Values / Without fields / Wrong values", "INSERT INTO test VALUES {a: 1}, ('e', 'f')",
@@ -107,6 +116,13 @@ func TestParserInsert(t *testing.T) {
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableInsert("test")),
+			false},
+		{"Select / With fields / With projection / different fields / Returning", "INSERT INTO test (a, b) SELECT c, d FROM foo RETURNING a",
+			stream.New(stream.SeqScan("foo")).
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
+				Pipe(stream.IterRename("a", "b")).
+				Pipe(stream.TableInsert("test")).
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"))),
 			false},
 	}
 

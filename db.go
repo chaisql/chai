@@ -127,13 +127,9 @@ func scanDocument(res *query.Result) (document.Document, error) {
 		return nil, database.ErrDocumentNotFound
 	}
 
-	var fb document.FieldBuffer
+	fb := document.NewFieldBuffer()
 	err = fb.Copy(d)
-	if err != nil {
-		return nil, err
-	}
-
-	return &fb, nil
+	return fb, err
 }
 
 // Tx represents a database transaction. It provides methods for managing the

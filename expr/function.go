@@ -112,7 +112,8 @@ func (k *PKFunc) Eval(env *Environment) (document.Value, error) {
 		return nullLitteral, nil
 	}
 
-	return keyer.Key()
+	v, err := keyer.Key()
+	return v, err
 }
 
 func (*PKFunc) Params() []Expr { return nil }

@@ -89,6 +89,19 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, `[{"a": "a", "b-b": "b"}]`, buf.String())
 	})
+
+	t.Run("with RETURNING", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test`)
+		require.NoError(t, err)
+
+		d, err := db.QueryDocument(`insert into test (a) VALUES (1) RETURNING *, pk(), a AS A`)
+		require.NoError(t, err)
+		testutil.RequireDocJSONEq(t, d, `{"a": 1, "pk()": 1, "A": 1}`)
+	})
 }
 
 func TestInsertSelect(t *testing.T) {

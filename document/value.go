@@ -251,7 +251,7 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	case DocumentValue:
 		return jsonDocument{v.V.(Document)}.MarshalJSON()
 	default:
-		return nil, errors.New("unexpected type: " + v.Type.String())
+		return nil, stringutil.Errorf("unexpected type: %d", v.Type)
 	}
 }
 

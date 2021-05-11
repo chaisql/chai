@@ -85,13 +85,7 @@ func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	require.Equal(t, len(docs), len(others), stringutil.Sprintf("expected len %d, got %d", len(docs), len(others)))
 
 	for i, d := range docs {
-		l := document.NewDocumentValue(d)
-		r := document.NewDocumentValue(others[i])
-		ok, err := l.IsEqual(r)
-		require.NoError(t, err)
-		if !ok {
-			require.Equal(t, l, r)
-		}
+		RequireDocEqual(t, d, others[i])
 	}
 }
 
@@ -141,4 +135,16 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 
 	buf.WriteByte(']')
 	return buf.Flush()
+}
+
+func RequireDocEqual(t testing.TB, d1, d2 document.Document) {
+	t.Helper()
+
+	l := document.NewDocumentValue(d1)
+	r := document.NewDocumentValue(d2)
+	ok, err := l.IsEqual(r)
+	require.NoError(t, err)
+	if !ok {
+		require.Equal(t, l, r)
+	}
 }

@@ -147,6 +147,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `READ`, tok: scanner.READ, raw: `READ`},
 		{s: `REINDEX`, tok: scanner.REINDEX, raw: `REINDEX`},
 		{s: `RENAME`, tok: scanner.RENAME, raw: `RENAME`},
+		{s: `RETURNING`, tok: scanner.RETURNING, raw: `RETURNING`},
 		{s: `ROLLBACK`, tok: scanner.ROLLBACK, raw: `ROLLBACK`},
 		{s: `SELECT`, tok: scanner.SELECT, raw: `SELECT`},
 		{s: `SET`, tok: scanner.SET, raw: `SET`},
