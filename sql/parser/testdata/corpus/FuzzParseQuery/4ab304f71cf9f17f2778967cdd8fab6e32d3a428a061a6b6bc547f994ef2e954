@@ -1,0 +1,2 @@
+go test fuzz v1
+string("CAST(a.b[1][0] AS TEXT)")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("UPDATE test SET a.b[100][10].c = 1")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("UPDATE test SET a = WHERE age = 10")
