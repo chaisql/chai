@@ -285,6 +285,10 @@ func (s sliceArray) GetByIndex(i int) (Value, error) {
 func NewFromCSV(headers, columns []string) Document {
 	fb := NewFieldBuffer()
 	for i, h := range headers {
+		if i >= len(columns) {
+			break
+		}
+
 		fb.Add(h, NewTextValue(columns[i]))
 	}
 

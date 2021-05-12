@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -158,7 +157,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 		err := sh.runPrompt(ctx, promptExecCh)
 		if err != nil && err != errExitCtrlD {
-			fmt.Fprintf(os.Stderr, err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 		}
 	}()
 
@@ -446,19 +445,19 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		return runHelpCmd()
 	case ".tables":
 		if len(cmd) > 1 {
-			return stringutil.Errorf("usage: .tables")
+			return stringutil.Errorf(getUsage(".tables"))
 		}
 
 		return runTablesCmd(sh.db, os.Stdout)
 	case ".exit", "exit":
 		if len(cmd) > 1 {
-			return stringutil.Errorf("usage: .exit")
+			return stringutil.Errorf(getUsage(".exit"))
 		}
 
 		return errExitCommand
 	case ".indexes":
 		if len(cmd) > 2 {
-			return stringutil.Errorf("usage: .indexes [tablename]")
+			return stringutil.Errorf(getUsage(".indexes"))
 		}
 
 		var tableName string
@@ -484,6 +483,12 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		return runSaveCmd(ctx, sh.db, engine, path)
 	case ".schema":
 		return dbutil.DumpSchema(ctx, sh.db, os.Stdout, cmd[1:]...)
+	case ".import":
+		if len(cmd) != 4 {
+			return stringutil.Errorf(getUsage(".import"))
+		}
+
+		return runImportCmd(ctx, sh.db, cmd[1], cmd[2], cmd[3])
 	default:
 		return displaySuggestions(in)
 	}
@@ -496,26 +501,6 @@ func (sh *Shell) runQuery(ctx context.Context, q string) error {
 	}
 
 	return err
-}
-
-func (sh *Shell) runPipedInput(ctx context.Context) (ran bool, err error) {
-	// Check if there is any input being piped in from the terminal
-	stat, _ := os.Stdin.Stat()
-	m := stat.Mode()
-
-	if (m&os.ModeNamedPipe) == 0 /*cat a.txt| prog*/ && !m.IsRegular() /*prog < a.txt*/ { // No input from terminal
-		return false, nil
-	}
-	data, err := ioutil.ReadAll(os.Stdin)
-	if err != nil {
-		return true, stringutil.Errorf("Unable to read piped input: %w", err)
-	}
-	err = sh.runQuery(ctx, string(data))
-	if err != nil {
-		return true, stringutil.Errorf("Unable to execute provided sql statements: %w", err)
-	}
-
-	return true, nil
 }
 
 func (sh *Shell) changelivePrefix() (string, bool) {

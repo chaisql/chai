@@ -2,8 +2,11 @@ package shell
 
 import (
 	"context"
+	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/genjidb/genji"
@@ -14,13 +17,19 @@ import (
 	"github.com/genjidb/genji/stringutil"
 )
 
-var commands = []struct {
+type command struct {
 	Name        string
 	Options     string
 	DisplayName string
 	Description string
 	Aliases     []string
-}{
+}
+
+func (c *command) Usage() string {
+	return fmt.Sprintf("%s %s", c.DisplayName, c.Options)
+}
+
+var commands = []command{
 	{
 		Name:        ".exit",
 		DisplayName: ".exit or exit",
@@ -52,7 +61,7 @@ var commands = []struct {
 	},
 	{
 		Name:        ".save",
-		Options:     "[badger?] [filename]",
+		Options:     "[badger] [filename]",
 		DisplayName: ".save",
 		Description: "Save database content in the specified file.",
 	},
@@ -62,6 +71,22 @@ var commands = []struct {
 		DisplayName: ".schema",
 		Description: "Show the CREATE statements of all tables or of the selected ones.",
 	},
+	{
+		Name:        ".import",
+		Options:     "TYPE FILE table",
+		DisplayName: ".import",
+		Description: "Import data from a file. Only supported type is 'csv'",
+	},
+}
+
+func getUsage(cmdName string) string {
+	for _, c := range commands {
+		if c.Name == cmdName {
+			return c.Usage()
+		}
+	}
+
+	return ""
 }
 
 // runHelpCmd shows all available commands.
@@ -251,4 +276,50 @@ func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 	}
 
 	return nil
+}
+
+func runImportCmd(ctx context.Context, db *genji.DB, fileType, path, table string) error {
+	if strings.ToLower(fileType) != "csv" {
+		return errors.New("TYPE should be csv")
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	tx, err := db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	r := csv.NewReader(f)
+
+	err = tx.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s", table))
+	if err != nil {
+		return err
+	}
+
+	headers, err := r.Read()
+	if err != nil {
+		return err
+	}
+
+	for {
+		columns, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		err = tx.Exec("INSERT INTO "+table+" VALUES ?", document.NewFromCSV(headers, columns))
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
