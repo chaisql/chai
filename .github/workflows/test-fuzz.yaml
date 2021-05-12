@@ -19,14 +19,11 @@ jobs:
         with:
           go-version: 1.16.3
 
-      - name: Build Go
-        run: go install golang.org/dl/gotip@latest && gotip download dev.fuzz
-
       - name: Get Go environment
         id: go-env
         run: |
-          echo "::set-output name=cache::$(gotip env GOCACHE)"
-          echo "::set-output name=modcache::$(gotip env GOMODCACHE)"
+          echo "::set-output name=cache::$(go env GOCACHE)"
+          echo "::set-output name=modcache::$(go env GOMODCACHE)"
       - name: Set up cache
         uses: actions/cache@v2.1.5
         with:
@@ -36,6 +33,9 @@ jobs:
           key: fuzz-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             fuzz-go-
+
+      - name: Build Go
+        run: go install golang.org/dl/gotip@latest && gotip download dev.fuzz
 
       # TODO(tie) upload diff as artifact on failure
       - name: Run tests
