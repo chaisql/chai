@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,4 +141,12 @@ func BenchmarkJSONToDocument(b *testing.B) {
 			return nil
 		})
 	}
+}
+
+func TestNewFromCSV(t *testing.T) {
+	headers := []string{"a", "b", "c"}
+	columns := []string{"A", "B", "C"}
+
+	d := document.NewFromCSV(headers, columns)
+	testutil.RequireDocJSONEq(t, d, `{"a": "A", "b": "B", "c": "C"}`)
 }

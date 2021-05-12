@@ -278,3 +278,15 @@ func (s sliceArray) GetByIndex(i int) (Value, error) {
 
 	return NewValue(v.Interface())
 }
+
+// NewFromCSV takes a list of headers and columns and returns a document.
+// Each header will be assigned as the key and each corresponding column as a text value.
+// The length of headers and columns must be the same.
+func NewFromCSV(headers, columns []string) Document {
+	fb := NewFieldBuffer()
+	for i, h := range headers {
+		fb.Add(h, NewTextValue(columns[i]))
+	}
+
+	return fb
+}
