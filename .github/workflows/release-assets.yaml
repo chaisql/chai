@@ -1,0 +1,144 @@
+name: Release Assets
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Linux targets should be fixed in https://github.com/dgraph-io/ristretto/commit/6b99600c6cd958495fea33af2bf650c706da4c14
+    # Other are failing when compiling github.com/pkg/term@v1.1.0/termios package.
+    # Plan9 target also fails when compiling bbolt. See https://github.com/etcd-io/bbolt/issues/231
+    continue-on-error: ${{
+      matrix.os == 'openbsd' ||
+      matrix.os == 'freebsd' ||
+      matrix.os == 'plan9' ||
+      matrix.os == 'linux' && matrix.arch == 'mips64' ||
+      matrix.os == 'linux' && matrix.arch == 'mips64le' ||
+      matrix.os == 'linux' && matrix.arch == 'riscv64' ||
+      matrix.os == 'linux' && matrix.arch == 's390x' ||
+      matrix.os == 'dragonfly' ||
+      matrix.os == 'illumos' ||
+      matrix.os == 'solaris' ||
+      matrix.os == 'aix' ||
+      matrix.allow-failure != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - linux
+          - darwin
+          - windows
+          - openbsd
+          - freebsd
+          - netbsd
+          - plan9
+        arch:
+          - arm
+          - 386
+          - amd64
+          - arm64
+        include:
+          # Extra linux targets
+          - os: linux
+            arch: mips
+          - os: linux
+            arch: mips64
+          - os: linux
+            arch: mips64le
+          - os: linux
+            arch: mipsle
+          - os: linux
+            arch: ppc64
+          - os: linux
+            arch: ppc64le
+          - os: linux
+            arch: riscv64
+          - os: linux
+            arch: s390x
+          # Misc targets
+          - os: dragonfly
+            arch: amd64
+          - os: illumos
+            arch: amd64
+          - os: solaris
+            arch: amd64
+          - os: aix
+            arch: ppc64
+        exclude:
+          # Needs go1.17. See https://github.com/golang/go/issues/36439#issuecomment-827089403
+          - os: windows
+            arch: arm64
+          # Not supported
+          - os: darwin
+            arch: 386
+          - os: darwin
+            arch: arm
+          - os: plan9
+            arch: arm64
+    env:
+      GOOS: ${{ matrix.os }}
+      GOARCH: ${{ matrix.arch }}
+      # Enable reproducible builds.
+      GOFLAGS: -trimpath
+      CGO_ENABLED: '0'
+      GO_EXTLINK_ENABLED: '0'
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2.1.3
+        with:
+          go-version: 1.16.3
+
+      - name: Get Go environment
+        id: go-env
+        run: |
+          echo "::set-output name=exe::$(go env GOEXE)"
+          echo "::set-output name=path::$(go env GOPATH)"
+          echo "::set-output name=hostos::$(go env GOHOSTOS)"
+          echo "::set-output name=hostarch::$(go env GOHOSTARCH)"
+          echo "::set-output name=cache::$(go env GOCACHE)"
+          echo "::set-output name=modcache::$(go env GOMODCACHE)"
+
+      - name: Set up modules cache
+        uses: actions/cache@v2.1.5
+        with:
+          path: ${{ steps.go-env.outputs.modcache }}
+          key: modcache-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: modcache-go-
+
+      - name: Set up build cache
+        uses: actions/cache@v2.1.5
+        with:
+          path: ${{ steps.go-env.outputs.cache }}
+          key: cache-go-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: cache-go-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Get release version
+        id: release
+        run: |
+          TAG_NAME=${{ github.event.release.tag_name }}
+          echo "::set-output name=version::${TAG_NAME#cmd/genji/}"
+
+      - name: Get asset name
+        id: asset
+        run: |
+          echo "::set-output name=filename::genji_${{ matrix.os }}_${{ matrix.arch }}${{ steps.go-env.outputs.exe }}"
+
+      - name: Build release asset
+        run: go install github.com/genjidb/genji/cmd/genji@${{ steps.release.outputs.version }}
+
+      - name: Move asset to GOPATH/bin
+        if: ${{ steps.go-env.outputs.hostos != matrix.os || steps.go-env.outputs.hostarch != matrix.arch }}
+        working-directory: ${{ steps.go-env.outputs.path }}/bin/${{ matrix.os }}_${{ matrix.arch }}
+        run: mv genji${{ steps.go-env.outputs.exe }} ..
+
+      - name: Move asset to workspace
+        working-directory: ${{ steps.go-env.outputs.path }}/bin
+        run: mv genji${{ steps.go-env.outputs.exe }} ${{ github.workspace }}/${{ steps.asset.outputs.filename }}
+
+      - name: Upload release asset
+        run: gh release upload -R ${{ github.repository }} --clobber ${{ github.event.release.tag_name }} ${{ steps.asset.outputs.filename }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
