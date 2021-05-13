@@ -16,6 +16,6 @@ require (
 )
 
 replace (
-	github.com/genjidb/genji v0.13.0 => ../../
-	github.com/genjidb/genji/engine/badgerengine v0.13.0 => ../../engine/badgerengine
+	github.com/genjidb/genji => ../../
+	github.com/genjidb/genji/engine/badgerengine => ../../engine/badgerengine
 )
