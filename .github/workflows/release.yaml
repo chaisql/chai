@@ -212,6 +212,7 @@ jobs:
         with:
           author: GitHub <actions@github.com>
           committer: GitHub <actions@github.com>
+          base: main
           branch: ${{ steps.version.outputs.branch }}
           delete-branch: true
           title: Bump version to ${{ steps.changelog.outputs.version }}
