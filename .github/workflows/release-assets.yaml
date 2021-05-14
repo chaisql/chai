@@ -113,7 +113,7 @@ jobs:
         with:
           path: ${{ steps.go-env.outputs.cache }}
           key: cache-go-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: cache-go-${{ matrix.os }}-${{ matrix.arch }}
+          restore-keys: cache-go-${{ matrix.os }}-${{ matrix.arch }}-
 
       - name: Get release version
         id: release
