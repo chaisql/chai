@@ -1,3 +1,7 @@
+# Files that CI generates in release workflow.
+release.txt
+changelog.txt
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
