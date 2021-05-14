@@ -129,7 +129,7 @@ jobs:
           go mod tidy
           go mod edit \
             -replace=github.com/genjidb/genji=../../ \
-            -replace=github.com/genjidb/engine/badgerengine=../../
+            -replace=github.com/genjidb/engine/badgerengine=../../engine/badgerengine
           git add go.mod go.sum
           git commit -m 'Bump cmd/genji to ${{ steps.changelog.outputs.version }}'
           git tag cmd/genji/${{ steps.changelog.outputs.version }}
