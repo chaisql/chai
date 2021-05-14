@@ -141,7 +141,7 @@ jobs:
           version: ${{ steps.changelog.outputs.version }}
         run: |
           go mod edit -dropreplace=github.com/genjidb/genji
-          go get github.com/genjidb/genji@"${version}"
+          go mod edit -require=github.com/genjidb/genji@"${version}"
           go mod tidy
           git add go.mod go.sum
           git commit -m "Bump engine/badgerengine to ${version}"
@@ -162,9 +162,9 @@ jobs:
           go mod edit \
             -dropreplace=github.com/genjidb/genji \
             -dropreplace=github.com/genjidb/genji/engine/badgerengine
-          go get \
-            github.com/genjidb/genji@"${version}" \
-            github.com/genjidb/genji/engine/badgerengine@"${version}"
+          go mod edit \
+            -require=github.com/genjidb/genji@"${version}" \
+            -require=github.com/genjidb/genji/engine/badgerengine@"${version}"
           go mod tidy
           git add go.mod go.sum
           git commit -m "Bump cmd/genji to ${version}"
