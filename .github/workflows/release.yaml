@@ -192,14 +192,16 @@ jobs:
           cat changelog.txt >>release.txt
           echo >>release.txt
           cat engine/badgerengine/changelog.txt >>release.txt
+
       - name: Create release draft
-        uses: actions/create-release@v1.1.4
-        with:
-          draft: true
-          tag_name: cmd/genji/${{ steps.changelog.outputs.version }}
+        run: gh release create -t="${release_name}" -F="${body_path}" -d="${draft}" -p="${prerelease}" "${tag_name}"
+        env:
           release_name: ${{ steps.changelog.outputs.version }}
           body_path: release.txt
+          draft: true
           prerelease: ${{ contains(steps.changelog.outputs.version, '-') }}
+          tag_name: cmd/genji/${{ steps.changelog.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # 3.2. Create PR with changes we’ve made.
       #
