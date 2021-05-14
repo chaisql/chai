@@ -60,11 +60,6 @@ jobs:
       - name: Install x/exp/cmd/gorelease
         run: go install golang.org/x/exp/cmd/gorelease@v0.0.0-20210513165259-bd7cc9f9ec66
 
-      - name: Set up Git config
-        run: |
-          git config user.name actions-user
-          git config user.email actions@github.com
-
       # Get current branch name and infer version for this release.
       #
       # Uses explicit version input if we are running on manual workflow dispatch.
