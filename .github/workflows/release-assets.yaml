@@ -11,6 +11,10 @@ jobs:
     # Linux targets should be fixed in https://github.com/dgraph-io/ristretto/commit/6b99600c6cd958495fea33af2bf650c706da4c14
     # Other are failing when compiling github.com/pkg/term@v1.1.0/termios package.
     # Plan9 target also fails when compiling bbolt. See https://github.com/etcd-io/bbolt/issues/231
+    #
+    # ios/arm64 requires Cgo and external linker, and ios/amd64, iOS Simulator, is just no worth it.
+    # Same for all android targets except android/arm64 (which we do build).
+    #
     continue-on-error: ${{
       matrix.os == 'openbsd' ||
       matrix.os == 'freebsd' ||
@@ -36,10 +40,10 @@ jobs:
           - netbsd
           - plan9
         arch:
-          - arm
-          - 386
           - amd64
           - arm64
+          - 386
+          - arm
         include:
           # Extra linux targets
           - os: linux
@@ -59,6 +63,8 @@ jobs:
           - os: linux
             arch: s390x
           # Misc targets
+          - os: android
+            arch: arm64
           - os: dragonfly
             arch: amd64
           - os: illumos
