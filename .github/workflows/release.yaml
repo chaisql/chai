@@ -150,7 +150,7 @@ jobs:
           retention-days: 1
 
   tag1:
-    name: Tag github.com/genjidb/genji
+    name: Tag genji
     runs-on: ubuntu-latest
     needs:
       - prepare
@@ -187,7 +187,7 @@ jobs:
           git push origin "${version}"
 
   tag2:
-    name: Tag github.com/genjidb/genji/engine/badgerengine
+    name: Tag genji/engine/badgerengine
     runs-on: ubuntu-latest
     needs:
       - prepare
@@ -230,7 +230,7 @@ jobs:
           git push origin engine/badgerengine/"${version}"
 
   tag3:
-    name: Tag github.com/genjidb/genji/cmd/genji
+    name: Tag genji/cmd/genji
     runs-on: ubuntu-latest
     needs:
       - prepare
@@ -278,7 +278,7 @@ jobs:
           git push origin cmd/genji/"${version}"
 
   draft:
-    name: Draft
+    name: Create Draft
     runs-on: ubuntu-latest
     needs:
       - prepare
@@ -290,12 +290,11 @@ jobs:
         with:
           name: release.txt
       - name: Draft release
-        run: gh release create -R="${repo}" -t="${release_name}" -F="${body_path}" -d="${draft}" -p="${prerelease}" "${tag_name}"
+        run: gh release create --draft -R="${repo}" -t="${release_name}" -F="${body_path}" -p="${prerelease}" "${tag_name}"
         env:
           repo: ${{ github.repository }}
           release_name: ${{ needs.prepare.outputs.version }}
           body_path: release.txt
-          draft: true
           prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
           tag_name: ${{ needs.prepare.outputs.version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
