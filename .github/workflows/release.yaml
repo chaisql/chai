@@ -144,12 +144,12 @@ jobs:
           go mod edit -require=github.com/genjidb/genji@"${version}"
           go mod tidy
           git add go.mod go.sum
-          git commit -m "Bump engine/badgerengine to ${version}"
+          git commit --allow-empty -m "Bump engine/badgerengine to ${version}"
           git tag engine/badgerengine/"${version}"
           go mod edit -replace=github.com/genjidb/genji=../../
           go mod tidy
           git add go.mod go.sum
-          git commit -m 'Back to devel mode in engine/badgerengine'
+          git commit --allow-empty -m 'Back to devel mode in engine/badgerengine'
           git push && git push --tags
 
       # 2.3 Create tag for github.com/genjidb/genji/cmd/genji module.
@@ -167,14 +167,14 @@ jobs:
             -require=github.com/genjidb/genji/engine/badgerengine@"${version}"
           go mod tidy
           git add go.mod go.sum
-          git commit -m "Bump cmd/genji to ${version}"
+          git commit --allow-empty -m "Bump cmd/genji to ${version}"
           git tag cmd/genji/"${version}"
           go mod edit \
             -replace=github.com/genjidb/genji=../../ \
             -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine
           go mod tidy
           git add go.mod go.sum
-          git commit -m 'Back to devel mode in cmd/genji'
+          git commit --allow-empty -m 'Back to devel mode in cmd/genji'
           git push && git push --tags
 
       # 3.1. Create GitHub release draft.
@@ -205,18 +205,14 @@ jobs:
 
       # 3.2. Create PR with changes we’ve made.
       #
-      - name: Clean up
-        run: git clean -xfd
       - name: Create PR
-        uses: peter-evans/create-pull-request@v3.9.1
-        with:
-          author: GitHub <actions@github.com>
-          committer: GitHub <actions@github.com>
+        run: gh pr create -l=release -t="${title}" -b="${body}" -B="${base}" -H="${head}"
+        env:
           base: main
-          branch: ${{ steps.version.outputs.branch }}
-          delete-branch: true
+          head: ${{ steps.version.outputs.branch }}
           title: Bump version to ${{ steps.changelog.outputs.version }}
           body: |
             This PR merges changes made when bumping version to ${{ steps.changelog.outputs.version }}.
 
             See https://github.com/genjidb/genji/releases/tag/cmd/genji/${{ steps.changelog.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
