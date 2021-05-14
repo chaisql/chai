@@ -4,6 +4,12 @@ on:
     types:
       - published
 
+env:
+  # Enable reproducible builds.
+  GOFLAGS: -trimpath
+  CGO_ENABLED: '0'
+  GO_EXTLINK_ENABLED: '0'
+
 jobs:
   build:
     name: Build
@@ -87,10 +93,6 @@ jobs:
     env:
       GOOS: ${{ matrix.os }}
       GOARCH: ${{ matrix.arch }}
-      # Enable reproducible builds.
-      GOFLAGS: -trimpath
-      CGO_ENABLED: '0'
-      GO_EXTLINK_ENABLED: '0'
     steps:
       - name: Install Go
         uses: actions/setup-go@v2.1.3
@@ -121,30 +123,36 @@ jobs:
           key: cache-go-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/go.sum') }}
           restore-keys: cache-go-${{ matrix.os }}-${{ matrix.arch }}-
 
-      - name: Get release version
-        id: release
-        run: |
-          TAG_NAME=${{ github.event.release.tag_name }}
-          echo "::set-output name=version::${TAG_NAME#cmd/genji/}"
-
       - name: Get asset name
         id: asset
-        run: |
-          echo "::set-output name=filename::genji_${{ matrix.os }}_${{ matrix.arch }}${{ steps.go-env.outputs.exe }}"
+        run: echo "::set-output name=filename::genji_${GOOS}_${GOARCH}${GOEXE}"
+        env:
+          GOEXE: ${{ steps.go-env.outputs.exe }}
 
       - name: Build release asset
-        run: go install github.com/genjidb/genji/cmd/genji@${{ steps.release.outputs.version }}
+        env:
+          version: ${{ github.event.release.tag_name }}
+        run: go install github.com/genjidb/genji/cmd/genji@"${version}"
 
       - name: Move asset to GOPATH/bin
         if: ${{ steps.go-env.outputs.hostos != matrix.os || steps.go-env.outputs.hostarch != matrix.arch }}
         working-directory: ${{ steps.go-env.outputs.path }}/bin/${{ matrix.os }}_${{ matrix.arch }}
-        run: mv genji${{ steps.go-env.outputs.exe }} ..
+        run: mv genji"${GOEXE}" ..
+        env:
+          GOEXE: ${{ steps.go-env.outputs.exe }}
 
       - name: Move asset to workspace
         working-directory: ${{ steps.go-env.outputs.path }}/bin
-        run: mv genji${{ steps.go-env.outputs.exe }} ${{ github.workspace }}/${{ steps.asset.outputs.filename }}
+        run: mv genji"${GOEXE}" "${workspace}"/"${filename}"
+        env:
+          GOEXE: ${{ steps.go-env.outputs.exe }}
+          workspace: ${{ github.workspace }}
+          filename: ${{ steps.asset.outputs.filename }}
 
       - name: Upload release asset
-        run: gh release upload -R ${{ github.repository }} --clobber ${{ github.event.release.tag_name }} ${{ steps.asset.outputs.filename }}
+        run: gh release upload -R="${repo}" "${tag_name}" "${filename}"
         env:
+          repo: ${{ github.repository }}
+          tag_name: ${{ github.event.release.tag_name }}
+          filename: ${{ steps.asset.outputs.filename }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
