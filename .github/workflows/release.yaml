@@ -206,7 +206,7 @@ jobs:
       # 3.2. Create PR with changes we’ve made.
       #
       - name: Create PR
-        run: gh pr create -l=release -t="${title}" -b="${body}" -B="${base}" -H="${head}"
+        run: gh pr create -t="${title}" -b="${body}" -B="${base}" -H="${head}"
         env:
           base: main
           head: ${{ steps.version.outputs.branch }}
