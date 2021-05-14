@@ -161,7 +161,7 @@ jobs:
         run: |
           go mod edit \
             -dropreplace=github.com/genjidb/genji \
-            -dropreplace=github.com/genjidb/engine/badgerengine
+            -dropreplace=github.com/genjidb/genji/engine/badgerengine
           go get \
             github.com/genjidb/genji@"${version}" \
             github.com/genjidb/genji/engine/badgerengine@"${version}"
@@ -171,7 +171,7 @@ jobs:
           git tag cmd/genji/"${version}"
           go mod edit \
             -replace=github.com/genjidb/genji=../../ \
-            -replace=github.com/genjidb/engine/badgerengine=../../engine/badgerengine
+            -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine
           go mod tidy
           git add go.mod go.sum
           git commit -m 'Back to devel mode in cmd/genji'
