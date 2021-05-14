@@ -29,6 +29,8 @@ jobs:
       #
       GOPRIVATE: github.com/genjidb/genji
     if: ${{ github.ref != 'refs/heads/main' }}
+    outputs:
+      version: ${{ steps.changelog.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
@@ -124,61 +126,9 @@ jobs:
         working-directory: engine/badgerengine
         run: perl -0pi -e 's/(\n.+)+\n+$//' changelog.txt
 
-      # 2.1. Create tag for github.com/genjidb/genji module.
+      # 1.3. Prepare release notes.
       #
-      - name: Bump github.com/genjidb/genji
-        env:
-          version: ${{ steps.changelog.outputs.version }}
-        run: |
-          git commit --allow-empty -m "Bump to ${version}"
-          git tag "${version}"
-          git push && git push --tags
-
-      # 2.2. Create tag for github.com/genjidb/genji/engine/badgerengine module.
-      #
-      - name: Bump github.com/genjidb/genji/engine/badgerengine
-        working-directory: engine/badgerengine
-        env:
-          version: ${{ steps.changelog.outputs.version }}
-        run: |
-          go mod edit -dropreplace=github.com/genjidb/genji
-          go mod edit -require=github.com/genjidb/genji@"${version}"
-          go mod tidy
-          git add go.mod go.sum
-          git commit --allow-empty -m "Bump engine/badgerengine to ${version}"
-          git tag engine/badgerengine/"${version}"
-          go mod edit -replace=github.com/genjidb/genji=../../
-          go mod tidy
-          git add go.mod go.sum
-          git commit --allow-empty -m 'Back to devel mode in engine/badgerengine'
-          git push && git push --tags
-
-      # 2.3 Create tag for github.com/genjidb/genji/cmd/genji module.
-      #
-      - name: Bump github.com/genjidb/genji/cmd/genji
-        working-directory: cmd/genji
-        env:
-          version: ${{ steps.changelog.outputs.version }}
-        run: |
-          go mod edit \
-            -dropreplace=github.com/genjidb/genji \
-            -dropreplace=github.com/genjidb/genji/engine/badgerengine
-          go mod edit \
-            -require=github.com/genjidb/genji@"${version}" \
-            -require=github.com/genjidb/genji/engine/badgerengine@"${version}"
-          go mod tidy
-          git add go.mod go.sum
-          git commit --allow-empty -m "Bump cmd/genji to ${version}"
-          git tag cmd/genji/"${version}"
-          go mod edit \
-            -replace=github.com/genjidb/genji=../../ \
-            -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine
-          go mod tidy
-          git add go.mod go.sum
-          git commit --allow-empty -m 'Back to devel mode in cmd/genji'
-          git push && git push --tags
-
-      # 3.1. Create GitHub release draft.
+      # We’ll use these later to create draft release.
       #
       - name: Concatenate release notes
         run: |
@@ -194,6 +144,59 @@ jobs:
           echo >>release.txt
           cat engine/badgerengine/changelog.txt >>release.txt
 
+      # 2.1. Create tag for github.com/genjidb/genji module.
+      #
+      # For each module we create a version bump commit, tag it and push the tag.
+      # Then we hard reset to the previous HEAD. That is, we don’t push commits
+      # to the current branch, but instead create commits on top of the HEAD.
+      #
+      - name: Bump github.com/genjidb/genji
+        env:
+          version: ${{ steps.changelog.outputs.version }}
+        run: |
+          git commit --allow-empty -m "Bump version to ${version}"
+          git tag "${version}"
+          git push origin "${version}"
+          git reset --hard HEAD^
+
+      # 2.2. Create tag for github.com/genjidb/genji/engine/badgerengine module.
+      #
+      - name: Bump github.com/genjidb/genji/engine/badgerengine
+        working-directory: engine/badgerengine
+        env:
+          version: ${{ steps.changelog.outputs.version }}
+        run: |
+          go mod edit -dropreplace=github.com/genjidb/genji
+          go mod edit -require=github.com/genjidb/genji@"${version}"
+          go mod tidy
+          git add go.mod go.sum
+          git commit --allow-empty -m "Bump version to ${version}"
+          git tag engine/badgerengine/"${version}"
+          git push origin engine/badgerengine/"${version}"
+          git reset --hard HEAD^
+
+      # 2.3. Create tag for github.com/genjidb/genji/cmd/genji module.
+      #
+      - name: Bump github.com/genjidb/genji/cmd/genji
+        working-directory: cmd/genji
+        env:
+          version: ${{ steps.changelog.outputs.version }}
+        run: |
+          go mod edit \
+            -dropreplace=github.com/genjidb/genji \
+            -dropreplace=github.com/genjidb/genji/engine/badgerengine
+          go mod edit \
+            -require=github.com/genjidb/genji@"${version}" \
+            -require=github.com/genjidb/genji/engine/badgerengine@"${version}"
+          go mod tidy
+          git add go.mod go.sum
+          git commit --allow-empty -m "Bump version to ${version}"
+          git tag cmd/genji/"${version}"
+          git push origin cmd/genji/"${version}"
+          git reset --hard HEAD^
+
+      # 3.1. Create GitHub release draft.
+      #
       - name: Create release draft
         run: gh release create -t="${release_name}" -F="${body_path}" -d="${draft}" -p="${prerelease}" "${tag_name}"
         env:
@@ -202,18 +205,4 @@ jobs:
           draft: true
           prerelease: ${{ contains(steps.changelog.outputs.version, '-') }}
           tag_name: cmd/genji/${{ steps.changelog.outputs.version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 3.2. Create PR with changes we’ve made.
-      #
-      - name: Create PR
-        run: gh pr create -t="${title}" -b="${body}" -B="${base}" -H="${head}"
-        env:
-          base: main
-          head: ${{ steps.version.outputs.branch }}
-          title: Bump version to ${{ steps.changelog.outputs.version }}
-          body: |
-            This PR merges changes made when bumping version to ${{ steps.changelog.outputs.version }}.
-
-            See https://github.com/genjidb/genji/releases/tag/cmd/genji/${{ steps.changelog.outputs.version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
