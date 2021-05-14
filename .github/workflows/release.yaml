@@ -283,7 +283,7 @@ jobs:
         uses: actions/download-artifact@v2.0.9
         with:
           name: release.txt
-      - name: Draft release
+      - name: Create release
         run: gh release create --draft -R="${repo}" -t="${release_name}" -F="${body_path}" -p="${prerelease}" "${tag_name}"
         env:
           repo: ${{ github.repository }}
@@ -304,7 +304,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
-      - name: Remove tags
+      - name: Delete tags
         env:
           version: ${{ needs.prepare1.outputs.version }}
         run: |
