@@ -130,8 +130,9 @@ jobs:
         env:
           version: ${{ steps.changelog.outputs.version }}
         run: |
+          git commit --allow-empty -m "Bump to ${version}"
           git tag "${version}"
-          git push --tags
+          git push && git push --tags
 
       # 2.2. Create tag for github.com/genjidb/genji/engine/badgerengine module.
       #
