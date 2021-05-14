@@ -2,8 +2,8 @@ name: Release
 on:
   push:
     branches:
-      # TODO(tie): allow release/v* for backports?
       - release
+      - release-v*
   workflow_dispatch:
     inputs:
       base:
@@ -28,9 +28,6 @@ jobs:
       # See https://blog.golang.org/go116-module-changes#TOC_5.
       #
       GOPRIVATE: github.com/genjidb/genji
-    outputs:
-      version: ${{ steps.changelog.outputs.version }}
-      upload_url: ${{ steps.release.outputs.upload_url }}
     if: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - name: Checkout code
@@ -46,6 +43,7 @@ jobs:
         run: |
           echo "::set-output name=cache::$(go env GOCACHE)"
           echo "::set-output name=modcache::$(go env GOMODCACHE)"
+
       - name: Set up cache
         uses: actions/cache@v2.1.5
         with:
@@ -63,6 +61,31 @@ jobs:
           git config user.name actions-user
           git config user.email actions@github.com
 
+      # Get current branch name and infer version for this release.
+      #
+      # Uses explicit version input if we are running on manual workflow dispatch.
+      # If we are on release branch with explicit version (e.g. release-v0.13.0)
+      # then branch != strip_prefix(branch, "release-") and we use branch version.
+      # Otherwise use empty version and gorelease would suggest a new semantic version.
+      #
+      # Note that gorelease will fail if the supplied version is not a valid semantic
+      # version for this release.
+      #
+      - name: Get version
+        id: version
+        env:
+          base: ${{ github.event.inputs.base }}
+          next: ${{ github.event.inputs.version }}
+        run: |
+          branch=${GITHUB_REF#refs/heads/}
+          branchversion=${branch#release-}
+          if [ "${next}" = "" -a "${branch}" != "${branchversion}" ]; then
+            next=${branchversion}
+          fi
+          echo "::set-output name=branch::${branch}"
+          echo "::set-output name=base::${base}"
+          echo "::set-output name=next::${next}"
+
       # 1.1. Prepare github.com/genjidb/genji module.
       #
       # This step will fail if version from input is not a valid semantic version for this release.
@@ -70,8 +93,11 @@ jobs:
       # The base version is inferred from the new version and defaults to latest release.
       #
       - name: Generate changelog
+        env:
+          base: ${{ steps.version.outputs.base }}
+          version: ${{ steps.version.outputs.next }}
         run: |
-          gorelease -base=${{ github.event.inputs.base }} -version=${{ github.event.inputs.version }} | tee changelog.txt
+          gorelease -base="${base}" -version="${version}" | tee changelog.txt
       - name: Extract version from changelog
         id: changelog
         run: |
@@ -84,12 +110,16 @@ jobs:
 
       # 1.2. Prepare github.com/genjidb/genji/engine/badgerengine module.
       #
-      # Note that we use steps.changelog.outputs.version instead of github.event.inputs.version
+      # Note that we use steps.changelog.outputs.version instead of steps.version.outputs.next
       # to ensure that submodule version always corresponds to root module release.
       #
       - name: Generate changelog for engine/badgerengine
         working-directory: engine/badgerengine
-        run: gorelease -base=${{ github.event.inputs.base }} -version=${{ steps.changelog.outputs.version }} | tee changelog.txt
+        env:
+          base: ${{ github.event.inputs.base }}
+          version: ${{ steps.changelog.outputs.version }}
+        run: |
+          gorelease -base="${base}" -version="${version}" | tee changelog.txt
       - name: Amend changelog for engine/badgerengine
         working-directory: engine/badgerengine
         run: perl -0pi -e 's/(\n.+)+\n+$//' changelog.txt
@@ -97,73 +127,90 @@ jobs:
       # 2.1. Create tag for github.com/genjidb/genji module.
       #
       - name: Bump github.com/genjidb/genji
+        env:
+          version: ${{ steps.changelog.outputs.version }}
         run: |
-          git tag ${{ steps.changelog.outputs.version }}
+          git tag "${version}"
           git push --tags
 
       # 2.2. Create tag for github.com/genjidb/genji/engine/badgerengine module.
       #
       - name: Bump github.com/genjidb/genji/engine/badgerengine
         working-directory: engine/badgerengine
+        env:
+          version: ${{ steps.changelog.outputs.version }}
         run: |
           go mod edit -dropreplace=github.com/genjidb/genji
-          go get github.com/genjidb/genji@${{ steps.changelog.outputs.version }}
+          go get github.com/genjidb/genji@"${version}"
           go mod tidy
-          go mod edit -replace=github.com/genjidb/genji=../../
           git add go.mod go.sum
-          git commit -m 'Bump engine/badgerengine to ${{ steps.changelog.outputs.version }}'
-          git tag engine/badgerengine/${{ steps.changelog.outputs.version }}
+          git commit -m "Bump engine/badgerengine to ${version}"
+          git tag engine/badgerengine/"${version}"
+          go mod edit -replace=github.com/genjidb/genji=../../
+          go mod tidy
+          git add go.mod go.sum
+          git commit -m 'Back to devel mode in engine/badgerengine'
           git push && git push --tags
 
       # 2.3 Create tag for github.com/genjidb/genji/cmd/genji module.
       #
       - name: Bump github.com/genjidb/genji/cmd/genji
         working-directory: cmd/genji
+        env:
+          version: ${{ steps.changelog.outputs.version }}
         run: |
           go mod edit \
             -dropreplace=github.com/genjidb/genji \
             -dropreplace=github.com/genjidb/engine/badgerengine
           go get \
-            github.com/genjidb/genji@${{ steps.changelog.outputs.version }} \
-            github.com/genjidb/genji/engine/badgerengine@${{ steps.changelog.outputs.version }}
+            github.com/genjidb/genji@"${version}" \
+            github.com/genjidb/genji/engine/badgerengine@"${version}"
           go mod tidy
+          git add go.mod go.sum
+          git commit -m "Bump cmd/genji to ${version}"
+          git tag cmd/genji/"${version}"
           go mod edit \
             -replace=github.com/genjidb/genji=../../ \
             -replace=github.com/genjidb/engine/badgerengine=../../engine/badgerengine
+          go mod tidy
           git add go.mod go.sum
-          git commit -m 'Bump cmd/genji to ${{ steps.changelog.outputs.version }}'
-          git tag cmd/genji/${{ steps.changelog.outputs.version }}
+          git commit -m 'Back to devel mode in cmd/genji'
           git push && git push --tags
 
       # 3.1. Create GitHub release draft.
       #
-      - name: Merge changelogs
+      - name: Concatenate release notes
         run: |
-          echo >>changelog.txt && cat engine/badgerengine/changelog.txt >>changelog.txt
-      - name: Publish release
-        id: release
+          if [ -f CHANGELOG.md ]; then
+            cp CHANGELOG.md release.txt
+          else
+            touch release.txt
+          fi
+          echo >>release.txt
+          echo --- >>release.txt
+          echo >>release.txt
+          cat changelog.txt >>release.txt
+          echo >>release.txt
+          cat engine/badgerengine/changelog.txt >>release.txt
+      - name: Create release draft
         uses: actions/create-release@v1.1.4
         with:
           draft: true
           tag_name: cmd/genji/${{ steps.changelog.outputs.version }}
           release_name: ${{ steps.changelog.outputs.version }}
-          body_path: changelog.txt
+          body_path: release.txt
           prerelease: ${{ contains(steps.changelog.outputs.version, '-') }}
 
       # 3.2. Create PR with changes we’ve made.
       #
       - name: Clean up
         run: git clean -xfd
-      - name: Get branch name
-        id: github-ref
-        run: |
-          echo "::set-output name=short::${GITHUB_REF#refs/*/}"
       - name: Create PR
         uses: peter-evans/create-pull-request@v3.9.1
         with:
           author: GitHub <actions@github.com>
           committer: GitHub <actions@github.com>
-          branch: ${{ steps.github-ref.outputs.short }}
+          branch: ${{ steps.version.outputs.branch }}
           delete-branch: true
           title: Bump version to ${{ steps.changelog.outputs.version }}
           body: |
