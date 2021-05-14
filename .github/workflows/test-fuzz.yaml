@@ -1,6 +1,11 @@
 name: Fuzz
 on:
   push:
+    branches-ignore:
+      - release
+      - release-v*
+    tags-ignore:
+      - '**'
   pull_request:
   workflow_dispatch:
 
