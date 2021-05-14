@@ -18,9 +18,6 @@ on:
 env:
   # Ensure that we have a chance to remove tags for failed release
   # before they are added to global sumdb and goproxy cache.
-  #
-  # Use version retraction if we can’t safely revert release.
-  # See https://blog.golang.org/go116-module-changes#TOC_5.
   GOPRIVATE: github.com/genjidb/genji
   # Enable reproducible builds.
   GOFLAGS: -trimpath
@@ -28,8 +25,8 @@ env:
   GO_EXTLINK_ENABLED: '0'
 
 jobs:
-  prepare:
-    name: Prepare
+  prepare1:
+    name: Prepare genji
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.changelog.outputs.version }}
@@ -54,8 +51,8 @@ jobs:
           path: |
             ${{ steps.go-env.outputs.cache }}
             ${{ steps.go-env.outputs.modcache }}
-          key: prepare-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: prepare-go-
+          key: prepare1-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: prepare1-go-
 
       - name: Install x/exp/cmd/gorelease
         run: go install golang.org/x/exp/cmd/gorelease@v0.0.0-20210513165259-bd7cc9f9ec66
@@ -137,7 +134,8 @@ jobs:
           cat changelog.txt >>release.txt
           echo >>release.txt
           cat engine/badgerengine/changelog.txt >>release.txt
-      - uses: actions/upload-artifact@v2.2.3
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2.2.3
         with:
           name: release.txt
           path: release.txt
@@ -148,7 +146,7 @@ jobs:
     name: Tag genji
     runs-on: ubuntu-latest
     needs:
-      - prepare
+      - prepare1
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
@@ -175,7 +173,7 @@ jobs:
           git config user.email actions@github.com
       - name: Bump github.com/genjidb/genji
         env:
-          version: ${{ needs.prepare.outputs.version }}
+          version: ${{ needs.prepare1.outputs.version }}
         run: |
           git commit --allow-empty -m "Bump version to ${version}"
           git tag "${version}"
@@ -185,7 +183,7 @@ jobs:
     name: Tag genji/engine/badgerengine
     runs-on: ubuntu-latest
     needs:
-      - prepare
+      - prepare1
       - tag1
     steps:
       - name: Checkout code
@@ -214,7 +212,7 @@ jobs:
       - name: Bump github.com/genjidb/genji/engine/badgerengine
         working-directory: engine/badgerengine
         env:
-          version: ${{ needs.prepare.outputs.version }}
+          version: ${{ needs.prepare1.outputs.version }}
         run: |
           go mod edit -dropreplace=github.com/genjidb/genji
           go mod edit -require=github.com/genjidb/genji@"${version}"
@@ -228,7 +226,7 @@ jobs:
     name: Tag genji/cmd/genji
     runs-on: ubuntu-latest
     needs:
-      - prepare
+      - prepare1
       - tag1
       - tag2
     steps:
@@ -258,7 +256,7 @@ jobs:
       - name: Bump github.com/genjidb/genji/cmd/genji
         working-directory: cmd/genji
         env:
-          version: ${{ needs.prepare.outputs.version }}
+          version: ${{ needs.prepare1.outputs.version }}
         run: |
           go mod edit \
             -dropreplace=github.com/genjidb/genji \
@@ -276,20 +274,41 @@ jobs:
     name: Create Draft
     runs-on: ubuntu-latest
     needs:
-      - prepare
+      - prepare1
       - tag1
       - tag2
       - tag3
     steps:
-      - uses: actions/download-artifact@v2.0.9
+      - name: Download artifact
+        uses: actions/download-artifact@v2.0.9
         with:
           name: release.txt
       - name: Draft release
         run: gh release create --draft -R="${repo}" -t="${release_name}" -F="${body_path}" -p="${prerelease}" "${tag_name}"
         env:
           repo: ${{ github.repository }}
-          release_name: ${{ needs.prepare.outputs.version }}
+          release_name: ${{ needs.prepare1.outputs.version }}
           body_path: release.txt
-          prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
-          tag_name: ${{ needs.prepare.outputs.version }}
+          prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
+          tag_name: ${{ needs.prepare1.outputs.version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  rollback:
+    name: Rollback
+    needs:
+      - prepare1
+      - tag1
+      - tag2
+      - tag3
+    if: ${{ !success() && needs.prepare1.outputs.version != '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
+      - name: Remove tags
+        env:
+          version: ${{ needs.prepare1.outputs.version }}
+        run: |
+          git push origin \
+            :refs/tags/cmd/genji/"${version}" \
+            :refs/tags/engine/badgerengine/"${version}" \
+            :refs/tags/"${version}"
