@@ -130,6 +130,8 @@ jobs:
       - load
       - push
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
       - name: Create PR
         run: gh pr create -R="${repo}" -t="${title}" -b="${body}" -B="${base}" -H="${head}"
         env:
