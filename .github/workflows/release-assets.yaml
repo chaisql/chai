@@ -5,6 +5,9 @@ on:
       - published
 
 env:
+  # Ensure that we still have a chance to remove tags event after release.
+  # See also release.yaml.
+  GOPRIVATE: github.com/genjidb/genji
   # Enable reproducible builds.
   GOFLAGS: -trimpath
   CGO_ENABLED: '0'
