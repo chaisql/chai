@@ -16,13 +16,14 @@ jobs:
   # Load version from artifact on successful release.
   #
   load:
+    name: Load version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download artifact
-        uses: actions/github-script@4.0.2
+        uses: actions/github-script@v4.0.2
         env:
           run_id: ${{ github.event.workflow_run.id }}
           workspace: ${{ github.workspace }}
