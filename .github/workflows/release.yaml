@@ -209,7 +209,7 @@ jobs:
           echo >>release.txt
           echo --- >>release.txt
           echo >>release.txt
-          cat changelog.txt >>release.txt
+          cat engine/badgerengine/changelog.txt >>release.txt
       - name: Upload artifact
         uses: actions/upload-artifact@v2.2.3
         with:
