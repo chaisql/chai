@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/dgraph-io/badger/v3 v3.2011.1
-	github.com/genjidb/genji v0.0.0-devel
+	github.com/genjidb/genji v0.12.0
 	github.com/stretchr/testify v1.7.0
 )
 
