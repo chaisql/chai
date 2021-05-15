@@ -319,20 +319,24 @@ jobs:
       - tag1
       - tag2
       - tag3
+    outputs:
+      id: ${{ steps.release.outputs.id }}
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v2.0.9
         with:
           name: release.txt
       - name: Create release
-        run: gh release create --draft -R="${repo}" -t="${release_name}" -F="${body_path}" -p="${prerelease}" "${tag_name}"
+        id: release
+        uses: actions/create-release@v1.1.4
         env:
-          repo: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          tag_name: ${{ needs.prepare1.outputs.version }}
           release_name: ${{ needs.prepare1.outputs.version }}
           body_path: release.txt
           prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
-          tag_name: ${{ needs.prepare1.outputs.version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
 
   rollback:
     name: Rollback
@@ -358,3 +362,8 @@ jobs:
       - name: Untag cmd/genji
         if: ${{ needs.tag3.result == 'success' }}
         run: git push origin :refs/tags/cmd/genji/"${version}"
+      - name: Discard draft
+        if: ${{ needs.draft.result == 'success' }}
+        uses: author/action-rollback@v1.0.3
+        with:
+          release_id: ${{ needs.draft.outputs.id }}
