@@ -82,18 +82,18 @@ jobs:
           version: ${{ needs.load.outputs.version }}
         run: |
           git fetch origin \
-            tag ${version} \
-            tag engine/badgerengine/${version} \
-            tag cmd/genji/${version}
+            tag "${version}" \
+            tag engine/badgerengine/"${version}" \
+            tag cmd/genji/"${version}"
       - name: Merge release
         env:
           version: ${{ needs.load.outputs.version }}
         run: |
           echo "Before merge: $(git rev-parse HEAD)"
           git merge \
-            refs/tags/${version} \
-            refs/tags/engine/badgerengine/${version} \
-            refs/tags/cmd/genji/${version}
+            refs/tags/"${version}" \
+            refs/tags/engine/badgerengine/"${version}" \
+            refs/tags/cmd/genji/"${version}"
           echo "After merge: $(git rev-parse HEAD)"
       - name: Add replace directives
         run: |
@@ -138,13 +138,11 @@ jobs:
           repo: ${{ github.repository }}
           base: ${{ github.event.workflow_run.head_branch }}
           head: ${{ needs.push.outputs.branch }}
-          title: 'Merge release tags for ${{ needs.load.outputs.version }}'
+          # Ensure that default PR merge commit body contains [skip ci] so that we don’t trigger release workflow.
+          # See https://github.blog/changelog/2021-02-08-github-actions-skip
+          title: 'Merge release tags for ${{ needs.load.outputs.version }} [skip ci]'
           body: |
             This PR merges ${{ needs.load.outputs.version }} release tags.
-
-            **DO NOT MERGE** if the latest commit does not contain `[skip ci]` and target branch is release branch.
-            Otherwise merge would trigger the release on push event.
-            See https://github.blog/changelog/2021-02-08-github-actions-skip
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   rollback:
