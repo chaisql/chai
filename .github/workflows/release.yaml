@@ -347,31 +347,28 @@ jobs:
       - tag2
       - tag3
       - draft
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     if: ${{ always() && !success() }}
+    env:
+      version: ${{ needs.prepare1.outputs.version }}
     steps:
-      # See https://github.com/author/action-rollback/issues/8
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
+      - name: Untag cmd/genji
+        if: ${{ needs.tag3.result == 'success' }}
+        run: |
+          git push origin :refs/tags/cmd/genji/"${version}"
+      - name: Untag badgerengine
+        if: ${{ needs.tag2.result == 'success' }}
+        run: |
+          git push origin :refs/tags/engine/badgerengine/"${version}"
+      - name: Untag genji
+        if: ${{ needs.tag1.result == 'success' }}
+        run: |
+          git push origin :refs/tags/"${version}"
       - name: Discard draft
         if: ${{ needs.draft.result == 'success' || needs.draft.outputs.id != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: author/action-rollback@stable
         with:
           release_id: ${{ needs.draft.outputs.id }}
-      - name: Untag cmd/genji
-        if: ${{ needs.tag3.result == 'success' }}
-        uses: author/action-rollback@stable
-        with:
-          tag: cmd/genji/${{ needs.prepare1.outputs.version }}
-          delete_orphan_tag: true
-      - name: Untag badgerengine
-        if: ${{ needs.tag2.result == 'success' }}
-        uses: author/action-rollback@stable
-        with:
-          tag: engine/badgerengine/${{ needs.prepare1.outputs.version }}
-          delete_orphan_tag: true
-      - name: Untag genji
-        if: ${{ needs.tag1.result == 'success' }}
-        uses: author/action-rollback@stable
-        with:
-          tag: ${{ needs.prepare1.outputs.version }}
-          delete_orphan_tag: true
