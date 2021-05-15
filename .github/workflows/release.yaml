@@ -155,7 +155,7 @@ jobs:
           git push origin "${version}"
 
   prepare2:
-    name: Prepare genji/engine/badgerengine
+    name: Prepare badgerengine
     runs-on: ubuntu-latest
     needs:
       - prepare1
@@ -227,7 +227,7 @@ jobs:
           git push origin :refs/tags/"${version}"
 
   tag2:
-    name: Tag genji/engine/badgerengine
+    name: Tag badgerengine
     runs-on: ubuntu-latest
     needs:
       - prepare1
@@ -271,7 +271,7 @@ jobs:
           git push origin engine/badgerengine/"${version}"
 
   tag3:
-    name: Tag genji/cmd/genji
+    name: Tag cmd/genji
     runs-on: ubuntu-latest
     needs:
       - prepare1
