@@ -215,6 +215,24 @@ func TestScan(t *testing.T) {
 		require.Len(t, s, 2)
 		require.Equal(t, []int{1, 2}, s)
 	})
+
+	t.Run("NULL with pointers", func(t *testing.T) {
+		type bar struct {
+			A *int
+			B *string
+			C *int
+		}
+
+		c := 10
+		b := bar{
+			C: &c,
+		}
+
+		d := document.NewFieldBuffer().Add("a", document.NewNullValue())
+		err := document.StructScan(d, &b)
+		require.NoError(t, err)
+		require.Equal(t, bar{}, b)
+	})
 }
 
 type documentScanner struct {

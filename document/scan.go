@@ -83,9 +83,8 @@ func structScan(d Document, ref reflect.Value) error {
 		}
 		v, err := d.GetByField(name)
 		if err == ErrFieldNotFound {
-			continue
-		}
-		if err != nil {
+			v = NewNullValue()
+		} else if err != nil {
 			return err
 		}
 
@@ -221,6 +220,23 @@ func ScanValue(v Value, t interface{}) error {
 func scanValue(v Value, ref reflect.Value) error {
 	if !ref.IsValid() {
 		return &ErrUnsupportedType{ref, "parameter is not a valid reference"}
+	}
+
+	if v.Type == NullValue {
+		if ref.Type().Kind() != reflect.Ptr {
+			return nil
+		}
+
+		if ref.IsNil() {
+			return nil
+		}
+
+		if !ref.CanSet() {
+			ref = reflect.Indirect(ref)
+		}
+
+		ref.Set(reflect.Zero(ref.Type()))
+		return nil
 	}
 
 	if ref.Type().Kind() == reflect.Ptr && ref.IsNil() {
