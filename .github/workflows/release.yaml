@@ -353,24 +353,24 @@ jobs:
     steps:
       - name: Discard draft
         if: ${{ needs.draft.result == 'success' || needs.draft.outputs.id != '' }}
-        uses: author/action-rollback@v1.0.3
+        uses: author/action-rollback@1.0.3
         with:
           release_id: ${{ needs.draft.outputs.id }}
       - name: Untag cmd/genji
         if: ${{ needs.tag3.result == 'success' }}
-        uses: author/action-rollback@v1.0.3
+        uses: author/action-rollback@1.0.3
         with:
           tag: cmd/genji/${{ needs.prepare1.outputs.version }}
           delete_orphan_tag: true
       - name: Untag badgerengine
         if: ${{ needs.tag2.result == 'success' }}
-        uses: author/action-rollback@v1.0.3
+        uses: author/action-rollback@1.0.3
         with:
           tag: engine/badgerengine/${{ needs.prepare1.outputs.version }}
           delete_orphan_tag: true
       - name: Untag genji
         if: ${{ needs.tag1.result == 'success' }}
-        uses: author/action-rollback@v1.0.3
+        uses: author/action-rollback@1.0.3
         with:
           tag: ${{ needs.prepare1.outputs.version }}
           delete_orphan_tag: true
