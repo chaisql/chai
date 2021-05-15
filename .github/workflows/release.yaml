@@ -313,7 +313,7 @@ jobs:
           git push origin cmd/genji/"${version}"
 
   draft:
-    name: Create Draft
+    name: Draft release
     runs-on: ubuntu-latest
     needs:
       - prepare1
@@ -339,6 +339,29 @@ jobs:
           prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
           draft: true
 
+  # Save version for post-release workflow.
+  #
+  save-version:
+    name: Save version
+    runs-on: ubuntu-latest
+    needs:
+      - prepare1
+    steps:
+      - name: Save version
+        env:
+          version: ${{ needs.prepare1.outputs.version }}
+        run: |
+          echo "${version}" >version.txt
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2.2.3
+        with:
+          name: version.txt
+          path: version.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  # Remove tags and draft release on failure.
+  #
   rollback:
     name: Rollback
     runs-on: ubuntu-latest
