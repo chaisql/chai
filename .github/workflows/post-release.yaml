@@ -49,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - load
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
@@ -125,22 +127,36 @@ jobs:
     name: Create PR
     runs-on: ubuntu-latest
     needs:
+      - load
       - push
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ needs.push.outputs.branch }}
       - name: Create PR
-        uses: repo-sync/pull-request@v2.4.3
-        with:
-          source_branch: ${{ needs.push.outputs.branch }}
-          destination_branch: ${{ github.event.workflow_run.head_branch }}
-          pr_title: 'Merge release tags for ${{ needs.load.outputs.version }}'
-          pr_body: |
+        run: gh pr create -R="${repo}" -t="${title}" -b="${body}" -B="${base}" -H="${head}"
+        env:
+          repo: ${{ github.repository }}
+          base: ${{ github.event.workflow_run.head_branch }}
+          head: ${{ needs.push.outputs.branch }}
+          title: 'Merge release tags for ${{ needs.load.outputs.version }}'
+          body: |
             This PR merges ${{ needs.load.outputs.version }} release tags.
 
             **DO NOT MERGE** if the latest commit does not contain `[skip ci]` and target branch is release branch.
             Otherwise merge would trigger the release on push event.
             See https://github.blog/changelog/2021-02-08-github-actions-skip
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    needs:
+      - push
+      - merge
+    if: ${{ always() && !success() }}
+    env:
+      branch: ${{ needs.push.outputs.branch }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
+      - name: Delete branch
+        if: ${{ needs.push.result == 'success' }}
+        run: git push origin :refs/heads/"${branch}"
