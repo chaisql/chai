@@ -6,12 +6,12 @@ on:
       - release-v*
   workflow_dispatch:
     inputs:
-      base:
-        description: 'Base version'
-        required: false
-        default: ''
       version:
         description: 'New version'
+        required: false
+        default: ''
+      base:
+        description: 'Base version'
         required: false
         default: ''
 
