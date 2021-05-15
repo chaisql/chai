@@ -219,14 +219,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      # Remove tag1 if we can’t check semver for badgerengine.
-      - name: Rollback
-        if: ${{ failure() }}
-        env:
-          version: ${{ needs.prepare1.outputs.version }}
-        run: |
-          git push origin :refs/tags/"${version}"
-
   tag2:
     name: Tag badgerengine
     runs-on: ubuntu-latest
@@ -341,3 +333,28 @@ jobs:
           prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
           tag_name: ${{ needs.prepare1.outputs.version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    needs:
+      - prepare1
+      - tag1
+      - tag2
+      - tag3
+      - draft
+    env:
+      version: ${{ needs.prepare1.outputs.version }}
+    if: ${{ always() && !success() }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
+      - name: Untag genji
+        if: ${{ needs.tag1.result == 'success' }}
+        run: git push origin :refs/tags/"${version}"
+      - name: Untag badgerengine
+        if: ${{ needs.tag2.result == 'success' }}
+        run: git push origin :refs/tags/engine/badgerengine/"${version}"
+      - name: Untag cmd/genji
+        if: ${{ needs.tag3.result == 'success' }}
+        run: git push origin :refs/tags/cmd/genji/"${version}"
