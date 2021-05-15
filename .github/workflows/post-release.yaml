@@ -6,15 +6,7 @@ on:
     types:
       - completed
 
-env:
-  # Enable reproducible builds.
-  GOFLAGS: -trimpath
-  CGO_ENABLED: '0'
-  GO_EXTLINK_ENABLED: '0'
-
 jobs:
-  # Load version from artifact on successful release.
-  #
   load:
     name: Load version
     runs-on: ubuntu-latest
@@ -52,10 +44,8 @@ jobs:
           unzip version.zip
           echo "::set-output name=version::$(cat version.txt)"
 
-  # Merge release tags into release branch.
-  #
-  merge:
-    name: Merge
+  push:
+    name: Push branch
     runs-on: ubuntu-latest
     needs:
       - load
@@ -105,29 +95,52 @@ jobs:
           echo "After merge: $(git rev-parse HEAD)"
       - name: Add replace directives
         run: |
+          go mod tidy
+          git add go.mod go.sum
           (
             cd engine/badgerengine
             go mod edit -replace=github.com/genjidb/genji=../../ 
             go mod tidy
+            git add go.mod go.sum
           )
           (
             cd cmd/genji
-            go mod edit \
-              -replace=github.com/genjidb/genji=../../ \
-              -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine/
+            go mod edit -replace=github.com/genjidb/genji=../../
+            go mod edit -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine/
             go mod tidy
+            git add go.mod go.sum
           )
-      - name: Create PR
-        uses: peter-evans/create-pull-request@v3.9.2
+          git commit --allow-empty -m 'Add replace directives [skip ci]'
+      - name: Push PR branch
+        id: branch
+        env:
+          version: ${{ needs.load.outputs.version }}
+        run: |
+          branch=merge-release-"${version}"
+          git checkout -b "${branch}"
+          git push origin "${branch}"
+          echo "::set-output name=name::${branch}"
+
+  merge:
+    name: Create PR
+    runs-on: ubuntu-latest
+    needs:
+      - push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
         with:
-          author: actions-user <actions@github.com>
-          committer: actions-user <actions@github.com>
-          commit-message: |
-            Back to devel mode [skip ci]
-          branch: merge-release-${{ needs.load.outputs.version }}
-          delete-branch: true
-          title: 'Merge release tags for ${{ needs.load.outputs.version }}'
-          body: |
+          ref: ${{ needs.push.outputs.branch }}
+      - name: Create PR
+        uses: repo-sync/pull-request@v2.4.3
+        with:
+          source_branch: ${{ needs.push.outputs.branch }}
+          destination_branch: ${{ github.event.workflow_run.head_branch }}
+          pr_title: 'Merge release tags for ${{ needs.load.outputs.version }}'
+          pr_body: |
             This PR merges ${{ needs.load.outputs.version }} release tags.
 
-            **DO NOT MERGE** if the latest commit does not contain `[skip ci]` and target branch is release branch. Otherwise merge would trigger the release on push event. See https://github.blog/changelog/2021-02-08-github-actions-skip
+            **DO NOT MERGE** if the latest commit does not contain `[skip ci]` and target branch is release branch.
+            Otherwise merge would trigger the release on push event.
+            See https://github.blog/changelog/2021-02-08-github-actions-skip
+          github_token: ${{ secrets.GITHUB_TOKEN }}
