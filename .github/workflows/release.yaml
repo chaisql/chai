@@ -331,7 +331,7 @@ jobs:
         uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        env:
+        with:
           tag_name: ${{ needs.prepare1.outputs.version }}
           release_name: ${{ needs.prepare1.outputs.version }}
           body_path: release.txt
