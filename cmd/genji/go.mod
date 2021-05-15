@@ -17,5 +17,5 @@ require (
 
 replace (
 	github.com/genjidb/genji => ../../
-	github.com/genjidb/genji/engine/badgerengine => ../../engine/badgerengine
+	github.com/genjidb/genji/engine/badgerengine => ../../engine/badgerengine/
 )

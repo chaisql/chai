@@ -154,6 +154,8 @@ jobs:
           version: ${{ needs.prepare1.outputs.version }}
         run: |
           go mod tidy
+          git diff
+          git add go.mod go.sum
           git commit --allow-empty -m "Bump version to ${version}"
           git tag "${version}"
           git push origin "${version}"
@@ -261,6 +263,7 @@ jobs:
           go mod edit -dropreplace=github.com/genjidb/genji
           go mod edit -require=github.com/genjidb/genji@"${version}"
           go mod tidy
+          git diff
           git add go.mod go.sum
           git commit --allow-empty -m "Bump version to ${version}"
           git tag engine/badgerengine/"${version}"
@@ -302,13 +305,12 @@ jobs:
         env:
           version: ${{ needs.prepare1.outputs.version }}
         run: |
-          go mod edit \
-            -dropreplace=github.com/genjidb/genji \
-            -dropreplace=github.com/genjidb/genji/engine/badgerengine
-          go mod edit \
-            -require=github.com/genjidb/genji@"${version}" \
-            -require=github.com/genjidb/genji/engine/badgerengine@"${version}"
+          go mod edit -dropreplace=github.com/genjidb/genji
+          go mod edit -dropreplace=github.com/genjidb/genji/engine/badgerengine
+          go mod edit -require=github.com/genjidb/genji@"${version}"
+          go mod edit -require=github.com/genjidb/genji/engine/badgerengine@"${version}"
           go mod tidy
+          git diff
           git add go.mod go.sum
           git commit --allow-empty -m "Bump version to ${version}"
           git tag cmd/genji/"${version}"
@@ -396,11 +398,13 @@ jobs:
       - name: Add replace directives
         run: |
           go mod tidy
+          git diff
           git add go.mod go.sum
           (
             cd engine/badgerengine
             go mod edit -replace=github.com/genjidb/genji=../../ 
             go mod tidy
+            git diff
             git add go.mod go.sum
           )
           (
@@ -408,6 +412,7 @@ jobs:
             go mod edit -replace=github.com/genjidb/genji=../../
             go mod edit -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine/
             go mod tidy
+            git diff
             git add go.mod go.sum
           )
           git commit --allow-empty -m 'Add replace directives [skip ci]'
