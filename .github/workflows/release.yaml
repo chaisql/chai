@@ -109,6 +109,7 @@ jobs:
           echo --- >>release.txt
           echo >>release.txt
           cat changelog.txt >>release.txt
+          echo >>release.txt
       - name: Upload artifact
         uses: actions/upload-artifact@v2.2.3
         with:
@@ -146,7 +147,7 @@ jobs:
         run: |
           git config user.name actions-user
           git config user.email actions@github.com
-      - name: Bump github.com/genjidb/genji
+      - name: Bump version
         env:
           version: ${{ needs.prepare1.outputs.version }}
         run: |
@@ -257,7 +258,7 @@ jobs:
         run: |
           git config user.name actions-user
           git config user.email actions@github.com
-      - name: Bump github.com/genjidb/genji/engine/badgerengine
+      - name: Bump version
         working-directory: engine/badgerengine
         env:
           version: ${{ needs.prepare1.outputs.version }}
@@ -301,7 +302,7 @@ jobs:
         run: |
           git config user.name actions-user
           git config user.email actions@github.com
-      - name: Bump github.com/genjidb/genji/cmd/genji
+      - name: Bump version
         working-directory: cmd/genji
         env:
           version: ${{ needs.prepare1.outputs.version }}
