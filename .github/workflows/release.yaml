@@ -151,6 +151,7 @@ jobs:
         env:
           version: ${{ needs.prepare1.outputs.version }}
         run: |
+          go mod tidy
           git commit --allow-empty -m "Bump version to ${version}"
           git tag "${version}"
           git push origin "${version}"
