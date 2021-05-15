@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.changelog.outputs.version }}
+      branch: ${{ steps.version.outputs.branch }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
@@ -76,6 +77,7 @@ jobs:
           fi
           echo "::set-output name=base::${base}"
           echo "::set-output name=next::${next}"
+          echo "::set-output name=branch::${branch}"
 
       # Check github.com/genjidb/genji module.
       #
@@ -339,26 +341,107 @@ jobs:
           prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
           draft: true
 
-  # Save version for post-release workflow.
-  #
-  save-version:
-    name: Save version
+  push:
+    name: Push branch
     runs-on: ubuntu-latest
     needs:
       - prepare1
+      - tag1
+      - tag2
+      - tag3
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
     steps:
-      - name: Save version
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
+      - name: Install Go
+        uses: actions/setup-go@v2.1.3
+        with:
+          go-version: 1.16.4
+      - name: Get Go environment
+        id: go-env
+        run: |
+          echo "::set-output name=cache::$(go env GOCACHE)"
+          echo "::set-output name=modcache::$(go env GOMODCACHE)"
+      - name: Set up cache
+        uses: actions/cache@v2.1.5
+        with:
+          path: |
+            ${{ steps.go-env.outputs.cache }}
+            ${{ steps.go-env.outputs.modcache }}
+          key: push-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: push-go-
+      - name: Set up Git config
+        run: |
+          git config user.name actions-user
+          git config user.email actions@github.com
+      - name: Fetch tags
         env:
           version: ${{ needs.prepare1.outputs.version }}
         run: |
-          echo "${version}" >version.txt
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2.2.3
-        with:
-          name: version.txt
-          path: version.txt
-          if-no-files-found: error
-          retention-days: 1
+          git fetch origin \
+            tag "${version}" \
+            tag engine/badgerengine/"${version}" \
+            tag cmd/genji/"${version}"
+      - name: Merge release
+        env:
+          version: ${{ needs.prepare1.outputs.version }}
+        run: |
+          echo "Before merge: $(git rev-parse HEAD)"
+          git merge \
+            refs/tags/"${version}" \
+            refs/tags/engine/badgerengine/"${version}" \
+            refs/tags/cmd/genji/"${version}"
+          echo "After merge: $(git rev-parse HEAD)"
+      - name: Add replace directives
+        run: |
+          go mod tidy
+          git add go.mod go.sum
+          (
+            cd engine/badgerengine
+            go mod edit -replace=github.com/genjidb/genji=../../ 
+            go mod tidy
+            git add go.mod go.sum
+          )
+          (
+            cd cmd/genji
+            go mod edit -replace=github.com/genjidb/genji=../../
+            go mod edit -replace=github.com/genjidb/genji/engine/badgerengine=../../engine/badgerengine/
+            go mod tidy
+            git add go.mod go.sum
+          )
+          git commit --allow-empty -m 'Add replace directives [skip ci]'
+      - name: Push PR branch
+        id: branch
+        env:
+          version: ${{ needs.prepare1.outputs.version }}
+        run: |
+          branch=merge-release-"${version}"
+          git checkout -b "${branch}"
+          git push origin "${branch}"
+          echo "::set-output name=name::${branch}"
+
+  merge:
+    name: Create PR
+    runs-on: ubuntu-latest
+    needs:
+      - prepare1
+      - push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.3.4
+      - name: Create PR
+        run: gh pr create -R="${repo}" -t="${title}" -b="${body}" -B="${base}" -H="${head}"
+        env:
+          repo: ${{ github.repository }}
+          base: ${{ needs.prepare1.outputs.branch }}
+          head: ${{ needs.push.outputs.branch }}
+          # Ensure that default merge commit body contains [skip ci] so that we don’t trigger release workflow.
+          # See also https://github.blog/changelog/2021-02-08-github-actions-skip
+          title: 'Merge release tags for ${{ needs.prepare1.outputs.version }} [skip ci]'
+          body: |
+            This PR merges ${{ needs.prepare1.outputs.version }} release tags.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Remove tags and draft release on failure.
   #
@@ -370,13 +453,19 @@ jobs:
       - tag1
       - tag2
       - tag3
+      - push
       - draft
     if: ${{ always() && !success() }}
     env:
+      branch: ${{ needs.push.outputs.branch }}
       version: ${{ needs.prepare1.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
+      - name: Delete PR branch
+        if: ${{ needs.push.result == 'success' || needs.push.outputs.branch != '' }}
+        run: |
+          git push origin :refs/heads/"${branch}"
       - name: Untag cmd/genji
         if: ${{ needs.tag3.result == 'success' }}
         run: |
