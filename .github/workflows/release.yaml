@@ -342,6 +342,10 @@ jobs:
           body_path: release.txt
           prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
           draft: true
+          # Defaults to HEAD unless we set that explicitly. Setting this
+          # to main branch fixes “commits since release” on release page.
+          # Ideally we could just use gh but that would just make things
+          # harder since we need release ID for rollback job on failure.
           commitish: main
 
   push:
@@ -460,6 +464,7 @@ jobs:
       - tag2
       - tag3
       - push
+      - merge
       - draft
     if: ${{ always() && !success() }}
     env:
@@ -468,6 +473,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2.3.4
+      - name: Discard draft
+        if: ${{ needs.draft.result == 'success' || needs.draft.outputs.id != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: author/action-rollback@stable
+        with:
+          release_id: ${{ needs.draft.outputs.id }}
       - name: Delete PR branch
         if: ${{ needs.push.result == 'success' || needs.push.outputs.branch != '' }}
         run: |
@@ -484,10 +496,3 @@ jobs:
         if: ${{ needs.tag1.result == 'success' }}
         run: |
           git push origin :refs/tags/"${version}"
-      - name: Discard draft
-        if: ${{ needs.draft.result == 'success' || needs.draft.outputs.id != '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: author/action-rollback@stable
-        with:
-          release_id: ${{ needs.draft.outputs.id }}
