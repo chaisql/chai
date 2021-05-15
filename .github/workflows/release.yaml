@@ -342,6 +342,7 @@ jobs:
           body_path: release.txt
           prerelease: ${{ contains(needs.prepare1.outputs.version, '-') }}
           draft: true
+          commitish: main
 
   push:
     name: Push branch
