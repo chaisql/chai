@@ -1,11 +1,15 @@
 package testutil
 
 import (
+	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
 	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/testutil/genexprtests"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,4 +77,59 @@ func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	}
 
 	return &ne
+}
+
+var emptyEnv = expr.NewEnvironment(nil)
+
+func ExprRunner(t *testing.T, testfile string) {
+	t.Helper()
+
+	f, err := os.Open(testfile)
+	if err != nil {
+		t.Errorf("Failed to open test data, got %v (%s)", err, testfile)
+	}
+
+	ts, err := genexprtests.Parse(f)
+	require.NoError(t, err)
+
+	for _, test := range ts.Tests {
+		t.Run(test.Name, func(t *testing.T) {
+			for _, stmt := range test.Statements {
+				if !stmt.Fail {
+					t.Run("OK "+stmt.Expr, func(t *testing.T) {
+						// parse the expected result
+						e, _, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
+						require.NoError(t, err)
+
+						// eval it to get a proper Value
+						want, err := e.Eval(emptyEnv)
+						require.NoError(t, err)
+
+						// parse the given epxr
+						e, _, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
+						require.NoError(t, err)
+
+						// eval it to get a proper Value
+						got, err := e.Eval(emptyEnv)
+						require.NoError(t, err)
+
+						// finally, compare those two
+						require.Equal(t, want, got)
+					})
+				} else {
+					t.Run("NOK "+stmt.Expr, func(t *testing.T) {
+						// parse the given epxr
+						e, lit, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
+						t.Log(lit)
+						require.NoError(t, err)
+
+						// eval it, it should return an error
+						_, err = e.Eval(emptyEnv)
+						require.NotNilf(t, err, "expected expr `%s` to return an error, got nil", stmt.Expr)
+						require.Regexp(t, regexp.MustCompile(stmt.Res), err.Error())
+					})
+				}
+			}
+		})
+	}
 }
