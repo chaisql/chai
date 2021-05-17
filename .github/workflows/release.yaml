@@ -24,6 +24,9 @@ env:
   CGO_ENABLED: '0'
   GO_EXTLINK_ENABLED: '0'
 
+concurrency:
+  group: release
+
 jobs:
   prepare1:
     name: Prepare genji
