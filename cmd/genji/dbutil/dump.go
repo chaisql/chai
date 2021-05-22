@@ -184,7 +184,7 @@ func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string,
 		}
 		defer res.Close()
 
-		err = res.Iterate(func(d document.Document) error {
+		return res.Iterate(func(d document.Document) error {
 			var name string
 			err = document.Scan(d, &name)
 			if err != nil {
@@ -193,7 +193,6 @@ func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string,
 			listName = append(listName, name)
 			return nil
 		})
-		return err
 	})
 
 	return listName, err
