@@ -74,7 +74,7 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 		}
 
 		// Scan the expr for the value.
-		expr, _, err := p.ParseExpr()
+		expr, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}

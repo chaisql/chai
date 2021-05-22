@@ -32,7 +32,7 @@ func TestParserSelect(t *testing.T) {
 		},
 		{"Wildcard with no FORM", "SELECT *", nil, true},
 		{"NoTableWithTuple", "SELECT (1, 2)",
-			stream.New(stream.Project(testutil.ParseNamedExpr(t, "(1, 2)"))),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
@@ -41,7 +41,7 @@ func TestParserSelect(t *testing.T) {
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
 			stream.New(stream.Project(
-				testutil.ParseNamedExpr(t, "1 in (1, 2)"),
+				testutil.ParseNamedExpr(t, "1 IN [1, 2]"),
 				testutil.ParseNamedExpr(t, "3"),
 			)),
 			false,
@@ -67,7 +67,7 @@ func TestParserSelect(t *testing.T) {
 			false,
 		},
 		{"WithExpr", "SELECT a    > 1 FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a > 1", "a    > 1"))),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a > 1", "a > 1"))),
 			false,
 		},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
@@ -153,5 +153,11 @@ func TestParserSelect(t *testing.T) {
 				require.Error(t, err)
 			}
 		})
+	}
+}
+
+func BenchmarkSelect(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		parser.ParseQuery("SELECT a, b.c[100].d AS `foo` FROM `some table` WHERE d.e[100] >= 12 AND c.d IN ([1, true], [2, false]) GROUP BY d.e[0] LIMIT 10 + 10 OFFSET 20 - 20 ORDER BY d DESC")
 	}
 }

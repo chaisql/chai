@@ -102,6 +102,18 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		testutil.RequireDocJSONEq(t, d, `{"a": 1, "pk()": 1, "A": 1}`)
 	})
+
+	// t.Run("without RETURNING", func(t *testing.T) {
+	// 	db, err := genji.Open(":memory:")
+	// 	require.NoError(t, err)
+	// 	defer db.Close()
+
+	// 	err = db.Exec(`CREATE TABLE test`)
+	// 	require.NoError(t, err)
+
+	// 	_, err = db.QueryDocument(`insert into test (a) VALUES (1)`)
+	// 	require.Equal(t, errs.ErrDocumentNotFound, err)
+	// })
 }
 
 func TestInsertSelect(t *testing.T) {

@@ -104,7 +104,7 @@ func ExprRunner(t *testing.T, testfile string) {
 				if !stmt.Fail {
 					t.Run("OK "+stmt.Expr, func(t *testing.T) {
 						// parse the expected result
-						e, _, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
+						e, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
 						require.NoError(t, err)
 
 						// eval it to get a proper Value
@@ -112,7 +112,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						require.NoError(t, err)
 
 						// parse the given epxr
-						e, _, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
+						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
 						require.NoError(t, err)
 
 						// eval it to get a proper Value
@@ -125,8 +125,7 @@ func ExprRunner(t *testing.T, testfile string) {
 				} else {
 					t.Run("NOK "+stmt.Expr, func(t *testing.T) {
 						// parse the given epxr
-						e, lit, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
-						t.Log(lit)
+						e, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
 						require.NoError(t, err)
 
 						// eval it, it should return an error

@@ -73,7 +73,7 @@ func (p *Parser) parseSelectStatement() (*query.StreamStmt, error) {
 // parseProjectedExprs parses the list of projected fields.
 func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 	// Parse first (required) result path.
-	pe, _, err := p.parseProjectedExpr()
+	pe, err := p.parseProjectedExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 			return pexprs, nil
 		}
 
-		if pe, _, err = p.parseProjectedExpr(); err != nil {
+		if pe, err = p.parseProjectedExpr(); err != nil {
 			return nil, err
 		}
 
@@ -95,38 +95,32 @@ func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 }
 
 // parseProjectedExpr parses one projected expression.
-func (p *Parser) parseProjectedExpr() (expr.Expr, string, error) {
+func (p *Parser) parseProjectedExpr() (expr.Expr, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return expr.Wildcard{}, "*", nil
+		return expr.Wildcard{}, nil
 	}
 	p.Unscan()
 
-	e, lit, err := p.ParseExpr()
+	e, err := p.ParseExpr()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	// Paths may be quoted, we make sure we name the result field
-	// with the unquoted name instead.
-	if fs, ok := e.(expr.Path); ok {
-		lit = fs.String()
-	}
-
-	rf := &expr.NamedExpr{Expr: e, ExprName: lit}
+	rf := &expr.NamedExpr{Expr: e, ExprName: e.String()}
 
 	// Check if the AS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
 		rf.ExprName, err = p.parseIdent()
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
-		return rf, rf.ExprName, nil
+		return rf, nil
 	}
 	p.Unscan()
 
-	return rf, rf.ExprName, nil
+	return rf, nil
 }
 
 func (p *Parser) parseDistinct() (bool, error) {
@@ -162,7 +156,7 @@ func (p *Parser) parseGroupBy() (expr.Expr, error) {
 	}
 
 	// parse expr
-	e, _, err := p.ParseExpr()
+	e, err := p.ParseExpr()
 	return e, err
 }
 

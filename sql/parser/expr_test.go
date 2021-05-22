@@ -165,7 +165,7 @@ func TestParserExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, lit, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
+			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
 				require.Error(t, err)
 			} else {
@@ -173,7 +173,6 @@ func TestParserExpr(t *testing.T) {
 				if !expr.Equal(test.expected, ex) {
 					require.EqualValues(t, test.expected, ex)
 				}
-				require.Equal(t, test.s, lit)
 			}
 		})
 	}
@@ -248,13 +247,12 @@ func TestParserParams(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ex, lit, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
+			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 				require.EqualValues(t, test.expected, ex)
-				require.Equal(t, test.s, lit)
 			}
 		})
 	}

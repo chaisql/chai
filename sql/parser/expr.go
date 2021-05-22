@@ -1,9 +1,7 @@
 package parser
 
 import (
-	"bytes"
 	"strconv"
-	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
@@ -26,20 +24,11 @@ func (d *dummyOperator) SetLeftHandExpr(e expr.Expr)                    { panic(
 func (d *dummyOperator) SetRightHandExpr(e expr.Expr)                   { d.rightHand = e }
 
 // ParseExpr parses an expression.
-func (p *Parser) ParseExpr() (e expr.Expr, lit string, err error) {
+func (p *Parser) ParseExpr() (e expr.Expr, err error) {
 	return p.parseExprWithMinPrecedence(0)
 }
 
-func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, lit string, err error) {
-	// enable the expression buffer to store the literal representation
-	// of the parsed expression
-	if p.buf == nil {
-		p.buf = new(bytes.Buffer)
-		defer func() {
-			p.buf = nil
-		}()
-	}
-
+func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, err error) {
 	// Dummy root node.
 	var root expr.Operator = new(dummyOperator)
 
@@ -47,7 +36,7 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, lit st
 	// This variable will always be the root of the expression tree.
 	e, err = p.parseUnaryExpr()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	root.SetRightHandExpr(e)
 
@@ -56,16 +45,16 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, lit st
 		// If the next token is NOT an operator then return the expression.
 		op, tok, err := p.parseOperator(precedence)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		if tok == 0 {
-			return root.RightHand(), strings.TrimSpace(p.buf.String()), nil
+			return root.RightHand(), nil
 		}
 
 		var rhs expr.Expr
 
 		if rhs, err = p.parseUnaryExpr(); err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
 		// Find the right spot in the tree to add the new expression by
@@ -153,7 +142,7 @@ func (p *Parser) parseOperator(minPrecedence int) (func(lhs, rhs expr.Expr) expr
 	case op == scanner.CONCAT && op.Precedence() >= minPrecedence:
 		return expr.Concat, op, nil
 	case op == scanner.BETWEEN && op.Precedence() >= minPrecedence:
-		a, _, err := p.parseExprWithMinPrecedence(op.Precedence())
+		a, err := p.parseExprWithMinPrecedence(op.Precedence())
 		if err != nil {
 			return nil, op, err
 		}
@@ -237,7 +226,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 		p.Unscan()
 		return p.parseExprList(scanner.LSBRACKET, scanner.RSBRACKET)
 	case scanner.LPAREN:
-		e, _, err := p.ParseExpr()
+		e, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +248,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")", ","}, pos)
 	case scanner.NOT:
-		e, _, err := p.ParseExpr()
+		e, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -433,7 +422,7 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
 	}
 
-	e, _, err := p.ParseExpr()
+	e, err := p.ParseExpr()
 	if err != nil {
 		return expr.KVPair{}, err
 	}
@@ -506,7 +495,7 @@ func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprL
 
 	// Parse expressions.
 	for {
-		if expr, _, err = p.ParseExpr(); err != nil {
+		if expr, err = p.ParseExpr(); err != nil {
 			p.Unscan()
 			break
 		}
@@ -571,7 +560,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 
 	// Parse expressions.
 	for {
-		e, _, err := p.ParseExpr()
+		e, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -605,7 +594,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// parse required expression.
-	e, _, err := p.ParseExpr()
+	e, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}

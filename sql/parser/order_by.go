@@ -34,7 +34,7 @@ func (p *Parser) parseLimit() (expr.Expr, error) {
 		return nil, nil
 	}
 
-	e, _, err := p.ParseExpr()
+	e, err := p.ParseExpr()
 	return e, err
 }
 
@@ -45,6 +45,6 @@ func (p *Parser) parseOffset() (expr.Expr, error) {
 		return nil, nil
 	}
 
-	e, _, err := p.ParseExpr()
+	e, err := p.ParseExpr()
 	return e, err
 }

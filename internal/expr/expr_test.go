@@ -44,7 +44,7 @@ var nullLitteral = document.NewNullValue()
 func testExpr(t testing.TB, exprStr string, env *expr.Environment, want document.Value, fails bool) {
 	t.Helper()
 
-	e, _, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
+	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
 	require.NoError(t, err)
 	res, err := e.Eval(env)
 	if fails {
@@ -75,7 +75,7 @@ func TestString(t *testing.T) {
 	}
 
 	testFn := func(s string, want string) {
-		e, _, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
+		e, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
 		require.NoError(t, err)
 		require.Equal(t, want, fmt.Sprintf("%v", e))
 	}

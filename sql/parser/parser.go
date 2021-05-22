@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"bytes"
 	"io"
 	"strings"
 
@@ -14,10 +13,9 @@ import (
 
 // Parser represents an Genji SQL Parser.
 type Parser struct {
-	s             *scanner.BufScanner
+	s             *scanner.Scanner
 	orderedParams int
 	namedParams   int
-	buf           *bytes.Buffer
 	functions     expr.Functions
 }
 
@@ -32,7 +30,7 @@ func NewParserWithOptions(r io.Reader, opts *Options) *Parser {
 		opts = defaultOptions()
 	}
 
-	return &Parser{s: scanner.NewBufScanner(r), functions: opts.Functions}
+	return &Parser{s: scanner.NewScanner(r), functions: opts.Functions}
 }
 
 // ParseQuery parses a query string and returns its AST representation.
@@ -47,7 +45,7 @@ func ParsePath(s string) (document.Path, error) {
 
 // ParseExpr parses an expression.
 func ParseExpr(s string) (expr.Expr, error) {
-	e, _, err := NewParser(strings.NewReader(s)).ParseExpr()
+	e, err := NewParser(strings.NewReader(s)).ParseExpr()
 	return e, err
 }
 
@@ -130,7 +128,7 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 	}
 
 	// Scan the identifier for the source.
-	expr, _, err := p.ParseExpr()
+	expr, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -180,15 +178,7 @@ func (p *Parser) parsePathList() ([]document.Path, error) {
 }
 
 // Scan returns the next token from the underlying scanner.
-func (p *Parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) {
-	ti := p.s.Scan()
-	if p.buf != nil {
-		p.buf.WriteString(ti.Raw)
-	}
-
-	tok, pos, lit = ti.Tok, ti.Pos, ti.Lit
-	return
-}
+func (p *Parser) Scan() (tok scanner.Token, pos scanner.Pos, lit string) { return p.s.Scan() }
 
 // ScanIgnoreWhitespace scans the next non-whitespace and non-comment token.
 func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit string) {
@@ -203,10 +193,6 @@ func (p *Parser) ScanIgnoreWhitespace() (tok scanner.Token, pos scanner.Pos, lit
 
 // Unscan pushes the previously read token back onto the buffer.
 func (p *Parser) Unscan() {
-	if p.buf != nil {
-		ti := p.s.Curr()
-		p.buf.Truncate(p.buf.Len() - len(ti.Raw))
-	}
 	p.s.Unscan()
 }
 

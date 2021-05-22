@@ -1,220 +1,221 @@
-package scanner_test
+package scanner
 
 import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 // Ensure the scanner can scan tokens correctly.
 func TestScanner_Scan(t *testing.T) {
 	var tests = []struct {
 		s   string
-		tok scanner.Token
+		tok Token
 		lit string
-		pos scanner.Pos
-		raw string
+		pos Pos
 	}{
 		// Special tokens (EOF, ILLEGAL, WS)
-		{s: ``, tok: scanner.EOF, raw: ``},
-		{s: `#`, tok: scanner.ILLEGAL, lit: `#`, raw: `#`},
-		{s: ` `, tok: scanner.WS, lit: " ", raw: ` `},
-		{s: "\t", tok: scanner.WS, lit: "\t", raw: "\t"},
-		{s: "\n", tok: scanner.WS, lit: "\n", raw: "\n"},
-		{s: "\r", tok: scanner.WS, lit: "\n", raw: "\n"},
-		{s: "\r\n", tok: scanner.WS, lit: "\n", raw: "\n"},
-		{s: "\rX", tok: scanner.WS, lit: "\n", raw: "\n"},
-		{s: "\n\r", tok: scanner.WS, lit: "\n\n", raw: "\n\n"},
-		{s: " \n\t \r\n\t", tok: scanner.WS, lit: " \n\t \n\t", raw: " \n\t \n\t"},
-		{s: " foo", tok: scanner.WS, lit: " ", raw: " "},
+		{s: ``, tok: EOF},
+		{s: `#`, tok: ILLEGAL, lit: `#`},
+		{s: ` `, tok: WS, lit: " "},
+		{s: "\t", tok: WS, lit: "\t"},
+		{s: "\n", tok: WS, lit: "\n"},
+		{s: "\r", tok: WS, lit: "\n"},
+		{s: "\r\n", tok: WS, lit: "\n"},
+		{s: "\rX", tok: WS, lit: "\n"},
+		{s: "\n\r", tok: WS, lit: "\n\n"},
+		{s: " \n\t \r\n\t", tok: WS, lit: " \n\t \n\t"},
+		{s: " foo", tok: WS, lit: " "},
 
 		// Numeric operators
-		{s: `+`, tok: scanner.ADD, raw: `+`},
-		{s: `-`, tok: scanner.SUB, raw: `-`},
-		{s: `*`, tok: scanner.MUL, raw: `*`},
-		{s: `/`, tok: scanner.DIV, raw: `/`},
-		{s: `%`, tok: scanner.MOD, raw: `%`},
+		{s: `+`, tok: ADD},
+		{s: `-`, tok: SUB},
+		{s: `*`, tok: MUL},
+		{s: `/`, tok: DIV},
+		{s: `%`, tok: MOD},
 
 		// Logical operators
-		{s: `AND`, tok: scanner.AND, raw: `AND`},
-		{s: `and`, tok: scanner.AND, raw: `and`},
-		{s: `OR`, tok: scanner.OR, raw: `OR`},
-		{s: `or`, tok: scanner.OR, raw: `or`},
+		{s: `AND`, tok: AND},
+		{s: `and`, tok: AND},
+		{s: `OR`, tok: OR},
+		{s: `or`, tok: OR},
 
 		// Comparison operators
-		{s: `=`, tok: scanner.EQ, raw: `=`},
-		{s: `==`, tok: scanner.EQ, raw: `==`},
-		{s: `<>`, tok: scanner.NEQ, raw: `<>`},
-		{s: `! `, tok: scanner.ILLEGAL, lit: "!", raw: `!`},
-		{s: `<`, tok: scanner.LT, raw: `<`},
-		{s: `<=`, tok: scanner.LTE, raw: `<=`},
-		{s: `>`, tok: scanner.GT, raw: `>`},
-		{s: `>=`, tok: scanner.GTE, raw: `>=`},
-		{s: `IN`, tok: scanner.IN, raw: `IN`},
-		{s: `IS`, tok: scanner.IS, raw: `IS`},
-		{s: `LIKE`, tok: scanner.LIKE, raw: `LIKE`},
-		{s: `||`, tok: scanner.CONCAT, raw: `||`},
+		{s: `=`, tok: EQ},
+		{s: `==`, tok: EQ},
+		{s: `<>`, tok: NEQ},
+		{s: `! `, tok: ILLEGAL, lit: "!"},
+		{s: `<`, tok: LT},
+		{s: `<=`, tok: LTE},
+		{s: `>`, tok: GT},
+		{s: `>=`, tok: GTE},
+		{s: `IN`, tok: IN},
+		{s: `IS`, tok: IS},
+		{s: `LIKE`, tok: LIKE},
+		{s: `||`, tok: CONCAT},
 
 		// Misc tokens
-		{s: `(`, tok: scanner.LPAREN, raw: `(`},
-		{s: `)`, tok: scanner.RPAREN, raw: `)`},
-		{s: `{`, tok: scanner.LBRACKET, raw: `{`},
-		{s: `}`, tok: scanner.RBRACKET, raw: `}`},
-		{s: `[`, tok: scanner.LSBRACKET, raw: `[`},
-		{s: `]`, tok: scanner.RSBRACKET, raw: `]`},
-		{s: `,`, tok: scanner.COMMA, raw: `,`},
-		{s: `;`, tok: scanner.SEMICOLON, raw: `;`},
-		{s: `.`, tok: scanner.DOT, raw: `.`},
-		{s: `=~`, tok: scanner.EQREGEX, raw: `=~`},
-		{s: `!~`, tok: scanner.NEQREGEX, raw: `!~`},
-		{s: `:`, tok: scanner.COLON, raw: `:`},
-		{s: `::`, tok: scanner.DOUBLECOLON, raw: `::`},
-		{s: `--`, tok: scanner.COMMENT, raw: `--`},
-		{s: `--10.3`, tok: scanner.COMMENT, lit: ``, raw: `--10.3`},
+		{s: `(`, tok: LPAREN},
+		{s: `)`, tok: RPAREN},
+		{s: `{`, tok: LBRACKET},
+		{s: `}`, tok: RBRACKET},
+		{s: `[`, tok: LSBRACKET},
+		{s: `]`, tok: RSBRACKET},
+		{s: `,`, tok: COMMA},
+		{s: `;`, tok: SEMICOLON},
+		{s: `.`, tok: DOT},
+		{s: `=~`, tok: EQREGEX},
+		{s: `!~`, tok: NEQREGEX},
+		{s: `:`, tok: COLON},
+		{s: `::`, tok: DOUBLECOLON},
+		{s: `--`, tok: COMMENT},
+		{s: `--10.3`, tok: COMMENT, lit: ``},
 
 		// Identifiers
-		{s: `foo`, tok: scanner.IDENT, lit: `foo`, raw: `foo`},
-		{s: `_foo`, tok: scanner.IDENT, lit: `_foo`, raw: `_foo`},
-		{s: `Zx12_3U_-`, tok: scanner.IDENT, lit: `Zx12_3U_`, raw: `Zx12_3U_`},
-		{s: "`foo`", tok: scanner.IDENT, lit: "foo", raw: "`foo`"},
-		{s: "`foo\bar`", tok: scanner.IDENT, lit: "foo\bar", raw: "`foo\bar`"},
-		{s: "`foo\\bar`", tok: scanner.BADESCAPE, lit: `\b`, pos: scanner.Pos{Line: 0, Char: 5}, raw: "`foo\\b"},
-		{s: "`foo\\`bar\\``", tok: scanner.IDENT, lit: "foo`bar`", raw: "`foo\\`bar\\``"},
-		{s: "test`", tok: scanner.BADSTRING, lit: "", pos: scanner.Pos{Line: 0, Char: 3}, raw: "test`"},
-		{s: "`test", tok: scanner.BADSTRING, lit: "test", raw: "`test"},
-		{s: "$host", tok: scanner.NAMEDPARAM, lit: "$host", raw: "$host"},
-		{s: "$`host param`", tok: scanner.NAMEDPARAM, lit: "$host param", raw: "$`host param`"},
-		{s: "?", tok: scanner.POSITIONALPARAM, lit: "", raw: "?"},
+		{s: `foo`, tok: IDENT, lit: `foo`},
+		{s: `_foo`, tok: IDENT, lit: `_foo`},
+		{s: `Zx12_3U_-`, tok: IDENT, lit: `Zx12_3U_`},
+		{s: "`foo`", tok: IDENT, lit: "foo"},
+		{s: "`foo\bar`", tok: IDENT, lit: "foo\bar"},
+		{s: "`foo\\bar`", tok: BADESCAPE, lit: `\b`, pos: Pos{Line: 0, Char: 5}},
+		{s: "`foo\\`bar\\``", tok: IDENT, lit: "foo`bar`"},
+		{s: "test`", tok: BADSTRING, lit: "", pos: Pos{Line: 0, Char: 3}},
+		{s: "`test", tok: BADSTRING, lit: "test"},
+		{s: "$host", tok: NAMEDPARAM, lit: "$host"},
+		{s: "$`host param`", tok: NAMEDPARAM, lit: "$host param"},
+		{s: "?", tok: POSITIONALPARAM, lit: ""},
 
 		// Booleans
-		{s: `true`, tok: scanner.TRUE, raw: `true`},
-		{s: `false`, tok: scanner.FALSE, raw: `false`},
+		{s: `true`, tok: TRUE},
+		{s: `false`, tok: FALSE},
 
 		// Null
-		{s: `null`, tok: scanner.NULL, raw: `null`},
-		{s: `NULL`, tok: scanner.NULL, raw: `NULL`},
+		{s: `null`, tok: NULL},
+		{s: `NULL`, tok: NULL},
 
 		// Strings
-		{s: `'testing 123!'`, tok: scanner.STRING, lit: `testing 123!`, raw: `'testing 123!'`},
-		{s: `'foo\nbar'`, tok: scanner.STRING, lit: "foo\nbar", raw: `'foo\nbar'`},
-		{s: `'foo\\bar'`, tok: scanner.STRING, lit: "foo\\bar", raw: `'foo\\bar'`},
-		{s: `'test`, tok: scanner.BADSTRING, lit: `test`, raw: `'test`},
-		{s: "'test\nfoo", tok: scanner.BADSTRING, lit: `test`, raw: "'test\n"},
-		{s: `'test\g'`, tok: scanner.BADESCAPE, lit: `\g`, pos: scanner.Pos{Line: 0, Char: 6}, raw: `'test\g`},
-		{s: `"testing 123!"`, tok: scanner.STRING, lit: `testing 123!`, raw: `"testing 123!"`},
-		{s: `"foo\nbar"`, tok: scanner.STRING, lit: "foo\nbar", raw: `"foo\nbar"`},
-		{s: `"foo\\bar"`, tok: scanner.STRING, lit: "foo\\bar", raw: `"foo\\bar"`},
-		{s: `"test`, tok: scanner.BADSTRING, lit: `test`, raw: `"test`},
-		{s: "\"test\nfoo", tok: scanner.BADSTRING, lit: `test`, raw: "\"test\n"},
-		{s: `"test\g"`, tok: scanner.BADESCAPE, lit: `\g`, pos: scanner.Pos{Line: 0, Char: 6}, raw: `"test\g`},
+		{s: `'testing 123!'`, tok: STRING, lit: `testing 123!`},
+		{s: `'foo\nbar'`, tok: STRING, lit: "foo\nbar"},
+		{s: `'foo\\bar'`, tok: STRING, lit: "foo\\bar"},
+		{s: `'test`, tok: BADSTRING, lit: `test`},
+		{s: "'test\nfoo", tok: BADSTRING, lit: `test`},
+		{s: `'test\g'`, tok: BADESCAPE, lit: `\g`, pos: Pos{Line: 0, Char: 6}},
+		{s: `"testing 123!"`, tok: STRING, lit: `testing 123!`},
+		{s: `"foo\nbar"`, tok: STRING, lit: "foo\nbar"},
+		{s: `"foo\\bar"`, tok: STRING, lit: "foo\\bar"},
+		{s: `"test`, tok: BADSTRING, lit: `test`},
+		{s: "\"test\nfoo", tok: BADSTRING, lit: `test`},
+		{s: `"test\g"`, tok: BADESCAPE, lit: `\g`, pos: Pos{Line: 0, Char: 6}},
 
 		// Numbers
-		{s: `100`, tok: scanner.INTEGER, lit: `100`, raw: `100`},
-		{s: `100.23`, tok: scanner.NUMBER, lit: `100.23`, raw: `100.23`},
-		{s: `.23`, tok: scanner.NUMBER, lit: `.23`, raw: `.23`},
-		{s: `10.3s`, tok: scanner.NUMBER, lit: `10.3`, raw: `10.3`},
-		{s: `-10.3`, tok: scanner.NUMBER, lit: `-10.3`, raw: `-10.3`},
+		{s: `100`, tok: INTEGER, lit: `100`},
+		{s: `100.23`, tok: NUMBER, lit: `100.23`},
+		{s: `.23`, tok: NUMBER, lit: `.23`},
+		{s: `10.3s`, tok: NUMBER, lit: `10.3`},
+		{s: `-10.3`, tok: NUMBER, lit: `-10.3`},
 
 		// Keywords
-		{s: `ADD`, tok: scanner.ADD_KEYWORD, raw: `ADD`},
-		{s: `ALTER`, tok: scanner.ALTER, raw: `ALTER`},
-		{s: `AS`, tok: scanner.AS, raw: `AS`},
-		{s: `ASC`, tok: scanner.ASC, raw: `ASC`},
-		{s: `BY`, tok: scanner.BY, raw: `BY`},
-		{s: `BEGIN`, tok: scanner.BEGIN, raw: `BEGIN`},
-		{s: `BETWEEN`, tok: scanner.BETWEEN, raw: `BETWEEN`},
-		{s: `CAST`, tok: scanner.CAST, raw: `CAST`},
-		{s: `COMMIT`, tok: scanner.COMMIT, raw: `COMMIT`},
-		{s: `CREATE`, tok: scanner.CREATE, raw: `CREATE`},
-		{s: `EXPLAIN`, tok: scanner.EXPLAIN, raw: `EXPLAIN`},
-		{s: `DEFAULT`, tok: scanner.DEFAULT, raw: `DEFAULT`},
-		{s: `DELETE`, tok: scanner.DELETE, raw: `DELETE`},
-		{s: `DESC`, tok: scanner.DESC, raw: `DESC`},
-		{s: `DISTINCT`, tok: scanner.DISTINCT, raw: `DISTINCT`},
-		{s: `DROP`, tok: scanner.DROP, raw: `DROP`},
-		{s: `FIELD`, tok: scanner.FIELD, raw: `FIELD`},
-		{s: `FROM`, tok: scanner.FROM, raw: `FROM`},
-		{s: `GROUP`, tok: scanner.GROUP, raw: `GROUP`},
-		{s: `INSERT`, tok: scanner.INSERT, raw: `INSERT`},
-		{s: `INTO`, tok: scanner.INTO, raw: `INTO`},
-		{s: `LIMIT`, tok: scanner.LIMIT, raw: `LIMIT`},
-		{s: `ONLY`, tok: scanner.ONLY, raw: `ONLY`},
-		{s: `OFFSET`, tok: scanner.OFFSET, raw: `OFFSET`},
-		{s: `ORDER`, tok: scanner.ORDER, raw: `ORDER`},
-		{s: `PRIMARY`, tok: scanner.PRIMARY, raw: `PRIMARY`},
-		{s: `READ`, tok: scanner.READ, raw: `READ`},
-		{s: `REINDEX`, tok: scanner.REINDEX, raw: `REINDEX`},
-		{s: `RENAME`, tok: scanner.RENAME, raw: `RENAME`},
-		{s: `RETURNING`, tok: scanner.RETURNING, raw: `RETURNING`},
-		{s: `ROLLBACK`, tok: scanner.ROLLBACK, raw: `ROLLBACK`},
-		{s: `SELECT`, tok: scanner.SELECT, raw: `SELECT`},
-		{s: `SET`, tok: scanner.SET, raw: `SET`},
-		{s: `TABLE`, tok: scanner.TABLE, raw: `TABLE`},
-		{s: `TO`, tok: scanner.TO, raw: `TO`},
-		{s: `TRANSACTION`, tok: scanner.TRANSACTION, raw: `TRANSACTION`},
-		{s: `UPDATE`, tok: scanner.UPDATE, raw: `UPDATE`},
-		{s: `UNSET`, tok: scanner.UNSET, raw: `UNSET`},
-		{s: `VALUES`, tok: scanner.VALUES, raw: `VALUES`},
-		{s: `WHERE`, tok: scanner.WHERE, raw: `WHERE`},
-		{s: `WRITE`, tok: scanner.WRITE, raw: `WRITE`},
-		{s: `seLECT`, tok: scanner.SELECT, raw: `seLECT`}, // case insensitive
+		{s: `ADD`, tok: ADD_KEYWORD},
+		{s: `ALTER`, tok: ALTER},
+		{s: `AS`, tok: AS},
+		{s: `ASC`, tok: ASC},
+		{s: `BY`, tok: BY},
+		{s: `BEGIN`, tok: BEGIN},
+		{s: `BETWEEN`, tok: BETWEEN},
+		{s: `CAST`, tok: CAST},
+		{s: `COMMIT`, tok: COMMIT},
+		{s: `CREATE`, tok: CREATE},
+		{s: `EXPLAIN`, tok: EXPLAIN},
+		{s: `DEFAULT`, tok: DEFAULT},
+		{s: `DELETE`, tok: DELETE},
+		{s: `DESC`, tok: DESC},
+		{s: `DISTINCT`, tok: DISTINCT},
+		{s: `DROP`, tok: DROP},
+		{s: `FIELD`, tok: FIELD},
+		{s: `FROM`, tok: FROM},
+		{s: `GROUP`, tok: GROUP},
+		{s: `INSERT`, tok: INSERT},
+		{s: `INTO`, tok: INTO},
+		{s: `LIMIT`, tok: LIMIT},
+		{s: `ONLY`, tok: ONLY},
+		{s: `OFFSET`, tok: OFFSET},
+		{s: `ORDER`, tok: ORDER},
+		{s: `PRIMARY`, tok: PRIMARY},
+		{s: `READ`, tok: READ},
+		{s: `REINDEX`, tok: REINDEX},
+		{s: `RENAME`, tok: RENAME},
+		{s: `RETURNING`, tok: RETURNING},
+		{s: `ROLLBACK`, tok: ROLLBACK},
+		{s: `SELECT`, tok: SELECT},
+		{s: `SET`, tok: SET},
+		{s: `TABLE`, tok: TABLE},
+		{s: `TO`, tok: TO},
+		{s: `TRANSACTION`, tok: TRANSACTION},
+		{s: `UPDATE`, tok: UPDATE},
+		{s: `UNSET`, tok: UNSET},
+		{s: `VALUES`, tok: VALUES},
+		{s: `WHERE`, tok: WHERE},
+		{s: `WRITE`, tok: WRITE},
+		{s: `seLECT`, tok: SELECT}, // case insensitive
 
 		// types
-		{s: "BYTES", tok: scanner.TYPEBYTES, raw: `BYTES`},
-		{s: "BOOL", tok: scanner.TYPEBOOL, raw: `BOOL`},
-		{s: "DOUBLE", tok: scanner.TYPEDOUBLE, raw: `DOUBLE`},
-		{s: "INTEGER", tok: scanner.TYPEINTEGER, raw: `INTEGER`},
-		{s: "TEXT", tok: scanner.TYPETEXT, raw: `TEXT`},
+		{s: "BYTES", tok: TYPEBYTES},
+		{s: "BOOL", tok: TYPEBOOL},
+		{s: "DOUBLE", tok: TYPEDOUBLE},
+		{s: "INTEGER", tok: TYPEINTEGER},
+		{s: "TEXT", tok: TYPETEXT},
 	}
 
 	for i, tt := range tests {
-		s := scanner.NewScanner(strings.NewReader(tt.s))
-		ti := s.Scan()
-		if tt.tok != ti.Tok {
-			t.Errorf("%d. %q token mismatch: exp=%q got=%q <%q>", i, tt.s, tt.tok, ti.Tok, ti.Lit)
-		} else if tt.pos.Line != ti.Pos.Line || tt.pos.Char != ti.Pos.Char {
-			t.Errorf("%d. %q pos mismatch: exp=%#v got=%#v", i, tt.s, tt.pos, ti.Pos)
-		} else if tt.lit != ti.Lit {
-			t.Errorf("%d. %q literal mismatch: exp=%q got=%q", i, tt.s, tt.lit, ti.Lit)
-		} else if tt.raw != ti.Raw {
-			t.Errorf("%d. %q raw mismatch: exp=%q got=%q", i, tt.s, tt.raw, ti.Raw)
+		s := NewScanner(strings.NewReader(tt.s))
+		tok, pos, lit := s.Scan()
+		if tt.tok != tok {
+			t.Errorf("%d. %q token mismatch: exp=%q got=%q <%q>", i, tt.s, tt.tok, tok, lit)
+		} else if tt.pos.Line != pos.Line || tt.pos.Char != pos.Char {
+			t.Errorf("%d. %q pos mismatch: exp=%#v got=%#v", i, tt.s, tt.pos, pos)
+		} else if tt.lit != lit {
+			t.Errorf("%d. %q literal mismatch: exp=%q got=%q", i, tt.s, tt.lit, lit)
 		}
 	}
 }
 
 // Ensure the scanner can scan a series of tokens correctly.
 func TestScanner_Scan_Multi(t *testing.T) {
-	exp := []scanner.TokenInfo{
-		{Tok: scanner.SELECT, Pos: scanner.Pos{Line: 0, Char: 0}, Lit: "", Raw: "SELECT"},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 6}, Lit: " ", Raw: " "},
-		{Tok: scanner.IDENT, Pos: scanner.Pos{Line: 0, Char: 7}, Lit: "value", Raw: "value"},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 12}, Lit: " ", Raw: " "},
-		{Tok: scanner.FROM, Pos: scanner.Pos{Line: 0, Char: 13}, Lit: "", Raw: "from"},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 17}, Lit: " ", Raw: " "},
-		{Tok: scanner.IDENT, Pos: scanner.Pos{Line: 0, Char: 18}, Lit: "my_table", Raw: "my_table"},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 26}, Lit: " ", Raw: " "},
-		{Tok: scanner.WHERE, Pos: scanner.Pos{Line: 0, Char: 27}, Lit: "", Raw: "WHERE"},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 32}, Lit: " ", Raw: " "},
-		{Tok: scanner.IDENT, Pos: scanner.Pos{Line: 0, Char: 33}, Lit: "a", Raw: "a"},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 34}, Lit: " ", Raw: " "},
-		{Tok: scanner.EQ, Pos: scanner.Pos{Line: 0, Char: 35}, Lit: "", Raw: "="},
-		{Tok: scanner.WS, Pos: scanner.Pos{Line: 0, Char: 36}, Lit: " ", Raw: " "},
-		{Tok: scanner.STRING, Pos: scanner.Pos{Line: 0, Char: 36}, Lit: "b", Raw: "'b'"},
-		{Tok: scanner.EOF, Pos: scanner.Pos{Line: 0, Char: 40}, Lit: "", Raw: ""},
+	type result struct {
+		tok Token
+		pos Pos
+		lit string
 	}
 
-	// Create a scanner.
+	exp := []result{
+		{tok: SELECT, pos: Pos{Line: 0, Char: 0}, lit: ""},
+		{tok: WS, pos: Pos{Line: 0, Char: 6}, lit: " "},
+		{tok: IDENT, pos: Pos{Line: 0, Char: 7}, lit: "value"},
+		{tok: WS, pos: Pos{Line: 0, Char: 12}, lit: " "},
+		{tok: FROM, pos: Pos{Line: 0, Char: 13}, lit: ""},
+		{tok: WS, pos: Pos{Line: 0, Char: 17}, lit: " "},
+		{tok: IDENT, pos: Pos{Line: 0, Char: 18}, lit: "my_table"},
+		{tok: WS, pos: Pos{Line: 0, Char: 26}, lit: " "},
+		{tok: WHERE, pos: Pos{Line: 0, Char: 27}, lit: ""},
+		{tok: WS, pos: Pos{Line: 0, Char: 32}, lit: " "},
+		{tok: IDENT, pos: Pos{Line: 0, Char: 33}, lit: "a"},
+		{tok: WS, pos: Pos{Line: 0, Char: 34}, lit: " "},
+		{tok: EQ, pos: Pos{Line: 0, Char: 35}, lit: ""},
+		{tok: WS, pos: Pos{Line: 0, Char: 36}, lit: " "},
+		{tok: STRING, pos: Pos{Line: 0, Char: 36}, lit: "b"},
+		{tok: EOF, pos: Pos{Line: 0, Char: 40}, lit: ""},
+	}
+
+	// Create a
 	v := `SELECT value from my_table WHERE a = 'b'`
-	s := scanner.NewScanner(strings.NewReader(v))
+	s := newScanner(strings.NewReader(v))
 
 	// Continually scan until we reach the end.
-	var act []scanner.TokenInfo
+	var act []result
 	for {
-		ti := s.Scan()
-		act = append(act, ti)
-		if ti.Tok == scanner.EOF {
+		tok, pos, lit := s.Scan()
+		act = append(act, result{tok, pos, lit})
+		if tok == EOF {
 			break
 		}
 	}
@@ -253,7 +254,7 @@ func TestScanString(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		out, err := scanner.ScanString(strings.NewReader(tt.in))
+		out, err := scanString(strings.NewReader(tt.in))
 		if tt.err != errstring(err) {
 			t.Errorf("%d. %s: error: exp=%s, got=%s", i, tt.in, tt.err, err)
 		} else if tt.out != out {
@@ -274,25 +275,25 @@ func errstring(err error) string {
 func TestScanRegex(t *testing.T) {
 	var tests = []struct {
 		in  string
-		tok scanner.Token
+		tok Token
 		lit string
 		err string
 	}{
-		{in: `/^payments\./`, tok: scanner.REGEX, lit: `^payments\.`},
-		{in: `/foo\/bar/`, tok: scanner.REGEX, lit: `foo/bar`},
-		{in: `/foo\\/bar/`, tok: scanner.REGEX, lit: `foo\/bar`},
-		{in: `/foo\\bar/`, tok: scanner.REGEX, lit: `foo\\bar`},
-		{in: `/http\:\/\/www\.example\.com/`, tok: scanner.REGEX, lit: `http\://www\.example\.com`},
+		{in: `/^payments\./`, tok: REGEX, lit: `^payments\.`},
+		{in: `/foo\/bar/`, tok: REGEX, lit: `foo/bar`},
+		{in: `/foo\\/bar/`, tok: REGEX, lit: `foo\/bar`},
+		{in: `/foo\\bar/`, tok: REGEX, lit: `foo\\bar`},
+		{in: `/http\:\/\/www\.example\.com/`, tok: REGEX, lit: `http\://www\.example\.com`},
 	}
 
 	for i, tt := range tests {
-		s := scanner.NewScanner(strings.NewReader(tt.in))
-		ti := s.ScanRegex()
-		if ti.Tok != tt.tok {
-			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.tok.String(), ti.Tok.String())
+		s := newScanner(strings.NewReader(tt.in))
+		tok, _, lit := s.ScanRegex()
+		if tok != tt.tok {
+			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.tok.String(), tok.String())
 		}
-		if ti.Lit != tt.lit {
-			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.lit, ti.Lit)
+		if lit != tt.lit {
+			t.Errorf("%d. %s: error:\n\texp=%s\n\tgot=%s\n", i, tt.in, tt.lit, lit)
 		}
 	}
 }

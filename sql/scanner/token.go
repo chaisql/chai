@@ -314,8 +314,8 @@ func Tokstr(tok Token, lit string) string {
 	return tok.String()
 }
 
-// Lookup returns the token associated with a given string.
-func Lookup(ident string) Token {
+// lookup returns the token associated with a given string.
+func lookup(ident string) Token {
 	if tok, ok := keywords[strings.ToLower(ident)]; ok {
 		return tok
 	}
