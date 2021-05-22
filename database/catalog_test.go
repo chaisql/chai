@@ -40,22 +40,20 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 // - AddFieldConstraint
 func TestCatalogTable(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
 		update(t, db, func(tx *database.Transaction) error {
-			return catalog.CreateTable(tx, "test", nil)
+			return tx.Catalog.CreateTable(tx, "test", nil)
 		})
 
 		update(t, db, func(tx *database.Transaction) error {
-			table, err := tx.GetTable("test")
+			table, err := tx.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
-			require.Equal(t, "test", table.Name())
+			require.Equal(t, "test", table.Name)
 
 			// Getting a table that doesn't exist should fail.
-			_, err = tx.GetTable("unknown")
+			_, err = tx.Catalog.GetTable(tx, "unknown")
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
 			}
@@ -65,29 +63,27 @@ func TestCatalogTable(t *testing.T) {
 	})
 
 	t.Run("Drop", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
 		update(t, db, func(tx *database.Transaction) error {
-			return catalog.CreateTable(tx, "test", nil)
+			return tx.Catalog.CreateTable(tx, "test", nil)
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.DropTable("test")
+			err := tx.Catalog.DropTable(tx, "test")
 			require.NoError(t, err)
 
 			// Getting a table that has been dropped should fail.
-			_, err = tx.GetTable("test")
+			_, err = tx.Catalog.GetTable(tx, "test")
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
 			}
 
 			// Dropping a table that doesn't exist should fail.
-			err = tx.DropTable("test")
+			err = tx.Catalog.DropTable(tx, "test")
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
 			}
@@ -95,63 +91,61 @@ func TestCatalogTable(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 
 	t.Run("Rename", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
 		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
-			{Path: parsePath(t, "name"), Type: document.TextValue, IsNotNull: true},
-			{Path: parsePath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
-			{Path: parsePath(t, "gender"), Type: document.TextValue},
-			{Path: parsePath(t, "city"), Type: document.TextValue},
+			{Path: testutil.ParseDocumentPath(t, "name"), Type: document.TextValue, IsNotNull: true},
+			{Path: testutil.ParseDocumentPath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
+			{Path: testutil.ParseDocumentPath(t, "gender"), Type: document.TextValue},
+			{Path: testutil.ParseDocumentPath(t, "city"), Type: document.TextValue},
 		}}
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "foo", ti)
+			err := tx.Catalog.CreateTable(tx, "foo", ti)
 			require.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{parsePath(t, "gender")}, IndexName: "idx_gender", TableName: "foo"})
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "gender")}, IndexName: "idx_gender", TableName: "foo"})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{parsePath(t, "city")}, IndexName: "idx_city", TableName: "foo", Unique: true})
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "city")}, IndexName: "idx_city", TableName: "foo", Unique: true})
 			require.NoError(t, err)
 
 			return nil
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.RenameTable("foo", "zoo")
+			err := tx.Catalog.RenameTable(tx, "foo", "zoo")
 			require.NoError(t, err)
 
 			// Getting the old table should return an error.
-			_, err = tx.GetTable("foo")
+			_, err = tx.Catalog.GetTable(tx, "foo")
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
 			}
 
-			tb, err := tx.GetTable("zoo")
+			tb, err := tx.Catalog.GetTable(tx, "zoo")
 			require.NoError(t, err)
 			// The field constraints should be the same.
-			info := tb.Info()
-			require.Equal(t, ti.FieldConstraints, info.FieldConstraints)
+
+			require.Equal(t, ti.FieldConstraints, tb.Info.FieldConstraints)
 
 			// Check that the indexes have been updated as well.
-			idxs := tx.ListIndexes()
+			idxs := tx.Catalog.ListIndexes(tb.Name)
 			require.Len(t, idxs, 2)
 			for _, name := range idxs {
-				idx, err := tx.GetIndex(name)
+				idx, err := tx.Catalog.GetIndex(tx, name)
 				require.NoError(t, err)
 				require.Equal(t, "zoo", idx.Info.TableName)
 			}
 
 			// Renaming a non existing table should return an error
-			err = tx.RenameTable("foo", "")
+			err = tx.Catalog.RenameTable(tx, "foo", "")
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
 			}
@@ -159,102 +153,98 @@ func TestCatalogTable(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 
 	t.Run("Add field constraint", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
 		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
-			{Path: parsePath(t, "name"), Type: document.TextValue, IsNotNull: true},
-			{Path: parsePath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
-			{Path: parsePath(t, "gender"), Type: document.TextValue},
-			{Path: parsePath(t, "city"), Type: document.TextValue},
+			{Path: testutil.ParseDocumentPath(t, "name"), Type: document.TextValue, IsNotNull: true},
+			{Path: testutil.ParseDocumentPath(t, "age"), Type: document.IntegerValue, IsPrimaryKey: true},
+			{Path: testutil.ParseDocumentPath(t, "gender"), Type: document.TextValue},
+			{Path: testutil.ParseDocumentPath(t, "city"), Type: document.TextValue},
 		}}
 
 		update(t, db, func(tx *database.Transaction) error {
-			return catalog.CreateTable(tx, "foo", ti)
+			return tx.Catalog.CreateTable(tx, "foo", ti)
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
 
 			// Add field constraint
 			fieldToAdd := database.FieldConstraint{
-				Path: parsePath(t, "last_name"), Type: document.TextValue,
+				Path: testutil.ParseDocumentPath(t, "last_name"), Type: document.TextValue,
 			}
-			err := tx.AddFieldConstraint("foo", fieldToAdd)
+			err := tx.Catalog.AddFieldConstraint(tx, "foo", fieldToAdd)
 			require.NoError(t, err)
 
-			tb, err := tx.GetTable("foo")
+			tb, err := tx.Catalog.GetTable(tx, "foo")
 			require.NoError(t, err)
 
 			// The field constraints should not be the same.
-			info := tb.Info()
-			require.Contains(t, info.FieldConstraints, &fieldToAdd)
+
+			require.Contains(t, tb.Info.FieldConstraints, &fieldToAdd)
 
 			// Renaming a non existing table should return an error
-			err = tx.AddFieldConstraint("bar", fieldToAdd)
+			err = tx.Catalog.AddFieldConstraint(tx, "bar", fieldToAdd)
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
 			}
 
 			// Adding a existing field should return an error
-			err = tx.AddFieldConstraint("foo", *ti.FieldConstraints[0])
+			err = tx.Catalog.AddFieldConstraint(tx, "foo", *ti.FieldConstraints[0])
 			require.Error(t, err)
 
 			// Adding a second primary key should return an error
 			fieldToAdd = database.FieldConstraint{
-				Path: parsePath(t, "foobar"), Type: document.IntegerValue, IsPrimaryKey: true,
+				Path: testutil.ParseDocumentPath(t, "foobar"), Type: document.IntegerValue, IsPrimaryKey: true,
 			}
-			err = tx.AddFieldConstraint("foo", fieldToAdd)
+			err = tx.Catalog.AddFieldConstraint(tx, "foo", fieldToAdd)
 			require.Error(t, err)
 
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 }
 
 func TestCatalogCreate(t *testing.T) {
 	t.Run("Same table name", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
 
 			// Creating a table that already exists should fail.
-			err = catalog.CreateTable(tx, "test", nil)
+			err = tx.Catalog.CreateTable(tx, "test", nil)
 			require.EqualError(t, err, database.ErrTableAlreadyExists.Error())
 
 			// Creating a table that starts with __genji_ should fail.
-			err = catalog.CreateTable(tx, "__genji_foo", nil)
+			err = tx.Catalog.CreateTable(tx, "__genji_foo", nil)
 			require.Error(t, err)
 
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 
 	t.Run("Create and rollback", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
 		check := func() {
 			update(t, db, func(tx *database.Transaction) error {
-				err := db.Catalog().CreateTable(tx, "test", nil)
+				err := tx.Catalog.CreateTable(tx, "test", nil)
 				require.NoError(t, err)
 
 				return errDontCommit
@@ -266,15 +256,13 @@ func TestCatalogCreate(t *testing.T) {
 	})
 
 	t.Run("Invalid constraints", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", &database.TableInfo{
+			err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: []*database.FieldConstraint{
 					{Path: document.NewPath("a", "b"), Type: document.IntegerValue},
 					{Path: document.NewPath("a"), Type: document.IntegerValue},
@@ -284,23 +272,22 @@ func TestCatalogCreate(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 }
 
 func TestTxCreateIndex(t *testing.T) {
 	t.Run("Should create an index, build it and return it", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
-		catalog := db.Catalog()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", nil)
 			if err != nil {
 				return err
 			}
 
-			tb, err := tx.GetTable("test")
+			tb, err := tx.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 
 			for i := int64(0); i < 10; i++ {
@@ -314,14 +301,14 @@ func TestTxCreateIndex(t *testing.T) {
 			return nil
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idx_a", TableName: "test", Paths: []document.Path{parsePath(t, "a")},
+			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				IndexName: "idx_a", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
 			})
 			require.NoError(t, err)
-			idx, err := tx.GetIndex("idx_a")
+			idx, err := tx.Catalog.GetIndex(tx, "idx_a")
 			require.NoError(t, err)
 			require.NotNil(t, idx)
 
@@ -341,26 +328,25 @@ func TestTxCreateIndex(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 
 	t.Run("Should fail if it already exists", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
 		update(t, db, func(tx *database.Transaction) error {
-			return catalog.CreateTable(tx, "test", nil)
+			return tx.Catalog.CreateTable(tx, "test", nil)
 		})
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			require.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			require.Equal(t, database.ErrIndexAlreadyExists, err)
 			return nil
@@ -368,12 +354,11 @@ func TestTxCreateIndex(t *testing.T) {
 	})
 
 	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
-		catalog := db.Catalog()
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			if !errors.Is(err, database.ErrTableNotFound) {
 				require.Equal(t, err, database.ErrTableNotFound)
@@ -384,30 +369,29 @@ func TestTxCreateIndex(t *testing.T) {
 	})
 
 	t.Run("Should generate a name if not provided", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
-		catalog := db.Catalog()
 
 		update(t, db, func(tx *database.Transaction) error {
-			return catalog.CreateTable(tx, "test", nil)
+			return tx.Catalog.CreateTable(tx, "test", nil)
 		})
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			require.NoError(t, err)
 
-			_, err = catalog.GetIndex(tx, "__genji_autoindex_test_1")
+			_, err = tx.Catalog.GetIndex(tx, "__genji_autoindex_test_1")
 			require.NoError(t, err)
 
 			// create another one
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			require.NoError(t, err)
 
-			_, err = catalog.GetIndex(tx, "__genji_autoindex_test_2")
+			_, err = tx.Catalog.GetIndex(tx, "__genji_autoindex_test_2")
 			require.NoError(t, err)
 			return nil
 		})
@@ -416,52 +400,50 @@ func TestTxCreateIndex(t *testing.T) {
 
 func TestTxDropIndex(t *testing.T) {
 	t.Run("Should drop an index", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
-		catalog := db.Catalog()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxBar", TableName: "test", Paths: []document.Path{parsePath(t, "bar")},
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				IndexName: "idxBar", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "bar")},
 			})
 			require.NoError(t, err)
 			return nil
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.DropIndex(tx, "idxFoo")
+			err := tx.Catalog.DropIndex(tx, "idxFoo")
 			require.NoError(t, err)
 
-			_, err = tx.GetIndex("idxFoo")
+			_, err = tx.Catalog.GetIndex(tx, "idxFoo")
 			require.Error(t, err)
 
-			_, err = tx.GetIndex("idxBar")
+			_, err = tx.Catalog.GetIndex(tx, "idxBar")
 			require.NoError(t, err)
 
 			// cf: https://github.com/genjidb/genji/issues/360
-			_, err = tx.GetTable("test")
+			_, err = tx.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 
 	t.Run("Should fail if it doesn't exist", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
-		catalog := db.Catalog()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.DropIndex(tx, "idxFoo")
+			err := tx.Catalog.DropIndex(tx, "idxFoo")
 			require.Equal(t, database.ErrIndexNotFound, err)
 			return nil
 		})
@@ -470,12 +452,11 @@ func TestTxDropIndex(t *testing.T) {
 
 func TestCatalogReIndex(t *testing.T) {
 	prepareTableFn := func(t *testing.T, db *database.Database) {
-		catalog := db.Catalog()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
-			tb, err := tx.GetTable("test")
+			tb, err := tx.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 
 			for i := int64(0); i < 10; i++ {
@@ -486,16 +467,16 @@ func TestCatalogReIndex(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "a",
 				TableName: "test",
-				Paths:     []document.Path{parsePath(t, "a")},
+				Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 			})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "b",
 				TableName: "test",
-				Paths:     []document.Path{parsePath(t, "b")},
+				Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
 			})
 			require.NoError(t, err)
 
@@ -504,29 +485,27 @@ func TestCatalogReIndex(t *testing.T) {
 	}
 
 	t.Run("Should fail if not found", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
 		prepareTableFn(t, db)
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.ReIndex("foo")
+			err := tx.Catalog.ReIndex(tx, "foo")
 			require.Equal(t, database.ErrIndexNotFound, err)
 			return nil
 		})
 	})
 
 	t.Run("Should not fail if field not found", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", nil)
 			require.NoError(t, err)
 
-			tb, err := tx.GetTable("test")
+			tb, err := tx.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 
 			_, err = tb.Insert(document.NewFieldBuffer().
@@ -534,43 +513,42 @@ func TestCatalogReIndex(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			return catalog.CreateIndex(tx, &database.IndexInfo{
+			return tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "b",
 				TableName: "test",
-				Paths:     []document.Path{parsePath(t, "b")},
+				Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
 			})
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.ReIndex(tx, "b")
+			err := tx.Catalog.ReIndex(tx, "b")
 			require.NoError(t, err)
 
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 
 	t.Run("Should reindex the index", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
 		prepareTableFn(t, db)
 
-		catalog := db.Catalog()
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.ReIndex("a")
+			err := tx.Catalog.ReIndex(tx, "a")
 			require.NoError(t, err)
 
-			idx, err := tx.GetIndex("a")
+			idx, err := tx.Catalog.GetIndex(tx, "a")
 			require.NoError(t, err)
 
 			var i int
-			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{{Type: document.DoubleValue}}, func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)
@@ -582,44 +560,41 @@ func TestCatalogReIndex(t *testing.T) {
 			require.Equal(t, 10, i)
 			require.NoError(t, err)
 
-			_, err = tx.GetIndex("b")
+			_, err = tx.Catalog.GetIndex(tx, "b")
 			require.NoError(t, err)
 
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 }
 
 func TestReIndexAll(t *testing.T) {
 	t.Run("Should succeed if no indexes", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
 		update(t, db, func(tx *database.Transaction) error {
-			catalog := db.Catalog()
-			err := catalog.ReIndexAll(tx)
+			err := tx.Catalog.ReIndexAll(tx)
 			require.NoError(t, err)
 			return nil
 		})
 	})
 
 	t.Run("Should reindex all indexes", func(t *testing.T) {
-		db, cleanup := newTestDB(t)
+		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		catalog := db.Catalog()
-
 		update(t, db, func(tx *database.Transaction) error {
-			err := catalog.CreateTable(tx, "test1", nil)
+			err := tx.Catalog.CreateTable(tx, "test1", nil)
 			require.NoError(t, err)
-			tb1, err := tx.GetTable("test1")
+			tb1, err := tx.Catalog.GetTable(tx, "test1")
 			require.NoError(t, err)
 
-			err = catalog.CreateTable(tx, "test2", nil)
+			err = tx.Catalog.CreateTable(tx, "test2", nil)
 			require.NoError(t, err)
-			tb2, err := tx.GetTable("test2")
+			tb2, err := tx.Catalog.GetTable(tx, "test2")
 			require.NoError(t, err)
 
 			for i := int64(0); i < 10; i++ {
@@ -635,32 +610,32 @@ func TestReIndexAll(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "t1a",
 				TableName: "test1",
-				Paths:     []document.Path{parsePath(t, "a")},
+				Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 			})
 			require.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "t2a",
 				TableName: "test2",
-				Paths:     []document.Path{parsePath(t, "a")},
+				Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 			})
 			require.NoError(t, err)
 
 			return nil
 		})
 
-		clone := catalog.Clone()
+		clone := db.Catalog.Clone()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.ReIndexAll()
+			err := tx.Catalog.ReIndexAll(tx)
 			require.NoError(t, err)
-			idx, err := tx.GetIndex("t1a")
+			idx, err := tx.Catalog.GetIndex(tx, "t1a")
 			require.NoError(t, err)
 
 			var i int
-			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{{Type: document.DoubleValue}}, func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)
@@ -672,11 +647,11 @@ func TestReIndexAll(t *testing.T) {
 			require.Equal(t, 10, i)
 			require.NoError(t, err)
 
-			idx, err = tx.GetIndex("t2a")
+			idx, err = tx.Catalog.GetIndex(tx, "t2a")
 			require.NoError(t, err)
 
 			i = 0
-			err = idx.AscendGreaterOrEqual([]document.Value{document.Value{Type: document.DoubleValue}}, func(v, k []byte) error {
+			err = idx.AscendGreaterOrEqual([]document.Value{{Type: document.DoubleValue}}, func(v, k []byte) error {
 				var buf bytes.Buffer
 				err = document.NewValueEncoder(&buf).Encode(document.NewDoubleValue(float64(i)))
 				require.NoError(t, err)
@@ -691,7 +666,7 @@ func TestReIndexAll(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, catalog)
+		require.Equal(t, clone, db.Catalog)
 	})
 }
 
@@ -700,13 +675,25 @@ func TestReadOnlyTables(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	doc, err := db.QueryDocument(`CREATE TABLE foo; SELECT * FROM __genji_tables`)
+	doc, err := db.QueryDocument(`CREATE TABLE foo (a int, b[3].c double unique); SELECT * FROM __genji_tables`)
 	require.NoError(t, err)
 
-	testutil.RequireDocJSONEq(t, doc, `{"field_constraints": [], "read_only":false, "store_name":"dAE=", "table_name":"foo"}`)
+	testutil.RequireDocJSONEq(t, doc, `{"sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE)", "store_name":"dAE=", "table_name":"foo"}`)
 
-	doc, err = db.QueryDocument(`CREATE INDEX idx_foo_a ON foo(a); SELECT * FROM __genji_indexes`)
+	res, err := db.Query(`CREATE INDEX idx_foo_a ON foo(a); SELECT * FROM __genji_indexes`)
 	require.NoError(t, err)
+	defer res.Close()
 
-	testutil.RequireDocJSONEq(t, doc, `{"index_name":"idx_foo_a", "paths":[["a"]], "table_name":"foo", "types":[0], "unique":false}`)
+	testutil.RequireStreamEq(t, `
+		{
+			"sql": "CREATE INDEX __genji_autoindex_foo_1 ON foo (b[3].c)",
+			"index_name": "__genji_autoindex_foo_1",
+			"table_name": "foo"
+		}
+		{
+			"sql": "CREATE INDEX idx_foo_a ON foo (a)",
+			"index_name": "idx_foo_a",
+			"table_name": "foo"
+		}
+	`, res)
 }
