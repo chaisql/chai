@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/stringutil"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -145,6 +146,6 @@ func RequireDocEqual(t testing.TB, d1, d2 document.Document) {
 	ok, err := l.IsEqual(r)
 	require.NoError(t, err)
 	if !ok {
-		require.Equal(t, l, r)
+		t.Fatal(cmp.Diff(transformDoc(d1), transformDoc(d2)))
 	}
 }
