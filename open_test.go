@@ -24,6 +24,7 @@ func TestOpen(t *testing.T) {
 	err = db.Exec(`
 		CREATE TABLE tableA (a INTEGER NOT NULL, b.c[0].d DOUBLE UNIQUE PRIMARY KEY);
 		CREATE TABLE tableB (a TEXT NOT NULL DEFAULT 'hello', PRIMARY KEY (a));
+		CREATE TABLE tableC;
 
 		INSERT INTO tableB (a) VALUES (1)
 	`)
@@ -65,7 +66,18 @@ func TestOpen(t *testing.T) {
 			testutil.RequireDocEqual(t, fb, d)
 			return nil
 		}
-		return errors.New("more than 2 tables")
+
+		if count == 3 {
+			fb := testutil.MakeDocument(t, `{
+				"sql": "CREATE TABLE tableC",
+				"table_name": "tableC"
+			}`).(*document.FieldBuffer)
+
+			fb.Add("store_name", document.NewBlobValue([]byte{116, 3}))
+			testutil.RequireDocEqual(t, fb, d)
+			return nil
+		}
+		return errors.New("more than 3 tables")
 	})
 	require.NoError(t, err)
 

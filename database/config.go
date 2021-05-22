@@ -83,7 +83,9 @@ func (ti *TableInfo) String() string {
 		// Unique must not be written as it an index is already created for it
 	}
 
-	s.WriteString(")")
+	if len(ti.FieldConstraints) > 0 {
+		s.WriteString(")")
+	}
 
 	return s.String()
 }
