@@ -21,3 +21,8 @@ testtinygo:
 bench:
 	go test -v -run=^\$$ -benchmem -bench=. ./...
 	cd cmd/genji && go test -v -run=^\$$ -benchmem -bench=. ./...
+
+tidy:
+	go mod tidy
+	cd engine/badgerengine && go mod tidy && cd ../..
+	cd cmd/genji && go mod tidy && cd ../..
