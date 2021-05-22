@@ -2,37 +2,40 @@ package genji
 
 import (
 	"context"
+	"strings"
 
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/engine"
+	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/stream"
 )
 
 // DB represents a collection of tables stored in the underlying engine.
 type DB struct {
-	DB  *database.Database
+	db  *database.Database
 	ctx context.Context
 }
 
 // WithContext creates a new database handle using the given context for every operation.
 func (db *DB) WithContext(ctx context.Context) *DB {
 	return &DB{
-		DB:  db.DB,
+		db:  db.db,
 		ctx: ctx,
 	}
 }
 
 // Close the database.
 func (db *DB) Close() error {
-	return db.DB.Close()
+	return db.db.Close()
 }
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.DB.BeginTx(db.ctx, &database.TxOptions{
+	tx, err := db.db.BeginTx(db.ctx, &database.TxOptions{
 		ReadOnly: !writable,
 	})
 	if err != nil {
@@ -40,7 +43,7 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 	}
 
 	return &Tx{
-		Transaction: tx,
+		tx: tx,
 	}, nil
 }
 
@@ -83,7 +86,7 @@ func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
 }
 
 // QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
+// If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
 func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, error) {
 	stmt, err := db.Prepare(q)
 	if err != nil {
@@ -121,7 +124,18 @@ func (db *DB) Prepare(q string) (*Statement, error) {
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
-	*database.Transaction
+	tx *database.Transaction
+}
+
+// Rollback the transaction. Can be used safely after commit.
+func (tx *Tx) Rollback() error {
+	return tx.tx.Rollback()
+}
+
+// Commit the transaction. Calling this method on read-only transactions
+// will return an error.
+func (tx *Tx) Commit() error {
+	return tx.tx.Commit()
 }
 
 // Query the database withing the transaction and returns the result.
@@ -136,7 +150,7 @@ func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
 }
 
 // QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
+// If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
 func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, error) {
 	stmt, err := tx.Prepare(q)
 	if err != nil {
@@ -183,14 +197,14 @@ type Statement struct {
 // The returned result must always be closed after usage.
 func (s *Statement) Query(args ...interface{}) (*query.Result, error) {
 	if s.tx != nil {
-		return s.pq.Exec(s.tx.Transaction, argsToParams(args))
+		return s.pq.Exec(s.tx.tx, argsToParams(args))
 	}
 
-	return s.pq.Run(s.db.ctx, s.db.DB, argsToParams(args))
+	return s.pq.Run(s.db.ctx, s.db.db, argsToParams(args))
 }
 
 // QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns database.ErrDocumentNotFound.
+// If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
 func (s *Statement) QueryDocument(args ...interface{}) (d document.Document, err error) {
 	res, err := s.Query(args...)
 	if err != nil {
@@ -217,7 +231,7 @@ func scanDocument(res *query.Result) (document.Document, error) {
 	}
 
 	if d == nil {
-		return nil, database.ErrDocumentNotFound
+		return nil, errs.ErrDocumentNotFound
 	}
 
 	fb := document.NewFieldBuffer()
@@ -241,4 +255,97 @@ func (s *Statement) Exec(args ...interface{}) (err error) {
 	return res.Iterate(func(d document.Document) error {
 		return nil
 	})
+}
+
+func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (*DB, error) {
+	db, err := database.New(ctx, ng, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := db.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	err = loadCatalog(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DB{
+		db:  db,
+		ctx: context.Background(),
+	}, nil
+}
+
+func loadCatalog(tx *database.Transaction) error {
+	tables, err := loadCatalogTables(tx)
+	if err != nil {
+		return err
+	}
+
+	indexes, err := loadCatalogIndexes(tx)
+	if err != nil {
+		return err
+	}
+
+	tx.Catalog.Load(tables, indexes)
+	return nil
+}
+
+func loadCatalogTables(tx *database.Transaction) ([]database.TableInfo, error) {
+	tb := database.GetTableStore(tx)
+
+	var tables []database.TableInfo
+	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+		s, err := d.GetByField("sql")
+		if err != nil {
+			return err
+		}
+
+		stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
+		if err != nil {
+			return err
+		}
+
+		ti := stmt.(query.CreateTableStmt).Info
+
+		v, err := d.GetByField("store_name")
+		if err != nil {
+			return err
+		}
+		ti.StoreName = v.V.([]byte)
+
+		tables = append(tables, ti)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return tables, nil
+}
+
+func loadCatalogIndexes(tx *database.Transaction) ([]database.IndexInfo, error) {
+	tb := database.GetIndexStore(tx)
+
+	var indexes []database.IndexInfo
+	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+		s, err := d.GetByField("sql")
+		if err != nil {
+			return err
+		}
+
+		stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
+		if err != nil {
+			return err
+		}
+
+		indexes = append(indexes, stmt.(query.CreateIndexStmt).Info)
+		return nil
+	})
+
+	return indexes, err
 }

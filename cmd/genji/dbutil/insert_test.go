@@ -7,7 +7,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/testutil"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/genjidb/genji/binarysort"
+	"github.com/genjidb/genji/internal/binarysort"
 	"github.com/stretchr/testify/require"
 )
 

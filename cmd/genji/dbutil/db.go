@@ -3,6 +3,7 @@ package dbutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/stringutil"
 	"go.etcd.io/bbolt"
 )
 
@@ -39,7 +39,7 @@ func OpenDB(ctx context.Context, dbPath, engineName string) (*genji.DB, error) {
 			return nil, errors.New("database is locked")
 		}
 	default:
-		return nil, stringutil.Errorf(`engine should be "bolt" or "badger", got %q`, engineName)
+		return nil, fmt.Errorf(`engine should be "bolt" or "badger", got %q`, engineName)
 	}
 	if err != nil {
 		return nil, err

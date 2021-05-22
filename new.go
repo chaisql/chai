@@ -5,9 +5,9 @@ package genji
 import (
 	"context"
 
-	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/database"
 )
 
 // New initializes the DB using the given engine.

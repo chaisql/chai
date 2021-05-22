@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/stream"
-	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 

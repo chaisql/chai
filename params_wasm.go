@@ -1,7 +1,7 @@
 package genji
 
 import (
-	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/internal/expr"
 )
 
 func argsToParams(args []interface{}) []expr.Param {

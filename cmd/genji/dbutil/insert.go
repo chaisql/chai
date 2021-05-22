@@ -8,7 +8,6 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/stringutil"
 )
 
 // InsertJSON reads json documents from r and inserts them into the selected table.
@@ -77,11 +76,11 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 		}
 		d, ok := t.(json.Delim)
 		if ok && d.String() != "]" {
-			return stringutil.Errorf("found %q, but expected ']'", c)
+			return fmt.Errorf("found %q, but expected ']'", c)
 		}
 
 	default:
-		return stringutil.Errorf("found %q, but expected '{' or '['", c)
+		return fmt.Errorf("found %q, but expected '{' or '['", c)
 	}
 
 	return nil

@@ -5,7 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
-	"github.com/genjidb/genji/stringutil"
+	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )

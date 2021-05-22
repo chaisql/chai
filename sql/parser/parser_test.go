@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/stream"
 )
 
 func TestParserMultiStatement(t *testing.T) {

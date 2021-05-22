@@ -18,7 +18,6 @@ import (
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/stringutil"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 )
@@ -80,7 +79,7 @@ func (o *Options) validate() error {
 	switch o.Engine {
 	case "bolt", "badger", "memory":
 	default:
-		return stringutil.Errorf("unsupported engine %q", o.Engine)
+		return fmt.Errorf("unsupported engine %q", o.Engine)
 	}
 
 	return nil
@@ -445,19 +444,19 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		return runHelpCmd()
 	case ".tables":
 		if len(cmd) > 1 {
-			return stringutil.Errorf(getUsage(".tables"))
+			return fmt.Errorf(getUsage(".tables"))
 		}
 
 		return runTablesCmd(sh.db, os.Stdout)
 	case ".exit", "exit":
 		if len(cmd) > 1 {
-			return stringutil.Errorf(getUsage(".exit"))
+			return fmt.Errorf(getUsage(".exit"))
 		}
 
 		return errExitCommand
 	case ".indexes":
 		if len(cmd) > 2 {
-			return stringutil.Errorf(getUsage(".indexes"))
+			return fmt.Errorf(getUsage(".indexes"))
 		}
 
 		var tableName string
@@ -477,7 +476,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			engine = "bolt"
 			path = cmd[1]
 		} else {
-			return stringutil.Errorf("Can't save without output path")
+			return fmt.Errorf("can't save without output path")
 		}
 
 		return runSaveCmd(ctx, sh.db, engine, path)
@@ -485,7 +484,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		return dbutil.DumpSchema(ctx, sh.db, os.Stdout, cmd[1:]...)
 	case ".import":
 		if len(cmd) != 4 {
-			return stringutil.Errorf(getUsage(".import"))
+			return fmt.Errorf(getUsage(".import"))
 		}
 
 		return runImportCmd(ctx, sh.db, cmd[1], cmd[2], cmd[3])
@@ -599,7 +598,7 @@ func displaySuggestions(in string) error {
 	}
 
 	if len(suggestions) == 0 {
-		return stringutil.Errorf("Unknown command %q. Enter \".help\" for help.", in)
+		return fmt.Errorf("Unknown command %q. Enter \".help\" for help.", in)
 	}
 
 	fmt.Printf("\"%s\" is not a command. Did you mean: ", in)

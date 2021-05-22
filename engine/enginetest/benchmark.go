@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/stringutil"
+	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/stretchr/testify/require"
 )
 

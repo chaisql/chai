@@ -2,10 +2,10 @@ package parser
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/sql/scanner"
-	"github.com/genjidb/genji/stream"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
