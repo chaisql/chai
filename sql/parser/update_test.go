@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/testutil"
@@ -75,7 +75,7 @@ func TestParserUpdate(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			stmt := q.Statements[0].(*planner.Statement)
+			stmt := q.Statements[0].(*query.StreamStmt)
 			require.False(t, stmt.ReadOnly)
 			require.EqualValues(t, test.expected, stmt.Stream)
 		})

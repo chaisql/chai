@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/stringutil"
@@ -12,7 +12,7 @@ import (
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (*planner.Statement, error) {
+func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 	var cfg insertConfig
 	var err error
 
@@ -209,11 +209,11 @@ type insertConfig struct {
 	TableName  string
 	Values     []expr.Expr
 	Fields     []string
-	SelectStmt *planner.Statement
+	SelectStmt *query.StreamStmt
 	Returning  []expr.Expr
 }
 
-func (cfg *insertConfig) ToStream() (*planner.Statement, error) {
+func (cfg *insertConfig) ToStream() (*query.StreamStmt, error) {
 	var s *stream.Stream
 	if cfg.Values != nil {
 		s = stream.New(stream.Expressions(cfg.Values...))
@@ -238,7 +238,7 @@ func (cfg *insertConfig) ToStream() (*planner.Statement, error) {
 		s = s.Pipe(stream.Project(cfg.Returning...))
 	}
 
-	return &planner.Statement{
+	return &query.StreamStmt{
 		Stream:   s,
 		ReadOnly: false,
 	}, nil

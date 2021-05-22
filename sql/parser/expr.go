@@ -35,7 +35,9 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, lit st
 	// of the parsed expression
 	if p.buf == nil {
 		p.buf = new(bytes.Buffer)
-		defer func() { p.buf = nil }()
+		defer func() {
+			p.buf = nil
+		}()
 	}
 
 	// Dummy root node.

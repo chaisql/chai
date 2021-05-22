@@ -66,7 +66,7 @@ func TestDropIndex(t *testing.T) {
 	// Assert that the good index has been dropped.
 	var indexes []string
 	err = db.View(func(tx *genji.Tx) error {
-		indexes = tx.ListIndexes()
+		indexes = tx.Catalog.ListIndexes("")
 		return nil
 	})
 	require.NoError(t, err)

@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
@@ -20,11 +19,11 @@ func TestParserMultiStatement(t *testing.T) {
 	}{
 		{"OnlyCommas", ";;;", nil},
 		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []query.Statement{
-			&planner.Statement{
+			&query.StreamStmt{
 				Stream:   stream.New(stream.SeqScan("foo")).Pipe(stream.Project(expr.Wildcard{})),
 				ReadOnly: true,
 			},
-			&planner.Statement{
+			&query.StreamStmt{
 				Stream: stream.New(stream.SeqScan("foo")).Pipe(stream.TableDelete("foo")),
 			},
 		}},

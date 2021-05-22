@@ -436,7 +436,7 @@ func TestTableReplace(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			tb, err := tx.GetTable("test")
+			tb, err := tx.Catalog.GetTable(tx.Transaction, "test")
 			require.NoError(t, err)
 
 			for i, doc := range test.docsInTable {
@@ -531,7 +531,7 @@ func TestTableDelete(t *testing.T) {
 			var env expr.Environment
 			env.Tx = tx.Transaction
 
-			tb, err := tx.GetTable("test")
+			tb, err := tx.Catalog.GetTable(tx.Transaction, "test")
 			require.NoError(t, err)
 			kk, err := test.in.GetByField("a")
 			require.NoError(t, err)

@@ -13,35 +13,17 @@ import (
 
 // A Table represents a collection of documents.
 type Table struct {
-	tx      *Transaction
-	Store   engine.Store
-	name    string
-	info    *TableInfo
-	indexes Indexes
-}
-
-// Tx returns the current transaction.
-func (t *Table) Tx() *Transaction {
-	return t.tx
-}
-
-// Info returns table information.
-// Returned TableInfo may not represent the most up to date data.
-// Always get a fresh Table instance before calling this method.
-func (t *Table) Info() *TableInfo {
-	return t.info
-}
-
-// Indexes returns the list of indexes of this table.
-// Returned Indexes may not represent the most up to date data.
-// Always get a fresh Table instance before calling this method.
-func (t *Table) Indexes() Indexes {
-	return t.indexes
-}
-
-// Name returns the name of the table.
-func (t *Table) Name() string {
-	return t.name
+	Tx    *Transaction
+	Store engine.Store
+	Name  string
+	// Table information.
+	// May not represent the most up to date data.
+	// Always get a fresh Table instance before relying on this field.
+	Info *TableInfo
+	// List of Indexes of this table.
+	// May not represent the most up to date data.
+	// Always get a fresh Table instance relying on this field.
+	Indexes Indexes
 }
 
 // Truncate deletes all the documents from the table.
@@ -55,18 +37,16 @@ func (t *Table) Truncate() error {
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 // It returns the inserted document alongside its key. They key can be accessed using the document.Keyer interface.
 func (t *Table) Insert(d document.Document) (document.Document, error) {
-	info := t.Info()
-
-	if info.readOnly {
+	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	fb, err := info.FieldConstraints.ValidateDocument(d)
+	fb, err := t.Info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := t.generateKey(info, fb)
+	key, err := t.generateKey(t.Info, fb)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +57,7 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 	}
 
 	var buf bytes.Buffer
-	enc := t.tx.db.Codec.NewEncoder(&buf)
+	enc := t.Tx.DB.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(fb)
 	if err != nil {
@@ -89,9 +69,7 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 		return nil, err
 	}
 
-	indexes := t.Indexes()
-
-	for _, idx := range indexes {
+	for _, idx := range t.Indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 
 		for _, path := range idx.Info.Paths {
@@ -116,16 +94,14 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 	return documentWithKey{
 		Document: d,
 		key:      key,
-		pk:       info.GetPrimaryKey(),
+		pk:       t.Info.GetPrimaryKey(),
 	}, nil
 }
 
 // Delete a document by key.
 // Indexes are automatically updated.
 func (t *Table) Delete(key []byte) error {
-	info := t.Info()
-
-	if info.readOnly {
+	if t.Info.ReadOnly {
 		return errors.New("cannot write to read-only table")
 	}
 
@@ -134,9 +110,7 @@ func (t *Table) Delete(key []byte) error {
 		return err
 	}
 
-	indexes := t.Indexes()
-
-	for _, idx := range indexes {
+	for _, idx := range t.Indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
@@ -164,20 +138,16 @@ func (t *Table) Delete(key []byte) error {
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
 func (t *Table) Replace(key []byte, d document.Document) error {
-	info := t.Info()
-
-	if info.readOnly {
+	if t.Info.ReadOnly {
 		return errors.New("cannot write to read-only table")
 	}
 
-	d, err := info.FieldConstraints.ValidateDocument(d)
+	d, err := t.Info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
 		return err
 	}
 
-	indexes := t.Indexes()
-
-	return t.replace(indexes, key, d)
+	return t.replace(t.Indexes, key, d)
 }
 
 func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error {
@@ -206,7 +176,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 
 	// encode new document
 	var buf bytes.Buffer
-	enc := t.tx.db.Codec.NewEncoder(&buf)
+	enc := t.Tx.DB.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(d)
 	if err != nil {
@@ -344,15 +314,13 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 // It can be used to manually add a new entry to the store or to compare
 // with other keys during table iteration.
 func (t *Table) EncodeValue(v document.Value) ([]byte, error) {
-	info := t.Info()
-
-	return t.encodeValueToKey(info, v)
+	return t.encodeValueToKey(t.Info, v)
 }
 
 func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, error) {
 	var err error
 
-	pk := info.GetPrimaryKey()
+	pk := t.Info.GetPrimaryKey()
 	if pk == nil {
 		// if no primary key was defined, convert the pivot to an integer then to an unsigned integer
 		// and encode it as a varint
@@ -416,12 +384,10 @@ func (t *Table) DescendLessOrEqual(pivot document.Value, fn func(d document.Docu
 func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.Document) error) error {
 	var seek []byte
 
-	info := t.Info()
-
 	// if there is a pivot, convert it to the right type
 	if !pivot.Type.IsAny() && pivot.V != nil {
 		var err error
-		seek, err = t.encodeValueToKey(info, pivot)
+		seek, err = t.encodeValueToKey(t.Info, pivot)
 		if err != nil {
 			return err
 		}
@@ -430,10 +396,10 @@ func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.D
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
 	d := lazilyDecodedDocument{
-		codec: t.tx.db.Codec,
+		codec: t.Tx.DB.Codec,
 	}
 
-	d.pk = info.GetPrimaryKey()
+	d.pk = t.Info.GetPrimaryKey()
 
 	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
@@ -466,12 +432,10 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
-	info := t.Info()
-
 	var d documentWithKey
-	d.Document = t.tx.db.Codec.NewDocument(v)
+	d.Document = t.Tx.DB.Codec.NewDocument(v)
 	d.key = key
-	d.pk = info.GetPrimaryKey()
+	d.pk = t.Info.GetPrimaryKey()
 	return &d, err
 }
 
@@ -482,7 +446,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
 func (t *Table) generateKey(info *TableInfo, fb *document.FieldBuffer) ([]byte, error) {
-	if pk := info.GetPrimaryKey(); pk != nil {
+	if pk := t.Info.GetPrimaryKey(); pk != nil {
 
 		v, err := pk.Path.GetValueFromDocument(fb)
 		if err == document.ErrFieldNotFound {

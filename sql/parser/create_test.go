@@ -18,13 +18,13 @@ func TestParserCreateTable(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE TABLE test", query.CreateTableStmt{TableName: "test"}, false},
-		{"If not exists", "CREATE TABLE IF NOT EXISTS test", query.CreateTableStmt{TableName: "test", IfNotExists: true}, false},
+		{"Basic", "CREATE TABLE test", query.CreateTableStmt{Info: database.TableInfo{TableName: "test"}}, false},
+		{"If not exists", "CREATE TABLE IF NOT EXISTS test", query.CreateTableStmt{Info: database.TableInfo{TableName: "test"}, IfNotExists: true}, false},
 		{"Path only", "CREATE TABLE test(a)", query.CreateTableStmt{}, true},
 		{"With primary key", "CREATE TABLE test(foo INTEGER PRIMARY KEY)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
 					},
@@ -34,8 +34,8 @@ func TestParserCreateTable(t *testing.T) {
 			query.CreateTableStmt{}, true},
 		{"With type", "CREATE TABLE test(foo INTEGER)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue},
 					},
@@ -43,8 +43,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With not null", "CREATE TABLE test(foo NOT NULL)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), IsNotNull: true},
 					},
@@ -52,8 +52,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With default", "CREATE TABLE test(foo DEFAULT \"10\")",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), DefaultValue: document.NewTextValue("10")},
 					},
@@ -61,8 +61,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With unique", "CREATE TABLE test(foo UNIQUE)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), IsUnique: true},
 					},
@@ -76,8 +76,8 @@ func TestParserCreateTable(t *testing.T) {
 			query.CreateTableStmt{}, true},
 		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsNotNull: true},
 					},
@@ -85,8 +85,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With not null and primary key", "CREATE TABLE test(foo INTEGER NOT NULL PRIMARY KEY)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
@@ -94,8 +94,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With primary key and not null", "CREATE TABLE test(foo INTEGER PRIMARY KEY NOT NULL)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
 					},
@@ -103,8 +103,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz[4][1].bat TEXT)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), Type: document.IntegerValue, IsNotNull: true},
@@ -114,8 +114,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With table constraints / PK on defined field", "CREATE TABLE test(foo INTEGER, bar NOT NULL, PRIMARY KEY (foo))",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsPrimaryKey: true},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), IsNotNull: true},
@@ -124,8 +124,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With table constraints / PK on undefined field", "CREATE TABLE test(foo INTEGER, PRIMARY KEY (bar))",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), IsPrimaryKey: true},
@@ -137,8 +137,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
 		{"With table constraints / UNIQUE on defined field", "CREATE TABLE test(foo INTEGER, bar NOT NULL, UNIQUE (foo))",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), IsNotNull: true},
@@ -147,8 +147,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With table constraints / UNIQUE on undefined field", "CREATE TABLE test(foo INTEGER, UNIQUE (bar))",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), IsUnique: true},
@@ -157,8 +157,8 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With table constraints / UNIQUE twice", "CREATE TABLE test(foo INTEGER UNIQUE, UNIQUE (foo))",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: document.IntegerValue, IsUnique: true},
 					},
@@ -170,8 +170,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With all supported fixed size data types",
 			"CREATE TABLE test(d double, b bool)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "d")), Type: document.DoubleValue},
 						{Path: document.Path(testutil.ParsePath(t, "b")), Type: document.BoolValue},
@@ -181,8 +181,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With all supported variable size data types",
 			"CREATE TABLE test(i integer, b blob, byt bytes, t text, a array, d document)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "i")), Type: document.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "b")), Type: document.BlobValue},
@@ -196,8 +196,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With integer aliases types",
 			"CREATE TABLE test(i int, ii int2, ei int8, m mediumint, s smallint, b bigint, t tinyint)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "i")), Type: document.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "ii")), Type: document.IntegerValue},
@@ -212,8 +212,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With double aliases types",
 			"CREATE TABLE test(dp DOUBLE PRECISION, r real, d double)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "dp")), Type: document.DoubleValue},
 						{Path: document.Path(testutil.ParsePath(t, "r")), Type: document.DoubleValue},
@@ -224,8 +224,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With text aliases types",
 			"CREATE TABLE test(v VARCHAR(255), c CHARACTER(64), t TEXT)",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "v")), Type: document.TextValue},
 						{Path: document.Path(testutil.ParsePath(t, "c")), Type: document.TextValue},
@@ -236,8 +236,8 @@ func TestParserCreateTable(t *testing.T) {
 		{"With errored text aliases types",
 			"CREATE TABLE test(v VARCHAR(1 IN [1, 2, 3] AND foo > 4) )",
 			query.CreateTableStmt{
-				TableName: "test",
 				Info: database.TableInfo{
+					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "v")), Type: document.TextValue},
 					},
@@ -266,18 +266,30 @@ func TestParserCreateIndex(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo"))}}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo.bar[1]"))}, IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, IfNotExists: true, Unique: true}, false},
-		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, Unique: true}, false},
+		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{
+			Info: database.IndexInfo{
+				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo"))},
+			}}, false},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{
+			Info: database.IndexInfo{
+				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo.bar[1]"))},
+			}, IfNotExists: true}, false},
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{
+			Info: database.IndexInfo{
+				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, Unique: true,
+			}, IfNotExists: true}, false},
+		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{
+			Info: database.IndexInfo{TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, Unique: true}}, false},
 		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
 		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)",
 			query.CreateIndexStmt(query.CreateIndexStmt{
-				IndexName: "idx",
-				TableName: "test",
-				Paths: []document.Path{
-					document.Path(testutil.ParsePath(t, "foo")),
-					document.Path(testutil.ParsePath(t, "bar")),
+				Info: database.IndexInfo{
+					IndexName: "idx",
+					TableName: "test",
+					Paths: []document.Path{
+						document.Path(testutil.ParsePath(t, "foo")),
+						document.Path(testutil.ParsePath(t, "bar")),
+					},
 				},
 			}),
 			false},

@@ -3,7 +3,6 @@ package stream
 import (
 	"bytes"
 	"container/heap"
-	"container/list"
 	"errors"
 	"strings"
 
@@ -89,7 +88,6 @@ func Map(e expr.Expr) *MapOperator {
 func (op *MapOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
 	var newEnv expr.Environment
 
-	list.New()
 	return op.Prev.Iterate(in, func(out *expr.Environment) error {
 		v, err := op.E.Eval(out)
 		if err != nil {
@@ -403,7 +401,7 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 
 		var err error
 		if table == nil {
-			table, err = env.GetTx().GetTable(op.Name)
+			table, err = env.GetTx().Catalog.GetTable(env.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}
@@ -447,7 +445,7 @@ func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.E
 
 		if table == nil {
 			var err error
-			table, err = out.GetTx().GetTable(op.Name)
+			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}
@@ -501,7 +499,7 @@ func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.En
 
 		if table == nil {
 			var err error
-			table, err = out.GetTx().GetTable(op.Name)
+			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}

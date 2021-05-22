@@ -12,11 +12,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
-	"github.com/genjidb/genji/sql/parser"
-	"github.com/genjidb/genji/stream"
-	"github.com/genjidb/genji/stringutil"
 )
 
 func init() {
@@ -94,15 +90,20 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 
 // PrepareContext returns a prepared statement, bound to this connection.
 func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	pq, err := parser.ParseQuery(q)
+	var s *genji.Statement
+	var err error
+
+	if c.tx != nil {
+		s, err = c.tx.Prepare(q)
+	} else {
+		s, err = c.db.Prepare(q)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return stmt{
-		db: c.db,
-		tx: c.tx,
-		q:  pq,
+		stmt: s,
 	}, nil
 }
 
@@ -153,9 +154,7 @@ func (c *conn) Rollback() error {
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	db *genji.DB
-	tx *genji.Tx
-	q  query.Query
+	stmt *genji.Statement
 }
 
 // NumInput returns the number of placeholder parameters.
@@ -198,34 +197,10 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	var res *query.Result
-	var err error
-
-	// if calling ExecContext within a transaction, use it,
-	// otherwise use DB.
-	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
-	} else {
-		res, err = s.q.Run(ctx, s.db.DB, driverNamedValueToParams(args))
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = res.Iterate(func(d document.Document) error { return nil })
-	if err != nil {
-		return nil, err
-	}
-
-	// s.q.Run might return a stream if the last Statement is a Select,
-	// make sure the result is closed before returning so any transaction
-	// created by s.q.Run is closed.
-	return result{}, res.Close()
+	return result{}, s.stmt.Exec(driverNamedValueToParams(args)...)
 }
 
-type result struct {
-}
+type result struct{}
 
 // LastInsertId is not supported and returns an error.
 func (r result) LastInsertId() (int64, error) {
@@ -250,62 +225,23 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	var res *query.Result
-	var err error
-
-	// if calling QueryContext within a transaction, use it,
-	// otherwise use DB.
-	if s.tx != nil {
-		res, err = s.q.Exec(s.tx.Transaction, driverNamedValueToParams(args))
-	} else {
-		res, err = s.q.Run(ctx, s.db.DB, driverNamedValueToParams(args))
-	}
-
+	res, err := s.stmt.Query(driverNamedValueToParams(args)...)
 	if err != nil {
 		return nil, err
 	}
 
 	rs := newRecordStream(res)
-	if len(s.q.Statements) == 0 {
-		return rs, nil
-	}
-
-	lastStmt := s.q.Statements[len(s.q.Statements)-1]
-
-	stmt, ok := lastStmt.(*planner.Statement)
-	if !ok || stmt.Stream.Op == nil {
-		return rs, nil
-	}
-
-	// Search the ProjectOperator.
-	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
-		if po, ok := op.(*stream.ProjectOperator); ok {
-			if len(po.Exprs) == 0 {
-				break
-			}
-
-			rs.fields = make([]string, len(po.Exprs))
-			for i := range po.Exprs {
-				rs.fields[i] = stringutil.Sprintf("%s", po.Exprs[i])
-			}
-
-			return rs, nil
-		}
-	}
-
-	// if fields is empty, the stream will output documents in a single field
-	if len(rs.fields) == 0 {
-		rs.fields = []string{"*"}
-	}
-
+	rs.fields = res.Fields()
 	return rs, nil
 }
 
-func driverNamedValueToParams(args []driver.NamedValue) []expr.Param {
-	params := make([]expr.Param, len(args))
+func driverNamedValueToParams(args []driver.NamedValue) []interface{} {
+	params := make([]interface{}, len(args))
 	for i, arg := range args {
-		params[i].Name = arg.Name
-		params[i].Value = arg.Value
+		var p expr.Param
+		p.Name = arg.Name
+		p.Value = arg.Value
+		params[i] = p
 	}
 
 	return params
@@ -386,7 +322,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 
 // Columns returns the fields selected by the SELECT statement.
 func (rs *documentStream) Columns() []string {
-	return rs.fields
+	return rs.res.Fields()
 }
 
 // Close closes the rows iterator.

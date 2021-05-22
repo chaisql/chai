@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
 )
@@ -21,5 +20,5 @@ func (p *Parser) parseExplainStatement() (query.Statement, error) {
 		return nil, err
 	}
 
-	return &planner.ExplainStmt{Statement: innerStmt}, nil
+	return &query.ExplainStmt{Statement: innerStmt}, nil
 }

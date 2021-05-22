@@ -1,4 +1,4 @@
-package planner_test
+package query_test
 
 import (
 	"testing"

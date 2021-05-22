@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/testutil"
@@ -148,7 +148,7 @@ func TestParserSelect(t *testing.T) {
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)
-				require.EqualValues(t, &planner.Statement{Stream: test.expected, ReadOnly: true}, q.Statements[0])
+				require.EqualValues(t, &query.StreamStmt{Stream: test.expected, ReadOnly: true}, q.Statements[0])
 			} else {
 				require.Error(t, err)
 			}
