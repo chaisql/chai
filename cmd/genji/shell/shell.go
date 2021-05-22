@@ -507,16 +507,6 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
-func (sh *Shell) getAllIndexes(ctx context.Context) ([]string, error) {
-	var listName []string
-	err := sh.db.View(func(tx *genji.Tx) error {
-		listName = tx.ListIndexes()
-		return nil
-	})
-
-	return listName, err
-}
-
 // getTables returns all the tables of the database
 func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	var tables []string
@@ -565,7 +555,7 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 				return suggestions
 			}
 		case "index_name":
-			expected, err = sh.getAllIndexes(context.Background())
+			expected, err = dbutil.ListIndexes(context.Background(), sh.db, "")
 			if err != nil {
 				return suggestions
 			}

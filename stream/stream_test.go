@@ -31,4 +31,7 @@ func TestStream(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), count)
+
+	clone := s.Clone()
+	require.Equal(t, s, clone)
 }

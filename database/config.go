@@ -1,23 +1,19 @@
 package database
 
 import (
-	"bytes"
-	"encoding/binary"
+	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/stringutil"
 )
-
-const storePrefix = 't'
 
 // TableInfo contains information about a table.
 type TableInfo struct {
 	// name of the table.
-	tableName string
+	TableName string
 	// name of the store associated with the table.
-	storeName []byte
-	readOnly  bool
+	StoreName []byte
+	ReadOnly  bool
 
 	FieldConstraints FieldConstraints
 }
@@ -37,70 +33,61 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 // ToDocument turns ti into a document.
 func (ti *TableInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
-
-	buf.Add("table_name", document.NewTextValue(ti.tableName))
-	buf.Add("store_name", document.NewBlobValue(ti.storeName))
-
-	vbuf := document.NewValueBuffer()
-	for _, fc := range ti.FieldConstraints {
-		vbuf = vbuf.Append(document.NewDocumentValue(fc.ToDocument()))
-	}
-
-	buf.Add("field_constraints", document.NewArrayValue(vbuf))
-
-	buf.Add("read_only", document.NewBoolValue(ti.readOnly))
+	buf.Add("sql", document.NewTextValue(ti.String()))
+	buf.Add("table_name", document.NewTextValue(ti.TableName))
+	buf.Add("store_name", document.NewBlobValue(ti.StoreName))
 	return buf
 }
 
-// ScanDocument decodes d into ti.
-func (ti *TableInfo) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("table_name")
-	if err != nil {
-		return err
-	}
-	ti.tableName = v.V.(string)
+// String returns a SQL representation.
+func (ti *TableInfo) String() string {
+	var s strings.Builder
 
-	v, err = d.GetByField("store_name")
-	if err != nil {
-		return err
-	}
-	ti.storeName = make([]byte, len(v.V.([]byte)))
-	copy(ti.storeName, v.V.([]byte))
-
-	v, err = d.GetByField("field_constraints")
-	if err != nil {
-		return err
-	}
-	ar := v.V.(document.Array)
-
-	l, err := document.ArrayLength(ar)
-	if err != nil {
-		return err
+	stringutil.Fprintf(&s, "CREATE TABLE %s", ti.TableName)
+	if len(ti.FieldConstraints) > 0 {
+		s.WriteString(" (")
 	}
 
-	ti.FieldConstraints = make([]*FieldConstraint, l)
-
-	err = ar.Iterate(func(i int, value document.Value) error {
-		var fc FieldConstraint
-		err := fc.ScanDocument(value.V.(document.Document))
-		if err != nil {
-			return err
+	for i, fc := range ti.FieldConstraints {
+		if fc.IsInferred {
+			continue
 		}
 
-		ti.FieldConstraints[i] = &fc
-		return nil
-	})
-	if err != nil {
-		return err
+		if i > 0 {
+			s.WriteString(", ")
+		}
+
+		// Path
+		s.WriteString(fc.Path.String())
+
+		// Type
+		if fc.Type != 0 {
+			stringutil.Fprintf(&s, " %s", strings.ToUpper(fc.Type.String()))
+		}
+
+		// Not null
+		if fc.IsNotNull {
+			s.WriteString(" NOT NULL")
+		}
+
+		// Default value
+		if fc.HasDefaultValue() {
+			stringutil.Fprintf(&s, " DEFAULT %s", fc.DefaultValue.String())
+		}
+
+		// Primary key
+		if fc.IsPrimaryKey {
+			s.WriteString(" PRIMARY KEY")
+		}
+
+		// Unique must not be written as it an index is already created for it
 	}
 
-	v, err = d.GetByField("read_only")
-	if err != nil {
-		return err
+	if len(ti.FieldConstraints) > 0 {
+		s.WriteString(")")
 	}
 
-	ti.readOnly = v.V.(bool)
-	return nil
+	return s.String()
 }
 
 // Clone creates another tableInfo with the same values.
@@ -109,121 +96,6 @@ func (ti *TableInfo) Clone() *TableInfo {
 	cp.FieldConstraints = nil
 	cp.FieldConstraints = append(cp.FieldConstraints, ti.FieldConstraints...)
 	return &cp
-}
-
-// tableStore manages table information.
-// It loads table information during database startup
-// and holds it in memory.
-type tableStore struct {
-	db *Database
-	st engine.Store
-}
-
-// List all tables.
-func (t *tableStore) ListAll() ([]*TableInfo, error) {
-	it := t.st.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	var list []*TableInfo
-	var buf []byte
-	var err error
-
-	for it.Seek(nil); it.Valid(); it.Next() {
-		itm := it.Item()
-		buf, err = itm.ValueCopy(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		var ti TableInfo
-		err = ti.ScanDocument(t.db.Codec.NewDocument(buf))
-		if err != nil {
-			return nil, err
-		}
-
-		list = append(list, &ti)
-	}
-	if err := it.Err(); err != nil {
-		return nil, err
-	}
-
-	return list, nil
-}
-
-// Insert a new tableInfo for the given table name.
-// If info.storeName is nil, it generates one and stores it in info.
-func (t *tableStore) Insert(tx *Transaction, tableName string, info *TableInfo) error {
-	tblName := []byte(tableName)
-
-	_, err := t.st.Get(tblName)
-	if err == nil {
-		return ErrTableAlreadyExists
-	}
-	if err != engine.ErrKeyNotFound {
-		return err
-	}
-
-	if info.storeName == nil {
-		seq, err := t.st.NextSequence()
-		if err != nil {
-			return err
-		}
-		buf := make([]byte, binary.MaxVarintLen64+1)
-		buf[0] = storePrefix
-		n := binary.PutUvarint(buf[1:], seq)
-		info.storeName = buf[:n+1]
-	}
-
-	var buf bytes.Buffer
-	enc := t.db.Codec.NewEncoder(&buf)
-	defer enc.Close()
-	err = enc.EncodeDocument(info.ToDocument())
-	if err != nil {
-		return err
-	}
-
-	err = t.st.Put([]byte(tableName), buf.Bytes())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (t *tableStore) Delete(tx *Transaction, tableName string) error {
-	err := t.st.Delete([]byte(tableName))
-	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return stringutil.Errorf("%w: %q", ErrTableNotFound, tableName)
-		}
-
-		return err
-	}
-
-	return nil
-}
-
-// Replace replaces tableName table information with the new info.
-func (t *tableStore) Replace(tx *Transaction, tableName string, info *TableInfo) error {
-	var buf bytes.Buffer
-	enc := t.db.Codec.NewEncoder(&buf)
-	defer enc.Close()
-	err := enc.EncodeDocument(info.ToDocument())
-	if err != nil {
-		return err
-	}
-
-	tbName := []byte(tableName)
-	_, err = t.st.Get(tbName)
-	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return stringutil.Errorf("%w: %q", ErrTableNotFound, tableName)
-		}
-
-		return err
-	}
-
-	return t.st.Put(tbName, buf.Bytes())
 }
 
 // IndexInfo holds the configuration of an index.
@@ -242,85 +114,31 @@ type IndexInfo struct {
 // ToDocument creates a document from an IndexConfig.
 func (i *IndexInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
-
-	buf.Add("unique", document.NewBoolValue(i.Unique))
+	buf.Add("sql", document.NewTextValue(i.String()))
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
 
-	vb := document.NewValueBuffer()
-	for _, path := range i.Paths {
-		vb.Append(document.NewArrayValue(pathToArray(path)))
-	}
-
-	buf.Add("paths", document.NewArrayValue(vb))
-	if i.Types != nil {
-		types := make([]document.Value, 0, len(i.Types))
-		for _, typ := range i.Types {
-			types = append(types, document.NewIntegerValue(int64(typ)))
-		}
-		buf.Add("types", document.NewArrayValue(document.NewValueBuffer(types...)))
-	}
 	return buf
 }
 
-// ScanDocument implements the document.Scanner interface.
-func (i *IndexInfo) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("unique")
-	if err != nil {
-		return err
-	}
-	i.Unique = v.V.(bool)
+// String returns a SQL representation.
+func (i *IndexInfo) String() string {
+	var s strings.Builder
 
-	v, err = d.GetByField("index_name")
-	if err != nil {
-		return err
-	}
-	i.IndexName = string(v.V.(string))
+	stringutil.Fprintf(&s, "CREATE INDEX %s ON %s (", i.IndexName, i.TableName)
 
-	v, err = d.GetByField("table_name")
-	if err != nil {
-		return err
-	}
-	i.TableName = string(v.V.(string))
-
-	v, err = d.GetByField("paths")
-	if err != nil {
-		return err
-	}
-
-	i.Paths = nil
-	err = v.V.(document.Array).Iterate(func(ii int, pval document.Value) error {
-		p, err := arrayToPath(pval.V.(document.Array))
-		if err != nil {
-			return err
+	for i, p := range i.Paths {
+		if i > 0 {
+			s.WriteString(", ")
 		}
 
-		i.Paths = append(i.Paths, p)
-		return nil
-	})
-
-	if err != nil {
-		return err
+		// Path
+		s.WriteString(p.String())
 	}
 
-	v, err = d.GetByField("types")
-	if err != nil && err != document.ErrFieldNotFound {
-		return err
-	}
+	s.WriteString(")")
 
-	if err == nil {
-		i.Types = nil
-		err = v.V.(document.Array).Iterate(func(ii int, tval document.Value) error {
-			i.Types = append(i.Types, document.ValueType(tval.V.(int64)))
-			return nil
-		})
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return s.String()
 }
 
 // Clone returns a copy of the index information.
@@ -336,101 +154,6 @@ func (i IndexInfo) Clone() *IndexInfo {
 	copy(c.Types, i.Types)
 
 	return &c
-}
-
-type indexStore struct {
-	db *Database
-	st engine.Store
-}
-
-func (t *indexStore) Insert(cfg *IndexInfo) error {
-	key := []byte(cfg.IndexName)
-	_, err := t.st.Get(key)
-	if err == nil {
-		return ErrIndexAlreadyExists
-	}
-	if err != engine.ErrKeyNotFound {
-		return err
-	}
-
-	var buf bytes.Buffer
-	enc := t.db.Codec.NewEncoder(&buf)
-	defer enc.Close()
-	err = enc.EncodeDocument(cfg.ToDocument())
-	if err != nil {
-		return err
-	}
-
-	return t.st.Put(key, buf.Bytes())
-}
-
-func (t *indexStore) Get(indexName string) (*IndexInfo, error) {
-	key := []byte(indexName)
-	v, err := t.st.Get(key)
-	if err == engine.ErrKeyNotFound {
-		return nil, ErrIndexNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	var idxopts IndexInfo
-	err = idxopts.ScanDocument(t.db.Codec.NewDocument(v))
-	if err != nil {
-		return nil, err
-	}
-
-	return &idxopts, nil
-}
-
-func (t *indexStore) Replace(indexName string, cfg IndexInfo) error {
-	var buf bytes.Buffer
-	enc := t.db.Codec.NewEncoder(&buf)
-	defer enc.Close()
-	err := enc.EncodeDocument(cfg.ToDocument())
-	if err != nil {
-		return err
-	}
-
-	return t.st.Put([]byte(indexName), buf.Bytes())
-}
-
-func (t *indexStore) Delete(indexName string) error {
-	key := []byte(indexName)
-	err := t.st.Delete(key)
-	if err == engine.ErrKeyNotFound {
-		return ErrIndexNotFound
-	}
-	return err
-}
-
-func (t *indexStore) ListAll() ([]*IndexInfo, error) {
-	it := t.st.Iterator(engine.IteratorOptions{})
-	defer it.Close()
-
-	var idxList []*IndexInfo
-	var buf []byte
-	var err error
-	for it.Seek(nil); it.Valid(); it.Next() {
-		item := it.Item()
-		buf, err = item.ValueCopy(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		var opts IndexInfo
-		err = opts.ScanDocument(t.db.Codec.NewDocument(buf))
-		if err != nil {
-			return nil, err
-		}
-
-		idxList = append(idxList, &opts)
-	}
-	if err := it.Err(); err != nil {
-		return nil, err
-	}
-
-	return idxList, nil
 }
 
 type Indexes []*Index

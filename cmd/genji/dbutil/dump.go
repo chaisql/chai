@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
@@ -135,91 +134,66 @@ func DumpSchema(ctx context.Context, db *genji.DB, w io.Writer, tables ...string
 
 // dumpSchema displays the schema of the given table as SQL statements.
 func dumpSchema(tx *genji.Tx, w io.Writer, tableName string) error {
-	t, err := tx.GetTable(tableName)
+	d, err := tx.QueryDocument("SELECT sql FROM __genji_tables WHERE table_name = ?", tableName)
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintf(w, "CREATE TABLE %s", tableName)
+	var tableSchema string
+	err = document.Scan(d, &tableSchema)
 	if err != nil {
 		return err
 	}
 
-	ti := t.Info()
-
-	fcs := ti.FieldConstraints
-	// Fields constraints should be displayed between parenthesis.
-	if len(fcs) > 0 {
-		_, err = fmt.Fprintln(w, " (")
-		if err != nil {
-			return err
-		}
-	}
-
-	for i, fc := range fcs {
-		// Don't display the last comma.
-		if i > 0 {
-			_, err = fmt.Fprintln(w, ",")
-			if err != nil {
-				return err
-			}
-		}
-
-		// Construct the fields constraints
-		if _, err := fmt.Fprintf(w, " %s %s", fcs[i].Path.String(), strings.ToUpper(fcs[i].Type.String())); err != nil {
-			return err
-		}
-
-		f := ""
-		if fc.IsPrimaryKey {
-			f += " PRIMARY KEY"
-		}
-
-		if fc.IsNotNull {
-			f += " NOT NULL"
-		}
-
-		if fc.HasDefaultValue() {
-			if _, err := fmt.Fprintf(w, "%s DEFAULT %s", f, fc.DefaultValue.String()); err != nil {
-				return err
-			}
-		} else {
-			if _, err := fmt.Fprintf(w, f); err != nil {
-				return err
-			}
-		}
-	}
-
-	// Fields constraints close parenthesis.
-	if len(fcs) > 0 {
-		if _, err := fmt.Fprintln(w, "\n);"); err != nil {
-			return err
-		}
-	} else {
-		if _, err := fmt.Fprintln(w, ";"); err != nil {
-			return err
-		}
+	_, err = fmt.Fprintf(w, "%s;\n", tableSchema)
+	if err != nil {
+		return err
 	}
 
 	// Indexes statements.
-	indexes := t.Indexes()
+	res, err := tx.Query("SELECT sql FROM __genji_indexes WHERE table_name = ?", tableName)
+	if err != nil {
+		return err
+	}
 
-	for _, index := range indexes {
-		u := ""
-		if index.Info.Unique {
-			u = " UNIQUE"
-		}
+	defer res.Close()
 
-		var paths []string
-		for _, path := range index.Info.Paths {
-			paths = append(paths, path.String())
-		}
+	return res.Iterate(func(d document.Document) error {
+		var indexQuery string
 
-		_, err = fmt.Fprintf(w, "CREATE%s INDEX %s ON %s (%s);\n", u, index.Info.IndexName, index.Info.TableName, strings.Join(paths, ", "))
+		err = document.Scan(d, &indexQuery)
 		if err != nil {
 			return err
 		}
-	}
 
-	return nil
+		_, err = fmt.Fprintf(w, "%s;\n", indexQuery)
+		return err
+	})
+}
+
+func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string, error) {
+	var listName []string
+	err := db.View(func(tx *genji.Tx) error {
+		q := "SELECT index_name FROM __genji_indexes"
+		if tableName != "" {
+			q += " WHERE table_name = ?"
+		}
+		res, err := tx.Query(q, tableName)
+		if err != nil {
+			return err
+		}
+		defer res.Close()
+
+		return res.Iterate(func(d document.Document) error {
+			var name string
+			err = document.Scan(d, &name)
+			if err != nil {
+				return err
+			}
+			listName = append(listName, name)
+			return nil
+		})
+	})
+
+	return listName, err
 }

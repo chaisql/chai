@@ -24,9 +24,7 @@ type Database struct {
 	// Codec used to encode documents. Defaults to MessagePack.
 	Codec encoding.Codec
 
-	// table and index catalog.
-	catalog *Catalog
-
+	Catalog *Catalog
 	// This controls concurrency on read-only and read/write transactions.
 	txmu sync.RWMutex
 }
@@ -42,8 +40,9 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 
 	db := Database{
-		ng:    ng,
-		Codec: opts.Codec,
+		ng:      ng,
+		Codec:   opts.Codec,
+		Catalog: NewCatalog(),
 	}
 
 	tx, err := db.BeginTx(ctx, &TxOptions{})
@@ -52,44 +51,13 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 	defer tx.Rollback()
 
-	err = db.initCatalog(tx)
+	err = initStores(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	return &db, nil
-}
-
-func (db *Database) initCatalog(tx *Transaction) error {
-	_, err := tx.tx.GetStore([]byte(tableInfoStoreName))
-	if err == engine.ErrStoreNotFound {
-		err = tx.tx.CreateStore([]byte(tableInfoStoreName))
-	}
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.tx.GetStore([]byte(indexStoreName))
-	if err == engine.ErrStoreNotFound {
-		err = tx.tx.CreateStore([]byte(indexStoreName))
-	}
-	if err != nil {
-		return err
-	}
-
-	c := NewCatalog()
-	err = c.Load(tx)
-	if err != nil {
-		return err
-	}
-
-	db.catalog = c
-	return nil
+	return &db, err
 }
 
 // Close the underlying engine.
@@ -137,9 +105,10 @@ func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 	}
 
 	tx := Transaction{
-		db:       db,
-		tx:       ntx,
-		writable: !opts.ReadOnly,
+		DB:       db,
+		Tx:       ntx,
+		Catalog:  db.Catalog,
+		Writable: !opts.ReadOnly,
 		attached: opts.Attached,
 	}
 
@@ -168,8 +137,4 @@ func (db *Database) GetAttachedTx() *Transaction {
 	defer db.attachedTxMu.Unlock()
 
 	return db.attachedTransaction
-}
-
-func (db *Database) Catalog() *Catalog {
-	return db.catalog
 }

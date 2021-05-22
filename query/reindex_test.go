@@ -43,7 +43,7 @@ func TestReIndex(t *testing.T) {
 
 			// truncate all indexes
 			err = db.Update(func(tx *genji.Tx) error {
-				c := tx.DB().Catalog()
+				c := tx.Catalog
 				for _, idxName := range c.ListIndexes("") {
 					idx, err := c.GetIndex(tx.Transaction, idxName)
 					if err != nil {
@@ -68,8 +68,8 @@ func TestReIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				for _, idxName := range tx.ListIndexes() {
-					idx, err := tx.GetIndex(idxName)
+				for _, idxName := range tx.Catalog.ListIndexes("") {
+					idx, err := tx.Catalog.GetIndex(tx.Transaction, idxName)
 					require.NoError(t, err)
 
 					shouldBeIndexed := false

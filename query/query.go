@@ -7,6 +7,8 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
+	"github.com/genjidb/genji/stream"
+	"github.com/genjidb/genji/stringutil"
 )
 
 // ErrResultClosed is returned when trying to close an already closed result.
@@ -41,6 +43,9 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 			return nil, ctx.Err()
 		default:
 		}
+
+		// reinitialize the result
+		res = Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
 			err = qa.alterQuery(ctx, db, &q)
@@ -85,7 +90,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		// it there is an opened transaction but there are still statements
 		// to be executed, close the current transaction.
 		if q.tx != nil && q.autoCommit && i+1 < len(q.Statements) {
-			if q.tx.Writable() {
+			if q.tx.Writable {
 				err := q.tx.Commit()
 				if err != nil {
 					return nil, err
@@ -104,6 +109,13 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		// the returned result will now own the transaction.
 		// its Close method is expected to be called.
 		res.Tx = q.tx
+	}
+
+	// if autoCommit is false and q.tx is nil it means
+	// the query contains a BEGIN statement but no ROLLBACK or COMMIT.
+	// Ensure the stat
+	if !q.autoCommit && q.tx == nil {
+
 	}
 
 	return &res, nil
@@ -160,6 +172,37 @@ func (r *Result) Iterate(fn func(d document.Document) error) error {
 	return r.Iterator.Iterate(fn)
 }
 
+func (r *Result) Fields() []string {
+	if r.Iterator == nil {
+		return nil
+	}
+
+	stmt, ok := r.Iterator.(*streamStmtIterator)
+	if !ok || stmt.Stream.Op == nil {
+		return nil
+	}
+
+	// Search for the ProjectOperator. If found, extract the projected expression list
+	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
+		if po, ok := op.(*stream.ProjectOperator); ok {
+			// if there are no projected expression, it's a wildcard
+			if len(po.Exprs) == 0 {
+				break
+			}
+
+			fields := make([]string, len(po.Exprs))
+			for i := range po.Exprs {
+				fields[i] = stringutil.Sprintf("%s", po.Exprs[i])
+			}
+
+			return fields
+		}
+	}
+
+	// the stream will output documents in a single field
+	return []string{"*"}
+}
+
 // Close the result stream.
 // After closing the result, Stream is not supposed to be used.
 // If the result stream was already closed, it returns
@@ -176,7 +219,7 @@ func (r *Result) Close() (err error) {
 	r.closed = true
 
 	if r.Tx != nil {
-		if r.Tx.Writable() {
+		if r.Tx.Writable {
 			err = r.Tx.Commit()
 		} else {
 			err = r.Tx.Rollback()

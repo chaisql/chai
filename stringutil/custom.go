@@ -2,12 +2,18 @@ package stringutil
 
 import (
 	"errors"
+	"io"
 	"strconv"
 	"strings"
 )
 
 type Stringer interface {
 	String() string
+}
+
+func fprintf(w io.Writer, msg string, args ...interface{}) (int, error) {
+	s := sprintf(msg, args...)
+	return w.Write([]byte(s))
 }
 
 func sprintf(msg string, args ...interface{}) string {

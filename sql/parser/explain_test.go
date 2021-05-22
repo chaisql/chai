@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
@@ -16,7 +16,7 @@ func TestParserExplain(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Explain create table", "EXPLAIN CREATE TABLE test", &planner.ExplainStmt{Statement: query.CreateTableStmt{TableName: "test"}}, false},
+		{"Explain create table", "EXPLAIN CREATE TABLE test", &query.ExplainStmt{Statement: query.CreateTableStmt{Info: database.TableInfo{TableName: "test"}}}, false},
 		{"Multiple Explains", "EXPLAIN EXPLAIN CREATE TABLE test", nil, true},
 	}
 

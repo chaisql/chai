@@ -8,7 +8,6 @@ import (
 
 // CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
 type CreateTableStmt struct {
-	TableName   string
 	IfNotExists bool
 	Info        database.TableInfo
 }
@@ -23,15 +22,15 @@ func (stmt CreateTableStmt) IsReadOnly() bool {
 func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
-	err := tx.CreateTable(stmt.TableName, &stmt.Info)
+	err := tx.Catalog.CreateTable(tx, stmt.Info.TableName, &stmt.Info)
 	if stmt.IfNotExists && err == database.ErrTableAlreadyExists {
-		err = nil
+		return res, nil
 	}
 
 	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsUnique {
-			err = tx.CreateIndex(&database.IndexInfo{
-				TableName: stmt.TableName,
+			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+				TableName: stmt.Info.TableName,
 				Paths:     []document.Path{fc.Path},
 				Unique:    true,
 				Types:     []document.ValueType{fc.Type},
@@ -48,11 +47,8 @@ func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Re
 // CreateIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
 // It is typically created using the CreateIndex function.
 type CreateIndexStmt struct {
-	IndexName   string
-	TableName   string
-	Paths       []document.Path
 	IfNotExists bool
-	Unique      bool
+	Info        database.IndexInfo
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -65,15 +61,11 @@ func (stmt CreateIndexStmt) IsReadOnly() bool {
 func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
-	err := tx.CreateIndex(&database.IndexInfo{
-		Unique:    stmt.Unique,
-		IndexName: stmt.IndexName,
-		TableName: stmt.TableName,
-		Paths:     stmt.Paths,
-	})
+	err := tx.Catalog.CreateIndex(tx, &stmt.Info)
 	if stmt.IfNotExists && err == database.ErrIndexAlreadyExists {
-		err = nil
+		return res, nil
 	}
 
+	err = tx.Catalog.ReIndex(tx, stmt.Info.IndexName)
 	return res, err
 }

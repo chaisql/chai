@@ -10,6 +10,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/stretchr/testify/require"
@@ -60,8 +61,8 @@ func TestIndexesCmd(t *testing.T) {
 		want      string
 		fails     bool
 	}{
-		{"All", "", "idx_bar_a_b ON bar (a, b)\nidx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
-		{"With table name", "foo", "idx_foo_a ON foo (a)\nidx_foo_b ON foo (b)\n", false},
+		{"All", "", "idx_bar_a_b\nidx_foo_a\nidx_foo_b\n", false},
+		{"With table name", "foo", "idx_foo_a\nidx_foo_b\n", false},
 		{"With nonexistent table name", "baz", "", true},
 	}
 
@@ -157,37 +158,10 @@ func TestSaveCommand(t *testing.T) {
 			require.Equal(t, 2, res.B)
 
 			// ensure that the index has been created
-			err = db.View(func(tx *genji.Tx) error {
-				indexes := tx.ListIndexes()
-				require.Len(t, indexes, 1)
-				require.Equal(t, "idx_a_b", indexes[0])
-
-				index, err := tx.GetIndex("idx_a_b")
-				require.NoError(t, err)
-				require.Equal(t, []document.ValueType{document.DoubleValue, 0}, index.Info.Types)
-
-				return nil
-			})
+			indexes, err := dbutil.ListIndexes(context.Background(), db, "")
 			require.NoError(t, err)
-
-			// ensure that the data has been reindexed
-			tx, err := db.Begin(false)
-			require.NoError(t, err)
-
-			defer tx.Rollback()
-
-			idx, err := tx.GetIndex("idx_a_b")
-			require.NoError(t, err)
-
-			// check that by iterating through the index and finding the previously inserted values
-			var i int
-			err = idx.AscendGreaterOrEqual([]document.Value{document.NewDoubleValue(0)}, func(v, k []byte) error {
-				i++
-				return nil
-			})
-
-			require.Equal(t, 3, i)
-			require.NoError(t, err)
+			require.Len(t, indexes, 1)
+			require.Equal(t, "idx_a_b", indexes[0])
 		})
 	}
 }

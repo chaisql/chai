@@ -41,18 +41,14 @@ func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.parseIdent()
+	stmt.Info.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
 
 	// parse field constraints
 	err = p.parseConstraints(&stmt)
-	if err != nil {
-		return stmt, err
-	}
-
-	return stmt, nil
+	return stmt, err
 }
 
 func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) {
@@ -138,7 +134,7 @@ func (p *Parser) parseConstraints(stmt *query.CreateTableStmt) error {
 	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsPrimaryKey {
 			if pkFound {
-				return stringutil.Errorf("table %q has more than one primary key", stmt.TableName)
+				return stringutil.Errorf("table %q has more than one primary key", stmt.Info.TableName)
 			}
 
 			pkFound = true
@@ -232,7 +228,7 @@ func (p *Parser) parseTableConstraint(stmt *query.CreateTableStmt) (bool, error)
 		}
 
 		if pk := stmt.Info.GetPrimaryKey(); pk != nil {
-			return false, stringutil.Errorf("table %q has more than one primary key", stmt.TableName)
+			return false, stringutil.Errorf("table %q has more than one primary key", stmt.Info.TableName)
 		}
 		fc := stmt.Info.FieldConstraints.Get(primaryKeyPath)
 		if fc == nil {
@@ -290,9 +286,8 @@ func (p *Parser) parseTableConstraint(stmt *query.CreateTableStmt) (bool, error)
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
 func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, error) {
 	var err error
-	stmt := query.CreateIndexStmt{
-		Unique: unique,
-	}
+	var stmt query.CreateIndexStmt
+	stmt.Info.Unique = unique
 
 	// Parse IF NOT EXISTS
 	stmt.IfNotExists, err = p.parseOptional(scanner.IF, scanner.NOT, scanner.EXISTS)
@@ -301,7 +296,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	// Parse optional index name
-	stmt.IndexName, err = p.parseIdent()
+	stmt.Info.IndexName, err = p.parseIdent()
 	if err != nil {
 		// if IF NOT EXISTS is set, index name is mandatory
 		if stmt.IfNotExists {
@@ -317,7 +312,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	// Parse table name
-	stmt.TableName, err = p.parseIdent()
+	stmt.Info.TableName, err = p.parseIdent()
 	if err != nil {
 		return stmt, err
 	}
@@ -331,7 +326,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 	}
 
-	stmt.Paths = paths
+	stmt.Info.Paths = paths
 
 	return stmt, nil
 }

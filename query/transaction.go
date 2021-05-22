@@ -48,6 +48,7 @@ func (stmt RollbackStmt) alterQuery(ctx context.Context, db *database.Database, 
 		return err
 	}
 	q.tx = nil
+	q.autoCommit = true
 	return nil
 }
 
@@ -72,6 +73,7 @@ func (stmt CommitStmt) alterQuery(ctx context.Context, db *database.Database, q 
 		return err
 	}
 	q.tx = nil
+	q.autoCommit = true
 	return nil
 }
 

@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/stream"
 	"github.com/stretchr/testify/require"
@@ -54,7 +54,7 @@ func TestParserDelete(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, &planner.Statement{Stream: test.expected}, q.Statements[0])
+			require.EqualValues(t, &query.StreamStmt{Stream: test.expected}, q.Statements[0])
 		})
 	}
 }

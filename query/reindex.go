@@ -23,14 +23,13 @@ func (stmt ReIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result
 	var res Result
 
 	if stmt.TableOrIndexName == "" {
-		return res, tx.ReIndexAll()
+		return res, tx.Catalog.ReIndexAll(tx)
 	}
 
-	catalog := tx.DB().Catalog()
-	_, err := tx.GetTable(stmt.TableOrIndexName)
+	_, err := tx.Catalog.GetTable(tx, stmt.TableOrIndexName)
 	if err == nil {
-		for _, idxName := range catalog.ListIndexes(stmt.TableOrIndexName) {
-			err = catalog.ReIndex(tx, idxName)
+		for _, idxName := range tx.Catalog.ListIndexes(stmt.TableOrIndexName) {
+			err = tx.Catalog.ReIndex(tx, idxName)
 			if err != nil {
 				return res, err
 			}
@@ -42,6 +41,6 @@ func (stmt ReIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result
 		return res, err
 	}
 
-	err = tx.ReIndex(stmt.TableOrIndexName)
+	err = tx.Catalog.ReIndex(tx, stmt.TableOrIndexName)
 	return res, err
 }

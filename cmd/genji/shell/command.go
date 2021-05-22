@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"errors"
@@ -13,7 +14,6 @@ import (
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/stringutil"
 )
 
@@ -123,56 +123,40 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 // runIndexesCmd displays a list of indexes. If table is non-empty, it only
 // display that table's indexes. If not, it displays all indexes.
 func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
-	return db.View(func(tx *genji.Tx) error {
-		q := "SELECT * FROM __genji_indexes"
-
-		if tableName != "" {
-			// ensure table exists
+	// ensure table exists
+	if tableName != "" {
+		err := db.View(func(tx *genji.Tx) error {
 			_, err := tx.QueryDocument("SELECT 1 FROM __genji_tables WHERE table_name = ? LIMIT 1", tableName)
 			if err != nil {
 				if err == database.ErrDocumentNotFound {
 					return stringutil.Errorf("%w: %q", database.ErrTableNotFound, tableName)
 				}
-				return err
 			}
-
-			q += " WHERE table_name = ?"
-		}
-
-		res, err := tx.Query(q, tableName)
+			return err
+		})
 		if err != nil {
 			return err
 		}
-		defer res.Close()
+	}
 
-		return res.Iterate(func(d document.Document) error {
-			var index database.IndexInfo
+	indexes, err := dbutil.ListIndexes(context.Background(), db, tableName)
+	if err != nil {
+		return err
+	}
 
-			if err := index.ScanDocument(d); err != nil {
-				return err
-			}
+	for _, idx := range indexes {
+		_, err = fmt.Fprintln(w, idx)
+		if err != nil {
+			return err
+		}
+	}
 
-			var paths []string
-			for _, path := range index.Paths {
-				paths = append(paths, path.String())
-			}
-
-			fmt.Fprintf(w, "%s ON %s (%s)\n", index.IndexName, index.TableName, strings.Join(paths, ", "))
-
-			return nil
-		})
-	})
+	return nil
 }
 
 // runSaveCommand saves the currently opened database at the given path.
 // If a path already exists, existing values in the target database will be overwritten.
 func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath string) error {
-	tx, err := db.Begin(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	// Open the new database
 	otherDB, err := dbutil.OpenDB(ctx, dbPath, engineName)
 	if err != nil {
@@ -181,96 +165,21 @@ func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 	otherDB = otherDB.WithContext(ctx)
 	defer otherDB.Close()
 
-	otherTx, err := otherDB.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer otherTx.Rollback()
+	var dbDump bytes.Buffer
 
-	// Find all tables
-	tables, err := tx.Query("SELECT table_name FROM __genji_tables")
-	if err != nil {
-		return err
-	}
-	defer tables.Close()
-
-	err = tables.Iterate(func(d document.Document) error {
-		// Get table name.
-		var tableName string
-		if err := document.Scan(d, &tableName); err != nil {
-			return err
-		}
-
-		table, err := tx.GetTable(tableName)
-		if err != nil {
-			return err
-		}
-
-		ti := table.Info()
-
-		err = otherTx.CreateTable(tableName, ti)
-		if err != nil {
-			return err
-		}
-		otherTable, err := otherTx.GetTable(tableName)
-		if err != nil {
-			return err
-		}
-
-		it := table.Store.Iterator(engine.IteratorOptions{})
-		defer it.Close()
-
-		var b []byte
-		for it.Seek(nil); it.Valid(); it.Next() {
-			itm := it.Item()
-			b, err := itm.ValueCopy(b)
-			if err != nil {
-				return err
-			}
-
-			err = otherTable.Store.Put(itm.Key(), b)
-			if err != nil {
-				return err
-			}
-		}
-
-		return err
-	})
+	err = dbutil.Dump(ctx, db, &dbDump)
 	if err != nil {
 		return err
 	}
 
-	// Find all indexes
-	indexes, err := tx.Query("SELECT * FROM __genji_indexes")
-	if err != nil {
-		return err
-	}
-	defer indexes.Close()
-
-	err = indexes.Iterate(func(d document.Document) error {
-		var index database.IndexInfo
-
-		if err := index.ScanDocument(d); err != nil {
-			return err
-		}
-
-		err = otherTx.CreateIndex(&index)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	err = otherDB.Exec(dbDump.String())
 	if err != nil {
 		return err
 	}
 
-	err = otherTx.ReIndexAll()
-	if err != nil {
-		return err
-	}
+	dbDump.Reset()
 
-	err = otherTx.Commit()
+	err = dbutil.Dump(ctx, otherDB, &dbDump)
 	if err != nil {
 		return err
 	}

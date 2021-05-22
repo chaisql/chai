@@ -12,7 +12,7 @@ import (
 func GetIndexContent(t testing.TB, tx *database.Transaction, indexName string) []KV {
 	t.Helper()
 
-	idx, err := tx.GetIndex(indexName)
+	idx, err := tx.Catalog.GetIndex(tx, indexName)
 	require.NoError(t, err)
 
 	var content []KV

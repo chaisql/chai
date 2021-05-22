@@ -326,12 +326,10 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 		return s, nil
 	}
 
-	t, err := tx.GetTable(st.TableName)
+	t, err := tx.Catalog.GetTable(tx, st.TableName)
 	if err != nil {
 		return nil, err
 	}
-	info := t.Info()
-	indexes := t.Indexes()
 
 	// this optimization applies to project operators that immediately follow distinct
 	for n != nil {
@@ -342,7 +340,7 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 				if ok {
 
 					// if the projection is unique, we remove the node from the tree
-					if isProjectionUnique(indexes, pn, info.GetPrimaryKey()) {
+					if isProjectionUnique(t.Indexes, pn, t.Info.GetPrimaryKey()) {
 						s.Remove(n)
 						n = prev
 						continue
@@ -414,13 +412,10 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 	if !ok {
 		return s, nil
 	}
-	t, err := tx.GetTable(st.TableName)
+	t, err := tx.Catalog.GetTable(tx, st.TableName)
 	if err != nil {
 		return nil, err
 	}
-
-	info := t.Info()
-	indexes := t.Indexes()
 
 	var candidates []*candidate
 	var filterNodes []filterNode
@@ -458,9 +453,9 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 			filterNodes = append(filterNodes, filterNode{path: path, v: v, f: f})
 
 			// check for primary keys scan while iterating on the filter nodes
-			if pk := info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
+			if pk := t.Info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
 				// if both types are different, don't select this scanner
-				v, ok, err := operandCanUseIndex(pk.Type, pk.Path, info.FieldConstraints, v)
+				v, ok, err := operandCanUseIndex(pk.Type, pk.Path, t.Info.FieldConstraints, v)
 				if err != nil {
 					return nil, err
 				}
@@ -510,7 +505,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, p
 	// iterate on all indexes for that table, checking for each of them if its paths are matching
 	// the filter nodes of the given query. The resulting nodes are ordered like the index paths.
 outer:
-	for _, idx := range indexes {
+	for _, idx := range t.Indexes {
 		// order filter nodes by how the index paths order them; if absent, nil in still inserted
 		found := make([]*filterNode, len(idx.Info.Paths))
 		for i, path := range idx.Info.Paths {
@@ -565,7 +560,7 @@ outer:
 				// what the index says this node type must be
 				typ := idx.Info.Types[i]
 
-				fno.v, ok, err = operandCanUseIndex(typ, fno.path, info.FieldConstraints, fno.v)
+				fno.v, ok, err = operandCanUseIndex(typ, fno.path, t.Info.FieldConstraints, fno.v)
 				if err != nil {
 					return nil, err
 				}

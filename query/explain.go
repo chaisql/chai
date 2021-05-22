@@ -1,4 +1,4 @@
-package planner
+package query
 
 import (
 	"errors"
@@ -6,27 +6,27 @@ import (
 	"github.com/genjidb/genji/database"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/query"
+	"github.com/genjidb/genji/planner"
 	"github.com/genjidb/genji/stream"
 )
 
-// ExplainStmt is a query.Statement that
+// ExplainStmt is a Statement that
 // displays information about how a statement
 // is going to be executed, without executing it.
 type ExplainStmt struct {
-	Statement query.Statement
+	Statement Statement
 }
 
 // Run analyses the inner statement and displays its execution plan.
 // If the statement is a stream, Optimize will be called prior to
 // displaying all the operations.
 // Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
-func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.Result, error) {
+func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
 	switch t := s.Statement.(type) {
-	case *Statement:
-		s, err := Optimize(t.Stream, tx, params)
+	case *StreamStmt:
+		s, err := planner.Optimize(t.Stream, tx, params)
 		if err != nil {
-			return query.Result{}, err
+			return Result{}, err
 		}
 
 		var plan string
@@ -36,7 +36,7 @@ func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.
 			plan = "<no exec>"
 		}
 
-		newStatement := Statement{
+		newStatement := StreamStmt{
 			Stream: &stream.Stream{
 				Op: stream.Project(
 					&expr.NamedExpr{
@@ -49,7 +49,7 @@ func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (query.
 		return newStatement.Run(tx, params)
 	}
 
-	return query.Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
+	return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
 }
 
 // IsReadOnly indicates that this statement doesn't write anything into

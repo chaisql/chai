@@ -12,23 +12,16 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/sql/parser"
 	"github.com/genjidb/genji/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-func parsePath(t testing.TB, str string) document.Path {
-	vp, err := parser.ParsePath(str)
-	require.NoError(t, err)
-	return vp
-}
-
 func newTestTable(t testing.TB) (*database.Table, func()) {
-	_, tx, fn := newTestTx(t)
+	_, tx, fn := testutil.NewTestTx(t)
 
-	err := tx.CreateTable("test", nil)
+	err := tx.Catalog.CreateTable(tx, "test", nil)
 	require.NoError(t, err)
-	tb, err := tx.GetTable("test")
+	tb, err := tx.Catalog.GetTable(tx, "test")
 	require.NoError(t, err)
 
 	return tb, fn
@@ -162,9 +155,9 @@ func TestTableInsert(t *testing.T) {
 		insertDoc := func(db *database.Database) (rawKey []byte) {
 			update(t, db, func(tx *database.Transaction) error {
 				// create table if not exists
-				_ = tx.CreateTable("test", nil)
+				_ = tx.Catalog.CreateTable(tx, "test", nil)
 
-				tb, err := tx.GetTable("test")
+				tb, err := tx.Catalog.GetTable(tx, "test")
 				require.NoError(t, err)
 
 				doc := newDocument()
@@ -179,10 +172,13 @@ func TestTableInsert(t *testing.T) {
 
 		key1 := insertDoc(db)
 
+		catalog := db.Catalog
 		// create new database object
 		db, err = database.New(context.Background(), ng, database.Options{
 			Codec: msgpack.NewCodec(),
 		})
+		db.Catalog = catalog
+
 		require.NoError(t, err)
 
 		key2 := insertDoc(db)
@@ -200,13 +196,13 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: parsePath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		var doc document.FieldBuffer
@@ -231,14 +227,14 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: parsePath(t, "foo"), Type: document.ArrayValue},
-				{Path: parsePath(t, "foo[0]"), Type: document.IntegerValue},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: document.ArrayValue},
+				{Path: testutil.ParseDocumentPath(t, "foo[0]"), Type: document.IntegerValue},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		var doc document.FieldBuffer
@@ -252,7 +248,7 @@ func TestTableInsert(t *testing.T) {
 		d, err = tb.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 
-		v, err := parsePath(t, "foo[0]").GetValueFromDocument(d)
+		v, err := testutil.ParseDocumentPath(t, "foo[0]").GetValueFromDocument(d)
 		require.NoError(t, err)
 		require.Equal(t, document.NewIntegerValue(100), v)
 	})
@@ -261,13 +257,13 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: parsePath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		tests := [][]byte{
@@ -291,17 +287,17 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", nil)
+		err := tx.Catalog.CreateTable(tx, "test", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(&database.IndexInfo{
-			IndexName: "idxFoo", TableName: "test", Paths: []document.Path{parsePath(t, "foo")},
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+			IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 		})
 		require.NoError(t, err)
-		idx, err := tx.GetIndex("idxFoo")
+		idx, err := tx.Catalog.GetIndex(tx, "idxFoo")
 		require.NoError(t, err)
 
-		tb, err := tx.GetTable("test")
+		tb, err := tx.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		// create one document with the foo field
@@ -318,7 +314,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual([]document.Value{document.Value{}}, func(val, k []byte) error {
+		err = idx.AscendGreaterOrEqual([]document.Value{{}}, func(val, k []byte) error {
 			switch count {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
@@ -338,14 +334,14 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo"), document.DocumentValue, false, false, false, document.Value{}, true, []document.Path{parsePath(t, "foo.bar")}},
-				{parsePath(t, "foo.bar"), document.IntegerValue, false, false, false, document.Value{}, true, []document.Path{parsePath(t, "foo")}},
+				{testutil.ParseDocumentPath(t, "foo"), document.DocumentValue, false, false, false, document.Value{}, true, []document.Path{testutil.ParseDocumentPath(t, "foo.bar")}},
+				{testutil.ParseDocumentPath(t, "foo.bar"), document.IntegerValue, false, false, false, document.Value{}, true, []document.Path{testutil.ParseDocumentPath(t, "foo")}},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -383,13 +379,13 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo"), document.DoubleValue, false, false, false, document.Value{}, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), document.DoubleValue, false, false, false, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test")
+		tb, err := tx.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -405,23 +401,23 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		// no enforced type, not null
-		err := tx.CreateTable("test1", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test1", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true, false, document.Value{}, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb1, err := tx.GetTable("test1")
+		tb1, err := tx.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
 		// enforced type, not null
-		err = tx.CreateTable("test2", &database.TableInfo{
+		err = tx.Catalog.CreateTable(tx, "test2", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true, false, document.Value{}, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb2, err := tx.GetTable("test2")
+		tb2, err := tx.Catalog.GetTable(tx, "test2")
 		require.NoError(t, err)
 
 		// insert with empty foo field should fail
@@ -460,23 +456,23 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		// no enforced type, not null
-		err := tx.CreateTable("test1", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test1", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo"), 0, false, true, false, document.NewIntegerValue(42), false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.NewIntegerValue(42), false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb1, err := tx.GetTable("test1")
+		tb1, err := tx.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
 		// enforced type, not null
-		err = tx.CreateTable("test2", &database.TableInfo{
+		err = tx.Catalog.CreateTable(tx, "test2", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo"), document.IntegerValue, false, true, false, document.NewIntegerValue(42), false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, document.NewIntegerValue(42), false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb2, err := tx.GetTable("test2")
+		tb2, err := tx.Catalog.GetTable(tx, "test2")
 		require.NoError(t, err)
 
 		// insert with empty foo field shouldn't fail
@@ -526,13 +522,13 @@ func TestTableInsert(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test1", &database.TableInfo{
+		err := tx.Catalog.CreateTable(tx, "test1", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{parsePath(t, "foo[1]"), 0, false, true, false, document.Value{}, false, nil},
+				{testutil.ParseDocumentPath(t, "foo[1]"), 0, false, true, false, document.Value{}, false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.GetTable("test1")
+		tb, err := tx.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
 		// insert table with only one value
@@ -639,14 +635,14 @@ func TestTableReplace(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test1", nil)
+		err := tx.Catalog.CreateTable(tx, "test1", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateTable("test2", nil)
+		err = tx.Catalog.CreateTable(tx, "test2", nil)
 		require.NoError(t, err)
 
 		// simple indexes
-		err = tx.CreateIndex(&database.IndexInfo{
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Paths:     []document.Path{document.NewPath("a")},
 			Unique:    true,
 			TableName: "test1",
@@ -655,7 +651,7 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 
 		// composite indexes
-		err = tx.CreateIndex(&database.IndexInfo{
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Paths:     []document.Path{document.NewPath("x"), document.NewPath("y")},
 			Unique:    true,
 			TableName: "test2",
@@ -663,7 +659,7 @@ func TestTableReplace(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.GetTable("test1")
+		tb, err := tx.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
 		// insert two different documents
@@ -698,7 +694,7 @@ func TestTableReplace(t *testing.T) {
 		require.Equal(t, database.ErrDuplicateDocument, err)
 
 		// --- x, y
-		tb, err = tx.GetTable("test2")
+		tb, err = tx.Catalog.GetTable(tx, "test2")
 		require.NoError(t, err)
 		// insert two different documents
 		dc1, err := tb.Insert(testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 1}`))
@@ -771,7 +767,7 @@ func TestTableIndexes(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		m := tb.Indexes()
+		m := tb.Indexes
 		require.Empty(t, m)
 	})
 
@@ -779,45 +775,45 @@ func TestTableIndexes(t *testing.T) {
 		_, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.CreateTable("test1", nil)
+		err := tx.Catalog.CreateTable(tx, "test1", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateTable("test2", nil)
+		err = tx.Catalog.CreateTable(tx, "test2", nil)
 		require.NoError(t, err)
 
-		err = tx.CreateIndex(&database.IndexInfo{
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
-			Paths:     []document.Path{parsePath(t, "a")},
+			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(&database.IndexInfo{
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
-			Paths:     []document.Path{parsePath(t, "b")},
+			Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(&database.IndexInfo{
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1ab",
 			TableName: "test1",
-			Paths:     []document.Path{parsePath(t, "a"), parsePath(t, "b")},
+			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 		})
 		require.NoError(t, err)
-		err = tx.CreateIndex(&database.IndexInfo{
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx2a",
 			TableName: "test2",
-			Paths:     []document.Path{parsePath(t, "a")},
+			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.GetTable("test1")
+		tb, err := tx.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
-		m := tb.Indexes()
+		m := tb.Indexes
 		require.NoError(t, err)
 		require.Len(t, m, 3)
 	})

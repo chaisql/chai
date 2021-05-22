@@ -56,9 +56,15 @@ func ArrayValue(a document.Array) expr.LiteralValue {
 func ParsePath(t testing.TB, p string) expr.Path {
 	t.Helper()
 
+	return expr.Path(ParseDocumentPath(t, p))
+}
+
+func ParseDocumentPath(t testing.TB, p string) document.Path {
+	t.Helper()
+
 	vp, err := parser.ParsePath(p)
 	require.NoError(t, err)
-	return expr.Path(vp)
+	return vp
 }
 
 func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {

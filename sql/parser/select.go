@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/expr"
-	"github.com/genjidb/genji/planner"
+	"github.com/genjidb/genji/query"
 	"github.com/genjidb/genji/sql/scanner"
 	"github.com/genjidb/genji/stream"
 	"github.com/genjidb/genji/stringutil"
@@ -12,7 +12,7 @@ import (
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (*planner.Statement, error) {
+func (p *Parser) parseSelectStatement() (*query.StreamStmt, error) {
 	var cfg selectConfig
 	var err error
 
@@ -179,7 +179,7 @@ type selectConfig struct {
 	ProjectionExprs  []expr.Expr
 }
 
-func (cfg selectConfig) ToStream() (*planner.Statement, error) {
+func (cfg selectConfig) ToStream() (*query.StreamStmt, error) {
 	var s *stream.Stream
 
 	if cfg.TableName != "" {
@@ -322,7 +322,7 @@ func (cfg selectConfig) ToStream() (*planner.Statement, error) {
 		s = s.Pipe(stream.Take(v.V.(int64)))
 	}
 
-	return &planner.Statement{
+	return &query.StreamStmt{
 		Stream:   s,
 		ReadOnly: true,
 	}, nil

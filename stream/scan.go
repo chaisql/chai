@@ -120,7 +120,7 @@ func SeqScanReverse(tableName string) *SeqScanOperator {
 }
 
 func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
-	table, err := in.GetTx().GetTable(it.TableName)
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), it.TableName)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 	var newEnv expr.Environment
 	newEnv.Outer = in
 
-	table, err := in.GetTx().GetTable(it.TableName)
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), it.TableName)
 	if err != nil {
 		return err
 	}
@@ -322,12 +322,12 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 	var newEnv expr.Environment
 	newEnv.Outer = in
 
-	index, err := in.GetTx().GetIndex(it.IndexName)
+	index, err := in.GetTx().Catalog.GetIndex(in.GetTx(), it.IndexName)
 	if err != nil {
 		return err
 	}
 
-	table, err := in.GetTx().GetTable(index.Info.TableName)
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), index.Info.TableName)
 	if err != nil {
 		return err
 	}
@@ -413,8 +413,6 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		if err != nil {
 			return err
 		}
-
-		// }
 	}
 
 	return nil

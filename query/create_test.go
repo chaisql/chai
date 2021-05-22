@@ -55,7 +55,7 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				_, err := tx.GetTable("test")
+				_, err := tx.Catalog.GetTable(tx.Transaction, "test")
 				return err
 			})
 			require.NoError(t, err)
@@ -72,17 +72,15 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				tb, err := tx.GetTable("test")
+				tb, err := tx.Catalog.GetTable(tx.Transaction, "test")
 				if err != nil {
 					return err
 				}
 
-				info := tb.Info()
-
 				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "d"), Type: document.DoubleValue},
 					{Path: parsePath(t, "b"), Type: document.BoolValue},
-				}, info.FieldConstraints)
+				}, tb.Info.FieldConstraints)
 				return nil
 			})
 			require.NoError(t, err)
@@ -98,11 +96,10 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				tb, err := tx.GetTable("test1")
+				tb, err := tx.Catalog.GetTable(tx.Transaction, "test1")
 				if err != nil {
 					return err
 				}
-				info := tb.Info()
 
 				require.Equal(t, database.FieldConstraints{
 					{Path: parsePath(t, "foo"), Type: document.DocumentValue, IsInferred: true,
@@ -145,7 +142,7 @@ func TestCreateTable(t *testing.T) {
 					{Path: parsePath(t, "t"), Type: document.TextValue},
 					{Path: parsePath(t, "a"), Type: document.ArrayValue},
 					{Path: parsePath(t, "d"), Type: document.DocumentValue},
-				}, info.FieldConstraints)
+				}, tb.Info.FieldConstraints)
 				return nil
 			})
 			require.NoError(t, err)
@@ -162,11 +159,10 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				tb, err := tx.GetTable("test2")
+				tb, err := tx.Catalog.GetTable(tx.Transaction, "test2")
 				if err != nil {
 					return err
 				}
-				info := tb.Info()
 
 				require.Equal(t, database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.DocumentValue, IsInferred: true,
 					InferredBy: []document.Path{
@@ -211,7 +207,7 @@ func TestCreateTable(t *testing.T) {
 					{Path: parsePath(t, "eight"), Type: document.IntegerValue},
 					{Path: parsePath(t, "ii"), Type: document.IntegerValue},
 					{Path: parsePath(t, "c"), Type: document.TextValue},
-				}, info.FieldConstraints)
+				}, tb.Info.FieldConstraints)
 				return nil
 			})
 			require.NoError(t, err)
@@ -244,10 +240,9 @@ func TestCreateTable(t *testing.T) {
 					require.NoError(t, err)
 
 					err = db.View(func(tx *genji.Tx) error {
-						tb, err := tx.GetTable("test")
-						info := tb.Info()
+						tb, err := tx.Catalog.GetTable(tx.Transaction, "test")
 
-						require.Equal(t, test.constraints, info.FieldConstraints)
+						require.Equal(t, test.constraints, tb.Info.FieldConstraints)
 						return err
 					})
 					require.NoError(t, err)
@@ -264,39 +259,38 @@ func TestCreateTable(t *testing.T) {
 			require.NoError(t, err)
 
 			err = db.View(func(tx *genji.Tx) error {
-				tb, err := tx.GetTable("test")
+				tb, err := tx.Catalog.GetTable(tx.Transaction, "test")
 				require.NoError(t, err)
-				info := tb.Info()
-				require.Len(t, info.FieldConstraints, 3)
+				require.Len(t, tb.Info.FieldConstraints, 3)
 
 				require.Equal(t, &database.FieldConstraint{
 					Path:     parsePath(t, "a"),
 					Type:     document.IntegerValue,
 					IsUnique: true,
-				}, info.FieldConstraints[0])
+				}, tb.Info.FieldConstraints[0])
 
 				require.Equal(t, &database.FieldConstraint{
 					Path:     parsePath(t, "b"),
 					Type:     document.DoubleValue,
 					IsUnique: true,
-				}, info.FieldConstraints[1])
+				}, tb.Info.FieldConstraints[1])
 
 				require.Equal(t, &database.FieldConstraint{
 					Path:     parsePath(t, "c"),
 					IsUnique: true,
-				}, info.FieldConstraints[2])
+				}, tb.Info.FieldConstraints[2])
 
-				idx, err := tx.GetIndex("__genji_autoindex_test_1")
+				idx, err := tx.Catalog.GetIndex(tx.Transaction, "__genji_autoindex_test_1")
 				require.NoError(t, err)
 				require.Equal(t, document.IntegerValue, idx.Info.Types[0])
 				require.True(t, idx.Info.Unique)
 
-				idx, err = tx.GetIndex("__genji_autoindex_test_2")
+				idx, err = tx.Catalog.GetIndex(tx.Transaction, "__genji_autoindex_test_2")
 				require.NoError(t, err)
 				require.Equal(t, document.DoubleValue, idx.Info.Types[0])
 				require.True(t, idx.Info.Unique)
 
-				idx, err = tx.GetIndex("__genji_autoindex_test_3")
+				idx, err = tx.Catalog.GetIndex(tx.Transaction, "__genji_autoindex_test_3")
 				require.NoError(t, err)
 				require.Zero(t, idx.Info.Types[0])
 				require.True(t, idx.Info.Unique)

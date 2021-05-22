@@ -35,7 +35,7 @@ func (stmt AlterStmt) Run(tx *database.Transaction, _ []expr.Param) (Result, err
 		return res, database.ErrTableAlreadyExists
 	}
 
-	err := tx.RenameTable(stmt.TableName, stmt.NewTableName)
+	err := tx.Catalog.RenameTable(tx, stmt.TableName, stmt.NewTableName)
 	return res, err
 }
 
@@ -62,6 +62,6 @@ func (stmt AlterTableAddField) Run(tx *database.Transaction, _ []expr.Param) (Re
 		return res, errors.New("missing field name")
 	}
 
-	err := tx.AddFieldConstraint(stmt.TableName, stmt.Constraint)
+	err := tx.Catalog.AddFieldConstraint(tx, stmt.TableName, stmt.Constraint)
 	return res, err
 }
