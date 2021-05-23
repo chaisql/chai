@@ -92,7 +92,10 @@ type KVPair struct {
 
 // String implements the stringutil.Stringer interface.
 func (p KVPair) String() string {
-	return stringutil.Sprintf("%q: %v", p.K, p.V)
+	if stringutil.NeedsQuotes(p.K) {
+		return stringutil.Sprintf("%q: %v", p.K, p.V)
+	}
+	return stringutil.Sprintf("%s: %v", p.K, p.V)
 }
 
 // KVPairs is a list of KVPair.

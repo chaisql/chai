@@ -63,7 +63,7 @@ func TestString(t *testing.T) {
 		`foo.bar[1]`,
 		`"hello"`,
 		`[1, 2, "foo"]`,
-		`{"a": "foo", "b": 10}`,
+		`{a: "foo", b: 10}`,
 		"pk()",
 		"CAST(10 AS integer)",
 	}
@@ -75,6 +75,7 @@ func TestString(t *testing.T) {
 	}
 
 	testFn := func(s string, want string) {
+		t.Helper()
 		e, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
 		require.NoError(t, err)
 		require.Equal(t, want, fmt.Sprintf("%v", e))

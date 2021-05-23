@@ -31,7 +31,7 @@ func TestSelectStmt(t *testing.T) {
 		{"No table, function pk()", "SELECT pk()", false, `[{"pk()":null}]`, nil},
 		{"No table, field", "SELECT a", true, ``, nil},
 		{"No table, wildcard", "SELECT *", true, ``, nil},
-		{"No table, document", "SELECT {a: 1, b: 2 + 1}", false, `[{"{\"a\": 1, \"b\": 2 + 1}":{"a":1,"b":3}}]`, nil},
+		{"No table, document", "SELECT {a: 1, b: 2 + 1}", false, `[{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}]`, nil},
 		{"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
 		{"No cond Multiple wildcards", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","k":1,"color":"red","size":10,"shape":"square","color":"red"},{"k":2,"color":"blue","size":10,"weight":100,"k":2,"color":"blue","size":10,"weight":100,"color":"blue"},{"k":3,"height":100,"weight":200,"k":3,"height":100,"weight":200,"color":null}]`, nil},
 		{"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
