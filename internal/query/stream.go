@@ -23,7 +23,7 @@ func (s *StreamStmt) Run(tx *database.Transaction, params []expr.Param) (Result,
 	}
 
 	return Result{
-		Iterator: &streamStmtIterator{
+		Iterator: &StreamStmtIterator{
 			Stream: st,
 			Tx:     tx,
 			Params: params,
@@ -40,13 +40,14 @@ func (s *StreamStmt) String() string {
 	return s.Stream.String()
 }
 
-type streamStmtIterator struct {
+// StreamStmtIterator iterates over a stream.
+type StreamStmtIterator struct {
 	Stream *stream.Stream
 	Tx     *database.Transaction
 	Params []expr.Param
 }
 
-func (s *streamStmtIterator) Iterate(fn func(d document.Document) error) error {
+func (s *StreamStmtIterator) Iterate(fn func(d document.Document) error) error {
 	env := expr.Environment{
 		Tx:     s.Tx,
 		Params: s.Params,

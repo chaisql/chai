@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
@@ -91,7 +91,7 @@ func transformArray(a document.Array) []val {
 	return fields
 }
 
-func RequireStreamEq(t *testing.T, raw string, res *query.Result) {
+func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
 	t.Helper()
 	docs := ParseResultStream(raw)
 	var want []*val

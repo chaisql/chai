@@ -12,7 +12,6 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
 )
 
 func init() {
@@ -255,7 +254,7 @@ func (s stmt) Close() error {
 var errStop = errors.New("stop")
 
 type documentStream struct {
-	res      *query.Result
+	res      *genji.Result
 	cancelFn func()
 	c        chan doc
 	wg       sync.WaitGroup
@@ -267,7 +266,7 @@ type doc struct {
 	err error
 }
 
-func newRecordStream(res *query.Result) *documentStream {
+func newRecordStream(res *genji.Result) *documentStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ds := documentStream{

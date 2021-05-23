@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // DB represents a collection of tables stored in the underlying engine.
@@ -76,7 +77,7 @@ func (db *DB) Update(fn func(tx *Tx) error) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db *DB) Query(q string, args ...interface{}) (*query.Result, error) {
+func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
 	stmt, err := db.Prepare(q)
 	if err != nil {
 		return nil, err
@@ -140,7 +141,7 @@ func (tx *Tx) Commit() error {
 
 // Query the database withing the transaction and returns the result.
 // Closing the returned result after usage is not mandatory.
-func (tx *Tx) Query(q string, args ...interface{}) (*query.Result, error) {
+func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	stmt, err := tx.Prepare(q)
 	if err != nil {
 		return nil, err
@@ -195,12 +196,21 @@ type Statement struct {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (s *Statement) Query(args ...interface{}) (*query.Result, error) {
+func (s *Statement) Query(args ...interface{}) (*Result, error) {
+	var r *query.Result
+	var err error
+
 	if s.tx != nil {
-		return s.pq.Exec(s.tx.tx, argsToParams(args))
+		r, err = s.pq.Exec(s.tx.tx, argsToParams(args))
+	} else {
+		r, err = s.pq.Run(s.db.ctx, s.db.db, argsToParams(args))
 	}
 
-	return s.pq.Run(s.db.ctx, s.db.db, argsToParams(args))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Result{result: r}, nil
 }
 
 // QueryDocument runs the query and returns the first document.
@@ -220,7 +230,7 @@ func (s *Statement) QueryDocument(args ...interface{}) (d document.Document, err
 	return scanDocument(res)
 }
 
-func scanDocument(res *query.Result) (document.Document, error) {
+func scanDocument(res *Result) (document.Document, error) {
 	var d document.Document
 	err := res.Iterate(func(doc document.Document) error {
 		d = doc
@@ -255,6 +265,55 @@ func (s *Statement) Exec(args ...interface{}) (err error) {
 	return res.Iterate(func(d document.Document) error {
 		return nil
 	})
+}
+
+// Result of a query.
+type Result struct {
+	result *query.Result
+}
+
+func (r *Result) Iterate(fn func(d document.Document) error) error {
+	return r.result.Iterate(fn)
+}
+
+func (r *Result) Fields() []string {
+	if r.result.Iterator == nil {
+		return nil
+	}
+
+	stmt, ok := r.result.Iterator.(*query.StreamStmtIterator)
+	if !ok || stmt.Stream.Op == nil {
+		return nil
+	}
+
+	// Search for the ProjectOperator. If found, extract the projected expression list
+	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
+		if po, ok := op.(*stream.ProjectOperator); ok {
+			// if there are no projected expression, it's a wildcard
+			if len(po.Exprs) == 0 {
+				break
+			}
+
+			fields := make([]string, len(po.Exprs))
+			for i := range po.Exprs {
+				fields[i] = stringutil.Sprintf("%s", po.Exprs[i])
+			}
+
+			return fields
+		}
+	}
+
+	// the stream will output documents in a single field
+	return []string{"*"}
+}
+
+// Close the result stream.
+func (r *Result) Close() (err error) {
+	if r == nil {
+		return nil
+	}
+
+	return r.result.Close()
 }
 
 func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (*DB, error) {

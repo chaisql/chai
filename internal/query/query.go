@@ -7,12 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stringutil"
 )
-
-// ErrResultClosed is returned when trying to close an already closed result.
-var ErrResultClosed = errors.New("result already closed")
 
 // A Query can execute statements against the database. It can read or write data
 // from any table, or even alter the structure of the database.
@@ -165,37 +160,6 @@ func (r *Result) Iterate(fn func(d document.Document) error) error {
 	return r.Iterator.Iterate(fn)
 }
 
-func (r *Result) Fields() []string {
-	if r.Iterator == nil {
-		return nil
-	}
-
-	stmt, ok := r.Iterator.(*streamStmtIterator)
-	if !ok || stmt.Stream.Op == nil {
-		return nil
-	}
-
-	// Search for the ProjectOperator. If found, extract the projected expression list
-	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
-		if po, ok := op.(*stream.ProjectOperator); ok {
-			// if there are no projected expression, it's a wildcard
-			if len(po.Exprs) == 0 {
-				break
-			}
-
-			fields := make([]string, len(po.Exprs))
-			for i := range po.Exprs {
-				fields[i] = stringutil.Sprintf("%s", po.Exprs[i])
-			}
-
-			return fields
-		}
-	}
-
-	// the stream will output documents in a single field
-	return []string{"*"}
-}
-
 // Close the result stream.
 // After closing the result, Stream is not supposed to be used.
 // If the result stream was already closed, it returns
@@ -206,7 +170,7 @@ func (r *Result) Close() (err error) {
 	}
 
 	if r.closed {
-		return ErrResultClosed
+		return errors.New("result already closed")
 	}
 
 	r.closed = true
