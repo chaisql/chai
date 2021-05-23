@@ -9,9 +9,7 @@ import (
 // This function assumes the BEGIN token has already been consumed.
 func (p *Parser) parseBeginStatement() (query.Statement, error) {
 	// parse optional TRANSACTION token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.TRANSACTION {
-		p.Unscan()
-	}
+	_, _ = p.parseOptional(scanner.TRANSACTION)
 
 	// parse optional READ token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.READ {
@@ -38,9 +36,7 @@ func (p *Parser) parseBeginStatement() (query.Statement, error) {
 // This function assumes the ROLLBACK token has already been consumed.
 func (p *Parser) parseRollbackStatement() (query.Statement, error) {
 	// parse optional TRANSACTION token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.TRANSACTION {
-		p.Unscan()
-	}
+	_, _ = p.parseOptional(scanner.TRANSACTION)
 
 	return query.RollbackStmt{}, nil
 }
@@ -49,9 +45,7 @@ func (p *Parser) parseRollbackStatement() (query.Statement, error) {
 // This function assumes the COMMIT token has already been consumed.
 func (p *Parser) parseCommitStatement() (query.Statement, error) {
 	// parse optional TRANSACTION token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.TRANSACTION {
-		p.Unscan()
-	}
+	_, _ = p.parseOptional(scanner.TRANSACTION)
 
 	return query.CommitStmt{}, nil
 }

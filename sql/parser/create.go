@@ -77,9 +77,8 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 
 func (p *Parser) parseConstraints(stmt *query.CreateTableStmt) error {
 	// Parse ( token.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		p.Unscan()
-		return nil
+	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
+		return err
 	}
 
 	// if set to true, the parser must no longer
@@ -125,8 +124,8 @@ func (p *Parser) parseConstraints(stmt *query.CreateTableStmt) error {
 	}
 
 	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	if err := p.parseTokens(scanner.RPAREN); err != nil {
+		return err
 	}
 
 	// ensure only one primary key
@@ -150,8 +149,8 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 		switch tok {
 		case scanner.PRIMARY:
 			// Parse "KEY"
-			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.KEY {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"KEY"}, pos)
+			if err := p.parseTokens(scanner.KEY); err != nil {
+				return err
 			}
 
 			// if it's already a primary key we return an error
@@ -162,8 +161,8 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 			fc.IsPrimaryKey = true
 		case scanner.NOT:
 			// Parse "NULL"
-			if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.NULL {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"NULL"}, pos)
+			if err := p.parseTokens(scanner.NULL); err != nil {
+				return err
 			}
 
 			// if it's already not null we return an error
@@ -307,8 +306,8 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, 
 	}
 
 	// Parse "ON"
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.ON {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"ON"}, pos)
+	if err := p.parseTokens(scanner.ON); err != nil {
+		return stmt, err
 	}
 
 	// Parse table name

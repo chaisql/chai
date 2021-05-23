@@ -122,9 +122,8 @@ func (p *Parser) ParseStatement() (query.Statement, error) {
 // parseCondition parses the "WHERE" clause of the query, if it exists.
 func (p *Parser) parseCondition() (expr.Expr, error) {
 	// Check if the WHERE token exists.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.WHERE {
-		p.Unscan()
-		return nil, nil
+	if ok, err := p.parseOptional(scanner.WHERE); !ok || err != nil {
+		return nil, err
 	}
 
 	// Scan the identifier for the source.
@@ -139,9 +138,8 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 // parsePathList parses a list of paths in the form: (path, path, ...), if exists
 func (p *Parser) parsePathList() ([]document.Path, error) {
 	// Parse ( token.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		p.Unscan()
-		return nil, nil
+	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
+		return nil, err
 	}
 
 	var paths []document.Path
@@ -170,8 +168,8 @@ func (p *Parser) parsePathList() ([]document.Path, error) {
 	}
 
 	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	if err := p.parseTokens(scanner.RPAREN); err != nil {
+		return nil, err
 	}
 
 	return paths, nil

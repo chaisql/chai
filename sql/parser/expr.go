@@ -366,8 +366,8 @@ func (p *Parser) parseType() (document.ValueType, error) {
 // ParseDocument parses a document
 func (p *Parser) ParseDocument() (*expr.KVPairs, error) {
 	// Parse { token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LBRACKET {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"{"}, pos)
+	if err := p.parseTokens(scanner.LBRACKET); err != nil {
+		return nil, err
 	}
 
 	var pairs expr.KVPairs
@@ -398,8 +398,8 @@ func (p *Parser) ParseDocument() (*expr.KVPairs, error) {
 	}
 
 	// Parse required } token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RBRACKET {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"}"}, pos)
+	if err := p.parseTokens(scanner.RBRACKET); err != nil {
+		return nil, err
 	}
 
 	return &pairs, nil
@@ -416,10 +416,9 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{"ident", "string"}, pos)
 	}
 
-	tok, pos, lit = p.ScanIgnoreWhitespace()
-	if tok != scanner.COLON {
+	if err := p.parseTokens(scanner.COLON); err != nil {
 		p.Unscan()
-		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{":"}, pos)
+		return expr.KVPair{}, err
 	}
 
 	e, err := p.ParseExpr()
@@ -475,9 +474,8 @@ LOOP:
 				ArrayIndex: idx,
 			})
 			// scan the next token for a closing left bracket
-			tok, pos, lit = p.Scan()
-			if tok != scanner.RSBRACKET {
-				return nil, newParseError(lit, []string{"]"}, pos)
+			if err := p.parseTokens(scanner.RSBRACKET); err != nil {
+				return nil, err
 			}
 		default:
 			p.Unscan()
@@ -509,8 +507,8 @@ func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprL
 	}
 
 	// Parse required ) or ] token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != rightToken {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{rightToken.String()}, pos)
+	if err := p.parseTokens(rightToken); err != nil {
+		return nil, err
 	}
 
 	return exprList, nil
@@ -518,8 +516,8 @@ func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprL
 
 func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.LiteralExprList, error) {
 	// Parse ( or [ token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != leftToken {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{leftToken.String()}, pos)
+	if err := p.parseTokens(leftToken); err != nil {
+		return nil, err
 	}
 
 	return p.parseExprListUntil(rightToken)
@@ -536,8 +534,8 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 	}
 
 	// Parse required ( token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+	if err := p.parseTokens(scanner.LPAREN); err != nil {
+		return nil, err
 	}
 
 	// Special case: If the function is COUNT, support the special case COUNT(*)
@@ -574,8 +572,8 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 	}
 
 	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	if err := p.parseTokens(scanner.RPAREN); err != nil {
+		return nil, err
 	}
 
 	return p.functions.GetFunc(fname, exprs...)
@@ -583,14 +581,9 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 
 // parseCastExpression parses a string of the form CAST(expr AS type).
 func (p *Parser) parseCastExpression() (expr.Expr, error) {
-	// Parse required CAST token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.CAST {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"CAST"}, pos)
-	}
-
-	// Parse required ( token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+	// Parse required CAST and ( tokens.
+	if err := p.parseTokens(scanner.CAST, scanner.LPAREN); err != nil {
+		return nil, err
 	}
 
 	// parse required expression.
@@ -600,8 +593,8 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// Parse required AS token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.AS {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"AS"}, pos)
+	if err := p.parseTokens(scanner.AS); err != nil {
+		return nil, err
 	}
 
 	// Parse required typename.
@@ -611,8 +604,8 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	if err := p.parseTokens(scanner.RPAREN); err != nil {
+		return nil, err
 	}
 
 	return expr.CastFunc{Expr: e, CastAs: tp}, nil

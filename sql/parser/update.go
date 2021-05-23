@@ -69,8 +69,8 @@ func (p *Parser) parseSetClause() ([]updateSetPair, error) {
 		}
 
 		// Scan the eq sign
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.EQ {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"="}, pos)
+		if err := p.parseTokens(scanner.EQ); err != nil {
+			return nil, err
 		}
 
 		// Scan the expr for the value.
@@ -101,9 +101,9 @@ func (p *Parser) parseUnsetClause() ([]string, error) {
 		}
 
 		// Scan the identifier for the path to unset.
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		if tok != scanner.IDENT {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier"}, pos)
+		lit, err := p.parseIdent()
+		if err != nil {
+			return nil, err
 		}
 		fields = append(fields, lit)
 

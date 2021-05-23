@@ -10,8 +10,8 @@ func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ query.Alter
 	stmt.TableName = tableName
 
 	// Parse "TO".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.TO {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"TO"}, pos)
+	if err := p.parseTokens(scanner.TO); err != nil {
+		return stmt, err
 	}
 
 	// Parse new table name.
@@ -28,8 +28,8 @@ func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.Alt
 	stmt.TableName = tableName
 
 	// Parse "FIELD".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FIELD {
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"FIELD"}, pos)
+	if err := p.parseTokens(scanner.FIELD); err != nil {
+		return stmt, err
 	}
 
 	// Parse new field definition.
@@ -51,8 +51,8 @@ func (p *Parser) parseAlterStatement() (query.Statement, error) {
 	var err error
 
 	// Parse "TABLE".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.TABLE {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE"}, pos)
+	if err := p.parseTokens(scanner.TABLE); err != nil {
+		return nil, err
 	}
 
 	// Parse table name.

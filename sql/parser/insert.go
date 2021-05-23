@@ -17,8 +17,8 @@ func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 	var err error
 
 	// Parse "INTO".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.INTO {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"INTO"}, pos)
+	if err := p.parseTokens(scanner.INTO); err != nil {
+		return nil, err
 	}
 
 	// Parse table name
@@ -65,9 +65,9 @@ func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 // If the list is empty, it returns an error.
 func (p *Parser) parseFieldList() ([]string, error) {
 	// Parse ( token.
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
+	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
 		p.Unscan()
-		return nil, nil
+		return nil, err
 	}
 
 	// Parse path list.
@@ -78,8 +78,8 @@ func (p *Parser) parseFieldList() ([]string, error) {
 	}
 
 	// Parse required ) token.
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
+	if err := p.parseTokens(scanner.RPAREN); err != nil {
+		return nil, err
 	}
 
 	return fields, nil
@@ -196,9 +196,8 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 
 func (p *Parser) parseReturning() ([]expr.Expr, error) {
 	// Parse RETURNING clause: RETURNING expr [AS alias]
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RETURNING {
-		p.Unscan()
-		return nil, nil
+	if ok, err := p.parseOptional(scanner.RETURNING); !ok || err != nil {
+		return nil, err
 	}
 
 	return p.parseProjectedExprs()

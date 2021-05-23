@@ -15,8 +15,8 @@ func (p *Parser) parseDeleteStatement() (*query.StreamStmt, error) {
 	var err error
 
 	// Parse "FROM".
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"FROM"}, pos)
+	if err := p.parseTokens(scanner.FROM); err != nil {
+		return nil, err
 	}
 
 	// Parse table name

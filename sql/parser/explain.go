@@ -10,8 +10,8 @@ import (
 func (p *Parser) parseExplainStatement() (query.Statement, error) {
 	// ensure we don't have multiple EXPLAIN keywords
 	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok == scanner.EXPLAIN {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"SELECT", "UPDATE", "DELETE"}, pos)
+	if tok != scanner.SELECT && tok != scanner.UPDATE && tok != scanner.DELETE && tok != scanner.INSERT {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"INSERT", "SELECT", "UPDATE", "DELETE"}, pos)
 	}
 	p.Unscan()
 

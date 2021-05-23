@@ -29,9 +29,8 @@ func (p *Parser) parseOrderBy() (expr.Path, scanner.Token, error) {
 
 func (p *Parser) parseLimit() (expr.Expr, error) {
 	// parse LIMIT token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.LIMIT {
-		p.Unscan()
-		return nil, nil
+	if ok, err := p.parseOptional(scanner.LIMIT); !ok || err != nil {
+		return nil, err
 	}
 
 	e, err := p.ParseExpr()
@@ -40,9 +39,8 @@ func (p *Parser) parseLimit() (expr.Expr, error) {
 
 func (p *Parser) parseOffset() (expr.Expr, error) {
 	// parse OFFSET token
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.OFFSET {
-		p.Unscan()
-		return nil, nil
+	if ok, err := p.parseOptional(scanner.OFFSET); !ok || err != nil {
+		return nil, err
 	}
 
 	e, err := p.ParseExpr()

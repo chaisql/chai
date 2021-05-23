@@ -133,9 +133,8 @@ func (p *Parser) parseDistinct() (bool, error) {
 }
 
 func (p *Parser) parseFrom() (string, bool, error) {
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.FROM {
-		p.Unscan()
-		return "", false, nil
+	if ok, err := p.parseOptional(scanner.FROM); !ok || err != nil {
+		return "", false, err
 	}
 
 	// Parse table name
