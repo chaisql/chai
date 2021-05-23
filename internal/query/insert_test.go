@@ -23,6 +23,7 @@ func TestInsertStmt(t *testing.T) {
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
 		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":1,"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
 		{"Documents / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":1,"a":[1,2,3]}]`, nil},
+		{"Select / same table", "INSERT INTO test SELECT * FROM test", true, ``, nil},
 	}
 
 	for _, test := range tests {

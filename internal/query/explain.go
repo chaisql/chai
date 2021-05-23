@@ -21,35 +21,50 @@ type ExplainStmt struct {
 // If the statement is a stream, Optimize will be called prior to
 // displaying all the operations.
 // Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
-func (s *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	switch t := s.Statement.(type) {
-	case *StreamStmt:
-		s, err := planner.Optimize(t.Stream, tx, params)
-		if err != nil {
-			return Result{}, err
-		}
+func (stmt *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
+	var ss *StreamStmt
+	var err error
+	var res Result
 
-		var plan string
-		if s != nil {
-			plan = s.String()
-		} else {
-			plan = "<no exec>"
-		}
-
-		newStatement := StreamStmt{
-			Stream: &stream.Stream{
-				Op: stream.Project(
-					&expr.NamedExpr{
-						ExprName: "plan",
-						Expr:     expr.LiteralValue(document.NewTextValue(plan)),
-					}),
-			},
-			ReadOnly: true,
-		}
-		return newStatement.Run(tx, params)
+	switch t := stmt.Statement.(type) {
+	case *SelectStmt:
+		ss, err = t.ToStream()
+	case *UpdateStmt:
+		ss = t.ToStream()
+	case *InsertStmt:
+		ss, err = t.ToStream()
+	case *DeleteStmt:
+		ss, err = t.ToStream()
+	default:
+		return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
+	}
+	if err != nil {
+		return res, err
 	}
 
-	return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
+	s, err := planner.Optimize(ss.Stream, tx, params)
+	if err != nil {
+		return Result{}, err
+	}
+
+	var plan string
+	if s != nil {
+		plan = s.String()
+	} else {
+		plan = "<no exec>"
+	}
+
+	newStatement := StreamStmt{
+		Stream: &stream.Stream{
+			Op: stream.Project(
+				&expr.NamedExpr{
+					ExprName: "plan",
+					Expr:     expr.LiteralValue(document.NewTextValue(plan)),
+				}),
+		},
+		ReadOnly: true,
+	}
+	return newStatement.Run(tx, params)
 }
 
 // IsReadOnly indicates that this statement doesn't write anything into

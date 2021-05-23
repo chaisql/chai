@@ -75,9 +75,9 @@ func TestParserUpdate(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			stmt := q.Statements[0].(*query.StreamStmt)
-			require.False(t, stmt.ReadOnly)
-			require.EqualValues(t, test.expected, stmt.Stream)
+			stmt := q.Statements[0].(*query.UpdateStmt)
+			require.False(t, stmt.IsReadOnly())
+			require.EqualValues(t, test.expected, stmt.ToStream().Stream)
 		})
 	}
 }

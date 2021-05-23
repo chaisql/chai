@@ -8,7 +8,6 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/stream"
 )
 
 func TestParserMultiStatement(t *testing.T) {
@@ -19,12 +18,12 @@ func TestParserMultiStatement(t *testing.T) {
 	}{
 		{"OnlyCommas", ";;;", nil},
 		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []query.Statement{
-			&query.StreamStmt{
-				Stream:   stream.New(stream.SeqScan("foo")).Pipe(stream.Project(expr.Wildcard{})),
-				ReadOnly: true,
+			&query.SelectStmt{
+				TableName:       "foo",
+				ProjectionExprs: []expr.Expr{expr.Wildcard{}},
 			},
-			&query.StreamStmt{
-				Stream: stream.New(stream.SeqScan("foo")).Pipe(stream.TableDelete("foo")),
+			&query.DeleteStmt{
+				TableName: "foo",
 			},
 		}},
 	}

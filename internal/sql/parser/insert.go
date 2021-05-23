@@ -1,19 +1,16 @@
 package parser
 
 import (
-	"errors"
-
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
-	var cfg insertConfig
+func (p *Parser) parseInsertStatement() (*query.InsertStmt, error) {
+	var stmt query.InsertStmt
 	var err error
 
 	// Parse "INTO".
@@ -22,7 +19,7 @@ func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 	}
 
 	// Parse table name
-	cfg.TableName, err = p.parseIdent()
+	stmt.TableName, err = p.parseIdent()
 	if err != nil {
 		pErr := err.(*ParseError)
 		pErr.Expected = []string{"table_name"}
@@ -30,7 +27,7 @@ func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 	}
 
 	// Parse path list: (a, b, c)
-	cfg.Fields, err = p.parseFieldList()
+	stmt.Fields, err = p.parseFieldList()
 	if err != nil {
 		return nil, err
 	}
@@ -40,12 +37,12 @@ func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 	switch tok {
 	case scanner.VALUES:
 		// Parse VALUES (v1, v2, v3)
-		cfg.Values, err = p.parseValues(cfg.Fields)
+		stmt.Values, err = p.parseValues(stmt.Fields)
 		if err != nil {
 			return nil, err
 		}
 	case scanner.SELECT:
-		cfg.SelectStmt, err = p.parseSelectStatement()
+		stmt.SelectStmt, err = p.parseSelectStatement()
 		if err != nil {
 			return nil, err
 		}
@@ -53,12 +50,12 @@ func (p *Parser) parseInsertStatement() (*query.StreamStmt, error) {
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "SELECT"}, pos)
 	}
 
-	cfg.Returning, err = p.parseReturning()
+	stmt.Returning, err = p.parseReturning()
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg.ToStream()
+	return &stmt, nil
 }
 
 // parseFieldList parses a list of fields in the form: (path, path, ...), if exists.
@@ -201,44 +198,4 @@ func (p *Parser) parseReturning() ([]expr.Expr, error) {
 	}
 
 	return p.parseProjectedExprs()
-}
-
-// insertConfig holds INSERT configuration.
-type insertConfig struct {
-	TableName  string
-	Values     []expr.Expr
-	Fields     []string
-	SelectStmt *query.StreamStmt
-	Returning  []expr.Expr
-}
-
-func (cfg *insertConfig) ToStream() (*query.StreamStmt, error) {
-	var s *stream.Stream
-	if cfg.Values != nil {
-		s = stream.New(stream.Expressions(cfg.Values...))
-
-		s = s.Pipe(stream.TableInsert(cfg.TableName))
-	} else {
-		s = cfg.SelectStmt.Stream
-
-		// ensure we are not reading and writing to the same table.
-		if s.First().(*stream.SeqScanOperator).TableName == cfg.TableName {
-			return nil, errors.New("cannot read and write to the same table")
-		}
-
-		if len(cfg.Fields) > 0 {
-			s = s.Pipe(stream.IterRename(cfg.Fields...))
-		}
-
-		s = s.Pipe(stream.TableInsert(cfg.TableName))
-	}
-
-	if len(cfg.Returning) > 0 {
-		s = s.Pipe(stream.Project(cfg.Returning...))
-	}
-
-	return &query.StreamStmt{
-		Stream:   s,
-		ReadOnly: false,
-	}, nil
 }

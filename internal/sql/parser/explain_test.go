@@ -6,7 +6,6 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/stream"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +16,10 @@ func TestParserExplain(t *testing.T) {
 		expected query.Statement
 		errored  bool
 	}{
-		{"Explain create table", "EXPLAIN SELECT * FROM test", &query.ExplainStmt{Statement: &query.StreamStmt{Stream: stream.New(stream.SeqScan("test")).Pipe(stream.Project(expr.Wildcard{})), ReadOnly: true}}, false},
+		{"Explain create table", "EXPLAIN SELECT * FROM test", &query.ExplainStmt{Statement: &query.SelectStmt{
+			TableName:       "test",
+			ProjectionExprs: []expr.Expr{expr.Wildcard{}},
+		}}, false},
 		{"Multiple Explains", "EXPLAIN EXPLAIN CREATE TABLE test", nil, true},
 	}
 

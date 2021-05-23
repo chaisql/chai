@@ -22,15 +22,6 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Project(testutil.ParseNamedExpr(t, "1"))),
 			false,
 		},
-		{"NoTable/path", "SELECT a",
-			nil,
-			true,
-		},
-		{"NoTable/wildcard", "SELECT *",
-			nil,
-			true,
-		},
-		{"Wildcard with no FORM", "SELECT *", nil, true},
 		{"NoTableWithTuple", "SELECT (1, 2)",
 			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			false,
@@ -84,8 +75,6 @@ func TestParserSelect(t *testing.T) {
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a.b.c"))),
 			false,
 		},
-		{"With Invalid GroupBy: Wildcard", "SELECT * FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
-		{"With Invalid GroupBy: a.b", "SELECT a.b FROM test WHERE age = 10 GROUP BY a.b.c", nil, true},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
@@ -135,11 +124,6 @@ func TestParserSelect(t *testing.T) {
 				Pipe(stream.HashAggregate(&expr.CountFunc{Wildcard: true})).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			false},
-		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", nil, true},
-		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET x(*)", nil, true},
-		{"Invalid use of MAX() aggregator", "SELECT * FROM test LIMIT max(0)", nil, true},
-		{"Invalid use of SUM() aggregator", "SELECT * FROM test LIMIT sum(0)", nil, true},
-		{"Invalid use of AVG() aggregator", "SELECT * FROM test LIMIT avg(0)", nil, true},
 	}
 
 	for _, test := range tests {
@@ -148,7 +132,9 @@ func TestParserSelect(t *testing.T) {
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)
-				require.EqualValues(t, &query.StreamStmt{Stream: test.expected, ReadOnly: true}, q.Statements[0])
+				st, err := q.Statements[0].(*query.SelectStmt).ToStream()
+				require.NoError(t, err)
+				require.EqualValues(t, &query.StreamStmt{Stream: test.expected, ReadOnly: true}, st)
 			} else {
 				require.Error(t, err)
 			}
