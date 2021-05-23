@@ -2,7 +2,7 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/scanner"
+	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // IsArithmeticOperator returns true if e is one of

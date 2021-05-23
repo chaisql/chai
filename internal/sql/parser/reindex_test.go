@@ -4,21 +4,20 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 
-func TestParserDrop(t *testing.T) {
+func TestParserReIndex(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
 		expected query.Statement
 		errored  bool
 	}{
-		{"Drop table", "DROP TABLE test", query.DropTableStmt{TableName: "test"}, false},
-		{"Drop table If not exists", "DROP TABLE IF EXISTS test", query.DropTableStmt{TableName: "test", IfExists: true}, false},
-		{"Drop index", "DROP INDEX test", query.DropIndexStmt{IndexName: "test"}, false},
-		{"Drop index if exists", "DROP INDEX IF EXISTS test", query.DropIndexStmt{IndexName: "test", IfExists: true}, false},
+		{"All", "REINDEX", query.ReIndexStmt{}, false},
+		{"With ident", "REINDEX tableOrIndex", query.ReIndexStmt{TableOrIndexName: "tableOrIndex"}, false},
+		{"With extra", "REINDEX tableOrIndex tableOrIndex", nil, true},
 	}
 
 	for _, test := range tests {

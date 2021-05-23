@@ -6,9 +6,9 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/planner"
+	"github.com/genjidb/genji/internal/sql/parser"
 	st "github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 

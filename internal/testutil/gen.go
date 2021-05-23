@@ -7,7 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )

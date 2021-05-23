@@ -5,9 +5,9 @@ import (
 
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.

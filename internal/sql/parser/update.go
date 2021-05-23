@@ -4,8 +4,8 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.

@@ -7,8 +7,8 @@ import (
 
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/sql/parser"
 )
 
 func TestParserMultiStatement(t *testing.T) {

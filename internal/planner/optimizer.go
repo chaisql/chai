@@ -4,9 +4,9 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 var optimizerRules = []func(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error){

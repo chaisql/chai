@@ -4,8 +4,8 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.

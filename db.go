@@ -9,8 +9,8 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/sql/parser"
 )
 
 // DB represents a collection of tables stored in the underlying engine.

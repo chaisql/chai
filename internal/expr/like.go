@@ -3,8 +3,8 @@ package expr
 import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/query/glob"
+	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 func like(pattern, text string) bool {

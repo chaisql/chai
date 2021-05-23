@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 

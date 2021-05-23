@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
 

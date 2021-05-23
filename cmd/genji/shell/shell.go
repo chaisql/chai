@@ -17,7 +17,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/sql/parser"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 )

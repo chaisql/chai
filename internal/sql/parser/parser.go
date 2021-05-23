@@ -7,8 +7,8 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/sql/scanner"
 )
 
 // Parser represents an Genji SQL Parser.
