@@ -42,7 +42,7 @@ func TestMap(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+		t.Run(test.e.String(), func(t *testing.T) {
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Map(test.e))
 			i := 0
@@ -62,6 +62,81 @@ func TestMap(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, stream.Map(parser.MustParseExpr("1")).String(), "map(1)")
+	})
+}
+
+func TestIfEmpty(t *testing.T) {
+	tests := []struct {
+		in         []document.Document
+		ifEmpty    []document.Document
+		ifNotEmpty expr.Expr
+		out        []document.Document
+		fails      bool
+	}{
+		{
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeDocuments(t, `{"nope": "nope"}`),
+			parser.MustParseExpr(`{a: a + 1}`),
+			testutil.MakeDocuments(t, `{"a": 2}`),
+			false,
+		},
+		{
+			nil,
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			parser.MustParseExpr(`{nope: "nope"}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run("", func(t *testing.T) {
+			s := stream.New(stream.Documents(test.in...)).Pipe(stream.IfEmpty(
+				stream.New(stream.Documents(test.ifEmpty...)),
+				stream.New(stream.Map(test.ifNotEmpty)),
+			))
+			var docs []document.Document
+			err := s.Iterate(&expr.Environment{}, func(out *expr.Environment) error {
+				d, _ := out.GetDocument()
+				docs = append(docs, d)
+				return nil
+			})
+			if test.fails {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.out, docs)
+			}
+		})
+	}
+
+	t.Run("Empty else", func(t *testing.T) {
+		s := stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 1}`)...)).Pipe(stream.IfEmpty(
+			stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 2}`)...)),
+			nil,
+		))
+
+		var docs []document.Document
+		err := s.Iterate(&expr.Environment{}, func(out *expr.Environment) error {
+			d, _ := out.GetDocument()
+			docs = append(docs, d)
+			return nil
+		})
+		require.NoError(t, err)
+		require.Len(t, docs, 1)
+		require.Equal(t, testutil.MakeDocument(t, `{"a": 1}`), docs[0])
+	})
+
+	t.Run("String", func(t *testing.T) {
+		s := stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 1}`)...)).Pipe(stream.IfEmpty(
+			stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 3}`)...)),
+			stream.New(stream.Map(parser.MustParseExpr(`{a: a + 1}`))),
+		))
+
+		require.Equal(t, `docs({"a": 1}) | ifEmpty(
+	docs({"a": 3}),
+	map({a: a + 1})
+)`, s.String())
 	})
 }
 
@@ -99,7 +174,7 @@ func TestFilter(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+		t.Run(test.e.String(), func(t *testing.T) {
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Filter(test.e))
 			i := 0
 			err := s.Iterate(nil, func(out *expr.Environment) error {
@@ -243,10 +318,10 @@ func TestGroupBy(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+		t.Run(test.e.String(), func(t *testing.T) {
 			var want expr.Environment
 			want.Set("_group", test.group)
-			want.Set("_group_expr", document.NewTextValue(fmt.Sprintf("%s", test.e)))
+			want.Set("_group_expr", document.NewTextValue(test.e.String()))
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.GroupBy(test.e))
 			err := s.Iterate(nil, func(out *expr.Environment) error {
@@ -625,7 +700,7 @@ func TestSet(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+		t.Run(test.e.String(), func(t *testing.T) {
 			p, err := parser.ParsePath(test.path)
 			require.NoError(t, err)
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Set(p, test.e))

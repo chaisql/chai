@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -23,7 +22,7 @@ func TestExpressions(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s", test.e), func(t *testing.T) {
+		t.Run(test.e.String(), func(t *testing.T) {
 			s := stream.New(stream.Expressions(test.e))
 
 			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
