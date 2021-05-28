@@ -7,6 +7,15 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
+type ConstraintViolationError struct {
+	Constraint string
+	Path       document.Path
+}
+
+func (c *ConstraintViolationError) Error() string {
+	return stringutil.Sprintf("%s constraint error: %s", c.Constraint, c.Path)
+}
+
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
 	Path         document.Path
@@ -92,92 +101,6 @@ func (f *FieldConstraint) MergeInferred(other *FieldConstraint) {
 // HasDefaultValue returns this field contains a default value constraint.
 func (f *FieldConstraint) HasDefaultValue() bool {
 	return f.DefaultValue.Type != 0
-}
-
-// ToDocument returns a document from f.
-func (f *FieldConstraint) ToDocument() document.Document {
-	buf := document.NewFieldBuffer()
-
-	buf.Add("path", document.NewArrayValue(pathToArray(f.Path)))
-	buf.Add("type", document.NewIntegerValue(int64(f.Type)))
-	buf.Add("is_primary_key", document.NewBoolValue(f.IsPrimaryKey))
-	buf.Add("is_not_null", document.NewBoolValue(f.IsNotNull))
-	if f.HasDefaultValue() {
-		buf.Add("default_value", f.DefaultValue)
-	}
-	buf.Add("is_inferred", document.NewBoolValue(f.IsInferred))
-	if f.IsInferred {
-		vb := document.NewValueBuffer()
-		for _, by := range f.InferredBy {
-			vb = vb.Append(document.NewArrayValue(pathToArray(by)))
-		}
-		buf.Add("inferred_by", document.NewArrayValue(vb))
-	}
-	return buf
-}
-
-// ScanDocument implements the document.Scanner interface.
-func (f *FieldConstraint) ScanDocument(d document.Document) error {
-	v, err := d.GetByField("path")
-	if err != nil {
-		return err
-	}
-	f.Path, err = arrayToPath(v.V.(document.Array))
-	if err != nil {
-		return err
-	}
-
-	v, err = d.GetByField("type")
-	if err != nil {
-		return err
-	}
-	tp := v.V.(int64)
-	f.Type = document.ValueType(tp)
-
-	v, err = d.GetByField("is_primary_key")
-	if err != nil {
-		return err
-	}
-	f.IsPrimaryKey = v.V.(bool)
-
-	v, err = d.GetByField("is_not_null")
-	if err != nil {
-		return err
-	}
-	f.IsNotNull = v.V.(bool)
-
-	v, err = d.GetByField("default_value")
-	if err != nil && err != document.ErrFieldNotFound {
-		return err
-	}
-	if err == nil {
-		f.DefaultValue = v
-	}
-
-	v, err = d.GetByField("is_inferred")
-	if err != nil && err != document.ErrFieldNotFound {
-		return err
-	}
-	if err == nil {
-		f.IsInferred = v.V.(bool)
-	}
-
-	v, err = d.GetByField("inferred_by")
-	if err != nil && err != document.ErrFieldNotFound {
-		return err
-	}
-	if err == nil {
-		v.V.(document.Array).Iterate(func(i int, value document.Value) error {
-			by, err := arrayToPath(value.V.(document.Array))
-			if err != nil {
-				return err
-			}
-			f.InferredBy = append(f.InferredBy, by)
-			return nil
-		})
-	}
-
-	return nil
 }
 
 // FieldConstraints is a list of field constraints.
@@ -348,7 +271,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 			// to the right type above.
 			// check if it is required but null.
 			if v.Type == document.NullValue && fc.IsNotNull {
-				return nil, stringutil.Errorf("field %q is required and must be not null", fc.Path)
+				return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
 			}
 
 			continue
@@ -368,7 +291,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 			// if there is no default value
 			// check if field is required
 		} else if fc.IsNotNull {
-			return nil, stringutil.Errorf("field %q is required and must be not null", fc.Path)
+			return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
 		}
 	}
 

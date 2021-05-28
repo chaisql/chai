@@ -541,6 +541,130 @@ func TestTableInsert(t *testing.T) {
 				Append(document.NewIntegerValue(1)).Append(document.NewIntegerValue(2)))))
 		require.NoError(t, err)
 	})
+
+	t.Run("Should fail if the pk is duplicated", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+			FieldConstraints: []*database.FieldConstraint{
+				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, false, nil},
+			}})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewIntegerValue(10))
+
+		// insert first
+		_, err = tb.Insert(doc)
+		require.NoError(t, err)
+
+		// insert again, should fail
+		_, err = tb.Insert(doc)
+		require.Equal(t, errs.ErrDuplicateDocument, err)
+	})
+
+	t.Run("Should run the onConflict function if the pk is duplicated", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+			FieldConstraints: []*database.FieldConstraint{
+				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, false, nil},
+			}})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewIntegerValue(10))
+
+		var called int
+		onConflict := func(t *database.Table, key []byte, d document.Document) (document.Document, error) {
+			called++
+			return d, nil
+		}
+
+		// insert first
+		_, err = tb.InsertWithConflictResolution(doc, onConflict)
+		require.NoError(t, err)
+		require.Equal(t, 0, called)
+
+		// insert again, should call onConflict
+		_, err = tb.InsertWithConflictResolution(doc, onConflict)
+		require.NoError(t, err)
+		require.Equal(t, 1, called)
+	})
+
+	t.Run("Should fail if there is a unique constraint violation", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", nil)
+		require.NoError(t, err)
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+			TableName: "test",
+			IndexName: "idx_test_foo",
+			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
+			Unique:    true,
+		})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewIntegerValue(10))
+
+		// insert first
+		_, err = tb.Insert(doc)
+		require.NoError(t, err)
+
+		// insert again, should fail
+		_, err = tb.Insert(doc)
+		require.Equal(t, errs.ErrDuplicateDocument, err)
+	})
+
+	t.Run("Should run the onConflict function if there is a unique constraint violation", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", nil)
+		require.NoError(t, err)
+		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+			TableName: "test",
+			IndexName: "idx_test_foo",
+			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
+			Unique:    true,
+		})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewIntegerValue(10))
+
+		var called int
+		onConflict := func(t *database.Table, key []byte, d document.Document) (document.Document, error) {
+			called++
+			return d, nil
+		}
+
+		// insert first
+		_, err = tb.InsertWithConflictResolution(doc, onConflict)
+		require.NoError(t, err)
+		require.Equal(t, 0, called)
+
+		// insert again, should call onConflict
+		_, err = tb.InsertWithConflictResolution(doc, onConflict)
+		require.NoError(t, err)
+		require.Equal(t, 1, called)
+	})
 }
 
 // TestTableDelete verifies Delete behaviour.

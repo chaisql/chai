@@ -787,4 +787,42 @@ INSERT INTO test_ic VALUES {s: 1};
 
 	})
 
+	// --------------------------------------------------------------------------
+	t.Run("insert with on conflict", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER PRIMARY KEY, c INTEGER UNIQUE DEFAULT 10);`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER PRIMARY KEY, c INTEGER UNIQUE DEFAULT 10);
+INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
+INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a, b, c) VALUES (2, 1, 4) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a, b, c) VALUES (2, 2, 1) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a, b) VALUES (2, 2) ON CONFLICT DO NOTHING;
+SELECT * FROM test_oc;
+`
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
+{
+  a: 1,
+  b: 1,
+  c: 1
+}
+{
+  a: 2,
+  b: 2,
+  c: 10
+}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
 }

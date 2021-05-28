@@ -38,6 +38,18 @@ func (t *Table) Truncate() error {
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 // It returns the inserted document alongside its key. They key can be accessed using the document.Keyer interface.
 func (t *Table) Insert(d document.Document) (document.Document, error) {
+	return t.InsertWithConflictResolution(d, nil)
+}
+
+// This function must be atomic, i.e either everything works or nothing does.
+// In case there is an error, there are two solutions:
+// - we return it and and rollback: any write done prior to writing to the store will be rolled back
+// - we run the confliced resolution function, if provided
+// In this case, we can't rely on a rollback and might end up with a dirty state (ex. document written to the store,
+// but not to all indexes)
+// To avoid that, we must first ensure there are no conflict (duplicate primary keys, unique constraints violation, etc.),
+// run the conflict resolution function if needed and then start writing to the engine.
+func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnInsertConflictAction) (document.Document, error) {
 	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")
 	}
@@ -52,11 +64,48 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 		return nil, err
 	}
 
+	// ensure the key is not already present in the table
 	_, err = t.Store.Get(key)
 	if err == nil {
+		if onConflict != nil {
+			return onConflict(t, key, d)
+		}
+
 		return nil, errs.ErrDuplicateDocument
 	}
 
+	// ensure there is no index violation
+	for _, idx := range t.Indexes {
+		// only check unique indexes
+		if !idx.Info.Unique {
+			continue
+		}
+
+		vs := make([]document.Value, 0, len(idx.Info.Paths))
+
+		for _, path := range idx.Info.Paths {
+			v, err := path.GetValueFromDocument(fb)
+			if err != nil {
+				v = document.NewNullValue()
+			}
+
+			vs = append(vs, v)
+		}
+
+		duplicate, err := idx.Exists(vs)
+		if err != nil {
+			return nil, err
+		}
+		if duplicate {
+			if onConflict != nil {
+				return onConflict(t, key, d)
+			}
+
+			return nil, errs.ErrDuplicateDocument
+		}
+	}
+
+	// insert in the table
 	var buf bytes.Buffer
 	enc := t.Tx.DB.Codec.NewEncoder(&buf)
 	defer enc.Close()
@@ -70,6 +119,7 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 		return nil, err
 	}
 
+	// update indexes
 	for _, idx := range t.Indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 
@@ -84,10 +134,6 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 
 		err = idx.Set(vs, key)
 		if err != nil {
-			if err == ErrIndexDuplicateValue {
-				return nil, errs.ErrDuplicateDocument
-			}
-
 			return nil, err
 		}
 	}
@@ -448,7 +494,6 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // key is generated, called the docid.
 func (t *Table) generateKey(info *TableInfo, fb *document.FieldBuffer) ([]byte, error) {
 	if pk := t.Info.GetPrimaryKey(); pk != nil {
-
 		v, err := pk.Path.GetValueFromDocument(fb)
 		if err == document.ErrFieldNotFound {
 			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)

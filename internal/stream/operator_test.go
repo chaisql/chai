@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -452,7 +453,7 @@ func TestTableInsert(t *testing.T) {
 			in := expr.NewEnvironment(nil)
 			in.Tx = tx
 
-			s := stream.New(test.in).Pipe(stream.TableInsert("test"))
+			s := stream.New(test.in).Pipe(stream.TableInsert("test", nil))
 
 			var i int
 			err := s.Iterate(in, func(out *expr.Environment) error {
@@ -472,7 +473,8 @@ func TestTableInsert(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.TableInsert("test").String(), "tableInsert('test')")
+		require.Equal(t, "tableInsert('test')", stream.TableInsert("test", nil).String())
+		require.Equal(t, "tableInsert('test', onConflictDoNothing)", stream.TableInsert("test", database.OnInsertConflictDoNothing).String())
 	})
 }
 

@@ -15,6 +15,7 @@ type InsertStmt struct {
 	Fields     []string
 	SelectStmt *SelectStmt
 	Returning  []expr.Expr
+	OnConflict database.OnInsertConflictAction
 }
 
 func (stmt *InsertStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
@@ -37,8 +38,6 @@ func (stmt *InsertStmt) ToStream() (*StreamStmt, error) {
 
 	if stmt.Values != nil {
 		s = stream.New(stream.Expressions(stmt.Values...))
-
-		s = s.Pipe(stream.TableInsert(stmt.TableName))
 	} else {
 		st, err := stmt.SelectStmt.ToStream()
 		if err != nil {
@@ -54,9 +53,9 @@ func (stmt *InsertStmt) ToStream() (*StreamStmt, error) {
 		if len(stmt.Fields) > 0 {
 			s = s.Pipe(stream.IterRename(stmt.Fields...))
 		}
-
-		s = s.Pipe(stream.TableInsert(stmt.TableName))
 	}
+
+	s = s.Pipe(stream.TableInsert(stmt.TableName, stmt.OnConflict))
 
 	if len(stmt.Returning) > 0 {
 		s = s.Pipe(stream.Project(stmt.Returning...))

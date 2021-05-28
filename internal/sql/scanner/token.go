@@ -84,11 +84,13 @@ const (
 	BY
 	CAST
 	COMMIT
+	CONFLICT
 	CREATE
 	DEFAULT
 	DELETE
 	DESC
 	DISTINCT
+	DO
 	DROP
 	EXISTS
 	EXPLAIN
@@ -102,6 +104,7 @@ const (
 	KEY
 	LIMIT
 	NOT
+	NOTHING
 	OFFSET
 	ON
 	ONLY
@@ -206,11 +209,12 @@ var tokens = [...]string{
 	AS:          "AS",
 	ASC:         "ASC",
 	BEGIN:       "BEGIN",
-	COMMIT:      "COMMIT",
-	GROUP:       "GROUP",
 	BY:          "BY",
-	CREATE:      "CREATE",
 	CAST:        "CAST",
+	COMMIT:      "COMMIT",
+	CONFLICT:    "CONFLICT",
+	CREATE:      "CREATE",
+	DO:          "DO",
 	DEFAULT:     "DEFAULT",
 	DELETE:      "DELETE",
 	DESC:        "DESC",
@@ -218,6 +222,7 @@ var tokens = [...]string{
 	DROP:        "DROP",
 	EXISTS:      "EXISTS",
 	EXPLAIN:     "EXPLAIN",
+	GROUP:       "GROUP",
 	KEY:         "KEY",
 	FIELD:       "FIELD",
 	FROM:        "FROM",
@@ -227,6 +232,7 @@ var tokens = [...]string{
 	INTO:        "INTO",
 	LIMIT:       "LIMIT",
 	NOT:         "NOT",
+	NOTHING:     "NOTHING",
 	OFFSET:      "OFFSET",
 	ON:          "ON",
 	ONLY:        "ONLY",

@@ -264,6 +264,22 @@ func TestIndexDelete(t *testing.T) {
 	}
 }
 
+func TestIndexExists(t *testing.T) {
+	idx, cleanup := getIndex(t, false, document.DoubleValue, document.IntegerValue)
+	defer cleanup()
+
+	require.NoError(t, idx.Set(values(document.NewDoubleValue(10), document.NewIntegerValue(11)), []byte("key1")))
+	require.NoError(t, idx.Set(values(document.NewDoubleValue(10), document.NewIntegerValue(12)), []byte("key2")))
+
+	ok, err := idx.Exists(values(document.NewDoubleValue(10), document.NewIntegerValue(11)))
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	ok, err = idx.Exists(values(document.NewDoubleValue(11), document.NewIntegerValue(11)))
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
 // requireEqualBinary asserts equality assuming that the value is encoded through marshal binary
 func requireEqualBinary(t *testing.T, expected document.Value, actual []byte) {
 	t.Helper()

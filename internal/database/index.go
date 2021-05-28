@@ -130,8 +130,6 @@ func (idx *Index) Arity() int {
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
 func (idx *Index) Set(vs []document.Value, k []byte) error {
-	var err error
-
 	if len(k) == 0 {
 		return errors.New("cannot index value without a key")
 	}
@@ -159,7 +157,6 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	var buf []byte
 	vb := document.NewValueBuffer(vs...)
 	buf, err = idx.EncodeValueBuffer(vb)
-
 	if err != nil {
 		return err
 	}
@@ -201,6 +198,40 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	}
 
 	return st.Put(buf, k)
+}
+
+func (idx *Index) Exists(vs []document.Value) (bool, error) {
+	if len(vs) != idx.Arity() {
+		return false, stringutil.Errorf("required arity of %d", len(idx.Info.Types))
+	}
+
+	st, err := idx.tx.GetStore(idx.storeName)
+	if err != nil {
+		if err == engine.ErrStoreNotFound {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	// encode the value we are going to use as a key
+	vb := document.NewValueBuffer(vs...)
+	buf, err := idx.EncodeValueBuffer(vb)
+	if err != nil {
+		return false, err
+	}
+
+	// every value of a non-unique index ends with a byte that starts at zero.
+	if !idx.Info.Unique {
+		buf = append(buf, 0)
+	}
+
+	_, err = st.Get(buf)
+	if err != nil && err != engine.ErrKeyNotFound {
+		return false, err
+	}
+
+	return err == nil, nil
 }
 
 // Delete all the references to the key from the index.

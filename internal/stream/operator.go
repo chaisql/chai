@@ -423,12 +423,13 @@ func (h maxHeap) Less(i, j int) bool {
 // A TableInsertOperator inserts incoming documents to the table.
 type TableInsertOperator struct {
 	baseOperator
-	Name string
+	Name       string
+	OnConflict database.OnInsertConflictAction
 }
 
 // TableInsert inserts incoming documents to the table.
-func TableInsert(tableName string) *TableInsertOperator {
-	return &TableInsertOperator{Name: tableName}
+func TableInsert(tableName string, onConflict database.OnInsertConflictAction) *TableInsertOperator {
+	return &TableInsertOperator{Name: tableName, OnConflict: onConflict}
 }
 
 // Iterate implements the Operator interface.
@@ -450,7 +451,7 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 			}
 		}
 
-		newEnv.Doc, err = table.Insert(d)
+		newEnv.Doc, err = table.InsertWithConflictResolution(d, op.OnConflict)
 		if err != nil {
 			return err
 		}
@@ -461,6 +462,10 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 }
 
 func (op *TableInsertOperator) String() string {
+	if op.OnConflict != nil {
+		return stringutil.Sprintf("tableInsert('%s', onConflictDoNothing)", op.Name)
+	}
+
 	return stringutil.Sprintf("tableInsert('%s')", op.Name)
 }
 

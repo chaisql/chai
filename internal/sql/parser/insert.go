@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -48,6 +49,12 @@ func (p *Parser) parseInsertStatement() (*query.InsertStmt, error) {
 		}
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"VALUES", "SELECT"}, pos)
+	}
+
+	// Parse ON CONFLICT clause
+	stmt.OnConflict, err = p.parseOnConflictClause()
+	if err != nil {
+		return nil, err
 	}
 
 	stmt.Returning, err = p.parseReturning()
@@ -189,6 +196,15 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 
 	// Expect a document
 	return p.ParseDocument()
+}
+
+func (p *Parser) parseOnConflictClause() (database.OnInsertConflictAction, error) {
+	// Parse ON CONFLICT DO clause: ON CONFLICT DO action
+	if ok, err := p.parseOptional(scanner.ON, scanner.CONFLICT, scanner.DO, scanner.NOTHING); !ok || err != nil {
+		return nil, err
+	}
+
+	return database.OnInsertConflictDoNothing, nil
 }
 
 func (p *Parser) parseReturning() ([]expr.Expr, error) {
