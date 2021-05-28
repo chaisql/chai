@@ -144,7 +144,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 	}
 
 	return documentWithKey{
-		Document: d,
+		Document: fb,
 		key:      key,
 		pk:       t.Info.GetPrimaryKey(),
 	}, nil
