@@ -788,7 +788,7 @@ INSERT INTO test_ic VALUES {s: 1};
 	})
 
 	// --------------------------------------------------------------------------
-	t.Run("insert with on conflict", func(t *testing.T) {
+	t.Run("insert with on conflict do nothing", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
 		require.NoError(t, err)
 		defer db.Close()
@@ -821,6 +821,85 @@ SELECT * FROM test_oc;
 }
 `
 			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("insert with on conflict do replace, pk", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_oc(a INTEGER PRIMARY KEY);`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_oc(a INTEGER PRIMARY KEY);
+INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
+INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
+SELECT * FROM test_oc;
+`
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
+{
+  a: 1,
+  b: 2.0,
+  c: 3.0
+}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("insert with on conflict do replace, unique", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_oc(a INTEGER UNIQUE);`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_oc(a INTEGER UNIQUE);
+INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
+INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
+SELECT * FROM test_oc;
+`
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
+{
+  a: 1,
+  b: 2.0,
+  c: 3.0
+}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("insert with on conflict do replace, not null", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_oc(a INTEGER NOT NULL);`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_oc(a INTEGER NOT NULL);
+INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
+`
+			err := db.Exec(q)
+			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})

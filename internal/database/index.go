@@ -200,25 +200,25 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	return st.Put(buf, k)
 }
 
-func (idx *Index) Exists(vs []document.Value) (bool, error) {
+func (idx *Index) Exists(vs []document.Value) (bool, []byte, error) {
 	if len(vs) != idx.Arity() {
-		return false, stringutil.Errorf("required arity of %d", len(idx.Info.Types))
+		return false, nil, stringutil.Errorf("required arity of %d", len(idx.Info.Types))
 	}
 
 	st, err := idx.tx.GetStore(idx.storeName)
 	if err != nil {
 		if err == engine.ErrStoreNotFound {
-			return false, nil
+			return false, nil, nil
 		}
 
-		return false, err
+		return false, nil, err
 	}
 
 	// encode the value we are going to use as a key
 	vb := document.NewValueBuffer(vs...)
 	buf, err := idx.EncodeValueBuffer(vb)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	// every value of a non-unique index ends with a byte that starts at zero.
@@ -226,12 +226,12 @@ func (idx *Index) Exists(vs []document.Value) (bool, error) {
 		buf = append(buf, 0)
 	}
 
-	_, err = st.Get(buf)
+	key, err := st.Get(buf)
 	if err != nil && err != engine.ErrKeyNotFound {
-		return false, err
+		return false, nil, err
 	}
 
-	return err == nil, nil
+	return err == nil, key, nil
 }
 
 // Delete all the references to the key from the index.

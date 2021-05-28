@@ -271,11 +271,12 @@ func TestIndexExists(t *testing.T) {
 	require.NoError(t, idx.Set(values(document.NewDoubleValue(10), document.NewIntegerValue(11)), []byte("key1")))
 	require.NoError(t, idx.Set(values(document.NewDoubleValue(10), document.NewIntegerValue(12)), []byte("key2")))
 
-	ok, err := idx.Exists(values(document.NewDoubleValue(10), document.NewIntegerValue(11)))
+	ok, key, err := idx.Exists(values(document.NewDoubleValue(10), document.NewIntegerValue(11)))
 	require.NoError(t, err)
 	require.True(t, ok)
+	require.Equal(t, []byte("key1"), key)
 
-	ok, err = idx.Exists(values(document.NewDoubleValue(11), document.NewIntegerValue(11)))
+	ok, _, err = idx.Exists(values(document.NewDoubleValue(11), document.NewIntegerValue(11)))
 	require.NoError(t, err)
 	require.False(t, ok)
 }

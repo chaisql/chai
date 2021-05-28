@@ -88,7 +88,7 @@ func TestParserInsert(t *testing.T) {
 			nil, true},
 		{"Values / Without fields / Wrong values", "INSERT INTO test VALUES {a: 1}, ('e', 'f')",
 			nil, true},
-		{"Values / On Conflict", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO NOTHING RETURNING *",
+		{"Values / ON CONFLICT DO NOTHING", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO NOTHING RETURNING *",
 			stream.New(stream.Expressions(
 				&expr.KVPairs{Pairs: []expr.KVPair{
 					{K: "a", V: testutil.TextValue("c")},
@@ -97,6 +97,37 @@ func TestParserInsert(t *testing.T) {
 			)).Pipe(stream.TableInsert("test", database.OnInsertConflictDoNothing)).
 				Pipe(stream.Project(expr.Wildcard{})),
 			false},
+		{"Values / ON CONFLICT IGNORE", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT IGNORE RETURNING *",
+			stream.New(stream.Expressions(
+				&expr.KVPairs{Pairs: []expr.KVPair{
+					{K: "a", V: testutil.TextValue("c")},
+					{K: "b", V: testutil.TextValue("d")},
+				}},
+			)).Pipe(stream.TableInsert("test", database.OnInsertConflictDoNothing)).
+				Pipe(stream.Project(expr.Wildcard{})),
+			false},
+		{"Values / ON CONFLICT DO REPLACE", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO REPLACE RETURNING *",
+			stream.New(stream.Expressions(
+				&expr.KVPairs{Pairs: []expr.KVPair{
+					{K: "a", V: testutil.TextValue("c")},
+					{K: "b", V: testutil.TextValue("d")},
+				}},
+			)).Pipe(stream.TableInsert("test", database.OnInsertConflictDoReplace)).
+				Pipe(stream.Project(expr.Wildcard{})),
+			false},
+		{"Values / ON CONFLICT REPLACE", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT REPLACE RETURNING *",
+			stream.New(stream.Expressions(
+				&expr.KVPairs{Pairs: []expr.KVPair{
+					{K: "a", V: testutil.TextValue("c")},
+					{K: "b", V: testutil.TextValue("d")},
+				}},
+			)).Pipe(stream.TableInsert("test", database.OnInsertConflictDoReplace)).
+				Pipe(stream.Project(expr.Wildcard{})),
+			false},
+		{"Values / ON CONFLICT BLA", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT BLA RETURNING *",
+			nil, true},
+		{"Values / ON CONFLICT DO BLA", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO BLA RETURNING *",
+			nil, true},
 		{"Select / Without fields", "INSERT INTO test SELECT * FROM foo",
 			stream.New(stream.SeqScan("foo")).
 				Pipe(stream.Project(expr.Wildcard{})).

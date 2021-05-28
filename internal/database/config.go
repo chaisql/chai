@@ -177,31 +177,3 @@ func (i Indexes) GetIndexByPath(p document.Path) *Index {
 
 	return nil
 }
-
-func arrayToPath(a document.Array) (document.Path, error) {
-	var path document.Path
-
-	err := a.Iterate(func(_ int, value document.Value) error {
-		if value.Type == document.TextValue {
-			path = append(path, document.PathFragment{FieldName: value.V.(string)})
-		} else {
-			path = append(path, document.PathFragment{ArrayIndex: int(value.V.(int64))})
-		}
-		return nil
-	})
-
-	return path, err
-}
-
-func pathToArray(path document.Path) document.Array {
-	abuf := document.NewValueBuffer()
-	for _, p := range path {
-		if p.FieldName != "" {
-			abuf = abuf.Append(document.NewTextValue(p.FieldName))
-		} else {
-			abuf = abuf.Append(document.NewIntegerValue(int64(p.ArrayIndex)))
-		}
-	}
-
-	return abuf
-}

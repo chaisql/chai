@@ -293,7 +293,7 @@ CREATE TABLE test_ic(a INTEGER, s.b TEXT);
 INSERT INTO test_ic VALUES {s: 1};
 -- error:
 
--- test: insert with on conflict
+-- test: insert with on conflict do nothing
 CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER PRIMARY KEY, c INTEGER UNIQUE DEFAULT 10);
 INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
 INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO NOTHING;
@@ -313,3 +313,34 @@ SELECT * FROM test_oc;
   c: 10
 }
 */
+
+-- test: insert with on conflict do replace, pk
+CREATE TABLE test_oc(a INTEGER PRIMARY KEY);
+INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
+INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
+SELECT * FROM test_oc;
+/* result:
+{
+  a: 1,
+  b: 2.0,
+  c: 3.0
+}
+*/
+
+-- test: insert with on conflict do replace, unique
+CREATE TABLE test_oc(a INTEGER UNIQUE);
+INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
+INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
+SELECT * FROM test_oc;
+/* result:
+{
+  a: 1,
+  b: 2.0,
+  c: 3.0
+}
+*/
+
+-- test: insert with on conflict do replace, not null
+CREATE TABLE test_oc(a INTEGER NOT NULL);
+INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
+-- error:

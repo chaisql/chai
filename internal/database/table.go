@@ -54,18 +54,18 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	key, err := t.generateKey(t.Info, d)
-	if err != nil {
-		return nil, err
-	}
-
 	fb, err := t.Info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
 		if onConflict != nil {
 			if ce, ok := err.(*ConstraintViolationError); ok && ce.Constraint == "NOT NULL" {
-				return onConflict(t, key, d)
+				return onConflict(t, nil, d, err)
 			}
 		}
+		return nil, err
+	}
+
+	key, err := t.generateKey(t.Info, d)
+	if err != nil {
 		return nil, err
 	}
 
@@ -73,7 +73,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 	_, err = t.Store.Get(key)
 	if err == nil {
 		if onConflict != nil {
-			return onConflict(t, key, d)
+			return onConflict(t, key, d, err)
 		}
 
 		return nil, errs.ErrDuplicateDocument
@@ -97,13 +97,13 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 			vs = append(vs, v)
 		}
 
-		duplicate, err := idx.Exists(vs)
+		duplicate, dKey, err := idx.Exists(vs)
 		if err != nil {
 			return nil, err
 		}
 		if duplicate {
 			if onConflict != nil {
-				return onConflict(t, key, d)
+				return onConflict(t, dKey, d, err)
 			}
 
 			return nil, errs.ErrDuplicateDocument
@@ -199,10 +199,10 @@ func (t *Table) Replace(key []byte, d document.Document) error {
 		return err
 	}
 
-	return t.replace(t.Indexes, key, d)
+	return t.replace(key, d)
 }
 
-func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error {
+func (t *Table) replace(key []byte, d document.Document) error {
 	// make sure key exists
 	old, err := t.GetDocument(key)
 	if err != nil {
@@ -210,7 +210,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 	}
 
 	// remove key from indexes
-	for _, idx := range indexes {
+	for _, idx := range t.Indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(old)
@@ -242,7 +242,7 @@ func (t *Table) replace(indexes []*Index, key []byte, d document.Document) error
 	}
 
 	// update indexes
-	for _, idx := range indexes {
+	for _, idx := range t.Indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
@@ -497,9 +497,9 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
-func (t *Table) generateKey(info *TableInfo, fb *document.FieldBuffer) ([]byte, error) {
+func (t *Table) generateKey(info *TableInfo, d document.Document) ([]byte, error) {
 	if pk := t.Info.GetPrimaryKey(); pk != nil {
-		v, err := pk.Path.GetValueFromDocument(fb)
+		v, err := pk.Path.GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {
 			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)
 		}

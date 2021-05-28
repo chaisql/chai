@@ -98,6 +98,7 @@ const (
 	FROM
 	GROUP
 	IF
+	IGNORE
 	INDEX
 	INSERT
 	INTO
@@ -114,6 +115,7 @@ const (
 	READ
 	REINDEX
 	RENAME
+	REPLACE
 	RETURNING
 	ROLLBACK
 	SELECT
@@ -227,6 +229,7 @@ var tokens = [...]string{
 	FIELD:       "FIELD",
 	FROM:        "FROM",
 	IF:          "IF",
+	IGNORE:      "IGNORE",
 	INDEX:       "INDEX",
 	INSERT:      "INSERT",
 	INTO:        "INTO",
@@ -243,6 +246,7 @@ var tokens = [...]string{
 	REINDEX:     "REINDEX",
 	RENAME:      "RENAME",
 	RETURNING:   "RETURNING",
+	REPLACE:     "REPLACE",
 	ROLLBACK:    "ROLLBACK",
 	SELECT:      "SELECT",
 	SET:         "SET",

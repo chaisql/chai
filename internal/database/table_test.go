@@ -584,7 +584,7 @@ func TestTableInsert(t *testing.T) {
 			Add("foo", document.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
 			called++
 			return d, nil
 		}
@@ -650,7 +650,7 @@ func TestTableInsert(t *testing.T) {
 			Add("foo", document.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
 			called++
 			return d, nil
 		}
@@ -683,7 +683,7 @@ func TestTableInsert(t *testing.T) {
 			Add("bar", document.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
 			called++
 			return d, nil
 		}
@@ -692,6 +692,53 @@ func TestTableInsert(t *testing.T) {
 		_, err = tb.InsertWithConflictResolution(doc, onConflict)
 		require.NoError(t, err)
 		require.Equal(t, 1, called)
+	})
+
+	t.Run("Should replace document if the pk is duplicated, using OnInsertConflictDoReplace", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+			FieldConstraints: []*database.FieldConstraint{
+				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, false, nil},
+			}})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("foo", document.NewIntegerValue(10))
+
+		// insert first
+		d1, err := tb.Insert(doc)
+		require.NoError(t, err)
+
+		// insert again, should call OnInsertConflictDoReplace
+		d2, err := tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
+		require.NoError(t, err)
+		require.Equal(t, d1, d2)
+	})
+
+	t.Run("Should not replace document  if there is a NOT NULL constraint violation, using OnInsertConflictDoReplace", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+			FieldConstraints: []*database.FieldConstraint{
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, false, nil},
+			}})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("bar", document.NewIntegerValue(10))
+
+		// insert
+		_, err = tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
+		require.Error(t, err)
 	})
 }
 

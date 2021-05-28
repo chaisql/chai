@@ -200,11 +200,32 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 
 func (p *Parser) parseOnConflictClause() (database.OnInsertConflictAction, error) {
 	// Parse ON CONFLICT DO clause: ON CONFLICT DO action
-	if ok, err := p.parseOptional(scanner.ON, scanner.CONFLICT, scanner.DO, scanner.NOTHING); !ok || err != nil {
+	if ok, err := p.parseOptional(scanner.ON, scanner.CONFLICT); !ok || err != nil {
 		return nil, err
 	}
 
-	return database.OnInsertConflictDoNothing, nil
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	// SQLite compatibility: ON CONFLICT [IGNORE | REPLACE]
+	switch tok {
+	case scanner.IGNORE:
+		return database.OnInsertConflictDoNothing, nil
+	case scanner.REPLACE:
+		return database.OnInsertConflictDoReplace, nil
+	}
+
+	// DO [NOTHING | REPLACE]
+	if tok != scanner.DO {
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{scanner.DO.String()}, pos)
+	}
+
+	tok, pos, lit = p.ScanIgnoreWhitespace()
+	switch tok {
+	case scanner.NOTHING:
+		return database.OnInsertConflictDoNothing, nil
+	case scanner.REPLACE:
+		return database.OnInsertConflictDoReplace, nil
+	}
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{scanner.NOTHING.String(), scanner.REPLACE.String()}, pos)
 }
 
 func (p *Parser) parseReturning() ([]expr.Expr, error) {
