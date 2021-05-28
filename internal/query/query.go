@@ -78,6 +78,10 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
 			err = res.Iterate(func(d document.Document) error { return nil })
 			if err != nil {
+				if q.autoCommit {
+					q.tx.Rollback()
+				}
+
 				return nil, err
 			}
 		}
@@ -150,6 +154,7 @@ type Result struct {
 	Iterator document.Iterator
 	Tx       *database.Transaction
 	closed   bool
+	err      error
 }
 
 func (r *Result) Iterate(fn func(d document.Document) error) error {
@@ -157,13 +162,13 @@ func (r *Result) Iterate(fn func(d document.Document) error) error {
 		return nil
 	}
 
-	return r.Iterator.Iterate(fn)
+	r.err = r.Iterator.Iterate(fn)
+	return r.err
 }
 
 // Close the result stream.
 // After closing the result, Stream is not supposed to be used.
-// If the result stream was already closed, it returns
-// ErrResultClosed.
+// If the result stream was already closed, it returns an error.
 func (r *Result) Close() (err error) {
 	if r == nil {
 		return nil
@@ -176,7 +181,7 @@ func (r *Result) Close() (err error) {
 	r.closed = true
 
 	if r.Tx != nil {
-		if r.Tx.Writable {
+		if r.Tx.Writable && r.err == nil {
 			err = r.Tx.Commit()
 		} else {
 			err = r.Tx.Rollback()

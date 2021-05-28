@@ -104,6 +104,24 @@ func TestInsertStmt(t *testing.T) {
 		testutil.RequireDocJSONEq(t, d, `{"a": 1, "pk()": 1, "A": 1}`)
 	})
 
+	t.Run("ensure rollback", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test(a int unique)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test (a) VALUES (1), (1)`)
+		require.Error(t, err)
+
+		res, err := db.Query("SELECT * FROM test")
+		require.NoError(t, err)
+		defer res.Close()
+
+		testutil.RequireStreamEq(t, ``, res)
+	})
+
 	// t.Run("without RETURNING", func(t *testing.T) {
 	// 	db, err := genji.Open(":memory:")
 	// 	require.NoError(t, err)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"strings"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
@@ -31,7 +32,10 @@ func ExecSQL(ctx context.Context, db *genji.DB, r io.Reader, w io.Writer) error 
 	})
 
 	for scanner.Scan() {
-		q := scanner.Text()
+		q := strings.TrimSpace(scanner.Text())
+		if q == "" {
+			continue
+		}
 
 		if err := runQuery(ctx, db, q, w); err != nil {
 			return err

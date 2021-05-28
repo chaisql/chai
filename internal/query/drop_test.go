@@ -62,8 +62,7 @@ func TestDropIndex(t *testing.T) {
 	testutil.MustExec(t, tx, "DROP INDEX idx_test2_bar")
 
 	// Assert that the good index has been dropped.
-	var indexes []string
-	indexes = tx.Catalog.ListIndexes("")
+	indexes := tx.Catalog.ListIndexes("")
 	require.Len(t, indexes, 1)
 	require.Equal(t, "idx_test1_foo", indexes[0])
 }
