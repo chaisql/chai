@@ -665,6 +665,34 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, called)
 	})
+
+	t.Run("Should run the onConflict function if there is a NOT NULL constraint violation", func(t *testing.T) {
+		_, tx, cleanup := newTestTx(t)
+		defer cleanup()
+
+		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+			FieldConstraints: []*database.FieldConstraint{
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, false, nil},
+			}})
+		require.NoError(t, err)
+
+		tb, err := tx.Catalog.GetTable(tx, "test")
+		require.NoError(t, err)
+
+		doc := document.NewFieldBuffer().
+			Add("bar", document.NewIntegerValue(10))
+
+		var called int
+		onConflict := func(t *database.Table, key []byte, d document.Document) (document.Document, error) {
+			called++
+			return d, nil
+		}
+
+		// insert
+		_, err = tb.InsertWithConflictResolution(doc, onConflict)
+		require.NoError(t, err)
+		require.Equal(t, 1, called)
+	})
 }
 
 // TestTableDelete verifies Delete behaviour.

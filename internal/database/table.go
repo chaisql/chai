@@ -54,13 +54,18 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	fb, err := t.Info.FieldConstraints.ValidateDocument(d)
+	key, err := t.generateKey(t.Info, d)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := t.generateKey(t.Info, fb)
+	fb, err := t.Info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
+		if onConflict != nil {
+			if ce, ok := err.(*ConstraintViolationError); ok && ce.Constraint == "NOT NULL" {
+				return onConflict(t, key, d)
+			}
+		}
 		return nil, err
 	}
 
@@ -105,7 +110,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 		}
 	}
 
-	// insert in the table
+	// insert into the table
 	var buf bytes.Buffer
 	enc := t.Tx.DB.Codec.NewEncoder(&buf)
 	defer enc.Close()
