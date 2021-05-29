@@ -1,14 +1,14 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (*query.UpdateStmt, error) {
-	var stmt query.UpdateStmt
+func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
+	var stmt statement.UpdateStmt
 	var err error
 
 	// Parse table name
@@ -43,8 +43,8 @@ func (p *Parser) parseUpdateStatement() (*query.UpdateStmt, error) {
 }
 
 // parseSetClause parses the "SET" clause of the query.
-func (p *Parser) parseSetClause() ([]query.UpdateSetPair, error) {
-	var pairs []query.UpdateSetPair
+func (p *Parser) parseSetClause() ([]statement.UpdateSetPair, error) {
+	var pairs []statement.UpdateSetPair
 
 	firstPair := true
 	for {
@@ -75,7 +75,7 @@ func (p *Parser) parseSetClause() ([]query.UpdateSetPair, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, query.UpdateSetPair{Path: path, E: expr})
+		pairs = append(pairs, statement.UpdateSetPair{Path: path, E: expr})
 
 		firstPair = false
 	}

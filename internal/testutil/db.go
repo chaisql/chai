@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -54,7 +54,7 @@ func Exec(tx *database.Transaction, q string, params ...expr.Param) error {
 	})
 }
 
-func Query(tx *database.Transaction, q string, params ...expr.Param) (*query.Result, error) {
+func Query(tx *database.Transaction, q string, params ...expr.Param) (*statement.Result, error) {
 	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func MustExec(t *testing.T, tx *database.Transaction, q string, params ...expr.P
 	require.NoError(t, err)
 }
 
-func MustQuery(t *testing.T, tx *database.Transaction, q string, params ...expr.Param) *query.Result {
+func MustQuery(t *testing.T, tx *database.Transaction, q string, params ...expr.Param) *statement.Result {
 	res, err := Query(tx, q, params...)
 	require.NoError(t, err)
 	return res

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -13,10 +13,10 @@ func TestParserExplain(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected statement.Statement
 		errored  bool
 	}{
-		{"Explain create table", "EXPLAIN SELECT * FROM test", &query.ExplainStmt{Statement: &query.SelectStmt{
+		{"Explain create table", "EXPLAIN SELECT * FROM test", &statement.ExplainStmt{Statement: &statement.SelectStmt{
 			TableName:       "test",
 			ProjectionExprs: []expr.Expr{expr.Wildcard{}},
 		}}, false},

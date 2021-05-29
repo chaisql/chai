@@ -1,13 +1,13 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseDropStatement parses a drop string and returns a Statement AST object.
 // This function assumes the DROP token has already been consumed.
-func (p *Parser) parseDropStatement() (query.Statement, error) {
+func (p *Parser) parseDropStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -21,8 +21,8 @@ func (p *Parser) parseDropStatement() (query.Statement, error) {
 
 // parseDropTableStatement parses a drop table string and returns a Statement AST object.
 // This function assumes the DROP TABLE tokens have already been consumed.
-func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
-	var stmt query.DropTableStmt
+func (p *Parser) parseDropTableStatement() (statement.DropTableStmt, error) {
+	var stmt statement.DropTableStmt
 	var err error
 
 	stmt.IfExists, err = p.parseOptional(scanner.IF, scanner.EXISTS)
@@ -43,8 +43,8 @@ func (p *Parser) parseDropTableStatement() (query.DropTableStmt, error) {
 
 // parseDropIndexStatement parses a drop index string and returns a Statement AST object.
 // This function assumes the DROP INDEX tokens have already been consumed.
-func (p *Parser) parseDropIndexStatement() (query.DropIndexStmt, error) {
-	var stmt query.DropIndexStmt
+func (p *Parser) parseDropIndexStatement() (statement.DropIndexStmt, error) {
+	var stmt statement.DropIndexStmt
 	var err error
 
 	stmt.IfExists, err = p.parseOptional(scanner.IF, scanner.EXISTS)

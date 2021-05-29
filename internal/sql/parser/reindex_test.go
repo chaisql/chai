@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -12,11 +12,11 @@ func TestParserReIndex(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected statement.Statement
 		errored  bool
 	}{
-		{"All", "REINDEX", query.ReIndexStmt{}, false},
-		{"With ident", "REINDEX tableOrIndex", query.ReIndexStmt{TableOrIndexName: "tableOrIndex"}, false},
+		{"All", "REINDEX", statement.ReIndexStmt{}, false},
+		{"With ident", "REINDEX tableOrIndex", statement.ReIndexStmt{TableOrIndexName: "tableOrIndex"}, false},
 		{"With extra", "REINDEX tableOrIndex tableOrIndex", nil, true},
 	}
 

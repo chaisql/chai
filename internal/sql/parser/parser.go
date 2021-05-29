@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -61,7 +62,7 @@ func MustParseExpr(s string) expr.Expr {
 
 // ParseQuery parses a Genji SQL string and returns a Query.
 func (p *Parser) ParseQuery() (query.Query, error) {
-	var statements []query.Statement
+	var statements []statement.Statement
 	semi := true
 
 	for {
@@ -85,7 +86,7 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 }
 
 // ParseStatement parses a Genji SQL string and returns a Statement AST object.
-func (p *Parser) ParseStatement() (query.Statement, error) {
+func (p *Parser) ParseStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.ALTER:

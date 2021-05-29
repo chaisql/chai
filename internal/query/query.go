@@ -2,25 +2,25 @@ package query
 
 import (
 	"context"
-	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/query/statement"
 )
 
 // A Query can execute statements against the database. It can read or write data
 // from any table, or even alter the structure of the database.
 // Results are returned as streams.
 type Query struct {
-	Statements []Statement
+	Statements []statement.Statement
 	tx         *database.Transaction
 	autoCommit bool
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param) (*Result, error) {
-	var res Result
+func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param) (*statement.Result, error) {
+	var res statement.Result
 	var err error
 
 	q.tx = db.GetAttachedTx()
@@ -40,7 +40,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		}
 
 		// reinitialize the result
-		res = Result{}
+		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
 			err = qa.alterQuery(ctx, db, &q)
@@ -114,8 +114,8 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 }
 
 // Exec the query within the given transaction.
-func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*Result, error) {
-	var res Result
+func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*statement.Result, error) {
+	var res statement.Result
 	var err error
 
 	for i, stmt := range q.Statements {
@@ -139,54 +139,6 @@ func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*Result, error
 }
 
 // New creates a new query with the given statements.
-func New(statements ...Statement) Query {
+func New(statements ...statement.Statement) Query {
 	return Query{Statements: statements}
-}
-
-// A Statement represents a unique action that can be executed against the database.
-type Statement interface {
-	Run(*database.Transaction, []expr.Param) (Result, error)
-	IsReadOnly() bool
-}
-
-// Result of a query.
-type Result struct {
-	Iterator document.Iterator
-	Tx       *database.Transaction
-	closed   bool
-	err      error
-}
-
-func (r *Result) Iterate(fn func(d document.Document) error) error {
-	if r.Iterator == nil {
-		return nil
-	}
-
-	r.err = r.Iterator.Iterate(fn)
-	return r.err
-}
-
-// Close the result stream.
-// After closing the result, Stream is not supposed to be used.
-// If the result stream was already closed, it returns an error.
-func (r *Result) Close() (err error) {
-	if r == nil {
-		return nil
-	}
-
-	if r.closed {
-		return errors.New("result already closed")
-	}
-
-	r.closed = true
-
-	if r.Tx != nil {
-		if r.Tx.Writable && r.err == nil {
-			err = r.Tx.Commit()
-		} else {
-			err = r.Tx.Rollback()
-		}
-	}
-
-	return err
 }

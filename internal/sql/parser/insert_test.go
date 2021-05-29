@@ -5,7 +5,7 @@ import (
 
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
@@ -181,7 +181,7 @@ func TestParserInsert(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			stmt := q.Statements[0].(*query.InsertStmt)
+			stmt := q.Statements[0].(*statement.InsertStmt)
 			require.False(t, stmt.IsReadOnly())
 			ss, err := stmt.ToStream()
 			require.NoError(t, err)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -15,14 +15,14 @@ func TestParserCreateTable(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected statement.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE TABLE test", query.CreateTableStmt{Info: database.TableInfo{TableName: "test"}}, false},
-		{"If not exists", "CREATE TABLE IF NOT EXISTS test", query.CreateTableStmt{Info: database.TableInfo{TableName: "test"}, IfNotExists: true}, false},
-		{"Path only", "CREATE TABLE test(a)", query.CreateTableStmt{}, true},
+		{"Basic", "CREATE TABLE test", statement.CreateTableStmt{Info: database.TableInfo{TableName: "test"}}, false},
+		{"If not exists", "CREATE TABLE IF NOT EXISTS test", statement.CreateTableStmt{Info: database.TableInfo{TableName: "test"}, IfNotExists: true}, false},
+		{"Path only", "CREATE TABLE test(a)", statement.CreateTableStmt{}, true},
 		{"With primary key", "CREATE TABLE test(foo INTEGER PRIMARY KEY)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -31,9 +31,9 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With primary key twice", "CREATE TABLE test(foo PRIMARY KEY PRIMARY KEY)",
-			query.CreateTableStmt{}, true},
+			statement.CreateTableStmt{}, true},
 		{"With type", "CREATE TABLE test(foo INTEGER)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -42,7 +42,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With not null", "CREATE TABLE test(foo NOT NULL)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -51,7 +51,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With default", "CREATE TABLE test(foo DEFAULT \"10\")",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -60,7 +60,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With unique", "CREATE TABLE test(foo UNIQUE)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -69,13 +69,13 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)",
-			query.CreateTableStmt{}, true},
+			statement.CreateTableStmt{}, true},
 		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)",
-			query.CreateTableStmt{}, true},
+			statement.CreateTableStmt{}, true},
 		{"With unique twice", "CREATE TABLE test(foo UNIQUE UNIQUE)",
-			query.CreateTableStmt{}, true},
+			statement.CreateTableStmt{}, true},
 		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -84,7 +84,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With not null and primary key", "CREATE TABLE test(foo INTEGER NOT NULL PRIMARY KEY)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -93,7 +93,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With primary key and not null", "CREATE TABLE test(foo INTEGER PRIMARY KEY NOT NULL)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -102,7 +102,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz[4][1].bat TEXT)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -113,7 +113,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With table constraints / PK on defined field", "CREATE TABLE test(foo INTEGER, bar NOT NULL, PRIMARY KEY (foo))",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -123,7 +123,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With table constraints / PK on undefined field", "CREATE TABLE test(foo INTEGER, PRIMARY KEY (bar))",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -136,7 +136,7 @@ func TestParserCreateTable(t *testing.T) {
 		{"With table constraints / duplicate pk", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (bar))", nil, true},
 		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
 		{"With table constraints / UNIQUE on defined field", "CREATE TABLE test(foo INTEGER, bar NOT NULL, UNIQUE (foo))",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -146,7 +146,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With table constraints / UNIQUE on undefined field", "CREATE TABLE test(foo INTEGER, UNIQUE (bar))",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -156,7 +156,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With table constraints / UNIQUE twice", "CREATE TABLE test(foo INTEGER UNIQUE, UNIQUE (foo))",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -166,10 +166,10 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
 		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
-			query.CreateTableStmt{}, true},
+			statement.CreateTableStmt{}, true},
 		{"With all supported fixed size data types",
 			"CREATE TABLE test(d double, b bool)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -180,7 +180,7 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With all supported variable size data types",
 			"CREATE TABLE test(i integer, b blob, byt bytes, t text, a array, d document)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -195,7 +195,7 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With integer aliases types",
 			"CREATE TABLE test(i int, ii int2, ei int8, m mediumint, s smallint, b bigint, t tinyint)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -211,7 +211,7 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With double aliases types",
 			"CREATE TABLE test(dp DOUBLE PRECISION, r real, d double)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -223,7 +223,7 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With text aliases types",
 			"CREATE TABLE test(v VARCHAR(255), c CHARACTER(64), t TEXT)",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -235,7 +235,7 @@ func TestParserCreateTable(t *testing.T) {
 			}, false},
 		{"With errored text aliases types",
 			"CREATE TABLE test(v VARCHAR(1 IN [1, 2, 3] AND foo > 4) )",
-			query.CreateTableStmt{
+			statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
@@ -263,26 +263,26 @@ func TestParserCreateIndex(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected statement.Statement
 		errored  bool
 	}{
-		{"Basic", "CREATE INDEX idx ON test (foo)", query.CreateIndexStmt{
+		{"Basic", "CREATE INDEX idx ON test (foo)", statement.CreateIndexStmt{
 			Info: database.IndexInfo{
 				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo"))},
 			}}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", query.CreateIndexStmt{
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", statement.CreateIndexStmt{
 			Info: database.IndexInfo{
 				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo.bar[1]"))},
 			}, IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", query.CreateIndexStmt{
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", statement.CreateIndexStmt{
 			Info: database.IndexInfo{
 				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, Unique: true,
 			}, IfNotExists: true}, false},
-		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", query.CreateIndexStmt{
+		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", statement.CreateIndexStmt{
 			Info: database.IndexInfo{TableName: "test", Paths: []document.Path{document.Path(testutil.ParsePath(t, "foo[3].baz"))}, Unique: true}}, false},
 		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
 		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)",
-			query.CreateIndexStmt(query.CreateIndexStmt{
+			statement.CreateIndexStmt(statement.CreateIndexStmt{
 				Info: database.IndexInfo{
 					IndexName: "idx",
 					TableName: "test",

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +12,7 @@ import (
 func TestParserTransactions(t *testing.T) {
 	tests := []struct {
 		s        string
-		expected query.Statement
+		expected statement.Statement
 		errored  bool
 	}{
 		{"BEGIN", query.BeginStmt{Writable: true}, false},

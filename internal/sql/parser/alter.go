@@ -1,12 +1,12 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
-func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ query.AlterStmt, err error) {
-	var stmt query.AlterStmt
+func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.AlterStmt, err error) {
+	var stmt statement.AlterStmt
 	stmt.TableName = tableName
 
 	// Parse "TO".
@@ -23,8 +23,8 @@ func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ query.Alter
 	return stmt, nil
 }
 
-func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.AlterTableAddField, err error) {
-	var stmt query.AlterTableAddField
+func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ statement.AlterTableAddField, err error) {
+	var stmt statement.AlterTableAddField
 	stmt.TableName = tableName
 
 	// Parse "FIELD".
@@ -47,7 +47,7 @@ func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ query.Alt
 
 // parseAlterStatement parses a Alter query string and returns a Statement AST object.
 // This function assumes the ALTER token has already been consumed.
-func (p *Parser) parseAlterStatement() (query.Statement, error) {
+func (p *Parser) parseAlterStatement() (statement.Statement, error) {
 	var err error
 
 	// Parse "TABLE".

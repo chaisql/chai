@@ -2,14 +2,14 @@ package parser
 
 import (
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (*query.SelectStmt, error) {
-	var stmt query.SelectStmt
+func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
+	var stmt statement.SelectStmt
 	var err error
 
 	stmt.Distinct, err = p.parseDistinct()

@@ -3,14 +3,14 @@ package parser
 import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
 // This function assumes the CREATE token has already been consumed.
-func (p *Parser) parseCreateStatement() (query.Statement, error) {
+func (p *Parser) parseCreateStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:
@@ -30,8 +30,8 @@ func (p *Parser) parseCreateStatement() (query.Statement, error) {
 
 // parseCreateTableStatement parses a create table string and returns a Statement AST object.
 // This function assumes the CREATE TABLE tokens have already been consumed.
-func (p *Parser) parseCreateTableStatement() (query.CreateTableStmt, error) {
-	var stmt query.CreateTableStmt
+func (p *Parser) parseCreateTableStatement() (statement.CreateTableStmt, error) {
+	var stmt statement.CreateTableStmt
 	var err error
 
 	// Parse IF NOT EXISTS
@@ -75,7 +75,7 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 	return nil
 }
 
-func (p *Parser) parseConstraints(stmt *query.CreateTableStmt) error {
+func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 	// Parse ( token.
 	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
 		return err
@@ -203,7 +203,7 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 	}
 }
 
-func (p *Parser) parseTableConstraint(stmt *query.CreateTableStmt) (bool, error) {
+func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, error) {
 	var err error
 
 	tok, _, _ := p.ScanIgnoreWhitespace()
@@ -283,9 +283,9 @@ func (p *Parser) parseTableConstraint(stmt *query.CreateTableStmt) (bool, error)
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
-func (p *Parser) parseCreateIndexStatement(unique bool) (query.CreateIndexStmt, error) {
+func (p *Parser) parseCreateIndexStatement(unique bool) (statement.CreateIndexStmt, error) {
 	var err error
-	var stmt query.CreateIndexStmt
+	var stmt statement.CreateIndexStmt
 	stmt.Info.Unique = unique
 
 	// Parse IF NOT EXISTS

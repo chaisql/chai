@@ -1,4 +1,4 @@
-package query
+package statement
 
 import (
 	"github.com/genjidb/genji/internal/database"

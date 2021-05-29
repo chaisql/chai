@@ -1,14 +1,14 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
 // This function assumes the DELETE token has already been consumed.
-func (p *Parser) parseDeleteStatement() (*query.DeleteStmt, error) {
-	var stmt query.DeleteStmt
+func (p *Parser) parseDeleteStatement() (*statement.DeleteStmt, error) {
+	var stmt statement.DeleteStmt
 	var err error
 
 	// Parse "FROM".

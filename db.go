@@ -9,6 +9,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -197,7 +198,7 @@ type Statement struct {
 // Query the database and return the result.
 // The returned result must always be closed after usage.
 func (s *Statement) Query(args ...interface{}) (*Result, error) {
-	var r *query.Result
+	var r *statement.Result
 	var err error
 
 	if s.tx != nil {
@@ -269,7 +270,7 @@ func (s *Statement) Exec(args ...interface{}) (err error) {
 
 // Result of a query.
 type Result struct {
-	result *query.Result
+	result *statement.Result
 }
 
 func (r *Result) Iterate(fn func(d document.Document) error) error {
@@ -281,7 +282,7 @@ func (r *Result) Fields() []string {
 		return nil
 	}
 
-	stmt, ok := r.result.Iterator.(*query.StreamStmtIterator)
+	stmt, ok := r.result.Iterator.(*statement.StreamStmtIterator)
 	if !ok || stmt.Stream.Op == nil {
 		return nil
 	}
@@ -369,7 +370,7 @@ func loadCatalogTables(tx *database.Transaction) ([]database.TableInfo, error) {
 			return err
 		}
 
-		ti := stmt.(query.CreateTableStmt).Info
+		ti := stmt.(statement.CreateTableStmt).Info
 
 		v, err := d.GetByField("store_name")
 		if err != nil {
@@ -402,7 +403,7 @@ func loadCatalogIndexes(tx *database.Transaction) ([]database.IndexInfo, error) 
 			return err
 		}
 
-		indexes = append(indexes, stmt.(query.CreateIndexStmt).Info)
+		indexes = append(indexes, stmt.(statement.CreateIndexStmt).Info)
 		return nil
 	})
 

@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -12,13 +12,13 @@ func TestParserDrop(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected query.Statement
+		expected statement.Statement
 		errored  bool
 	}{
-		{"Drop table", "DROP TABLE test", query.DropTableStmt{TableName: "test"}, false},
-		{"Drop table If not exists", "DROP TABLE IF EXISTS test", query.DropTableStmt{TableName: "test", IfExists: true}, false},
-		{"Drop index", "DROP INDEX test", query.DropIndexStmt{IndexName: "test"}, false},
-		{"Drop index if exists", "DROP INDEX IF EXISTS test", query.DropIndexStmt{IndexName: "test", IfExists: true}, false},
+		{"Drop table", "DROP TABLE test", statement.DropTableStmt{TableName: "test"}, false},
+		{"Drop table If not exists", "DROP TABLE IF EXISTS test", statement.DropTableStmt{TableName: "test", IfExists: true}, false},
+		{"Drop index", "DROP INDEX test", statement.DropIndexStmt{IndexName: "test"}, false},
+		{"Drop index if exists", "DROP INDEX IF EXISTS test", statement.DropIndexStmt{IndexName: "test", IfExists: true}, false},
 	}
 
 	for _, test := range tests {

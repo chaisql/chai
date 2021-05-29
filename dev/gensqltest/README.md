@@ -65,7 +65,7 @@ SELECT * FROM foo;
 To populate tests that would be in an `query_test` package, create a go file named `gentests.go` in the `query` package with the following code:
 
 ```go
-package query
+package statement
 
 //go:generate go run ../dev/gensqltest -package=query_test ./*_test.sql
 ```

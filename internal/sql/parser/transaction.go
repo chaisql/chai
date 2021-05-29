@@ -2,12 +2,13 @@ package parser
 
 import (
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseBeginStatement parses a BEGIN statement.
 // This function assumes the BEGIN token has already been consumed.
-func (p *Parser) parseBeginStatement() (query.Statement, error) {
+func (p *Parser) parseBeginStatement() (statement.Statement, error) {
 	// parse optional TRANSACTION token
 	_, _ = p.parseOptional(scanner.TRANSACTION)
 
@@ -34,7 +35,7 @@ func (p *Parser) parseBeginStatement() (query.Statement, error) {
 
 // parseRollbackStatement parses a ROLLBACK statement.
 // This function assumes the ROLLBACK token has already been consumed.
-func (p *Parser) parseRollbackStatement() (query.Statement, error) {
+func (p *Parser) parseRollbackStatement() (statement.Statement, error) {
 	// parse optional TRANSACTION token
 	_, _ = p.parseOptional(scanner.TRANSACTION)
 
@@ -43,7 +44,7 @@ func (p *Parser) parseRollbackStatement() (query.Statement, error) {
 
 // parseCommitStatement parses a COMMIT statement.
 // This function assumes the COMMIT token has already been consumed.
-func (p *Parser) parseCommitStatement() (query.Statement, error) {
+func (p *Parser) parseCommitStatement() (statement.Statement, error) {
 	// parse optional TRANSACTION token
 	_, _ = p.parseOptional(scanner.TRANSACTION)
 

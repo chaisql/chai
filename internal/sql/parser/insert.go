@@ -3,15 +3,15 @@ package parser
 import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (*query.InsertStmt, error) {
-	var stmt query.InsertStmt
+func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
+	var stmt statement.InsertStmt
 	var err error
 
 	// Parse "INTO".

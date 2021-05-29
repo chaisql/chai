@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 )
 
@@ -14,15 +14,15 @@ func TestParserMultiStatement(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected []query.Statement
+		expected []statement.Statement
 	}{
 		{"OnlyCommas", ";;;", nil},
-		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []query.Statement{
-			&query.SelectStmt{
+		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []statement.Statement{
+			&statement.SelectStmt{
 				TableName:       "foo",
 				ProjectionExprs: []expr.Expr{expr.Wildcard{}},
 			},
-			&query.DeleteStmt{
+			&statement.DeleteStmt{
 				TableName: "foo",
 			},
 		}},

@@ -2,7 +2,7 @@
 * CODE GENERATED AUTOMATICALLY WITH github.com/genjidb/genji/dev/gensqltest
 * THIS FILE SHOULD NOT BE EDITED BY HAND
  */
-package query_test
+package statement_test
 
 import (
 	"regexp"
