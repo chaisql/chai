@@ -30,25 +30,25 @@ func (p *Parser) parseCreateStatement() (statement.Statement, error) {
 
 // parseCreateTableStatement parses a create table string and returns a Statement AST object.
 // This function assumes the CREATE TABLE tokens have already been consumed.
-func (p *Parser) parseCreateTableStatement() (statement.CreateTableStmt, error) {
+func (p *Parser) parseCreateTableStatement() (*statement.CreateTableStmt, error) {
 	var stmt statement.CreateTableStmt
 	var err error
 
 	// Parse IF NOT EXISTS
 	stmt.IfNotExists, err = p.parseOptional(scanner.IF, scanner.NOT, scanner.EXISTS)
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse table name
 	stmt.Info.TableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// parse field constraints
 	err = p.parseConstraints(&stmt)
-	return stmt, err
+	return &stmt, err
 }
 
 func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) {
@@ -283,7 +283,7 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, er
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
 // This function assumes the CREATE INDEX or CREATE UNIQUE INDEX tokens have already been consumed.
-func (p *Parser) parseCreateIndexStatement(unique bool) (statement.CreateIndexStmt, error) {
+func (p *Parser) parseCreateIndexStatement(unique bool) (*statement.CreateIndexStmt, error) {
 	var err error
 	var stmt statement.CreateIndexStmt
 	stmt.Info.Unique = unique
@@ -291,7 +291,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (statement.CreateIndexSt
 	// Parse IF NOT EXISTS
 	stmt.IfNotExists, err = p.parseOptional(scanner.IF, scanner.NOT, scanner.EXISTS)
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse optional index name
@@ -299,7 +299,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (statement.CreateIndexSt
 	if err != nil {
 		// if IF NOT EXISTS is set, index name is mandatory
 		if stmt.IfNotExists {
-			return stmt, err
+			return nil, err
 		}
 
 		p.Unscan()
@@ -307,25 +307,25 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (statement.CreateIndexSt
 
 	// Parse "ON"
 	if err := p.parseTokens(scanner.ON); err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse table name
 	stmt.Info.TableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	paths, err := p.parsePathList()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 	if len(paths) == 0 {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
-		return stmt, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
 	}
 
 	stmt.Info.Paths = paths
 
-	return stmt, nil
+	return &stmt, nil
 }

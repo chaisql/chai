@@ -14,13 +14,13 @@ type CreateTableStmt struct {
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt CreateTableStmt) IsReadOnly() bool {
+func (stmt *CreateTableStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	err := tx.Catalog.CreateTable(tx, stmt.Info.TableName, &stmt.Info)
@@ -53,13 +53,13 @@ type CreateIndexStmt struct {
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt CreateIndexStmt) IsReadOnly() bool {
+func (stmt *CreateIndexStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt *CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
 	err := tx.Catalog.CreateIndex(tx, &stmt.Info)

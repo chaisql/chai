@@ -117,6 +117,21 @@ func (r *ValueRange) IsEqual(other *ValueRange) bool {
 	return true
 }
 
+func (r ValueRange) Clone() ValueRange {
+	if r.encodedMin != nil {
+		cp := make([]byte, 0, len(r.encodedMin))
+		cp = append(cp, r.encodedMin...)
+		r.encodedMin = cp
+	}
+	if r.encodedMax != nil {
+		cp := make([]byte, 0, len(r.encodedMax))
+		cp = append(cp, r.encodedMax...)
+		r.encodedMax = cp
+	}
+
+	return r
+}
+
 type ValueRanges []ValueRange
 
 // Append rng to r and return the new slice.
@@ -377,6 +392,21 @@ func (r *IndexRange) IsEqual(other *IndexRange) bool {
 	}
 
 	return true
+}
+
+func (r IndexRange) Clone() IndexRange {
+	if r.encodedMin != nil {
+		cp := make([]byte, 0, len(r.encodedMin))
+		cp = append(cp, r.encodedMin...)
+		r.encodedMin = cp
+	}
+	if r.encodedMax != nil {
+		cp := make([]byte, 0, len(r.encodedMax))
+		cp = append(cp, r.encodedMax...)
+		r.encodedMax = cp
+	}
+
+	return r
 }
 
 type IndexRanges []IndexRange

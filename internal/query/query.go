@@ -18,6 +18,11 @@ type Query struct {
 	autoCommit bool
 }
 
+// New creates a new query with the given statements.
+func New(statements ...statement.Statement) Query {
+	return Query{Statements: statements}
+}
+
 // Run executes all the statements in their own transaction and returns the last result.
 func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param) (*statement.Result, error) {
 	var res statement.Result
@@ -136,9 +141,4 @@ func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*statement.Res
 	}
 
 	return &res, nil
-}
-
-// New creates a new query with the given statements.
-func New(statements ...statement.Statement) Query {
-	return Query{Statements: statements}
 }

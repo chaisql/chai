@@ -104,6 +104,15 @@ func (op *HashAggregateOperator) String() string {
 	return stringutil.Sprintf("hashAggregate(%s)", sb.String())
 }
 
+func (op HashAggregateOperator) Clone() Operator {
+	builders := make([]expr.AggregatorBuilder, len(op.Builders))
+	for i := range op.Builders {
+		builders[i] = op.Builders[i].Clone().(expr.AggregatorBuilder)
+	}
+	op.Builders = builders
+	return &op
+}
+
 // newGroupEncoder returns a function that encodes the _group environment variable using a document.ValueEncoder.
 // If the _group variable doesn't exist, the group is set to null.
 func newGroupEncoder() (func(env *expr.Environment) (string, error), error) {

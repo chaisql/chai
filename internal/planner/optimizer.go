@@ -11,10 +11,10 @@ import (
 
 var optimizerRules = []func(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error){
 	SplitANDConditionRule,
+	RemoveUnnecessaryProjection,
+	RemoveUnnecessaryDistinctNodeRule,
 	PrecalculateExprRule,
 	RemoveUnnecessaryFilterNodesRule,
-	RemoveUnnecessaryDistinctNodeRule,
-	RemoveUnnecessaryProjection,
 	UseIndexBasedOnFilterNodeRule,
 }
 
@@ -338,7 +338,6 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 			if prev != nil {
 				pn, ok := prev.(*stream.ProjectOperator)
 				if ok {
-
 					// if the projection is unique, we remove the node from the tree
 					if isProjectionUnique(t.Indexes, pn, t.Info.GetPrimaryKey()) {
 						s.Remove(n)
@@ -357,9 +356,8 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 
 func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
 	for _, field := range po.Exprs {
-		e, ok := field.(*expr.NamedExpr)
+		_, ok := field.(*expr.NamedExpr)
 		if ok {
-			field = e.Expr
 			return false
 		}
 
@@ -399,7 +397,7 @@ type filterNode struct {
 //
 // TODO(asdine): add support for ORDER BY
 // TODO(jh): clarify cost code in composite indexes case
-func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, params []expr.Param) (*stream.Stream, error) {
+func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction, _ []expr.Param) (*stream.Stream, error) {
 	// first we lookup for the seq scan node.
 	// Here we will assume that at this point
 	// if there is one it has to be the

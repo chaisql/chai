@@ -370,7 +370,7 @@ func loadCatalogTables(tx *database.Transaction) ([]database.TableInfo, error) {
 			return err
 		}
 
-		ti := stmt.(statement.CreateTableStmt).Info
+		ti := stmt.(*statement.CreateTableStmt).Info
 
 		v, err := d.GetByField("store_name")
 		if err != nil {
@@ -403,7 +403,7 @@ func loadCatalogIndexes(tx *database.Transaction) ([]database.IndexInfo, error) 
 			return err
 		}
 
-		indexes = append(indexes, stmt.(statement.CreateIndexStmt).Info)
+		indexes = append(indexes, stmt.(*statement.CreateIndexStmt).Info)
 		return nil
 	})
 

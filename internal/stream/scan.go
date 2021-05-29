@@ -53,6 +53,10 @@ func (op *DocumentsOperator) String() string {
 	return sb.String()
 }
 
+func (op DocumentsOperator) Clone() Operator {
+	return &op
+}
+
 type ExprsOperator struct {
 	baseOperator
 	Exprs []expr.Expr
@@ -102,6 +106,15 @@ func (op *ExprsOperator) String() string {
 	return sb.String()
 }
 
+func (op ExprsOperator) Clone() Operator {
+	newExprs := make([]expr.Expr, len(op.Exprs))
+	for i := range op.Exprs {
+		newExprs[i] = op.Exprs[i].Clone()
+	}
+	op.Exprs = newExprs
+	return &op
+}
+
 // A SeqScanOperator iterates over the documents of a table.
 type SeqScanOperator struct {
 	baseOperator
@@ -148,6 +161,10 @@ func (it *SeqScanOperator) String() string {
 	return stringutil.Sprintf("seqScanReverse(%s)", it.TableName)
 }
 
+func (it SeqScanOperator) Clone() Operator {
+	return &it
+}
+
 // A PkScanOperator iterates over the documents of a table.
 type PkScanOperator struct {
 	baseOperator
@@ -190,6 +207,15 @@ func (it *PkScanOperator) String() string {
 	s.WriteString(")")
 
 	return s.String()
+}
+
+func (it PkScanOperator) Clone() Operator {
+	newRanges := make(ValueRanges, len(it.Ranges))
+	for i := range it.Ranges {
+		newRanges[i] = it.Ranges[i].Clone()
+	}
+	it.Ranges = newRanges
+	return &it
 }
 
 // Iterate over the documents of the table. Each document is stored in the environment
@@ -314,6 +340,15 @@ func (it *IndexScanOperator) String() string {
 	s.WriteString(")")
 
 	return s.String()
+}
+
+func (it IndexScanOperator) Clone() Operator {
+	newRanges := make(IndexRanges, len(it.Ranges))
+	for i := range it.Ranges {
+		newRanges[i] = it.Ranges[i].Clone()
+	}
+	it.Ranges = newRanges
+	return &it
 }
 
 // Iterate over the documents of the table. Each document is stored in the environment
