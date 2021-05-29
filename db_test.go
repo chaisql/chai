@@ -1,6 +1,7 @@
 package genji_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 func ExampleTx() {
@@ -116,6 +118,38 @@ func TestQueryDocument(t *testing.T) {
 		require.Equal(t, errs.ErrDocumentNotFound, err)
 		require.Nil(t, r)
 	})
+}
+
+func TestPrepareThreadSafe(t *testing.T) {
+	db, err := genji.Open(":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	err = db.Exec("CREATE TABLE test(a int unique, b text); INSERT INTO test(a, b) VALUES (1, 'a'), (2, 'a')")
+	require.NoError(t, err)
+
+	stmt, err := db.Prepare("SELECT COUNT(a) FROM test WHERE a < ? GROUP BY b ORDER BY a DESC LIMIT 5")
+	require.NoError(t, err)
+
+	g, _ := errgroup.WithContext(context.Background())
+
+	for i := 1; i <= 3; i++ {
+		arg := i
+		g.Go(func() error {
+			res, err := stmt.Query(arg)
+			if err != nil {
+				return err
+			}
+			defer res.Close()
+
+			return res.Iterate(func(d document.Document) error {
+				return nil
+			})
+		})
+	}
+
+	err = g.Wait()
+	require.NoError(t, err)
 }
 
 func BenchmarkSelect(b *testing.B) {

@@ -87,7 +87,6 @@ func (s *Stream) Clone() *Stream {
 
 	for n := s.First(); n != nil; n = n.GetNext() {
 		clone = clone.Pipe(n)
-
 	}
 
 	return clone
