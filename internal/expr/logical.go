@@ -40,6 +40,12 @@ func (op *AndOp) Eval(env *Environment) (document.Value, error) {
 	return trueLitteral, nil
 }
 
+func (op *AndOp) Clone() Expr {
+	return &AndOp{
+		simpleOperator: op.simpleOperator.Clone(),
+	}
+}
+
 // OrOp is the Or operator.
 type OrOp struct {
 	*simpleOperator
@@ -80,6 +86,12 @@ func (op *OrOp) Eval(env *Environment) (document.Value, error) {
 	return falseLitteral, nil
 }
 
+func (op *OrOp) Clone() Expr {
+	return &OrOp{
+		simpleOperator: op.simpleOperator.Clone(),
+	}
+}
+
 // NotOp is the NOT unary operator.
 type NotOp struct {
 	*simpleOperator
@@ -111,4 +123,10 @@ func (op *NotOp) Eval(env *Environment) (document.Value, error) {
 // String implements the stringutil.Stringer interface.
 func (op *NotOp) String() string {
 	return stringutil.Sprintf("NOT %v", op.a)
+}
+
+func (op *NotOp) Clone() Expr {
+	return &NotOp{
+		simpleOperator: op.simpleOperator.Clone(),
+	}
 }

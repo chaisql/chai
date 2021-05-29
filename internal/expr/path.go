@@ -54,6 +54,10 @@ func (p Path) String() string {
 	return document.Path(p).String()
 }
 
+func (p Path) Clone() Expr {
+	return p
+}
+
 // A Wildcard is an expression that iterates over all the fields of a document.
 type Wildcard struct{}
 
@@ -73,4 +77,8 @@ func (w Wildcard) Iterate(env *Environment, fn func(field string, value document
 	}
 
 	return d.Iterate(fn)
+}
+
+func (w Wildcard) Clone() Expr {
+	return w
 }

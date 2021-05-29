@@ -93,6 +93,8 @@ type Aggregator interface {
 
 // An AggregatorBuilder is a type that can create aggregators.
 type AggregatorBuilder interface {
+	Expr
+
 	Aggregator() Aggregator
 }
 
@@ -127,6 +129,10 @@ func (k *PKFunc) IsEqual(other Expr) bool {
 
 func (k *PKFunc) String() string {
 	return "pk()"
+}
+
+func (k PKFunc) Clone() Expr {
+	return &k
 }
 
 // CastFunc represents the CAST expression.
@@ -172,6 +178,11 @@ func (c CastFunc) Params() []Expr { return []Expr{c.Expr} }
 
 func (c CastFunc) String() string {
 	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
+}
+
+func (c CastFunc) Clone() Expr {
+	c.Expr = c.Expr.Clone()
+	return c
 }
 
 var _ AggregatorBuilder = (*CountFunc)(nil)
@@ -222,6 +233,13 @@ func (c *CountFunc) String() string {
 	return stringutil.Sprintf("COUNT(%v)", c.Expr)
 }
 
+func (c CountFunc) Clone() Expr {
+	if c.Expr != nil {
+		c.Expr = c.Expr.Clone()
+	}
+	return &c
+}
+
 // Aggregator returns a CountAggregator. It implements the AggregatorBuilder interface.
 func (c *CountFunc) Aggregator() Aggregator {
 	return &CountAggregator{
@@ -262,6 +280,11 @@ func (c *CountAggregator) String() string {
 	return c.Fn.String()
 }
 
+func (c CountAggregator) Clone() Expr {
+	c.Fn = c.Fn.Clone().(*CountFunc)
+	return &c
+}
+
 // MinFunc is the MIN aggregator function.
 type MinFunc struct {
 	Expr Expr
@@ -298,6 +321,11 @@ func (m *MinFunc) Params() []Expr { return []Expr{m.Expr} }
 // of the count expression.
 func (m *MinFunc) String() string {
 	return stringutil.Sprintf("MIN(%v)", m.Expr)
+}
+
+func (m MinFunc) Clone() Expr {
+	m.Expr = m.Expr.Clone()
+	return &m
 }
 
 // Aggregator returns a MinAggregator. It implements the AggregatorBuilder interface.
@@ -360,6 +388,11 @@ func (m *MinAggregator) String() string {
 	return m.Fn.String()
 }
 
+func (m MinAggregator) Clone() Expr {
+	m.Fn = m.Fn.Clone().(*MinFunc)
+	return &m
+}
+
 // MaxFunc is the MAX aggregator function.
 type MaxFunc struct {
 	Expr Expr
@@ -396,6 +429,11 @@ func (m *MaxFunc) Params() []Expr { return []Expr{m.Expr} }
 // of the count expression.
 func (m *MaxFunc) String() string {
 	return stringutil.Sprintf("MAX(%v)", m.Expr)
+}
+
+func (m MaxFunc) Clone() Expr {
+	m.Expr = m.Expr.Clone()
+	return &m
 }
 
 // Aggregator returns a MaxAggregator. It implements the AggregatorBuilder interface.
@@ -459,6 +497,11 @@ func (m *MaxAggregator) String() string {
 	return m.Fn.String()
 }
 
+func (m MaxAggregator) Clone() Expr {
+	m.Fn = m.Fn.Clone().(*MaxFunc)
+	return &m
+}
+
 // SumFunc is the SUM aggregator function.
 type SumFunc struct {
 	Expr Expr
@@ -495,6 +538,11 @@ func (s *SumFunc) Params() []Expr { return []Expr{s.Expr} }
 // of the count expression.
 func (s *SumFunc) String() string {
 	return stringutil.Sprintf("SUM(%v)", s.Expr)
+}
+
+func (s SumFunc) Clone() Expr {
+	s.Expr = s.Expr.Clone()
+	return &s
 }
 
 // Aggregator returns a SumFunc. It implements the AggregatorBuilder interface.
@@ -569,6 +617,19 @@ func (s *SumAggregator) String() string {
 	return s.Fn.String()
 }
 
+func (s SumAggregator) Clone() Expr {
+	s.Fn = s.Fn.Clone().(*SumFunc)
+	if s.SumF != nil {
+		cp := *s.SumF
+		s.SumF = &cp
+	}
+	if s.SumI != nil {
+		cp := *s.SumI
+		s.SumI = &cp
+	}
+	return &s
+}
+
 // AvgFunc is the AVG aggregator function.
 type AvgFunc struct {
 	Expr Expr
@@ -605,6 +666,11 @@ func (s *AvgFunc) Params() []Expr { return []Expr{s.Expr} }
 // of the average expression.
 func (s *AvgFunc) String() string {
 	return stringutil.Sprintf("AVG(%v)", s.Expr)
+}
+
+func (s AvgFunc) Clone() Expr {
+	s.Expr = s.Expr.Clone()
+	return &s
 }
 
 // Aggregator returns a AvgFunc. It implements the AggregatorBuilder interface.
@@ -652,4 +718,9 @@ func (s *AvgAggregator) Eval(env *Environment) (document.Value, error) {
 
 func (s *AvgAggregator) String() string {
 	return s.Fn.String()
+}
+
+func (s AvgAggregator) Clone() Expr {
+	s.Fn = s.Fn.Clone().(*AvgFunc)
+	return &s
 }
