@@ -756,7 +756,8 @@ func deleteTable(tx *Transaction, tableName string) error {
 func replaceTable(tx *Transaction, tableName string, info *TableInfo) error {
 	tb := GetTableStore(tx)
 
-	return tb.Replace([]byte(tableName), info.ToDocument())
+	_, err := tb.Replace([]byte(tableName), info.ToDocument())
+	return err
 }
 
 func insertIndex(tx *Transaction, info *IndexInfo) error {
@@ -783,7 +784,8 @@ func insertIndex(tx *Transaction, info *IndexInfo) error {
 func replaceIndex(tx *Transaction, indexName string, info IndexInfo) error {
 	tb := GetIndexStore(tx)
 
-	return tb.Replace([]byte(indexName), info.ToDocument())
+	_, err := tb.Replace([]byte(indexName), info.ToDocument())
+	return err
 }
 
 func deleteIndex(tx *Transaction, indexName string) error {

@@ -788,7 +788,7 @@ func TestTableReplace(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		err := tb.Replace([]byte("id"), newDocument())
+		_, err := tb.Replace([]byte("id"), newDocument())
 		require.Equal(t, errs.ErrDocumentNotFound, err)
 	})
 
@@ -813,15 +813,17 @@ func TestTableReplace(t *testing.T) {
 			Add("fieldb", document.NewTextValue("f"))
 
 		// replace doc1 with doc3
-		err = tb.Replace(d1.(document.Keyer).RawKey(), doc3)
+		d3, err := tb.Replace(d1.(document.Keyer).RawKey(), doc3)
 		require.NoError(t, err)
 
-		// make sure it replaced it cordoctly
+		// make sure it replaced it correctly
 		res, err := tb.GetDocument(d1.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
 		require.Equal(t, "e", f.V.(string))
+
+		testutil.RequireDocEqual(t, d3, res)
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetDocument(d2.(document.Keyer).RawKey())
@@ -872,14 +874,14 @@ func TestTableReplace(t *testing.T) {
 
 		// --- a
 		// replace d1 without modifying indexed key
-		err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 1, "b": 3}`))
+		_, err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 1, "b": 3}`))
 		require.NoError(t, err)
 
 		// indexes should be the same as before
 		require.Equal(t, beforeIdxA, testutil.GetIndexContent(t, tx, "idx_foo_a"))
 
 		// replace d2 and modify indexed key
-		err = tb.Replace(d2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
+		_, err = tb.Replace(d2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
 		require.NoError(t, err)
 
 		// indexes should be different for d2
@@ -888,7 +890,7 @@ func TestTableReplace(t *testing.T) {
 		require.NotEqual(t, beforeIdxA[1], got[1])
 
 		// replace d1 with duplicate indexed key
-		err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
+		_, err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
 
 		// index should be the same as before
 		require.Equal(t, errs.ErrDuplicateDocument, err)
@@ -904,14 +906,14 @@ func TestTableReplace(t *testing.T) {
 
 		beforeIdxXY := testutil.GetIndexContent(t, tx, "idx_foo_x_y")
 		// replace dc1 without modifying indexed key
-		err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 2}`))
+		_, err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 2}`))
 		require.NoError(t, err)
 
 		// index should be the same as before
 		require.Equal(t, beforeIdxXY, testutil.GetIndexContent(t, tx, "idx_foo_x_y"))
 
 		// replace dc2 and modify indexed key
-		err = tb.Replace(dc2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
+		_, err = tb.Replace(dc2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
 		require.NoError(t, err)
 
 		// indexes should be different for d2
@@ -920,11 +922,10 @@ func TestTableReplace(t *testing.T) {
 		require.NotEqual(t, beforeIdxXY[1], got[1])
 
 		// replace dc2 with duplicate indexed key
-		err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
+		_, err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
 
 		// index should be the same as before
 		require.Equal(t, errs.ErrDuplicateDocument, err)
-
 	})
 }
 

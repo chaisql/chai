@@ -20,7 +20,7 @@ func OnInsertConflictDoReplace(t *Table, key []byte, d document.Document, err er
 		return d, err
 	}
 
-	err = t.Replace(key, d)
+	d, err = t.Replace(key, d)
 	if err != nil {
 		return nil, err
 	}

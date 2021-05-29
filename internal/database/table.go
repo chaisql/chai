@@ -189,17 +189,17 @@ func (t *Table) Delete(key []byte) error {
 // Replace a document by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key []byte, d document.Document) error {
+func (t *Table) Replace(key []byte, d document.Document) (document.Document, error) {
 	if t.Info.ReadOnly {
-		return errors.New("cannot write to read-only table")
+		return nil, errors.New("cannot write to read-only table")
 	}
 
 	d, err := t.Info.FieldConstraints.ValidateDocument(d)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return t.replace(key, d)
+	return d, t.replace(key, d)
 }
 
 func (t *Table) replace(key []byte, d document.Document) error {

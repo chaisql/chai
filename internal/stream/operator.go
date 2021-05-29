@@ -509,7 +509,7 @@ func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.E
 			return errors.New("missing key")
 		}
 
-		err := table.Replace(ker.RawKey(), d)
+		_, err := table.Replace(ker.RawKey(), d)
 		if err != nil {
 			return err
 		}
