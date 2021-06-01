@@ -124,6 +124,31 @@ func TestParserSelect(t *testing.T) {
 				Pipe(stream.HashAggregate(&expr.CountFunc{Wildcard: true})).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			false},
+		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			false,
+		},
+		{"CondWithUnionAll", "SELECT * FROM test1 WHERE age = 10 UNION ALL SELECT * FROM test2",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("test1")).
+					Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
+					Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			false,
+		},
+		{"WithUnionAllThenUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 UNION ALL SELECT * FROM test3",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.Concat(
+					stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+					stream.New(stream.SeqScan("test3")).Pipe(stream.Project(expr.Wildcard{})),
+				)))),
+			false,
+		},
 	}
 
 	for _, test := range tests {

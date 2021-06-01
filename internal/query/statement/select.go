@@ -20,6 +20,10 @@ type SelectStmt struct {
 	OffsetExpr       expr.Expr
 	LimitExpr        expr.Expr
 	ProjectionExprs  []expr.Expr
+	Union            struct {
+		All        bool
+		SelectStmt *StreamStmt
+	}
 }
 
 func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
@@ -163,6 +167,10 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 		}
 
 		s = s.Pipe(stream.Take(v.V.(int64)))
+	}
+
+	if stmt.Union.SelectStmt != nil {
+		s = stream.New(stream.Concat(s, stmt.Union.SelectStmt.Stream))
 	}
 
 	return &StreamStmt{
