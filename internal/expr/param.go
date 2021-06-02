@@ -35,10 +35,6 @@ func (p NamedParam) String() string {
 	return stringutil.Sprintf("$%s", string(p))
 }
 
-func (p NamedParam) Clone() Expr {
-	return p
-}
-
 // PositionalParam is an expression which represents the position of a parameter.
 type PositionalParam int
 
@@ -58,8 +54,4 @@ func (p PositionalParam) IsEqual(other Expr) bool {
 // String implements the stringutil.Stringer interface.
 func (p PositionalParam) String() string {
 	return "?"
-}
-
-func (p PositionalParam) Clone() Expr {
-	return p
 }

@@ -34,12 +34,6 @@ func (op *LikeOperator) Eval(env *Environment) (document.Value, error) {
 	})
 }
 
-func (op *LikeOperator) Clone() Expr {
-	return &LikeOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
-}
-
 type NotLikeOperator struct {
 	LikeOperator
 }

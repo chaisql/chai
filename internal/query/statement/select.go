@@ -3,7 +3,6 @@ package statement
 import (
 	"errors"
 
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -21,21 +20,6 @@ type SelectStmt struct {
 	OffsetExpr       expr.Expr
 	LimitExpr        expr.Expr
 	ProjectionExprs  []expr.Expr
-}
-
-func (stmt *SelectStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	var res Result
-
-	s, err := stmt.ToStream()
-	if err != nil {
-		return res, err
-	}
-
-	return s.Run(tx, params)
-}
-
-func (stmt *SelectStmt) IsReadOnly() bool {
-	return true
 }
 
 func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {

@@ -2,7 +2,6 @@ package statement
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
 )
@@ -26,16 +25,6 @@ type UpdateStmt struct {
 type UpdateSetPair struct {
 	Path document.Path
 	E    expr.Expr
-}
-
-func (stmt *UpdateStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	s := stmt.ToStream()
-
-	return s.Run(tx, params)
-}
-
-func (stmt *UpdateStmt) IsReadOnly() bool {
-	return false
 }
 
 // ToTree turns the statement into a stream.

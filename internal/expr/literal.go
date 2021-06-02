@@ -26,10 +26,6 @@ func (v LiteralValue) String() string {
 	return document.Value(v).String()
 }
 
-func (v LiteralValue) Clone() Expr {
-	return v
-}
-
 // Eval returns l. It implements the Expr interface.
 func (v LiteralValue) Eval(*Environment) (document.Value, error) {
 	return document.Value(v), nil
@@ -86,15 +82,6 @@ func (l LiteralExprList) Eval(env *Environment) (document.Value, error) {
 	}
 
 	return document.NewArrayValue(document.NewValueBuffer(values...)), nil
-}
-
-func (l LiteralExprList) Clone() Expr {
-	clone := make(LiteralExprList, len(l))
-	for i := range l {
-		clone[i] = l[i].Clone()
-	}
-
-	return clone
 }
 
 // KVPair associates an identifier with an expression.
@@ -179,15 +166,4 @@ func (kvp *KVPairs) String() string {
 	b.WriteRune('}')
 
 	return b.String()
-}
-
-func (kvp KVPairs) Clone() Expr {
-	newPairs := make([]KVPair, len(kvp.Pairs))
-	for i := range kvp.Pairs {
-		newPairs[i].K = kvp.Pairs[i].K
-		newPairs[i].V = kvp.Pairs[i].V.Clone()
-	}
-
-	kvp.Pairs = newPairs
-	return &kvp
 }

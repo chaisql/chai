@@ -60,6 +60,11 @@ func Query(tx *database.Transaction, q string, params ...expr.Param) (*statement
 		return nil, err
 	}
 
+	err = pq.PrepareTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
 	return pq.Exec(tx, params)
 }
 

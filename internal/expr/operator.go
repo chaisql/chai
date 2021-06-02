@@ -70,14 +70,6 @@ func (op *simpleOperator) String() string {
 	return stringutil.Sprintf("%v %v %v", op.a, op.Tok, op.b)
 }
 
-func (op simpleOperator) Clone() *simpleOperator {
-	return &simpleOperator{
-		a:   op.a.Clone(),
-		b:   op.b.Clone(),
-		Tok: op.Tok,
-	}
-}
-
 // An Operator is a binary expression that
 // takes two operands and executes an operation on them.
 type Operator interface {
@@ -119,10 +111,4 @@ func (op *ConcatOperator) Eval(env *Environment) (document.Value, error) {
 
 		return document.NewTextValue(a.V.(string) + b.V.(string)), nil
 	})
-}
-
-func (op *ConcatOperator) Clone() Expr {
-	return &ConcatOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
 }

@@ -53,12 +53,6 @@ func (op *cmpOp) compare(l, r document.Value) (bool, error) {
 	}
 }
 
-func (op *cmpOp) Clone() Expr {
-	return &cmpOp{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
-}
-
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
 	return newCmpOp(a, b, scanner.EQ)
@@ -131,13 +125,6 @@ func (op *BetweenOperator) String() string {
 	return stringutil.Sprintf("%v BETWEEN %v AND %v", op.X, op.a, op.b)
 }
 
-func (op *BetweenOperator) Clone() Expr {
-	return &BetweenOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-		X:              op.X.Clone(),
-	}
-}
-
 // IsComparisonOperator returns true if e is one of
 // =, !=, >, >=, <, <=, IS, IS NOT, IN, or NOT IN operators.
 func IsComparisonOperator(op Operator) bool {
@@ -180,12 +167,6 @@ func (op *InOperator) Eval(env *Environment) (document.Value, error) {
 	})
 }
 
-func (op *InOperator) Clone() Expr {
-	return &InOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
-}
-
 type NotInOperator struct {
 	InOperator
 }
@@ -201,13 +182,6 @@ func (op *NotInOperator) Eval(env *Environment) (document.Value, error) {
 
 func (op *NotInOperator) String() string {
 	return stringutil.Sprintf("%v NOT IN %v", op.a, op.b)
-}
-
-func (op *NotInOperator) Clone() Expr {
-	in := op.InOperator.Clone().(*InOperator)
-	return &NotInOperator{
-		InOperator: *in,
-	}
 }
 
 type IsOperator struct {
@@ -231,12 +205,6 @@ func (op *IsOperator) Eval(env *Environment) (document.Value, error) {
 
 		return falseLitteral, nil
 	})
-}
-
-func (op *IsOperator) Clone() Expr {
-	return &IsOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
 }
 
 type IsNotOperator struct {
@@ -264,10 +232,4 @@ func (op *IsNotOperator) Eval(env *Environment) (document.Value, error) {
 
 func (op *IsNotOperator) String() string {
 	return stringutil.Sprintf("%v IS NOT %v", op.a, op.b)
-}
-
-func (op *IsNotOperator) Clone() Expr {
-	return &IsNotOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
 }

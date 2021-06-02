@@ -12,19 +12,30 @@ import (
 type StreamStmt struct {
 	Stream   *stream.Stream
 	ReadOnly bool
+
+	PreparedStream *stream.Stream
+}
+
+// Prepare optimizes the stream and stores it in s.
+func (s *StreamStmt) Prepare(tx *database.Transaction) error {
+	var err error
+	s.PreparedStream, err = planner.Optimize(s.Stream, tx)
+	return err
 }
 
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
 func (s *StreamStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	st, err := planner.Optimize(s.Stream.Clone(), tx)
-	if err != nil || st == nil {
-		return Result{}, err
+	if s.PreparedStream == nil {
+		err := s.Prepare(tx)
+		if err != nil {
+			return Result{}, err
+		}
 	}
 
 	return Result{
 		Iterator: &StreamStmtIterator{
-			Stream: st,
+			Stream: s.PreparedStream,
 			Tx:     tx,
 			Params: params,
 		},

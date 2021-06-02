@@ -14,6 +14,10 @@ type Statement interface {
 	IsReadOnly() bool
 }
 
+type Preparer interface {
+	Prepare(tx *database.Transaction) error
+}
+
 // Result of a query.
 type Result struct {
 	Iterator document.Iterator

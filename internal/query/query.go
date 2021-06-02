@@ -33,10 +33,6 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		q.autoCommit = true
 	}
 
-	type queryAlterer interface {
-		alterQuery(ctx context.Context, db *database.Database, q *Query) error
-	}
-
 	for i, stmt := range q.Statements {
 		select {
 		case <-ctx.Done():
@@ -116,6 +112,66 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 	}
 
 	return &res, nil
+}
+
+type queryAlterer interface {
+	alterQuery(ctx context.Context, db *database.Database, q *Query) error
+}
+
+// Prepare the statements by calling their Prepare methods.
+// It stops at the first statement that doesn't implement the statement.Preparer interface.
+func (q Query) Prepare(ctx context.Context, db *database.Database) error {
+	var err error
+	var tx *database.Transaction
+
+	for _, stmt := range q.Statements {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		p, ok := stmt.(statement.Preparer)
+		if !ok {
+			break
+		}
+
+		if tx == nil {
+			tx = db.GetAttachedTx()
+			if tx == nil {
+				tx, err = db.BeginTx(ctx, &database.TxOptions{
+					ReadOnly: true,
+				})
+				if err != nil {
+					return err
+				}
+				defer tx.Rollback()
+			}
+		}
+
+		err = p.Prepare(tx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (q Query) PrepareTx(tx *database.Transaction) error {
+	for _, stmt := range q.Statements {
+		p, ok := stmt.(statement.Preparer)
+		if !ok {
+			break
+		}
+
+		err := p.Prepare(tx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Exec the query within the given transaction.

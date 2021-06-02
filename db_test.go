@@ -198,6 +198,30 @@ func BenchmarkSelectWhere(b *testing.B) {
 	}
 }
 
+func BenchmarkPreparedSelectWhere(b *testing.B) {
+	for size := 1; size <= 10000; size *= 10 {
+		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
+			db, err := genji.Open(":memory:")
+			require.NoError(b, err)
+
+			err = db.Exec("CREATE TABLE foo")
+			require.NoError(b, err)
+
+			for i := 0; i < size; i++ {
+				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
+				require.NoError(b, err)
+			}
+
+			p, _ := db.Prepare("SELECT b FROM foo WHERE a > 0")
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				res, _ := p.Query()
+				res.Iterate(func(d document.Document) error { return nil })
+			}
+		})
+	}
+}
+
 func BenchmarkSelectPk(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {

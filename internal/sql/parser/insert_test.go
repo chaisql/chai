@@ -181,11 +181,7 @@ func TestParserInsert(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			stmt := q.Statements[0].(*statement.InsertStmt)
-			require.False(t, stmt.IsReadOnly())
-			ss, err := stmt.ToStream()
-			require.NoError(t, err)
-			require.EqualValues(t, test.expected.String(), ss.String())
+			require.EqualValues(t, test.expected.String(), q.Statements[0].(*statement.StreamStmt).Stream.String())
 		})
 	}
 }

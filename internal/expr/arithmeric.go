@@ -41,12 +41,6 @@ func (op *arithmeticOperator) Eval(env *Environment) (document.Value, error) {
 	})
 }
 
-func (op *arithmeticOperator) Clone() Expr {
-	return &arithmeticOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
-}
-
 // Add creates an expression thats evaluates to the result of a + b.
 func Add(a, b Expr) Expr {
 	return &arithmeticOperator{&simpleOperator{a, b, scanner.ADD}}

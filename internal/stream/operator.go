@@ -38,7 +38,6 @@ type Operator interface {
 	GetNext() Operator
 	GetPrev() Operator
 	String() string
-	Clone() Operator
 }
 
 // An OperatorFunc is the function that will receive each value of the stream.
@@ -109,63 +108,6 @@ func (op *MapOperator) String() string {
 	return stringutil.Sprintf("map(%s)", op.E)
 }
 
-func (op MapOperator) Clone() Operator {
-	op.E = op.E.Clone()
-	return &op
-}
-
-// IfEmpty is a conditional operator. If the source stream is empty, i.e. outputs no documents, it runs the sIf stream.
-// Otherwise, it pipes the incoming documents to sElse.
-type IfEmptyOperator struct {
-	baseOperator
-	sIf, sElse *Stream
-}
-
-// IfEmpty is a conditional operator. If the source stream is empty, i.e. outputs no documents, it runs the sIf stream.
-// Otherwise, it pipes the incoming documents to sElse.
-// If sElse is nil and the source stream is not empty, it iterates on the source stream.
-func IfEmpty(sIf, sElse *Stream) *IfEmptyOperator {
-	return &IfEmptyOperator{sIf: sIf, sElse: sElse}
-}
-
-// Iterate implements the Operator interface.
-// If sElse is nil and the source stream is not empty, it iterates on the source stream.
-func (op *IfEmptyOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
-	var called bool
-
-	s := New(op.Prev)
-
-	if op.sElse != nil {
-		s = op.sElse.Clone()
-
-		s.First().SetPrev(op.Prev)
-	}
-
-	err := s.Iterate(in, func(out *expr.Environment) error {
-		called = true
-
-		return f(out)
-	})
-	if err != nil || called {
-		return err
-	}
-
-	return op.sIf.Iterate(in, f)
-}
-
-func (op *IfEmptyOperator) String() string {
-	return stringutil.Sprintf("ifEmpty(\n\t%s,\n\t%s\n)", op.sIf, op.sElse)
-}
-
-func (op IfEmptyOperator) Clone() Operator {
-	op.sIf = op.sIf.Clone()
-	if op.sElse != nil {
-		op.sElse = op.sElse.Clone()
-	}
-
-	return &op
-}
-
 // A FilterOperator filters values based on a given expression.
 type FilterOperator struct {
 	baseOperator
@@ -198,11 +140,6 @@ func (op *FilterOperator) String() string {
 	return stringutil.Sprintf("filter(%s)", op.E)
 }
 
-func (op FilterOperator) Clone() Operator {
-	op.E = op.E.Clone()
-	return &op
-}
-
 // A TakeOperator closes the stream after a certain number of values.
 type TakeOperator struct {
 	baseOperator
@@ -229,10 +166,6 @@ func (op *TakeOperator) Iterate(in *expr.Environment, f func(out *expr.Environme
 
 func (op *TakeOperator) String() string {
 	return stringutil.Sprintf("take(%d)", op.N)
-}
-
-func (op TakeOperator) Clone() Operator {
-	return &op
 }
 
 // A SkipOperator skips the n first values of the stream.
@@ -262,10 +195,6 @@ func (op *SkipOperator) Iterate(in *expr.Environment, f func(out *expr.Environme
 
 func (op *SkipOperator) String() string {
 	return stringutil.Sprintf("skip(%d)", op.N)
-}
-
-func (op SkipOperator) Clone() Operator {
-	return &op
 }
 
 // A GroupByOperator applies an expression on each value of the stream and stores the result in the _group
@@ -300,10 +229,6 @@ func (op *GroupByOperator) Iterate(in *expr.Environment, f func(out *expr.Enviro
 
 func (op *GroupByOperator) String() string {
 	return stringutil.Sprintf("groupBy(%s)", op.E)
-}
-
-func (op GroupByOperator) Clone() Operator {
-	return &op
 }
 
 // A SortOperator consumes every value of the stream and outputs them in order.
@@ -421,10 +346,6 @@ func (op *SortOperator) String() string {
 	return stringutil.Sprintf("sort(%s)", op.Expr)
 }
 
-func (op SortOperator) Clone() Operator {
-	return &op
-}
-
 type heapNode struct {
 	value []byte
 	data  *expr.Environment
@@ -505,10 +426,6 @@ func (op *TableInsertOperator) String() string {
 	return stringutil.Sprintf("tableInsert('%s')", op.Name)
 }
 
-func (op TableInsertOperator) Clone() Operator {
-	return &op
-}
-
 // A TableReplaceOperator replaces documents in the table
 type TableReplaceOperator struct {
 	baseOperator
@@ -563,10 +480,6 @@ func (op *TableReplaceOperator) String() string {
 	return stringutil.Sprintf("tableReplace('%s')", op.Name)
 }
 
-func (op TableReplaceOperator) Clone() Operator {
-	return &op
-}
-
 // A TableDeleteOperator replaces documents in the table
 type TableDeleteOperator struct {
 	baseOperator
@@ -619,10 +532,6 @@ func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.En
 
 func (op *TableDeleteOperator) String() string {
 	return stringutil.Sprintf("tableDelete('%s')", op.Name)
-}
-
-func (op TableDeleteOperator) Clone() Operator {
-	return &op
 }
 
 // A DistinctOperator filters duplicate documents.
@@ -682,10 +591,6 @@ func (op *DistinctOperator) String() string {
 	return "distinct()"
 }
 
-func (op DistinctOperator) Clone() Operator {
-	return &op
-}
-
 // A SetOperator filters duplicate documents.
 type SetOperator struct {
 	baseOperator
@@ -742,11 +647,6 @@ func (op *SetOperator) String() string {
 	return stringutil.Sprintf("set(%s, %s)", op.Path, op.E)
 }
 
-func (op SetOperator) Clone() Operator {
-	op.E = op.E.Clone()
-	return &op
-}
-
 // A UnsetOperator filters duplicate documents.
 type UnsetOperator struct {
 	baseOperator
@@ -801,10 +701,6 @@ func (op *UnsetOperator) Iterate(in *expr.Environment, f func(out *expr.Environm
 
 func (op *UnsetOperator) String() string {
 	return stringutil.Sprintf("unset(%s)", op.Field)
-}
-
-func (op UnsetOperator) Clone() Operator {
-	return &op
 }
 
 // An IterRenameOperator iterates over all fields of the incoming document in order and renames them.
@@ -872,8 +768,4 @@ func (op *IterRenameOperator) Iterate(in *expr.Environment, f func(out *expr.Env
 
 func (op *IterRenameOperator) String() string {
 	return stringutil.Sprintf("iterRename(%s)", strings.Join(op.FieldNames, ", "))
-}
-
-func (op IterRenameOperator) Clone() Operator {
-	return &op
 }

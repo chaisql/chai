@@ -55,15 +55,6 @@ func (op *ProjectOperator) String() string {
 	return b.String()
 }
 
-func (op ProjectOperator) Clone() Operator {
-	newExprs := make([]expr.Expr, len(op.Exprs))
-	for i := range op.Exprs {
-		newExprs[i] = op.Exprs[i].Clone()
-	}
-	op.Exprs = newExprs
-	return &op
-}
-
 type MaskDocument struct {
 	Env   *expr.Environment
 	Exprs []expr.Expr

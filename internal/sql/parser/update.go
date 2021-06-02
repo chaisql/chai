@@ -7,7 +7,7 @@ import (
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
 // This function assumes the UPDATE token has already been consumed.
-func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
+func (p *Parser) parseUpdateStatement() (*statement.StreamStmt, error) {
 	var stmt statement.UpdateStmt
 	var err error
 
@@ -39,7 +39,7 @@ func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
 		return nil, err
 	}
 
-	return &stmt, nil
+	return stmt.ToStream(), nil
 }
 
 // parseSetClause parses the "SET" clause of the query.

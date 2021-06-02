@@ -82,16 +82,6 @@ func (s *Stream) String() string {
 	return sb.String()
 }
 
-func (s *Stream) Clone() *Stream {
-	var clone *Stream
-
-	for n := s.First(); n != nil; n = n.GetNext() {
-		clone = clone.Pipe(n.Clone())
-	}
-
-	return clone
-}
-
 func InsertBefore(op, newOp Operator) Operator {
 	if op != nil {
 		prev := op.GetPrev()

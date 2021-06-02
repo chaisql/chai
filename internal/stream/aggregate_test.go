@@ -108,10 +108,6 @@ func (f *fakeAggregator) String() string {
 	return f.name
 }
 
-func (f fakeAggregator) Clone() expr.Expr {
-	return &f
-}
-
 type fakeAggretatorBuilder struct {
 	expr.Expr
 	name string

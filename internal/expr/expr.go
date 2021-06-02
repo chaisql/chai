@@ -15,7 +15,6 @@ var (
 type Expr interface {
 	Eval(*Environment) (document.Value, error)
 	String() string
-	Clone() Expr
 }
 
 type isEqualer interface {
@@ -70,11 +69,6 @@ func (p Parentheses) String() string {
 	return stringutil.Sprintf("(%v)", p.E)
 }
 
-func (p Parentheses) Clone() Expr {
-	p.E = p.E.Clone()
-	return p
-}
-
 func invertBoolResult(f func(env *Environment) (document.Value, error)) func(env *Environment) (document.Value, error) {
 	return func(env *Environment) (document.Value, error) {
 		v, err := f(env)
@@ -106,11 +100,6 @@ func (e *NamedExpr) Name() string {
 
 func (e *NamedExpr) String() string {
 	return stringutil.Sprintf("%s", e.Expr)
-}
-
-func (e NamedExpr) Clone() Expr {
-	e.Expr = e.Expr.Clone()
-	return &e
 }
 
 func Walk(e Expr, fn func(Expr) bool) bool {
