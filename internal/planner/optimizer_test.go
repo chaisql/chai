@@ -76,7 +76,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.SplitANDConditionRule(test.in, nil, nil)
+			res, err := planner.SplitANDConditionRule(test.in, nil)
 			require.NoError(t, err)
 			require.Equal(t, res.String(), test.expected.String())
 		})
@@ -87,31 +87,26 @@ func TestPrecalculateExprRule(t *testing.T) {
 	tests := []struct {
 		name        string
 		e, expected expr.Expr
-		params      []expr.Param
 	}{
 		{
 			"constant expr: 3 -> 3",
 			testutil.IntegerValue(3),
 			testutil.IntegerValue(3),
-			nil,
 		},
 		{
 			"operator with two constant operands: 3 + 2.4 -> 5.4",
-			expr.Add(testutil.IntegerValue(3), expr.PositionalParam(1)),
+			expr.Add(testutil.IntegerValue(3), testutil.DoubleValue(2.4)),
 			testutil.DoubleValue(5.4),
-			[]expr.Param{{Value: 2.4}},
 		},
 		{
 			"operator with constant nested operands: 3 > 1 - 40 -> true",
 			expr.Gt(testutil.DoubleValue(3), expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
 			testutil.BoolValue(true),
-			nil,
 		},
 		{
 			"constant sub-expr: a > 1 - 40 -> a > -39",
 			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
 			expr.Gt(expr.Path{document.PathFragment{FieldName: "a"}}, testutil.DoubleValue(-39)),
-			nil,
 		},
 		{
 			"constant sub-expr: a IN [1, 2] -> a IN array([1, 2])",
@@ -119,7 +114,6 @@ func TestPrecalculateExprRule(t *testing.T) {
 			expr.In(expr.Path{document.PathFragment{FieldName: "a"}}, expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer().
 				Append(document.NewIntegerValue(1)).
 				Append(document.NewIntegerValue(2))))),
-			nil,
 		},
 		{
 			"non-constant expr list: [a, 1 - 40] -> [a, -39]",
@@ -131,7 +125,6 @@ func TestPrecalculateExprRule(t *testing.T) {
 				expr.Path{document.PathFragment{FieldName: "a"}},
 				testutil.DoubleValue(-39),
 			},
-			nil,
 		},
 		{
 			"constant expr list: [3, 1 - 40] -> array([3, -39])",
@@ -142,7 +135,6 @@ func TestPrecalculateExprRule(t *testing.T) {
 			expr.LiteralValue(document.NewArrayValue(document.NewValueBuffer().
 				Append(document.NewIntegerValue(3)).
 				Append(document.NewDoubleValue(-39)))),
-			nil,
 		},
 		{
 			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
@@ -154,7 +146,6 @@ func TestPrecalculateExprRule(t *testing.T) {
 				{K: "a", V: expr.Path{document.PathFragment{FieldName: "d"}}},
 				{K: "b", V: testutil.DoubleValue(-39)},
 			}},
-			nil,
 		},
 		{
 			`constant kvpair: {"a": 3, "b": 1 - 40} -> document({"a": 3, "b": -39})`,
@@ -166,7 +157,6 @@ func TestPrecalculateExprRule(t *testing.T) {
 				Add("a", document.NewIntegerValue(3)).
 				Add("b", document.NewDoubleValue(-39)),
 			)),
-			nil,
 		},
 	}
 
@@ -174,7 +164,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(test.e))
-			res, err := planner.PrecalculateExprRule(s, nil, test.params)
+			res, err := planner.PrecalculateExprRule(s, nil)
 			require.NoError(t, err)
 			require.Equal(t, st.New(st.SeqScan("foo")).Pipe(st.Filter(test.expected)).String(), res.String())
 		})
@@ -213,7 +203,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.RemoveUnnecessaryFilterNodesRule(test.root, nil, nil)
+			res, err := planner.RemoveUnnecessaryFilterNodesRule(test.root, nil)
 			require.NoError(t, err)
 			if test.expected != nil {
 				require.Equal(t, test.expected.String(), res.String())
@@ -286,15 +276,18 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 					(3, 3, 3)
 			`)
 
-			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, tx, nil)
+			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, tx)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
 }
 
+func exprList(list ...expr.Expr) expr.LiteralExprList {
+	return expr.LiteralExprList(list)
+}
+
 func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
-	newVB := document.NewValueBuffer
 	tests := []struct {
 		name           string
 		root, expected *st.Stream
@@ -307,14 +300,14 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 		{
 			"FROM foo WHERE a = 1",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
@@ -322,7 +315,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("c = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: newVB(document.NewIntegerValue(3)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
@@ -330,7 +323,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("c > 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_b", st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_b", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("c > 3"))),
 		},
 		{
@@ -339,7 +332,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("c = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: newVB(document.NewIntegerValue(3)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
@@ -349,8 +342,8 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
-			st.New(st.IndexScan("idx_foo_b", st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})).
-				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.TextValue("hello")), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
 		{
@@ -359,8 +352,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.TextValue("hello")), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
@@ -369,10 +361,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(
 				expr.In(
 					parser.MustParseExpr("a"),
-					testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+					testutil.ExprList(t, `[1, 2]`),
 				),
 			)),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true}, st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true}, st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})),
 		},
 		{
 			"FROM foo WHERE 1 IN a",
@@ -382,19 +374,19 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 		{
 			"FROM foo WHERE a >= 10",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a >= 10"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(10))})),
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(10))})),
 		},
 		{
 			"FROM foo WHERE k = 1",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = 1"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: document.NewIntegerValue(1), Exact: true})),
+			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.IntegerValue(1), Exact: true})),
 		},
 		{
 			"FROM foo WHERE k = 1 AND b = 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("k = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: document.NewIntegerValue(1), Exact: true})).
+			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.IntegerValue(1), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
@@ -402,7 +394,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("2 = k"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: document.NewIntegerValue(2), Exact: true})).
+			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.IntegerValue(2), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{
@@ -410,7 +402,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("k < 2"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("k < 2"))),
 		},
 		{
@@ -418,13 +410,13 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("k = 'hello'"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
-				Pipe(st.Filter(parser.MustParseExpr("k = 'hello'"))),
+			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.TextValue("hello"), Exact: true})).
+				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{ // c is an INT, 1.1 cannot be converted to int without precision loss, don't use the index
 			"FROM foo WHERE c < 1.1",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c < 1.1"))),
-			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c < 1.1"))),
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Max: exprList(testutil.DoubleValue(1.1)), Exclusive: true})),
 		},
 	}
 
@@ -444,7 +436,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx, nil)
+			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
@@ -463,22 +455,22 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 			{
 				"FROM foo WHERE k = [1, 1]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = [1, 1]"))),
-				st.New(st.PkScan("foo", st.ValueRange{Min: document.NewArrayValue(testutil.MakeArray(t, `[1, 1]`)), Exact: true})),
+				st.New(st.PkScan("foo", st.ValueRange{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
 			},
 			{ // constraint on k[0] INT should not modify the operand
 				"FROM foo WHERE k = [1.5, 1.5]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = [1.5, 1.5]"))),
-				st.New(st.PkScan("foo", st.ValueRange{Min: document.NewArrayValue(testutil.MakeArray(t, `[1.5, 1.5]`)), Exact: true})),
+				st.New(st.PkScan("foo", st.ValueRange{Min: testutil.ExprList(t, `[1.5, 1.5]`), Exact: true})),
 			},
 			{
 				"FROM foo WHERE a = [1, 1]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))),
-				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewArrayValue(testutil.MakeArray(t, `[1, 1]`))), Exact: true})),
+				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
 			},
 			{ // constraint on a[0] DOUBLE should modify the operand because it's lossless
 				"FROM foo WHERE a = [1, 1.5]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1.5]"))),
-				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewArrayValue(testutil.MakeArray(t, `[1.0, 1.5]`))), Exact: true})),
+				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1.0, 1.5]`), Exact: true})),
 			},
 		}
 
@@ -502,10 +494,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 						([3, 3], [3, 3], [3, 3])
 				`)
 
-				res, err := planner.PrecalculateExprRule(test.root, tx, nil)
+				res, err := planner.PrecalculateExprRule(test.root, tx)
 				require.NoError(t, err)
 
-				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx, nil)
+				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx)
 				require.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
@@ -514,7 +506,6 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 }
 
 func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
-	newVB := document.NewValueBuffer
 	tests := []struct {
 		name           string
 		root, expected *st.Stream
@@ -524,43 +515,51 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d > 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d < 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d < 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d <= 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d <= 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 2]`)})),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.ExprList(t, `[1, 2]`)})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d >= 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d >= 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`)})),
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`)})),
 		},
 		{
 			"FROM foo WHERE a > 1 AND d > 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a > 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1]`), Exclusive: true})).
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1]`), Exclusive: true})).
 				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
+		},
+		{
+			"FROM foo WHERE a > ? AND d > ?",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(parser.MustParseExpr("a > ?"))).
+				Pipe(st.Filter(parser.MustParseExpr("d > ?"))),
+			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[?]`), Exclusive: true})).
+				Pipe(st.Filter(parser.MustParseExpr("d > ?"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 AND c = 3",
@@ -568,28 +567,28 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 3"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2, 3]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2, 3]`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2", // c is omitted, but it can still use idx_foo_a_b_c
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b > 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b > 2"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b < 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b < 2"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 and k = 3", // c is omitted, but it can still use idx_foo_a_b_c
@@ -597,7 +596,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 2]`), Exact: true})).
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
 		},
 		// If a path is missing from the query, we can still the index, with paths after the missing one are
@@ -607,7 +606,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("x = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("z = 2"))),
-			st.New(st.IndexScan("idx_foo_x_y_z", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_x_y_z", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("z = 2"))),
 		},
 		{
@@ -616,7 +615,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 2"))),
 			// c will be picked because it's a unique index and thus has a lower cost
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{
@@ -625,18 +624,16 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 2"))),
 			// c will be picked because it's a unique index and thus has a lower cost
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: newVB(document.NewIntegerValue(2)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 1"))),
 		},
 		{
-			"FROM foo WHERE a = 1 AND b = 2 AND c = 'a'", // c is from the wrong type and will prevent the index to be picked
+			"FROM foo WHERE a = 1 AND b = 2 AND c = 'a'",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 'a'"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: newVB(document.NewIntegerValue(1)), Exact: true})).
-				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(st.Filter(parser.MustParseExpr("c = 'a'"))),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: exprList(testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.TextValue("a")), Exact: true})),
 		},
 
 		{
@@ -645,13 +642,13 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ExprList(t, `[1, 2]`),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("d = 4"))),
 			st.New(st.IndexScan("idx_foo_a_d",
-				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 4]`), Exact: true},
-				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[2, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
 			)),
 		},
 		{
@@ -660,14 +657,14 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ExprList(t, `[1, 2]`),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 3, 4]`), Exact: true},
-				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[2, 3, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 3, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 3, 4]`), Exact: true},
 			)),
 		},
 		{
@@ -676,14 +673,14 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ExprList(t, `[1, 2]`),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c > 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[1, 3, 4]`), Exclusive: true},
-				st.IndexRange{Min: testutil.MakeValueBuffer(t, `[2, 3, 4]`), Exclusive: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 3, 4]`), Exclusive: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 3, 4]`), Exclusive: true},
 			)),
 		},
 		{
@@ -692,14 +689,14 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ArrayValue(document.NewValueBuffer(document.NewIntegerValue(1), document.NewIntegerValue(2))),
+						testutil.ExprList(t, `[1, 2]`),
 					),
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c < 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 3, 4]`), Exclusive: true},
-				st.IndexRange{Max: testutil.MakeValueBuffer(t, `[2, 3, 4]`), Exclusive: true},
+				st.IndexRange{Max: testutil.ExprList(t, `[1, 3, 4]`), Exclusive: true},
+				st.IndexRange{Max: testutil.ExprList(t, `[2, 3, 4]`), Exclusive: true},
 			)),
 		},
 		// {
@@ -719,10 +716,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 		// 		)).
 		// 		Pipe(st.Filter(parser.MustParseExpr("c < 5"))),
 		// 	st.New(st.IndexScan("idx_foo_a_b_c",
-		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 3, 5]`), Exclusive: true},
-		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[2, 3, 5]`), Exclusive: true},
-		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[1, 4, 5]`), Exclusive: true},
-		// 		st.IndexRange{Max: testutil.MakeValueBuffer(t, `[2, 4, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.ExprList(t, `[1, 3, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.ExprList(t, `[2, 3, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.ExprList(t, `[1, 4, 5]`), Exclusive: true},
+		// 		st.IndexRange{Max: testutil.ExprList(t, `[2, 4, 5]`), Exclusive: true},
 		// 	)),
 		// },
 		{
@@ -755,7 +752,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx, nil)
+			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
@@ -772,7 +769,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
 					Pipe(st.Filter(parser.MustParseExpr("b = [2, 2]"))),
 				st.New(st.IndexScan("idx_foo_a_b", st.IndexRange{
-					Min:   testutil.MakeValueBuffer(t, `[[1, 1], [2, 2]]`),
+					Min:   testutil.ExprList(t, `[[1, 1], [2, 2]]`),
 					Exact: true})),
 			},
 			{
@@ -781,7 +778,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
 					Pipe(st.Filter(parser.MustParseExpr("b > [2, 2]"))),
 				st.New(st.IndexScan("idx_foo_a_b", st.IndexRange{
-					Min:       testutil.MakeValueBuffer(t, `[[1, 1], [2, 2]]`),
+					Min:       testutil.ExprList(t, `[[1, 1], [2, 2]]`),
 					Exclusive: true})),
 			},
 		}
@@ -804,10 +801,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 							([3, 3], [3, 3], [3, 3])
 	`)
 
-				res, err := planner.PrecalculateExprRule(test.root, tx, nil)
+				res, err := planner.PrecalculateExprRule(test.root, tx)
 				require.NoError(t, err)
 
-				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx, nil)
+				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx)
 				require.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})

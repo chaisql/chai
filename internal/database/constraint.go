@@ -336,6 +336,19 @@ func LosslessNumbersConversion(v document.Value, path document.Path, targetType 
 	return v, nil
 }
 
+// LosslessConversion is a ConversionFunc that only converts numbers if there is no precision loss in the process.
+func NumbersConversion(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
+	if v.Type == document.IntegerValue && targetType == document.DoubleValue {
+		return v.CastAsDouble()
+	}
+
+	if v.Type == document.DoubleValue && targetType == document.IntegerValue {
+		return v.CastAsInteger()
+	}
+
+	return v, nil
+}
+
 // ConvertValueAtPath converts the value using the field constraints that are applicable
 // at the given path.
 func (f FieldConstraints) ConvertValueAtPath(path document.Path, v document.Value, conversionFn ConversionFunc) (document.Value, error) {

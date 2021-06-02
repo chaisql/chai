@@ -17,7 +17,7 @@ type StreamStmt struct {
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
 func (s *StreamStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	st, err := planner.Optimize(s.Stream.Clone(), tx, params)
+	st, err := planner.Optimize(s.Stream.Clone(), tx)
 	if err != nil || st == nil {
 		return Result{}, err
 	}

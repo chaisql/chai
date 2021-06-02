@@ -42,7 +42,7 @@ func (stmt *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (Res
 		return res, err
 	}
 
-	s, err := planner.Optimize(ss.Stream, tx, params)
+	s, err := planner.Optimize(ss.Stream, tx)
 	if err != nil {
 		return Result{}, err
 	}

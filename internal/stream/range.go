@@ -2,9 +2,11 @@ package stream
 
 import (
 	"bytes"
+	"math"
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -14,7 +16,7 @@ type Costable interface {
 }
 
 type ValueRange struct {
-	Min, Max document.Value
+	Min, Max expr.Expr
 	// Exclude Min and Max from the results.
 	// By default, min and max are inclusive.
 	// Exclusive and Exact cannot be set to true at the same time.
@@ -23,47 +25,89 @@ type ValueRange struct {
 	// If set to true, Max will be ignored for comparison
 	// and for determining the global upper bound.
 	Exact bool
-
-	encodedMin, encodedMax []byte
-	rangeType              document.ValueType
 }
 
-func (r *ValueRange) encode(encoder ValueEncoder, env *expr.Environment) error {
+func (r *ValueRange) evalRange(table *database.Table, env *expr.Environment) (*encodedValueRange, bool, error) {
 	var err error
 
-	// first we evaluate Min and Max
-	if !r.Min.Type.IsAny() {
-		r.encodedMin, err = encoder.EncodeValue(r.Min)
-		if err != nil {
-			return err
-		}
-		r.rangeType = r.Min.Type
+	pk := table.Info.GetPrimaryKey()
+
+	rng := encodedValueRange{
+		pkType:      pk.Type,
+		path:        pk.Path,
+		constraints: table.Info.FieldConstraints,
+
+		Exclusive: r.Exclusive,
+		Exact:     r.Exact,
 	}
-	if !r.Max.Type.IsAny() {
-		r.encodedMax, err = encoder.EncodeValue(r.Max)
+
+	if r.Min != nil {
+		rng.Min, err = r.Min.Eval(env)
 		if err != nil {
-			return err
+			return nil, false, err
 		}
-		if !r.rangeType.IsAny() && r.rangeType != r.Max.Type {
+
+		var ok bool
+		rng.Min, ok, err = rng.Convert(rng.Min, true)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+	}
+
+	if r.Max != nil {
+		rng.Max, err = r.Max.Eval(env)
+		if err != nil {
+			return nil, false, err
+		}
+
+		var ok bool
+		rng.Max, ok, err = rng.Convert(rng.Max, false)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+	}
+
+	return &rng, true, nil
+}
+
+func (r *ValueRange) encode(table *database.Table, env *expr.Environment) (*encodedValueRange, error) {
+	rng, ok, err := r.evalRange(table, env)
+	if err != nil || !ok {
+		return nil, err
+	}
+
+	if !rng.Min.Type.IsAny() {
+		rng.EncodedMin, err = table.EncodeValue(rng.Min)
+		if err != nil {
+			return nil, err
+		}
+		rng.RangeType = rng.Min.Type
+	}
+	if !rng.Max.Type.IsAny() {
+		rng.EncodedMax, err = table.EncodeValue(rng.Max)
+		if err != nil {
+			return nil, err
+		}
+		if !rng.RangeType.IsAny() && rng.RangeType != rng.Max.Type {
 			panic("range contain values of different types")
 		}
 
-		r.rangeType = r.Max.Type
+		rng.RangeType = rng.Max.Type
 	}
 
 	// ensure boundaries are typed
-	if r.Min.Type.IsAny() {
-		r.Min.Type = r.rangeType
+	if rng.Min.Type.IsAny() {
+		rng.Min.Type = rng.RangeType
 	}
-	if r.Max.Type.IsAny() {
-		r.Max.Type = r.rangeType
+	if rng.Max.Type.IsAny() {
+		rng.Max.Type = rng.RangeType
 	}
 
 	if r.Exclusive && r.Exact {
 		panic("exclusive and exact cannot both be true")
 	}
 
-	return nil
+	return rng, nil
 }
 
 func (r *ValueRange) String() string {
@@ -71,18 +115,20 @@ func (r *ValueRange) String() string {
 		return stringutil.Sprintf("%v", r.Min)
 	}
 
-	if r.Min.Type.IsAny() {
-		r.Min = document.NewIntegerValue(-1)
+	var min, max string = "-1", "-1"
+
+	if r.Min != nil {
+		min = r.Min.String()
 	}
-	if r.Max.Type.IsAny() {
-		r.Max = document.NewIntegerValue(-1)
+	if r.Max != nil {
+		max = r.Max.String()
 	}
 
 	if r.Exclusive {
-		return stringutil.Sprintf("[%v, %v, true]", r.Min, r.Max)
+		return stringutil.Sprintf("[%v, %v, true]", min, max)
 	}
 
-	return stringutil.Sprintf("[%v, %v]", r.Min, r.Max)
+	return stringutil.Sprintf("[%v, %v]", min, max)
 }
 
 func (r *ValueRange) IsEqual(other *ValueRange) bool {
@@ -90,27 +136,15 @@ func (r *ValueRange) IsEqual(other *ValueRange) bool {
 		return false
 	}
 
-	if r.rangeType != other.rangeType {
-		return false
-	}
-
 	if r.Exclusive != other.Exclusive {
 		return false
 	}
 
-	if r.Min.Type != other.Min.Type {
-		return false
-	}
-	ok, err := r.Min.IsEqual(other.Min)
-	if err != nil || !ok {
+	if expr.Equal(r.Min, other.Min) {
 		return false
 	}
 
-	if r.Max.Type != other.Max.Type {
-		return false
-	}
-	ok, err = r.Max.IsEqual(other.Max)
-	if err != nil || !ok {
+	if expr.Equal(r.Max, other.Max) {
 		return false
 	}
 
@@ -118,18 +152,113 @@ func (r *ValueRange) IsEqual(other *ValueRange) bool {
 }
 
 func (r ValueRange) Clone() ValueRange {
-	if r.encodedMin != nil {
-		cp := make([]byte, 0, len(r.encodedMin))
-		cp = append(cp, r.encodedMin...)
-		r.encodedMin = cp
-	}
-	if r.encodedMax != nil {
-		cp := make([]byte, 0, len(r.encodedMax))
-		cp = append(cp, r.encodedMax...)
-		r.encodedMax = cp
+	return r
+}
+
+type encodedValueRange struct {
+	pkType      document.ValueType
+	path        document.Path
+	constraints database.FieldConstraints
+
+	Min, Max  document.Value
+	Exclusive bool
+	Exact     bool
+
+	EncodedMin, EncodedMax []byte
+	RangeType              document.ValueType
+}
+
+func (r *encodedValueRange) Convert(v document.Value, isMin bool) (document.Value, bool, error) {
+	// ensure the operand satisfies all the constraints, index can work only on exact types.
+	// if a number is encountered, try to convert it to the right type if and only if the conversion
+	// is lossless.
+	v, err := r.constraints.ConvertValueAtPath(r.path, v, func(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
+		if v.Type == document.IntegerValue && targetType == document.DoubleValue {
+			return v.CastAsDouble()
+		}
+
+		if v.Type == document.DoubleValue && targetType == document.IntegerValue {
+			f := v.V.(float64)
+			if float64(int64(f)) == f {
+				return v.CastAsInteger()
+			}
+
+			if r.Exact {
+				return v, nil
+			}
+
+			// we want to convert a non rounded double to int in a way that preserves
+			// comparison logic with the index. ex:
+			// a > 1.1  -> a >= 2; exclusive -> false
+			// a >= 1.1 -> a >= 2; exclusive -> false
+			// a < 1.1  -> a < 2;  exclusive -> true
+			// a <= 1.1 -> a < 2;  exclusive -> true
+			// a BETWEEN 1.1 AND 2.2 -> a >= 2 AND a <= 3; exclusive -> false
+
+			// First, we need to ceil the number. Ex: 1.1 -> 2
+			v = document.NewIntegerValue(int64(math.Ceil(f)))
+
+			// Next, we need to convert the boundaries
+			if isMin {
+				// (a > 1.1) or (a >= 1.1) must be transformed to (a >= 2)
+				r.Exclusive = false
+			} else {
+				// (a < 1.1) or (a <= 1.1) must be transformed to (a < 2)
+				// But there is an exception: if we are dealing with both min
+				// and max boundaries, we are operating a BETWEEN operation,
+				// meaning that we need to convert a BETWEEN 1.1 AND 2.2 to a >= 2 AND a <= 3,
+				// and thus have to set exclusive to false.
+				r.Exclusive = r.Min.Type.IsAny()
+			}
+		}
+
+		return v, nil
+	})
+	if err != nil {
+		return v, false, err
 	}
 
-	return r
+	// if the index is not typed, any operand can work
+	if r.pkType.IsAny() {
+		return v, true, nil
+	}
+
+	// if the index is typed, it must be of the same type as the converted value
+	return v, r.pkType == v.Type, nil
+}
+
+func (r *encodedValueRange) IsInRange(value []byte) bool {
+	// by default, we consider the value within range
+	cmpMin, cmpMax := 1, -1
+
+	// we compare with the lower bound and see if it matches
+	if r.EncodedMin != nil {
+		cmpMin = bytes.Compare(value, r.EncodedMin)
+	}
+
+	// if exact is true the value has to be equal to the lower bound.
+	if r.Exact {
+		return cmpMin == 0
+	}
+
+	// if exclusive and the value is equal to the lower bound
+	// we can ignore it
+	if r.Exclusive && cmpMin == 0 {
+		return false
+	}
+
+	// the value is bigger than the lower bound,
+	// see if it matches the upper bound.
+	if r.EncodedMax != nil {
+		cmpMax = bytes.Compare(value, r.EncodedMax)
+	}
+
+	// if boundaries are strict, ignore values equal to the max
+	if r.Exclusive && cmpMax == 0 {
+		return false
+	}
+
+	return cmpMax <= 0
 }
 
 type ValueRanges []ValueRange
@@ -153,20 +282,21 @@ func (r ValueRanges) Append(rng ValueRange) ValueRanges {
 	return append(r, rng)
 }
 
-type ValueEncoder interface {
-	EncodeValue(v document.Value) ([]byte, error)
-}
-
 // Encode each range using the given value encoder.
-func (r ValueRanges) Encode(encoder ValueEncoder, env *expr.Environment) error {
+func (r ValueRanges) Encode(table *database.Table, env *expr.Environment) ([]*encodedValueRange, error) {
+	ranges := make([]*encodedValueRange, 0, len(r))
+
 	for i := range r {
-		err := r[i].encode(encoder, env)
+		rng, err := r[i].encode(table, env)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		if rng != nil {
+			ranges = append(ranges, rng)
 		}
 	}
 
-	return nil
+	return ranges, nil
 }
 
 func (r ValueRanges) String() string {
@@ -197,12 +327,12 @@ func (r ValueRanges) Cost() int {
 		}
 
 		// if there are two boundaries, increment by 50
-		if !rng.Min.Type.IsAny() && !rng.Max.Type.IsAny() {
+		if rng.Min != nil && rng.Max != nil {
 			cost += 50
 		}
 
 		// if there is only one boundary, increment by 100
-		if (!rng.Min.Type.IsAny() && rng.Max.Type.IsAny()) || (rng.Min.Type.IsAny() && !rng.Max.Type.IsAny()) {
+		if (rng.Min != nil && rng.Max == nil) || (rng.Min == nil && rng.Max != nil) {
 			cost += 100
 			continue
 		}
@@ -214,46 +344,12 @@ func (r ValueRanges) Cost() int {
 	return cost
 }
 
-func (r *ValueRange) IsInRange(value []byte) bool {
-	// by default, we consider the value within range
-	cmpMin, cmpMax := 1, -1
-
-	// we compare with the lower bound and see if it matches
-	if r.encodedMin != nil {
-		cmpMin = bytes.Compare(value, r.encodedMin)
-	}
-
-	// if exact is true the value has to be equal to the lower bound.
-	if r.Exact {
-		return cmpMin == 0
-	}
-
-	// if exclusive and the value is equal to the lower bound
-	// we can ignore it
-	if r.Exclusive && cmpMin == 0 {
-		return false
-	}
-
-	// the value is bigger than the lower bound,
-	// see if it matches the upper bound.
-	if r.encodedMax != nil {
-		cmpMax = bytes.Compare(value, r.encodedMax)
-	}
-
-	// if boundaries are strict, ignore values equal to the max
-	if r.Exclusive && cmpMax == 0 {
-		return false
-	}
-
-	return cmpMax <= 0
-}
-
 // IndexRange represents a range to select indexed values after or before
 // a given boundary. Because indexes can be composites, IndexRange boundaries
 // are composite as well.
 type IndexRange struct {
-	Min, Max *document.ValueBuffer
-
+	Min, Max expr.LiteralExprList
+	Paths    []document.Path
 	// Exclude Min and Max from the results.
 	// By default, min and max are inclusive.
 	// Exclusive and Exact cannot be set to true at the same time.
@@ -266,86 +362,124 @@ type IndexRange struct {
 	// IndexArity is the underlying index arity, which can be greater
 	// than the boundaries of this range.
 	IndexArity int
-
-	encodedMin, encodedMax []byte
-	rangeTypes             []document.ValueType
 }
 
-func (r *IndexRange) encode(encoder ValueBufferEncoder, env *expr.Environment) error {
-	var err error
+func (r *IndexRange) evalRange(index *database.Index, table *database.Table, env *expr.Environment) (*encodedIndexRange, bool, error) {
+	rng := encodedIndexRange{
+		constraints: table.Info.FieldConstraints,
 
-	// first we evaluate Min and Max
-	if r.Min.Len() > 0 {
-		r.encodedMin, err = encoder.EncodeValueBuffer(r.Min)
-		if err != nil {
-			return err
-		}
-		r.rangeTypes = r.Min.Types()
+		Exclusive:  r.Exclusive,
+		Exact:      r.Exact,
+		IndexArity: r.IndexArity,
 	}
 
-	if r.Max.Len() > 0 {
-		r.encodedMax, err = encoder.EncodeValueBuffer(r.Max)
+	if r.Min != nil {
+		lv, err := r.Min.Eval(env)
 		if err != nil {
-			return err
+			return nil, false, err
+		}
+		rng.Min = lv.V.(*document.ValueBuffer)
+
+		var ok bool
+		for i := range rng.Min.Values {
+			rng.Min.Values[i], ok, err = rng.Convert(rng.Min.Values[i], index.Info.Paths[i], index.Info.Types[i], true)
+			if err != nil || !ok {
+				return nil, ok, err
+			}
+		}
+	}
+
+	if r.Max != nil {
+		lv, err := r.Max.Eval(env)
+		if err != nil {
+			return nil, false, err
+		}
+		rng.Max = lv.V.(*document.ValueBuffer)
+
+		var ok bool
+		for i := range rng.Max.Values {
+			rng.Max.Values[i], ok, err = rng.Convert(rng.Max.Values[i], index.Info.Paths[i], index.Info.Types[i], false)
+			if err != nil || !ok {
+				return nil, ok, err
+			}
+		}
+	}
+
+	return &rng, true, nil
+}
+
+func (r *IndexRange) encode(index *database.Index, table *database.Table, env *expr.Environment) (*encodedIndexRange, error) {
+	rng, ok, err := r.evalRange(index, table, env)
+	if err != nil || !ok {
+		return nil, err
+	}
+
+	if len(r.Min) > 0 {
+		rng.EncodedMin, err = index.EncodeValueBuffer(rng.Min)
+		if err != nil {
+			return nil, err
+		}
+		rng.RangeTypes = rng.Min.Types()
+	}
+
+	if len(r.Max) > 0 {
+		rng.EncodedMax, err = index.EncodeValueBuffer(rng.Max)
+		if err != nil {
+			return nil, err
 		}
 
-		if len(r.rangeTypes) > 0 {
-			maxTypes := r.Max.Types()
+		if len(rng.RangeTypes) > 0 {
+			maxTypes := rng.Max.Types()
 
-			if len(maxTypes) != len(r.rangeTypes) {
+			if len(maxTypes) != len(rng.RangeTypes) {
 				panic("range types for max and min differ in size")
 			}
 
 			for i, typ := range maxTypes {
-				if typ != r.rangeTypes[i] {
+				if typ != rng.RangeTypes[i] {
 					panic("range contain values of different types")
 				}
 			}
 		}
 
-		r.rangeTypes = r.Max.Types()
+		rng.RangeTypes = rng.Max.Types()
 	}
 
 	// Ensure boundaries are typed, at least with the first type
-	if r.Max.Len() == 0 && r.Min.Len() > 0 {
-		v, err := r.Min.GetByIndex(0)
+	if len(r.Max) == 0 && len(r.Min) > 0 {
+		v, err := rng.Min.GetByIndex(0)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		r.Max = document.NewValueBuffer(document.Value{Type: v.Type})
+		rng.Max = document.NewValueBuffer(document.Value{Type: v.Type})
 	}
 
-	if r.Min.Len() == 0 && r.Max.Len() > 0 {
-		v, err := r.Max.GetByIndex(0)
+	if len(r.Min) == 0 && len(r.Max) > 0 {
+		v, err := rng.Max.GetByIndex(0)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		r.Min = document.NewValueBuffer(document.Value{Type: v.Type})
+		rng.Min = document.NewValueBuffer(document.Value{Type: v.Type})
 	}
 
 	if r.Exclusive && r.Exact {
 		panic("exclusive and exact cannot both be true")
 	}
 
-	return nil
+	return rng, nil
 }
 
 func (r *IndexRange) String() string {
-	format := func(vb *document.ValueBuffer) string {
-		switch vb.Len() {
+	format := func(el expr.LiteralExprList) string {
+		switch len(el) {
 		case 0:
 			return "-1"
 		case 1:
-			return vb.Values[0].String()
+			return el[0].String()
 		default:
-			b, err := vb.MarshalJSON()
-			if err != nil {
-				return "err"
-			}
-
-			return string(b)
+			return el.String()
 		}
 	}
 
@@ -365,21 +499,15 @@ func (r *IndexRange) IsEqual(other *IndexRange) bool {
 		return false
 	}
 
-	for i, typ := range r.rangeTypes {
-		if typ != other.rangeTypes[i] {
-			return false
-		}
-	}
-
 	if r.Exclusive != other.Exclusive {
 		return false
 	}
 
-	if r.Min.Len() != other.Min.Len() {
+	if len(r.Min) != len(other.Min) {
 		return false
 	}
 
-	if r.Max.Len() != other.Max.Len() {
+	if len(r.Max) != len(other.Max) {
 		return false
 	}
 
@@ -395,18 +523,117 @@ func (r *IndexRange) IsEqual(other *IndexRange) bool {
 }
 
 func (r IndexRange) Clone() IndexRange {
-	if r.encodedMin != nil {
-		cp := make([]byte, 0, len(r.encodedMin))
-		cp = append(cp, r.encodedMin...)
-		r.encodedMin = cp
-	}
-	if r.encodedMax != nil {
-		cp := make([]byte, 0, len(r.encodedMax))
-		cp = append(cp, r.encodedMax...)
-		r.encodedMax = cp
+	return r
+}
+
+type encodedIndexRange struct {
+	constraints database.FieldConstraints
+
+	Min, Max *document.ValueBuffer
+
+	Exclusive  bool
+	Exact      bool
+	IndexArity int
+
+	EncodedMin, EncodedMax []byte
+	RangeTypes             []document.ValueType
+}
+
+func (r *encodedIndexRange) Convert(v document.Value, p document.Path, t document.ValueType, isMin bool) (document.Value, bool, error) {
+	// ensure the operand satisfies all the constraints, index can work only on exact types.
+	// if a number is encountered, try to convert it to the right type if and only if the conversion
+	// is lossless.
+	v, err := r.constraints.ConvertValueAtPath(p, v, func(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
+		if v.Type == document.IntegerValue && targetType == document.DoubleValue {
+			return v.CastAsDouble()
+		}
+
+		if v.Type == document.DoubleValue && targetType == document.IntegerValue {
+			f := v.V.(float64)
+			if float64(int64(f)) == f {
+				return v.CastAsInteger()
+			}
+
+			if r.Exact {
+				return v, nil
+			}
+
+			// we want to convert a non rounded double to int in a way that preserves
+			// comparison logic with the index. ex:
+			// a > 1.1  -> a >= 2; exclusive -> false
+			// a >= 1.1 -> a >= 2; exclusive -> false
+			// a < 1.1  -> a < 2;  exclusive -> true
+			// a <= 1.1 -> a < 2;  exclusive -> true
+			// a BETWEEN 1.1 AND 2.2 -> a >= 2 AND a <= 3; exclusive -> false
+
+			// First, we need to ceil the number. Ex: 1.1 -> 2
+			v = document.NewIntegerValue(int64(math.Ceil(f)))
+
+			// Next, we need to convert the boundaries
+			if isMin {
+				// (a > 1.1) or (a >= 1.1) must be transformed to (a >= 2)
+				r.Exclusive = false
+			} else {
+				// (a < 1.1) or (a <= 1.1) must be transformed to (a < 2)
+				// But there is an exception: if we are dealing with both min
+				// and max boundaries, we are operating a BETWEEN operation,
+				// meaning that we need to convert a BETWEEN 1.1 AND 2.2 to a >= 2 AND a <= 3,
+				// and thus have to set exclusive to false.
+				r.Exclusive = r.Min == nil || r.Min.Len() == 0
+			}
+		}
+
+		return v, nil
+	})
+	if err != nil {
+		return v, false, err
 	}
 
-	return r
+	// if the index is not typed, any operand can work
+	if t.IsAny() {
+		return v, true, nil
+	}
+
+	// if the index is typed, it must be of the same type as the converted value
+	return v, t == v.Type, nil
+}
+
+func (r *encodedIndexRange) IsInRange(value []byte) bool {
+	// by default, we consider the value within range
+	cmpMin, cmpMax := 1, -1
+
+	// we compare with the lower bound and see if it matches
+	if r.EncodedMin != nil {
+		cmpMin = bytes.Compare(value, r.EncodedMin)
+	}
+
+	// if exact is true the value has to be equal to the lower bound.
+	if r.Exact {
+		return cmpMin == 0
+	}
+
+	// if exclusive and the value is equal to the lower bound
+	// we can ignore it
+	if r.Exclusive && cmpMin == 0 {
+		return false
+	}
+
+	// the value is bigger than the lower bound,
+	// see if it matches the upper bound.
+	if r.EncodedMax != nil {
+		if r.Max.Len() < r.IndexArity {
+			cmpMax = bytes.Compare(value[:len(r.EncodedMax)], r.EncodedMax)
+		} else {
+			cmpMax = bytes.Compare(value, r.EncodedMax)
+		}
+	}
+
+	// if boundaries are strict, ignore values equal to the max
+	if r.Exclusive && cmpMax == 0 {
+		return false
+	}
+
+	return cmpMin >= 0 && cmpMax <= 0
 }
 
 type IndexRanges []IndexRange
@@ -435,15 +662,20 @@ type ValueBufferEncoder interface {
 }
 
 // Encode each range using the given value encoder.
-func (r IndexRanges) EncodeBuffer(encoder ValueBufferEncoder, env *expr.Environment) error {
+func (r IndexRanges) EncodeBuffer(index *database.Index, table *database.Table, env *expr.Environment) ([]*encodedIndexRange, error) {
+	ranges := make([]*encodedIndexRange, 0, len(r))
+
 	for i := range r {
-		err := r[i].encode(encoder, env)
+		enc, err := r[i].encode(index, table, env)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		if enc != nil {
+			ranges = append(ranges, enc)
 		}
 	}
 
-	return nil
+	return ranges, nil
 }
 
 func (r IndexRanges) String() string {
@@ -474,13 +706,13 @@ func (r IndexRanges) Cost() int {
 		}
 
 		// if there are two boundaries, increment by 50
-		if rng.Min.Len() > 0 && rng.Max.Len() > 0 {
+		if len(rng.Min) > 0 && len(rng.Max) > 0 {
 			cost += 50
 			continue
 		}
 
 		// if there is only one boundary, increment by 100
-		if rng.Min.Len() > 0 || rng.Max.Len() > 0 {
+		if len(rng.Min) > 0 || len(rng.Max) > 0 {
 			cost += 100
 			continue
 		}
@@ -490,42 +722,4 @@ func (r IndexRanges) Cost() int {
 	}
 
 	return cost
-}
-
-func (r *IndexRange) IsInRange(value []byte) bool {
-	// by default, we consider the value within range
-	cmpMin, cmpMax := 1, -1
-
-	// we compare with the lower bound and see if it matches
-	if r.encodedMin != nil {
-		cmpMin = bytes.Compare(value, r.encodedMin)
-	}
-
-	// if exact is true the value has to be equal to the lower bound.
-	if r.Exact {
-		return cmpMin == 0
-	}
-
-	// if exclusive and the value is equal to the lower bound
-	// we can ignore it
-	if r.Exclusive && cmpMin == 0 {
-		return false
-	}
-
-	// the value is bigger than the lower bound,
-	// see if it matches the upper bound.
-	if r.encodedMax != nil {
-		if r.Max.Len() < r.IndexArity {
-			cmpMax = bytes.Compare(value[:len(r.encodedMax)], r.encodedMax)
-		} else {
-			cmpMax = bytes.Compare(value, r.encodedMax)
-		}
-	}
-
-	// if boundaries are strict, ignore values equal to the max
-	if r.Exclusive && cmpMax == 0 {
-		return false
-	}
-
-	return cmpMin >= 0 && cmpMax <= 0
 }
