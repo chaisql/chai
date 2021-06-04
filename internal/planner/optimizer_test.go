@@ -811,3 +811,121 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 		}
 	})
 }
+
+func TestOptimize(t *testing.T) {
+	t.Run("concat operator operands are optimized", func(t *testing.T) {
+		t.Run("PrecalculateExprRule", func(t *testing.T) {
+			_, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+			testutil.MustExec(t, tx, `
+						CREATE TABLE foo;
+						CREATE TABLE bar;
+			`)
+
+			got, err := planner.Optimize(
+				st.New(st.Concat(
+					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1 + 2"))),
+					st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 1 + 2"))),
+				)),
+				tx)
+
+			want := st.New(st.Concat(
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 3"))),
+				st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 3"))),
+			))
+
+			require.NoError(t, err)
+			require.Equal(t, want.String(), got.String())
+		})
+
+		t.Run("RemoveUnnecessarySelectionNodesRule", func(t *testing.T) {
+			_, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+			testutil.MustExec(t, tx, `
+						CREATE TABLE foo;
+						CREATE TABLE bar;
+			`)
+
+			got, err := planner.Optimize(
+				st.New(st.Concat(
+					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("10"))),
+					st.New(st.Concat(
+						st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("11"))),
+						st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("12"))),
+					)),
+				)),
+				tx)
+
+			want := st.New(st.Concat(
+				st.New(st.SeqScan("foo")),
+				st.New(st.Concat(
+					st.New(st.SeqScan("bar")),
+					st.New(st.SeqScan("bar")),
+				)),
+			))
+
+			require.NoError(t, err)
+			require.Equal(t, want.String(), got.String())
+		})
+
+		t.Run("RemoveUnnecessaryDedupNodeRule", func(t *testing.T) {
+			_, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+			testutil.MustExec(t, tx, `
+				CREATE TABLE foo(a integer PRIMARY KEY);
+				CREATE TABLE bar(a integer PRIMARY KEY);
+			`)
+
+			got, err := planner.Optimize(
+				st.New(st.Concat(
+					st.New(st.SeqScan("foo")).
+						Pipe(st.Project(parser.MustParseExpr("a"))).
+						Pipe(st.Distinct()),
+					st.New(st.SeqScan("bar")).
+						Pipe(st.Project(parser.MustParseExpr("a"))).
+						Pipe(st.Distinct()),
+				)),
+				tx)
+
+			want := st.New(st.Concat(
+				st.New(st.SeqScan("foo")).
+					Pipe(st.Project(parser.MustParseExpr("a"))),
+				st.New(st.SeqScan("bar")).
+					Pipe(st.Project(parser.MustParseExpr("a"))),
+			))
+
+			require.NoError(t, err)
+			require.Equal(t, want.String(), got.String())
+		})
+	})
+
+	t.Run("UseIndexBasedOnSelectionNodeRule", func(t *testing.T) {
+		_, tx, cleanup := testutil.NewTestTx(t)
+		defer cleanup()
+		testutil.MustExec(t, tx, `
+				CREATE TABLE foo;
+				CREATE TABLE bar;
+				CREATE INDEX idx_foo_a_d ON foo(a, d);
+				CREATE INDEX idx_bar_a_d ON bar(a, d);
+			`)
+
+		got, err := planner.Optimize(
+			st.New(st.Concat(
+				st.New(st.SeqScan("foo")).
+					Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+					Pipe(st.Filter(parser.MustParseExpr("d = 2"))),
+				st.New(st.SeqScan("bar")).
+					Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
+					Pipe(st.Filter(parser.MustParseExpr("d = 2"))),
+			)),
+			tx)
+
+		want := st.New(st.Concat(
+			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_bar_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+		))
+
+		require.NoError(t, err)
+		require.Equal(t, want.String(), got.String())
+	})
+}
