@@ -23,16 +23,16 @@ Genji, in a bird's-eye view is structured in the following layers:
 1. Genji parses SQL and turns into a Stream
 
    - the `parser` will use the `scanner` to turn the SQL into a basic, unoptimized `Stream`
-   - packages: `sql/driver`, `sql/scanner`, `sql/parser`, `query`, `expr`, `document`
+   - packages: `driver`, `internal/sql/scanner`, `internal/sql/parser`, `internal/query`, `internal/expr`, `document`
 
 2. the `Planner` will analyze that `Stream` and will optimize it if possible
 
    - which index to use, removing redundant loads, compute constant expressions, ...
-   - packages: `planner`, `stream`
+   - packages: `internal/planner`, `internal/stream`
 
 3. That `Stream` will be executed against the `database`, reading and/or modifying indexes, tables
 
-   - packages: `database`, `index`
+   - packages: `internal/database`
 
 4. interactions with the `database` layer will make calls to the `engine`, to perform reads and writes
 
