@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	storePrefix        = 't'
+	tableStorePrefix   = 't'
+	indexStorePrefix   = 'i'
 	internalPrefix     = "__genji_"
 	tableInfoStoreName = internalPrefix + "tables"
 	indexInfoStoreName = internalPrefix + "indexes"
@@ -668,7 +669,16 @@ func GetTableStore(tx *Transaction) *Table {
 				{
 					Path: document.Path{
 						document.PathFragment{
-							FieldName: "statements",
+							FieldName: "table_name",
+						},
+					},
+					Type:         document.TextValue,
+					IsPrimaryKey: true,
+				},
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "sql",
 						},
 					},
 					Type: document.TextValue,
@@ -676,11 +686,10 @@ func GetTableStore(tx *Transaction) *Table {
 				{
 					Path: document.Path{
 						document.PathFragment{
-							FieldName: "table_name",
+							FieldName: "store_name",
 						},
 					},
-					Type:         document.TextValue,
-					IsPrimaryKey: true,
+					Type: document.BlobValue,
 				},
 			},
 		},
@@ -703,7 +712,16 @@ func GetIndexStore(tx *Transaction) *Table {
 				{
 					Path: document.Path{
 						document.PathFragment{
-							FieldName: "statements",
+							FieldName: "index_name",
+						},
+					},
+					Type:         document.TextValue,
+					IsPrimaryKey: true,
+				},
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "sql",
 						},
 					},
 					Type: document.TextValue,
@@ -711,11 +729,10 @@ func GetIndexStore(tx *Transaction) *Table {
 				{
 					Path: document.Path{
 						document.PathFragment{
-							FieldName: "index_name",
+							FieldName: "store_name",
 						},
 					},
-					Type:         document.TextValue,
-					IsPrimaryKey: true,
+					Type: document.BlobValue,
 				},
 			},
 		},
@@ -733,7 +750,7 @@ func insertTable(tx *Transaction, tableName string, info *TableInfo) error {
 			return err
 		}
 		buf := make([]byte, binary.MaxVarintLen64+1)
-		buf[0] = storePrefix
+		buf[0] = tableStorePrefix
 		n := binary.PutUvarint(buf[1:], seq)
 		info.StoreName = buf[:n+1]
 	}
@@ -763,17 +780,36 @@ func replaceTable(tx *Transaction, tableName string, info *TableInfo) error {
 func insertIndex(tx *Transaction, info *IndexInfo) error {
 	tb := GetIndexStore(tx)
 
+	var seq uint64
+	var err error
 	// auto-generate index name
 	if info.IndexName == "" {
-		seq, err := tb.Store.NextSequence()
+		seq, err = tb.Store.NextSequence()
 		if err != nil {
 			return err
 		}
 
-		info.IndexName = stringutil.Sprintf("%sautoindex_%s_%d", internalPrefix, info.TableName, seq)
+		if info.FromConstraint {
+			info.IndexName = stringutil.Sprintf("%sautoindexc_%s_%d", internalPrefix, info.TableName, seq)
+		} else {
+			info.IndexName = stringutil.Sprintf("%sautoindex_%s_%d", internalPrefix, info.TableName, seq)
+		}
 	}
 
-	_, err := tb.Insert(info.ToDocument())
+	// reuse the same sequence if it exists
+	if seq == 0 {
+		seq, err = tb.Store.NextSequence()
+		if err != nil {
+			return err
+		}
+	}
+
+	buf := make([]byte, binary.MaxVarintLen64+1)
+	buf[0] = byte(indexStorePrefix)
+	n := binary.PutUvarint(buf[1:], seq)
+	info.StoreName = buf[:n+1]
+
+	_, err = tb.Insert(info.ToDocument())
 	if err == errs.ErrDuplicateDocument {
 		return errs.ErrIndexAlreadyExists
 	}

@@ -679,22 +679,25 @@ func TestReadOnlyTables(t *testing.T) {
 	doc, err := db.QueryDocument(`CREATE TABLE foo (a int, b[3].c double unique); SELECT * FROM __genji_tables`)
 	require.NoError(t, err)
 
-	testutil.RequireDocJSONEq(t, doc, `{"sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE)", "store_name":"dAE=", "table_name":"foo"}`)
+	testutil.RequireDocJSONEq(t, doc, `{"sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)", "store_name":"dAE=", "table_name":"foo"}`)
 
 	res, err := db.Query(`CREATE INDEX idx_foo_a ON foo(a); SELECT * FROM __genji_indexes`)
 	require.NoError(t, err)
 	defer res.Close()
 
-	testutil.RequireStreamEq(t, `
-		{
-			"sql": "CREATE INDEX __genji_autoindex_foo_1 ON foo (b[3].c)",
-			"index_name": "__genji_autoindex_foo_1",
-			"table_name": "foo"
+	var i int
+	err = res.Iterate(func(d document.Document) error {
+		switch i {
+		case 0:
+			testutil.RequireDocJSONEq(t, d, `{"index_name":"__genji_autoindexc_foo_1", "sql": "CREATE UNIQUE INDEX __genji_autoindexc_foo_1 ON foo (b[3].c)", "store_name": "aQE="}`)
+		case 1:
+			testutil.RequireDocJSONEq(t, d, `{"index_name":"idx_foo_a", "sql": "CREATE INDEX idx_foo_a ON foo (a)", "store_name":"aQI="}`)
+		default:
+			t.Fatalf("count should be 1, got %d", i)
 		}
-		{
-			"sql": "CREATE INDEX idx_foo_a ON foo (a)",
-			"index_name": "idx_foo_a",
-			"table_name": "foo"
-		}
-	`, res)
+
+		i++
+		return nil
+	})
+	require.NoError(t, err)
 }

@@ -53,7 +53,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 		}
 
 		dec := json.NewDecoder(rd)
-		t, err := dec.Token()
+		_, err := dec.Token()
 		if err != nil {
 			return err
 		}
@@ -70,7 +70,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 			}
 		}
 
-		t, err = dec.Token()
+		t, err := dec.Token()
 		if err != nil {
 			return err
 		}

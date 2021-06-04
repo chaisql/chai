@@ -22,7 +22,7 @@ type FieldConstraint struct {
 	Type         document.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
-	IsUnique     bool // not stored, only set during table creation
+	IsUnique     bool
 	DefaultValue document.Value
 	IsInferred   bool
 	InferredBy   []document.Path
@@ -65,12 +65,18 @@ func (f *FieldConstraint) String() string {
 
 	s.WriteString(f.Path.String())
 	s.WriteString(" ")
-	s.WriteString(f.Type.String())
+	s.WriteString(strings.ToUpper(f.Type.String()))
+
 	if f.IsNotNull {
 		s.WriteString(" NOT NULL")
 	}
+
 	if f.IsPrimaryKey {
 		s.WriteString(" PRIMARY KEY")
+	}
+
+	if f.IsUnique {
+		s.WriteString(" UNIQUE")
 	}
 
 	if f.HasDefaultValue() {

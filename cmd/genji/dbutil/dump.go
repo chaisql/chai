@@ -7,6 +7,9 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/query/statement"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"go.uber.org/multierr"
 )
 
@@ -23,20 +26,8 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 		return err
 	}
 
-	query := "SELECT table_name FROM __genji_tables"
-	if len(tables) > 0 {
-		query += " WHERE table_name IN ?"
-	}
-
-	res, err := tx.Query(query, tables)
-	if err != nil {
-		_, er := fmt.Fprintln(w, "ROLLBACK;")
-		return multierr.Append(err, er)
-	}
-	defer res.Close()
-
 	i := 0
-	err = res.Iterate(func(d document.Document) error {
+	err = queryTables(tx, tables, func(query string, ti *database.TableInfo) error {
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
@@ -45,13 +36,7 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 		}
 		i++
 
-		// Get table name.
-		var tableName string
-		if err := document.Scan(d, &tableName); err != nil {
-			return err
-		}
-
-		return dumpTable(tx, w, tableName)
+		return dumpTable(tx, w, query, ti.TableName)
 	})
 	if err != nil {
 		_, er := fmt.Fprintln(w, "ROLLBACK;")
@@ -62,10 +47,38 @@ func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) erro
 	return err
 }
 
+func queryTables(tx *genji.Tx, tables []string, fn func(string, *database.TableInfo) error) error {
+	query := "SELECT sql FROM __genji_tables"
+	if len(tables) > 0 {
+		query += " WHERE table_name IN ?"
+	}
+
+	res, err := tx.Query(query, tables)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	return res.Iterate(func(d document.Document) error {
+		// Get table name.
+		var query string
+		if err := document.Scan(d, &query); err != nil {
+			return err
+		}
+
+		q, err := parser.ParseQuery(query)
+		if err != nil {
+			return err
+		}
+
+		return fn(query, &q.Statements[0].(*statement.CreateTableStmt).Info)
+	})
+}
+
 // dumpTable displays the content of the given table as SQL statements.
-func dumpTable(tx *genji.Tx, w io.Writer, tableName string) error {
+func dumpTable(tx *genji.Tx, w io.Writer, query, tableName string) error {
 	// Dump schema first.
-	if err := dumpSchema(tx, w, tableName); err != nil {
+	if err := dumpSchema(tx, w, query, tableName); err != nil {
 		return err
 	}
 
@@ -101,19 +114,8 @@ func DumpSchema(ctx context.Context, db *genji.DB, w io.Writer, tables ...string
 	}
 	defer tx.Rollback()
 
-	query := "SELECT table_name FROM __genji_tables"
-	if len(tables) > 0 {
-		query += " WHERE table_name IN ?"
-	}
-
-	res, err := tx.Query(query, tables)
-	if err != nil {
-		return err
-	}
-	defer res.Close()
-
 	i := 0
-	return res.Iterate(func(d document.Document) error {
+	return queryTables(tx, tables, func(query string, ti *database.TableInfo) error {
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
@@ -122,40 +124,22 @@ func DumpSchema(ctx context.Context, db *genji.DB, w io.Writer, tables ...string
 		}
 		i++
 
-		// Get table name.
-		var tableName string
-		if err := document.Scan(d, &tableName); err != nil {
-			return err
-		}
-
-		return dumpSchema(tx, w, tableName)
+		return dumpSchema(tx, w, query, ti.TableName)
 	})
 }
 
 // dumpSchema displays the schema of the given table as SQL statements.
-func dumpSchema(tx *genji.Tx, w io.Writer, tableName string) error {
-	d, err := tx.QueryDocument("SELECT sql FROM __genji_tables WHERE table_name = ?", tableName)
-	if err != nil {
-		return err
-	}
-
-	var tableSchema string
-	err = document.Scan(d, &tableSchema)
-	if err != nil {
-		return err
-	}
-
-	_, err = fmt.Fprintf(w, "%s;\n", tableSchema)
+func dumpSchema(tx *genji.Tx, w io.Writer, query string, tableName string) error {
+	_, err := fmt.Fprintf(w, "%s;\n", query)
 	if err != nil {
 		return err
 	}
 
 	// Indexes statements.
-	res, err := tx.Query("SELECT sql FROM __genji_indexes WHERE table_name = ?", tableName)
+	res, err := tx.Query("SELECT sql FROM __genji_indexes WHERE sql LIKE ?", "%ON "+tableName+" %")
 	if err != nil {
 		return err
 	}
-
 	defer res.Close()
 
 	return res.Iterate(func(d document.Document) error {
@@ -174,23 +158,31 @@ func dumpSchema(tx *genji.Tx, w io.Writer, tableName string) error {
 func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string, error) {
 	var listName []string
 	err := db.View(func(tx *genji.Tx) error {
-		q := "SELECT index_name FROM __genji_indexes"
+		q := "SELECT sql FROM __genji_indexes"
+		var param string
 		if tableName != "" {
-			q += " WHERE table_name = ?"
+			q += " WHERE sql LIKE ?"
+			param = "%ON " + tableName + " %"
 		}
-		res, err := tx.Query(q, tableName)
+		res, err := tx.Query(q, param)
 		if err != nil {
 			return err
 		}
 		defer res.Close()
 
 		return res.Iterate(func(d document.Document) error {
-			var name string
-			err = document.Scan(d, &name)
+			var query string
+			err = document.Scan(d, &query)
 			if err != nil {
 				return err
 			}
-			listName = append(listName, name)
+
+			q, err := parser.ParseQuery(query)
+			if err != nil {
+				return err
+			}
+
+			listName = append(listName, q.Statements[0].(*statement.CreateIndexStmt).Info.IndexName)
 			return nil
 		})
 	})

@@ -31,10 +31,11 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsUnique {
 			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: stmt.Info.TableName,
-				Paths:     []document.Path{fc.Path},
-				Unique:    true,
-				Types:     []document.ValueType{fc.Type},
+				TableName:      stmt.Info.TableName,
+				Paths:          []document.Path{fc.Path},
+				Unique:         true,
+				Types:          []document.ValueType{fc.Type},
+				FromConstraint: true,
 			})
 			if err != nil {
 				return res, err
@@ -65,6 +66,9 @@ func (stmt *CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	err := tx.Catalog.CreateIndex(tx, &stmt.Info)
 	if stmt.IfNotExists && err == errs.ErrIndexAlreadyExists {
 		return res, nil
+	}
+	if err != nil {
+		return res, err
 	}
 
 	err = tx.Catalog.ReIndex(tx, stmt.Info.IndexName)

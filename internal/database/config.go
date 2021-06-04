@@ -57,30 +57,7 @@ func (ti *TableInfo) String() string {
 			s.WriteString(", ")
 		}
 
-		// Path
-		s.WriteString(fc.Path.String())
-
-		// Type
-		if fc.Type != 0 {
-			stringutil.Fprintf(&s, " %s", strings.ToUpper(fc.Type.String()))
-		}
-
-		// Not null
-		if fc.IsNotNull {
-			s.WriteString(" NOT NULL")
-		}
-
-		// Default value
-		if fc.HasDefaultValue() {
-			stringutil.Fprintf(&s, " DEFAULT %s", fc.DefaultValue.String())
-		}
-
-		// Primary key
-		if fc.IsPrimaryKey {
-			s.WriteString(" PRIMARY KEY")
-		}
-
-		// Unique must not be written as it an index is already created for it
+		s.WriteString(fc.String())
 	}
 
 	if len(ti.FieldConstraints) > 0 {
@@ -101,6 +78,8 @@ func (ti *TableInfo) Clone() *TableInfo {
 // IndexInfo holds the configuration of an index.
 type IndexInfo struct {
 	TableName string
+	// name of the store associated with the index.
+	StoreName []byte
 	IndexName string
 	Paths     []document.Path
 
@@ -109,6 +88,10 @@ type IndexInfo struct {
 
 	// If set, the index is typed and only accepts values of those types.
 	Types []document.ValueType
+
+	// If set, this index has been created from a table constraint
+	// i.e CREATE TABLE tbl(a INT UNIQUE)
+	FromConstraint bool
 }
 
 // ToDocument creates a document from an IndexConfig.
@@ -116,7 +99,7 @@ func (i *IndexInfo) ToDocument() document.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("sql", document.NewTextValue(i.String()))
 	buf.Add("index_name", document.NewTextValue(i.IndexName))
-	buf.Add("table_name", document.NewTextValue(i.TableName))
+	buf.Add("store_name", document.NewBlobValue(i.StoreName))
 
 	return buf
 }
@@ -125,7 +108,12 @@ func (i *IndexInfo) ToDocument() document.Document {
 func (i *IndexInfo) String() string {
 	var s strings.Builder
 
-	stringutil.Fprintf(&s, "CREATE INDEX %s ON %s (", i.IndexName, i.TableName)
+	s.WriteString("CREATE ")
+	if i.Unique {
+		s.WriteString("UNIQUE ")
+	}
+
+	stringutil.Fprintf(&s, "INDEX %s ON %s (", i.IndexName, i.TableName)
 
 	for i, p := range i.Paths {
 		if i > 0 {
