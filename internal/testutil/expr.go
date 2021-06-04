@@ -53,6 +53,16 @@ func ArrayValue(a document.Array) expr.LiteralValue {
 	return expr.LiteralValue(document.NewArrayValue(a))
 }
 
+func ExprList(t testing.TB, s string) expr.LiteralExprList {
+	t.Helper()
+
+	e, err := parser.ParseExpr(s)
+	require.NoError(t, err)
+	require.IsType(t, e, expr.LiteralExprList{})
+
+	return e.(expr.LiteralExprList)
+}
+
 func ParsePath(t testing.TB, p string) expr.Path {
 	t.Helper()
 

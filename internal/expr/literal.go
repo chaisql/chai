@@ -132,7 +132,7 @@ func (kvp *KVPairs) IsEqual(other Expr) bool {
 }
 
 // Eval turns a list of KVPairs into a document.
-func (kvp KVPairs) Eval(env *Environment) (document.Value, error) {
+func (kvp *KVPairs) Eval(env *Environment) (document.Value, error) {
 	var fb document.FieldBuffer
 	if kvp.SelfReferenced {
 		if _, ok := env.GetDocument(); !ok {
@@ -153,7 +153,7 @@ func (kvp KVPairs) Eval(env *Environment) (document.Value, error) {
 }
 
 // String implements the stringutil.Stringer interface.
-func (kvp KVPairs) String() string {
+func (kvp *KVPairs) String() string {
 	var b strings.Builder
 
 	b.WriteRune('{')

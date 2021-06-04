@@ -13,24 +13,9 @@ type InsertStmt struct {
 	TableName  string
 	Values     []expr.Expr
 	Fields     []string
-	SelectStmt *SelectStmt
+	SelectStmt *StreamStmt
 	Returning  []expr.Expr
 	OnConflict database.OnInsertConflictAction
-}
-
-func (stmt *InsertStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	var res Result
-
-	s, err := stmt.ToStream()
-	if err != nil {
-		return res, err
-	}
-
-	return s.Run(tx, params)
-}
-
-func (stmt *InsertStmt) IsReadOnly() bool {
-	return false
 }
 
 func (stmt *InsertStmt) ToStream() (*StreamStmt, error) {
@@ -39,11 +24,7 @@ func (stmt *InsertStmt) ToStream() (*StreamStmt, error) {
 	if stmt.Values != nil {
 		s = stream.New(stream.Expressions(stmt.Values...))
 	} else {
-		st, err := stmt.SelectStmt.ToStream()
-		if err != nil {
-			return nil, err
-		}
-		s = st.Stream
+		s = stmt.SelectStmt.Stream
 
 		// ensure we are not reading and writing to the same table.
 		if s.First().(*stream.SeqScanOperator).TableName == stmt.TableName {

@@ -93,6 +93,8 @@ type Aggregator interface {
 
 // An AggregatorBuilder is a type that can create aggregators.
 type AggregatorBuilder interface {
+	Expr
+
 	Aggregator() Aggregator
 }
 

@@ -54,9 +54,7 @@ func TestParserDelete(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
-			stmt, err := q.Statements[0].(*statement.DeleteStmt).ToStream()
-			require.NoError(t, err)
-			require.EqualValues(t, &statement.StreamStmt{Stream: test.expected}, stmt)
+			require.EqualValues(t, &statement.StreamStmt{Stream: test.expected}, q.Statements[0].(*statement.StreamStmt))
 		})
 	}
 }

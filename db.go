@@ -115,6 +115,11 @@ func (db *DB) Prepare(q string) (*Statement, error) {
 		return nil, err
 	}
 
+	err = pq.Prepare(db.ctx, db.db)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Statement{
 		pq: pq,
 		db: db,
@@ -175,6 +180,11 @@ func (tx *Tx) Exec(q string, args ...interface{}) (err error) {
 // Prepare parses the query and returns a prepared statement.
 func (tx *Tx) Prepare(q string) (*Statement, error) {
 	pq, err := parser.ParseQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	err = pq.PrepareTx(tx.tx)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +380,7 @@ func loadCatalogTables(tx *database.Transaction) ([]database.TableInfo, error) {
 			return err
 		}
 
-		ti := stmt.(statement.CreateTableStmt).Info
+		ti := stmt.(*statement.CreateTableStmt).Info
 
 		v, err := d.GetByField("store_name")
 		if err != nil {
@@ -403,7 +413,7 @@ func loadCatalogIndexes(tx *database.Transaction) ([]database.IndexInfo, error) 
 			return err
 		}
 
-		indexes = append(indexes, stmt.(statement.CreateIndexStmt).Info)
+		indexes = append(indexes, stmt.(*statement.CreateIndexStmt).Info)
 		return nil
 	})
 

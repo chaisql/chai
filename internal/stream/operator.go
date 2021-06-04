@@ -108,49 +108,6 @@ func (op *MapOperator) String() string {
 	return stringutil.Sprintf("map(%s)", op.E)
 }
 
-// IfEmpty is a conditional operator. If the source stream is empty, i.e. outputs no documents, it runs the sIf stream.
-// Otherwise, it pipes the incoming documents to sElse.
-type IfEmptyOperator struct {
-	baseOperator
-	sIf, sElse *Stream
-}
-
-// IfEmpty is a conditional operator. If the source stream is empty, i.e. outputs no documents, it runs the sIf stream.
-// Otherwise, it pipes the incoming documents to sElse.
-// If sElse is nil and the source stream is not empty, it iterates on the source stream.
-func IfEmpty(sIf, sElse *Stream) *IfEmptyOperator {
-	return &IfEmptyOperator{sIf: sIf, sElse: sElse}
-}
-
-// Iterate implements the Operator interface.
-// If sElse is nil and the source stream is not empty, it iterates on the source stream.
-func (op *IfEmptyOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
-	var called bool
-
-	s := New(op.Prev)
-
-	if op.sElse != nil {
-		s = op.sElse.Clone()
-
-		s.First().SetPrev(op.Prev)
-	}
-
-	err := s.Iterate(in, func(out *expr.Environment) error {
-		called = true
-
-		return f(out)
-	})
-	if err != nil || called {
-		return err
-	}
-
-	return op.sIf.Iterate(in, f)
-}
-
-func (op *IfEmptyOperator) String() string {
-	return stringutil.Sprintf("ifEmpty(\n\t%s,\n\t%s\n)", op.sIf, op.sElse)
-}
-
 // A FilterOperator filters values based on a given expression.
 type FilterOperator struct {
 	baseOperator

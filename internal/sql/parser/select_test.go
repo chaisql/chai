@@ -132,9 +132,7 @@ func TestParserSelect(t *testing.T) {
 			if !test.mustFail {
 				require.NoError(t, err)
 				require.Len(t, q.Statements, 1)
-				st, err := q.Statements[0].(*statement.SelectStmt).ToStream()
-				require.NoError(t, err)
-				require.EqualValues(t, &statement.StreamStmt{Stream: test.expected, ReadOnly: true}, st)
+				require.EqualValues(t, &statement.StreamStmt{Stream: test.expected, ReadOnly: true}, q.Statements[0].(*statement.StreamStmt))
 			} else {
 				require.Error(t, err)
 			}

@@ -8,7 +8,7 @@ import (
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
+func (p *Parser) parseSelectStatement() (*statement.StreamStmt, error) {
 	var stmt statement.SelectStmt
 	var err error
 
@@ -30,7 +30,7 @@ func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
 		return nil, err
 	}
 	if !found {
-		return &stmt, nil
+		return stmt.ToStream()
 	}
 
 	// Parse condition: "WHERE expr".
@@ -63,7 +63,7 @@ func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
 		return nil, err
 	}
 
-	return &stmt, nil
+	return stmt.ToStream()
 }
 
 // parseProjectedExprs parses the list of projected fields.

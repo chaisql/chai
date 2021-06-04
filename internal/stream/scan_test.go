@@ -131,7 +131,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.ValueRanges{
-				{Max: document.NewIntegerValue(2)},
+				{Max: testutil.IntegerValue(2)},
 			},
 			false, false,
 		},
@@ -140,7 +140,16 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.ValueRanges{
-				{Max: document.NewIntegerValue(1)},
+				{Max: testutil.IntegerValue(1)},
+			},
+			false, false,
+		},
+		{
+			"max:1.1",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			stream.ValueRanges{
+				{Max: testutil.DoubleValue(1.1)},
 			},
 			false, false,
 		},
@@ -149,7 +158,16 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.ValueRanges{
-				{Min: document.NewIntegerValue(1)},
+				{Min: testutil.IntegerValue(1)},
+			},
+			false, false,
+		},
+		{
+			"min:0.5",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			stream.ValueRanges{
+				{Min: testutil.DoubleValue(0.5)},
 			},
 			false, false,
 		},
@@ -158,7 +176,16 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.ValueRanges{
-				{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2)},
+				{Min: testutil.IntegerValue(1), Max: testutil.IntegerValue(2)},
+			},
+			false, false,
+		},
+		{
+			"min/max:0.5/1.5",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			stream.ValueRanges{
+				{Min: testutil.DoubleValue(0.5), Max: testutil.DoubleValue(1.5)},
 			},
 			false, false,
 		},
@@ -173,7 +200,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.ValueRanges{
-				{Max: document.NewIntegerValue(2)},
+				{Max: testutil.IntegerValue(2)},
 			},
 			true, false,
 		},
@@ -182,7 +209,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.ValueRanges{
-				{Min: document.NewIntegerValue(1)},
+				{Min: testutil.IntegerValue(1)},
 			},
 			true, false,
 		},
@@ -191,7 +218,7 @@ func TestPkScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.ValueRanges{
-				{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2)},
+				{Min: testutil.IntegerValue(1), Max: testutil.IntegerValue(2)},
 			},
 			true, false,
 		},
@@ -243,13 +270,13 @@ func TestPkScan(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		require.Equal(t, `pkScan("test", [1, 2])`, stream.PkScan("test", stream.ValueRange{
-			Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2),
+			Min: testutil.IntegerValue(1), Max: testutil.IntegerValue(2),
 		}).String())
 
 		op := stream.PkScan("test",
-			stream.ValueRange{Min: document.NewIntegerValue(1), Max: document.NewIntegerValue(2), Exclusive: true},
-			stream.ValueRange{Min: document.NewIntegerValue(10), Exact: true},
-			stream.ValueRange{Min: document.NewIntegerValue(100)},
+			stream.ValueRange{Min: testutil.IntegerValue(1), Max: testutil.IntegerValue(2), Exclusive: true},
+			stream.ValueRange{Min: testutil.IntegerValue(10), Exact: true},
+			stream.ValueRange{Min: testutil.IntegerValue(100)},
 		)
 		op.Reverse = true
 
@@ -258,7 +285,6 @@ func TestPkScan(t *testing.T) {
 }
 
 func TestIndexScan(t *testing.T) {
-	newVB := document.NewValueBuffer
 	tests := []struct {
 		name                  string
 		indexOn               string
@@ -285,7 +311,16 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.IndexRanges{
-				{Max: newVB(document.NewIntegerValue(2))},
+				{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+			},
+			false, false,
+		},
+		{
+			"max:1.2", "a",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`),
+			stream.IndexRanges{
+				{Max: testutil.ExprList(t, `[1.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
@@ -294,10 +329,16 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			stream.IndexRanges{
-				{Max: newVB(
-					document.NewIntegerValue(2),
-					document.NewIntegerValue(2),
-				)},
+				{Max: testutil.ExprList(t, `[2, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+			},
+			false, false,
+		},
+		{
+			"max:[2, 2.2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			stream.IndexRanges{
+				{Max: testutil.ExprList(t, `[2, 2.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
@@ -306,7 +347,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.IndexRanges{
-				{Max: newVB(document.NewIntegerValue(1))},
+				{Max: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
@@ -315,10 +356,16 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
 			stream.IndexRanges{
-				{Max: newVB(
-					document.NewIntegerValue(1),
-					document.NewIntegerValue(2),
-				)},
+				{Max: testutil.ExprList(t, `[1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+			},
+			false, false,
+		},
+		{
+			"max:[1.1, 2]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			stream.IndexRanges{
+				{Max: testutil.ExprList(t, `[1.1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
@@ -327,7 +374,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.IndexRanges{
-				{Min: newVB(document.NewIntegerValue(1))},
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
@@ -337,7 +384,20 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(2), document.NewIntegerValue(1)),
+					Min:   testutil.ExprList(t, `[2, 1]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
+				},
+			},
+			false, false,
+		},
+		{
+			"min:[2, 1.5]", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			stream.IndexRanges{
+				{
+					Min:   testutil.ExprList(t, `[2, 1.5]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			false, false,
@@ -348,8 +408,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(1)),
-					Max: newVB(document.NewIntegerValue(2)),
+					Min:   testutil.ExprList(t, `[1]`),
+					Max:   testutil.ExprList(t, `[2]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
 				},
 			},
 			false, false,
@@ -360,8 +421,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-					Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+					Min:   testutil.ExprList(t, `[1, 1]`),
+					Max:   testutil.ExprList(t, `[2, 2]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			false, false,
@@ -372,8 +434,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`), // [1, 3] < [2, 2]
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-					Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+					Min:   testutil.ExprList(t, `[1, 1]`),
+					Max:   testutil.ExprList(t, `[2, 2]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			false, false,
@@ -389,7 +452,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.IndexRanges{
-				{Max: newVB(document.NewIntegerValue(2))},
+				{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			true, false,
 		},
@@ -399,7 +462,8 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
 			stream.IndexRanges{
 				{
-					Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+					Max:   testutil.ExprList(t, `[2, 2]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			true, false,
@@ -409,7 +473,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.IndexRanges{
-				{Min: newVB(document.NewIntegerValue(1))},
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			true, false,
 		},
@@ -418,7 +482,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": -2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.IndexRanges{
-				{Min: newVB(document.NewIntegerValue(1))},
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			true, false,
 		},
@@ -428,7 +492,8 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
+					Min:   testutil.ExprList(t, `[1, 1]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			true, false,
@@ -439,8 +504,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(1)),
-					Max: newVB(document.NewIntegerValue(2)),
+					Min:   testutil.ExprList(t, `[1]`),
+					Max:   testutil.ExprList(t, `[2]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
 				},
 			},
 			true, false,
@@ -451,8 +517,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
 			stream.IndexRanges{
 				{
-					Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-					Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+					Min:   testutil.ExprList(t, `[1, 1]`),
+					Max:   testutil.ExprList(t, `[2, 2]`),
+					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			true, false,
@@ -464,7 +531,8 @@ func TestIndexScan(t *testing.T) {
 			stream.IndexRanges{
 				{
 					IndexArity: 2,
-					Max:        newVB(document.NewIntegerValue(1)),
+					Max:        testutil.ExprList(t, `[1]`),
+					Paths:      []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			false, false,
@@ -475,10 +543,11 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
 			stream.IndexRanges{
 				{
-					Max:        newVB(document.NewIntegerValue(1)),
+					Max:        testutil.ExprList(t, `[1]`),
 					Exclusive:  false,
 					Exact:      false,
 					IndexArity: 2,
+					Paths:      []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			true, false,
@@ -488,7 +557,9 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			stream.IndexRanges{
-				{IndexArity: 3, Max: newVB(document.NewIntegerValue(1), document.NewIntegerValue(2))},
+				{
+					IndexArity: 3, Max: testutil.ExprList(t, `[1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b"), testutil.ParseDocumentPath(t, "c")},
+				},
 			},
 			false, false,
 		},
@@ -497,7 +568,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 1, "b": 1}`),
 			stream.IndexRanges{
-				{Min: newVB(document.NewIntegerValue(1))},
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
@@ -506,7 +577,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": -2, "b": 2, "c": 1}`, `{"a": 1, "b": 1, "c": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": 1, "b": 1, "c": 2}`),
 			stream.IndexRanges{
-				{Min: newVB(document.NewIntegerValue(1))},
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b"), testutil.ParseDocumentPath(t, "c")}},
 			},
 			false, false,
 		},
@@ -515,7 +586,7 @@ func TestIndexScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
 			stream.IndexRanges{
-				{Min: newVB(document.NewIntegerValue(1))},
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			true, false,
 		},
@@ -526,8 +597,9 @@ func TestIndexScan(t *testing.T) {
 			stream.IndexRanges{
 				{
 					IndexArity: 2,
-					Min:        newVB(document.NewIntegerValue(1)),
-					Max:        newVB(document.NewIntegerValue(2)),
+					Min:        testutil.ExprList(t, `[1]`),
+					Max:        testutil.ExprList(t, `[2]`),
+					Paths:      []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			false, false,
@@ -539,8 +611,9 @@ func TestIndexScan(t *testing.T) {
 			stream.IndexRanges{
 				{
 					IndexArity: 2,
-					Min:        newVB(document.NewIntegerValue(1)),
-					Max:        newVB(document.NewIntegerValue(2)),
+					Min:        testutil.ExprList(t, `[1]`),
+					Max:        testutil.ExprList(t, `[2]`),
+					Paths:      []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
 			},
 			true, false,
@@ -548,7 +621,7 @@ func TestIndexScan(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name+"index on "+test.indexOn, func(t *testing.T) {
+		t.Run(test.name+":index on "+test.indexOn, func(t *testing.T) {
 			_, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
@@ -594,11 +667,11 @@ func TestIndexScan(t *testing.T) {
 	t.Run("String", func(t *testing.T) {
 		t.Run("idx_test_a", func(t *testing.T) {
 			require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.IndexRange{
-				Min: newVB(document.NewIntegerValue(1)), Max: newVB(document.NewIntegerValue(2)),
+				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 			}).String())
 
 			op := stream.IndexScan("idx_test_a", stream.IndexRange{
-				Min: newVB(document.NewIntegerValue(1)), Max: newVB(document.NewIntegerValue(2)),
+				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 			})
 			op.Reverse = true
 
@@ -607,13 +680,13 @@ func TestIndexScan(t *testing.T) {
 
 		t.Run("idx_test_a_b", func(t *testing.T) {
 			require.Equal(t, `indexScan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.IndexRange{
-				Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-				Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+				Min: testutil.ExprList(t, `[1, 1]`),
+				Max: testutil.ExprList(t, `[2, 2]`),
 			}).String())
 
 			op := stream.IndexScan("idx_test_a_b", stream.IndexRange{
-				Min: newVB(document.NewIntegerValue(1), document.NewIntegerValue(1)),
-				Max: newVB(document.NewIntegerValue(2), document.NewIntegerValue(2)),
+				Min: testutil.ExprList(t, `[1, 1]`),
+				Max: testutil.ExprList(t, `[2, 2]`),
 			})
 			op.Reverse = true
 

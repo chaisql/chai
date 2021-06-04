@@ -109,6 +109,7 @@ func (f *fakeAggregator) String() string {
 }
 
 type fakeAggretatorBuilder struct {
+	expr.Expr
 	name string
 }
 

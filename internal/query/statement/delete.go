@@ -1,7 +1,6 @@
 package statement
 
 import (
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -16,21 +15,6 @@ type DeleteStmt struct {
 	OrderBy          expr.Path
 	LimitExpr        expr.Expr
 	OrderByDirection scanner.Token
-}
-
-func (stmt *DeleteStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
-	var res Result
-
-	s, err := stmt.ToStream()
-	if err != nil {
-		return res, err
-	}
-
-	return s.Run(tx, params)
-}
-
-func (stmt *DeleteStmt) IsReadOnly() bool {
-	return false
 }
 
 func (stmt *DeleteStmt) ToStream() (*StreamStmt, error) {

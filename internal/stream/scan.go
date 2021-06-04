@@ -210,7 +210,7 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 		return err
 	}
 
-	err = it.Ranges.Encode(table, in)
+	ranges, err := it.Ranges.Encode(table, in)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 		iterator = table.DescendLessOrEqual
 	}
 
-	for _, rng := range it.Ranges {
+	for _, rng := range ranges {
 		var start, end document.Value
 		if !it.Reverse {
 			start = rng.Min
@@ -332,8 +332,8 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		return err
 	}
 
-	err = it.Ranges.EncodeBuffer(index, in)
-	if err != nil {
+	ranges, err := it.Ranges.EncodeBuffer(index, table, in)
+	if err != nil || len(ranges) != len(it.Ranges) {
 		return err
 	}
 
@@ -346,7 +346,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 	}
 
 	// if there are no ranges use a simpler and faster iteration function
-	if len(it.Ranges) == 0 {
+	if len(ranges) == 0 {
 		return iterator(nil, func(val, key []byte) error {
 			d, err := table.GetDocument(key)
 			if err != nil {
@@ -358,7 +358,7 @@ func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Env
 		})
 	}
 
-	for _, rng := range it.Ranges {
+	for _, rng := range ranges {
 		var start, end *document.ValueBuffer
 		if !it.Reverse {
 			start = rng.Min

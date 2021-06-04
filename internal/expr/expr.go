@@ -94,11 +94,11 @@ type NamedExpr struct {
 }
 
 // Name returns ExprName.
-func (e NamedExpr) Name() string {
+func (e *NamedExpr) Name() string {
 	return e.ExprName
 }
 
-func (e NamedExpr) String() string {
+func (e *NamedExpr) String() string {
 	return stringutil.Sprintf("%s", e.Expr)
 }
 

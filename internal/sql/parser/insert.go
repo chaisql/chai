@@ -10,7 +10,7 @@ import (
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
 // This function assumes the INSERT token has already been consumed.
-func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
+func (p *Parser) parseInsertStatement() (*statement.StreamStmt, error) {
 	var stmt statement.InsertStmt
 	var err error
 
@@ -62,7 +62,7 @@ func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 		return nil, err
 	}
 
-	return &stmt, nil
+	return stmt.ToStream()
 }
 
 // parseFieldList parses a list of fields in the form: (path, path, ...), if exists.
