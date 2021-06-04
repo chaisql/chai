@@ -525,17 +525,6 @@ outer:
 						continue outer
 					}
 				}
-
-				// // what the index says this node type must be
-				// typ := idx.Info.Types[i]
-
-				// fno.e, ok, err = operandCanUseIndex(typ, fno.path, t.Info.FieldConstraints, fno.e)
-				// if err != nil {
-				// 	return nil, err
-				// }
-				// if !ok {
-				// 	continue outer
-				// }
 			} else {
 				// if on the index idx_abc(a,b,c), a is found, b isn't but c is
 				// then idx_abc is valid but just with a, c will use a filter node instead
