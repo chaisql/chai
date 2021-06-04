@@ -18,14 +18,14 @@ import (
 )
 
 // NewRestoreCommand returns a cli.Command for "genji restore".
-func NewRestoreCommand() *cli.Command {
+func NewRestoreCommand() (cmd *cli.Command) {
 	return &cli.Command{
 		Name:      "restore",
 		Usage:     "Restore a database from a file created by genji dump",
 		UsageText: `genji restore dumpFile dbPath`,
 		Description: `The restore command can restore a database from a text file.
 
-	$ genji restore dump.sql -e bolt my.db`,
+	$ genji restore dump.sql my.db`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "engine",
@@ -36,6 +36,9 @@ func NewRestoreCommand() *cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			engine := c.String("engine")
+			if c.Args().Len() != 2 {
+				return errors.New(cmd.UsageText)
+			}
 			dbPath := c.Args().Get(c.Args().Len() - 1)
 			if dbPath == "" {
 				return errors.New("database path expected")
