@@ -77,6 +77,7 @@ const (
 	keywordBeg
 	// ALL and the following are Genji SQL Keywords
 	ADD_KEYWORD
+	ALL
 	ALTER
 	AS
 	ASC
@@ -123,6 +124,7 @@ const (
 	TABLE
 	TO
 	TRANSACTION
+	UNION
 	UNIQUE
 	UNSET
 	UPDATE
@@ -207,6 +209,7 @@ var tokens = [...]string{
 	DOT:         ".",
 
 	ADD_KEYWORD: "ADD",
+	ALL:         "ALL",
 	ALTER:       "ALTER",
 	AS:          "AS",
 	ASC:         "ASC",
@@ -253,6 +256,7 @@ var tokens = [...]string{
 	TABLE:       "TABLE",
 	TO:          "TO",
 	TRANSACTION: "TRANSACTION",
+	UNION:       "UNION",
 	UNIQUE:      "UNIQUE",
 	UNSET:       "UNSET",
 	UPDATE:      "UPDATE",

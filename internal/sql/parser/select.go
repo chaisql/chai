@@ -63,6 +63,12 @@ func (p *Parser) parseSelectStatement() (*statement.StreamStmt, error) {
 		return nil, err
 	}
 
+	// Parse union: "UNION expr"
+	stmt.Union.SelectStmt, stmt.Union.All, err = p.parseUnion()
+	if err != nil {
+		return nil, err
+	}
+
 	return stmt.ToStream()
 }
 
@@ -153,4 +159,23 @@ func (p *Parser) parseGroupBy() (expr.Expr, error) {
 	// parse expr
 	e, err := p.ParseExpr()
 	return e, err
+}
+
+func (p *Parser) parseUnion() (*statement.StreamStmt, bool, error) {
+	// Only UNION ALL is supported for the moment
+	if ok, err := p.parseOptional(scanner.UNION, scanner.ALL); !ok || err != nil {
+		return nil, false, err
+	}
+
+	err := p.parseTokens(scanner.SELECT)
+	if err != nil {
+		return nil, false, err
+	}
+
+	otherSelect, err := p.parseSelectStatement()
+	if err != nil {
+		return nil, false, err
+	}
+
+	return otherSelect, false, nil
 }

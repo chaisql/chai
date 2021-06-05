@@ -25,6 +25,21 @@ var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream
 func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
 	var err error
 
+	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
+		// If the first operation is a concat, optimize both streams individually.
+		s1, err := Optimize(firstNode.S1, tx)
+		if err != nil {
+			return nil, err
+		}
+		s2, err := Optimize(firstNode.S2, tx)
+		if err != nil {
+			return nil, err
+		}
+
+		firstNode.S1, firstNode.S2 = s1, s2
+		return s, nil
+	}
+
 	for _, rule := range optimizerRules {
 		s, err = rule(s, tx)
 		if err != nil {
