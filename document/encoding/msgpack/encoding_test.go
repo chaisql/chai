@@ -35,7 +35,8 @@ func TestCompactedIntDecoding(t *testing.T) {
 	err := codec.NewEncoder(&buf).EncodeDocument(d)
 	require.NoError(t, err)
 
-	data, err := document.MarshalJSON(codec.NewDocument(buf.Bytes()))
+	doc := codec.NewDecoder(buf.Bytes())
+	data, err := document.MarshalJSON(doc)
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
 }

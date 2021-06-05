@@ -87,10 +87,10 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 			codec := codecBuilder()
 			err := codec.NewEncoder(&buf).EncodeDocument(test.d)
 			require.NoError(t, err)
-			ok, err := document.NewDocumentValue(test.d).IsEqual(document.NewDocumentValue(codec.NewDocument(buf.Bytes())))
+			ok, err := document.NewDocumentValue(test.d).IsEqual(document.NewDocumentValue(codec.NewDecoder(buf.Bytes())))
 			require.NoError(t, err)
 			require.True(t, ok)
-			data, err := document.MarshalJSON(codec.NewDocument(buf.Bytes()))
+			data, err := document.MarshalJSON(codec.NewDecoder(buf.Bytes()))
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, string(data))
 		})
@@ -110,7 +110,7 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 	err := codec.NewEncoder(&buf).EncodeDocument(fb)
 	require.NoError(t, err)
 
-	d := codec.NewDocument(buf.Bytes())
+	d := codec.NewDecoder(buf.Bytes())
 
 	v, err := d.GetByField("a")
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	err := codec.NewEncoder(&buf).EncodeDocument(document.NewFieldBuffer().Add("a", document.NewArrayValue(arr)))
 	require.NoError(t, err)
 
-	d := codec.NewDocument(buf.Bytes())
+	d := codec.NewDecoder(buf.Bytes())
 	v, err := d.GetByField("a")
 	require.NoError(t, err)
 
@@ -187,7 +187,7 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 	err = enc.EncodeDocument(doc)
 	require.NoError(t, err)
 
-	ec := codec.NewDocument(buf.Bytes())
+	ec := codec.NewDecoder(buf.Bytes())
 	v, err := ec.GetByField("age")
 	require.NoError(t, err)
 	require.Equal(t, document.NewIntegerValue(10), v)

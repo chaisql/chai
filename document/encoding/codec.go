@@ -16,7 +16,7 @@ type Codec interface {
 	// NewDocument returns a document without decoding its given binary representation.
 	// The returned document should ideally support random-access, i.e. decoding one path
 	// without decoding the entire document. If not, the document must be lazily decoded.
-	NewDocument([]byte) document.Document
+	NewDecoder([]byte) Decoder
 }
 
 // An Encoder encodes one document to the underlying writer.
@@ -24,4 +24,13 @@ type Encoder interface {
 	EncodeDocument(d document.Document) error
 	// Close the encoder to release any resource.
 	Close()
+}
+
+// A Decoder represents an encoded document that can
+// be used as if it was decoded.
+// Decoders can be reused to read different documents.
+type Decoder interface {
+	document.Document
+
+	Reset([]byte)
 }

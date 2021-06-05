@@ -2,6 +2,7 @@ package msgpack
 
 import (
 	"bytes"
+	"io"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -14,7 +15,19 @@ import (
 // document.
 // It is useful for avoiding decoding the entire document when
 // only a few fields are needed.
-type EncodedDocument []byte
+type EncodedDocument struct {
+	encoded []byte
+	buf     []byte
+
+	reader bytes.Reader
+}
+
+func NewEncodedDocument(data []byte) *EncodedDocument {
+	var e EncodedDocument
+
+	e.Reset(data)
+	return &e
+}
 
 // bytesLen determines the size of the next string in the decoder
 // based on c.
@@ -32,10 +45,25 @@ func bytesLen(c byte, dec *msgpack.Decoder) (int, error) {
 	return 0, stringutil.Errorf("msgpack: invalid code=%x decoding bytes length", c)
 }
 
+func (e *EncodedDocument) Reset(data []byte) {
+	e.encoded = data
+
+	e.reader.Reset(data)
+}
+
 // GetByField decodes the selected field from the buffer.
-func (e EncodedDocument) GetByField(field string) (v document.Value, err error) {
-	dec := NewDecoder(bytes.NewReader(e))
+func (e *EncodedDocument) GetByField(field string) (v document.Value, err error) {
+	_, err = e.reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return
+	}
+
+	dec := NewDecoder(&e.reader)
 	defer dec.Close()
+
+	if len(e.buf) == 0 {
+		e.buf = make([]byte, 32)
+	}
 
 	l, err := dec.dec.DecodeMapLen()
 	if err != nil {
@@ -43,8 +71,6 @@ func (e EncodedDocument) GetByField(field string) (v document.Value, err error) 
 	}
 
 	bf := []byte(field)
-
-	buf := make([]byte, 32)
 
 	var c byte
 	var n int
@@ -68,7 +94,7 @@ func (e EncodedDocument) GetByField(field string) (v document.Value, err error) 
 		}
 
 		// Move the cursor by one to skip the type code
-		err = dec.dec.ReadFull(buf[:1])
+		err = dec.dec.ReadFull(e.buf[:1])
 		if err != nil {
 			return
 		}
@@ -80,19 +106,19 @@ func (e EncodedDocument) GetByField(field string) (v document.Value, err error) 
 		}
 
 		// ensure the buffer is big enough to hold the string
-		if len(buf) < n {
-			buf = make([]byte, n)
+		if len(e.buf) < n {
+			e.buf = make([]byte, n)
 		}
 
 		// copy the field name into the buffer
-		err = dec.dec.ReadFull(buf[:n])
+		err = dec.dec.ReadFull(e.buf[:n])
 		if err != nil {
 			return
 		}
 
 		// if the field name is the one we are
 		// looking for, decode the next value
-		if bytes.Equal(buf[:n], bf) {
+		if bytes.Equal(e.buf[:n], bf) {
 			return dec.DecodeValue()
 		}
 
@@ -109,8 +135,13 @@ func (e EncodedDocument) GetByField(field string) (v document.Value, err error) 
 
 // Iterate decodes each fields one by one and passes them to fn
 // until the end of the document or until fn returns an error.
-func (e EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
-	dec := NewDecoder(bytes.NewReader(e))
+func (e *EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
+	_, err := e.reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	dec := NewDecoder(&e.reader)
 	defer dec.Close()
 
 	l, err := dec.dec.DecodeMapLen()

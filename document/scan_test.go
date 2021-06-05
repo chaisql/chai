@@ -75,7 +75,7 @@ func TestScan(t *testing.T) {
 		)).
 		Add("o", document.NewNullValue()).
 		Add("p", document.NewTextValue(now.Format(time.RFC3339Nano))).
-		Add("r", document.NewDocumentValue(codec.NewDocument(buf.Bytes()))).
+		Add("r", document.NewDocumentValue(codec.NewDecoder(buf.Bytes()))).
 		Add("s", document.NewArrayValue(document.NewValueBuffer(document.NewBoolValue(true), document.NewBoolValue(false)))).
 		Add("u", document.NewArrayValue(document.NewValueBuffer(
 			document.NewDocumentValue(

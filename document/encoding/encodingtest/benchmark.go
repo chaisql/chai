@@ -64,7 +64,7 @@ func benchmarkDocumentGetByField(b *testing.B, codecBuilder func() encoding.Code
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		codec.NewDocument(buf.Bytes()).GetByField("name-99")
+		codec.NewDecoder(buf.Bytes()).GetByField("name-99")
 	}
 }
 
@@ -80,7 +80,7 @@ func benchmarkDocumentIterate(b *testing.B, codecBuilder func() encoding.Codec) 
 	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
 	require.NoError(b, err)
 
-	doc := codec.NewDocument(buf.Bytes())
+	doc := codec.NewDecoder(buf.Bytes())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -102,7 +102,7 @@ func benchmarkDecodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
 	require.NoError(b, err)
 
-	doc := codec.NewDocument(buf.Bytes())
+	doc := codec.NewDecoder(buf.Bytes())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

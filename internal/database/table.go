@@ -297,32 +297,48 @@ func (e documentWithKey) Key() (document.Value, error) {
 // from store on documents that don't need to be
 // decoded.
 type lazilyDecodedDocument struct {
-	item  engine.Item
-	buf   []byte
-	codec encoding.Codec
-	pk    *FieldConstraint
+	item    engine.Item
+	buf     []byte
+	codec   encoding.Codec
+	decoder encoding.Decoder
+	pk      *FieldConstraint
+	dirty   bool
 }
 
 func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err error) {
-	if len(d.buf) == 0 {
+	if d.dirty {
+		d.dirty = false
 		err = d.copyFromItem()
 		if err != nil {
 			return
 		}
+
+		if d.decoder == nil {
+			d.decoder = d.codec.NewDecoder(d.buf)
+		} else {
+			d.decoder.Reset(d.buf)
+		}
 	}
 
-	return d.codec.NewDocument(d.buf).GetByField(field)
+	return d.decoder.GetByField(field)
 }
 
 func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Value) error) error {
-	if len(d.buf) == 0 {
+	if d.dirty {
+		d.dirty = false
 		err := d.copyFromItem()
 		if err != nil {
 			return err
 		}
+
+		if d.decoder == nil {
+			d.decoder = d.codec.NewDecoder(d.buf)
+		} else {
+			d.decoder.Reset(d.buf)
+		}
 	}
 
-	return d.codec.NewDocument(d.buf).Iterate(fn)
+	return d.decoder.Iterate(fn)
 }
 
 func (d *lazilyDecodedDocument) RawKey() []byte {
@@ -340,7 +356,7 @@ func (d *lazilyDecodedDocument) Key() (document.Value, error) {
 }
 
 func (d *lazilyDecodedDocument) Reset() {
-	d.buf = d.buf[:0]
+	d.dirty = true
 	d.item = nil
 }
 
@@ -485,7 +501,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	}
 
 	var d documentWithKey
-	d.Document = t.Tx.DB.Codec.NewDocument(v)
+	d.Document = t.Tx.DB.Codec.NewDecoder(v)
 	d.key = key
 	d.pk = t.Info.GetPrimaryKey()
 	return &d, err

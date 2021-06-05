@@ -24,8 +24,8 @@ func (c Codec) NewEncoder(w io.Writer) encoding.Encoder {
 }
 
 // NewDocument implements the encoding.Codec interface.
-func (c Codec) NewDocument(data []byte) document.Document {
-	return EncodedDocument(data)
+func (c Codec) NewDecoder(data []byte) encoding.Decoder {
+	return NewEncodedDocument(data)
 }
 
 // Encoder encodes Genji documents and values
@@ -258,7 +258,7 @@ func (d *Decoder) DecodeDocument() (document.Document, error) {
 		return nil, err
 	}
 
-	return EncodedDocument(r), nil
+	return NewEncodedDocument(r), nil
 }
 
 // DecodeArray decodes one array from the reader.

@@ -244,7 +244,7 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 	var toDelete []byte
 	var buf []byte
 	err = idx.iterate(st, vs, false, func(item engine.Item) error {
-		buf, err = item.ValueCopy(buf[:0])
+		buf, err = item.ValueCopy(buf)
 		if err != nil {
 			return err
 		}
@@ -375,7 +375,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 			k = k[:len(k)-int(n)-1]
 		}
 
-		buf, err = item.ValueCopy(buf[:0])
+		buf, err = item.ValueCopy(buf)
 		if err != nil {
 			return err
 		}
