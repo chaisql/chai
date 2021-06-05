@@ -168,7 +168,6 @@ func (f *FieldHeader) Decode(data []byte) (int, error) {
 	if n <= 0 {
 		return 0, errors.New("cannot decode data")
 	}
-	data = data[n:]
 	read += n
 
 	return read, nil

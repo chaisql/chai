@@ -25,8 +25,8 @@ func (c Codec) NewEncoder(w io.Writer) encoding.Encoder {
 }
 
 // NewDocument implements the encoding.Codec interface.
-func (c Codec) NewDocument(data []byte) document.Document {
-	return EncodedDocument(data)
+func (c Codec) NewDecoder(data []byte) encoding.Decoder {
+	return &EncodedDocument{data}
 }
 
 // Encoder encodes Genji documents and values
@@ -54,14 +54,12 @@ func (e *Encoder) EncodeDocument(d document.Document) error {
 }
 
 // Close does nothing.
-func (e *Encoder) Close() {
-	return
-}
+func (e *Encoder) Close() {}
 
 // EncodeDocument takes a document and encodes it using the encoding.Format type.
 func EncodeDocument(d document.Document) ([]byte, error) {
-	if ec, ok := d.(EncodedDocument); ok {
-		return ec, nil
+	if ec, ok := d.(*EncodedDocument); ok {
+		return ec.data, nil
 	}
 
 	var format Format
@@ -112,7 +110,7 @@ func EncodeDocument(d document.Document) ([]byte, error) {
 // DecodeDocument takes a byte slice and returns a lazily decoded document.
 // If buf is malformed, an error will be returned when calling one of the document method.
 func DecodeDocument(buf []byte) document.Document {
-	return EncodedDocument(buf)
+	return &EncodedDocument{buf}
 }
 
 // EncodeValue encodes any value to a binary representation.
@@ -148,18 +146,22 @@ func encodeInt64(x int64) []byte {
 // An EncodedDocument implements the document.Document interface on top of an encoded representation of a
 // document.
 // It is useful to avoid decoding the entire document when only a few fields are needed.
-type EncodedDocument []byte
+type EncodedDocument struct {
+	data []byte
+}
 
 // GetByField decodes the selected field.
-func (e EncodedDocument) GetByField(field string) (document.Value, error) {
-	return decodeValueFromDocument(e, field)
+func (e *EncodedDocument) GetByField(field string) (document.Value, error) {
+	return decodeValueFromDocument(e.data, field)
 }
+
+func (e *EncodedDocument) Reset(data []byte) { e.data = data }
 
 // Iterate decodes each fields one by one and passes them to fn until the end of the document
 // or until fn returns an error.
-func (e EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
+func (e *EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
 	var format Format
-	err := format.Decode(e)
+	err := format.Decode(e.data)
 	if err != nil {
 		return err
 	}
@@ -180,7 +182,7 @@ func (e EncodedDocument) Iterate(fn func(field string, value document.Value) err
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (e EncodedDocument) MarshalJSON() ([]byte, error) {
+func (e *EncodedDocument) MarshalJSON() ([]byte, error) {
 	return document.MarshalJSON(e)
 }
 
@@ -320,7 +322,7 @@ func DecodeArray(buf []byte) document.Array {
 func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
 	switch t {
 	case document.DocumentValue:
-		return document.NewDocumentValue(EncodedDocument(data)), nil
+		return document.NewDocumentValue(&EncodedDocument{data}), nil
 	case document.ArrayValue:
 		return document.NewArrayValue(EncodedArray(data)), nil
 	case document.BlobValue:
