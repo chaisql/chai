@@ -37,13 +37,13 @@ func NewApp() *cli.App {
 		useBolt := c.Bool("bolt")
 		useBadger := c.Bool("badger")
 		if useBolt && useBadger {
-			return cli.NewExitError("cannot use bolt and badger options at the same time", 2)
+			return cli.Exit("cannot use bolt and badger options at the same time", 2)
 		}
 
 		dbpath := c.Args().First()
 
 		if (useBolt || useBadger) && dbpath == "" {
-			return cli.NewExitError("db path required when using bolt or badger", 2)
+			return cli.Exit("db path required when using bolt or badger", 2)
 		}
 
 		engine := "memory"

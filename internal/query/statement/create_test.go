@@ -253,17 +253,17 @@ func TestCreateTable(t *testing.T) {
 				IsUnique: true,
 			}, tb.Info.FieldConstraints[2])
 
-			idx, err := tx.Catalog.GetIndex(tx, "__genji_autoindex_test_1")
+			idx, err := tx.Catalog.GetIndex(tx, "__genji_autoindexc_test_1")
 			require.NoError(t, err)
 			require.Equal(t, document.IntegerValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
-			idx, err = tx.Catalog.GetIndex(tx, "__genji_autoindex_test_2")
+			idx, err = tx.Catalog.GetIndex(tx, "__genji_autoindexc_test_2")
 			require.NoError(t, err)
 			require.Equal(t, document.DoubleValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
-			idx, err = tx.Catalog.GetIndex(tx, "__genji_autoindex_test_3")
+			idx, err = tx.Catalog.GetIndex(tx, "__genji_autoindexc_test_3")
 			require.NoError(t, err)
 			require.Zero(t, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
@@ -280,6 +280,7 @@ func TestCreateIndex(t *testing.T) {
 	}{
 		{"Basic", "CREATE INDEX idx ON test (foo)", false},
 		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar)", false},
+		{"Duplicate", "CREATE INDEX idx ON test (foo.bar);CREATE INDEX idx ON test (foo.bar)", true},
 		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[1])", false},
 		{"No name", "CREATE UNIQUE INDEX ON test (foo[1])", false},
 		{"No name if not exists", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[1])", true},

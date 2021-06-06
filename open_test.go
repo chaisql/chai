@@ -22,7 +22,7 @@ func TestOpen(t *testing.T) {
 	require.NoError(t, err)
 
 	err = db.Exec(`
-		CREATE TABLE tableA (a INTEGER NOT NULL, b.c[0].d DOUBLE UNIQUE PRIMARY KEY);
+		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b.c[0].d DOUBLE PRIMARY KEY);
 		CREATE TABLE tableB (a TEXT NOT NULL DEFAULT 'hello', PRIMARY KEY (a));
 		CREATE TABLE tableC;
 
@@ -47,7 +47,7 @@ func TestOpen(t *testing.T) {
 		count++
 		if count == 1 {
 			fb := testutil.MakeDocument(t, `{
-				"sql": "CREATE TABLE tableA (a INTEGER NOT NULL, b.c[0].d DOUBLE PRIMARY KEY)",
+				"sql": "CREATE TABLE tableA (a INTEGER NOT NULL UNIQUE, b.c[0].d DOUBLE PRIMARY KEY)",
 				"table_name": "tableA"
 			}`).(*document.FieldBuffer)
 
@@ -58,7 +58,7 @@ func TestOpen(t *testing.T) {
 
 		if count == 2 {
 			fb := testutil.MakeDocument(t, `{
-				"sql": "CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\" PRIMARY KEY)",
+				"sql": "CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")",
 				"table_name": "tableB"
 			}`).(*document.FieldBuffer)
 
@@ -89,13 +89,13 @@ func TestOpen(t *testing.T) {
 	err = res2.Iterate(func(d document.Document) error {
 		count++
 		if count == 1 {
-			fb := testutil.MakeDocument(t, `{
-				"sql": "CREATE INDEX __genji_autoindex_tableA_1 ON tableA (b.c[0].d)",
-				"index_name": "__genji_autoindex_tableA_1",
-				"table_name": "tableA"
-			}`).(*document.FieldBuffer)
+			j := `{
+				"sql": "CREATE UNIQUE INDEX __genji_autoindexc_tableA_1 ON tableA (a)",
+				"index_name": "__genji_autoindexc_tableA_1",
+				"store_name":"aQE="
+			}`
 
-			testutil.RequireDocEqual(t, fb, d)
+			testutil.RequireDocJSONEq(t, d, j)
 			return nil
 		}
 

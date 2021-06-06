@@ -16,7 +16,7 @@ func TestDump(t *testing.T) {
 		tables []string
 	}{
 		{"All tables", nil},
-		{"Selection of tables", []string{"test", "foo"}},
+		{"Selection of tables", []string{"tblA", "foo"}},
 	}
 
 	for _, tt := range tests {

@@ -23,7 +23,7 @@ type Table struct {
 	Info *TableInfo
 	// List of Indexes of this table.
 	// May not represent the most up to date data.
-	// Always get a fresh Table instance relying on this field.
+	// Always get a fresh Table instance before relying on this field.
 	Indexes Indexes
 }
 

@@ -11,11 +11,6 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-const (
-	// indexStorePrefix is the prefix used to name the index stores.
-	indexStorePrefix = "i"
-)
-
 var (
 	// ErrIndexDuplicateValue is returned when a value is already associated with a key
 	ErrIndexDuplicateValue = errors.New("duplicate value")
@@ -33,8 +28,26 @@ var (
 type Index struct {
 	Info *IndexInfo
 
-	tx        engine.Transaction
-	storeName []byte
+	tx engine.Transaction
+}
+
+// NewIndex creates an index that associates values with a list of keys.
+func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
+	if opts == nil {
+		opts = &IndexInfo{
+			Types: []document.ValueType{document.AnyType},
+		}
+	}
+
+	// if no types are provided, it implies that it's an index for single untyped values
+	if opts.Types == nil {
+		opts.Types = []document.ValueType{document.AnyType}
+	}
+
+	return &Index{
+		tx:   tx,
+		Info: opts,
+	}
 }
 
 // indexValueEncoder encodes a field based on its type; if a type is provided,
@@ -93,26 +106,6 @@ func (e *indexValueEncoder) EncodeValue(v document.Value) error {
 	return err
 }
 
-// NewIndex creates an index that associates values with a list of keys.
-func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
-	if opts == nil {
-		opts = &IndexInfo{
-			Types: []document.ValueType{document.AnyType},
-		}
-	}
-
-	// if no types are provided, it implies that it's an index for single untyped values
-	if opts.Types == nil {
-		opts.Types = []document.ValueType{document.AnyType}
-	}
-
-	return &Index{
-		tx:        tx,
-		storeName: append([]byte(indexStorePrefix), idxName...),
-		Info:      opts,
-	}
-}
-
 var errStop = errors.New("stop")
 
 // IsComposite returns true if the index is defined to operate on at least more than one value.
@@ -148,7 +141,7 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 		}
 	}
 
-	st, err := getOrCreateStore(idx.tx, idx.storeName)
+	st, err := getOrCreateStore(idx.tx, idx.Info.StoreName)
 	if err != nil {
 		return nil
 	}
@@ -205,7 +198,7 @@ func (idx *Index) Exists(vs []document.Value) (bool, []byte, error) {
 		return false, nil, stringutil.Errorf("required arity of %d", len(idx.Info.Types))
 	}
 
-	st, err := idx.tx.GetStore(idx.storeName)
+	st, err := idx.tx.GetStore(idx.Info.StoreName)
 	if err != nil {
 		if err == engine.ErrStoreNotFound {
 			return false, nil, nil
@@ -236,7 +229,7 @@ func (idx *Index) Exists(vs []document.Value) (bool, []byte, error) {
 
 // Delete all the references to the key from the index.
 func (idx *Index) Delete(vs []document.Value, k []byte) error {
-	st, err := getOrCreateStore(idx.tx, idx.storeName)
+	st, err := getOrCreateStore(idx.tx, idx.Info.StoreName)
 	if err != nil {
 		return nil
 	}
@@ -354,7 +347,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 		}
 	}
 
-	st, err := idx.tx.GetStore(idx.storeName)
+	st, err := idx.tx.GetStore(idx.Info.StoreName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
 	}
@@ -386,7 +379,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 
 // Truncate deletes all the index data.
 func (idx *Index) Truncate() error {
-	err := idx.tx.DropStore(idx.storeName)
+	err := idx.tx.DropStore(idx.Info.StoreName)
 	if err != nil && err != engine.ErrStoreNotFound {
 		return err
 	}
