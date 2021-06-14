@@ -24,7 +24,7 @@ func TestAlterTable(t *testing.T) {
 
 	// Renaming the table to the same name should fail.
 	err = db.Exec("ALTER TABLE foo RENAME TO foo")
-	require.EqualError(t, err, errs.ErrTableAlreadyExists.Error())
+	require.Equal(t, err, errs.AlreadyExistsError{Name: "foo"})
 
 	err = db.Exec("ALTER TABLE foo RENAME TO bar")
 	require.NoError(t, err)
@@ -42,6 +42,6 @@ func TestAlterTable(t *testing.T) {
 	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, string(data))
 
 	// Renaming a read-only table should fail
-	err = db.Exec("ALTER TABLE __genji_tables RENAME TO bar")
+	err = db.Exec("ALTER TABLE __genji_schema RENAME TO bar")
 	require.Error(t, err)
 }

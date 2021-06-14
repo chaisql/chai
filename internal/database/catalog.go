@@ -1,71 +1,37 @@
 package database
 
 import (
-	"encoding/binary"
 	"errors"
+	"sort"
 	"strings"
 	"sync"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-const (
-	tableStorePrefix   = 't'
-	indexStorePrefix   = 'i'
-	internalPrefix     = "__genji_"
-	tableInfoStoreName = internalPrefix + "tables"
-	indexInfoStoreName = internalPrefix + "indexes"
-)
-
-// Catalog holds all table and index informations.
+// Catalog manages tables and indexes.
 type Catalog struct {
-	cache *catalogCache
+	cache       *catalogCache
+	SchemaTable *SchemaTable
 }
 
-func NewCatalog() *Catalog {
+func NewCatalog(schemaTable *SchemaTable) *Catalog {
 	return &Catalog{
-		cache: newCatalogCache(),
+		SchemaTable: schemaTable,
+		cache:       newCatalogCache(),
 	}
 }
 
 func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo) {
-	tables = append(tables, TableInfo{
-		TableName: tableInfoStoreName,
-		StoreName: []byte(tableInfoStoreName),
-		ReadOnly:  true,
-		FieldConstraints: []*FieldConstraint{
-			{
-				Path: document.Path{
-					document.PathFragment{
-						FieldName: "table_name",
-					},
-				},
-				Type:         document.TextValue,
-				IsPrimaryKey: true,
-			},
-		},
-	})
+	// add the __genji_schema table to the list of tables
+	// so that it can be queried
+	ti := c.SchemaTable.info.Clone()
+	// make sure that table is read-only
+	ti.ReadOnly = true
 
-	tables = append(tables, TableInfo{
-		TableName: indexInfoStoreName,
-		StoreName: []byte(indexInfoStoreName),
-		ReadOnly:  true,
-		FieldConstraints: []*FieldConstraint{
-			{
-				Path: document.Path{
-					document.PathFragment{
-						FieldName: "index_name",
-					},
-				},
-				Type:         document.TextValue,
-				IsPrimaryKey: true,
-			},
-		},
-	})
-
+	tables = append(tables, *ti)
 	c.cache.load(tables, indexes)
 }
 
@@ -73,6 +39,7 @@ func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo) {
 func (c *Catalog) Clone() *Catalog {
 	var clone Catalog
 
+	clone.SchemaTable = c.SchemaTable
 	clone.cache = c.cache.clone()
 
 	return &clone
@@ -108,10 +75,6 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo) error {
-	if strings.HasPrefix(tableName, internalPrefix) {
-		return stringutil.Errorf("table name must not start with %s", internalPrefix)
-	}
-
 	if info == nil {
 		info = new(TableInfo)
 	}
@@ -125,7 +88,7 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		return err
 	}
 
-	err = insertTable(tx, tableName, info)
+	err = c.SchemaTable.insertTable(tx, tableName, info)
 	if err != nil {
 		return err
 	}
@@ -152,7 +115,7 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 		}
 	}
 
-	err = deleteTable(tx, tableName)
+	err = c.SchemaTable.deleteTable(tx, tableName)
 	if err != nil {
 		return err
 	}
@@ -163,16 +126,12 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns errs.ErrIndexAlreadyExists.
 func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
-	if strings.HasPrefix(info.IndexName, internalPrefix) {
-		return stringutil.Errorf("table name must not start with %s", internalPrefix)
-	}
-
-	err := insertIndex(tx, info)
+	err := c.cache.AddIndex(tx, info)
 	if err != nil {
 		return err
 	}
 
-	err = c.cache.AddIndex(tx, info)
+	err = c.SchemaTable.insertIndex(tx, info)
 	if err != nil {
 		return err
 	}
@@ -201,18 +160,23 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 	return NewIndex(tx.Tx, info.IndexName, info), nil
 }
 
-// ListIndexes returns an index by name.
+// ListIndexes returns all indexes for a given table name. If tableName is empty
+// if returns a list of all indexes.
+// The returned list of indexes is sorted lexicographically.
 func (c *Catalog) ListIndexes(tableName string) []string {
 	if tableName == "" {
-		return c.cache.ListIndexes()
+		list := c.cache.ListIndexes()
+		sort.Strings(list)
+		return list
 	}
 	idxs := c.cache.GetTableIndexes(tableName)
-	names := make([]string, 0, len(idxs))
+	list := make([]string, 0, len(idxs))
 	for _, idx := range idxs {
-		names = append(names, idx.IndexName)
+		list = append(list, idx.IndexName)
 	}
 
-	return names
+	sort.Strings(list)
+	return list
 }
 
 // DropIndex deletes an index from the database.
@@ -226,7 +190,7 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 }
 
 func (c *Catalog) dropIndex(tx *Transaction, name string) error {
-	err := deleteIndex(tx, name)
+	err := c.SchemaTable.deleteIndex(tx, name)
 	if err != nil {
 		return err
 	}
@@ -243,7 +207,7 @@ func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc Field
 		return err
 	}
 
-	return replaceTable(tx, tableName, newTi)
+	return c.SchemaTable.replaceTable(tx, tableName, newTi)
 }
 
 // RenameTable renames a table.
@@ -258,7 +222,7 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 	}
 
 	// Insert the TableInfo keyed by the newName name.
-	err = insertTable(tx, newName, newTi)
+	err = c.SchemaTable.insertTable(tx, newName, newTi)
 	if err != nil {
 		return err
 	}
@@ -266,7 +230,7 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 	if len(newIdxs) > 0 {
 		for _, idx := range newIdxs {
 			idx.TableName = newName
-			err = replaceIndex(tx, idx.IndexName, *idx)
+			err = c.SchemaTable.replaceIndex(tx, idx.IndexName, idx)
 			if err != nil {
 				return err
 			}
@@ -274,7 +238,7 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 	}
 
 	// Delete the old table info.
-	return deleteTable(tx, oldName)
+	return c.SchemaTable.deleteTable(tx, oldName)
 }
 
 // ReIndex truncates and recreates selected index from scratch.
@@ -384,8 +348,14 @@ func (c *catalogCache) AddTable(tx *Transaction, info *TableInfo) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// checking if table exists
 	if _, ok := c.tables[info.TableName]; ok {
-		return errs.ErrTableAlreadyExists
+		return errs.AlreadyExistsError{Name: info.TableName}
+	}
+
+	// checking if index exists with the same name
+	if _, ok := c.indexes[info.TableName]; ok {
+		return errs.AlreadyExistsError{Name: info.TableName}
 	}
 
 	c.tables[info.TableName] = info
@@ -455,12 +425,42 @@ func (c *catalogCache) GetTable(tableName string) (*TableInfo, error) {
 	return ti, nil
 }
 
+func pathsToIndexName(paths []document.Path) string {
+	var s strings.Builder
+
+	for i, p := range paths {
+		if i > 0 {
+			s.WriteRune('_')
+		}
+
+		s.WriteString(p.String())
+	}
+
+	return s.String()
+}
+
 func (c *catalogCache) AddIndex(tx *Transaction, info *IndexInfo) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// auto-generate index name if needed
+	if info.IndexName == "" {
+		info.IndexName = stringutil.Sprintf("%s_%s_idx", info.TableName, pathsToIndexName(info.Paths))
+		if _, ok := c.indexes[info.IndexName]; ok {
+			i := 1
+			for {
+				info.IndexName = stringutil.Sprintf("%s_%s_idx%d", info.TableName, pathsToIndexName(info.Paths), i)
+				if _, ok := c.indexes[info.IndexName]; !ok {
+					break
+				}
+
+				i++
+			}
+		}
+	}
+
 	if _, ok := c.indexes[info.IndexName]; ok {
-		return errs.ErrIndexAlreadyExists
+		return errs.AlreadyExistsError{Name: info.IndexName}
 	}
 
 	ti, ok := c.tables[info.TableName]
@@ -517,6 +517,11 @@ func (c *catalogCache) DeleteIndex(tx *Transaction, indexName string) (*IndexInf
 	info, ok := c.indexes[indexName]
 	if !ok {
 		return nil, errs.ErrIndexNotFound
+	}
+
+	// check if the index has been created by a table constraint
+	if info.ConstraintPath != nil {
+		return nil, stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.ConstraintPath)
 	}
 
 	// remove it from the global map of indexes
@@ -635,197 +640,4 @@ func (c *catalogCache) updateTable(tx *Transaction, tableName string, fn func(cl
 	})
 
 	return clone, newIndexes, nil
-}
-
-func initStores(tx *Transaction) error {
-	_, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
-	if err == engine.ErrStoreNotFound {
-		err = tx.Tx.CreateStore([]byte(tableInfoStoreName))
-	}
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Tx.GetStore([]byte(indexInfoStoreName))
-	if err == engine.ErrStoreNotFound {
-		err = tx.Tx.CreateStore([]byte(indexInfoStoreName))
-	}
-	return err
-}
-
-func GetTableStore(tx *Transaction) *Table {
-	st, err := tx.Tx.GetStore([]byte(tableInfoStoreName))
-	if err != nil {
-		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", tableInfoStoreName, err))
-	}
-
-	return &Table{
-		Tx:    tx,
-		Store: st,
-		Info: &TableInfo{
-			TableName: tableInfoStoreName,
-			StoreName: []byte(tableInfoStoreName),
-			FieldConstraints: []*FieldConstraint{
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "table_name",
-						},
-					},
-					Type:         document.TextValue,
-					IsPrimaryKey: true,
-				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "sql",
-						},
-					},
-					Type: document.TextValue,
-				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "store_name",
-						},
-					},
-					Type: document.BlobValue,
-				},
-			},
-		},
-	}
-}
-
-func GetIndexStore(tx *Transaction) *Table {
-	st, err := tx.Tx.GetStore([]byte(indexInfoStoreName))
-	if err != nil {
-		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", indexInfoStoreName, err))
-	}
-
-	return &Table{
-		Tx:    tx,
-		Store: st,
-		Info: &TableInfo{
-			TableName: indexInfoStoreName,
-			StoreName: []byte(indexInfoStoreName),
-			FieldConstraints: []*FieldConstraint{
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "index_name",
-						},
-					},
-					Type:         document.TextValue,
-					IsPrimaryKey: true,
-				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "sql",
-						},
-					},
-					Type: document.TextValue,
-				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "store_name",
-						},
-					},
-					Type: document.BlobValue,
-				},
-			},
-		},
-	}
-}
-
-// insertTable a new tableInfo for the given table name.
-// If info.StoreName is nil, it generates one and stores it in info.
-func insertTable(tx *Transaction, tableName string, info *TableInfo) error {
-	tb := GetTableStore(tx)
-
-	if info.StoreName == nil {
-		seq, err := tb.Store.NextSequence()
-		if err != nil {
-			return err
-		}
-		buf := make([]byte, binary.MaxVarintLen64+1)
-		buf[0] = tableStorePrefix
-		n := binary.PutUvarint(buf[1:], seq)
-		info.StoreName = buf[:n+1]
-	}
-
-	_, err := tb.Insert(info.ToDocument())
-	if err == errs.ErrDuplicateDocument {
-		return errs.ErrTableAlreadyExists
-	}
-
-	return err
-}
-
-func deleteTable(tx *Transaction, tableName string) error {
-	tb := GetTableStore(tx)
-
-	return tb.Delete([]byte(tableName))
-}
-
-// Replace replaces tableName table information with the new info.
-func replaceTable(tx *Transaction, tableName string, info *TableInfo) error {
-	tb := GetTableStore(tx)
-
-	_, err := tb.Replace([]byte(tableName), info.ToDocument())
-	return err
-}
-
-func insertIndex(tx *Transaction, info *IndexInfo) error {
-	tb := GetIndexStore(tx)
-
-	var seq uint64
-	var err error
-	// auto-generate index name
-	if info.IndexName == "" {
-		seq, err = tb.Store.NextSequence()
-		if err != nil {
-			return err
-		}
-
-		if info.FromConstraint {
-			info.IndexName = stringutil.Sprintf("%sautoindexc_%s_%d", internalPrefix, info.TableName, seq)
-		} else {
-			info.IndexName = stringutil.Sprintf("%sautoindex_%s_%d", internalPrefix, info.TableName, seq)
-		}
-	}
-
-	// reuse the same sequence if it exists
-	if seq == 0 {
-		seq, err = tb.Store.NextSequence()
-		if err != nil {
-			return err
-		}
-	}
-
-	buf := make([]byte, binary.MaxVarintLen64+1)
-	buf[0] = byte(indexStorePrefix)
-	n := binary.PutUvarint(buf[1:], seq)
-	info.StoreName = buf[:n+1]
-
-	_, err = tb.Insert(info.ToDocument())
-	if err == errs.ErrDuplicateDocument {
-		return errs.ErrIndexAlreadyExists
-	}
-
-	return err
-}
-
-func replaceIndex(tx *Transaction, indexName string, info IndexInfo) error {
-	tb := GetIndexStore(tx)
-
-	_, err := tb.Replace([]byte(indexName), info.ToDocument())
-	return err
-}
-
-func deleteIndex(tx *Transaction, indexName string) error {
-	tb := GetIndexStore(tx)
-
-	return tb.Delete([]byte(indexName))
 }

@@ -102,7 +102,7 @@ func runHelpCmd() error {
 
 // runTablesCmd displays all tables.
 func runTablesCmd(db *genji.DB, w io.Writer) error {
-	res, err := db.Query("SELECT table_name FROM __genji_tables")
+	res, err := db.Query("SELECT name FROM __genji_schema WHERE type = 'table'")
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {
 		err := db.View(func(tx *genji.Tx) error {
-			_, err := tx.QueryDocument("SELECT 1 FROM __genji_tables WHERE table_name = ? LIMIT 1", tableName)
+			_, err := tx.QueryDocument("SELECT 1 FROM __genji_schema WHERE table_name = ? LIMIT 1", tableName)
 			if err != nil {
 				if err == errs.ErrDocumentNotFound {
 					return fmt.Errorf("%w: %q", errs.ErrTableNotFound, tableName)
@@ -171,19 +171,7 @@ func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath str
 		return err
 	}
 
-	err = otherDB.Exec(dbDump.String())
-	if err != nil {
-		return err
-	}
-
-	dbDump.Reset()
-
-	err = dbutil.Dump(ctx, otherDB, &dbDump)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return otherDB.Exec(dbDump.String())
 }
 
 func runImportCmd(ctx context.Context, db *genji.DB, fileType, path, table string) error {

@@ -30,15 +30,6 @@ func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 	return nil
 }
 
-// ToDocument turns ti into a document.
-func (ti *TableInfo) ToDocument() document.Document {
-	buf := document.NewFieldBuffer()
-	buf.Add("sql", document.NewTextValue(ti.String()))
-	buf.Add("table_name", document.NewTextValue(ti.TableName))
-	buf.Add("store_name", document.NewBlobValue(ti.StoreName))
-	return buf
-}
-
 // String returns a SQL representation.
 func (ti *TableInfo) String() string {
 	var s strings.Builder
@@ -91,17 +82,8 @@ type IndexInfo struct {
 
 	// If set, this index has been created from a table constraint
 	// i.e CREATE TABLE tbl(a INT UNIQUE)
-	FromConstraint bool
-}
-
-// ToDocument creates a document from an IndexConfig.
-func (i *IndexInfo) ToDocument() document.Document {
-	buf := document.NewFieldBuffer()
-	buf.Add("sql", document.NewTextValue(i.String()))
-	buf.Add("index_name", document.NewTextValue(i.IndexName))
-	buf.Add("store_name", document.NewBlobValue(i.StoreName))
-
-	return buf
+	// The path refers to the path this index is related to.
+	ConstraintPath document.Path
 }
 
 // String returns a SQL representation.

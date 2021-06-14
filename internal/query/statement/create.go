@@ -24,8 +24,10 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	var res Result
 
 	err := tx.Catalog.CreateTable(tx, stmt.Info.TableName, &stmt.Info)
-	if stmt.IfNotExists && err == errs.ErrTableAlreadyExists {
-		return res, nil
+	if stmt.IfNotExists {
+		if _, ok := err.(errs.AlreadyExistsError); ok {
+			return res, nil
+		}
 	}
 
 	for _, fc := range stmt.Info.FieldConstraints {
@@ -35,7 +37,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 				Paths:          []document.Path{fc.Path},
 				Unique:         true,
 				Types:          []document.ValueType{fc.Type},
-				FromConstraint: true,
+				ConstraintPath: fc.Path,
 			})
 			if err != nil {
 				return res, err
@@ -64,8 +66,10 @@ func (stmt *CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	var res Result
 
 	err := tx.Catalog.CreateIndex(tx, &stmt.Info)
-	if stmt.IfNotExists && err == errs.ErrIndexAlreadyExists {
-		return res, nil
+	if stmt.IfNotExists {
+		if _, ok := err.(errs.AlreadyExistsError); ok {
+			return res, nil
+		}
 	}
 	if err != nil {
 		return res, err

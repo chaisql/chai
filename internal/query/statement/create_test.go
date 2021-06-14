@@ -253,17 +253,17 @@ func TestCreateTable(t *testing.T) {
 				IsUnique: true,
 			}, tb.Info.FieldConstraints[2])
 
-			idx, err := tx.Catalog.GetIndex(tx, "__genji_autoindexc_test_1")
+			idx, err := tx.Catalog.GetIndex(tx, "test_a_idx")
 			require.NoError(t, err)
 			require.Equal(t, document.IntegerValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
-			idx, err = tx.Catalog.GetIndex(tx, "__genji_autoindexc_test_2")
+			idx, err = tx.Catalog.GetIndex(tx, "test_b_idx")
 			require.NoError(t, err)
 			require.Equal(t, document.DoubleValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
-			idx, err = tx.Catalog.GetIndex(tx, "__genji_autoindexc_test_3")
+			idx, err = tx.Catalog.GetIndex(tx, "test_c_idx")
 			require.NoError(t, err)
 			require.Zero(t, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)

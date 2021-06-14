@@ -25,7 +25,7 @@ func TestDeleteStmt(t *testing.T) {
 		{"With limit", "DELETE FROM test ORDER BY n LIMIT 2", false, `[{"a":"foo1", "b":"bar1", "c":"baz1", "n": 3}]`, nil},
 		{"With order by then limit then offset", "DELETE FROM test ORDER BY n LIMIT 1 OFFSET 1", false, `[{"a": "foo1", "b": "bar1", "c": "baz1", "n": 3}, {"d": "foo3", "b": "bar2", "e": "bar3", "n": 1}]`, nil},
 		{"Table not found", "DELETE FROM foo WHERE b = 'bar1'", true, "[]", nil},
-		{"Read-only table", "DELETE FROM __genji_tables", true, "[]", nil},
+		{"Read-only table", "DELETE FROM __genji_schema", true, "[]", nil},
 	}
 
 	for _, test := range tests {

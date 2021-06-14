@@ -19,7 +19,7 @@ func TestUpdateStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No clause", `UPDATE test`, true, "", nil},
-		{"Read-only table", `UPDATE __genji_tables SET a = 1`, true, "", nil},
+		{"Read-only table", `UPDATE __genji_schema SET a = 1`, true, "", nil},
 
 		// SET tests.
 		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"bar3","e":"baz3"}]`, nil},

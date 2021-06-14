@@ -240,7 +240,7 @@ SELECT pk(), * FROM test_idx;
 */
 
 -- test: read-only tables
-INSERT INTO __genji_tables VALUES {a: 400, b: a * 4};
+INSERT INTO __genji_schema VALUES {a: 400, b: a * 4};
 -- error: cannot write to read-only table
 
 -- test: insert with primary keys

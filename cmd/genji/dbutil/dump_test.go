@@ -136,7 +136,7 @@ func TestDumpSchema(t *testing.T) {
 					writeToBuf("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER);", table)
+				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER UNIQUE);", table)
 				err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")

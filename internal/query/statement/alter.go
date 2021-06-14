@@ -33,7 +33,7 @@ func (stmt AlterStmt) Run(tx *database.Transaction, _ []expr.Param) (Result, err
 	}
 
 	if stmt.TableName == stmt.NewTableName {
-		return res, errs.ErrTableAlreadyExists
+		return res, errs.AlreadyExistsError{Name: stmt.NewTableName}
 	}
 
 	err := tx.Catalog.RenameTable(tx, stmt.TableName, stmt.NewTableName)

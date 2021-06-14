@@ -38,7 +38,7 @@ func TestOpen(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	res1, err := db.Query("SELECT * FROM __genji_tables")
+	res1, err := db.Query("SELECT * FROM __genji_schema")
 	require.NoError(t, err)
 	defer res1.Close()
 
@@ -46,60 +46,26 @@ func TestOpen(t *testing.T) {
 	err = res1.Iterate(func(d document.Document) error {
 		count++
 		if count == 1 {
-			fb := testutil.MakeDocument(t, `{
-				"sql": "CREATE TABLE tableA (a INTEGER NOT NULL UNIQUE, b.c[0].d DOUBLE PRIMARY KEY)",
-				"table_name": "tableA"
-			}`).(*document.FieldBuffer)
-
-			fb.Add("store_name", document.NewBlobValue([]byte{116, 1}))
-			testutil.RequireDocEqual(t, fb, d)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL UNIQUE, b.c[0].d DOUBLE PRIMARY KEY)", "store_name":"AQ==", "type":"table"}`)
 			return nil
 		}
 
 		if count == 2 {
-			fb := testutil.MakeDocument(t, `{
-				"sql": "CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")",
-				"table_name": "tableB"
-			}`).(*document.FieldBuffer)
-
-			fb.Add("store_name", document.NewBlobValue([]byte{116, 2}))
-			testutil.RequireDocEqual(t, fb, d)
+			testutil.RequireDocJSONEq(t, d, `{"constraint_path":"a", "name":"tableA_a_idx", "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "store_name":"Ag==", "table_name":"tableA", "type":"index"}`)
 			return nil
 		}
 
 		if count == 3 {
-			fb := testutil.MakeDocument(t, `{
-				"sql": "CREATE TABLE tableC",
-				"table_name": "tableC"
-			}`).(*document.FieldBuffer)
-
-			fb.Add("store_name", document.NewBlobValue([]byte{116, 3}))
-			testutil.RequireDocEqual(t, fb, d)
-			return nil
-		}
-		return errors.New("more than 3 tables")
-	})
-	require.NoError(t, err)
-
-	res2, err := db.Query("SELECT * FROM __genji_indexes")
-	require.NoError(t, err)
-	defer res2.Close()
-
-	count = 0
-	err = res2.Iterate(func(d document.Document) error {
-		count++
-		if count == 1 {
-			j := `{
-				"sql": "CREATE UNIQUE INDEX __genji_autoindexc_tableA_1 ON tableA (a)",
-				"index_name": "__genji_autoindexc_tableA_1",
-				"store_name":"aQE="
-			}`
-
-			testutil.RequireDocJSONEq(t, d, j)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")", "store_name":"Aw==", "type":"table"}`)
 			return nil
 		}
 
-		return errors.New("more than 1 index")
+		if count == 4 {
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableC", "sql":"CREATE TABLE tableC", "store_name":"BA==", "type":"table"}`)
+			return nil
+		}
+
+		return errors.New("more than 4 relations")
 	})
 	require.NoError(t, err)
 

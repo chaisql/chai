@@ -40,9 +40,8 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 
 	db := Database{
-		ng:      ng,
-		Codec:   opts.Codec,
-		Catalog: NewCatalog(),
+		ng:    ng,
+		Codec: opts.Codec,
 	}
 
 	tx, err := db.BeginTx(ctx, &TxOptions{})
@@ -51,10 +50,14 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 	defer tx.Rollback()
 
-	err = initStores(tx)
+	schemaTable := NewSchemaTable(tx)
+
+	err = schemaTable.Init(tx)
 	if err != nil {
 		return nil, err
 	}
+
+	db.Catalog = NewCatalog(schemaTable)
 
 	err = tx.Commit()
 	return &db, err
@@ -62,6 +65,14 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 
 // Close the underlying engine.
 func (db *Database) Close() error {
+	// If there is an attached transaction
+	// it must be rolled back before closing the engine.
+	if tx := db.GetAttachedTx(); tx != nil {
+		_ = tx.Rollback()
+	}
+	db.txmu.Lock()
+	defer db.txmu.Unlock()
+
 	return db.ng.Close()
 }
 

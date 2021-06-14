@@ -227,11 +227,7 @@ func TestCatalogCreate(t *testing.T) {
 
 			// Creating a table that already exists should fail.
 			err = tx.Catalog.CreateTable(tx, "test", nil)
-			require.EqualError(t, err, errs.ErrTableAlreadyExists.Error())
-
-			// Creating a table that starts with __genji_ should fail.
-			err = tx.Catalog.CreateTable(tx, "__genji_foo", nil)
-			require.Error(t, err)
+			require.Equal(t, err, errs.AlreadyExistsError{Name: "test"})
 
 			return errDontCommit
 		})
@@ -349,7 +345,7 @@ func TestTxCreateIndex(t *testing.T) {
 			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
-			require.Equal(t, errs.ErrIndexAlreadyExists, err)
+			require.Equal(t, errs.AlreadyExistsError{Name: "idxFoo"}, err)
 			return nil
 		})
 	})
@@ -379,20 +375,20 @@ func TestTxCreateIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
+				TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.a[10].`  bar `.c")},
 			})
 			require.NoError(t, err)
 
-			_, err = tx.Catalog.GetIndex(tx, "__genji_autoindex_test_1")
+			_, err = tx.Catalog.GetIndex(tx, "test_foo.a[10].  bar .c_idx")
 			require.NoError(t, err)
 
 			// create another one
 			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
+				TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.a[10].`  bar `.c")},
 			})
 			require.NoError(t, err)
 
-			_, err = tx.Catalog.GetIndex(tx, "__genji_autoindex_test_2")
+			_, err = tx.Catalog.GetIndex(tx, "test_foo.a[10].  bar .c_idx1")
 			require.NoError(t, err)
 			return nil
 		})
@@ -676,12 +672,11 @@ func TestReadOnlyTables(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	doc, err := db.QueryDocument(`CREATE TABLE foo (a int, b[3].c double unique); SELECT * FROM __genji_tables`)
-	require.NoError(t, err)
-
-	testutil.RequireDocJSONEq(t, doc, `{"sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)", "store_name":"dAE=", "table_name":"foo"}`)
-
-	res, err := db.Query(`CREATE INDEX idx_foo_a ON foo(a); SELECT * FROM __genji_indexes`)
+	res, err := db.Query(`
+		CREATE TABLE foo (a int, b[3].c double unique);
+		CREATE INDEX idx_foo_a ON foo(a);
+		SELECT * FROM __genji_schema
+	`)
 	require.NoError(t, err)
 	defer res.Close()
 
@@ -689,11 +684,13 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d document.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"index_name":"__genji_autoindexc_foo_1", "sql": "CREATE UNIQUE INDEX __genji_autoindexc_foo_1 ON foo (b[3].c)", "store_name": "aQE="}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "type":"table", "store_name":"AQ==", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)"}`)
 		case 1:
-			testutil.RequireDocJSONEq(t, d, `{"index_name":"idx_foo_a", "sql": "CREATE INDEX idx_foo_a ON foo (a)", "store_name":"aQI="}`)
+			testutil.RequireDocJSONEq(t, d, `{"constraint_path":"b[3].c", "name":"foo_b[3].c_idx", "sql":"CREATE UNIQUE INDEX foo_b[3].c_idx ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
+		case 2:
+			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "store_name":"Aw==", "table_name":"foo", "type":"index"}`)
 		default:
-			t.Fatalf("count should be 1, got %d", i)
+			t.Fatalf("count should be 2, got %d", i)
 		}
 
 		i++

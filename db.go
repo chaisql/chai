@@ -351,71 +351,62 @@ func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (
 }
 
 func loadCatalog(tx *database.Transaction) error {
-	tables, err := loadCatalogTables(tx)
-	if err != nil {
-		return err
-	}
+	tb := tx.Catalog.SchemaTable.GetSchemaTable(tx)
 
-	indexes, err := loadCatalogIndexes(tx)
+	var tables []database.TableInfo
+	var indexes []database.IndexInfo
+
+	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+		s, err := d.GetByField("sql")
+		if err != nil && err != document.ErrFieldNotFound {
+			return err
+		}
+		if err == nil {
+			stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
+			if err != nil {
+				return err
+			}
+
+			v, err := d.GetByField("store_name")
+			if err != nil {
+				return err
+			}
+
+			tp, err := d.GetByField("type")
+			if err != nil {
+				return err
+			}
+
+			switch tp.V.(string) {
+			case database.SchemaTableTableType:
+				ti := stmt.(*statement.CreateTableStmt).Info
+				ti.StoreName = v.V.([]byte)
+				tables = append(tables, ti)
+			case database.SchemaTableIndexType:
+				i := stmt.(*statement.CreateIndexStmt).Info
+				i.StoreName = v.V.([]byte)
+
+				cpath, err := d.GetByField("constraint_path")
+				if err != nil && err != document.ErrFieldNotFound {
+					return err
+				}
+				if err == nil {
+					i.ConstraintPath, err = parser.ParsePath(cpath.V.(string))
+					if err != nil {
+						return err
+					}
+				}
+
+				indexes = append(indexes, i)
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
 	tx.Catalog.Load(tables, indexes)
 	return nil
-}
-
-func loadCatalogTables(tx *database.Transaction) ([]database.TableInfo, error) {
-	tb := database.GetTableStore(tx)
-
-	var tables []database.TableInfo
-	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
-		s, err := d.GetByField("sql")
-		if err != nil {
-			return err
-		}
-
-		stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
-		if err != nil {
-			return err
-		}
-
-		ti := stmt.(*statement.CreateTableStmt).Info
-
-		v, err := d.GetByField("store_name")
-		if err != nil {
-			return err
-		}
-		ti.StoreName = v.V.([]byte)
-
-		tables = append(tables, ti)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return tables, nil
-}
-
-func loadCatalogIndexes(tx *database.Transaction) ([]database.IndexInfo, error) {
-	tb := database.GetIndexStore(tx)
-
-	var indexes []database.IndexInfo
-	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
-		s, err := d.GetByField("sql")
-		if err != nil {
-			return err
-		}
-
-		stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
-		if err != nil {
-			return err
-		}
-
-		indexes = append(indexes, stmt.(*statement.CreateIndexStmt).Info)
-		return nil
-	})
-
-	return indexes, err
 }
