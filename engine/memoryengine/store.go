@@ -37,7 +37,7 @@ func (i *item) Less(than btree.Item) bool {
 
 // storeTx implements an engine.Store.
 type storeTx struct {
-	tr   *tree
+	tr   *btree.BTree
 	tx   *transaction
 	name string
 }
@@ -180,7 +180,7 @@ func (s *storeTx) Truncate() error {
 	}
 
 	old := s.tr
-	s.tr = &tree{bt: btree.New(btreeDegree)}
+	s.tr = btree.New(btreeDegree)
 
 	// on rollback replace the new tree by the old one.
 	s.tx.onRollback = append(s.tx.onRollback, func() {
@@ -210,111 +210,125 @@ func (s *storeTx) NextSequence() (uint64, error) {
 // Iterator creates an iterator with the given options.
 func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
+		ctx:     s.tx.ctx,
 		tx:      s.tx,
 		tr:      s.tr,
+		buf:     make([]*item, 0, itBufSize),
 		reverse: opts.Reverse,
-		ch:      make(chan *item),
-		closed:  make(chan struct{}),
 	}
 }
 
-// iterator uses a goroutine to read from the tree on demand.
+const itBufSize = 64
+
+// iterator iterates over the btree in batches.
+
 type iterator struct {
+	ctx     context.Context
 	tx      *transaction
 	reverse bool
-	tr      *tree
-	item    *item // current item
-	ch      chan *item
-	closed  chan struct{} // closed by the goroutine when it's shutdown
-	ctx     context.Context
-	cancel  func()
-	err     error
+	tr      *btree.BTree
+
+	// buf stores a batch of itBufSize items
+	buf []*item
+
+	// cursor represents the current item in the batch
+	cursor int
+
+	// seekBuf is used to avoid reallocating an item everytime
+	// we need to seek in the tree
+	seekBuf item
+
+	// if an error occurs, it is stored in err
+	// and Valid returns false
+	err error
 }
 
+// Seek seeks the pivot and reads a batch of items from the tree.
 func (it *iterator) Seek(pivot []byte) {
-	// make sure any opened goroutine
-	// is closed before creating a new one
-	if it.cancel != nil {
-		it.cancel()
-		<-it.closed
-	}
+	// reset the buffer and cursor
+	it.buf = it.buf[:0]
+	it.cursor = 0
 
-	it.ch = make(chan *item)
-	it.closed = make(chan struct{})
-	it.ctx, it.cancel = context.WithCancel(it.tx.ctx)
+	// build the tree iterator so that it reads at most
+	// itBufSize items
+	var count int
+	iter := btree.ItemIterator(func(i btree.Item) bool {
+		it.buf = append(it.buf, i.(*item))
+		count++
+		return count < itBufSize
+	})
 
-	it.runIterator(pivot)
-
-	it.Next()
-}
-
-// runIterator creates a goroutine that reads from the tree.
-// Once the goroutine is done reading or if the context is canceled,
-// both ch and closed channels will be closed.
-func (it *iterator) runIterator(pivot []byte) {
-	it.tx.wg.Add(1)
-
-	go func(ctx context.Context, ch chan *item, tr *tree) {
-		defer it.tx.wg.Done()
-		defer close(ch)
-		defer close(it.closed)
-
-		iter := btree.ItemIterator(func(i btree.Item) bool {
-			select {
-			case <-ctx.Done():
-				return false
-			default:
-			}
-
-			itm := i.(*item)
-			if itm.deleted {
-				return true
-			}
-
-			select {
-			case <-ctx.Done():
-				return false
-			case ch <- itm:
-				return true
-			}
-		})
-
-		if it.reverse {
-			if len(pivot) == 0 {
-				tr.Descend(iter)
-			} else {
-				tr.DescendLessOrEqual(&item{k: pivot}, iter)
-			}
+	// run the right
+	it.seekBuf.k = pivot
+	if it.reverse {
+		if len(pivot) == 0 {
+			it.tr.Descend(iter)
 		} else {
-			if len(pivot) == 0 {
-				tr.Ascend(iter)
-			} else {
-				tr.AscendGreaterOrEqual(&item{k: pivot}, iter)
-			}
+			it.tr.DescendLessOrEqual(&it.seekBuf, iter)
 		}
-	}(it.ctx, it.ch, it.tr)
+	} else {
+		if len(pivot) == 0 {
+			it.tr.Ascend(iter)
+		} else {
+			it.tr.AscendGreaterOrEqual(&it.seekBuf, iter)
+		}
+	}
 }
 
 func (it *iterator) Valid() bool {
 	if it.err != nil {
 		return false
 	}
+
 	select {
-	case <-it.tx.ctx.Done():
-		it.err = it.tx.ctx.Err()
+	case <-it.ctx.Done():
+		it.err = it.ctx.Err()
 	default:
 	}
 
-	return it.item != nil && it.err == nil
+	// since the iterator can be used
+	// while deleting items
+	// we need to skip all deleted items
+	// until we find one that's not deleted
+	for it.cursor < len(it.buf) {
+		if !it.buf[it.cursor].deleted {
+			break
+		}
+
+		it.cursor++
+	}
+
+	// if we reached the end of the buffer
+	// we need to preload another batch
+	for it.cursor >= len(it.buf) && len(it.buf) == itBufSize {
+		// get the key of the last item of the buffer
+		// and preload from that key
+		pivot := it.buf[len(it.buf)-1].k
+		it.Seek(pivot)
+
+		// the pivot was part of the previous batch
+		// but is also part of the new batch, we need to
+		// skip it to avoid duplicate iteration
+		it.cursor++
+
+		// since the iterator can be used
+		// while deleting items
+		// we need to skip all deleted items
+		// until we find one that's not deleted
+		for it.cursor < len(it.buf) {
+			if !it.buf[it.cursor].deleted {
+				break
+			}
+
+			it.cursor++
+		}
+	}
+
+	return len(it.buf) > 0 && it.cursor < len(it.buf) && it.err == nil
 }
 
-// Read the next item from the goroutine
 func (it *iterator) Next() {
-	select {
-	case it.item = <-it.ch:
-	case <-it.tx.ctx.Done():
-		it.err = it.tx.ctx.Err()
-	}
+	it.cursor++
 }
 
 func (it *iterator) Err() error {
@@ -322,16 +336,10 @@ func (it *iterator) Err() error {
 }
 
 func (it *iterator) Item() engine.Item {
-	return it.item
+	return it.buf[it.cursor]
 }
 
 // Close the inner goroutine.
 func (it *iterator) Close() error {
-	if it.cancel != nil {
-		it.cancel()
-		it.cancel = nil
-		<-it.closed
-	}
-
 	return nil
 }
