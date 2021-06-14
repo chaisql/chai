@@ -3,7 +3,6 @@ package memoryengine
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/genjidb/genji/engine"
 	"github.com/google/btree"
@@ -19,14 +18,14 @@ const btreeDegree = 12
 // an in-memory Btree. It is not thread safe.
 type Engine struct {
 	closed    bool
-	stores    map[string]*tree
+	stores    map[string]*btree.BTree
 	sequences map[string]uint64
 }
 
 // NewEngine creates an in-memory engine.
 func NewEngine() *Engine {
 	return &Engine{
-		stores:    make(map[string]*tree),
+		stores:    make(map[string]*btree.BTree),
 		sequences: make(map[string]uint64),
 	}
 }
@@ -64,7 +63,6 @@ type transaction struct {
 	onRollback []func() // called during a rollback
 	onCommit   []func() // called during a commit
 	terminated bool
-	wg         sync.WaitGroup
 }
 
 // If the transaction is writable, rollback calls
@@ -77,8 +75,6 @@ func (tx *transaction) Rollback() error {
 	}
 
 	tx.terminated = true
-
-	tx.wg.Wait()
 
 	if tx.writable {
 		for _, undo := range tx.onRollback {
@@ -107,8 +103,6 @@ func (tx *transaction) Commit() error {
 	if !tx.writable {
 		return engine.ErrTransactionReadOnly
 	}
-
-	tx.wg.Wait()
 
 	select {
 	case <-tx.ctx.Done():
@@ -156,9 +150,7 @@ func (tx *transaction) CreateStore(name []byte) error {
 		return engine.ErrStoreAlreadyExists
 	}
 
-	tr := btree.New(btreeDegree)
-
-	tx.ng.stores[string(name)] = &tree{bt: tr}
+	tx.ng.stores[string(name)] = btree.New(btreeDegree)
 
 	// on rollback, remove the btree from the list of stores
 	tx.onRollback = append(tx.onRollback, func() {
@@ -192,82 +184,4 @@ func (tx *transaction) DropStore(name []byte) error {
 	})
 
 	return nil
-}
-
-// tree is a thread safe wrapper aroung BTree.
-// It prevents modifying and rebalancing the btree while other
-// routines are reading it.
-type tree struct {
-	bt *btree.BTree
-
-	m sync.RWMutex
-}
-
-func (t *tree) Get(key btree.Item) btree.Item {
-	t.m.RLock()
-	defer t.m.RUnlock()
-
-	return t.bt.Get(key)
-}
-
-func (t *tree) Delete(key btree.Item) btree.Item {
-	t.m.Lock()
-	defer t.m.Unlock()
-
-	return t.bt.Delete(key)
-}
-
-func (t *tree) ReplaceOrInsert(key btree.Item) btree.Item {
-	t.m.Lock()
-	defer t.m.Unlock()
-
-	return t.bt.ReplaceOrInsert(key)
-}
-
-func (t *tree) Ascend(iterator btree.ItemIterator) {
-	t.m.RLock()
-	defer t.m.RUnlock()
-
-	t.bt.Ascend(func(i btree.Item) bool {
-		t.m.RUnlock()
-		defer t.m.RLock()
-
-		return iterator(i)
-	})
-}
-
-func (t *tree) AscendGreaterOrEqual(pivot btree.Item, iterator btree.ItemIterator) {
-	t.m.RLock()
-	defer t.m.RUnlock()
-
-	t.bt.AscendGreaterOrEqual(pivot, func(i btree.Item) bool {
-		t.m.RUnlock()
-		defer t.m.RLock()
-
-		return iterator(i)
-	})
-}
-
-func (t *tree) Descend(iterator btree.ItemIterator) {
-	t.m.RLock()
-	defer t.m.RUnlock()
-
-	t.bt.Descend(func(i btree.Item) bool {
-		t.m.RUnlock()
-		defer t.m.RLock()
-
-		return iterator(i)
-	})
-}
-
-func (t *tree) DescendLessOrEqual(pivot btree.Item, iterator btree.ItemIterator) {
-	t.m.RLock()
-	defer t.m.RUnlock()
-
-	t.bt.DescendLessOrEqual(pivot, func(i btree.Item) bool {
-		t.m.RUnlock()
-		defer t.m.RLock()
-
-		return iterator(i)
-	})
 }
