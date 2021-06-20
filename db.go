@@ -241,9 +241,9 @@ func (s *Statement) QueryDocument(args ...interface{}) (d document.Document, err
 	return scanDocument(res)
 }
 
-func scanDocument(res *Result) (document.Document, error) {
+func scanDocument(iter document.Iterator) (document.Document, error) {
 	var d document.Document
-	err := res.Iterate(func(doc document.Document) error {
+	err := iter.Iterate(func(doc document.Document) error {
 		d = doc
 		return stream.ErrStreamClosed
 	})
