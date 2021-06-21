@@ -307,7 +307,6 @@ func (fb *FieldBuffer) Delete(path Path) error {
 			return ErrFieldNotFound
 		}
 		subBuf.Values = append(subBuf.Values[0:idx], subBuf.Values[idx+1:]...)
-		parentPath[:len(parentPath)-1].GetValueFromDocument(fb)
 	default:
 		return ErrFieldNotFound
 	}
