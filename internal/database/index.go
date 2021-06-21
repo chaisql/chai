@@ -513,3 +513,25 @@ func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(it
 
 	return nil
 }
+
+type Indexes []*Index
+
+func (i Indexes) GetIndex(name string) *Index {
+	for _, idx := range i {
+		if idx.Info.IndexName == name {
+			return idx
+		}
+	}
+
+	return nil
+}
+
+func (i Indexes) GetIndexByPath(p document.Path) *Index {
+	for _, idx := range i {
+		if idx.Info.Paths[0].IsEqual(p) {
+			return idx
+		}
+	}
+
+	return nil
+}

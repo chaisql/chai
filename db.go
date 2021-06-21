@@ -407,6 +407,6 @@ func loadCatalog(tx *database.Transaction) error {
 		return err
 	}
 
-	tx.Catalog.Load(tables, indexes)
+	tx.Catalog.Load(tables, indexes, nil)
 	return nil
 }

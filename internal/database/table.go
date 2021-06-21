@@ -146,7 +146,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 	return documentWithKey{
 		Document: fb,
 		key:      key,
-		pk:       t.Info.GetPrimaryKey(),
+		pk:       t.Info.FieldConstraints.GetPrimaryKey(),
 	}, nil
 }
 
@@ -388,7 +388,7 @@ func (t *Table) EncodeValue(v document.Value) ([]byte, error) {
 func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, error) {
 	var err error
 
-	pk := t.Info.GetPrimaryKey()
+	pk := t.Info.FieldConstraints.GetPrimaryKey()
 	if pk == nil {
 		// if no primary key was defined, convert the pivot to an integer then to an unsigned integer
 		// and encode it as a varint
@@ -467,7 +467,7 @@ func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.D
 		codec: t.Tx.DB.Codec,
 	}
 
-	d.pk = t.Info.GetPrimaryKey()
+	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
 
 	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
@@ -503,7 +503,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	var d documentWithKey
 	d.Document = t.Tx.DB.Codec.NewDecoder(v)
 	d.key = key
-	d.pk = t.Info.GetPrimaryKey()
+	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
 	return &d, err
 }
 
@@ -514,7 +514,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
 func (t *Table) generateKey(info *TableInfo, d document.Document) ([]byte, error) {
-	if pk := t.Info.GetPrimaryKey(); pk != nil {
+	if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {
 			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)

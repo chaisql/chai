@@ -18,18 +18,6 @@ type TableInfo struct {
 	FieldConstraints FieldConstraints
 }
 
-// GetPrimaryKey returns the field constraint of the primary key.
-// Returns nil if there is no primary key.
-func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
-	for _, f := range ti.FieldConstraints {
-		if f.IsPrimaryKey {
-			return f
-		}
-	}
-
-	return nil
-}
-
 // String returns a SQL representation.
 func (ti *TableInfo) String() string {
 	var s strings.Builder
@@ -126,24 +114,52 @@ func (i IndexInfo) Clone() *IndexInfo {
 	return &c
 }
 
-type Indexes []*Index
-
-func (i Indexes) GetIndex(name string) *Index {
-	for _, idx := range i {
-		if idx.Info.IndexName == name {
-			return idx
-		}
-	}
-
-	return nil
+// SequenceInfo holds the configuration of a sequence.
+type SequenceInfo struct {
+	Name        string
+	IncrementBy int64
+	Min, Max    int64
+	Start       int64
+	Cache       uint64
+	Cycle       bool
 }
 
-func (i Indexes) GetIndexByPath(p document.Path) *Index {
-	for _, idx := range i {
-		if idx.Info.Paths[0].IsEqual(p) {
-			return idx
-		}
+// String returns a SQL representation.
+func (s *SequenceInfo) String() string {
+	var b strings.Builder
+
+	stringutil.Fprintf(&b, "CREATE SEQUENCE %s", s.Name)
+	b.WriteString("CREATE SEQUENCE ")
+	b.WriteString(s.Name)
+
+	if s.IncrementBy != 0 {
+		stringutil.Fprintf(&b, " INCREMENT BY %d", s.IncrementBy)
 	}
 
-	return nil
+	if s.Min != 0 {
+		stringutil.Fprintf(&b, " MINVALUE %d", s.Min)
+	}
+
+	if s.Max != 0 {
+		stringutil.Fprintf(&b, " MAXVALUE %d", s.Max)
+	}
+
+	if s.Start != 0 {
+		stringutil.Fprintf(&b, " START WITH %d", s.Start)
+	}
+
+	if s.Cache != 0 {
+		stringutil.Fprintf(&b, " CACHE %d", s.Cache)
+	}
+
+	if s.Cycle {
+		b.WriteString(" CYCLE")
+	}
+
+	return b.String()
+}
+
+// Clone returns a copy of the sequence information.
+func (s SequenceInfo) Clone() *SequenceInfo {
+	return &s
 }

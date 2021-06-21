@@ -226,7 +226,7 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, er
 			return false, err
 		}
 
-		if pk := stmt.Info.GetPrimaryKey(); pk != nil {
+		if pk := stmt.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
 			return false, stringutil.Errorf("table %q has more than one primary key", stmt.Info.TableName)
 		}
 		fc := stmt.Info.FieldConstraints.Get(primaryKeyPath)

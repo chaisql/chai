@@ -28,6 +28,6 @@ func OnInsertConflictDoReplace(t *Table, key []byte, d document.Document, err er
 	return documentWithKey{
 		Document: d,
 		key:      key,
-		pk:       t.Info.GetPrimaryKey(),
+		pk:       t.Info.FieldConstraints.GetPrimaryKey(),
 	}, nil
 }

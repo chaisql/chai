@@ -24,7 +24,7 @@ func NewCatalog(schemaTable *SchemaTable) *Catalog {
 	}
 }
 
-func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo) {
+func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo, sequences []SequenceInfo) {
 	// add the __genji_schema table to the list of tables
 	// so that it can be queried
 	ti := c.SchemaTable.info.Clone()
@@ -32,7 +32,7 @@ func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo) {
 	ti.ReadOnly = true
 
 	tables = append(tables, *ti)
-	c.cache.load(tables, indexes)
+	c.cache.load(tables, indexes, sequences)
 }
 
 // Clone the catalog. Mostly used for testing purposes.
@@ -298,10 +298,47 @@ func (c *Catalog) ReIndexAll(tx *Transaction) error {
 	return nil
 }
 
+func (c *Catalog) GetSequence(name string) (*Sequence, error) {
+	info, err := c.cache.GetSequence(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Sequence{
+		Info: info,
+	}, nil
+}
+
+// CreateSequence creates a sequence with the given name.
+func (c *Catalog) CreateSequence(tx *Transaction, name string, info *SequenceInfo) error {
+	if info == nil {
+		info = new(SequenceInfo)
+	}
+	info.Name = name
+
+	err := c.SchemaTable.insertSequence(tx, info)
+	if err != nil {
+		return err
+	}
+
+	return c.cache.AddSequence(tx, info)
+}
+
+// DropSequence deletes a sequence from the catalog.
+func (c *Catalog) DropSequence(tx *Transaction, name string) error {
+	_, err := c.cache.DeleteSequence(tx, name)
+	if err != nil {
+		return err
+	}
+
+	return c.SchemaTable.deleteSequence(tx, name)
+}
+
 type catalogCache struct {
 	tables           map[string]*TableInfo
 	indexes          map[string]*IndexInfo
 	indexesPerTables map[string][]*IndexInfo
+	sequences        map[string]*SequenceInfo
 
 	mu sync.RWMutex
 }
@@ -311,10 +348,11 @@ func newCatalogCache() *catalogCache {
 		tables:           make(map[string]*TableInfo),
 		indexes:          make(map[string]*IndexInfo),
 		indexesPerTables: make(map[string][]*IndexInfo),
+		sequences:        make(map[string]*SequenceInfo),
 	}
 }
 
-func (c *catalogCache) load(tables []TableInfo, indexes []IndexInfo) {
+func (c *catalogCache) load(tables []TableInfo, indexes []IndexInfo, sequences []SequenceInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -325,6 +363,10 @@ func (c *catalogCache) load(tables []TableInfo, indexes []IndexInfo) {
 	for i := range indexes {
 		c.indexes[indexes[i].IndexName] = &indexes[i]
 		c.indexesPerTables[indexes[i].TableName] = append(c.indexesPerTables[indexes[i].TableName], &indexes[i])
+	}
+
+	for i := range sequences {
+		c.sequences[sequences[i].Name] = &sequences[i]
 	}
 }
 
@@ -339,6 +381,9 @@ func (c *catalogCache) clone() *catalogCache {
 	}
 	for k, v := range c.indexesPerTables {
 		clone.indexesPerTables[k] = v
+	}
+	for k, v := range c.sequences {
+		clone.sequences[k] = v
 	}
 
 	return clone
@@ -355,6 +400,11 @@ func (c *catalogCache) AddTable(tx *Transaction, info *TableInfo) error {
 
 	// checking if index exists with the same name
 	if _, ok := c.indexes[info.TableName]; ok {
+		return errs.AlreadyExistsError{Name: info.TableName}
+	}
+
+	// checking if sequence exists with the same name
+	if _, ok := c.sequences[info.TableName]; ok {
 		return errs.AlreadyExistsError{Name: info.TableName}
 	}
 
@@ -459,10 +509,22 @@ func (c *catalogCache) AddIndex(tx *Transaction, info *IndexInfo) error {
 		}
 	}
 
+	// checking if index exists with the same name
 	if _, ok := c.indexes[info.IndexName]; ok {
 		return errs.AlreadyExistsError{Name: info.IndexName}
 	}
 
+	// checking if table exists with the same name
+	if _, ok := c.tables[info.IndexName]; ok {
+		return errs.AlreadyExistsError{Name: info.IndexName}
+	}
+
+	// checking if sequence exists with the same name
+	if _, ok := c.sequences[info.IndexName]; ok {
+		return errs.AlreadyExistsError{Name: info.IndexName}
+	}
+
+	// get the associated table
 	ti, ok := c.tables[info.TableName]
 	if !ok {
 		return errs.ErrTableNotFound
@@ -640,4 +702,70 @@ func (c *catalogCache) updateTable(tx *Transaction, tableName string, fn func(cl
 	})
 
 	return clone, newIndexes, nil
+}
+
+func (c *catalogCache) AddSequence(tx *Transaction, info *SequenceInfo) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// checking if sequence exists with the same name
+	if _, ok := c.sequences[info.Name]; ok {
+		return errs.AlreadyExistsError{Name: info.Name}
+	}
+
+	// checking if table exists with the same name
+	if _, ok := c.tables[info.Name]; ok {
+		return errs.AlreadyExistsError{Name: info.Name}
+	}
+
+	// checking if index exists with the same name
+	if _, ok := c.indexes[info.Name]; ok {
+		return errs.AlreadyExistsError{Name: info.Name}
+	}
+
+	c.sequences[info.Name] = info
+
+	tx.OnRollbackHooks = append(tx.OnRollbackHooks, func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+
+		delete(c.sequences, info.Name)
+	})
+
+	return nil
+}
+
+func (c *catalogCache) GetSequence(name string) (*SequenceInfo, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	info, ok := c.sequences[name]
+	if !ok {
+		return nil, errs.ErrSequenceNotFound
+	}
+
+	return info, nil
+}
+
+func (c *catalogCache) DeleteSequence(tx *Transaction, name string) (*SequenceInfo, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// check if the sequence exists
+	info, ok := c.sequences[name]
+	if !ok {
+		return nil, errs.ErrSequenceNotFound
+	}
+
+	// remove it from the global map of sequences
+	delete(c.sequences, name)
+
+	tx.OnRollbackHooks = append(tx.OnRollbackHooks, func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+
+		c.sequences[name] = info
+	})
+
+	return info, nil
 }
