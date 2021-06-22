@@ -17,7 +17,7 @@ type Parser struct {
 	s             *scanner.Scanner
 	orderedParams int
 	namedParams   int
-	functions     expr.Functions
+	packagesTable expr.PackagesTable
 }
 
 // NewParser returns a new instance of Parser.
@@ -31,7 +31,7 @@ func NewParserWithOptions(r io.Reader, opts *Options) *Parser {
 		opts = defaultOptions()
 	}
 
-	return &Parser{s: scanner.NewScanner(r), functions: opts.Functions}
+	return &Parser{s: scanner.NewScanner(r), packagesTable: opts.PackagesTable}
 }
 
 // ParseQuery parses a query string and returns its AST representation.

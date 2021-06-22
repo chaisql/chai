@@ -190,11 +190,30 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		p.Unscan()
 		return p.parseCastExpression()
 	case scanner.IDENT:
-		// if the next token is a left parenthesis, this is a function
-		if tok1, _, _ := p.Scan(); tok1 == scanner.LPAREN {
+		tok1, _, _ := p.Scan()
+		// if the next token is a left parenthesis, this is a global function
+		if tok1 == scanner.LPAREN {
 			p.Unscan()
 			p.Unscan()
 			return p.parseFunction()
+		} else {
+			// it may be a package function instead.
+			if tok1 == scanner.DOT {
+				if tok2, _, _ := p.Scan(); tok2 == scanner.IDENT {
+					if tok3, _, _ := p.Scan(); tok3 == scanner.LPAREN {
+						p.Unscan()
+						p.Unscan()
+						p.Unscan()
+						p.Unscan()
+						return p.parseFunction()
+					} else {
+						p.Unscan()
+						p.Unscan()
+					}
+				} else {
+					p.Unscan()
+				}
+			}
 		}
 		p.Unscan()
 		p.Unscan()
@@ -577,9 +596,21 @@ func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.Litera
 // an optional coma-separated list of expressions and a closing parenthesis.
 func (p *Parser) parseFunction() (expr.Expr, error) {
 	// Parse function name.
-	fname, err := p.parseIdent()
+	funcName, err := p.parseIdent()
 	if err != nil {
 		return nil, err
+	}
+
+	// Parse optional package name
+	var pkgName string
+	if tok, _, _ := p.Scan(); tok == scanner.DOT {
+		pkgName = funcName
+		funcName, err = p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		p.Unscan()
 	}
 
 	// Parse required ( token.
@@ -599,7 +630,11 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 
 	// Check if the function is called without arguments.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {
-		return p.functions.GetFunc(fname)
+		def, err := p.packagesTable.GetFunc(pkgName, funcName)
+		if err != nil {
+			return nil, err
+		}
+		return def.Function()
 	}
 	p.Unscan()
 
@@ -625,7 +660,11 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 		return nil, err
 	}
 
-	return p.functions.GetFunc(fname, exprs...)
+	def, err := p.packagesTable.GetFunc(pkgName, funcName)
+	if err != nil {
+		return nil, err
+	}
+	return def.Function(exprs...)
 }
 
 // parseCastExpression parses a string of the form CAST(expr AS type).

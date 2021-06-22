@@ -4,12 +4,12 @@ import "github.com/genjidb/genji/internal/expr"
 
 // Options of the SQL parser.
 type Options struct {
-	// A map of builtin SQL functions.
-	Functions expr.Functions
+	// A table of function packages.
+	PackagesTable expr.PackagesTable
 }
 
 func defaultOptions() *Options {
 	return &Options{
-		Functions: expr.NewFunctions(),
+		PackagesTable: expr.DefaultPackagesTable(),
 	}
 }

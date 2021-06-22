@@ -366,3 +366,12 @@ type Pos struct {
 	Line int
 	Char int
 }
+
+// AllKeywords returns all defined tokens corresponding to keywords.
+func AllKeywords() []Token {
+	tokens := make([]Token, 0, len(keywords))
+	for _, tok := range keywords {
+		tokens = append(tokens, tok)
+	}
+	return tokens
+}

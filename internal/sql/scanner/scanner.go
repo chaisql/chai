@@ -379,7 +379,7 @@ type Scanner struct {
 	s   *scanner
 	i   int // buffer index
 	n   int // buffer size
-	buf [3]struct {
+	buf [4]struct {
 		tok Token
 		pos Pos
 		lit string

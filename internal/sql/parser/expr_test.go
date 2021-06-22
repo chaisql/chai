@@ -164,6 +164,7 @@ func TestParserExpr(t *testing.T) {
 		{"pk() function", "pk()", &expr.PKFunc{}, false},
 		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: testutil.ParsePath(t, "a")}, false},
 		{"count(*) function", "count(*)", &expr.CountFunc{Wildcard: true}, false},
+		{"packaged function", "math.floor(1.2)", testutil.FunctionExpr(t, "math.floor", testutil.DoubleValue(1.2)), false},
 	}
 
 	for _, test := range tests {
