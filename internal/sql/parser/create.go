@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"math"
+
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -23,9 +25,11 @@ func (p *Parser) parseCreateStatement() (statement.Statement, error) {
 		return p.parseCreateIndexStatement(true)
 	case scanner.INDEX:
 		return p.parseCreateIndexStatement(false)
+	case scanner.SEQUENCE:
+		return p.parseCreateSequenceStatement()
 	}
 
-	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX", "SEQUENCE"}, pos)
 }
 
 // parseCreateTableStatement parses a create table string and returns a Statement AST object.
@@ -328,4 +332,232 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (*statement.CreateIndexS
 	stmt.Info.Paths = paths
 
 	return &stmt, nil
+}
+
+// This function assumes the CREATE SEQUENCE tokens have already been consumed.
+func (p *Parser) parseCreateSequenceStatement() (*statement.CreateSequenceStmt, error) {
+	var stmt statement.CreateSequenceStmt
+	var err error
+
+	// Parse IF NOT EXISTS
+	stmt.IfNotExists, err = p.parseOptional(scanner.IF, scanner.NOT, scanner.EXISTS)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse sequence name
+	stmt.Info.Name, err = p.parseIdent()
+	if err != nil {
+		return nil, err
+	}
+
+	var hasAsInt, hasNoMin, hasNoMax, hasNoCycle bool
+	var min, max, incrementBy, start, cache *int64
+
+	for {
+		// Parse AS [any int type]
+		// Only integers are supported
+		if ok, _ := p.parseOptional(scanner.AS); ok {
+			tok, pos, lit := p.ScanIgnoreWhitespace()
+			switch tok {
+			case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
+				scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
+			default:
+				return nil, newParseError(scanner.Tokstr(tok, lit), []string{"INT"}, pos)
+			}
+
+			if hasAsInt {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+
+			hasAsInt = true
+			continue
+		}
+
+		// Parse INCREMENT [BY] integer
+		if ok, _ := p.parseOptional(scanner.INCREMENT); ok {
+			// parse optional BY token
+			_, _ = p.parseOptional(scanner.BY)
+
+			if incrementBy != nil {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+
+			i, err := p.parseInteger()
+			if err != nil {
+				return nil, err
+			}
+			if i == 0 {
+				return nil, &ParseError{Message: "INCREMENT must not be zero"}
+			}
+			incrementBy = &i
+
+			continue
+		}
+
+		// Parse NO [MINVALUE | MAXVALUE | CYCLE]
+		if ok, _ := p.parseOptional(scanner.NO); ok {
+			tok, pos, lit := p.ScanIgnoreWhitespace()
+
+			if tok == scanner.MINVALUE {
+				if hasNoMin {
+					return nil, &ParseError{Message: "conflicting or redundant options"}
+				}
+				hasNoMin = true
+				continue
+			}
+
+			if tok == scanner.MAXVALUE {
+				if hasNoMax {
+					return nil, &ParseError{Message: "conflicting or redundant options"}
+				}
+				hasNoMax = true
+				continue
+			}
+
+			if tok == scanner.CYCLE {
+				if hasNoCycle {
+					return nil, &ParseError{Message: "conflicting or redundant options"}
+				}
+				hasNoCycle = true
+				continue
+			}
+
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"MINVALUE", "MAXVALUE", "CYCLE"}, pos)
+		}
+
+		// Parse MINVALUE integer
+		if ok, _ := p.parseOptional(scanner.MINVALUE); ok {
+			if hasNoMin || min != nil {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+			i, err := p.parseInteger()
+			if err != nil {
+				return nil, err
+			}
+			min = &i
+			continue
+		}
+
+		// Parse MAXVALUE integer
+		if ok, _ := p.parseOptional(scanner.MAXVALUE); ok {
+			if hasNoMax || max != nil {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+			i, err := p.parseInteger()
+			if err != nil {
+				return nil, err
+			}
+			max = &i
+			continue
+		}
+
+		// Parse START [WITH] integer
+		if ok, _ := p.parseOptional(scanner.START); ok {
+			// parse optional WITH token
+			_, _ = p.parseOptional(scanner.WITH)
+
+			if start != nil {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+
+			i, err := p.parseInteger()
+			if err != nil {
+				return nil, err
+			}
+			start = &i
+			continue
+		}
+
+		// Parse CACHE integer
+		if ok, _ := p.parseOptional(scanner.CACHE); ok {
+			if cache != nil {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+
+			v, err := p.parseInteger()
+			if err != nil {
+				return nil, err
+			}
+			if v < 0 {
+				return nil, &ParseError{Message: "cache value must be positive"}
+			}
+			cache = &v
+
+			continue
+		}
+
+		// Parse CYCLE
+		if ok, _ := p.parseOptional(scanner.CYCLE); ok {
+			if hasNoCycle || stmt.Info.Cycle {
+				return nil, &ParseError{Message: "conflicting or redundant options"}
+			}
+
+			stmt.Info.Cycle = true
+			continue
+		}
+
+		break
+	}
+
+	// default value for increment is 1
+	if incrementBy != nil {
+		stmt.Info.IncrementBy = *incrementBy
+	} else {
+		stmt.Info.IncrementBy = 1
+	}
+
+	// determine if the sequence is ascending or descending
+	asc := stmt.Info.IncrementBy > 0
+
+	// default value for min is 1 if ascending
+	// or the minimum value of ints if descending
+	if min != nil {
+		stmt.Info.Min = *min
+	} else if asc {
+		stmt.Info.Min = 1
+	} else {
+		stmt.Info.Min = math.MinInt64
+	}
+
+	// default value for max is the maximum value of ints if ascending
+	// or the -1 if descending
+	if max != nil {
+		stmt.Info.Max = *max
+	} else if asc {
+		stmt.Info.Max = math.MaxInt64
+	} else {
+		stmt.Info.Max = -1
+	}
+
+	// check if min > max
+	if stmt.Info.Min > stmt.Info.Max {
+		return nil, &ParseError{Message: stringutil.Sprintf("MINVALUE (%d) must be less than MAXVALUE (%d)", stmt.Info.Min, stmt.Info.Max)}
+	}
+
+	// default value for start is min if ascending
+	// or max if descending
+	if start != nil {
+		stmt.Info.Start = *start
+	} else if asc {
+		stmt.Info.Start = stmt.Info.Min
+	} else {
+		stmt.Info.Start = stmt.Info.Max
+	}
+
+	// check if min < start < max
+	if stmt.Info.Start < stmt.Info.Min {
+		return nil, &ParseError{Message: stringutil.Sprintf("START value (%d) cannot be less than MINVALUE (%d)", stmt.Info.Start, stmt.Info.Min)}
+	}
+	if stmt.Info.Start > stmt.Info.Max {
+		return nil, &ParseError{Message: stringutil.Sprintf("START value (%d) cannot be greater than MAXVALUE (%d)", stmt.Info.Start, stmt.Info.Max)}
+	}
+
+	// default for cache is 1
+	if cache != nil {
+		stmt.Info.Cache = uint64(*cache)
+	} else {
+		stmt.Info.Cache = 1
+	}
+	return &stmt, err
 }

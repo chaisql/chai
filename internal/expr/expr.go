@@ -130,3 +130,42 @@ func Walk(e Expr, fn func(Expr) bool) bool {
 
 	return false
 }
+
+type NextValueFor struct {
+	SeqName string
+}
+
+// Eval calls the underlying expression Eval method.
+func (n NextValueFor) Eval(env *Environment) (document.Value, error) {
+	tx := env.GetTx()
+	seq, err := tx.Catalog.GetSequence(n.SeqName)
+	if err != nil {
+		return nullLitteral, err
+	}
+
+	i, err := seq.Next(tx)
+	if err != nil {
+		return nullLitteral, err
+	}
+
+	return document.NewIntegerValue(i), nil
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (n NextValueFor) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(NextValueFor)
+	if !ok {
+		return false
+	}
+
+	return o.SeqName == n.SeqName
+}
+
+func (n NextValueFor) String() string {
+	return stringutil.Sprintf("NEXT VALUE FOR %s", n.SeqName)
+}

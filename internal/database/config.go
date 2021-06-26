@@ -128,7 +128,6 @@ type SequenceInfo struct {
 func (s *SequenceInfo) String() string {
 	var b strings.Builder
 
-	stringutil.Fprintf(&b, "CREATE SEQUENCE %s", s.Name)
 	b.WriteString("CREATE SEQUENCE ")
 	b.WriteString(s.Name)
 

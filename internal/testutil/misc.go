@@ -4,3 +4,5 @@ package testutil
 type KV struct {
 	Key, Value []byte
 }
+
+func Int64Ptr(n int64) *int64 { return &n }

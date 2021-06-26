@@ -13,25 +13,32 @@ import (
 
 // Catalog manages tables and indexes.
 type Catalog struct {
-	cache       *catalogCache
-	SchemaTable *SchemaTable
+	cache         *catalogCache
+	SchemaTable   *SchemaTable
+	SequenceTable *SequenceTable
 }
 
-func NewCatalog(schemaTable *SchemaTable) *Catalog {
+func NewCatalog(schemaTable *SchemaTable, sequenceTable *SequenceTable) *Catalog {
 	return &Catalog{
-		SchemaTable: schemaTable,
-		cache:       newCatalogCache(),
+		SchemaTable:   schemaTable,
+		SequenceTable: sequenceTable,
+		cache:         newCatalogCache(),
 	}
 }
 
-func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo, sequences []SequenceInfo) {
+func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo, sequences []Sequence) {
 	// add the __genji_schema table to the list of tables
 	// so that it can be queried
 	ti := c.SchemaTable.info.Clone()
 	// make sure that table is read-only
 	ti.ReadOnly = true
-
 	tables = append(tables, *ti)
+
+	// add the __genji_sequence table to the list of tables
+	// so that it can be queried.
+	// That table can be modified
+	tables = append(tables, *c.SequenceTable.info)
+
 	c.cache.load(tables, indexes, sequences)
 }
 
@@ -40,6 +47,7 @@ func (c *Catalog) Clone() *Catalog {
 	var clone Catalog
 
 	clone.SchemaTable = c.SchemaTable
+	clone.SequenceTable = c.SequenceTable
 	clone.cache = c.cache.clone()
 
 	return &clone
@@ -299,14 +307,12 @@ func (c *Catalog) ReIndexAll(tx *Transaction) error {
 }
 
 func (c *Catalog) GetSequence(name string) (*Sequence, error) {
-	info, err := c.cache.GetSequence(name)
+	seq, err := c.cache.GetSequence(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Sequence{
-		Info: info,
-	}, nil
+	return seq, nil
 }
 
 // CreateSequence creates a sequence with the given name.
@@ -317,6 +323,11 @@ func (c *Catalog) CreateSequence(tx *Transaction, name string, info *SequenceInf
 	info.Name = name
 
 	err := c.SchemaTable.insertSequence(tx, info)
+	if err != nil {
+		return err
+	}
+
+	err = c.SequenceTable.InitSequence(tx, info.Name)
 	if err != nil {
 		return err
 	}
@@ -338,7 +349,7 @@ type catalogCache struct {
 	tables           map[string]*TableInfo
 	indexes          map[string]*IndexInfo
 	indexesPerTables map[string][]*IndexInfo
-	sequences        map[string]*SequenceInfo
+	sequences        map[string]*Sequence
 
 	mu sync.RWMutex
 }
@@ -348,11 +359,11 @@ func newCatalogCache() *catalogCache {
 		tables:           make(map[string]*TableInfo),
 		indexes:          make(map[string]*IndexInfo),
 		indexesPerTables: make(map[string][]*IndexInfo),
-		sequences:        make(map[string]*SequenceInfo),
+		sequences:        make(map[string]*Sequence),
 	}
 }
 
-func (c *catalogCache) load(tables []TableInfo, indexes []IndexInfo, sequences []SequenceInfo) {
+func (c *catalogCache) load(tables []TableInfo, indexes []IndexInfo, sequences []Sequence) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -366,7 +377,7 @@ func (c *catalogCache) load(tables []TableInfo, indexes []IndexInfo, sequences [
 	}
 
 	for i := range sequences {
-		c.sequences[sequences[i].Name] = &sequences[i]
+		c.sequences[sequences[i].Info.Name] = &sequences[i]
 	}
 }
 
@@ -723,7 +734,7 @@ func (c *catalogCache) AddSequence(tx *Transaction, info *SequenceInfo) error {
 		return errs.AlreadyExistsError{Name: info.Name}
 	}
 
-	c.sequences[info.Name] = info
+	c.sequences[info.Name] = &Sequence{Info: info}
 
 	tx.OnRollbackHooks = append(tx.OnRollbackHooks, func() {
 		c.mu.Lock()
@@ -735,24 +746,24 @@ func (c *catalogCache) AddSequence(tx *Transaction, info *SequenceInfo) error {
 	return nil
 }
 
-func (c *catalogCache) GetSequence(name string) (*SequenceInfo, error) {
+func (c *catalogCache) GetSequence(name string) (*Sequence, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	info, ok := c.sequences[name]
+	seq, ok := c.sequences[name]
 	if !ok {
 		return nil, errs.ErrSequenceNotFound
 	}
 
-	return info, nil
+	return seq, nil
 }
 
-func (c *catalogCache) DeleteSequence(tx *Transaction, name string) (*SequenceInfo, error) {
+func (c *catalogCache) DeleteSequence(tx *Transaction, name string) (*Sequence, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// check if the sequence exists
-	info, ok := c.sequences[name]
+	seq, ok := c.sequences[name]
 	if !ok {
 		return nil, errs.ErrSequenceNotFound
 	}
@@ -764,8 +775,8 @@ func (c *catalogCache) DeleteSequence(tx *Transaction, name string) (*SequenceIn
 		c.mu.Lock()
 		defer c.mu.Unlock()
 
-		c.sequences[name] = info
+		c.sequences[name] = seq
 	})
 
-	return info, nil
+	return seq, nil
 }

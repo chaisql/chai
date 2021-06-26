@@ -84,7 +84,7 @@ func (s *SchemaTable) Init(tx *Transaction) error {
 	return err
 }
 
-func (s *SchemaTable) GetSchemaTable(tx *Transaction) *Table {
+func (s *SchemaTable) GetTable(tx *Transaction) *Table {
 	st, err := tx.Tx.GetStore([]byte(SchemaTableName))
 	if err != nil {
 		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", SchemaTableName, err))
@@ -132,7 +132,7 @@ func (s *SchemaTable) sequenceInfoToDocument(seq *SequenceInfo) document.Documen
 // insertTable inserts a new tableInfo for the given table name.
 // If info.StoreName is nil, it generates one and stores it in info.
 func (s *SchemaTable) insertTable(tx *Transaction, tableName string, info *TableInfo) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	if info.StoreName == nil {
 		seq, err := tb.Store.NextSequence()
@@ -154,20 +154,20 @@ func (s *SchemaTable) insertTable(tx *Transaction, tableName string, info *Table
 
 // Replace replaces tableName table information with the new info.
 func (s *SchemaTable) replaceTable(tx *Transaction, tableName string, info *TableInfo) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	_, err := tb.Replace([]byte(tableName), s.tableInfoToDocument(info))
 	return err
 }
 
 func (s *SchemaTable) deleteTable(tx *Transaction, tableName string) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	return tb.Delete([]byte(tableName))
 }
 
 func (s *SchemaTable) insertIndex(tx *Transaction, info *IndexInfo) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	if info.StoreName == nil {
 		seq, err := tb.Store.NextSequence()
@@ -189,20 +189,20 @@ func (s *SchemaTable) insertIndex(tx *Transaction, info *IndexInfo) error {
 }
 
 func (s *SchemaTable) replaceIndex(tx *Transaction, indexName string, info *IndexInfo) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	_, err := tb.Replace([]byte(indexName), s.indexInfoToDocument(info))
 	return err
 }
 
 func (s *SchemaTable) deleteIndex(tx *Transaction, indexName string) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	return tb.Delete([]byte(indexName))
 }
 
 func (s *SchemaTable) insertSequence(tx *Transaction, info *SequenceInfo) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	_, err := tb.Insert(s.sequenceInfoToDocument(info))
 	if err == errs.ErrDuplicateDocument {
@@ -213,14 +213,14 @@ func (s *SchemaTable) insertSequence(tx *Transaction, info *SequenceInfo) error 
 }
 
 func (s *SchemaTable) replaceSequence(tx *Transaction, name string, info *SequenceInfo) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	_, err := tb.Replace([]byte(name), s.sequenceInfoToDocument(info))
 	return err
 }
 
 func (s *SchemaTable) deleteSequence(tx *Transaction, name string) error {
-	tb := s.GetSchemaTable(tx)
+	tb := s.GetTable(tx)
 
 	return tb.Delete([]byte(name))
 }

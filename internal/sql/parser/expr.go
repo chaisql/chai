@@ -253,9 +253,35 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 			return nil, err
 		}
 		return expr.Not(e), nil
+	case scanner.NEXT:
+		err := p.parseTokens(scanner.VALUE, scanner.FOR)
+		if err != nil {
+			return nil, err
+		}
+		seqName, err := p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+
+		return expr.NextValueFor{SeqName: seqName}, nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
 	}
+}
+
+// parseInteger parses an integer.
+func (p *Parser) parseInteger() (int64, error) {
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	if tok != scanner.INTEGER {
+		return 0, newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
+	}
+
+	v, err := strconv.ParseInt(lit, 10, 64)
+	if err != nil {
+		return 0, newParseError(scanner.Tokstr(tok, lit), []string{"INT"}, pos)
+	}
+
+	return v, nil
 }
 
 // parseIdent parses an identifier.

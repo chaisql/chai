@@ -214,7 +214,7 @@ func TestCatalogTable(t *testing.T) {
 	})
 }
 
-func TestCatalogCreate(t *testing.T) {
+func TestCatalogCreateTable(t *testing.T) {
 	t.Run("Same table name", func(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
@@ -273,7 +273,7 @@ func TestCatalogCreate(t *testing.T) {
 	})
 }
 
-func TestTxCreateIndex(t *testing.T) {
+func TestCatalogCreateIndex(t *testing.T) {
 	t.Run("Should create an index, build it and return it", func(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
@@ -697,4 +697,60 @@ func TestReadOnlyTables(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
+}
+
+func TestCatalogCreateSequence(t *testing.T) {
+	t.Run("Should create a sequence and add it to the schema and sequence tables", func(t *testing.T) {
+		db, cleanup := testutil.NewTestDB(t)
+		defer cleanup()
+
+		update(t, db, func(tx *database.Transaction) error {
+			err := tx.Catalog.CreateSequence(tx, "test1", &database.SequenceInfo{Name: "test1", IncrementBy: 1})
+			if err != nil {
+				return err
+			}
+
+			seq, err := tx.Catalog.GetSequence("test1")
+			require.NoError(t, err)
+			require.NotNil(t, seq)
+
+			_, err = tx.Catalog.SchemaTable.GetTable(tx).GetDocument([]byte("test1"))
+			require.NoError(t, err)
+
+			_, err = tx.Catalog.SequenceTable.GetTable(tx).GetDocument([]byte("test1"))
+			require.NoError(t, err)
+			return nil
+		})
+
+		clone := db.Catalog.Clone()
+
+		update(t, db, func(tx *database.Transaction) error {
+			err := tx.Catalog.CreateSequence(tx, "test2", &database.SequenceInfo{Name: "test2", IncrementBy: 1})
+			if err != nil {
+				return err
+			}
+			seq, err := tx.Catalog.GetSequence("test2")
+			require.NoError(t, err)
+			require.NotNil(t, seq)
+
+			return errDontCommit
+		})
+
+		require.Equal(t, clone, db.Catalog)
+	})
+
+	t.Run("Should fail if it already exists", func(t *testing.T) {
+		db, cleanup := testutil.NewTestDB(t)
+		defer cleanup()
+
+		update(t, db, func(tx *database.Transaction) error {
+			return tx.Catalog.CreateSequence(tx, "test", nil)
+		})
+
+		update(t, db, func(tx *database.Transaction) error {
+			err := tx.Catalog.CreateSequence(tx, "test", nil)
+			require.Equal(t, errs.AlreadyExistsError{Name: "test"}, err)
+			return nil
+		})
+	})
 }
