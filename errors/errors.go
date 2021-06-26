@@ -13,6 +13,9 @@ var (
 	// ErrIndexNotFound is returned when the targeted index doesn't exist.
 	ErrIndexNotFound = errors.New("index not found")
 
+	// ErrSequenceNotFound is returned when the targeted sequence doesn't exist.
+	ErrSequenceNotFound = errors.New("sequence not found")
+
 	// ErrDocumentNotFound is returned when no document is associated with the provided key.
 	ErrDocumentNotFound = errors.New("document not found")
 

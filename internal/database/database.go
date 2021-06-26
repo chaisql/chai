@@ -51,13 +51,19 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	defer tx.Rollback()
 
 	schemaTable := NewSchemaTable(tx)
+	sequenceTable := NewSequenceTable(tx)
 
 	err = schemaTable.Init(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	db.Catalog = NewCatalog(schemaTable)
+	err = sequenceTable.Init(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	db.Catalog = NewCatalog(schemaTable, sequenceTable)
 
 	err = tx.Commit()
 	return &db, err

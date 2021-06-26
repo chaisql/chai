@@ -332,7 +332,7 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 				pn, ok := prev.(*stream.ProjectOperator)
 				if ok {
 					// if the projection is unique, we remove the node from the tree
-					if isProjectionUnique(t.Indexes, pn, t.Info.GetPrimaryKey()) {
+					if isProjectionUnique(t.Indexes, pn, t.Info.FieldConstraints.GetPrimaryKey()) {
 						s.Remove(n)
 						n = prev
 						continue
@@ -437,7 +437,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 			filterNodes = append(filterNodes, filterNode{path: path, e: e, f: f})
 
 			// check for primary keys scan while iterating on the filter nodes
-			if pk := t.Info.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
+			if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
 				// // if both types are different, don't select this scanner
 				// v, ok, err := operandCanUseIndex(pk.Type, pk.Path, t.Info.FieldConstraints, v)
 				// if err != nil {

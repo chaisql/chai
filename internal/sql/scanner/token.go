@@ -41,7 +41,6 @@ const (
 	BITWISEAND // &
 	BITWISEOR  // |
 	BITWISEXOR // ^
-	BETWEEN    // BETWEEN
 
 	AND // AND
 	OR  // OR
@@ -60,6 +59,7 @@ const (
 	ISN      // IS NOT
 	LIKE     // LIKE
 	CONCAT   // ||
+	BETWEEN  // BETWEEN
 	operatorEnd
 
 	LPAREN      // (
@@ -83,10 +83,12 @@ const (
 	ASC
 	BEGIN
 	BY
+	CACHE
 	CAST
 	COMMIT
 	CONFLICT
 	CREATE
+	CYCLE
 	DEFAULT
 	DELETE
 	DESC
@@ -96,15 +98,21 @@ const (
 	EXISTS
 	EXPLAIN
 	FIELD
+	FOR
 	FROM
 	GROUP
 	IF
 	IGNORE
+	INCREMENT
 	INDEX
 	INSERT
 	INTO
 	KEY
 	LIMIT
+	MAXVALUE
+	MINVALUE
+	NEXT
+	NO
 	NOT
 	NOTHING
 	OFFSET
@@ -120,7 +128,9 @@ const (
 	RETURNING
 	ROLLBACK
 	SELECT
+	SEQUENCE
 	SET
+	START
 	TABLE
 	TO
 	TRANSACTION
@@ -128,7 +138,9 @@ const (
 	UNIQUE
 	UNSET
 	UPDATE
+	VALUE
 	VALUES
+	WITH
 	WHERE
 	WRITE
 
@@ -215,10 +227,12 @@ var tokens = [...]string{
 	ASC:         "ASC",
 	BEGIN:       "BEGIN",
 	BY:          "BY",
+	CACHE:       "CACHE",
 	CAST:        "CAST",
 	COMMIT:      "COMMIT",
 	CONFLICT:    "CONFLICT",
 	CREATE:      "CREATE",
+	CYCLE:       "CYCLE",
 	DO:          "DO",
 	DEFAULT:     "DEFAULT",
 	DELETE:      "DELETE",
@@ -230,13 +244,19 @@ var tokens = [...]string{
 	GROUP:       "GROUP",
 	KEY:         "KEY",
 	FIELD:       "FIELD",
+	FOR:         "FOR",
 	FROM:        "FROM",
 	IF:          "IF",
 	IGNORE:      "IGNORE",
+	INCREMENT:   "INCREMENT",
 	INDEX:       "INDEX",
 	INSERT:      "INSERT",
 	INTO:        "INTO",
 	LIMIT:       "LIMIT",
+	MAXVALUE:    "MAXVALUE",
+	MINVALUE:    "MINVALUE",
+	NEXT:        "NEXT",
+	NO:          "NO",
 	NOT:         "NOT",
 	NOTHING:     "NOTHING",
 	OFFSET:      "OFFSET",
@@ -251,8 +271,10 @@ var tokens = [...]string{
 	RETURNING:   "RETURNING",
 	REPLACE:     "REPLACE",
 	ROLLBACK:    "ROLLBACK",
+	START:       "START",
 	SELECT:      "SELECT",
 	SET:         "SET",
+	SEQUENCE:    "SEQUENCE",
 	TABLE:       "TABLE",
 	TO:          "TO",
 	TRANSACTION: "TRANSACTION",
@@ -260,7 +282,9 @@ var tokens = [...]string{
 	UNIQUE:      "UNIQUE",
 	UNSET:       "UNSET",
 	UPDATE:      "UPDATE",
+	VALUE:       "VALUE",
 	VALUES:      "VALUES",
+	WITH:        "WITH",
 	WHERE:       "WHERE",
 	WRITE:       "WRITE",
 

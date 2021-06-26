@@ -129,6 +129,18 @@ func (f FieldConstraints) Get(path document.Path) *FieldConstraint {
 	return nil
 }
 
+// GetPrimaryKey returns the field constraint of the primary key.
+// Returns nil if there is no primary key.
+func (f FieldConstraints) GetPrimaryKey() *FieldConstraint {
+	for _, fc := range f {
+		if fc.IsPrimaryKey {
+			return fc
+		}
+	}
+
+	return nil
+}
+
 // Infer additional constraints based on user defined ones.
 // For example, given the following table:
 //   CREATE TABLE foo (a.b[0] TEXT)

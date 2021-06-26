@@ -904,4 +904,39 @@ INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 
 	})
 
+	// --------------------------------------------------------------------------
+	t.Run("insert with NEXT VALUE FOR", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_oc(a INTEGER UNIQUE);`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_oc(a INTEGER UNIQUE);
+CREATE SEQUENCE test_seq;
+INSERT INTO test_oc (a) VALUES (NEXT VALUE FOR test_seq);
+INSERT INTO test_oc (a) VALUES (NEXT VALUE FOR test_seq), (NEXT VALUE FOR test_seq);
+SELECT * FROM test_oc;
+`
+			res, err := db.Query(q)
+			require.NoError(t, err)
+			defer res.Close()
+			raw := `
+{
+  a: 1
+}
+{
+  a: 2
+}
+{
+  a: 3
+}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
 }

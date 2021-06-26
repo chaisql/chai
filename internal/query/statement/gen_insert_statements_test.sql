@@ -344,3 +344,21 @@ SELECT * FROM test_oc;
 CREATE TABLE test_oc(a INTEGER NOT NULL);
 INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 -- error:
+
+-- test: insert with NEXT VALUE FOR
+CREATE TABLE test_oc(a INTEGER UNIQUE);
+CREATE SEQUENCE test_seq;
+INSERT INTO test_oc (a) VALUES (NEXT VALUE FOR test_seq);
+INSERT INTO test_oc (a) VALUES (NEXT VALUE FOR test_seq), (NEXT VALUE FOR test_seq);
+SELECT * FROM test_oc;
+/* result:
+{
+  a: 1
+}
+{
+  a: 2
+}
+{
+  a: 3
+}
+*/

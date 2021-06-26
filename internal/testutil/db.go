@@ -22,7 +22,7 @@ func NewTestDB(t testing.TB) (*database.Database, func()) {
 	})
 	require.NoError(t, err)
 
-	db.Catalog.Load(nil, nil)
+	db.Catalog.Load(nil, nil, nil)
 
 	return db, func() {
 		db.Close()

@@ -7,7 +7,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 )
 
-// CreateTableStmt is a DSL that allows creating a full CREATE TABLE statement.
+// CreateTableStmt represents a parsed CREATE TABLE statement.
 type CreateTableStmt struct {
 	IfNotExists bool
 	Info        database.TableInfo
@@ -48,8 +48,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	return res, err
 }
 
-// CreateIndexStmt is a DSL that allows creating a full CREATE INDEX statement.
-// It is typically created using the CreateIndex function.
+// CreateIndexStmt represents a parsed CREATE INDEX statement.
 type CreateIndexStmt struct {
 	IfNotExists bool
 	Info        database.IndexInfo
@@ -76,5 +75,30 @@ func (stmt *CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	}
 
 	err = tx.Catalog.ReIndex(tx, stmt.Info.IndexName)
+	return res, err
+}
+
+// CreateSequenceStmt represents a parsed CREATE SEQUENCE statement.
+type CreateSequenceStmt struct {
+	IfNotExists bool
+	Info        database.SequenceInfo
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt *CreateSequenceStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run the statement in the given transaction.
+// It implements the Statement interface.
+func (stmt *CreateSequenceStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+	var res Result
+
+	err := tx.Catalog.CreateSequence(tx, stmt.Info.Name, &stmt.Info)
+	if stmt.IfNotExists {
+		if _, ok := err.(errs.AlreadyExistsError); ok {
+			return res, nil
+		}
+	}
 	return res, err
 }
