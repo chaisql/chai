@@ -1,6 +1,7 @@
 package database
 
 import (
+	"math"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -131,23 +132,25 @@ func (s *SequenceInfo) String() string {
 	b.WriteString("CREATE SEQUENCE ")
 	b.WriteString(s.Name)
 
-	if s.IncrementBy != 0 {
+	asc := s.IncrementBy > 0
+
+	if s.IncrementBy != 1 {
 		stringutil.Fprintf(&b, " INCREMENT BY %d", s.IncrementBy)
 	}
 
-	if s.Min != 0 {
+	if (asc && s.Min != 1) || (!asc && s.Min != math.MinInt64) {
 		stringutil.Fprintf(&b, " MINVALUE %d", s.Min)
 	}
 
-	if s.Max != 0 {
+	if (asc && s.Max != math.MaxInt64) || (!asc && s.Max != -1) {
 		stringutil.Fprintf(&b, " MAXVALUE %d", s.Max)
 	}
 
-	if s.Start != 0 {
+	if (asc && s.Start != s.Min) || (!asc && s.Start != s.Max) {
 		stringutil.Fprintf(&b, " START WITH %d", s.Start)
 	}
 
-	if s.Cache != 0 {
+	if s.Cache != 1 {
 		stringutil.Fprintf(&b, " CACHE %d", s.Cache)
 	}
 

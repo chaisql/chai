@@ -49,7 +49,7 @@ func TestOpen(t *testing.T) {
 	err = res1.Iterate(func(d document.Document) error {
 		count++
 		if count == 1 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 MAXVALUE 9223372036854775807 START WITH 500 CACHE 1 CYCLE", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`)
 			return nil
 		}
 
