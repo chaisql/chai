@@ -19,21 +19,43 @@ func TestParserSelect(t *testing.T) {
 		mustFail bool
 	}{
 		{"NoTable", "SELECT 1",
-			stream.New(stream.Project(testutil.ParseNamedExpr(t, "1"))),
+			stream.New(stream.Expressions(
+				&expr.KVPairs{
+					Pairs: []expr.KVPair{
+						{K: "1", V: testutil.ParseNamedExpr(t, "1")},
+					},
+				},
+			)),
 			false,
 		},
 		{"NoTableWithTuple", "SELECT (1, 2)",
-			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
+			stream.New(stream.Expressions(
+				&expr.KVPairs{
+					Pairs: []expr.KVPair{
+						{K: "[1, 2]", V: testutil.ParseNamedExpr(t, "[1, 2]")},
+					},
+				},
+			)),
 			false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
-			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
+			stream.New(stream.Expressions(
+				&expr.KVPairs{
+					Pairs: []expr.KVPair{
+						{K: "[1, 2]", V: testutil.ParseNamedExpr(t, "[1, 2]")},
+					},
+				},
+			)),
 			false,
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
-			stream.New(stream.Project(
-				testutil.ParseNamedExpr(t, "1 IN [1, 2]"),
-				testutil.ParseNamedExpr(t, "3"),
+			stream.New(stream.Expressions(
+				&expr.KVPairs{
+					Pairs: []expr.KVPair{
+						{K: "1 IN [1, 2]", V: testutil.ParseNamedExpr(t, "1 IN [1, 2]")},
+						{K: "3", V: testutil.ParseNamedExpr(t, "3")},
+					},
+				},
 			)),
 			false,
 		},

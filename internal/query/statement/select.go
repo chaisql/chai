@@ -27,6 +27,8 @@ type SelectStmt struct {
 }
 
 func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
+	isReadOnly := true
+
 	var s *stream.Stream
 
 	if stmt.TableName != "" {
@@ -117,9 +119,22 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 				return nil, err
 			}
 		}
-	}
 
-	s = s.Pipe(stream.Project(stmt.ProjectionExprs...))
+		// build a document expression with the
+		// projected exprs
+		d := expr.KVPairs{
+			Pairs: make([]expr.KVPair, len(stmt.ProjectionExprs)),
+		}
+
+		for i := range stmt.ProjectionExprs {
+			d.Pairs[i].K = stmt.ProjectionExprs[i].String()
+			d.Pairs[i].V = stmt.ProjectionExprs[i]
+		}
+
+		s = s.Pipe(stream.Expressions(&d))
+	} else {
+		s = s.Pipe(stream.Project(stmt.ProjectionExprs...))
+	}
 
 	if stmt.Distinct {
 		s = s.Pipe(stream.Distinct())
@@ -173,8 +188,22 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 		s = stream.New(stream.Concat(s, stmt.Union.SelectStmt.Stream))
 	}
 
+	// SELECT is read-only most of the time, unless it's using some expressions
+	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
+	for _, e := range stmt.ProjectionExprs {
+		expr.Walk(e, func(e expr.Expr) bool {
+			switch e.(type) {
+			case expr.NextValueFor:
+				isReadOnly = false
+				return false
+			default:
+				return true
+			}
+		})
+	}
+
 	return &StreamStmt{
 		Stream:   s,
-		ReadOnly: true,
+		ReadOnly: isReadOnly,
 	}, nil
 }

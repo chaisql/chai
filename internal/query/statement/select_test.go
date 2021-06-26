@@ -306,6 +306,35 @@ func TestSelectStmt(t *testing.T) {
 
 		check()
 	})
+
+	t.Run("using sequences in SELECT must open read-write transaction instead of read-only", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES (1);
+			CREATE SEQUENCE seq;
+		`)
+		require.NoError(t, err)
+
+		// normal query
+		d, err := db.QueryDocument("SELECT a, NEXT VALUE FOR seq FROM test")
+		require.NoError(t, err)
+		var a, seq int
+		err = document.Scan(d, &a, &seq)
+		require.NoError(t, err)
+		require.Equal(t, 1, a)
+		require.Equal(t, 1, seq)
+
+		// query with no table
+		d, err = db.QueryDocument("SELECT NEXT VALUE FOR seq")
+		require.NoError(t, err)
+		err = document.Scan(d, &seq)
+		require.NoError(t, err)
+		require.Equal(t, 2, seq)
+	})
 }
 
 func TestDistinct(t *testing.T) {

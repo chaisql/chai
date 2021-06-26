@@ -13,7 +13,7 @@ func TestExplainStmt(t *testing.T) {
 		fails    bool
 		expected string
 	}{
-		{"EXPLAIN SELECT 1 + 1", false, `"project(1 + 1)"`},
+		{"EXPLAIN SELECT 1 + 1", false, `"exprs({\"1 + 1\": 1 + 1})"`},
 		{"EXPLAIN SELECT * FROM noexist", true, ``},
 		{"EXPLAIN SELECT * FROM test", false, `"seqScan(test)"`},
 		{"EXPLAIN SELECT *, a FROM test", false, `"seqScan(test) | project(*, a)"`},
