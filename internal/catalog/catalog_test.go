@@ -1,4 +1,4 @@
-package database_test
+package catalog_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,18 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 
 	err = tx.Commit()
 	require.NoError(t, err)
+}
+
+func cloneCatalog(c database.Catalog) database.Catalog {
+	orig := c.(*catalog.Catalog)
+
+	var clone catalog.Catalog
+
+	clone.CatalogTable = orig.CatalogTable
+	clone.Cache = orig.Cache.Clone()
+
+	return &clone
+
 }
 
 // TestCatalogTable tests all basic operations on tables:
@@ -71,7 +84,7 @@ func TestCatalogTable(t *testing.T) {
 			return tx.Catalog.CreateTable(tx, "test", nil)
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.DropTable(tx, "test")
@@ -118,7 +131,7 @@ func TestCatalogTable(t *testing.T) {
 			return nil
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.RenameTable(tx, "foo", "zoo")
@@ -172,7 +185,7 @@ func TestCatalogTable(t *testing.T) {
 			return tx.Catalog.CreateTable(tx, "foo", ti)
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 
@@ -219,7 +232,7 @@ func TestCatalogCreateTable(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.CreateTable(tx, "test", nil)
@@ -256,7 +269,7 @@ func TestCatalogCreateTable(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
@@ -271,6 +284,11 @@ func TestCatalogCreateTable(t *testing.T) {
 
 		require.Equal(t, clone, db.Catalog)
 	})
+}
+
+// values is a helper function to avoid having to type []document.Value{} all the time.
+func values(vs ...document.Value) []document.Value {
+	return vs
 }
 
 func TestCatalogCreateIndex(t *testing.T) {
@@ -298,7 +316,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			return nil
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
@@ -414,7 +432,7 @@ func TestTxDropIndex(t *testing.T) {
 			return nil
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.DropIndex(tx, "idxFoo")
 			require.NoError(t, err)
@@ -517,7 +535,7 @@ func TestCatalogReIndex(t *testing.T) {
 			})
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.ReIndex(tx, "b")
@@ -535,7 +553,7 @@ func TestCatalogReIndex(t *testing.T) {
 
 		prepareTableFn(t, db)
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.ReIndex(tx, "a")
@@ -623,7 +641,7 @@ func TestReIndexAll(t *testing.T) {
 			return nil
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.ReIndexAll(tx)
@@ -714,15 +732,18 @@ func TestCatalogCreateSequence(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, seq)
 
-			_, err = tx.Catalog.SchemaTable.GetTable(tx).GetDocument([]byte("test1"))
+			_, err = db.Catalog.(*catalog.Catalog).CatalogTable.GetTable(tx).GetDocument([]byte("test1"))
 			require.NoError(t, err)
 
-			_, err = tx.Catalog.SequenceTable.GetTable(tx).GetDocument([]byte("test1"))
+			tb, err := db.Catalog.GetTable(tx, database.SequenceTableName)
+			require.NoError(t, err)
+
+			_, err = tb.GetDocument([]byte("test1"))
 			require.NoError(t, err)
 			return nil
 		})
 
-		clone := db.Catalog.Clone()
+		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.CreateSequence(tx, "test2", &database.SequenceInfo{Name: "test2", IncrementBy: 1})

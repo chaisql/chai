@@ -3,10 +3,31 @@ package database_test
 import (
 	"testing"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func getLease(t testing.TB, tx *database.Transaction, name string) (*int64, error) {
+	tb, err := tx.Catalog.GetTable(tx, database.SequenceTableName)
+	require.NoError(t, err)
+
+	d, err := tb.GetDocument([]byte(name))
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := d.GetByField("seq")
+	if err == document.ErrFieldNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	lease := v.V.(int64)
+	return &lease, nil
+}
 
 func TestSequence(t *testing.T) {
 	tests := []struct {
@@ -161,7 +182,7 @@ func TestSequence(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, int64(wantV), v)
 
-		got, err := tx.Catalog.SequenceTable.GetLease(tx, "a")
+		got, err := getLease(t, tx, "a")
 		require.NoError(t, err)
 		require.Equal(t, wantLease, *got)
 	}
@@ -199,7 +220,7 @@ func TestSequence(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, int64(5), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
-		got, err := tx.Catalog.SequenceTable.GetLease(tx, "a")
+		got, err := getLease(t, tx, "a")
 		require.NoError(t, err)
 		require.Equal(t, int64(5), *got)
 	})
@@ -246,7 +267,7 @@ func TestSequence(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, int64(9), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
-		got, err := tx.Catalog.SequenceTable.GetLease(tx, "a")
+		got, err := getLease(t, tx, "a")
 		require.NoError(t, err)
 		require.Equal(t, int64(9), *got)
 	})
@@ -294,7 +315,7 @@ func TestSequence(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, int64(-5), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
-		got, err := tx.Catalog.SequenceTable.GetLease(tx, "a")
+		got, err := getLease(t, tx, "a")
 		require.NoError(t, err)
 		require.Equal(t, int64(-5), *got)
 	})

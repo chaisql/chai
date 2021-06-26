@@ -12,10 +12,31 @@ import (
 	"github.com/genjidb/genji/engine/memoryengine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/binarysort"
+	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+var errDontCommit = errors.New("don't commit please")
+
+func update(t testing.TB, db *database.Database, fn func(tx *database.Transaction) error) {
+	t.Helper()
+
+	tx, err := db.Begin(true)
+	require.NoError(t, err)
+	defer tx.Rollback()
+
+	err = fn(tx)
+	if err == errDontCommit {
+		tx.Rollback()
+		return
+	}
+	require.NoError(t, err)
+
+	err = tx.Commit()
+	require.NoError(t, err)
+}
 
 func newTestTable(t testing.TB) (*database.Table, func()) {
 	_, tx, fn := testutil.NewTestTx(t)
@@ -149,7 +170,8 @@ func TestTableInsert(t *testing.T) {
 		ng := memoryengine.NewEngine()
 
 		db, err := database.New(context.Background(), ng, database.Options{
-			Codec: msgpack.NewCodec(),
+			Codec:   msgpack.NewCodec(),
+			Catalog: catalog.New(),
 		})
 		require.NoError(t, err)
 
@@ -173,12 +195,11 @@ func TestTableInsert(t *testing.T) {
 
 		key1 := insertDoc(db)
 
-		catalog := db.Catalog
 		// create new database object
 		db, err = database.New(context.Background(), ng, database.Options{
-			Codec: msgpack.NewCodec(),
+			Codec:   msgpack.NewCodec(),
+			Catalog: db.Catalog,
 		})
-		db.Catalog = catalog
 
 		require.NoError(t, err)
 

@@ -11,7 +11,7 @@ import (
 type Transaction struct {
 	DB       *Database
 	Tx       engine.Transaction
-	Catalog  *Catalog
+	Catalog  Catalog
 	Writable bool
 	// if set to true, this transaction is attached to the database
 	attached bool

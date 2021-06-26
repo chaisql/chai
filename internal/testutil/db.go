@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
+	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -18,11 +19,10 @@ func NewTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
 
 	db, err := database.New(context.Background(), memoryengine.NewEngine(), database.Options{
-		Codec: msgpack.NewCodec(),
+		Codec:   msgpack.NewCodec(),
+		Catalog: catalog.New(),
 	})
 	require.NoError(t, err)
-
-	db.Catalog.Load(nil, nil, nil)
 
 	return db, func() {
 		db.Close()

@@ -24,19 +24,24 @@ type Database struct {
 	// Codec used to encode documents. Defaults to MessagePack.
 	Codec encoding.Codec
 
-	Catalog *Catalog
+	Catalog Catalog
+
 	// This controls concurrency on read-only and read/write transactions.
 	txmu sync.RWMutex
 }
 
 type Options struct {
-	Codec encoding.Codec
+	Codec   encoding.Codec
+	Catalog Catalog
 }
 
 // New initializes the DB using the given engine.
 func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error) {
 	if opts.Codec == nil {
 		return nil, errors.New("missing codec")
+	}
+	if opts.Catalog == nil {
+		return nil, errors.New("missing catalog")
 	}
 
 	db := Database{
@@ -50,23 +55,19 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 	defer tx.Rollback()
 
-	schemaTable := NewCatalogTable(tx)
-	sequenceTable := NewSequenceTable(tx)
+	db.Catalog = opts.Catalog
 
-	err = schemaTable.Init(tx)
+	err = db.Catalog.Load(tx)
 	if err != nil {
 		return nil, err
 	}
-
-	err = sequenceTable.Init(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	db.Catalog = NewCatalog(schemaTable, sequenceTable)
 
 	err = tx.Commit()
-	return &db, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &db, nil
 }
 
 // Close the underlying engine.

@@ -4,13 +4,37 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
+	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
 const (
-	SequenceTableName = internalPrefix + "sequence"
+	SequenceTableName = "__genji_sequence"
 )
+
+var sequenceTableInfo = &TableInfo{
+	TableName: SequenceTableName,
+	StoreName: []byte(SequenceTableName),
+	FieldConstraints: []*FieldConstraint{
+		{
+			Path: document.Path{
+				document.PathFragment{
+					FieldName: "name",
+				},
+			},
+			Type:         document.TextValue,
+			IsPrimaryKey: true,
+		},
+		{
+			Path: document.Path{
+				document.PathFragment{
+					FieldName: "seq",
+				},
+			},
+			Type: document.IntegerValue,
+		},
+	},
+}
 
 // A Sequence manages a sequence of numbers.
 // It is not thread safe.
@@ -19,6 +43,16 @@ type Sequence struct {
 
 	CurrentValue *int64
 	Cached       uint64
+}
+
+func (s *Sequence) Init(tx *Transaction) error {
+	tb, err := s.GetOrCreateTable(tx)
+	if err != nil {
+		return err
+	}
+
+	_, err = tb.Insert(document.NewFieldBuffer().Add("name", document.NewTextValue(s.Info.Name)))
+	return err
 }
 
 func (s *Sequence) Next(tx *Transaction) (int64, error) {
@@ -79,7 +113,7 @@ func (s *Sequence) Next(tx *Transaction) (int64, error) {
 	}
 
 	// store the new lease
-	err := tx.Catalog.SequenceTable.SetLease(tx, s.Info.Name, newLease)
+	err := s.SetLease(tx, s.Info.Name, newLease)
 	if err != nil {
 		return 0, err
 	}
@@ -88,70 +122,13 @@ func (s *Sequence) Next(tx *Transaction) (int64, error) {
 	return newValue, nil
 }
 
-type SequenceTable struct {
-	info *TableInfo
-}
-
-func NewSequenceTable(tx *Transaction) *SequenceTable {
-	return &SequenceTable{
-		info: &TableInfo{
-			TableName: SequenceTableName,
-			StoreName: []byte(SequenceTableName),
-			FieldConstraints: []*FieldConstraint{
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "name",
-						},
-					},
-					Type:         document.TextValue,
-					IsPrimaryKey: true,
-				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "seq",
-						},
-					},
-					Type: document.IntegerValue,
-				},
-			},
-		},
-	}
-}
-
-func (s *SequenceTable) Init(tx *Transaction) error {
-	_, err := tx.Tx.GetStore([]byte(SequenceTableName))
-	if err == engine.ErrStoreNotFound {
-		err = tx.Tx.CreateStore([]byte(SequenceTableName))
-	}
-	return err
-}
-
-func (s *SequenceTable) GetTable(tx *Transaction) *Table {
-	st, err := tx.Tx.GetStore([]byte(SequenceTableName))
+func (s *Sequence) SetLease(tx *Transaction, name string, v int64) error {
+	tb, err := s.GetOrCreateTable(tx)
 	if err != nil {
-		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", SequenceTableName, err))
+		return err
 	}
 
-	return &Table{
-		Tx:    tx,
-		Store: st,
-		Info:  s.info,
-	}
-}
-
-func (s *SequenceTable) InitSequence(tx *Transaction, name string) error {
-	tb := s.GetTable(tx)
-
-	_, err := tb.Insert(document.NewFieldBuffer().Add("name", document.NewTextValue(name)))
-	return err
-}
-
-func (s *SequenceTable) SetLease(tx *Transaction, name string, v int64) error {
-	tb := s.GetTable(tx)
-
-	_, err := tb.Replace([]byte(name),
+	_, err = tb.Replace([]byte(name),
 		document.NewFieldBuffer().
 			Add("name", document.NewTextValue(name)).
 			Add("seq", document.NewIntegerValue(v)),
@@ -159,21 +136,16 @@ func (s *SequenceTable) SetLease(tx *Transaction, name string, v int64) error {
 	return err
 }
 
-func (s *SequenceTable) GetLease(tx *Transaction, name string) (*int64, error) {
-	tb := s.GetTable(tx)
+func (s *Sequence) GetOrCreateTable(tx *Transaction) (*Table, error) {
+	tb, err := tx.Catalog.GetTable(tx, SequenceTableName)
+	if err == nil || err != errs.ErrTableNotFound {
+		return tb, err
+	}
 
-	d, err := tb.GetDocument([]byte(name))
+	err = tx.Catalog.CreateTable(tx, SequenceTableName, sequenceTableInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	v, err := d.GetByField("seq")
-	if err == document.ErrFieldNotFound {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	lease := v.V.(int64)
-	return &lease, nil
+	return tx.Catalog.GetTable(tx, SequenceTableName)
 }

@@ -2,7 +2,6 @@ package genji
 
 import (
 	"context"
-	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -333,126 +332,8 @@ func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (
 		return nil, err
 	}
 
-	tx, err := db.Begin(true)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	err = loadCatalog(tx)
-	if err != nil {
-		return nil, err
-	}
-
 	return &DB{
 		db:  db,
 		ctx: context.Background(),
 	}, nil
-}
-
-func loadCatalog(tx *database.Transaction) error {
-	tb := tx.Catalog.SchemaTable.GetTable(tx)
-
-	var tables []database.TableInfo
-	var indexes []database.IndexInfo
-	var sequences []database.SequenceInfo
-
-	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
-		s, err := d.GetByField("sql")
-		if err != nil && err != document.ErrFieldNotFound {
-			return err
-		}
-		if err == document.ErrFieldNotFound {
-			return nil
-		}
-
-		stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
-		if err != nil {
-			return err
-		}
-
-		tp, err := d.GetByField("type")
-		if err != nil {
-			return err
-		}
-
-		switch tp.V.(string) {
-		case database.CatalogTableTableType:
-			ti := stmt.(*statement.CreateTableStmt).Info
-
-			v, err := d.GetByField("store_name")
-			if err != nil {
-				return err
-			}
-			ti.StoreName = v.V.([]byte)
-
-			tables = append(tables, ti)
-		case database.CatalogTableIndexType:
-			i := stmt.(*statement.CreateIndexStmt).Info
-
-			v, err := d.GetByField("store_name")
-			if err != nil {
-				return err
-			}
-			i.StoreName = v.V.([]byte)
-
-			cpath, err := d.GetByField("constraint_path")
-			if err != nil && err != document.ErrFieldNotFound {
-				return err
-			}
-			if err == nil {
-				i.ConstraintPath, err = parser.ParsePath(cpath.V.(string))
-				if err != nil {
-					return err
-				}
-			}
-
-			indexes = append(indexes, i)
-		case database.CatalogTableSequenceType:
-			i := stmt.(*statement.CreateSequenceStmt).Info
-			sequences = append(sequences, i)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	var seqList []database.Sequence
-
-	if len(sequences) > 0 {
-		seqList, err = loadSequences(tx, sequences)
-		if err != nil {
-			return err
-		}
-	}
-	tx.Catalog.Load(tables, indexes, seqList)
-	return nil
-}
-
-func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]database.Sequence, error) {
-	tb := tx.Catalog.SequenceTable.GetTable(tx)
-
-	sequences := make([]database.Sequence, len(info))
-	for i := range info {
-		d, err := tb.GetDocument([]byte(info[i].Name))
-		if err != nil {
-			return nil, err
-		}
-
-		sequences[i].Info = &info[i]
-
-		v, err := d.GetByField("seq")
-		if err != nil && err != document.ErrFieldNotFound {
-			return nil, err
-		}
-
-		if err == nil {
-			v := v.V.(int64)
-			sequences[i].CurrentValue = &v
-		}
-	}
-
-	return sequences, nil
 }
