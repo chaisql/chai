@@ -41,7 +41,7 @@ func TestOpen(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	res1, err := db.Query("SELECT * FROM __genji_schema")
+	res1, err := db.Query("SELECT * FROM __genji_catalog")
 	require.NoError(t, err)
 	defer res1.Close()
 

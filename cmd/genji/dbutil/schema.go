@@ -10,7 +10,7 @@ import (
 )
 
 func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) error) error {
-	query := "SELECT name, sql FROM __genji_schema WHERE type = 'table'"
+	query := "SELECT name, sql FROM __genji_catalog WHERE type = 'table'"
 	if len(tables) > 0 {
 		query += " AND name IN ?"
 	}
@@ -35,7 +35,7 @@ func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) erro
 func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string, error) {
 	var listName []string
 	err := db.View(func(tx *genji.Tx) error {
-		q := "SELECT sql FROM __genji_schema WHERE type = 'index'"
+		q := "SELECT sql FROM __genji_catalog WHERE type = 'index'"
 		if tableName != "" {
 			q += " AND table_name = ?"
 		}

@@ -377,7 +377,7 @@ func loadCatalog(tx *database.Transaction) error {
 		}
 
 		switch tp.V.(string) {
-		case database.SchemaTableTableType:
+		case database.CatalogTableTableType:
 			ti := stmt.(*statement.CreateTableStmt).Info
 
 			v, err := d.GetByField("store_name")
@@ -387,7 +387,7 @@ func loadCatalog(tx *database.Transaction) error {
 			ti.StoreName = v.V.([]byte)
 
 			tables = append(tables, ti)
-		case database.SchemaTableIndexType:
+		case database.CatalogTableIndexType:
 			i := stmt.(*statement.CreateIndexStmt).Info
 
 			v, err := d.GetByField("store_name")
@@ -408,7 +408,7 @@ func loadCatalog(tx *database.Transaction) error {
 			}
 
 			indexes = append(indexes, i)
-		case database.SchemaTableSequenceType:
+		case database.CatalogTableSequenceType:
 			i := stmt.(*statement.CreateSequenceStmt).Info
 			sequences = append(sequences, i)
 		}

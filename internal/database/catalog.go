@@ -1,24 +1,39 @@
 package database
 
 import (
+	"encoding/binary"
 	"errors"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-// Catalog manages tables and indexes.
+const (
+	internalPrefix = "__genji_"
+)
+
+const (
+	CatalogTableName         = internalPrefix + "catalog"
+	CatalogTableTableType    = "table"
+	CatalogTableIndexType    = "index"
+	CatalogTableSequenceType = "sequence"
+)
+
+// Catalog manages all database objects such as tables, indexes and sequences.
+// It stores all these objects in memory for fast access. Any modification
+// is persisted into the __genji_catalog table.
 type Catalog struct {
 	cache         *catalogCache
-	SchemaTable   *SchemaTable
+	SchemaTable   *CatalogTable
 	SequenceTable *SequenceTable
 }
 
-func NewCatalog(schemaTable *SchemaTable, sequenceTable *SequenceTable) *Catalog {
+func NewCatalog(schemaTable *CatalogTable, sequenceTable *SequenceTable) *Catalog {
 	return &Catalog{
 		SchemaTable:   schemaTable,
 		SequenceTable: sequenceTable,
@@ -27,7 +42,7 @@ func NewCatalog(schemaTable *SchemaTable, sequenceTable *SequenceTable) *Catalog
 }
 
 func (c *Catalog) Load(tables []TableInfo, indexes []IndexInfo, sequences []Sequence) {
-	// add the __genji_schema table to the list of tables
+	// add the __genji_catalog table to the list of tables
 	// so that it can be queried
 	ti := c.SchemaTable.info.Clone()
 	// make sure that table is read-only
@@ -779,4 +794,209 @@ func (c *catalogCache) DeleteSequence(tx *Transaction, name string) (*Sequence, 
 	})
 
 	return seq, nil
+}
+
+type CatalogTable struct {
+	info *TableInfo
+}
+
+func NewCatalogTable(tx *Transaction) *CatalogTable {
+	return &CatalogTable{
+		info: &TableInfo{
+			TableName: CatalogTableName,
+			StoreName: []byte(CatalogTableName),
+			FieldConstraints: []*FieldConstraint{
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "name",
+						},
+					},
+					Type:         document.TextValue,
+					IsPrimaryKey: true,
+				},
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "type",
+						},
+					},
+					Type: document.TextValue,
+				},
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "table_name",
+						},
+					},
+					Type: document.TextValue,
+				},
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "sql",
+						},
+					},
+					Type: document.TextValue,
+				},
+				{
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "store_name",
+						},
+					},
+					Type: document.BlobValue,
+				},
+			},
+		},
+	}
+}
+
+func (s *CatalogTable) Init(tx *Transaction) error {
+	_, err := tx.Tx.GetStore([]byte(CatalogTableName))
+	if err == engine.ErrStoreNotFound {
+		err = tx.Tx.CreateStore([]byte(CatalogTableName))
+	}
+	return err
+}
+
+func (s *CatalogTable) GetTable(tx *Transaction) *Table {
+	st, err := tx.Tx.GetStore([]byte(CatalogTableName))
+	if err != nil {
+		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", CatalogTableName, err))
+	}
+
+	return &Table{
+		Tx:    tx,
+		Store: st,
+		Info:  s.info,
+	}
+}
+
+func (s *CatalogTable) tableInfoToDocument(ti *TableInfo) document.Document {
+	buf := document.NewFieldBuffer()
+	buf.Add("name", document.NewTextValue(ti.TableName))
+	buf.Add("type", document.NewTextValue(CatalogTableTableType))
+	buf.Add("store_name", document.NewBlobValue(ti.StoreName))
+	buf.Add("sql", document.NewTextValue(ti.String()))
+	return buf
+}
+
+func (s *CatalogTable) indexInfoToDocument(i *IndexInfo) document.Document {
+	buf := document.NewFieldBuffer()
+	buf.Add("name", document.NewTextValue(i.IndexName))
+	buf.Add("type", document.NewTextValue(CatalogTableIndexType))
+	buf.Add("store_name", document.NewBlobValue(i.StoreName))
+	buf.Add("table_name", document.NewTextValue(i.TableName))
+	buf.Add("sql", document.NewTextValue(i.String()))
+	if i.ConstraintPath != nil {
+		buf.Add("constraint_path", document.NewTextValue(i.ConstraintPath.String()))
+	}
+
+	return buf
+}
+
+func (s *CatalogTable) sequenceInfoToDocument(seq *SequenceInfo) document.Document {
+	buf := document.NewFieldBuffer()
+	buf.Add("name", document.NewTextValue(seq.Name))
+	buf.Add("type", document.NewTextValue(CatalogTableSequenceType))
+	buf.Add("sql", document.NewTextValue(seq.String()))
+
+	return buf
+}
+
+// insertTable inserts a new tableInfo for the given table name.
+// If info.StoreName is nil, it generates one and stores it in info.
+func (s *CatalogTable) insertTable(tx *Transaction, tableName string, info *TableInfo) error {
+	tb := s.GetTable(tx)
+
+	if info.StoreName == nil {
+		seq, err := tb.Store.NextSequence()
+		if err != nil {
+			return err
+		}
+		buf := make([]byte, binary.MaxVarintLen64)
+		n := binary.PutUvarint(buf, seq)
+		info.StoreName = buf[:n]
+	}
+
+	_, err := tb.Insert(s.tableInfoToDocument(info))
+	if err == errs.ErrDuplicateDocument {
+		return errs.AlreadyExistsError{Name: tableName}
+	}
+
+	return err
+}
+
+// Replace replaces tableName table information with the new info.
+func (s *CatalogTable) replaceTable(tx *Transaction, tableName string, info *TableInfo) error {
+	tb := s.GetTable(tx)
+
+	_, err := tb.Replace([]byte(tableName), s.tableInfoToDocument(info))
+	return err
+}
+
+func (s *CatalogTable) deleteTable(tx *Transaction, tableName string) error {
+	tb := s.GetTable(tx)
+
+	return tb.Delete([]byte(tableName))
+}
+
+func (s *CatalogTable) insertIndex(tx *Transaction, info *IndexInfo) error {
+	tb := s.GetTable(tx)
+
+	if info.StoreName == nil {
+		seq, err := tb.Store.NextSequence()
+		if err != nil {
+			return err
+		}
+
+		buf := make([]byte, binary.MaxVarintLen64)
+		n := binary.PutUvarint(buf, seq)
+		info.StoreName = buf[:n]
+	}
+
+	_, err := tb.Insert(s.indexInfoToDocument(info))
+	if err == errs.ErrDuplicateDocument {
+		return errs.AlreadyExistsError{Name: info.IndexName}
+	}
+
+	return err
+}
+
+func (s *CatalogTable) replaceIndex(tx *Transaction, indexName string, info *IndexInfo) error {
+	tb := s.GetTable(tx)
+
+	_, err := tb.Replace([]byte(indexName), s.indexInfoToDocument(info))
+	return err
+}
+
+func (s *CatalogTable) deleteIndex(tx *Transaction, indexName string) error {
+	tb := s.GetTable(tx)
+
+	return tb.Delete([]byte(indexName))
+}
+
+func (s *CatalogTable) insertSequence(tx *Transaction, info *SequenceInfo) error {
+	tb := s.GetTable(tx)
+
+	_, err := tb.Insert(s.sequenceInfoToDocument(info))
+	if err == errs.ErrDuplicateDocument {
+		return errs.AlreadyExistsError{Name: info.Name}
+	}
+
+	return err
+}
+
+func (s *CatalogTable) replaceSequence(tx *Transaction, name string, info *SequenceInfo) error {
+	tb := s.GetTable(tx)
+
+	_, err := tb.Replace([]byte(name), s.sequenceInfoToDocument(info))
+	return err
+}
+
+func (s *CatalogTable) deleteSequence(tx *Transaction, name string) error {
+	tb := s.GetTable(tx)
+
+	return tb.Delete([]byte(name))
 }

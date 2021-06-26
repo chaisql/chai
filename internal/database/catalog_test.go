@@ -675,7 +675,7 @@ func TestReadOnlyTables(t *testing.T) {
 	res, err := db.Query(`
 		CREATE TABLE foo (a int, b[3].c double unique);
 		CREATE INDEX idx_foo_a ON foo(a);
-		SELECT * FROM __genji_schema
+		SELECT * FROM __genji_catalog
 	`)
 	require.NoError(t, err)
 	defer res.Close()

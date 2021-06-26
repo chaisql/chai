@@ -50,7 +50,7 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 	defer tx.Rollback()
 
-	schemaTable := NewSchemaTable(tx)
+	schemaTable := NewCatalogTable(tx)
 	sequenceTable := NewSequenceTable(tx)
 
 	err = schemaTable.Init(tx)

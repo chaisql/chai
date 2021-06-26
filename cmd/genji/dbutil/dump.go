@@ -106,7 +106,7 @@ func dumpSchema(tx *genji.Tx, w io.Writer, query string, tableName string) error
 
 	// Indexes statements.
 	res, err := tx.Query(`
-		SELECT sql FROM __genji_schema WHERE 
+		SELECT sql FROM __genji_catalog WHERE 
 			type = 'index' AND constraint_path IS NULL AND table_name = ?
 	`, tableName)
 	if err != nil {

@@ -29,7 +29,7 @@ func TestDropTable(t *testing.T) {
 	require.Error(t, err)
 
 	// Assert that no other table have been dropped.
-	res, err := db.Query("SELECT name FROM __genji_schema WHERE type = 'table'")
+	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
 	require.NoError(t, err)
 	var tables []string
 	err = res.Iterate(func(d document.Document) error {
@@ -47,11 +47,11 @@ func TestDropTable(t *testing.T) {
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryDocument("SELECT 1 FROM __genji_schema WHERE name = 'test1_a_idx'")
+	_, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_a_idx'")
 	require.Error(t, err)
 
 	// Dropping a read-only table should fail.
-	err = db.Exec("DROP TABLE __genji_schema")
+	err = db.Exec("DROP TABLE __genji_catalog")
 	require.Error(t, err)
 }
 

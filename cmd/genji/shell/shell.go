@@ -510,7 +510,7 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	var tables []string
 
-	res, err := sh.db.Query("SELECT name FROM __genji_schema WHERE type = 'table'")
+	res, err := sh.db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
 	if err != nil {
 		return nil, err
 	}

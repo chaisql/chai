@@ -660,9 +660,9 @@ SELECT pk(), * FROM test_idx;
 
 		setup(t, db)
 
-		t.Run(`INSERT INTO __genji_schema VALUES {a: 400, b: a * 4};`, func(t *testing.T) {
+		t.Run(`INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};`, func(t *testing.T) {
 			q := `
-INSERT INTO __genji_schema VALUES {a: 400, b: a * 4};
+INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
 `
 			err := db.Exec(q)
 			require.NotNil(t, err, "expected error, got nil")
