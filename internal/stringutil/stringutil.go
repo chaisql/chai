@@ -1,6 +1,7 @@
 package stringutil
 
 import (
+	"strings"
 	"unicode/utf8"
 )
 
@@ -32,4 +33,33 @@ func NeedsQuotes(s string) bool {
 	}
 
 	return false
+}
+
+// NormalizeIdentifier wraps s around the given quotes, if needed.
+func NormalizeIdentifier(s string, with rune) string {
+	if s == "" {
+		return s
+	}
+
+	if !NeedsQuotes(s) {
+		return s
+	}
+
+	var sb strings.Builder
+
+	sb.WriteRune(with)
+
+	for len(s) > 0 {
+		r, wid := utf8.DecodeRuneInString(s)
+
+		if r == with {
+			sb.WriteRune('\\')
+		}
+		sb.WriteRune(r)
+		s = s[wid:]
+	}
+
+	sb.WriteRune(with)
+
+	return sb.String()
 }

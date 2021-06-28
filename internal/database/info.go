@@ -26,7 +26,7 @@ type TableInfo struct {
 func (ti *TableInfo) String() string {
 	var s strings.Builder
 
-	stringutil.Fprintf(&s, "CREATE TABLE %s", ti.TableName)
+	stringutil.Fprintf(&s, "CREATE TABLE %s", stringutil.NormalizeIdentifier(ti.TableName, '`'))
 	if len(ti.FieldConstraints) > 0 {
 		s.WriteString(" (")
 	}
@@ -87,7 +87,7 @@ func (i *IndexInfo) String() string {
 		s.WriteString("UNIQUE ")
 	}
 
-	stringutil.Fprintf(&s, "INDEX %s ON %s (", i.IndexName, i.TableName)
+	stringutil.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(i.IndexName, '`'), stringutil.NormalizeIdentifier(i.TableName, '`'))
 
 	for i, p := range i.Paths {
 		if i > 0 {
@@ -134,7 +134,7 @@ func (s *SequenceInfo) String() string {
 	var b strings.Builder
 
 	b.WriteString("CREATE SEQUENCE ")
-	b.WriteString(s.Name)
+	b.WriteString(stringutil.NormalizeIdentifier(s.Name, '`'))
 
 	asc := s.IncrementBy > 0
 
