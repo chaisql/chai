@@ -336,7 +336,7 @@ func (c *Catalog) GetIndex(tx *database.Transaction, indexName string) (*databas
 // The returned list of indexes is sorted lexicographically.
 func (c *Catalog) ListIndexes(tableName string) []string {
 	if tableName == "" {
-		list := c.Cache.ListIndexes()
+		list := c.Cache.ListObjects(CatalogTableIndexType)
 		sort.Strings(list)
 		return list
 	}
@@ -505,7 +505,7 @@ func (c *Catalog) buildIndex(tx *database.Transaction, idx *database.Index, tabl
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (c *Catalog) ReIndexAll(tx *database.Transaction) error {
-	indexes := c.Cache.ListIndexes()
+	indexes := c.Cache.ListObjects(CatalogTableIndexType)
 
 	for _, indexName := range indexes {
 		err := c.ReIndex(tx, indexName)
@@ -555,7 +555,13 @@ func (c *Catalog) CreateSequence(tx *database.Transaction, info *database.Sequen
 
 // DropSequence deletes a sequence from the catalog.
 func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
-	_, err := c.Cache.Delete(tx, CatalogTableSequenceType, name)
+	o, err := c.Cache.Delete(tx, CatalogTableSequenceType, name)
+	if err != nil {
+		return err
+	}
+
+	seq := o.(*database.Sequence)
+	err = seq.Drop(tx)
 	if err != nil {
 		return err
 	}
@@ -565,10 +571,5 @@ func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
 
 // ListSequences returns all sequence names sorted lexicographically.
 func (c *Catalog) ListSequences() []string {
-	names := make([]string, 0, len(c.Cache.sequences))
-	for name := range c.Cache.sequences {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
+	return c.Cache.ListObjects(CatalogTableSequenceType)
 }

@@ -73,6 +73,19 @@ func (s *Sequence) Init(tx *Transaction) error {
 	return err
 }
 
+func (s *Sequence) Drop(tx *Transaction) error {
+	tb, err := tx.Catalog.GetTable(tx, SequenceTableName)
+	if err != nil {
+		if errs.IsNotFoundError(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return tb.Delete([]byte(s.Info.Name))
+}
+
 func (s *Sequence) Next(tx *Transaction) (int64, error) {
 	if !tx.Writable {
 		return 0, errors.New("cannot increment sequence on read-only transaction")

@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"sort"
+
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -175,13 +177,16 @@ func (c *catalogCache) Get(tp, name string) (CatalogObject, error) {
 	return o, nil
 }
 
-func (c *catalogCache) ListIndexes() []string {
-	indexes := make([]string, 0, len(c.indexes))
-	for name := range c.indexes {
-		indexes = append(indexes, name)
+func (c *catalogCache) ListObjects(tp string) []string {
+	m := c.getMapByType(tp)
+
+	list := make([]string, 0, len(m))
+	for name := range m {
+		list = append(list, name)
 	}
 
-	return indexes
+	sort.Strings(list)
+	return list
 }
 
 func (c *catalogCache) GetTableIndexes(tableName string) []*database.IndexInfo {

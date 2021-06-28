@@ -25,7 +25,7 @@ func (stmt *CreateTableStmt) IsReadOnly() bool {
 func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
-	// if there are no primary key, create a docid sequence
+	// if there is no primary key, create a docid sequence
 	if stmt.Info.FieldConstraints.GetPrimaryKey() == nil {
 		seq := database.SequenceInfo{
 			IncrementBy: 1,

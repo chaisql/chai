@@ -52,8 +52,10 @@ func TestDropTable(t *testing.T) {
 
 	// Assert the docid sequence test1_seq, created upon the creation of the table,
 	// has been dropped as well.
-	// _, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_seq'")
-	// require.Error(t, err)
+	_, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_seq'")
+	require.Error(t, err)
+	_, err = db.QueryDocument("SELECT 1 FROM __genji_sequence WHERE name = 'test1_seq'")
+	require.Error(t, err)
 
 	// Dropping a read-only table should fail.
 	err = db.Exec("DROP TABLE __genji_catalog")

@@ -28,9 +28,26 @@ func (stmt DropTableStmt) Run(tx *database.Transaction, args []expr.Param) (Resu
 		return res, errors.New("missing table name")
 	}
 
-	err := tx.Catalog.DropTable(tx, stmt.TableName)
-	if errs.IsNotFoundError(err) && stmt.IfExists {
-		err = nil
+	tb, err := tx.Catalog.GetTable(tx, stmt.TableName)
+	if err != nil {
+		if errs.IsNotFoundError(err) && stmt.IfExists {
+			err = nil
+		}
+
+		return res, err
+	}
+
+	err = tx.Catalog.DropTable(tx, stmt.TableName)
+	if err != nil {
+		return res, err
+	}
+
+	// if there is no primary key, drop the docid sequence
+	if tb.Info.FieldConstraints.GetPrimaryKey() == nil {
+		err = tx.Catalog.DropSequence(tx, tb.Info.DocidSequenceName)
+		if err != nil {
+			return res, err
+		}
 	}
 
 	return res, err
