@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"encoding/binary"
+	"errors"
 	"math"
 	"sort"
 
@@ -142,10 +143,12 @@ func (c *Catalog) generateStoreName(tx *database.Transaction) ([]byte, error) {
 }
 
 func (c *Catalog) GetTable(tx *database.Transaction, tableName string) (*database.Table, error) {
-	ti, err := c.Cache.GetTable(tableName)
+	o, err := c.Cache.Get(CatalogTableTableType, tableName)
 	if err != nil {
 		return nil, err
 	}
+
+	ti := o.(*database.TableInfo)
 
 	s, err := tx.Tx.GetStore(ti.StoreName)
 	if err != nil {
@@ -153,11 +156,13 @@ func (c *Catalog) GetTable(tx *database.Transaction, tableName string) (*databas
 	}
 
 	idxInfos := c.Cache.GetTableIndexes(tableName)
-	indexes := make([]*database.Index, 0, len(idxInfos))
+	indexes := make(database.Indexes, 0, len(idxInfos))
 
 	for i := range idxInfos {
 		indexes = append(indexes, database.NewIndex(tx.Tx, idxInfos[i].IndexName, idxInfos[i]))
 	}
+
+	sort.Sort(indexes)
 
 	return &database.Table{
 		Tx:      tx,
@@ -176,7 +181,17 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 	}
 	info.TableName = tableName
 
-	var err error
+	if info.TableName == "" {
+		return errors.New("table name required")
+	}
+
+	_, err := c.GetTable(tx, tableName)
+	if err != nil && !errs.IsNotFoundError(err) {
+		return err
+	}
+	if err == nil {
+		return errs.AlreadyExistsError{Name: tableName}
+	}
 
 	// replace user-defined constraints by inferred list of constraints
 	info.FieldConstraints, err = info.FieldConstraints.Infer()
@@ -191,7 +206,7 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 		}
 	}
 
-	err = c.CatalogTable.InsertTable(tx, tableName, info)
+	err = c.CatalogTable.Insert(tx, info)
 	if err != nil {
 		return err
 	}
@@ -201,24 +216,39 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 		return stringutil.Errorf("failed to create table %q: %w", tableName, err)
 	}
 
-	return c.Cache.AddTable(tx, info)
+	return c.Cache.Add(tx, info)
 }
 
-// DropTable deletes a table from the
+// DropTable deletes a table from the catalog
 func (c *Catalog) DropTable(tx *database.Transaction, tableName string) error {
-	ti, removedIndexes, err := c.Cache.DeleteTable(tx, tableName)
+	o, err := c.Cache.Get(CatalogTableTableType, tableName)
 	if err != nil {
 		return err
 	}
+	ti := o.(*database.TableInfo)
 
-	for _, idx := range removedIndexes {
-		err := c.dropIndex(tx, idx.IndexName)
+	if ti.ReadOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
+	for _, idx := range c.Cache.GetTableIndexes(tableName) {
+		_, err = c.Cache.Delete(tx, CatalogTableIndexType, idx.IndexName)
+		if err != nil {
+			return err
+		}
+
+		err = c.dropIndex(tx, idx.IndexName)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = c.CatalogTable.DeleteTable(tx, tableName)
+	_, err = c.Cache.Delete(tx, CatalogTableTableType, tableName)
+	if err != nil {
+		return err
+	}
+
+	err = c.CatalogTable.Delete(tx, tableName)
 	if err != nil {
 		return err
 	}
@@ -229,9 +259,32 @@ func (c *Catalog) DropTable(tx *database.Transaction, tableName string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns errs.ErrIndexAlreadyExists.
 func (c *Catalog) CreateIndex(tx *database.Transaction, info *database.IndexInfo) error {
-	err := c.Cache.AddIndex(tx, info)
+	// get the associated table
+	o, err := c.Cache.Get(CatalogTableTableType, info.TableName)
 	if err != nil {
 		return err
+	}
+	ti := o.(*database.TableInfo)
+
+	// if the index is created on a field on which we know the type then create a typed index.
+	// if the given info contained existing types, they are overriden.
+	info.Types = nil
+
+OUTER:
+	for _, path := range info.Paths {
+		for _, fc := range ti.FieldConstraints {
+			if fc.Path.IsEqual(path) {
+				// a constraint may or may not enforce a type
+				if fc.Type != 0 {
+					info.Types = append(info.Types, document.ValueType(fc.Type))
+				}
+
+				continue OUTER
+			}
+		}
+
+		// no type was inferred for that path, add it to the index as untyped
+		info.Types = append(info.Types, document.ValueType(0))
 	}
 
 	if info.StoreName == nil {
@@ -241,7 +294,12 @@ func (c *Catalog) CreateIndex(tx *database.Transaction, info *database.IndexInfo
 		}
 	}
 
-	err = c.CatalogTable.InsertIndex(tx, info)
+	err = c.Cache.Add(tx, info)
+	if err != nil {
+		return err
+	}
+
+	err = c.CatalogTable.Insert(tx, info)
 	if err != nil {
 		return err
 	}
@@ -262,10 +320,11 @@ func (c *Catalog) CreateIndex(tx *database.Transaction, info *database.IndexInfo
 
 // GetIndex returns an index by name.
 func (c *Catalog) GetIndex(tx *database.Transaction, indexName string) (*database.Index, error) {
-	info, err := c.Cache.GetIndex(indexName)
+	o, err := c.Cache.Get(CatalogTableIndexType, indexName)
 	if err != nil {
 		return nil, err
 	}
+	info := o.(*database.IndexInfo)
 
 	return database.NewIndex(tx.Tx, info.IndexName, info), nil
 }
@@ -291,7 +350,20 @@ func (c *Catalog) ListIndexes(tableName string) []string {
 
 // DropIndex deletes an index from the database.
 func (c *Catalog) DropIndex(tx *database.Transaction, name string) error {
-	_, err := c.Cache.DeleteIndex(tx, name)
+	// check if the index exists
+	o, err := c.Cache.Get(CatalogTableIndexType, name)
+	if err != nil {
+		return err
+	}
+
+	info := o.(*database.IndexInfo)
+
+	// check if the index has been created by a table constraint
+	if info.ConstraintPath != nil {
+		return stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.ConstraintPath)
+	}
+
+	_, err = c.Cache.Delete(tx, CatalogTableIndexType, name)
 	if err != nil {
 		return err
 	}
@@ -300,7 +372,7 @@ func (c *Catalog) DropIndex(tx *database.Transaction, name string) error {
 }
 
 func (c *Catalog) dropIndex(tx *database.Transaction, name string) error {
-	err := c.CatalogTable.DeleteIndex(tx, name)
+	err := c.CatalogTable.Delete(tx, name)
 	if err != nil {
 		return err
 	}
@@ -310,45 +382,80 @@ func (c *Catalog) dropIndex(tx *database.Transaction, name string) error {
 
 // AddFieldConstraint adds a field constraint to a table.
 func (c *Catalog) AddFieldConstraint(tx *database.Transaction, tableName string, fc database.FieldConstraint) error {
-	newTi, _, err := c.Cache.updateTable(tx, tableName, func(clone *database.TableInfo) error {
-		return clone.FieldConstraints.Add(&fc)
-	})
+	o, err := c.Cache.Get(CatalogTableTableType, tableName)
+	if err != nil {
+		return err
+	}
+	ti := o.(*database.TableInfo)
+
+	clone := ti.Clone()
+	err = clone.FieldConstraints.Add(&fc)
 	if err != nil {
 		return err
 	}
 
-	return c.CatalogTable.ReplaceTable(tx, tableName, newTi)
+	err = c.Cache.Replace(tx, clone)
+	if err != nil {
+		return err
+	}
+
+	return c.CatalogTable.Replace(tx, tableName, clone)
 }
 
 // RenameTable renames a table.
 // If it doesn't exist, it returns errs.ErrTableNotFound.
 func (c *Catalog) RenameTable(tx *database.Transaction, oldName, newName string) error {
-	newTi, newIdxs, err := c.Cache.updateTable(tx, oldName, func(clone *database.TableInfo) error {
-		clone.TableName = newName
-		return nil
-	})
+	// Delete the old table info.
+	err := c.CatalogTable.Delete(tx, oldName)
+	if err == errs.ErrDocumentNotFound {
+		return errs.NotFoundError{Name: oldName}
+	}
 	if err != nil {
 		return err
 	}
 
-	// Insert the database.TableInfo keyed by the newName name.
-	err = c.CatalogTable.InsertTable(tx, newName, newTi)
+	o, err := c.Cache.Delete(tx, CatalogTableTableType, oldName)
 	if err != nil {
 		return err
 	}
 
-	if len(newIdxs) > 0 {
-		for _, idx := range newIdxs {
-			idx.TableName = newName
-			err = c.CatalogTable.ReplaceIndex(tx, idx.IndexName, idx)
-			if err != nil {
-				return err
-			}
+	ti := o.(*database.TableInfo)
+
+	clone := ti.Clone()
+	clone.TableName = newName
+
+	err = c.CatalogTable.Insert(tx, clone)
+	if err != nil {
+		return err
+	}
+
+	err = c.Cache.Add(tx, clone)
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range c.Cache.GetTableIndexes(oldName) {
+		o, err := c.Cache.Delete(tx, CatalogTableIndexType, idx.IndexName)
+		if err != nil {
+			return err
+		}
+		info := o.(*database.IndexInfo)
+
+		idxClone := info.Clone()
+		idxClone.TableName = clone.TableName
+
+		err = c.Cache.Add(tx, idxClone)
+		if err != nil {
+			return err
+		}
+
+		err = c.CatalogTable.Replace(tx, idx.IndexName, idx)
+		if err != nil {
+			return err
 		}
 	}
 
-	// Delete the old table info.
-	return c.CatalogTable.DeleteTable(tx, oldName)
+	return nil
 }
 
 // ReIndex truncates and recreates selected index from scratch.
@@ -409,12 +516,12 @@ func (c *Catalog) ReIndexAll(tx *database.Transaction) error {
 }
 
 func (c *Catalog) GetSequence(name string) (*database.Sequence, error) {
-	seq, err := c.Cache.GetSequence(name)
+	o, err := c.Cache.Get(CatalogTableSequenceType, name)
 	if err != nil {
 		return nil, err
 	}
 
-	return seq, nil
+	return o.(*database.Sequence), nil
 }
 
 // CreateSequence creates a sequence with the given name.
@@ -423,16 +530,20 @@ func (c *Catalog) CreateSequence(tx *database.Transaction, info *database.Sequen
 		info = new(database.SequenceInfo)
 	}
 
+	if info.Name == "" && info.Owner.TableName == "" {
+		return errors.New("sequence name not provided")
+	}
+
 	seq := database.Sequence{
 		Info: info,
 	}
 
-	err := c.Cache.AddSequence(tx, &seq)
+	err := c.Cache.Add(tx, &seq)
 	if err != nil {
 		return err
 	}
 
-	err = c.CatalogTable.InsertSequence(tx, info)
+	err = c.CatalogTable.Insert(tx, &seq)
 	if err != nil {
 		return err
 	}
@@ -442,10 +553,10 @@ func (c *Catalog) CreateSequence(tx *database.Transaction, info *database.Sequen
 
 // DropSequence deletes a sequence from the catalog.
 func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
-	_, err := c.Cache.DeleteSequence(tx, name)
+	_, err := c.Cache.Delete(tx, CatalogTableSequenceType, name)
 	if err != nil {
 		return err
 	}
 
-	return c.CatalogTable.DeleteSequence(tx, name)
+	return c.CatalogTable.Delete(tx, name)
 }

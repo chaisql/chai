@@ -22,6 +22,22 @@ type TableInfo struct {
 	DocidSequenceName string
 }
 
+func (ti *TableInfo) Type() string {
+	return "table"
+}
+
+func (ti *TableInfo) Name() string {
+	return ti.TableName
+}
+
+func (ti *TableInfo) SetName(name string) {
+	ti.TableName = name
+}
+
+func (ti *TableInfo) GenerateBaseName() string {
+	return ti.TableName
+}
+
 // String returns a SQL representation.
 func (ti *TableInfo) String() string {
 	var s strings.Builder
@@ -76,6 +92,36 @@ type IndexInfo struct {
 	// i.e CREATE TABLE tbl(a INT UNIQUE)
 	// The path refers to the path this index is related to.
 	ConstraintPath document.Path
+}
+
+func (i *IndexInfo) Type() string {
+	return "index"
+}
+
+func (i *IndexInfo) Name() string {
+	return i.IndexName
+}
+
+func (i *IndexInfo) SetName(name string) {
+	i.IndexName = name
+}
+
+func pathsToIndexName(paths []document.Path) string {
+	var s strings.Builder
+
+	for i, p := range paths {
+		if i > 0 {
+			s.WriteRune('_')
+		}
+
+		s.WriteString(p.String())
+	}
+
+	return s.String()
+}
+
+func (i *IndexInfo) GenerateBaseName() string {
+	return stringutil.Sprintf("%s_%s_idx", i.TableName, pathsToIndexName(i.Paths))
 }
 
 // String returns a SQL representation.

@@ -128,7 +128,7 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 			_, err := tx.QueryDocument("SELECT 1 FROM __genji_catalog WHERE table_name = ? LIMIT 1", tableName)
 			if err != nil {
 				if err == errs.ErrDocumentNotFound {
-					return fmt.Errorf("%w: %q", errs.ErrTableNotFound, tableName)
+					return fmt.Errorf("%w: %q", errs.NotFoundError{Name: tableName}, tableName)
 				}
 			}
 			return err

@@ -29,7 +29,7 @@ func (stmt DropTableStmt) Run(tx *database.Transaction, args []expr.Param) (Resu
 	}
 
 	err := tx.Catalog.DropTable(tx, stmt.TableName)
-	if errors.Is(err, errs.ErrTableNotFound) && stmt.IfExists {
+	if errs.IsNotFoundError(err) && stmt.IfExists {
 		err = nil
 	}
 
@@ -57,7 +57,7 @@ func (stmt DropIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Resu
 	}
 
 	err := tx.Catalog.DropIndex(tx, stmt.IndexName)
-	if err == errs.ErrIndexNotFound && stmt.IfExists {
+	if errs.IsNotFoundError(err) && stmt.IfExists {
 		err = nil
 	}
 

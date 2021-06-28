@@ -69,8 +69,8 @@ func TestCatalogTable(t *testing.T) {
 
 			// Getting a table that doesn't exist should fail.
 			_, err = tx.Catalog.GetTable(tx, "unknown")
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "unknown"})
 			}
 
 			return nil
@@ -93,14 +93,14 @@ func TestCatalogTable(t *testing.T) {
 
 			// Getting a table that has been dropped should fail.
 			_, err = tx.Catalog.GetTable(tx, "test")
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			// Dropping a table that doesn't exist should fail.
 			err = tx.Catalog.DropTable(tx, "test")
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			return errDontCommit
@@ -140,8 +140,8 @@ func TestCatalogTable(t *testing.T) {
 
 			// Getting the old table should return an error.
 			_, err = tx.Catalog.GetTable(tx, "foo")
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "foo"})
 			}
 
 			tb, err := tx.Catalog.GetTable(tx, "zoo")
@@ -161,8 +161,8 @@ func TestCatalogTable(t *testing.T) {
 
 			// Renaming a non existing table should return an error
 			err = tx.Catalog.RenameTable(tx, "foo", "")
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "foo"})
 			}
 
 			return errDontCommit
@@ -206,8 +206,8 @@ func TestCatalogTable(t *testing.T) {
 
 			// Renaming a non existing table should return an error
 			err = tx.Catalog.AddFieldConstraint(tx, "bar", fieldToAdd)
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "bar"})
 			}
 
 			// Adding a existing field should return an error
@@ -380,8 +380,8 @@ func TestCatalogCreateIndex(t *testing.T) {
 			err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
-			if !errors.Is(err, errs.ErrTableNotFound) {
-				require.Equal(t, err, errs.ErrTableNotFound)
+			if !errors.Is(err, errs.NotFoundError{}) {
+				require.Equal(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			return nil
@@ -464,7 +464,7 @@ func TestTxDropIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.DropIndex(tx, "idxFoo")
-			require.Equal(t, errs.ErrIndexNotFound, err)
+			require.Equal(t, errs.NotFoundError{Name: "idxFoo"}, err)
 			return nil
 		})
 	})
@@ -516,7 +516,7 @@ func TestCatalogReIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction) error {
 			err := tx.Catalog.ReIndex(tx, "foo")
-			require.Equal(t, errs.ErrIndexNotFound, err)
+			require.Equal(t, errs.NotFoundError{Name: "foo"}, err)
 			return nil
 		})
 	})
@@ -759,7 +759,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, seq)
 
-			_, err = db.Catalog.(*catalog.Catalog).CatalogTable.GetTable(tx).GetDocument([]byte("test1"))
+			_, err = db.Catalog.(*catalog.Catalog).CatalogTable.Table(tx).GetDocument([]byte("test1"))
 			require.NoError(t, err)
 
 			tb, err := db.Catalog.GetTable(tx, database.SequenceTableName)

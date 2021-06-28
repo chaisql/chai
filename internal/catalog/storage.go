@@ -12,6 +12,19 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
+func objectToDocument(o CatalogObject) document.Document {
+	switch t := o.(type) {
+	case *database.TableInfo:
+		return tableInfoToDocument(t)
+	case *database.IndexInfo:
+		return indexInfoToDocument(t)
+	case *database.Sequence:
+		return sequenceInfoToDocument(t.Info)
+	}
+
+	panic(stringutil.Sprintf("objectToDocument: unknown type %q", o.Type()))
+}
+
 func tableInfoToDocument(ti *database.TableInfo) document.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", document.NewTextValue(ti.TableName))
@@ -227,7 +240,7 @@ func (s *CatalogTable) Init(tx *database.Transaction) error {
 }
 
 func (s *CatalogTable) Load(tx *database.Transaction) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
-	tb := s.GetTable(tx)
+	tb := s.Table(tx)
 
 	err = tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
 		tp, err := d.GetByField("type")
@@ -262,7 +275,7 @@ func (s *CatalogTable) Load(tx *database.Transaction) (tables []database.TableIn
 	return
 }
 
-func (s *CatalogTable) GetTable(tx *database.Transaction) *database.Table {
+func (s *CatalogTable) Table(tx *database.Transaction) *database.Table {
 	st, err := tx.Tx.GetStore([]byte(CatalogTableName))
 	if err != nil {
 		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", CatalogTableName, err))
@@ -275,77 +288,28 @@ func (s *CatalogTable) GetTable(tx *database.Transaction) *database.Table {
 	}
 }
 
-// InsertTable inserts a new tableInfo for the given table name.
-// If info.StoreName is nil, it generates one and stores it in info.
-func (s *CatalogTable) InsertTable(tx *database.Transaction, tableName string, info *database.TableInfo) error {
-	tb := s.GetTable(tx)
+// Insert a catalog object to the table.
+func (s *CatalogTable) Insert(tx *database.Transaction, o CatalogObject) error {
+	tb := s.Table(tx)
 
-	_, err := tb.Insert(tableInfoToDocument(info))
+	_, err := tb.Insert(objectToDocument(o))
 	if err == errs.ErrDuplicateDocument {
-		return errs.AlreadyExistsError{Name: tableName}
+		return errs.AlreadyExistsError{Name: o.Name()}
 	}
 
 	return err
 }
 
-// Replace replaces tableName table information with the new info.
-func (s *CatalogTable) ReplaceTable(tx *database.Transaction, tableName string, info *database.TableInfo) error {
-	tb := s.GetTable(tx)
+// Replace a catalog object with another.
+func (s *CatalogTable) Replace(tx *database.Transaction, name string, o CatalogObject) error {
+	tb := s.Table(tx)
 
-	_, err := tb.Replace([]byte(tableName), tableInfoToDocument(info))
+	_, err := tb.Replace([]byte(name), objectToDocument(o))
 	return err
 }
 
-func (s *CatalogTable) DeleteTable(tx *database.Transaction, tableName string) error {
-	tb := s.GetTable(tx)
-
-	return tb.Delete([]byte(tableName))
-}
-
-func (s *CatalogTable) InsertIndex(tx *database.Transaction, info *database.IndexInfo) error {
-	tb := s.GetTable(tx)
-
-	_, err := tb.Insert(indexInfoToDocument(info))
-	if err == errs.ErrDuplicateDocument {
-		return errs.AlreadyExistsError{Name: info.IndexName}
-	}
-
-	return err
-}
-
-func (s *CatalogTable) ReplaceIndex(tx *database.Transaction, indexName string, info *database.IndexInfo) error {
-	tb := s.GetTable(tx)
-
-	_, err := tb.Replace([]byte(indexName), indexInfoToDocument(info))
-	return err
-}
-
-func (s *CatalogTable) DeleteIndex(tx *database.Transaction, indexName string) error {
-	tb := s.GetTable(tx)
-
-	return tb.Delete([]byte(indexName))
-}
-
-func (s *CatalogTable) InsertSequence(tx *database.Transaction, info *database.SequenceInfo) error {
-	tb := s.GetTable(tx)
-
-	_, err := tb.Insert(sequenceInfoToDocument(info))
-	if err == errs.ErrDuplicateDocument {
-		return errs.AlreadyExistsError{Name: info.Name}
-	}
-
-	return err
-}
-
-func (s *CatalogTable) ReplaceSequence(tx *database.Transaction, name string, info *database.SequenceInfo) error {
-	tb := s.GetTable(tx)
-
-	_, err := tb.Replace([]byte(name), sequenceInfoToDocument(info))
-	return err
-}
-
-func (s *CatalogTable) DeleteSequence(tx *database.Transaction, name string) error {
-	tb := s.GetTable(tx)
+func (s *CatalogTable) Delete(tx *database.Transaction, name string) error {
+	tb := s.Table(tx)
 
 	return tb.Delete([]byte(name))
 }

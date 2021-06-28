@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
@@ -138,7 +139,7 @@ func (s *Sequence) SetLease(tx *Transaction, name string, v int64) error {
 
 func (s *Sequence) GetOrCreateTable(tx *Transaction) (*Table, error) {
 	tb, err := tx.Catalog.GetTable(tx, SequenceTableName)
-	if err == nil || err != errs.ErrTableNotFound {
+	if err == nil || !errs.IsNotFoundError(err) {
 		return tb, err
 	}
 
@@ -148,4 +149,27 @@ func (s *Sequence) GetOrCreateTable(tx *Transaction) (*Table, error) {
 	}
 
 	return tx.Catalog.GetTable(tx, SequenceTableName)
+}
+
+func (s *Sequence) Type() string {
+	return "sequence"
+}
+
+func (s *Sequence) Name() string {
+	return s.Info.Name
+}
+
+func (s *Sequence) SetName(name string) {
+	s.Info.Name = name
+}
+
+func (s *Sequence) GenerateBaseName() string {
+	var sb strings.Builder
+	sb.WriteString(s.Info.Owner.TableName)
+	if s.Info.Owner.Path != nil {
+		sb.WriteString("_")
+		sb.WriteString(s.Info.Owner.Path.String())
+	}
+	sb.WriteString("_seq")
+	return sb.String()
 }

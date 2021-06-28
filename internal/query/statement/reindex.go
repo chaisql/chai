@@ -1,8 +1,6 @@
 package statement
 
 import (
-	"errors"
-
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
@@ -38,7 +36,7 @@ func (stmt ReIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result
 
 		return res, nil
 	}
-	if !errors.Is(err, errs.ErrTableNotFound) {
+	if !errs.IsNotFoundError(err) {
 		return res, err
 	}
 

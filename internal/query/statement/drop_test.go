@@ -28,7 +28,7 @@ func TestDropTable(t *testing.T) {
 	err = db.Exec("DROP TABLE test1")
 	require.Error(t, err)
 
-	// Assert that no other table have been dropped.
+	// Assert that no other table has been dropped.
 	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
 	require.NoError(t, err)
 	var tables []string
@@ -77,7 +77,11 @@ func TestDropIndex(t *testing.T) {
 	require.Equal(t, "idx_test1_foo", indexes[0])
 	require.Equal(t, "test1_bar_idx", indexes[1])
 
+	// Dropping a non existing index with IF EXISTS should not fail.
+	err := testutil.Exec(tx, "DROP INDEX IF EXISTS unknown")
+	require.NoError(t, err)
+
 	// Dropping an index created with a table constraint should fail.
-	err := testutil.Exec(tx, "DROP INDEX test1_bar_idx")
+	err = testutil.Exec(tx, "DROP INDEX test1_bar_idx")
 	require.Error(t, err)
 }
