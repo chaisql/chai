@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-type CatalogObject interface {
+type Relation interface {
 	Type() string
 	Name() string
 	SetName(name string)
@@ -16,16 +16,16 @@ type CatalogObject interface {
 }
 
 type catalogCache struct {
-	tables    map[string]CatalogObject
-	indexes   map[string]CatalogObject
-	sequences map[string]CatalogObject
+	tables    map[string]Relation
+	indexes   map[string]Relation
+	sequences map[string]Relation
 }
 
 func newCatalogCache() *catalogCache {
 	return &catalogCache{
-		tables:    make(map[string]CatalogObject),
-		indexes:   make(map[string]CatalogObject),
-		sequences: make(map[string]CatalogObject),
+		tables:    make(map[string]Relation),
+		indexes:   make(map[string]Relation),
+		sequences: make(map[string]Relation),
 	}
 }
 
@@ -94,25 +94,25 @@ func (c *catalogCache) generateUnusedName(baseName string) string {
 	return name
 }
 
-func (c *catalogCache) getMapByType(tp string) map[string]CatalogObject {
+func (c *catalogCache) getMapByType(tp string) map[string]Relation {
 	switch tp {
-	case CatalogTableTableType:
+	case RelationTableType:
 		return c.tables
-	case CatalogTableIndexType:
+	case RelationIndexType:
 		return c.indexes
-	case CatalogTableSequenceType:
+	case RelationSequenceType:
 		return c.sequences
 	}
 
 	panic(stringutil.Sprintf("unknown catalog object type %q", tp))
 }
 
-func (c *catalogCache) Add(tx *database.Transaction, o CatalogObject) error {
+func (c *catalogCache) Add(tx *database.Transaction, o Relation) error {
 	name := o.Name()
 
 	// if name is provided, ensure it's not duplicated
 	if name != "" {
-		_, err := c.Get(CatalogTableIndexType, name)
+		_, err := c.Get(RelationIndexType, name)
 		if err == nil {
 			return errs.AlreadyExistsError{Name: name}
 		}
@@ -132,7 +132,7 @@ func (c *catalogCache) Add(tx *database.Transaction, o CatalogObject) error {
 	return nil
 }
 
-func (c *catalogCache) Replace(tx *database.Transaction, o CatalogObject) error {
+func (c *catalogCache) Replace(tx *database.Transaction, o Relation) error {
 	m := c.getMapByType(o.Type())
 
 	old, ok := m[o.Name()]
@@ -149,7 +149,7 @@ func (c *catalogCache) Replace(tx *database.Transaction, o CatalogObject) error 
 	return nil
 }
 
-func (c *catalogCache) Delete(tx *database.Transaction, tp, name string) (CatalogObject, error) {
+func (c *catalogCache) Delete(tx *database.Transaction, tp, name string) (Relation, error) {
 	m := c.getMapByType(tp)
 
 	o, ok := m[name]
@@ -166,7 +166,7 @@ func (c *catalogCache) Delete(tx *database.Transaction, tp, name string) (Catalo
 	return o, nil
 }
 
-func (c *catalogCache) Get(tp, name string) (CatalogObject, error) {
+func (c *catalogCache) Get(tp, name string) (Relation, error) {
 	m := c.getMapByType(tp)
 
 	o, ok := m[name]

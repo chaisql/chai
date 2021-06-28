@@ -32,7 +32,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 			Min:         1, Max: math.MaxInt64,
 			Start: 1,
 			Cache: 64,
-			Owner: database.SequenceInfoOwner{
+			Owner: database.Owner{
 				TableName: stmt.Info.TableName,
 			},
 		}
@@ -55,11 +55,14 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsUnique {
 			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
-				TableName:      stmt.Info.TableName,
-				Paths:          []document.Path{fc.Path},
-				Unique:         true,
-				Types:          []document.ValueType{fc.Type},
-				ConstraintPath: fc.Path,
+				TableName: stmt.Info.TableName,
+				Paths:     []document.Path{fc.Path},
+				Unique:    true,
+				Types:     []document.ValueType{fc.Type},
+				Owner: database.Owner{
+					TableName: stmt.Info.TableName,
+					Path:      fc.Path,
+				},
 			})
 			if err != nil {
 				return res, err

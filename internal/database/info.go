@@ -91,7 +91,7 @@ type IndexInfo struct {
 	// If set, this index has been created from a table constraint
 	// i.e CREATE TABLE tbl(a INT UNIQUE)
 	// The path refers to the path this index is related to.
-	ConstraintPath document.Path
+	Owner Owner
 }
 
 func (i *IndexInfo) Type() string {
@@ -172,7 +172,7 @@ type SequenceInfo struct {
 	Start       int64
 	Cache       uint64
 	Cycle       bool
-	Owner       SequenceInfoOwner
+	Owner       Owner
 }
 
 // String returns a SQL representation.
@@ -216,12 +216,12 @@ func (s SequenceInfo) Clone() *SequenceInfo {
 	return &s
 }
 
-// SequenceInfoOwner is used to determine who owns a sequence.
-// If a sequence has been created by a table (for docids for example),
+// Owner is used to determine who owns a relation.
+// If the relation has been created by a table (for docids for example),
 // only the TableName is filled.
-// If it has been created by a field constraint (for identities), the
+// If it has been created by a field constraint (for identities for example), the
 // path must also be filled.
-type SequenceInfoOwner struct {
+type Owner struct {
 	TableName string
 	Path      document.Path
 }

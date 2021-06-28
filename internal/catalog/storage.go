@@ -12,8 +12,8 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-func objectToDocument(o CatalogObject) document.Document {
-	switch t := o.(type) {
+func relationToDocument(r Relation) document.Document {
+	switch t := r.(type) {
 	case *database.TableInfo:
 		return tableInfoToDocument(t)
 	case *database.IndexInfo:
@@ -22,13 +22,13 @@ func objectToDocument(o CatalogObject) document.Document {
 		return sequenceInfoToDocument(t.Info)
 	}
 
-	panic(stringutil.Sprintf("objectToDocument: unknown type %q", o.Type()))
+	panic(stringutil.Sprintf("objectToDocument: unknown type %q", r.Type()))
 }
 
 func tableInfoToDocument(ti *database.TableInfo) document.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", document.NewTextValue(ti.TableName))
-	buf.Add("type", document.NewTextValue(CatalogTableTableType))
+	buf.Add("type", document.NewTextValue(RelationTableType))
 	buf.Add("store_name", document.NewBlobValue(ti.StoreName))
 	buf.Add("sql", document.NewTextValue(ti.String()))
 	if ti.DocidSequenceName != "" {
@@ -71,12 +71,12 @@ func tableInfoFromDocument(d document.Document) (*database.TableInfo, error) {
 func indexInfoToDocument(i *database.IndexInfo) document.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", document.NewTextValue(i.IndexName))
-	buf.Add("type", document.NewTextValue(CatalogTableIndexType))
+	buf.Add("type", document.NewTextValue(RelationIndexType))
 	buf.Add("store_name", document.NewBlobValue(i.StoreName))
 	buf.Add("table_name", document.NewTextValue(i.TableName))
 	buf.Add("sql", document.NewTextValue(i.String()))
-	if i.ConstraintPath != nil {
-		buf.Add("constraint_path", document.NewTextValue(i.ConstraintPath.String()))
+	if i.Owner.TableName != "" {
+		buf.Add("owner", document.NewDocumentValue(ownerToDocument(&i.Owner)))
 	}
 
 	return buf
@@ -101,15 +101,16 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 	}
 	i.StoreName = v.V.([]byte)
 
-	v, err = d.GetByField("constraint_path")
+	v, err = d.GetByField("owner")
 	if err != nil && err != document.ErrFieldNotFound {
 		return nil, err
 	}
 	if err == nil {
-		i.ConstraintPath, err = parser.ParsePath(v.V.(string))
+		owner, err := ownerFromDocument(v.V.(document.Document))
 		if err != nil {
 			return nil, err
 		}
+		i.Owner = *owner
 	}
 
 	return &i, nil
@@ -118,7 +119,7 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 func sequenceInfoToDocument(seq *database.SequenceInfo) document.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", document.NewTextValue(seq.Name))
-	buf.Add("type", document.NewTextValue(CatalogTableSequenceType))
+	buf.Add("type", document.NewTextValue(RelationSequenceType))
 	buf.Add("sql", document.NewTextValue(seq.String()))
 
 	if seq.Owner.TableName != "" {
@@ -151,27 +152,47 @@ func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, erro
 		return nil, err
 	}
 	if err == nil {
-		d := v.V.(document.Document)
-		v, err := d.GetByField("table_name")
+		owner, err := ownerFromDocument(v.V.(document.Document))
 		if err != nil {
 			return nil, err
 		}
-
-		i.Owner.TableName = v.V.(string)
-
-		v, err = d.GetByField("path")
-		if err != nil && err != document.ErrFieldNotFound {
-			return nil, err
-		}
-		if err == nil {
-			i.Owner.Path, err = parser.ParsePath(v.V.(string))
-			if err != nil {
-				return nil, err
-			}
-		}
+		i.Owner = *owner
 	}
 
 	return &i, nil
+}
+
+func ownerToDocument(owner *database.Owner) document.Document {
+	buf := document.NewFieldBuffer().Add("table_name", document.NewTextValue(owner.TableName))
+	if owner.Path != nil {
+		buf.Add("path", document.NewTextValue(owner.Path.String()))
+	}
+
+	return buf
+}
+
+func ownerFromDocument(d document.Document) (*database.Owner, error) {
+	var owner database.Owner
+
+	v, err := d.GetByField("table_name")
+	if err != nil {
+		return nil, err
+	}
+
+	owner.TableName = v.V.(string)
+
+	v, err = d.GetByField("path")
+	if err != nil && err != document.ErrFieldNotFound {
+		return nil, err
+	}
+	if err == nil {
+		owner.Path, err = parser.ParsePath(v.V.(string))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &owner, nil
 }
 
 type CatalogTable struct {
@@ -181,8 +202,8 @@ type CatalogTable struct {
 func NewCatalogTable(tx *database.Transaction) *CatalogTable {
 	return &CatalogTable{
 		Info: &database.TableInfo{
-			TableName: CatalogTableName,
-			StoreName: []byte(CatalogTableName),
+			TableName: TableName,
+			StoreName: []byte(TableName),
 			FieldConstraints: []*database.FieldConstraint{
 				{
 					Path: document.Path{
@@ -231,9 +252,9 @@ func NewCatalogTable(tx *database.Transaction) *CatalogTable {
 }
 
 func (s *CatalogTable) Init(tx *database.Transaction) error {
-	_, err := tx.Tx.GetStore([]byte(CatalogTableName))
+	_, err := tx.Tx.GetStore([]byte(TableName))
 	if err == engine.ErrStoreNotFound {
-		err = tx.Tx.CreateStore([]byte(CatalogTableName))
+		err = tx.Tx.CreateStore([]byte(TableName))
 	}
 
 	return err
@@ -249,20 +270,20 @@ func (s *CatalogTable) Load(tx *database.Transaction) (tables []database.TableIn
 		}
 
 		switch tp.V.(string) {
-		case CatalogTableTableType:
+		case RelationTableType:
 			ti, err := tableInfoFromDocument(d)
 			if err != nil {
 				return err
 			}
 			tables = append(tables, *ti)
-		case CatalogTableIndexType:
+		case RelationIndexType:
 			i, err := indexInfoFromDocument(d)
 			if err != nil {
 				return err
 			}
 
 			indexes = append(indexes, *i)
-		case CatalogTableSequenceType:
+		case RelationSequenceType:
 			i, err := sequenceInfoFromDocument(d)
 			if err != nil {
 				return err
@@ -276,9 +297,9 @@ func (s *CatalogTable) Load(tx *database.Transaction) (tables []database.TableIn
 }
 
 func (s *CatalogTable) Table(tx *database.Transaction) *database.Table {
-	st, err := tx.Tx.GetStore([]byte(CatalogTableName))
+	st, err := tx.Tx.GetStore([]byte(TableName))
 	if err != nil {
-		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", CatalogTableName, err))
+		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", TableName, err))
 	}
 
 	return &database.Table{
@@ -289,22 +310,22 @@ func (s *CatalogTable) Table(tx *database.Transaction) *database.Table {
 }
 
 // Insert a catalog object to the table.
-func (s *CatalogTable) Insert(tx *database.Transaction, o CatalogObject) error {
+func (s *CatalogTable) Insert(tx *database.Transaction, r Relation) error {
 	tb := s.Table(tx)
 
-	_, err := tb.Insert(objectToDocument(o))
+	_, err := tb.Insert(relationToDocument(r))
 	if err == errs.ErrDuplicateDocument {
-		return errs.AlreadyExistsError{Name: o.Name()}
+		return errs.AlreadyExistsError{Name: r.Name()}
 	}
 
 	return err
 }
 
 // Replace a catalog object with another.
-func (s *CatalogTable) Replace(tx *database.Transaction, name string, o CatalogObject) error {
+func (s *CatalogTable) Replace(tx *database.Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
-	_, err := tb.Replace([]byte(name), objectToDocument(o))
+	_, err := tb.Replace([]byte(name), relationToDocument(r))
 	return err
 }
 

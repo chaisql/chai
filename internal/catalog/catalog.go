@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	CatalogTableName         = database.InternalPrefix + "catalog"
-	CatalogTableTableType    = "table"
-	CatalogTableIndexType    = "index"
-	CatalogTableSequenceType = "sequence"
-	CatalogStoreSequence     = database.InternalPrefix + "store_seq"
+	TableName            = database.InternalPrefix + "catalog"
+	RelationTableType    = "table"
+	RelationIndexType    = "index"
+	RelationSequenceType = "sequence"
+	StoreSequence        = database.InternalPrefix + "store_seq"
 )
 
 // Catalog manages all database objects such as tables, indexes and sequences.
@@ -51,13 +51,13 @@ func (c *Catalog) Load(tx *database.Transaction) error {
 
 	// ensure the catalog table sequence exists
 	err = c.CreateSequence(tx, &database.SequenceInfo{
-		Name:        CatalogStoreSequence,
+		Name:        StoreSequence,
 		IncrementBy: 1,
 		Min:         1, Max: math.MaxInt64,
 		Start: 1,
 		Cache: 16,
-		Owner: database.SequenceInfoOwner{
-			TableName: CatalogTableName,
+		Owner: database.Owner{
+			TableName: TableName,
 		},
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func (c *Catalog) loadSequences(tx *database.Transaction, info []database.Sequen
 }
 
 func (c *Catalog) generateStoreName(tx *database.Transaction) ([]byte, error) {
-	seq, err := c.GetSequence(CatalogStoreSequence)
+	seq, err := c.GetSequence(StoreSequence)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (c *Catalog) generateStoreName(tx *database.Transaction) ([]byte, error) {
 }
 
 func (c *Catalog) GetTable(tx *database.Transaction, tableName string) (*database.Table, error) {
-	o, err := c.Cache.Get(CatalogTableTableType, tableName)
+	o, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 
 // DropTable deletes a table from the catalog
 func (c *Catalog) DropTable(tx *database.Transaction, tableName string) error {
-	o, err := c.Cache.Get(CatalogTableTableType, tableName)
+	o, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,7 @@ func (c *Catalog) DropTable(tx *database.Transaction, tableName string) error {
 	}
 
 	for _, idx := range c.Cache.GetTableIndexes(tableName) {
-		_, err = c.Cache.Delete(tx, CatalogTableIndexType, idx.IndexName)
+		_, err = c.Cache.Delete(tx, RelationIndexType, idx.IndexName)
 		if err != nil {
 			return err
 		}
@@ -245,7 +245,7 @@ func (c *Catalog) DropTable(tx *database.Transaction, tableName string) error {
 		}
 	}
 
-	_, err = c.Cache.Delete(tx, CatalogTableTableType, tableName)
+	_, err = c.Cache.Delete(tx, RelationTableType, tableName)
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func (c *Catalog) DropTable(tx *database.Transaction, tableName string) error {
 // If it already exists, returns errs.ErrIndexAlreadyExists.
 func (c *Catalog) CreateIndex(tx *database.Transaction, info *database.IndexInfo) error {
 	// get the associated table
-	o, err := c.Cache.Get(CatalogTableTableType, info.TableName)
+	o, err := c.Cache.Get(RelationTableType, info.TableName)
 	if err != nil {
 		return err
 	}
@@ -322,11 +322,11 @@ OUTER:
 
 // GetIndex returns an index by name.
 func (c *Catalog) GetIndex(tx *database.Transaction, indexName string) (*database.Index, error) {
-	o, err := c.Cache.Get(CatalogTableIndexType, indexName)
+	r, err := c.Cache.Get(RelationIndexType, indexName)
 	if err != nil {
 		return nil, err
 	}
-	info := o.(*database.IndexInfo)
+	info := r.(*database.IndexInfo)
 
 	return database.NewIndex(tx.Tx, info.IndexName, info), nil
 }
@@ -336,7 +336,7 @@ func (c *Catalog) GetIndex(tx *database.Transaction, indexName string) (*databas
 // The returned list of indexes is sorted lexicographically.
 func (c *Catalog) ListIndexes(tableName string) []string {
 	if tableName == "" {
-		list := c.Cache.ListObjects(CatalogTableIndexType)
+		list := c.Cache.ListObjects(RelationIndexType)
 		sort.Strings(list)
 		return list
 	}
@@ -353,19 +353,19 @@ func (c *Catalog) ListIndexes(tableName string) []string {
 // DropIndex deletes an index from the database.
 func (c *Catalog) DropIndex(tx *database.Transaction, name string) error {
 	// check if the index exists
-	o, err := c.Cache.Get(CatalogTableIndexType, name)
+	r, err := c.Cache.Get(RelationIndexType, name)
 	if err != nil {
 		return err
 	}
 
-	info := o.(*database.IndexInfo)
+	info := r.(*database.IndexInfo)
 
 	// check if the index has been created by a table constraint
-	if info.ConstraintPath != nil {
-		return stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.ConstraintPath)
+	if info.Owner.Path != nil {
+		return stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Path)
 	}
 
-	_, err = c.Cache.Delete(tx, CatalogTableIndexType, name)
+	_, err = c.Cache.Delete(tx, RelationIndexType, name)
 	if err != nil {
 		return err
 	}
@@ -384,11 +384,11 @@ func (c *Catalog) dropIndex(tx *database.Transaction, name string) error {
 
 // AddFieldConstraint adds a field constraint to a table.
 func (c *Catalog) AddFieldConstraint(tx *database.Transaction, tableName string, fc database.FieldConstraint) error {
-	o, err := c.Cache.Get(CatalogTableTableType, tableName)
+	r, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return err
 	}
-	ti := o.(*database.TableInfo)
+	ti := r.(*database.TableInfo)
 
 	clone := ti.Clone()
 	err = clone.FieldConstraints.Add(&fc)
@@ -416,7 +416,7 @@ func (c *Catalog) RenameTable(tx *database.Transaction, oldName, newName string)
 		return err
 	}
 
-	o, err := c.Cache.Delete(tx, CatalogTableTableType, oldName)
+	o, err := c.Cache.Delete(tx, RelationTableType, oldName)
 	if err != nil {
 		return err
 	}
@@ -437,11 +437,11 @@ func (c *Catalog) RenameTable(tx *database.Transaction, oldName, newName string)
 	}
 
 	for _, idx := range c.Cache.GetTableIndexes(oldName) {
-		o, err := c.Cache.Delete(tx, CatalogTableIndexType, idx.IndexName)
+		r, err := c.Cache.Delete(tx, RelationIndexType, idx.IndexName)
 		if err != nil {
 			return err
 		}
-		info := o.(*database.IndexInfo)
+		info := r.(*database.IndexInfo)
 
 		idxClone := info.Clone()
 		idxClone.TableName = clone.TableName
@@ -505,7 +505,7 @@ func (c *Catalog) buildIndex(tx *database.Transaction, idx *database.Index, tabl
 
 // ReIndexAll truncates and recreates all indexes of the database from scratch.
 func (c *Catalog) ReIndexAll(tx *database.Transaction) error {
-	indexes := c.Cache.ListObjects(CatalogTableIndexType)
+	indexes := c.Cache.ListObjects(RelationIndexType)
 
 	for _, indexName := range indexes {
 		err := c.ReIndex(tx, indexName)
@@ -518,12 +518,12 @@ func (c *Catalog) ReIndexAll(tx *database.Transaction) error {
 }
 
 func (c *Catalog) GetSequence(name string) (*database.Sequence, error) {
-	o, err := c.Cache.Get(CatalogTableSequenceType, name)
+	r, err := c.Cache.Get(RelationSequenceType, name)
 	if err != nil {
 		return nil, err
 	}
 
-	return o.(*database.Sequence), nil
+	return r.(*database.Sequence), nil
 }
 
 // CreateSequence creates a sequence with the given name.
@@ -555,12 +555,12 @@ func (c *Catalog) CreateSequence(tx *database.Transaction, info *database.Sequen
 
 // DropSequence deletes a sequence from the catalog.
 func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
-	o, err := c.Cache.Delete(tx, CatalogTableSequenceType, name)
+	r, err := c.Cache.Delete(tx, RelationSequenceType, name)
 	if err != nil {
 		return err
 	}
 
-	seq := o.(*database.Sequence)
+	seq := r.(*database.Sequence)
 	err = seq.Drop(tx)
 	if err != nil {
 		return err
@@ -571,5 +571,5 @@ func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
 
 // ListSequences returns all sequence names sorted lexicographically.
 func (c *Catalog) ListSequences() []string {
-	return c.Cache.ListObjects(CatalogTableSequenceType)
+	return c.Cache.ListObjects(RelationSequenceType)
 }
