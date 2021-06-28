@@ -17,7 +17,7 @@ const btreeDegree = 12
 // Engine is a simple memory engine implementation that stores data in
 // an in-memory Btree. It is not thread safe.
 type Engine struct {
-	closed    bool
+	Closed    bool
 	stores    map[string]*btree.BTree
 	sequences map[string]uint64
 }
@@ -38,7 +38,7 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 	default:
 	}
 
-	if ng.closed {
+	if ng.Closed {
 		return nil, errors.New("engine closed")
 	}
 
@@ -47,11 +47,11 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 
 // Close the engine.
 func (ng *Engine) Close() error {
-	if ng.closed {
+	if ng.Closed {
 		return errors.New("engine already closed")
 	}
 
-	ng.closed = true
+	ng.Closed = true
 	return nil
 }
 

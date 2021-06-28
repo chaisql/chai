@@ -16,4 +16,5 @@ type Catalog interface {
 	GetSequence(name string) (*Sequence, error)
 	CreateSequence(tx *Transaction, info *SequenceInfo) error
 	DropSequence(tx *Transaction, name string) error
+	ListSequences() []string
 }

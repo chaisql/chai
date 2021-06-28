@@ -723,15 +723,15 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d document.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_catalog_seq CACHE 16", "type":"sequence"}`)
-		case 1:
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
+		case 1:
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq CACHE 16", "type":"sequence"}`)
 		case 2:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)", "store_name":"AQ==", "type":"table"}`)
 		case 3:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "constraint_path":"b[3].c", "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
 		case 4:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 32", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
 		case 5:
 			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "store_name":"Aw==", "table_name":"foo", "type":"index"}`)
 		default:

@@ -214,6 +214,11 @@ func TestTableInsert(t *testing.T) {
 
 		key1 := insertDoc(db)
 
+		err = db.Close()
+		require.NoError(t, err)
+
+		ng.Closed = false
+
 		// create new database object
 		db, err = database.New(context.Background(), ng, database.Options{
 			Codec:   msgpack.NewCodec(),
@@ -230,8 +235,7 @@ func TestTableInsert(t *testing.T) {
 		b, _ := binary.Uvarint(key2)
 		require.NoError(t, err)
 
-		// for now, closing a database doesn't reclaim unused docids
-		require.Equal(t, int64(a+32), int64(b))
+		require.Equal(t, int64(a+1), int64(b))
 	})
 
 	t.Run("Should use the right field if primary key is specified", func(t *testing.T) {

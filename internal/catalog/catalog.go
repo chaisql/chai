@@ -17,7 +17,7 @@ const (
 	CatalogTableTableType    = "table"
 	CatalogTableIndexType    = "index"
 	CatalogTableSequenceType = "sequence"
-	CatalogStoreSequence     = CatalogTableName + "_seq"
+	CatalogStoreSequence     = database.InternalPrefix + "store_seq"
 )
 
 // Catalog manages all database objects such as tables, indexes and sequences.
@@ -111,17 +111,19 @@ func (c *Catalog) loadSequences(tx *database.Transaction, info []database.Sequen
 			return nil, err
 		}
 
-		sequences[i].Info = &info[i]
-
 		v, err := d.GetByField("seq")
 		if err != nil && err != document.ErrFieldNotFound {
 			return nil, err
 		}
 
+		var currentValue *int64
 		if err == nil {
 			v := v.V.(int64)
-			sequences[i].CurrentValue = &v
+			currentValue = &v
+
 		}
+
+		sequences[i] = database.NewSequence(&info[i], currentValue)
 	}
 
 	return sequences, nil
@@ -559,4 +561,14 @@ func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
 	}
 
 	return c.CatalogTable.Delete(tx, name)
+}
+
+// ListSequences returns all sequence names sorted lexicographically.
+func (c *Catalog) ListSequences() []string {
+	names := make([]string, 0, len(c.Cache.sequences))
+	for name := range c.Cache.sequences {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

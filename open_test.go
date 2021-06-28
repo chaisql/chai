@@ -49,12 +49,12 @@ func TestOpen(t *testing.T) {
 	err = res1.Iterate(func(d document.Document) error {
 		count++
 		if count == 1 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_catalog_seq CACHE 16", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
 			return nil
 		}
 
 		if count == 2 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq CACHE 16", "type":"sequence"}`)
 			return nil
 		}
 
@@ -89,7 +89,7 @@ func TestOpen(t *testing.T) {
 		}
 
 		if count == 9 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 32", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`)
 			return nil
 		}
 
@@ -103,7 +103,7 @@ func TestOpen(t *testing.T) {
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence")
 	require.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog_seq", "seq":16}`)
+	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":5}`)
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
 	require.NoError(t, err)

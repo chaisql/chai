@@ -46,6 +46,23 @@ type Sequence struct {
 	Cached       uint64
 }
 
+// NewSequence creates a new or existing sequence. If currentValue is not nil
+// next call to Next will increase the lease.
+func NewSequence(info *SequenceInfo, currentValue *int64) Sequence {
+	seq := Sequence{
+		Info:         info,
+		CurrentValue: currentValue,
+	}
+
+	// currentValue is not nil, the sequence already exists in the database
+	// and the lease needs to be extended.
+	if currentValue != nil {
+		seq.Cached = seq.Info.Cache
+	}
+
+	return seq
+}
+
 func (s *Sequence) Init(tx *Transaction) error {
 	tb, err := s.GetOrCreateTable(tx)
 	if err != nil {
@@ -172,4 +189,20 @@ func (s *Sequence) GenerateBaseName() string {
 	}
 	sb.WriteString("_seq")
 	return sb.String()
+}
+
+// Release the sequence by storing the actual current value to the sequence table.
+// If the sequence has cache, the cached value is overwritten.
+func (s *Sequence) Release(tx *Transaction) error {
+	if s.CurrentValue == nil {
+		return nil
+	}
+
+	err := s.SetLease(tx, s.Info.Name, *s.CurrentValue)
+	if err != nil {
+		return err
+	}
+
+	s.Cached = s.Info.Cache
+	return nil
 }

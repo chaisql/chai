@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -349,5 +350,51 @@ func TestSequence(t *testing.T) {
 
 		_, err = seq.Next(tx)
 		require.Error(t, err)
+	})
+
+	t.Run("release", func(t *testing.T) {
+		db, cleanup := testutil.NewTestDB(t)
+		defer cleanup()
+
+		tx, err := db.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.Catalog.CreateSequence(tx, &database.SequenceInfo{
+			Name:        "a",
+			IncrementBy: 1,
+			Min:         1, Max: 20,
+			Start: 3,
+			Cache: 5,
+		})
+		require.NoError(t, err)
+
+		seq, err := tx.Catalog.GetSequence("a")
+		require.NoError(t, err)
+
+		next(seq, tx, 3, 7)
+		next(seq, tx, 4, 7)
+
+		got, err := getLease(t, tx, "a")
+		require.NoError(t, err)
+		require.Equal(t, int64(7), *got)
+
+		err = seq.Release(tx)
+		require.NoError(t, err)
+
+		c := catalog.New()
+		err = c.Load(tx)
+		require.NoError(t, err)
+
+		tx.Catalog = c
+
+		seq, err = tx.Catalog.GetSequence("a")
+		require.NoError(t, err)
+
+		got, err = getLease(t, tx, "a")
+		require.NoError(t, err)
+		require.Equal(t, int64(4), *got)
+
+		next(seq, tx, 5, 9)
 	})
 }

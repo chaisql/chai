@@ -31,7 +31,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 			IncrementBy: 1,
 			Min:         1, Max: math.MaxInt64,
 			Start: 1,
-			Cache: 32,
+			Cache: 64,
 			Owner: database.SequenceInfoOwner{
 				TableName: stmt.Info.TableName,
 			},

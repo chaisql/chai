@@ -85,6 +85,30 @@ func (db *Database) Close() error {
 	db.txmu.Lock()
 	defer db.txmu.Unlock()
 
+	// release all sequences
+	tx, err := db.beginTx(context.Background(), &TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Tx.Rollback()
+
+	for _, seqName := range tx.Catalog.ListSequences() {
+		seq, err := tx.Catalog.GetSequence(seqName)
+		if err != nil {
+			return err
+		}
+
+		err = seq.Release(tx)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = tx.Tx.Commit()
+	if err != nil {
+		return err
+	}
+
 	return db.ng.Close()
 }
 
@@ -120,6 +144,11 @@ func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		return nil, errors.New("cannot open a transaction within a transaction")
 	}
 
+	return db.beginTx(ctx, opts)
+}
+
+// beginTx creates a transaction without locks.
+func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
 	ntx, err := db.ng.Begin(ctx, engine.TxOptions{
 		Writable: !opts.ReadOnly,
 	})
