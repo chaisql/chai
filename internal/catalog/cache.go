@@ -385,18 +385,33 @@ func (c *catalogCache) AddSequence(tx *database.Transaction, seq *database.Seque
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// checking if sequence exists with the same name
-	if _, ok := c.sequences[seq.Info.Name]; ok {
-		return errs.AlreadyExistsError{Name: seq.Info.Name}
+	// auto-generate sequence name if needed
+	if seq.Info.Name == "" {
+		if seq.Info.Owner.TableName == "" {
+			return errors.New("sequence name not provided")
+		}
+
+		var sb strings.Builder
+		sb.WriteString(seq.Info.Owner.TableName)
+		if seq.Info.Owner.Path != nil {
+			sb.WriteString("_")
+			sb.WriteString(seq.Info.Owner.Path.String())
+		}
+		sb.WriteString("_seq")
+		seq.Info.Name = sb.String()
+
+		i := 0
+		for {
+			if !c.objectExists(seq.Info.Name) {
+				break
+			}
+
+			i++
+			seq.Info.Name = stringutil.Sprintf("%s%d", sb.String(), i)
+		}
 	}
 
-	// checking if table exists with the same name
-	if _, ok := c.tables[seq.Info.Name]; ok {
-		return errs.AlreadyExistsError{Name: seq.Info.Name}
-	}
-
-	// checking if index exists with the same name
-	if _, ok := c.indexes[seq.Info.Name]; ok {
+	if c.objectExists(seq.Info.Name) {
 		return errs.AlreadyExistsError{Name: seq.Info.Name}
 	}
 
@@ -410,6 +425,25 @@ func (c *catalogCache) AddSequence(tx *database.Transaction, seq *database.Seque
 	})
 
 	return nil
+}
+
+func (c *catalogCache) objectExists(name string) bool {
+	// checking if sequence exists with the same name
+	if _, ok := c.sequences[name]; ok {
+		return true
+	}
+
+	// checking if table exists with the same name
+	if _, ok := c.tables[name]; ok {
+		return true
+	}
+
+	// checking if index exists with the same name
+	if _, ok := c.indexes[name]; ok {
+		return true
+	}
+
+	return false
 }
 
 func (c *catalogCache) GetSequence(name string) (*database.Sequence, error) {

@@ -102,7 +102,7 @@ func runHelpCmd() error {
 
 // runTablesCmd displays all tables.
 func runTablesCmd(db *genji.DB, w io.Writer) error {
-	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
+	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table' AND name != '__genji_sequence'")
 	if err != nil {
 		return err
 	}

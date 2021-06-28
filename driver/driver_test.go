@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/engine"
 	"github.com/stretchr/testify/require"
 )
 
@@ -260,7 +259,7 @@ func TestDriver(t *testing.T) {
 			INSERT INTO test (a, b, c) VALUES (12, 13, 14);
 			SELECT * FROM test;
 		`)
-		require.Equal(t, err, engine.ErrTransactionReadOnly)
+		require.EqualError(t, err, "cannot increment sequence on read-only transaction")
 	})
 }
 

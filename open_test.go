@@ -49,41 +49,51 @@ func TestOpen(t *testing.T) {
 	err = res1.Iterate(func(d document.Document) error {
 		count++
 		if count == 1 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_catalog_seq CACHE 16", "type":"sequence"}`)
 			return nil
 		}
 
 		if count == 2 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
 			return nil
 		}
 
 		if count == 3 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL UNIQUE, b.c[0].d DOUBLE PRIMARY KEY)", "store_name":"AQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`)
 			return nil
 		}
 
 		if count == 4 {
-			testutil.RequireDocJSONEq(t, d, `{"constraint_path":"a", "name":"tableA_a_idx", "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "store_name":"Ag==", "table_name":"tableA", "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL UNIQUE, b.c[0].d DOUBLE PRIMARY KEY)", "store_name":"AQ==", "type":"table"}`)
 			return nil
 		}
 
 		if count == 5 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")", "store_name":"Aw==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableA_a_idx", "constraint_path":"a",  "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "store_name":"Ag==", "table_name":"tableA", "type":"index"}`)
 			return nil
 		}
 
 		if count == 6 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableC", "sql":"CREATE TABLE tableC", "store_name":"BA==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")", "store_name":"Aw==", "type":"table"}`)
 			return nil
 		}
 
 		if count == 7 {
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC", "store_name":"BA==", "type":"table"}`)
+			return nil
+		}
+
+		if count == 8 {
 			testutil.RequireDocJSONEq(t, d, `{"name":"tableC_a_b_idx", "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "store_name":"BQ==", "table_name":"tableC", "type":"index"}`)
 			return nil
 		}
 
-		return errors.New("more than 7 relations")
+		if count == 9 {
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 32", "type":"sequence"}`)
+			return nil
+		}
+
+		return errors.New("more than 8 relations")
 	})
 	require.NoError(t, err)
 
@@ -92,6 +102,10 @@ func TestOpen(t *testing.T) {
 	testutil.RequireDocJSONEq(t, d, `{"a": "1"}`)
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence")
+	require.NoError(t, err)
+	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog_seq", "seq":16}`)
+
+	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
 	require.NoError(t, err)
 	testutil.RequireDocJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
 }

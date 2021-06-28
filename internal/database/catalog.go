@@ -14,6 +14,6 @@ type Catalog interface {
 	ReIndex(tx *Transaction, indexName string) error
 	ReIndexAll(tx *Transaction) error
 	GetSequence(name string) (*Sequence, error)
-	CreateSequence(tx *Transaction, name string, info *SequenceInfo) error
+	CreateSequence(tx *Transaction, info *SequenceInfo) error
 	DropSequence(tx *Transaction, name string) error
 }

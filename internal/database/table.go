@@ -539,12 +539,16 @@ func (t *Table) generateKey(info *TableInfo, d document.Document) ([]byte, error
 		return buf.Bytes(), nil
 	}
 
-	docid, err := t.Store.NextSequence()
+	seq, err := t.Tx.Catalog.GetSequence(t.Info.DocidSequenceName)
+	if err != nil {
+		return nil, err
+	}
+	docid, err := seq.Next(t.Tx)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(buf, docid)
+	n := binary.PutUvarint(buf, uint64(docid))
 	return buf[:n], nil
 }

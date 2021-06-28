@@ -1,25 +1,22 @@
 package catalog
 
 import (
+	"encoding/binary"
+	"math"
 	"sort"
-	"strings"
 
 	"github.com/genjidb/genji/document"
+	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
 const (
-	internalPrefix = "__genji_"
-)
-
-const (
-	CatalogTableName         = internalPrefix + "catalog"
+	CatalogTableName         = database.InternalPrefix + "catalog"
 	CatalogTableTableType    = "table"
 	CatalogTableIndexType    = "index"
 	CatalogTableSequenceType = "sequence"
+	CatalogStoreSequence     = CatalogTableName + "_seq"
 )
 
 // Catalog manages all database objects such as tables, indexes and sequences.
@@ -38,79 +35,41 @@ func New() *Catalog {
 
 func (c *Catalog) Load(tx *database.Transaction) error {
 	c.CatalogTable = NewCatalogTable(tx)
+
+	// ensure the catalog table exists
 	err := c.CatalogTable.Init(tx)
 	if err != nil {
 		return err
 	}
 
-	return c.loadCatalog(tx)
+	// load catalog information
+	err = c.loadCatalog(tx)
+	if err != nil {
+		return err
+	}
+
+	// ensure the catalog table sequence exists
+	err = c.CreateSequence(tx, &database.SequenceInfo{
+		Name:        CatalogStoreSequence,
+		IncrementBy: 1,
+		Min:         1, Max: math.MaxInt64,
+		Start: 1,
+		Cache: 16,
+		Owner: database.SequenceInfoOwner{
+			TableName: CatalogTableName,
+		},
+	})
+	if err != nil {
+		if _, ok := err.(errs.AlreadyExistsError); !ok {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *Catalog) loadCatalog(tx *database.Transaction) error {
-	tb := c.CatalogTable.GetTable(tx)
-
-	var tables []database.TableInfo
-	var indexes []database.IndexInfo
-	var sequences []database.SequenceInfo
-
-	err := tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
-		s, err := d.GetByField("sql")
-		if err != nil && err != document.ErrFieldNotFound {
-			return err
-		}
-		if err == document.ErrFieldNotFound {
-			return nil
-		}
-
-		stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
-		if err != nil {
-			return err
-		}
-
-		tp, err := d.GetByField("type")
-		if err != nil {
-			return err
-		}
-
-		switch tp.V.(string) {
-		case CatalogTableTableType:
-			ti := stmt.(*statement.CreateTableStmt).Info
-
-			v, err := d.GetByField("store_name")
-			if err != nil {
-				return err
-			}
-			ti.StoreName = v.V.([]byte)
-
-			tables = append(tables, ti)
-		case CatalogTableIndexType:
-			i := stmt.(*statement.CreateIndexStmt).Info
-
-			v, err := d.GetByField("store_name")
-			if err != nil {
-				return err
-			}
-			i.StoreName = v.V.([]byte)
-
-			cpath, err := d.GetByField("constraint_path")
-			if err != nil && err != document.ErrFieldNotFound {
-				return err
-			}
-			if err == nil {
-				i.ConstraintPath, err = parser.ParsePath(cpath.V.(string))
-				if err != nil {
-					return err
-				}
-			}
-
-			indexes = append(indexes, i)
-		case CatalogTableSequenceType:
-			i := stmt.(*statement.CreateSequenceStmt).Info
-			sequences = append(sequences, i)
-		}
-
-		return nil
-	})
+	tables, indexes, sequences, err := c.CatalogTable.Load(tx)
 	if err != nil {
 		return err
 	}
@@ -167,6 +126,21 @@ func (c *Catalog) loadSequences(tx *database.Transaction, info []database.Sequen
 	return sequences, nil
 }
 
+func (c *Catalog) generateStoreName(tx *database.Transaction) ([]byte, error) {
+	seq, err := c.GetSequence(CatalogStoreSequence)
+	if err != nil {
+		return nil, err
+	}
+	v, err := seq.Next(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(buf, uint64(v))
+	return buf[:n], nil
+}
+
 func (c *Catalog) GetTable(tx *database.Transaction, tableName string) (*database.Table, error) {
 	ti, err := c.Cache.GetTable(tableName)
 	if err != nil {
@@ -210,6 +184,13 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 		return err
 	}
 
+	if info.StoreName == nil {
+		info.StoreName, err = c.generateStoreName(tx)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = c.CatalogTable.InsertTable(tx, tableName, info)
 	if err != nil {
 		return err
@@ -251,6 +232,13 @@ func (c *Catalog) CreateIndex(tx *database.Transaction, info *database.IndexInfo
 	err := c.Cache.AddIndex(tx, info)
 	if err != nil {
 		return err
+	}
+
+	if info.StoreName == nil {
+		info.StoreName, err = c.generateStoreName(tx)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = c.CatalogTable.InsertIndex(tx, info)
@@ -430,26 +418,26 @@ func (c *Catalog) GetSequence(name string) (*database.Sequence, error) {
 }
 
 // CreateSequence creates a sequence with the given name.
-func (c *Catalog) CreateSequence(tx *database.Transaction, name string, info *database.SequenceInfo) error {
+func (c *Catalog) CreateSequence(tx *database.Transaction, info *database.SequenceInfo) error {
 	if info == nil {
 		info = new(database.SequenceInfo)
-	}
-	info.Name = name
-
-	err := c.CatalogTable.InsertSequence(tx, info)
-	if err != nil {
-		return err
 	}
 
 	seq := database.Sequence{
 		Info: info,
 	}
-	err = seq.Init(tx)
+
+	err := c.Cache.AddSequence(tx, &seq)
 	if err != nil {
 		return err
 	}
 
-	return c.Cache.AddSequence(tx, &seq)
+	err = c.CatalogTable.InsertSequence(tx, info)
+	if err != nil {
+		return err
+	}
+
+	return seq.Init(tx)
 }
 
 // DropSequence deletes a sequence from the catalog.
