@@ -69,6 +69,10 @@ func toString(v interface{}) string {
 		return t.String()
 	case int:
 		return strconv.Itoa(t)
+	case int64:
+		return strconv.Itoa(int(t))
+	case uint64:
+		return strconv.Itoa(int(t))
 	case error:
 		return t.Error()
 	default:

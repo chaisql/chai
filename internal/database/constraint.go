@@ -24,6 +24,7 @@ type FieldConstraint struct {
 	IsNotNull    bool
 	IsUnique     bool
 	DefaultValue document.Value
+	Identity     *FieldConstraintIdentity
 	IsInferred   bool
 	InferredBy   []document.Path
 }
@@ -55,6 +56,10 @@ func (f *FieldConstraint) IsEqual(other *FieldConstraint) (bool, error) {
 		if ok, err := f.DefaultValue.IsEqual(other.DefaultValue); !ok || err != nil {
 			return ok, err
 		}
+	}
+
+	if !f.Identity.IsEqual(other.Identity) {
+		return false, nil
 	}
 
 	return true, nil
@@ -410,4 +415,21 @@ func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Arra
 	})
 
 	return vb, err
+}
+
+type FieldConstraintIdentity struct {
+	SequenceName string
+	Always       bool
+}
+
+func (f *FieldConstraintIdentity) IsEqual(other *FieldConstraintIdentity) bool {
+	if f == nil {
+		return other == nil
+	}
+
+	if other == nil {
+		return false
+	}
+
+	return f.SequenceName == other.SequenceName && f.Always == other.Always
 }

@@ -3,6 +3,7 @@ package catalog_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -297,7 +298,11 @@ func TestCatalogCreateIndex(t *testing.T) {
 		defer cleanup()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.FieldConstraints{
+					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				},
+			})
 			if err != nil {
 				return err
 			}
@@ -469,7 +474,11 @@ func TestCatalogReIndex(t *testing.T) {
 	prepareTableFn := func(t *testing.T, db *database.Database) {
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.FieldConstraints{
+					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				},
+			})
 			require.NoError(t, err)
 			tb, err := tx.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
@@ -517,7 +526,11 @@ func TestCatalogReIndex(t *testing.T) {
 		defer cleanup()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateTable(tx, "test", nil)
+			err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.FieldConstraints{
+					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				},
+			})
 			require.NoError(t, err)
 
 			tb, err := tx.Catalog.GetTable(tx, "test")
@@ -602,12 +615,20 @@ func TestReIndexAll(t *testing.T) {
 		defer cleanup()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateTable(tx, "test1", nil)
+			err := tx.Catalog.CreateTable(tx, "test1", &database.TableInfo{
+				FieldConstraints: database.FieldConstraints{
+					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				},
+			})
 			require.NoError(t, err)
 			tb1, err := tx.Catalog.GetTable(tx, "test1")
 			require.NoError(t, err)
 
-			err = tx.Catalog.CreateTable(tx, "test2", nil)
+			err = tx.Catalog.CreateTable(tx, "test2", &database.TableInfo{
+				FieldConstraints: database.FieldConstraints{
+					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				},
+			})
 			require.NoError(t, err)
 			tb2, err := tx.Catalog.GetTable(tx, "test2")
 			require.NoError(t, err)
@@ -702,13 +723,19 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d document.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "type":"table", "store_name":"AQ==", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_catalog_seq CACHE 16", "type":"sequence"}`)
 		case 1:
-			testutil.RequireDocJSONEq(t, d, `{"constraint_path":"b[3].c", "name":"foo_b[3].c_idx", "sql":"CREATE UNIQUE INDEX foo_b[3].c_idx ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
 		case 2:
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)", "store_name":"AQ==", "type":"table"}`)
+		case 3:
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "constraint_path":"b[3].c", "sql":"CREATE UNIQUE INDEX foo_b[3].c_idx ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
+		case 4:
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 32", "type":"sequence"}`)
+		case 5:
 			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "store_name":"Aw==", "table_name":"foo", "type":"index"}`)
 		default:
-			t.Fatalf("count should be 2, got %d", i)
+			t.Fatalf("count should be 5, got %d", i)
 		}
 
 		i++
@@ -723,7 +750,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 		defer cleanup()
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateSequence(tx, "test1", &database.SequenceInfo{Name: "test1", IncrementBy: 1})
+			err := tx.Catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test1", IncrementBy: 1})
 			if err != nil {
 				return err
 			}
@@ -746,7 +773,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 		clone := cloneCatalog(db.Catalog)
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateSequence(tx, "test2", &database.SequenceInfo{Name: "test2", IncrementBy: 1})
+			err := tx.Catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test2", IncrementBy: 1})
 			if err != nil {
 				return err
 			}
@@ -760,16 +787,41 @@ func TestCatalogCreateSequence(t *testing.T) {
 		require.Equal(t, clone, db.Catalog)
 	})
 
+	t.Run("Should generate a sequence name if not provided", func(t *testing.T) {
+		db, cleanup := testutil.NewTestDB(t)
+		defer cleanup()
+
+		update(t, db, func(tx *database.Transaction) error {
+			for i := 0; i < 10; i++ {
+				seqInfo := &database.SequenceInfo{IncrementBy: 1, Owner: database.SequenceInfoOwner{
+					TableName: "foo",
+				}}
+				err := tx.Catalog.CreateSequence(tx, seqInfo)
+				if err != nil {
+					return err
+				}
+
+				if i == 0 {
+					require.Equal(t, "foo_seq", seqInfo.Name)
+				} else {
+					require.Equal(t, fmt.Sprintf("foo_seq%d", i), seqInfo.Name)
+				}
+			}
+
+			return nil
+		})
+	})
+
 	t.Run("Should fail if it already exists", func(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
 		update(t, db, func(tx *database.Transaction) error {
-			return tx.Catalog.CreateSequence(tx, "test", nil)
+			return tx.Catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})
 		})
 
 		update(t, db, func(tx *database.Transaction) error {
-			err := tx.Catalog.CreateSequence(tx, "test", nil)
+			err := tx.Catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})
 			require.Equal(t, errs.AlreadyExistsError{Name: "test"}, err)
 			return nil
 		})

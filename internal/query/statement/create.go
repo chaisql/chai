@@ -1,6 +1,8 @@
 package statement
 
 import (
+	"math"
+
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
@@ -23,6 +25,25 @@ func (stmt *CreateTableStmt) IsReadOnly() bool {
 func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
+	// if there are no primary key, create a docid sequence
+	if stmt.Info.FieldConstraints.GetPrimaryKey() == nil {
+		seq := database.SequenceInfo{
+			IncrementBy: 1,
+			Min:         1, Max: math.MaxInt64,
+			Start: 1,
+			Cache: 32,
+			Owner: database.SequenceInfoOwner{
+				TableName: stmt.Info.TableName,
+			},
+		}
+		err := tx.Catalog.CreateSequence(tx, &seq)
+		if err != nil {
+			return res, err
+		}
+
+		stmt.Info.DocidSequenceName = seq.Name
+	}
+
 	err := tx.Catalog.CreateTable(tx, stmt.Info.TableName, &stmt.Info)
 	if stmt.IfNotExists {
 		if _, ok := err.(errs.AlreadyExistsError); ok {
@@ -30,6 +51,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 		}
 	}
 
+	// create a unique index for every unique constraint
 	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsUnique {
 			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
@@ -94,7 +116,7 @@ func (stmt *CreateSequenceStmt) IsReadOnly() bool {
 func (stmt *CreateSequenceStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
 	var res Result
 
-	err := tx.Catalog.CreateSequence(tx, stmt.Info.Name, &stmt.Info)
+	err := tx.Catalog.CreateSequence(tx, &stmt.Info)
 	if stmt.IfNotExists {
 		if _, ok := err.(errs.AlreadyExistsError); ok {
 			return res, nil

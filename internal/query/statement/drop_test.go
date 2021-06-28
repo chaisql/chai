@@ -43,12 +43,17 @@ func TestDropTable(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, res.Close())
 
-	require.Equal(t, []string{"test2", "test3"}, tables)
+	require.Equal(t, []string{"__genji_sequence", "test2", "test3"}, tables)
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.
 	_, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_a_idx'")
 	require.Error(t, err)
+
+	// Assert the docid sequence test1_seq, created upon the creation of the table,
+	// has been dropped as well.
+	// _, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_seq'")
+	// require.Error(t, err)
 
 	// Dropping a read-only table should fail.
 	err = db.Exec("DROP TABLE __genji_catalog")

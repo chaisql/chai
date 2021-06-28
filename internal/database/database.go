@@ -10,6 +10,10 @@ import (
 	"github.com/genjidb/genji/engine"
 )
 
+const (
+	InternalPrefix = "__genji_"
+)
+
 // A Database manages a list of tables in an engine.
 type Database struct {
 	ng engine.Engine
@@ -56,6 +60,7 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	defer tx.Rollback()
 
 	db.Catalog = opts.Catalog
+	tx.Catalog = db.Catalog
 
 	err = db.Catalog.Load(tx)
 	if err != nil {

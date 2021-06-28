@@ -158,7 +158,7 @@ func TestSequence(t *testing.T) {
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Catalog.CreateSequence(tx, test.info.Name, &test.info)
+			err = tx.Catalog.CreateSequence(tx, &test.info)
 			require.NoError(t, err)
 
 			seq := database.Sequence{
@@ -195,7 +195,7 @@ func TestSequence(t *testing.T) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.Catalog.CreateSequence(tx, "a", &database.SequenceInfo{
+		err = tx.Catalog.CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: 1,
 			Min:         1, Max: 5,
@@ -233,7 +233,7 @@ func TestSequence(t *testing.T) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.Catalog.CreateSequence(tx, "a", &database.SequenceInfo{
+		err = tx.Catalog.CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: 1,
 			Min:         1, Max: 9,
@@ -280,7 +280,7 @@ func TestSequence(t *testing.T) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		err = tx.Catalog.CreateSequence(tx, "a", &database.SequenceInfo{
+		err = tx.Catalog.CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: -1,
 			Min:         -5, Max: 9,
@@ -327,7 +327,7 @@ func TestSequence(t *testing.T) {
 		tx, err := db.Begin(true)
 		require.NoError(t, err)
 
-		err = tx.Catalog.CreateSequence(tx, "a", &database.SequenceInfo{
+		err = tx.Catalog.CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: -1,
 			Min:         -4, Max: 9,

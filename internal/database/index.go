@@ -172,7 +172,7 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 		}
 
 		// the value already exists
-		// add a prefix to that value
+		// add a suffix to that value
 		seq, err := st.NextSequence()
 		if err != nil {
 			return err

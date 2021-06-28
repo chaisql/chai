@@ -17,6 +17,9 @@ type TableInfo struct {
 	ReadOnly  bool
 
 	FieldConstraints FieldConstraints
+
+	// Name of the docid sequence if any.
+	DocidSequenceName string
 }
 
 // String returns a SQL representation.
@@ -123,6 +126,7 @@ type SequenceInfo struct {
 	Start       int64
 	Cache       uint64
 	Cycle       bool
+	Owner       SequenceInfoOwner
 }
 
 // String returns a SQL representation.
@@ -164,4 +168,14 @@ func (s *SequenceInfo) String() string {
 // Clone returns a copy of the sequence information.
 func (s SequenceInfo) Clone() *SequenceInfo {
 	return &s
+}
+
+// SequenceInfoOwner is used to determine who owns a sequence.
+// If a sequence has been created by a table (for docids for example),
+// only the TableName is filled.
+// If it has been created by a field constraint (for identities), the
+// path must also be filled.
+type SequenceInfoOwner struct {
+	TableName string
+	Path      document.Path
 }
