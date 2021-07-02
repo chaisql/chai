@@ -63,27 +63,27 @@ func TestDropTable(t *testing.T) {
 }
 
 func TestDropIndex(t *testing.T) {
-	_, tx, cleanup := testutil.NewTestTx(t)
+	db, tx, cleanup := testutil.NewTestTx(t)
 	defer cleanup()
 
-	testutil.MustExec(t, tx, `
+	testutil.MustExec(t, db, tx, `
 		CREATE TABLE test1(foo text, bar int unique); CREATE INDEX idx_test1_foo ON test1(foo);
 		CREATE TABLE test2(bar text); CREATE INDEX idx_test2_bar ON test2(bar);
 	`)
 
-	testutil.MustExec(t, tx, "DROP INDEX idx_test2_bar")
+	testutil.MustExec(t, db, tx, "DROP INDEX idx_test2_bar")
 
 	// Assert that the good index has been dropped.
-	indexes := tx.Catalog.ListIndexes("")
+	indexes := db.Catalog.ListIndexes("")
 	require.Len(t, indexes, 2)
 	require.Equal(t, "idx_test1_foo", indexes[0])
 	require.Equal(t, "test1_bar_idx", indexes[1])
 
 	// Dropping a non existing index with IF EXISTS should not fail.
-	err := testutil.Exec(tx, "DROP INDEX IF EXISTS unknown")
+	err := testutil.Exec(db, tx, "DROP INDEX IF EXISTS unknown")
 	require.NoError(t, err)
 
 	// Dropping an index created with a table constraint should fail.
-	err = testutil.Exec(tx, "DROP INDEX test1_bar_idx")
+	err = testutil.Exec(db, tx, "DROP INDEX test1_bar_idx")
 	require.Error(t, err)
 }

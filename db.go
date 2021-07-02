@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -20,12 +21,22 @@ type DB struct {
 	ctx context.Context
 }
 
-// WithContext creates a new database handle using the given context for every operation.
-func (db *DB) WithContext(ctx context.Context) *DB {
-	return &DB{
-		db:  db.db,
-		ctx: ctx,
+func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (*DB, error) {
+	db, err := database.New(ctx, ng, opts)
+	if err != nil {
+		return nil, err
 	}
+
+	return &DB{
+		db:  db,
+		ctx: ctx,
+	}, nil
+}
+
+// WithContext creates a new database handle using the given context for every operation.
+func (db DB) WithContext(ctx context.Context) *DB {
+	db.ctx = ctx
+	return &db
 }
 
 // Close the database.
@@ -44,6 +55,7 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 	}
 
 	return &Tx{
+		db: db,
 		tx: tx,
 	}, nil
 }
@@ -114,7 +126,7 @@ func (db *DB) Prepare(q string) (*Statement, error) {
 		return nil, err
 	}
 
-	err = pq.Prepare(db.ctx, db.db)
+	err = pq.Prepare(newQueryContext(db, nil, nil))
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +142,7 @@ func (db *DB) Prepare(q string) (*Statement, error) {
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
+	db *DB
 	tx *database.Transaction
 }
 
@@ -183,13 +196,14 @@ func (tx *Tx) Prepare(q string) (*Statement, error) {
 		return nil, err
 	}
 
-	err = pq.PrepareTx(tx.tx)
+	err = pq.Prepare(newQueryContext(tx.db, tx, nil))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Statement{
 		pq: pq,
+		db: tx.db,
 		tx: tx,
 	}, nil
 }
@@ -210,12 +224,7 @@ func (s *Statement) Query(args ...interface{}) (*Result, error) {
 	var r *statement.Result
 	var err error
 
-	if s.tx != nil {
-		r, err = s.pq.Exec(s.tx.tx, argsToParams(args))
-	} else {
-		r, err = s.pq.Run(s.db.ctx, s.db.db, argsToParams(args))
-	}
-
+	r, err = s.pq.Run(newQueryContext(s.db, s.tx, argsToParams(args)))
 	if err != nil {
 		return nil, err
 	}
@@ -326,14 +335,16 @@ func (r *Result) Close() (err error) {
 	return r.result.Close()
 }
 
-func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (*DB, error) {
-	db, err := database.New(ctx, ng, opts)
-	if err != nil {
-		return nil, err
+func newQueryContext(db *DB, tx *Tx, params []expr.Param) *query.Context {
+	ctx := query.Context{
+		Ctx:    db.ctx,
+		DB:     db.db,
+		Params: params,
 	}
 
-	return &DB{
-		db:  db,
-		ctx: context.Background(),
-	}, nil
+	if tx != nil {
+		ctx.Tx = tx.tx
+	}
+
+	return &ctx
 }

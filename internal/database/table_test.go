@@ -40,32 +40,38 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 }
 
 func newTestTable(t testing.TB) (*database.Table, func()) {
-	_, tx, fn := testutil.NewTestTx(t)
+	db, tx, fn := testutil.NewTestTx(t)
 
-	return createTable(t, tx, database.TableInfo{TableName: "test"}), fn
+	return createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"}), fn
 }
 
-func createTable(t testing.TB, tx *database.Transaction, info database.TableInfo) *database.Table {
+func createTable(t testing.TB, tx *database.Transaction, catalog database.Catalog, info database.TableInfo) *database.Table {
 	stmt := statement.CreateTableStmt{Info: info}
 
-	res, err := stmt.Run(tx, nil)
+	res, err := stmt.Run(&statement.Context{
+		Catalog: catalog,
+		Tx:      tx,
+	})
 	require.NoError(t, err)
 	res.Close()
 
-	tb, err := tx.Catalog.GetTable(tx, stmt.Info.TableName)
+	tb, err := catalog.GetTable(tx, stmt.Info.TableName)
 	require.NoError(t, err)
 
 	return tb
 }
 
-func createTableIfNotExists(t testing.TB, tx *database.Transaction, info database.TableInfo) *database.Table {
+func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog database.Catalog, info database.TableInfo) *database.Table {
 	stmt := statement.CreateTableStmt{Info: info, IfNotExists: true}
 
-	res, err := stmt.Run(tx, nil)
+	res, err := stmt.Run(&statement.Context{
+		Catalog: catalog,
+		Tx:      tx,
+	})
 	require.NoError(t, err)
 	res.Close()
 
-	tb, err := tx.Catalog.GetTable(tx, stmt.Info.TableName)
+	tb, err := catalog.GetTable(tx, stmt.Info.TableName)
 	require.NoError(t, err)
 
 	return tb
@@ -200,7 +206,7 @@ func TestTableInsert(t *testing.T) {
 		insertDoc := func(db *database.Database) (rawKey []byte) {
 			update(t, db, func(tx *database.Transaction) error {
 				// create table if not exists
-				tb := createTableIfNotExists(t, tx, database.TableInfo{TableName: "test"})
+				tb := createTableIfNotExists(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
 
 				doc := newDocument()
 				d, err := tb.Insert(doc)
@@ -239,16 +245,16 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should use the right field if primary key is specified", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
 				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		var doc document.FieldBuffer
@@ -270,10 +276,10 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should convert values into the right types if there are constraints", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		tb := createTable(t, tx, database.TableInfo{
+		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
 				{Path: testutil.ParseDocumentPath(t, "foo"), Type: document.ArrayValue},
@@ -298,16 +304,16 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if Pk not found in document or empty", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
 				{Path: testutil.ParseDocumentPath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		tests := [][]byte{
@@ -328,19 +334,19 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should update indexes if there are indexed fields", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		createTable(t, tx, database.TableInfo{TableName: "test"})
+		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
 
-		err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 		})
 		require.NoError(t, err)
-		idx, err := tx.Catalog.GetIndex(tx, "idxFoo")
+		idx, err := db.Catalog.GetIndex(tx, "idxFoo")
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		// create one document with the foo field
@@ -374,10 +380,10 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should convert the fields if FieldsConstraints are specified", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		tb := createTable(t, tx, database.TableInfo{
+		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), document.DocumentValue, false, false, false, document.Value{}, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo.bar")}},
@@ -417,16 +423,16 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if the fields cannot be converted to specified field constraints", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), document.DoubleValue, false, false, false, document.Value{}, nil, false, nil},
 			},
 		})
 		require.NoError(t, err)
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -438,11 +444,11 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if there is a not null field constraint on a document field and the field is null or missing", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		// no enforced type, not null
-		tb1 := createTable(t, tx, database.TableInfo{
+		tb1 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, nil, false, nil},
@@ -450,7 +456,7 @@ func TestTableInsert(t *testing.T) {
 		})
 
 		// enforced type, not null
-		tb2 := createTable(t, tx, database.TableInfo{
+		tb2 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test2",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, document.Value{}, nil, false, nil},
@@ -489,11 +495,11 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Shouldn't fail if there is a not null field and default constraint on a document field and the field is null or missing", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
 		// no enforced type, not null
-		tb1 := createTable(t, tx, database.TableInfo{
+		tb1 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.NewIntegerValue(42), nil, false, nil},
@@ -501,7 +507,7 @@ func TestTableInsert(t *testing.T) {
 		})
 
 		// enforced type, not null
-		tb2 := createTable(t, tx, database.TableInfo{
+		tb2 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test2",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, document.NewIntegerValue(42), nil, false, nil},
@@ -552,10 +558,10 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if there is a not null field constraint on an array value and the value is null", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		tb := createTable(t, tx, database.TableInfo{
+		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo[1]"), 0, false, true, false, document.Value{}, nil, false, nil},
@@ -573,10 +579,10 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if the pk is duplicated", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		tb := createTable(t, tx, database.TableInfo{
+		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, nil, false, nil},
@@ -595,10 +601,10 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should run the onConflict function if the pk is duplicated", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		tb := createTable(t, tx, database.TableInfo{
+		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, nil, false, nil},
@@ -625,11 +631,11 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should fail if there is a unique constraint violation", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		createTable(t, tx, database.TableInfo{TableName: "test"})
-		err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
+		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			TableName: "test",
 			IndexName: "idx_test_foo",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
@@ -637,7 +643,7 @@ func TestTableInsert(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -653,11 +659,11 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should run the onConflict function if there is a unique constraint violation", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		createTable(t, tx, database.TableInfo{TableName: "test"})
-		err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
+		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			TableName: "test",
 			IndexName: "idx_test_foo",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
@@ -665,7 +671,7 @@ func TestTableInsert(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -689,10 +695,10 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should run the onConflict function if there is a NOT NULL constraint violation", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		tb := createTable(t, tx, database.TableInfo{
+		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, nil, false, nil},
@@ -715,16 +721,16 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should replace document if the pk is duplicated, using OnInsertConflictDoReplace", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, nil, false, nil},
 			}})
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -741,16 +747,16 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should not replace document  if there is a NOT NULL constraint violation, using OnInsertConflictDoReplace", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.Catalog.CreateTable(tx, "test", &database.TableInfo{
+		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
 				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, nil, false, nil},
 			}})
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test")
+		tb, err := db.Catalog.GetTable(tx, "test")
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
@@ -854,14 +860,14 @@ func TestTableReplace(t *testing.T) {
 	})
 
 	t.Run("Should update indexes", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		createTable(t, tx, database.TableInfo{TableName: "test1"})
-		createTable(t, tx, database.TableInfo{TableName: "test2"})
+		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test1"})
+		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test2"})
 
 		// simple indexes
-		err := tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Paths:     []document.Path{document.NewPath("a")},
 			Unique:    true,
 			TableName: "test1",
@@ -870,7 +876,7 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 
 		// composite indexes
-		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Paths:     []document.Path{document.NewPath("x"), document.NewPath("y")},
 			Unique:    true,
 			TableName: "test2",
@@ -878,7 +884,7 @@ func TestTableReplace(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test1")
+		tb, err := db.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
 		// insert two different documents
@@ -887,7 +893,7 @@ func TestTableReplace(t *testing.T) {
 		d2, err := tb.Insert(testutil.MakeDocument(t, `{"a": 2, "b": 2}`))
 		require.NoError(t, err)
 
-		beforeIdxA := testutil.GetIndexContent(t, tx, "idx_foo_a")
+		beforeIdxA := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a")
 
 		// --- a
 		// replace d1 without modifying indexed key
@@ -895,14 +901,14 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 
 		// indexes should be the same as before
-		require.Equal(t, beforeIdxA, testutil.GetIndexContent(t, tx, "idx_foo_a"))
+		require.Equal(t, beforeIdxA, testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a"))
 
 		// replace d2 and modify indexed key
 		_, err = tb.Replace(d2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
 		require.NoError(t, err)
 
 		// indexes should be different for d2
-		got := testutil.GetIndexContent(t, tx, "idx_foo_a")
+		got := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a")
 		require.Equal(t, beforeIdxA[0], got[0])
 		require.NotEqual(t, beforeIdxA[1], got[1])
 
@@ -913,7 +919,7 @@ func TestTableReplace(t *testing.T) {
 		require.Equal(t, errs.ErrDuplicateDocument, err)
 
 		// --- x, y
-		tb, err = tx.Catalog.GetTable(tx, "test2")
+		tb, err = db.Catalog.GetTable(tx, "test2")
 		require.NoError(t, err)
 		// insert two different documents
 		dc1, err := tb.Insert(testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 1}`))
@@ -921,20 +927,20 @@ func TestTableReplace(t *testing.T) {
 		dc2, err := tb.Insert(testutil.MakeDocument(t, `{"x": 2, "y": 2, "z": 2}`))
 		require.NoError(t, err)
 
-		beforeIdxXY := testutil.GetIndexContent(t, tx, "idx_foo_x_y")
+		beforeIdxXY := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y")
 		// replace dc1 without modifying indexed key
 		_, err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 2}`))
 		require.NoError(t, err)
 
 		// index should be the same as before
-		require.Equal(t, beforeIdxXY, testutil.GetIndexContent(t, tx, "idx_foo_x_y"))
+		require.Equal(t, beforeIdxXY, testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y"))
 
 		// replace dc2 and modify indexed key
 		_, err = tb.Replace(dc2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
 		require.NoError(t, err)
 
 		// indexes should be different for d2
-		got = testutil.GetIndexContent(t, tx, "idx_foo_x_y")
+		got = testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y")
 		require.Equal(t, beforeIdxXY[0], got[0])
 		require.NotEqual(t, beforeIdxXY[1], got[1])
 
@@ -985,42 +991,43 @@ func TestTableIndexes(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		m := tb.Indexes
-		require.Empty(t, m)
+		list, err := tb.GetIndexes()
+		require.NoError(t, err)
+		require.Empty(t, list)
 	})
 
 	t.Run("Should return a list of all the indexes", func(t *testing.T) {
-		_, tx, cleanup := newTestTx(t)
+		db, tx, cleanup := newTestTx(t)
 		defer cleanup()
 
-		err := tx.Catalog.CreateTable(tx, "test1", nil)
+		err := db.Catalog.CreateTable(tx, "test1", nil)
 		require.NoError(t, err)
 
-		err = tx.Catalog.CreateTable(tx, "test2", nil)
+		err = db.Catalog.CreateTable(tx, "test2", nil)
 		require.NoError(t, err)
 
-		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    true,
 			IndexName: "idx1a",
 			TableName: "test1",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 		})
 		require.NoError(t, err)
-		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
 		})
 		require.NoError(t, err)
-		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1ab",
 			TableName: "test1",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 		})
 		require.NoError(t, err)
-		err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx2a",
 			TableName: "test2",
@@ -1028,10 +1035,10 @@ func TestTableIndexes(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		tb, err := tx.Catalog.GetTable(tx, "test1")
+		tb, err := db.Catalog.GetTable(tx, "test1")
 		require.NoError(t, err)
 
-		m := tb.Indexes
+		m, err := tb.GetIndexes()
 		require.NoError(t, err)
 		require.Len(t, m, 3)
 	})

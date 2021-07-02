@@ -9,10 +9,11 @@ import (
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
-	Params []Param
-	Vars   *document.FieldBuffer
-	Doc    document.Document
-	Tx     *database.Transaction
+	Params  []Param
+	Vars    *document.FieldBuffer
+	Doc     document.Document
+	Catalog database.Catalog
+	Tx      *database.Transaction
 
 	Outer *Environment
 }
@@ -96,15 +97,24 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 	return document.NewValue(e.Params[idx].Value)
 }
 
+func (e *Environment) GetCatalog() database.Catalog {
+	if e.Catalog != nil {
+		return e.Catalog
+	}
+	if e.Outer != nil {
+		return e.Outer.GetCatalog()
+	}
+
+	return nil
+}
+
 func (e *Environment) GetTx() *database.Transaction {
 	if e.Tx != nil {
 		return e.Tx
 	}
-
 	if e.Outer != nil {
 		return e.Outer.GetTx()
 	}
-
 	return nil
 }
 
@@ -113,6 +123,7 @@ func (e *Environment) Clone() (*Environment, error) {
 		Params: e.Params,
 	}
 
+	newEnv.Catalog = e.Catalog
 	newEnv.Tx = e.Tx
 
 	if e.Doc != nil {

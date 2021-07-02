@@ -43,29 +43,29 @@ func TestCreateTable(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			err := testutil.Exec(tx, test.query)
+			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			_, err = tx.Catalog.GetTable(tx, "test")
+			_, err = db.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 		})
 	}
 
 	t.Run("constraints", func(t *testing.T) {
 		t.Run("with fixed size data types", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `CREATE TABLE test(d double, b bool)`)
+			testutil.MustExec(t, db, tx, `CREATE TABLE test(d double, b bool)`)
 
-			tb, err := tx.Catalog.GetTable(tx, "test")
+			tb, err := db.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 
 			require.Equal(t, database.FieldConstraints{
@@ -76,16 +76,16 @@ func TestCreateTable(t *testing.T) {
 		})
 
 		t.Run("with variable size data types", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE test1(
 					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] TEXT NOT NULL, bar[4][0].bat integer, b blob, t text, a array, d document
 				)
 			`)
 
-			tb, err := tx.Catalog.GetTable(tx, "test1")
+			tb, err := db.Catalog.GetTable(tx, "test1")
 			require.NoError(t, err)
 
 			require.Equal(t, database.FieldConstraints{
@@ -134,17 +134,17 @@ func TestCreateTable(t *testing.T) {
 		})
 
 		t.Run("with variable aliases data types", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE test2(
 					foo.bar[1].hello bytes PRIMARY KEY, foo.a[1][2] VARCHAR(255) NOT NULL, bar[4][0].bat tinyint,
 				 	dp double precision, r real, b bigint, m mediumint, eight int8, ii int2, c character(64)
 				)
 			`)
 
-			tb, err := tx.Catalog.GetTable(tx, "test2")
+			tb, err := db.Catalog.GetTable(tx, "test2")
 			require.NoError(t, err)
 
 			require.Equal(t, database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.DocumentValue, IsInferred: true,
@@ -209,17 +209,17 @@ func TestCreateTable(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					_, tx, cleanup := testutil.NewTestTx(t)
+					db, tx, cleanup := testutil.NewTestTx(t)
 					defer cleanup()
 
-					err := testutil.Exec(tx, test.query)
+					err := testutil.Exec(db, tx, test.query)
 					if test.fails {
 						require.Error(t, err)
 						return
 					}
 					require.NoError(t, err)
 
-					tb, err := tx.Catalog.GetTable(tx, "test")
+					tb, err := db.Catalog.GetTable(tx, "test")
 					require.NoError(t, err)
 					require.Equal(t, test.constraints, tb.Info.FieldConstraints)
 				})
@@ -227,12 +227,12 @@ func TestCreateTable(t *testing.T) {
 		})
 
 		t.Run("unique", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INT UNIQUE, b DOUBLE UNIQUE, c UNIQUE)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INT UNIQUE, b DOUBLE UNIQUE, c UNIQUE)")
 
-			tb, err := tx.Catalog.GetTable(tx, "test")
+			tb, err := db.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 			require.Len(t, tb.Info.FieldConstraints, 3)
 
@@ -253,17 +253,17 @@ func TestCreateTable(t *testing.T) {
 				IsUnique: true,
 			}, tb.Info.FieldConstraints[2])
 
-			idx, err := tx.Catalog.GetIndex(tx, "test_a_idx")
+			idx, err := db.Catalog.GetIndex(tx, "test_a_idx")
 			require.NoError(t, err)
 			require.Equal(t, document.IntegerValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
-			idx, err = tx.Catalog.GetIndex(tx, "test_b_idx")
+			idx, err = db.Catalog.GetIndex(tx, "test_b_idx")
 			require.NoError(t, err)
 			require.Equal(t, document.DoubleValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
-			idx, err = tx.Catalog.GetIndex(tx, "test_c_idx")
+			idx, err = db.Catalog.GetIndex(tx, "test_c_idx")
 			require.NoError(t, err)
 			require.Zero(t, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
@@ -291,12 +291,12 @@ func TestCreateIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test")
 
-			err := testutil.Exec(tx, test.query)
+			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return
@@ -377,10 +377,10 @@ func TestCreateSequence(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			err := testutil.Exec(tx, test.query)
+			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return

@@ -10,12 +10,18 @@ import (
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Run(*database.Transaction, []expr.Param) (Result, error)
+	Run(*Context) (Result, error)
 	IsReadOnly() bool
 }
 
+type Context struct {
+	Tx      *database.Transaction
+	Catalog database.Catalog
+	Params  []expr.Param
+}
+
 type Preparer interface {
-	Prepare(tx *database.Transaction) error
+	Prepare(tx *Context) error
 }
 
 // Result of a query.

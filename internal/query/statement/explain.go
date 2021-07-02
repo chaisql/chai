@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
 )
@@ -20,13 +19,13 @@ type ExplainStmt struct {
 // If the statement is a stream, Optimize will be called prior to
 // displaying all the operations.
 // Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
-func (stmt *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
+func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
 	st, ok := stmt.Statement.(*StreamStmt)
 	if !ok {
 		return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
 	}
 
-	err := st.Prepare(tx)
+	err := st.Prepare(ctx)
 	if err != nil {
 		return Result{}, err
 	}
@@ -48,7 +47,7 @@ func (stmt *ExplainStmt) Run(tx *database.Transaction, params []expr.Param) (Res
 		},
 		ReadOnly: true,
 	}
-	return newStatement.Run(tx, params)
+	return newStatement.Run(ctx)
 }
 
 // IsReadOnly indicates that this statement doesn't write anything into

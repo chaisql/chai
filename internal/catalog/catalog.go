@@ -35,7 +35,7 @@ func New() *Catalog {
 }
 
 func (c *Catalog) Load(tx *database.Transaction) error {
-	c.CatalogTable = NewCatalogTable(tx)
+	c.CatalogTable = NewCatalogTable(tx, c)
 
 	// ensure the catalog table exists
 	err := c.CatalogTable.Init(tx)
@@ -134,7 +134,7 @@ func (c *Catalog) generateStoreName(tx *database.Transaction) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	v, err := seq.Next(tx)
+	v, err := seq.Next(tx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -157,22 +157,22 @@ func (c *Catalog) GetTable(tx *database.Transaction, tableName string) (*databas
 		return nil, err
 	}
 
-	idxInfos := c.Cache.GetTableIndexes(tableName)
-	indexes := make(database.Indexes, 0, len(idxInfos))
-
-	for i := range idxInfos {
-		indexes = append(indexes, database.NewIndex(tx.Tx, idxInfos[i].IndexName, idxInfos[i]))
-	}
-
-	sort.Sort(indexes)
-
 	return &database.Table{
 		Tx:      tx,
-		Name:    tableName,
 		Store:   s,
 		Info:    ti,
-		Indexes: indexes,
+		Catalog: c,
 	}, nil
+}
+
+// GetTableInfo returns the table info for the given table name.
+func (c *Catalog) GetTableInfo(tableName string) (*database.TableInfo, error) {
+	r, err := c.Cache.Get(RelationTableType, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.(*database.TableInfo), nil
 }
 
 // CreateTable creates a table with the given name.
@@ -329,6 +329,15 @@ func (c *Catalog) GetIndex(tx *database.Transaction, indexName string) (*databas
 	info := r.(*database.IndexInfo)
 
 	return database.NewIndex(tx.Tx, info.IndexName, info), nil
+}
+
+// GetIndexInfo returns an index info by name.
+func (c *Catalog) GetIndexInfo(indexName string) (*database.IndexInfo, error) {
+	r, err := c.Cache.Get(RelationIndexType, indexName)
+	if err != nil {
+		return nil, err
+	}
+	return r.(*database.IndexInfo), nil
 }
 
 // ListIndexes returns all indexes for a given table name. If tableName is empty
@@ -550,7 +559,7 @@ func (c *Catalog) CreateSequence(tx *database.Transaction, info *database.Sequen
 		return err
 	}
 
-	return seq.Init(tx)
+	return seq.Init(tx, c)
 }
 
 // DropSequence deletes a sequence from the catalog.
@@ -561,7 +570,7 @@ func (c *Catalog) DropSequence(tx *database.Transaction, name string) error {
 	}
 
 	seq := r.(*database.Sequence)
-	err = seq.Drop(tx)
+	err = seq.Drop(tx, c)
 	if err != nil {
 		return err
 	}

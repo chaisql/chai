@@ -23,15 +23,32 @@ func New(statements ...statement.Statement) Query {
 	return Query{Statements: statements}
 }
 
+type Context struct {
+	Ctx    context.Context
+	DB     *database.Database
+	Tx     *database.Transaction
+	Params []expr.Param
+}
+
+func (c *Context) GetTx() *database.Transaction {
+	if c.Tx != nil {
+		return c.Tx
+	}
+
+	return c.DB.GetAttachedTx()
+}
+
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param) (*statement.Result, error) {
+func (q Query) Run(context *Context) (*statement.Result, error) {
 	var res statement.Result
 	var err error
 
-	q.tx = db.GetAttachedTx()
+	q.tx = context.GetTx()
 	if q.tx == nil {
 		q.autoCommit = true
 	}
+
+	ctx := context.Ctx
 
 	for i, stmt := range q.Statements {
 		select {
@@ -44,9 +61,9 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(ctx, db, &q)
+			err = qa.alterQuery(ctx, context.DB, &q)
 			if err != nil {
-				if tx := db.GetAttachedTx(); tx != nil {
+				if tx := context.GetTx(); tx != nil {
 					tx.Rollback()
 				}
 				return nil, err
@@ -56,7 +73,7 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 		}
 
 		if q.tx == nil {
-			q.tx, err = db.BeginTx(ctx, &database.TxOptions{
+			q.tx, err = context.DB.BeginTx(ctx, &database.TxOptions{
 				ReadOnly: stmt.IsReadOnly(),
 			})
 			if err != nil {
@@ -64,7 +81,11 @@ func (q Query) Run(ctx context.Context, db *database.Database, args []expr.Param
 			}
 		}
 
-		res, err = stmt.Run(q.tx, args)
+		res, err = stmt.Run(&statement.Context{
+			Tx:      q.tx,
+			Catalog: context.DB.Catalog,
+			Params:  context.Params,
+		})
 		if err != nil {
 			if q.autoCommit {
 				q.tx.Rollback()
@@ -120,9 +141,11 @@ type queryAlterer interface {
 
 // Prepare the statements by calling their Prepare methods.
 // It stops at the first statement that doesn't implement the statement.Preparer interface.
-func (q Query) Prepare(ctx context.Context, db *database.Database) error {
+func (q Query) Prepare(context *Context) error {
 	var err error
 	var tx *database.Transaction
+
+	ctx := context.Ctx
 
 	for _, stmt := range q.Statements {
 		select {
@@ -137,9 +160,9 @@ func (q Query) Prepare(ctx context.Context, db *database.Database) error {
 		}
 
 		if tx == nil {
-			tx = db.GetAttachedTx()
+			tx = context.GetTx()
 			if tx == nil {
-				tx, err = db.BeginTx(ctx, &database.TxOptions{
+				tx, err = context.DB.BeginTx(ctx, &database.TxOptions{
 					ReadOnly: true,
 				})
 				if err != nil {
@@ -149,52 +172,14 @@ func (q Query) Prepare(ctx context.Context, db *database.Database) error {
 			}
 		}
 
-		err = p.Prepare(tx)
+		err = p.Prepare(&statement.Context{
+			Tx:      tx,
+			Catalog: context.DB.Catalog,
+		})
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func (q Query) PrepareTx(tx *database.Transaction) error {
-	for _, stmt := range q.Statements {
-		p, ok := stmt.(statement.Preparer)
-		if !ok {
-			break
-		}
-
-		err := p.Prepare(tx)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Exec the query within the given transaction.
-func (q Query) Exec(tx *database.Transaction, args []expr.Param) (*statement.Result, error) {
-	var res statement.Result
-	var err error
-
-	for i, stmt := range q.Statements {
-		res, err = stmt.Run(tx, args)
-		if err != nil {
-			return nil, err
-		}
-
-		// if there are still statements to be executed,
-		// and the current statement is not read-only,
-		// iterate over the result.
-		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
-			err = res.Iterate(func(d document.Document) error { return nil })
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return &res, nil
 }

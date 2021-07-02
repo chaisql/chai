@@ -2,8 +2,6 @@ package statement
 
 import (
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
 )
 
 // ReIndexStmt is a DSL that allows creating a full REINDEX statement.
@@ -18,17 +16,17 @@ func (stmt ReIndexStmt) IsReadOnly() bool {
 
 // Run runs the Reindex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt ReIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt ReIndexStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.TableOrIndexName == "" {
-		return res, tx.Catalog.ReIndexAll(tx)
+		return res, ctx.Catalog.ReIndexAll(ctx.Tx)
 	}
 
-	_, err := tx.Catalog.GetTable(tx, stmt.TableOrIndexName)
+	_, err := ctx.Catalog.GetTable(ctx.Tx, stmt.TableOrIndexName)
 	if err == nil {
-		for _, idxName := range tx.Catalog.ListIndexes(stmt.TableOrIndexName) {
-			err = tx.Catalog.ReIndex(tx, idxName)
+		for _, idxName := range ctx.Catalog.ListIndexes(stmt.TableOrIndexName) {
+			err = ctx.Catalog.ReIndex(ctx.Tx, idxName)
 			if err != nil {
 				return res, err
 			}
@@ -40,6 +38,6 @@ func (stmt ReIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result
 		return res, err
 	}
 
-	err = tx.Catalog.ReIndex(tx, stmt.TableOrIndexName)
+	err = ctx.Catalog.ReIndex(ctx.Tx, stmt.TableOrIndexName)
 	return res, err
 }

@@ -14,9 +14,9 @@ const (
 	InternalPrefix = "__genji_"
 )
 
-// A Database manages a list of tables in an engine.
 type Database struct {
-	ng engine.Engine
+	ng      engine.Engine
+	Catalog Catalog
 
 	// If this is non-nil, the user is running an explicit transaction
 	// using the BEGIN statement.
@@ -28,15 +28,23 @@ type Database struct {
 	// Codec used to encode documents. Defaults to MessagePack.
 	Codec encoding.Codec
 
-	Catalog Catalog
-
 	// This controls concurrency on read-only and read/write transactions.
-	txmu sync.RWMutex
+	txmu *sync.RWMutex
 }
 
 type Options struct {
 	Codec   encoding.Codec
 	Catalog Catalog
+}
+
+// TxOptions are passed to Begin to configure transactions.
+type TxOptions struct {
+	// Open a read-only transaction.
+	ReadOnly bool
+	// Set the transaction as global at the database level.
+	// Any queries run by the database will use that transaction until it is
+	// rolled back or commited.
+	Attached bool
 }
 
 // New initializes the DB using the given engine.
@@ -49,18 +57,17 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 
 	db := Database{
-		ng:    ng,
-		Codec: opts.Codec,
+		ng:      ng,
+		Codec:   opts.Codec,
+		Catalog: opts.Catalog,
+		txmu:    &sync.RWMutex{},
 	}
 
-	tx, err := db.BeginTx(ctx, &TxOptions{})
+	tx, err := db.Begin(true)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
-
-	db.Catalog = opts.Catalog
-	tx.Catalog = db.Catalog
 
 	err = db.Catalog.Load(tx)
 	if err != nil {
@@ -75,7 +82,7 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	return &db, nil
 }
 
-// Close the underlying engine.
+// Close the database.
 func (db *Database) Close() error {
 	// If there is an attached transaction
 	// it must be rolled back before closing the engine.
@@ -86,19 +93,19 @@ func (db *Database) Close() error {
 	defer db.txmu.Unlock()
 
 	// release all sequences
-	tx, err := db.beginTx(context.Background(), &TxOptions{})
+	tx, err := db.beginTx(context.Background(), nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Tx.Rollback()
 
-	for _, seqName := range tx.Catalog.ListSequences() {
-		seq, err := tx.Catalog.GetSequence(seqName)
+	for _, seqName := range db.Catalog.ListSequences() {
+		seq, err := db.Catalog.GetSequence(seqName)
 		if err != nil {
 			return err
 		}
 
-		err = seq.Release(tx)
+		err = seq.Release(tx, db.Catalog)
 		if err != nil {
 			return err
 		}
@@ -110,6 +117,16 @@ func (db *Database) Close() error {
 	}
 
 	return db.ng.Close()
+}
+
+// GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
+// such transaction.
+// The returned transaction is not thread safe.
+func (db *Database) GetAttachedTx() *Transaction {
+	db.attachedTxMu.Lock()
+	defer db.attachedTxMu.Unlock()
+
+	return db.attachedTransaction
 }
 
 // Begin starts a new transaction with default options.
@@ -149,6 +166,10 @@ func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 
 // beginTx creates a transaction without locks.
 func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
+	if opts == nil {
+		opts = &TxOptions{}
+	}
+
 	ntx, err := db.ng.Begin(ctx, engine.TxOptions{
 		Writable: !opts.ReadOnly,
 	})
@@ -157,36 +178,26 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 	}
 
 	tx := Transaction{
-		DB:       db,
 		Tx:       ntx,
-		Catalog:  db.Catalog,
 		Writable: !opts.ReadOnly,
-		attached: opts.Attached,
+		DBMu:     db.txmu,
+		Codec:    db.Codec,
 	}
 
 	if opts.Attached {
 		db.attachedTransaction = &tx
+		tx.OnRollbackHooks = append(tx.OnRollbackHooks, db.releaseAttachedTx)
+		tx.OnCommitHooks = append(tx.OnCommitHooks, db.releaseAttachedTx)
 	}
 
 	return &tx, nil
 }
 
-// TxOptions are passed to Begin to configure transactions.
-type TxOptions struct {
-	// Open a read-only transaction.
-	ReadOnly bool
-	// Set the transaction as global at the database level.
-	// Any queries run by the database will use that transaction until it is
-	// rolled back or commited.
-	Attached bool
-}
-
-// GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
-// such transaction.
-// The returned transaction is not thread safe.
-func (db *Database) GetAttachedTx() *Transaction {
+func (db *Database) releaseAttachedTx() {
 	db.attachedTxMu.Lock()
 	defer db.attachedTxMu.Unlock()
 
-	return db.attachedTransaction
+	if db.attachedTransaction != nil {
+		db.attachedTransaction = nil
+	}
 }

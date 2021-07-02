@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error){
+var optimizerRules = []func(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error){
 	SplitANDConditionRule,
 	RemoveUnnecessaryProjection,
 	RemoveUnnecessaryDistinctNodeRule,
@@ -22,16 +22,16 @@ var optimizerRules = []func(s *stream.Stream, tx *database.Transaction) (*stream
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func Optimize(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error) {
 	var err error
 
 	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
 		// If the first operation is a concat, optimize both streams individually.
-		s1, err := Optimize(firstNode.S1, tx)
+		s1, err := Optimize(firstNode.S1, catalog)
 		if err != nil {
 			return nil, err
 		}
-		s2, err := Optimize(firstNode.S2, tx)
+		s2, err := Optimize(firstNode.S2, catalog)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +41,7 @@ func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error
 	}
 
 	for _, rule := range optimizerRules {
-		s, err = rule(s, tx)
+		s, err = rule(s, catalog)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +64,7 @@ func Optimize(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error
 //     filter(a > 2)
 //     filter(b != 3)
 //     filter(c < 2)
-func SplitANDConditionRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func SplitANDConditionRule(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -118,7 +118,7 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func PrecalculateExprRule(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	var err error
@@ -232,7 +232,7 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -283,7 +283,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Transaction)
 
 // RemoveUnnecessaryProjection removes any project node whose
 // expression is a wildcard only.
-func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryProjection(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -305,7 +305,7 @@ func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Transaction) (*st
 
 // RemoveUnnecessaryDistinctNodeRule removes any Dedup nodes
 // where projection is already unique.
-func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	// we assume that if we are reading from a table, the first
@@ -319,7 +319,7 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 		return s, nil
 	}
 
-	t, err := tx.Catalog.GetTable(tx, st.TableName)
+	info, err := catalog.GetTableInfo(st.TableName)
 	if err != nil {
 		return nil, err
 	}
@@ -331,8 +331,17 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 			if prev != nil {
 				pn, ok := prev.(*stream.ProjectOperator)
 				if ok {
+					var indexes []*database.IndexInfo
+					for _, name := range catalog.ListIndexes(st.TableName) {
+						idx, err := catalog.GetIndexInfo(name)
+						if err != nil {
+							return nil, err
+						}
+						indexes = append(indexes, idx)
+					}
+
 					// if the projection is unique, we remove the node from the tree
-					if isProjectionUnique(t.Indexes, pn, t.Info.FieldConstraints.GetPrimaryKey()) {
+					if isProjectionUnique(indexes, pn, info.FieldConstraints.GetPrimaryKey()) {
 						s.Remove(n)
 						n = prev
 						continue
@@ -347,7 +356,7 @@ func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, tx *database.Transactio
 	return s, nil
 }
 
-func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
+func isProjectionUnique(indexes []*database.IndexInfo, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
 	for _, field := range po.Exprs {
 		_, ok := field.(*expr.NamedExpr)
 		if ok {
@@ -360,7 +369,17 @@ func isProjectionUnique(indexes database.Indexes, po *stream.ProjectOperator, pk
 				continue
 			}
 
-			if idx := indexes.GetIndexByPath(document.Path(v)); idx != nil && idx.Info.Unique {
+			p := document.Path(v)
+			var found *database.IndexInfo
+
+			for _, info := range indexes {
+				if info.Paths[0].IsEqual(p) {
+					found = info
+					break
+				}
+			}
+
+			if found != nil && found.Unique {
 				continue
 			}
 		case *expr.PKFunc:
@@ -390,7 +409,7 @@ type filterNode struct {
 //
 // TODO(asdine): add support for ORDER BY
 // TODO(jh): clarify cost code in composite indexes case
-func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (*stream.Stream, error) {
+func UseIndexBasedOnFilterNodeRule(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error) {
 	// first we lookup for the seq scan node.
 	// Here we will assume that at this point
 	// if there is one it has to be the
@@ -403,7 +422,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	if !ok {
 		return s, nil
 	}
-	t, err := tx.Catalog.GetTable(tx, st.TableName)
+	info, err := catalog.GetTableInfo(st.TableName)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +456,7 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 			filterNodes = append(filterNodes, filterNode{path: path, e: e, f: f})
 
 			// check for primary keys scan while iterating on the filter nodes
-			if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
+			if pk := info.FieldConstraints.GetPrimaryKey(); pk != nil && pk.Path.IsEqual(path) {
 				// // if both types are different, don't select this scanner
 				// v, ok, err := operandCanUseIndex(pk.Type, pk.Path, t.Info.FieldConstraints, v)
 				// if err != nil {
@@ -489,10 +508,15 @@ func UseIndexBasedOnFilterNodeRule(s *stream.Stream, tx *database.Transaction) (
 	// iterate on all indexes for that table, checking for each of them if its paths are matching
 	// the filter nodes of the given query. The resulting nodes are ordered like the index paths.
 outer:
-	for _, idx := range t.Indexes {
+
+	for _, idxName := range catalog.ListIndexes(st.TableName) {
+		idxInfo, err := catalog.GetIndexInfo(idxName)
+		if err != nil {
+			return nil, err
+		}
 		// order filter nodes by how the index paths order them; if absent, nil in still inserted
-		found := make([]*filterNode, len(idx.Info.Paths))
-		for i, path := range idx.Info.Paths {
+		found := make([]*filterNode, len(idxInfo.Paths))
+		for i, path := range idxInfo.Paths {
 			fno := findByPath(path)
 
 			if fno != nil {
@@ -561,7 +585,7 @@ outer:
 		}
 
 		// there are probably less values to iterate on if the index is unique
-		if idx.Info.Unique {
+		if idxInfo.Unique {
 			cd.priority = 2
 		} else {
 			cd.priority = 1
@@ -572,7 +596,7 @@ outer:
 			return nil, err
 		}
 
-		cd.newOp = stream.IndexScan(idx.Info.IndexName, ranges...)
+		cd.newOp = stream.IndexScan(idxInfo.IndexName, ranges...)
 		cd.cost = ranges.Cost()
 
 		candidates = append(candidates, &cd)

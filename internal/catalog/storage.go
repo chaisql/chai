@@ -196,11 +196,13 @@ func ownerFromDocument(d document.Document) (*database.Owner, error) {
 }
 
 type CatalogTable struct {
-	Info *database.TableInfo
+	Catalog *Catalog
+	Info    *database.TableInfo
 }
 
-func NewCatalogTable(tx *database.Transaction) *CatalogTable {
+func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 	return &CatalogTable{
+		Catalog: catalog,
 		Info: &database.TableInfo{
 			TableName: TableName,
 			StoreName: []byte(TableName),
@@ -303,9 +305,10 @@ func (s *CatalogTable) Table(tx *database.Transaction) *database.Table {
 	}
 
 	return &database.Table{
-		Tx:    tx,
-		Store: st,
-		Info:  s.Info,
+		Tx:      tx,
+		Store:   st,
+		Info:    s.Info,
+		Catalog: s.Catalog,
 	}
 }
 

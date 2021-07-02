@@ -23,10 +23,10 @@ func TestReIndex(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE test1;
 				CREATE TABLE test2;
 
@@ -40,7 +40,7 @@ func TestReIndex(t *testing.T) {
 			`)
 
 			// truncate all indexes
-			c := tx.Catalog
+			c := db.Catalog
 			for _, idxName := range c.ListIndexes("") {
 				idx, err := c.GetIndex(tx, idxName)
 				require.NoError(t, err)
@@ -48,15 +48,15 @@ func TestReIndex(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err := testutil.Exec(tx, test.query)
+			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			for _, idxName := range tx.Catalog.ListIndexes("") {
-				idx, err := tx.Catalog.GetIndex(tx, idxName)
+			for _, idxName := range db.Catalog.ListIndexes("") {
+				idx, err := db.Catalog.GetIndex(tx, idxName)
 				require.NoError(t, err)
 
 				shouldBeIndexed := false

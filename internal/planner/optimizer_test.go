@@ -264,10 +264,10 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE foo(a integer PRIMARY KEY, b integer, c integer);
 				CREATE UNIQUE INDEX idx_foo_idx ON foo(c);
 				INSERT INTO foo (a, b, c) VALUES
@@ -276,7 +276,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 					(3, 3, 3)
 			`)
 
-			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, tx)
+			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, db.Catalog)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
@@ -422,10 +422,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE foo (k INT PRIMARY KEY, c INT);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
@@ -436,7 +436,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx)
+			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, db.Catalog)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
@@ -476,10 +476,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				_, tx, cleanup := testutil.NewTestTx(t)
+				db, tx, cleanup := testutil.NewTestTx(t)
 				defer cleanup()
 
-				testutil.MustExec(t, tx, `
+				testutil.MustExec(t, db, tx, `
 					CREATE TABLE foo (
 						k ARRAY PRIMARY KEY,
 						k[0] INT,
@@ -494,10 +494,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 						([3, 3], [3, 3], [3, 3])
 				`)
 
-				res, err := planner.PrecalculateExprRule(test.root, tx)
+				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
 				require.NoError(t, err)
 
-				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx)
+				res, err = planner.UseIndexBasedOnFilterNodeRule(res, db.Catalog)
 				require.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
@@ -735,10 +735,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE foo (k INT PRIMARY KEY, c INT);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
@@ -752,7 +752,7 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, tx)
+			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, db.Catalog)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
@@ -785,10 +785,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				_, tx, cleanup := testutil.NewTestTx(t)
+				db, tx, cleanup := testutil.NewTestTx(t)
 				defer cleanup()
 
-				testutil.MustExec(t, tx, `
+				testutil.MustExec(t, db, tx, `
 						CREATE TABLE foo (
 							k ARRAY PRIMARY KEY,
 							a ARRAY
@@ -801,10 +801,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 							([3, 3], [3, 3], [3, 3])
 	`)
 
-				res, err := planner.PrecalculateExprRule(test.root, tx)
+				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
 				require.NoError(t, err)
 
-				res, err = planner.UseIndexBasedOnFilterNodeRule(res, tx)
+				res, err = planner.UseIndexBasedOnFilterNodeRule(res, db.Catalog)
 				require.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
@@ -815,9 +815,9 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 func TestOptimize(t *testing.T) {
 	t.Run("concat operator operands are optimized", func(t *testing.T) {
 		t.Run("PrecalculateExprRule", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 						CREATE TABLE foo;
 						CREATE TABLE bar;
 			`)
@@ -827,7 +827,7 @@ func TestOptimize(t *testing.T) {
 					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1 + 2"))),
 					st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 1 + 2"))),
 				)),
-				tx)
+				db.Catalog)
 
 			want := st.New(st.Concat(
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 3"))),
@@ -839,9 +839,9 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("RemoveUnnecessarySelectionNodesRule", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 						CREATE TABLE foo;
 						CREATE TABLE bar;
 			`)
@@ -854,7 +854,7 @@ func TestOptimize(t *testing.T) {
 						st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("12"))),
 					)),
 				)),
-				tx)
+				db.Catalog)
 
 			want := st.New(st.Concat(
 				st.New(st.SeqScan("foo")),
@@ -869,9 +869,9 @@ func TestOptimize(t *testing.T) {
 		})
 
 		t.Run("RemoveUnnecessaryDedupNodeRule", func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
-			testutil.MustExec(t, tx, `
+			testutil.MustExec(t, db, tx, `
 				CREATE TABLE foo(a integer PRIMARY KEY);
 				CREATE TABLE bar(a integer PRIMARY KEY);
 			`)
@@ -885,7 +885,7 @@ func TestOptimize(t *testing.T) {
 						Pipe(st.Project(parser.MustParseExpr("a"))).
 						Pipe(st.Distinct()),
 				)),
-				tx)
+				db.Catalog)
 
 			want := st.New(st.Concat(
 				st.New(st.SeqScan("foo")).
@@ -900,9 +900,9 @@ func TestOptimize(t *testing.T) {
 	})
 
 	t.Run("UseIndexBasedOnSelectionNodeRule", func(t *testing.T) {
-		_, tx, cleanup := testutil.NewTestTx(t)
+		db, tx, cleanup := testutil.NewTestTx(t)
 		defer cleanup()
-		testutil.MustExec(t, tx, `
+		testutil.MustExec(t, db, tx, `
 				CREATE TABLE foo;
 				CREATE TABLE bar;
 				CREATE INDEX idx_foo_a_d ON foo(a, d);
@@ -918,7 +918,7 @@ func TestOptimize(t *testing.T) {
 					Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 					Pipe(st.Filter(parser.MustParseExpr("d = 2"))),
 			)),
-			tx)
+			db.Catalog)
 
 		want := st.New(st.Concat(
 			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),

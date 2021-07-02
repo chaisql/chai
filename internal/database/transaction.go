@@ -1,6 +1,9 @@
 package database
 
 import (
+	"sync"
+
+	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 )
 
@@ -9,15 +12,15 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	DB       *Database
 	Tx       engine.Transaction
-	Catalog  Catalog
 	Writable bool
-	// if set to true, this transaction is attached to the database
-	attached bool
+	DBMu     *sync.RWMutex
+	Codec    encoding.Codec
 
 	// these functions are run after a successful rollback.
 	OnRollbackHooks []func()
+	// these functions are run after a successful commit.
+	OnCommitHooks []func()
 }
 
 // Rollback the transaction. Can be used safely after commit.
@@ -29,20 +32,11 @@ func (tx *Transaction) Rollback() error {
 
 	defer func() {
 		if tx.Writable {
-			tx.DB.txmu.Unlock()
+			tx.DBMu.Unlock()
 		} else {
-			tx.DB.txmu.RUnlock()
+			tx.DBMu.RUnlock()
 		}
 	}()
-
-	if tx.attached {
-		tx.DB.attachedTxMu.Lock()
-		defer tx.DB.attachedTxMu.Unlock()
-
-		if tx.DB.attachedTransaction != nil {
-			tx.DB.attachedTransaction = nil
-		}
-	}
 
 	for i := len(tx.OnRollbackHooks) - 1; i >= 0; i-- {
 		tx.OnRollbackHooks[i]()
@@ -61,19 +55,14 @@ func (tx *Transaction) Commit() error {
 
 	defer func() {
 		if tx.Writable {
-			tx.DB.txmu.Unlock()
+			tx.DBMu.Unlock()
 		} else {
-			tx.DB.txmu.RUnlock()
+			tx.DBMu.RUnlock()
 		}
 	}()
 
-	if tx.attached {
-		tx.DB.attachedTxMu.Lock()
-		defer tx.DB.attachedTxMu.Unlock()
-
-		if tx.DB.attachedTransaction != nil {
-			tx.DB.attachedTransaction = nil
-		}
+	for i := len(tx.OnCommitHooks) - 1; i >= 0; i-- {
+		tx.OnCommitHooks[i]()
 	}
 
 	return nil

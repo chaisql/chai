@@ -137,13 +137,15 @@ type NextValueFor struct {
 
 // Eval calls the underlying expression Eval method.
 func (n NextValueFor) Eval(env *Environment) (document.Value, error) {
+	catalog := env.GetCatalog()
 	tx := env.GetTx()
-	seq, err := tx.Catalog.GetSequence(n.SeqName)
+
+	seq, err := catalog.GetSequence(n.SeqName)
 	if err != nil {
 		return nullLitteral, err
 	}
 
-	i, err := seq.Next(tx)
+	i, err := seq.Next(tx, catalog)
 	if err != nil {
 		return nullLitteral, err
 	}

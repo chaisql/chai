@@ -16,15 +16,18 @@ import (
 type Table struct {
 	Tx    *Transaction
 	Store engine.Store
-	Name  string
 	// Table information.
 	// May not represent the most up to date data.
 	// Always get a fresh Table instance before relying on this field.
 	Info *TableInfo
+
 	// List of Indexes of this table.
 	// May not represent the most up to date data.
 	// Always get a fresh Table instance before relying on this field.
 	Indexes Indexes
+
+	Catalog Catalog
+	Codec   encoding.Codec
 }
 
 // Truncate deletes all the documents from the table.
@@ -79,8 +82,13 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 		return nil, errs.ErrDuplicateDocument
 	}
 
+	indexes, err := t.GetIndexes()
+	if err != nil {
+		return nil, err
+	}
+
 	// ensure there is no index violation
-	for _, idx := range t.Indexes {
+	for _, idx := range indexes {
 		// only check unique indexes
 		if !idx.Info.Unique {
 			continue
@@ -112,7 +120,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 
 	// insert into the table
 	var buf bytes.Buffer
-	enc := t.Tx.DB.Codec.NewEncoder(&buf)
+	enc := t.Tx.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(fb)
 	if err != nil {
@@ -125,7 +133,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 	}
 
 	// update indexes
-	for _, idx := range t.Indexes {
+	for _, idx := range indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 
 		for _, path := range idx.Info.Paths {
@@ -150,6 +158,26 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 	}, nil
 }
 
+// GetIndexes returns all indexes of the table.
+func (t *Table) GetIndexes() (Indexes, error) {
+	if t.Indexes != nil {
+		return t.Indexes, nil
+	}
+
+	names := t.Catalog.ListIndexes(t.Info.TableName)
+	indexes := make(Indexes, 0, len(names))
+	for _, idxName := range names {
+		idx, err := t.Catalog.GetIndex(t.Tx, idxName)
+		if err != nil {
+			return nil, err
+		}
+		indexes = append(indexes, idx)
+	}
+
+	t.Indexes = indexes
+	return indexes, nil
+}
+
 // Delete a document by key.
 // Indexes are automatically updated.
 func (t *Table) Delete(key []byte) error {
@@ -162,7 +190,12 @@ func (t *Table) Delete(key []byte) error {
 		return err
 	}
 
-	for _, idx := range t.Indexes {
+	indexes, err := t.GetIndexes()
+	if err != nil {
+		return err
+	}
+
+	for _, idx := range indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
@@ -209,8 +242,13 @@ func (t *Table) replace(key []byte, d document.Document) error {
 		return err
 	}
 
+	indexes, err := t.GetIndexes()
+	if err != nil {
+		return err
+	}
+
 	// remove key from indexes
-	for _, idx := range t.Indexes {
+	for _, idx := range indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(old)
@@ -228,7 +266,7 @@ func (t *Table) replace(key []byte, d document.Document) error {
 
 	// encode new document
 	var buf bytes.Buffer
-	enc := t.Tx.DB.Codec.NewEncoder(&buf)
+	enc := t.Tx.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(d)
 	if err != nil {
@@ -242,7 +280,7 @@ func (t *Table) replace(key []byte, d document.Document) error {
 	}
 
 	// update indexes
-	for _, idx := range t.Indexes {
+	for _, idx := range indexes {
 		vs := make([]document.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
@@ -464,7 +502,7 @@ func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.D
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
 	d := lazilyDecodedDocument{
-		codec: t.Tx.DB.Codec,
+		codec: t.Tx.Codec,
 	}
 
 	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
@@ -501,7 +539,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 	}
 
 	var d documentWithKey
-	d.Document = t.Tx.DB.Codec.NewDecoder(v)
+	d.Document = t.Tx.Codec.NewDecoder(v)
 	d.key = key
 	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
 	return &d, err
@@ -539,11 +577,11 @@ func (t *Table) generateKey(info *TableInfo, d document.Document) ([]byte, error
 		return buf.Bytes(), nil
 	}
 
-	seq, err := t.Tx.Catalog.GetSequence(t.Info.DocidSequenceName)
+	seq, err := t.Catalog.GetSequence(t.Info.DocidSequenceName)
 	if err != nil {
 		return nil, err
 	}
-	docid, err := seq.Next(t.Tx)
+	docid, err := seq.Next(t.Tx, t.Catalog)
 	if err != nil {
 		return nil, err
 	}

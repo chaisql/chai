@@ -402,7 +402,7 @@ func (op *TableInsertOperator) Iterate(in *expr.Environment, f func(out *expr.En
 
 		var err error
 		if table == nil {
-			table, err = env.GetTx().Catalog.GetTable(env.GetTx(), op.Name)
+			table, err = env.GetCatalog().GetTable(env.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}
@@ -450,7 +450,7 @@ func (op *TableReplaceOperator) Iterate(in *expr.Environment, f func(out *expr.E
 
 		if table == nil {
 			var err error
-			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
+			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}
@@ -504,7 +504,7 @@ func (op *TableDeleteOperator) Iterate(in *expr.Environment, f func(out *expr.En
 
 		if table == nil {
 			var err error
-			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
+			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}

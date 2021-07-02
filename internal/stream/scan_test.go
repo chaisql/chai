@@ -70,19 +70,20 @@ func TestSeqScan(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INTEGER)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER)")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
 			}
 
 			op := stream.SeqScan("test")
 			op.Reverse = test.reverse
 			var in expr.Environment
 			in.Tx = tx
+			in.Catalog = db.Catalog
 
 			var i int
 			var got testutil.Docs
@@ -226,19 +227,20 @@ func TestPkScan(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INTEGER NOT NULL PRIMARY KEY)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER NOT NULL PRIMARY KEY)")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
 			}
 
 			op := stream.PkScan("test", test.ranges...)
 			op.Reverse = test.reverse
 			var env expr.Environment
 			env.Tx = tx
+			env.Catalog = db.Catalog
 			env.Params = []expr.Param{{Name: "foo", Value: 1}}
 
 			var i int
@@ -622,19 +624,20 @@ func TestIndexScan(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name+":index on "+test.indexOn, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER); CREATE INDEX idx_test_a ON test("+test.indexOn+")")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER); CREATE INDEX idx_test_a ON test("+test.indexOn+")")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
 			}
 
 			op := stream.IndexScan("idx_test_a", test.ranges...)
 			op.Reverse = test.reverse
 			var env expr.Environment
 			env.Tx = tx
+			env.Catalog = db.Catalog
 			env.Params = []expr.Param{{Name: "foo", Value: 1}}
 
 			var i int

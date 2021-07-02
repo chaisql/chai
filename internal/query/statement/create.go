@@ -6,7 +6,6 @@ import (
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
 )
 
 // CreateTableStmt represents a parsed CREATE TABLE statement.
@@ -22,7 +21,7 @@ func (stmt *CreateTableStmt) IsReadOnly() bool {
 
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	// if there is no primary key, create a docid sequence
@@ -36,7 +35,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 				TableName: stmt.Info.TableName,
 			},
 		}
-		err := tx.Catalog.CreateSequence(tx, &seq)
+		err := ctx.Catalog.CreateSequence(ctx.Tx, &seq)
 		if err != nil {
 			return res, err
 		}
@@ -44,7 +43,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 		stmt.Info.DocidSequenceName = seq.Name
 	}
 
-	err := tx.Catalog.CreateTable(tx, stmt.Info.TableName, &stmt.Info)
+	err := ctx.Catalog.CreateTable(ctx.Tx, stmt.Info.TableName, &stmt.Info)
 	if stmt.IfNotExists {
 		if _, ok := err.(errs.AlreadyExistsError); ok {
 			return res, nil
@@ -54,7 +53,7 @@ func (stmt *CreateTableStmt) Run(tx *database.Transaction, args []expr.Param) (R
 	// create a unique index for every unique constraint
 	for _, fc := range stmt.Info.FieldConstraints {
 		if fc.IsUnique {
-			err = tx.Catalog.CreateIndex(tx, &database.IndexInfo{
+			err = ctx.Catalog.CreateIndex(ctx.Tx, &database.IndexInfo{
 				TableName: stmt.Info.TableName,
 				Paths:     []document.Path{fc.Path},
 				Unique:    true,
@@ -86,10 +85,10 @@ func (stmt *CreateIndexStmt) IsReadOnly() bool {
 
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	err := tx.Catalog.CreateIndex(tx, &stmt.Info)
+	err := ctx.Catalog.CreateIndex(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
 		if _, ok := err.(errs.AlreadyExistsError); ok {
 			return res, nil
@@ -99,7 +98,7 @@ func (stmt *CreateIndexStmt) Run(tx *database.Transaction, args []expr.Param) (R
 		return res, err
 	}
 
-	err = tx.Catalog.ReIndex(tx, stmt.Info.IndexName)
+	err = ctx.Catalog.ReIndex(ctx.Tx, stmt.Info.IndexName)
 	return res, err
 }
 
@@ -116,10 +115,10 @@ func (stmt *CreateSequenceStmt) IsReadOnly() bool {
 
 // Run the statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *CreateSequenceStmt) Run(tx *database.Transaction, args []expr.Param) (Result, error) {
+func (stmt *CreateSequenceStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	err := tx.Catalog.CreateSequence(tx, &stmt.Info)
+	err := ctx.Catalog.CreateSequence(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
 		if _, ok := err.(errs.AlreadyExistsError); ok {
 			return res, nil

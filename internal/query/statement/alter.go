@@ -5,7 +5,6 @@ import (
 
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
 )
 
 // AlterStmt is a DSL that allows creating a full ALTER TABLE query.
@@ -21,7 +20,7 @@ func (stmt AlterStmt) IsReadOnly() bool {
 
 // Run runs the ALTER TABLE statement in the given transaction.
 // It implements the Statement interface.
-func (stmt AlterStmt) Run(tx *database.Transaction, _ []expr.Param) (Result, error) {
+func (stmt AlterStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -36,7 +35,7 @@ func (stmt AlterStmt) Run(tx *database.Transaction, _ []expr.Param) (Result, err
 		return res, errs.AlreadyExistsError{Name: stmt.NewTableName}
 	}
 
-	err := tx.Catalog.RenameTable(tx, stmt.TableName, stmt.NewTableName)
+	err := ctx.Catalog.RenameTable(ctx.Tx, stmt.TableName, stmt.NewTableName)
 	return res, err
 }
 
@@ -52,7 +51,7 @@ func (stmt AlterTableAddField) IsReadOnly() bool {
 
 // Run runs the ALTER TABLE ADD FIELD statement in the given transaction.
 // It implements the Statement interface.
-func (stmt AlterTableAddField) Run(tx *database.Transaction, _ []expr.Param) (Result, error) {
+func (stmt AlterTableAddField) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -63,6 +62,6 @@ func (stmt AlterTableAddField) Run(tx *database.Transaction, _ []expr.Param) (Re
 		return res, errors.New("missing field name")
 	}
 
-	err := tx.Catalog.AddFieldConstraint(tx, stmt.TableName, stmt.Constraint)
+	err := ctx.Catalog.AddFieldConstraint(ctx.Tx, stmt.TableName, stmt.Constraint)
 	return res, err
 }

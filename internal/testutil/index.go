@@ -9,10 +9,10 @@ import (
 )
 
 // GetIndexContent iterates over the entire index and returns all the key-value pairs in order.
-func GetIndexContent(t testing.TB, tx *database.Transaction, indexName string) []KV {
+func GetIndexContent(t testing.TB, tx *database.Transaction, catalog database.Catalog, indexName string) []KV {
 	t.Helper()
 
-	idx, err := tx.Catalog.GetIndex(tx, indexName)
+	idx, err := catalog.GetIndex(tx, indexName)
 	require.NoError(t, err)
 
 	var content []KV

@@ -2,7 +2,6 @@ package statement
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/planner"
 	"github.com/genjidb/genji/internal/stream"
@@ -17,17 +16,17 @@ type StreamStmt struct {
 }
 
 // Prepare optimizes the stream and stores it in s.
-func (s *StreamStmt) Prepare(tx *database.Transaction) error {
+func (s *StreamStmt) Prepare(ctx *Context) error {
 	var err error
-	s.PreparedStream, err = planner.Optimize(s.Stream, tx)
+	s.PreparedStream, err = planner.Optimize(s.Stream, ctx.Catalog)
 	return err
 }
 
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
-func (s *StreamStmt) Run(tx *database.Transaction, params []expr.Param) (Result, error) {
+func (s *StreamStmt) Run(ctx *Context) (Result, error) {
 	if s.PreparedStream == nil {
-		err := s.Prepare(tx)
+		err := s.Prepare(ctx)
 		if err != nil {
 			return Result{}, err
 		}
@@ -35,9 +34,8 @@ func (s *StreamStmt) Run(tx *database.Transaction, params []expr.Param) (Result,
 
 	return Result{
 		Iterator: &StreamStmtIterator{
-			Stream: s.PreparedStream,
-			Tx:     tx,
-			Params: params,
+			Stream:  s.PreparedStream,
+			Context: ctx,
 		},
 	}, nil
 }
@@ -53,15 +51,15 @@ func (s *StreamStmt) String() string {
 
 // StreamStmtIterator iterates over a stream.
 type StreamStmtIterator struct {
-	Stream *stream.Stream
-	Tx     *database.Transaction
-	Params []expr.Param
+	Stream  *stream.Stream
+	Context *Context
 }
 
 func (s *StreamStmtIterator) Iterate(fn func(d document.Document) error) error {
 	env := expr.Environment{
-		Tx:     s.Tx,
-		Params: s.Params,
+		Catalog: s.Context.Catalog,
+		Tx:      s.Context.Tx,
+		Params:  s.Context.Params,
 	}
 
 	err := s.Stream.Iterate(&env, func(env *expr.Environment) error {

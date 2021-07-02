@@ -370,13 +370,14 @@ func TestTableInsert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INTEGER)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER)")
 
 			in := expr.NewEnvironment(nil)
 			in.Tx = tx
+			in.Catalog = db.Catalog
 
 			s := stream.New(test.in).Pipe(stream.TableInsert("test", nil))
 
@@ -420,16 +421,16 @@ func TestTableReplace(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
 
-			tb, err := tx.Catalog.GetTable(tx, "test")
+			tb, err := db.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 
 			for i, doc := range test.docsInTable {
-				testutil.MustExec(t, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
 				kk, err := doc.GetByField("a")
 				require.NoError(t, err)
 				k, err := tb.EncodeValue(kk)
@@ -439,6 +440,7 @@ func TestTableReplace(t *testing.T) {
 
 			var in expr.Environment
 			in.Tx = tx
+			in.Catalog = db.Catalog
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.TableReplace("test"))
 
@@ -461,7 +463,7 @@ func TestTableReplace(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			res := testutil.MustQuery(t, tx, "SELECT * FROM test")
+			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
 
 			var got []document.Document
@@ -499,19 +501,20 @@ func TestTableDelete(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, tx, cleanup := testutil.NewTestTx(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY)")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
 			}
 
 			var env expr.Environment
 			env.Tx = tx
+			env.Catalog = db.Catalog
 
-			tb, err := tx.Catalog.GetTable(tx, "test")
+			tb, err := db.Catalog.GetTable(tx, "test")
 			require.NoError(t, err)
 			kk, err := test.in.GetByField("a")
 			require.NoError(t, err)
@@ -533,7 +536,7 @@ func TestTableDelete(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			res := testutil.MustQuery(t, tx, "SELECT * FROM test")
+			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
 
 			var got []document.Document
