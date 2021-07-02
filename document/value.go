@@ -378,9 +378,7 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 			return calculateFloats(a, b, operator)
 		}
 
-		if a.Type == IntegerValue || b.Type == IntegerValue {
-			return calculateIntegers(a, b, operator)
-		}
+		return calculateIntegers(a, b, operator)
 	}
 
 	return NewNullValue(), nil

@@ -129,7 +129,7 @@ func Walk(e Expr, fn func(Expr) bool) bool {
 		}
 	}
 
-	return false
+	return true
 }
 
 type NextValueFor struct {
@@ -140,6 +140,10 @@ type NextValueFor struct {
 func (n NextValueFor) Eval(env *environment.Environment) (document.Value, error) {
 	catalog := env.GetCatalog()
 	tx := env.GetTx()
+
+	if catalog == nil || tx == nil {
+		return NullLitteral, stringutil.Errorf(`NEXT VALUE FOR cannot be evaluated`)
+	}
 
 	seq, err := catalog.GetSequence(n.SeqName)
 	if err != nil {

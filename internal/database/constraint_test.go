@@ -6,6 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -200,20 +201,44 @@ func TestFieldConstraintsAdd(t *testing.T) {
 		{
 			"Default value conversion, typed constraint",
 			[]*database.FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
-			database.FieldConstraint{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: document.NewDoubleValue(5)},
+			database.FieldConstraint{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: expr.Constraint(testutil.DoubleValue(5))},
 			[]*database.FieldConstraint{
 				{Path: document.NewPath("a"), Type: document.IntegerValue},
-				{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: document.NewIntegerValue(5)},
+				{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: expr.Constraint(testutil.DoubleValue(5))},
 			},
 			false,
 		},
 		{
-			"Default value conversion, untyped constraint",
+			"Default value conversion, typed constraint, NEXT VALUE FOR",
 			[]*database.FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
-			database.FieldConstraint{Path: document.NewPath("b"), DefaultValue: document.NewIntegerValue(5)},
+			database.FieldConstraint{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
 			[]*database.FieldConstraint{
 				{Path: document.NewPath("a"), Type: document.IntegerValue},
-				{Path: document.NewPath("b"), DefaultValue: document.NewDoubleValue(5)},
+				{Path: document.NewPath("b"), Type: document.IntegerValue, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
+			},
+			false,
+		},
+		{
+			"Default value conversion, typed constraint, NEXT VALUE FOR with blob",
+			[]*database.FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			database.FieldConstraint{Path: document.NewPath("b"), Type: document.BlobValue, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
+			nil,
+			true,
+		},
+		{
+			"Default value conversion, typed constraint, incompatible value",
+			[]*database.FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			database.FieldConstraint{Path: document.NewPath("b"), Type: document.DoubleValue, DefaultValue: expr.Constraint(testutil.BoolValue(true))},
+			nil,
+			true,
+		},
+		{
+			"Default value conversion, untyped constraint",
+			[]*database.FieldConstraint{{Path: document.NewPath("a"), Type: document.IntegerValue}},
+			database.FieldConstraint{Path: document.NewPath("b"), DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
+			[]*database.FieldConstraint{
+				{Path: document.NewPath("a"), Type: document.IntegerValue},
+				{Path: document.NewPath("b"), DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
 			},
 			false,
 		},
@@ -282,7 +307,7 @@ func TestFieldConstraintsConvert(t *testing.T) {
 			true,
 		},
 		{
-			database.FieldConstraints{{Path: document.NewPath("a"), DefaultValue: document.NewIntegerValue(10)}},
+			database.FieldConstraints{{Path: document.NewPath("a"), DefaultValue: expr.Constraint(testutil.IntegerValue(10))}},
 			document.NewPath("a"),
 			document.NewTextValue("foo"),
 			document.NewTextValue("foo"),

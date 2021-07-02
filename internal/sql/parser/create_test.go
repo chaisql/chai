@@ -6,6 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
@@ -21,7 +22,7 @@ func TestParserCreateTable(t *testing.T) {
 	}{
 		{"Basic", "CREATE TABLE test", &statement.CreateTableStmt{Info: database.TableInfo{TableName: "test"}}, false},
 		{"If not exists", "CREATE TABLE IF NOT EXISTS test", &statement.CreateTableStmt{Info: database.TableInfo{TableName: "test"}, IfNotExists: true}, false},
-		{"Path only", "CREATE TABLE test(a)", &statement.CreateTableStmt{}, true},
+		{"Path only", "CREATE TABLE test(a)", nil, true},
 		{"With primary key", "CREATE TABLE test(foo INTEGER PRIMARY KEY)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
@@ -31,8 +32,7 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
-		{"With primary key twice", "CREATE TABLE test(foo PRIMARY KEY PRIMARY KEY)",
-			&statement.CreateTableStmt{}, true},
+		{"With primary key twice", "CREATE TABLE test(foo PRIMARY KEY PRIMARY KEY)", nil, true},
 		{"With type", "CREATE TABLE test(foo INTEGER)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
@@ -56,10 +56,13 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), DefaultValue: document.NewTextValue("10")},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), DefaultValue: expr.Constraint(expr.LiteralValue(document.NewTextValue("10")))},
 					},
 				},
 			}, false},
+		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)", nil, true},
+		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT a)", nil, true},
+		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT 1 AND 2)", nil, true},
 		{"With unique", "CREATE TABLE test(foo UNIQUE)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
@@ -69,12 +72,9 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
-		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)",
-			&statement.CreateTableStmt{}, true},
-		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)",
-			&statement.CreateTableStmt{}, true},
-		{"With unique twice", "CREATE TABLE test(foo UNIQUE UNIQUE)",
-			&statement.CreateTableStmt{}, true},
+
+		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)", nil, true},
+		{"With unique twice", "CREATE TABLE test(foo UNIQUE UNIQUE)", nil, true},
 		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
@@ -166,8 +166,7 @@ func TestParserCreateTable(t *testing.T) {
 				},
 			}, false},
 		{"With table constraints / duplicate pk on same path", "CREATE TABLE test(foo INTEGER PRIMARY KEY, PRIMARY KEY (foo))", nil, true},
-		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)",
-			&statement.CreateTableStmt{}, true},
+		{"With multiple primary keys", "CREATE TABLE test(foo PRIMARY KEY, bar PRIMARY KEY)", nil, true},
 		{"With all supported fixed size data types",
 			"CREATE TABLE test(d double, b bool)",
 			&statement.CreateTableStmt{

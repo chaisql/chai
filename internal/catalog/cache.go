@@ -112,8 +112,7 @@ func (c *catalogCache) Add(tx *database.Transaction, o Relation) error {
 
 	// if name is provided, ensure it's not duplicated
 	if name != "" {
-		_, err := c.Get(RelationIndexType, name)
-		if err == nil {
+		if c.objectExists(name) {
 			return errs.AlreadyExistsError{Name: name}
 		}
 	} else {

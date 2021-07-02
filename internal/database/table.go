@@ -57,7 +57,7 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	fb, err := t.Info.FieldConstraints.ValidateDocument(d)
+	fb, err := t.Info.FieldConstraints.ValidateDocument(t.Tx, d)
 	if err != nil {
 		if onConflict != nil {
 			if ce, ok := err.(*ConstraintViolationError); ok && ce.Constraint == "NOT NULL" {
@@ -227,7 +227,7 @@ func (t *Table) Replace(key []byte, d document.Document) (document.Document, err
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	d, err := t.Info.FieldConstraints.ValidateDocument(d)
+	d, err := t.Info.FieldConstraints.ValidateDocument(t.Tx, d)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
@@ -66,7 +67,7 @@ func TestParserAlterTableAddField(t *testing.T) {
 				Path:         document.Path(testutil.ParsePath(t, "bar")),
 				Type:         document.IntegerValue,
 				IsNotNull:    true,
-				DefaultValue: document.NewIntegerValue(0),
+				DefaultValue: expr.Constraint(expr.LiteralValue(document.NewIntegerValue(0))),
 			},
 		}, false},
 		{"With error / missing FIELD keyword", "ALTER TABLE foo ADD bar", nil, true},

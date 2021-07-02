@@ -14,6 +14,7 @@ import (
 	"github.com/genjidb/genji/internal/binarysort"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -386,8 +387,8 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.DocumentValue, false, false, false, document.Value{}, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo.bar")}},
-				{testutil.ParseDocumentPath(t, "foo.bar"), document.IntegerValue, false, false, false, document.Value{}, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo")}},
+				{testutil.ParseDocumentPath(t, "foo"), document.DocumentValue, false, false, false, nil, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo.bar")}},
+				{testutil.ParseDocumentPath(t, "foo.bar"), document.IntegerValue, false, false, false, nil, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo")}},
 			},
 		})
 
@@ -428,7 +429,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.DoubleValue, false, false, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), document.DoubleValue, false, false, false, nil, nil, false, nil},
 			},
 		})
 		require.NoError(t, err)
@@ -451,7 +452,7 @@ func TestTableInsert(t *testing.T) {
 		tb1 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, nil, nil, false, nil},
 			},
 		})
 
@@ -459,7 +460,7 @@ func TestTableInsert(t *testing.T) {
 		tb2 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test2",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, nil, nil, false, nil},
 			},
 		})
 
@@ -502,7 +503,7 @@ func TestTableInsert(t *testing.T) {
 		tb1 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.NewIntegerValue(42), nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, expr.Constraint(testutil.IntegerValue(42)), nil, false, nil},
 			},
 		})
 
@@ -510,7 +511,7 @@ func TestTableInsert(t *testing.T) {
 		tb2 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test2",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, document.NewIntegerValue(42), nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, expr.Constraint(testutil.IntegerValue(42)), nil, false, nil},
 			},
 		})
 
@@ -564,7 +565,7 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo[1]"), 0, false, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo[1]"), 0, false, true, false, nil, nil, false, nil},
 			},
 		})
 
@@ -585,7 +586,7 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, nil, nil, false, nil},
 			}})
 
 		doc := document.NewFieldBuffer().
@@ -607,7 +608,7 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, nil, nil, false, nil},
 			}})
 
 		doc := document.NewFieldBuffer().
@@ -701,7 +702,7 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, nil, nil, false, nil},
 			},
 		})
 
@@ -726,7 +727,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, nil, nil, false, nil},
 			}})
 		require.NoError(t, err)
 
@@ -752,7 +753,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, document.Value{}, nil, false, nil},
+				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, nil, nil, false, nil},
 			}})
 		require.NoError(t, err)
 

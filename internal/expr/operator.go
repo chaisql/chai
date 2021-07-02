@@ -1,6 +1,8 @@
 package expr
 
 import (
+	"errors"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -37,6 +39,10 @@ func (op *simpleOperator) Token() scanner.Token {
 }
 
 func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b document.Value) (document.Value, error)) (document.Value, error) {
+	if op.a == nil || op.b == nil {
+		return NullLitteral, errors.New("missing operand")
+	}
+
 	va, err := op.a.Eval(env)
 	if err != nil {
 		return NullLitteral, err

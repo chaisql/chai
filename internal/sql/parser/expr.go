@@ -31,13 +31,13 @@ func (p *Parser) ParseExpr() (e expr.Expr, err error) {
 	return p.parseExprWithMinPrecedence(0)
 }
 
-func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, err error) {
+func (p *Parser) parseExprWithMinPrecedence(precedence int, allowed ...scanner.Token) (e expr.Expr, err error) {
 	// Dummy root node.
 	var root expr.Operator = new(dummyOperator)
 
 	// Parse a non-binary expression type to start.
 	// This variable will always be the root of the expression tree.
-	e, err = p.parseUnaryExpr()
+	e, err = p.parseUnaryExpr(allowed...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, err er
 	// Loop over operations and unary exprs and build a tree based on precedence.
 	for {
 		// If the next token is NOT an operator then return the expression.
-		op, tok, err := p.parseOperator(precedence)
+		op, tok, err := p.parseOperator(precedence, allowed...)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, err er
 
 		var rhs expr.Expr
 
-		if rhs, err = p.parseUnaryExpr(); err != nil {
+		if rhs, err = p.parseUnaryExpr(allowed...); err != nil {
 			return nil, err
 		}
 
@@ -76,9 +76,14 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, err er
 	}
 }
 
-func (p *Parser) parseOperator(minPrecedence int) (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, error) {
+func (p *Parser) parseOperator(minPrecedence int, allowed ...scanner.Token) (func(lhs, rhs expr.Expr) expr.Expr, scanner.Token, error) {
 	op, _, _ := p.ScanIgnoreWhitespace()
 	if !op.IsOperator() && op != scanner.NOT {
+		p.Unscan()
+		return nil, 0, nil
+	}
+
+	if !tokenIsAllowed(op, allowed...) {
 		p.Unscan()
 		return nil, 0, nil
 	}
@@ -89,62 +94,71 @@ func (p *Parser) parseOperator(minPrecedence int) (func(lhs, rhs expr.Expr) expr
 		return nil, 0, nil
 	}
 
-	switch {
-	case op == scanner.EQ && op.Precedence() >= minPrecedence:
+	if op == scanner.NOT {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		if tok.Precedence() >= minPrecedence {
+			switch {
+			case tok == scanner.IN && tok.Precedence() >= minPrecedence:
+				return expr.NotIn, op, nil
+			case tok == scanner.LIKE && tok.Precedence() >= minPrecedence:
+				return expr.NotLike, op, nil
+			}
+		}
+
+		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN, LIKE"}, pos)
+	}
+
+	if op.Precedence() < minPrecedence {
+		p.Unscan()
+		return nil, 0, nil
+	}
+
+	switch op {
+	case scanner.EQ:
 		return expr.Eq, op, nil
-	case op == scanner.NEQ && op.Precedence() >= minPrecedence:
+	case scanner.NEQ:
 		return expr.Neq, op, nil
-	case op == scanner.GT && op.Precedence() >= minPrecedence:
+	case scanner.GT:
 		return expr.Gt, op, nil
-	case op == scanner.GTE && op.Precedence() >= minPrecedence:
+	case scanner.GTE:
 		return expr.Gte, op, nil
-	case op == scanner.LT && op.Precedence() >= minPrecedence:
+	case scanner.LT:
 		return expr.Lt, op, nil
-	case op == scanner.LTE && op.Precedence() >= minPrecedence:
+	case scanner.LTE:
 		return expr.Lte, op, nil
-	case op == scanner.AND && op.Precedence() >= minPrecedence:
+	case scanner.AND:
 		return expr.And, op, nil
-	case op == scanner.OR && op.Precedence() >= minPrecedence:
+	case scanner.OR:
 		return expr.Or, op, nil
-	case op == scanner.ADD && op.Precedence() >= minPrecedence:
+	case scanner.ADD:
 		return expr.Add, op, nil
-	case op == scanner.SUB && op.Precedence() >= minPrecedence:
+	case scanner.SUB:
 		return expr.Sub, op, nil
-	case op == scanner.MUL && op.Precedence() >= minPrecedence:
+	case scanner.MUL:
 		return expr.Mul, op, nil
-	case op == scanner.DIV && op.Precedence() >= minPrecedence:
+	case scanner.DIV:
 		return expr.Div, op, nil
-	case op == scanner.MOD && op.Precedence() >= minPrecedence:
+	case scanner.MOD:
 		return expr.Mod, op, nil
-	case op == scanner.BITWISEAND && op.Precedence() >= minPrecedence:
+	case scanner.BITWISEAND:
 		return expr.BitwiseAnd, op, nil
-	case op == scanner.BITWISEOR && op.Precedence() >= minPrecedence:
+	case scanner.BITWISEOR:
 		return expr.BitwiseOr, op, nil
-	case op == scanner.BITWISEXOR && op.Precedence() >= minPrecedence:
+	case scanner.BITWISEXOR:
 		return expr.BitwiseXor, op, nil
-	case op == scanner.IN && op.Precedence() >= minPrecedence:
+	case scanner.IN:
 		return expr.In, op, nil
-	case op == scanner.IS && op.Precedence() >= minPrecedence:
+	case scanner.IS:
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.NOT {
 			return expr.IsNot, op, nil
 		}
 		p.Unscan()
 		return expr.Is, op, nil
-	case op == scanner.NOT:
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		switch {
-		case tok == scanner.IN && tok.Precedence() >= minPrecedence:
-			return expr.NotIn, op, nil
-		case tok == scanner.LIKE && tok.Precedence() >= minPrecedence:
-			return expr.NotLike, op, nil
-		}
-
-		return nil, 0, newParseError(scanner.Tokstr(tok, lit), []string{"IN, LIKE"}, pos)
-	case op == scanner.LIKE && op.Precedence() >= minPrecedence:
+	case scanner.LIKE:
 		return expr.Like, op, nil
-	case op == scanner.CONCAT && op.Precedence() >= minPrecedence:
+	case scanner.CONCAT:
 		return expr.Concat, op, nil
-	case op == scanner.BETWEEN && op.Precedence() >= minPrecedence:
+	case scanner.BETWEEN:
 		a, err := p.parseExprWithMinPrecedence(op.Precedence())
 		if err != nil {
 			return nil, op, err
@@ -163,8 +177,14 @@ func (p *Parser) parseOperator(minPrecedence int) (func(lhs, rhs expr.Expr) expr
 }
 
 // parseUnaryExpr parses an non-binary expression.
-func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
+func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
+
+	if !tokenIsAllowed(tok, allowed...) {
+		p.Unscan()
+		return nil, nil
+	}
+
 	switch tok {
 	case scanner.CAST:
 		p.Unscan()
@@ -268,7 +288,7 @@ func (p *Parser) parseUnaryExpr() (expr.Expr, error) {
 
 		return expr.NextValueFor{SeqName: seqName}, nil
 	default:
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{"identifier", "string", "number", "bool"}, pos)
+		return nil, newParseError(scanner.Tokstr(tok, lit), nil, pos)
 	}
 }
 
@@ -638,4 +658,17 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	return expr.CastFunc{Expr: e, CastAs: tp}, nil
+}
+
+// tokenIsAllowed is a helper function that determines if a token is allowed.
+func tokenIsAllowed(tok scanner.Token, allowed ...scanner.Token) bool {
+	if allowed == nil {
+		return true
+	}
+	for _, a := range allowed {
+		if tok == a {
+			return true
+		}
+	}
+	return false
 }

@@ -122,6 +122,31 @@ func TestInsertStmt(t *testing.T) {
 		testutil.RequireStreamEq(t, ``, res)
 	})
 
+	t.Run("with NEXT VALUE FOR", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test (a) VALUES (1), (2), (3)`)
+		require.NoError(t, err)
+
+		res, err := db.Query("SELECT * FROM test")
+		require.NoError(t, err)
+		defer res.Close()
+
+		var b bytes.Buffer
+		testutil.IteratorToJSONArray(&b, res)
+		require.JSONEq(t, `
+		[{"a": 1, "b": 1},
+		{"a": 2, "b": 2},
+		{"a": 3, "b": 3}]
+
+		`, b.String())
+	})
+
 	// t.Run("without RETURNING", func(t *testing.T) {
 	// 	db, err := genji.Open(":memory:")
 	// 	require.NoError(t, err)

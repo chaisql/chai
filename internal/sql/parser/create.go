@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -71,7 +71,7 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) 
 		return err
 	}
 
-	if fc.Type.IsAny() && fc.DefaultValue.Type.IsAny() && !fc.IsNotNull && !fc.IsPrimaryKey && !fc.IsUnique {
+	if fc.Type.IsAny() && fc.DefaultValue == nil && !fc.IsNotNull && !fc.IsPrimaryKey && !fc.IsUnique {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", "TYPE"}, pos)
 	}
@@ -118,7 +118,10 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 				return err
 			}
 
-			stmt.Info.FieldConstraints = append(stmt.Info.FieldConstraints, &fc)
+			err = stmt.Info.FieldConstraints.Add(&fc)
+			if err != nil {
+				return err
+			}
 		}
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
@@ -176,23 +179,44 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 
 			fc.IsNotNull = true
 		case scanner.DEFAULT:
-			// Parse default value expression.
-			e, err := p.parseUnaryExpr()
-			if err != nil {
-				return err
-			}
-
-			d, err := e.Eval(&environment.Environment{})
-			if err != nil {
-				return err
-			}
-
 			// if it has already a default value we return an error
 			if fc.HasDefaultValue() {
 				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 			}
 
-			fc.DefaultValue = d
+			// Parse default value expression.
+			// Only a few tokens are allowed.
+			e, err := p.parseExprWithMinPrecedence(scanner.EQ.Precedence(),
+				scanner.EQ,
+				scanner.NEQ,
+				scanner.BITWISEOR,
+				scanner.BITWISEXOR,
+				scanner.BITWISEAND,
+				scanner.LT,
+				scanner.LTE,
+				scanner.GT,
+				scanner.GTE,
+				scanner.ADD,
+				scanner.SUB,
+				scanner.MUL,
+				scanner.DIV,
+				scanner.MOD,
+				scanner.CONCAT,
+				scanner.INTEGER,
+				scanner.NUMBER,
+				scanner.STRING,
+				scanner.TRUE,
+				scanner.FALSE,
+				scanner.NULL,
+				scanner.LPAREN,   // only opening parenthesis are necessary
+				scanner.LBRACKET, // only opening brackets are necessary
+				scanner.NEXT,
+			)
+			if err != nil {
+				return err
+			}
+
+			fc.DefaultValue = expr.Constraint(e)
 		case scanner.UNIQUE:
 			// if it's already unique we return an error
 			if fc.IsUnique {

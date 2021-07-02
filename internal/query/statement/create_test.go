@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -201,9 +202,9 @@ func TestCreateTable(t *testing.T) {
 				constraints database.FieldConstraints
 				fails       bool
 			}{
-				{"With default, no type and integer default", "CREATE TABLE test(foo DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), DefaultValue: document.NewDoubleValue(10)}}, false},
-				{"With default, double type and integer default", "CREATE TABLE test(foo DOUBLE DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.DoubleValue, DefaultValue: document.NewDoubleValue(10)}}, false},
-				{"With default, some type and compatible default", "CREATE TABLE test(foo BOOL DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.BoolValue, DefaultValue: document.NewBoolValue(true)}}, false},
+				{"With default, no type and integer default", "CREATE TABLE test(foo DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), DefaultValue: expr.Constraint(testutil.IntegerValue(10))}}, false},
+				{"With default, double type and integer default", "CREATE TABLE test(foo DOUBLE DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.DoubleValue, DefaultValue: expr.Constraint(testutil.IntegerValue(10))}}, false},
+				{"With default, some type and compatible default", "CREATE TABLE test(foo BOOL DEFAULT 10)", database.FieldConstraints{{Path: parsePath(t, "foo"), Type: document.BoolValue, DefaultValue: expr.Constraint(testutil.IntegerValue(10))}}, false},
 				{"With default, some type and incompatible default", "CREATE TABLE test(foo BOOL DEFAULT 10.5)", nil, true},
 			}
 
@@ -221,6 +222,12 @@ func TestCreateTable(t *testing.T) {
 
 					tb, err := db.Catalog.GetTable(tx, "test")
 					require.NoError(t, err)
+
+					for _, fc := range test.constraints {
+						if fc.DefaultValue != nil {
+							fc.DefaultValue.(*expr.ConstraintExpr).Catalog = db.Catalog
+						}
+					}
 					require.Equal(t, test.constraints, tb.Info.FieldConstraints)
 				})
 			}

@@ -49,7 +49,7 @@ func (c *Catalog) Load(tx *database.Transaction) error {
 		return err
 	}
 
-	// ensure the catalog table sequence exists
+	// ensure the store sequence exists
 	err = c.CreateSequence(tx, &database.SequenceInfo{
 		Name:        StoreSequence,
 		IncrementBy: 1,
@@ -73,6 +73,17 @@ func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 	tables, indexes, sequences, err := c.CatalogTable.Load(tx)
 	if err != nil {
 		return err
+	}
+
+	for _, tb := range tables {
+		// bind default values with catalog
+		for _, fc := range tb.FieldConstraints {
+			if fc.DefaultValue == nil {
+				continue
+			}
+
+			fc.DefaultValue.Bind(c)
+		}
 	}
 
 	// add the __genji_catalog table to the list of tables
@@ -206,6 +217,15 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 		if err != nil {
 			return err
 		}
+	}
+
+	// bind default values with catalog
+	for _, fc := range info.FieldConstraints {
+		if fc.DefaultValue == nil {
+			continue
+		}
+
+		fc.DefaultValue.Bind(c)
 	}
 
 	err = c.CatalogTable.Insert(tx, info)

@@ -23,7 +23,7 @@ type FieldConstraint struct {
 	IsPrimaryKey bool
 	IsNotNull    bool
 	IsUnique     bool
-	DefaultValue document.Value
+	DefaultValue TableExpression
 	Identity     *FieldConstraintIdentity
 	IsInferred   bool
 	InferredBy   []document.Path
@@ -31,38 +31,38 @@ type FieldConstraint struct {
 
 // IsEqual compares f with other member by member.
 // Inference is not compared.
-func (f *FieldConstraint) IsEqual(other *FieldConstraint) (bool, error) {
+func (f *FieldConstraint) IsEqual(other *FieldConstraint) bool {
 	if !f.Path.IsEqual(other.Path) {
-		return false, nil
+		return false
 	}
 
 	if f.Type != other.Type {
-		return false, nil
+		return false
 	}
 
 	if f.IsPrimaryKey != other.IsPrimaryKey {
-		return false, nil
+		return false
 	}
 
 	if f.IsNotNull != other.IsNotNull {
-		return false, nil
+		return false
 	}
 
 	if f.HasDefaultValue() != other.HasDefaultValue() {
-		return false, nil
+		return false
 	}
 
 	if f.HasDefaultValue() {
-		if ok, err := f.DefaultValue.IsEqual(other.DefaultValue); !ok || err != nil {
-			return ok, err
+		if !f.DefaultValue.IsEqual(other.DefaultValue) {
+			return false
 		}
 	}
 
 	if !f.Identity.IsEqual(other.Identity) {
-		return false, nil
+		return false
 	}
 
-	return true, nil
+	return true
 }
 
 func (f *FieldConstraint) String() string {
@@ -111,7 +111,7 @@ func (f *FieldConstraint) MergeInferred(other *FieldConstraint) {
 
 // HasDefaultValue returns this field contains a default value constraint.
 func (f *FieldConstraint) HasDefaultValue() bool {
-	return f.DefaultValue.Type != 0
+	return f.DefaultValue != nil
 }
 
 // FieldConstraints is a list of field constraints.
@@ -223,14 +223,8 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			inferredFc.IsNotNull = nonInferredFc.IsNotNull
 			inferredFc.IsPrimaryKey = nonInferredFc.IsPrimaryKey
 
-			// safe-guard in case we add more fields to the struct
-			ok, err := c.IsEqual(newFc)
-			if err != nil {
-				return err
-			}
-
-			// if constraints are different
-			if !ok {
+			// detect if constraints are different
+			if !c.IsEqual(newFc) {
 				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
 			}
 
@@ -260,18 +254,25 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		}
 	}
 
-	// convert default values to the right types
-	targetType := newFc.Type
-
-	// if there is no type constraint, numbers must be converted to double
-	if newFc.DefaultValue.Type == document.IntegerValue && newFc.Type == 0 {
-		targetType = document.DoubleValue
-	}
-	if newFc.DefaultValue.Type != 0 && targetType != 0 {
-		var err error
-		newFc.DefaultValue, err = newFc.DefaultValue.CastAs(targetType)
-		if err != nil {
-			return err
+	// ensure default value type is compatible
+	if newFc.DefaultValue != nil && !newFc.Type.IsAny() {
+		// first, try to evaluate the default value
+		v, err := newFc.DefaultValue.Eval(nil)
+		// if there is no error, check if the default value can be converted to the type of the constraint
+		if err == nil {
+			_, err = v.CastAs(newFc.Type)
+			if err != nil {
+				return stringutil.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
+			}
+		} else {
+			// if there is an error, we know we are using a function that returns an integer (NEXT VALUE FOR)
+			// which is the only one compatible for the moment.
+			// Integers can be converted to other integers, doubles, texts and bools.
+			switch newFc.Type {
+			case document.IntegerValue, document.DoubleValue, document.TextValue, document.BoolValue:
+			default:
+				return stringutil.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
+			}
 		}
 	}
 
@@ -280,20 +281,55 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 }
 
 // ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (f FieldConstraints) ValidateDocument(d document.Document) (*document.FieldBuffer, error) {
-	fb, err := f.ConvertDocument(d)
+func (f FieldConstraints) ValidateDocument(tx *Transaction, d document.Document) (*document.FieldBuffer, error) {
+	fb := document.NewFieldBuffer()
+	err := fb.Copy(d)
+	if err != nil {
+		return nil, err
+	}
+
+	// generate default values for all fields
+	for _, fc := range f {
+		if fc.DefaultValue == nil {
+			continue
+		}
+
+		_, err := fc.Path.GetValueFromDocument(fb)
+		if err == nil {
+			continue
+		}
+
+		if err != document.ErrFieldNotFound {
+			return nil, err
+		}
+
+		v, err := fc.DefaultValue.Eval(tx)
+		if err != nil {
+			return nil, err
+		}
+		err = fb.Set(fc.Path, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	fb, err = f.ConvertDocument(fb)
 	if err != nil {
 		return nil, err
 	}
 
 	// ensure no field is missing
 	for _, fc := range f {
+		if !fc.IsNotNull {
+			continue
+		}
+
 		v, err := fc.Path.GetValueFromDocument(fb)
 		if err == nil {
 			// if field is found, it has already been converted
 			// to the right type above.
 			// check if it is required but null.
-			if v.Type == document.NullValue && fc.IsNotNull {
+			if v.Type == document.NullValue {
 				return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
 			}
 
@@ -304,18 +340,7 @@ func (f FieldConstraints) ValidateDocument(d document.Document) (*document.Field
 			return nil, err
 		}
 
-		// if field is not found
-		// check if there is a default value
-		if fc.DefaultValue.Type != 0 {
-			err = fb.Set(fc.Path, fc.DefaultValue)
-			if err != nil {
-				return nil, err
-			}
-			// if there is no default value
-			// check if field is required
-		} else if fc.IsNotNull {
-			return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
-		}
+		return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
 	}
 
 	return fb, nil
@@ -390,13 +415,16 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Val
 }
 
 func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.Document, conversionFn ConversionFunc) (*document.FieldBuffer, error) {
-	fb := document.NewFieldBuffer()
-	err := fb.Copy(d)
-	if err != nil {
-		return nil, err
+	fb, ok := d.(*document.FieldBuffer)
+	if !ok {
+		fb = document.NewFieldBuffer()
+		err := fb.Copy(d)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	err = fb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+	err := fb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
 		return f.convertScalarAtPath(append(path, p...), v, conversionFn)
 	})
 
@@ -432,4 +460,11 @@ func (f *FieldConstraintIdentity) IsEqual(other *FieldConstraintIdentity) bool {
 	}
 
 	return f.SequenceName == other.SequenceName && f.Always == other.Always
+}
+
+type TableExpression interface {
+	Bind(catalog Catalog)
+	Eval(tx *Transaction) (document.Value, error)
+	IsEqual(other TableExpression) bool
+	String() string
 }
