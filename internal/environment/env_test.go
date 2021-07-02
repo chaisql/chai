@@ -1,4 +1,4 @@
-package expr_test
+package environment_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,19 +14,21 @@ func TestEnvironmentClone(t *testing.T) {
 	d := document.NewFieldBuffer()
 	d.Add("answer", document.NewIntegerValue(42))
 
-	p := expr.Param{Name: "param", Value: 1}
+	p := environment.Param{Name: "param", Value: 1}
 	tx := &database.Transaction{}
 	catalog := catalog.New()
 
 	vars := document.NewFieldBuffer()
 	vars.Add("var", document.NewIntegerValue(2))
 
-	env := expr.NewEnvironment(d, p)
-	outer := expr.NewEnvironment(nil)
+	var env, outer environment.Environment
 
+	env.Doc = d
+	env.Params = []environment.Param{p}
+	env.Catalog = catalog
 	env.Tx = tx
 	env.Catalog = catalog
-	env.Outer = outer
+	env.Outer = &outer
 	env.Vars = vars
 
 	newEnv, err := env.Clone()
@@ -38,5 +40,5 @@ func TestEnvironmentClone(t *testing.T) {
 	require.Equal(t, tx, newEnv.Tx)
 	require.Equal(t, catalog, newEnv.Catalog)
 	require.Equal(t, vars, newEnv.Vars)
-	require.Equal(t, outer, newEnv.Outer)
+	require.Equal(t, &outer, newEnv.Outer)
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -51,11 +52,11 @@ func TestProject(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var inEnv expr.Environment
+			var inEnv environment.Environment
 			inEnv.SetDocument(test.in)
 
-			err := stream.Project(test.exprs...).Iterate(&inEnv, func(out *expr.Environment) error {
-				require.Equal(t, &inEnv, out.Outer)
+			err := stream.Project(test.exprs...).Iterate(&inEnv, func(out *environment.Environment) error {
+				require.Equal(t, &inEnv, out.GetOuter())
 				d, ok := out.GetDocument()
 				require.True(t, ok)
 				require.JSONEq(t, test.out, document.NewDocumentValue(d).String())
@@ -87,7 +88,7 @@ func TestProject(t *testing.T) {
 	})
 
 	t.Run("No input", func(t *testing.T) {
-		stream.Project(parser.MustParseExpr("1 + 1")).Iterate(expr.NewEnvironment(nil), func(out *expr.Environment) error {
+		stream.Project(parser.MustParseExpr("1 + 1")).Iterate(new(environment.Environment), func(out *environment.Environment) error {
 			d, ok := out.GetDocument()
 			require.True(t, ok)
 			enc, err := document.MarshalJSON(d)

@@ -2,24 +2,16 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
 )
-
-// A Param represents a parameter passed by the user to the statement.
-type Param struct {
-	// Name of the param
-	Name string
-
-	// Value is the parameter value.
-	Value interface{}
-}
 
 // NamedParam is an expression which represents the name of a parameter.
 type NamedParam string
 
 // Eval looks up for the parameters in the env for the one that has the same name as p
 // and returns the value.
-func (p NamedParam) Eval(env *Environment) (document.Value, error) {
+func (p NamedParam) Eval(env *environment.Environment) (document.Value, error) {
 	return env.GetParamByName(string(p))
 }
 
@@ -40,7 +32,7 @@ type PositionalParam int
 
 // Eval looks up for the parameters in the env for the one that is has the same position as p
 // and returns the value.
-func (p PositionalParam) Eval(env *Environment) (document.Value, error) {
+func (p PositionalParam) Eval(env *environment.Environment) (document.Value, error) {
 	return env.GetParamByIndex(int(p))
 }
 

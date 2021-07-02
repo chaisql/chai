@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 )
 
 func TestComparisonExpr(t *testing.T) {
@@ -150,7 +150,7 @@ func TestComparisonExprNodocument(t *testing.T) {
 		t.Run(test.expr, func(t *testing.T) {
 			for _, test := range tests {
 				t.Run(test.expr, func(t *testing.T) {
-					var emptyenv expr.Environment
+					var emptyenv environment.Environment
 
 					testExpr(t, test.expr, &emptyenv, test.res, test.fails)
 				})

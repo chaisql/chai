@@ -5,7 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 )
 
 // A Statement represents a unique action that can be executed against the database.
@@ -17,7 +17,7 @@ type Statement interface {
 type Context struct {
 	Tx      *database.Transaction
 	Catalog database.Catalog
-	Params  []expr.Param
+	Params  []environment.Param
 }
 
 type Preparer interface {

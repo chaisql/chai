@@ -6,11 +6,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 )
 
-func argsToParams(args []interface{}) []expr.Param {
-	nv := make([]expr.Param, len(args))
+func argsToParams(args []interface{}) []environment.Param {
+	nv := make([]environment.Param, len(args))
 	for i := range args {
 		switch t := args[i].(type) {
 		case sql.NamedArg:
@@ -25,9 +25,9 @@ func argsToParams(args []interface{}) []expr.Param {
 		case *driver.NamedValue:
 			nv[i].Name = t.Name
 			nv[i].Value = t.Value
-		case *expr.Param:
+		case *environment.Param:
 			nv[i] = *t
-		case expr.Param:
+		case environment.Param:
 			nv[i] = t
 		default:
 			nv[i].Value = args[i]

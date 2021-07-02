@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -20,23 +21,23 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 }
 
 // Iterate implements the Operator interface.
-func (op *ProjectOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
+func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var mask MaskDocument
-	var newEnv expr.Environment
+	var newEnv environment.Environment
 
 	if op.Prev == nil {
 		mask.Env = in
 		mask.Exprs = op.Exprs
 		newEnv.SetDocument(&mask)
-		newEnv.Outer = in
+		newEnv.SetOuter(in)
 		return f(&newEnv)
 	}
 
-	return op.Prev.Iterate(in, func(env *expr.Environment) error {
+	return op.Prev.Iterate(in, func(env *environment.Environment) error {
 		mask.Env = env
 		mask.Exprs = op.Exprs
 		newEnv.SetDocument(&mask)
-		newEnv.Outer = env
+		newEnv.SetOuter(env)
 		return f(&newEnv)
 	})
 }
@@ -56,7 +57,7 @@ func (op *ProjectOperator) String() string {
 }
 
 type MaskDocument struct {
-	Env   *expr.Environment
+	Env   *environment.Environment
 	Exprs []expr.Expr
 }
 

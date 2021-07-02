@@ -2,6 +2,7 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -18,26 +19,26 @@ func And(a, b Expr) Expr {
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if both evaluate
 // to true.
-func (op *AndOp) Eval(env *Environment) (document.Value, error) {
+func (op *AndOp) Eval(env *environment.Environment) (document.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	isTruthy, err := s.IsTruthy()
 	if !isTruthy || err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 
 	s, err = op.b.Eval(env)
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	isTruthy, err = s.IsTruthy()
 	if !isTruthy || err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 
-	return trueLitteral, nil
+	return TrueLitteral, nil
 }
 
 // OrOp is the Or operator.
@@ -52,32 +53,32 @@ func Or(a, b Expr) Expr {
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if a or b evalutate
 // to true.
-func (op *OrOp) Eval(env *Environment) (document.Value, error) {
+func (op *OrOp) Eval(env *environment.Environment) (document.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	isTruthy, err := s.IsTruthy()
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	if isTruthy {
-		return trueLitteral, nil
+		return TrueLitteral, nil
 	}
 
 	s, err = op.b.Eval(env)
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	isTruthy, err = s.IsTruthy()
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	if isTruthy {
-		return trueLitteral, nil
+		return TrueLitteral, nil
 	}
 
-	return falseLitteral, nil
+	return FalseLitteral, nil
 }
 
 // NotOp is the NOT unary operator.
@@ -91,21 +92,21 @@ func Not(e Expr) Expr {
 }
 
 // Eval implements the Expr interface. It evaluates e and returns true if b is falsy
-func (op *NotOp) Eval(env *Environment) (document.Value, error) {
+func (op *NotOp) Eval(env *environment.Environment) (document.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 
 	isTruthy, err := s.IsTruthy()
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 	if isTruthy {
-		return falseLitteral, nil
+		return FalseLitteral, nil
 	}
 
-	return trueLitteral, nil
+	return TrueLitteral, nil
 }
 
 // String implements the stringutil.Stringer interface.

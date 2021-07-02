@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -27,7 +28,7 @@ func (v LiteralValue) String() string {
 }
 
 // Eval returns l. It implements the Expr interface.
-func (v LiteralValue) Eval(*Environment) (document.Value, error) {
+func (v LiteralValue) Eval(*environment.Environment) (document.Value, error) {
 	return document.Value(v), nil
 }
 
@@ -71,13 +72,13 @@ func (l LiteralExprList) String() string {
 }
 
 // Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
-func (l LiteralExprList) Eval(env *Environment) (document.Value, error) {
+func (l LiteralExprList) Eval(env *environment.Environment) (document.Value, error) {
 	var err error
 	values := make([]document.Value, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(env)
 		if err != nil {
-			return nullLitteral, err
+			return NullLitteral, err
 		}
 	}
 
@@ -132,7 +133,7 @@ func (kvp *KVPairs) IsEqual(other Expr) bool {
 }
 
 // Eval turns a list of KVPairs into a document.
-func (kvp *KVPairs) Eval(env *Environment) (document.Value, error) {
+func (kvp *KVPairs) Eval(env *environment.Environment) (document.Value, error) {
 	var fb document.FieldBuffer
 	if kvp.SelfReferenced {
 		if _, ok := env.GetDocument(); !ok {

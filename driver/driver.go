@@ -11,7 +11,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 )
 
 func init() {
@@ -237,7 +237,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 func driverNamedValueToParams(args []driver.NamedValue) []interface{} {
 	params := make([]interface{}, len(args))
 	for i, arg := range args {
-		var p expr.Param
+		var p environment.Param
 		p.Name = arg.Name
 		p.Value = arg.Value
 		params[i] = p

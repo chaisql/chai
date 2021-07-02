@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -27,7 +28,7 @@ type ValueRange struct {
 	Exact bool
 }
 
-func (r *ValueRange) evalRange(table *database.Table, env *expr.Environment) (*encodedValueRange, bool, error) {
+func (r *ValueRange) evalRange(table *database.Table, env *environment.Environment) (*encodedValueRange, bool, error) {
 	var err error
 
 	pk := table.Info.FieldConstraints.GetPrimaryKey()
@@ -70,7 +71,7 @@ func (r *ValueRange) evalRange(table *database.Table, env *expr.Environment) (*e
 	return &rng, true, nil
 }
 
-func (r *ValueRange) encode(table *database.Table, env *expr.Environment) (*encodedValueRange, error) {
+func (r *ValueRange) encode(table *database.Table, env *environment.Environment) (*encodedValueRange, error) {
 	rng, ok, err := r.evalRange(table, env)
 	if err != nil || !ok {
 		return nil, err
@@ -283,7 +284,7 @@ func (r ValueRanges) Append(rng ValueRange) ValueRanges {
 }
 
 // Encode each range using the given value encoder.
-func (r ValueRanges) Encode(table *database.Table, env *expr.Environment) ([]*encodedValueRange, error) {
+func (r ValueRanges) Encode(table *database.Table, env *environment.Environment) ([]*encodedValueRange, error) {
 	ranges := make([]*encodedValueRange, 0, len(r))
 
 	for i := range r {
@@ -364,7 +365,7 @@ type IndexRange struct {
 	IndexArity int
 }
 
-func (r *IndexRange) evalRange(index *database.Index, table *database.Table, env *expr.Environment) (*encodedIndexRange, bool, error) {
+func (r *IndexRange) evalRange(index *database.Index, table *database.Table, env *environment.Environment) (*encodedIndexRange, bool, error) {
 	rng := encodedIndexRange{
 		constraints: table.Info.FieldConstraints,
 
@@ -408,7 +409,7 @@ func (r *IndexRange) evalRange(index *database.Index, table *database.Table, env
 	return &rng, true, nil
 }
 
-func (r *IndexRange) encode(index *database.Index, table *database.Table, env *expr.Environment) (*encodedIndexRange, error) {
+func (r *IndexRange) encode(index *database.Index, table *database.Table, env *environment.Environment) (*encodedIndexRange, error) {
 	rng, ok, err := r.evalRange(index, table, env)
 	if err != nil || !ok {
 		return nil, err
@@ -662,7 +663,7 @@ type ValueBufferEncoder interface {
 }
 
 // Encode each range using the given value encoder.
-func (r IndexRanges) EncodeBuffer(index *database.Index, table *database.Table, env *expr.Environment) ([]*encodedIndexRange, error) {
+func (r IndexRanges) EncodeBuffer(index *database.Index, table *database.Table, env *environment.Environment) ([]*encodedIndexRange, error) {
 	ranges := make([]*encodedIndexRange, 0, len(r))
 
 	for i := range r {

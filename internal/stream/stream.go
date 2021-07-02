@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.
@@ -26,7 +26,7 @@ func (s *Stream) Pipe(op Operator) *Stream {
 	return s
 }
 
-func (s *Stream) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+func (s *Stream) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	if s.Op == nil {
 		return nil
 	}

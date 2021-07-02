@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -25,7 +26,7 @@ func TestExpressions(t *testing.T) {
 		t.Run(test.e.String(), func(t *testing.T) {
 			s := stream.New(stream.Expressions(test.e))
 
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				require.Equal(t, d, test.output)
@@ -76,18 +77,18 @@ func TestSeqScan(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER)")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 			}
 
 			op := stream.SeqScan("test")
 			op.Reverse = test.reverse
-			var in expr.Environment
+			var in environment.Environment
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
 			var i int
 			var got testutil.Docs
-			err := op.Iterate(&in, func(env *expr.Environment) error {
+			err := op.Iterate(&in, func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -233,19 +234,19 @@ func TestPkScan(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER NOT NULL PRIMARY KEY)")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 			}
 
 			op := stream.PkScan("test", test.ranges...)
 			op.Reverse = test.reverse
-			var env expr.Environment
+			var env environment.Environment
 			env.Tx = tx
 			env.Catalog = db.Catalog
-			env.Params = []expr.Param{{Name: "foo", Value: 1}}
+			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 
 			var i int
 			var got testutil.Docs
-			err := op.Iterate(&env, func(env *expr.Environment) error {
+			err := op.Iterate(&env, func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -630,19 +631,19 @@ func TestIndexScan(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER); CREATE INDEX idx_test_a ON test("+test.indexOn+")")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 			}
 
 			op := stream.IndexScan("idx_test_a", test.ranges...)
 			op.Reverse = test.reverse
-			var env expr.Environment
+			var env environment.Environment
 			env.Tx = tx
 			env.Catalog = db.Catalog
-			env.Params = []expr.Param{{Name: "foo", Value: 1}}
+			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 
 			var i int
 			var got testutil.Docs
-			err := op.Iterate(&env, func(env *expr.Environment) error {
+			err := op.Iterate(&env, func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer

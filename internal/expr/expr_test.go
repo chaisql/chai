@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
@@ -35,13 +35,13 @@ var docWithKey document.Document = func() document.Document {
 	return fb
 }()
 
-var envWithDoc = expr.NewEnvironment(doc)
+var envWithDoc = environment.New(doc)
 
-var envWithDocAndKey = expr.NewEnvironment(docWithKey)
+var envWithDocAndKey = environment.New(docWithKey)
 
 var nullLitteral = document.NewNullValue()
 
-func testExpr(t testing.TB, exprStr string, env *expr.Environment, want document.Value, fails bool) {
+func testExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
 	t.Helper()
 
 	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()

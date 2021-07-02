@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/genexprtests"
@@ -95,7 +96,7 @@ func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	return &ne
 }
 
-var emptyEnv = expr.NewEnvironment(nil)
+var emptyEnv = environment.New(nil)
 
 func ExprRunner(t *testing.T, testfile string) {
 	t.Helper()

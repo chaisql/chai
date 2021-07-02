@@ -2,6 +2,7 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -35,15 +36,15 @@ func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
 }
 
-func (op *simpleOperator) eval(env *Environment, fn func(a, b document.Value) (document.Value, error)) (document.Value, error) {
+func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b document.Value) (document.Value, error)) (document.Value, error) {
 	va, err := op.a.Eval(env)
 	if err != nil {
-		return nullLitteral, err
+		return NullLitteral, err
 	}
 
 	vb, err := op.b.Eval(env)
 	if err != nil {
-		return nullLitteral, err
+		return NullLitteral, err
 	}
 
 	return fn(va, vb)
@@ -103,10 +104,10 @@ func Concat(a, b Expr) Expr {
 	return &ConcatOperator{&simpleOperator{a, b, scanner.CONCAT}}
 }
 
-func (op *ConcatOperator) Eval(env *Environment) (document.Value, error) {
+func (op *ConcatOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type != document.TextValue || b.Type != document.TextValue {
-			return nullLitteral, nil
+			return NullLitteral, nil
 		}
 
 		return document.NewTextValue(a.V.(string) + b.V.(string)), nil

@@ -1,7 +1,7 @@
 package stream
 
 import (
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -17,7 +17,7 @@ func Concat(s1 *Stream, s2 *Stream) *ConcatOperator {
 	return &ConcatOperator{S1: s1, S2: s2}
 }
 
-func (op *ConcatOperator) Iterate(in *expr.Environment, fn func(*expr.Environment) error) error {
+func (op *ConcatOperator) Iterate(in *environment.Environment, fn func(*environment.Environment) error) error {
 	err := op.S1.Iterate(in, fn)
 	if err != nil {
 		return err

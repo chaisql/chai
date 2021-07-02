@@ -7,7 +7,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -335,7 +335,7 @@ func (r *Result) Close() (err error) {
 	return r.result.Close()
 }
 
-func newQueryContext(db *DB, tx *Tx, params []expr.Param) *query.Context {
+func newQueryContext(db *DB, tx *Tx, params []environment.Param) *query.Context {
 	ctx := query.Context{
 		Ctx:    db.ctx,
 		DB:     db.db,

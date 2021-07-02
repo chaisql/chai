@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -44,7 +44,7 @@ func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func())
 	}
 }
 
-func Exec(db *database.Database, tx *database.Transaction, q string, params ...expr.Param) error {
+func Exec(db *database.Database, tx *database.Transaction, q string, params ...environment.Param) error {
 	res, err := Query(db, tx, q, params...)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 	})
 }
 
-func Query(db *database.Database, tx *database.Transaction, q string, params ...expr.Param) (*statement.Result, error) {
+func Query(db *database.Database, tx *database.Transaction, q string, params ...environment.Param) (*statement.Result, error) {
 	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
@@ -70,12 +70,12 @@ func Query(db *database.Database, tx *database.Transaction, q string, params ...
 	return pq.Run(ctx)
 }
 
-func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...expr.Param) {
+func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) {
 	err := Exec(db, tx, q, params...)
 	require.NoError(t, err)
 }
 
-func MustQuery(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...expr.Param) *statement.Result {
+func MustQuery(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) *statement.Result {
 	res, err := Query(db, tx, q, params...)
 	require.NoError(t, err)
 	return res

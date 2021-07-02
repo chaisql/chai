@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ func TestConcatOperator(t *testing.T) {
 	s := stream.Concat(s1, s2)
 
 	var got []document.Document
-	s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+	s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 		d, ok := env.GetDocument()
 		require.True(t, ok)
 		got = append(got, d)

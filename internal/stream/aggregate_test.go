@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -64,7 +65,7 @@ func TestAggregate(t *testing.T) {
 			s = s.Pipe(stream.HashAggregate(test.builders...))
 
 			var got []document.Document
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -91,11 +92,11 @@ type fakeAggregator struct {
 	name  string
 }
 
-func (f *fakeAggregator) Eval(env *expr.Environment) (document.Value, error) {
+func (f *fakeAggregator) Eval(env *environment.Environment) (document.Value, error) {
 	return document.NewIntegerValue(f.count), nil
 }
 
-func (f *fakeAggregator) Aggregate(env *expr.Environment) error {
+func (f *fakeAggregator) Aggregate(env *environment.Environment) error {
 	f.count++
 	return nil
 }

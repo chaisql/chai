@@ -3,6 +3,7 @@ package planner
 import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -215,7 +216,7 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 		_, rightIsLit := rh.(expr.LiteralValue)
 		// if both operands are literals, we can precalculate them now
 		if leftIsLit && rightIsLit {
-			v, err := t.Eval(&expr.Environment{})
+			v, err := t.Eval(&environment.Environment{})
 			// any error encountered here is unexpected
 			if err != nil {
 				panic(err)

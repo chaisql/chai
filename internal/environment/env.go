@@ -1,10 +1,19 @@
-package expr
+package environment
 
 import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stringutil"
 )
+
+// A Param represents a parameter passed by the user to the statement.
+type Param struct {
+	// Name of the param
+	Name string
+
+	// Value is the parameter value.
+	Value interface{}
+}
 
 // Environment contains information about the context in which
 // the expression is evaluated.
@@ -18,13 +27,21 @@ type Environment struct {
 	Outer *Environment
 }
 
-func NewEnvironment(d document.Document, params ...Param) *Environment {
+func New(d document.Document, params ...Param) *Environment {
 	env := Environment{
 		Params: params,
 		Doc:    d,
 	}
 
 	return &env
+}
+
+func (e *Environment) GetOuter() *Environment {
+	return e.Outer
+}
+
+func (e *Environment) SetOuter(env *Environment) {
+	e.Outer = env
 }
 
 func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
@@ -66,6 +83,10 @@ func (e *Environment) SetDocument(d document.Document) {
 	e.Doc = d
 }
 
+func (e *Environment) SetParams(params []Param) {
+	e.Params = params
+}
+
 func (e *Environment) GetParamByName(name string) (v document.Value, err error) {
 	if len(e.Params) == 0 {
 		if e.Outer != nil {
@@ -97,34 +118,35 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 	return document.NewValue(e.Params[idx].Value)
 }
 
-func (e *Environment) GetCatalog() database.Catalog {
-	if e.Catalog != nil {
-		return e.Catalog
-	}
-	if e.Outer != nil {
-		return e.Outer.GetCatalog()
-	}
-
-	return nil
-}
-
 func (e *Environment) GetTx() *database.Transaction {
 	if e.Tx != nil {
 		return e.Tx
 	}
-	if e.Outer != nil {
-		return e.Outer.GetTx()
+
+	if outer := e.GetOuter(); outer != nil {
+		return outer.GetTx()
 	}
+
+	return nil
+}
+
+func (e *Environment) GetCatalog() database.Catalog {
+	if e.Catalog != nil {
+		return e.Catalog
+	}
+	if outer := e.GetOuter(); outer != nil {
+		return outer.GetCatalog()
+	}
+
 	return nil
 }
 
 func (e *Environment) Clone() (*Environment, error) {
-	newEnv := Environment{
-		Params: e.Params,
-	}
+	var newEnv Environment
 
-	newEnv.Catalog = e.Catalog
+	newEnv.Params = e.Params
 	newEnv.Tx = e.Tx
+	newEnv.Catalog = e.Catalog
 
 	if e.Doc != nil {
 		fb := document.NewFieldBuffer()

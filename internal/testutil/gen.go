@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
@@ -14,7 +14,7 @@ import (
 
 type ResultStream struct {
 	*parser.Parser
-	env *expr.Environment
+	env *environment.Environment
 }
 
 func (ds *ResultStream) Next() (*document.Value, error) {
@@ -33,7 +33,7 @@ func (ds *ResultStream) Next() (*document.Value, error) {
 
 func ParseResultStream(stream string) *ResultStream {
 	p := parser.NewParser(strings.NewReader(stream))
-	env := expr.NewEnvironment(document.NewFieldBuffer())
+	env := environment.New(document.NewFieldBuffer())
 
 	return &ResultStream{p, env}
 }

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -13,15 +14,17 @@ type dummyOperator struct {
 	rightHand expr.Expr
 }
 
-func (d *dummyOperator) Token() scanner.Token                           { panic("not implemented") }
-func (d *dummyOperator) Equal(expr.Expr) bool                           { panic("not implemented") }
-func (d *dummyOperator) Eval(*expr.Environment) (document.Value, error) { panic("not implemented") }
-func (d *dummyOperator) String() string                                 { panic("not implemented") }
-func (d *dummyOperator) Precedence() int                                { panic("not implemented") }
-func (d *dummyOperator) LeftHand() expr.Expr                            { panic("not implemented") }
-func (d *dummyOperator) RightHand() expr.Expr                           { return d.rightHand }
-func (d *dummyOperator) SetLeftHandExpr(e expr.Expr)                    { panic("not implemented") }
-func (d *dummyOperator) SetRightHandExpr(e expr.Expr)                   { d.rightHand = e }
+func (d *dummyOperator) Token() scanner.Token { panic("not implemented") }
+func (d *dummyOperator) Equal(expr.Expr) bool { panic("not implemented") }
+func (d *dummyOperator) Eval(*environment.Environment) (document.Value, error) {
+	panic("not implemented")
+}
+func (d *dummyOperator) String() string               { panic("not implemented") }
+func (d *dummyOperator) Precedence() int              { panic("not implemented") }
+func (d *dummyOperator) LeftHand() expr.Expr          { panic("not implemented") }
+func (d *dummyOperator) RightHand() expr.Expr         { return d.rightHand }
+func (d *dummyOperator) SetLeftHandExpr(e expr.Expr)  { panic("not implemented") }
+func (d *dummyOperator) SetRightHandExpr(e expr.Expr) { d.rightHand = e }
 
 // ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (e expr.Expr, err error) {
@@ -61,7 +64,7 @@ func (p *Parser) parseExprWithMinPrecedence(precedence int) (e expr.Expr, err er
 		// descending the RHS of the expression tree until we reach the last
 		// BinaryExpr or a BinaryExpr whose RHS has an operator with
 		// precedence >= the operator being added.
-		for node := root.(expr.Operator); ; {
+		for node := root; ; {
 			p, ok := node.RightHand().(expr.Operator)
 			if !ok || p.Precedence() >= tok.Precedence() {
 				// Add the new expression here and break.

@@ -2,18 +2,19 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
 var (
-	trueLitteral  = document.NewBoolValue(true)
-	falseLitteral = document.NewBoolValue(false)
-	nullLitteral  = document.NewNullValue()
+	TrueLitteral  = document.NewBoolValue(true)
+	FalseLitteral = document.NewBoolValue(false)
+	NullLitteral  = document.NewNullValue()
 )
 
 // An Expr evaluates to a value.
 type Expr interface {
-	Eval(*Environment) (document.Value, error)
+	Eval(*environment.Environment) (document.Value, error)
 	String() string
 }
 
@@ -46,7 +47,7 @@ type Parentheses struct {
 }
 
 // Eval calls the underlying expression Eval method.
-func (p Parentheses) Eval(env *Environment) (document.Value, error) {
+func (p Parentheses) Eval(env *environment.Environment) (document.Value, error) {
 	return p.E.Eval(env)
 }
 
@@ -69,18 +70,18 @@ func (p Parentheses) String() string {
 	return stringutil.Sprintf("(%v)", p.E)
 }
 
-func invertBoolResult(f func(env *Environment) (document.Value, error)) func(env *Environment) (document.Value, error) {
-	return func(env *Environment) (document.Value, error) {
+func invertBoolResult(f func(env *environment.Environment) (document.Value, error)) func(env *environment.Environment) (document.Value, error) {
+	return func(env *environment.Environment) (document.Value, error) {
 		v, err := f(env)
 
 		if err != nil {
 			return v, err
 		}
-		if v == trueLitteral {
-			return falseLitteral, nil
+		if v == TrueLitteral {
+			return FalseLitteral, nil
 		}
-		if v == falseLitteral {
-			return trueLitteral, nil
+		if v == FalseLitteral {
+			return TrueLitteral, nil
 		}
 		return v, nil
 	}
@@ -136,18 +137,18 @@ type NextValueFor struct {
 }
 
 // Eval calls the underlying expression Eval method.
-func (n NextValueFor) Eval(env *Environment) (document.Value, error) {
+func (n NextValueFor) Eval(env *environment.Environment) (document.Value, error) {
 	catalog := env.GetCatalog()
 	tx := env.GetTx()
 
 	seq, err := catalog.GetSequence(n.SeqName)
 	if err != nil {
-		return nullLitteral, err
+		return NullLitteral, err
 	}
 
 	i, err := seq.Next(tx, catalog)
 	if err != nil {
-		return nullLitteral, err
+		return NullLitteral, err
 	}
 
 	return document.NewIntegerValue(i), nil

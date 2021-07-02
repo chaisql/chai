@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -88,7 +89,7 @@ func (f Functions) GetFunc(name string, args ...Expr) (Expr, error) {
 type Aggregator interface {
 	Expr
 
-	Aggregate(env *Environment) error
+	Aggregate(env *environment.Environment) error
 }
 
 // An AggregatorBuilder is a type that can create aggregators.
@@ -103,15 +104,15 @@ type AggregatorBuilder interface {
 type PKFunc struct{}
 
 // Eval returns the primary key of the current document.
-func (k *PKFunc) Eval(env *Environment) (document.Value, error) {
+func (k *PKFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
-		return nullLitteral, nil
+		return NullLitteral, nil
 	}
 
 	keyer, ok := d.(document.Keyer)
 	if !ok {
-		return nullLitteral, nil
+		return NullLitteral, nil
 	}
 
 	v, err := keyer.Key()
@@ -138,7 +139,7 @@ type CastFunc struct {
 }
 
 // Eval returns the primary key of the current document.
-func (c CastFunc) Eval(env *Environment) (document.Value, error) {
+func (c CastFunc) Eval(env *environment.Environment) (document.Value, error) {
 	v, err := c.Expr.Eval(env)
 	if err != nil {
 		return v, err
@@ -186,7 +187,7 @@ type CountFunc struct {
 	Count    int64
 }
 
-func (c *CountFunc) Eval(env *Environment) (document.Value, error) {
+func (c *CountFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function COUNT()")
@@ -238,7 +239,7 @@ type CountAggregator struct {
 }
 
 // Aggregate increments the counter if the count expression evaluates to a non-null value.
-func (c *CountAggregator) Aggregate(env *Environment) error {
+func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	if c.Fn.Wildcard {
 		c.Count++
 		return nil
@@ -248,7 +249,7 @@ func (c *CountAggregator) Aggregate(env *Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v != nullLitteral {
+	if v != NullLitteral {
 		c.Count++
 	}
 
@@ -256,7 +257,7 @@ func (c *CountAggregator) Aggregate(env *Environment) error {
 }
 
 // Eval returns the result of the aggregation as an integer.
-func (c *CountAggregator) Eval(env *Environment) (document.Value, error) {
+func (c *CountAggregator) Eval(env *environment.Environment) (document.Value, error) {
 	return document.NewIntegerValue(c.Count), nil
 }
 
@@ -270,7 +271,7 @@ type MinFunc struct {
 }
 
 // Eval extracts the min value from the given document and returns it.
-func (m *MinFunc) Eval(env *Environment) (document.Value, error) {
+func (m *MinFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function MIN()")
@@ -317,12 +318,12 @@ type MinAggregator struct {
 
 // Aggregate stores the minimum value. Values are compared based on their types,
 // then if the type is equal their value is compared. Numbers are considered of the same type.
-func (m *MinAggregator) Aggregate(env *Environment) error {
+func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v == nullLitteral {
+	if v == NullLitteral {
 		return nil
 	}
 
@@ -351,7 +352,7 @@ func (m *MinAggregator) Aggregate(env *Environment) error {
 }
 
 // Eval return the minimum value.
-func (m *MinAggregator) Eval(env *Environment) (document.Value, error) {
+func (m *MinAggregator) Eval(env *environment.Environment) (document.Value, error) {
 	if m.Min.Type == 0 {
 		return document.NewNullValue(), nil
 	}
@@ -368,7 +369,7 @@ type MaxFunc struct {
 }
 
 // Eval extracts the max value from the given document and returns it.
-func (m *MaxFunc) Eval(env *Environment) (document.Value, error) {
+func (m *MaxFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function MAX()")
@@ -415,12 +416,12 @@ type MaxAggregator struct {
 
 // Aggregate stores the maximum value. Values are compared based on their types,
 // then if the type is equal their value is compared. Numbers are considered of the same type.
-func (m *MaxAggregator) Aggregate(env *Environment) error {
+func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v == nullLitteral {
+	if v == NullLitteral {
 		return nil
 	}
 
@@ -449,7 +450,7 @@ func (m *MaxAggregator) Aggregate(env *Environment) error {
 }
 
 // Eval return the maximum value.
-func (m *MaxAggregator) Eval(env *Environment) (document.Value, error) {
+func (m *MaxAggregator) Eval(env *environment.Environment) (document.Value, error) {
 	if m.Max.Type == 0 {
 		return document.NewNullValue(), nil
 	}
@@ -467,7 +468,7 @@ type SumFunc struct {
 }
 
 // Eval extracts the sum value from the given document and returns it.
-func (s *SumFunc) Eval(env *Environment) (document.Value, error) {
+func (s *SumFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function SUM()")
@@ -516,7 +517,7 @@ type SumAggregator struct {
 // Aggregate stores the sum of all non-NULL numeric values in the group.
 // The result is an integer value if all summed values are integers.
 // If any of the value is a double, the returned result will be a double.
-func (s *SumAggregator) Aggregate(env *Environment) error {
+func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
@@ -556,7 +557,7 @@ func (s *SumAggregator) Aggregate(env *Environment) error {
 }
 
 // Eval return the aggregated sum.
-func (s *SumAggregator) Eval(env *Environment) (document.Value, error) {
+func (s *SumAggregator) Eval(env *environment.Environment) (document.Value, error) {
 	if s.SumF != nil {
 		return document.NewDoubleValue(*s.SumF), nil
 	}
@@ -577,7 +578,7 @@ type AvgFunc struct {
 }
 
 // Eval extracts the average value from the given document and returns it.
-func (s *AvgFunc) Eval(env *Environment) (document.Value, error) {
+func (s *AvgFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function AVG()")
@@ -624,7 +625,7 @@ type AvgAggregator struct {
 }
 
 // Aggregate stores the average value of all non-NULL numeric values in the group.
-func (s *AvgAggregator) Aggregate(env *Environment) error {
+func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
@@ -644,7 +645,7 @@ func (s *AvgAggregator) Aggregate(env *Environment) error {
 }
 
 // Eval returns the aggregated average as a double.
-func (s *AvgAggregator) Eval(env *Environment) (document.Value, error) {
+func (s *AvgAggregator) Eval(env *environment.Environment) (document.Value, error) {
 	if s.Counter == 0 {
 		return document.NewDoubleValue(0), nil
 	}

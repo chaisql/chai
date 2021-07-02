@@ -2,6 +2,7 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr/glob"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -20,17 +21,17 @@ func Like(a, b Expr) Expr {
 	return &LikeOperator{&simpleOperator{a, b, scanner.LIKE}}
 }
 
-func (op *LikeOperator) Eval(env *Environment) (document.Value, error) {
+func (op *LikeOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type != document.TextValue || b.Type != document.TextValue {
-			return nullLitteral, nil
+			return NullLitteral, nil
 		}
 
 		if like(b.V.(string), a.V.(string)) {
-			return trueLitteral, nil
+			return TrueLitteral, nil
 		}
 
-		return falseLitteral, nil
+		return FalseLitteral, nil
 	})
 }
 
@@ -43,7 +44,7 @@ func NotLike(a, b Expr) Expr {
 	return &NotLikeOperator{LikeOperator{&simpleOperator{a, b, scanner.LIKE}}}
 }
 
-func (op *NotLikeOperator) Eval(env *Environment) (document.Value, error) {
+func (op *NotLikeOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return invertBoolResult(op.LikeOperator.Eval)(env)
 }
 

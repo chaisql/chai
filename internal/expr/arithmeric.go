@@ -2,6 +2,7 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
@@ -16,7 +17,7 @@ type arithmeticOperator struct {
 	*simpleOperator
 }
 
-func (op *arithmeticOperator) Eval(env *Environment) (document.Value, error) {
+func (op *arithmeticOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		switch op.simpleOperator.Tok {
 		case scanner.ADD:

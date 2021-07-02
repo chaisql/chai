@@ -8,6 +8,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -47,7 +48,7 @@ func TestMap(t *testing.T) {
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Map(test.e))
 			i := 0
-			err := s.Iterate(nil, func(out *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
 				require.Equal(t, test.out[i], d)
 				i++
@@ -103,7 +104,7 @@ func TestFilter(t *testing.T) {
 		t.Run(test.e.String(), func(t *testing.T) {
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Filter(test.e))
 			i := 0
-			err := s.Iterate(nil, func(out *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
 				require.Equal(t, test.out[i], d)
 				i++
@@ -147,7 +148,7 @@ func TestTake(t *testing.T) {
 			s = s.Pipe(stream.Take(test.n))
 
 			var count int
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				count++
 				return nil
 			})
@@ -192,7 +193,7 @@ func TestSkip(t *testing.T) {
 			s = s.Pipe(stream.Skip(test.n))
 
 			var count int
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				count++
 				return nil
 			})
@@ -245,13 +246,13 @@ func TestGroupBy(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.e.String(), func(t *testing.T) {
-			var want expr.Environment
+			var want environment.Environment
 			want.Set("_group", test.group)
 			want.Set("_group_expr", document.NewTextValue(test.e.String()))
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.GroupBy(test.e))
-			err := s.Iterate(nil, func(out *expr.Environment) error {
-				out.Outer = nil
+			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
+				out.SetOuter(nil)
 				require.Equal(t, &want, out)
 				return nil
 			})
@@ -331,7 +332,7 @@ func TestSort(t *testing.T) {
 			}
 
 			var got []document.Document
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				got = append(got, d)
@@ -375,14 +376,14 @@ func TestTableInsert(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER)")
 
-			in := expr.NewEnvironment(nil)
+			in := &environment.Environment{}
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
 			s := stream.New(test.in).Pipe(stream.TableInsert("test", nil))
 
 			var i int
-			err := s.Iterate(in, func(out *expr.Environment) error {
+			err := s.Iterate(in, func(out *environment.Environment) error {
 				d, ok := out.GetDocument()
 				require.True(t, ok)
 
@@ -430,7 +431,7 @@ func TestTableReplace(t *testing.T) {
 			require.NoError(t, err)
 
 			for i, doc := range test.docsInTable {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 				kk, err := doc.GetByField("a")
 				require.NoError(t, err)
 				k, err := tb.EncodeValue(kk)
@@ -438,14 +439,14 @@ func TestTableReplace(t *testing.T) {
 				test.in[i].(*document.FieldBuffer).EncodedKey = k
 			}
 
-			var in expr.Environment
+			in := environment.Environment{}
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.TableReplace("test"))
 
 			var i int
-			err = s.Iterate(&in, func(out *expr.Environment) error {
+			err = s.Iterate(&in, func(out *environment.Environment) error {
 				d, ok := out.GetDocument()
 				require.True(t, ok)
 
@@ -507,10 +508,10 @@ func TestTableDelete(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY)")
 
 			for _, doc := range test.docsInTable {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", expr.Param{Value: doc})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 			}
 
-			var env expr.Environment
+			var env environment.Environment
 			env.Tx = tx
 			env.Catalog = db.Catalog
 
@@ -525,7 +526,7 @@ func TestTableDelete(t *testing.T) {
 
 			s := stream.New(stream.Documents(test.in)).Pipe(stream.TableDelete("test"))
 
-			err = s.Iterate(&env, func(out *expr.Environment) error {
+			err = s.Iterate(&env, func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
 				require.Equal(t, test.in, d)
 				return nil
@@ -583,7 +584,7 @@ func TestDistinct(t *testing.T) {
 			s = s.Pipe(stream.Distinct())
 
 			var got []document.Document
-			err := s.Iterate(new(expr.Environment), func(env *expr.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer
@@ -635,7 +636,7 @@ func TestSet(t *testing.T) {
 			require.NoError(t, err)
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Set(p, test.e))
 			i := 0
-			err = s.Iterate(nil, func(out *expr.Environment) error {
+			err = s.Iterate(nil, func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
 				require.Equal(t, test.out[i], d)
 				i++
@@ -672,7 +673,7 @@ func TestUnset(t *testing.T) {
 		t.Run(test.path, func(t *testing.T) {
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Unset(test.path))
 			i := 0
-			err := s.Iterate(nil, func(out *expr.Environment) error {
+			err := s.Iterate(nil, func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
 				require.Equal(t, test.out[i], d)
 				i++
@@ -721,7 +722,7 @@ func TestIterRename(t *testing.T) {
 		s := stream.New(stream.Documents(test.in...)).Pipe(stream.IterRename(test.fieldNames...))
 		t.Run(s.String(), func(t *testing.T) {
 			i := 0
-			err := s.Iterate(nil, func(out *expr.Environment) error {
+			err := s.Iterate(nil, func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
 				require.Equal(t, test.out[i], d)
 				i++

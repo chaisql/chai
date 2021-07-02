@@ -2,6 +2,7 @@ package expr
 
 import (
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -19,18 +20,18 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 // Eval compares a and b together using the operator specified when constructing the CmpOp
 // and returns the result of the comparison.
 // Comparing with NULL always evaluates to NULL.
-func (op *cmpOp) Eval(env *Environment) (document.Value, error) {
+func (op *cmpOp) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type == document.NullValue || b.Type == document.NullValue {
-			return nullLitteral, nil
+			return NullLitteral, nil
 		}
 
 		ok, err := op.compare(a, b)
 		if ok {
-			return trueLitteral, err
+			return TrueLitteral, err
 		}
 
-		return falseLitteral, err
+		return FalseLitteral, err
 	})
 }
 
@@ -96,28 +97,28 @@ func Between(a Expr) func(x, b Expr) Expr {
 	}
 }
 
-func (op *BetweenOperator) Eval(env *Environment) (document.Value, error) {
+func (op *BetweenOperator) Eval(env *environment.Environment) (document.Value, error) {
 	x, err := op.X.Eval(env)
 	if err != nil {
-		return falseLitteral, err
+		return FalseLitteral, err
 	}
 
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type == document.NullValue || b.Type == document.NullValue {
-			return nullLitteral, nil
+			return NullLitteral, nil
 		}
 
 		ok, err := x.IsGreaterThanOrEqual(a)
 		if !ok || err != nil {
-			return falseLitteral, err
+			return FalseLitteral, err
 		}
 
 		ok, err = x.IsLesserThanOrEqual(b)
 		if !ok || err != nil {
-			return falseLitteral, err
+			return FalseLitteral, err
 		}
 
-		return trueLitteral, nil
+		return TrueLitteral, nil
 	})
 }
 
@@ -145,25 +146,25 @@ func In(a, b Expr) Expr {
 	return &InOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op *InOperator) Eval(env *Environment) (document.Value, error) {
+func (op *InOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type == document.NullValue || b.Type == document.NullValue {
-			return nullLitteral, nil
+			return NullLitteral, nil
 		}
 
 		if b.Type != document.ArrayValue {
-			return falseLitteral, nil
+			return FalseLitteral, nil
 		}
 
 		ok, err := document.ArrayContains(b.V.(document.Array), a)
 		if err != nil {
-			return nullLitteral, err
+			return NullLitteral, err
 		}
 
 		if ok {
-			return trueLitteral, nil
+			return TrueLitteral, nil
 		}
-		return falseLitteral, nil
+		return FalseLitteral, nil
 	})
 }
 
@@ -176,7 +177,7 @@ func NotIn(a, b Expr) Expr {
 	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.NIN}}}
 }
 
-func (op *NotInOperator) Eval(env *Environment) (document.Value, error) {
+func (op *NotInOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return invertBoolResult(op.InOperator.Eval)(env)
 }
 
@@ -193,17 +194,17 @@ func Is(a, b Expr) Expr {
 	return &IsOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op *IsOperator) Eval(env *Environment) (document.Value, error) {
+func (op *IsOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		ok, err := a.IsEqual(b)
 		if err != nil {
-			return nullLitteral, err
+			return NullLitteral, err
 		}
 		if ok {
-			return trueLitteral, nil
+			return TrueLitteral, nil
 		}
 
-		return falseLitteral, nil
+		return FalseLitteral, nil
 	})
 }
 
@@ -216,17 +217,17 @@ func IsNot(a, b Expr) Expr {
 	return &IsNotOperator{&simpleOperator{a, b, scanner.ISN}}
 }
 
-func (op *IsNotOperator) Eval(env *Environment) (document.Value, error) {
+func (op *IsNotOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		ok, err := a.IsNotEqual(b)
 		if err != nil {
-			return nullLitteral, err
+			return NullLitteral, err
 		}
 		if ok {
-			return trueLitteral, nil
+			return TrueLitteral, nil
 		}
 
-		return falseLitteral, nil
+		return FalseLitteral, nil
 	})
 }
 

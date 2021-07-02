@@ -1,6 +1,7 @@
 package statement
 
 import (
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -33,7 +34,7 @@ func (stmt *DeleteStmt) ToStream() (*StreamStmt, error) {
 	}
 
 	if stmt.OffsetExpr != nil {
-		v, err := stmt.OffsetExpr.Eval(&expr.Environment{})
+		v, err := stmt.OffsetExpr.Eval(&environment.Environment{})
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +52,7 @@ func (stmt *DeleteStmt) ToStream() (*StreamStmt, error) {
 	}
 
 	if stmt.LimitExpr != nil {
-		v, err := stmt.LimitExpr.Eval(&expr.Environment{})
+		v, err := stmt.LimitExpr.Eval(&environment.Environment{})
 		if err != nil {
 			return nil, err
 		}

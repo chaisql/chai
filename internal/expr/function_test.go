@@ -4,16 +4,16 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 )
 
 func TestPkExpr(t *testing.T) {
 	tests := []struct {
 		name string
-		env  *expr.Environment
+		env  *environment.Environment
 		res  document.Value
 	}{
-		{"empty env", &expr.Environment{}, nullLitteral},
+		{"empty env", &environment.Environment{}, nullLitteral},
 		{"env with doc", envWithDoc, nullLitteral},
 		{"env with doc and key", envWithDocAndKey, document.NewIntegerValue(1)},
 	}

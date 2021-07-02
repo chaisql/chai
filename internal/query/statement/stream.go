@@ -2,7 +2,7 @@ package statement
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/planner"
 	"github.com/genjidb/genji/internal/stream"
 )
@@ -56,13 +56,12 @@ type StreamStmtIterator struct {
 }
 
 func (s *StreamStmtIterator) Iterate(fn func(d document.Document) error) error {
-	env := expr.Environment{
-		Catalog: s.Context.Catalog,
-		Tx:      s.Context.Tx,
-		Params:  s.Context.Params,
-	}
+	var env environment.Environment
+	env.Tx = s.Context.Tx
+	env.Catalog = s.Context.Catalog
+	env.SetParams(s.Context.Params)
 
-	err := s.Stream.Iterate(&env, func(env *expr.Environment) error {
+	err := s.Stream.Iterate(&env, func(env *environment.Environment) error {
 		// if there is no doc in this specific environment,
 		// the last operator is not outputting anything
 		// worth returning to the user.

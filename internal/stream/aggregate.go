@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -28,7 +29,7 @@ func HashAggregate(builders ...expr.AggregatorBuilder) *HashAggregateOperator {
 	return &HashAggregateOperator{Builders: builders}
 }
 
-func (op *HashAggregateOperator) Iterate(in *expr.Environment, f func(out *expr.Environment) error) error {
+func (op *HashAggregateOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	encGroup, err := newGroupEncoder()
 	if err != nil {
 		return err
@@ -41,7 +42,7 @@ func (op *HashAggregateOperator) Iterate(in *expr.Environment, f func(out *expr.
 	aggregators := make(map[string]*groupAggregator)
 
 	// iterate over s and for each group, aggregate the incoming document
-	err = op.Prev.Iterate(in, func(out *expr.Environment) error {
+	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
 		// we extract the group name from the environment and encode it
 		// to be used as a key to the aggregators map.
 		groupName, err := encGroup(out)
@@ -106,7 +107,7 @@ func (op *HashAggregateOperator) String() string {
 
 // newGroupEncoder returns a function that encodes the _group environment variable using a document.ValueEncoder.
 // If the _group variable doesn't exist, the group is set to null.
-func newGroupEncoder() (func(env *expr.Environment) (string, error), error) {
+func newGroupEncoder() (func(env *environment.Environment) (string, error), error) {
 	var b bytes.Buffer
 	enc := document.NewValueEncoder(&b)
 	nullValue := document.NewNullValue()
@@ -117,7 +118,7 @@ func newGroupEncoder() (func(env *expr.Environment) (string, error), error) {
 	nullGroupName := b.String()
 	b.Reset()
 
-	return func(env *expr.Environment) (string, error) {
+	return func(env *environment.Environment) (string, error) {
 		groupValue, ok := env.Get(document.NewPath(groupEnvKey))
 		if !ok {
 			return nullGroupName, nil
@@ -139,13 +140,13 @@ func newGroupEncoder() (func(env *expr.Environment) (string, error), error) {
 type groupAggregator struct {
 	group       document.Value
 	groupExpr   string
-	env         *expr.Environment
+	env         *environment.Environment
 	aggregators []expr.Aggregator
 }
 
-func newGroupAggregator(outerEnv *expr.Environment, builders []expr.AggregatorBuilder) *groupAggregator {
-	var env expr.Environment
-	env.Outer = outerEnv
+func newGroupAggregator(outerEnv *environment.Environment, builders []expr.AggregatorBuilder) *groupAggregator {
+	var env environment.Environment
+	env.SetOuter(outerEnv)
 
 	newAggregators := make([]expr.Aggregator, len(builders))
 	for i, b := range builders {
@@ -174,7 +175,7 @@ func newGroupAggregator(outerEnv *expr.Environment, builders []expr.AggregatorBu
 	return &ga
 }
 
-func (g *groupAggregator) Aggregate(env *expr.Environment) error {
+func (g *groupAggregator) Aggregate(env *environment.Environment) error {
 	for _, agg := range g.aggregators {
 		err := agg.Aggregate(env)
 		if err != nil {
@@ -185,7 +186,7 @@ func (g *groupAggregator) Aggregate(env *expr.Environment) error {
 	return nil
 }
 
-func (g *groupAggregator) Flush(env *expr.Environment) (*expr.Environment, error) {
+func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Environment, error) {
 	fb := document.NewFieldBuffer()
 
 	// add the current group to the document
@@ -201,8 +202,8 @@ func (g *groupAggregator) Flush(env *expr.Environment) (*expr.Environment, error
 		fb.Add(stringutil.Sprintf("%s", agg), v)
 	}
 
-	var newEnv expr.Environment
-	newEnv.Outer = env
+	var newEnv environment.Environment
+	newEnv.SetOuter(env)
 	newEnv.SetDocument(fb)
 	return &newEnv, nil
 }

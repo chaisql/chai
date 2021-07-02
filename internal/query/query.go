@@ -5,7 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/query/statement"
 )
 
@@ -27,7 +27,7 @@ type Context struct {
 	Ctx    context.Context
 	DB     *database.Database
 	Tx     *database.Transaction
-	Params []expr.Param
+	Params []environment.Param
 }
 
 func (c *Context) GetTx() *database.Transaction {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -23,9 +24,9 @@ func Documents(documents ...document.Document) *DocumentsOperator {
 	}
 }
 
-func (op *DocumentsOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
-	var newEnv expr.Environment
-	newEnv.Outer = in
+func (op *DocumentsOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
 
 	for _, d := range op.Docs {
 		newEnv.SetDocument(d)
@@ -64,9 +65,9 @@ func Expressions(exprs ...expr.Expr) *ExprsOperator {
 	return &ExprsOperator{Exprs: exprs}
 }
 
-func (op *ExprsOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
-	var newEnv expr.Environment
-	newEnv.Outer = in
+func (op *ExprsOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
 
 	for _, e := range op.Exprs {
 		v, err := e.Eval(in)
@@ -119,14 +120,14 @@ func SeqScanReverse(tableName string) *SeqScanOperator {
 	return &SeqScanOperator{TableName: tableName, Reverse: true}
 }
 
-func (it *SeqScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+func (it *SeqScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	table, err := in.GetCatalog().GetTable(in.GetTx(), it.TableName)
 	if err != nil {
 		return err
 	}
 
-	var newEnv expr.Environment
-	newEnv.Outer = in
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
 
 	var iterator func(pivot document.Value, fn func(d document.Document) error) error
 	if !it.Reverse {
@@ -194,7 +195,7 @@ func (it *PkScanOperator) String() string {
 
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
-func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
+func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	// if there are no ranges,  use a simpler and faster iteration function
 	if len(it.Ranges) == 0 {
 		s := SeqScan(it.TableName)
@@ -202,8 +203,8 @@ func (it *PkScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Enviro
 		return s.Iterate(in, fn)
 	}
 
-	var newEnv expr.Environment
-	newEnv.Outer = in
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
 
 	table, err := in.GetCatalog().GetTable(in.GetTx(), it.TableName)
 	if err != nil {
@@ -318,9 +319,9 @@ func (it *IndexScanOperator) String() string {
 
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
-func (it *IndexScanOperator) Iterate(in *expr.Environment, fn func(out *expr.Environment) error) error {
-	var newEnv expr.Environment
-	newEnv.Outer = in
+func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
 
 	index, err := in.GetCatalog().GetIndex(in.GetTx(), it.IndexName)
 	if err != nil {
