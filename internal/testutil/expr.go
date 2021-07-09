@@ -154,7 +154,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						// eval it, it should return an error
 						_, err = e.Eval(emptyEnv)
 						require.NotNilf(t, err, "expected expr `%s` to return an error, got nil", stmt.Expr)
-						require.Regexp(t, regexp.MustCompile(stmt.Res), err.Error())
+						require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
 					})
 				}
 			}
