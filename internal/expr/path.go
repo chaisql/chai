@@ -14,12 +14,12 @@ type Path document.Path
 // It implements the Expr interface.
 func (p Path) Eval(env *environment.Environment) (document.Value, error) {
 	if len(p) == 0 {
-		return NullLitteral, nil
+		return NullLiteral, nil
 	}
 
 	d, ok := env.GetDocument()
 	if !ok {
-		return NullLitteral, document.ErrFieldNotFound
+		return NullLiteral, document.ErrFieldNotFound
 	}
 	dp := document.Path(p)
 
@@ -30,7 +30,7 @@ func (p Path) Eval(env *environment.Environment) (document.Value, error) {
 
 	v, err := dp.GetValueFromDocument(d)
 	if err == document.ErrFieldNotFound {
-		return NullLitteral, nil
+		return NullLiteral, nil
 	}
 
 	return v, err

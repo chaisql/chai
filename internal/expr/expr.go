@@ -7,9 +7,9 @@ import (
 )
 
 var (
-	TrueLitteral  = document.NewBoolValue(true)
-	FalseLitteral = document.NewBoolValue(false)
-	NullLitteral  = document.NewNullValue()
+	TrueLiteral  = document.NewBoolValue(true)
+	FalseLiteral = document.NewBoolValue(false)
+	NullLiteral  = document.NewNullValue()
 )
 
 // An Expr evaluates to a value.
@@ -77,11 +77,11 @@ func invertBoolResult(f func(env *environment.Environment) (document.Value, erro
 		if err != nil {
 			return v, err
 		}
-		if v == TrueLitteral {
-			return FalseLitteral, nil
+		if v == TrueLiteral {
+			return FalseLiteral, nil
 		}
-		if v == FalseLitteral {
-			return TrueLitteral, nil
+		if v == FalseLiteral {
+			return TrueLiteral, nil
 		}
 		return v, nil
 	}
@@ -142,17 +142,17 @@ func (n NextValueFor) Eval(env *environment.Environment) (document.Value, error)
 	tx := env.GetTx()
 
 	if catalog == nil || tx == nil {
-		return NullLitteral, stringutil.Errorf(`NEXT VALUE FOR cannot be evaluated`)
+		return NullLiteral, stringutil.Errorf(`NEXT VALUE FOR cannot be evaluated`)
 	}
 
 	seq, err := catalog.GetSequence(n.SeqName)
 	if err != nil {
-		return NullLitteral, err
+		return NullLiteral, err
 	}
 
 	i, err := seq.Next(tx, catalog)
 	if err != nil {
-		return NullLitteral, err
+		return NullLiteral, err
 	}
 
 	return document.NewIntegerValue(i), nil

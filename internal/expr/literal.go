@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-// A LiteralValue represents a litteral value of any type defined by the value package.
+// A LiteralValue represents a literal value of any type defined by the value package.
 type LiteralValue document.Value
 
 // IsEqual compares this expression with the other expression and returns
@@ -71,14 +71,14 @@ func (l LiteralExprList) String() string {
 	return b.String()
 }
 
-// Eval evaluates all the expressions and returns a litteralValueList. It implements the Expr interface.
+// Eval evaluates all the expressions and returns a literalValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(env *environment.Environment) (document.Value, error) {
 	var err error
 	values := make([]document.Value, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(env)
 		if err != nil {
-			return NullLitteral, err
+			return NullLiteral, err
 		}
 	}
 

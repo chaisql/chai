@@ -13,9 +13,9 @@ func TestConcatExpr(t *testing.T) {
 		fails bool
 	}{
 		{"'a' || 'b'", document.NewTextValue("ab"), false},
-		{"'a' || NULL", nullLitteral, false},
-		{"'a' || notFound", nullLitteral, false},
-		{"'a' || 1", nullLitteral, false},
+		{"'a' || NULL", nullLiteral, false},
+		{"'a' || notFound", nullLiteral, false},
+		{"'a' || 1", nullLiteral, false},
 	}
 
 	for _, test := range tests {

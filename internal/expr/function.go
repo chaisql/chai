@@ -107,12 +107,12 @@ type PKFunc struct{}
 func (k *PKFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
-		return NullLitteral, nil
+		return NullLiteral, nil
 	}
 
 	keyer, ok := d.(document.Keyer)
 	if !ok {
-		return NullLitteral, nil
+		return NullLiteral, nil
 	}
 
 	v, err := keyer.Key()
@@ -249,7 +249,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v != NullLitteral {
+	if v != NullLiteral {
 		c.Count++
 	}
 
@@ -323,7 +323,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v == NullLitteral {
+	if v == NullLiteral {
 		return nil
 	}
 
@@ -421,7 +421,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v == NullLitteral {
+	if v == NullLiteral {
 		return nil
 	}
 

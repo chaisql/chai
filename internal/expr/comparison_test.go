@@ -14,23 +14,23 @@ func TestComparisonExpr(t *testing.T) {
 		fails bool
 	}{
 		{"1 = a", document.NewBoolValue(true), false},
-		{"1 = NULL", nullLitteral, false},
-		{"1 = notFound", nullLitteral, false},
+		{"1 = NULL", nullLiteral, false},
+		{"1 = notFound", nullLiteral, false},
 		{"1 != a", document.NewBoolValue(false), false},
-		{"1 != NULL", nullLitteral, false},
-		{"1 != notFound", nullLitteral, false},
+		{"1 != NULL", nullLiteral, false},
+		{"1 != notFound", nullLiteral, false},
 		{"1 > a", document.NewBoolValue(false), false},
-		{"1 > NULL", nullLitteral, false},
-		{"1 > notFound", nullLitteral, false},
+		{"1 > NULL", nullLiteral, false},
+		{"1 > notFound", nullLiteral, false},
 		{"1 >= a", document.NewBoolValue(true), false},
-		{"1 >= NULL", nullLitteral, false},
-		{"1 >= notFound", nullLitteral, false},
+		{"1 >= NULL", nullLiteral, false},
+		{"1 >= notFound", nullLiteral, false},
 		{"1 < a", document.NewBoolValue(false), false},
-		{"1 < NULL", nullLitteral, false},
-		{"1 < notFound", nullLitteral, false},
+		{"1 < NULL", nullLiteral, false},
+		{"1 < notFound", nullLiteral, false},
 		{"1 <= a", document.NewBoolValue(true), false},
-		{"1 <= NULL", nullLitteral, false},
-		{"1 <= notFound", nullLitteral, false},
+		{"1 <= NULL", nullLiteral, false},
+		{"1 <= notFound", nullLiteral, false},
 	}
 
 	for _, test := range tests {
@@ -54,8 +54,8 @@ func TestComparisonINExpr(t *testing.T) {
 		{"[1] IN [[1], [2], [3]]", document.NewBoolValue(true), false},
 		{"1 IN {}", document.NewBoolValue(false), false},
 		{"[1, 2] IN 1", document.NewBoolValue(false), false},
-		{"1 IN NULL", nullLitteral, false},
-		{"NULL IN [1, 2, NULL]", nullLitteral, false},
+		{"1 IN NULL", nullLiteral, false},
+		{"NULL IN [1, 2, NULL]", nullLiteral, false},
 	}
 
 	for _, test := range tests {
@@ -78,8 +78,8 @@ func TestComparisonNOTINExpr(t *testing.T) {
 		{"[1] NOT IN [[1], [2], [3]]", document.NewBoolValue(false), false},
 		{"1 NOT IN {}", document.NewBoolValue(true), false},
 		{"[1, 2] NOT IN 1", document.NewBoolValue(true), false},
-		{"1 NOT IN NULL", nullLitteral, false},
-		{"NULL NOT IN [1, 2, NULL]", nullLitteral, false},
+		{"1 NOT IN NULL", nullLiteral, false},
+		{"NULL NOT IN [1, 2, NULL]", nullLiteral, false},
 	}
 
 	for _, test := range tests {
@@ -135,15 +135,15 @@ func TestComparisonExprNodocument(t *testing.T) {
 		res   document.Value
 		fails bool
 	}{
-		{"1 = a", nullLitteral, true},
-		{"1 != a", nullLitteral, true},
-		{"1 > a", nullLitteral, true},
-		{"1 >= a", nullLitteral, true},
-		{"1 < a", nullLitteral, true},
-		{"1 <= a", nullLitteral, true},
-		{"1 IN [a]", nullLitteral, true},
-		{"1 IS a", nullLitteral, true},
-		{"1 IS NOT a", nullLitteral, true},
+		{"1 = a", nullLiteral, true},
+		{"1 != a", nullLiteral, true},
+		{"1 > a", nullLiteral, true},
+		{"1 >= a", nullLiteral, true},
+		{"1 < a", nullLiteral, true},
+		{"1 <= a", nullLiteral, true},
+		{"1 IN [a]", nullLiteral, true},
+		{"1 IS a", nullLiteral, true},
+		{"1 IS NOT a", nullLiteral, true},
 	}
 
 	for _, test := range tests {
