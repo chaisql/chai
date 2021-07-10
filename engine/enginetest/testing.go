@@ -40,7 +40,6 @@ func TestSuite(t *testing.T, builder Builder) {
 		{"Store/Get", TestStoreGet},
 		{"Store/Delete", TestStoreDelete},
 		{"Store/Truncate", TestStoreTruncate},
-		{"Store/NextSequence", TestStoreNextSequence},
 		{"TestQueries", TestQueries},
 		{"TestQueriesSameTransaction", TestQueriesSameTransaction},
 	}
@@ -121,7 +120,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 		defer tx.Rollback()
 
-		st, err = tx.GetStore([]byte("test"))
+		_, err = tx.GetStore([]byte("test"))
 		require.Error(t, err)
 	})
 
@@ -197,6 +196,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		tx, err = ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		// fetch the store and the index
@@ -1056,13 +1056,14 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		err = st.Delete([]byte("foo"))
 		require.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
+		_, err = st.Get([]byte("foo"))
 		require.Equal(t, engine.ErrKeyNotFound, err)
 
 		err = st.Put([]byte("foo"), []byte("bar"))
 		require.NoError(t, err)
 
-		v, err = st.Get([]byte("foo"))
+		v, err := st.Get([]byte("foo"))
+		require.NoError(t, err)
 		require.Equal(t, []byte("bar"), v)
 
 		// commit and reopen a transaction
@@ -1077,6 +1078,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		v, err = st.Get([]byte("foo"))
+		require.NoError(t, err)
 		require.Equal(t, []byte("bar"), v)
 	})
 
@@ -1137,98 +1139,6 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 
 		cancel()
 		err = st.Truncate()
-		require.Equal(t, context.Canceled, err)
-	})
-}
-
-// TestStoreNextSequence verifies NextSequence behaviour.
-func TestStoreNextSequence(t *testing.T, builder Builder) {
-	t.Run("Should fail if tx not writable", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-		defer func() {
-			require.NoError(t, ng.Close())
-		}()
-
-		tx, err := ng.Begin(context.Background(), engine.TxOptions{
-			Writable: true,
-		})
-
-		require.NoError(t, err)
-		err = tx.CreateStore([]byte("test"))
-		require.NoError(t, err)
-		err = tx.Commit()
-		require.NoError(t, err)
-
-		tx, err = ng.Begin(context.Background(), engine.TxOptions{
-			Writable: false,
-		})
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		st, err := tx.GetStore([]byte("test"))
-		require.NoError(t, err)
-
-		_, err = st.NextSequence()
-		require.Error(t, err)
-	})
-
-	t.Run("Should return the next sequence", func(t *testing.T) {
-		st, cleanup := storeBuilder(t, builder)
-		defer cleanup()
-
-		for i := uint64(1); i < 100; i++ {
-			s, err := st.NextSequence()
-			require.NoError(t, err)
-			require.Equal(t, i, s)
-		}
-	})
-
-	t.Run("Should store the last sequence", func(t *testing.T) {
-		ng, cleanup := builder()
-		defer cleanup()
-		defer func() {
-			require.NoError(t, ng.Close())
-		}()
-
-		tx, err := ng.Begin(context.Background(), engine.TxOptions{
-			Writable: true,
-		})
-
-		require.NoError(t, err)
-		err = tx.CreateStore([]byte("test"))
-		require.NoError(t, err)
-		st, err := tx.GetStore([]byte("test"))
-		require.NoError(t, err)
-
-		s1, err := st.NextSequence()
-		require.NoError(t, err)
-
-		err = tx.Commit()
-		require.NoError(t, err)
-
-		tx, err = ng.Begin(context.Background(), engine.TxOptions{
-			Writable: true,
-		})
-		require.NoError(t, err)
-		defer tx.Rollback()
-
-		st, err = tx.GetStore([]byte("test"))
-		require.NoError(t, err)
-		s2, err := st.NextSequence()
-		require.NoError(t, err)
-		require.Equal(t, s1+1, s2)
-	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, cleanup := storeBuilderWithContext(ctx, t, builder)
-		defer cleanup()
-
-		cancel()
-		_, err := st.NextSequence()
 		require.Equal(t, context.Canceled, err)
 	})
 }

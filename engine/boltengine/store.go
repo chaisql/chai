@@ -105,21 +105,6 @@ func (s *Store) Truncate() error {
 	return err
 }
 
-// NextSequence returns a monotonically increasing integer.
-func (s *Store) NextSequence() (uint64, error) {
-	select {
-	case <-s.ctx.Done():
-		return 0, s.ctx.Err()
-	default:
-	}
-
-	if !s.bucket.Writable() {
-		return 0, engine.ErrTransactionReadOnly
-	}
-
-	return s.bucket.NextSequence()
-}
-
 // Iterator uses the Bolt bucket cursor.
 func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{

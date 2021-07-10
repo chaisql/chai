@@ -133,36 +133,6 @@ func (s *Store) Truncate() error {
 	return nil
 }
 
-// NextSequence returns a monotonically increasing integer.
-func (s *Store) NextSequence() (uint64, error) {
-	select {
-	case <-s.ctx.Done():
-		return 0, s.ctx.Err()
-	default:
-	}
-
-	if !s.writable {
-		return 0, engine.ErrTransactionReadOnly
-	}
-
-	// TODO: this is an ineficient way of generating sequences.
-	// use a bigger lease in the future.
-	seq, err := s.ng.DB.GetSequence([]byte(s.name), 1)
-	if err != nil {
-		return 0, err
-	}
-	defer seq.Release()
-
-	nb, err := seq.Next()
-	if err != nil {
-		return 0, err
-	}
-
-	// the first number in a Badger sequence is always zero
-	// but Genji expects the first to be 1.
-	return nb + 1, nil
-}
-
 // Iterator uses a Badger iterator with default options.
 // Only one iterator is allowed per read-write transaction.
 func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {

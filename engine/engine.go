@@ -78,8 +78,6 @@ type Store interface {
 	// Iterator creates an iterator with the given options.
 	// The initial position depends on the implementation.
 	Iterator(opts IteratorOptions) Iterator
-	// NextSequence returns a monotonically increasing integer.
-	NextSequence() (uint64, error)
 }
 
 // IteratorOptions is used to configure an iterator upon creation.

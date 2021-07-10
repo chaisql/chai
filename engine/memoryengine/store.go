@@ -190,23 +190,6 @@ func (s *storeTx) Truncate() error {
 	return nil
 }
 
-// NextSequence returns a monotonically increasing integer.
-func (s *storeTx) NextSequence() (uint64, error) {
-	select {
-	case <-s.tx.ctx.Done():
-		return 0, s.tx.ctx.Err()
-	default:
-	}
-
-	if !s.tx.writable {
-		return 0, engine.ErrTransactionReadOnly
-	}
-
-	s.tx.ng.sequences[s.name]++
-
-	return s.tx.ng.sequences[s.name], nil
-}
-
 // Iterator creates an iterator with the given options.
 func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
