@@ -15,6 +15,7 @@ import (
 // If the query has results, they will be outputted to w.
 func ExecSQL(ctx context.Context, db *genji.DB, r io.Reader, w io.Writer) error {
 	scanner := bufio.NewScanner(r)
+	scanner.Buffer(nil, 128*1024*1024)
 
 	// Every query ends with a semicolon.
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {

@@ -65,6 +65,9 @@ type Options struct {
 	Engine string
 	// Path of the database file or directory that will be created.
 	DBPath string
+
+	// Badger only:
+	EncryptionKey string
 }
 
 func (o *Options) validate() error {
@@ -100,7 +103,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
-	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, sh.opts.Engine)
+	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, sh.opts.Engine, dbutil.DBOptions{EncryptionKey: opts.EncryptionKey})
 	if err != nil {
 		return err
 	}

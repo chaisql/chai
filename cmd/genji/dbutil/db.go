@@ -16,8 +16,12 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+type DBOptions struct {
+	EncryptionKey string
+}
+
 // OpenDB opens a database at the given path, using the selected engine.
-func OpenDB(ctx context.Context, dbPath, engineName string) (*genji.DB, error) {
+func OpenDB(ctx context.Context, dbPath, engineName string, opts DBOptions) (*genji.DB, error) {
 	var (
 		ng  engine.Engine
 		err error
@@ -34,7 +38,13 @@ func OpenDB(ctx context.Context, dbPath, engineName string) (*genji.DB, error) {
 			return nil, errors.New("database is locked")
 		}
 	case "badger":
-		ng, err = badgerengine.NewEngine(badger.DefaultOptions(dbPath).WithLogger(nil))
+		opt := badger.DefaultOptions(dbPath).WithLogger(nil)
+		if opts.EncryptionKey != "" {
+			opt.EncryptionKey = []byte(opts.EncryptionKey)
+			opt.IndexCacheSize = 100 << 20
+		}
+
+		ng, err = badgerengine.NewEngine(opt)
 		if err != nil && strings.HasPrefix(err.Error(), "Cannot acquire directory lock") {
 			return nil, errors.New("database is locked")
 		}

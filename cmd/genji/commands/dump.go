@@ -47,6 +47,11 @@ $ genji dump -f dump.sql my.db`,
 				Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
 				Value:   "bolt",
 			},
+			&cli.StringFlag{
+				Name:    "encryption-key",
+				Aliases: []string{"k"},
+				Usage:   "encryption key, badger only",
+			},
 		},
 	}
 
@@ -59,7 +64,12 @@ $ genji dump -f dump.sql my.db`,
 			return errors.New(cmd.UsageText)
 		}
 
-		db, err := dbutil.OpenDB(c.Context, dbPath, engine)
+		k := c.String("encryption-key")
+		if k != "" && engine != "badger" {
+			return cli.Exit("encryption key is only supported by the badger engine", 2)
+		}
+
+		db, err := dbutil.OpenDB(c.Context, dbPath, engine, dbutil.DBOptions{EncryptionKey: k})
 		if err != nil {
 			return err
 		}

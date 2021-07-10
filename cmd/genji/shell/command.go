@@ -157,7 +157,7 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 // If a path already exists, existing values in the target database will be overwritten.
 func runSaveCmd(ctx context.Context, db *genji.DB, engineName string, dbPath string) error {
 	// Open the new database
-	otherDB, err := dbutil.OpenDB(ctx, dbPath, engineName)
+	otherDB, err := dbutil.OpenDB(ctx, dbPath, engineName, dbutil.DBOptions{})
 	if err != nil {
 		return err
 	}

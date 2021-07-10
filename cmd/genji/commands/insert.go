@@ -65,6 +65,11 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 				Required: false,
 				Value:    false,
 			},
+			&cli.StringFlag{
+				Name:    "encryption-key",
+				Aliases: []string{"k"},
+				Usage:   "encryption key, badger only",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			dbPath := c.String("db")
@@ -72,12 +77,17 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 			engine := c.String("engine")
 			args := c.Args().Slice()
 
-			return runInsertCommand(c.Context, engine, dbPath, table, c.Bool("auto"), args)
+			k := c.String("encryption-key")
+			if k != "" && engine != "badger" {
+				return cli.Exit("encryption key is only supported by the badger engine", 2)
+			}
+
+			return runInsertCommand(c.Context, engine, dbPath, table, c.Bool("auto"), k, args)
 		},
 	}
 }
 
-func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, args []string) error {
+func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, eKey string, args []string) error {
 	generatedName := "data_" + strconv.FormatInt(time.Now().Unix(), 10)
 	createTable := false
 	if table == "" && auto {
@@ -96,7 +106,7 @@ func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, a
 		}
 	}
 
-	db, err := dbutil.OpenDB(ctx, dbPath, e)
+	db, err := dbutil.OpenDB(ctx, dbPath, e, dbutil.DBOptions{EncryptionKey: eKey})
 	if err != nil {
 		return err
 	}

@@ -24,9 +24,19 @@ func NewRestoreCommand() (cmd *cli.Command) {
 				Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
 				Value:   "bolt",
 			},
+			&cli.StringFlag{
+				Name:    "encryption-key",
+				Aliases: []string{"k"},
+				Usage:   "encryption key, badger only",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			engine := c.String("engine")
+			k := c.String("encryption-key")
+			if k != "" && engine != "badger" {
+				return cli.Exit("encryption key is only supported by the badger engine", 2)
+			}
+
 			if c.Args().Len() != 2 {
 				return errors.New(cmd.UsageText)
 			}
@@ -46,7 +56,7 @@ func NewRestoreCommand() (cmd *cli.Command) {
 			}
 			defer file.Close()
 
-			db, err := dbutil.OpenDB(c.Context, dbPath, engine)
+			db, err := dbutil.OpenDB(c.Context, dbPath, engine, dbutil.DBOptions{EncryptionKey: k})
 			if err != nil {
 				return err
 			}

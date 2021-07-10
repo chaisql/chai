@@ -23,6 +23,11 @@ func NewApp() *cli.App {
 			Name:  "badger",
 			Usage: "use badger engine",
 		},
+		&cli.StringFlag{
+			Name:    "encryption-key",
+			Aliases: []string{"k"},
+			Usage:   "encryption key, badger only",
+		},
 	}
 
 	app.Commands = []*cli.Command{
@@ -56,8 +61,13 @@ func NewApp() *cli.App {
 			engine = "badger"
 		}
 
+		k := c.String("encryption-key")
+		if k != "" && engine != "badger" {
+			return cli.Exit("encryption key is only supported by the badger engine", 2)
+		}
+
 		if dbutil.CanReadFromStandardInput() {
-			db, err := dbutil.OpenDB(c.Context, dbpath, engine)
+			db, err := dbutil.OpenDB(c.Context, dbpath, engine, dbutil.DBOptions{EncryptionKey: k})
 			if err != nil {
 				return err
 			}
@@ -67,8 +77,9 @@ func NewApp() *cli.App {
 		}
 
 		return shell.Run(c.Context, &shell.Options{
-			Engine: engine,
-			DBPath: dbpath,
+			Engine:        engine,
+			DBPath:        dbpath,
+			EncryptionKey: k,
 		})
 	}
 
