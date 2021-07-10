@@ -122,6 +122,11 @@ func (idx *Index) Arity() int {
 // Set associates values with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.
+//
+// Values are stored in the index following the "index format".
+// Every record is stored like this:
+//   k: <encoded values><primary key>
+//   v: length of the encoded value, as an unsigned varint
 func (idx *Index) Set(vs []document.Value, k []byte) error {
 	if len(k) == 0 {
 		return errors.New("cannot index value without a key")
@@ -146,51 +151,34 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 		return nil
 	}
 
+	var storeKey, storeValue []byte
+
 	// encode the value we are going to use as a key
-	var buf []byte
 	vb := document.NewValueBuffer(vs...)
-	buf, err = idx.EncodeValueBuffer(vb)
+	storeKey, err = idx.EncodeValueBuffer(vb)
 	if err != nil {
 		return err
 	}
 
-	// lookup for an already existing value in the index.
-	var lookupKey = buf
-
-	// every value of a non-unique index ends with a byte that starts at zero.
-	if !idx.Info.Unique {
-		lookupKey = append(lookupKey, 0)
-	}
-
-	_, err = st.Get(lookupKey)
-	switch err {
-	case nil:
-		// the value already exists
-		// if this is a unique index, return an error
-		if idx.Info.Unique {
-			return ErrIndexDuplicateValue
-		}
-
-		// the value already exists
-		// add a suffix to that value
-		seq, err := st.NextSequence()
+	// if the index is unique, we need to check if the value is already associated with the key
+	if idx.Info.Unique {
+		ok, _, err := idx.exists(st, storeKey)
 		if err != nil {
 			return err
 		}
-		vbuf := make([]byte, binary.MaxVarintLen64)
-		n := binary.PutUvarint(vbuf, seq)
-		buf = append(buf, vbuf[:n]...)
-		// duplicated values always end with the size of the varint
-		buf = append(buf, byte(n))
-	case engine.ErrKeyNotFound:
-		// the value doesn't exist
-		// use the lookup as value
-		buf = lookupKey
-	default:
-		return err
+		if ok {
+			return ErrIndexDuplicateValue
+		}
 	}
 
-	return st.Put(buf, k)
+	// we append the pk at the end of the encoded value
+	// store the length of the encoded value in the storeValue
+	vbuf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(vbuf, uint64(len(storeKey)))
+	storeValue = vbuf[:n]
+	storeKey = append(storeKey, k...)
+
+	return st.Put(storeKey, storeValue)
 }
 
 func (idx *Index) Exists(vs []document.Value) (bool, []byte, error) {
@@ -214,17 +202,27 @@ func (idx *Index) Exists(vs []document.Value) (bool, []byte, error) {
 		return false, nil, err
 	}
 
-	// every value of a non-unique index ends with a byte that starts at zero.
-	if !idx.Info.Unique {
-		buf = append(buf, 0)
+	return idx.exists(st, buf)
+}
+
+// iterates over the index and check if the value exists
+func (idx *Index) exists(st engine.Store, seek []byte) (bool, []byte, error) {
+	it := st.Iterator(engine.IteratorOptions{})
+	defer it.Close()
+
+	for it.Seek(seek); it.Valid(); it.Next() {
+		itm := it.Item()
+		k := itm.Key()
+		if len(seek) > len(k) {
+			return false, nil, nil
+		}
+
+		if bytes.Equal(seek, k[:len(seek)]) {
+			return true, k[len(seek):], nil
+		}
 	}
 
-	key, err := st.Get(buf)
-	if err != nil && err != engine.ErrKeyNotFound {
-		return false, nil, err
-	}
-
-	return err == nil, key, nil
+	return false, nil, it.Err()
 }
 
 // Delete all the references to the key from the index.
@@ -234,7 +232,6 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 		return nil
 	}
 
-	var toDelete []byte
 	var buf []byte
 	err = idx.iterate(st, vs, false, func(item engine.Item) error {
 		buf, err = item.ValueCopy(buf)
@@ -242,19 +239,25 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 			return err
 		}
 
-		if bytes.Equal(buf, k) {
-			toDelete = item.Key()
-			return errStop
+		size, _ := binary.Uvarint(buf)
+
+		kk := item.Key()
+		if bytes.Equal(kk[size:], k) {
+			err = st.Delete(kk)
+			if err == nil {
+				err = errStop
+			}
+
+			return err
 		}
 
 		return nil
 	})
-	if err != errStop && err != nil {
-		return err
+	if err == errStop {
+		return nil
 	}
-
-	if toDelete != nil {
-		return st.Delete(toDelete)
+	if err != nil {
+		return err
 	}
 
 	return engine.ErrKeyNotFound
@@ -359,21 +362,16 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 	return idx.iterate(st, pivot, reverse, func(item engine.Item) error {
 		var err error
 
-		k := item.Key()
-
-		// the last byte of the key of a non-unique index is the size of the varint.
-		// if that byte is 0, it means that key is not duplicated.
-		if !idx.Info.Unique {
-			n := k[len(k)-1]
-			k = k[:len(k)-int(n)-1]
-		}
+		record := item.Key()
 
 		buf, err = item.ValueCopy(buf)
 		if err != nil {
 			return err
 		}
 
-		return fn(k, buf)
+		offset, _ := binary.Uvarint(buf)
+
+		return fn(record[:offset], record[offset:])
 	})
 }
 
