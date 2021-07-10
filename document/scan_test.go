@@ -216,6 +216,21 @@ func TestScan(t *testing.T) {
 		require.Equal(t, []int{1, 2}, s)
 	})
 
+	t.Run("pointers", func(t *testing.T) {
+		type bar struct {
+			A *int
+		}
+
+		b := bar{}
+
+		d := document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))
+		err := document.StructScan(d, &b)
+		require.NoError(t, err)
+
+		a := 10
+		require.Equal(t, bar{A: &a}, b)
+	})
+
 	t.Run("NULL with pointers", func(t *testing.T) {
 		type bar struct {
 			A *int

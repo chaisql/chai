@@ -120,7 +120,11 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 			continue
 		}
 
-		if f.Kind() == reflect.Ptr && !f.IsNil() {
+		if f.Kind() == reflect.Ptr {
+			if f.IsNil() {
+				continue
+			}
+
 			f = f.Elem()
 		}
 

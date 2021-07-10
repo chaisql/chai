@@ -296,13 +296,13 @@ func TestNewFromStruct(t *testing.T) {
 		// structs must be considered as documents
 		O group
 
-		// nil pointers must be considered as Null values
+		// nil pointers must be skipped
 		// otherwise they must be dereferenced
 		P *int
 		Q *int
 
 		// struct pointers should be considered as documents
-		// if there are nil though, the value must be Null
+		// if there are nil though, they must be skipped
 		R *group
 		S *group
 
@@ -397,32 +397,28 @@ func TestNewFromStruct(t *testing.T) {
 			case 14:
 				require.EqualValues(t, document.DocumentValue, v.Type)
 			case 15:
-				require.EqualValues(t, document.NullValue, v.Type)
-			case 16:
 				require.EqualValues(t, *u.Q, v.V.(int64))
-			case 17:
+			case 16:
 				require.EqualValues(t, document.DocumentValue, v.Type)
+			case 17:
+				require.EqualValues(t, document.ArrayValue, v.Type)
 			case 18:
 				require.EqualValues(t, document.NullValue, v.Type)
 			case 19:
 				require.EqualValues(t, document.ArrayValue, v.Type)
 			case 20:
-				require.EqualValues(t, document.NullValue, v.Type)
+				require.EqualValues(t, document.ArrayValue, v.Type)
 			case 21:
 				require.EqualValues(t, document.ArrayValue, v.Type)
 			case 22:
 				require.EqualValues(t, document.ArrayValue, v.Type)
 			case 23:
-				require.EqualValues(t, document.ArrayValue, v.Type)
-			case 24:
-				require.EqualValues(t, document.ArrayValue, v.Type)
-			case 25:
 				require.EqualValues(t, u.Z, v.V.(int64))
-			case 26:
+			case 24:
 				require.EqualValues(t, document.NullValue, v.Type)
-			case 27:
+			case 25:
 				require.EqualValues(t, document.IntegerValue, v.Type)
-			case 28:
+			case 26:
 				require.EqualValues(t, document.TextValue, v.Type)
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
@@ -433,7 +429,7 @@ func TestNewFromStruct(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		require.Equal(t, 29, counter)
+		require.Equal(t, 27, counter)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
@@ -520,6 +516,25 @@ func TestNewFromStruct(t *testing.T) {
 		parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
 		require.NoError(t, err)
 		require.Equal(t, u.BB, parsedTime)
+	})
+
+	t.Run("pointers", func(t *testing.T) {
+		type s struct {
+			A *int
+		}
+
+		d, err := document.NewFromStruct(new(s))
+		require.NoError(t, err)
+		_, err = d.GetByField("a")
+		require.Equal(t, document.ErrFieldNotFound, err)
+
+		a := 10
+		ss := s{A: &a}
+		d, err = document.NewFromStruct(&ss)
+		require.NoError(t, err)
+		v, err := d.GetByField("a")
+		require.NoError(t, err)
+		require.Equal(t, document.NewIntegerValue(10), v)
 	})
 }
 
