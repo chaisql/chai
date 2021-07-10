@@ -14,9 +14,11 @@ func (p *Parser) parseDropStatement() (statement.Statement, error) {
 		return p.parseDropTableStatement()
 	case scanner.INDEX:
 		return p.parseDropIndexStatement()
+	case scanner.SEQUENCE:
+		return p.parseDropSequenceStatement()
 	}
 
-	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX"}, pos)
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX", "SEQUENCE"}, pos)
 }
 
 // parseDropTableStatement parses a drop table string and returns a Statement AST object.
@@ -57,6 +59,28 @@ func (p *Parser) parseDropIndexStatement() (statement.DropIndexStmt, error) {
 	if err != nil {
 		pErr := err.(*ParseError)
 		pErr.Expected = []string{"index_name"}
+		return stmt, pErr
+	}
+
+	return stmt, nil
+}
+
+// parseDropSequenceStatement parses a drop sequence string and returns a Statement AST object.
+// This function assumes the DROP SEQUENCE tokens have already been consumed.
+func (p *Parser) parseDropSequenceStatement() (statement.DropSequenceStmt, error) {
+	var stmt statement.DropSequenceStmt
+	var err error
+
+	stmt.IfExists, err = p.parseOptional(scanner.IF, scanner.EXISTS)
+	if err != nil {
+		return stmt, err
+	}
+
+	// Parse sequence name
+	stmt.SequenceName, err = p.parseIdent()
+	if err != nil {
+		pErr := err.(*ParseError)
+		pErr.Expected = []string{"sequence_name"}
 		return stmt, pErr
 	}
 

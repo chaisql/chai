@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -85,5 +86,32 @@ func TestDropIndex(t *testing.T) {
 
 	// Dropping an index created with a table constraint should fail.
 	err = testutil.Exec(db, tx, "DROP INDEX test1_bar_idx")
+	require.Error(t, err)
+}
+
+func TestDropSequence(t *testing.T) {
+	db, tx, cleanup := testutil.NewTestTx(t)
+	defer cleanup()
+
+	testutil.MustExec(t, db, tx, `
+		CREATE TABLE test1(foo int);
+		CREATE SEQUENCE seq1;
+		CREATE SEQUENCE seq2;
+	`)
+
+	testutil.MustExec(t, db, tx, "DROP SEQUENCE seq1")
+
+	// Assert that the good index has been dropped.
+	_, err := db.Catalog.GetSequence("seq1")
+	require.IsType(t, errs.NotFoundError{}, err)
+	_, err = db.Catalog.GetSequence("seq2")
+	require.NoError(t, err)
+
+	// Dropping a non existing sequence with IF EXISTS should not fail.
+	err = testutil.Exec(db, tx, "DROP SEQUENCE IF EXISTS unknown")
+	require.NoError(t, err)
+
+	// Dropping a sequence created with a table constraint should fail.
+	err = testutil.Exec(db, tx, "DROP SEQUENCE test1_seq")
 	require.Error(t, err)
 }

@@ -19,6 +19,8 @@ func TestParserDrop(t *testing.T) {
 		{"Drop table If not exists", "DROP TABLE IF EXISTS test", statement.DropTableStmt{TableName: "test", IfExists: true}, false},
 		{"Drop index", "DROP INDEX test", statement.DropIndexStmt{IndexName: "test"}, false},
 		{"Drop index if exists", "DROP INDEX IF EXISTS test", statement.DropIndexStmt{IndexName: "test", IfExists: true}, false},
+		{"Drop index", "DROP SEQUENCE test", statement.DropSequenceStmt{SequenceName: "test"}, false},
+		{"Drop index if exists", "DROP SEQUENCE IF EXISTS test", statement.DropSequenceStmt{SequenceName: "test", IfExists: true}, false},
 	}
 
 	for _, test := range tests {

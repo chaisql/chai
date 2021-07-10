@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // DropTableStmt is a DSL that allows creating a DROP TABLE query.
@@ -72,6 +73,46 @@ func (stmt DropIndexStmt) Run(ctx *Context) (Result, error) {
 	}
 
 	err := ctx.Catalog.DropIndex(ctx.Tx, stmt.IndexName)
+	if errs.IsNotFoundError(err) && stmt.IfExists {
+		err = nil
+	}
+
+	return res, err
+}
+
+// DropSequenceStmt is a DSL that allows creating a DROP INDEX query.
+type DropSequenceStmt struct {
+	SequenceName string
+	IfExists     bool
+}
+
+// IsReadOnly always returns false. It implements the Statement interface.
+func (stmt DropSequenceStmt) IsReadOnly() bool {
+	return false
+}
+
+// Run runs the DropSequence statement in the given transaction.
+// It implements the Statement interface.
+func (stmt DropSequenceStmt) Run(ctx *Context) (Result, error) {
+	var res Result
+
+	if stmt.SequenceName == "" {
+		return res, errors.New("missing index name")
+	}
+
+	seq, err := ctx.Catalog.GetSequence(stmt.SequenceName)
+	if err != nil {
+		if errs.IsNotFoundError(err) && stmt.IfExists {
+			err = nil
+		}
+		return res, err
+	}
+
+	if seq.Info.Owner.TableName != "" {
+		return res, stringutil.Errorf("cannot drop sequence %s because constraint of table %s requires it", seq.Info.Name, seq.Info.Owner.TableName)
+	}
+
+	err = ctx.Catalog.DropSequence(ctx.Tx, stmt.SequenceName)
 	if errs.IsNotFoundError(err) && stmt.IfExists {
 		err = nil
 	}
