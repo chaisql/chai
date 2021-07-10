@@ -39,7 +39,7 @@ var envWithDoc = environment.New(doc)
 
 var envWithDocAndKey = environment.New(docWithKey)
 
-var nullLitteral = document.NewNullValue()
+var nullLiteral = document.NewNullValue()
 
 func testExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
 	t.Helper()

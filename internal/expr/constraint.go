@@ -25,7 +25,7 @@ func (t *ConstraintExpr) Eval(tx *database.Transaction) (document.Value, error) 
 	env.Tx = tx
 
 	if t.Expr == nil {
-		return NullLitteral, errors.New("missing expression")
+		return NullLiteral, errors.New("missing expression")
 	}
 
 	return t.Expr.Eval(&env)

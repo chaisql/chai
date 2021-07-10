@@ -14,42 +14,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// BlobValue creates a litteral value of type Blob.
+// BlobValue creates a literal value of type Blob.
 func BlobValue(v []byte) expr.LiteralValue {
 	return expr.LiteralValue(document.NewBlobValue(v))
 }
 
-// TextValue creates a litteral value of type Text.
+// TextValue creates a literal value of type Text.
 func TextValue(v string) expr.LiteralValue {
 	return expr.LiteralValue(document.NewTextValue(v))
 }
 
-// BoolValue creates a litteral value of type Bool.
+// BoolValue creates a literal value of type Bool.
 func BoolValue(v bool) expr.LiteralValue {
 	return expr.LiteralValue(document.NewBoolValue(v))
 }
 
-// IntegerValue creates a litteral value of type Integer.
+// IntegerValue creates a literal value of type Integer.
 func IntegerValue(v int64) expr.LiteralValue {
 	return expr.LiteralValue(document.NewIntegerValue(v))
 }
 
-// DoubleValue creates a litteral value of type Double.
+// DoubleValue creates a literal value of type Double.
 func DoubleValue(v float64) expr.LiteralValue {
 	return expr.LiteralValue(document.NewDoubleValue(v))
 }
 
-// NullValue creates a litteral value of type Null.
+// NullValue creates a literal value of type Null.
 func NullValue() expr.LiteralValue {
 	return expr.LiteralValue(document.NewNullValue())
 }
 
-// DocumentValue creates a litteral value of type Document.
+// DocumentValue creates a literal value of type Document.
 func DocumentValue(d document.Document) expr.LiteralValue {
 	return expr.LiteralValue(document.NewDocumentValue(d))
 }
 
-// ArrayValue creates a litteral value of type Array.
+// ArrayValue creates a literal value of type Array.
 func ArrayValue(a document.Array) expr.LiteralValue {
 	return expr.LiteralValue(document.NewArrayValue(a))
 }

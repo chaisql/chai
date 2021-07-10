@@ -13,8 +13,8 @@ func TestPkExpr(t *testing.T) {
 		env  *environment.Environment
 		res  document.Value
 	}{
-		{"empty env", &environment.Environment{}, nullLitteral},
-		{"env with doc", envWithDoc, nullLitteral},
+		{"empty env", &environment.Environment{}, nullLiteral},
+		{"env with doc", envWithDoc, nullLiteral},
 		{"env with doc and key", envWithDocAndKey, document.NewIntegerValue(1)},
 	}
 

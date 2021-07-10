@@ -40,17 +40,17 @@ func (op *simpleOperator) Token() scanner.Token {
 
 func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b document.Value) (document.Value, error)) (document.Value, error) {
 	if op.a == nil || op.b == nil {
-		return NullLitteral, errors.New("missing operand")
+		return NullLiteral, errors.New("missing operand")
 	}
 
 	va, err := op.a.Eval(env)
 	if err != nil {
-		return NullLitteral, err
+		return NullLiteral, err
 	}
 
 	vb, err := op.b.Eval(env)
 	if err != nil {
-		return NullLitteral, err
+		return NullLiteral, err
 	}
 
 	return fn(va, vb)
@@ -113,7 +113,7 @@ func Concat(a, b Expr) Expr {
 func (op *ConcatOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type != document.TextValue || b.Type != document.TextValue {
-			return NullLitteral, nil
+			return NullLiteral, nil
 		}
 
 		return document.NewTextValue(a.V.(string) + b.V.(string)), nil

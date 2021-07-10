@@ -23,15 +23,15 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 func (op *cmpOp) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type == document.NullValue || b.Type == document.NullValue {
-			return NullLitteral, nil
+			return NullLiteral, nil
 		}
 
 		ok, err := op.compare(a, b)
 		if ok {
-			return TrueLitteral, err
+			return TrueLiteral, err
 		}
 
-		return FalseLitteral, err
+		return FalseLiteral, err
 	})
 }
 
@@ -100,25 +100,25 @@ func Between(a Expr) func(x, b Expr) Expr {
 func (op *BetweenOperator) Eval(env *environment.Environment) (document.Value, error) {
 	x, err := op.X.Eval(env)
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type == document.NullValue || b.Type == document.NullValue {
-			return NullLitteral, nil
+			return NullLiteral, nil
 		}
 
 		ok, err := x.IsGreaterThanOrEqual(a)
 		if !ok || err != nil {
-			return FalseLitteral, err
+			return FalseLiteral, err
 		}
 
 		ok, err = x.IsLesserThanOrEqual(b)
 		if !ok || err != nil {
-			return FalseLitteral, err
+			return FalseLiteral, err
 		}
 
-		return TrueLitteral, nil
+		return TrueLiteral, nil
 	})
 }
 
@@ -149,22 +149,22 @@ func In(a, b Expr) Expr {
 func (op *InOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type == document.NullValue || b.Type == document.NullValue {
-			return NullLitteral, nil
+			return NullLiteral, nil
 		}
 
 		if b.Type != document.ArrayValue {
-			return FalseLitteral, nil
+			return FalseLiteral, nil
 		}
 
 		ok, err := document.ArrayContains(b.V.(document.Array), a)
 		if err != nil {
-			return NullLitteral, err
+			return NullLiteral, err
 		}
 
 		if ok {
-			return TrueLitteral, nil
+			return TrueLiteral, nil
 		}
-		return FalseLitteral, nil
+		return FalseLiteral, nil
 	})
 }
 
@@ -198,13 +198,13 @@ func (op *IsOperator) Eval(env *environment.Environment) (document.Value, error)
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		ok, err := a.IsEqual(b)
 		if err != nil {
-			return NullLitteral, err
+			return NullLiteral, err
 		}
 		if ok {
-			return TrueLitteral, nil
+			return TrueLiteral, nil
 		}
 
-		return FalseLitteral, nil
+		return FalseLiteral, nil
 	})
 }
 
@@ -221,13 +221,13 @@ func (op *IsNotOperator) Eval(env *environment.Environment) (document.Value, err
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		ok, err := a.IsNotEqual(b)
 		if err != nil {
-			return NullLitteral, err
+			return NullLiteral, err
 		}
 		if ok {
-			return TrueLitteral, nil
+			return TrueLiteral, nil
 		}
 
-		return FalseLitteral, nil
+		return FalseLiteral, nil
 	})
 }
 

@@ -24,14 +24,14 @@ func Like(a, b Expr) Expr {
 func (op *LikeOperator) Eval(env *environment.Environment) (document.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
 		if a.Type != document.TextValue || b.Type != document.TextValue {
-			return NullLitteral, nil
+			return NullLiteral, nil
 		}
 
 		if like(b.V.(string), a.V.(string)) {
-			return TrueLitteral, nil
+			return TrueLiteral, nil
 		}
 
-		return FalseLitteral, nil
+		return FalseLiteral, nil
 	})
 }
 

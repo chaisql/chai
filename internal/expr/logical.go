@@ -22,23 +22,23 @@ func And(a, b Expr) Expr {
 func (op *AndOp) Eval(env *environment.Environment) (document.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	isTruthy, err := s.IsTruthy()
 	if !isTruthy || err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 
 	s, err = op.b.Eval(env)
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	isTruthy, err = s.IsTruthy()
 	if !isTruthy || err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 
-	return TrueLitteral, nil
+	return TrueLiteral, nil
 }
 
 // OrOp is the Or operator.
@@ -56,29 +56,29 @@ func Or(a, b Expr) Expr {
 func (op *OrOp) Eval(env *environment.Environment) (document.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	isTruthy, err := s.IsTruthy()
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	if isTruthy {
-		return TrueLitteral, nil
+		return TrueLiteral, nil
 	}
 
 	s, err = op.b.Eval(env)
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	isTruthy, err = s.IsTruthy()
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	if isTruthy {
-		return TrueLitteral, nil
+		return TrueLiteral, nil
 	}
 
-	return FalseLitteral, nil
+	return FalseLiteral, nil
 }
 
 // NotOp is the NOT unary operator.
@@ -95,18 +95,18 @@ func Not(e Expr) Expr {
 func (op *NotOp) Eval(env *environment.Environment) (document.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 
 	isTruthy, err := s.IsTruthy()
 	if err != nil {
-		return FalseLitteral, err
+		return FalseLiteral, err
 	}
 	if isTruthy {
-		return FalseLitteral, nil
+		return FalseLiteral, nil
 	}
 
-	return TrueLitteral, nil
+	return TrueLiteral, nil
 }
 
 // String implements the stringutil.Stringer interface.

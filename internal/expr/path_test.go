@@ -29,12 +29,12 @@ func TestPathExpr(t *testing.T) {
 		{"b.`foo bar`[0]", document.NewIntegerValue(1), false},
 		{"_v.b.`foo bar`[0]", document.NewNullValue(), false},
 		{"b.`foo bar`[1]", document.NewIntegerValue(2), false},
-		{"b.`foo bar`[2]", nullLitteral, false},
-		{"b[0]", nullLitteral, false},
+		{"b.`foo bar`[2]", nullLiteral, false},
+		{"b[0]", nullLiteral, false},
 		{"c[0]", document.NewIntegerValue(1), false},
 		{"c[1].foo", document.NewTextValue("bar"), false},
-		{"c.foo", nullLitteral, false},
-		{"d", nullLitteral, false},
+		{"c.foo", nullLiteral, false},
+		{"d", nullLiteral, false},
 	}
 
 	d := document.NewFromJSON([]byte(`{
@@ -50,7 +50,7 @@ func TestPathExpr(t *testing.T) {
 	}
 
 	t.Run("empty env", func(t *testing.T) {
-		testExpr(t, "a", &environment.Environment{}, nullLitteral, true)
+		testExpr(t, "a", &environment.Environment{}, nullLiteral, true)
 	})
 }
 
@@ -96,12 +96,12 @@ func TestEnvPathExpr(t *testing.T) {
 		{"b.`foo bar`[0]", document.NewIntegerValue(1), false},
 		{"_v.b.`foo bar`[0]", document.NewNullValue(), false},
 		{"b.`foo bar`[1]", document.NewIntegerValue(2), false},
-		{"b.`foo bar`[2]", nullLitteral, false},
-		{"b[0]", nullLitteral, false},
+		{"b.`foo bar`[2]", nullLiteral, false},
+		{"b[0]", nullLiteral, false},
 		{"c[0]", document.NewIntegerValue(1), false},
 		{"c[1].foo", document.NewTextValue("bar"), false},
-		{"c.foo", nullLitteral, false},
-		{"d", nullLitteral, false},
+		{"c.foo", nullLiteral, false},
+		{"d", nullLiteral, false},
 	}
 
 	d := document.NewFromJSON([]byte(`{
@@ -117,6 +117,6 @@ func TestEnvPathExpr(t *testing.T) {
 	}
 
 	t.Run("empty env", func(t *testing.T) {
-		testExpr(t, "a", &environment.Environment{}, nullLitteral, true)
+		testExpr(t, "a", &environment.Environment{}, nullLiteral, true)
 	})
 }
