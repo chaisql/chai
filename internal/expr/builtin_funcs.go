@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-var builtinFunctions = functionsTable{
+var builtinFunctions = FunctionsTable{
 	"pk": &functionDef{
 		name:  "pk",
 		arity: 0,
@@ -54,7 +54,7 @@ var builtinFunctions = functionsTable{
 }
 
 // BuiltinFunctions returns a map of builtin functions.
-func BuiltinFunctions() functionsTable {
+func BuiltinFunctions() FunctionsTable {
 	return builtinFunctions
 }
 

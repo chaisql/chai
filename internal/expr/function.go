@@ -22,10 +22,10 @@ type FunctionDef interface {
 	Function(...Expr) (Function, error)
 	Arity() int
 }
-type functionsTable map[string]FunctionDef
+type FunctionsTable map[string]FunctionDef
 
 // PackagesTable represents a table of SQL functions grouped by their packages
-type PackagesTable map[string]functionsTable
+type PackagesTable map[string]FunctionsTable
 
 func DefaultPackagesTable() PackagesTable {
 	return PackagesTable{

@@ -8,11 +8,11 @@ import (
 )
 
 // MathFunctions returns all math package functions.
-func MathFunctions() functionsTable {
+func MathFunctions() FunctionsTable {
 	return mathFunctions
 }
 
-var mathFunctions = functionsTable{
+var mathFunctions = FunctionsTable{
 	"floor": floorFunc,
 }
 
