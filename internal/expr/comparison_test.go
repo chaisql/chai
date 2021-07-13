@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/testutil"
 )
 
 func TestComparisonExpr(t *testing.T) {
@@ -35,7 +36,7 @@ func TestComparisonExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -60,7 +61,7 @@ func TestComparisonINExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -84,7 +85,7 @@ func TestComparisonNOTINExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -104,7 +105,7 @@ func TestComparisonISExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -124,7 +125,7 @@ func TestComparisonISNOTExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
@@ -152,7 +153,7 @@ func TestComparisonExprNodocument(t *testing.T) {
 				t.Run(test.expr, func(t *testing.T) {
 					var emptyenv environment.Environment
 
-					testExpr(t, test.expr, &emptyenv, test.res, test.fails)
+					testutil.TestExpr(t, test.expr, &emptyenv, test.res, test.fails)
 				})
 			}
 		})
@@ -178,7 +179,7 @@ func TestComparisonBetweenExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }

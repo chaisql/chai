@@ -97,6 +97,19 @@ func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	return &ne
 }
 
+func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
+	t.Helper()
+	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
+	require.NoError(t, err)
+	res, err := e.Eval(env)
+	if fails {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	}
+}
+
 var emptyEnv = environment.New(nil)
 
 func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {

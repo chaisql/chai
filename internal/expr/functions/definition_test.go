@@ -1,18 +1,16 @@
 package functions_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
-	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO
 var doc document.Document = func() document.Document {
 	return document.NewFromJSON([]byte(`{
 		"a": 1,
@@ -38,24 +36,7 @@ var docWithKey document.Document = func() document.Document {
 }()
 
 var envWithDoc = environment.New(doc)
-
 var envWithDocAndKey = environment.New(docWithKey)
-
-var nullLiteral = document.NewNullValue()
-
-func testExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
-	t.Helper()
-
-	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
-	require.NoError(t, err)
-	res, err := e.Eval(env)
-	if fails {
-		require.Error(t, err)
-	} else {
-		require.NoError(t, err)
-		require.Equal(t, want, res)
-	}
-}
 
 func TestPkExpr(t *testing.T) {
 	tests := []struct {
@@ -63,14 +44,14 @@ func TestPkExpr(t *testing.T) {
 		env  *environment.Environment
 		res  document.Value
 	}{
-		{"empty env", &environment.Environment{}, nullLiteral},
-		{"env with doc", envWithDoc, nullLiteral},
+		{"empty env", &environment.Environment{}, document.NewNullValue()},
+		{"env with doc", envWithDoc, document.NewNullValue()},
 		{"env with doc and key", envWithDocAndKey, document.NewIntegerValue(1)},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			testExpr(t, "pk()", test.env, test.res, false)
+			testutil.TestExpr(t, "pk()", test.env, test.res, false)
 		})
 	}
 }

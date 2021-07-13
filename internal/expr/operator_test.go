@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/testutil"
 )
 
 func TestConcatExpr(t *testing.T) {
@@ -20,7 +21,7 @@ func TestConcatExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
 }
