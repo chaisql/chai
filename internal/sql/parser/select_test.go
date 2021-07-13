@@ -144,7 +144,7 @@ func TestParserSelect(t *testing.T) {
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.HashAggregate(&functions.CountFunc{Wildcard: true})).
+				Pipe(stream.HashAggregate(&functions.Count{Wildcard: true})).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			false},
 		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",

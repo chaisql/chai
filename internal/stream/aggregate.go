@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -16,7 +16,7 @@ import (
 // values are part of the same group and aggregate them into one value.
 type HashAggregateOperator struct {
 	baseOperator
-	Builders []functions.AggregatorBuilder
+	Builders []expr.AggregatorBuilder
 }
 
 // HashAggregate consumes the incoming stream and outputs one value per group.
@@ -25,7 +25,7 @@ type HashAggregateOperator struct {
 // values are part of the same group and aggregate them into one value.
 // HashAggregate assumes that the stream is not sorted per group and uses a hash map
 // to group aggregates per _group value.
-func HashAggregate(builders ...functions.AggregatorBuilder) *HashAggregateOperator {
+func HashAggregate(builders ...expr.AggregatorBuilder) *HashAggregateOperator {
 	return &HashAggregateOperator{Builders: builders}
 }
 
@@ -141,14 +141,14 @@ type groupAggregator struct {
 	group       document.Value
 	groupExpr   string
 	env         *environment.Environment
-	aggregators []functions.Aggregator
+	aggregators []expr.Aggregator
 }
 
-func newGroupAggregator(outerEnv *environment.Environment, builders []functions.AggregatorBuilder) *groupAggregator {
+func newGroupAggregator(outerEnv *environment.Environment, builders []expr.AggregatorBuilder) *groupAggregator {
 	var env environment.Environment
 	env.SetOuter(outerEnv)
 
-	newAggregators := make([]functions.Aggregator, len(builders))
+	newAggregators := make([]expr.Aggregator, len(builders))
 	for i, b := range builders {
 		newAggregators[i] = b.Aggregator()
 	}

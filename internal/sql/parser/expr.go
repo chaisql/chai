@@ -625,7 +625,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 		}
 
-		return &functions.CountFunc{Wildcard: true}, nil
+		return &functions.Count{Wildcard: true}, nil
 	}
 	p.Unscan()
 
@@ -697,7 +697,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, err
 	}
 
-	return functions.CastFunc{Expr: e, CastAs: tp}, nil
+	return functions.Cast{Expr: e, CastAs: tp}, nil
 }
 
 // tokenIsAllowed is a helper function that determines if a token is allowed.

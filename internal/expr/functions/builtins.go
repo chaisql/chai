@@ -9,62 +9,62 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-var builtinFunctions = FunctionsTable{
-	"pk": &functionDef{
+var builtinFunctions = DefinitionsTable{
+	"pk": &definition{
 		name:  "pk",
 		arity: 0,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &PKFunc{}, nil
+			return &PK{}, nil
 		},
 	},
-	"count": &functionDef{
+	"count": &definition{
 		name:  "count",
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &CountFunc{Expr: args[0]}, nil
+			return &Count{Expr: args[0]}, nil
 		},
 	},
-	"min": &functionDef{
+	"min": &definition{
 		name:  "min",
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &MinFunc{Expr: args[0]}, nil
+			return &Min{Expr: args[0]}, nil
 		},
 	},
-	"max": &functionDef{
+	"max": &definition{
 		name:  "max",
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &MaxFunc{Expr: args[0]}, nil
+			return &Max{Expr: args[0]}, nil
 		},
 	},
-	"sum": &functionDef{
+	"sum": &definition{
 		name:  "sum",
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &SumFunc{Expr: args[0]}, nil
+			return &Sum{Expr: args[0]}, nil
 		},
 	},
-	"avg": &functionDef{
+	"avg": &definition{
 		name:  "avg",
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &AvgFunc{Expr: args[0]}, nil
+			return &Avg{Expr: args[0]}, nil
 		},
 	},
 }
 
-// BuiltinFunctions returns a map of builtin functions.
-func BuiltinFunctions() FunctionsTable {
+// BuiltinDefinitions returns a map of builtin functions.
+func BuiltinDefinitions() DefinitionsTable {
 	return builtinFunctions
 }
 
-// PKFunc represents the pk() function.
+// PK represents the pk() function.
 // It returns the primary key of the current document.
-type PKFunc struct{}
+type PK struct{}
 
 // Eval returns the primary key of the current document.
-func (k *PKFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (k *PK) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return expr.NullLiteral, nil
@@ -79,27 +79,27 @@ func (k *PKFunc) Eval(env *environment.Environment) (document.Value, error) {
 	return v, err
 }
 
-func (*PKFunc) Params() []expr.Expr { return nil }
+func (*PK) Params() []expr.Expr { return nil }
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (k *PKFunc) IsEqual(other expr.Expr) bool {
-	_, ok := other.(*PKFunc)
+func (k *PK) IsEqual(other expr.Expr) bool {
+	_, ok := other.(*PK)
 	return ok
 }
 
-func (k *PKFunc) String() string {
+func (k *PK) String() string {
 	return "pk()"
 }
 
-// CastFunc represents the CAST expression.
-type CastFunc struct {
+// Cast represents the CAST expression.
+type Cast struct {
 	Expr   expr.Expr
 	CastAs document.ValueType
 }
 
 // Eval returns the primary key of the current document.
-func (c CastFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (c Cast) Eval(env *environment.Environment) (document.Value, error) {
 	v, err := c.Expr.Eval(env)
 	if err != nil {
 		return v, err
@@ -110,12 +110,12 @@ func (c CastFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c CastFunc) IsEqual(other expr.Expr) bool {
+func (c Cast) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(CastFunc)
+	o, ok := other.(Cast)
 	if !ok {
 		return false
 	}
@@ -131,23 +131,23 @@ func (c CastFunc) IsEqual(other expr.Expr) bool {
 	return o.Expr != nil
 }
 
-func (c CastFunc) Params() []expr.Expr { return []expr.Expr{c.Expr} }
+func (c Cast) Params() []expr.Expr { return []expr.Expr{c.Expr} }
 
-func (c CastFunc) String() string {
+func (c Cast) String() string {
 	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
 
-var _ AggregatorBuilder = (*CountFunc)(nil)
+var _ expr.AggregatorBuilder = (*Count)(nil)
 
-// CountFunc is the COUNT aggregator function. It counts the number of documents
+// Count is the COUNT aggregator function. It counts the number of documents
 // in a stream.
-type CountFunc struct {
+type Count struct {
 	Expr     expr.Expr
 	Wildcard bool
 	Count    int64
 }
 
-func (c *CountFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (c *Count) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function COUNT()")
@@ -158,12 +158,12 @@ func (c *CountFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c *CountFunc) IsEqual(other expr.Expr) bool {
+func (c *Count) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(*CountFunc)
+	o, ok := other.(*Count)
 	if !ok {
 		return false
 	}
@@ -175,9 +175,9 @@ func (c *CountFunc) IsEqual(other expr.Expr) bool {
 	return expr.Equal(c.Expr, o.Expr)
 }
 
-func (c *CountFunc) Params() []expr.Expr { return []expr.Expr{c.Expr} }
+func (c *Count) Params() []expr.Expr { return []expr.Expr{c.Expr} }
 
-func (c *CountFunc) String() string {
+func (c *Count) String() string {
 	if c.Wildcard {
 		return "COUNT(*)"
 	}
@@ -186,7 +186,7 @@ func (c *CountFunc) String() string {
 }
 
 // Aggregator returns a CountAggregator. It implements the AggregatorBuilder interface.
-func (c *CountFunc) Aggregator() Aggregator {
+func (c *Count) Aggregator() expr.Aggregator {
 	return &CountAggregator{
 		Fn: c,
 	}
@@ -194,7 +194,7 @@ func (c *CountFunc) Aggregator() Aggregator {
 
 // CountAggregator is an aggregator that counts non-null expressions.
 type CountAggregator struct {
-	Fn    *CountFunc
+	Fn    *Count
 	Count int64
 }
 
@@ -225,13 +225,13 @@ func (c *CountAggregator) String() string {
 	return c.Fn.String()
 }
 
-// MinFunc is the MIN aggregator function.
-type MinFunc struct {
+// Min is the MIN aggregator function.
+type Min struct {
 	Expr expr.Expr
 }
 
 // Eval extracts the min value from the given document and returns it.
-func (m *MinFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (m *Min) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function MIN()")
@@ -242,12 +242,12 @@ func (m *MinFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (m *MinFunc) IsEqual(other expr.Expr) bool {
+func (m *Min) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(*MinFunc)
+	o, ok := other.(*Min)
 	if !ok {
 		return false
 	}
@@ -255,16 +255,16 @@ func (m *MinFunc) IsEqual(other expr.Expr) bool {
 	return expr.Equal(m.Expr, o.Expr)
 }
 
-func (m *MinFunc) Params() []expr.Expr { return []expr.Expr{m.Expr} }
+func (m *Min) Params() []expr.Expr { return []expr.Expr{m.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
-func (m *MinFunc) String() string {
+func (m *Min) String() string {
 	return stringutil.Sprintf("MIN(%v)", m.Expr)
 }
 
 // Aggregator returns a MinAggregator. It implements the AggregatorBuilder interface.
-func (m *MinFunc) Aggregator() Aggregator {
+func (m *Min) Aggregator() expr.Aggregator {
 	return &MinAggregator{
 		Fn: m,
 	}
@@ -272,7 +272,7 @@ func (m *MinFunc) Aggregator() Aggregator {
 
 // MinAggregator is an aggregator that returns the minimum non-null value.
 type MinAggregator struct {
-	Fn  *MinFunc
+	Fn  *Min
 	Min document.Value
 }
 
@@ -323,13 +323,13 @@ func (m *MinAggregator) String() string {
 	return m.Fn.String()
 }
 
-// MaxFunc is the MAX aggregator function.
-type MaxFunc struct {
+// Max is the MAX aggregator function.
+type Max struct {
 	Expr expr.Expr
 }
 
 // Eval extracts the max value from the given document and returns it.
-func (m *MaxFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (m *Max) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function MAX()")
@@ -340,12 +340,12 @@ func (m *MaxFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (m *MaxFunc) IsEqual(other expr.Expr) bool {
+func (m *Max) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(*MaxFunc)
+	o, ok := other.(*Max)
 	if !ok {
 		return false
 	}
@@ -353,16 +353,16 @@ func (m *MaxFunc) IsEqual(other expr.Expr) bool {
 	return expr.Equal(m.Expr, o.Expr)
 }
 
-func (m *MaxFunc) Params() []expr.Expr { return []expr.Expr{m.Expr} }
+func (m *Max) Params() []expr.Expr { return []expr.Expr{m.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
-func (m *MaxFunc) String() string {
+func (m *Max) String() string {
 	return stringutil.Sprintf("MAX(%v)", m.Expr)
 }
 
 // Aggregator returns a MaxAggregator. It implements the AggregatorBuilder interface.
-func (m *MaxFunc) Aggregator() Aggregator {
+func (m *Max) Aggregator() expr.Aggregator {
 	return &MaxAggregator{
 		Fn: m,
 	}
@@ -370,7 +370,7 @@ func (m *MaxFunc) Aggregator() Aggregator {
 
 // MaxAggregator is an aggregator that returns the minimum non-null value.
 type MaxAggregator struct {
-	Fn  *MaxFunc
+	Fn  *Max
 	Max document.Value
 }
 
@@ -422,13 +422,13 @@ func (m *MaxAggregator) String() string {
 	return m.Fn.String()
 }
 
-// SumFunc is the SUM aggregator function.
-type SumFunc struct {
+// Sum is the SUM aggregator function.
+type Sum struct {
 	Expr expr.Expr
 }
 
 // Eval extracts the sum value from the given document and returns it.
-func (s *SumFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (s *Sum) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function SUM()")
@@ -439,12 +439,12 @@ func (s *SumFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (s *SumFunc) IsEqual(other expr.Expr) bool {
+func (s *Sum) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(*SumFunc)
+	o, ok := other.(*Sum)
 	if !ok {
 		return false
 	}
@@ -452,16 +452,16 @@ func (s *SumFunc) IsEqual(other expr.Expr) bool {
 	return expr.Equal(s.Expr, o.Expr)
 }
 
-func (s *SumFunc) Params() []expr.Expr { return []expr.Expr{s.Expr} }
+func (s *Sum) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
-func (s *SumFunc) String() string {
+func (s *Sum) String() string {
 	return stringutil.Sprintf("SUM(%v)", s.Expr)
 }
 
-// Aggregator returns a SumFunc. It implements the AggregatorBuilder interface.
-func (s *SumFunc) Aggregator() Aggregator {
+// Aggregator returns a Sum. It implements the AggregatorBuilder interface.
+func (s *Sum) Aggregator() expr.Aggregator {
 	return &SumAggregator{
 		Fn: s,
 	}
@@ -469,7 +469,7 @@ func (s *SumFunc) Aggregator() Aggregator {
 
 // SumAggregator is an aggregator that returns the minimum non-null value.
 type SumAggregator struct {
-	Fn   *SumFunc
+	Fn   *Sum
 	SumI *int64
 	SumF *float64
 }
@@ -532,13 +532,13 @@ func (s *SumAggregator) String() string {
 	return s.Fn.String()
 }
 
-// AvgFunc is the AVG aggregator function.
-type AvgFunc struct {
+// Avg is the AVG aggregator function.
+type Avg struct {
 	Expr expr.Expr
 }
 
 // Eval extracts the average value from the given document and returns it.
-func (s *AvgFunc) Eval(env *environment.Environment) (document.Value, error) {
+func (s *Avg) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
 		return document.Value{}, errors.New("misuse of aggregation function AVG()")
@@ -549,12 +549,12 @@ func (s *AvgFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (s *AvgFunc) IsEqual(other expr.Expr) bool {
+func (s *Avg) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(*AvgFunc)
+	o, ok := other.(*Avg)
 	if !ok {
 		return false
 	}
@@ -562,16 +562,16 @@ func (s *AvgFunc) IsEqual(other expr.Expr) bool {
 	return expr.Equal(s.Expr, o.Expr)
 }
 
-func (s *AvgFunc) Params() []expr.Expr { return []expr.Expr{s.Expr} }
+func (s *Avg) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the average expression.
-func (s *AvgFunc) String() string {
+func (s *Avg) String() string {
 	return stringutil.Sprintf("AVG(%v)", s.Expr)
 }
 
-// Aggregator returns a AvgFunc. It implements the AggregatorBuilder interface.
-func (s *AvgFunc) Aggregator() Aggregator {
+// Aggregator returns a Avg. It implements the AggregatorBuilder interface.
+func (s *Avg) Aggregator() expr.Aggregator {
 	return &AvgAggregator{
 		Fn: s,
 	}
@@ -579,7 +579,7 @@ func (s *AvgFunc) Aggregator() Aggregator {
 
 // AvgAggregator is an aggregator that returns the average non-null value.
 type AvgAggregator struct {
-	Fn      *AvgFunc
+	Fn      *Avg
 	Avg     float64
 	Counter int64
 }

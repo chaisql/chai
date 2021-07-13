@@ -5,7 +5,6 @@ import (
 
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -47,7 +46,7 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 		s = s.Pipe(stream.GroupBy(stmt.GroupByExpr))
 
 		var invalidProjectedField expr.Expr
-		var aggregators []functions.AggregatorBuilder
+		var aggregators []expr.AggregatorBuilder
 
 		for _, pe := range stmt.ProjectionExprs {
 			ne, ok := pe.(*expr.NamedExpr)
@@ -58,7 +57,7 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 			e := ne.Expr
 
 			// check if the projected expression is an aggregation function
-			if agg, ok := e.(functions.AggregatorBuilder); ok {
+			if agg, ok := e.(expr.AggregatorBuilder); ok {
 				aggregators = append(aggregators, agg)
 				continue
 			}
@@ -82,7 +81,7 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 	} else {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
-		var aggregators []functions.AggregatorBuilder
+		var aggregators []expr.AggregatorBuilder
 
 		for _, pe := range stmt.ProjectionExprs {
 			ne, ok := pe.(*expr.NamedExpr)
@@ -92,7 +91,7 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 			e := ne.Expr
 
 			// check if the projected expression is an aggregation function
-			if agg, ok := e.(functions.AggregatorBuilder); ok {
+			if agg, ok := e.(expr.AggregatorBuilder); ok {
 				aggregators = append(aggregators, agg)
 			}
 		}

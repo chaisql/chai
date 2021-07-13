@@ -3,32 +3,33 @@ package functions
 import (
 	"strings"
 
-	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-// A FunctionDef transforms a list of expressions into a Function.
-type FunctionDef interface {
+// A Definition transforms a list of expressions into a Function.
+type Definition interface {
 	Name() string
 	String() string
 	Function(...expr.Expr) (expr.Function, error)
 	Arity() int
 }
-type FunctionsTable map[string]FunctionDef
+
+// A Definitions table holds a map of definitions, indexed by their names.
+type DefinitionsTable map[string]Definition
 
 // PackagesTable represents a table of SQL functions grouped by their packages
-type PackagesTable map[string]FunctionsTable
+type PackagesTable map[string]DefinitionsTable
 
 func DefaultPackagesTable() PackagesTable {
 	return PackagesTable{
-		"":     BuiltinFunctions(),
+		"":     BuiltinDefinitions(),
 		"math": MathFunctions(),
 	}
 }
 
 // GetFunc return a function definition by its package and name.
-func (t PackagesTable) GetFunc(pkg string, fname string) (FunctionDef, error) {
+func (t PackagesTable) GetFunc(pkg string, fname string) (Definition, error) {
 	fs, ok := t[pkg]
 	if !ok {
 		return nil, stringutil.Errorf("no such package: %q", fname)
@@ -44,24 +45,25 @@ func (t PackagesTable) GetFunc(pkg string, fname string) (FunctionDef, error) {
 	return def, nil
 }
 
-type functionDef struct {
+// A definition is the most basic version of a function definition.
+type definition struct {
 	name          string
 	arity         int
 	constructorFn func(...expr.Expr) (expr.Function, error)
 }
 
-func (fd *functionDef) Name() string {
+func (fd *definition) Name() string {
 	return fd.name
 }
 
-func (fd *functionDef) Function(args ...expr.Expr) (expr.Function, error) {
+func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
 	if len(args) != fd.arity {
-		return nil, stringutil.Errorf("%s() takes %d argument, not %d", fd.name, fd.arity, len(args))
+		return nil, stringutil.Errorf("%s() takes %d argument(s), not %d", fd.name, fd.arity, len(args))
 	}
 	return fd.constructorFn(args...)
 }
 
-func (fd *functionDef) String() string {
+func (fd *definition) String() string {
 	args := make([]string, 0, fd.arity)
 	for i := 0; i < fd.arity; i++ {
 		args = append(args, stringutil.Sprintf("arg%d", i+1))
@@ -69,20 +71,6 @@ func (fd *functionDef) String() string {
 	return stringutil.Sprintf("%s(%s)", fd.name, strings.Join(args, ", "))
 }
 
-func (fd *functionDef) Arity() int {
+func (fd *definition) Arity() int {
 	return fd.arity
-}
-
-// A Aggregator is an expression that aggregates documents into one result.
-type Aggregator interface {
-	expr.Expr
-
-	Aggregate(env *environment.Environment) error
-}
-
-// An AggregatorBuilder is a type that can create aggregators.
-type AggregatorBuilder interface {
-	expr.Expr
-
-	Aggregator() Aggregator
 }

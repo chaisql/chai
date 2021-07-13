@@ -17,7 +17,7 @@ func TestAggregate(t *testing.T) {
 	tests := []struct {
 		name     string
 		groupBy  expr.Expr
-		builders []functions.AggregatorBuilder
+		builders []expr.AggregatorBuilder
 		in       []document.Document
 		want     []document.Document
 		fails    bool
@@ -33,7 +33,7 @@ func TestAggregate(t *testing.T) {
 		{
 			"count",
 			nil,
-			[]functions.AggregatorBuilder{&functions.CountFunc{Wildcard: true}},
+			[]expr.AggregatorBuilder{&functions.Count{Wildcard: true}},
 			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`)},
 			[]document.Document{testutil.MakeDocument(t, `{"COUNT(*)": 1}`)},
 			false,
@@ -41,7 +41,7 @@ func TestAggregate(t *testing.T) {
 		{
 			"count/groupBy",
 			parser.MustParseExpr("a % 2"),
-			[]functions.AggregatorBuilder{&functions.CountFunc{Expr: parser.MustParseExpr("a")}, &functions.AvgFunc{Expr: parser.MustParseExpr("a")}},
+			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			generateSeqDocs(t, 10),
 			[]document.Document{testutil.MakeDocument(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeDocument(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
 			false,
@@ -49,7 +49,7 @@ func TestAggregate(t *testing.T) {
 		{
 			"count/noInput",
 			nil,
-			[]functions.AggregatorBuilder{&functions.CountFunc{Expr: parser.MustParseExpr("a")}, &functions.AvgFunc{Expr: parser.MustParseExpr("a")}},
+			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			nil,
 			[]document.Document{testutil.MakeDocument(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
 			false,
@@ -115,7 +115,7 @@ type fakeAggretatorBuilder struct {
 	name string
 }
 
-func (f *fakeAggretatorBuilder) Aggregator() functions.Aggregator {
+func (f *fakeAggretatorBuilder) Aggregator() expr.Aggregator {
 	return &fakeAggregator{
 		name: f.name,
 	}
@@ -125,8 +125,8 @@ func (f *fakeAggretatorBuilder) String() string {
 	return f.name
 }
 
-func makeAggregatorBuilders(names ...string) []functions.AggregatorBuilder {
-	aggs := make([]functions.AggregatorBuilder, len(names))
+func makeAggregatorBuilders(names ...string) []expr.AggregatorBuilder {
+	aggs := make([]expr.AggregatorBuilder, len(names))
 	for i := range names {
 		aggs[i] = &fakeAggretatorBuilder{
 			name: names[i],

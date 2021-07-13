@@ -384,7 +384,7 @@ func isProjectionUnique(indexes []*database.IndexInfo, po *stream.ProjectOperato
 			if found != nil && found.Unique {
 				continue
 			}
-		case *functions.PKFunc:
+		case *functions.PK:
 			continue
 		}
 
