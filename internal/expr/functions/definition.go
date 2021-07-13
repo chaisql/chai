@@ -39,7 +39,6 @@ func (t PackagesTable) GetFunc(pkg string, fname string) (Definition, error) {
 		if pkg == "" {
 			return nil, stringutil.Errorf("no such function: %q", fname)
 		}
-
 		return nil, stringutil.Errorf("no such function: %q.%q", pkg, fname)
 	}
 	return def, nil

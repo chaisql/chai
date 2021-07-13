@@ -1,5 +1,3 @@
-// +build !wasm
-
 package doc
 
 import "github.com/genjidb/genji/internal/sql/scanner"

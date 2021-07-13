@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/genjidb/genji/doc"
+	"github.com/genjidb/genji/cmd/genji/doc"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/stretchr/testify/require"

@@ -1,5 +1,3 @@
-// +build !wasm
-
 package doc
 
 type functionDocs map[string]string

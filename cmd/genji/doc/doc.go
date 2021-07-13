@@ -1,5 +1,3 @@
-// +build !wasm
-
 /* Package doc provides an API to access documentation for functions and tokens */
 package doc
 
@@ -68,5 +66,9 @@ func funcDocString(pkg string, name string) (string, error) {
 	// Because we got the definition, we know that the package and function both exist.
 	p := packageDocs[pkg]
 	d := p[name]
-	return fmt.Sprintf("%s.%s: %s", pkg, f.String(), d), nil
+	if pkg != "" {
+		return fmt.Sprintf("%s.%s: %s", pkg, f.String(), d), nil
+	} else {
+		return fmt.Sprintf("%s: %s", f.String(), d), nil
+	}
 }
