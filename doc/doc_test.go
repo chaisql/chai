@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/doc"
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFunctions(t *testing.T) {
-	table := expr.DefaultPackagesTable()
+	table := functions.DefaultPackagesTable()
 	for pkgname, pkg := range table {
 		for fname, def := range pkg {
 			if pkgname == "" {

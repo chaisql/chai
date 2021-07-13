@@ -1,4 +1,4 @@
-package expr_test
+package functions_test
 
 import (
 	"path/filepath"

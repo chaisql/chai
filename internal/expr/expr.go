@@ -12,6 +12,14 @@ var (
 	NullLiteral  = document.NewNullValue()
 )
 
+// A Function is an expression whose evaluation calls a function previously defined.
+type Function interface {
+	Expr
+
+	// Returns the list of parameters this function has received.
+	Params() []Expr
+}
+
 // An Expr evaluates to a value.
 type Expr interface {
 	Eval(*environment.Environment) (document.Value, error)

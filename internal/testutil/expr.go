@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/genexprtests"
 	"github.com/stretchr/testify/require"
@@ -101,7 +102,7 @@ var emptyEnv = environment.New(nil)
 func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
 	t.Helper()
 	n := strings.Split(name, ".")
-	def, err := expr.DefaultPackagesTable().GetFunc(n[0], n[1])
+	def, err := functions.DefaultPackagesTable().GetFunc(n[0], n[1])
 	require.NoError(t, err)
 	require.NotNil(t, def)
 	expr, err := def.Function(args...)

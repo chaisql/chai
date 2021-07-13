@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -624,7 +625,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 		}
 
-		return &expr.CountFunc{Wildcard: true}, nil
+		return &functions.CountFunc{Wildcard: true}, nil
 	}
 	p.Unscan()
 
@@ -696,7 +697,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, err
 	}
 
-	return expr.CastFunc{Expr: e, CastAs: tp}, nil
+	return functions.CastFunc{Expr: e, CastAs: tp}, nil
 }
 
 // tokenIsAllowed is a helper function that determines if a token is allowed.

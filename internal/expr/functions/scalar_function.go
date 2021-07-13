@@ -1,10 +1,11 @@
-package expr
+package functions
 
 import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -17,6 +18,10 @@ type ScalarFunctionDef struct {
 	name   string
 	arity  int
 	callFn func(...document.Value) (document.Value, error)
+}
+
+func NewScalarDefinition(name string, arity int, callFn func(...document.Value) (document.Value, error)) *ScalarFunctionDef {
+	return &ScalarFunctionDef{name: name, arity: arity, callFn: callFn}
 }
 
 // Name returns the defined function named (as an indent, so no parentheses).
@@ -34,7 +39,7 @@ func (fd *ScalarFunctionDef) String() string {
 }
 
 // Function returns a Function expr node.
-func (fd *ScalarFunctionDef) Function(args ...Expr) (Function, error) {
+func (fd *ScalarFunctionDef) Function(args ...expr.Expr) (expr.Function, error) {
 	if len(args) != fd.arity {
 		return nil, stringutil.Errorf("%s takes %d argument, not %d", fd.String(), fd.arity, len(args))
 	}
@@ -53,7 +58,7 @@ func (fd *ScalarFunctionDef) Arity() int {
 // such as the SUM aggregator wich operates on expressions instead.
 type ScalarFunction struct {
 	def    *ScalarFunctionDef
-	params []Expr
+	params []expr.Expr
 }
 
 // Eval returns a document.Value based on the given environment and the underlying function
@@ -85,6 +90,6 @@ func (sf *ScalarFunction) String() string {
 }
 
 // Params return the function arguments.
-func (sf *ScalarFunction) Params() []Expr {
+func (sf *ScalarFunction) Params() []expr.Expr {
 	return sf.params
 }

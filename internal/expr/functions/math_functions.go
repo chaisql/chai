@@ -1,4 +1,4 @@
-package expr
+package functions
 
 import (
 	"math"

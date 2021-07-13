@@ -1,10 +1,11 @@
-package expr
+package functions
 
 import (
 	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -12,42 +13,42 @@ var builtinFunctions = FunctionsTable{
 	"pk": &functionDef{
 		name:  "pk",
 		arity: 0,
-		constructorFn: func(args ...Expr) (Function, error) {
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &PKFunc{}, nil
 		},
 	},
 	"count": &functionDef{
 		name:  "count",
 		arity: 1,
-		constructorFn: func(args ...Expr) (Function, error) {
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &CountFunc{Expr: args[0]}, nil
 		},
 	},
 	"min": &functionDef{
 		name:  "min",
 		arity: 1,
-		constructorFn: func(args ...Expr) (Function, error) {
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &MinFunc{Expr: args[0]}, nil
 		},
 	},
 	"max": &functionDef{
 		name:  "max",
 		arity: 1,
-		constructorFn: func(args ...Expr) (Function, error) {
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &MaxFunc{Expr: args[0]}, nil
 		},
 	},
 	"sum": &functionDef{
 		name:  "sum",
 		arity: 1,
-		constructorFn: func(args ...Expr) (Function, error) {
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &SumFunc{Expr: args[0]}, nil
 		},
 	},
 	"avg": &functionDef{
 		name:  "avg",
 		arity: 1,
-		constructorFn: func(args ...Expr) (Function, error) {
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &AvgFunc{Expr: args[0]}, nil
 		},
 	},
@@ -66,23 +67,23 @@ type PKFunc struct{}
 func (k *PKFunc) Eval(env *environment.Environment) (document.Value, error) {
 	d, ok := env.GetDocument()
 	if !ok {
-		return NullLiteral, nil
+		return expr.NullLiteral, nil
 	}
 
 	keyer, ok := d.(document.Keyer)
 	if !ok {
-		return NullLiteral, nil
+		return expr.NullLiteral, nil
 	}
 
 	v, err := keyer.Key()
 	return v, err
 }
 
-func (*PKFunc) Params() []Expr { return nil }
+func (*PKFunc) Params() []expr.Expr { return nil }
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (k *PKFunc) IsEqual(other Expr) bool {
+func (k *PKFunc) IsEqual(other expr.Expr) bool {
 	_, ok := other.(*PKFunc)
 	return ok
 }
@@ -93,7 +94,7 @@ func (k *PKFunc) String() string {
 
 // CastFunc represents the CAST expression.
 type CastFunc struct {
-	Expr   Expr
+	Expr   expr.Expr
 	CastAs document.ValueType
 }
 
@@ -109,7 +110,7 @@ func (c CastFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c CastFunc) IsEqual(other Expr) bool {
+func (c CastFunc) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -124,13 +125,13 @@ func (c CastFunc) IsEqual(other Expr) bool {
 	}
 
 	if c.Expr != nil {
-		return Equal(c.Expr, o.Expr)
+		return expr.Equal(c.Expr, o.Expr)
 	}
 
 	return o.Expr != nil
 }
 
-func (c CastFunc) Params() []Expr { return []Expr{c.Expr} }
+func (c CastFunc) Params() []expr.Expr { return []expr.Expr{c.Expr} }
 
 func (c CastFunc) String() string {
 	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
@@ -141,7 +142,7 @@ var _ AggregatorBuilder = (*CountFunc)(nil)
 // CountFunc is the COUNT aggregator function. It counts the number of documents
 // in a stream.
 type CountFunc struct {
-	Expr     Expr
+	Expr     expr.Expr
 	Wildcard bool
 	Count    int64
 }
@@ -157,7 +158,7 @@ func (c *CountFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c *CountFunc) IsEqual(other Expr) bool {
+func (c *CountFunc) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -171,10 +172,10 @@ func (c *CountFunc) IsEqual(other Expr) bool {
 		return c.Expr == nil && o.Expr == nil
 	}
 
-	return Equal(c.Expr, o.Expr)
+	return expr.Equal(c.Expr, o.Expr)
 }
 
-func (c *CountFunc) Params() []Expr { return []Expr{c.Expr} }
+func (c *CountFunc) Params() []expr.Expr { return []expr.Expr{c.Expr} }
 
 func (c *CountFunc) String() string {
 	if c.Wildcard {
@@ -208,7 +209,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v != NullLiteral {
+	if v != expr.NullLiteral {
 		c.Count++
 	}
 
@@ -226,7 +227,7 @@ func (c *CountAggregator) String() string {
 
 // MinFunc is the MIN aggregator function.
 type MinFunc struct {
-	Expr Expr
+	Expr expr.Expr
 }
 
 // Eval extracts the min value from the given document and returns it.
@@ -241,7 +242,7 @@ func (m *MinFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (m *MinFunc) IsEqual(other Expr) bool {
+func (m *MinFunc) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -251,10 +252,10 @@ func (m *MinFunc) IsEqual(other Expr) bool {
 		return false
 	}
 
-	return Equal(m.Expr, o.Expr)
+	return expr.Equal(m.Expr, o.Expr)
 }
 
-func (m *MinFunc) Params() []Expr { return []Expr{m.Expr} }
+func (m *MinFunc) Params() []expr.Expr { return []expr.Expr{m.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
@@ -282,7 +283,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v == NullLiteral {
+	if v == expr.NullLiteral {
 		return nil
 	}
 
@@ -324,7 +325,7 @@ func (m *MinAggregator) String() string {
 
 // MaxFunc is the MAX aggregator function.
 type MaxFunc struct {
-	Expr Expr
+	Expr expr.Expr
 }
 
 // Eval extracts the max value from the given document and returns it.
@@ -339,7 +340,7 @@ func (m *MaxFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (m *MaxFunc) IsEqual(other Expr) bool {
+func (m *MaxFunc) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -349,10 +350,10 @@ func (m *MaxFunc) IsEqual(other Expr) bool {
 		return false
 	}
 
-	return Equal(m.Expr, o.Expr)
+	return expr.Equal(m.Expr, o.Expr)
 }
 
-func (m *MaxFunc) Params() []Expr { return []Expr{m.Expr} }
+func (m *MaxFunc) Params() []expr.Expr { return []expr.Expr{m.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
@@ -380,7 +381,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v == NullLiteral {
+	if v == expr.NullLiteral {
 		return nil
 	}
 
@@ -423,7 +424,7 @@ func (m *MaxAggregator) String() string {
 
 // SumFunc is the SUM aggregator function.
 type SumFunc struct {
-	Expr Expr
+	Expr expr.Expr
 }
 
 // Eval extracts the sum value from the given document and returns it.
@@ -438,7 +439,7 @@ func (s *SumFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (s *SumFunc) IsEqual(other Expr) bool {
+func (s *SumFunc) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -448,10 +449,10 @@ func (s *SumFunc) IsEqual(other Expr) bool {
 		return false
 	}
 
-	return Equal(s.Expr, o.Expr)
+	return expr.Equal(s.Expr, o.Expr)
 }
 
-func (s *SumFunc) Params() []Expr { return []Expr{s.Expr} }
+func (s *SumFunc) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
@@ -533,7 +534,7 @@ func (s *SumAggregator) String() string {
 
 // AvgFunc is the AVG aggregator function.
 type AvgFunc struct {
-	Expr Expr
+	Expr expr.Expr
 }
 
 // Eval extracts the average value from the given document and returns it.
@@ -548,7 +549,7 @@ func (s *AvgFunc) Eval(env *environment.Environment) (document.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (s *AvgFunc) IsEqual(other Expr) bool {
+func (s *AvgFunc) IsEqual(other expr.Expr) bool {
 	if other == nil {
 		return false
 	}
@@ -558,10 +559,10 @@ func (s *AvgFunc) IsEqual(other Expr) bool {
 		return false
 	}
 
-	return Equal(s.Expr, o.Expr)
+	return expr.Equal(s.Expr, o.Expr)
 }
 
-func (s *AvgFunc) Params() []Expr { return []Expr{s.Expr} }
+func (s *AvgFunc) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the average expression.

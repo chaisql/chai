@@ -1,13 +1,61 @@
-package expr_test
+package functions_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/stretchr/testify/require"
 )
+
+// TODO
+var doc document.Document = func() document.Document {
+	return document.NewFromJSON([]byte(`{
+		"a": 1,
+		"b": {"foo bar": [1, 2]},
+		"c": [1, {"foo": "bar"}, [1, 2]]
+	}`))
+}()
+
+var docWithKey document.Document = func() document.Document {
+	fb := document.NewFieldBuffer()
+	err := fb.Copy(doc)
+	if err != nil {
+		panic(err)
+	}
+
+	fb.DecodedKey = document.NewIntegerValue(1)
+	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	return fb
+}()
+
+var envWithDoc = environment.New(doc)
+
+var envWithDocAndKey = environment.New(docWithKey)
+
+var nullLiteral = document.NewNullValue()
+
+func testExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
+	t.Helper()
+
+	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
+	require.NoError(t, err)
+	res, err := e.Eval(env)
+	if fails {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	}
+}
 
 func TestPkExpr(t *testing.T) {
 	tests := []struct {
@@ -28,7 +76,7 @@ func TestPkExpr(t *testing.T) {
 }
 
 func TestFunctionDef(t *testing.T) {
-	table := expr.DefaultPackagesTable()
+	table := functions.DefaultPackagesTable()
 	def, err := table.GetFunc("", "count")
 	require.NoError(t, err)
 
@@ -48,7 +96,7 @@ func TestFunctionDef(t *testing.T) {
 }
 
 func TestPackagesTable(t *testing.T) {
-	table := expr.DefaultPackagesTable()
+	table := functions.DefaultPackagesTable()
 
 	t.Run("OK GetFunc()", func(t *testing.T) {
 		def, err := table.GetFunc("math", "floor")

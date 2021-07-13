@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
@@ -60,7 +60,7 @@ func scanFuncDocString(s *scanner.Scanner) (string, error) {
 }
 
 func funcDocString(pkg string, name string) (string, error) {
-	table := expr.DefaultPackagesTable()
+	table := functions.DefaultPackagesTable()
 	f, err := table.GetFunc(pkg, name)
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrNotFound, err.Error())
