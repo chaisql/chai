@@ -287,12 +287,12 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if m.Min.Type == 0 {
+	if m.Min.Type() == 0 {
 		m.Min = v
 		return nil
 	}
 
-	if m.Min.Type == v.Type || m.Min.Type.IsNumber() && v.Type.IsNumber() {
+	if m.Min.Type() == v.Type() || m.Min.Type().IsNumber() && v.Type().IsNumber() {
 		ok, err := m.Min.IsGreaterThan(v)
 		if err != nil {
 			return err
@@ -304,7 +304,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if m.Min.Type > v.Type {
+	if m.Min.Type() > v.Type() {
 		m.Min = v
 	}
 
@@ -313,7 +313,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 
 // Eval return the minimum value.
 func (m *MinAggregator) Eval(env *environment.Environment) (document.Value, error) {
-	if m.Min.Type == 0 {
+	if m.Min.Type() == 0 {
 		return document.NewNullValue(), nil
 	}
 	return m.Min, nil
@@ -385,12 +385,12 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if m.Max.Type == 0 {
+	if m.Max.Type() == 0 {
 		m.Max = v
 		return nil
 	}
 
-	if m.Max.Type == v.Type || m.Max.Type.IsNumber() && v.Type.IsNumber() {
+	if m.Max.Type() == v.Type() || m.Max.Type().IsNumber() && v.Type().IsNumber() {
 		ok, err := m.Max.IsLesserThan(v)
 		if err != nil {
 			return err
@@ -402,7 +402,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if m.Max.Type < v.Type {
+	if m.Max.Type() < v.Type() {
 		m.Max = v
 	}
 
@@ -411,7 +411,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 
 // Eval return the maximum value.
 func (m *MaxAggregator) Eval(env *environment.Environment) (document.Value, error) {
-	if m.Max.Type == 0 {
+	if m.Max.Type() == 0 {
 		return document.NewNullValue(), nil
 	}
 
@@ -482,12 +482,12 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && err != document.ErrFieldNotFound {
 		return err
 	}
-	if v.Type != document.IntegerValue && v.Type != document.DoubleValue {
+	if v.Type() != document.IntegerValue && v.Type() != document.DoubleValue {
 		return nil
 	}
 
 	if s.SumF != nil {
-		if v.Type == document.IntegerValue {
+		if v.Type() == document.IntegerValue {
 			*s.SumF += float64(v.V().(int64))
 		} else {
 			*s.SumF += float64(v.V().(float64))
@@ -496,7 +496,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if v.Type == document.DoubleValue {
+	if v.Type() == document.DoubleValue {
 		var sumF float64
 		if s.SumI != nil {
 			sumF = float64(*s.SumI)
@@ -591,7 +591,7 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 		return err
 	}
 
-	switch v.Type {
+	switch v.Type() {
 	case document.IntegerValue:
 		s.Avg += float64(v.V().(int64))
 	case document.DoubleValue:
