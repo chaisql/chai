@@ -176,13 +176,13 @@ func (r *encodedValueRange) Convert(v types.Value, isMin bool) (types.Value, boo
 	// is lossless.
 	v, err := r.constraints.ConvertValueAtPath(r.path, v, func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
 		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
-			return types.CastAsDouble(v)
+			return document.CastAsDouble(v)
 		}
 
 		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
 			f := v.V().(float64)
 			if float64(int64(f)) == f {
-				return types.CastAsInteger(v)
+				return document.CastAsInteger(v)
 			}
 
 			if r.Exact {
@@ -547,13 +547,13 @@ func (r *encodedIndexRange) Convert(v types.Value, p document.Path, t types.Valu
 	// is lossless.
 	v, err := r.constraints.ConvertValueAtPath(p, v, func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
 		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
-			return types.CastAsDouble(v)
+			return document.CastAsDouble(v)
 		}
 
 		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
 			f := v.V().(float64)
 			if float64(int64(f)) == f {
-				return types.CastAsInteger(v)
+				return document.CastAsInteger(v)
 			}
 
 			if r.Exact {

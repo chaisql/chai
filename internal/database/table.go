@@ -431,7 +431,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error)
 	if pk == nil {
 		// if no primary key was defined, convert the pivot to an integer then to an unsigned integer
 		// and encode it as a varint
-		v, err = types.CastAsInteger(v)
+		v, err = document.CastAsInteger(v)
 		if err != nil {
 			return nil, err
 		}
@@ -457,7 +457,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error)
 	// and the value to encode is an integer
 	// convert it to a double.
 	if v.Type() == types.IntegerValue {
-		v, err = types.CastAsDouble(v)
+		v, err = document.CastAsDouble(v)
 		if err != nil {
 			return nil, err
 		}

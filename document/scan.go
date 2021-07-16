@@ -266,21 +266,21 @@ func scanValue(v types.Value, ref reflect.Value) error {
 
 	switch ref.Kind() {
 	case reflect.String:
-		v, err := types.CastAsText(v)
+		v, err := CastAsText(v)
 		if err != nil {
 			return err
 		}
 		ref.SetString(string(v.V().(string)))
 		return nil
 	case reflect.Bool:
-		v, err := types.CastAsBool(v)
+		v, err := CastAsBool(v)
 		if err != nil {
 			return err
 		}
 		ref.SetBool(v.V().(bool))
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v, err := types.CastAsInteger(v)
+		v, err := CastAsInteger(v)
 		if err != nil {
 			return err
 		}
@@ -291,14 +291,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		ref.SetUint(uint64(x))
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := types.CastAsInteger(v)
+		v, err := CastAsInteger(v)
 		if err != nil {
 			return err
 		}
 		ref.SetInt(v.V().(int64))
 		return nil
 	case reflect.Float32, reflect.Float64:
-		v, err := types.CastAsDouble(v)
+		v, err := CastAsDouble(v)
 		if err != nil {
 			return err
 		}

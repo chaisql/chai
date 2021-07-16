@@ -82,16 +82,10 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 	var xa, xb int64
 
-	ia, err := CastAsInteger(a)
-	if err != nil {
-		return NewNullValue(), nil
-	}
+	ia := convertNumberToInteger(a)
 	xa = ia.V().(int64)
 
-	ib, err := CastAsInteger(b)
-	if err != nil {
-		return NewNullValue(), nil
-	}
+	ib := convertNumberToInteger(b)
 	xb = ib.V().(int64)
 
 	var xr int64
@@ -149,16 +143,10 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 	var xa, xb float64
 
-	fa, err := CastAsDouble(a)
-	if err != nil {
-		return NewNullValue(), nil
-	}
+	fa := convertNumberToDouble(a)
 	xa = fa.V().(float64)
 
-	fb, err := CastAsDouble(b)
-	if err != nil {
-		return NewNullValue(), nil
-	}
+	fb := convertNumberToDouble(b)
 	xb = fb.V().(float64)
 
 	switch operator {
@@ -193,5 +181,23 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 		return NewIntegerValue(ia ^ ib), nil
 	default:
 		panic(stringutil.Sprintf("unknown operator %c", operator))
+	}
+}
+
+func convertNumberToInteger(v Value) Value {
+	switch v.Type() {
+	case IntegerValue:
+		return v
+	default:
+		return NewIntegerValue(int64(v.V().(float64)))
+	}
+}
+
+func convertNumberToDouble(v Value) Value {
+	switch v.Type() {
+	case DoubleValue:
+		return v
+	default:
+		return NewDoubleValue(float64(v.V().(int64)))
 	}
 }

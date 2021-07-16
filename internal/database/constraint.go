@@ -408,7 +408,7 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value,
 	// no constraint have been found for this path.
 	// check if this is an integer and convert it to double.
 	if v.Type() == types.IntegerValue {
-		newV, _ := types.CastAsDouble(v)
+		newV, _ := document.CastAsDouble(v)
 		return newV, nil
 	}
 

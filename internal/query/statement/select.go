@@ -3,12 +3,12 @@ package statement
 import (
 	"errors"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/types"
 )
 
 // SelectStmt holds SELECT configuration.
@@ -160,7 +160,7 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 		}
 
-		v, err = types.CastAsInteger(v)
+		v, err = document.CastAsInteger(v)
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +178,7 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 		}
 
-		v, err = types.CastAsInteger(v)
+		v, err = document.CastAsInteger(v)
 		if err != nil {
 			return nil, err
 		}

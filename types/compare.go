@@ -186,8 +186,8 @@ func compareIntegers(op operator, l, r int64) bool {
 }
 
 func compareNumbers(op operator, l, r Value) bool {
-	l, _ = CastAsDouble(l)
-	r, _ = CastAsDouble(r)
+	l = convertNumberToDouble(l)
+	r = convertNumberToDouble(r)
 
 	af := l.V().(float64)
 	bf := r.V().(float64)
