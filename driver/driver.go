@@ -369,7 +369,7 @@ func (v valueScanner) Scan(src interface{}) error {
 	switch t := src.(type) {
 	case types.Document:
 		return document.StructScan(t, v.dest)
-	case document.Array:
+	case types.Array:
 		return document.SliceScan(t, v.dest)
 	case types.Value:
 		return document.ScanValue(t, src)

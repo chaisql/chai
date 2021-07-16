@@ -170,7 +170,7 @@ func (e *EncodedDocument) Iterate(fn func(field string, value types.Value) error
 	return nil
 }
 
-// An EncodedArray implements the document.Array interface on top of an
+// An EncodedArray implements the types.Array interface on top of an
 // encoded representation of an array.
 // It is useful for avoiding decoding the entire array when
 // only a few values are needed.

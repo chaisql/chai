@@ -52,7 +52,7 @@ func DocumentValue(d types.Document) expr.LiteralValue {
 }
 
 // ArrayValue creates a literal value of type Array.
-func ArrayValue(a document.Array) expr.LiteralValue {
+func ArrayValue(a types.Array) expr.LiteralValue {
 	return expr.LiteralValue{Value: types.NewArrayValue(a)}
 }
 

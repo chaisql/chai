@@ -75,7 +75,7 @@ func (e *Encoder) EncodeDocument(d types.Document) error {
 }
 
 // EncodeArray encodes a as a MessagePack array.
-func (e *Encoder) EncodeArray(a document.Array) error {
+func (e *Encoder) EncodeArray(a types.Array) error {
 	var alen int
 	var err error
 
@@ -115,7 +115,7 @@ func (e *Encoder) EncodeValue(v types.Value) error {
 	case types.DocumentValue:
 		return e.EncodeDocument(v.V().(types.Document))
 	case types.ArrayValue:
-		return e.EncodeArray(v.V().(document.Array))
+		return e.EncodeArray(v.V().(types.Array))
 	case types.NullValue:
 		return e.enc.EncodeNil()
 	case types.TextValue:
@@ -163,7 +163,7 @@ func (d *Decoder) DecodeValue() (v types.Value, err error) {
 
 	// decode array
 	if (msgpcode.IsFixedArray(c)) || (c == msgpcode.Array16) || (c == msgpcode.Array32) {
-		var a document.Array
+		var a types.Array
 		a, err = d.DecodeArray()
 		if err != nil {
 			return
@@ -270,7 +270,7 @@ func (d *Decoder) DecodeDocument() (types.Document, error) {
 // DecodeArray decodes one array from the reader.
 // If the array is malformed, this function will not return an error.
 // However, calls to Iterate or GetByIndex will fail.
-func (d *Decoder) DecodeArray() (document.Array, error) {
+func (d *Decoder) DecodeArray() (types.Array, error) {
 	r, err := d.dec.DecodeRaw()
 	if err != nil {
 		return nil, err

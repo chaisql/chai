@@ -494,7 +494,7 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err = doc.GetByField("t")
 		require.NoError(t, err)
-		a, ok := v.V().(document.Array)
+		a, ok := v.V().(types.Array)
 		require.True(t, ok)
 		var count int
 		err = a.Iterate(func(i int, v types.Value) error {

@@ -120,7 +120,7 @@ func EncodeValue(v types.Value) ([]byte, error) {
 	case types.DocumentValue:
 		return EncodeDocument(v.V().(types.Document))
 	case types.ArrayValue:
-		return EncodeArray(v.V().(document.Array))
+		return EncodeArray(v.V().(types.Array))
 	case types.BlobValue:
 		return v.V().([]byte), nil
 	case types.TextValue:
@@ -187,7 +187,7 @@ func (e *EncodedDocument) MarshalJSON() ([]byte, error) {
 	return document.MarshalJSON(e)
 }
 
-// An EncodedArray implements the document.Array interface on top of an encoded representation of an
+// An EncodedArray implements the types.Array interface on top of an encoded representation of an
 // array.
 // It is useful to avoid decoding the entire array when only a few values are needed.
 type EncodedArray []byte
@@ -265,7 +265,7 @@ func decodeValueFromDocument(data []byte, field string) (types.Value, error) {
 }
 
 // EncodeArray encodes a into its binary representation.
-func EncodeArray(a document.Array) ([]byte, error) {
+func EncodeArray(a types.Array) ([]byte, error) {
 	var format Format
 
 	var offset uint64
@@ -315,7 +315,7 @@ func EncodeArray(a document.Array) ([]byte, error) {
 
 // DecodeArray takes a byte slice and returns a lazily decoded array.
 // If buf is malformed, an error will be returned when calling one of the array method.
-func DecodeArray(buf []byte) document.Array {
+func DecodeArray(buf []byte) types.Array {
 	return EncodedArray(buf)
 }
 

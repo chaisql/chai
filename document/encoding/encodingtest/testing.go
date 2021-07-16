@@ -148,7 +148,7 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.NoError(t, err)
 
 	require.Equal(t, types.ArrayValue, v.Type())
-	a := v.V().(document.Array)
+	a := v.V().(types.Array)
 	v, err = a.GetByIndex(0)
 	require.NoError(t, err)
 

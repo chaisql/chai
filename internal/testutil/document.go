@@ -57,7 +57,7 @@ func MakeDocuments(t testing.TB, jsonDocs ...string) (docs Docs) {
 }
 
 // MakeArray creates an array from a json string.
-func MakeArray(t testing.TB, jsonArray string) document.Array {
+func MakeArray(t testing.TB, jsonArray string) types.Array {
 	t.Helper()
 
 	var vb document.ValueBuffer

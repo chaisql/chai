@@ -52,7 +52,7 @@ func transformV(v types.Value) val {
 	if v.Type() == types.DocumentValue {
 		vi = transformDoc(v.V().(types.Document))
 	} else if v.Type() == types.ArrayValue {
-		vi = transformArray(v.V().(document.Array))
+		vi = transformArray(v.V().(types.Array))
 	} else {
 		vi = v.String()
 	}
@@ -82,7 +82,7 @@ func transformDoc(d types.Document) doc {
 	return fields
 }
 
-func transformArray(a document.Array) []val {
+func transformArray(a types.Array) []val {
 	fields := make([]val, 0)
 	_ = a.Iterate(func(i int, v types.Value) error {
 		fields = append(fields, transformV(v))

@@ -39,7 +39,7 @@ func MarshalJSON(d types.Document) ([]byte, error) {
 }
 
 // MarshalJSONArray encodes an array to json.
-func MarshalJSONArray(a Array) ([]byte, error) {
+func MarshalJSONArray(a types.Array) ([]byte, error) {
 	return types.JsonArray{Array: a}.MarshalJSON()
 }
 
@@ -192,7 +192,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		return types.NewDocumentValue(&buf), err
 	case types.ArrayValue:
 		var vb ValueBuffer
-		err := vb.ScanArray(v.V().(Array))
+		err := vb.ScanArray(v.V().(types.Array))
 		if err != nil {
 			return v, err
 		}
@@ -337,7 +337,7 @@ func (fb *FieldBuffer) Copy(d types.Document) error {
 			fb.fields[i].Value = types.NewDocumentValue(&buf)
 		case types.ArrayValue:
 			var buf ValueBuffer
-			err = buf.Copy(f.Value.V().(Array))
+			err = buf.Copy(f.Value.V().(types.Array))
 			if err != nil {
 				return err
 			}
@@ -393,7 +393,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := f.Value.V().(*ValueBuffer)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(f.Value.V().(Array))
+				err := buf.Copy(f.Value.V().(types.Array))
 				if err != nil {
 					return err
 				}
@@ -526,7 +526,7 @@ func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 }
 
 // GetValueFromArray returns the value at path p from a.
-func (p Path) GetValueFromArray(a Array) (types.Value, error) {
+func (p Path) GetValueFromArray(a types.Array) (types.Value, error) {
 	if len(p) == 0 {
 		return nil, ErrFieldNotFound
 	}
@@ -561,7 +561,7 @@ func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 	case types.DocumentValue:
 		return p.GetValueFromDocument(v.V().(types.Document))
 	case types.ArrayValue:
-		return p.GetValueFromArray(v.V().(Array))
+		return p.GetValueFromArray(v.V().(types.Array))
 	}
 
 	return nil, ErrFieldNotFound

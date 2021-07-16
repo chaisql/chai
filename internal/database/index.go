@@ -389,7 +389,7 @@ func (idx *Index) Truncate() error {
 // order of the original values.
 //
 // The values are marshalled and separated with a types.ArrayValueDelim,
-// *without* a trailing document.ArrayEnd, which enables to handle cases
+// *without* a trailing types.ArrayEnd, which enables to handle cases
 // where only some of the values are being provided and still perform lookups
 // (like index_foo_a_b_c and providing only a and b).
 //

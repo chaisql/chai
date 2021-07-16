@@ -105,11 +105,11 @@ func structScan(d types.Document, ref reflect.Value) error {
 //
 // If t is an array pointer, its capacity must be bigger than the length of a, otherwise an error is
 // returned.
-func SliceScan(a Array, t interface{}) error {
+func SliceScan(a types.Array, t interface{}) error {
 	return sliceScan(a, reflect.ValueOf(t))
 }
 
-func sliceScan(a Array, ref reflect.Value) error {
+func sliceScan(a types.Array, ref reflect.Value) error {
 	if !ref.IsValid() || ref.Kind() != reflect.Ptr || ref.IsNil() {
 		return errors.New("target must be pointer to a slice or array")
 	}
@@ -314,7 +314,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		case types.ArrayValue:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
-			err := sliceScan(v.V().(Array), vs)
+			err := sliceScan(v.V().(types.Array), vs)
 			if err != nil {
 				return err
 			}
@@ -365,7 +365,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return sliceScan(v.V().(Array), ref.Addr())
+		return sliceScan(v.V().(types.Array), ref.Addr())
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
@@ -379,7 +379,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return sliceScan(v.V().(Array), ref.Addr())
+		return sliceScan(v.V().(types.Array), ref.Addr())
 	case reflect.Map:
 		v, err := CastAsDocument(v)
 		if err != nil {

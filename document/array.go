@@ -14,13 +14,8 @@ var (
 	ErrValueNotFound = errors.New("value not found")
 )
 
-// An Array contains a set of values.
-type Array interface {
-	types.Array
-}
-
 // ArrayLength returns the length of an array.
-func ArrayLength(a Array) (int, error) {
+func ArrayLength(a types.Array) (int, error) {
 	if vb, ok := a.(*ValueBuffer); ok {
 		return len(vb.Values), nil
 	}
@@ -36,7 +31,7 @@ func ArrayLength(a Array) (int, error) {
 var errStop = errors.New("stop")
 
 // ArrayContains iterates over a and returns whether v is equal to one of its values.
-func ArrayContains(a Array, v types.Value) (bool, error) {
+func ArrayContains(a types.Array, v types.Value) (bool, error) {
 	var found bool
 
 	err := a.Iterate(func(i int, vv types.Value) error {
@@ -106,7 +101,7 @@ func (vb *ValueBuffer) Append(v types.Value) *ValueBuffer {
 }
 
 // ScanArray copies all the values of a to the buffer.
-func (vb *ValueBuffer) ScanArray(a Array) error {
+func (vb *ValueBuffer) ScanArray(a types.Array) error {
 	return a.Iterate(func(i int, v types.Value) error {
 		vb.Values = append(vb.Values, v)
 		return nil
@@ -115,7 +110,7 @@ func (vb *ValueBuffer) ScanArray(a Array) error {
 
 // Copy deep copies all the values from the given array.
 // If a value is a document or an array, it will be stored as a *FieldBuffer or *ValueBuffer respectively.
-func (vb *ValueBuffer) Copy(a Array) error {
+func (vb *ValueBuffer) Copy(a types.Array) error {
 	err := vb.ScanArray(a)
 	if err != nil {
 		return err
@@ -140,7 +135,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 			}
 		case types.ArrayValue:
 			var buf ValueBuffer
-			err = buf.Copy(v.V().(Array))
+			err = buf.Copy(v.V().(types.Array))
 			if err != nil {
 				return err
 			}
@@ -184,7 +179,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := v.V().(*ValueBuffer)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(v.V().(Array))
+				err := buf.Copy(v.V().(types.Array))
 				if err != nil {
 					return err
 				}
@@ -319,7 +314,7 @@ func (a *sortableArray) Less(i, j int) (ok bool) {
 //   - Arrays
 //   - Documents
 // It doesn't sort nested arrays.
-func SortArray(a Array) (*ValueBuffer, error) {
+func SortArray(a types.Array) (*ValueBuffer, error) {
 	var s sortableArray
 	vb, ok := a.(*ValueBuffer)
 	if !ok {

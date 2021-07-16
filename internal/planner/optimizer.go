@@ -265,7 +265,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*st
 					// ex: WHERE a IN []
 					lv, ok := t.RightHand().(expr.LiteralValue)
 					if ok && lv.Value.Type() == types.ArrayValue {
-						l, err := document.ArrayLength(lv.Value.V().(document.Array))
+						l, err := document.ArrayLength(lv.Value.V().(types.Array))
 						if err != nil {
 							return nil, err
 						}

@@ -374,7 +374,7 @@ func CastConversion(v types.Value, path document.Path, targetType types.ValueTyp
 func (f FieldConstraints) ConvertValueAtPath(path document.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
 	switch v.Type() {
 	case types.ArrayValue:
-		vb, err := f.convertArrayAtPath(path, v.V().(document.Array), conversionFn)
+		vb, err := f.convertArrayAtPath(path, v.V().(types.Array), conversionFn)
 		return types.NewArrayValue(vb), err
 	case types.DocumentValue:
 		fb, err := f.convertDocumentAtPath(path, v.V().(types.Document), conversionFn)
@@ -432,7 +432,7 @@ func (f FieldConstraints) convertDocumentAtPath(path document.Path, d types.Docu
 	return fb, err
 }
 
-func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Array, conversionFn ConversionFunc) (*document.ValueBuffer, error) {
+func (f FieldConstraints) convertArrayAtPath(path document.Path, a types.Array, conversionFn ConversionFunc) (*document.ValueBuffer, error) {
 	vb := document.NewValueBuffer()
 	err := vb.Copy(a)
 	if err != nil {

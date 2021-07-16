@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	// ArrayValueDelim is a separator used when encoding document.Array in
+	// ArrayValueDelim is a separator used when encoding types.Array in
 	// binary reprsentation
 	ArrayValueDelim = 0x1f
-	// ArrayEnd is the final separator used when encoding document.Array in
+	// ArrayEnd is the final separator used when encoding types.Array in
 	// binary reprsentation.
 	ArrayEnd           = 0x1e
 	DocumentValueDelim = 0x1c

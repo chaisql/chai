@@ -184,7 +184,7 @@ func NewValue(x interface{}) (types.Value, error) {
 		return types.NewNullValue(), nil
 	case types.Document:
 		return types.NewDocumentValue(v), nil
-	case Array:
+	case types.Array:
 		return types.NewArrayValue(v), nil
 	}
 
@@ -246,7 +246,7 @@ type sliceArray struct {
 	ref reflect.Value
 }
 
-var _ Array = (*sliceArray)(nil)
+var _ types.Array = (*sliceArray)(nil)
 
 func (s sliceArray) Iterate(fn func(i int, v types.Value) error) error {
 	l := s.ref.Len()
