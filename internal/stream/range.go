@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 type Costable interface {
@@ -98,10 +99,10 @@ func (r *ValueRange) encode(table *database.Table, env *environment.Environment)
 
 	// ensure boundaries are typed
 	if rng.Min == nil {
-		rng.Min = document.NewEmptyValue(rng.RangeType)
+		rng.Min = types.NewEmptyValue(rng.RangeType)
 	}
 	if rng.Max == nil {
-		rng.Max = document.NewEmptyValue(rng.RangeType)
+		rng.Max = types.NewEmptyValue(rng.RangeType)
 	}
 
 	if r.Exclusive && r.Exact {
@@ -157,31 +158,31 @@ func (r ValueRange) Clone() ValueRange {
 }
 
 type encodedValueRange struct {
-	pkType      document.ValueType
+	pkType      types.ValueType
 	path        document.Path
 	constraints database.FieldConstraints
 
-	Min, Max  document.Value
+	Min, Max  types.Value
 	Exclusive bool
 	Exact     bool
 
 	EncodedMin, EncodedMax []byte
-	RangeType              document.ValueType
+	RangeType              types.ValueType
 }
 
-func (r *encodedValueRange) Convert(v document.Value, isMin bool) (document.Value, bool, error) {
+func (r *encodedValueRange) Convert(v types.Value, isMin bool) (types.Value, bool, error) {
 	// ensure the operand satisfies all the constraints, index can work only on exact types.
 	// if a number is encountered, try to convert it to the right type if and only if the conversion
 	// is lossless.
-	v, err := r.constraints.ConvertValueAtPath(r.path, v, func(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
-		if v.Type() == document.IntegerValue && targetType == document.DoubleValue {
-			return document.CastAsDouble(v)
+	v, err := r.constraints.ConvertValueAtPath(r.path, v, func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
+		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
+			return types.CastAsDouble(v)
 		}
 
-		if v.Type() == document.DoubleValue && targetType == document.IntegerValue {
+		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
 			f := v.V().(float64)
 			if float64(int64(f)) == f {
-				return document.CastAsInteger(v)
+				return types.CastAsInteger(v)
 			}
 
 			if r.Exact {
@@ -197,7 +198,7 @@ func (r *encodedValueRange) Convert(v document.Value, isMin bool) (document.Valu
 			// a BETWEEN 1.1 AND 2.2 -> a >= 2 AND a <= 3; exclusive -> false
 
 			// First, we need to ceil the number. Ex: 1.1 -> 2
-			v = document.NewIntegerValue(int64(math.Ceil(f)))
+			v = types.NewIntegerValue(int64(math.Ceil(f)))
 
 			// Next, we need to convert the boundaries
 			if isMin {
@@ -453,7 +454,7 @@ func (r *IndexRange) encode(index *database.Index, table *database.Table, env *e
 			return nil, err
 		}
 
-		rng.Max = document.NewValueBuffer(document.NewEmptyValue(v.Type()))
+		rng.Max = document.NewValueBuffer(types.NewEmptyValue(v.Type()))
 	}
 
 	if len(r.Min) == 0 && len(r.Max) > 0 {
@@ -462,7 +463,7 @@ func (r *IndexRange) encode(index *database.Index, table *database.Table, env *e
 			return nil, err
 		}
 
-		rng.Min = document.NewValueBuffer(document.NewEmptyValue(v.Type()))
+		rng.Min = document.NewValueBuffer(types.NewEmptyValue(v.Type()))
 	}
 
 	if r.Exclusive && r.Exact {
@@ -537,22 +538,22 @@ type encodedIndexRange struct {
 	IndexArity int
 
 	EncodedMin, EncodedMax []byte
-	RangeTypes             []document.ValueType
+	RangeTypes             []types.ValueType
 }
 
-func (r *encodedIndexRange) Convert(v document.Value, p document.Path, t document.ValueType, isMin bool) (document.Value, bool, error) {
+func (r *encodedIndexRange) Convert(v types.Value, p document.Path, t types.ValueType, isMin bool) (types.Value, bool, error) {
 	// ensure the operand satisfies all the constraints, index can work only on exact types.
 	// if a number is encountered, try to convert it to the right type if and only if the conversion
 	// is lossless.
-	v, err := r.constraints.ConvertValueAtPath(p, v, func(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
-		if v.Type() == document.IntegerValue && targetType == document.DoubleValue {
-			return document.CastAsDouble(v)
+	v, err := r.constraints.ConvertValueAtPath(p, v, func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
+		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
+			return types.CastAsDouble(v)
 		}
 
-		if v.Type() == document.DoubleValue && targetType == document.IntegerValue {
+		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
 			f := v.V().(float64)
 			if float64(int64(f)) == f {
-				return document.CastAsInteger(v)
+				return types.CastAsInteger(v)
 			}
 
 			if r.Exact {
@@ -568,7 +569,7 @@ func (r *encodedIndexRange) Convert(v document.Value, p document.Path, t documen
 			// a BETWEEN 1.1 AND 2.2 -> a >= 2 AND a <= 3; exclusive -> false
 
 			// First, we need to ceil the number. Ex: 1.1 -> 2
-			v = document.NewIntegerValue(int64(math.Ceil(f)))
+			v = types.NewIntegerValue(int64(math.Ceil(f)))
 
 			// Next, we need to convert the boundaries
 			if isMin {

@@ -9,12 +9,13 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
 
-// MakeValue turns v into a document.Value.
-func MakeValue(t testing.TB, v interface{}) document.Value {
+// MakeValue turns v into a types.Value.
+func MakeValue(t testing.TB, v interface{}) types.Value {
 	t.Helper()
 
 	vv, err := document.NewValue(v)
@@ -22,17 +23,17 @@ func MakeValue(t testing.TB, v interface{}) document.Value {
 	return vv
 }
 
-func MakeArrayValue(t testing.TB, vs ...interface{}) document.Value {
+func MakeArrayValue(t testing.TB, vs ...interface{}) types.Value {
 	t.Helper()
 
-	vvs := []document.Value{}
+	vvs := []types.Value{}
 	for _, v := range vs {
 		vvs = append(vvs, MakeValue(t, v))
 	}
 
 	vb := document.NewValueBuffer(vvs...)
 
-	return document.NewArrayValue(vb)
+	return types.NewArrayValue(vb)
 }
 
 // MakeDocument creates a document from a json string.
@@ -141,9 +142,9 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 func RequireDocEqual(t testing.TB, d1, d2 document.Document) {
 	t.Helper()
 
-	l := document.NewDocumentValue(d1)
-	r := document.NewDocumentValue(d2)
-	ok, err := document.IsEqual(l, r)
+	l := types.NewDocumentValue(d1)
+	r := types.NewDocumentValue(d2)
+	ok, err := types.IsEqual(l, r)
 	require.NoError(t, err)
 	if !ok {
 		t.Fatal(cmp.Diff(transformDoc(d1), transformDoc(d2)))

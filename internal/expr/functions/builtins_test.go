@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 )
 
 var doc document.Document = func() document.Document {
@@ -23,7 +24,7 @@ var docWithKey document.Document = func() document.Document {
 		panic(err)
 	}
 
-	fb.DecodedKey = document.NewIntegerValue(1)
+	fb.DecodedKey = types.NewIntegerValue(1)
 	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
 	if err != nil {
 		panic(err)
@@ -39,11 +40,11 @@ func TestPk(t *testing.T) {
 	tests := []struct {
 		name string
 		env  *environment.Environment
-		res  document.Value
+		res  types.Value
 	}{
-		{"empty env", &environment.Environment{}, document.NewNullValue()},
-		{"env with doc", envWithDoc, document.NewNullValue()},
-		{"env with doc and key", envWithDocAndKey, document.NewIntegerValue(1)},
+		{"empty env", &environment.Environment{}, types.NewNullValue()},
+		{"env with doc", envWithDoc, types.NewNullValue()},
+		{"env with doc and key", envWithDocAndKey, types.NewIntegerValue(1)},
 	}
 
 	for _, test := range tests {

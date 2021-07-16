@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
@@ -64,7 +65,7 @@ func (e *Encoder) EncodeDocument(d document.Document) error {
 		return err
 	}
 
-	return d.Iterate(func(f string, v document.Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		if err := e.enc.EncodeString(f); err != nil {
 			return err
 		}
@@ -92,7 +93,7 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 		return err
 	}
 
-	return a.Iterate(func(i int, v document.Value) error {
+	return a.Iterate(func(i int, v types.Value) error {
 		return e.EncodeValue(v)
 	})
 }
@@ -109,23 +110,23 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 // - int32 -> int32
 // - int64 -> int64
 // - float64 -> float64
-func (e *Encoder) EncodeValue(v document.Value) error {
+func (e *Encoder) EncodeValue(v types.Value) error {
 	switch v.Type() {
-	case document.DocumentValue:
+	case types.DocumentValue:
 		return e.EncodeDocument(v.V().(document.Document))
-	case document.ArrayValue:
+	case types.ArrayValue:
 		return e.EncodeArray(v.V().(document.Array))
-	case document.NullValue:
+	case types.NullValue:
 		return e.enc.EncodeNil()
-	case document.TextValue:
+	case types.TextValue:
 		return e.enc.EncodeString(v.V().(string))
-	case document.BlobValue:
+	case types.BlobValue:
 		return e.enc.EncodeBytes(v.V().([]byte))
-	case document.BoolValue:
+	case types.BoolValue:
 		return e.enc.EncodeBool(v.V().(bool))
-	case document.IntegerValue:
+	case types.IntegerValue:
 		return e.enc.EncodeInt(v.V().(int64))
-	case document.DoubleValue:
+	case types.DoubleValue:
 		return e.enc.EncodeFloat64(v.V().(float64))
 	}
 
@@ -154,7 +155,7 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 // DecodeValue reads one value from the reader and decodes it.
-func (d *Decoder) DecodeValue() (v document.Value, err error) {
+func (d *Decoder) DecodeValue() (v types.Value, err error) {
 	c, err := d.dec.PeekCode()
 	if err != nil {
 		return
@@ -168,7 +169,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 			return
 		}
 
-		v = document.NewArrayValue(a)
+		v = types.NewArrayValue(a)
 		return
 	}
 
@@ -180,7 +181,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 			return
 		}
 
-		v = document.NewDocumentValue(doc)
+		v = types.NewDocumentValue(doc)
 		return
 	}
 
@@ -191,7 +192,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewTextValue(s)
+		v = types.NewTextValue(s)
 		return
 	}
 
@@ -204,7 +205,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 			return
 		}
 
-		v = document.NewIntegerValue(data)
+		v = types.NewIntegerValue(data)
 		return
 	}
 
@@ -215,7 +216,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewNullValue()
+		v = types.NewNullValue()
 		return
 	case msgpcode.Bin8, msgpcode.Bin16, msgpcode.Bin32:
 		var data []byte
@@ -223,7 +224,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewBlobValue(data)
+		v = types.NewBlobValue(data)
 		return
 	case msgpcode.True, msgpcode.False:
 		var data bool
@@ -231,7 +232,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewBoolValue(data)
+		v = types.NewBoolValue(data)
 		return
 	case msgpcode.Int8, msgpcode.Int16, msgpcode.Int32, msgpcode.Int64, msgpcode.Uint8, msgpcode.Uint16, msgpcode.Uint32, msgpcode.Uint64:
 		var data int64
@@ -239,7 +240,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewIntegerValue(data)
+		v = types.NewIntegerValue(data)
 		return
 	case msgpcode.Double:
 		var data float64
@@ -247,7 +248,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewDoubleValue(data)
+		v = types.NewDoubleValue(data)
 		return
 	}
 

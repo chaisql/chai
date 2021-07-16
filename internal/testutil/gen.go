@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,7 @@ type ResultStream struct {
 	env *environment.Environment
 }
 
-func (ds *ResultStream) Next() (*document.Value, error) {
+func (ds *ResultStream) Next() (*types.Value, error) {
 	exp, err := ds.Parser.ParseDocument()
 	if err != nil {
 		return nil, err
@@ -38,19 +39,19 @@ func ParseResultStream(stream string) *ResultStream {
 	return &ResultStream{p, env}
 }
 
-// val is a fully realized representation of a document.Value, suitable for
+// val is a fully realized representation of a types.Value, suitable for
 // comparison with go-cmp.
 type val struct {
 	Type string
 	V    interface{}
 }
 
-func transformV(v document.Value) val {
+func transformV(v types.Value) val {
 	var vi interface{}
 
-	if v.Type() == document.DocumentValue {
+	if v.Type() == types.DocumentValue {
 		vi = transformDoc(v.V().(document.Document))
-	} else if v.Type() == document.ArrayValue {
+	} else if v.Type() == types.ArrayValue {
 		vi = transformArray(v.V().(document.Array))
 	} else {
 		vi = v.String()
@@ -73,7 +74,7 @@ type doc []field
 
 func transformDoc(d document.Document) doc {
 	fields := make([]field, 0)
-	_ = d.Iterate(func(name string, v document.Value) error {
+	_ = d.Iterate(func(name string, v types.Value) error {
 		fields = append(fields, field{Field: name, V: transformV(v)})
 		return nil
 	})
@@ -83,7 +84,7 @@ func transformDoc(d document.Document) doc {
 
 func transformArray(a document.Array) []val {
 	fields := make([]val, 0)
-	_ = a.Iterate(func(i int, v document.Value) error {
+	_ = a.Iterate(func(i int, v types.Value) error {
 		fields = append(fields, transformV(v))
 		return nil
 	})
@@ -103,7 +104,7 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
 
 	var got []*val
 	err := res.Iterate(func(d document.Document) error {
-		val := transformV(document.NewDocumentValue(d))
+		val := transformV(types.NewDocumentValue(d))
 		got = append(got, &val)
 		return nil
 	})

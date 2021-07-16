@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,15 +23,15 @@ func TestScan(t *testing.T) {
 	now := time.Now()
 
 	simpleDoc := document.NewFieldBuffer().
-		Add("foo", document.NewTextValue("foo")).
-		Add("bar", document.NewTextValue("bar")).
-		Add("baz", document.NewArrayValue(document.NewValueBuffer(
-			document.NewIntegerValue(10),
-			document.NewDoubleValue(20.5),
+		Add("foo", types.NewTextValue("foo")).
+		Add("bar", types.NewTextValue("bar")).
+		Add("baz", types.NewArrayValue(document.NewValueBuffer(
+			types.NewIntegerValue(10),
+			types.NewDoubleValue(20.5),
 		)))
 
 	nestedDoc := document.NewFieldBuffer().
-		Add("foo", document.NewDocumentValue(simpleDoc))
+		Add("foo", types.NewDocumentValue(simpleDoc))
 
 	var buf bytes.Buffer
 	codec := msgpack.NewCodec()
@@ -38,76 +39,76 @@ func TestScan(t *testing.T) {
 	require.NoError(t, err)
 
 	doc := document.NewFieldBuffer().
-		Add("a", document.NewBlobValue([]byte("foo"))).
-		Add("b", document.NewTextValue("bar")).
-		Add("c", document.NewBoolValue(true)).
-		Add("d", document.NewIntegerValue(10)).
-		Add("e", document.NewIntegerValue(10)).
-		Add("f", document.NewIntegerValue(10)).
-		Add("g", document.NewIntegerValue(10)).
-		Add("h", document.NewIntegerValue(10)).
-		Add("i", document.NewDoubleValue(10.5)).
-		Add("j", document.NewArrayValue(
+		Add("a", types.NewBlobValue([]byte("foo"))).
+		Add("b", types.NewTextValue("bar")).
+		Add("c", types.NewBoolValue(true)).
+		Add("d", types.NewIntegerValue(10)).
+		Add("e", types.NewIntegerValue(10)).
+		Add("f", types.NewIntegerValue(10)).
+		Add("g", types.NewIntegerValue(10)).
+		Add("h", types.NewIntegerValue(10)).
+		Add("i", types.NewDoubleValue(10.5)).
+		Add("j", types.NewArrayValue(
 			document.NewValueBuffer().
-				Append(document.NewBoolValue(true)),
+				Append(types.NewBoolValue(true)),
 		)).
-		Add("k", document.NewDocumentValue(
+		Add("k", types.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewTextValue("foo")).
-				Add("bar", document.NewTextValue("bar")),
+				Add("foo", types.NewTextValue("foo")).
+				Add("bar", types.NewTextValue("bar")),
 		)).
-		Add("l", document.NewDocumentValue(
+		Add("l", types.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewTextValue("foo")).
-				Add("bar", document.NewTextValue("bar")),
+				Add("foo", types.NewTextValue("foo")).
+				Add("bar", types.NewTextValue("bar")),
 		)).
-		Add("m", document.NewDocumentValue(
+		Add("m", types.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewTextValue("foo")).
-				Add("bar", document.NewTextValue("bar")).
-				Add("baz", document.NewTextValue("baz")).
-				Add("-", document.NewTextValue("bat")),
+				Add("foo", types.NewTextValue("foo")).
+				Add("bar", types.NewTextValue("bar")).
+				Add("baz", types.NewTextValue("baz")).
+				Add("-", types.NewTextValue("bat")),
 		)).
-		Add("n", document.NewDocumentValue(
+		Add("n", types.NewDocumentValue(
 			document.NewFieldBuffer().
-				Add("foo", document.NewTextValue("foo")).
-				Add("bar", document.NewTextValue("bar")),
+				Add("foo", types.NewTextValue("foo")).
+				Add("bar", types.NewTextValue("bar")),
 		)).
-		Add("o", document.NewNullValue()).
-		Add("p", document.NewTextValue(now.Format(time.RFC3339Nano))).
-		Add("r", document.NewDocumentValue(codec.NewDecoder(buf.Bytes()))).
-		Add("s", document.NewArrayValue(document.NewValueBuffer(document.NewBoolValue(true), document.NewBoolValue(false)))).
-		Add("u", document.NewArrayValue(document.NewValueBuffer(
-			document.NewDocumentValue(
+		Add("o", types.NewNullValue()).
+		Add("p", types.NewTextValue(now.Format(time.RFC3339Nano))).
+		Add("r", types.NewDocumentValue(codec.NewDecoder(buf.Bytes()))).
+		Add("s", types.NewArrayValue(document.NewValueBuffer(types.NewBoolValue(true), types.NewBoolValue(false)))).
+		Add("u", types.NewArrayValue(document.NewValueBuffer(
+			types.NewDocumentValue(
 				document.NewFieldBuffer().
-					Add("foo", document.NewTextValue("a")).
-					Add("bar", document.NewTextValue("b")),
+					Add("foo", types.NewTextValue("a")).
+					Add("bar", types.NewTextValue("b")),
 			),
-			document.NewDocumentValue(
+			types.NewDocumentValue(
 				document.NewFieldBuffer().
-					Add("foo", document.NewTextValue("c")).
-					Add("bar", document.NewTextValue("d")),
-			),
-		))).
-		Add("v", document.NewArrayValue(document.NewValueBuffer(
-			document.NewDocumentValue(
-				document.NewFieldBuffer().
-					Add("foo", document.NewTextValue("a")).
-					Add("bar", document.NewTextValue("b")),
-			),
-			document.NewDocumentValue(
-				document.NewFieldBuffer().
-					Add("foo", document.NewTextValue("c")).
-					Add("bar", document.NewTextValue("d")),
+					Add("foo", types.NewTextValue("c")).
+					Add("bar", types.NewTextValue("d")),
 			),
 		))).
-		Add("w", document.NewArrayValue(document.NewValueBuffer(
-			document.NewIntegerValue(1),
-			document.NewIntegerValue(2),
-			document.NewIntegerValue(3),
-			document.NewIntegerValue(4),
+		Add("v", types.NewArrayValue(document.NewValueBuffer(
+			types.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo", types.NewTextValue("a")).
+					Add("bar", types.NewTextValue("b")),
+			),
+			types.NewDocumentValue(
+				document.NewFieldBuffer().
+					Add("foo", types.NewTextValue("c")).
+					Add("bar", types.NewTextValue("d")),
+			),
 		))).
-		Add("x", document.NewBlobValue([]byte{1, 2, 3, 4}))
+		Add("w", types.NewArrayValue(document.NewValueBuffer(
+			types.NewIntegerValue(1),
+			types.NewIntegerValue(2),
+			types.NewIntegerValue(3),
+			types.NewIntegerValue(4),
+		))).
+		Add("x", types.NewBlobValue([]byte{1, 2, 3, 4}))
 
 	type foo struct {
 		Foo string
@@ -198,7 +199,7 @@ func TestScan(t *testing.T) {
 
 	t.Run("Small Slice", func(t *testing.T) {
 		s := make([]int, 1)
-		arr := document.NewValueBuffer().Append(document.NewIntegerValue(1)).Append(document.NewIntegerValue(2))
+		arr := document.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
 		err := document.SliceScan(arr, &s)
 		require.NoError(t, err)
 		require.Len(t, s, 2)
@@ -207,7 +208,7 @@ func TestScan(t *testing.T) {
 
 	t.Run("Slice overwrite", func(t *testing.T) {
 		s := make([]int, 1)
-		arr := document.NewValueBuffer().Append(document.NewIntegerValue(1)).Append(document.NewIntegerValue(2))
+		arr := document.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
 		err := document.SliceScan(arr, &s)
 		require.NoError(t, err)
 		err = document.SliceScan(arr, &s)
@@ -223,7 +224,7 @@ func TestScan(t *testing.T) {
 
 		b := bar{}
 
-		d := document.NewFieldBuffer().Add("a", document.NewIntegerValue(10))
+		d := document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
 		err := document.StructScan(d, &b)
 		require.NoError(t, err)
 
@@ -243,7 +244,7 @@ func TestScan(t *testing.T) {
 			C: &c,
 		}
 
-		d := document.NewFieldBuffer().Add("a", document.NewNullValue())
+		d := document.NewFieldBuffer().Add("a", types.NewNullValue())
 		err := document.StructScan(d, &b)
 		require.NoError(t, err)
 		require.Equal(t, bar{}, b)

@@ -1,9 +1,9 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // NamedParam is an expression which represents the name of a parameter.
@@ -11,7 +11,7 @@ type NamedParam string
 
 // Eval looks up for the parameters in the env for the one that has the same name as p
 // and returns the value.
-func (p NamedParam) Eval(env *environment.Environment) (document.Value, error) {
+func (p NamedParam) Eval(env *environment.Environment) (types.Value, error) {
 	return env.GetParamByName(string(p))
 }
 
@@ -32,7 +32,7 @@ type PositionalParam int
 
 // Eval looks up for the parameters in the env for the one that is has the same position as p
 // and returns the value.
-func (p PositionalParam) Eval(env *environment.Environment) (document.Value, error) {
+func (p PositionalParam) Eval(env *environment.Environment) (types.Value, error) {
 	return env.GetParamByIndex(int(p))
 }
 

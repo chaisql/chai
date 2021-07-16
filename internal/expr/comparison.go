@@ -5,6 +5,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A cmpOp is a comparison operator.
@@ -20,9 +21,9 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 // Eval compares a and b together using the operator specified when constructing the CmpOp
 // and returns the result of the comparison.
 // Comparing with NULL always evaluates to NULL.
-func (op *cmpOp) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		if a.Type() == document.NullValue || b.Type() == document.NullValue {
+func (op *cmpOp) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		if a.Type() == types.NullValue || b.Type() == types.NullValue {
 			return NullLiteral, nil
 		}
 
@@ -35,20 +36,20 @@ func (op *cmpOp) Eval(env *environment.Environment) (document.Value, error) {
 	})
 }
 
-func (op *cmpOp) compare(l, r document.Value) (bool, error) {
+func (op *cmpOp) compare(l, r types.Value) (bool, error) {
 	switch op.Tok {
 	case scanner.EQ:
-		return document.IsEqual(l, r)
+		return types.IsEqual(l, r)
 	case scanner.NEQ:
-		return document.IsNotEqual(l, r)
+		return types.IsNotEqual(l, r)
 	case scanner.GT:
-		return document.IsGreaterThan(l, r)
+		return types.IsGreaterThan(l, r)
 	case scanner.GTE:
-		return document.IsGreaterThanOrEqual(l, r)
+		return types.IsGreaterThanOrEqual(l, r)
 	case scanner.LT:
-		return document.IsLesserThan(l, r)
+		return types.IsLesserThan(l, r)
 	case scanner.LTE:
-		return document.IsLesserThanOrEqual(l, r)
+		return types.IsLesserThanOrEqual(l, r)
 	default:
 		panic(stringutil.Sprintf("unknown token %v", op.Tok))
 	}
@@ -97,23 +98,23 @@ func Between(a Expr) func(x, b Expr) Expr {
 	}
 }
 
-func (op *BetweenOperator) Eval(env *environment.Environment) (document.Value, error) {
+func (op *BetweenOperator) Eval(env *environment.Environment) (types.Value, error) {
 	x, err := op.X.Eval(env)
 	if err != nil {
 		return FalseLiteral, err
 	}
 
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		if a.Type() == document.NullValue || b.Type() == document.NullValue {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		if a.Type() == types.NullValue || b.Type() == types.NullValue {
 			return NullLiteral, nil
 		}
 
-		ok, err := document.IsGreaterThanOrEqual(x, a)
+		ok, err := types.IsGreaterThanOrEqual(x, a)
 		if !ok || err != nil {
 			return FalseLiteral, err
 		}
 
-		ok, err = document.IsLesserThanOrEqual(x, b)
+		ok, err = types.IsLesserThanOrEqual(x, b)
 		if !ok || err != nil {
 			return FalseLiteral, err
 		}
@@ -146,13 +147,13 @@ func In(a, b Expr) Expr {
 	return &InOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op *InOperator) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		if a.Type() == document.NullValue || b.Type() == document.NullValue {
+func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		if a.Type() == types.NullValue || b.Type() == types.NullValue {
 			return NullLiteral, nil
 		}
 
-		if b.Type() != document.ArrayValue {
+		if b.Type() != types.ArrayValue {
 			return FalseLiteral, nil
 		}
 
@@ -177,7 +178,7 @@ func NotIn(a, b Expr) Expr {
 	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.NIN}}}
 }
 
-func (op *NotInOperator) Eval(env *environment.Environment) (document.Value, error) {
+func (op *NotInOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return invertBoolResult(op.InOperator.Eval)(env)
 }
 
@@ -194,9 +195,9 @@ func Is(a, b Expr) Expr {
 	return &IsOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
-func (op *IsOperator) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		ok, err := document.IsEqual(a, b)
+func (op *IsOperator) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		ok, err := types.IsEqual(a, b)
 		if err != nil {
 			return NullLiteral, err
 		}
@@ -217,9 +218,9 @@ func IsNot(a, b Expr) Expr {
 	return &IsNotOperator{&simpleOperator{a, b, scanner.ISN}}
 }
 
-func (op *IsNotOperator) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		ok, err := document.IsNotEqual(a, b)
+func (op *IsNotOperator) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		ok, err := types.IsNotEqual(a, b)
 		if err != nil {
 			return NullLiteral, err
 		}

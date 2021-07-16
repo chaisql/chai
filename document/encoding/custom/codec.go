@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/binarysort"
+	"github.com/genjidb/genji/types"
 )
 
 // A Codec is a custom implementation of an encoding.Codec.
@@ -67,7 +68,7 @@ func EncodeDocument(d document.Document) ([]byte, error) {
 	var offset uint64
 	var dataList [][]byte
 
-	err := d.Iterate(func(f string, v document.Value) error {
+	err := d.Iterate(func(f string, v types.Value) error {
 		data, err := EncodeValue(v)
 		if err != nil {
 			return err
@@ -114,23 +115,23 @@ func DecodeDocument(buf []byte) document.Document {
 }
 
 // EncodeValue encodes any value to a binary representation.
-func EncodeValue(v document.Value) ([]byte, error) {
+func EncodeValue(v types.Value) ([]byte, error) {
 	switch v.Type() {
-	case document.DocumentValue:
+	case types.DocumentValue:
 		return EncodeDocument(v.V().(document.Document))
-	case document.ArrayValue:
+	case types.ArrayValue:
 		return EncodeArray(v.V().(document.Array))
-	case document.BlobValue:
+	case types.BlobValue:
 		return v.V().([]byte), nil
-	case document.TextValue:
+	case types.TextValue:
 		return []byte(v.V().(string)), nil
-	case document.BoolValue:
+	case types.BoolValue:
 		return binarysort.AppendBool(nil, v.V().(bool)), nil
-	case document.IntegerValue:
+	case types.IntegerValue:
 		return encodeInt64(v.V().(int64)), nil
-	case document.DoubleValue:
+	case types.DoubleValue:
 		return binarysort.AppendFloat64(nil, v.V().(float64)), nil
-	case document.NullValue:
+	case types.NullValue:
 		return nil, nil
 	}
 
@@ -151,7 +152,7 @@ type EncodedDocument struct {
 }
 
 // GetByField decodes the selected field.
-func (e *EncodedDocument) GetByField(field string) (document.Value, error) {
+func (e *EncodedDocument) GetByField(field string) (types.Value, error) {
 	return decodeValueFromDocument(e.data, field)
 }
 
@@ -159,7 +160,7 @@ func (e *EncodedDocument) Reset(data []byte) { e.data = data }
 
 // Iterate decodes each fields one by one and passes them to fn until the end of the document
 // or until fn returns an error.
-func (e *EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
+func (e *EncodedDocument) Iterate(fn func(field string, value types.Value) error) error {
 	var format Format
 	err := format.Decode(e.data)
 	if err != nil {
@@ -167,7 +168,7 @@ func (e *EncodedDocument) Iterate(fn func(field string, value document.Value) er
 	}
 
 	for _, fh := range format.Header.FieldHeaders {
-		v, err := DecodeValue(document.ValueType(fh.Type), format.Body[fh.Offset:fh.Offset+fh.Size])
+		v, err := DecodeValue(types.ValueType(fh.Type), format.Body[fh.Offset:fh.Offset+fh.Size])
 		if err != nil {
 			return err
 		}
@@ -193,7 +194,7 @@ type EncodedArray []byte
 
 // Iterate goes through all the values of the array and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error {
+func (e EncodedArray) Iterate(fn func(i int, value types.Value) error) error {
 	var format Format
 	err := format.Decode(e)
 	if err != nil {
@@ -201,7 +202,7 @@ func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error 
 	}
 
 	for _, fh := range format.Header.FieldHeaders {
-		v, err := DecodeValue(document.ValueType(fh.Type), format.Body[fh.Offset:fh.Offset+fh.Size])
+		v, err := DecodeValue(types.ValueType(fh.Type), format.Body[fh.Offset:fh.Offset+fh.Size])
 		if err != nil {
 			return err
 		}
@@ -217,7 +218,7 @@ func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error 
 }
 
 // GetByIndex returns a value by index of the array.
-func (e EncodedArray) GetByIndex(i int) (document.Value, error) {
+func (e EncodedArray) GetByIndex(i int) (types.Value, error) {
 	v, err := decodeValueFromDocument(e, string(encodeInt64(int64(i))))
 	if err == document.ErrFieldNotFound {
 		return v, document.ErrValueNotFound
@@ -231,7 +232,7 @@ func (e EncodedArray) MarshalJSON() ([]byte, error) {
 	return document.MarshalJSONArray(e)
 }
 
-func decodeValueFromDocument(data []byte, field string) (document.Value, error) {
+func decodeValueFromDocument(data []byte, field string) (types.Value, error) {
 	hsize, n := binary.Uvarint(data)
 	if n <= 0 {
 		return nil, errors.New("cannot decode data")
@@ -256,7 +257,7 @@ func decodeValueFromDocument(data []byte, field string) (document.Value, error) 
 		hdata = hdata[n:]
 
 		if field == string(fh.Name) {
-			return DecodeValue(document.ValueType(fh.Type), body[fh.Offset:fh.Offset+fh.Size])
+			return DecodeValue(types.ValueType(fh.Type), body[fh.Offset:fh.Offset+fh.Size])
 		}
 	}
 
@@ -270,7 +271,7 @@ func EncodeArray(a document.Array) ([]byte, error) {
 	var offset uint64
 	var dataList [][]byte
 
-	err := a.Iterate(func(i int, v document.Value) error {
+	err := a.Iterate(func(i int, v types.Value) error {
 		data, err := EncodeValue(v)
 		if err != nil {
 			return err
@@ -319,33 +320,33 @@ func DecodeArray(buf []byte) document.Array {
 }
 
 // DecodeValue takes some encoded data and decodes it to the target type t.
-func DecodeValue(t document.ValueType, data []byte) (document.Value, error) {
+func DecodeValue(t types.ValueType, data []byte) (types.Value, error) {
 	switch t {
-	case document.DocumentValue:
-		return document.NewDocumentValue(&EncodedDocument{data}), nil
-	case document.ArrayValue:
-		return document.NewArrayValue(EncodedArray(data)), nil
-	case document.BlobValue:
-		return document.NewBlobValue(data), nil
-	case document.TextValue:
-		return document.NewTextValue(string(data)), nil
-	case document.BoolValue:
+	case types.DocumentValue:
+		return types.NewDocumentValue(&EncodedDocument{data}), nil
+	case types.ArrayValue:
+		return types.NewArrayValue(EncodedArray(data)), nil
+	case types.BlobValue:
+		return types.NewBlobValue(data), nil
+	case types.TextValue:
+		return types.NewTextValue(string(data)), nil
+	case types.BoolValue:
 		x, err := binarysort.DecodeBool(data)
 		if err != nil {
 			return nil, err
 		}
-		return document.NewBoolValue(x), nil
-	case document.IntegerValue:
+		return types.NewBoolValue(x), nil
+	case types.IntegerValue:
 		x, _ := binary.Varint(data)
-		return document.NewIntegerValue(x), nil
-	case document.DoubleValue:
+		return types.NewIntegerValue(x), nil
+	case types.DoubleValue:
 		x, err := binarysort.DecodeFloat64(data)
 		if err != nil {
 			return nil, err
 		}
-		return document.NewDoubleValue(x), nil
-	case document.NullValue:
-		return document.NewNullValue(), nil
+		return types.NewDoubleValue(x), nil
+	case types.NullValue:
+		return types.NewNullValue(), nil
 	}
 
 	return nil, errors.New("unknown type")

@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A ProjectOperator applies an expression on each value of the stream and returns a new value.
@@ -61,7 +62,7 @@ type MaskDocument struct {
 	Exprs []expr.Expr
 }
 
-func (d *MaskDocument) GetByField(field string) (v document.Value, err error) {
+func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 	for _, e := range d.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()
@@ -89,7 +90,7 @@ func (d *MaskDocument) GetByField(field string) (v document.Value, err error) {
 	return
 }
 
-func (d *MaskDocument) Iterate(fn func(field string, value document.Value) error) error {
+func (d *MaskDocument) Iterate(fn func(field string, value types.Value) error) error {
 	for _, e := range d.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
 			d, ok := d.Env.GetDocument()

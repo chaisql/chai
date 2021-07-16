@@ -12,6 +12,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/types"
 )
 
 func init() {
@@ -370,7 +371,7 @@ func (v valueScanner) Scan(src interface{}) error {
 		return document.StructScan(t, v.dest)
 	case document.Array:
 		return document.SliceScan(t, v.dest)
-	case document.Value:
+	case types.Value:
 		return document.ScanValue(t, src)
 	}
 

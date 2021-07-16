@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,29 +20,29 @@ func TestNewFromJSON(t *testing.T) {
 		{"empty object, missing closing bracket", "{", nil, true},
 		{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
 			document.NewFieldBuffer().
-				Add("a", document.NewIntegerValue(1)).
-				Add("b", document.NewBoolValue(true)).
-				Add("c", document.NewTextValue("hello")).
-				Add("d", document.NewArrayValue(document.NewValueBuffer().
-					Append(document.NewIntegerValue(1)).
-					Append(document.NewIntegerValue(2)).
-					Append(document.NewIntegerValue(3)))).
-				Add("e", document.NewDocumentValue(document.NewFieldBuffer().Add("f", document.NewTextValue("g")))),
+				Add("a", types.NewIntegerValue(1)).
+				Add("b", types.NewBoolValue(true)).
+				Add("c", types.NewTextValue("hello")).
+				Add("d", types.NewArrayValue(document.NewValueBuffer().
+					Append(types.NewIntegerValue(1)).
+					Append(types.NewIntegerValue(2)).
+					Append(types.NewIntegerValue(3)))).
+				Add("e", types.NewDocumentValue(document.NewFieldBuffer().Add("f", types.NewTextValue("g")))),
 			false},
-		{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", document.NewTextValue("hello ciao")), false},
-		{"+integer values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", document.NewIntegerValue(1000)), false},
-		{"-integer values", `{"a": -1000}`, document.NewFieldBuffer().Add("a", document.NewIntegerValue(-1000)), false},
-		{"+float values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewDoubleValue(10000000000)), false},
-		{"-float values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewDoubleValue(-10000000000)), false},
-		{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", document.NewBoolValue(true)).Add("b", document.NewBoolValue(false)), false},
-		{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", document.NewArrayValue(document.NewValueBuffer())), false},
+		{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", types.NewTextValue("hello ciao")), false},
+		{"+integer values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(1000)), false},
+		{"-integer values", `{"a": -1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
+		{"+float values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
+		{"-float values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
+		{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
+		{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", types.NewArrayValue(document.NewValueBuffer())), false},
 		{"nested arrays", `{"a": [[1,  2]]}`, document.NewFieldBuffer().
-			Add("a", document.NewArrayValue(
+			Add("a", types.NewArrayValue(
 				document.NewValueBuffer().
-					Append(document.NewArrayValue(
+					Append(types.NewArrayValue(
 						document.NewValueBuffer().
-							Append(document.NewIntegerValue(1)).
-							Append(document.NewIntegerValue(2)))))), false},
+							Append(types.NewIntegerValue(1)).
+							Append(types.NewIntegerValue(2)))))), false},
 		{"missing comma", `{"a": 1 "b": 2}`, nil, true},
 		{"missing closing brackets", `{"a": 1, "b": 2`, nil, true},
 	}
@@ -67,7 +68,7 @@ func TestNewFromJSON(t *testing.T) {
 
 		v, err := d.GetByField("a")
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(1000), v)
+		require.Equal(t, types.NewIntegerValue(1000), v)
 
 		v, err = d.GetByField("b")
 		require.Equal(t, document.ErrFieldNotFound, err)
@@ -87,7 +88,7 @@ func TestNewFromMap(t *testing.T) {
 	t.Run("Iterate", func(t *testing.T) {
 		counter := make(map[string]int)
 
-		err := doc.Iterate(func(f string, v document.Value) error {
+		err := doc.Iterate(func(f string, v types.Value) error {
 			counter[f]++
 			switch f {
 			case "name":
@@ -107,15 +108,15 @@ func TestNewFromMap(t *testing.T) {
 	t.Run("GetByField", func(t *testing.T) {
 		v, err := doc.GetByField("name")
 		require.NoError(t, err)
-		require.Equal(t, document.NewTextValue("foo"), v)
+		require.Equal(t, types.NewTextValue("foo"), v)
 
 		v, err = doc.GetByField("age")
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(10), v)
+		require.Equal(t, types.NewIntegerValue(10), v)
 
 		v, err = doc.GetByField("nilField")
 		require.NoError(t, err)
-		require.Equal(t, document.NewNullValue(), v)
+		require.Equal(t, types.NewNullValue(), v)
 
 		_, err = doc.GetByField("bar")
 		require.Equal(t, document.ErrFieldNotFound, err)
@@ -137,7 +138,7 @@ func BenchmarkJSONToDocument(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		d := document.NewFromJSON(data)
-		d.Iterate(func(string, document.Value) error {
+		d.Iterate(func(string, types.Value) error {
 			return nil
 		})
 	}

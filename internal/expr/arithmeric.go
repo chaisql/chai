@@ -1,9 +1,9 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/types"
 )
 
 // IsArithmeticOperator returns true if e is one of
@@ -17,25 +17,25 @@ type arithmeticOperator struct {
 	*simpleOperator
 }
 
-func (op *arithmeticOperator) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
+func (op *arithmeticOperator) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
 		switch op.simpleOperator.Tok {
 		case scanner.ADD:
-			return document.Add(a, b)
+			return types.Add(a, b)
 		case scanner.SUB:
-			return document.Sub(a, b)
+			return types.Sub(a, b)
 		case scanner.MUL:
-			return document.Mul(a, b)
+			return types.Mul(a, b)
 		case scanner.DIV:
-			return document.Div(a, b)
+			return types.Div(a, b)
 		case scanner.MOD:
-			return document.Mod(a, b)
+			return types.Mod(a, b)
 		case scanner.BITWISEAND:
-			return document.BitwiseAnd(a, b)
+			return types.BitwiseAnd(a, b)
 		case scanner.BITWISEOR:
-			return document.BitwiseOr(a, b)
+			return types.BitwiseOr(a, b)
 		case scanner.BITWISEXOR:
-			return document.BitwiseXor(a, b)
+			return types.BitwiseXor(a, b)
 		}
 
 		panic("unknown arithmetic token")

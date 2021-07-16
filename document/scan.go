@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A Scanner can iterate over a document and scan all the fields.
@@ -20,7 +21,7 @@ type Scanner interface {
 func Scan(d Document, targets ...interface{}) error {
 	var i int
 
-	return d.Iterate(func(f string, v Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		if i >= len(targets) {
 			return errors.New("target list too small")
 		}
@@ -83,7 +84,7 @@ func structScan(d Document, ref reflect.Value) error {
 		}
 		v, err := d.GetByField(name)
 		if err == ErrFieldNotFound {
-			v = NewNullValue()
+			v = types.NewNullValue()
 		} else if err != nil {
 			return err
 		}
@@ -142,7 +143,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 
 	stp := sref.Type()
 
-	err = a.Iterate(func(i int, v Value) error {
+	err = a.Iterate(func(i int, v types.Value) error {
 		if k == reflect.Array {
 			err := scanValue(v, sref.Index(i).Addr())
 			if err != nil {
@@ -199,7 +200,7 @@ func mapScan(d Document, ref reflect.Value) error {
 		ref.Set(reflect.MakeMap(ref.Type()))
 	}
 
-	return d.Iterate(func(f string, v Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		newV := reflect.New(ref.Type().Elem())
 
 		err := scanValue(v, newV)
@@ -213,16 +214,16 @@ func mapScan(d Document, ref reflect.Value) error {
 }
 
 // ScanValue scans v into t.
-func ScanValue(v Value, t interface{}) error {
+func ScanValue(v types.Value, t interface{}) error {
 	return scanValue(v, reflect.ValueOf(t))
 }
 
-func scanValue(v Value, ref reflect.Value) error {
+func scanValue(v types.Value, ref reflect.Value) error {
 	if !ref.IsValid() {
 		return &ErrUnsupportedType{ref, "parameter is not a valid reference"}
 	}
 
-	if v.Type() == NullValue {
+	if v.Type() == types.NullValue {
 		if ref.Type().Kind() != reflect.Ptr {
 			return nil
 		}
@@ -258,28 +259,28 @@ func scanValue(v Value, ref reflect.Value) error {
 	}
 
 	// Scan nulls as Go zero values.
-	if v.Type() == NullValue {
+	if v.Type() == types.NullValue {
 		ref.Set(reflect.Zero(ref.Type()))
 		return nil
 	}
 
 	switch ref.Kind() {
 	case reflect.String:
-		v, err := CastAsText(v)
+		v, err := types.CastAsText(v)
 		if err != nil {
 			return err
 		}
 		ref.SetString(string(v.V().(string)))
 		return nil
 	case reflect.Bool:
-		v, err := CastAsBool(v)
+		v, err := types.CastAsBool(v)
 		if err != nil {
 			return err
 		}
 		ref.SetBool(v.V().(bool))
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v, err := CastAsInteger(v)
+		v, err := types.CastAsInteger(v)
 		if err != nil {
 			return err
 		}
@@ -290,14 +291,14 @@ func scanValue(v Value, ref reflect.Value) error {
 		ref.SetUint(uint64(x))
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := CastAsInteger(v)
+		v, err := types.CastAsInteger(v)
 		if err != nil {
 			return err
 		}
 		ref.SetInt(v.V().(int64))
 		return nil
 	case reflect.Float32, reflect.Float64:
-		v, err := CastAsDouble(v)
+		v, err := types.CastAsDouble(v)
 		if err != nil {
 			return err
 		}
@@ -305,12 +306,12 @@ func scanValue(v Value, ref reflect.Value) error {
 		return nil
 	case reflect.Interface:
 		switch v.Type() {
-		case DocumentValue:
+		case types.DocumentValue:
 			m := make(map[string]interface{})
 			vm := reflect.ValueOf(m)
 			ref.Set(vm)
 			return mapScan(v.V().(Document), vm)
-		case ArrayValue:
+		case types.ArrayValue:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
 			err := sliceScan(v.V().(Array), vs)
@@ -328,7 +329,7 @@ func scanValue(v Value, ref reflect.Value) error {
 	// test with supported stdlib types
 	switch ref.Type().String() {
 	case "time.Time":
-		if v.Type() == TextValue {
+		if v.Type() == types.TextValue {
 			parsed, err := time.Parse(time.RFC3339Nano, v.V().(string))
 			if err != nil {
 				return err
@@ -349,10 +350,10 @@ func scanValue(v Value, ref reflect.Value) error {
 		return structScan(v.V().(Document), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			if v.Type() != TextValue && v.Type() != BlobValue {
+			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
 				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
-			if v.Type() == TextValue {
+			if v.Type() == types.TextValue {
 				ref.SetBytes([]byte(v.V().(string)))
 			} else {
 				ref.SetBytes(v.V().([]byte))
@@ -367,7 +368,7 @@ func scanValue(v Value, ref reflect.Value) error {
 		return sliceScan(v.V().(Array), ref.Addr())
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			if v.Type() != TextValue && v.Type() != BlobValue {
+			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
 				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
 			reflect.Copy(ref, reflect.ValueOf(v.V()))
@@ -429,10 +430,10 @@ type iteratorArray struct {
 	it Iterator
 }
 
-func (it *iteratorArray) Iterate(fn func(i int, value Value) error) error {
+func (it *iteratorArray) Iterate(fn func(i int, value types.Value) error) error {
 	count := 0
 	return it.it.Iterate(func(d Document) error {
-		err := fn(count, NewDocumentValue(d))
+		err := fn(count, types.NewDocumentValue(d))
 		if err != nil {
 			return err
 		}
@@ -441,6 +442,6 @@ func (it *iteratorArray) Iterate(fn func(i int, value Value) error) error {
 	})
 }
 
-func (it *iteratorArray) GetByIndex(i int) (Value, error) {
+func (it *iteratorArray) GetByIndex(i int) (types.Value, error) {
 	panic("not implemented")
 }

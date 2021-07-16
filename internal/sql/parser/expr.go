@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 type dummyOperator struct {
@@ -17,7 +18,7 @@ type dummyOperator struct {
 
 func (d *dummyOperator) Token() scanner.Token { panic("not implemented") }
 func (d *dummyOperator) Equal(expr.Expr) bool { panic("not implemented") }
-func (d *dummyOperator) Eval(*environment.Environment) (document.Value, error) {
+func (d *dummyOperator) Eval(*environment.Environment) (types.Value, error) {
 	panic("not implemented")
 }
 func (d *dummyOperator) String() string               { panic("not implemented") }
@@ -240,27 +241,27 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		p.orderedParams++
 		return expr.PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
-		return expr.LiteralValue{Value: document.NewTextValue(lit)}, nil
+		return expr.LiteralValue{Value: types.NewTextValue(lit)}, nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
-		return expr.LiteralValue{Value: document.NewDoubleValue(v)}, nil
+		return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
 			// The literal may be too large to fit into an int64, parse as Float64
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {
-				return expr.LiteralValue{Value: document.NewDoubleValue(v)}, nil
+				return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
 			}
 			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
 		}
-		return expr.LiteralValue{Value: document.NewIntegerValue(v)}, nil
+		return expr.LiteralValue{Value: types.NewIntegerValue(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
-		return expr.LiteralValue{Value: document.NewBoolValue(tok == scanner.TRUE)}, nil
+		return expr.LiteralValue{Value: types.NewBoolValue(tok == scanner.TRUE)}, nil
 	case scanner.NULL:
-		return expr.LiteralValue{Value: document.NewNullValue()}, nil
+		return expr.LiteralValue{Value: types.NewNullValue()}, nil
 	case scanner.LBRACKET:
 		p.Unscan()
 		e, err := p.ParseDocument()
@@ -385,33 +386,33 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 	}
 }
 
-func (p *Parser) parseType() (document.ValueType, error) {
+func (p *Parser) parseType() (types.ValueType, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEARRAY:
-		return document.ArrayValue, nil
+		return types.ArrayValue, nil
 	case scanner.TYPEBLOB:
-		return document.BlobValue, nil
+		return types.BlobValue, nil
 	case scanner.TYPEBOOL:
-		return document.BoolValue, nil
+		return types.BoolValue, nil
 	case scanner.TYPEBYTES:
-		return document.BlobValue, nil
+		return types.BlobValue, nil
 	case scanner.TYPEDOCUMENT:
-		return document.DocumentValue, nil
+		return types.DocumentValue, nil
 	case scanner.TYPEREAL:
-		return document.DoubleValue, nil
+		return types.DoubleValue, nil
 	case scanner.TYPEDOUBLE:
 		tok, _, _ := p.ScanIgnoreWhitespace()
 		if tok == scanner.PRECISION {
-			return document.DoubleValue, nil
+			return types.DoubleValue, nil
 		}
 		p.Unscan()
-		return document.DoubleValue, nil
+		return types.DoubleValue, nil
 	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
 		scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
-		return document.IntegerValue, nil
+		return types.IntegerValue, nil
 	case scanner.TYPETEXT:
-		return document.TextValue, nil
+		return types.TextValue, nil
 	case scanner.TYPEVARCHAR, scanner.TYPECHARACTER:
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
@@ -426,7 +427,7 @@ func (p *Parser) parseType() (document.ValueType, error) {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 		}
 
-		return document.TextValue, nil
+		return types.TextValue, nil
 	}
 
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)

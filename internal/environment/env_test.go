@@ -7,19 +7,20 @@ import (
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEnvironmentClone(t *testing.T) {
 	d := document.NewFieldBuffer()
-	d.Add("answer", document.NewIntegerValue(42))
+	d.Add("answer", types.NewIntegerValue(42))
 
 	p := environment.Param{Name: "param", Value: 1}
 	tx := &database.Transaction{}
 	catalog := catalog.New()
 
 	vars := document.NewFieldBuffer()
-	vars.Add("var", document.NewIntegerValue(2))
+	vars.Add("var", types.NewIntegerValue(2))
 
 	var env, outer environment.Environment
 

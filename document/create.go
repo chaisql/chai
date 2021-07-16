@@ -11,6 +11,7 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // NewFromJSON creates a document from raw JSON data.
@@ -25,7 +26,7 @@ type jsonEncodedDocument struct {
 	data []byte
 }
 
-func (j jsonEncodedDocument) Iterate(fn func(field string, value Value) error) error {
+func (j jsonEncodedDocument) Iterate(fn func(field string, value types.Value) error) error {
 	return jsonparser.ObjectEach(j.data, func(key, value []byte, dataType jsonparser.ValueType, offset int) error {
 		v, err := parseJSONValue(dataType, value)
 		if err != nil {
@@ -36,7 +37,7 @@ func (j jsonEncodedDocument) Iterate(fn func(field string, value Value) error) e
 	})
 }
 
-func (j jsonEncodedDocument) GetByField(field string) (Value, error) {
+func (j jsonEncodedDocument) GetByField(field string) (types.Value, error) {
 	v, dt, _, err := jsonparser.Get(j.data, field)
 	if dt == jsonparser.NotExist {
 		return nil, ErrFieldNotFound
@@ -66,7 +67,7 @@ type mapDocument reflect.Value
 
 var _ Document = (*mapDocument)(nil)
 
-func (m mapDocument) Iterate(fn func(field string, value Value) error) error {
+func (m mapDocument) Iterate(fn func(field string, value types.Value) error) error {
 	M := reflect.Value(m)
 	it := M.MapRange()
 
@@ -84,7 +85,7 @@ func (m mapDocument) Iterate(fn func(field string, value Value) error) error {
 	return nil
 }
 
-func (m mapDocument) GetByField(field string) (Value, error) {
+func (m mapDocument) GetByField(field string) (types.Value, error) {
 	M := reflect.Value(m)
 	v := M.MapIndex(reflect.ValueOf(field))
 	if v == (reflect.Value{}) {
@@ -95,7 +96,7 @@ func (m mapDocument) GetByField(field string) (Value, error) {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (m mapDocument) MarshalJSON() ([]byte, error) {
-	return jsonDocument{Document: m}.MarshalJSON()
+	return types.JsonDocument{Document: m}.MarshalJSON()
 }
 
 // NewFromStruct creates a document from a struct using reflection.
@@ -140,7 +141,7 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 			if err != nil {
 				return nil, err
 			}
-			err = d.Iterate(func(field string, value Value) error {
+			err = d.Iterate(func(field string, value types.Value) error {
 				fb.Add(field, value)
 				return nil
 			})
@@ -172,19 +173,19 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 }
 
 // NewValue creates a value whose type is infered from x.
-func NewValue(x interface{}) (Value, error) {
+func NewValue(x interface{}) (types.Value, error) {
 	// Attempt exact matches first:
 	switch v := x.(type) {
 	case time.Duration:
-		return NewIntegerValue(v.Nanoseconds()), nil
+		return types.NewIntegerValue(v.Nanoseconds()), nil
 	case time.Time:
-		return NewTextValue(v.Format(time.RFC3339Nano)), nil
+		return types.NewTextValue(v.Format(time.RFC3339Nano)), nil
 	case nil:
-		return NewNullValue(), nil
+		return types.NewNullValue(), nil
 	case Document:
-		return NewDocumentValue(v), nil
+		return types.NewDocumentValue(v), nil
 	case Array:
-		return NewArrayValue(v), nil
+		return types.NewArrayValue(v), nil
 	}
 
 	// Compare by kind to detect type definitions over built-in types.
@@ -192,26 +193,26 @@ func NewValue(x interface{}) (Value, error) {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
-			return NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
 		return NewValue(reflect.Indirect(v).Interface())
 	case reflect.Bool:
-		return NewBoolValue(v.Bool()), nil
+		return types.NewBoolValue(v.Bool()), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return NewIntegerValue(v.Int()), nil
+		return types.NewIntegerValue(v.Int()), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		x := v.Uint()
 		if x > math.MaxInt64 {
 			return nil, stringutil.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
 		}
-		return NewIntegerValue(int64(x)), nil
+		return types.NewIntegerValue(int64(x)), nil
 	case reflect.Float32, reflect.Float64:
-		return NewDoubleValue(v.Float()), nil
+		return types.NewDoubleValue(v.Float()), nil
 	case reflect.String:
-		return NewTextValue(v.String()), nil
+		return types.NewTextValue(v.String()), nil
 	case reflect.Interface:
 		if v.IsNil() {
-			return NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
 		return NewValue(v.Elem().Interface())
 	case reflect.Struct:
@@ -219,23 +220,23 @@ func NewValue(x interface{}) (Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewDocumentValue(doc), nil
+		return types.NewDocumentValue(doc), nil
 	case reflect.Array:
-		return NewArrayValue(&sliceArray{v}), nil
+		return types.NewArrayValue(&sliceArray{v}), nil
 	case reflect.Slice:
 		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
-			return NewBlobValue(v.Bytes()), nil
+			return types.NewBlobValue(v.Bytes()), nil
 		}
 		if v.IsNil() {
-			return NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
-		return NewArrayValue(&sliceArray{ref: v}), nil
+		return types.NewArrayValue(&sliceArray{ref: v}), nil
 	case reflect.Map:
 		doc, err := NewFromMap(x)
 		if err != nil {
 			return nil, err
 		}
-		return NewDocumentValue(doc), nil
+		return types.NewDocumentValue(doc), nil
 	}
 
 	return nil, &ErrUnsupportedType{x, ""}
@@ -247,7 +248,7 @@ type sliceArray struct {
 
 var _ Array = (*sliceArray)(nil)
 
-func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
+func (s sliceArray) Iterate(fn func(i int, v types.Value) error) error {
 	l := s.ref.Len()
 
 	for i := 0; i < l; i++ {
@@ -270,7 +271,7 @@ func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
 	return nil
 }
 
-func (s sliceArray) GetByIndex(i int) (Value, error) {
+func (s sliceArray) GetByIndex(i int) (types.Value, error) {
 	if i >= s.ref.Len() {
 		return nil, ErrFieldNotFound
 	}
@@ -293,7 +294,7 @@ func NewFromCSV(headers, columns []string) Document {
 			break
 		}
 
-		fb.Add(h, NewTextValue(columns[i]))
+		fb.Add(h, types.NewTextValue(columns[i]))
 	}
 
 	return fb

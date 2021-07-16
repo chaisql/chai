@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ var docWithKey document.Document = func() document.Document {
 		panic(err)
 	}
 
-	fb.DecodedKey = document.NewIntegerValue(1)
+	fb.DecodedKey = types.NewIntegerValue(1)
 	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
 	if err != nil {
 		panic(err)
@@ -39,7 +40,21 @@ var envWithDoc = environment.New(doc)
 
 var envWithDocAndKey = environment.New(docWithKey)
 
-var nullLiteral = document.NewNullValue()
+var nullLiteral = types.NewNullValue()
+
+func testExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
+	t.Helper()
+
+	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
+	require.NoError(t, err)
+	res, err := e.Eval(env)
+	if fails {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	}
+}
 
 func TestString(t *testing.T) {
 	var operands = []string{

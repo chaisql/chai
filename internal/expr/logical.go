@@ -1,10 +1,10 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // AndOp is the And operator.
@@ -19,12 +19,12 @@ func And(a, b Expr) Expr {
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if both evaluate
 // to true.
-func (op *AndOp) Eval(env *environment.Environment) (document.Value, error) {
+func (op *AndOp) Eval(env *environment.Environment) (types.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
 		return FalseLiteral, err
 	}
-	isTruthy, err := document.IsTruthy(s)
+	isTruthy, err := types.IsTruthy(s)
 	if !isTruthy || err != nil {
 		return FalseLiteral, err
 	}
@@ -33,7 +33,7 @@ func (op *AndOp) Eval(env *environment.Environment) (document.Value, error) {
 	if err != nil {
 		return FalseLiteral, err
 	}
-	isTruthy, err = document.IsTruthy(s)
+	isTruthy, err = types.IsTruthy(s)
 	if !isTruthy || err != nil {
 		return FalseLiteral, err
 	}
@@ -53,12 +53,12 @@ func Or(a, b Expr) Expr {
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if a or b evalutate
 // to true.
-func (op *OrOp) Eval(env *environment.Environment) (document.Value, error) {
+func (op *OrOp) Eval(env *environment.Environment) (types.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
 		return FalseLiteral, err
 	}
-	isTruthy, err := document.IsTruthy(s)
+	isTruthy, err := types.IsTruthy(s)
 	if err != nil {
 		return FalseLiteral, err
 	}
@@ -70,7 +70,7 @@ func (op *OrOp) Eval(env *environment.Environment) (document.Value, error) {
 	if err != nil {
 		return FalseLiteral, err
 	}
-	isTruthy, err = document.IsTruthy(s)
+	isTruthy, err = types.IsTruthy(s)
 	if err != nil {
 		return FalseLiteral, err
 	}
@@ -92,13 +92,13 @@ func Not(e Expr) Expr {
 }
 
 // Eval implements the Expr interface. It evaluates e and returns true if b is falsy
-func (op *NotOp) Eval(env *environment.Environment) (document.Value, error) {
+func (op *NotOp) Eval(env *environment.Environment) (types.Value, error) {
 	s, err := op.a.Eval(env)
 	if err != nil {
 		return FalseLiteral, err
 	}
 
-	isTruthy, err := document.IsTruthy(s)
+	isTruthy, err := types.IsTruthy(s)
 	if err != nil {
 		return FalseLiteral, err
 	}

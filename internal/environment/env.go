@@ -4,6 +4,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A Param represents a parameter passed by the user to the statement.
@@ -44,7 +45,7 @@ func (e *Environment) SetOuter(env *Environment) {
 	e.Outer = env
 }
 
-func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
+func (e *Environment) Get(path document.Path) (v types.Value, ok bool) {
 	if e.Vars != nil {
 		v, err := path.GetValueFromDocument(e.Vars)
 		if err == nil {
@@ -59,7 +60,7 @@ func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
 	return
 }
 
-func (e *Environment) Set(name string, v document.Value) {
+func (e *Environment) Set(name string, v types.Value) {
 	if e.Vars == nil {
 		e.Vars = document.NewFieldBuffer()
 	}
@@ -87,7 +88,7 @@ func (e *Environment) SetParams(params []Param) {
 	e.Params = params
 }
 
-func (e *Environment) GetParamByName(name string) (v document.Value, err error) {
+func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
 	if len(e.Params) == 0 {
 		if e.Outer != nil {
 			return e.Outer.GetParamByName(name)
@@ -103,7 +104,7 @@ func (e *Environment) GetParamByName(name string) (v document.Value, err error) 
 	return nil, stringutil.Errorf("param %s not found", name)
 }
 
-func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
+func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
 	if len(e.Params) == 0 {
 		if e.Outer != nil {
 			return e.Outer.GetParamByIndex(pos)

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -153,7 +154,7 @@ func TestParserExpr(t *testing.T) {
 		{"with NULL", "age > NULL", expr.Gt(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", functions.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", functions.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TextValue}, false},
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},

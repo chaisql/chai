@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +37,7 @@ func benchmarkEncodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -54,7 +55,7 @@ func benchmarkDocumentGetByField(b *testing.B, codecBuilder func() encoding.Code
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -72,7 +73,7 @@ func benchmarkDocumentIterate(b *testing.B, codecBuilder func() encoding.Codec) 
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()
@@ -84,7 +85,7 @@ func benchmarkDocumentIterate(b *testing.B, codecBuilder func() encoding.Codec) 
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doc.Iterate(func(string, document.Value) error {
+		doc.Iterate(func(string, types.Value) error {
 			return nil
 		})
 	}
@@ -94,7 +95,7 @@ func benchmarkDecodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), document.NewIntegerValue(i))
+		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	codec := codecBuilder()

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,9 +60,9 @@ func TestProject(t *testing.T) {
 				require.Equal(t, &inEnv, out.GetOuter())
 				d, ok := out.GetDocument()
 				require.True(t, ok)
-				require.JSONEq(t, test.out, document.NewDocumentValue(d).String())
+				require.JSONEq(t, test.out, types.NewDocumentValue(d).String())
 
-				err := d.Iterate(func(field string, want document.Value) error {
+				err := d.Iterate(func(field string, want types.Value) error {
 					got, err := d.GetByField(field)
 					require.NoError(t, err)
 					require.Equal(t, want, got)

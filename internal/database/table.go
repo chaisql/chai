@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A Table represents a collection of documents.
@@ -94,12 +95,12 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 			continue
 		}
 
-		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		vs := make([]types.Value, 0, len(idx.Info.Paths))
 
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(fb)
 			if err != nil {
-				v = document.NewNullValue()
+				v = types.NewNullValue()
 			}
 
 			vs = append(vs, v)
@@ -134,12 +135,12 @@ func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnI
 
 	// update indexes
 	for _, idx := range indexes {
-		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		vs := make([]types.Value, 0, len(idx.Info.Paths))
 
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(fb)
 			if err != nil {
-				v = document.NewNullValue()
+				v = types.NewNullValue()
 			}
 
 			vs = append(vs, v)
@@ -196,12 +197,12 @@ func (t *Table) Delete(key []byte) error {
 	}
 
 	for _, idx := range indexes {
-		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		vs := make([]types.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
 			if err != nil {
 				if err == document.ErrFieldNotFound {
-					v = document.NewNullValue()
+					v = types.NewNullValue()
 				} else {
 					return err
 				}
@@ -249,11 +250,11 @@ func (t *Table) replace(key []byte, d document.Document) error {
 
 	// remove key from indexes
 	for _, idx := range indexes {
-		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		vs := make([]types.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(old)
 			if err != nil {
-				v = document.NewNullValue()
+				v = types.NewNullValue()
 			}
 			vs = append(vs, v)
 		}
@@ -281,11 +282,11 @@ func (t *Table) replace(key []byte, d document.Document) error {
 
 	// update indexes
 	for _, idx := range indexes {
-		vs := make([]document.Value, 0, len(idx.Info.Paths))
+		vs := make([]types.Value, 0, len(idx.Info.Paths))
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
 			if err != nil {
-				v = document.NewNullValue()
+				v = types.NewNullValue()
 			}
 
 			vs = append(vs, v)
@@ -319,10 +320,10 @@ func (e documentWithKey) RawKey() []byte {
 	return e.key
 }
 
-func (e documentWithKey) Key() (document.Value, error) {
+func (e documentWithKey) Key() (types.Value, error) {
 	if e.pk == nil {
 		docid, _ := binary.Uvarint(e.key)
-		return document.NewIntegerValue(int64(docid)), nil
+		return types.NewIntegerValue(int64(docid)), nil
 	}
 
 	return e.pk.Path.GetValueFromDocument(&e)
@@ -343,7 +344,7 @@ type lazilyDecodedDocument struct {
 	dirty   bool
 }
 
-func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err error) {
+func (d *lazilyDecodedDocument) GetByField(field string) (v types.Value, err error) {
 	if d.dirty {
 		d.dirty = false
 		err = d.copyFromItem()
@@ -361,7 +362,7 @@ func (d *lazilyDecodedDocument) GetByField(field string) (v document.Value, err 
 	return d.decoder.GetByField(field)
 }
 
-func (d *lazilyDecodedDocument) Iterate(fn func(field string, value document.Value) error) error {
+func (d *lazilyDecodedDocument) Iterate(fn func(field string, value types.Value) error) error {
 	if d.dirty {
 		d.dirty = false
 		err := d.copyFromItem()
@@ -383,11 +384,11 @@ func (d *lazilyDecodedDocument) RawKey() []byte {
 	return d.item.Key()
 }
 
-func (d *lazilyDecodedDocument) Key() (document.Value, error) {
+func (d *lazilyDecodedDocument) Key() (types.Value, error) {
 	k := d.item.Key()
 	if d.pk == nil {
 		docid, _ := binary.Uvarint(k)
-		return document.NewIntegerValue(int64(docid)), nil
+		return types.NewIntegerValue(int64(docid)), nil
 	}
 
 	return d.pk.Path.GetValueFromDocument(d)
@@ -419,18 +420,18 @@ func (t *Table) Iterate(fn func(d document.Document) error) error {
 // It returns a binary representation of the key as used in the store.
 // It can be used to manually add a new entry to the store or to compare
 // with other keys during table iteration.
-func (t *Table) EncodeValue(v document.Value) ([]byte, error) {
+func (t *Table) EncodeValue(v types.Value) ([]byte, error) {
 	return t.encodeValueToKey(t.Info, v)
 }
 
-func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, error) {
+func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error) {
 	var err error
 
 	pk := t.Info.FieldConstraints.GetPrimaryKey()
 	if pk == nil {
 		// if no primary key was defined, convert the pivot to an integer then to an unsigned integer
 		// and encode it as a varint
-		v, err = document.CastAsInteger(v)
+		v, err = types.CastAsInteger(v)
 		if err != nil {
 			return nil, err
 		}
@@ -455,8 +456,8 @@ func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, err
 	// it no primary key type is specified,
 	// and the value to encode is an integer
 	// convert it to a double.
-	if v.Type() == document.IntegerValue {
-		v, err = document.CastAsDouble(v)
+	if v.Type() == types.IntegerValue {
+		v, err = types.CastAsDouble(v)
 		if err != nil {
 			return nil, err
 		}
@@ -464,7 +465,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, err
 
 	// encode key regardless of type.
 	var buf bytes.Buffer
-	err = document.NewValueEncoder(&buf).Encode(v)
+	err = types.NewValueEncoder(&buf).Encode(v)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +476,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v document.Value) ([]byte, err
 // is greater than or equal to the pivot.
 // The pivot is converted to the type of the primary key, if any, prior to iteration.
 // If the pivot is empty, it iterates from the beginning of the table.
-func (t *Table) AscendGreaterOrEqual(pivot document.Value, fn func(d document.Document) error) error {
+func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(d document.Document) error) error {
 	return t.iterate(pivot, false, fn)
 }
 
@@ -483,11 +484,11 @@ func (t *Table) AscendGreaterOrEqual(pivot document.Value, fn func(d document.Do
 // is less than or equal to the pivot, in reverse order.
 // The pivot is converted to the type of the primary key, if any, prior to iteration.
 // If the pivot is empty, it iterates from the end of the table in reverse order.
-func (t *Table) DescendLessOrEqual(pivot document.Value, fn func(d document.Document) error) error {
+func (t *Table) DescendLessOrEqual(pivot types.Value, fn func(d document.Document) error) error {
 	return t.iterate(pivot, true, fn)
 }
 
-func (t *Table) iterate(pivot document.Value, reverse bool, fn func(d document.Document) error) error {
+func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d document.Document) error) error {
 	var seek []byte
 
 	// if there is a pivot, convert it to the right type
@@ -570,7 +571,7 @@ func (t *Table) generateKey(info *TableInfo, d document.Document) ([]byte, error
 		// it no primary key type is specified,
 		// encode keys regardless of type.
 		var buf bytes.Buffer
-		err = document.NewValueEncoder(&buf).Encode(v)
+		err = types.NewValueEncoder(&buf).Encode(v)
 		if err != nil {
 			return nil, err
 		}

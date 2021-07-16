@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 type ConstraintViolationError struct {
@@ -19,7 +20,7 @@ func (c *ConstraintViolationError) Error() string {
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
 	Path         document.Path
-	Type         document.ValueType
+	Type         types.ValueType
 	IsPrimaryKey bool
 	IsNotNull    bool
 	IsUnique     bool
@@ -176,9 +177,9 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 					InferredBy: []document.Path{fc.Path},
 				}
 				if fc.Path[i+1].FieldName != "" {
-					newFc.Type = document.DocumentValue
+					newFc.Type = types.DocumentValue
 				} else {
-					newFc.Type = document.ArrayValue
+					newFc.Type = types.ArrayValue
 				}
 
 				err := newConstraints.Add(&newFc)
@@ -269,7 +270,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			// which is the only one compatible for the moment.
 			// Integers can be converted to other integers, doubles, texts and bools.
 			switch newFc.Type {
-			case document.IntegerValue, document.DoubleValue, document.TextValue, document.BoolValue:
+			case types.IntegerValue, types.DoubleValue, types.TextValue, types.BoolValue:
 			default:
 				return stringutil.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
 			}
@@ -329,7 +330,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, d document.Document)
 			// if field is found, it has already been converted
 			// to the right type above.
 			// check if it is required but null.
-			if v.Type() == document.NullValue {
+			if v.Type() == types.NullValue {
 				return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
 			}
 
@@ -356,10 +357,10 @@ func (f FieldConstraints) ConvertDocument(d document.Document) (*document.FieldB
 
 // ConversionFunc is called when the type of a value is different than the expected type
 // and the value needs to be converted.
-type ConversionFunc func(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error)
+type ConversionFunc func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error)
 
 // CastConversion is a ConversionFunc that casts the value to the target type.
-func CastConversion(v document.Value, path document.Path, targetType document.ValueType) (document.Value, error) {
+func CastConversion(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
 	newV, err := document.CastAs(v, targetType)
 	if err != nil {
 		return v, stringutil.Errorf("field %q must be of type %q, got %q", path, targetType, v.Type())
@@ -370,14 +371,14 @@ func CastConversion(v document.Value, path document.Path, targetType document.Va
 
 // ConvertValueAtPath converts the value using the field constraints that are applicable
 // at the given path.
-func (f FieldConstraints) ConvertValueAtPath(path document.Path, v document.Value, conversionFn ConversionFunc) (document.Value, error) {
+func (f FieldConstraints) ConvertValueAtPath(path document.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
 	switch v.Type() {
-	case document.ArrayValue:
+	case types.ArrayValue:
 		vb, err := f.convertArrayAtPath(path, v.V().(document.Array), conversionFn)
-		return document.NewArrayValue(vb), err
-	case document.DocumentValue:
+		return types.NewArrayValue(vb), err
+	case types.DocumentValue:
 		fb, err := f.convertDocumentAtPath(path, v.V().(document.Document), conversionFn)
-		return document.NewDocumentValue(fb), err
+		return types.NewDocumentValue(fb), err
 	}
 	return f.convertScalarAtPath(path, v, conversionFn)
 }
@@ -385,7 +386,7 @@ func (f FieldConstraints) ConvertValueAtPath(path document.Path, v document.Valu
 // convert the value using field constraints type information.
 // if there is a type constraint on a path, apply it.
 // if a value is an integer and has no constraint, convert it to double.
-func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Value, conversionFn ConversionFunc) (document.Value, error) {
+func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
 	for _, fc := range f {
 		if !fc.Path.IsEqual(path) {
 			continue
@@ -406,8 +407,8 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v document.Val
 
 	// no constraint have been found for this path.
 	// check if this is an integer and convert it to double.
-	if v.Type() == document.IntegerValue {
-		newV, _ := document.CastAsDouble(v)
+	if v.Type() == types.IntegerValue {
+		newV, _ := types.CastAsDouble(v)
 		return newV, nil
 	}
 
@@ -424,7 +425,7 @@ func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.D
 		}
 	}
 
-	err := fb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+	err := fb.Apply(func(p document.Path, v types.Value) (types.Value, error) {
 		return f.convertScalarAtPath(append(path, p...), v, conversionFn)
 	})
 
@@ -438,7 +439,7 @@ func (f FieldConstraints) convertArrayAtPath(path document.Path, a document.Arra
 		return nil, err
 	}
 
-	err = vb.Apply(func(p document.Path, v document.Value) (document.Value, error) {
+	err = vb.Apply(func(p document.Path, v types.Value) (types.Value, error) {
 		return f.convertScalarAtPath(append(path, p...), v, conversionFn)
 	})
 
@@ -464,7 +465,7 @@ func (f *FieldConstraintIdentity) IsEqual(other *FieldConstraintIdentity) bool {
 
 type TableExpression interface {
 	Bind(catalog Catalog)
-	Eval(tx *Transaction) (document.Value, error)
+	Eval(tx *Transaction) (types.Value, error)
 	IsEqual(other TableExpression) bool
 	String() string
 }

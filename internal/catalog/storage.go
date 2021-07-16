@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 func relationToDocument(r Relation) document.Document {
@@ -27,12 +28,12 @@ func relationToDocument(r Relation) document.Document {
 
 func tableInfoToDocument(ti *database.TableInfo) document.Document {
 	buf := document.NewFieldBuffer()
-	buf.Add("name", document.NewTextValue(ti.TableName))
-	buf.Add("type", document.NewTextValue(RelationTableType))
-	buf.Add("store_name", document.NewBlobValue(ti.StoreName))
-	buf.Add("sql", document.NewTextValue(ti.String()))
+	buf.Add("name", types.NewTextValue(ti.TableName))
+	buf.Add("type", types.NewTextValue(RelationTableType))
+	buf.Add("store_name", types.NewBlobValue(ti.StoreName))
+	buf.Add("sql", types.NewTextValue(ti.String()))
 	if ti.DocidSequenceName != "" {
-		buf.Add("docid_sequence_name", document.NewTextValue(ti.DocidSequenceName))
+		buf.Add("docid_sequence_name", types.NewTextValue(ti.DocidSequenceName))
 	}
 
 	return buf
@@ -70,13 +71,13 @@ func tableInfoFromDocument(d document.Document) (*database.TableInfo, error) {
 
 func indexInfoToDocument(i *database.IndexInfo) document.Document {
 	buf := document.NewFieldBuffer()
-	buf.Add("name", document.NewTextValue(i.IndexName))
-	buf.Add("type", document.NewTextValue(RelationIndexType))
-	buf.Add("store_name", document.NewBlobValue(i.StoreName))
-	buf.Add("table_name", document.NewTextValue(i.TableName))
-	buf.Add("sql", document.NewTextValue(i.String()))
+	buf.Add("name", types.NewTextValue(i.IndexName))
+	buf.Add("type", types.NewTextValue(RelationIndexType))
+	buf.Add("store_name", types.NewBlobValue(i.StoreName))
+	buf.Add("table_name", types.NewTextValue(i.TableName))
+	buf.Add("sql", types.NewTextValue(i.String()))
 	if i.Owner.TableName != "" {
-		buf.Add("owner", document.NewDocumentValue(ownerToDocument(&i.Owner)))
+		buf.Add("owner", types.NewDocumentValue(ownerToDocument(&i.Owner)))
 	}
 
 	return buf
@@ -118,17 +119,17 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 
 func sequenceInfoToDocument(seq *database.SequenceInfo) document.Document {
 	buf := document.NewFieldBuffer()
-	buf.Add("name", document.NewTextValue(seq.Name))
-	buf.Add("type", document.NewTextValue(RelationSequenceType))
-	buf.Add("sql", document.NewTextValue(seq.String()))
+	buf.Add("name", types.NewTextValue(seq.Name))
+	buf.Add("type", types.NewTextValue(RelationSequenceType))
+	buf.Add("sql", types.NewTextValue(seq.String()))
 
 	if seq.Owner.TableName != "" {
-		owner := document.NewFieldBuffer().Add("table_name", document.NewTextValue(seq.Owner.TableName))
+		owner := document.NewFieldBuffer().Add("table_name", types.NewTextValue(seq.Owner.TableName))
 		if seq.Owner.Path != nil {
-			owner.Add("path", document.NewTextValue(seq.Owner.Path.String()))
+			owner.Add("path", types.NewTextValue(seq.Owner.Path.String()))
 		}
 
-		buf.Add("owner", document.NewDocumentValue(owner))
+		buf.Add("owner", types.NewDocumentValue(owner))
 	}
 
 	return buf
@@ -163,9 +164,9 @@ func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, erro
 }
 
 func ownerToDocument(owner *database.Owner) document.Document {
-	buf := document.NewFieldBuffer().Add("table_name", document.NewTextValue(owner.TableName))
+	buf := document.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
 	if owner.Path != nil {
-		buf.Add("path", document.NewTextValue(owner.Path.String()))
+		buf.Add("path", types.NewTextValue(owner.Path.String()))
 	}
 
 	return buf
@@ -213,7 +214,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "name",
 						},
 					},
-					Type:         document.TextValue,
+					Type:         types.TextValue,
 					IsPrimaryKey: true,
 				},
 				{
@@ -222,7 +223,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "type",
 						},
 					},
-					Type: document.TextValue,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{
@@ -230,7 +231,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "table_name",
 						},
 					},
-					Type: document.TextValue,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{
@@ -238,7 +239,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "sql",
 						},
 					},
-					Type: document.TextValue,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{
@@ -246,7 +247,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "store_name",
 						},
 					},
-					Type: document.BlobValue,
+					Type: types.BlobValue,
 				},
 			},
 		},

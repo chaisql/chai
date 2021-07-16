@@ -1,11 +1,11 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr/glob"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 func like(pattern, text string) bool {
@@ -21,9 +21,9 @@ func Like(a, b Expr) Expr {
 	return &LikeOperator{&simpleOperator{a, b, scanner.LIKE}}
 }
 
-func (op *LikeOperator) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		if a.Type() != document.TextValue || b.Type() != document.TextValue {
+func (op *LikeOperator) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		if a.Type() != types.TextValue || b.Type() != types.TextValue {
 			return NullLiteral, nil
 		}
 
@@ -44,7 +44,7 @@ func NotLike(a, b Expr) Expr {
 	return &NotLikeOperator{LikeOperator{&simpleOperator{a, b, scanner.LIKE}}}
 }
 
-func (op *NotLikeOperator) Eval(env *environment.Environment) (document.Value, error) {
+func (op *NotLikeOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return invertBoolResult(op.LikeOperator.Eval)(env)
 }
 

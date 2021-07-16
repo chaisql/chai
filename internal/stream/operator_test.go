@@ -13,6 +13,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -215,31 +216,31 @@ func TestGroupBy(t *testing.T) {
 	tests := []struct {
 		e     expr.Expr
 		in    []document.Document
-		group document.Value
+		group types.Value
 		fails bool
 	}{
 		{
 			parser.MustParseExpr("10"),
 			testutil.MakeDocuments(t, `{"a": 10}`),
-			document.NewIntegerValue(10),
+			types.NewIntegerValue(10),
 			false,
 		},
 		{
 			parser.MustParseExpr("null"),
 			testutil.MakeDocuments(t, `{"a": 10}`),
-			document.NewNullValue(),
+			types.NewNullValue(),
 			false,
 		},
 		{
 			parser.MustParseExpr("a"),
 			testutil.MakeDocuments(t, `{"a": 10}`),
-			document.NewIntegerValue(10),
+			types.NewIntegerValue(10),
 			false,
 		},
 		{
 			parser.MustParseExpr("b"),
 			testutil.MakeDocuments(t, `{"a": 10}`),
-			document.NewNullValue(),
+			types.NewNullValue(),
 			false,
 		},
 	}
@@ -248,7 +249,7 @@ func TestGroupBy(t *testing.T) {
 		t.Run(test.e.String(), func(t *testing.T) {
 			var want environment.Environment
 			want.Set("_group", test.group)
-			want.Set("_group_expr", document.NewTextValue(test.e.String()))
+			want.Set("_group_expr", types.NewTextValue(test.e.String()))
 
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.GroupBy(test.e))
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {

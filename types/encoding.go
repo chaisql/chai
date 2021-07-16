@@ -1,4 +1,4 @@
-package document
+package types
 
 import (
 	"errors"
@@ -14,8 +14,8 @@ const (
 	// ArrayEnd is the final separator used when encoding document.Array in
 	// binary reprsentation.
 	ArrayEnd           = 0x1e
-	documentValueDelim = 0x1c
-	documentEnd        = 0x1d
+	DocumentValueDelim = 0x1c
+	DocumentEnd        = 0x1d
 )
 
 // ValueEncoder encodes natural sort-ordered representations of values.
@@ -109,7 +109,7 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 		var err error
 
 		if i > 0 {
-			err = ve.append(documentValueDelim)
+			err = ve.append(DocumentValueDelim)
 			if err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 			return err
 		}
 
-		err = ve.append(documentValueDelim)
+		err = ve.append(DocumentValueDelim)
 		if err != nil {
 			return err
 		}
@@ -141,5 +141,5 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 		return err
 	}
 
-	return ve.append(documentEnd)
+	return ve.append(DocumentEnd)
 }

@@ -1,7 +1,8 @@
-package document
+package types
 
 import (
 	"bytes"
+	"sort"
 	"strings"
 )
 
@@ -387,4 +388,20 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 			return false, nil
 		}
 	}
+}
+
+// Fields returns a list of all the fields at the root of the document
+// sorted lexicographically.
+func Fields(d Document) ([]string, error) {
+	var fields []string
+	err := d.Iterate(func(f string, _ Value) error {
+		fields = append(fields, f)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(fields)
+	return fields, nil
 }

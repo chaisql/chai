@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 //
 // The association is performed by encoding the values in a binary format that preserve
 // ordering when compared lexicographically. For the implementation, see the binarysort
-// package and the document.ValueEncoder.
+// package and the types.ValueEncoder.
 type Index struct {
 	Info *IndexInfo
 
@@ -35,13 +36,13 @@ type Index struct {
 func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 	if opts == nil {
 		opts = &IndexInfo{
-			Types: []document.ValueType{document.AnyType},
+			Types: []types.ValueType{types.AnyType},
 		}
 	}
 
 	// if no types are provided, it implies that it's an index for single untyped values
 	if opts.Types == nil {
-		opts.Types = []document.ValueType{document.AnyType}
+		opts.Types = []types.ValueType{types.AnyType}
 	}
 
 	return &Index{
@@ -54,11 +55,11 @@ func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 // the value is encoded as is, without any type information. Otherwise, the
 // type is prepended to the value.
 type indexValueEncoder struct {
-	typ document.ValueType
+	typ types.ValueType
 	w   io.Writer
 }
 
-func (e *indexValueEncoder) EncodeValue(v document.Value) error {
+func (e *indexValueEncoder) EncodeValue(v types.Value) error {
 	// if the index has no type constraint, encode the value with its type
 	if e.typ.IsAny() {
 		// prepend with the type
@@ -84,7 +85,7 @@ func (e *indexValueEncoder) EncodeValue(v document.Value) error {
 	}
 
 	if v == nil {
-		v = document.NewEmptyValue(e.typ)
+		v = types.NewEmptyValue(e.typ)
 	} else if v.Type() != e.typ {
 		// this should never happen, but if it does, something is very wrong
 		panic("incompatible index type")
@@ -125,7 +126,7 @@ func (idx *Index) Arity() int {
 // Every record is stored like this:
 //   k: <encoded values><primary key>
 //   v: length of the encoded value, as an unsigned varint
-func (idx *Index) Set(vs []document.Value, k []byte) error {
+func (idx *Index) Set(vs []types.Value, k []byte) error {
 	if len(k) == 0 {
 		return errors.New("cannot index value without a key")
 	}
@@ -179,7 +180,7 @@ func (idx *Index) Set(vs []document.Value, k []byte) error {
 	return st.Put(storeKey, storeValue)
 }
 
-func (idx *Index) Exists(vs []document.Value) (bool, []byte, error) {
+func (idx *Index) Exists(vs []types.Value) (bool, []byte, error) {
 	if len(vs) != idx.Arity() {
 		return false, nil, stringutil.Errorf("required arity of %d", len(idx.Info.Types))
 	}
@@ -224,7 +225,7 @@ func (idx *Index) exists(st engine.Store, seek []byte) (bool, []byte, error) {
 }
 
 // Delete all the references to the key from the index.
-func (idx *Index) Delete(vs []document.Value, k []byte) error {
+func (idx *Index) Delete(vs []types.Value, k []byte) error {
 	st, err := getOrCreateStore(idx.tx, idx.Info.StoreName)
 	if err != nil {
 		return nil
@@ -261,7 +262,7 @@ func (idx *Index) Delete(vs []document.Value, k []byte) error {
 	return engine.ErrKeyNotFound
 }
 
-type Pivot []document.Value
+type Pivot []types.Value
 
 // validate panics when the pivot values are unsuitable for the index:
 // - having pivot length superior to the index arity
@@ -387,7 +388,7 @@ func (idx *Index) Truncate() error {
 // multiple values being indexed into a byte array, keeping the
 // order of the original values.
 //
-// The values are marshalled and separated with a document.ArrayValueDelim,
+// The values are marshalled and separated with a types.ArrayValueDelim,
 // *without* a trailing document.ArrayEnd, which enables to handle cases
 // where only some of the values are being provided and still perform lookups
 // (like index_foo_a_b_c and providing only a and b).
@@ -400,7 +401,7 @@ func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 
 	var buf bytes.Buffer
 
-	err := vb.Iterate(func(i int, value document.Value) error {
+	err := vb.Iterate(func(i int, value types.Value) error {
 		enc := &indexValueEncoder{typ: idx.Info.Types[i], w: &buf}
 		err := enc.EncodeValue(value)
 		if err != nil {
@@ -409,7 +410,7 @@ func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 
 		// if it's not the last value, append the seperator
 		if i < vb.Len()-1 {
-			err = buf.WriteByte(document.ArrayValueDelim)
+			err = buf.WriteByte(types.ArrayValueDelim)
 			if err != nil {
 				return err
 			}

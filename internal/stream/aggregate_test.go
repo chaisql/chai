@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,8 +94,8 @@ type fakeAggregator struct {
 	name  string
 }
 
-func (f *fakeAggregator) Eval(env *environment.Environment) (document.Value, error) {
-	return document.NewIntegerValue(f.count), nil
+func (f *fakeAggregator) Eval(env *environment.Environment) (types.Value, error) {
+	return types.NewIntegerValue(f.count), nil
 }
 
 func (f *fakeAggregator) Aggregate(env *environment.Environment) error {

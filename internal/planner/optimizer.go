@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 var optimizerRules = []func(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error){
@@ -185,10 +186,10 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 		if literalsOnly {
 			var fb document.FieldBuffer
 			for i := range t.Pairs {
-				fb.Add(t.Pairs[i].K, document.Value(t.Pairs[i].V.(expr.LiteralValue).Value))
+				fb.Add(t.Pairs[i].K, types.Value(t.Pairs[i].V.(expr.LiteralValue).Value))
 			}
 
-			return expr.LiteralValue{Value: document.NewDocumentValue(&fb)}, nil
+			return expr.LiteralValue{Value: types.NewDocumentValue(&fb)}, nil
 		}
 	case expr.Operator:
 		// since expr.Operator is an interface,
@@ -246,7 +247,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*st
 					// ex: WHERE 1
 
 					// if the expr is falsy, we return an empty tree
-					ok, err := document.IsTruthy(t.Value)
+					ok, err := types.IsTruthy(t.Value)
 					if err != nil {
 						return nil, err
 					}
@@ -263,7 +264,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*st
 					// IN operator with empty array
 					// ex: WHERE a IN []
 					lv, ok := t.RightHand().(expr.LiteralValue)
-					if ok && lv.Value.Type() == document.ArrayValue {
+					if ok && lv.Value.Type() == types.ArrayValue {
 						l, err := document.ArrayLength(lv.Value.V().(document.Array))
 						if err != nil {
 							return nil, err
