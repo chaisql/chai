@@ -41,7 +41,7 @@ func (t *Table) Truncate() error {
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 // It returns the inserted document alongside its key. They key can be accessed using the document.Keyer interface.
-func (t *Table) Insert(d document.Document) (document.Document, error) {
+func (t *Table) Insert(d types.Document) (types.Document, error) {
 	return t.InsertWithConflictResolution(d, nil)
 }
 
@@ -53,7 +53,7 @@ func (t *Table) Insert(d document.Document) (document.Document, error) {
 // but not to all indexes)
 // To avoid that, we must first ensure there are no conflict (duplicate primary keys, unique constraints violation, etc.),
 // run the conflict resolution function if needed and then start writing to the engine.
-func (t *Table) InsertWithConflictResolution(d document.Document, onConflict OnInsertConflictAction) (document.Document, error) {
+func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInsertConflictAction) (types.Document, error) {
 	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")
 	}
@@ -223,7 +223,7 @@ func (t *Table) Delete(key []byte) error {
 // Replace a document by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key []byte, d document.Document) (document.Document, error) {
+func (t *Table) Replace(key []byte, d types.Document) (types.Document, error) {
 	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")
 	}
@@ -236,7 +236,7 @@ func (t *Table) Replace(key []byte, d document.Document) (document.Document, err
 	return d, t.replace(key, d)
 }
 
-func (t *Table) replace(key []byte, d document.Document) error {
+func (t *Table) replace(key []byte, d types.Document) error {
 	// make sure key exists
 	old, err := t.GetDocument(key)
 	if err != nil {
@@ -306,7 +306,7 @@ func (t *Table) replace(key []byte, d document.Document) error {
 }
 
 type documentWithKey struct {
-	document.Document
+	types.Document
 
 	key []byte
 	pk  *FieldConstraint
@@ -412,7 +412,7 @@ func (d *lazilyDecodedDocument) MarshalJSON() ([]byte, error) {
 
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t *Table) Iterate(fn func(d document.Document) error) error {
+func (t *Table) Iterate(fn func(d types.Document) error) error {
 	return t.AscendGreaterOrEqual(nil, fn)
 }
 
@@ -476,7 +476,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error)
 // is greater than or equal to the pivot.
 // The pivot is converted to the type of the primary key, if any, prior to iteration.
 // If the pivot is empty, it iterates from the beginning of the table.
-func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(d document.Document) error) error {
+func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(d types.Document) error) error {
 	return t.iterate(pivot, false, fn)
 }
 
@@ -484,11 +484,11 @@ func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(d document.Docum
 // is less than or equal to the pivot, in reverse order.
 // The pivot is converted to the type of the primary key, if any, prior to iteration.
 // If the pivot is empty, it iterates from the end of the table in reverse order.
-func (t *Table) DescendLessOrEqual(pivot types.Value, fn func(d document.Document) error) error {
+func (t *Table) DescendLessOrEqual(pivot types.Value, fn func(d types.Document) error) error {
 	return t.iterate(pivot, true, fn)
 }
 
-func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d document.Document) error) error {
+func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Document) error) error {
 	var seek []byte
 
 	// if there is a pivot, convert it to the right type
@@ -530,7 +530,7 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d document.Docu
 }
 
 // GetDocument returns one document by key.
-func (t *Table) GetDocument(key []byte) (document.Document, error) {
+func (t *Table) GetDocument(key []byte) (types.Document, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
 		if err == engine.ErrKeyNotFound {
@@ -552,7 +552,7 @@ func (t *Table) GetDocument(key []byte) (document.Document, error) {
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
-func (t *Table) generateKey(info *TableInfo, d document.Document) ([]byte, error) {
+func (t *Table) generateKey(info *TableInfo, d types.Document) ([]byte, error) {
 	if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValueFromDocument(d)
 		if err == document.ErrFieldNotFound {

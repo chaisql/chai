@@ -21,14 +21,14 @@ type Param struct {
 type Environment struct {
 	Params  []Param
 	Vars    *document.FieldBuffer
-	Doc     document.Document
+	Doc     types.Document
 	Catalog database.Catalog
 	Tx      *database.Transaction
 
 	Outer *Environment
 }
 
-func New(d document.Document, params ...Param) *Environment {
+func New(d types.Document, params ...Param) *Environment {
 	env := Environment{
 		Params: params,
 		Doc:    d,
@@ -68,7 +68,7 @@ func (e *Environment) Set(name string, v types.Value) {
 	e.Vars.Set(document.Path{document.PathFragment{FieldName: name}}, v)
 }
 
-func (e *Environment) GetDocument() (document.Document, bool) {
+func (e *Environment) GetDocument() (types.Document, bool) {
 	if e.Doc != nil {
 		return e.Doc, true
 	}
@@ -80,7 +80,7 @@ func (e *Environment) GetDocument() (document.Document, bool) {
 	return nil, false
 }
 
-func (e *Environment) SetDocument(d document.Document) {
+func (e *Environment) SetDocument(d types.Document) {
 	e.Doc = d
 }
 

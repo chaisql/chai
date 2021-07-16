@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-var doc document.Document = func() document.Document {
+var doc types.Document = func() types.Document {
 	return document.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
@@ -17,7 +17,7 @@ var doc document.Document = func() document.Document {
 	}`))
 }()
 
-var docWithKey document.Document = func() document.Document {
+var docWithKey types.Document = func() types.Document {
 	fb := document.NewFieldBuffer()
 	err := fb.Copy(doc)
 	if err != nil {

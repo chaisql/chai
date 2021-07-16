@@ -720,7 +720,7 @@ func TestReadOnlyTables(t *testing.T) {
 	defer res.Close()
 
 	var i int
-	err = res.Iterate(func(d document.Document) error {
+	err = res.Iterate(func(d types.Document) error {
 		switch i {
 		case 0:
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)

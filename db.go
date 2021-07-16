@@ -13,6 +13,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // DB represents a collection of tables stored in the underlying engine.
@@ -100,7 +101,7 @@ func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
-func (db *DB) QueryDocument(q string, args ...interface{}) (document.Document, error) {
+func (db *DB) QueryDocument(q string, args ...interface{}) (types.Document, error) {
 	stmt, err := db.Prepare(q)
 	if err != nil {
 		return nil, err
@@ -170,7 +171,7 @@ func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
-func (tx *Tx) QueryDocument(q string, args ...interface{}) (document.Document, error) {
+func (tx *Tx) QueryDocument(q string, args ...interface{}) (types.Document, error) {
 	stmt, err := tx.Prepare(q)
 	if err != nil {
 		return nil, err
@@ -234,7 +235,7 @@ func (s *Statement) Query(args ...interface{}) (*Result, error) {
 
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
-func (s *Statement) QueryDocument(args ...interface{}) (d document.Document, err error) {
+func (s *Statement) QueryDocument(args ...interface{}) (d types.Document, err error) {
 	res, err := s.Query(args...)
 	if err != nil {
 		return nil, err
@@ -249,9 +250,9 @@ func (s *Statement) QueryDocument(args ...interface{}) (d document.Document, err
 	return scanDocument(res)
 }
 
-func scanDocument(iter document.Iterator) (document.Document, error) {
-	var d document.Document
-	err := iter.Iterate(func(doc document.Document) error {
+func scanDocument(iter document.Iterator) (types.Document, error) {
+	var d types.Document
+	err := iter.Iterate(func(doc types.Document) error {
 		d = doc
 		return stream.ErrStreamClosed
 	})
@@ -281,7 +282,7 @@ func (s *Statement) Exec(args ...interface{}) (err error) {
 		}
 	}()
 
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(func(d types.Document) error {
 		return nil
 	})
 }
@@ -291,7 +292,7 @@ type Result struct {
 	result *statement.Result
 }
 
-func (r *Result) Iterate(fn func(d document.Document) error) error {
+func (r *Result) Iterate(fn func(d types.Document) error) error {
 	return r.result.Iterate(fn)
 }
 

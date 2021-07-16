@@ -13,7 +13,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-func relationToDocument(r Relation) document.Document {
+func relationToDocument(r Relation) types.Document {
 	switch t := r.(type) {
 	case *database.TableInfo:
 		return tableInfoToDocument(t)
@@ -26,7 +26,7 @@ func relationToDocument(r Relation) document.Document {
 	panic(stringutil.Sprintf("objectToDocument: unknown type %q", r.Type()))
 }
 
-func tableInfoToDocument(ti *database.TableInfo) document.Document {
+func tableInfoToDocument(ti *database.TableInfo) types.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(ti.TableName))
 	buf.Add("type", types.NewTextValue(RelationTableType))
@@ -39,7 +39,7 @@ func tableInfoToDocument(ti *database.TableInfo) document.Document {
 	return buf
 }
 
-func tableInfoFromDocument(d document.Document) (*database.TableInfo, error) {
+func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func tableInfoFromDocument(d document.Document) (*database.TableInfo, error) {
 	return &ti, nil
 }
 
-func indexInfoToDocument(i *database.IndexInfo) document.Document {
+func indexInfoToDocument(i *database.IndexInfo) types.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(i.IndexName))
 	buf.Add("type", types.NewTextValue(RelationIndexType))
@@ -83,7 +83,7 @@ func indexInfoToDocument(i *database.IndexInfo) document.Document {
 	return buf
 }
 
-func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
+func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 		return nil, err
 	}
 	if err == nil {
-		owner, err := ownerFromDocument(v.V().(document.Document))
+		owner, err := ownerFromDocument(v.V().(types.Document))
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 	return &i, nil
 }
 
-func sequenceInfoToDocument(seq *database.SequenceInfo) document.Document {
+func sequenceInfoToDocument(seq *database.SequenceInfo) types.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(seq.Name))
 	buf.Add("type", types.NewTextValue(RelationSequenceType))
@@ -135,7 +135,7 @@ func sequenceInfoToDocument(seq *database.SequenceInfo) document.Document {
 	return buf
 }
 
-func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, error) {
+func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
 		return nil, err
@@ -153,7 +153,7 @@ func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, erro
 		return nil, err
 	}
 	if err == nil {
-		owner, err := ownerFromDocument(v.V().(document.Document))
+		owner, err := ownerFromDocument(v.V().(types.Document))
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +163,7 @@ func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, erro
 	return &i, nil
 }
 
-func ownerToDocument(owner *database.Owner) document.Document {
+func ownerToDocument(owner *database.Owner) types.Document {
 	buf := document.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
 	if owner.Path != nil {
 		buf.Add("path", types.NewTextValue(owner.Path.String()))
@@ -172,7 +172,7 @@ func ownerToDocument(owner *database.Owner) document.Document {
 	return buf
 }
 
-func ownerFromDocument(d document.Document) (*database.Owner, error) {
+func ownerFromDocument(d types.Document) (*database.Owner, error) {
 	var owner database.Owner
 
 	v, err := d.GetByField("table_name")
@@ -266,7 +266,7 @@ func (s *CatalogTable) Init(tx *database.Transaction) error {
 func (s *CatalogTable) Load(tx *database.Transaction) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.AscendGreaterOrEqual(nil, func(d document.Document) error {
+	err = tb.AscendGreaterOrEqual(nil, func(d types.Document) error {
 		tp, err := d.GetByField("type")
 		if err != nil {
 			return err

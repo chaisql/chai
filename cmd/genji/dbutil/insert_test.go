@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -81,7 +82,7 @@ func TestInsertJSON(t *testing.T) {
 		require.NoError(t, err)
 
 		i := 0
-		_ = res.Iterate(func(d document.Document) error {
+		_ = res.Iterate(func(d types.Document) error {
 			data, err := document.MarshalJSON(d)
 			require.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
@@ -118,7 +119,7 @@ func TestInsertJSON(t *testing.T) {
 		require.NoError(t, err)
 
 		i := 0
-		_ = res.Iterate(func(d document.Document) error {
+		_ = res.Iterate(func(d types.Document) error {
 			data, err := document.MarshalJSON(d)
 			require.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
@@ -127,7 +128,7 @@ func TestInsertJSON(t *testing.T) {
 		})
 
 		wantCount := 0
-		err = res.Iterate(func(d document.Document) error {
+		err = res.Iterate(func(d types.Document) error {
 			wantCount++
 			return nil
 		})

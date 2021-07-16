@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,7 +46,7 @@ func TestOpen(t *testing.T) {
 	defer res1.Close()
 
 	var count int
-	err = res1.Iterate(func(d document.Document) error {
+	err = res1.Iterate(func(d types.Document) error {
 		count++
 		if count == 1 {
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)

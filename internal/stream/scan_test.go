@@ -16,7 +16,7 @@ import (
 func TestExpressions(t *testing.T) {
 	tests := []struct {
 		e      expr.Expr
-		output document.Document
+		output types.Document
 		fails  bool
 	}{
 		{parser.MustParseExpr("3 + 4"), nil, true},

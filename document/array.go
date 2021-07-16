@@ -16,11 +16,7 @@ var (
 
 // An Array contains a set of values.
 type Array interface {
-	// Iterate goes through all the values of the array and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(i int, value types.Value) error) error
-	// GetByIndex returns a value by index of the array.
-	GetByIndex(i int) (types.Value, error)
+	types.Array
 }
 
 // ArrayLength returns the length of an array.
@@ -133,7 +129,7 @@ func (vb *ValueBuffer) Copy(a Array) error {
 		switch v.Type() {
 		case types.DocumentValue:
 			var buf FieldBuffer
-			err = buf.Copy(v.V().(Document))
+			err = buf.Copy(v.V().(types.Document))
 			if err != nil {
 				return err
 			}
@@ -171,7 +167,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := v.V().(*FieldBuffer)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(v.V().(Document))
+				err := buf.Copy(v.V().(types.Document))
 				if err != nil {
 					return err
 				}

@@ -17,7 +17,7 @@ func TestProject(t *testing.T) {
 	tests := []struct {
 		name  string
 		exprs []expr.Expr
-		in    document.Document
+		in    types.Document
 		out   string
 		fails bool
 	}{

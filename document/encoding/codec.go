@@ -7,7 +7,7 @@ package encoding
 import (
 	"io"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/types"
 )
 
 // A Codec is able to create encoders and decoders for a specific encoding format.
@@ -21,7 +21,7 @@ type Codec interface {
 
 // An Encoder encodes one document to the underlying writer.
 type Encoder interface {
-	EncodeDocument(d document.Document) error
+	EncodeDocument(d types.Document) error
 	// Close the encoder to release any resource.
 	Close()
 }
@@ -30,7 +30,7 @@ type Encoder interface {
 // be used as if it was decoded.
 // Decoders can be reused to read different documents.
 type Decoder interface {
-	document.Document
+	types.Document
 
 	Reset([]byte)
 }

@@ -50,7 +50,7 @@ func transformV(v types.Value) val {
 	var vi interface{}
 
 	if v.Type() == types.DocumentValue {
-		vi = transformDoc(v.V().(document.Document))
+		vi = transformDoc(v.V().(types.Document))
 	} else if v.Type() == types.ArrayValue {
 		vi = transformArray(v.V().(document.Array))
 	} else {
@@ -68,11 +68,11 @@ type field struct {
 	V     val
 }
 
-// doc is a fully realized representation of a document.Document, suitable for
+// doc is a fully realized representation of a types.Document, suitable for
 // comparison with go-cmp.
 type doc []field
 
-func transformDoc(d document.Document) doc {
+func transformDoc(d types.Document) doc {
 	fields := make([]field, 0)
 	_ = d.Iterate(func(name string, v types.Value) error {
 		fields = append(fields, field{Field: name, V: transformV(v)})
@@ -103,7 +103,7 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
 	}
 
 	var got []*val
-	err := res.Iterate(func(d document.Document) error {
+	err := res.Iterate(func(d types.Document) error {
 		val := transformV(types.NewDocumentValue(d))
 		got = append(got, &val)
 		return nil

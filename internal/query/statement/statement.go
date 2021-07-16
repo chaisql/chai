@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/types"
 )
 
 // A Statement represents a unique action that can be executed against the database.
@@ -32,7 +33,7 @@ type Result struct {
 	err      error
 }
 
-func (r *Result) Iterate(fn func(d document.Document) error) error {
+func (r *Result) Iterate(fn func(d types.Document) error) error {
 	if r.Iterator == nil {
 		return nil
 	}

@@ -26,31 +26,21 @@ func (e *ErrUnsupportedType) Error() string {
 	return stringutil.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
 }
 
-// A Document represents a group of key value pairs.
-type Document interface {
-	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(field string, value types.Value) error) error
-	// GetByField returns a value by field name.
-	// Must return ErrFieldNotFound if the field doesnt exist.
-	GetByField(field string) (types.Value, error)
-}
-
 // An Iterator can iterate over documents.
 type Iterator interface {
 	// Iterate goes through all the documents and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(d Document) error) error
+	Iterate(fn func(d types.Document) error) error
 }
 
 // MarshalJSON encodes a document to json.
-func MarshalJSON(d Document) ([]byte, error) {
-	return types.JsonDocument{d}.MarshalJSON()
+func MarshalJSON(d types.Document) ([]byte, error) {
+	return types.JsonDocument{Document: d}.MarshalJSON()
 }
 
 // MarshalJSONArray encodes an array to json.
 func MarshalJSONArray(a Array) ([]byte, error) {
-	return types.JsonArray{a}.MarshalJSON()
+	return types.JsonArray{Array: a}.MarshalJSON()
 }
 
 // A Keyer returns the key identifying documents in their storage.
@@ -61,7 +51,7 @@ type Keyer interface {
 }
 
 // Length returns the length of a document.
-func Length(d Document) (int, error) {
+func Length(d types.Document) (int, error) {
 	if fb, ok := d.(*FieldBuffer); ok {
 		return fb.Len(), nil
 	}
@@ -76,22 +66,12 @@ func Length(d Document) (int, error) {
 
 // Fields returns a list of all the fields at the root of the document
 // sorted lexicographically.
-func Fields(d Document) ([]string, error) {
+func Fields(d types.Document) ([]string, error) {
 	if fb, ok := d.(*FieldBuffer); ok {
 		return fb.Fields(), nil
 	}
 
-	var fields []string
-	err := d.Iterate(func(f string, _ types.Value) error {
-		fields = append(fields, f)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Strings(fields)
-	return fields, nil
+	return types.Fields(d)
 }
 
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
@@ -141,7 +121,7 @@ func (fb *FieldBuffer) Add(field string, v types.Value) *FieldBuffer {
 }
 
 // ScanDocument copies all the fields of d to the buffer.
-func (fb *FieldBuffer) ScanDocument(d Document) error {
+func (fb *FieldBuffer) ScanDocument(d types.Document) error {
 	var err error
 	if k, ok := d.(Keyer); ok {
 		fb.EncodedKey = k.RawKey()
@@ -188,7 +168,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 	switch v.Type() {
 	case types.DocumentValue:
 		var buf FieldBuffer
-		err := buf.ScanDocument(v.V().(Document))
+		err := buf.ScanDocument(v.V().(types.Document))
 		if err != nil {
 			return v, err
 		}
@@ -339,7 +319,7 @@ func (fb *FieldBuffer) Replace(field string, v types.Value) error {
 
 // Copy deep copies every value of the document to the buffer.
 // If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
-func (fb *FieldBuffer) Copy(d Document) error {
+func (fb *FieldBuffer) Copy(d types.Document) error {
 	err := fb.ScanDocument(d)
 	if err != nil {
 		return err
@@ -349,7 +329,7 @@ func (fb *FieldBuffer) Copy(d Document) error {
 		switch f.Value.Type() {
 		case types.DocumentValue:
 			var buf FieldBuffer
-			err = buf.Copy(f.Value.V().(Document))
+			err = buf.Copy(f.Value.V().(types.Document))
 			if err != nil {
 				return err
 			}
@@ -396,7 +376,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := f.Value.V().(*FieldBuffer)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(f.Value.V().(Document))
+				err := buf.Copy(f.Value.V().(types.Document))
 				if err != nil {
 					return err
 				}
@@ -525,7 +505,7 @@ func (p Path) IsEqual(other Path) bool {
 }
 
 // GetValueFromDocument returns the value at path p from d.
-func (p Path) GetValueFromDocument(d Document) (types.Value, error) {
+func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 	if len(p) == 0 {
 		return nil, ErrFieldNotFound
 	}
@@ -579,7 +559,7 @@ func (p Path) Clone() Path {
 func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
 	case types.DocumentValue:
-		return p.GetValueFromDocument(v.V().(Document))
+		return p.GetValueFromDocument(v.V().(types.Document))
 	case types.ArrayValue:
 		return p.GetValueFromArray(v.V().(Array))
 	}

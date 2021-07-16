@@ -5,7 +5,7 @@ func NewValue(x interface{}) (types.Value, error) {
 	switch v := x.(type) {
 	case nil:
 		return types.NewNullValue(), nil
-	case Document:
+	case types.Document:
 		return types.NewDocumentValue(v), nil
 	case Array:
 		return types.NewArrayValue(v), nil

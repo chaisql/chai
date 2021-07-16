@@ -282,7 +282,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 }
 
 // ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (f FieldConstraints) ValidateDocument(tx *Transaction, d document.Document) (*document.FieldBuffer, error) {
+func (f FieldConstraints) ValidateDocument(tx *Transaction, d types.Document) (*document.FieldBuffer, error) {
 	fb := document.NewFieldBuffer()
 	err := fb.Copy(d)
 	if err != nil {
@@ -351,7 +351,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, d document.Document)
 // It converts any path that has a field constraint on it into the specified type using CAST.
 // If there is no constraint on an integer field or value, it converts it into a double.
 // Default values on missing fields are not applied.
-func (f FieldConstraints) ConvertDocument(d document.Document) (*document.FieldBuffer, error) {
+func (f FieldConstraints) ConvertDocument(d types.Document) (*document.FieldBuffer, error) {
 	return f.convertDocumentAtPath(nil, d, CastConversion)
 }
 
@@ -377,7 +377,7 @@ func (f FieldConstraints) ConvertValueAtPath(path document.Path, v types.Value, 
 		vb, err := f.convertArrayAtPath(path, v.V().(document.Array), conversionFn)
 		return types.NewArrayValue(vb), err
 	case types.DocumentValue:
-		fb, err := f.convertDocumentAtPath(path, v.V().(document.Document), conversionFn)
+		fb, err := f.convertDocumentAtPath(path, v.V().(types.Document), conversionFn)
 		return types.NewDocumentValue(fb), err
 	}
 	return f.convertScalarAtPath(path, v, conversionFn)
@@ -415,7 +415,7 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value,
 	return v, nil
 }
 
-func (f FieldConstraints) convertDocumentAtPath(path document.Path, d document.Document, conversionFn ConversionFunc) (*document.FieldBuffer, error) {
+func (f FieldConstraints) convertDocumentAtPath(path document.Path, d types.Document, conversionFn ConversionFunc) (*document.FieldBuffer, error) {
 	fb, ok := d.(*document.FieldBuffer)
 	if !ok {
 		fb = document.NewFieldBuffer()

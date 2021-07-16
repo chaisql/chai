@@ -15,6 +15,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/doc"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/types"
 )
 
 type command struct {
@@ -125,7 +126,7 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(func(d types.Document) error {
 		var tableName string
 		err = document.Scan(d, &tableName)
 		if err != nil {

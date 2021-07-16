@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ document.Document = new(document.FieldBuffer)
+var _ types.Document = new(document.FieldBuffer)
 
 func parsePath(t testing.TB, p string) document.Path {
 	path, err := parser.ParsePath(p)
@@ -63,7 +63,7 @@ func TestFieldBuffer(t *testing.T) {
 		buf2.Add("b", types.NewTextValue("bye"))
 		buf2.Add("c", types.NewBoolValue(true))
 
-		err := buf1.ScanDocument(buf2)
+		err := buf1.ScanDocument(&buf2)
 		require.NoError(t, err)
 
 		var buf document.FieldBuffer
@@ -137,7 +137,7 @@ func TestFieldBuffer(t *testing.T) {
 				}
 
 				require.NoError(t, err)
-				data, err := document.MarshalJSON(fb)
+				data, err := document.MarshalJSON(&fb)
 				require.NoError(t, err)
 				require.Equal(t, tt.want, string(data))
 			})
@@ -482,7 +482,7 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err = doc.GetByField("o")
 		require.NoError(t, err)
-		d, ok := v.V().(document.Document)
+		d, ok := v.V().(types.Document)
 		require.True(t, ok)
 		v, err = d.GetByField("ig")
 		require.NoError(t, err)
@@ -628,7 +628,7 @@ func TestPath(t *testing.T) {
 func TestJSONDocument(t *testing.T) {
 	tests := []struct {
 		name     string
-		d        document.Document
+		d        types.Document
 		expected string
 	}{
 		{

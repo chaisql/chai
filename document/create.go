@@ -18,7 +18,7 @@ import (
 // The returned document will lazily decode the data.
 // If data is not a valid json object, calls to Iterate or GetByField will
 // return an error.
-func NewFromJSON(data []byte) Document {
+func NewFromJSON(data []byte) types.Document {
 	return &jsonEncodedDocument{data}
 }
 
@@ -55,7 +55,7 @@ func (j jsonEncodedDocument) MarshalJSON() ([]byte, error) {
 
 // NewFromMap creates a document from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m interface{}) (Document, error) {
+func NewFromMap(m interface{}) (types.Document, error) {
 	M := reflect.ValueOf(m)
 	if M.Kind() != reflect.Map || M.Type().Key().Kind() != reflect.String {
 		return nil, &ErrUnsupportedType{m, "parameter must be a map with a string key"}
@@ -65,7 +65,7 @@ func NewFromMap(m interface{}) (Document, error) {
 
 type mapDocument reflect.Value
 
-var _ Document = (*mapDocument)(nil)
+var _ types.Document = (*mapDocument)(nil)
 
 func (m mapDocument) Iterate(fn func(field string, value types.Value) error) error {
 	M := reflect.Value(m)
@@ -100,7 +100,7 @@ func (m mapDocument) MarshalJSON() ([]byte, error) {
 }
 
 // NewFromStruct creates a document from a struct using reflection.
-func NewFromStruct(s interface{}) (Document, error) {
+func NewFromStruct(s interface{}) (types.Document, error) {
 	ref := reflect.Indirect(reflect.ValueOf(s))
 
 	if !ref.IsValid() || ref.Kind() != reflect.Struct {
@@ -110,7 +110,7 @@ func NewFromStruct(s interface{}) (Document, error) {
 	return newFromStruct(ref)
 }
 
-func newFromStruct(ref reflect.Value) (Document, error) {
+func newFromStruct(ref reflect.Value) (types.Document, error) {
 	var fb FieldBuffer
 	l := ref.NumField()
 	tp := ref.Type()
@@ -182,7 +182,7 @@ func NewValue(x interface{}) (types.Value, error) {
 		return types.NewTextValue(v.Format(time.RFC3339Nano)), nil
 	case nil:
 		return types.NewNullValue(), nil
-	case Document:
+	case types.Document:
 		return types.NewDocumentValue(v), nil
 	case Array:
 		return types.NewArrayValue(v), nil
@@ -287,7 +287,7 @@ func (s sliceArray) GetByIndex(i int) (types.Value, error) {
 // NewFromCSV takes a list of headers and columns and returns a document.
 // Each header will be assigned as the key and each corresponding column as a text value.
 // The length of headers and columns must be the same.
-func NewFromCSV(headers, columns []string) Document {
+func NewFromCSV(headers, columns []string) types.Document {
 	fb := NewFieldBuffer()
 	for i, h := range headers {
 		if i >= len(columns) {

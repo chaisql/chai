@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1172,7 +1173,7 @@ func TestQueries(t *testing.T, builder Builder) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(d document.Document) error {
+			err = st.Iterate(func(d types.Document) error {
 				var a int
 				err := document.Scan(d, &a)
 				require.NoError(t, err)

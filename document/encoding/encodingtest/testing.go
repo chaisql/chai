@@ -55,7 +55,7 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 
 	tests := []struct {
 		name     string
-		d        document.Document
+		d        types.Document
 		expected string
 	}{
 		{
@@ -71,7 +71,7 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 			`{"age": 10, "name": "john"}`,
 		},
 		{
-			"Nested Document",
+			"Nested types.Document",
 			document.NewFieldBuffer().
 				Add("age", types.NewIntegerValue(10)).
 				Add("name", types.NewTextValue("john")).

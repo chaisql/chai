@@ -182,7 +182,7 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 
 		// if literalsOnly is still true, it means we have a list of kvpairs
 		// that only contain constant values (ex: {"a": 1, "b": true}.
-		// We can transform that into a document.Document.
+		// We can transform that into a types.Document.
 		if literalsOnly {
 			var fb document.FieldBuffer
 			for i := range t.Pairs {

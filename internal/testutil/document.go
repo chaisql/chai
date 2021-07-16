@@ -37,7 +37,7 @@ func MakeArrayValue(t testing.TB, vs ...interface{}) types.Value {
 }
 
 // MakeDocument creates a document from a json string.
-func MakeDocument(t testing.TB, jsonDoc string) document.Document {
+func MakeDocument(t testing.TB, jsonDoc string) types.Document {
 	t.Helper()
 
 	var fb document.FieldBuffer
@@ -79,7 +79,7 @@ func MakeValueBuffer(t testing.TB, jsonArray string) *document.ValueBuffer {
 	return &vb
 }
 
-type Docs []document.Document
+type Docs []types.Document
 
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	t.Helper()
@@ -101,7 +101,7 @@ func Dump(t testing.TB, v interface{}) {
 	require.NoError(t, err)
 }
 
-func RequireDocJSONEq(t testing.TB, d document.Document, expected string) {
+func RequireDocJSONEq(t testing.TB, d types.Document, expected string) {
 	t.Helper()
 
 	data, err := json.Marshal(d)
@@ -116,7 +116,7 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 	buf.WriteByte('[')
 
 	first := true
-	err := s.Iterate(func(d document.Document) error {
+	err := s.Iterate(func(d types.Document) error {
 		if !first {
 			buf.WriteString(", ")
 		} else {
@@ -139,7 +139,7 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 	return buf.Flush()
 }
 
-func RequireDocEqual(t testing.TB, d1, d2 document.Document) {
+func RequireDocEqual(t testing.TB, d1, d2 types.Document) {
 	t.Helper()
 
 	l := types.NewDocumentValue(d1)

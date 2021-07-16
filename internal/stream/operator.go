@@ -100,7 +100,7 @@ func (op *MapOperator) Iterate(in *environment.Environment, f func(out *environm
 			return ErrInvalidResult
 		}
 
-		newEnv.SetDocument(v.V().(document.Document))
+		newEnv.SetDocument(v.V().(types.Document))
 		newEnv.SetOuter(out)
 		return f(&newEnv)
 	})

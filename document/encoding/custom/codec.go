@@ -44,7 +44,7 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // EncodeDocument encodes d.
-func (e *Encoder) EncodeDocument(d document.Document) error {
+func (e *Encoder) EncodeDocument(d types.Document) error {
 	data, err := EncodeDocument(d)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (e *Encoder) EncodeDocument(d document.Document) error {
 func (e *Encoder) Close() {}
 
 // EncodeDocument takes a document and encodes it using the encoding.Format type.
-func EncodeDocument(d document.Document) ([]byte, error) {
+func EncodeDocument(d types.Document) ([]byte, error) {
 	if ec, ok := d.(*EncodedDocument); ok {
 		return ec.data, nil
 	}
@@ -110,7 +110,7 @@ func EncodeDocument(d document.Document) ([]byte, error) {
 
 // DecodeDocument takes a byte slice and returns a lazily decoded document.
 // If buf is malformed, an error will be returned when calling one of the document method.
-func DecodeDocument(buf []byte) document.Document {
+func DecodeDocument(buf []byte) types.Document {
 	return &EncodedDocument{buf}
 }
 
@@ -118,7 +118,7 @@ func DecodeDocument(buf []byte) document.Document {
 func EncodeValue(v types.Value) ([]byte, error) {
 	switch v.Type() {
 	case types.DocumentValue:
-		return EncodeDocument(v.V().(document.Document))
+		return EncodeDocument(v.V().(types.Document))
 	case types.ArrayValue:
 		return EncodeArray(v.V().(document.Array))
 	case types.BlobValue:
@@ -144,7 +144,7 @@ func encodeInt64(x int64) []byte {
 	return buf[:n]
 }
 
-// An EncodedDocument implements the document.Document interface on top of an encoded representation of a
+// An EncodedDocument implements the types.Document interface on top of an encoded representation of a
 // document.
 // It is useful to avoid decoding the entire document when only a few fields are needed.
 type EncodedDocument struct {

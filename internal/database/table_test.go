@@ -92,7 +92,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(d document.Document) error {
+		err := tb.Iterate(func(d types.Document) error {
 			i++
 			return nil
 		})
@@ -110,7 +110,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(d document.Document) error {
+		err := tb.Iterate(func(d types.Document) error {
 			m[string(d.(document.Keyer).RawKey())]++
 			return nil
 		})
@@ -131,7 +131,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(_ document.Document) error {
+		err := tb.Iterate(func(_ types.Document) error {
 			i++
 			if i >= 5 {
 				return errors.New("some error")
@@ -410,7 +410,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
-		v, err = v.V().(document.Document).GetByField("bar")
+		v, err = v.V().(types.Document).GetByField("bar")
 		require.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(10), v)
 		v, err = d.GetByField("bar")
@@ -616,7 +616,7 @@ func TestTableInsert(t *testing.T) {
 			Add("foo", types.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
 			called++
 			return d, nil
 		}
@@ -680,7 +680,7 @@ func TestTableInsert(t *testing.T) {
 			Add("foo", types.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
 			called++
 			return d, nil
 		}
@@ -711,7 +711,7 @@ func TestTableInsert(t *testing.T) {
 			Add("bar", types.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
 			called++
 			return d, nil
 		}
@@ -980,7 +980,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		require.NoError(t, err)
 
-		err = tb.Iterate(func(_ document.Document) error {
+		err = tb.Iterate(func(_ types.Document) error {
 			return errors.New("should not iterate")
 		})
 
@@ -1092,7 +1092,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(func(document.Document) error {
+				tb.Iterate(func(types.Document) error {
 					return nil
 				})
 			}

@@ -11,7 +11,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
-// An EncodedDocument implements the document.Document
+// An EncodedDocument implements the types.Document
 // interface on top of an encoded representation of a
 // document.
 // It is useful for avoiding decoding the entire document when

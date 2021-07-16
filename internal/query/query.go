@@ -3,10 +3,10 @@ package query
 import (
 	"context"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/query/statement"
+	"github.com/genjidb/genji/types"
 )
 
 // A Query can execute statements against the database. It can read or write data
@@ -98,7 +98,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		// and the current statement is not read-only,
 		// iterate over the result.
 		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
-			err = res.Iterate(func(d document.Document) error { return nil })
+			err = res.Iterate(func(d types.Document) error { return nil })
 			if err != nil {
 				if q.autoCommit {
 					q.tx.Rollback()

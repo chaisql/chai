@@ -14,11 +14,11 @@ import (
 
 // A Scanner can iterate over a document and scan all the fields.
 type Scanner interface {
-	ScanDocument(Document) error
+	ScanDocument(types.Document) error
 }
 
 // Scan each field of the document into the given variables.
-func Scan(d Document, targets ...interface{}) error {
+func Scan(d types.Document, targets ...interface{}) error {
 	var i int
 
 	return d.Iterate(func(f string, v types.Value) error {
@@ -47,7 +47,7 @@ func Scan(d Document, targets ...interface{}) error {
 // under the "genji" key stored in the struct field's tag.
 // The content of the format string is used instead of the struct field name and passed
 // to the GetByField method.
-func StructScan(d Document, t interface{}) error {
+func StructScan(d types.Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
 	if !ref.IsValid() || ref.Kind() != reflect.Ptr {
@@ -61,7 +61,7 @@ func StructScan(d Document, t interface{}) error {
 	return structScan(d, ref)
 }
 
-func structScan(d Document, ref reflect.Value) error {
+func structScan(d types.Document, ref reflect.Value) error {
 	if ref.Type().Implements(reflect.TypeOf((*Scanner)(nil)).Elem()) {
 		return ref.Interface().(Scanner).ScanDocument(d)
 	}
@@ -174,7 +174,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 }
 
 // MapScan decodes the document into a map.
-func MapScan(d Document, t interface{}) error {
+func MapScan(d types.Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 	if !ref.IsValid() {
 		return &ErrUnsupportedType{ref, "t must be a valid reference"}
@@ -191,7 +191,7 @@ func MapScan(d Document, t interface{}) error {
 	return mapScan(d, ref)
 }
 
-func mapScan(d Document, ref reflect.Value) error {
+func mapScan(d types.Document, ref reflect.Value) error {
 	if ref.Type().Key().Kind() != reflect.String {
 		return &ErrUnsupportedType{ref, "map key must be a string"}
 	}
@@ -310,7 +310,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			m := make(map[string]interface{})
 			vm := reflect.ValueOf(m)
 			ref.Set(vm)
-			return mapScan(v.V().(Document), vm)
+			return mapScan(v.V().(types.Document), vm)
 		case types.ArrayValue:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
@@ -347,7 +347,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return structScan(v.V().(Document), ref)
+		return structScan(v.V().(types.Document), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
@@ -386,14 +386,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return mapScan(v.V().(Document), ref)
+		return mapScan(v.V().(types.Document), ref)
 	}
 
 	return &ErrUnsupportedType{ref, "Invalid type"}
 }
 
 // ScanDocument scans a document into dest which must be either a struct pointer, a map or a map pointer.
-func ScanDocument(d Document, t interface{}) error {
+func ScanDocument(d types.Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
 	if !ref.IsValid() {
@@ -432,7 +432,7 @@ type iteratorArray struct {
 
 func (it *iteratorArray) Iterate(fn func(i int, value types.Value) error) error {
 	count := 0
-	return it.it.Iterate(func(d Document) error {
+	return it.it.Iterate(func(d types.Document) error {
 		err := fn(count, types.NewDocumentValue(d))
 		if err != nil {
 			return err

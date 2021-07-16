@@ -511,7 +511,7 @@ func (c *Catalog) ReIndex(tx *database.Transaction, indexName string) error {
 }
 
 func (c *Catalog) buildIndex(tx *database.Transaction, idx *database.Index, table *database.Table) error {
-	return table.Iterate(func(d document.Document) error {
+	return table.Iterate(func(d types.Document) error {
 		var err error
 		values := make([]types.Value, len(idx.Info.Paths))
 		for i, path := range idx.Info.Paths {

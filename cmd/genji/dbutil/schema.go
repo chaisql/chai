@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 )
 
 func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) error) error {
@@ -21,7 +22,7 @@ func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) erro
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(func(d types.Document) error {
 		// Get table name.
 		var name, query string
 		if err := document.Scan(d, &name, &query); err != nil {
@@ -45,7 +46,7 @@ func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string,
 		}
 		defer res.Close()
 
-		return res.Iterate(func(d document.Document) error {
+		return res.Iterate(func(d types.Document) error {
 			var query string
 			err = document.Scan(d, &query)
 			if err != nil {

@@ -15,11 +15,11 @@ import (
 
 type DocumentsOperator struct {
 	baseOperator
-	Docs []document.Document
+	Docs []types.Document
 }
 
 // Documents creates a DocumentsOperator that iterates over the given values.
-func Documents(documents ...document.Document) *DocumentsOperator {
+func Documents(documents ...types.Document) *DocumentsOperator {
 	return &DocumentsOperator{
 		Docs: documents,
 	}
@@ -79,7 +79,7 @@ func (op *ExprsOperator) Iterate(in *environment.Environment, fn func(out *envir
 			return ErrInvalidResult
 		}
 
-		newEnv.SetDocument(v.V().(document.Document))
+		newEnv.SetDocument(v.V().(types.Document))
 		err = fn(&newEnv)
 		if err != nil {
 			return err
@@ -130,14 +130,14 @@ func (it *SeqScanOperator) Iterate(in *environment.Environment, fn func(out *env
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	var iterator func(pivot types.Value, fn func(d document.Document) error) error
+	var iterator func(pivot types.Value, fn func(d types.Document) error) error
 	if !it.Reverse {
 		iterator = table.AscendGreaterOrEqual
 	} else {
 		iterator = table.DescendLessOrEqual
 	}
 
-	return iterator(nil, func(d document.Document) error {
+	return iterator(nil, func(d types.Document) error {
 		newEnv.SetDocument(d)
 		return fn(&newEnv)
 	})
@@ -217,7 +217,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 		return err
 	}
 
-	var iterator func(pivot types.Value, fn func(d document.Document) error) error
+	var iterator func(pivot types.Value, fn func(d types.Document) error) error
 
 	if !it.Reverse {
 		iterator = table.AscendGreaterOrEqual
@@ -243,7 +243,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 			}
 		}
 
-		err = iterator(start, func(d document.Document) error {
+		err = iterator(start, func(d types.Document) error {
 			key := d.(document.Keyer).RawKey()
 
 			if !rng.IsInRange(key) {

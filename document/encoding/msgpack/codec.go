@@ -47,7 +47,7 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // EncodeDocument encodes d as a MessagePack map.
-func (e *Encoder) EncodeDocument(d document.Document) error {
+func (e *Encoder) EncodeDocument(d types.Document) error {
 	var dlen int
 	var err error
 
@@ -113,7 +113,7 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 func (e *Encoder) EncodeValue(v types.Value) error {
 	switch v.Type() {
 	case types.DocumentValue:
-		return e.EncodeDocument(v.V().(document.Document))
+		return e.EncodeDocument(v.V().(types.Document))
 	case types.ArrayValue:
 		return e.EncodeArray(v.V().(document.Array))
 	case types.NullValue:
@@ -175,7 +175,7 @@ func (d *Decoder) DecodeValue() (v types.Value, err error) {
 
 	// decode document
 	if (msgpcode.IsFixedMap(c)) || (c == msgpcode.Map16) || (c == msgpcode.Map32) {
-		var doc document.Document
+		var doc types.Document
 		doc, err = d.DecodeDocument()
 		if err != nil {
 			return
@@ -258,7 +258,7 @@ func (d *Decoder) DecodeValue() (v types.Value, err error) {
 // DecodeDocument decodes one document from the reader.
 // If the document is malformed, it will not return an error.
 // However, calls to Iterate or GetByField will fail.
-func (d *Decoder) DecodeDocument() (document.Document, error) {
+func (d *Decoder) DecodeDocument() (types.Document, error) {
 	r, err := d.dec.DecodeRaw()
 	if err != nil {
 		return nil, err

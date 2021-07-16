@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/types"
 )
 
 // ExecSQL reads SQL queries from reader and executes them until the reader is exhausted.
@@ -56,7 +56,7 @@ func runQuery(ctx context.Context, db *genji.DB, q string, w io.Writer) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(func(d types.Document) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

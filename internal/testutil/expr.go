@@ -47,7 +47,7 @@ func NullValue() expr.LiteralValue {
 }
 
 // DocumentValue creates a literal value of type Document.
-func DocumentValue(d document.Document) expr.LiteralValue {
+func DocumentValue(d types.Document) expr.LiteralValue {
 	return expr.LiteralValue{Value: types.NewDocumentValue(d)}
 }
 

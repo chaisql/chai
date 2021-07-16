@@ -20,8 +20,8 @@ import (
 func TestMap(t *testing.T) {
 	tests := []struct {
 		e     expr.Expr
-		in    []document.Document
-		out   []document.Document
+		in    []types.Document
+		out   []types.Document
 		fails bool
 	}{
 		{
@@ -71,8 +71,8 @@ func TestMap(t *testing.T) {
 func TestFilter(t *testing.T) {
 	tests := []struct {
 		e     expr.Expr
-		in    []document.Document
-		out   []document.Document
+		in    []types.Document
+		out   []types.Document
 		fails bool
 	}{
 		{
@@ -139,7 +139,7 @@ func TestTake(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d/%d", test.inNumber, test.n), func(t *testing.T) {
-			var docs []document.Document
+			var docs []types.Document
 
 			for i := 0; i < test.inNumber; i++ {
 				docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
@@ -184,7 +184,7 @@ func TestSkip(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d/%d", test.inNumber, test.n), func(t *testing.T) {
-			var docs []document.Document
+			var docs []types.Document
 
 			for i := 0; i < test.inNumber; i++ {
 				docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
@@ -215,7 +215,7 @@ func TestSkip(t *testing.T) {
 func TestGroupBy(t *testing.T) {
 	tests := []struct {
 		e     expr.Expr
-		in    []document.Document
+		in    []types.Document
 		group types.Value
 		fails bool
 	}{
@@ -270,7 +270,7 @@ func TestGroupBy(t *testing.T) {
 	})
 }
 
-func generateSeqDocs(t testing.TB, max int) (docs []document.Document) {
+func generateSeqDocs(t testing.TB, max int) (docs []types.Document) {
 	t.Helper()
 
 	for i := 0; i < max; i++ {
@@ -284,20 +284,20 @@ func TestSort(t *testing.T) {
 	tests := []struct {
 		name     string
 		sortExpr expr.Expr
-		values   []document.Document
-		want     []document.Document
+		values   []types.Document
+		want     []types.Document
 		fails    bool
 		desc     bool
 	}{
 		{
 			"ASC",
 			parser.MustParseExpr("a"),
-			[]document.Document{
+			[]types.Document{
 				testutil.MakeDocument(t, `{"a": 0}`),
 				testutil.MakeDocument(t, `{"a": null}`),
 				testutil.MakeDocument(t, `{"a": true}`),
 			},
-			[]document.Document{
+			[]types.Document{
 				testutil.MakeDocument(t, `{"a": null}`),
 				testutil.MakeDocument(t, `{"a": true}`),
 				testutil.MakeDocument(t, `{"a": 0}`),
@@ -308,12 +308,12 @@ func TestSort(t *testing.T) {
 		{
 			"DESC",
 			parser.MustParseExpr("a"),
-			[]document.Document{
+			[]types.Document{
 				testutil.MakeDocument(t, `{"a": 0}`),
 				testutil.MakeDocument(t, `{"a": null}`),
 				testutil.MakeDocument(t, `{"a": true}`),
 			},
-			[]document.Document{
+			[]types.Document{
 				testutil.MakeDocument(t, `{"a": 0}`),
 				testutil.MakeDocument(t, `{"a": true}`),
 				testutil.MakeDocument(t, `{"a": null}`),
@@ -332,7 +332,7 @@ func TestSort(t *testing.T) {
 				s = s.Pipe(stream.Sort(test.sortExpr))
 			}
 
-			var got []document.Document
+			var got []types.Document
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
@@ -357,14 +357,14 @@ func TestTableInsert(t *testing.T) {
 	tests := []struct {
 		name  string
 		in    stream.Operator
-		out   []document.Document
+		out   []types.Document
 		docid int
 		fails bool
 	}{
 		{
 			"doc with no key",
 			stream.Documents(testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)),
-			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)},
 			1,
 			false,
 		},
@@ -468,8 +468,8 @@ func TestTableReplace(t *testing.T) {
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
 
-			var got []document.Document
-			err = res.Iterate(func(d document.Document) error {
+			var got []types.Document
+			err = res.Iterate(func(d types.Document) error {
 				var fb document.FieldBuffer
 				fb.Copy(d)
 				got = append(got, fb)
@@ -489,7 +489,7 @@ func TestTableDelete(t *testing.T) {
 	tests := []struct {
 		name                  string
 		docsInTable, expected testutil.Docs
-		in                    document.Document
+		in                    types.Document
 		fails                 bool
 	}{
 		{
@@ -541,8 +541,8 @@ func TestTableDelete(t *testing.T) {
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
 
-			var got []document.Document
-			err = res.Iterate(func(d document.Document) error {
+			var got []types.Document
+			err = res.Iterate(func(d types.Document) error {
 				var fb document.FieldBuffer
 				fb.Copy(d)
 				got = append(got, fb)
@@ -584,7 +584,7 @@ func TestDistinct(t *testing.T) {
 			s := stream.New(stream.Documents(test.values...))
 			s = s.Pipe(stream.Distinct())
 
-			var got []document.Document
+			var got []types.Document
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
@@ -612,7 +612,7 @@ func TestSet(t *testing.T) {
 	tests := []struct {
 		path    string
 		e       expr.Expr
-		in, out []document.Document
+		in, out []types.Document
 		fails   bool
 	}{
 		{
@@ -659,7 +659,7 @@ func TestSet(t *testing.T) {
 func TestUnset(t *testing.T) {
 	tests := []struct {
 		path    string
-		in, out []document.Document
+		in, out []types.Document
 		fails   bool
 	}{
 		{
@@ -696,7 +696,7 @@ func TestUnset(t *testing.T) {
 func TestIterRename(t *testing.T) {
 	tests := []struct {
 		fieldNames []string
-		in, out    []document.Document
+		in, out    []types.Document
 		fails      bool
 	}{
 		{
