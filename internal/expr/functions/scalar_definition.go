@@ -9,28 +9,28 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-// A ScalarFunctionDef is the definition type for functions which operates on scalar values in contrast to other SQL functions
+// A ScalarDefinition is the definition type for functions which operates on scalar values in contrast to other SQL functions
 // such as the SUM aggregator wich operates on expressions instead.
 //
 // This difference allows to simply define them with a CallFn function that takes multiple document.Value and
-// return another document.Value, rather than having to manually evaluate expressions (see FunctionDef).
-type ScalarFunctionDef struct {
+// return another document.Value, rather than having to manually evaluate expressions (see Definition).
+type ScalarDefinition struct {
 	name   string
 	arity  int
 	callFn func(...document.Value) (document.Value, error)
 }
 
-func NewScalarDefinition(name string, arity int, callFn func(...document.Value) (document.Value, error)) *ScalarFunctionDef {
-	return &ScalarFunctionDef{name: name, arity: arity, callFn: callFn}
+func NewScalarDefinition(name string, arity int, callFn func(...document.Value) (document.Value, error)) *ScalarDefinition {
+	return &ScalarDefinition{name: name, arity: arity, callFn: callFn}
 }
 
-// Name returns the defined function named (as an indent, so no parentheses).
-func (fd *ScalarFunctionDef) Name() string {
+// Name returns the defined function named (as an ident, so no parentheses).
+func (fd *ScalarDefinition) Name() string {
 	return fd.name
 }
 
 // String returns the defined function name and its arguments.
-func (fd *ScalarFunctionDef) String() string {
+func (fd *ScalarDefinition) String() string {
 	args := make([]string, 0, fd.arity)
 	for i := 0; i < fd.arity; i++ {
 		args = append(args, stringutil.Sprintf("arg%d", i+1))
@@ -39,9 +39,9 @@ func (fd *ScalarFunctionDef) String() string {
 }
 
 // Function returns a Function expr node.
-func (fd *ScalarFunctionDef) Function(args ...expr.Expr) (expr.Function, error) {
+func (fd *ScalarDefinition) Function(args ...expr.Expr) (expr.Function, error) {
 	if len(args) != fd.arity {
-		return nil, stringutil.Errorf("%s takes %d argument, not %d", fd.String(), fd.arity, len(args))
+		return nil, stringutil.Errorf("%s takes %d argument(s), not %d", fd.String(), fd.arity, len(args))
 	}
 	return &ScalarFunction{
 		params: args,
@@ -49,15 +49,15 @@ func (fd *ScalarFunctionDef) Function(args ...expr.Expr) (expr.Function, error) 
 	}, nil
 }
 
-// Arity return the arity of the defined function.
-func (fd *ScalarFunctionDef) Arity() int {
+// Arity returns the arity of the defined function.
+func (fd *ScalarDefinition) Arity() int {
 	return fd.arity
 }
 
 // A ScalarFunction is a function which operates on scalar values in contrast to other SQL functions
 // such as the SUM aggregator wich operates on expressions instead.
 type ScalarFunction struct {
-	def    *ScalarFunctionDef
+	def    *ScalarDefinition
 	params []expr.Expr
 }
 

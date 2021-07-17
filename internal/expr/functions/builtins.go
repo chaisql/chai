@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-var builtinFunctions = DefinitionsTable{
+var builtinFunctions = Definitions{
 	"pk": &definition{
 		name:  "pk",
 		arity: 0,
@@ -55,7 +55,7 @@ var builtinFunctions = DefinitionsTable{
 }
 
 // BuiltinDefinitions returns a map of builtin functions.
-func BuiltinDefinitions() DefinitionsTable {
+func BuiltinDefinitions() Definitions {
 	return builtinFunctions
 }
 

@@ -8,15 +8,15 @@ import (
 )
 
 // MathFunctions returns all math package functions.
-func MathFunctions() DefinitionsTable {
+func MathFunctions() Definitions {
 	return mathFunctions
 }
 
-var mathFunctions = DefinitionsTable{
+var mathFunctions = Definitions{
 	"floor": floorFunc,
 }
 
-var floorFunc = &ScalarFunctionDef{
+var floorFunc = &ScalarDefinition{
 	name:  "floor",
 	arity: 1,
 	callFn: func(args ...document.Value) (document.Value, error) {

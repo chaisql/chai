@@ -7,11 +7,11 @@ import (
 // Options of the SQL parser.
 type Options struct {
 	// A table of function packages.
-	PackagesTable functions.PackagesTable
+	Packages functions.Packages
 }
 
 func defaultOptions() *Options {
 	return &Options{
-		PackagesTable: functions.DefaultPackagesTable(),
+		Packages: functions.DefaultPackages(),
 	}
 }

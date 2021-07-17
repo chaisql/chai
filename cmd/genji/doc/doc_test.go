@@ -11,8 +11,8 @@ import (
 )
 
 func TestFunctions(t *testing.T) {
-	table := functions.DefaultPackagesTable()
-	for pkgname, pkg := range table {
+	packages := functions.DefaultPackages()
+	for pkgname, pkg := range packages {
 		for fname, def := range pkg {
 			if pkgname == "" {
 				t.Run(fmt.Sprintf("%s has all its arguments mentioned", fname), func(t *testing.T) {

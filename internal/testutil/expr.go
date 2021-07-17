@@ -115,7 +115,7 @@ var emptyEnv = environment.New(nil)
 func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
 	t.Helper()
 	n := strings.Split(name, ".")
-	def, err := functions.DefaultPackagesTable().GetFunc(n[0], n[1])
+	def, err := functions.DefaultPackages().GetFunc(n[0], n[1])
 	require.NoError(t, err)
 	require.NotNil(t, def)
 	expr, err := def.Function(args...)

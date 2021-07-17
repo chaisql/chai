@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFunctionDef(t *testing.T) {
-	table := functions.DefaultPackagesTable()
-	def, err := table.GetFunc("", "count")
+func TestDefinitions(t *testing.T) {
+	packages := functions.DefaultPackages()
+	def, err := packages.GetFunc("", "count")
 	require.NoError(t, err)
 
 	t.Run("String()", func(t *testing.T) {
@@ -29,8 +29,8 @@ func TestFunctionDef(t *testing.T) {
 	})
 }
 
-func TestPackagesTable(t *testing.T) {
-	table := functions.DefaultPackagesTable()
+func TestPackages(t *testing.T) {
+	table := functions.DefaultPackages()
 
 	t.Run("OK GetFunc()", func(t *testing.T) {
 		def, err := table.GetFunc("math", "floor")

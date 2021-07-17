@@ -15,21 +15,21 @@ type Definition interface {
 	Arity() int
 }
 
-// A Definitions table holds a map of definitions, indexed by their names.
-type DefinitionsTable map[string]Definition
+// Definitions table holds a map of definition, indexed by their names.
+type Definitions map[string]Definition
 
-// PackagesTable represents a table of SQL functions grouped by their packages
-type PackagesTable map[string]DefinitionsTable
+// Packages represent a table of SQL functions grouped by their packages
+type Packages map[string]Definitions
 
-func DefaultPackagesTable() PackagesTable {
-	return PackagesTable{
+func DefaultPackages() Packages {
+	return Packages{
 		"":     BuiltinDefinitions(),
 		"math": MathFunctions(),
 	}
 }
 
 // GetFunc return a function definition by its package and name.
-func (t PackagesTable) GetFunc(pkg string, fname string) (Definition, error) {
+func (t Packages) GetFunc(pkg string, fname string) (Definition, error) {
 	fs, ok := t[pkg]
 	if !ok {
 		return nil, stringutil.Errorf("no such package: %q", fname)

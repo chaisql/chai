@@ -58,7 +58,7 @@ func scanFuncDocString(s *scanner.Scanner) (string, error) {
 }
 
 func funcDocString(pkg string, name string) (string, error) {
-	table := functions.DefaultPackagesTable()
+	table := functions.DefaultPackages()
 	f, err := table.GetFunc(pkg, name)
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrNotFound, err.Error())
