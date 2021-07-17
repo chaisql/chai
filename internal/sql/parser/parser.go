@@ -6,6 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -17,7 +18,7 @@ type Parser struct {
 	s             *scanner.Scanner
 	orderedParams int
 	namedParams   int
-	functions     expr.Functions
+	packagesTable functions.Packages
 }
 
 // NewParser returns a new instance of Parser.
@@ -31,7 +32,7 @@ func NewParserWithOptions(r io.Reader, opts *Options) *Parser {
 		opts = defaultOptions()
 	}
 
-	return &Parser{s: scanner.NewScanner(r), functions: opts.Functions}
+	return &Parser{s: scanner.NewScanner(r), packagesTable: opts.Packages}
 }
 
 // ParseQuery parses a query string and returns its AST representation.

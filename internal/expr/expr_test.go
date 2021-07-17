@@ -41,20 +41,6 @@ var envWithDocAndKey = environment.New(docWithKey)
 
 var nullLiteral = document.NewNullValue()
 
-func testExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
-	t.Helper()
-
-	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
-	require.NoError(t, err)
-	res, err := e.Eval(env)
-	if fails {
-		require.Error(t, err)
-	} else {
-		require.NoError(t, err)
-		require.Equal(t, want, res)
-	}
-}
-
 func TestString(t *testing.T) {
 	var operands = []string{
 		`10.4`,

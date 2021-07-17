@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -143,7 +144,7 @@ func TestParserSelect(t *testing.T) {
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.HashAggregate(&expr.CountFunc{Wildcard: true})).
+				Pipe(stream.HashAggregate(&functions.Count{Wildcard: true})).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			false},
 		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",
@@ -189,6 +190,6 @@ func TestParserSelect(t *testing.T) {
 
 func BenchmarkSelect(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		parser.ParseQuery("SELECT a, b.c[100].d AS `foo` FROM `some table` WHERE d.e[100] >= 12 AND c.d IN ([1, true], [2, false]) GROUP BY d.e[0] LIMIT 10 + 10 OFFSET 20 - 20 ORDER BY d DESC")
+		_, _ = parser.ParseQuery("SELECT a, b.c[100].d AS `foo` FROM `some table` WHERE d.e[100] >= 12 AND c.d IN ([1, true], [2, false]) GROUP BY d.e[0] LIMIT 10 + 10 OFFSET 20 - 20 ORDER BY d DESC")
 	}
 }

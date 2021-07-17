@@ -103,6 +103,28 @@ func (e *NamedExpr) String() string {
 	return stringutil.Sprintf("%s", e.Expr)
 }
 
+// A Function is an expression whose evaluation calls a function previously defined.
+type Function interface {
+	Expr
+
+	// Returns the list of parameters this function has received.
+	Params() []Expr
+}
+
+// A Aggregator is an expression that aggregates documents into one result.
+type Aggregator interface {
+	Expr
+
+	Aggregate(env *environment.Environment) error
+}
+
+// An AggregatorBuilder is a type that can create aggregators.
+type AggregatorBuilder interface {
+	Expr
+
+	Aggregator() Aggregator
+}
+
 func Walk(e Expr, fn func(Expr) bool) bool {
 	if e == nil {
 		return true

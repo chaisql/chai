@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,12 +46,12 @@ func TestPathExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, environment.New(d), test.res, test.fails)
+			testutil.TestExpr(t, test.expr, environment.New(d), test.res, test.fails)
 		})
 	}
 
 	t.Run("empty env", func(t *testing.T) {
-		testExpr(t, "a", &environment.Environment{}, nullLiteral, true)
+		testutil.TestExpr(t, "a", &environment.Environment{}, nullLiteral, true)
 	})
 }
 
@@ -112,11 +113,11 @@ func TestEnvPathExpr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testExpr(t, test.expr, environment.New(d), test.res, test.fails)
+			testutil.TestExpr(t, test.expr, environment.New(d), test.res, test.fails)
 		})
 	}
 
 	t.Run("empty env", func(t *testing.T) {
-		testExpr(t, "a", &environment.Environment{}, nullLiteral, true)
+		testutil.TestExpr(t, "a", &environment.Environment{}, nullLiteral, true)
 	})
 }

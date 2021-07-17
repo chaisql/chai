@@ -12,6 +12,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
+	"github.com/genjidb/genji/cmd/genji/doc"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 )
@@ -59,6 +60,12 @@ var commands = []command{
 		Description: "Dump database content or table content as SQL statements.",
 	},
 	{
+		Name:        ".doc",
+		Options:     "[function_name]",
+		DisplayName: ".doc",
+		Description: "Display inline documentation for a function",
+	},
+	{
 		Name:        ".save",
 		Options:     "[badger] [filename]",
 		DisplayName: ".save",
@@ -97,6 +104,16 @@ func runHelpCmd() error {
 		fmt.Printf("%s %s %*s %s\n", c.DisplayName, c.Options, indent, "", c.Description)
 	}
 
+	return nil
+}
+
+// runDocCommand prints the docstring for a given function
+func runDocCmd(expr string) error {
+	doc, err := doc.DocString(expr)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s\n", doc)
 	return nil
 }
 

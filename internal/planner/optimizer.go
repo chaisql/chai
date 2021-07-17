@@ -5,6 +5,7 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -383,7 +384,7 @@ func isProjectionUnique(indexes []*database.IndexInfo, po *stream.ProjectOperato
 			if found != nil && found.Unique {
 				continue
 			}
-		case *expr.PKFunc:
+		case *functions.PK:
 			continue
 		}
 

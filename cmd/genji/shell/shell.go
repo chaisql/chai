@@ -491,6 +491,11 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		}
 
 		return runImportCmd(ctx, sh.db, cmd[1], cmd[2], cmd[3])
+	case ".doc":
+		if len(cmd) != 2 {
+			return fmt.Errorf(getUsage(".doc"))
+		}
+		return runDocCmd(cmd[1])
 	default:
 		return displaySuggestions(in)
 	}

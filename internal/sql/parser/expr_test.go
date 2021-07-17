@@ -6,6 +6,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -152,7 +153,7 @@ func TestParserExpr(t *testing.T) {
 		{"with NULL", "age > NULL", expr.Gt(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.CastFunc{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", functions.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: document.TextValue}, false},
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},
@@ -161,9 +162,10 @@ func TestParserExpr(t *testing.T) {
 		{"NEXT VALUE FOR", "NEXT VALUE FOR 10", nil, true},
 
 		// functions
-		{"pk() function", "pk()", &expr.PKFunc{}, false},
-		{"count(expr) function", "count(a)", &expr.CountFunc{Expr: testutil.ParsePath(t, "a")}, false},
-		{"count(*) function", "count(*)", &expr.CountFunc{Wildcard: true}, false},
+		{"pk() function", "pk()", &functions.PK{}, false},
+		{"count(expr) function", "count(a)", &functions.Count{Expr: testutil.ParsePath(t, "a")}, false},
+		{"count(*) function", "count(*)", &functions.Count{Wildcard: true}, false},
+		{"packaged function", "math.floor(1.2)", testutil.FunctionExpr(t, "math.floor", testutil.DoubleValue(1.2)), false},
 	}
 
 	for _, test := range tests {

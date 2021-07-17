@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/genexprtests"
 	"github.com/stretchr/testify/require"
@@ -96,7 +97,32 @@ func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	return &ne
 }
 
+func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
+	t.Helper()
+	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
+	require.NoError(t, err)
+	res, err := e.Eval(env)
+	if fails {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	}
+}
+
 var emptyEnv = environment.New(nil)
+
+func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
+	t.Helper()
+	n := strings.Split(name, ".")
+	def, err := functions.DefaultPackages().GetFunc(n[0], n[1])
+	require.NoError(t, err)
+	require.NotNil(t, def)
+	expr, err := def.Function(args...)
+	require.NoError(t, err)
+	require.NotNil(t, expr)
+	return expr
+}
 
 func ExprRunner(t *testing.T, testfile string) {
 	t.Helper()
@@ -142,7 +168,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						// eval it, it should return an error
 						_, err = e.Eval(emptyEnv)
 						require.NotNilf(t, err, "expected expr `%s` to return an error, got nil", stmt.Expr)
-						require.Regexp(t, regexp.MustCompile(stmt.Res), err.Error())
+						require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
 					})
 				}
 			}

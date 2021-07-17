@@ -1,15 +1,17 @@
 package parser
 
-import "github.com/genjidb/genji/internal/expr"
+import (
+	"github.com/genjidb/genji/internal/expr/functions"
+)
 
 // Options of the SQL parser.
 type Options struct {
-	// A map of builtin SQL functions.
-	Functions expr.Functions
+	// A table of function packages.
+	Packages functions.Packages
 }
 
 func defaultOptions() *Options {
 	return &Options{
-		Functions: expr.NewFunctions(),
+		Packages: functions.DefaultPackages(),
 	}
 }
