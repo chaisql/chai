@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -25,7 +26,7 @@ func TestStream(t *testing.T) {
 	err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 		d, ok := env.GetDocument()
 		require.True(t, ok)
-		require.JSONEq(t, fmt.Sprintf(`{"a": %d}`, count+3), types.NewDocumentValue(d).String())
+		require.JSONEq(t, fmt.Sprintf(`{"a": %d}`, count+3), document.ValueToString(types.NewDocumentValue(d)))
 		count++
 		return nil
 	})

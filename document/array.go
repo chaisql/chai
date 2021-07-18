@@ -217,7 +217,7 @@ func (vb *ValueBuffer) Replace(index int, v types.Value) error {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (vb ValueBuffer) MarshalJSON() ([]byte, error) {
-	return types.JsonArray{Array: &vb}.MarshalJSON()
+	return JsonArray{Array: &vb}.MarshalJSON()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.

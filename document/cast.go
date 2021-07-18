@@ -125,7 +125,7 @@ func CastAsText(v types.Value) (types.Value, error) {
 		return v, nil
 	}
 
-	d, err := v.MarshalJSON()
+	d, err := ValueToJSON(v)
 	if err != nil {
 		return nil, err
 	}

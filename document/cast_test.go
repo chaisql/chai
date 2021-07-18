@@ -27,7 +27,7 @@ func TestCastAs(t *testing.T) {
 
 	check := func(t *testing.T, targetType types.ValueType, tests []test) {
 		for _, test := range tests {
-			t.Run(test.v.String(), func(t *testing.T) {
+			t.Run(ValueToString(test.v), func(t *testing.T) {
 				got, err := CastAs(test.v, targetType)
 				if test.fails {
 					require.Error(t, err)

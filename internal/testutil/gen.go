@@ -54,7 +54,7 @@ func transformV(v types.Value) val {
 	} else if v.Type() == types.ArrayValue {
 		vi = transformArray(v.V().(types.Array))
 	} else {
-		vi = v.String()
+		vi = document.ValueToString(v)
 	}
 
 	return val{

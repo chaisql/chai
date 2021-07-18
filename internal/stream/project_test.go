@@ -60,7 +60,7 @@ func TestProject(t *testing.T) {
 				require.Equal(t, &inEnv, out.GetOuter())
 				d, ok := out.GetDocument()
 				require.True(t, ok)
-				require.JSONEq(t, test.out, types.NewDocumentValue(d).String())
+				require.JSONEq(t, test.out, document.ValueToString(types.NewDocumentValue(d)))
 
 				err := d.Iterate(func(field string, want types.Value) error {
 					got, err := d.GetByField(field)

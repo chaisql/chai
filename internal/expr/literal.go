@@ -27,7 +27,7 @@ func (v LiteralValue) IsEqual(other Expr) bool {
 
 // String implements the stringutil.Stringer interface.
 func (v LiteralValue) String() string {
-	return v.Value.String()
+	return document.ValueToString(v.Value)
 }
 
 // Eval returns l. It implements the Expr interface.

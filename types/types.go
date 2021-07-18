@@ -77,6 +77,14 @@ func (t ValueType) IsAny() bool {
 	return t == AnyType
 }
 
+type Value interface {
+	Type() ValueType
+	V() interface{}
+	// TODO(asdine): Remove the following methods from
+	// this interface and use type inference instead.
+	MarshalBinary() ([]byte, error)
+}
+
 // A Document represents a group of key value pairs.
 type Document interface {
 	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.

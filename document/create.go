@@ -96,7 +96,7 @@ func (m mapDocument) GetByField(field string) (types.Value, error) {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (m mapDocument) MarshalJSON() ([]byte, error) {
-	return types.JsonDocument{Document: m}.MarshalJSON()
+	return JsonDocument{Document: m}.MarshalJSON()
 }
 
 // NewFromStruct creates a document from a struct using reflection.

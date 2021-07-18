@@ -2,24 +2,10 @@ package types
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
-	"math"
-	"strconv"
 
 	"github.com/genjidb/genji/internal/binarysort"
-	"github.com/genjidb/genji/internal/stringutil"
 )
-
-type Value interface {
-	Type() ValueType
-	V() interface{}
-	// TODO(asdine): Remove the following methods from
-	// this interface and use type inference instead.
-	MarshalJSON() ([]byte, error)
-	MarshalBinary() ([]byte, error)
-	String() string
-}
 
 // A Value stores encoded data alongside its type.
 type value struct {
@@ -170,63 +156,6 @@ func IsZeroValue(v Value) (bool, error) {
 	}
 
 	return false, nil
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (v *value) MarshalJSON() ([]byte, error) {
-	switch v.tp {
-	case NullValue:
-		return []byte("null"), nil
-	case BoolValue:
-		return strconv.AppendBool(nil, v.v.(bool)), nil
-	case IntegerValue:
-		return strconv.AppendInt(nil, v.v.(int64), 10), nil
-	case DoubleValue:
-		f := v.v.(float64)
-		abs := math.Abs(f)
-		fmt := byte('f')
-		if abs != 0 {
-			if abs < 1e-6 || abs >= 1e21 {
-				fmt = 'e'
-			}
-		}
-
-		// By default the precision is -1 to use the smallest number of digits.
-		// See https://pkg.go.dev/strconv#FormatFloat
-		prec := -1
-
-		return strconv.AppendFloat(nil, v.v.(float64), fmt, prec, 64), nil
-	case TextValue:
-		return []byte(strconv.Quote(v.v.(string))), nil
-	case BlobValue:
-		src := v.v.([]byte)
-		dst := make([]byte, base64.StdEncoding.EncodedLen(len(src))+2)
-		dst[0] = '"'
-		dst[len(dst)-1] = '"'
-		base64.StdEncoding.Encode(dst[1:], src)
-		return dst, nil
-	case ArrayValue:
-		return JsonArray{v.v.(Array)}.MarshalJSON()
-	case DocumentValue:
-		return JsonDocument{v.v.(Document)}.MarshalJSON()
-	default:
-		return nil, stringutil.Errorf("unexpected type: %d", v.tp)
-	}
-}
-
-// String returns a string representation of the value. It implements the fmt.Stringer interface.
-func (v *value) String() string {
-	switch v.tp {
-	case NullValue:
-		return "NULL"
-	case TextValue:
-		return strconv.Quote(v.v.(string))
-	case BlobValue:
-		return stringutil.Sprintf("%v", v.v)
-	}
-
-	d, _ := v.MarshalJSON()
-	return string(d)
 }
 
 // Append appends to buf a binary representation of v.

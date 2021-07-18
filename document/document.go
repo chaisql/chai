@@ -35,12 +35,12 @@ type Iterator interface {
 
 // MarshalJSON encodes a document to json.
 func MarshalJSON(d types.Document) ([]byte, error) {
-	return types.JsonDocument{Document: d}.MarshalJSON()
+	return JsonDocument{Document: d}.MarshalJSON()
 }
 
 // MarshalJSONArray encodes an array to json.
 func MarshalJSONArray(a types.Array) ([]byte, error) {
-	return types.JsonArray{Array: a}.MarshalJSON()
+	return JsonArray{Array: a}.MarshalJSON()
 }
 
 // A Keyer returns the key identifying documents in their storage.
@@ -88,7 +88,7 @@ func NewFieldBuffer() *FieldBuffer {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
-	return types.JsonDocument{Document: fb}.MarshalJSON()
+	return JsonDocument{Document: fb}.MarshalJSON()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
