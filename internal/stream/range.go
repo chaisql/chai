@@ -13,10 +13,6 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-type Costable interface {
-	Cost() int
-}
-
 type ValueRange struct {
 	Min, Max expr.Expr
 	// Exclude Min and Max from the results.
@@ -454,7 +450,11 @@ func (r *IndexRange) encode(index *database.Index, table *database.Table, env *e
 			return nil, err
 		}
 
-		rng.Max = document.NewValueBuffer(types.NewEmptyValue(v.Type()))
+		if !rng.Exclusive {
+			rng.Max = document.NewValueBuffer(types.NewEmptyValue(v.Type()))
+		} else {
+			rng.Max = document.NewValueBuffer(types.NewEmptyValue(v.Type() + 1))
+		}
 	}
 
 	if len(r.Min) == 0 && len(r.Max) > 0 {
@@ -606,7 +606,7 @@ func (r *encodedIndexRange) IsInRange(value []byte) bool {
 
 	// we compare with the lower bound and see if it matches
 	if r.EncodedMin != nil {
-		cmpMin = bytes.Compare(value, r.EncodedMin)
+		cmpMin = bytes.Compare(value[:len(r.EncodedMin)-1], r.EncodedMin[:len(r.EncodedMin)-1])
 	}
 
 	// if exact is true the value has to be equal to the lower bound.

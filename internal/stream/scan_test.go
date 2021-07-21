@@ -383,6 +383,24 @@ func TestIndexScan(t *testing.T) {
 			false, false,
 		},
 		{
+			"min:[1],exclusive", "a",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`),
+			stream.IndexRanges{
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, Exclusive: true},
+			},
+			false, false,
+		},
+		{
+			"min:[1],exclusive", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			stream.IndexRanges{
+				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}, Exclusive: true},
+			},
+			false, false,
+		},
+		{
 			"min:[2, 1]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
