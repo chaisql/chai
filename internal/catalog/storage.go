@@ -329,12 +329,22 @@ func (s *CatalogTable) Insert(tx *database.Transaction, r Relation) error {
 func (s *CatalogTable) Replace(tx *database.Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
-	_, err := tb.Replace([]byte(name), relationToDocument(r))
+	key, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return err
+	}
+
+	_, err = tb.Replace(key, relationToDocument(r))
 	return err
 }
 
 func (s *CatalogTable) Delete(tx *database.Transaction, name string) error {
 	tb := s.Table(tx)
 
-	return tb.Delete([]byte(name))
+	key, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return err
+	}
+
+	return tb.Delete(key)
 }

@@ -335,7 +335,13 @@ func TestCatalogCreateIndex(t *testing.T) {
 			var i int
 			err = idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.DoubleValue)), func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(types.NewDoubleValue(float64(i)))
+				err = types.NewValueEncoder(&buf).Encode(
+					types.NewArrayValue(
+						document.NewValueBuffer(
+							types.NewDoubleValue(float64(i)),
+						),
+					),
+				)
 				require.NoError(t, err)
 				enc := buf.Bytes()
 				require.Equal(t, enc, v)
@@ -578,7 +584,13 @@ func TestCatalogReIndex(t *testing.T) {
 			var i int
 			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(types.NewDoubleValue(float64(i)))
+				err = types.NewValueEncoder(&buf).Encode(
+					types.NewArrayValue(
+						document.NewValueBuffer(
+							types.NewDoubleValue(float64(i)),
+						),
+					),
+				)
 				require.NoError(t, err)
 				enc := buf.Bytes()
 				require.Equal(t, enc, v)
@@ -673,7 +685,13 @@ func TestReIndexAll(t *testing.T) {
 			var i int
 			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(types.NewDoubleValue(float64(i)))
+				err = types.NewValueEncoder(&buf).Encode(
+					types.NewArrayValue(
+						document.NewValueBuffer(
+							types.NewDoubleValue(float64(i)),
+						),
+					),
+				)
 				require.NoError(t, err)
 				enc := buf.Bytes()
 				require.Equal(t, enc, v)
@@ -689,7 +707,13 @@ func TestReIndexAll(t *testing.T) {
 			i = 0
 			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(types.NewDoubleValue(float64(i)))
+				err = types.NewValueEncoder(&buf).Encode(
+					types.NewArrayValue(
+						document.NewValueBuffer(
+							types.NewDoubleValue(float64(i)),
+						),
+					),
+				)
 				require.NoError(t, err)
 				enc := buf.Bytes()
 				require.Equal(t, enc, v)
@@ -759,13 +783,17 @@ func TestCatalogCreateSequence(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, seq)
 
-			_, err = db.Catalog.(*catalog.Catalog).CatalogTable.Table(tx).GetDocument([]byte("test1"))
+			tb := db.Catalog.(*catalog.Catalog).CatalogTable.Table(tx)
+			key, err := tb.EncodeValue(types.NewTextValue("test1"))
 			require.NoError(t, err)
 
-			tb, err := db.Catalog.GetTable(tx, database.SequenceTableName)
+			_, err = tb.GetDocument(key)
 			require.NoError(t, err)
 
-			_, err = tb.GetDocument([]byte("test1"))
+			tb, err = db.Catalog.GetTable(tx, database.SequenceTableName)
+			require.NoError(t, err)
+
+			_, err = tb.GetDocument(key)
 			require.NoError(t, err)
 			return nil
 		})

@@ -84,7 +84,12 @@ func (s *Sequence) Drop(tx *Transaction, catalog Catalog) error {
 		return err
 	}
 
-	return tb.Delete([]byte(s.Info.Name))
+	key, err := tb.EncodeValue(types.NewTextValue(s.Info.Name))
+	if err != nil {
+		return err
+	}
+
+	return tb.Delete(key)
 }
 
 func (s *Sequence) Next(tx *Transaction, catalog Catalog) (int64, error) {
@@ -160,7 +165,11 @@ func (s *Sequence) SetLease(tx *Transaction, catalog Catalog, name string, v int
 		return err
 	}
 
-	_, err = tb.Replace([]byte(name),
+	key, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return err
+	}
+	_, err = tb.Replace(key,
 		document.NewFieldBuffer().
 			Add("name", types.NewTextValue(name)).
 			Add("seq", types.NewIntegerValue(v)),

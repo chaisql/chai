@@ -449,21 +449,16 @@ func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error)
 		if err != nil {
 			return nil, err
 		}
-
-		return v.MarshalBinary()
-	}
-
-	// it no primary key type is specified,
-	// and the value to encode is an integer
-	// convert it to a double.
-	if v.Type() == types.IntegerValue {
+		// it no primary key type is specified,
+		// and the value to encode is an integer
+		// convert it to a double.
+	} else if v.Type() == types.IntegerValue {
 		v, err = document.CastAsDouble(v)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// encode key regardless of type.
 	var buf bytes.Buffer
 	err = types.NewValueEncoder(&buf).Encode(v)
 	if err != nil {
@@ -562,14 +557,6 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) ([]byte, error) {
 			return nil, err
 		}
 
-		// if a primary key type is specified,
-		// encode the key using the optimized encoding solution
-		if pk.Type != 0 {
-			return v.MarshalBinary()
-		}
-
-		// it no primary key type is specified,
-		// encode keys regardless of type.
 		var buf bytes.Buffer
 		err = types.NewValueEncoder(&buf).Encode(v)
 		if err != nil {

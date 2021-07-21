@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"io"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
@@ -49,60 +48,6 @@ func NewIndex(tx engine.Transaction, idxName string, opts *IndexInfo) *Index {
 		tx:   tx,
 		Info: opts,
 	}
-}
-
-// indexValueEncoder encodes a field based on its type; if a type is provided,
-// the value is encoded as is, without any type information. Otherwise, the
-// type is prepended to the value.
-type indexValueEncoder struct {
-	typ types.ValueType
-	w   io.Writer
-}
-
-func (e *indexValueEncoder) EncodeValue(v types.Value) error {
-	// if the index has no type constraint, encode the value with its type
-	if e.typ.IsAny() {
-		// prepend with the type
-		_, err := e.w.Write([]byte{byte(v.Type())})
-		if err != nil {
-			return err
-		}
-
-		// marshal the value, if it exists, just return the type otherwise
-		if v.V() != nil {
-			b, err := v.MarshalBinary()
-			if err != nil {
-				return err
-			}
-
-			_, err = e.w.Write(b)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
-	if v == nil {
-		v = types.NewEmptyValue(e.typ)
-	} else if v.Type() != e.typ {
-		// this should never happen, but if it does, something is very wrong
-		panic("incompatible index type")
-	}
-
-	if v.V() == nil {
-		return nil
-	}
-
-	// there is a type constraint, so a shorter form can be used as the type is always the same
-	b, err := v.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	_, err = e.w.Write(b)
-	return err
 }
 
 var errStop = errors.New("stop")
@@ -401,24 +346,7 @@ func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 
 	var buf bytes.Buffer
 
-	err := vb.Iterate(func(i int, value types.Value) error {
-		enc := &indexValueEncoder{typ: idx.Info.Types[i], w: &buf}
-		err := enc.EncodeValue(value)
-		if err != nil {
-			return err
-		}
-
-		// if it's not the last value, append the seperator
-		if i < vb.Len()-1 {
-			err = buf.WriteByte(types.ArrayValueDelim)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
+	err := types.NewValueEncoder(&buf).Encode(types.NewArrayValue(vb))
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +385,7 @@ func (idx *Index) buildSeek(pivot Pivot, reverse bool) ([]byte, error) {
 	// if the index is without type and the first pivot is valueless but typed, iterate but filter out the types we don't want,
 	// but just for the first pivot; subsequent pivot values cannot be filtered this way.
 	if idx.Info.Types[0].IsAny() && !pivot[0].Type().IsAny() && pivot[0].V() == nil {
-		seek = []byte{byte(pivot[0].Type())}
+		seek = []byte{byte(types.ArrayValue), byte(pivot[0].Type())}
 
 		if reverse {
 			seek = append(seek, 0xFF)
@@ -468,10 +396,12 @@ func (idx *Index) buildSeek(pivot Pivot, reverse bool) ([]byte, error) {
 
 	vb := document.NewValueBuffer(pivot...)
 	seek, err = idx.EncodeValueBuffer(vb)
-
 	if err != nil {
 		return nil, err
 	}
+
+	// remove ArrayEnd from the encoded array
+	seek = bytes.TrimSuffix(seek, []byte{types.ArrayEnd})
 
 	if reverse {
 		seek = append(seek, 0xFF)
@@ -495,7 +425,7 @@ func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(it
 		itm := it.Item()
 
 		// If index is untyped and pivot first element is typed, only iterate on values with the same type as the first pivot
-		if len(pivot) > 0 && idx.Info.Types[0].IsAny() && pivot[0] != nil && itm.Key()[0] != byte(pivot[0].Type()) {
+		if len(pivot) > 0 && idx.Info.Types[0].IsAny() && pivot[0] != nil && itm.Key()[1] != byte(pivot[0].Type()) {
 			return nil
 		}
 

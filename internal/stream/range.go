@@ -624,7 +624,7 @@ func (r *encodedIndexRange) IsInRange(value []byte) bool {
 	// see if it matches the upper bound.
 	if r.EncodedMax != nil {
 		if r.Max.Len() < r.IndexArity {
-			cmpMax = bytes.Compare(value[:len(r.EncodedMax)], r.EncodedMax)
+			cmpMax = bytes.Compare(value[:len(r.EncodedMax)-1], r.EncodedMax[:len(r.EncodedMax)-1])
 		} else {
 			cmpMax = bytes.Compare(value, r.EncodedMax)
 		}

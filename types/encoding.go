@@ -49,6 +49,10 @@ func (ve *ValueEncoder) appendValue(v Value) error {
 		return err
 	}
 
+	if v.V() == nil {
+		return nil
+	}
+
 	switch v.Type() {
 	case NullValue:
 		return nil

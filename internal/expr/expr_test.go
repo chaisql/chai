@@ -1,6 +1,7 @@
 package expr_test
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -28,10 +29,12 @@ var docWithKey types.Document = func() types.Document {
 	}
 
 	fb.DecodedKey = types.NewIntegerValue(1)
-	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
+	var buf bytes.Buffer
+	err = types.NewValueEncoder(&buf).Encode(fb.DecodedKey)
 	if err != nil {
 		panic(err)
 	}
+	fb.EncodedKey = buf.Bytes()
 
 	return fb
 }()

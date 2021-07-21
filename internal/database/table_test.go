@@ -11,7 +11,6 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/binarysort"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
@@ -266,7 +265,10 @@ func TestTableInsert(t *testing.T) {
 		// insert
 		d, err := tb.Insert(doc)
 		require.NoError(t, err)
-		require.Equal(t, binarysort.AppendInt64(nil, 10), d.(document.Keyer).RawKey())
+		want, err := tb.EncodeValue(types.NewIntegerValue(10))
+		require.NoError(t, err)
+
+		require.Equal(t, want, d.(document.Keyer).RawKey())
 
 		// make sure the document is fetchable using the returned key
 		_, err = tb.GetDocument(d.(document.Keyer).RawKey())

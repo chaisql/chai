@@ -80,9 +80,6 @@ func (t ValueType) IsAny() bool {
 type Value interface {
 	Type() ValueType
 	V() interface{}
-	// TODO(asdine): Remove the following methods from
-	// this interface and use type inference instead.
-	MarshalBinary() ([]byte, error)
 }
 
 // A Document represents a group of key value pairs.

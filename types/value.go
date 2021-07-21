@@ -1,12 +1,5 @@
 package types
 
-import (
-	"bytes"
-	"errors"
-
-	"github.com/genjidb/genji/internal/binarysort"
-)
-
 // A Value stores encoded data alongside its type.
 type value struct {
 	tp ValueType
@@ -156,45 +149,4 @@ func IsZeroValue(v Value) (bool, error) {
 	}
 
 	return false, nil
-}
-
-// Append appends to buf a binary representation of v.
-// The encoded value doesn't include type information.
-func (v *value) Append(buf []byte) ([]byte, error) {
-	switch v.tp {
-	case BlobValue:
-		return append(buf, v.v.([]byte)...), nil
-	case TextValue:
-		return append(buf, v.v.(string)...), nil
-	case BoolValue:
-		return binarysort.AppendBool(buf, v.v.(bool)), nil
-	case IntegerValue:
-		return binarysort.AppendInt64(buf, v.v.(int64)), nil
-	case DoubleValue:
-		return binarysort.AppendFloat64(buf, v.v.(float64)), nil
-	case NullValue:
-		return buf, nil
-	case ArrayValue:
-		var buf bytes.Buffer
-		err := NewValueEncoder(&buf).appendArray(v.v.(Array))
-		if err != nil {
-			return nil, err
-		}
-		return buf.Bytes(), nil
-	case DocumentValue:
-		var buf bytes.Buffer
-		err := NewValueEncoder(&buf).appendDocument(v.v.(Document))
-		if err != nil {
-			return nil, err
-		}
-		return buf.Bytes(), nil
-	}
-
-	return nil, errors.New("cannot encode type " + v.tp.String() + " as key")
-}
-
-// MarshalBinary returns a binary representation of v.
-// The encoded value doesn't include type information.
-func (v *value) MarshalBinary() ([]byte, error) {
-	return v.Append(nil)
 }

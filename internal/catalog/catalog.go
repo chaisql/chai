@@ -118,7 +118,11 @@ func (c *Catalog) loadSequences(tx *database.Transaction, info []database.Sequen
 
 	sequences := make([]database.Sequence, len(info))
 	for i := range info {
-		d, err := tb.GetDocument([]byte(info[i].Name))
+		key, err := tb.EncodeValue(types.NewTextValue(info[i].Name))
+		if err != nil {
+			return nil, err
+		}
+		d, err := tb.GetDocument(key)
 		if err != nil {
 			return nil, err
 		}

@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +15,11 @@ func getLease(t testing.TB, tx *database.Transaction, catalog database.Catalog, 
 	tb, err := catalog.GetTable(tx, database.SequenceTableName)
 	require.NoError(t, err)
 
-	d, err := tb.GetDocument([]byte(name))
+	k, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return nil, err
+	}
+	d, err := tb.GetDocument(k)
 	if err != nil {
 		return nil, err
 	}

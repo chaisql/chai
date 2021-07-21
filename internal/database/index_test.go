@@ -286,39 +286,24 @@ func TestIndexExists(t *testing.T) {
 func requireEqualBinary(t *testing.T, expected types.Value, actual []byte) {
 	t.Helper()
 
-	buf, err := expected.MarshalBinary()
+	var buf bytes.Buffer
+	err := types.NewValueEncoder(&buf).Encode(expected)
 	require.NoError(t, err)
-	require.Equal(t, buf[:len(buf)-1], actual)
+
+	data := buf.Bytes()
+	require.Equal(t, data, actual)
 }
 
-type encValue struct {
-	skipType bool
-	types.Value
-}
-
-func requireIdxEncodedEq(t *testing.T, evs ...encValue) func([]byte) {
+func requireIdxEncodedEq(t *testing.T, vs ...types.Value) func([]byte) {
 	t.Helper()
 
 	var buf bytes.Buffer
-	for i, ev := range evs {
-		if !ev.skipType {
-			err := buf.WriteByte(byte(ev.Value.Type()))
-			require.NoError(t, err)
-		}
-
-		b, err := ev.Value.MarshalBinary()
-		require.NoError(t, err)
-
-		_, err = buf.Write(b)
-		require.NoError(t, err)
-
-		if i < len(evs)-1 {
-			err = buf.WriteByte(types.ArrayValueDelim)
-		}
-		require.NoError(t, err)
-	}
+	err := types.NewValueEncoder(&buf).Encode(types.NewArrayValue(document.NewValueBuffer(vs...)))
+	require.NoError(t, err)
 
 	return func(actual []byte) {
+		t.Helper()
+
 		require.Equal(t, buf.Bytes(), actual)
 	}
 }
@@ -383,7 +368,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -395,7 +380,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -409,7 +394,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -430,7 +415,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -451,7 +436,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewDoubleValue(float64(i) + float64(i)/2)},
+							types.NewDoubleValue(float64(i)+float64(i)/2),
 						)(val)
 					},
 					expectedCount: 5,
@@ -464,7 +449,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewDoubleValue(float64(i) + float64(i)/2)},
+							types.NewDoubleValue(float64(i)+float64(i)/2),
 						)(val)
 					},
 					expectedCount: 3,
@@ -477,7 +462,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewDoubleValue(float64(i) + float64(i)/2)},
+							types.NewDoubleValue(float64(i)+float64(i)/2),
 						)(val)
 					},
 					expectedCount: 3,
@@ -499,7 +484,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 5,
@@ -513,7 +498,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 3,
@@ -526,7 +511,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 5,
@@ -547,7 +532,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						i += 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 3,
@@ -562,8 +547,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -587,8 +572,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -631,8 +616,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -649,8 +634,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -667,8 +652,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -691,8 +676,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -710,8 +695,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewBlobValue([]byte{byte('a' + uint8(i))})},
+							types.NewIntegerValue(int64(i)),
+							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
 						)(val)
 					},
 					expectedCount: 3,
@@ -761,8 +746,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						if i%2 == 0 {
 							i = i / 2
 							requireIdxEncodedEq(t,
-								encValue{false, types.NewIntegerValue(int64(i))},
-								encValue{false, types.NewIntegerValue(int64(i + 1))},
+								types.NewIntegerValue(int64(i)),
+								types.NewIntegerValue(int64(i+1)),
 							)(val)
 						}
 					},
@@ -777,8 +762,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -792,8 +777,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -808,8 +793,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewBlobValue([]byte{byte('a' + uint8(i))})},
+							types.NewIntegerValue(int64(i)),
+							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
 						)(val)
 					},
 					expectedCount: 3,
@@ -823,8 +808,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -838,8 +823,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -861,8 +846,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -882,8 +867,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -901,8 +886,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							testutil.MakeArrayValue(t, i, i),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -922,8 +907,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							testutil.MakeArrayValue(t, i, i),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -943,8 +928,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{false, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, testutil.MakeArrayValue(t, i+1, i+1)},
+							testutil.MakeArrayValue(t, i, i),
+							testutil.MakeArrayValue(t, i+1, i+1),
 						)(val)
 					},
 					expectedCount: 3,
@@ -964,8 +949,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i += 2
 						requireIdxEncodedEq(t,
-							encValue{true, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							testutil.MakeArrayValue(t, i, i),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1085,7 +1070,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1099,7 +1084,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1120,7 +1105,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
+							types.NewIntegerValue(int64(i)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1141,7 +1126,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewDoubleValue(float64(i) + float64(i)/2)},
+							types.NewDoubleValue(float64(i)+float64(i)/2),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1154,7 +1139,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						i -= 3
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewDoubleValue(float64(i) + float64(i)/2)},
+							types.NewDoubleValue(float64(i)+float64(i)/2),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1167,7 +1152,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						i -= 3
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewDoubleValue(float64(i) + float64(i)/2)},
+							types.NewDoubleValue(float64(i)+float64(i)/2),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1189,7 +1174,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 
 					},
@@ -1204,7 +1189,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1217,7 +1202,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1230,7 +1215,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1243,7 +1228,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						i -= 2
 						require.Equal(t, []byte{'a' + i}, key)
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewTextValue(strconv.Itoa(int(i)))},
+							types.NewTextValue(strconv.Itoa(int(i))),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1258,8 +1243,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1272,8 +1257,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1326,8 +1311,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1345,8 +1330,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1364,8 +1349,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1388,8 +1373,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1413,8 +1398,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{false, types.NewBlobValue([]byte{byte('a' + uint8(i))})},
+							types.NewIntegerValue(int64(i)),
+							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1438,8 +1423,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewBlobValue([]byte{byte('a' + uint8(i))})},
+							types.NewIntegerValue(int64(i)),
+							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1505,8 +1490,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1520,8 +1505,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1536,8 +1521,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 3
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewBlobValue([]byte{byte('a' + uint8(i))})},
+							types.NewIntegerValue(int64(i)),
+							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
 						)(val)
 					},
 					expectedCount: 2,
@@ -1552,8 +1537,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 4
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 1,
@@ -1568,8 +1553,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewIntegerValue(int64(i))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewIntegerValue(int64(i)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1590,8 +1575,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{false, types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`))},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1611,8 +1596,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{true, types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`))},
-							encValue{true, types.NewIntegerValue(int64(i + 1))},
+							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1630,8 +1615,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					},
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						requireIdxEncodedEq(t,
-							encValue{false, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							testutil.MakeArrayValue(t, i, i),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 5,
@@ -1651,8 +1636,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{false, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							testutil.MakeArrayValue(t, i, i),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1672,8 +1657,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{false, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, testutil.MakeArrayValue(t, i+1, i+1)},
+							testutil.MakeArrayValue(t, i, i),
+							testutil.MakeArrayValue(t, i+1, i+1),
 						)(val)
 					},
 					expectedCount: 3,
@@ -1693,8 +1678,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
 						i -= 2
 						requireIdxEncodedEq(t,
-							encValue{true, testutil.MakeArrayValue(t, i, i)},
-							encValue{false, types.NewIntegerValue(int64(i + 1))},
+							testutil.MakeArrayValue(t, i, i),
+							types.NewIntegerValue(int64(i+1)),
 						)(val)
 					},
 					expectedCount: 3,
