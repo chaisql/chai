@@ -3,17 +3,17 @@ package expr_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 )
 
 func TestConcatExpr(t *testing.T) {
 	tests := []struct {
 		expr  string
-		res   document.Value
+		res   types.Value
 		fails bool
 	}{
-		{"'a' || 'b'", document.NewTextValue("ab"), false},
+		{"'a' || 'b'", types.NewTextValue("ab"), false},
 		{"'a' || NULL", nullLiteral, false},
 		{"'a' || notFound", nullLiteral, false},
 		{"'a' || 1", nullLiteral, false},

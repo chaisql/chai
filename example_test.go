@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/types"
 )
 
 type User struct {
@@ -64,7 +65,7 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(d document.Document) error {
+	err = stream.Iterate(func(d types.Document) error {
 		var u User
 
 		err = document.StructScan(d, &u)

@@ -3,10 +3,10 @@ package expr
 import (
 	"errors"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 type simpleOperator struct {
@@ -38,7 +38,7 @@ func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
 }
 
-func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b document.Value) (document.Value, error)) (document.Value, error) {
+func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b types.Value) (types.Value, error)) (types.Value, error) {
 	if op.a == nil || op.b == nil {
 		return NullLiteral, errors.New("missing operand")
 	}
@@ -110,12 +110,12 @@ func Concat(a, b Expr) Expr {
 	return &ConcatOperator{&simpleOperator{a, b, scanner.CONCAT}}
 }
 
-func (op *ConcatOperator) Eval(env *environment.Environment) (document.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b document.Value) (document.Value, error) {
-		if a.Type != document.TextValue || b.Type != document.TextValue {
+func (op *ConcatOperator) Eval(env *environment.Environment) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+		if a.Type() != types.TextValue || b.Type() != types.TextValue {
 			return NullLiteral, nil
 		}
 
-		return document.NewTextValue(a.V.(string) + b.V.(string)), nil
+		return types.NewTextValue(a.V().(string) + b.V().(string)), nil
 	})
 }

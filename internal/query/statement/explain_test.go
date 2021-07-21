@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,7 +64,7 @@ func TestExplainStmt(t *testing.T) {
 			v, err := d.GetByField("plan")
 			require.NoError(t, err)
 
-			require.JSONEq(t, test.expected, v.String())
+			require.JSONEq(t, test.expected, document.ValueToString(v))
 		})
 	}
 }

@@ -11,13 +11,14 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // NewFromJSON creates a document from raw JSON data.
 // The returned document will lazily decode the data.
 // If data is not a valid json object, calls to Iterate or GetByField will
 // return an error.
-func NewFromJSON(data []byte) Document {
+func NewFromJSON(data []byte) types.Document {
 	return &jsonEncodedDocument{data}
 }
 
@@ -25,7 +26,7 @@ type jsonEncodedDocument struct {
 	data []byte
 }
 
-func (j jsonEncodedDocument) Iterate(fn func(field string, value Value) error) error {
+func (j jsonEncodedDocument) Iterate(fn func(field string, value types.Value) error) error {
 	return jsonparser.ObjectEach(j.data, func(key, value []byte, dataType jsonparser.ValueType, offset int) error {
 		v, err := parseJSONValue(dataType, value)
 		if err != nil {
@@ -36,13 +37,13 @@ func (j jsonEncodedDocument) Iterate(fn func(field string, value Value) error) e
 	})
 }
 
-func (j jsonEncodedDocument) GetByField(field string) (Value, error) {
+func (j jsonEncodedDocument) GetByField(field string) (types.Value, error) {
 	v, dt, _, err := jsonparser.Get(j.data, field)
 	if dt == jsonparser.NotExist {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 	if err != nil {
-		return Value{}, err
+		return nil, err
 	}
 
 	return parseJSONValue(dt, v)
@@ -54,7 +55,7 @@ func (j jsonEncodedDocument) MarshalJSON() ([]byte, error) {
 
 // NewFromMap creates a document from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m interface{}) (Document, error) {
+func NewFromMap(m interface{}) (types.Document, error) {
 	M := reflect.ValueOf(m)
 	if M.Kind() != reflect.Map || M.Type().Key().Kind() != reflect.String {
 		return nil, &ErrUnsupportedType{m, "parameter must be a map with a string key"}
@@ -64,9 +65,9 @@ func NewFromMap(m interface{}) (Document, error) {
 
 type mapDocument reflect.Value
 
-var _ Document = (*mapDocument)(nil)
+var _ types.Document = (*mapDocument)(nil)
 
-func (m mapDocument) Iterate(fn func(field string, value Value) error) error {
+func (m mapDocument) Iterate(fn func(field string, value types.Value) error) error {
 	M := reflect.Value(m)
 	it := M.MapRange()
 
@@ -84,22 +85,22 @@ func (m mapDocument) Iterate(fn func(field string, value Value) error) error {
 	return nil
 }
 
-func (m mapDocument) GetByField(field string) (Value, error) {
+func (m mapDocument) GetByField(field string) (types.Value, error) {
 	M := reflect.Value(m)
 	v := M.MapIndex(reflect.ValueOf(field))
 	if v == (reflect.Value{}) {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 	return NewValue(v.Interface())
 }
 
 // MarshalJSON implements the json.Marshaler interface.
 func (m mapDocument) MarshalJSON() ([]byte, error) {
-	return jsonDocument{Document: m}.MarshalJSON()
+	return JsonDocument{Document: m}.MarshalJSON()
 }
 
 // NewFromStruct creates a document from a struct using reflection.
-func NewFromStruct(s interface{}) (Document, error) {
+func NewFromStruct(s interface{}) (types.Document, error) {
 	ref := reflect.Indirect(reflect.ValueOf(s))
 
 	if !ref.IsValid() || ref.Kind() != reflect.Struct {
@@ -109,7 +110,7 @@ func NewFromStruct(s interface{}) (Document, error) {
 	return newFromStruct(ref)
 }
 
-func newFromStruct(ref reflect.Value) (Document, error) {
+func newFromStruct(ref reflect.Value) (types.Document, error) {
 	var fb FieldBuffer
 	l := ref.NumField()
 	tp := ref.Type()
@@ -140,7 +141,7 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 			if err != nil {
 				return nil, err
 			}
-			err = d.Iterate(func(field string, value Value) error {
+			err = d.Iterate(func(field string, value types.Value) error {
 				fb.Add(field, value)
 				return nil
 			})
@@ -172,19 +173,19 @@ func newFromStruct(ref reflect.Value) (Document, error) {
 }
 
 // NewValue creates a value whose type is infered from x.
-func NewValue(x interface{}) (Value, error) {
+func NewValue(x interface{}) (types.Value, error) {
 	// Attempt exact matches first:
 	switch v := x.(type) {
 	case time.Duration:
-		return NewIntegerValue(v.Nanoseconds()), nil
+		return types.NewIntegerValue(v.Nanoseconds()), nil
 	case time.Time:
-		return NewTextValue(v.Format(time.RFC3339Nano)), nil
+		return types.NewTextValue(v.Format(time.RFC3339Nano)), nil
 	case nil:
-		return NewNullValue(), nil
-	case Document:
-		return NewDocumentValue(v), nil
-	case Array:
-		return NewArrayValue(v), nil
+		return types.NewNullValue(), nil
+	case types.Document:
+		return types.NewDocumentValue(v), nil
+	case types.Array:
+		return types.NewArrayValue(v), nil
 	}
 
 	// Compare by kind to detect type definitions over built-in types.
@@ -192,62 +193,62 @@ func NewValue(x interface{}) (Value, error) {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
-			return NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
 		return NewValue(reflect.Indirect(v).Interface())
 	case reflect.Bool:
-		return NewBoolValue(v.Bool()), nil
+		return types.NewBoolValue(v.Bool()), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return NewIntegerValue(v.Int()), nil
+		return types.NewIntegerValue(v.Int()), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		x := v.Uint()
 		if x > math.MaxInt64 {
-			return Value{}, stringutil.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
+			return nil, stringutil.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
 		}
-		return NewIntegerValue(int64(x)), nil
+		return types.NewIntegerValue(int64(x)), nil
 	case reflect.Float32, reflect.Float64:
-		return NewDoubleValue(v.Float()), nil
+		return types.NewDoubleValue(v.Float()), nil
 	case reflect.String:
-		return NewTextValue(v.String()), nil
+		return types.NewTextValue(v.String()), nil
 	case reflect.Interface:
 		if v.IsNil() {
-			return NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
 		return NewValue(v.Elem().Interface())
 	case reflect.Struct:
 		doc, err := NewFromStruct(x)
 		if err != nil {
-			return Value{}, err
+			return nil, err
 		}
-		return NewDocumentValue(doc), nil
+		return types.NewDocumentValue(doc), nil
 	case reflect.Array:
-		return NewArrayValue(&sliceArray{v}), nil
+		return types.NewArrayValue(&sliceArray{v}), nil
 	case reflect.Slice:
 		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
-			return NewBlobValue(v.Bytes()), nil
+			return types.NewBlobValue(v.Bytes()), nil
 		}
 		if v.IsNil() {
-			return NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
-		return NewArrayValue(&sliceArray{ref: v}), nil
+		return types.NewArrayValue(&sliceArray{ref: v}), nil
 	case reflect.Map:
 		doc, err := NewFromMap(x)
 		if err != nil {
-			return Value{}, err
+			return nil, err
 		}
-		return NewDocumentValue(doc), nil
+		return types.NewDocumentValue(doc), nil
 	}
 
-	return Value{}, &ErrUnsupportedType{x, ""}
+	return nil, &ErrUnsupportedType{x, ""}
 }
 
 type sliceArray struct {
 	ref reflect.Value
 }
 
-var _ Array = (*sliceArray)(nil)
+var _ types.Array = (*sliceArray)(nil)
 
-func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
+func (s sliceArray) Iterate(fn func(i int, v types.Value) error) error {
 	l := s.ref.Len()
 
 	for i := 0; i < l; i++ {
@@ -270,14 +271,14 @@ func (s sliceArray) Iterate(fn func(i int, v Value) error) error {
 	return nil
 }
 
-func (s sliceArray) GetByIndex(i int) (Value, error) {
+func (s sliceArray) GetByIndex(i int) (types.Value, error) {
 	if i >= s.ref.Len() {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 
 	v := s.ref.Index(i)
 	if !v.IsValid() {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 
 	return NewValue(v.Interface())
@@ -286,14 +287,14 @@ func (s sliceArray) GetByIndex(i int) (Value, error) {
 // NewFromCSV takes a list of headers and columns and returns a document.
 // Each header will be assigned as the key and each corresponding column as a text value.
 // The length of headers and columns must be the same.
-func NewFromCSV(headers, columns []string) Document {
+func NewFromCSV(headers, columns []string) types.Document {
 	fb := NewFieldBuffer()
 	for i, h := range headers {
 		if i >= len(columns) {
 			break
 		}
 
-		fb.Add(h, NewTextValue(columns[i]))
+		fb.Add(h, types.NewTextValue(columns[i]))
 	}
 
 	return fb

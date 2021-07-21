@@ -9,13 +9,14 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExpressions(t *testing.T) {
 	tests := []struct {
 		e      expr.Expr
-		output document.Document
+		output types.Document
 		fails  bool
 	}{
 		{parser.MustParseExpr("3 + 4"), nil, true},
@@ -257,7 +258,7 @@ func TestPkScan(t *testing.T) {
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
 				require.NoError(t, err)
-				require.Equal(t, document.NewIntegerValue(1), v)
+				require.Equal(t, types.NewIntegerValue(1), v)
 				i++
 				return nil
 			})
@@ -654,7 +655,7 @@ func TestIndexScan(t *testing.T) {
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
 				require.NoError(t, err)
-				require.Equal(t, document.NewIntegerValue(1), v)
+				require.Equal(t, types.NewIntegerValue(1), v)
 				i++
 				return nil
 			})

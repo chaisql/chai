@@ -3,9 +3,9 @@ package expr
 import (
 	"errors"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/types"
 )
 
 type ConstraintExpr struct {
@@ -19,7 +19,7 @@ func Constraint(e Expr) *ConstraintExpr {
 	}
 }
 
-func (t *ConstraintExpr) Eval(tx *database.Transaction) (document.Value, error) {
+func (t *ConstraintExpr) Eval(tx *database.Transaction) (types.Value, error) {
 	var env environment.Environment
 	env.Catalog = t.Catalog
 	env.Tx = tx

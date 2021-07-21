@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/catalog"
@@ -13,6 +12,7 @@ import (
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,7 +50,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 		return err
 	}
 
-	return res.Iterate(func(d document.Document) error {
+	return res.Iterate(func(d types.Document) error {
 		return nil
 	})
 }

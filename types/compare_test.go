@@ -1,4 +1,4 @@
-package document_test
+package types_test
 
 import (
 	"encoding/json"
@@ -6,55 +6,56 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
-func jsonToInteger(t testing.TB, x string) document.Value {
+func jsonToInteger(t testing.TB, x string) types.Value {
 	var i int64
 	err := json.Unmarshal([]byte(x), &i)
 	require.NoError(t, err)
 
-	return document.NewIntegerValue(i)
+	return types.NewIntegerValue(i)
 }
 
-func jsonToDouble(t testing.TB, x string) document.Value {
+func jsonToDouble(t testing.TB, x string) types.Value {
 	var f float64
 	err := json.Unmarshal([]byte(x), &f)
 	require.NoError(t, err)
 
-	return document.NewDoubleValue(f)
+	return types.NewDoubleValue(f)
 }
 
-func jsonToBoolean(t testing.TB, x string) document.Value {
+func jsonToBoolean(t testing.TB, x string) types.Value {
 	var b bool
 	err := json.Unmarshal([]byte(x), &b)
 	require.NoError(t, err)
 
-	return document.NewBoolValue(b)
+	return types.NewBoolValue(b)
 }
 
-func toText(t testing.TB, x string) document.Value {
-	return document.NewTextValue(x)
+func toText(t testing.TB, x string) types.Value {
+	return types.NewTextValue(x)
 }
 
-func toBlob(t testing.TB, x string) document.Value {
-	return document.NewBlobValue([]byte(x))
+func toBlob(t testing.TB, x string) types.Value {
+	return types.NewBlobValue([]byte(x))
 }
 
-func jsonToArray(t testing.TB, x string) document.Value {
+func jsonToArray(t testing.TB, x string) types.Value {
 	var vb document.ValueBuffer
 	err := json.Unmarshal([]byte(x), &vb)
 	require.NoError(t, err)
 
-	return document.NewArrayValue(&vb)
+	return types.NewArrayValue(&vb)
 }
 
-func jsonToDocument(t testing.TB, x string) document.Value {
+func jsonToDocument(t testing.TB, x string) types.Value {
 	var fb document.FieldBuffer
 	err := json.Unmarshal([]byte(x), &fb)
 	require.NoError(t, err)
 
-	return document.NewDocumentValue(fb)
+	return types.NewDocumentValue(fb)
 }
 
 func TestCompare(t *testing.T) {
@@ -62,7 +63,7 @@ func TestCompare(t *testing.T) {
 		op        string
 		a, b      string
 		ok        bool
-		converter func(testing.TB, string) document.Value
+		converter func(testing.TB, string) types.Value
 	}{
 		// bool
 		{"=", "true", "false", false, jsonToBoolean},
@@ -227,23 +228,23 @@ func TestCompare(t *testing.T) {
 
 	for _, test := range tests {
 		a, b := test.converter(t, test.a), test.converter(t, test.b)
-		t.Run(fmt.Sprintf("%s/%v%v%v", a.Type.String(), test.a, test.op, test.b), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s/%v%v%v", a.Type().String(), test.a, test.op, test.b), func(t *testing.T) {
 			var ok bool
 			var err error
 
 			switch test.op {
 			case "=":
-				ok, err = a.IsEqual(b)
+				ok, err = types.IsEqual(a, b)
 			case "!=":
-				ok, err = a.IsNotEqual(b)
+				ok, err = types.IsNotEqual(a, b)
 			case ">":
-				ok, err = a.IsGreaterThan(b)
+				ok, err = types.IsGreaterThan(a, b)
 			case ">=":
-				ok, err = a.IsGreaterThanOrEqual(b)
+				ok, err = types.IsGreaterThanOrEqual(a, b)
 			case "<":
-				ok, err = a.IsLesserThan(b)
+				ok, err = types.IsLesserThan(a, b)
 			case "<=":
-				ok, err = a.IsLesserThanOrEqual(b)
+				ok, err = types.IsLesserThanOrEqual(a, b)
 			}
 			require.NoError(t, err)
 			require.Equal(t, test.ok, ok)

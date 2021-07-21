@@ -18,6 +18,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 )
@@ -524,7 +525,7 @@ func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
 	}
 	defer res.Close()
 
-	err = res.Iterate(func(d document.Document) error {
+	err = res.Iterate(func(d types.Document) error {
 		var tableName string
 		err = document.Scan(d, &tableName)
 		if err != nil {

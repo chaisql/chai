@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A HashAggregateOperator consumes the given stream and outputs one value per group.
@@ -105,12 +106,12 @@ func (op *HashAggregateOperator) String() string {
 	return stringutil.Sprintf("hashAggregate(%s)", sb.String())
 }
 
-// newGroupEncoder returns a function that encodes the _group environment variable using a document.ValueEncoder.
+// newGroupEncoder returns a function that encodes the _group environment variable using a types.ValueEncoder.
 // If the _group variable doesn't exist, the group is set to null.
 func newGroupEncoder() (func(env *environment.Environment) (string, error), error) {
 	var b bytes.Buffer
-	enc := document.NewValueEncoder(&b)
-	nullValue := document.NewNullValue()
+	enc := types.NewValueEncoder(&b)
+	nullValue := types.NewNullValue()
 	err := enc.Encode(nullValue)
 	if err != nil {
 		return nil, err
@@ -138,7 +139,7 @@ func newGroupEncoder() (func(env *environment.Environment) (string, error), erro
 // It applies all the aggregators for each documents and returns a new document with the
 // result of the aggregation.
 type groupAggregator struct {
-	group       document.Value
+	group       types.Value
 	groupExpr   string
 	env         *environment.Environment
 	aggregators []expr.Aggregator
@@ -165,12 +166,12 @@ func newGroupAggregator(outerEnv *environment.Environment, builders []expr.Aggre
 	var ok bool
 	ga.group, ok = outerEnv.Get(document.NewPath(groupEnvKey))
 	if !ok {
-		ga.group = document.NewNullValue()
+		ga.group = types.NewNullValue()
 		return &ga
 	}
 
 	groupExprValue, _ := outerEnv.Get(document.NewPath(groupExprEnvKey))
-	ga.groupExpr = groupExprValue.V.(string)
+	ga.groupExpr = groupExprValue.V().(string)
 
 	return &ga
 }

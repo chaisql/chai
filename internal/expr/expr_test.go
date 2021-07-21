@@ -1,6 +1,7 @@
 package expr_test
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -8,10 +9,11 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
-var doc document.Document = func() document.Document {
+var doc types.Document = func() types.Document {
 	return document.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
@@ -19,18 +21,20 @@ var doc document.Document = func() document.Document {
 	}`))
 }()
 
-var docWithKey document.Document = func() document.Document {
+var docWithKey types.Document = func() types.Document {
 	fb := document.NewFieldBuffer()
 	err := fb.Copy(doc)
 	if err != nil {
 		panic(err)
 	}
 
-	fb.DecodedKey = document.NewIntegerValue(1)
-	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
+	fb.DecodedKey = types.NewIntegerValue(1)
+	var buf bytes.Buffer
+	err = types.NewValueEncoder(&buf).Encode(fb.DecodedKey)
 	if err != nil {
 		panic(err)
 	}
+	fb.EncodedKey = buf.Bytes()
 
 	return fb
 }()
@@ -39,7 +43,21 @@ var envWithDoc = environment.New(doc)
 
 var envWithDocAndKey = environment.New(docWithKey)
 
-var nullLiteral = document.NewNullValue()
+var nullLiteral = types.NewNullValue()
+
+func testExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
+	t.Helper()
+
+	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
+	require.NoError(t, err)
+	res, err := e.Eval(env)
+	if fails {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	}
+}
 
 func TestString(t *testing.T) {
 	var operands = []string{

@@ -12,47 +12,48 @@ import (
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/genexprtests"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 // BlobValue creates a literal value of type Blob.
 func BlobValue(v []byte) expr.LiteralValue {
-	return expr.LiteralValue(document.NewBlobValue(v))
+	return expr.LiteralValue{Value: types.NewBlobValue(v)}
 }
 
 // TextValue creates a literal value of type Text.
 func TextValue(v string) expr.LiteralValue {
-	return expr.LiteralValue(document.NewTextValue(v))
+	return expr.LiteralValue{Value: types.NewTextValue(v)}
 }
 
 // BoolValue creates a literal value of type Bool.
 func BoolValue(v bool) expr.LiteralValue {
-	return expr.LiteralValue(document.NewBoolValue(v))
+	return expr.LiteralValue{Value: types.NewBoolValue(v)}
 }
 
 // IntegerValue creates a literal value of type Integer.
 func IntegerValue(v int64) expr.LiteralValue {
-	return expr.LiteralValue(document.NewIntegerValue(v))
+	return expr.LiteralValue{Value: types.NewIntegerValue(v)}
 }
 
 // DoubleValue creates a literal value of type Double.
 func DoubleValue(v float64) expr.LiteralValue {
-	return expr.LiteralValue(document.NewDoubleValue(v))
+	return expr.LiteralValue{Value: types.NewDoubleValue(v)}
 }
 
 // NullValue creates a literal value of type Null.
 func NullValue() expr.LiteralValue {
-	return expr.LiteralValue(document.NewNullValue())
+	return expr.LiteralValue{Value: types.NewNullValue()}
 }
 
 // DocumentValue creates a literal value of type Document.
-func DocumentValue(d document.Document) expr.LiteralValue {
-	return expr.LiteralValue(document.NewDocumentValue(d))
+func DocumentValue(d types.Document) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewDocumentValue(d)}
 }
 
 // ArrayValue creates a literal value of type Array.
-func ArrayValue(a document.Array) expr.LiteralValue {
-	return expr.LiteralValue(document.NewArrayValue(a))
+func ArrayValue(a types.Array) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewArrayValue(a)}
 }
 
 func ExprList(t testing.TB, s string) expr.LiteralExprList {
@@ -97,7 +98,7 @@ func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	return &ne
 }
 
-func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want document.Value, fails bool) {
+func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
 	t.Helper()
 	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
 	require.NoError(t, err)

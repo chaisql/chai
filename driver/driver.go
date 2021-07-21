@@ -12,6 +12,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/types"
 )
 
 func init() {
@@ -166,10 +167,10 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 // CheckNamedValue has the same behaviour as driver.DefaultParameterConverter, except that
-// it allows document.Document to be passed as parameters.
+// it allows types.Document to be passed as parameters.
 // It implements the driver.NamedValueChecker interface.
 func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
-	if _, ok := nv.Value.(document.Document); ok {
+	if _, ok := nv.Value.(types.Document); ok {
 		return nil
 	}
 
@@ -262,7 +263,7 @@ type documentStream struct {
 }
 
 type doc struct {
-	d   document.Document
+	d   types.Document
 	err error
 }
 
@@ -291,7 +292,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(d document.Document) error {
+	err := rs.res.Iterate(func(d types.Document) error {
 		select {
 		case <-ctx.Done():
 			return errStop
@@ -354,7 +355,7 @@ func (rs *documentStream) Next(dest []driver.Value) error {
 			return err
 		}
 
-		dest[i] = f.V
+		dest[i] = f.V()
 	}
 
 	return nil
@@ -366,11 +367,11 @@ type valueScanner struct {
 
 func (v valueScanner) Scan(src interface{}) error {
 	switch t := src.(type) {
-	case document.Document:
+	case types.Document:
 		return document.StructScan(t, v.dest)
-	case document.Array:
+	case types.Array:
 		return document.SliceScan(t, v.dest)
-	case document.Value:
+	case types.Value:
 		return document.ScanValue(t, src)
 	}
 

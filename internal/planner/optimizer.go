@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 var optimizerRules = []func(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error){
@@ -181,14 +182,14 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 
 		// if literalsOnly is still true, it means we have a list of kvpairs
 		// that only contain constant values (ex: {"a": 1, "b": true}.
-		// We can transform that into a document.Document.
+		// We can transform that into a types.Document.
 		if literalsOnly {
 			var fb document.FieldBuffer
 			for i := range t.Pairs {
-				fb.Add(t.Pairs[i].K, document.Value(t.Pairs[i].V.(expr.LiteralValue)))
+				fb.Add(t.Pairs[i].K, types.Value(t.Pairs[i].V.(expr.LiteralValue).Value))
 			}
 
-			return expr.LiteralValue(document.NewDocumentValue(&fb)), nil
+			return expr.LiteralValue{Value: types.NewDocumentValue(&fb)}, nil
 		}
 	case expr.Operator:
 		// since expr.Operator is an interface,
@@ -223,7 +224,7 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 				panic(err)
 			}
 			// we replace this expression with the result of its evaluation
-			return expr.LiteralValue(v), nil
+			return expr.LiteralValue{Value: v}, nil
 		}
 	}
 
@@ -246,7 +247,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*st
 					// ex: WHERE 1
 
 					// if the expr is falsy, we return an empty tree
-					ok, err := document.Value(t).IsTruthy()
+					ok, err := types.IsTruthy(t.Value)
 					if err != nil {
 						return nil, err
 					}
@@ -263,8 +264,8 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*st
 					// IN operator with empty array
 					// ex: WHERE a IN []
 					lv, ok := t.RightHand().(expr.LiteralValue)
-					if ok && lv.Type == document.ArrayValue {
-						l, err := document.ArrayLength(lv.V.(document.Array))
+					if ok && lv.Value.Type() == types.ArrayValue {
+						l, err := document.ArrayLength(lv.Value.V().(types.Array))
 						if err != nil {
 							return nil, err
 						}

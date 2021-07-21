@@ -1,10 +1,10 @@
 package statement
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/planner"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/types"
 )
 
 // StreamStmt is a StreamStmt using a Stream.
@@ -55,7 +55,7 @@ type StreamStmtIterator struct {
 	Context *Context
 }
 
-func (s *StreamStmtIterator) Iterate(fn func(d document.Document) error) error {
+func (s *StreamStmtIterator) Iterate(fn func(d types.Document) error) error {
 	var env environment.Environment
 	env.Tx = s.Context.Tx
 	env.Catalog = s.Context.Catalog

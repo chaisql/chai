@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,24 +19,24 @@ func TestAggregate(t *testing.T) {
 		name     string
 		groupBy  expr.Expr
 		builders []expr.AggregatorBuilder
-		in       []document.Document
-		want     []document.Document
+		in       []types.Document
+		want     []types.Document
 		fails    bool
 	}{
 		{
 			"fake count",
 			nil,
 			makeAggregatorBuilders("agg"),
-			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`)},
-			[]document.Document{testutil.MakeDocument(t, `{"agg": 1}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"agg": 1}`)},
 			false,
 		},
 		{
 			"count",
 			nil,
 			[]expr.AggregatorBuilder{&functions.Count{Wildcard: true}},
-			[]document.Document{testutil.MakeDocument(t, `{"a": 10}`)},
-			[]document.Document{testutil.MakeDocument(t, `{"COUNT(*)": 1}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"COUNT(*)": 1}`)},
 			false,
 		},
 		{
@@ -43,7 +44,7 @@ func TestAggregate(t *testing.T) {
 			parser.MustParseExpr("a % 2"),
 			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			generateSeqDocs(t, 10),
-			[]document.Document{testutil.MakeDocument(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeDocument(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeDocument(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
 			false,
 		},
 		{
@@ -51,7 +52,7 @@ func TestAggregate(t *testing.T) {
 			nil,
 			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			nil,
-			[]document.Document{testutil.MakeDocument(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
+			[]types.Document{testutil.MakeDocument(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
 			false,
 		},
 	}
@@ -65,7 +66,7 @@ func TestAggregate(t *testing.T) {
 
 			s = s.Pipe(stream.HashAggregate(test.builders...))
 
-			var got []document.Document
+			var got []types.Document
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
@@ -93,8 +94,8 @@ type fakeAggregator struct {
 	name  string
 }
 
-func (f *fakeAggregator) Eval(env *environment.Environment) (document.Value, error) {
-	return document.NewIntegerValue(f.count), nil
+func (f *fakeAggregator) Eval(env *environment.Environment) (types.Value, error) {
+	return types.NewIntegerValue(f.count), nil
 }
 
 func (f *fakeAggregator) Aggregate(env *environment.Environment) error {

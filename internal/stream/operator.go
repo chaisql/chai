@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 const (
@@ -95,11 +96,11 @@ func (op *MapOperator) Iterate(in *environment.Environment, f func(out *environm
 			return err
 		}
 
-		if v.Type != document.DocumentValue {
+		if v.Type() != types.DocumentValue {
 			return ErrInvalidResult
 		}
 
-		newEnv.SetDocument(v.V.(document.Document))
+		newEnv.SetDocument(v.V().(types.Document))
 		newEnv.SetOuter(out)
 		return f(&newEnv)
 	})
@@ -128,7 +129,7 @@ func (op *FilterOperator) Iterate(in *environment.Environment, f func(out *envir
 			return err
 		}
 
-		ok, err := v.IsTruthy()
+		ok, err := types.IsTruthy(v)
 		if err != nil || !ok {
 			return err
 		}
@@ -222,7 +223,7 @@ func (op *GroupByOperator) Iterate(in *environment.Environment, f func(out *envi
 		}
 
 		newEnv.Set(groupEnvKey, v)
-		newEnv.Set(groupExprEnvKey, document.NewTextValue(stringutil.Sprintf("%s", op.E)))
+		newEnv.Set(groupExprEnvKey, types.NewTextValue(stringutil.Sprintf("%s", op.E)))
 		newEnv.SetOuter(out)
 		return f(&newEnv)
 	})
@@ -288,7 +289,7 @@ func (op *SortOperator) sortStream(prev Operator, in *environment.Environment) (
 
 	getValue := op.Expr.Eval
 	if p, ok := op.Expr.(expr.Path); ok {
-		getValue = func(env *environment.Environment) (document.Value, error) {
+		getValue = func(env *environment.Environment) (types.Value, error) {
 			for env != nil {
 				d, ok := env.GetDocument()
 				if !ok {
@@ -304,7 +305,7 @@ func (op *SortOperator) sortStream(prev Operator, in *environment.Environment) (
 				return v, err
 			}
 
-			return document.NewNullValue(), nil
+			return types.NewNullValue(), nil
 		}
 	}
 
@@ -320,7 +321,7 @@ func (op *SortOperator) sortStream(prev Operator, in *environment.Environment) (
 		// as what the index package would do.
 		var buf bytes.Buffer
 
-		err = document.NewValueEncoder(&buf).Encode(sortV)
+		err = types.NewValueEncoder(&buf).Encode(sortV)
 		if err != nil {
 			return err
 		}
@@ -550,7 +551,7 @@ func Distinct() *DistinctOperator {
 // Iterate implements the Operator interface.
 func (op *DistinctOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var buf bytes.Buffer
-	enc := document.NewValueEncoder(&buf)
+	enc := types.NewValueEncoder(&buf)
 	m := make(map[string]struct{})
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
@@ -735,7 +736,7 @@ func (op *IterRenameOperator) Iterate(in *environment.Environment, f func(out *e
 		}
 
 		var i int
-		err := d.Iterate(func(field string, value document.Value) error {
+		err := d.Iterate(func(field string, value types.Value) error {
 			// if there are too many fields in the incoming document
 			if i >= len(op.FieldNames) {
 				n, err := document.Length(d)

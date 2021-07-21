@@ -9,18 +9,19 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A Scanner can iterate over a document and scan all the fields.
 type Scanner interface {
-	ScanDocument(Document) error
+	ScanDocument(types.Document) error
 }
 
 // Scan each field of the document into the given variables.
-func Scan(d Document, targets ...interface{}) error {
+func Scan(d types.Document, targets ...interface{}) error {
 	var i int
 
-	return d.Iterate(func(f string, v Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		if i >= len(targets) {
 			return errors.New("target list too small")
 		}
@@ -46,7 +47,7 @@ func Scan(d Document, targets ...interface{}) error {
 // under the "genji" key stored in the struct field's tag.
 // The content of the format string is used instead of the struct field name and passed
 // to the GetByField method.
-func StructScan(d Document, t interface{}) error {
+func StructScan(d types.Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
 	if !ref.IsValid() || ref.Kind() != reflect.Ptr {
@@ -60,7 +61,7 @@ func StructScan(d Document, t interface{}) error {
 	return structScan(d, ref)
 }
 
-func structScan(d Document, ref reflect.Value) error {
+func structScan(d types.Document, ref reflect.Value) error {
 	if ref.Type().Implements(reflect.TypeOf((*Scanner)(nil)).Elem()) {
 		return ref.Interface().(Scanner).ScanDocument(d)
 	}
@@ -83,7 +84,7 @@ func structScan(d Document, ref reflect.Value) error {
 		}
 		v, err := d.GetByField(name)
 		if err == ErrFieldNotFound {
-			v = NewNullValue()
+			v = types.NewNullValue()
 		} else if err != nil {
 			return err
 		}
@@ -104,11 +105,11 @@ func structScan(d Document, ref reflect.Value) error {
 //
 // If t is an array pointer, its capacity must be bigger than the length of a, otherwise an error is
 // returned.
-func SliceScan(a Array, t interface{}) error {
+func SliceScan(a types.Array, t interface{}) error {
 	return sliceScan(a, reflect.ValueOf(t))
 }
 
-func sliceScan(a Array, ref reflect.Value) error {
+func sliceScan(a types.Array, ref reflect.Value) error {
 	if !ref.IsValid() || ref.Kind() != reflect.Ptr || ref.IsNil() {
 		return errors.New("target must be pointer to a slice or array")
 	}
@@ -142,7 +143,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 
 	stp := sref.Type()
 
-	err = a.Iterate(func(i int, v Value) error {
+	err = a.Iterate(func(i int, v types.Value) error {
 		if k == reflect.Array {
 			err := scanValue(v, sref.Index(i).Addr())
 			if err != nil {
@@ -173,7 +174,7 @@ func sliceScan(a Array, ref reflect.Value) error {
 }
 
 // MapScan decodes the document into a map.
-func MapScan(d Document, t interface{}) error {
+func MapScan(d types.Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 	if !ref.IsValid() {
 		return &ErrUnsupportedType{ref, "t must be a valid reference"}
@@ -190,7 +191,7 @@ func MapScan(d Document, t interface{}) error {
 	return mapScan(d, ref)
 }
 
-func mapScan(d Document, ref reflect.Value) error {
+func mapScan(d types.Document, ref reflect.Value) error {
 	if ref.Type().Key().Kind() != reflect.String {
 		return &ErrUnsupportedType{ref, "map key must be a string"}
 	}
@@ -199,7 +200,7 @@ func mapScan(d Document, ref reflect.Value) error {
 		ref.Set(reflect.MakeMap(ref.Type()))
 	}
 
-	return d.Iterate(func(f string, v Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		newV := reflect.New(ref.Type().Elem())
 
 		err := scanValue(v, newV)
@@ -213,16 +214,16 @@ func mapScan(d Document, ref reflect.Value) error {
 }
 
 // ScanValue scans v into t.
-func ScanValue(v Value, t interface{}) error {
+func ScanValue(v types.Value, t interface{}) error {
 	return scanValue(v, reflect.ValueOf(t))
 }
 
-func scanValue(v Value, ref reflect.Value) error {
+func scanValue(v types.Value, ref reflect.Value) error {
 	if !ref.IsValid() {
 		return &ErrUnsupportedType{ref, "parameter is not a valid reference"}
 	}
 
-	if v.Type == NullValue {
+	if v.Type() == types.NullValue {
 		if ref.Type().Kind() != reflect.Ptr {
 			return nil
 		}
@@ -258,62 +259,62 @@ func scanValue(v Value, ref reflect.Value) error {
 	}
 
 	// Scan nulls as Go zero values.
-	if v.Type == NullValue {
+	if v.Type() == types.NullValue {
 		ref.Set(reflect.Zero(ref.Type()))
 		return nil
 	}
 
 	switch ref.Kind() {
 	case reflect.String:
-		v, err := v.CastAsText()
+		v, err := CastAsText(v)
 		if err != nil {
 			return err
 		}
-		ref.SetString(string(v.V.(string)))
+		ref.SetString(string(v.V().(string)))
 		return nil
 	case reflect.Bool:
-		v, err := v.CastAsBool()
+		v, err := CastAsBool(v)
 		if err != nil {
 			return err
 		}
-		ref.SetBool(v.V.(bool))
+		ref.SetBool(v.V().(bool))
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v, err := v.CastAsInteger()
+		v, err := CastAsInteger(v)
 		if err != nil {
 			return err
 		}
-		x := v.V.(int64)
+		x := v.V().(int64)
 		if x < 0 {
 			return stringutil.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
 		}
 		ref.SetUint(uint64(x))
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := v.CastAsInteger()
+		v, err := CastAsInteger(v)
 		if err != nil {
 			return err
 		}
-		ref.SetInt(v.V.(int64))
+		ref.SetInt(v.V().(int64))
 		return nil
 	case reflect.Float32, reflect.Float64:
-		v, err := v.CastAsDouble()
+		v, err := CastAsDouble(v)
 		if err != nil {
 			return err
 		}
-		ref.SetFloat(v.V.(float64))
+		ref.SetFloat(v.V().(float64))
 		return nil
 	case reflect.Interface:
-		switch v.Type {
-		case DocumentValue:
+		switch v.Type() {
+		case types.DocumentValue:
 			m := make(map[string]interface{})
 			vm := reflect.ValueOf(m)
 			ref.Set(vm)
-			return mapScan(v.V.(Document), vm)
-		case ArrayValue:
+			return mapScan(v.V().(types.Document), vm)
+		case types.ArrayValue:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
-			err := sliceScan(v.V.(Array), vs)
+			err := sliceScan(v.V().(types.Array), vs)
 			if err != nil {
 				return err
 			}
@@ -321,15 +322,15 @@ func scanValue(v Value, ref reflect.Value) error {
 			return nil
 		}
 
-		ref.Set(reflect.ValueOf(v.V))
+		ref.Set(reflect.ValueOf(v.V()))
 		return nil
 	}
 
 	// test with supported stdlib types
 	switch ref.Type().String() {
 	case "time.Time":
-		if v.Type == TextValue {
-			parsed, err := time.Parse(time.RFC3339Nano, v.V.(string))
+		if v.Type() == types.TextValue {
+			parsed, err := time.Parse(time.RFC3339Nano, v.V().(string))
 			if err != nil {
 				return err
 			}
@@ -341,63 +342,58 @@ func scanValue(v Value, ref reflect.Value) error {
 
 	switch ref.Kind() {
 	case reflect.Struct:
-		v, err := v.CastAsDocument()
+		v, err := CastAsDocument(v)
 		if err != nil {
 			return err
 		}
 
-		return structScan(v.V.(Document), ref)
+		return structScan(v.V().(types.Document), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			if v.Type != TextValue && v.Type != BlobValue {
-				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type)
+			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
+				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
-			if v.Type == TextValue {
-				ref.SetBytes([]byte(v.V.(string)))
+			if v.Type() == types.TextValue {
+				ref.SetBytes([]byte(v.V().(string)))
 			} else {
-				ref.SetBytes(v.V.([]byte))
+				ref.SetBytes(v.V().([]byte))
 			}
 			return nil
 		}
-		v, err := v.CastAsArray()
+		v, err := CastAsArray(v)
 		if err != nil {
 			return err
 		}
 
-		return sliceScan(v.V.(Array), ref.Addr())
+		return sliceScan(v.V().(types.Array), ref.Addr())
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			if v.Type != TextValue && v.Type != BlobValue {
-				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type)
+			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
+				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
-			reflect.Copy(ref, reflect.ValueOf(v.V))
+			reflect.Copy(ref, reflect.ValueOf(v.V()))
 			return nil
 		}
-		v, err := v.CastAsArray()
+		v, err := CastAsArray(v)
 		if err != nil {
 			return err
 		}
 
-		return sliceScan(v.V.(Array), ref.Addr())
+		return sliceScan(v.V().(types.Array), ref.Addr())
 	case reflect.Map:
-		v, err := v.CastAsDocument()
+		v, err := CastAsDocument(v)
 		if err != nil {
 			return err
 		}
 
-		return mapScan(v.V.(Document), ref)
+		return mapScan(v.V().(types.Document), ref)
 	}
 
 	return &ErrUnsupportedType{ref, "Invalid type"}
 }
 
-// Scan v into t.
-func (v Value) Scan(t interface{}) error {
-	return scanValue(v, reflect.ValueOf(t))
-}
-
 // ScanDocument scans a document into dest which must be either a struct pointer, a map or a map pointer.
-func ScanDocument(d Document, t interface{}) error {
+func ScanDocument(d types.Document, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
 	if !ref.IsValid() {
@@ -434,10 +430,10 @@ type iteratorArray struct {
 	it Iterator
 }
 
-func (it *iteratorArray) Iterate(fn func(i int, value Value) error) error {
+func (it *iteratorArray) Iterate(fn func(i int, value types.Value) error) error {
 	count := 0
-	return it.it.Iterate(func(d Document) error {
-		err := fn(count, NewDocumentValue(d))
+	return it.it.Iterate(func(d types.Document) error {
+		err := fn(count, types.NewDocumentValue(d))
 		if err != nil {
 			return err
 		}
@@ -446,6 +442,6 @@ func (it *iteratorArray) Iterate(fn func(i int, value Value) error) error {
 	})
 }
 
-func (it *iteratorArray) GetByIndex(i int) (Value, error) {
+func (it *iteratorArray) GetByIndex(i int) (types.Value, error) {
 	panic("not implemented")
 }

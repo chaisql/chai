@@ -10,9 +10,10 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
-func relationToDocument(r Relation) document.Document {
+func relationToDocument(r Relation) types.Document {
 	switch t := r.(type) {
 	case *database.TableInfo:
 		return tableInfoToDocument(t)
@@ -25,26 +26,26 @@ func relationToDocument(r Relation) document.Document {
 	panic(stringutil.Sprintf("objectToDocument: unknown type %q", r.Type()))
 }
 
-func tableInfoToDocument(ti *database.TableInfo) document.Document {
+func tableInfoToDocument(ti *database.TableInfo) types.Document {
 	buf := document.NewFieldBuffer()
-	buf.Add("name", document.NewTextValue(ti.TableName))
-	buf.Add("type", document.NewTextValue(RelationTableType))
-	buf.Add("store_name", document.NewBlobValue(ti.StoreName))
-	buf.Add("sql", document.NewTextValue(ti.String()))
+	buf.Add("name", types.NewTextValue(ti.TableName))
+	buf.Add("type", types.NewTextValue(RelationTableType))
+	buf.Add("store_name", types.NewBlobValue(ti.StoreName))
+	buf.Add("sql", types.NewTextValue(ti.String()))
 	if ti.DocidSequenceName != "" {
-		buf.Add("docid_sequence_name", document.NewTextValue(ti.DocidSequenceName))
+		buf.Add("docid_sequence_name", types.NewTextValue(ti.DocidSequenceName))
 	}
 
 	return buf
 }
 
-func tableInfoFromDocument(d document.Document) (*database.TableInfo, error) {
+func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(s.V().(string))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -55,40 +56,40 @@ func tableInfoFromDocument(d document.Document) (*database.TableInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	ti.StoreName = v.V.([]byte)
+	ti.StoreName = v.V().([]byte)
 
 	v, err = d.GetByField("docid_sequence_name")
 	if err != nil && err != document.ErrFieldNotFound {
 		return nil, err
 	}
 	if err == nil {
-		ti.DocidSequenceName = v.V.(string)
+		ti.DocidSequenceName = v.V().(string)
 	}
 
 	return &ti, nil
 }
 
-func indexInfoToDocument(i *database.IndexInfo) document.Document {
+func indexInfoToDocument(i *database.IndexInfo) types.Document {
 	buf := document.NewFieldBuffer()
-	buf.Add("name", document.NewTextValue(i.IndexName))
-	buf.Add("type", document.NewTextValue(RelationIndexType))
-	buf.Add("store_name", document.NewBlobValue(i.StoreName))
-	buf.Add("table_name", document.NewTextValue(i.TableName))
-	buf.Add("sql", document.NewTextValue(i.String()))
+	buf.Add("name", types.NewTextValue(i.IndexName))
+	buf.Add("type", types.NewTextValue(RelationIndexType))
+	buf.Add("store_name", types.NewBlobValue(i.StoreName))
+	buf.Add("table_name", types.NewTextValue(i.TableName))
+	buf.Add("sql", types.NewTextValue(i.String()))
 	if i.Owner.TableName != "" {
-		buf.Add("owner", document.NewDocumentValue(ownerToDocument(&i.Owner)))
+		buf.Add("owner", types.NewDocumentValue(ownerToDocument(&i.Owner)))
 	}
 
 	return buf
 }
 
-func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
+func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(s.V().(string))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -99,14 +100,14 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	i.StoreName = v.V.([]byte)
+	i.StoreName = v.V().([]byte)
 
 	v, err = d.GetByField("owner")
 	if err != nil && err != document.ErrFieldNotFound {
 		return nil, err
 	}
 	if err == nil {
-		owner, err := ownerFromDocument(v.V.(document.Document))
+		owner, err := ownerFromDocument(v.V().(types.Document))
 		if err != nil {
 			return nil, err
 		}
@@ -116,31 +117,31 @@ func indexInfoFromDocument(d document.Document) (*database.IndexInfo, error) {
 	return &i, nil
 }
 
-func sequenceInfoToDocument(seq *database.SequenceInfo) document.Document {
+func sequenceInfoToDocument(seq *database.SequenceInfo) types.Document {
 	buf := document.NewFieldBuffer()
-	buf.Add("name", document.NewTextValue(seq.Name))
-	buf.Add("type", document.NewTextValue(RelationSequenceType))
-	buf.Add("sql", document.NewTextValue(seq.String()))
+	buf.Add("name", types.NewTextValue(seq.Name))
+	buf.Add("type", types.NewTextValue(RelationSequenceType))
+	buf.Add("sql", types.NewTextValue(seq.String()))
 
 	if seq.Owner.TableName != "" {
-		owner := document.NewFieldBuffer().Add("table_name", document.NewTextValue(seq.Owner.TableName))
+		owner := document.NewFieldBuffer().Add("table_name", types.NewTextValue(seq.Owner.TableName))
 		if seq.Owner.Path != nil {
-			owner.Add("path", document.NewTextValue(seq.Owner.Path.String()))
+			owner.Add("path", types.NewTextValue(seq.Owner.Path.String()))
 		}
 
-		buf.Add("owner", document.NewDocumentValue(owner))
+		buf.Add("owner", types.NewDocumentValue(owner))
 	}
 
 	return buf
 }
 
-func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, error) {
+func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(s.V.(string))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(s.V().(string))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, erro
 		return nil, err
 	}
 	if err == nil {
-		owner, err := ownerFromDocument(v.V.(document.Document))
+		owner, err := ownerFromDocument(v.V().(types.Document))
 		if err != nil {
 			return nil, err
 		}
@@ -162,16 +163,16 @@ func sequenceInfoFromDocument(d document.Document) (*database.SequenceInfo, erro
 	return &i, nil
 }
 
-func ownerToDocument(owner *database.Owner) document.Document {
-	buf := document.NewFieldBuffer().Add("table_name", document.NewTextValue(owner.TableName))
+func ownerToDocument(owner *database.Owner) types.Document {
+	buf := document.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
 	if owner.Path != nil {
-		buf.Add("path", document.NewTextValue(owner.Path.String()))
+		buf.Add("path", types.NewTextValue(owner.Path.String()))
 	}
 
 	return buf
 }
 
-func ownerFromDocument(d document.Document) (*database.Owner, error) {
+func ownerFromDocument(d types.Document) (*database.Owner, error) {
 	var owner database.Owner
 
 	v, err := d.GetByField("table_name")
@@ -179,14 +180,14 @@ func ownerFromDocument(d document.Document) (*database.Owner, error) {
 		return nil, err
 	}
 
-	owner.TableName = v.V.(string)
+	owner.TableName = v.V().(string)
 
 	v, err = d.GetByField("path")
 	if err != nil && err != document.ErrFieldNotFound {
 		return nil, err
 	}
 	if err == nil {
-		owner.Path, err = parser.ParsePath(v.V.(string))
+		owner.Path, err = parser.ParsePath(v.V().(string))
 		if err != nil {
 			return nil, err
 		}
@@ -213,7 +214,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "name",
 						},
 					},
-					Type:         document.TextValue,
+					Type:         types.TextValue,
 					IsPrimaryKey: true,
 				},
 				{
@@ -222,7 +223,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "type",
 						},
 					},
-					Type: document.TextValue,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{
@@ -230,7 +231,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "table_name",
 						},
 					},
-					Type: document.TextValue,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{
@@ -238,7 +239,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "sql",
 						},
 					},
-					Type: document.TextValue,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{
@@ -246,7 +247,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 							FieldName: "store_name",
 						},
 					},
-					Type: document.BlobValue,
+					Type: types.BlobValue,
 				},
 			},
 		},
@@ -265,13 +266,13 @@ func (s *CatalogTable) Init(tx *database.Transaction) error {
 func (s *CatalogTable) Load(tx *database.Transaction) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.AscendGreaterOrEqual(document.Value{}, func(d document.Document) error {
+	err = tb.AscendGreaterOrEqual(nil, func(d types.Document) error {
 		tp, err := d.GetByField("type")
 		if err != nil {
 			return err
 		}
 
-		switch tp.V.(string) {
+		switch tp.V().(string) {
 		case RelationTableType:
 			ti, err := tableInfoFromDocument(d)
 			if err != nil {
@@ -328,12 +329,22 @@ func (s *CatalogTable) Insert(tx *database.Transaction, r Relation) error {
 func (s *CatalogTable) Replace(tx *database.Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
-	_, err := tb.Replace([]byte(name), relationToDocument(r))
+	key, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return err
+	}
+
+	_, err = tb.Replace(key, relationToDocument(r))
 	return err
 }
 
 func (s *CatalogTable) Delete(tx *database.Transaction, name string) error {
 	tb := s.Table(tx)
 
-	return tb.Delete([]byte(name))
+	key, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return err
+	}
+
+	return tb.Delete(key)
 }

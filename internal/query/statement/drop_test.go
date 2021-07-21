@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,12 +33,12 @@ func TestDropTable(t *testing.T) {
 	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
 	require.NoError(t, err)
 	var tables []string
-	err = res.Iterate(func(d document.Document) error {
+	err = res.Iterate(func(d types.Document) error {
 		v, err := d.GetByField("name")
 		if err != nil {
 			return err
 		}
-		tables = append(tables, v.V.(string))
+		tables = append(tables, v.V().(string))
 		return nil
 	})
 	require.NoError(t, err)

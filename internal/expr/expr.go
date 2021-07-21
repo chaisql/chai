@@ -1,20 +1,20 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 var (
-	TrueLiteral  = document.NewBoolValue(true)
-	FalseLiteral = document.NewBoolValue(false)
-	NullLiteral  = document.NewNullValue()
+	TrueLiteral  = types.NewBoolValue(true)
+	FalseLiteral = types.NewBoolValue(false)
+	NullLiteral  = types.NewNullValue()
 )
 
 // An Expr evaluates to a value.
 type Expr interface {
-	Eval(*environment.Environment) (document.Value, error)
+	Eval(*environment.Environment) (types.Value, error)
 	String() string
 }
 
@@ -47,7 +47,7 @@ type Parentheses struct {
 }
 
 // Eval calls the underlying expression Eval method.
-func (p Parentheses) Eval(env *environment.Environment) (document.Value, error) {
+func (p Parentheses) Eval(env *environment.Environment) (types.Value, error) {
 	return p.E.Eval(env)
 }
 
@@ -70,8 +70,8 @@ func (p Parentheses) String() string {
 	return stringutil.Sprintf("(%v)", p.E)
 }
 
-func invertBoolResult(f func(env *environment.Environment) (document.Value, error)) func(env *environment.Environment) (document.Value, error) {
-	return func(env *environment.Environment) (document.Value, error) {
+func invertBoolResult(f func(env *environment.Environment) (types.Value, error)) func(env *environment.Environment) (types.Value, error) {
+	return func(env *environment.Environment) (types.Value, error) {
 		v, err := f(env)
 
 		if err != nil {
@@ -159,7 +159,7 @@ type NextValueFor struct {
 }
 
 // Eval calls the underlying expression Eval method.
-func (n NextValueFor) Eval(env *environment.Environment) (document.Value, error) {
+func (n NextValueFor) Eval(env *environment.Environment) (types.Value, error) {
 	catalog := env.GetCatalog()
 	tx := env.GetTx()
 
@@ -177,7 +177,7 @@ func (n NextValueFor) Eval(env *environment.Environment) (document.Value, error)
 		return NullLiteral, err
 	}
 
-	return document.NewIntegerValue(i), nil
+	return types.NewIntegerValue(i), nil
 }
 
 // IsEqual compares this expression with the other expression and returns

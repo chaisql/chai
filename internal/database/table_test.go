@@ -11,12 +11,12 @@ import (
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/binarysort"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,8 +80,8 @@ func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog data
 
 func newDocument() *document.FieldBuffer {
 	return document.NewFieldBuffer().
-		Add("fielda", document.NewTextValue("a")).
-		Add("fieldb", document.NewTextValue("b"))
+		Add("fielda", types.NewTextValue("a")).
+		Add("fieldb", types.NewTextValue("b"))
 }
 
 // TestTableIterate verifies Iterate behaviour.
@@ -91,7 +91,7 @@ func TestTableIterate(t *testing.T) {
 		defer cleanup()
 
 		i := 0
-		err := tb.Iterate(func(d document.Document) error {
+		err := tb.Iterate(func(d types.Document) error {
 			i++
 			return nil
 		})
@@ -109,7 +109,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		m := make(map[string]int)
-		err := tb.Iterate(func(d document.Document) error {
+		err := tb.Iterate(func(d types.Document) error {
 			m[string(d.(document.Keyer).RawKey())]++
 			return nil
 		})
@@ -130,7 +130,7 @@ func TestTableIterate(t *testing.T) {
 		}
 
 		i := 0
-		err := tb.Iterate(func(_ document.Document) error {
+		err := tb.Iterate(func(_ types.Document) error {
 			i++
 			if i >= 5 {
 				return errors.New("some error")
@@ -159,7 +159,7 @@ func TestTableGetDocument(t *testing.T) {
 
 		// create two documents, one with an additional field
 		doc1 := newDocument()
-		vc := document.NewDoubleValue(40)
+		vc := types.NewDoubleValue(40)
 		doc1.Add("fieldc", vc)
 		doc2 := newDocument()
 
@@ -251,7 +251,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: types.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -265,7 +265,10 @@ func TestTableInsert(t *testing.T) {
 		// insert
 		d, err := tb.Insert(doc)
 		require.NoError(t, err)
-		require.Equal(t, binarysort.AppendInt64(nil, 10), d.(document.Keyer).RawKey())
+		want, err := tb.EncodeValue(types.NewIntegerValue(10))
+		require.NoError(t, err)
+
+		require.Equal(t, want, d.(document.Keyer).RawKey())
 
 		// make sure the document is fetchable using the returned key
 		_, err = tb.GetDocument(d.(document.Keyer).RawKey())
@@ -283,8 +286,8 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), Type: document.ArrayValue},
-				{Path: testutil.ParseDocumentPath(t, "foo[0]"), Type: document.IntegerValue},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.ArrayValue},
+				{Path: testutil.ParseDocumentPath(t, "foo[0]"), Type: types.IntegerValue},
 			},
 		})
 
@@ -301,7 +304,7 @@ func TestTableInsert(t *testing.T) {
 
 		v, err := testutil.ParseDocumentPath(t, "foo[0]").GetValueFromDocument(d)
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(100), v)
+		require.Equal(t, types.NewIntegerValue(100), v)
 	})
 
 	t.Run("Should fail if Pk not found in document or empty", func(t *testing.T) {
@@ -310,7 +313,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), Type: document.IntegerValue, IsPrimaryKey: true},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue, IsPrimaryKey: true},
 			},
 		})
 		require.NoError(t, err)
@@ -326,7 +329,7 @@ func TestTableInsert(t *testing.T) {
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("%#v", test), func(t *testing.T) {
 				doc := document.NewFieldBuffer().
-					Add("foo", document.NewBlobValue(test))
+					Add("foo", types.NewBlobValue(test))
 
 				_, err := tb.Insert(doc)
 				require.Error(t, err)
@@ -352,7 +355,7 @@ func TestTableInsert(t *testing.T) {
 
 		// create one document with the foo field
 		doc1 := newDocument()
-		foo := document.NewDoubleValue(10)
+		foo := types.NewDoubleValue(10)
 		doc1.Add("foo", foo)
 
 		// create one document without the foo field
@@ -364,7 +367,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = idx.AscendGreaterOrEqual([]document.Value{{}}, func(val, k []byte) error {
+		err = idx.AscendGreaterOrEqual([]types.Value{nil}, func(val, k []byte) error {
 			switch count {
 			case 0:
 				// key2, which doesn't countain the field must appear first in the next,
@@ -387,18 +390,18 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.DocumentValue, false, false, false, nil, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo.bar")}},
-				{testutil.ParseDocumentPath(t, "foo.bar"), document.IntegerValue, false, false, false, nil, nil, true, []document.Path{testutil.ParseDocumentPath(t, "foo")}},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.DocumentValue, IsInferred: true, InferredBy: []document.Path{testutil.ParseDocumentPath(t, "foo.bar")}},
+				{Path: testutil.ParseDocumentPath(t, "foo.bar"), Type: types.IntegerValue, IsInferred: true, InferredBy: []document.Path{testutil.ParseDocumentPath(t, "foo")}},
 			},
 		})
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewDocumentValue(
-				document.NewFieldBuffer().Add("bar", document.NewDoubleValue(10)),
+			Add("foo", types.NewDocumentValue(
+				document.NewFieldBuffer().Add("bar", types.NewDoubleValue(10)),
 			)).
-			Add("bar", document.NewDoubleValue(10)).
-			Add("baz", document.NewTextValue("baz")).
-			Add("bat", document.NewIntegerValue(20))
+			Add("bar", types.NewDoubleValue(10)).
+			Add("baz", types.NewTextValue("baz")).
+			Add("bat", types.NewIntegerValue(20))
 
 		// insert
 		d, err := tb.Insert(doc)
@@ -409,18 +412,18 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
-		v, err = v.V.(document.Document).GetByField("bar")
+		v, err = v.V().(types.Document).GetByField("bar")
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(10), v)
+		require.Equal(t, types.NewIntegerValue(10), v)
 		v, err = d.GetByField("bar")
 		require.NoError(t, err)
-		require.Equal(t, document.NewDoubleValue(10), v)
+		require.Equal(t, types.NewDoubleValue(10), v)
 		v, err = d.GetByField("baz")
 		require.NoError(t, err)
-		require.Equal(t, document.NewTextValue("baz"), v)
+		require.Equal(t, types.NewTextValue("baz"), v)
 		v, err = d.GetByField("bat")
 		require.NoError(t, err)
-		require.Equal(t, document.NewDoubleValue(20), v)
+		require.Equal(t, types.NewDoubleValue(20), v)
 	})
 
 	t.Run("Should fail if the fields cannot be converted to specified field constraints", func(t *testing.T) {
@@ -429,7 +432,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.DoubleValue, false, false, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.DoubleValue},
 			},
 		})
 		require.NoError(t, err)
@@ -437,7 +440,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewArrayValue(document.NewValueBuffer(document.NewIntegerValue(1))))
+			Add("foo", types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(1))))
 
 		// insert
 		_, err = tb.Insert(doc)
@@ -452,7 +455,7 @@ func TestTableInsert(t *testing.T) {
 		tb1 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
 			},
 		})
 
@@ -460,38 +463,38 @@ func TestTableInsert(t *testing.T) {
 		tb2 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test2",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue, IsNotNull: true},
 			},
 		})
 
 		// insert with empty foo field should fail
 		_, err := tb1.Insert(document.NewFieldBuffer().
-			Add("bar", document.NewDoubleValue(1)))
+			Add("bar", types.NewDoubleValue(1)))
 		require.Error(t, err)
 
 		// insert with null foo field should fail
 		_, err = tb1.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewNullValue()))
+			Add("foo", types.NewNullValue()))
 		require.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb1.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewDoubleValue(1)))
+			Add("foo", types.NewDoubleValue(1)))
 		require.NoError(t, err)
 
 		// insert with empty foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
-			Add("bar", document.NewDoubleValue(1)))
+			Add("bar", types.NewDoubleValue(1)))
 		require.Error(t, err)
 
 		// insert with null foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewNullValue()))
+			Add("foo", types.NewNullValue()))
 		require.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb2.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewDoubleValue(1)))
+			Add("foo", types.NewDoubleValue(1)))
 		require.NoError(t, err)
 	})
 
@@ -503,7 +506,7 @@ func TestTableInsert(t *testing.T) {
 		tb1 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, expr.Constraint(testutil.IntegerValue(42)), nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true, DefaultValue: expr.Constraint(testutil.IntegerValue(42))},
 			},
 		})
 
@@ -511,50 +514,50 @@ func TestTableInsert(t *testing.T) {
 		tb2 := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test2",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), document.IntegerValue, false, true, false, expr.Constraint(testutil.IntegerValue(42)), nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue, IsNotNull: true, DefaultValue: expr.Constraint(testutil.IntegerValue(42))},
 			},
 		})
 
 		// insert with empty foo field shouldn't fail
 		d, err := tb1.Insert(document.NewFieldBuffer().
-			Add("bar", document.NewDoubleValue(1)))
+			Add("bar", types.NewDoubleValue(1)))
 		require.NoError(t, err)
 
 		d, err = tb1.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		v, err := d.GetByField("foo")
 		require.NoError(t, err)
-		require.Equal(t, v.V.(float64), float64(42))
+		require.Equal(t, v.V().(float64), float64(42))
 
 		// insert with explicit null foo field should fail
 		_, err = tb1.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewNullValue()))
+			Add("foo", types.NewNullValue()))
 		require.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb1.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(1)))
+			Add("foo", types.NewIntegerValue(1)))
 		require.NoError(t, err)
 
 		// insert with empty foo field shouldn't fail
 		d, err = tb2.Insert(document.NewFieldBuffer().
-			Add("bar", document.NewIntegerValue(1)))
+			Add("bar", types.NewIntegerValue(1)))
 		require.NoError(t, err)
 
 		d, err = tb2.GetDocument(d.(document.Keyer).RawKey())
 		require.NoError(t, err)
 		v, err = d.GetByField("foo")
 		require.NoError(t, err)
-		require.Equal(t, v.V.(int64), int64(42))
+		require.Equal(t, v.V().(int64), int64(42))
 
 		// insert with explicit null foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewNullValue()))
+			Add("foo", types.NewNullValue()))
 		require.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb2.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewDoubleValue(1)))
+			Add("foo", types.NewDoubleValue(1)))
 		require.NoError(t, err)
 	})
 
@@ -565,17 +568,17 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test1",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo[1]"), 0, false, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo[1]"), IsNotNull: true},
 			},
 		})
 
 		// insert table with only one value
 		_, err := tb.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewArrayValue(document.NewValueBuffer().Append(document.NewIntegerValue(1)))))
+			Add("foo", types.NewArrayValue(document.NewValueBuffer().Append(types.NewIntegerValue(1)))))
 		require.Error(t, err)
 		_, err = tb.Insert(document.NewFieldBuffer().
-			Add("foo", document.NewArrayValue(document.NewValueBuffer().
-				Append(document.NewIntegerValue(1)).Append(document.NewIntegerValue(2)))))
+			Add("foo", types.NewArrayValue(document.NewValueBuffer().
+				Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2)))))
 		require.NoError(t, err)
 	})
 
@@ -586,11 +589,11 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
 			}})
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(10))
+			Add("foo", types.NewIntegerValue(10))
 
 		// insert first
 		_, err := tb.Insert(doc)
@@ -608,14 +611,14 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
 			}})
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(10))
+			Add("foo", types.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
 			called++
 			return d, nil
 		}
@@ -648,7 +651,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(10))
+			Add("foo", types.NewIntegerValue(10))
 
 		// insert first
 		_, err = tb.Insert(doc)
@@ -676,10 +679,10 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(10))
+			Add("foo", types.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
 			called++
 			return d, nil
 		}
@@ -702,15 +705,15 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
 			},
 		})
 
 		doc := document.NewFieldBuffer().
-			Add("bar", document.NewIntegerValue(10))
+			Add("bar", types.NewIntegerValue(10))
 
 		var called int
-		onConflict := func(t *database.Table, key []byte, d document.Document, err error) (document.Document, error) {
+		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
 			called++
 			return d, nil
 		}
@@ -727,7 +730,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, true, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
 			}})
 		require.NoError(t, err)
 
@@ -735,7 +738,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
-			Add("foo", document.NewIntegerValue(10))
+			Add("foo", types.NewIntegerValue(10))
 
 		// insert first
 		d1, err := tb.Insert(doc)
@@ -753,7 +756,7 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{testutil.ParseDocumentPath(t, "foo"), 0, false, true, false, nil, nil, false, nil},
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
 			}})
 		require.NoError(t, err)
 
@@ -761,7 +764,7 @@ func TestTableInsert(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
-			Add("bar", document.NewIntegerValue(10))
+			Add("bar", types.NewIntegerValue(10))
 
 		// insert
 		_, err = tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
@@ -785,7 +788,7 @@ func TestTableDelete(t *testing.T) {
 
 		// create two documents, one with an additional field
 		doc1 := newDocument()
-		doc1.Add("fieldc", document.NewIntegerValue(40))
+		doc1.Add("fieldc", types.NewIntegerValue(40))
 		doc2 := newDocument()
 
 		d1, err := tb.Insert(doc1.Clone())
@@ -826,8 +829,8 @@ func TestTableReplace(t *testing.T) {
 		// create two different documents
 		doc1 := newDocument()
 		doc2 := document.NewFieldBuffer().
-			Add("fielda", document.NewTextValue("c")).
-			Add("fieldb", document.NewTextValue("d"))
+			Add("fielda", types.NewTextValue("c")).
+			Add("fieldb", types.NewTextValue("d"))
 
 		d1, err := tb.Insert(doc1)
 		require.NoError(t, err)
@@ -836,8 +839,8 @@ func TestTableReplace(t *testing.T) {
 
 		// create a third document
 		doc3 := document.NewFieldBuffer().
-			Add("fielda", document.NewTextValue("e")).
-			Add("fieldb", document.NewTextValue("f"))
+			Add("fielda", types.NewTextValue("e")).
+			Add("fieldb", types.NewTextValue("f"))
 
 		// replace doc1 with doc3
 		d3, err := tb.Replace(d1.(document.Keyer).RawKey(), doc3)
@@ -848,7 +851,7 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 		f, err := res.GetByField("fielda")
 		require.NoError(t, err)
-		require.Equal(t, "e", f.V.(string))
+		require.Equal(t, "e", f.V().(string))
 
 		testutil.RequireDocEqual(t, d3, res)
 
@@ -857,7 +860,7 @@ func TestTableReplace(t *testing.T) {
 		require.NoError(t, err)
 		f, err = res.GetByField("fielda")
 		require.NoError(t, err)
-		require.Equal(t, "c", f.V.(string))
+		require.Equal(t, "c", f.V().(string))
 	})
 
 	t.Run("Should update indexes", func(t *testing.T) {
@@ -979,7 +982,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		require.NoError(t, err)
 
-		err = tb.Iterate(func(_ document.Document) error {
+		err = tb.Iterate(func(_ types.Document) error {
 			return errors.New("should not iterate")
 		})
 
@@ -1052,7 +1055,7 @@ func BenchmarkTableInsert(b *testing.B) {
 			var fb document.FieldBuffer
 
 			for i := int64(0); i < 10; i++ {
-				fb.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
+				fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
 			}
 
 			b.ResetTimer()
@@ -1081,7 +1084,7 @@ func BenchmarkTableScan(b *testing.B) {
 			var fb document.FieldBuffer
 
 			for i := int64(0); i < 10; i++ {
-				fb.Add(fmt.Sprintf("name-%d", i), document.NewIntegerValue(i))
+				fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
 			}
 
 			for i := 0; i < size; i++ {
@@ -1091,7 +1094,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(func(document.Document) error {
+				tb.Iterate(func(types.Document) error {
 					return nil
 				})
 			}

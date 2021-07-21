@@ -9,12 +9,13 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
 
-// MakeValue turns v into a document.Value.
-func MakeValue(t testing.TB, v interface{}) document.Value {
+// MakeValue turns v into a types.Value.
+func MakeValue(t testing.TB, v interface{}) types.Value {
 	t.Helper()
 
 	vv, err := document.NewValue(v)
@@ -22,21 +23,21 @@ func MakeValue(t testing.TB, v interface{}) document.Value {
 	return vv
 }
 
-func MakeArrayValue(t testing.TB, vs ...interface{}) document.Value {
+func MakeArrayValue(t testing.TB, vs ...interface{}) types.Value {
 	t.Helper()
 
-	vvs := []document.Value{}
+	vvs := []types.Value{}
 	for _, v := range vs {
 		vvs = append(vvs, MakeValue(t, v))
 	}
 
 	vb := document.NewValueBuffer(vvs...)
 
-	return document.NewArrayValue(vb)
+	return types.NewArrayValue(vb)
 }
 
 // MakeDocument creates a document from a json string.
-func MakeDocument(t testing.TB, jsonDoc string) document.Document {
+func MakeDocument(t testing.TB, jsonDoc string) types.Document {
 	t.Helper()
 
 	var fb document.FieldBuffer
@@ -56,7 +57,7 @@ func MakeDocuments(t testing.TB, jsonDocs ...string) (docs Docs) {
 }
 
 // MakeArray creates an array from a json string.
-func MakeArray(t testing.TB, jsonArray string) document.Array {
+func MakeArray(t testing.TB, jsonArray string) types.Array {
 	t.Helper()
 
 	var vb document.ValueBuffer
@@ -78,7 +79,7 @@ func MakeValueBuffer(t testing.TB, jsonArray string) *document.ValueBuffer {
 	return &vb
 }
 
-type Docs []document.Document
+type Docs []types.Document
 
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	t.Helper()
@@ -100,7 +101,7 @@ func Dump(t testing.TB, v interface{}) {
 	require.NoError(t, err)
 }
 
-func RequireDocJSONEq(t testing.TB, d document.Document, expected string) {
+func RequireDocJSONEq(t testing.TB, d types.Document, expected string) {
 	t.Helper()
 
 	data, err := json.Marshal(d)
@@ -115,7 +116,7 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 	buf.WriteByte('[')
 
 	first := true
-	err := s.Iterate(func(d document.Document) error {
+	err := s.Iterate(func(d types.Document) error {
 		if !first {
 			buf.WriteString(", ")
 		} else {
@@ -138,12 +139,12 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 	return buf.Flush()
 }
 
-func RequireDocEqual(t testing.TB, d1, d2 document.Document) {
+func RequireDocEqual(t testing.TB, d1, d2 types.Document) {
 	t.Helper()
 
-	l := document.NewDocumentValue(d1)
-	r := document.NewDocumentValue(d2)
-	ok, err := l.IsEqual(r)
+	l := types.NewDocumentValue(d1)
+	r := types.NewDocumentValue(d2)
+	ok, err := types.IsEqual(l, r)
 	require.NoError(t, err)
 	if !ok {
 		t.Fatal(cmp.Diff(transformDoc(d1), transformDoc(d2)))

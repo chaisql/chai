@@ -4,6 +4,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A Param represents a parameter passed by the user to the statement.
@@ -20,14 +21,14 @@ type Param struct {
 type Environment struct {
 	Params  []Param
 	Vars    *document.FieldBuffer
-	Doc     document.Document
+	Doc     types.Document
 	Catalog database.Catalog
 	Tx      *database.Transaction
 
 	Outer *Environment
 }
 
-func New(d document.Document, params ...Param) *Environment {
+func New(d types.Document, params ...Param) *Environment {
 	env := Environment{
 		Params: params,
 		Doc:    d,
@@ -44,7 +45,7 @@ func (e *Environment) SetOuter(env *Environment) {
 	e.Outer = env
 }
 
-func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
+func (e *Environment) Get(path document.Path) (v types.Value, ok bool) {
 	if e.Vars != nil {
 		v, err := path.GetValueFromDocument(e.Vars)
 		if err == nil {
@@ -59,7 +60,7 @@ func (e *Environment) Get(path document.Path) (v document.Value, ok bool) {
 	return
 }
 
-func (e *Environment) Set(name string, v document.Value) {
+func (e *Environment) Set(name string, v types.Value) {
 	if e.Vars == nil {
 		e.Vars = document.NewFieldBuffer()
 	}
@@ -67,7 +68,7 @@ func (e *Environment) Set(name string, v document.Value) {
 	e.Vars.Set(document.Path{document.PathFragment{FieldName: name}}, v)
 }
 
-func (e *Environment) GetDocument() (document.Document, bool) {
+func (e *Environment) GetDocument() (types.Document, bool) {
 	if e.Doc != nil {
 		return e.Doc, true
 	}
@@ -79,7 +80,7 @@ func (e *Environment) GetDocument() (document.Document, bool) {
 	return nil, false
 }
 
-func (e *Environment) SetDocument(d document.Document) {
+func (e *Environment) SetDocument(d types.Document) {
 	e.Doc = d
 }
 
@@ -87,7 +88,7 @@ func (e *Environment) SetParams(params []Param) {
 	e.Params = params
 }
 
-func (e *Environment) GetParamByName(name string) (v document.Value, err error) {
+func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
 	if len(e.Params) == 0 {
 		if e.Outer != nil {
 			return e.Outer.GetParamByName(name)
@@ -100,10 +101,10 @@ func (e *Environment) GetParamByName(name string) (v document.Value, err error) 
 		}
 	}
 
-	return document.Value{}, stringutil.Errorf("param %s not found", name)
+	return nil, stringutil.Errorf("param %s not found", name)
 }
 
-func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
+func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
 	if len(e.Params) == 0 {
 		if e.Outer != nil {
 			return e.Outer.GetParamByIndex(pos)
@@ -112,7 +113,7 @@ func (e *Environment) GetParamByIndex(pos int) (document.Value, error) {
 
 	idx := int(pos - 1)
 	if idx >= len(e.Params) {
-		return document.Value{}, stringutil.Errorf("cannot find param number %d", pos)
+		return nil, stringutil.Errorf("cannot find param number %d", pos)
 	}
 
 	return document.NewValue(e.Params[idx].Value)

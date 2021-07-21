@@ -6,10 +6,13 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // A LiteralValue represents a literal value of any type defined by the value package.
-type LiteralValue document.Value
+type LiteralValue struct {
+	Value types.Value
+}
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
@@ -18,18 +21,18 @@ func (v LiteralValue) IsEqual(other Expr) bool {
 	if !ok {
 		return false
 	}
-	ok, err := document.Value(v).IsEqual(document.Value(o))
+	ok, err := types.IsEqual(v.Value, o.Value)
 	return ok && err == nil
 }
 
 // String implements the stringutil.Stringer interface.
 func (v LiteralValue) String() string {
-	return document.Value(v).String()
+	return document.ValueToString(v.Value)
 }
 
 // Eval returns l. It implements the Expr interface.
-func (v LiteralValue) Eval(*environment.Environment) (document.Value, error) {
-	return document.Value(v), nil
+func (v LiteralValue) Eval(*environment.Environment) (types.Value, error) {
+	return types.Value(v.Value), nil
 }
 
 // LiteralExprList is a list of expressions.
@@ -72,9 +75,9 @@ func (l LiteralExprList) String() string {
 }
 
 // Eval evaluates all the expressions and returns a literalValueList. It implements the Expr interface.
-func (l LiteralExprList) Eval(env *environment.Environment) (document.Value, error) {
+func (l LiteralExprList) Eval(env *environment.Environment) (types.Value, error) {
 	var err error
-	values := make([]document.Value, len(l))
+	values := make([]types.Value, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(env)
 		if err != nil {
@@ -82,7 +85,7 @@ func (l LiteralExprList) Eval(env *environment.Environment) (document.Value, err
 		}
 	}
 
-	return document.NewArrayValue(document.NewValueBuffer(values...)), nil
+	return types.NewArrayValue(document.NewValueBuffer(values...)), nil
 }
 
 // KVPair associates an identifier with an expression.
@@ -133,7 +136,7 @@ func (kvp *KVPairs) IsEqual(other Expr) bool {
 }
 
 // Eval turns a list of KVPairs into a document.
-func (kvp *KVPairs) Eval(env *environment.Environment) (document.Value, error) {
+func (kvp *KVPairs) Eval(env *environment.Environment) (types.Value, error) {
 	var fb document.FieldBuffer
 	if kvp.SelfReferenced {
 		if _, ok := env.GetDocument(); !ok {
@@ -144,13 +147,13 @@ func (kvp *KVPairs) Eval(env *environment.Environment) (document.Value, error) {
 	for _, kv := range kvp.Pairs {
 		v, err := kv.V.Eval(env)
 		if err != nil {
-			return document.Value{}, err
+			return nil, err
 		}
 
 		fb.Add(kv.K, v)
 	}
 
-	return document.NewDocumentValue(&fb), nil
+	return types.NewDocumentValue(&fb), nil
 }
 
 // String implements the stringutil.Stringer interface.

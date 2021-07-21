@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,25 +44,25 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.NoError(t, err)
 
 	complexArray := document.NewValueBuffer().
-		Append(document.NewBoolValue(true)).
-		Append(document.NewIntegerValue(-40)).
-		Append(document.NewDoubleValue(-3.14)).
-		Append(document.NewDoubleValue(3)).
-		Append(document.NewBlobValue([]byte("blob"))).
-		Append(document.NewTextValue("hello")).
-		Append(document.NewDocumentValue(addressMapDoc)).
-		Append(document.NewArrayValue(document.NewValueBuffer().Append(document.NewIntegerValue(11))))
+		Append(types.NewBoolValue(true)).
+		Append(types.NewIntegerValue(-40)).
+		Append(types.NewDoubleValue(-3.14)).
+		Append(types.NewDoubleValue(3)).
+		Append(types.NewBlobValue([]byte("blob"))).
+		Append(types.NewTextValue("hello")).
+		Append(types.NewDocumentValue(addressMapDoc)).
+		Append(types.NewArrayValue(document.NewValueBuffer().Append(types.NewIntegerValue(11))))
 
 	tests := []struct {
 		name     string
-		d        document.Document
+		d        types.Document
 		expected string
 	}{
 		{
 			"document.FieldBuffer",
 			document.NewFieldBuffer().
-				Add("age", document.NewIntegerValue(10)).
-				Add("name", document.NewTextValue("john")),
+				Add("age", types.NewIntegerValue(10)).
+				Add("name", types.NewTextValue("john")),
 			`{"age": 10, "name": "john"}`,
 		},
 		{
@@ -70,12 +71,12 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 			`{"age": 10, "name": "john"}`,
 		},
 		{
-			"Nested Document",
+			"Nested types.Document",
 			document.NewFieldBuffer().
-				Add("age", document.NewIntegerValue(10)).
-				Add("name", document.NewTextValue("john")).
-				Add("address", document.NewDocumentValue(addressMapDoc)).
-				Add("array", document.NewArrayValue(complexArray)),
+				Add("age", types.NewIntegerValue(10)).
+				Add("name", types.NewTextValue("john")).
+				Add("address", types.NewDocumentValue(addressMapDoc)).
+				Add("array", types.NewArrayValue(complexArray)),
 			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}, "array": [true, -40, -3.14, 3, "YmxvYg==", "hello", {"city": "Ajaccio", "country": "France"}, [11]]}`,
 		},
 	}
@@ -87,7 +88,7 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 			codec := codecBuilder()
 			err := codec.NewEncoder(&buf).EncodeDocument(test.d)
 			require.NoError(t, err)
-			ok, err := document.NewDocumentValue(test.d).IsEqual(document.NewDocumentValue(codec.NewDecoder(buf.Bytes())))
+			ok, err := types.IsEqual(types.NewDocumentValue(test.d), types.NewDocumentValue(codec.NewDecoder(buf.Bytes())))
 			require.NoError(t, err)
 			require.True(t, ok)
 			data, err := document.MarshalJSON(codec.NewDecoder(buf.Bytes()))
@@ -101,9 +102,9 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 	codec := codecBuilder()
 
 	fb := document.NewFieldBuffer().
-		Add("a", document.NewIntegerValue(10)).
-		Add("b", document.NewNullValue()).
-		Add("c", document.NewTextValue("john"))
+		Add("a", types.NewIntegerValue(10)).
+		Add("b", types.NewNullValue()).
+		Add("c", types.NewTextValue("john"))
 
 	var buf bytes.Buffer
 
@@ -115,15 +116,15 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 	v, err := d.GetByField("a")
 	require.NoError(t, err)
 
-	require.Equal(t, document.NewIntegerValue(10), v)
+	require.Equal(t, types.NewIntegerValue(10), v)
 
 	v, err = d.GetByField("b")
 	require.NoError(t, err)
-	require.Equal(t, document.NewNullValue(), v)
+	require.Equal(t, types.NewNullValue(), v)
 
 	v, err = d.GetByField("c")
 	require.NoError(t, err)
-	require.Equal(t, document.NewTextValue("john"), v)
+	require.Equal(t, types.NewTextValue("john"), v)
 
 	v, err = d.GetByField("d")
 	require.Equal(t, document.ErrFieldNotFound, err)
@@ -133,33 +134,33 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	codec := codecBuilder()
 
 	arr := document.NewValueBuffer().
-		Append(document.NewIntegerValue(10)).
-		Append(document.NewNullValue()).
-		Append(document.NewTextValue("john"))
+		Append(types.NewIntegerValue(10)).
+		Append(types.NewNullValue()).
+		Append(types.NewTextValue("john"))
 
 	var buf bytes.Buffer
 
-	err := codec.NewEncoder(&buf).EncodeDocument(document.NewFieldBuffer().Add("a", document.NewArrayValue(arr)))
+	err := codec.NewEncoder(&buf).EncodeDocument(document.NewFieldBuffer().Add("a", types.NewArrayValue(arr)))
 	require.NoError(t, err)
 
 	d := codec.NewDecoder(buf.Bytes())
 	v, err := d.GetByField("a")
 	require.NoError(t, err)
 
-	require.Equal(t, document.ArrayValue, v.Type)
-	a := v.V.(document.Array)
+	require.Equal(t, types.ArrayValue, v.Type())
+	a := v.V().(types.Array)
 	v, err = a.GetByIndex(0)
 	require.NoError(t, err)
 
-	require.Equal(t, document.NewIntegerValue(10), v)
+	require.Equal(t, types.NewIntegerValue(10), v)
 
 	v, err = a.GetByIndex(1)
 	require.NoError(t, err)
-	require.Equal(t, document.NewNullValue(), v)
+	require.Equal(t, types.NewNullValue(), v)
 
 	v, err = a.GetByIndex(2)
 	require.NoError(t, err)
-	require.Equal(t, document.NewTextValue("john"), v)
+	require.Equal(t, types.NewTextValue("john"), v)
 
 	v, err = a.GetByIndex(1000)
 	require.Equal(t, document.ErrValueNotFound, err)
@@ -175,9 +176,9 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.NoError(t, err)
 
 	doc := document.NewFieldBuffer().
-		Add("age", document.NewIntegerValue(10)).
-		Add("name", document.NewTextValue("john")).
-		Add("address", document.NewDocumentValue(mapDoc))
+		Add("age", types.NewIntegerValue(10)).
+		Add("name", types.NewTextValue("john")).
+		Add("address", types.NewDocumentValue(mapDoc))
 
 	var buf bytes.Buffer
 
@@ -190,28 +191,28 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 	ec := codec.NewDecoder(buf.Bytes())
 	v, err := ec.GetByField("age")
 	require.NoError(t, err)
-	require.Equal(t, document.NewIntegerValue(10), v)
+	require.Equal(t, types.NewIntegerValue(10), v)
 	v, err = ec.GetByField("address")
 	require.NoError(t, err)
-	expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
+	expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", types.NewDocumentValue(mapDoc)))
 	require.NoError(t, err)
 	actual, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", v))
 	require.NoError(t, err)
 	require.JSONEq(t, string(expected), string(actual))
 
 	var i int
-	err = ec.Iterate(func(f string, v document.Value) error {
+	err = ec.Iterate(func(f string, v types.Value) error {
 		switch f {
 		case "age":
-			require.Equal(t, document.NewIntegerValue(10), v)
+			require.Equal(t, types.NewIntegerValue(10), v)
 		case "address":
-			expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", document.NewDocumentValue(mapDoc)))
+			expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", types.NewDocumentValue(mapDoc)))
 			require.NoError(t, err)
 			actual, err := document.MarshalJSON(document.NewFieldBuffer().Add(f, v))
 			require.NoError(t, err)
 			require.JSONEq(t, string(expected), string(actual))
 		case "name":
-			require.Equal(t, document.NewTextValue("john"), v)
+			require.Equal(t, types.NewTextValue("john"), v)
 		}
 		i++
 		return nil

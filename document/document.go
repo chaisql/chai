@@ -2,61 +2,62 @@
 package document
 
 import (
-	"bytes"
 	"errors"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
 // the field wasn't found in the document.
 var ErrFieldNotFound = errors.New("field not found")
 
-// A Document represents a group of key value pairs.
-type Document interface {
-	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(field string, value Value) error) error
-	// GetByField returns a value by field name.
-	// Must return ErrFieldNotFound if the field doesnt exist.
-	GetByField(field string) (Value, error)
+// ErrUnsupportedType is used to skip struct or array fields that are not supported.
+type ErrUnsupportedType struct {
+	Value interface{}
+	Msg   string
+}
+
+func (e *ErrUnsupportedType) Error() string {
+	return stringutil.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
 }
 
 // An Iterator can iterate over documents.
 type Iterator interface {
 	// Iterate goes through all the documents and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(d Document) error) error
+	Iterate(fn func(d types.Document) error) error
 }
 
 // MarshalJSON encodes a document to json.
-func MarshalJSON(d Document) ([]byte, error) {
-	return jsonDocument{d}.MarshalJSON()
+func MarshalJSON(d types.Document) ([]byte, error) {
+	return JsonDocument{Document: d}.MarshalJSON()
 }
 
 // MarshalJSONArray encodes an array to json.
-func MarshalJSONArray(a Array) ([]byte, error) {
-	return jsonArray{a}.MarshalJSON()
+func MarshalJSONArray(a types.Array) ([]byte, error) {
+	return JsonArray{Array: a}.MarshalJSON()
 }
 
 // A Keyer returns the key identifying documents in their storage.
 // This is usually implemented by documents read from storages.
 type Keyer interface {
 	RawKey() []byte
-	Key() (Value, error)
+	Key() (types.Value, error)
 }
 
 // Length returns the length of a document.
-func Length(d Document) (int, error) {
+func Length(d types.Document) (int, error) {
 	if fb, ok := d.(*FieldBuffer); ok {
 		return fb.Len(), nil
 	}
 
 	var len int
-	err := d.Iterate(func(_ string, _ Value) error {
+	err := d.Iterate(func(_ string, _ types.Value) error {
 		len++
 		return nil
 	})
@@ -65,29 +66,19 @@ func Length(d Document) (int, error) {
 
 // Fields returns a list of all the fields at the root of the document
 // sorted lexicographically.
-func Fields(d Document) ([]string, error) {
+func Fields(d types.Document) ([]string, error) {
 	if fb, ok := d.(*FieldBuffer); ok {
 		return fb.Fields(), nil
 	}
 
-	var fields []string
-	err := d.Iterate(func(f string, _ Value) error {
-		fields = append(fields, f)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Strings(fields)
-	return fields, nil
+	return types.Fields(d)
 }
 
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
 type FieldBuffer struct {
 	fields     []fieldValue
 	EncodedKey []byte
-	DecodedKey Value
+	DecodedKey types.Value
 }
 
 // NewFieldBuffer creates a FieldBuffer.
@@ -97,7 +88,7 @@ func NewFieldBuffer() *FieldBuffer {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (fb *FieldBuffer) MarshalJSON() ([]byte, error) {
-	return jsonDocument{Document: fb}.MarshalJSON()
+	return JsonDocument{Document: fb}.MarshalJSON()
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -120,17 +111,17 @@ func (fb *FieldBuffer) String() string {
 
 type fieldValue struct {
 	Field string
-	Value Value
+	Value types.Value
 }
 
 // Add a field to the buffer.
-func (fb *FieldBuffer) Add(field string, v Value) *FieldBuffer {
+func (fb *FieldBuffer) Add(field string, v types.Value) *FieldBuffer {
 	fb.fields = append(fb.fields, fieldValue{field, v})
 	return fb
 }
 
 // ScanDocument copies all the fields of d to the buffer.
-func (fb *FieldBuffer) ScanDocument(d Document) error {
+func (fb *FieldBuffer) ScanDocument(d types.Document) error {
 	var err error
 	if k, ok := d.(Keyer); ok {
 		fb.EncodedKey = k.RawKey()
@@ -140,25 +131,25 @@ func (fb *FieldBuffer) ScanDocument(d Document) error {
 		}
 	}
 
-	return d.Iterate(func(f string, v Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		fb.Add(f, v)
 		return nil
 	})
 }
 
 // GetByField returns a value by field. Returns an error if the field doesn't exists.
-func (fb FieldBuffer) GetByField(field string) (Value, error) {
+func (fb FieldBuffer) GetByField(field string) (types.Value, error) {
 	for _, fv := range fb.fields {
 		if fv.Field == field {
 			return fv.Value, nil
 		}
 	}
 
-	return Value{}, ErrFieldNotFound
+	return nil, ErrFieldNotFound
 }
 
 // setFieldValue replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
+func (fb *FieldBuffer) setFieldValue(field string, reqValue types.Value) error {
 	_, err := fb.GetByField(field)
 	switch err {
 	case ErrFieldNotFound:
@@ -173,18 +164,18 @@ func (fb *FieldBuffer) setFieldValue(field string, reqValue Value) error {
 }
 
 // setValueAtPath deep replaces or creates a field at the given path
-func setValueAtPath(v Value, p Path, newValue Value) (Value, error) {
-	switch v.Type {
-	case DocumentValue:
+func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, error) {
+	switch v.Type() {
+	case types.DocumentValue:
 		var buf FieldBuffer
-		err := buf.ScanDocument(v.V.(Document))
+		err := buf.ScanDocument(v.V().(types.Document))
 		if err != nil {
 			return v, err
 		}
 
 		if len(p) == 1 {
 			err = buf.setFieldValue(p[0].FieldName, newValue)
-			return NewDocumentValue(&buf), err
+			return types.NewDocumentValue(&buf), err
 		}
 
 		va, err := buf.GetByField(p[0].FieldName)
@@ -198,10 +189,10 @@ func setValueAtPath(v Value, p Path, newValue Value) (Value, error) {
 		}
 
 		err = buf.setFieldValue(p[0].FieldName, va)
-		return NewDocumentValue(&buf), err
-	case ArrayValue:
+		return types.NewDocumentValue(&buf), err
+	case types.ArrayValue:
 		var vb ValueBuffer
-		err := vb.ScanArray(v.V.(Array))
+		err := vb.ScanArray(v.V().(types.Array))
 		if err != nil {
 			return v, err
 		}
@@ -213,7 +204,7 @@ func setValueAtPath(v Value, p Path, newValue Value) (Value, error) {
 
 		if len(p) == 1 {
 			err = vb.Replace(p[0].ArrayIndex, newValue)
-			return NewArrayValue(&vb), err
+			return types.NewArrayValue(&vb), err
 		}
 
 		va, err = setValueAtPath(va, p[1:], newValue)
@@ -221,14 +212,14 @@ func setValueAtPath(v Value, p Path, newValue Value) (Value, error) {
 			return v, err
 		}
 		err = vb.Replace(p[0].ArrayIndex, va)
-		return NewArrayValue(&vb), err
+		return types.NewArrayValue(&vb), err
 	}
 
 	return v, nil
 }
 
 // Set replaces a field if it already exists or creates one if not.
-func (fb *FieldBuffer) Set(path Path, v Value) error {
+func (fb *FieldBuffer) Set(path Path, v types.Value) error {
 	if len(path) == 1 {
 		return fb.setFieldValue(path[0].FieldName, v)
 	}
@@ -251,7 +242,7 @@ func (fb *FieldBuffer) Set(path Path, v Value) error {
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (fb FieldBuffer) Iterate(fn func(field string, value Value) error) error {
+func (fb FieldBuffer) Iterate(fn func(field string, value types.Value) error) error {
 	for _, fv := range fb.fields {
 		err := fn(fv.Field, fv.Value)
 		if err != nil {
@@ -281,9 +272,9 @@ func (fb *FieldBuffer) Delete(path Path) error {
 	if err != nil {
 		return err
 	}
-	switch v.Type {
-	case DocumentValue:
-		subBuf, ok := v.V.(*FieldBuffer)
+	switch v.Type() {
+	case types.DocumentValue:
+		subBuf, ok := v.V().(*FieldBuffer)
 		if !ok {
 			return errors.New("Delete doesn't support non buffered document")
 		}
@@ -296,8 +287,8 @@ func (fb *FieldBuffer) Delete(path Path) error {
 		}
 
 		return ErrFieldNotFound
-	case ArrayValue:
-		subBuf, ok := v.V.(*ValueBuffer)
+	case types.ArrayValue:
+		subBuf, ok := v.V().(*ValueBuffer)
 		if !ok {
 			return errors.New("Delete doesn't support non buffered array")
 		}
@@ -315,7 +306,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 }
 
 // Replace the value of the field by v.
-func (fb *FieldBuffer) Replace(field string, v Value) error {
+func (fb *FieldBuffer) Replace(field string, v types.Value) error {
 	for i := range fb.fields {
 		if fb.fields[i].Field == field {
 			fb.fields[i].Value = v
@@ -328,30 +319,30 @@ func (fb *FieldBuffer) Replace(field string, v Value) error {
 
 // Copy deep copies every value of the document to the buffer.
 // If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
-func (fb *FieldBuffer) Copy(d Document) error {
+func (fb *FieldBuffer) Copy(d types.Document) error {
 	err := fb.ScanDocument(d)
 	if err != nil {
 		return err
 	}
 
 	for i, f := range fb.fields {
-		switch f.Value.Type {
-		case DocumentValue:
+		switch f.Value.Type() {
+		case types.DocumentValue:
 			var buf FieldBuffer
-			err = buf.Copy(f.Value.V.(Document))
+			err = buf.Copy(f.Value.V().(types.Document))
 			if err != nil {
 				return err
 			}
 
-			fb.fields[i].Value = NewDocumentValue(&buf)
-		case ArrayValue:
+			fb.fields[i].Value = types.NewDocumentValue(&buf)
+		case types.ArrayValue:
 			var buf ValueBuffer
-			err = buf.Copy(f.Value.V.(Array))
+			err = buf.Copy(f.Value.V().(types.Array))
 			if err != nil {
 				return err
 			}
 
-			fb.fields[i].Value = NewArrayValue(&buf)
+			fb.fields[i].Value = types.NewArrayValue(&buf)
 		}
 	}
 
@@ -367,7 +358,7 @@ func (fb *FieldBuffer) Clone() *FieldBuffer {
 }
 
 // Apply a function to all the values of the buffer.
-func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
+func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)) error {
 	path := Path{PathFragment{}}
 	var err error
 
@@ -380,41 +371,41 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v Value) (Value, error)) error {
 		}
 		fb.fields[i].Value = f.Value
 
-		switch f.Value.Type {
-		case DocumentValue:
-			buf, ok := f.Value.V.(*FieldBuffer)
+		switch f.Value.Type() {
+		case types.DocumentValue:
+			buf, ok := f.Value.V().(*FieldBuffer)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(f.Value.V.(Document))
+				err := buf.Copy(f.Value.V().(types.Document))
 				if err != nil {
 					return err
 				}
 			}
 
-			err := buf.Apply(func(p Path, v Value) (Value, error) {
+			err := buf.Apply(func(p Path, v types.Value) (types.Value, error) {
 				return fn(append(path, p...), v)
 			})
 			if err != nil {
 				return err
 			}
-			fb.fields[i].Value = NewDocumentValue(buf)
-		case ArrayValue:
-			buf, ok := f.Value.V.(*ValueBuffer)
+			fb.fields[i].Value = types.NewDocumentValue(buf)
+		case types.ArrayValue:
+			buf, ok := f.Value.V().(*ValueBuffer)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(f.Value.V.(Array))
+				err := buf.Copy(f.Value.V().(types.Array))
 				if err != nil {
 					return err
 				}
 			}
 
-			err := buf.Apply(func(p Path, v Value) (Value, error) {
+			err := buf.Apply(func(p Path, v types.Value) (types.Value, error) {
 				return fn(append(path, p...), v)
 			})
 			if err != nil {
 				return err
 			}
-			fb.fields[i].Value = NewArrayValue(buf)
+			fb.fields[i].Value = types.NewArrayValue(buf)
 		}
 	}
 
@@ -437,7 +428,7 @@ func (fb *FieldBuffer) RawKey() []byte {
 }
 
 // Key of the document, if any.
-func (fb *FieldBuffer) Key() (Value, error) {
+func (fb *FieldBuffer) Key() (types.Value, error) {
 	return fb.DecodedKey, nil
 }
 
@@ -514,17 +505,17 @@ func (p Path) IsEqual(other Path) bool {
 }
 
 // GetValueFromDocument returns the value at path p from d.
-func (p Path) GetValueFromDocument(d Document) (Value, error) {
+func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 	if len(p) == 0 {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 	if p[0].FieldName == "" {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 
 	v, err := d.GetByField(p[0].FieldName)
 	if err != nil {
-		return Value{}, err
+		return nil, err
 	}
 
 	if len(p) == 1 {
@@ -535,21 +526,21 @@ func (p Path) GetValueFromDocument(d Document) (Value, error) {
 }
 
 // GetValueFromArray returns the value at path p from a.
-func (p Path) GetValueFromArray(a Array) (Value, error) {
+func (p Path) GetValueFromArray(a types.Array) (types.Value, error) {
 	if len(p) == 0 {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 	if p[0].FieldName != "" {
-		return Value{}, ErrFieldNotFound
+		return nil, ErrFieldNotFound
 	}
 
 	v, err := a.GetByIndex(p[0].ArrayIndex)
 	if err != nil {
 		if err == ErrValueNotFound {
-			return Value{}, ErrFieldNotFound
+			return nil, ErrFieldNotFound
 		}
 
-		return Value{}, err
+		return nil, err
 	}
 
 	if len(p) == 1 {
@@ -565,48 +556,13 @@ func (p Path) Clone() Path {
 	return c
 }
 
-func (p Path) getValueFromValue(v Value) (Value, error) {
-	switch v.Type {
-	case DocumentValue:
-		return p.GetValueFromDocument(v.V.(Document))
-	case ArrayValue:
-		return p.GetValueFromArray(v.V.(Array))
+func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
+	switch v.Type() {
+	case types.DocumentValue:
+		return p.GetValueFromDocument(v.V().(types.Document))
+	case types.ArrayValue:
+		return p.GetValueFromArray(v.V().(types.Array))
 	}
 
-	return Value{}, ErrFieldNotFound
-}
-
-type jsonDocument struct {
-	Document
-}
-
-func (j jsonDocument) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-
-	buf.WriteByte('{')
-
-	var notFirst bool
-	err := j.Document.Iterate(func(f string, v Value) error {
-		if notFirst {
-			buf.WriteString(", ")
-		}
-		notFirst = true
-
-		buf.WriteString(strconv.Quote(f))
-		buf.WriteString(": ")
-
-		data, err := v.MarshalJSON()
-		if err != nil {
-			return err
-		}
-		_, err = buf.Write(data)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	buf.WriteByte('}')
-
-	return buf.Bytes(), nil
+	return nil, ErrFieldNotFound
 }

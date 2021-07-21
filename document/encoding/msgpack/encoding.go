@@ -6,11 +6,12 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
 
-// An EncodedDocument implements the document.Document
+// An EncodedDocument implements the types.Document
 // interface on top of an encoded representation of a
 // document.
 // It is useful for avoiding decoding the entire document when
@@ -52,7 +53,7 @@ func (e *EncodedDocument) Reset(data []byte) {
 }
 
 // GetByField decodes the selected field from the buffer.
-func (e *EncodedDocument) GetByField(field string) (v document.Value, err error) {
+func (e *EncodedDocument) GetByField(field string) (v types.Value, err error) {
 	_, err = e.reader.Seek(0, io.SeekStart)
 	if err != nil {
 		return
@@ -135,7 +136,7 @@ func (e *EncodedDocument) GetByField(field string) (v document.Value, err error)
 
 // Iterate decodes each fields one by one and passes them to fn
 // until the end of the document or until fn returns an error.
-func (e *EncodedDocument) Iterate(fn func(field string, value document.Value) error) error {
+func (e *EncodedDocument) Iterate(fn func(field string, value types.Value) error) error {
 	_, err := e.reader.Seek(0, io.SeekStart)
 	if err != nil {
 		return err
@@ -169,7 +170,7 @@ func (e *EncodedDocument) Iterate(fn func(field string, value document.Value) er
 	return nil
 }
 
-// An EncodedArray implements the document.Array interface on top of an
+// An EncodedArray implements the types.Array interface on top of an
 // encoded representation of an array.
 // It is useful for avoiding decoding the entire array when
 // only a few values are needed.
@@ -178,7 +179,7 @@ type EncodedArray []byte
 // Iterate goes through all the values of the array and calls the
 // given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error {
+func (e EncodedArray) Iterate(fn func(i int, value types.Value) error) error {
 	dec := NewDecoder(bytes.NewReader(e))
 	defer dec.Close()
 
@@ -203,7 +204,7 @@ func (e EncodedArray) Iterate(fn func(i int, value document.Value) error) error 
 }
 
 // GetByIndex returns a value by index of the array.
-func (e EncodedArray) GetByIndex(idx int) (v document.Value, err error) {
+func (e EncodedArray) GetByIndex(idx int) (v types.Value, err error) {
 	dec := NewDecoder(bytes.NewReader(e))
 	defer dec.Close()
 

@@ -1,4 +1,4 @@
-package document
+package types
 
 import (
 	"errors"
@@ -8,14 +8,14 @@ import (
 )
 
 const (
-	// ArrayValueDelim is a separator used when encoding document.Array in
+	// ArrayValueDelim is a separator used when encoding types.Array in
 	// binary reprsentation
 	ArrayValueDelim = 0x1f
-	// ArrayEnd is the final separator used when encoding document.Array in
+	// ArrayEnd is the final separator used when encoding types.Array in
 	// binary reprsentation.
 	ArrayEnd           = 0x1e
-	documentValueDelim = 0x1c
-	documentEnd        = 0x1d
+	DocumentValueDelim = 0x1c
+	DocumentEnd        = 0x1d
 )
 
 // ValueEncoder encodes natural sort-ordered representations of values.
@@ -44,36 +44,40 @@ func (ve *ValueEncoder) Encode(v Value) error {
 }
 
 func (ve *ValueEncoder) appendValue(v Value) error {
-	err := ve.append(byte(v.Type))
+	err := ve.append(byte(v.Type()))
 	if err != nil {
 		return err
 	}
 
-	switch v.Type {
+	if v.V() == nil {
+		return nil
+	}
+
+	switch v.Type() {
 	case NullValue:
 		return nil
 	case ArrayValue:
-		return ve.appendArray(v.V.(Array))
+		return ve.appendArray(v.V().(Array))
 	case DocumentValue:
-		return ve.appendDocument(v.V.(Document))
+		return ve.appendDocument(v.V().(Document))
 	}
 
 	ve.buf = ve.buf[:0]
 
-	switch v.Type {
+	switch v.Type() {
 	case BlobValue:
-		ve.buf, err = binarysort.AppendBase64(ve.buf, v.V.([]byte))
+		ve.buf, err = binarysort.AppendBase64(ve.buf, v.V().([]byte))
 	case TextValue:
-		text := v.V.(string)
+		text := v.V().(string)
 		ve.buf, err = binarysort.AppendBase64(ve.buf, []byte(text))
 	case BoolValue:
-		ve.buf, err = binarysort.AppendBool(ve.buf, v.V.(bool)), nil
+		ve.buf, err = binarysort.AppendBool(ve.buf, v.V().(bool)), nil
 	case IntegerValue:
-		ve.buf = binarysort.AppendInt64(ve.buf, v.V.(int64))
+		ve.buf = binarysort.AppendInt64(ve.buf, v.V().(int64))
 	case DoubleValue:
-		ve.buf = binarysort.AppendFloat64(ve.buf, v.V.(float64))
+		ve.buf = binarysort.AppendFloat64(ve.buf, v.V().(float64))
 	default:
-		return errors.New("cannot encode type " + v.Type.String() + " as key")
+		return errors.New("cannot encode type " + v.Type().String() + " as key")
 	}
 	if err != nil {
 		return err
@@ -109,7 +113,7 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 		var err error
 
 		if i > 0 {
-			err = ve.append(documentValueDelim)
+			err = ve.append(DocumentValueDelim)
 			if err != nil {
 				return err
 			}
@@ -124,7 +128,7 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 			return err
 		}
 
-		err = ve.append(documentValueDelim)
+		err = ve.append(DocumentValueDelim)
 		if err != nil {
 			return err
 		}
@@ -141,5 +145,5 @@ func (ve *ValueEncoder) appendDocument(d Document) error {
 		return err
 	}
 
-	return ve.append(documentEnd)
+	return ve.append(DocumentEnd)
 }

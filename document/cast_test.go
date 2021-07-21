@@ -3,31 +3,32 @@ package document
 import (
 	"testing"
 
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCastAs(t *testing.T) {
 	type test struct {
-		v, want Value
+		v, want types.Value
 		fails   bool
 	}
 
-	boolV := NewBoolValue(true)
-	integerV := NewIntegerValue(10)
-	doubleV := NewDoubleValue(10.5)
-	textV := NewTextValue("foo")
-	blobV := NewBlobValue([]byte("abc"))
-	arrayV := NewArrayValue(NewValueBuffer().
-		Append(NewTextValue("bar")).
+	boolV := types.NewBoolValue(true)
+	integerV := types.NewIntegerValue(10)
+	doubleV := types.NewDoubleValue(10.5)
+	textV := types.NewTextValue("foo")
+	blobV := types.NewBlobValue([]byte("abc"))
+	arrayV := types.NewArrayValue(NewValueBuffer().
+		Append(types.NewTextValue("bar")).
 		Append(integerV))
-	docV := NewDocumentValue(NewFieldBuffer().
+	docV := types.NewDocumentValue(NewFieldBuffer().
 		Add("a", integerV).
 		Add("b", textV))
 
-	check := func(t *testing.T, targetType ValueType, tests []test) {
+	check := func(t *testing.T, targetType types.ValueType, tests []test) {
 		for _, test := range tests {
-			t.Run(test.v.String(), func(t *testing.T) {
-				got, err := test.v.CastAs(targetType)
+			t.Run(ValueToString(test.v), func(t *testing.T) {
+				got, err := CastAs(test.v, targetType)
 				if test.fails {
 					require.Error(t, err)
 				} else {
@@ -39,98 +40,98 @@ func TestCastAs(t *testing.T) {
 	}
 
 	t.Run("bool", func(t *testing.T) {
-		check(t, BoolValue, []test{
+		check(t, types.BoolValue, []test{
 			{boolV, boolV, false},
 			{integerV, boolV, false},
-			{NewIntegerValue(0), NewBoolValue(false), false},
-			{doubleV, Value{}, true},
-			{textV, Value{}, true},
-			{NewTextValue("true"), boolV, false},
-			{NewTextValue("false"), NewBoolValue(false), false},
-			{blobV, Value{}, true},
-			{arrayV, Value{}, true},
-			{docV, Value{}, true},
+			{types.NewIntegerValue(0), types.NewBoolValue(false), false},
+			{doubleV, nil, true},
+			{textV, nil, true},
+			{types.NewTextValue("true"), boolV, false},
+			{types.NewTextValue("false"), types.NewBoolValue(false), false},
+			{blobV, nil, true},
+			{arrayV, nil, true},
+			{docV, nil, true},
 		})
 	})
 
 	t.Run("integer", func(t *testing.T) {
-		check(t, IntegerValue, []test{
-			{boolV, NewIntegerValue(1), false},
-			{NewBoolValue(false), NewIntegerValue(0), false},
+		check(t, types.IntegerValue, []test{
+			{boolV, types.NewIntegerValue(1), false},
+			{types.NewBoolValue(false), types.NewIntegerValue(0), false},
 			{integerV, integerV, false},
 			{doubleV, integerV, false},
-			{textV, Value{}, true},
-			{NewTextValue("10"), integerV, false},
-			{NewTextValue("10.5"), integerV, false},
-			{blobV, Value{}, true},
-			{arrayV, Value{}, true},
-			{docV, Value{}, true},
+			{textV, nil, true},
+			{types.NewTextValue("10"), integerV, false},
+			{types.NewTextValue("10.5"), integerV, false},
+			{blobV, nil, true},
+			{arrayV, nil, true},
+			{docV, nil, true},
 		})
 	})
 
 	t.Run("double", func(t *testing.T) {
-		check(t, DoubleValue, []test{
-			{boolV, Value{}, true},
-			{integerV, NewDoubleValue(10), false},
+		check(t, types.DoubleValue, []test{
+			{boolV, nil, true},
+			{integerV, types.NewDoubleValue(10), false},
 			{doubleV, doubleV, false},
-			{textV, Value{}, true},
-			{NewTextValue("10"), NewDoubleValue(10), false},
-			{NewTextValue("10.5"), doubleV, false},
-			{blobV, Value{}, true},
-			{arrayV, Value{}, true},
-			{docV, Value{}, true},
+			{textV, nil, true},
+			{types.NewTextValue("10"), types.NewDoubleValue(10), false},
+			{types.NewTextValue("10.5"), doubleV, false},
+			{blobV, nil, true},
+			{arrayV, nil, true},
+			{docV, nil, true},
 		})
 	})
 
 	t.Run("text", func(t *testing.T) {
-		check(t, TextValue, []test{
-			{boolV, NewTextValue("true"), false},
-			{integerV, NewTextValue("10"), false},
-			{doubleV, NewTextValue("10.5"), false},
+		check(t, types.TextValue, []test{
+			{boolV, types.NewTextValue("true"), false},
+			{integerV, types.NewTextValue("10"), false},
+			{doubleV, types.NewTextValue("10.5"), false},
 			{textV, textV, false},
-			{blobV, NewTextValue("YWJj"), false},
-			{arrayV, NewTextValue(`["bar", 10]`), false},
+			{blobV, types.NewTextValue("YWJj"), false},
+			{arrayV, types.NewTextValue(`["bar", 10]`), false},
 			{docV,
-				NewTextValue(`{"a": 10, "b": "foo"}`),
+				types.NewTextValue(`{"a": 10, "b": "foo"}`),
 				false},
 		})
 	})
 
 	t.Run("blob", func(t *testing.T) {
-		check(t, BlobValue, []test{
-			{boolV, Value{}, true},
-			{integerV, Value{}, true},
-			{doubleV, Value{}, true},
-			{NewTextValue("YWJj"), blobV, false},
-			{NewTextValue("   dww  "), Value{}, true},
+		check(t, types.BlobValue, []test{
+			{boolV, nil, true},
+			{integerV, nil, true},
+			{doubleV, nil, true},
+			{types.NewTextValue("YWJj"), blobV, false},
+			{types.NewTextValue("   dww  "), nil, true},
 			{blobV, blobV, false},
-			{arrayV, Value{}, true},
-			{docV, Value{}, true},
+			{arrayV, nil, true},
+			{docV, nil, true},
 		})
 	})
 
 	t.Run("array", func(t *testing.T) {
-		check(t, ArrayValue, []test{
-			{boolV, Value{}, true},
-			{integerV, Value{}, true},
-			{doubleV, Value{}, true},
-			{NewTextValue(`["bar", 10]`), arrayV, false},
-			{NewTextValue("abc"), Value{}, true},
-			{blobV, Value{}, true},
+		check(t, types.ArrayValue, []test{
+			{boolV, nil, true},
+			{integerV, nil, true},
+			{doubleV, nil, true},
+			{types.NewTextValue(`["bar", 10]`), arrayV, false},
+			{types.NewTextValue("abc"), nil, true},
+			{blobV, nil, true},
 			{arrayV, arrayV, false},
-			{docV, Value{}, true},
+			{docV, nil, true},
 		})
 	})
 
 	t.Run("document", func(t *testing.T) {
-		check(t, DocumentValue, []test{
-			{boolV, Value{}, true},
-			{integerV, Value{}, true},
-			{doubleV, Value{}, true},
-			{NewTextValue(`{"a": 10, "b": "foo"}`), docV, false},
-			{NewTextValue("abc"), Value{}, true},
-			{blobV, Value{}, true},
-			{arrayV, Value{}, true},
+		check(t, types.DocumentValue, []test{
+			{boolV, nil, true},
+			{integerV, nil, true},
+			{doubleV, nil, true},
+			{types.NewTextValue(`{"a": 10, "b": "foo"}`), docV, false},
+			{types.NewTextValue("abc"), nil, true},
+			{blobV, nil, true},
+			{arrayV, nil, true},
 			{docV, docV, false},
 		})
 	})

@@ -1,14 +1,16 @@
 package functions_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 )
 
-var doc document.Document = func() document.Document {
+var doc types.Document = func() types.Document {
 	return document.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
@@ -16,18 +18,20 @@ var doc document.Document = func() document.Document {
 	}`))
 }()
 
-var docWithKey document.Document = func() document.Document {
+var docWithKey types.Document = func() types.Document {
 	fb := document.NewFieldBuffer()
 	err := fb.Copy(doc)
 	if err != nil {
 		panic(err)
 	}
 
-	fb.DecodedKey = document.NewIntegerValue(1)
-	fb.EncodedKey, err = fb.DecodedKey.MarshalBinary()
+	fb.DecodedKey = types.NewIntegerValue(1)
+	var buf bytes.Buffer
+	err = types.NewValueEncoder(&buf).Encode(fb.DecodedKey)
 	if err != nil {
 		panic(err)
 	}
+	fb.EncodedKey = buf.Bytes()
 
 	return fb
 }()
@@ -39,11 +43,11 @@ func TestPk(t *testing.T) {
 	tests := []struct {
 		name string
 		env  *environment.Environment
-		res  document.Value
+		res  types.Value
 	}{
-		{"empty env", &environment.Environment{}, document.NewNullValue()},
-		{"env with doc", envWithDoc, document.NewNullValue()},
-		{"env with doc and key", envWithDocAndKey, document.NewIntegerValue(1)},
+		{"empty env", &environment.Environment{}, types.NewNullValue()},
+		{"env with doc", envWithDoc, types.NewNullValue()},
+		{"env with doc and key", envWithDocAndKey, types.NewIntegerValue(1)},
 	}
 
 	for _, test := range tests {

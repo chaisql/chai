@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/vmihailenco/msgpack/v5/msgpcode"
 )
@@ -46,7 +47,7 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // EncodeDocument encodes d as a MessagePack map.
-func (e *Encoder) EncodeDocument(d document.Document) error {
+func (e *Encoder) EncodeDocument(d types.Document) error {
 	var dlen int
 	var err error
 
@@ -64,7 +65,7 @@ func (e *Encoder) EncodeDocument(d document.Document) error {
 		return err
 	}
 
-	return d.Iterate(func(f string, v document.Value) error {
+	return d.Iterate(func(f string, v types.Value) error {
 		if err := e.enc.EncodeString(f); err != nil {
 			return err
 		}
@@ -74,7 +75,7 @@ func (e *Encoder) EncodeDocument(d document.Document) error {
 }
 
 // EncodeArray encodes a as a MessagePack array.
-func (e *Encoder) EncodeArray(a document.Array) error {
+func (e *Encoder) EncodeArray(a types.Array) error {
 	var alen int
 	var err error
 
@@ -92,7 +93,7 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 		return err
 	}
 
-	return a.Iterate(func(i int, v document.Value) error {
+	return a.Iterate(func(i int, v types.Value) error {
 		return e.EncodeValue(v)
 	})
 }
@@ -109,27 +110,27 @@ func (e *Encoder) EncodeArray(a document.Array) error {
 // - int32 -> int32
 // - int64 -> int64
 // - float64 -> float64
-func (e *Encoder) EncodeValue(v document.Value) error {
-	switch v.Type {
-	case document.DocumentValue:
-		return e.EncodeDocument(v.V.(document.Document))
-	case document.ArrayValue:
-		return e.EncodeArray(v.V.(document.Array))
-	case document.NullValue:
+func (e *Encoder) EncodeValue(v types.Value) error {
+	switch v.Type() {
+	case types.DocumentValue:
+		return e.EncodeDocument(v.V().(types.Document))
+	case types.ArrayValue:
+		return e.EncodeArray(v.V().(types.Array))
+	case types.NullValue:
 		return e.enc.EncodeNil()
-	case document.TextValue:
-		return e.enc.EncodeString(v.V.(string))
-	case document.BlobValue:
-		return e.enc.EncodeBytes(v.V.([]byte))
-	case document.BoolValue:
-		return e.enc.EncodeBool(v.V.(bool))
-	case document.IntegerValue:
-		return e.enc.EncodeInt(v.V.(int64))
-	case document.DoubleValue:
-		return e.enc.EncodeFloat64(v.V.(float64))
+	case types.TextValue:
+		return e.enc.EncodeString(v.V().(string))
+	case types.BlobValue:
+		return e.enc.EncodeBytes(v.V().([]byte))
+	case types.BoolValue:
+		return e.enc.EncodeBool(v.V().(bool))
+	case types.IntegerValue:
+		return e.enc.EncodeInt(v.V().(int64))
+	case types.DoubleValue:
+		return e.enc.EncodeFloat64(v.V().(float64))
 	}
 
-	return e.enc.Encode(v.V)
+	return e.enc.Encode(v.V())
 }
 
 // Close puts the encoder into the pool for reuse.
@@ -154,7 +155,7 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 // DecodeValue reads one value from the reader and decodes it.
-func (d *Decoder) DecodeValue() (v document.Value, err error) {
+func (d *Decoder) DecodeValue() (v types.Value, err error) {
 	c, err := d.dec.PeekCode()
 	if err != nil {
 		return
@@ -162,25 +163,25 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 
 	// decode array
 	if (msgpcode.IsFixedArray(c)) || (c == msgpcode.Array16) || (c == msgpcode.Array32) {
-		var a document.Array
+		var a types.Array
 		a, err = d.DecodeArray()
 		if err != nil {
 			return
 		}
 
-		v = document.NewArrayValue(a)
+		v = types.NewArrayValue(a)
 		return
 	}
 
 	// decode document
 	if (msgpcode.IsFixedMap(c)) || (c == msgpcode.Map16) || (c == msgpcode.Map32) {
-		var doc document.Document
+		var doc types.Document
 		doc, err = d.DecodeDocument()
 		if err != nil {
 			return
 		}
 
-		v = document.NewDocumentValue(doc)
+		v = types.NewDocumentValue(doc)
 		return
 	}
 
@@ -191,19 +192,20 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v = document.NewTextValue(s)
+		v = types.NewTextValue(s)
 		return
 	}
 
 	// decode fixnum (the msgpack size optimization to encode low value integers)
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#int-format-family
 	if msgpcode.IsFixedNum(c) {
-		v.V, err = d.dec.DecodeInt64()
+		var data int64
+		data, err = d.dec.DecodeInt64()
 		if err != nil {
 			return
 		}
 
-		v.Type = document.IntegerValue
+		v = types.NewIntegerValue(data)
 		return
 	}
 
@@ -214,35 +216,39 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 		if err != nil {
 			return
 		}
-		v.Type = document.NullValue
+		v = types.NewNullValue()
 		return
 	case msgpcode.Bin8, msgpcode.Bin16, msgpcode.Bin32:
-		v.V, err = d.dec.DecodeBytes()
+		var data []byte
+		data, err = d.dec.DecodeBytes()
 		if err != nil {
 			return
 		}
-		v.Type = document.BlobValue
+		v = types.NewBlobValue(data)
 		return
 	case msgpcode.True, msgpcode.False:
-		v.V, err = d.dec.DecodeBool()
+		var data bool
+		data, err = d.dec.DecodeBool()
 		if err != nil {
 			return
 		}
-		v.Type = document.BoolValue
+		v = types.NewBoolValue(data)
 		return
 	case msgpcode.Int8, msgpcode.Int16, msgpcode.Int32, msgpcode.Int64, msgpcode.Uint8, msgpcode.Uint16, msgpcode.Uint32, msgpcode.Uint64:
-		v.V, err = d.dec.DecodeInt64()
+		var data int64
+		data, err = d.dec.DecodeInt64()
 		if err != nil {
 			return
 		}
-		v.Type = document.IntegerValue
+		v = types.NewIntegerValue(data)
 		return
 	case msgpcode.Double:
-		v.V, err = d.dec.DecodeFloat64()
+		var data float64
+		data, err = d.dec.DecodeFloat64()
 		if err != nil {
 			return
 		}
-		v.Type = document.DoubleValue
+		v = types.NewDoubleValue(data)
 		return
 	}
 
@@ -252,7 +258,7 @@ func (d *Decoder) DecodeValue() (v document.Value, err error) {
 // DecodeDocument decodes one document from the reader.
 // If the document is malformed, it will not return an error.
 // However, calls to Iterate or GetByField will fail.
-func (d *Decoder) DecodeDocument() (document.Document, error) {
+func (d *Decoder) DecodeDocument() (types.Document, error) {
 	r, err := d.dec.DecodeRaw()
 	if err != nil {
 		return nil, err
@@ -264,7 +270,7 @@ func (d *Decoder) DecodeDocument() (document.Document, error) {
 // DecodeArray decodes one array from the reader.
 // If the array is malformed, this function will not return an error.
 // However, calls to Iterate or GetByIndex will fail.
-func (d *Decoder) DecodeArray() (document.Array, error) {
+func (d *Decoder) DecodeArray() (types.Array, error) {
 	r, err := d.dec.DecodeRaw()
 	if err != nil {
 		return nil, err

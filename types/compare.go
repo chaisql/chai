@@ -1,7 +1,8 @@
-package document
+package types
 
 import (
 	"bytes"
+	"sort"
 	"strings"
 )
 
@@ -33,13 +34,13 @@ func (op operator) String() string {
 }
 
 // IsEqual returns true if v is equal to the given value.
-func (v Value) IsEqual(other Value) (bool, error) {
+func IsEqual(v, other Value) (bool, error) {
 	return compare(operatorEq, v, other)
 }
 
 // IsNotEqual returns true if v is not equal to the given value.
-func (v Value) IsNotEqual(other Value) (bool, error) {
-	ok, err := v.IsEqual(other)
+func IsNotEqual(v, other Value) (bool, error) {
+	ok, err := IsEqual(v, other)
 	if err != nil {
 		return ok, err
 	}
@@ -48,58 +49,58 @@ func (v Value) IsNotEqual(other Value) (bool, error) {
 }
 
 // IsGreaterThan returns true if v is greather than the given value.
-func (v Value) IsGreaterThan(other Value) (bool, error) {
+func IsGreaterThan(v, other Value) (bool, error) {
 	return compare(operatorGt, v, other)
 }
 
 // IsGreaterThanOrEqual returns true if v is greather than or equal to the given value.
-func (v Value) IsGreaterThanOrEqual(other Value) (bool, error) {
+func IsGreaterThanOrEqual(v, other Value) (bool, error) {
 	return compare(operatorGte, v, other)
 }
 
 // IsLesserThan returns true if v is lesser than the given value.
-func (v Value) IsLesserThan(other Value) (bool, error) {
+func IsLesserThan(v, other Value) (bool, error) {
 	return compare(operatorLt, v, other)
 }
 
 // IsLesserThanOrEqual returns true if v is lesser than or equal to the given value.
-func (v Value) IsLesserThanOrEqual(other Value) (bool, error) {
+func IsLesserThanOrEqual(v, other Value) (bool, error) {
 	return compare(operatorLte, v, other)
 }
 
 func compare(op operator, l, r Value) (bool, error) {
 	switch {
 	// deal with nil
-	case l.Type == NullValue || r.Type == NullValue:
+	case l.Type() == NullValue || r.Type() == NullValue:
 		return compareWithNull(op, l, r), nil
 
 	// compare booleans together
-	case l.Type == BoolValue && r.Type == BoolValue:
-		return compareBooleans(op, l.V.(bool), r.V.(bool)), nil
+	case l.Type() == BoolValue && r.Type() == BoolValue:
+		return compareBooleans(op, l.V().(bool), r.V().(bool)), nil
 
 	// compare texts together
-	case l.Type == TextValue && r.Type == TextValue:
-		return compareTexts(op, l.V.(string), r.V.(string)), nil
+	case l.Type() == TextValue && r.Type() == TextValue:
+		return compareTexts(op, l.V().(string), r.V().(string)), nil
 
 	// compare blobs together
-	case r.Type == BlobValue && l.Type == BlobValue:
-		return compareBlobs(op, l.V.([]byte), r.V.([]byte)), nil
+	case r.Type() == BlobValue && l.Type() == BlobValue:
+		return compareBlobs(op, l.V().([]byte), r.V().([]byte)), nil
 
 	// compare integers together
-	case l.Type == IntegerValue && r.Type == IntegerValue:
-		return compareIntegers(op, l.V.(int64), r.V.(int64)), nil
+	case l.Type() == IntegerValue && r.Type() == IntegerValue:
+		return compareIntegers(op, l.V().(int64), r.V().(int64)), nil
 
 	// compare numbers together
-	case l.Type.IsNumber() && r.Type.IsNumber():
+	case l.Type().IsNumber() && r.Type().IsNumber():
 		return compareNumbers(op, l, r), nil
 
 	// compare arrays together
-	case l.Type == ArrayValue && r.Type == ArrayValue:
-		return compareArrays(op, l.V.(Array), r.V.(Array))
+	case l.Type() == ArrayValue && r.Type() == ArrayValue:
+		return compareArrays(op, l.V().(Array), r.V().(Array))
 
 	// compare documents together
-	case l.Type == DocumentValue && r.Type == DocumentValue:
-		return compareDocuments(op, l.V.(Document), r.V.(Document))
+	case l.Type() == DocumentValue && r.Type() == DocumentValue:
+		return compareDocuments(op, l.V().(Document), r.V().(Document))
 	}
 
 	return false, nil
@@ -108,7 +109,7 @@ func compare(op operator, l, r Value) (bool, error) {
 func compareWithNull(op operator, l, r Value) bool {
 	switch op {
 	case operatorEq, operatorGte, operatorLte:
-		return l.Type == r.Type
+		return l.Type() == r.Type()
 	case operatorGt, operatorLt:
 		return false
 	}
@@ -185,11 +186,11 @@ func compareIntegers(op operator, l, r int64) bool {
 }
 
 func compareNumbers(op operator, l, r Value) bool {
-	l, _ = l.CastAsDouble()
-	r, _ = r.CastAsDouble()
+	l = convertNumberToDouble(l)
+	r = convertNumberToDouble(r)
 
-	af := l.V.(float64)
-	bf := r.V.(float64)
+	af := l.V().(float64)
+	bf := r.V().(float64)
 
 	var ok bool
 
@@ -224,7 +225,7 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
-		if lv.Type == rv.Type || (lv.Type.IsNumber() && rv.Type.IsNumber()) {
+		if lv.Type() == rv.Type() || (lv.Type().IsNumber() && rv.Type().IsNumber()) {
 			isEq, err := compare(operatorEq, lv, rv)
 			if err != nil {
 				return false, err
@@ -240,9 +241,9 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 			case operatorEq:
 				return false, nil
 			case operatorGt, operatorGte:
-				return lv.Type > rv.Type, nil
+				return lv.Type() > rv.Type(), nil
 			case operatorLt, operatorLte:
-				return lv.Type < rv.Type, nil
+				return lv.Type() < rv.Type(), nil
 			}
 		}
 	}
@@ -341,7 +342,7 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
-		if lv.Type == rv.Type || (lv.Type.IsNumber() && rv.Type.IsNumber()) {
+		if lv.Type() == rv.Type() || (lv.Type().IsNumber() && rv.Type().IsNumber()) {
 			isEq, err := compare(operatorEq, lv, rv)
 			if err != nil {
 				return false, err
@@ -357,9 +358,9 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 			case operatorEq:
 				return false, nil
 			case operatorGt, operatorGte:
-				return lv.Type > rv.Type, nil
+				return lv.Type() > rv.Type(), nil
 			case operatorLt, operatorLte:
-				return lv.Type < rv.Type, nil
+				return lv.Type() < rv.Type(), nil
 			}
 		}
 	}
@@ -387,4 +388,20 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 			return false, nil
 		}
 	}
+}
+
+// Fields returns a list of all the fields at the root of the document
+// sorted lexicographically.
+func Fields(d Document) ([]string, error) {
+	var fields []string
+	err := d.Iterate(func(f string, _ Value) error {
+		fields = append(fields, f)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(fields)
+	return fields, nil
 }

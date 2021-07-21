@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 const (
@@ -23,7 +24,7 @@ var sequenceTableInfo = &TableInfo{
 					FieldName: "name",
 				},
 			},
-			Type:         document.TextValue,
+			Type:         types.TextValue,
 			IsPrimaryKey: true,
 		},
 		{
@@ -32,7 +33,7 @@ var sequenceTableInfo = &TableInfo{
 					FieldName: "seq",
 				},
 			},
-			Type: document.IntegerValue,
+			Type: types.IntegerValue,
 		},
 	},
 }
@@ -69,7 +70,7 @@ func (s *Sequence) Init(tx *Transaction, catalog Catalog) error {
 		return err
 	}
 
-	_, err = tb.Insert(document.NewFieldBuffer().Add("name", document.NewTextValue(s.Info.Name)))
+	_, err = tb.Insert(document.NewFieldBuffer().Add("name", types.NewTextValue(s.Info.Name)))
 	return err
 }
 
@@ -83,7 +84,12 @@ func (s *Sequence) Drop(tx *Transaction, catalog Catalog) error {
 		return err
 	}
 
-	return tb.Delete([]byte(s.Info.Name))
+	key, err := tb.EncodeValue(types.NewTextValue(s.Info.Name))
+	if err != nil {
+		return err
+	}
+
+	return tb.Delete(key)
 }
 
 func (s *Sequence) Next(tx *Transaction, catalog Catalog) (int64, error) {
@@ -159,10 +165,14 @@ func (s *Sequence) SetLease(tx *Transaction, catalog Catalog, name string, v int
 		return err
 	}
 
-	_, err = tb.Replace([]byte(name),
+	key, err := tb.EncodeValue(types.NewTextValue(name))
+	if err != nil {
+		return err
+	}
+	_, err = tb.Replace(key,
 		document.NewFieldBuffer().
-			Add("name", document.NewTextValue(name)).
-			Add("seq", document.NewIntegerValue(v)),
+			Add("name", types.NewTextValue(name)).
+			Add("seq", types.NewIntegerValue(v)),
 	)
 	return err
 }

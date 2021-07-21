@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -195,7 +196,7 @@ func TestSelectStmt(t *testing.T) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(d document.Document) error {
+			err = st.Iterate(func(d types.Document) error {
 				data, err := document.MarshalJSON(d)
 				require.NoError(t, err)
 				require.JSONEq(t, res[i], string(data))
@@ -338,7 +339,7 @@ func TestSelectStmt(t *testing.T) {
 }
 
 func TestDistinct(t *testing.T) {
-	types := []struct {
+	tps := []struct {
 		name          string
 		generateValue func(i, notUniqueCount int) (unique interface{}, notunique interface{})
 	}{
@@ -356,7 +357,7 @@ func TestDistinct(t *testing.T) {
 		}},
 	}
 
-	for _, typ := range types {
+	for _, typ := range tps {
 		total := 100
 		notUnique := total / 10
 
@@ -404,7 +405,7 @@ func TestDistinct(t *testing.T) {
 					defer q.Close()
 
 					var i int
-					err = q.Iterate(func(d document.Document) error {
+					err = q.Iterate(func(d types.Document) error {
 						i++
 						return nil
 					})

@@ -3,9 +3,9 @@ package statement
 import (
 	"errors"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/types"
 )
 
 // ExplainStmt is a Statement that
@@ -42,7 +42,7 @@ func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
 			Op: stream.Project(
 				&expr.NamedExpr{
 					ExprName: "plan",
-					Expr:     expr.LiteralValue(document.NewTextValue(plan)),
+					Expr:     expr.LiteralValue{Value: types.NewTextValue(plan)},
 				}),
 		},
 		ReadOnly: true,

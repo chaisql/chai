@@ -4,25 +4,26 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestArrayContains(t *testing.T) {
 	arr := NewValueBuffer(
-		NewIntegerValue(1),
-		NewTextValue("foo"),
-		NewBlobValue([]byte{1, 2, 3}),
+		types.NewIntegerValue(1),
+		types.NewTextValue("foo"),
+		types.NewBlobValue([]byte{1, 2, 3}),
 	)
 
-	ok, err := ArrayContains(arr, NewDoubleValue(1))
+	ok, err := ArrayContains(arr, types.NewDoubleValue(1))
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = ArrayContains(arr, NewTextValue("foo"))
+	ok, err = ArrayContains(arr, types.NewTextValue("foo"))
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = ArrayContains(arr, NewTextValue("bar"))
+	ok, err = ArrayContains(arr, types.NewTextValue("bar"))
 	require.NoError(t, err)
 	require.False(t, ok)
 }
@@ -82,8 +83,8 @@ func TestValueBufferApply(t *testing.T) {
 	err := buf.UnmarshalJSON([]byte(`[1, [1, 3], {"4": 5}]`))
 	require.NoError(t, err)
 
-	err = buf.Apply(func(p Path, v Value) (Value, error) {
-		return NewIntegerValue(6), nil
+	err = buf.Apply(func(p Path, v types.Value) (types.Value, error) {
+		return types.NewIntegerValue(6), nil
 	})
 	require.NoError(t, err)
 

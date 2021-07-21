@@ -1,23 +1,23 @@
 package document
 
-// NewValue creates a value from x. It only supports a few type and doesn't rely on reflection.
-func NewValue(x interface{}) (Value, error) {
+// NewValue creates a value from x. It only supports a few types and doesn't rely on reflection.
+func NewValue(x interface{}) (types.Value, error) {
 	switch v := x.(type) {
 	case nil:
-		return NewNullValue(), nil
-	case Document:
-		return NewDocumentValue(v), nil
+		return types.NewNullValue(), nil
+	case types.Document:
+		return types.NewDocumentValue(v), nil
 	case Array:
-		return NewArrayValue(v), nil
+		return types.NewArrayValue(v), nil
 	case int:
-		return NewIntegerValue(int64(v)), nil
+		return types.NewIntegerValue(int64(v)), nil
 	case bool:
-		return NewBoolValue(v), nil
+		return types.NewBoolValue(v), nil
 	case float64:
-		return NewDoubleValue(v), nil
+		return types.NewDoubleValue(v), nil
 	case string:
-		return NewTextValue(v), nil
+		return types.NewTextValue(v), nil
 	}
 
-	return Value{}, &ErrUnsupportedType{x, ""}
+	return nil, &ErrUnsupportedType{x, ""}
 }

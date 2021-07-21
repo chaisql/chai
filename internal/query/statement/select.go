@@ -3,6 +3,7 @@ package statement
 import (
 	"errors"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -155,16 +156,16 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 			return nil, err
 		}
 
-		if !v.Type.IsNumber() {
-			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type)
+		if !v.Type().IsNumber() {
+			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 		}
 
-		v, err = v.CastAsInteger()
+		v, err = document.CastAsInteger(v)
 		if err != nil {
 			return nil, err
 		}
 
-		s = s.Pipe(stream.Skip(v.V.(int64)))
+		s = s.Pipe(stream.Skip(v.V().(int64)))
 	}
 
 	if stmt.LimitExpr != nil {
@@ -173,16 +174,16 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 			return nil, err
 		}
 
-		if !v.Type.IsNumber() {
-			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type)
+		if !v.Type().IsNumber() {
+			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 		}
 
-		v, err = v.CastAsInteger()
+		v, err = document.CastAsInteger(v)
 		if err != nil {
 			return nil, err
 		}
 
-		s = s.Pipe(stream.Take(v.V.(int64)))
+		s = s.Pipe(stream.Take(v.V().(int64)))
 	}
 
 	if stmt.Union.SelectStmt != nil {

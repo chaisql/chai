@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -142,7 +143,7 @@ func TestPrepareThreadSafe(t *testing.T) {
 			}
 			defer res.Close()
 
-			return res.Iterate(func(d document.Document) error {
+			return res.Iterate(func(d types.Document) error {
 				return nil
 			})
 		})
@@ -169,7 +170,7 @@ func BenchmarkSelect(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT * FROM foo")
-				res.Iterate(func(d document.Document) error { return nil })
+				res.Iterate(func(d types.Document) error { return nil })
 			}
 		})
 	}
@@ -192,7 +193,7 @@ func BenchmarkSelectWhere(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT b FROM foo WHERE a > 0")
-				res.Iterate(func(d document.Document) error { return nil })
+				res.Iterate(func(d types.Document) error { return nil })
 			}
 		})
 	}
@@ -216,7 +217,7 @@ func BenchmarkPreparedSelectWhere(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := p.Query()
-				res.Iterate(func(d document.Document) error { return nil })
+				res.Iterate(func(d types.Document) error { return nil })
 			}
 		})
 	}
@@ -239,7 +240,7 @@ func BenchmarkSelectPk(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT * FROM foo WHERE a = ?", size-1)
-				res.Iterate(func(d document.Document) error { return nil })
+				res.Iterate(func(d types.Document) error { return nil })
 			}
 		})
 	}

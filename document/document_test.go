@@ -8,10 +8,11 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
-var _ document.Document = new(document.FieldBuffer)
+var _ types.Document = new(document.FieldBuffer)
 
 func parsePath(t testing.TB, p string) document.Path {
 	path, err := parser.ParsePath(p)
@@ -21,19 +22,19 @@ func parsePath(t testing.TB, p string) document.Path {
 
 func TestFieldBuffer(t *testing.T) {
 	var buf document.FieldBuffer
-	buf.Add("a", document.NewIntegerValue(10))
-	buf.Add("b", document.NewTextValue("hello"))
+	buf.Add("a", types.NewIntegerValue(10))
+	buf.Add("b", types.NewTextValue("hello"))
 
 	t.Run("Iterate", func(t *testing.T) {
 		var i int
-		err := buf.Iterate(func(f string, v document.Value) error {
+		err := buf.Iterate(func(f string, v types.Value) error {
 			switch i {
 			case 0:
 				require.Equal(t, "a", f)
-				require.Equal(t, document.NewIntegerValue(10), v)
+				require.Equal(t, types.NewIntegerValue(10), v)
 			case 1:
 				require.Equal(t, "b", f)
-				require.Equal(t, document.NewTextValue("hello"), v)
+				require.Equal(t, types.NewTextValue("hello"), v)
 			}
 			i++
 			return nil
@@ -44,10 +45,10 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Add", func(t *testing.T) {
 		var buf document.FieldBuffer
-		buf.Add("a", document.NewIntegerValue(10))
-		buf.Add("b", document.NewTextValue("hello"))
+		buf.Add("a", types.NewIntegerValue(10))
+		buf.Add("b", types.NewTextValue("hello"))
 
-		c := document.NewBoolValue(true)
+		c := types.NewBoolValue(true)
 		buf.Add("c", c)
 		require.Equal(t, 3, buf.Len())
 	})
@@ -55,29 +56,29 @@ func TestFieldBuffer(t *testing.T) {
 	t.Run("ScanDocument", func(t *testing.T) {
 		var buf1, buf2 document.FieldBuffer
 
-		buf1.Add("a", document.NewIntegerValue(10))
-		buf1.Add("b", document.NewTextValue("hello"))
+		buf1.Add("a", types.NewIntegerValue(10))
+		buf1.Add("b", types.NewTextValue("hello"))
 
-		buf2.Add("a", document.NewIntegerValue(20))
-		buf2.Add("b", document.NewTextValue("bye"))
-		buf2.Add("c", document.NewBoolValue(true))
+		buf2.Add("a", types.NewIntegerValue(20))
+		buf2.Add("b", types.NewTextValue("bye"))
+		buf2.Add("c", types.NewBoolValue(true))
 
-		err := buf1.ScanDocument(buf2)
+		err := buf1.ScanDocument(&buf2)
 		require.NoError(t, err)
 
 		var buf document.FieldBuffer
-		buf.Add("a", document.NewIntegerValue(10))
-		buf.Add("b", document.NewTextValue("hello"))
-		buf.Add("a", document.NewIntegerValue(20))
-		buf.Add("b", document.NewTextValue("bye"))
-		buf.Add("c", document.NewBoolValue(true))
+		buf.Add("a", types.NewIntegerValue(10))
+		buf.Add("b", types.NewTextValue("hello"))
+		buf.Add("a", types.NewIntegerValue(20))
+		buf.Add("b", types.NewTextValue("bye"))
+		buf.Add("c", types.NewBoolValue(true))
 		require.Equal(t, buf, buf1)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
 		v, err := buf.GetByField("a")
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(10), v)
+		require.Equal(t, types.NewIntegerValue(10), v)
 
 		v, err = buf.GetByField("not existing")
 		require.Equal(t, document.ErrFieldNotFound, err)
@@ -94,30 +95,30 @@ func TestFieldBuffer(t *testing.T) {
 			name  string
 			data  string
 			path  string
-			value document.Value
+			value types.Value
 			want  string
 			fails bool
 		}{
-			{"root", `{}`, `a`, document.NewIntegerValue(1), `{"a": 1}`, false},
-			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, document.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
-			{"nested doc", `{"a": "foo"}`, `a`, document.NewDocumentValue(document.NewFieldBuffer().
-				Add("b", document.NewArrayValue(document.NewValueBuffer().
-					Append(document.NewIntegerValue(1)).
-					Append(document.NewIntegerValue(2)).
-					Append(document.NewIntegerValue(3))))), `{"a": {"b": [1, 2, 3]}}`, false},
-			{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, document.NewArrayValue(document.NewValueBuffer().
-				Append(document.NewIntegerValue(1)).
-				Append(document.NewIntegerValue(2)).
-				Append(document.NewIntegerValue(3))), `{"a": {"b": [1, 2, 3]}}`, false},
-			{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b[1]`, document.NewIntegerValue(1), `{"a": {"b": [1, 1, 3]}}`, false},
-			{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `a.b[2][2].c`, document.NewTextValue("bar"), `{"a": {"b": [1, 2, [1, 2, {"c": "bar"}]]}}`, false},
-			{"number field", `{"a": {"0": [1, 2, 3]}}`, "a.`0`[0]", document.NewIntegerValue(6), `{"a": {"0": [6, 2, 3]}}`, false},
-			{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `a[0].b`, document.NewTextValue("bar"), `{"a": [{"b": "bar"}, 2, 3]}`, false},
+			{"root", `{}`, `a`, types.NewIntegerValue(1), `{"a": 1}`, false},
+			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, types.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
+			{"nested doc", `{"a": "foo"}`, `a`, types.NewDocumentValue(document.NewFieldBuffer().
+				Add("b", types.NewArrayValue(document.NewValueBuffer().
+					Append(types.NewIntegerValue(1)).
+					Append(types.NewIntegerValue(2)).
+					Append(types.NewIntegerValue(3))))), `{"a": {"b": [1, 2, 3]}}`, false},
+			{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, types.NewArrayValue(document.NewValueBuffer().
+				Append(types.NewIntegerValue(1)).
+				Append(types.NewIntegerValue(2)).
+				Append(types.NewIntegerValue(3))), `{"a": {"b": [1, 2, 3]}}`, false},
+			{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b[1]`, types.NewIntegerValue(1), `{"a": {"b": [1, 1, 3]}}`, false},
+			{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `a.b[2][2].c`, types.NewTextValue("bar"), `{"a": {"b": [1, 2, [1, 2, {"c": "bar"}]]}}`, false},
+			{"number field", `{"a": {"0": [1, 2, 3]}}`, "a.`0`[0]", types.NewIntegerValue(6), `{"a": {"0": [6, 2, 3]}}`, false},
+			{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `a[0].b`, types.NewTextValue("bar"), `{"a": [{"b": "bar"}, 2, 3]}`, false},
 			// with errors or request ignored doc unchanged
-			{"field not found", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, document.NewIntegerValue(1), `{"a": {"b": [1, 2, 3]}}`, false},
-			{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, document.NewIntegerValue(1), ``, true},
-			{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, document.NewIntegerValue(1), ``, true},
-			{"document not array", `{"a": {"b": "foo"}}`, `a[0].b`, document.NewTextValue("bar"), ``, true},
+			{"field not found", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, types.NewIntegerValue(1), `{"a": {"b": [1, 2, 3]}}`, false},
+			{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, types.NewIntegerValue(1), ``, true},
+			{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, types.NewIntegerValue(1), ``, true},
+			{"document not array", `{"a": {"b": "foo"}}`, `a[0].b`, types.NewTextValue("bar"), ``, true},
 		}
 
 		for _, tt := range tests {
@@ -136,7 +137,7 @@ func TestFieldBuffer(t *testing.T) {
 				}
 
 				require.NoError(t, err)
-				data, err := document.MarshalJSON(fb)
+				data, err := document.MarshalJSON(&fb)
 				require.NoError(t, err)
 				require.Equal(t, tt.want, string(data))
 			})
@@ -182,15 +183,15 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Replace", func(t *testing.T) {
 		var buf document.FieldBuffer
-		buf.Add("a", document.NewIntegerValue(10))
-		buf.Add("b", document.NewTextValue("hello"))
+		buf.Add("a", types.NewIntegerValue(10))
+		buf.Add("b", types.NewTextValue("hello"))
 
-		err := buf.Replace("a", document.NewBoolValue(true))
+		err := buf.Replace("a", types.NewBoolValue(true))
 		require.NoError(t, err)
 		v, err := buf.GetByField("a")
 		require.NoError(t, err)
-		require.Equal(t, document.NewBoolValue(true), v)
-		err = buf.Replace("d", document.NewIntegerValue(11))
+		require.Equal(t, types.NewBoolValue(true), v)
+		err = buf.Replace("d", types.NewIntegerValue(11))
 		require.Error(t, err)
 	})
 
@@ -205,12 +206,12 @@ func TestFieldBuffer(t *testing.T) {
 		err := buf.Copy(d)
 		require.NoError(t, err)
 
-		err = buf.Apply(func(p document.Path, v document.Value) (document.Value, error) {
-			if v.Type == document.ArrayValue || v.Type == document.DocumentValue {
+		err = buf.Apply(func(p document.Path, v types.Value) (types.Value, error) {
+			if v.Type() == types.ArrayValue || v.Type() == types.DocumentValue {
 				return v, nil
 			}
 
-			return document.NewIntegerValue(1), nil
+			return types.NewIntegerValue(1), nil
 		})
 		require.NoError(t, err)
 
@@ -230,29 +231,29 @@ func TestFieldBuffer(t *testing.T) {
 			{"empty object, missing closing bracket", "{", nil, true},
 			{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
 				document.NewFieldBuffer().
-					Add("a", document.NewIntegerValue(1)).
-					Add("b", document.NewBoolValue(true)).
-					Add("c", document.NewTextValue("hello")).
-					Add("d", document.NewArrayValue(document.NewValueBuffer().
-						Append(document.NewIntegerValue(1)).
-						Append(document.NewIntegerValue(2)).
-						Append(document.NewIntegerValue(3)))).
-					Add("e", document.NewDocumentValue(document.NewFieldBuffer().Add("f", document.NewTextValue("g")))),
+					Add("a", types.NewIntegerValue(1)).
+					Add("b", types.NewBoolValue(true)).
+					Add("c", types.NewTextValue("hello")).
+					Add("d", types.NewArrayValue(document.NewValueBuffer().
+						Append(types.NewIntegerValue(1)).
+						Append(types.NewIntegerValue(2)).
+						Append(types.NewIntegerValue(3)))).
+					Add("e", types.NewDocumentValue(document.NewFieldBuffer().Add("f", types.NewTextValue("g")))),
 				false},
-			{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", document.NewTextValue("hello ciao")), false},
-			{"+integer values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", document.NewIntegerValue(1000)), false},
-			{"-integer values", `{"a": -1000}`, document.NewFieldBuffer().Add("a", document.NewIntegerValue(-1000)), false},
-			{"+float values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewDoubleValue(10000000000)), false},
-			{"-float values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", document.NewDoubleValue(-10000000000)), false},
-			{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", document.NewBoolValue(true)).Add("b", document.NewBoolValue(false)), false},
-			{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", document.NewArrayValue(document.NewValueBuffer())), false},
+			{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", types.NewTextValue("hello ciao")), false},
+			{"+integer values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(1000)), false},
+			{"-integer values", `{"a": -1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
+			{"+float values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
+			{"-float values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
+			{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
+			{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", types.NewArrayValue(document.NewValueBuffer())), false},
 			{"nested arrays", `{"a": [[1,  2]]}`, document.NewFieldBuffer().
-				Add("a", document.NewArrayValue(
+				Add("a", types.NewArrayValue(
 					document.NewValueBuffer().
-						Append(document.NewArrayValue(
+						Append(types.NewArrayValue(
 							document.NewValueBuffer().
-								Append(document.NewIntegerValue(1)).
-								Append(document.NewIntegerValue(2)))))), false},
+								Append(types.NewIntegerValue(1)).
+								Append(types.NewIntegerValue(2)))))), false},
 			{"missing comma", `{"a": 1 "b": 2}`, nil, true},
 			{"missing closing brackets", `{"a": 1, "b": 2`, nil, true},
 		}
@@ -363,63 +364,63 @@ func TestNewFromStruct(t *testing.T) {
 
 		var counter int
 
-		err = doc.Iterate(func(f string, v document.Value) error {
+		err = doc.Iterate(func(f string, v types.Value) error {
 			switch counter {
 			case 0:
-				require.Equal(t, u.A, v.V.([]byte))
+				require.Equal(t, u.A, v.V().([]byte))
 			case 1:
-				require.Equal(t, u.B, v.V.(string))
+				require.Equal(t, u.B, v.V().(string))
 			case 2:
-				require.Equal(t, u.C, v.V.(bool))
+				require.Equal(t, u.C, v.V().(bool))
 			case 3:
 				require.Equal(t, "la-reponse-d", f)
-				require.EqualValues(t, u.D, v.V.(int64))
+				require.EqualValues(t, u.D, v.V().(int64))
 			case 4:
-				require.EqualValues(t, u.E, v.V.(int64))
+				require.EqualValues(t, u.E, v.V().(int64))
 			case 5:
-				require.EqualValues(t, u.F, v.V.(int64))
+				require.EqualValues(t, u.F, v.V().(int64))
 			case 6:
-				require.EqualValues(t, u.G, v.V.(int64))
+				require.EqualValues(t, u.G, v.V().(int64))
 			case 7:
-				require.EqualValues(t, u.H, v.V.(int64))
+				require.EqualValues(t, u.H, v.V().(int64))
 			case 8:
-				require.EqualValues(t, u.I, v.V.(int64))
+				require.EqualValues(t, u.I, v.V().(int64))
 			case 9:
-				require.EqualValues(t, u.J, v.V.(int64))
+				require.EqualValues(t, u.J, v.V().(int64))
 			case 10:
-				require.EqualValues(t, u.K, v.V.(int64))
+				require.EqualValues(t, u.K, v.V().(int64))
 			case 11:
-				require.EqualValues(t, u.L, v.V.(int64))
+				require.EqualValues(t, u.L, v.V().(int64))
 			case 12:
-				require.EqualValues(t, u.M, v.V.(int64))
+				require.EqualValues(t, u.M, v.V().(int64))
 			case 13:
-				require.Equal(t, u.N, v.V.(float64))
+				require.Equal(t, u.N, v.V().(float64))
 			case 14:
-				require.EqualValues(t, document.DocumentValue, v.Type)
+				require.EqualValues(t, types.DocumentValue, v.Type())
 			case 15:
-				require.EqualValues(t, *u.Q, v.V.(int64))
+				require.EqualValues(t, *u.Q, v.V().(int64))
 			case 16:
-				require.EqualValues(t, document.DocumentValue, v.Type)
+				require.EqualValues(t, types.DocumentValue, v.Type())
 			case 17:
-				require.EqualValues(t, document.ArrayValue, v.Type)
+				require.EqualValues(t, types.ArrayValue, v.Type())
 			case 18:
-				require.EqualValues(t, document.NullValue, v.Type)
+				require.EqualValues(t, types.NullValue, v.Type())
 			case 19:
-				require.EqualValues(t, document.ArrayValue, v.Type)
+				require.EqualValues(t, types.ArrayValue, v.Type())
 			case 20:
-				require.EqualValues(t, document.ArrayValue, v.Type)
+				require.EqualValues(t, types.ArrayValue, v.Type())
 			case 21:
-				require.EqualValues(t, document.ArrayValue, v.Type)
+				require.EqualValues(t, types.ArrayValue, v.Type())
 			case 22:
-				require.EqualValues(t, document.ArrayValue, v.Type)
+				require.EqualValues(t, types.ArrayValue, v.Type())
 			case 23:
-				require.EqualValues(t, u.Z, v.V.(int64))
+				require.EqualValues(t, u.Z, v.V().(int64))
 			case 24:
-				require.EqualValues(t, document.NullValue, v.Type)
+				require.EqualValues(t, types.NullValue, v.Type())
 			case 25:
-				require.EqualValues(t, document.IntegerValue, v.Type)
+				require.EqualValues(t, types.IntegerValue, v.Type())
 			case 26:
-				require.EqualValues(t, document.TextValue, v.Type)
+				require.EqualValues(t, types.TextValue, v.Type())
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
 			}
@@ -438,81 +439,81 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err := doc.GetByField("a")
 		require.NoError(t, err)
-		require.Equal(t, u.A, v.V.([]byte))
+		require.Equal(t, u.A, v.V().([]byte))
 		v, err = doc.GetByField("b")
 		require.NoError(t, err)
-		require.Equal(t, u.B, v.V.(string))
+		require.Equal(t, u.B, v.V().(string))
 		v, err = doc.GetByField("c")
 		require.NoError(t, err)
-		require.Equal(t, u.C, v.V.(bool))
+		require.Equal(t, u.C, v.V().(bool))
 		v, err = doc.GetByField("la-reponse-d")
 		require.NoError(t, err)
-		require.EqualValues(t, u.D, v.V.(int64))
+		require.EqualValues(t, u.D, v.V().(int64))
 		v, err = doc.GetByField("e")
 		require.NoError(t, err)
-		require.EqualValues(t, u.E, v.V.(int64))
+		require.EqualValues(t, u.E, v.V().(int64))
 		v, err = doc.GetByField("f")
 		require.NoError(t, err)
-		require.EqualValues(t, u.F, v.V.(int64))
+		require.EqualValues(t, u.F, v.V().(int64))
 		v, err = doc.GetByField("g")
 		require.NoError(t, err)
-		require.EqualValues(t, u.G, v.V.(int64))
+		require.EqualValues(t, u.G, v.V().(int64))
 		v, err = doc.GetByField("h")
 		require.NoError(t, err)
-		require.EqualValues(t, u.H, v.V.(int64))
+		require.EqualValues(t, u.H, v.V().(int64))
 		v, err = doc.GetByField("i")
 		require.NoError(t, err)
-		require.EqualValues(t, u.I, v.V.(int64))
+		require.EqualValues(t, u.I, v.V().(int64))
 		v, err = doc.GetByField("j")
 		require.NoError(t, err)
-		require.EqualValues(t, u.J, v.V.(int64))
+		require.EqualValues(t, u.J, v.V().(int64))
 		v, err = doc.GetByField("k")
 		require.NoError(t, err)
-		require.EqualValues(t, u.K, v.V.(int64))
+		require.EqualValues(t, u.K, v.V().(int64))
 		v, err = doc.GetByField("l")
 		require.NoError(t, err)
-		require.EqualValues(t, u.L, v.V.(int64))
+		require.EqualValues(t, u.L, v.V().(int64))
 		v, err = doc.GetByField("m")
 		require.NoError(t, err)
-		require.EqualValues(t, u.M, v.V.(int64))
+		require.EqualValues(t, u.M, v.V().(int64))
 		v, err = doc.GetByField("n")
 		require.NoError(t, err)
-		require.Equal(t, u.N, v.V.(float64))
+		require.Equal(t, u.N, v.V().(float64))
 
 		v, err = doc.GetByField("o")
 		require.NoError(t, err)
-		d, ok := v.V.(document.Document)
+		d, ok := v.V().(types.Document)
 		require.True(t, ok)
 		v, err = d.GetByField("ig")
 		require.NoError(t, err)
-		require.EqualValues(t, 0, v.V.(int64))
+		require.EqualValues(t, 0, v.V().(int64))
 
 		v, err = doc.GetByField("ig")
 		require.NoError(t, err)
-		require.EqualValues(t, 100, v.V.(int64))
+		require.EqualValues(t, 100, v.V().(int64))
 
 		v, err = doc.GetByField("t")
 		require.NoError(t, err)
-		a, ok := v.V.(document.Array)
+		a, ok := v.V().(types.Array)
 		require.True(t, ok)
 		var count int
-		err = a.Iterate(func(i int, v document.Value) error {
+		err = a.Iterate(func(i int, v types.Value) error {
 			count++
-			require.EqualValues(t, i+1, v.V.(int64))
+			require.EqualValues(t, i+1, v.V().(int64))
 			return nil
 		})
 		require.NoError(t, err)
 		require.Equal(t, 3, count)
-		v, err = a.GetByIndex(10)
+		_, err = a.GetByIndex(10)
 		require.Equal(t, err, document.ErrFieldNotFound)
 		v, err = a.GetByIndex(1)
 		require.NoError(t, err)
-		require.EqualValues(t, 2, v.V.(int64))
+		require.EqualValues(t, 2, v.V().(int64))
 
 		v, err = doc.GetByField("bb")
 		require.NoError(t, err)
 		var timeStr string
-		require.NoError(t, v.Scan(&timeStr))
+		require.NoError(t, document.ScanValue(v, &timeStr))
 		parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
 		require.NoError(t, err)
 		require.Equal(t, u.BB, parsedTime)
@@ -534,7 +535,7 @@ func TestNewFromStruct(t *testing.T) {
 		require.NoError(t, err)
 		v, err := d.GetByField("a")
 		require.NoError(t, err)
-		require.Equal(t, document.NewIntegerValue(10), v)
+		require.Equal(t, types.NewIntegerValue(10), v)
 	})
 }
 
@@ -545,25 +546,25 @@ type foo struct {
 	D float64
 }
 
-func (f *foo) Iterate(fn func(field string, value document.Value) error) error {
+func (f *foo) Iterate(fn func(field string, value types.Value) error) error {
 	var err error
 
-	err = fn("a", document.NewTextValue(f.A))
+	err = fn("a", types.NewTextValue(f.A))
 	if err != nil {
 		return err
 	}
 
-	err = fn("b", document.NewIntegerValue(f.B))
+	err = fn("b", types.NewIntegerValue(f.B))
 	if err != nil {
 		return err
 	}
 
-	err = fn("c", document.NewBoolValue(f.C))
+	err = fn("c", types.NewBoolValue(f.C))
 	if err != nil {
 		return err
 	}
 
-	err = fn("d", document.NewDoubleValue(f.D))
+	err = fn("d", types.NewDoubleValue(f.D))
 	if err != nil {
 		return err
 	}
@@ -571,19 +572,19 @@ func (f *foo) Iterate(fn func(field string, value document.Value) error) error {
 	return nil
 }
 
-func (f *foo) GetByField(field string) (document.Value, error) {
+func (f *foo) GetByField(field string) (types.Value, error) {
 	switch field {
 	case "a":
-		return document.NewTextValue(f.A), nil
+		return types.NewTextValue(f.A), nil
 	case "b":
-		return document.NewIntegerValue(f.B), nil
+		return types.NewIntegerValue(f.B), nil
 	case "c":
-		return document.NewBoolValue(f.C), nil
+		return types.NewBoolValue(f.C), nil
 	case "d":
-		return document.NewDoubleValue(f.D), nil
+		return types.NewDoubleValue(f.D), nil
 	}
 
-	return document.Value{}, errors.New("unknown field")
+	return nil, errors.New("unknown field")
 }
 
 func TestPath(t *testing.T) {
@@ -616,7 +617,7 @@ func TestPath(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				res, err := json.Marshal(v)
+				res, err := document.ValueToJSON(v)
 				require.NoError(t, err)
 				require.JSONEq(t, test.result, string(res))
 			}
@@ -627,30 +628,30 @@ func TestPath(t *testing.T) {
 func TestJSONDocument(t *testing.T) {
 	tests := []struct {
 		name     string
-		d        document.Document
+		d        types.Document
 		expected string
 	}{
 		{
 			"Flat",
 			document.NewFieldBuffer().
-				Add("name", document.NewTextValue("John")).
-				Add("age", document.NewIntegerValue(10)).
-				Add(`"something with" quotes`, document.NewIntegerValue(10)),
+				Add("name", types.NewTextValue("John")).
+				Add("age", types.NewIntegerValue(10)).
+				Add(`"something with" quotes`, types.NewIntegerValue(10)),
 			`{"name":"John","age":10,"\"something with\" quotes":10}`,
 		},
 		{
 			"Nested",
 			document.NewFieldBuffer().
-				Add("name", document.NewTextValue("John")).
-				Add("age", document.NewIntegerValue(10)).
-				Add("address", document.NewDocumentValue(document.NewFieldBuffer().
-					Add("city", document.NewTextValue("Ajaccio")).
-					Add("country", document.NewTextValue("France")),
+				Add("name", types.NewTextValue("John")).
+				Add("age", types.NewIntegerValue(10)).
+				Add("address", types.NewDocumentValue(document.NewFieldBuffer().
+					Add("city", types.NewTextValue("Ajaccio")).
+					Add("country", types.NewTextValue("France")),
 				)).
-				Add("friends", document.NewArrayValue(
+				Add("friends", types.NewArrayValue(
 					document.NewValueBuffer().
-						Append(document.NewTextValue("fred")).
-						Append(document.NewTextValue("jamie")),
+						Append(types.NewTextValue("fred")).
+						Append(types.NewTextValue("jamie")),
 				)),
 			`{"name":"John","age":10,"address":{"city":"Ajaccio","country":"France"},"friends":["fred","jamie"]}`,
 		},
@@ -676,7 +677,7 @@ func BenchmarkDocumentIterate(b *testing.B) {
 
 	b.Run("Implementation", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			f.Iterate(func(string, document.Value) error {
+			f.Iterate(func(string, types.Value) error {
 				return nil
 			})
 		}

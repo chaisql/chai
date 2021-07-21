@@ -5,37 +5,38 @@ import (
 	"strconv"
 
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/types"
 )
 
 // CastAs casts v as the selected type when possible.
-func (v Value) CastAs(t ValueType) (Value, error) {
-	if v.Type == t {
+func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
+	if v.Type() == t {
 		return v, nil
 	}
 
 	// Null values always remain null.
-	if v.Type == NullValue {
+	if v.Type() == types.NullValue {
 		return v, nil
 	}
 
 	switch t {
-	case BoolValue:
-		return v.CastAsBool()
-	case IntegerValue:
-		return v.CastAsInteger()
-	case DoubleValue:
-		return v.CastAsDouble()
-	case BlobValue:
-		return v.CastAsBlob()
-	case TextValue:
-		return v.CastAsText()
-	case ArrayValue:
-		return v.CastAsArray()
-	case DocumentValue:
-		return v.CastAsDocument()
+	case types.BoolValue:
+		return CastAsBool(v)
+	case types.IntegerValue:
+		return CastAsInteger(v)
+	case types.DoubleValue:
+		return CastAsDouble(v)
+	case types.BlobValue:
+		return CastAsBlob(v)
+	case types.TextValue:
+		return CastAsText(v)
+	case types.ArrayValue:
+		return CastAsArray(v)
+	case types.DocumentValue:
+		return CastAsDocument(v)
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as %q", v.Type, t)
+	return nil, stringutil.Errorf("cannot cast %s as %q", v.Type(), t)
 }
 
 // CastAsBool casts according to the following rules:
@@ -43,21 +44,21 @@ func (v Value) CastAs(t ValueType) (Value, error) {
 // Text: uses strconv.Parsebool to determine the boolean value,
 // it fails if the text doesn't contain a valid boolean.
 // Any other type is considered an invalid cast.
-func (v Value) CastAsBool() (Value, error) {
-	switch v.Type {
-	case BoolValue:
+func CastAsBool(v types.Value) (types.Value, error) {
+	switch v.Type() {
+	case types.BoolValue:
 		return v, nil
-	case IntegerValue:
-		return NewBoolValue(v.V.(int64) != 0), nil
-	case TextValue:
-		b, err := strconv.ParseBool(v.V.(string))
+	case types.IntegerValue:
+		return types.NewBoolValue(v.V().(int64) != 0), nil
+	case types.TextValue:
+		b, err := strconv.ParseBool(v.V().(string))
 		if err != nil {
-			return Value{}, stringutil.Errorf(`cannot cast %q as bool: %w`, v.V, err)
+			return nil, stringutil.Errorf(`cannot cast %q as bool: %w`, v.V(), err)
 		}
-		return NewBoolValue(b), nil
+		return types.NewBoolValue(b), nil
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as bool", v.Type)
+	return nil, stringutil.Errorf("cannot cast %s as bool", v.Type())
 }
 
 // CastAsInteger casts according to the following rules:
@@ -68,31 +69,31 @@ func (v Value) CastAsBool() (Value, error) {
 // to determine the double value, then casts it to an integer
 // It fails if the text doesn't contain a valid float value.
 // Any other type is considered an invalid cast.
-func (v Value) CastAsInteger() (Value, error) {
-	switch v.Type {
-	case IntegerValue:
+func CastAsInteger(v types.Value) (types.Value, error) {
+	switch v.Type() {
+	case types.IntegerValue:
 		return v, nil
-	case BoolValue:
-		if v.V.(bool) {
-			return NewIntegerValue(1), nil
+	case types.BoolValue:
+		if v.V().(bool) {
+			return types.NewIntegerValue(1), nil
 		}
-		return NewIntegerValue(0), nil
-	case DoubleValue:
-		return NewIntegerValue(int64(v.V.(float64))), nil
-	case TextValue:
-		i, err := strconv.ParseInt(v.V.(string), 10, 64)
+		return types.NewIntegerValue(0), nil
+	case types.DoubleValue:
+		return types.NewIntegerValue(int64(v.V().(float64))), nil
+	case types.TextValue:
+		i, err := strconv.ParseInt(v.V().(string), 10, 64)
 		if err != nil {
 			intErr := err
-			f, err := strconv.ParseFloat(v.V.(string), 64)
+			f, err := strconv.ParseFloat(v.V().(string), 64)
 			if err != nil {
-				return Value{}, stringutil.Errorf(`cannot cast %q as integer: %w`, v.V, intErr)
+				return nil, stringutil.Errorf(`cannot cast %q as integer: %w`, v.V(), intErr)
 			}
 			i = int64(f)
 		}
-		return NewIntegerValue(i), nil
+		return types.NewIntegerValue(i), nil
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as integer", v.Type)
+	return nil, stringutil.Errorf("cannot cast %s as integer", v.Type())
 }
 
 // CastAsDouble casts according to the following rules:
@@ -100,105 +101,105 @@ func (v Value) CastAsInteger() (Value, error) {
 // Text: uses strconv.ParseFloat to determine the double value,
 // it fails if the text doesn't contain a valid float value.
 // Any other type is considered an invalid cast.
-func (v Value) CastAsDouble() (Value, error) {
-	switch v.Type {
-	case DoubleValue:
+func CastAsDouble(v types.Value) (types.Value, error) {
+	switch v.Type() {
+	case types.DoubleValue:
 		return v, nil
-	case IntegerValue:
-		return NewDoubleValue(float64(v.V.(int64))), nil
-	case TextValue:
-		f, err := strconv.ParseFloat(v.V.(string), 64)
+	case types.IntegerValue:
+		return types.NewDoubleValue(float64(v.V().(int64))), nil
+	case types.TextValue:
+		f, err := strconv.ParseFloat(v.V().(string), 64)
 		if err != nil {
-			return Value{}, stringutil.Errorf(`cannot cast %q as double: %w`, v.V, err)
+			return nil, stringutil.Errorf(`cannot cast %q as double: %w`, v.V(), err)
 		}
-		return NewDoubleValue(f), nil
+		return types.NewDoubleValue(f), nil
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as double", v.Type)
+	return nil, stringutil.Errorf("cannot cast %s as double", v.Type())
 }
 
 // CastAsText returns a JSON representation of v.
 // If the representation is a string, it gets unquoted.
-func (v Value) CastAsText() (Value, error) {
-	if v.Type == TextValue {
+func CastAsText(v types.Value) (types.Value, error) {
+	if v.Type() == types.TextValue {
 		return v, nil
 	}
 
-	d, err := v.MarshalJSON()
+	d, err := ValueToJSON(v)
 	if err != nil {
-		return Value{}, err
+		return nil, err
 	}
 
 	s := string(d)
 
-	if v.Type == BlobValue {
+	if v.Type() == types.BlobValue {
 		s, err = strconv.Unquote(s)
 		if err != nil {
-			return Value{}, err
+			return nil, err
 		}
 	}
 
-	return NewTextValue(s), nil
+	return types.NewTextValue(s), nil
 }
 
 // CastAsBlob casts according to the following rules:
 // Text: decodes a base64 string, otherwise fails.
 // Any other type is considered an invalid cast.
-func (v Value) CastAsBlob() (Value, error) {
-	if v.Type == BlobValue {
+func CastAsBlob(v types.Value) (types.Value, error) {
+	if v.Type() == types.BlobValue {
 		return v, nil
 	}
 
-	if v.Type == TextValue {
-		b, err := base64.StdEncoding.DecodeString(v.V.(string))
+	if v.Type() == types.TextValue {
+		b, err := base64.StdEncoding.DecodeString(v.V().(string))
 		if err != nil {
-			return Value{}, stringutil.Errorf(`cannot cast %q as blob: %w`, v.V, err)
+			return nil, stringutil.Errorf(`cannot cast %q as blob: %w`, v.V(), err)
 		}
 
-		return NewBlobValue(b), nil
+		return types.NewBlobValue(b), nil
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as blob", v.Type)
+	return nil, stringutil.Errorf("cannot cast %s as blob", v.Type())
 }
 
 // CastAsArray casts according to the following rules:
 // Text: decodes a JSON array, otherwise fails.
 // Any other type is considered an invalid cast.
-func (v Value) CastAsArray() (Value, error) {
-	if v.Type == ArrayValue {
+func CastAsArray(v types.Value) (types.Value, error) {
+	if v.Type() == types.ArrayValue {
 		return v, nil
 	}
 
-	if v.Type == TextValue {
+	if v.Type() == types.TextValue {
 		var vb ValueBuffer
-		err := vb.UnmarshalJSON([]byte(v.V.(string)))
+		err := vb.UnmarshalJSON([]byte(v.V().(string)))
 		if err != nil {
-			return Value{}, stringutil.Errorf(`cannot cast %q as array: %w`, v.V, err)
+			return nil, stringutil.Errorf(`cannot cast %q as array: %w`, v.V(), err)
 		}
 
-		return NewArrayValue(&vb), nil
+		return types.NewArrayValue(&vb), nil
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as array", v.Type)
+	return nil, stringutil.Errorf("cannot cast %s as array", v.Type())
 }
 
 // CastAsDocument casts according to the following rules:
 // Text: decodes a JSON object, otherwise fails.
 // Any other type is considered an invalid cast.
-func (v Value) CastAsDocument() (Value, error) {
-	if v.Type == DocumentValue {
+func CastAsDocument(v types.Value) (types.Value, error) {
+	if v.Type() == types.DocumentValue {
 		return v, nil
 	}
 
-	if v.Type == TextValue {
+	if v.Type() == types.TextValue {
 		var fb FieldBuffer
-		err := fb.UnmarshalJSON([]byte(v.V.(string)))
+		err := fb.UnmarshalJSON([]byte(v.V().(string)))
 		if err != nil {
-			return Value{}, stringutil.Errorf(`cannot cast %q as document: %w`, v.V, err)
+			return nil, stringutil.Errorf(`cannot cast %q as document: %w`, v.V(), err)
 		}
 
-		return NewDocumentValue(&fb), nil
+		return types.NewDocumentValue(&fb), nil
 	}
 
-	return Value{}, stringutil.Errorf("cannot cast %s as document", v.Type)
+	return nil, stringutil.Errorf("cannot cast %s as document", v.Type())
 }
