@@ -169,7 +169,6 @@ func (j JsonDocument) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// String returns a string representation of the value. It implements the fmt.Stringer interface.
 func ValueToString(v types.Value) string {
 	switch v.Type() {
 	case types.NullValue:

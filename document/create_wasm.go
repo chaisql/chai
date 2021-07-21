@@ -1,5 +1,7 @@
 package document
 
+import "github.com/genjidb/genji/types"
+
 // NewValue creates a value from x. It only supports a few types and doesn't rely on reflection.
 func NewValue(x interface{}) (types.Value, error) {
 	switch v := x.(type) {
@@ -7,7 +9,7 @@ func NewValue(x interface{}) (types.Value, error) {
 		return types.NewNullValue(), nil
 	case types.Document:
 		return types.NewDocumentValue(v), nil
-	case Array:
+	case types.Array:
 		return types.NewArrayValue(v), nil
 	case int:
 		return types.NewIntegerValue(int64(v)), nil
