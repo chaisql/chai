@@ -13,10 +13,10 @@ NULL
 2
 > math.abs(-2.0)
 2.0
-! math.abs(-9223372036854775808)
-'integer overflow'
+> math.abs('-2.0')
+2.0
 ! math.abs('foo')
-'abs(arg1) expects arg1 to be a number'
+'cannot cast "foo" as double'
 
 -- test: math.acos
 > math.acos(NULL)
@@ -24,6 +24,8 @@ NULL
 > math.acos(1)
 0.0
 > math.acos(0.5)
+1.0471975511965976
+> math.acos('0.5')
 1.0471975511965976
 ! math.acos(2)
 'out of range'
@@ -33,8 +35,8 @@ NULL
 'out of range'
 ! math.acos(-2.2)
 'out of range'
-! math.acos('foobar')
-'acos(arg1) expects arg1 to be a number'
+! math.acos('foo')
+'cannot cast "foo" as double'
 
 -- test: math.acosh
 > math.acosh(NULL)
@@ -43,14 +45,16 @@ NULL
 0.0
 > math.acosh(2)
 1.3169578969248166
+> math.acosh('2')
+1.3169578969248166
 > math.acosh(2.5)
 1.566799236972411
 ! math.acosh(0)
 'out of range'
 ! math.acosh(0.99999999)
 'out of range'
-! math.acosh('foobar')
-'acosh(arg1) expects arg1 to be a number'
+! math.acosh('foo')
+'cannot cast "foo" as double'
 
 -- test: math.asin
 > math.asin(NULL)
@@ -67,8 +71,8 @@ NULL
 'out of range'
 ! math.asin(-2.2)
 'out of range'
-! math.asin('foobar')
-'asin(arg1) expects arg1 to be a number'
+! math.asin('foo')
+'cannot cast "foo" as double'
 
 -- test: math.asinh
 > math.asinh(NULL)
@@ -81,8 +85,8 @@ NULL
 0.881373587019543
 > math.asinh(-1)
 -0.881373587019543
-! math.asinh('foobar')
-'asinh(arg1) expects arg1 to be a number'
+! math.asinh('foo')
+'cannot cast "foo" as double'
 
 -- test: math.atan
 > math.atan(NULL)
@@ -95,8 +99,8 @@ NULL
 0.7853981633974483
 > math.atan(-1)
 -0.7853981633974483
-! math.atan('foobar')
-'atan(arg1) expects arg1 to be a number'
+! math.atan('foo')
+'cannot cast "foo" as double'
 
 -- test: math.atan2
 > math.atan2(NULL, NULL)
@@ -113,5 +117,5 @@ NULL
 0.7853981633974483
 > math.atan2(1.1, -1.1)
 2.356194490192345
-! math.atan2('foobar', 1)
-'atan2(arg1, arg2) expects arg1 and arg2 to be numbers'
+! math.atan2('foo', 1)
+'cannot cast "foo" as double'
