@@ -41,6 +41,10 @@ func TestParserExpr(t *testing.T) {
 		{"double quoted string", `"10.0"`, testutil.TextValue("10.0"), false},
 		{"single quoted string", "'-10.0'", testutil.TextValue("-10.0"), false},
 
+		// blobs
+		{"blob as hex string", `'\xff'`, testutil.BlobValue([]byte{255}), false},
+		{"invalid blob hex string", `'\xzz'`, nil, true},
+
 		// documents
 		{"empty document", `{}`, &expr.KVPairs{SelfReferenced: true}, false},
 		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
@@ -154,7 +158,7 @@ func TestParserExpr(t *testing.T) {
 		{"with NULL", "age > NULL", expr.Gt(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", functions.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TextValue}, false},
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},

@@ -575,7 +575,7 @@ func scanString(r io.RuneReader) (string, error) {
 	}
 
 	var buf bytes.Buffer
-	for {
+	for i := 0; ; i++ {
 		ch0, _, err := r.ReadRune()
 		if ch0 == ending {
 			return buf.String(), nil
@@ -595,6 +595,8 @@ func scanString(r io.RuneReader) (string, error) {
 				_, _ = buf.WriteRune('`')
 			} else if ch1 == '\'' {
 				_, _ = buf.WriteRune('\'')
+			} else if ch1 == 'x' && i == 0 {
+				_, _ = buf.WriteString(`\x`)
 			} else {
 				return string(ch0) + string(ch1), errBadEscape
 			}

@@ -17,7 +17,7 @@ func TestCastAs(t *testing.T) {
 	integerV := types.NewIntegerValue(10)
 	doubleV := types.NewDoubleValue(10.5)
 	textV := types.NewTextValue("foo")
-	blobV := types.NewBlobValue([]byte("abc"))
+	blobV := types.NewBlobValue([]byte("asdine"))
 	arrayV := types.NewArrayValue(NewValueBuffer().
 		Append(types.NewTextValue("bar")).
 		Append(integerV))
@@ -26,8 +26,12 @@ func TestCastAs(t *testing.T) {
 		Add("b", textV))
 
 	check := func(t *testing.T, targetType types.ValueType, tests []test) {
+		t.Helper()
+
 		for _, test := range tests {
 			t.Run(ValueToString(test.v), func(t *testing.T) {
+				t.Helper()
+
 				got, err := CastAs(test.v, targetType)
 				if test.fails {
 					require.Error(t, err)
@@ -89,7 +93,7 @@ func TestCastAs(t *testing.T) {
 			{integerV, types.NewTextValue("10"), false},
 			{doubleV, types.NewTextValue("10.5"), false},
 			{textV, textV, false},
-			{blobV, types.NewTextValue("YWJj"), false},
+			{blobV, types.NewTextValue(`YXNkaW5l`), false},
 			{arrayV, types.NewTextValue(`["bar", 10]`), false},
 			{docV,
 				types.NewTextValue(`{"a": 10, "b": "foo"}`),
@@ -102,8 +106,8 @@ func TestCastAs(t *testing.T) {
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},
-			{types.NewTextValue("YWJj"), blobV, false},
-			{types.NewTextValue("   dww  "), nil, true},
+			{types.NewTextValue("YXNkaW5l"), types.NewBlobValue([]byte{0x61, 0x73, 0x64, 0x69, 0x6e, 0x65}), false},
+			{types.NewTextValue("not base64"), nil, true},
 			{blobV, blobV, false},
 			{arrayV, nil, true},
 			{docV, nil, true},
