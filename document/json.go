@@ -175,8 +175,6 @@ func ValueToString(v types.Value) string {
 		return "NULL"
 	case types.TextValue:
 		return strconv.Quote(v.V().(string))
-	case types.BlobValue:
-		return stringutil.Sprintf("%v", v.V())
 	}
 
 	d, _ := ValueToJSON(v)

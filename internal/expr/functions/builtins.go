@@ -93,51 +93,6 @@ func (k *PK) String() string {
 	return "pk()"
 }
 
-// Cast represents the CAST expression.
-type Cast struct {
-	Expr   expr.Expr
-	CastAs types.ValueType
-}
-
-// Eval returns the primary key of the current document.
-func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
-	v, err := c.Expr.Eval(env)
-	if err != nil {
-		return v, err
-	}
-
-	return document.CastAs(v, c.CastAs)
-}
-
-// IsEqual compares this expression with the other expression and returns
-// true if they are equal.
-func (c Cast) IsEqual(other expr.Expr) bool {
-	if other == nil {
-		return false
-	}
-
-	o, ok := other.(Cast)
-	if !ok {
-		return false
-	}
-
-	if c.CastAs != o.CastAs {
-		return false
-	}
-
-	if c.Expr != nil {
-		return expr.Equal(c.Expr, o.Expr)
-	}
-
-	return o.Expr != nil
-}
-
-func (c Cast) Params() []expr.Expr { return []expr.Expr{c.Expr} }
-
-func (c Cast) String() string {
-	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
-}
-
 var _ expr.AggregatorBuilder = (*Count)(nil)
 
 // Count is the COUNT aggregator function. It counts the number of documents

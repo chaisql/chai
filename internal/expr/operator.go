@@ -3,6 +3,7 @@ package expr
 import (
 	"errors"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -118,4 +119,49 @@ func (op *ConcatOperator) Eval(env *environment.Environment) (types.Value, error
 
 		return types.NewTextValue(a.V().(string) + b.V().(string)), nil
 	})
+}
+
+// Cast represents the CAST expression.
+type Cast struct {
+	Expr   Expr
+	CastAs types.ValueType
+}
+
+// Eval returns the primary key of the current document.
+func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
+	v, err := c.Expr.Eval(env)
+	if err != nil {
+		return v, err
+	}
+
+	return document.CastAs(v, c.CastAs)
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (c Cast) IsEqual(other Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(Cast)
+	if !ok {
+		return false
+	}
+
+	if c.CastAs != o.CastAs {
+		return false
+	}
+
+	if c.Expr != nil {
+		return Equal(c.Expr, o.Expr)
+	}
+
+	return o.Expr != nil
+}
+
+func (c Cast) Params() []Expr { return []Expr{c.Expr} }
+
+func (c Cast) String() string {
+	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }

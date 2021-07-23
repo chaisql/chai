@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"encoding/hex"
 	"strconv"
+	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
@@ -241,6 +243,17 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		p.orderedParams++
 		return expr.PositionalParam(p.orderedParams), nil
 	case scanner.STRING:
+		if strings.HasPrefix(lit, `\x`) {
+			blob, err := hex.DecodeString(lit[2:])
+			if err != nil {
+				if bt, ok := err.(hex.InvalidByteError); ok {
+					return nil, stringutil.Errorf("invalid hexadecimal digit: %c", bt)
+				}
+
+				return nil, err
+			}
+			return expr.LiteralValue{Value: types.NewBlobValue(blob)}, nil
+		}
 		return expr.LiteralValue{Value: types.NewTextValue(lit)}, nil
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
@@ -698,7 +711,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, err
 	}
 
-	return functions.Cast{Expr: e, CastAs: tp}, nil
+	return expr.Cast{Expr: e, CastAs: tp}, nil
 }
 
 // tokenIsAllowed is a helper function that determines if a token is allowed.

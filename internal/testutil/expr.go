@@ -149,7 +149,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						want, err := e.Eval(emptyEnv)
 						require.NoError(t, err)
 
-						// parse the given epxr
+						// parse the given expr
 						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
 						require.NoError(t, err)
 

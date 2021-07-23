@@ -361,12 +361,7 @@ type ConversionFunc func(v types.Value, path document.Path, targetType types.Val
 
 // CastConversion is a ConversionFunc that casts the value to the target type.
 func CastConversion(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
-	newV, err := document.CastAs(v, targetType)
-	if err != nil {
-		return v, stringutil.Errorf("field %q must be of type %q, got %q", path, targetType, v.Type())
-	}
-
-	return newV, nil
+	return document.CastAs(v, targetType)
 }
 
 // ConvertValueAtPath converts the value using the field constraints that are applicable

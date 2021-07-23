@@ -121,8 +121,11 @@ func CastAsDouble(v types.Value) (types.Value, error) {
 // CastAsText returns a JSON representation of v.
 // If the representation is a string, it gets unquoted.
 func CastAsText(v types.Value) (types.Value, error) {
-	if v.Type() == types.TextValue {
+	switch v.Type() {
+	case types.TextValue:
 		return v, nil
+	case types.BlobValue:
+		return types.NewTextValue(base64.StdEncoding.EncodeToString(v.V().([]byte))), nil
 	}
 
 	d, err := ValueToJSON(v)
@@ -131,13 +134,6 @@ func CastAsText(v types.Value) (types.Value, error) {
 	}
 
 	s := string(d)
-
-	if v.Type() == types.BlobValue {
-		s, err = strconv.Unquote(s)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	return types.NewTextValue(s), nil
 }
@@ -151,9 +147,11 @@ func CastAsBlob(v types.Value) (types.Value, error) {
 	}
 
 	if v.Type() == types.TextValue {
-		b, err := base64.StdEncoding.DecodeString(v.V().(string))
+		// if the string starts with \x, read it as hex
+		s := v.V().(string)
+		b, err := base64.StdEncoding.DecodeString(s)
 		if err != nil {
-			return nil, stringutil.Errorf(`cannot cast %q as blob: %w`, v.V(), err)
+			return nil, err
 		}
 
 		return types.NewBlobValue(b), nil
