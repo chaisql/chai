@@ -83,11 +83,8 @@ func ParseDocumentPath(t testing.TB, p string) document.Path {
 func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	t.Helper()
 
-	e, err := parser.ParseExpr(s)
-	require.NoError(t, err)
-
 	ne := expr.NamedExpr{
-		Expr:     e,
+		Expr:     ParseExpr(t, s),
 		ExprName: s,
 	}
 
@@ -96,6 +93,15 @@ func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	}
 
 	return &ne
+}
+
+func ParseExpr(t testing.TB, s string) expr.Expr {
+	t.Helper()
+
+	e, err := parser.ParseExpr(s)
+	require.NoError(t, err)
+
+	return e
 }
 
 func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {

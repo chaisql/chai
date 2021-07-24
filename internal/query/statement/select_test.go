@@ -38,7 +38,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
 		{"No cond, wildcard and other field", "SELECT *, color FROM test", false, `[{"color": "red", "k": 1, "color": "red", "size": 10, "shape": "square"}, {"color": "blue", "k": 2, "color": "blue", "size": 10, "weight": 100}, {"color": null, "k": 3, "height": 100, "weight": 200}]`, nil},
 		{"With DISTINCT", "SELECT DISTINCT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
-		{"With DISTINCT and expr", "SELECT DISTINCT 'a' FROM test", false, `[{"\"a\"":"a"}]`, nil},
+		{"With DISTINCT and expr", "SELECT DISTINCT 'a' FROM test", false, `[{"'a'":"a"}]`, nil},
 		{"With expr fields", "SELECT color, color != 'red' AS notred FROM test", false, `[{"color":"red","notred":false},{"color":"blue","notred":true},{"color":null,"notred":null}]`, nil},
 		{"With eq op", "SELECT * FROM test WHERE size = 10", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100}]`, nil},
 		{"With neq op", "SELECT * FROM test WHERE color != 'red'", false, `[{"k":2,"color":"blue","size":10,"weight":100}]`, nil},
