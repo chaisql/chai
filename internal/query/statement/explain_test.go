@@ -14,7 +14,7 @@ func TestExplainStmt(t *testing.T) {
 		fails    bool
 		expected string
 	}{
-		{"EXPLAIN SELECT 1 + 1", false, `"exprs({\"1 + 1\": 1 + 1})"`},
+		{"EXPLAIN SELECT 1 + 1", false, `"project(1 + 1)"`},
 		{"EXPLAIN SELECT * FROM noexist", true, ``},
 		{"EXPLAIN SELECT * FROM test", false, `"seqScan(test)"`},
 		{"EXPLAIN SELECT *, a FROM test", false, `"seqScan(test) | project(*, a)"`},
@@ -64,7 +64,10 @@ func TestExplainStmt(t *testing.T) {
 			v, err := d.GetByField("plan")
 			require.NoError(t, err)
 
-			require.JSONEq(t, test.expected, document.ValueToString(v))
+			got, err := document.ValueToJSON(v)
+			require.NoError(t, err)
+
+			require.JSONEq(t, test.expected, string(got))
 		})
 	}
 }

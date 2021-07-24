@@ -16,7 +16,7 @@ func TestValueString(t *testing.T) {
 	}{
 		{"null", types.NewNullValue(), "NULL"},
 		{"blob", types.NewBlobValue([]byte("bar")), `"YmFy"`},
-		{"string", types.NewTextValue("bar"), `"bar"`},
+		{"string", types.NewTextValue("bar"), `'bar'`},
 		{"bool", types.NewBoolValue(true), "true"},
 		{"int", types.NewIntegerValue(10), "10"},
 		{"double", types.NewDoubleValue(10.1), "10.1"},

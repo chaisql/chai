@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/buger/jsonparser"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -174,7 +175,7 @@ func ValueToString(v types.Value) string {
 	case types.NullValue:
 		return "NULL"
 	case types.TextValue:
-		return strconv.Quote(v.V().(string))
+		return "'" + strings.ReplaceAll(v.V().(string), "'", "\\'") + "'"
 	}
 
 	d, _ := ValueToJSON(v)
