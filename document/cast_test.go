@@ -1,6 +1,7 @@
 package document
 
 import (
+	"math"
 	"testing"
 
 	"github.com/genjidb/genji/types"
@@ -70,6 +71,7 @@ func TestCastAs(t *testing.T) {
 			{blobV, nil, true},
 			{arrayV, nil, true},
 			{docV, nil, true},
+			{types.NewDoubleValue(math.MaxInt64 + 1), nil, true},
 		})
 	})
 

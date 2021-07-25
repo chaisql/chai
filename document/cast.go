@@ -14,11 +14,6 @@ func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
 		return v, nil
 	}
 
-	// Null values always remain null.
-	if v.Type() == types.NullValue {
-		return v, nil
-	}
-
 	switch t {
 	case types.BoolValue:
 		return CastAsBool(v)
@@ -45,6 +40,11 @@ func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
 // it fails if the text doesn't contain a valid boolean.
 // Any other type is considered an invalid cast.
 func CastAsBool(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	switch v.Type() {
 	case types.BoolValue:
 		return v, nil
@@ -70,6 +70,11 @@ func CastAsBool(v types.Value) (types.Value, error) {
 // It fails if the text doesn't contain a valid float value.
 // Any other type is considered an invalid cast.
 func CastAsInteger(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	switch v.Type() {
 	case types.IntegerValue:
 		return v, nil
@@ -79,7 +84,11 @@ func CastAsInteger(v types.Value) (types.Value, error) {
 		}
 		return types.NewIntegerValue(0), nil
 	case types.DoubleValue:
-		return types.NewIntegerValue(int64(v.V().(float64))), nil
+		f := v.V().(float64)
+		if f > 0 && int64(f) < 0 {
+			return nil, stringutil.Errorf("integer out of range")
+		}
+		return types.NewIntegerValue(int64(f)), nil
 	case types.TextValue:
 		i, err := strconv.ParseInt(v.V().(string), 10, 64)
 		if err != nil {
@@ -102,6 +111,11 @@ func CastAsInteger(v types.Value) (types.Value, error) {
 // it fails if the text doesn't contain a valid float value.
 // Any other type is considered an invalid cast.
 func CastAsDouble(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	switch v.Type() {
 	case types.DoubleValue:
 		return v, nil
@@ -121,6 +135,11 @@ func CastAsDouble(v types.Value) (types.Value, error) {
 // CastAsText returns a JSON representation of v.
 // If the representation is a string, it gets unquoted.
 func CastAsText(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	switch v.Type() {
 	case types.TextValue:
 		return v, nil
@@ -142,6 +161,11 @@ func CastAsText(v types.Value) (types.Value, error) {
 // Text: decodes a base64 string, otherwise fails.
 // Any other type is considered an invalid cast.
 func CastAsBlob(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	if v.Type() == types.BlobValue {
 		return v, nil
 	}
@@ -164,6 +188,11 @@ func CastAsBlob(v types.Value) (types.Value, error) {
 // Text: decodes a JSON array, otherwise fails.
 // Any other type is considered an invalid cast.
 func CastAsArray(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	if v.Type() == types.ArrayValue {
 		return v, nil
 	}
@@ -185,6 +214,11 @@ func CastAsArray(v types.Value) (types.Value, error) {
 // Text: decodes a JSON object, otherwise fails.
 // Any other type is considered an invalid cast.
 func CastAsDocument(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
 	if v.Type() == types.DocumentValue {
 		return v, nil
 	}

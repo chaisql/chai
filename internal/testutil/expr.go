@@ -152,7 +152,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						require.NoError(t, err)
 
 						// eval it to get a proper Value
-						want, err := e.Eval(emptyEnv)
+						want, err := e.Eval(environment.New(nil))
 						require.NoError(t, err)
 
 						// parse the given expr
@@ -160,7 +160,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						require.NoError(t, err)
 
 						// eval it to get a proper Value
-						got, err := e.Eval(emptyEnv)
+						got, err := e.Eval(environment.New(nil))
 						require.NoError(t, err)
 
 						// finally, compare those two
@@ -170,12 +170,14 @@ func ExprRunner(t *testing.T, testfile string) {
 					t.Run("NOK "+stmt.Expr, func(t *testing.T) {
 						// parse the given epxr
 						e, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
-						require.NoError(t, err)
-
-						// eval it, it should return an error
-						_, err = e.Eval(emptyEnv)
-						require.NotNilf(t, err, "expected expr `%s` to return an error, got nil", stmt.Expr)
-						require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
+						if err != nil {
+							require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
+						} else {
+							// eval it, it should return an error
+							_, err = e.Eval(environment.New(nil))
+							require.NotNilf(t, err, "expected expr `%s` to return an error, got nil", stmt.Expr)
+							require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
+						}
 					})
 				}
 			}
