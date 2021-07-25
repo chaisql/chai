@@ -17,6 +17,8 @@ NULL
 2.0
 ! math.abs('foo')
 'cannot cast "foo" as double'
+! math.abs(-9223372036854775808)
+'integer out of range'
 
 -- test: math.acos
 > math.acos(NULL)

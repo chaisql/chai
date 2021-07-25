@@ -79,7 +79,11 @@ func CastAsInteger(v types.Value) (types.Value, error) {
 		}
 		return types.NewIntegerValue(0), nil
 	case types.DoubleValue:
-		return types.NewIntegerValue(int64(v.V().(float64))), nil
+		f := v.V().(float64)
+		if f > 0 && int64(f) < 0 {
+			return nil, stringutil.Errorf("integer out of range")
+		}
+		return types.NewIntegerValue(int64(f)), nil
 	case types.TextValue:
 		i, err := strconv.ParseInt(v.V().(string), 10, 64)
 		if err != nil {
