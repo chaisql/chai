@@ -261,6 +261,16 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
 		}
 		return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
+	case scanner.ADD, scanner.SUB:
+		sign := tok
+		tok, pos, lit = p.Scan()
+		if tok != scanner.NUMBER && tok != scanner.INTEGER {
+			return nil, &ParseError{Message: "syntax error", Pos: pos}
+		}
+		if sign == scanner.SUB {
+			lit = "-" + lit
+		}
+		fallthrough
 	case scanner.INTEGER:
 		v, err := strconv.ParseInt(lit, 10, 64)
 		if err != nil {
@@ -329,6 +339,15 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 // parseInteger parses an integer.
 func (p *Parser) parseInteger() (int64, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
+
+	if tok == scanner.ADD || tok == scanner.SUB {
+		sign := tok
+		tok, pos, lit = p.Scan()
+		if sign == scanner.SUB {
+			lit = "-" + lit
+		}
+	}
+
 	if tok != scanner.INTEGER {
 		return 0, newParseError(scanner.Tokstr(tok, lit), []string{"integer"}, pos)
 	}

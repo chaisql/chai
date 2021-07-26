@@ -77,7 +77,7 @@ func ValueToJSON(v types.Value) ([]byte, error) {
 		abs := math.Abs(f)
 		fmt := byte('f')
 		if abs != 0 {
-			if abs < 1e-6 || abs >= 1e21 {
+			if abs < 1e-6 || abs >= 1e15 {
 				fmt = 'e'
 			}
 		}

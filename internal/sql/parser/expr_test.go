@@ -21,14 +21,9 @@ func TestParserExpr(t *testing.T) {
 		fails    bool
 	}{
 		// integers
-		{"+int8", "10", testutil.IntegerValue(10), false},
-		{"-int8", "-10", testutil.IntegerValue(-10), false},
-		{"+int16", "1000", testutil.IntegerValue(1000), false},
-		{"-int16", "-1000", testutil.IntegerValue(-1000), false},
-		{"+int32", "10000000", testutil.IntegerValue(10000000), false},
-		{"-int32", "-10000000", testutil.IntegerValue(-10000000), false},
-		{"+int64", "10000000000", testutil.IntegerValue(10000000000), false},
-		{"-int64", "-10000000000", testutil.IntegerValue(-10000000000), false},
+		{"int", "10", testutil.IntegerValue(10), false},
+		{"-int", "-10", testutil.IntegerValue(-10), false},
+		{"+int", "+10", testutil.IntegerValue(10), false},
 		{"> max int64 -> float64", "10000000000000000000", testutil.DoubleValue(10000000000000000000), false},
 		{"< min int64 -> float64", "-10000000000000000000", testutil.DoubleValue(-10000000000000000000), false},
 		{"very large int", "100000000000000000000000000000000000000000000000", testutil.DoubleValue(100000000000000000000000000000000000000000000000), false},

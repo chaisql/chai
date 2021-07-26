@@ -87,10 +87,6 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 			s.skipUntilNewline()
 			return COMMENT, pos, ""
 		}
-		if isDigit(ch1) {
-			s.r.unread()
-			return s.scanNumber()
-		}
 		s.r.unread()
 		return SUB, pos, ""
 	case '*':
@@ -317,8 +313,6 @@ func (s *scanner) scanNumber() (tok Token, pos Pos, lit string) {
 
 		// Unread the full stop so we can read it later.
 		s.r.unread()
-	} else if ch == '-' {
-		buf.WriteRune(ch)
 	} else {
 		s.r.unread()
 	}
@@ -331,6 +325,29 @@ func (s *scanner) scanNumber() (tok Token, pos Pos, lit string) {
 	if ch0, _ := s.r.read(); ch0 == '.' {
 		isDecimal = true
 		if ch1, _ := s.r.read(); isDigit(ch1) {
+			_, _ = buf.WriteRune(ch0)
+			_, _ = buf.WriteRune(ch1)
+			_, _ = buf.WriteString(s.scanDigits())
+		} else {
+			s.r.unread()
+		}
+	} else {
+		s.r.unread()
+	}
+
+	// If next code points are e or E, optional sign and digits
+	if ch0, _ := s.r.read(); ch0 == 'e' || ch0 == 'E' {
+		isDecimal = true
+		if ch1, _ := s.r.read(); ch1 == '+' || ch1 == '-' {
+			if ch2, _ := s.r.read(); isDigit(ch2) {
+				_, _ = buf.WriteRune(ch0)
+				_, _ = buf.WriteRune(ch1)
+				_, _ = buf.WriteRune(ch2)
+				_, _ = buf.WriteString(s.scanDigits())
+			} else {
+				s.r.unread()
+			}
+		} else if isDigit(ch1) {
 			_, _ = buf.WriteRune(ch0)
 			_, _ = buf.WriteRune(ch1)
 			_, _ = buf.WriteString(s.scanDigits())
