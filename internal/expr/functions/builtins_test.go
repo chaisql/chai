@@ -2,6 +2,7 @@ package functions_test
 
 import (
 	"bytes"
+	"path/filepath"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -55,4 +56,8 @@ func TestPk(t *testing.T) {
 			testutil.TestExpr(t, "pk()", test.env, test.res, false)
 		})
 	}
+}
+
+func TestBuiltinFunctions(t *testing.T) {
+	testutil.ExprRunner(t, filepath.Join("testdata", "builtin_functions.sql"))
 }

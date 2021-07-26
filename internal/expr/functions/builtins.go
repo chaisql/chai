@@ -11,6 +11,13 @@ import (
 )
 
 var builtinFunctions = Definitions{
+	"typeof": &definition{
+		name:  "typeof",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &TypeOf{Expr: args[0]}, nil
+		},
+	},
 	"pk": &definition{
 		name:  "pk",
 		arity: 0,
@@ -58,6 +65,40 @@ var builtinFunctions = Definitions{
 // BuiltinDefinitions returns a map of builtin functions.
 func BuiltinDefinitions() Definitions {
 	return builtinFunctions
+}
+
+type TypeOf struct {
+	Expr expr.Expr
+}
+
+func (t *TypeOf) Eval(env *environment.Environment) (types.Value, error) {
+	v, err := t.Expr.Eval(env)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewTextValue(v.Type().String()), nil
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (t *TypeOf) IsEqual(other expr.Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*TypeOf)
+	if !ok {
+		return false
+	}
+
+	return expr.Equal(t.Expr, o.Expr)
+}
+
+func (t *TypeOf) Params() []expr.Expr { return []expr.Expr{t.Expr} }
+
+func (t *TypeOf) String() string {
+	return stringutil.Sprintf("typeof(%v)", t.Expr)
 }
 
 // PK represents the pk() function.
