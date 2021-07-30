@@ -61,7 +61,17 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With default", "CREATE TABLE test(foo DEFAULT (\"10\"))",
+			&statement.CreateTableStmt{
+				Info: database.TableInfo{
+					TableName: "test",
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewTextValue("10")})},
+					},
+				},
+			}, false},
 		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)", nil, true},
+		{"With default and no parentheses", "CREATE TABLE test(foo DEFAULT (10)", nil, true},
 		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT a)", nil, true},
 		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT 1 AND 2)", nil, true},
 		{"With unique", "CREATE TABLE test(foo UNIQUE)",
