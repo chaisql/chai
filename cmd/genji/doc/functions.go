@@ -8,12 +8,13 @@ var packageDocs = map[string]functionDocs{
 }
 
 var builtinDocs = functionDocs{
-	"pk":    "The pk() function returns the primary key for the current document",
-	"count": "Returns a count of the number of times that arg1 is not NULL in a group. The count(*) function (with no arguments) returns the total number of rows in the group.",
-	"min":   "Returns the minimum value of the arg1 expression in a group.",
-	"max":   "Returns the maximum value of the arg1 expressein in a group.",
-	"sum":   "The sum function returns the sum of all values taken by the arg1 expression in a group.",
-	"avg":   "The avg function returns the average of all values taken by the arg1 expression in a group.",
+	"pk":     "The pk() function returns the primary key for the current document",
+	"count":  "Returns a count of the number of times that arg1 is not NULL in a group. The count(*) function (with no arguments) returns the total number of rows in the group.",
+	"min":    "Returns the minimum value of the arg1 expression in a group.",
+	"max":    "Returns the maximum value of the arg1 expressein in a group.",
+	"sum":    "The sum function returns the sum of all values taken by the arg1 expression in a group.",
+	"avg":    "The avg function returns the average of all values taken by the arg1 expression in a group.",
+	"typeof": "The typeof function returns the type of arg1.",
 }
 
 var mathDocs = functionDocs{
