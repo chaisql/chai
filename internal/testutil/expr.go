@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -117,8 +118,6 @@ func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want t
 	}
 }
 
-var emptyEnv = environment.New(nil)
-
 func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
 	t.Helper()
 	n := strings.Split(name, ".")
@@ -144,30 +143,34 @@ func ExprRunner(t *testing.T, testfile string) {
 
 	for _, test := range ts.Tests {
 		t.Run(test.Name, func(t *testing.T) {
+			t.Helper()
+			testfile, _ := filepath.Abs(testfile)
 			for _, stmt := range test.Statements {
 				if !stmt.Fail {
 					t.Run("OK "+stmt.Expr, func(t *testing.T) {
+						t.Helper()
 						// parse the expected result
 						e, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
-						require.NoError(t, err)
+						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
 
 						// eval it to get a proper Value
 						want, err := e.Eval(environment.New(nil))
-						require.NoError(t, err)
+						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
 
 						// parse the given expr
 						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
-						require.NoError(t, err)
+						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
 
 						// eval it to get a proper Value
 						got, err := e.Eval(environment.New(nil))
-						require.NoError(t, err)
+						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
 
 						// finally, compare those two
-						require.Equal(t, want, got)
+						require.Equalf(t, want, got, "assertion error at %s:%d", testfile, stmt.ResLine)
 					})
 				} else {
 					t.Run("NOK "+stmt.Expr, func(t *testing.T) {
+						t.Helper()
 						// parse the given epxr
 						e, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
 						if err != nil {
@@ -175,8 +178,8 @@ func ExprRunner(t *testing.T, testfile string) {
 						} else {
 							// eval it, it should return an error
 							_, err = e.Eval(environment.New(nil))
-							require.NotNilf(t, err, "expected expr `%s` to return an error, got nil", stmt.Expr)
-							require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
+							require.NotNilf(t, err, "expected expr to return an error at %s:%\n`%s`, got nil", testfile, stmt.ExprLine, stmt.Expr)
+							require.Regexpf(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error(), "expected error message to match at %s:%d", testfile, stmt.ResLine)
 						}
 					})
 				}
