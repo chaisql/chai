@@ -3,12 +3,12 @@ package custom
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"io"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/binarysort"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 )
 

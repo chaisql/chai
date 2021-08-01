@@ -3,12 +3,12 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )

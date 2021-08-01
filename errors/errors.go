@@ -1,8 +1,7 @@
 package errors
 
 import (
-	"errors"
-
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 

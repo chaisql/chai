@@ -2,7 +2,6 @@ package dbutil
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,6 +12,8 @@ import (
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/memoryengine"
+	"github.com/genjidb/genji/internal/errors"
+
 	"go.etcd.io/bbolt"
 )
 

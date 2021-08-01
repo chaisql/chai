@@ -3,10 +3,10 @@ package scanner
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io"
 	"strings"
 
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 

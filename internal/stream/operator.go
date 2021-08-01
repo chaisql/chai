@@ -3,12 +3,12 @@ package stream
 import (
 	"bytes"
 	"container/heap"
-	"errors"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"

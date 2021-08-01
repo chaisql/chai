@@ -58,7 +58,7 @@ func (frame *StackFrame) String() string {
 		return str
 	}
 
-	return str + fmt.Sprintf("\t%s: %s\n", frame.Name, source)
+	return str + fmt.Sprintf("\t%s.%s: %s\n", frame.Package, frame.Name, source)
 }
 
 // SourceLine gets the line of code (from File and Line) of the original source if possible.

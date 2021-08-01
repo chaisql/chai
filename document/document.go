@@ -2,12 +2,12 @@
 package document
 
 import (
-	"errors"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )

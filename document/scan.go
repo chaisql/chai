@@ -3,11 +3,11 @@
 package document
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )

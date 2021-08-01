@@ -3,7 +3,8 @@ package badgerengine
 import (
 	"bytes"
 	"context"
-	"errors"
+
+	"github.com/genjidb/genji/internal/errors"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/engine"

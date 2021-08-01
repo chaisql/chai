@@ -1,10 +1,10 @@
 package stream
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.

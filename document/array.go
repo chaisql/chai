@@ -1,10 +1,10 @@
 package document
 
 import (
-	"errors"
 	"sort"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 )
 

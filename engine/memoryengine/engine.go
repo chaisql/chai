@@ -2,9 +2,9 @@ package memoryengine
 
 import (
 	"context"
-	"errors"
 
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/google/btree"
 )
 

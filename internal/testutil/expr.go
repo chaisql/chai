@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -130,6 +131,19 @@ func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
 	return expr
 }
 
+func requireNoErrorf(t *testing.T, err error, str string, args ...interface{}) {
+	t.Helper()
+	if e, ok := err.(*errors.Error); ok {
+		args1 := append(args, e.Stack())
+		require.NoErrorf(t, err, str+"\n%s", args1...)
+	} else {
+		require.NoErrorf(t, err, str, args...)
+		if e != nil {
+			panic(err)
+		}
+	}
+}
+
 func ExprRunner(t *testing.T, testfile string) {
 	t.Helper()
 
@@ -151,19 +165,19 @@ func ExprRunner(t *testing.T, testfile string) {
 						t.Helper()
 						// parse the expected result
 						e, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
-						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
+						requireNoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
 
 						// eval it to get a proper Value
 						want, err := e.Eval(environment.New(nil))
-						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
+						requireNoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
 
 						// parse the given expr
 						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
-						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
+						requireNoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
 
 						// eval it to get a proper Value
 						got, err := e.Eval(environment.New(nil))
-						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
+						requireNoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
 
 						// finally, compare those two
 						require.Equalf(t, want, got, "assertion error at %s:%d", testfile, stmt.ResLine)

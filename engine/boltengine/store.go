@@ -3,9 +3,9 @@ package boltengine
 import (
 	"bytes"
 	"context"
-	"errors"
 
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	bolt "go.etcd.io/bbolt"
 )
 
