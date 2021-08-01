@@ -25,8 +25,8 @@ func (a AlreadyExistsError) Error() string {
 }
 
 func IsAlreadyExistsError(err error) bool {
-	_, ok := err.(AlreadyExistsError)
-	return ok
+	var e AlreadyExistsError
+	return errors.As(err, &e)
 }
 
 // NotFoundError is returned when the requested table, index or sequence
@@ -40,6 +40,6 @@ func (a NotFoundError) Error() string {
 }
 
 func IsNotFoundError(err error) bool {
-	_, ok := err.(NotFoundError)
-	return ok
+	var e NotFoundError
+	return errors.As(err, &e)
 }
