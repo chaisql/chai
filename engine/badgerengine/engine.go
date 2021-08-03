@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 const (
@@ -135,8 +136,8 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 
 	_, err := t.tx.Get(key)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, engine.ErrStoreNotFound
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil, errors.New(engine.ErrStoreNotFound)
 		}
 
 		return nil, err
@@ -164,15 +165,15 @@ func (t *Transaction) CreateStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	key := buildStoreKey(name)
 	_, err := t.tx.Get(key)
 	if err == nil {
-		return engine.ErrStoreAlreadyExists
+		return errors.New(engine.ErrStoreAlreadyExists)
 	}
-	if err != badger.ErrKeyNotFound {
+	if !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
 	}
 
@@ -188,7 +189,7 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	s, err := t.GetStore(name)
@@ -202,8 +203,8 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	err = t.tx.Delete(buildStoreKey([]byte(name)))
-	if err == badger.ErrKeyNotFound {
-		return engine.ErrStoreNotFound
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return errors.New(engine.ErrStoreNotFound)
 	}
 
 	return err

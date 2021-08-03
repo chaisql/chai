@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -256,7 +257,7 @@ func NewCatalogTable(tx *database.Transaction, catalog *Catalog) *CatalogTable {
 
 func (s *CatalogTable) Init(tx *database.Transaction) error {
 	_, err := tx.Tx.GetStore([]byte(TableName))
-	if err == engine.ErrStoreNotFound {
+	if errors.Is(err, engine.ErrStoreNotFound) {
 		err = tx.Tx.CreateStore([]byte(TableName))
 	}
 

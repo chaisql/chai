@@ -27,7 +27,7 @@ func (s *Store) Put(k, v []byte) error {
 	}
 
 	if !s.bucket.Writable() {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	if len(k) == 0 || len(v) == 0 {
@@ -41,13 +41,13 @@ func (s *Store) Put(k, v []byte) error {
 func (s *Store) Get(k []byte) ([]byte, error) {
 	select {
 	case <-s.ctx.Done():
-		return nil, s.ctx.Err()
+		return nil, errors.New(s.ctx.Err())
 	default:
 	}
 
 	v := s.bucket.Get(k)
 	if v == nil {
-		return nil, engine.ErrKeyNotFound
+		return nil, errors.New(engine.ErrKeyNotFound)
 	}
 
 	return v, nil
@@ -60,49 +60,49 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 func (s *Store) Delete(k []byte) error {
 	select {
 	case <-s.ctx.Done():
-		return s.ctx.Err()
+		return errors.New(s.ctx.Err())
 	default:
 	}
 
 	if !s.bucket.Writable() {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	v := s.bucket.Get(k)
 	if v == nil {
-		return engine.ErrKeyNotFound
+		return errors.New(engine.ErrKeyNotFound)
 	}
 
 	// setting the value to nil hides the key
 	// without deleting the actual node from the tree.
 	err := s.bucket.Put(k, nil)
 	if err != nil {
-		return err
+		return errors.New(err)
 	}
 
 	// mark the key for deletion on commit
-	return s.ngTx.markForDeletion(s.name, k)
+	return errors.New(s.ngTx.markForDeletion(s.name, k))
 }
 
 // Truncate deletes all the records of the store.
 func (s *Store) Truncate() error {
 	select {
 	case <-s.ctx.Done():
-		return s.ctx.Err()
+		return errors.New(s.ctx.Err())
 	default:
 	}
 
 	if !s.bucket.Writable() {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	err := s.tx.DeleteBucket(s.name)
 	if err != nil {
-		return err
+		return errors.New(err)
 	}
 
 	_, err = s.tx.CreateBucket(s.name)
-	return err
+	return errors.New(err)
 }
 
 // Iterator uses the Bolt bucket cursor.
@@ -125,7 +125,7 @@ type iterator struct {
 func (it *iterator) Seek(pivot []byte) {
 	select {
 	case <-it.ctx.Done():
-		it.err = it.ctx.Err()
+		it.err = errors.New(it.ctx.Err())
 		return
 	default:
 	}
@@ -179,7 +179,7 @@ func (it *iterator) getKey(fn func() (key []byte, value []byte)) {
 }
 
 func (it *iterator) Err() error {
-	return it.err
+	return errors.New(it.err)
 }
 
 func (it *iterator) Item() engine.Item {

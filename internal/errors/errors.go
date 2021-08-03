@@ -1,4 +1,4 @@
-// +build !debug
+// +build foodebug
 
 package errors
 
@@ -10,6 +10,13 @@ import (
 )
 
 func New(e interface{}) error {
+	if e == nil {
+		// This enables to not have to write conditional and just wrap the return expression
+		// when doing things like:
+		// f := func() err {}
+		// return f() can now be written return errors.New(f())
+		return nil
+	}
 	switch e := e.(type) {
 	case error:
 		return e

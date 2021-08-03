@@ -109,14 +109,14 @@ func TestQueryDocument(t *testing.T) {
 
 	t.Run("Should return an error if no document", func(t *testing.T) {
 		r, err := db.QueryDocument("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		require.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryDocument("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 	})
 }

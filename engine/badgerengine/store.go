@@ -68,8 +68,8 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 
 	it, err := s.tx.Get(buildKey(s.prefix, k))
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, engine.ErrKeyNotFound
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil, errors.New(engine.ErrKeyNotFound)
 		}
 
 		return nil, err
@@ -93,8 +93,8 @@ func (s *Store) Delete(k []byte) error {
 	key := buildKey(s.prefix, k)
 	_, err := s.tx.Get(key)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return engine.ErrKeyNotFound
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return errors.New(engine.ErrKeyNotFound)
 		}
 
 		return err
@@ -116,8 +116,8 @@ func (s *Store) Truncate() error {
 	}
 
 	_, err := s.tx.Get(buildStoreKey(s.name))
-	if err == badger.ErrKeyNotFound {
-		return engine.ErrStoreNotFound
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return errors.New(engine.ErrStoreNotFound)
 	}
 
 	it := s.tx.NewIterator(badger.DefaultIteratorOptions)

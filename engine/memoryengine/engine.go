@@ -69,7 +69,7 @@ type transaction struct {
 // of the transaction.
 func (tx *transaction) Rollback() error {
 	if tx.terminated {
-		return engine.ErrTransactionDiscarded
+		return errors.New(engine.ErrTransactionDiscarded)
 	}
 
 	tx.terminated = true
@@ -95,11 +95,11 @@ func (tx *transaction) Rollback() error {
 // of the transaction.
 func (tx *transaction) Commit() error {
 	if tx.terminated {
-		return engine.ErrTransactionDiscarded
+		return errors.New(engine.ErrTransactionDiscarded)
 	}
 
 	if !tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	select {
@@ -126,7 +126,7 @@ func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
 
 	tr, ok := tx.ng.stores[string(name)]
 	if !ok {
-		return nil, engine.ErrStoreNotFound
+		return nil, errors.New(engine.ErrStoreNotFound)
 	}
 
 	return &storeTx{tx: tx, tr: tr, name: string(name)}, nil
@@ -140,12 +140,12 @@ func (tx *transaction) CreateStore(name []byte) error {
 	}
 
 	if !tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	_, err := tx.GetStore(name)
 	if err == nil {
-		return engine.ErrStoreAlreadyExists
+		return errors.New(engine.ErrStoreAlreadyExists)
 	}
 
 	tx.ng.stores[string(name)] = btree.New(btreeDegree)
@@ -166,12 +166,12 @@ func (tx *transaction) DropStore(name []byte) error {
 	}
 
 	if !tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.New(engine.ErrTransactionReadOnly)
 	}
 
 	rb, ok := tx.ng.stores[string(name)]
 	if !ok {
-		return engine.ErrStoreNotFound
+		return errors.New(engine.ErrStoreNotFound)
 	}
 
 	delete(tx.ng.stores, string(name))

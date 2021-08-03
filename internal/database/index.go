@@ -132,7 +132,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, []byte, error) {
 
 	st, err := idx.tx.GetStore(idx.Info.StoreName)
 	if err != nil {
-		if err == engine.ErrStoreNotFound {
+		if errors.Is(err, engine.ErrStoreNotFound) {
 			return false, nil, nil
 		}
 
@@ -295,7 +295,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 	}
 
 	st, err := idx.tx.GetStore(idx.Info.StoreName)
-	if err != nil && err != engine.ErrStoreNotFound {
+	if err != nil && !errors.Is(err, engine.ErrStoreNotFound) {
 		return err
 	}
 	if st == nil {
@@ -322,7 +322,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 // Truncate deletes all the index data.
 func (idx *Index) Truncate() error {
 	err := idx.tx.DropStore(idx.Info.StoreName)
-	if err != nil && err != engine.ErrStoreNotFound {
+	if err != nil && !errors.Is(err, engine.ErrStoreNotFound) {
 		return err
 	}
 
@@ -360,7 +360,7 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 		return st, nil
 	}
 
-	if err != engine.ErrStoreNotFound {
+	if !errors.Is(err, engine.ErrStoreNotFound) {
 		return nil, err
 	}
 

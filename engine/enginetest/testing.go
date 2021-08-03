@@ -136,7 +136,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Rollback()
-		require.Equal(t, engine.ErrTransactionDiscarded, err)
+		require.ErrorIs(t, engine.ErrTransactionDiscarded, err)
 	})
 
 	t.Run("Commit after commit should return ErrTransactionDiscarded", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Commit()
-		require.Equal(t, engine.ErrTransactionDiscarded, err)
+		require.ErrorIs(t, engine.ErrTransactionDiscarded, err)
 	})
 
 	t.Run("Rollback after rollback should should return ErrTransactionDiscarded", func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Rollback()
-		require.Equal(t, engine.ErrTransactionDiscarded, err)
+		require.ErrorIs(t, engine.ErrTransactionDiscarded, err)
 	})
 
 	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		cancel()
 
 		err = tx.Rollback()
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, context.Canceled, err)
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
@@ -221,7 +221,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				var err error
 				test.fn(&err)
 
-				require.Equal(t, test.err, err)
+				require.ErrorIs(t, test.err, err)
 			})
 		}
 	})
@@ -431,7 +431,7 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 		err = tx.CreateStore([]byte("store"))
 		require.NoError(t, err)
 		err = tx.CreateStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreAlreadyExists, err)
+		require.ErrorIs(t, err, engine.ErrStoreAlreadyExists)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -450,7 +450,7 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 
 		cancel()
 		err = tx.CreateStore([]byte("store"))
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 

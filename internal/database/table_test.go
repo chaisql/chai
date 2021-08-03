@@ -149,7 +149,7 @@ func TestTableGetDocument(t *testing.T) {
 		defer cleanup()
 
 		r, err := tb.GetDocument([]byte("id"))
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 	})
 
@@ -276,7 +276,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again
 		_, err = tb.Insert(doc)
-		require.Equal(t, errs.ErrDuplicateDocument, err)
+		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 
 	t.Run("Should convert values into the right types if there are constraints", func(t *testing.T) {
@@ -659,7 +659,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again, should fail
 		_, err = tb.Insert(doc)
-		require.Equal(t, errs.ErrDuplicateDocument, err)
+		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 
 	t.Run("Should run the onConflict function if there is a unique constraint violation", func(t *testing.T) {
@@ -779,7 +779,7 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Delete([]byte("id"))
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
@@ -802,7 +802,7 @@ func TestTableDelete(t *testing.T) {
 
 		// try again, should fail
 		err = tb.Delete([]byte(d1.(document.Keyer).RawKey()))
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
 
 		// make sure it didn't also delete the other one
 		res, err := tb.GetDocument(d2.(document.Keyer).RawKey())
@@ -819,7 +819,7 @@ func TestTableReplace(t *testing.T) {
 		defer cleanup()
 
 		_, err := tb.Replace([]byte("id"), newDocument())
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
 	})
 
 	t.Run("Should replace the right document", func(t *testing.T) {
@@ -920,7 +920,7 @@ func TestTableReplace(t *testing.T) {
 		_, err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
 
 		// index should be the same as before
-		require.Equal(t, errs.ErrDuplicateDocument, err)
+		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
 
 		// --- x, y
 		tb, err = db.Catalog.GetTable(tx, "test2")
@@ -952,7 +952,7 @@ func TestTableReplace(t *testing.T) {
 		_, err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
 
 		// index should be the same as before
-		require.Equal(t, errs.ErrDuplicateDocument, err)
+		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 }
 

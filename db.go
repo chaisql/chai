@@ -8,6 +8,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -261,7 +262,7 @@ func scanDocument(iter document.Iterator) (types.Document, error) {
 	}
 
 	if d == nil {
-		return nil, errs.ErrDocumentNotFound
+		return nil, errors.New(errs.ErrDocumentNotFound)
 	}
 
 	fb := document.NewFieldBuffer()
