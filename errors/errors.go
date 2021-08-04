@@ -25,8 +25,14 @@ func (a AlreadyExistsError) Error() string {
 }
 
 func IsAlreadyExistsError(err error) bool {
-	var e AlreadyExistsError
-	return errors.As(err, &e)
+	switch e := err.(type) {
+	case *errors.Error:
+		return IsAlreadyExistsError(e.Err)
+	case AlreadyExistsError, *AlreadyExistsError:
+		return true
+	default:
+		return false
+	}
 }
 
 // NotFoundError is returned when the requested table, index or sequence
@@ -40,6 +46,12 @@ func (a NotFoundError) Error() string {
 }
 
 func IsNotFoundError(err error) bool {
-	var e NotFoundError
-	return errors.As(err, &e)
+	switch e := err.(type) {
+	case *errors.Error:
+		return IsNotFoundError(e.Err)
+	case NotFoundError, *NotFoundError:
+		return true
+	default:
+		return false
+	}
 }

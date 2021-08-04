@@ -1,4 +1,4 @@
-// +build foodebug
+// +build !debug
 
 package errors
 
@@ -31,10 +31,6 @@ func Errorf(format string, a ...interface{}) error {
 	return fmt.Errorf(format, a...)
 }
 
-func As(err error, target interface{}) bool {
-	return baseErrors.As(err, target)
-}
-
 func Is(err, original error) bool {
-	return baseErrors.Is(err, original)
+	return err == original
 }

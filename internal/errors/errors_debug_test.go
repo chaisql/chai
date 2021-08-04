@@ -1,3 +1,5 @@
+// +build debug
+
 package errors
 
 import (
@@ -8,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/genjidb/genji/internal/stringutil"
 )
 
 var currentFilename string
@@ -15,29 +19,6 @@ var currentFilename string
 func init() {
 	_, path, _, _ := runtime.Caller(0)
 	currentFilename = filepath.Base(path)
-}
-
-func TestAs(t *testing.T) {
-	var errStrIn errorString = "TestForFun"
-
-	var errStrOut errorString
-	if as(errStrIn, &errStrOut) {
-		if errStrOut != "TestForFun" {
-			t.Errorf("direct errStr value is not returned")
-		}
-	} else {
-		t.Errorf("direct errStr is not returned")
-	}
-
-	errStrOut = ""
-	err := wrap(errStrIn, 0)
-	if as(err, &errStrOut) {
-		if errStrOut != "TestForFun" {
-			t.Errorf("wrapped errStr value is not returned")
-		}
-	} else {
-		t.Errorf("wrapped errStr is not returned")
-	}
 }
 
 func TestStackFormat(t *testing.T) {
@@ -85,7 +66,7 @@ func TestNew(t *testing.T) {
 	if err.Error() != "foo" {
 		t.Errorf("Wrong message")
 	}
-	err = _new(fmt.Errorf("foo"))
+	err = _new(stringutil.Errorf("foo"))
 	if err.Error() != "foo" {
 		t.Errorf("Wrong message")
 	}
@@ -100,22 +81,22 @@ func TestNew(t *testing.T) {
 }
 
 func TestIs(t *testing.T) {
-	if is(nil, io.EOF) {
+	if Is(nil, io.EOF) {
 		t.Errorf("nil is an error")
 	}
-	if !is(io.EOF, io.EOF) {
+	if !Is(io.EOF, io.EOF) {
 		t.Errorf("io.EOF is not io.EOF")
 	}
-	if !is(_new(io.EOF), io.EOF) {
+	if !Is(_new(io.EOF), io.EOF) {
 		t.Errorf("_new(io.EOF) is not io.EOF")
 	}
-	if !is(io.EOF, _new(io.EOF)) {
+	if !Is(io.EOF, _new(io.EOF)) {
 		t.Errorf("io.EOF is not New(io.EOF)")
 	}
-	if !is(_new(io.EOF), _new(io.EOF)) {
+	if !Is(_new(io.EOF), _new(io.EOF)) {
 		t.Errorf("New(io.EOF) is not New(io.EOF)")
 	}
-	if is(io.EOF, fmt.Errorf("io.EOF")) {
+	if Is(io.EOF, fmt.Errorf("io.EOF")) {
 		t.Errorf("io.EOF is fmt.Errorf")
 	}
 }
@@ -202,10 +183,4 @@ func callersToFrames(callers []uintptr) []runtime.Frame {
 			return frames
 		}
 	}
-}
-
-type errorString string
-
-func (e errorString) Error() string {
-	return string(e)
 }

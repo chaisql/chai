@@ -2,7 +2,6 @@ package errors
 
 import (
 	"bytes"
-	baseErrors "errors"
 	"reflect"
 )
 
@@ -23,21 +22,22 @@ func (err *Error) Unwrap() error {
 }
 
 func (err *Error) Is(target error) bool {
-	if e, ok := target.(*Error); ok {
-		return baseErrors.Is(err.Err, e.Err)
+	if err == target {
+		return true
 	}
-	return baseErrors.Is(err.Err, target)
+	if e, ok := target.(*Error); ok {
+		return err.Err == e.Err
+	}
+	return false
 }
 
 // Stack returns the callstack formatted the same way that go does
 // in runtime/debug.Stack()
 func (err *Error) Stack() []byte {
 	buf := bytes.Buffer{}
-
 	for _, frame := range err.StackFrames() {
 		buf.WriteString(frame.String())
 	}
-
 	return buf.Bytes()
 }
 
@@ -51,7 +51,6 @@ func (err *Error) StackFrames() []StackFrame {
 			err.frames[i] = NewStackFrame(pc)
 		}
 	}
-
 	return err.frames
 }
 

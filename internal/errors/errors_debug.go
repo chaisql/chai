@@ -4,7 +4,6 @@ package errors
 
 import (
 	baseErrors "errors"
-	"fmt"
 	"runtime"
 
 	"github.com/genjidb/genji/internal/stringutil"
@@ -25,20 +24,31 @@ func Errorf(format string, a ...interface{}) error {
 	return errorf(format, a...)
 }
 
-func As(err error, target interface{}) bool {
-	return as(err, target)
-}
-
-func Is(err, original error) bool {
-	return is(err, original)
+func Is(err, target error) bool {
+	if err == target {
+		return true
+	}
+	if e, ok := err.(*Error); ok {
+		if t, ok := target.(*Error); ok {
+			return e.Err == t.Err
+		} else {
+			return e.Err == target
+		}
+	}
+	if target, ok := target.(*Error); ok {
+		return err == target.Err
+	}
+	return false
 }
 
 // The maximum number of stackframes on any error.
-var MaxStackDepth = 50
+var MaxStackDepth = 32
 
 func _new(e interface{}) *Error {
 	var err error
 	switch e := e.(type) {
+	case *Error:
+		err = e.Err
 	case error:
 		err = e
 	case string:
@@ -69,7 +79,7 @@ func wrap(e interface{}, skip int) *Error {
 	case error:
 		err = e
 	default:
-		err = fmt.Errorf("%v", e)
+		err = stringutil.Errorf("%v", e)
 	}
 	stack := make([]uintptr, MaxStackDepth)
 	length := runtime.Callers(2+skip, stack[:])
@@ -83,26 +93,5 @@ func wrap(e interface{}, skip int) *Error {
 // as a drop-in replacement for fmt.Errorf() to provide descriptive
 // errors in return values.
 func errorf(format string, a ...interface{}) *Error {
-	return wrap(fmt.Errorf(format, a...), 1)
-}
-
-// find error in any wrapped error
-func as(err error, target interface{}) bool {
-	return baseErrors.As(err, target)
-}
-
-// Is detects whether the error is equal to a given error. Errors
-// are considered equal by this function if they are matched by errors.Is
-// or if their contained errors are matched through errors.Is
-func is(e error, original error) bool {
-	if baseErrors.Is(e, original) {
-		return true
-	}
-	if e, ok := e.(*Error); ok {
-		return is(e.Err, original)
-	}
-	if original, ok := original.(*Error); ok {
-		return is(e, original.Err)
-	}
-	return false
+	return wrap(stringutil.Errorf(format, a...), 1)
 }
