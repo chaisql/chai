@@ -528,8 +528,8 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 func (t *Table) GetDocument(key []byte) (types.Document, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return nil, errs.ErrDocumentNotFound
+		if errors.Is(err, engine.ErrKeyNotFound) {
+			return nil, errors.New(errs.ErrDocumentNotFound)
 		}
 		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
 	}

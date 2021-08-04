@@ -136,7 +136,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Rollback()
-		require.ErrorIs(t, engine.ErrTransactionDiscarded, err)
+		require.ErrorIs(t, err, engine.ErrTransactionDiscarded)
 	})
 
 	t.Run("Commit after commit should return ErrTransactionDiscarded", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Commit()
-		require.ErrorIs(t, engine.ErrTransactionDiscarded, err)
+		require.ErrorIs(t, err, engine.ErrTransactionDiscarded)
 	})
 
 	t.Run("Rollback after rollback should should return ErrTransactionDiscarded", func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		err = tx.Rollback()
-		require.ErrorIs(t, engine.ErrTransactionDiscarded, err)
+		require.ErrorIs(t, err, engine.ErrTransactionDiscarded)
 	})
 
 	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		cancel()
 
 		err = tx.Rollback()
-		require.ErrorIs(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
@@ -221,7 +221,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				var err error
 				test.fn(&err)
 
-				require.ErrorIs(t, test.err, err)
+				require.ErrorIs(t, err, test.err)
 			})
 		}
 	})
@@ -470,7 +470,7 @@ func TestTransactionGetStore(t *testing.T, builder Builder) {
 		defer tx.Rollback()
 
 		_, err = tx.GetStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreNotFound, err)
+		require.ErrorIs(t, err, engine.ErrStoreNotFound)
 	})
 
 	t.Run("Should return the right store", func(t *testing.T) {
@@ -512,7 +512,7 @@ func TestTransactionGetStore(t *testing.T, builder Builder) {
 
 		// use stb to fetch data and verify it's not present
 		_, err = stb.Get([]byte("foo"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -536,7 +536,7 @@ func TestTransactionGetStore(t *testing.T, builder Builder) {
 		cancel()
 
 		_, err = tx.GetStore([]byte("store"))
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -562,7 +562,7 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		_, err = tx.GetStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreNotFound, err)
+		require.ErrorIs(t, err, engine.ErrStoreNotFound)
 	})
 
 	t.Run("Should fail if store not found", func(t *testing.T) {
@@ -579,7 +579,7 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		defer tx.Rollback()
 
 		err = tx.DropStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreNotFound, err)
+		require.ErrorIs(t, err, engine.ErrStoreNotFound)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -603,7 +603,7 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		cancel()
 
 		err = tx.DropStore([]byte("store"))
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -676,7 +676,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		for it.Seek(nil); it.Valid(); it.Next() {
 			i++
 		}
-		require.Equal(t, context.Canceled, it.Err())
+		require.ErrorIs(t, it.Err(), context.Canceled)
 		require.Zero(t, i)
 	})
 
@@ -943,7 +943,7 @@ func TestStorePut(t *testing.T, builder Builder) {
 
 		cancel()
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -954,7 +954,7 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		r, err := st.Get([]byte("id"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 		require.Nil(t, r)
 	})
 
@@ -988,7 +988,7 @@ func TestStoreGet(t *testing.T, builder Builder) {
 
 		cancel()
 		_, err = st.Get([]byte("foo"))
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -999,7 +999,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Delete([]byte("id"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
@@ -1021,7 +1021,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 
 		// try again, should fail
 		err = st.Delete([]byte("bar"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 
 		// make sure it didn't also delete the other one
 		v, err = st.Get([]byte("foo"))
@@ -1058,7 +1058,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		require.NoError(t, err)
 
 		_, err = st.Get([]byte("foo"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 
 		err = st.Put([]byte("foo"), []byte("bar"))
 		require.NoError(t, err)
@@ -1095,7 +1095,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 
 		cancel()
 		err = st.Delete([]byte("foo"))
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -1140,7 +1140,7 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 
 		cancel()
 		err = st.Truncate()
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 

@@ -443,7 +443,7 @@ func (c *Catalog) AddFieldConstraint(tx *database.Transaction, tableName string,
 func (c *Catalog) RenameTable(tx *database.Transaction, oldName, newName string) error {
 	// Delete the old table info.
 	err := c.CatalogTable.Delete(tx, oldName)
-	if err == errs.ErrDocumentNotFound {
+	if errors.Is(err, errs.ErrDocumentNotFound) {
 		return errs.NotFoundError{Name: oldName}
 	}
 	if err != nil {
