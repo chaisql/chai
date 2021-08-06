@@ -91,16 +91,6 @@ type Operator interface {
 	Token() scanner.Token
 }
 
-// OperatorIsIndexCompatible returns whether the operator can be used to read from an index.
-func OperatorIsIndexCompatible(op Operator) bool {
-	switch op.Token() {
-	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE, scanner.IN:
-		return true
-	}
-
-	return false
-}
-
 type ConcatOperator struct {
 	*simpleOperator
 }
