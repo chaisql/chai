@@ -25,7 +25,7 @@ type Table struct {
 	// List of Indexes of this table.
 	// May not represent the most up to date data.
 	// Always get a fresh Table instance before relying on this field.
-	Indexes Indexes
+	Indexes []*Index
 
 	Catalog Catalog
 	Codec   encoding.Codec
@@ -160,13 +160,13 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 }
 
 // GetIndexes returns all indexes of the table.
-func (t *Table) GetIndexes() (Indexes, error) {
+func (t *Table) GetIndexes() ([]*Index, error) {
 	if t.Indexes != nil {
 		return t.Indexes, nil
 	}
 
 	names := t.Catalog.ListIndexes(t.Info.TableName)
-	indexes := make(Indexes, 0, len(names))
+	indexes := make([]*Index, 0, len(names))
 	for _, idxName := range names {
 		idx, err := t.Catalog.GetIndex(t.Tx, idxName)
 		if err != nil {
