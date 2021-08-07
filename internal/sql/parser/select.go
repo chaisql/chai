@@ -1,8 +1,7 @@
 package parser
 
 import (
-	"errors"
-
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
