@@ -1,4 +1,4 @@
-package testutil
+package assert
 
 import (
 	"testing"
@@ -6,12 +6,31 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 )
 
-func ErrorIs(t *testing.T, err error, target error) {
+func Error(t testing.TB, err error) {
+	t.Helper()
+	if err != nil {
+		return
+	}
+	t.Log("Expected error to be present, but got nil instead")
+	t.FailNow()
+}
+
+func Errorf(t testing.TB, err error, str string, args ...interface{}) {
+	t.Helper()
+
+	if err != nil {
+		return
+	}
+	t.Logf(str, args...)
+	t.FailNow()
+}
+
+func ErrorIs(t testing.TB, err error, target error) {
 	t.Helper()
 	ErrorIsf(t, err, target, "Expected error to be %v but got %v instead", target, err)
 }
 
-func ErrorIsf(t *testing.T, err error, target error, str string, args ...interface{}) {
+func ErrorIsf(t testing.TB, err error, target error, str string, args ...interface{}) {
 	t.Helper()
 
 	if errors.Is(err, target) {
@@ -24,21 +43,20 @@ func ErrorIsf(t *testing.T, err error, target error, str string, args ...interfa
 	t.FailNow()
 }
 
-func NoErrorf(t *testing.T, err error, str string, args ...interface{}) {
+func NoErrorf(t testing.TB, err error, str string, args ...interface{}) {
 	t.Helper()
 
 	if err == nil {
 		return
 	}
 	t.Logf(str, args...)
-	t.Logf("%#v", err)
 	if e, ok := err.(*errors.Error); ok {
 		t.Logf("Stacktrace:\n%s", string(e.Stack()))
 	}
 	t.FailNow()
 }
 
-func NoError(t *testing.T, err error) {
+func NoError(t testing.TB, err error) {
 	t.Helper()
 
 	NoErrorf(t, err, "Expected error to be nil but got %v instead", err)
