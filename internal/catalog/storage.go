@@ -60,7 +60,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 	ti.StoreName = v.V().([]byte)
 
 	v, err = d.GetByField("docid_sequence_name")
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil {
@@ -104,7 +104,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 	i.StoreName = v.V().([]byte)
 
 	v, err = d.GetByField("owner")
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil {
@@ -150,7 +150,7 @@ func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) 
 	i := stmt.(*statement.CreateSequenceStmt).Info
 
 	v, err := d.GetByField("owner")
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil {
@@ -184,7 +184,7 @@ func ownerFromDocument(d types.Document) (*database.Owner, error) {
 	owner.TableName = v.V().(string)
 
 	v, err = d.GetByField("path")
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil {
@@ -319,7 +319,7 @@ func (s *CatalogTable) Insert(tx *database.Transaction, r Relation) error {
 	tb := s.Table(tx)
 
 	_, err := tb.Insert(relationToDocument(r))
-	if err == errs.ErrDuplicateDocument {
+	if errors.Is(err, errs.ErrDuplicateDocument) {
 		return errs.AlreadyExistsError{Name: r.Name()}
 	}
 

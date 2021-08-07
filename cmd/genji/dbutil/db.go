@@ -35,7 +35,7 @@ func OpenDB(ctx context.Context, dbPath, engineName string, opts DBOptions) (*ge
 		ng, err = boltengine.NewEngine(dbPath, 0660, &bbolt.Options{
 			Timeout: 100 * time.Millisecond,
 		})
-		if err == bbolt.ErrTimeout {
+		if errors.Is(err, bbolt.ErrTimeout) {
 			return nil, errors.New("database is locked")
 		}
 	case "badger":

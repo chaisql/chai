@@ -47,7 +47,7 @@ func ArrayContains(a types.Array, v types.Value) (bool, error) {
 		return nil
 	})
 
-	if err != nil && err != errStop {
+	if err != nil && !errors.Is(err, errStop) {
 		return false, err
 	}
 

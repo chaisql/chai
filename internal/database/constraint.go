@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -300,7 +301,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, d types.Document) (*
 			continue
 		}
 
-		if err != document.ErrFieldNotFound {
+		if !errors.Is(err, document.ErrFieldNotFound) {
 			return nil, err
 		}
 
@@ -337,7 +338,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, d types.Document) (*
 			continue
 		}
 
-		if err != document.ErrFieldNotFound {
+		if !errors.Is(err, document.ErrFieldNotFound) {
 			return nil, err
 		}
 

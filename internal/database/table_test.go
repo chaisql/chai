@@ -3,7 +3,6 @@ package database_test
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -13,6 +12,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
@@ -30,7 +30,7 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 	defer tx.Rollback()
 
 	err = fn(tx)
-	if err == errDontCommit {
+	if errors.Is(err, errDontCommit) {
 		tx.Rollback()
 		return
 	}

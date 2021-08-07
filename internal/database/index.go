@@ -197,7 +197,7 @@ func (idx *Index) Delete(vs []types.Value, k []byte) error {
 
 		return nil
 	})
-	if err == errStop {
+	if errors.Is(err, errStop) {
 		return nil
 	}
 	if err != nil {

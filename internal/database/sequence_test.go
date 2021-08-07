@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,7 @@ func getLease(t testing.TB, tx *database.Transaction, catalog database.Catalog, 
 	}
 
 	v, err := d.GetByField("seq")
-	if err == document.ErrFieldNotFound {
+	if errors.Is(err, document.ErrFieldNotFound) {
 		return nil, nil
 	}
 	if err != nil {

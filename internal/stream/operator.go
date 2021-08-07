@@ -298,7 +298,7 @@ func (op *SortOperator) sortStream(prev Operator, in *environment.Environment) (
 				}
 
 				v, err := document.Path(p).GetValueFromDocument(d)
-				if err == document.ErrFieldNotFound {
+				if errors.Is(err, document.ErrFieldNotFound) {
 					env = env.GetOuter()
 					continue
 				}
@@ -622,7 +622,7 @@ func (op *SetOperator) Iterate(in *environment.Environment, f func(out *environm
 		}
 
 		v, err := op.E.Eval(out)
-		if err != nil && err != document.ErrFieldNotFound {
+		if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 			return err
 		}
 
@@ -633,7 +633,7 @@ func (op *SetOperator) Iterate(in *environment.Environment, f func(out *environm
 		}
 
 		err = fb.Set(op.Path, v)
-		if err == document.ErrFieldNotFound {
+		if errors.Is(err, document.ErrFieldNotFound) {
 			return nil
 		}
 		if err != nil {
@@ -679,7 +679,7 @@ func (op *UnsetOperator) Iterate(in *environment.Environment, f func(out *enviro
 
 		_, err := d.GetByField(op.Field)
 		if err != nil {
-			if err != document.ErrFieldNotFound {
+			if !errors.Is(err, document.ErrFieldNotFound) {
 				return err
 			}
 

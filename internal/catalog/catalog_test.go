@@ -2,7 +2,6 @@ package catalog_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -11,6 +10,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 	defer tx.Rollback()
 
 	err = fn(tx, db.Catalog.(*catalog.Catalog))
-	if err == errDontCommit {
+	if errors.Is(err, errDontCommit) {
 		tx.Rollback()
 		return
 	}

@@ -202,7 +202,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	v, err := c.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v != expr.NullLiteral {
@@ -276,7 +276,7 @@ type MinAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v == expr.NullLiteral {
@@ -374,7 +374,7 @@ type MaxAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v == expr.NullLiteral {
@@ -475,7 +475,7 @@ type SumAggregator struct {
 // If any of the value is a double, the returned result will be a double.
 func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v.Type() != types.IntegerValue && v.Type() != types.DoubleValue {
@@ -583,7 +583,7 @@ type AvgAggregator struct {
 // Aggregate stores the average value of all non-NULL numeric values in the group.
 func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 

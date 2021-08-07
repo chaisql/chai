@@ -1,11 +1,12 @@
 package statement_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/errors"
+
 	errs "github.com/genjidb/genji/errors"
 	"github.com/stretchr/testify/require"
 )

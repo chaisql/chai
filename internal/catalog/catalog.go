@@ -128,7 +128,7 @@ func (c *Catalog) loadSequences(tx *database.Transaction, info []database.Sequen
 		}
 
 		v, err := d.GetByField("seq")
-		if err != nil && err != document.ErrFieldNotFound {
+		if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 			return nil, err
 		}
 
@@ -520,7 +520,7 @@ func (c *Catalog) buildIndex(tx *database.Transaction, idx *database.Index, tabl
 		values := make([]types.Value, len(idx.Info.Paths))
 		for i, path := range idx.Info.Paths {
 			values[i], err = path.GetValueFromDocument(d)
-			if err == document.ErrFieldNotFound {
+			if errors.Is(err, document.ErrFieldNotFound) {
 				return nil
 			}
 			if err != nil {

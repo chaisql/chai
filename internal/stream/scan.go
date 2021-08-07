@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
@@ -264,7 +265,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 			newEnv.SetDocument(d)
 			return fn(&newEnv)
 		})
-		if err == ErrStreamClosed {
+		if errors.Is(err, ErrStreamClosed) {
 			err = nil
 		}
 		if err != nil {
@@ -409,7 +410,7 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 			return fn(&newEnv)
 		})
 
-		if err == ErrStreamClosed {
+		if errors.Is(err, ErrStreamClosed) {
 			err = nil
 		}
 		if err != nil {

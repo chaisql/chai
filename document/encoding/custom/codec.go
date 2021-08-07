@@ -220,7 +220,7 @@ func (e EncodedArray) Iterate(fn func(i int, value types.Value) error) error {
 // GetByIndex returns a value by index of the array.
 func (e EncodedArray) GetByIndex(i int) (types.Value, error) {
 	v, err := decodeValueFromDocument(e, string(encodeInt64(int64(i))))
-	if err == document.ErrFieldNotFound {
+	if errors.Is(err, document.ErrFieldNotFound) {
 		return v, document.ErrValueNotFound
 	}
 

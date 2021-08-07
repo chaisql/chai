@@ -309,7 +309,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 		}
 	})
 
-	if err == errStop || err == nil {
+	if errors.Is(err, errStop) || err == nil {
 		return
 	}
 	if err != nil {

@@ -1,13 +1,13 @@
 package genji_test
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"

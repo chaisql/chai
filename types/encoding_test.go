@@ -2,11 +2,11 @@ package types_test
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/binarysort"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )

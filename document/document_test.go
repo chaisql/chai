@@ -2,11 +2,11 @@ package document_test
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"

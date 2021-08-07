@@ -3,7 +3,6 @@ package database_test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"

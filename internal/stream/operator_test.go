@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -156,7 +157,7 @@ func TestTake(t *testing.T) {
 			if test.fails {
 				require.Error(t, err)
 			} else {
-				if err == stream.ErrStreamClosed {
+				if errors.Is(err, stream.ErrStreamClosed) {
 					err = nil
 				}
 				require.NoError(t, err)
