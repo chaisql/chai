@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/doc"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,6 +81,6 @@ func TestDocString(t *testing.T) {
 
 	t.Run("NOK no doc found", func(t *testing.T) {
 		_, err := doc.DocString("foo.bar")
-		require.ErrorIs(t, err, doc.ErrNotFound)
+		testutil.ErrorIs(t, err, doc.ErrNotFound)
 	})
 }
