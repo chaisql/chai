@@ -17,7 +17,12 @@ func New(e interface{}) error {
 		// return f() can now be written return errors.New(f())
 		return nil
 	}
-	return _new(e)
+	err := _new(e)
+	if len(err.stack) > 1 {
+		// Truncate the call to _new
+		err.stack = err.stack[1:]
+	}
+	return err
 }
 
 func Errorf(format string, a ...interface{}) error {
@@ -67,7 +72,7 @@ func _new(e interface{}) *Error {
 		panic(stringutil.Sprintf("invalid value to create an error: %#v", e))
 	}
 	stack := make([]uintptr, MaxStackDepth)
-	length := runtime.Callers(3, stack[:]) // 3, because we also want to skip _new
+	length := runtime.Callers(2, stack[:])
 	return &Error{
 		Err:   err,
 		stack: stack[:length],
