@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query"
@@ -235,8 +236,8 @@ type ParseError struct {
 }
 
 // newParseError returns a new instance of ParseError.
-func newParseError(found string, expected []string, pos scanner.Pos) *ParseError {
-	return &ParseError{Found: found, Expected: expected, Pos: pos}
+func newParseError(found string, expected []string, pos scanner.Pos) error {
+	return errors.New(&ParseError{Found: found, Expected: expected, Pos: pos})
 }
 
 // Error returns the string representation of the error.
