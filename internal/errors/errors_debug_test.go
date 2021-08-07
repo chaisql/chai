@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/stretchr/testify/require"
 )
 
 var currentFilename string
@@ -99,6 +100,10 @@ func TestIs(t *testing.T) {
 	if Is(io.EOF, fmt.Errorf("io.EOF")) {
 		t.Errorf("io.EOF is fmt.Errorf")
 	}
+}
+
+func TestRequireIsError(t *testing.T) {
+	require.ErrorIs(t, _new(io.EOF), io.EOF)
 }
 
 func TestWrapError(t *testing.T) {

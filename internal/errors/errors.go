@@ -4,7 +4,6 @@ package errors
 
 import (
 	baseErrors "errors"
-	"fmt"
 
 	"github.com/genjidb/genji/internal/stringutil"
 )
@@ -28,9 +27,13 @@ func New(e interface{}) error {
 }
 
 func Errorf(format string, a ...interface{}) error {
-	return fmt.Errorf(format, a...)
+	return stringutil.Errorf(format, a...)
 }
 
 func Is(err, original error) bool {
 	return err == original
+}
+
+func Unwrap(err error) error {
+	return err
 }

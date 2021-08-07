@@ -41,6 +41,16 @@ func Is(err, target error) bool {
 	return false
 }
 
+func Unwrap(err error) error {
+	if err == nil {
+		return nil
+	}
+	if e, ok := err.(*Error); ok {
+		return e.Err
+	}
+	return err
+}
+
 // The maximum number of stackframes on any error.
 var MaxStackDepth = 32
 
@@ -57,7 +67,7 @@ func _new(e interface{}) *Error {
 		panic(stringutil.Sprintf("invalid value to create an error: %#v", e))
 	}
 	stack := make([]uintptr, MaxStackDepth)
-	length := runtime.Callers(2, stack[:])
+	length := runtime.Callers(3, stack[:]) // 3, because we also want to skip _new
 	return &Error{
 		Err:   err,
 		stack: stack[:length],
