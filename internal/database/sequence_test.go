@@ -4,14 +4,15 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/catalog"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
-func getLease(t testing.TB, tx *database.Transaction, catalog database.Catalog, name string) (*int64, error) {
+func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog, name string) (*int64, error) {
 	tb, err := catalog.GetTable(tx, database.SequenceTableName)
 	require.NoError(t, err)
 
@@ -181,7 +182,7 @@ func TestSequence(t *testing.T) {
 		})
 	}
 
-	next := func(seq *database.Sequence, tx *database.Transaction, catalog database.Catalog, wantV int64, wantLease int64) {
+	next := func(seq *database.Sequence, tx *database.Transaction, catalog *database.Catalog, wantV int64, wantLease int64) {
 		t.Helper()
 
 		v, err := seq.Next(tx, catalog)
@@ -387,8 +388,11 @@ func TestSequence(t *testing.T) {
 		err = seq.Release(tx, db.Catalog)
 		require.NoError(t, err)
 
-		c := catalog.New()
-		err = c.Load(tx)
+		c := database.NewCatalog()
+		err = c.Init(tx, msgpack.NewCodec())
+		require.NoError(t, err)
+
+		err = catalogstore.LoadCatalog(tx, c)
 		require.NoError(t, err)
 
 		db.Catalog = c

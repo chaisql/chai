@@ -1,17 +1,14 @@
 package database_test
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -46,7 +43,7 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 	return createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"}), fn
 }
 
-func createTable(t testing.TB, tx *database.Transaction, catalog database.Catalog, info database.TableInfo) *database.Table {
+func createTable(t testing.TB, tx *database.Transaction, catalog *database.Catalog, info database.TableInfo) *database.Table {
 	stmt := statement.CreateTableStmt{Info: info}
 
 	res, err := stmt.Run(&statement.Context{
@@ -62,7 +59,7 @@ func createTable(t testing.TB, tx *database.Transaction, catalog database.Catalo
 	return tb
 }
 
-func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog database.Catalog, info database.TableInfo) *database.Table {
+func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog *database.Catalog, info database.TableInfo) *database.Table {
 	stmt := statement.CreateTableStmt{Info: info, IfNotExists: true}
 
 	res, err := stmt.Run(&statement.Context{
@@ -198,11 +195,8 @@ func TestTableInsert(t *testing.T) {
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
 		ng := memoryengine.NewEngine()
 
-		db, err := database.New(context.Background(), ng, database.Options{
-			Codec:   msgpack.NewCodec(),
-			Catalog: catalog.New(),
-		})
-		require.NoError(t, err)
+		db, cleanup := testutil.NewTestDBWithEngine(t, ng)
+		defer cleanup()
 
 		insertDoc := func(db *database.Database) (rawKey []byte) {
 			update(t, db, func(tx *database.Transaction) error {
@@ -221,16 +215,14 @@ func TestTableInsert(t *testing.T) {
 
 		key1 := insertDoc(db)
 
-		err = db.Close()
+		err := db.Close()
 		require.NoError(t, err)
 
 		ng.Closed = false
 
 		// create new database object
-		db, err = database.New(context.Background(), ng, database.Options{
-			Codec:   msgpack.NewCodec(),
-			Catalog: db.Catalog,
-		})
+		db, cleanup = testutil.NewTestDBWithEngine(t, ng)
+		defer cleanup()
 
 		require.NoError(t, err)
 

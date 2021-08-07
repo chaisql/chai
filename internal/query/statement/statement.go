@@ -17,7 +17,7 @@ type Statement interface {
 
 type Context struct {
 	Tx      *database.Transaction
-	Catalog database.Catalog
+	Catalog *database.Catalog
 	Params  []environment.Param
 }
 

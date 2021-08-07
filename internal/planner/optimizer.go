@@ -11,7 +11,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-var optimizerRules = []func(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error){
+var optimizerRules = []func(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error){
 	SplitANDConditionRule,
 	RemoveUnnecessaryProjection,
 	RemoveUnnecessaryDistinctNodeRule,
@@ -24,7 +24,7 @@ var optimizerRules = []func(s *stream.Stream, catalog database.Catalog) (*stream
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error) {
+func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
 	var err error
 
 	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
@@ -66,7 +66,7 @@ func Optimize(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error
 //     filter(a > 2)
 //     filter(b != 3)
 //     filter(c < 2)
-func SplitANDConditionRule(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
+func SplitANDConditionRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -120,7 +120,7 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
+func PrecalculateExprRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	var err error
@@ -234,7 +234,7 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
+func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -285,7 +285,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ database.Catalog) (*st
 
 // RemoveUnnecessaryProjection removes any project node whose
 // expression is a wildcard only.
-func RemoveUnnecessaryProjection(s *stream.Stream, _ database.Catalog) (*stream.Stream, error) {
+func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
@@ -307,7 +307,7 @@ func RemoveUnnecessaryProjection(s *stream.Stream, _ database.Catalog) (*stream.
 
 // RemoveUnnecessaryDistinctNodeRule removes any Dedup nodes
 // where projection is already unique.
-func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error) {
+func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	// we assume that if we are reading from a table, the first

@@ -459,7 +459,7 @@ func (f *FieldConstraintIdentity) IsEqual(other *FieldConstraintIdentity) bool {
 }
 
 type TableExpression interface {
-	Bind(catalog Catalog)
+	Bind(catalog *Catalog)
 	Eval(tx *Transaction) (types.Value, error)
 	IsEqual(other TableExpression) bool
 	String() string

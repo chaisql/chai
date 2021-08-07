@@ -27,7 +27,7 @@ type Table struct {
 	// Always get a fresh Table instance before relying on this field.
 	Indexes []*Index
 
-	Catalog Catalog
+	Catalog *Catalog
 	Codec   encoding.Codec
 }
 
@@ -121,7 +121,7 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 
 	// insert into the table
 	var buf bytes.Buffer
-	enc := t.Tx.Codec.NewEncoder(&buf)
+	enc := t.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(fb)
 	if err != nil {
@@ -267,7 +267,7 @@ func (t *Table) replace(key []byte, d types.Document) error {
 
 	// encode new document
 	var buf bytes.Buffer
-	enc := t.Tx.Codec.NewEncoder(&buf)
+	enc := t.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(d)
 	if err != nil {
@@ -498,7 +498,7 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
 	d := lazilyDecodedDocument{
-		codec: t.Tx.Codec,
+		codec: t.Codec,
 	}
 
 	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
@@ -535,7 +535,7 @@ func (t *Table) GetDocument(key []byte) (types.Document, error) {
 	}
 
 	var d documentWithKey
-	d.Document = t.Tx.Codec.NewDecoder(v)
+	d.Document = t.Codec.NewDecoder(v)
 	d.key = key
 	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
 	return &d, err

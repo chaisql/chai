@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
-	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -19,15 +20,34 @@ import (
 func NewTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
 
-	db, err := database.New(context.Background(), memoryengine.NewEngine(), database.Options{
-		Codec:   msgpack.NewCodec(),
-		Catalog: catalog.New(),
+	return NewTestDBWithEngine(t, memoryengine.NewEngine())
+}
+
+func NewTestDBWithEngine(t testing.TB, ng engine.Engine) (*database.Database, func()) {
+	t.Helper()
+
+	db, err := database.New(context.Background(), ng, database.Options{
+		Codec: msgpack.NewCodec(),
 	})
 	require.NoError(t, err)
+
+	LoadCatalog(t, db)
 
 	return db, func() {
 		db.Close()
 	}
+}
+
+func LoadCatalog(t testing.TB, db *database.Database) {
+	tx, err := db.Begin(true)
+	require.NoError(t, err)
+	defer tx.Rollback()
+
+	err = catalogstore.LoadCatalog(tx, db.Catalog)
+	require.NoError(t, err)
+
+	err = tx.Commit()
+	require.NoError(t, err)
 }
 
 func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func()) {

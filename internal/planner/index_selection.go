@@ -59,7 +59,7 @@ import (
 // Because a table can have multiple indexes, we need to establish which of these
 // indexes should be used to run the query, if not all of them.
 // For that we generate a cost for each selected index and return the one with the cheapest cost.
-func SelectIndex(s *stream.Stream, catalog database.Catalog) (*stream.Stream, error) {
+func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
 	// first we lookup for the seq scan node.
 	// Here we will assume that at this point
 	// if there is one it has to be the
@@ -86,7 +86,7 @@ func SelectIndex(s *stream.Stream, catalog database.Catalog) (*stream.Stream, er
 // It then compares the cost of each plan and returns the cheapest stream.
 type indexSelector struct {
 	seqScan *stream.SeqScanOperator
-	catalog database.Catalog
+	catalog *database.Catalog
 }
 
 func (i *indexSelector) SelectIndex(s *stream.Stream) (*stream.Stream, error) {

@@ -3,7 +3,6 @@ package database
 import (
 	"sync"
 
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 )
 
@@ -15,7 +14,6 @@ type Transaction struct {
 	Tx       engine.Transaction
 	Writable bool
 	DBMu     *sync.RWMutex
-	Codec    encoding.Codec
 
 	// these functions are run after a successful rollback.
 	OnRollbackHooks []func()

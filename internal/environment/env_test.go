@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/types"
@@ -17,7 +16,7 @@ func TestEnvironmentClone(t *testing.T) {
 
 	p := environment.Param{Name: "param", Value: 1}
 	tx := &database.Transaction{}
-	catalog := catalog.New()
+	catalog := database.NewCatalog()
 
 	vars := document.NewFieldBuffer()
 	vars.Add("var", types.NewIntegerValue(2))

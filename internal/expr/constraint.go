@@ -10,7 +10,7 @@ import (
 
 type ConstraintExpr struct {
 	Expr    Expr
-	Catalog database.Catalog
+	Catalog *database.Catalog
 }
 
 func Constraint(e Expr) *ConstraintExpr {
@@ -31,7 +31,7 @@ func (t *ConstraintExpr) Eval(tx *database.Transaction) (types.Value, error) {
 	return t.Expr.Eval(&env)
 }
 
-func (t *ConstraintExpr) Bind(catalog database.Catalog) {
+func (t *ConstraintExpr) Bind(catalog *database.Catalog) {
 	t.Catalog = catalog
 }
 

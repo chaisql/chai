@@ -16,7 +16,7 @@ const (
 
 type Database struct {
 	ng      engine.Engine
-	Catalog Catalog
+	Catalog *Catalog
 
 	// If this is non-nil, the user is running an explicit transaction
 	// using the BEGIN statement.
@@ -33,8 +33,7 @@ type Database struct {
 }
 
 type Options struct {
-	Codec   encoding.Codec
-	Catalog Catalog
+	Codec encoding.Codec
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -52,14 +51,11 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	if opts.Codec == nil {
 		return nil, errors.New("missing codec")
 	}
-	if opts.Catalog == nil {
-		return nil, errors.New("missing catalog")
-	}
 
 	db := Database{
 		ng:      ng,
 		Codec:   opts.Codec,
-		Catalog: opts.Catalog,
+		Catalog: NewCatalog(),
 		txmu:    &sync.RWMutex{},
 	}
 
@@ -69,7 +65,7 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 	defer tx.Rollback()
 
-	err = db.Catalog.Load(tx)
+	err = db.Catalog.Init(tx, db.Codec)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +177,6 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		Tx:       ntx,
 		Writable: !opts.ReadOnly,
 		DBMu:     db.txmu,
-		Codec:    db.Codec,
 	}
 
 	if opts.Attached {
