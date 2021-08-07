@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -76,9 +77,9 @@ func TestAggregate(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.want, got)
 			}
 		})

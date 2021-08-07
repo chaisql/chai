@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +25,7 @@ func TestPathExpr(t *testing.T) {
 		{"b", func() types.Value {
 			fb := document.NewFieldBuffer()
 			err := json.Unmarshal([]byte(`{"foo bar": [1, 2]}`), fb)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			return types.NewDocumentValue(fb)
 		}(),
 			false},
@@ -69,11 +70,11 @@ func TestPathIsEqual(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s = %s", test.a, test.b), func(t *testing.T) {
 			pa, err := parser.ParsePath(test.a)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			ea := expr.Path(pa)
 
 			pb, err := parser.ParsePath(test.b)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			eb := expr.Path(pb)
 
 			require.Equal(t, test.isEqual, ea.IsEqual(eb))
@@ -91,7 +92,7 @@ func TestEnvPathExpr(t *testing.T) {
 		{"b", func() types.Value {
 			fb := document.NewFieldBuffer()
 			err := json.Unmarshal([]byte(`{"foo bar": [1, 2]}`), fb)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			return types.NewDocumentValue(fb)
 		}(),
 			false},

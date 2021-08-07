@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,10 +32,10 @@ func TestParserTransactions(t *testing.T) {
 		t.Run(test.s, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})

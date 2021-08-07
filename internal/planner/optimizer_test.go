@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	st "github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -78,7 +79,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.SplitANDConditionRule(test.in, nil)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, res.String(), test.expected.String())
 		})
 	}
@@ -166,7 +167,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 			s := st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(test.e))
 			res, err := planner.PrecalculateExprRule(s, nil)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, st.New(st.SeqScan("foo")).Pipe(st.Filter(test.expected)).String(), res.String())
 		})
 	}
@@ -205,7 +206,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.RemoveUnnecessaryFilterNodesRule(test.root, nil)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			if test.expected != nil {
 				require.Equal(t, test.expected.String(), res.String())
 			} else {
@@ -278,7 +279,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 			`)
 
 			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, db.Catalog)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
@@ -438,7 +439,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			`)
 
 			res, err := planner.SelectIndex(test.root, db.Catalog)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
@@ -496,10 +497,10 @@ func TestSelectIndex_Simple(t *testing.T) {
 				`)
 
 				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				res, err = planner.SelectIndex(res, db.Catalog)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
 		}
@@ -754,7 +755,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 			`)
 
 			res, err := planner.SelectIndex(test.root, db.Catalog)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
@@ -803,10 +804,10 @@ func TestSelectIndex_Composite(t *testing.T) {
 	`)
 
 				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				res, err = planner.SelectIndex(res, db.Catalog)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
 		}
@@ -835,7 +836,7 @@ func TestOptimize(t *testing.T) {
 				st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 3"))),
 			))
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 
@@ -865,7 +866,7 @@ func TestOptimize(t *testing.T) {
 				)),
 			))
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 
@@ -895,7 +896,7 @@ func TestOptimize(t *testing.T) {
 					Pipe(st.Project(parser.MustParseExpr("a"))),
 			))
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 	})
@@ -926,7 +927,7 @@ func TestOptimize(t *testing.T) {
 			st.New(st.IndexScan("idx_bar_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		))
 
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, want.String(), got.String())
 	})
 }

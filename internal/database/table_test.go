@@ -16,6 +16,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 	t.Helper()
 
 	tx, err := db.Begin(true)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	defer tx.Rollback()
 
 	err = fn(tx)
@@ -34,10 +35,10 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 		tx.Rollback()
 		return
 	}
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = tx.Commit()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func newTestTable(t testing.TB) (*database.Table, func()) {
@@ -53,11 +54,11 @@ func createTable(t testing.TB, tx *database.Transaction, catalog database.Catalo
 		Catalog: catalog,
 		Tx:      tx,
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	res.Close()
 
 	tb, err := catalog.GetTable(tx, stmt.Info.TableName)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return tb
 }
@@ -69,11 +70,11 @@ func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog data
 		Catalog: catalog,
 		Tx:      tx,
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	res.Close()
 
 	tb, err := catalog.GetTable(tx, stmt.Info.TableName)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return tb
 }
@@ -95,7 +96,7 @@ func TestTableIterate(t *testing.T) {
 			i++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Zero(t, i)
 	})
 
@@ -105,7 +106,7 @@ func TestTableIterate(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			_, err := tb.Insert(newDocument())
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		m := make(map[string]int)
@@ -113,7 +114,7 @@ func TestTableIterate(t *testing.T) {
 			m[string(d.(document.Keyer).RawKey())]++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, m, 10)
 		for _, c := range m {
 			require.Equal(t, 1, c)
@@ -126,7 +127,7 @@ func TestTableIterate(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			_, err := tb.Insert(newDocument())
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		i := 0
@@ -149,7 +150,7 @@ func TestTableGetDocument(t *testing.T) {
 		defer cleanup()
 
 		r, err := tb.GetDocument([]byte("id"))
-		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 	})
 
@@ -164,15 +165,15 @@ func TestTableGetDocument(t *testing.T) {
 		doc2 := newDocument()
 
 		d, err := tb.Insert(doc1)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		_, err = tb.Insert(doc2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// fetch doc1 and make sure it returns the right one
 		res, err := tb.GetDocument(d.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		fc, err := res.GetByField("fieldc")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, vc, fc)
 	})
 }
@@ -185,11 +186,11 @@ func TestTableInsert(t *testing.T) {
 
 		doc := newDocument()
 		d1, err := tb.Insert(doc.Clone())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.NotEmpty(t, d1.(document.Keyer).RawKey())
 
 		d2, err := tb.Insert(doc.Clone())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.NotEmpty(t, d2.(document.Keyer).RawKey())
 
 		require.NotEqual(t, d1.(document.Keyer).RawKey(), d2.(document.Keyer).RawKey())
@@ -202,7 +203,7 @@ func TestTableInsert(t *testing.T) {
 			Codec:   msgpack.NewCodec(),
 			Catalog: catalog.New(),
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		insertDoc := func(db *database.Database) (rawKey []byte) {
 			update(t, db, func(tx *database.Transaction) error {
@@ -211,7 +212,7 @@ func TestTableInsert(t *testing.T) {
 
 				doc := newDocument()
 				d, err := tb.Insert(doc)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.NotEmpty(t, d.(document.Keyer).RawKey())
 				rawKey = d.(document.Keyer).RawKey()
 				return nil
@@ -222,7 +223,7 @@ func TestTableInsert(t *testing.T) {
 		key1 := insertDoc(db)
 
 		err = db.Close()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		ng.Closed = false
 
@@ -232,15 +233,15 @@ func TestTableInsert(t *testing.T) {
 			Catalog: db.Catalog,
 		})
 
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		key2 := insertDoc(db)
 
 		a, _ := binary.Uvarint(key1)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		b, _ := binary.Uvarint(key2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		require.Equal(t, int64(a+1), int64(b))
 	})
@@ -254,29 +255,29 @@ func TestTableInsert(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: types.IntegerValue, IsPrimaryKey: true},
 			},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		var doc document.FieldBuffer
 		err = doc.UnmarshalJSON([]byte(`{"foo": {"a": [0, 10]}}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert
 		d, err := tb.Insert(doc)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		want, err := tb.EncodeValue(types.NewIntegerValue(10))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		require.Equal(t, want, d.(document.Keyer).RawKey())
 
 		// make sure the document is fetchable using the returned key
 		_, err = tb.GetDocument(d.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert again
 		_, err = tb.Insert(doc)
-		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
+		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 
 	t.Run("Should convert values into the right types if there are constraints", func(t *testing.T) {
@@ -293,17 +294,17 @@ func TestTableInsert(t *testing.T) {
 
 		var doc document.FieldBuffer
 		err := doc.UnmarshalJSON([]byte(`{"foo": [100]}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert
 		d, err := tb.Insert(doc)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err = tb.GetDocument(d.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := testutil.ParseDocumentPath(t, "foo[0]").GetValueFromDocument(d)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(100), v)
 	})
 
@@ -316,9 +317,9 @@ func TestTableInsert(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue, IsPrimaryKey: true},
 			},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tests := [][]byte{
 			nil,
@@ -332,7 +333,7 @@ func TestTableInsert(t *testing.T) {
 					Add("foo", types.NewBlobValue(test))
 
 				_, err := tb.Insert(doc)
-				require.Error(t, err)
+				assert.Error(t, err)
 			})
 		}
 	})
@@ -346,12 +347,12 @@ func TestTableInsert(t *testing.T) {
 		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		idx, err := db.Catalog.GetIndex(tx, "idxFoo")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// create one document with the foo field
 		doc1 := newDocument()
@@ -362,9 +363,9 @@ func TestTableInsert(t *testing.T) {
 		doc2 := newDocument()
 
 		d1, err := tb.Insert(doc1)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		d2, err := tb.Insert(doc2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		var count int
 		err = idx.AscendGreaterOrEqual([]types.Value{nil}, func(val, k []byte) error {
@@ -379,7 +380,7 @@ func TestTableInsert(t *testing.T) {
 			count++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, count)
 	})
 
@@ -405,24 +406,24 @@ func TestTableInsert(t *testing.T) {
 
 		// insert
 		d, err := tb.Insert(doc)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// make sure the fields have been converted to the right types
 		d, err = tb.GetDocument(d.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		v, err := d.GetByField("foo")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		v, err = v.V().(types.Document).GetByField("bar")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(10), v)
 		v, err = d.GetByField("bar")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewDoubleValue(10), v)
 		v, err = d.GetByField("baz")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewTextValue("baz"), v)
 		v, err = d.GetByField("bat")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewDoubleValue(20), v)
 	})
 
@@ -435,16 +436,16 @@ func TestTableInsert(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.DoubleValue},
 			},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
 			Add("foo", types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(1))))
 
 		// insert
 		_, err = tb.Insert(doc)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Should fail if there is a not null field constraint on a document field and the field is null or missing", func(t *testing.T) {
@@ -470,32 +471,32 @@ func TestTableInsert(t *testing.T) {
 		// insert with empty foo field should fail
 		_, err := tb1.Insert(document.NewFieldBuffer().
 			Add("bar", types.NewDoubleValue(1)))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// insert with null foo field should fail
 		_, err = tb1.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb1.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewDoubleValue(1)))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert with empty foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("bar", types.NewDoubleValue(1)))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// insert with null foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewDoubleValue(1)))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Shouldn't fail if there is a not null field and default constraint on a document field and the field is null or missing", func(t *testing.T) {
@@ -521,44 +522,44 @@ func TestTableInsert(t *testing.T) {
 		// insert with empty foo field shouldn't fail
 		d, err := tb1.Insert(document.NewFieldBuffer().
 			Add("bar", types.NewDoubleValue(1)))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err = tb1.GetDocument(d.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		v, err := d.GetByField("foo")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, v.V().(float64), float64(42))
 
 		// insert with explicit null foo field should fail
 		_, err = tb1.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb1.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(1)))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert with empty foo field shouldn't fail
 		d, err = tb2.Insert(document.NewFieldBuffer().
 			Add("bar", types.NewIntegerValue(1)))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err = tb2.GetDocument(d.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		v, err = d.GetByField("foo")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, v.V().(int64), int64(42))
 
 		// insert with explicit null foo field should fail
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// otherwise it should work
 		_, err = tb2.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewDoubleValue(1)))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Should fail if there is a not null field constraint on an array value and the value is null", func(t *testing.T) {
@@ -575,11 +576,11 @@ func TestTableInsert(t *testing.T) {
 		// insert table with only one value
 		_, err := tb.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewArrayValue(document.NewValueBuffer().Append(types.NewIntegerValue(1)))))
-		require.Error(t, err)
+		assert.Error(t, err)
 		_, err = tb.Insert(document.NewFieldBuffer().
 			Add("foo", types.NewArrayValue(document.NewValueBuffer().
 				Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2)))))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Should fail if the pk is duplicated", func(t *testing.T) {
@@ -597,7 +598,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert first
 		_, err := tb.Insert(doc)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert again, should fail
 		_, err = tb.Insert(doc)
@@ -625,12 +626,12 @@ func TestTableInsert(t *testing.T) {
 
 		// insert first
 		_, err := tb.InsertWithConflictResolution(doc, onConflict)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 0, called)
 
 		// insert again, should call onConflict
 		_, err = tb.InsertWithConflictResolution(doc, onConflict)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 1, called)
 	})
 
@@ -645,21 +646,21 @@ func TestTableInsert(t *testing.T) {
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			Unique:    true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(10))
 
 		// insert first
 		_, err = tb.Insert(doc)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert again, should fail
 		_, err = tb.Insert(doc)
-		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
+		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 
 	t.Run("Should run the onConflict function if there is a unique constraint violation", func(t *testing.T) {
@@ -673,10 +674,10 @@ func TestTableInsert(t *testing.T) {
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			Unique:    true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(10))
@@ -689,12 +690,12 @@ func TestTableInsert(t *testing.T) {
 
 		// insert first
 		_, err = tb.InsertWithConflictResolution(doc, onConflict)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 0, called)
 
 		// insert again, should call onConflict
 		_, err = tb.InsertWithConflictResolution(doc, onConflict)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 1, called)
 	})
 
@@ -720,7 +721,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert
 		_, err := tb.InsertWithConflictResolution(doc, onConflict)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 1, called)
 	})
 
@@ -732,21 +733,21 @@ func TestTableInsert(t *testing.T) {
 			FieldConstraints: []*database.FieldConstraint{
 				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
 			}})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(10))
 
 		// insert first
 		d1, err := tb.Insert(doc)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert again, should call OnInsertConflictDoReplace
 		d2, err := tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, d1, d2)
 	})
 
@@ -758,17 +759,17 @@ func TestTableInsert(t *testing.T) {
 			FieldConstraints: []*database.FieldConstraint{
 				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
 			}})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		doc := document.NewFieldBuffer().
 			Add("bar", types.NewIntegerValue(10))
 
 		// insert
 		_, err = tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -779,7 +780,7 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Delete([]byte("id"))
-		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
@@ -792,23 +793,23 @@ func TestTableDelete(t *testing.T) {
 		doc2 := newDocument()
 
 		d1, err := tb.Insert(doc1.Clone())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		d2, err := tb.Insert(doc2.Clone())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// delete the document
 		err = tb.Delete([]byte(d1.(document.Keyer).RawKey()))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// try again, should fail
 		err = tb.Delete([]byte(d1.(document.Keyer).RawKey()))
-		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 
 		// make sure it didn't also delete the other one
 		res, err := tb.GetDocument(d2.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		_, err = res.GetByField("fieldc")
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -819,7 +820,7 @@ func TestTableReplace(t *testing.T) {
 		defer cleanup()
 
 		_, err := tb.Replace([]byte("id"), newDocument())
-		require.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 	})
 
 	t.Run("Should replace the right document", func(t *testing.T) {
@@ -833,9 +834,9 @@ func TestTableReplace(t *testing.T) {
 			Add("fieldb", types.NewTextValue("d"))
 
 		d1, err := tb.Insert(doc1)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		d2, err := tb.Insert(doc2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// create a third document
 		doc3 := document.NewFieldBuffer().
@@ -844,22 +845,22 @@ func TestTableReplace(t *testing.T) {
 
 		// replace doc1 with doc3
 		d3, err := tb.Replace(d1.(document.Keyer).RawKey(), doc3)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// make sure it replaced it correctly
 		res, err := tb.GetDocument(d1.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		f, err := res.GetByField("fielda")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, "e", f.V().(string))
 
 		testutil.RequireDocEqual(t, d3, res)
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetDocument(d2.(document.Keyer).RawKey())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		f, err = res.GetByField("fielda")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, "c", f.V().(string))
 	})
 
@@ -877,7 +878,7 @@ func TestTableReplace(t *testing.T) {
 			TableName: "test1",
 			IndexName: "idx_foo_a",
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// composite indexes
 		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
@@ -886,30 +887,30 @@ func TestTableReplace(t *testing.T) {
 			TableName: "test2",
 			IndexName: "idx_foo_x_y",
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test1")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert two different documents
 		d1, err := tb.Insert(testutil.MakeDocument(t, `{"a": 1, "b": 1}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		d2, err := tb.Insert(testutil.MakeDocument(t, `{"a": 2, "b": 2}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		beforeIdxA := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a")
 
 		// --- a
 		// replace d1 without modifying indexed key
 		_, err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 1, "b": 3}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// indexes should be the same as before
 		require.Equal(t, beforeIdxA, testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a"))
 
 		// replace d2 and modify indexed key
 		_, err = tb.Replace(d2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// indexes should be different for d2
 		got := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a")
@@ -920,28 +921,28 @@ func TestTableReplace(t *testing.T) {
 		_, err = tb.Replace(d1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
 
 		// index should be the same as before
-		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
+		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
 
 		// --- x, y
 		tb, err = db.Catalog.GetTable(tx, "test2")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		// insert two different documents
 		dc1, err := tb.Insert(testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 1}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		dc2, err := tb.Insert(testutil.MakeDocument(t, `{"x": 2, "y": 2, "z": 2}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		beforeIdxXY := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y")
 		// replace dc1 without modifying indexed key
 		_, err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 2}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// index should be the same as before
 		require.Equal(t, beforeIdxXY, testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y"))
 
 		// replace dc2 and modify indexed key
 		_, err = tb.Replace(dc2.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// indexes should be different for d2
 		got = testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y")
@@ -952,7 +953,7 @@ func TestTableReplace(t *testing.T) {
 		_, err = tb.Replace(dc1.(document.Keyer).RawKey(), testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
 
 		// index should be the same as before
-		require.ErrorIs(t, err, errs.ErrDuplicateDocument)
+		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 }
 
@@ -963,7 +964,7 @@ func TestTableTruncate(t *testing.T) {
 		defer cleanup()
 
 		err := tb.Truncate()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Should truncate the table", func(t *testing.T) {
@@ -975,18 +976,18 @@ func TestTableTruncate(t *testing.T) {
 		doc2 := newDocument()
 
 		_, err := tb.Insert(doc1)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		_, err = tb.Insert(doc2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tb.Truncate()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tb.Iterate(func(_ types.Document) error {
 			return errors.New("should not iterate")
 		})
 
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }
 
@@ -996,7 +997,7 @@ func TestTableIndexes(t *testing.T) {
 		defer cleanup()
 
 		list, err := tb.GetIndexes()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Empty(t, list)
 	})
 
@@ -1005,10 +1006,10 @@ func TestTableIndexes(t *testing.T) {
 		defer cleanup()
 
 		err := db.Catalog.CreateTable(tx, "test1", nil)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Catalog.CreateTable(tx, "test2", nil)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    true,
@@ -1016,34 +1017,34 @@ func TestTableIndexes(t *testing.T) {
 			TableName: "test1",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1b",
 			TableName: "test1",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx1ab",
 			TableName: "test1",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
 			Unique:    false,
 			IndexName: "idx2a",
 			TableName: "test2",
 			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test1")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		m, err := tb.GetIndexes()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, m, 3)
 	})
 }
@@ -1089,7 +1090,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			for i := 0; i < size; i++ {
 				_, err := tb.Insert(&fb)
-				require.NoError(b, err)
+				assert.NoError(b, err)
 			}
 
 			b.ResetTimer()

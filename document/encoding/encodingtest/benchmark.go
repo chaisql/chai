@@ -8,8 +8,8 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
 // BenchmarkCodec runs benchmarks against the given codec.
@@ -61,7 +61,7 @@ func benchmarkDocumentGetByField(b *testing.B, codecBuilder func() encoding.Code
 	codec := codecBuilder()
 	var buf bytes.Buffer
 	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
-	require.NoError(b, err)
+	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -79,7 +79,7 @@ func benchmarkDocumentIterate(b *testing.B, codecBuilder func() encoding.Codec) 
 	codec := codecBuilder()
 	var buf bytes.Buffer
 	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
-	require.NoError(b, err)
+	assert.NoError(b, err)
 
 	doc := codec.NewDecoder(buf.Bytes())
 
@@ -101,7 +101,7 @@ func benchmarkDecodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 	codec := codecBuilder()
 	var buf bytes.Buffer
 	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
-	require.NoError(b, err)
+	assert.NoError(b, err)
 
 	doc := codec.NewDecoder(buf.Bytes())
 
@@ -133,7 +133,7 @@ func benchmarkDecodeDocumentJSON(b *testing.B, codecBuilder func() encoding.Code
 	}
 
 	d, err := json.Marshal(m)
-	require.NoError(b, err)
+	assert.NoError(b, err)
 
 	mm := make(map[string]int64)
 	b.ResetTimer()

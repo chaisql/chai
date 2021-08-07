@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -34,9 +35,9 @@ func TestExpressions(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -94,15 +95,15 @@ func TestSeqScan(t *testing.T) {
 				require.True(t, ok)
 				var fb document.FieldBuffer
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				got = append(got, &fb)
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
@@ -253,19 +254,19 @@ func TestPkScan(t *testing.T) {
 				var fb document.FieldBuffer
 
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, types.NewIntegerValue(1), v)
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
@@ -668,19 +669,19 @@ func TestIndexScan(t *testing.T) {
 				var fb document.FieldBuffer
 
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, types.NewIntegerValue(1), v)
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}

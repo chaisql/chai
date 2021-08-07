@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
-	// "io/fs"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,13 +120,13 @@ func TestGegenerate(t *testing.T) {
 
 	var out bytes.Buffer
 	err := generate(ts, "main", &out)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	// uncomment below to regenerate the gold file
 	// os.WriteFile("test.go.gold", out.Bytes(), fs.FileMode(os.O_WRONLY))
 
 	b, err := os.ReadFile("test.go.gold")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	require.Equal(t, string(b), out.String())
 }

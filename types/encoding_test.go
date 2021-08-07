@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/binarysort"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -71,10 +72,10 @@ func TestValueEncoder(t *testing.T) {
 
 			enc := types.NewValueEncoder(&buf)
 			err := enc.Encode(test.v)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			got, err := decodeValue(buf.Bytes())
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.v, got)
 		})
 	}

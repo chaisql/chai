@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -156,11 +157,11 @@ func TestParserSelect(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if !test.mustFail {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Len(t, q.Statements, 1)
 				require.EqualValues(t, &statement.StreamStmt{Stream: test.expected, ReadOnly: true}, q.Statements[0].(*statement.StreamStmt))
 			} else {
-				require.Error(t, err)
+				assert.Error(t, err)
 			}
 		})
 	}

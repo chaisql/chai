@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -172,9 +173,9 @@ func TestParserExpr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				if !expr.Equal(test.expected, ex) {
 					require.EqualValues(t, test.expected, ex)
 				}
@@ -219,9 +220,9 @@ func TestParsePath(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			vp, err := parser.ParsePath(test.s)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.EqualValues(t, test.expected, vp)
 			}
 		})
@@ -254,9 +255,9 @@ func TestParserParams(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.EqualValues(t, test.expected, ex)
 			}
 		})

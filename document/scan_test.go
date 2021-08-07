@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +37,7 @@ func TestScan(t *testing.T) {
 	var buf bytes.Buffer
 	codec := msgpack.NewCodec()
 	err := codec.NewEncoder(&buf).EncodeDocument(nestedDoc)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	doc := document.NewFieldBuffer().
 		Add("a", types.NewBlobValue([]byte("foo"))).
@@ -140,7 +141,7 @@ func TestScan(t *testing.T) {
 	var x [4]uint8
 
 	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
 	require.Equal(t, c, true)
@@ -180,20 +181,20 @@ func TestScan(t *testing.T) {
 			return nil
 		}
 		err := document.StructScan(doc, &ds)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Map", func(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, m, 22)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, m, 22)
 	})
 
@@ -201,7 +202,7 @@ func TestScan(t *testing.T) {
 		s := make([]int, 1)
 		arr := document.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
 		err := document.SliceScan(arr, &s)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, s, 2)
 		require.Equal(t, []int{1, 2}, s)
 	})
@@ -210,9 +211,9 @@ func TestScan(t *testing.T) {
 		s := make([]int, 1)
 		arr := document.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
 		err := document.SliceScan(arr, &s)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = document.SliceScan(arr, &s)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, s, 2)
 		require.Equal(t, []int{1, 2}, s)
 	})
@@ -226,7 +227,7 @@ func TestScan(t *testing.T) {
 
 		d := document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
 		err := document.StructScan(d, &b)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		a := 10
 		require.Equal(t, bar{A: &a}, b)
@@ -246,7 +247,7 @@ func TestScan(t *testing.T) {
 
 		d := document.NewFieldBuffer().Add("a", types.NewNullValue())
 		err := document.StructScan(d, &b)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, bar{}, b)
 	})
 }

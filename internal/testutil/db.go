@@ -12,8 +12,8 @@ import (
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
 func NewTestDB(t testing.TB) (*database.Database, func()) {
@@ -23,7 +23,7 @@ func NewTestDB(t testing.TB) (*database.Database, func()) {
 		Codec:   msgpack.NewCodec(),
 		Catalog: catalog.New(),
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return db, func() {
 		db.Close()
@@ -36,7 +36,7 @@ func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func())
 	db, cleanup := NewTestDB(t)
 
 	tx, err := db.Begin(true)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return db, tx, func() {
 		tx.Rollback()
@@ -72,11 +72,11 @@ func Query(db *database.Database, tx *database.Transaction, q string, params ...
 
 func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) {
 	err := Exec(db, tx, q, params...)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func MustQuery(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) *statement.Result {
 	res, err := Query(db, tx, q, params...)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	return res
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -55,9 +56,9 @@ func TestNewFromJSON(t *testing.T) {
 			err := fb.Copy(d)
 
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, *test.expected, *fb)
 			}
 		})
@@ -67,7 +68,7 @@ func TestNewFromJSON(t *testing.T) {
 		d := document.NewFromJSON([]byte(`{"a": 1000}`))
 
 		v, err := d.GetByField("a")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(1000), v)
 
 		v, err = d.GetByField("b")
@@ -83,7 +84,7 @@ func TestNewFromMap(t *testing.T) {
 	}
 
 	doc, err := document.NewFromMap(m)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	t.Run("Iterate", func(t *testing.T) {
 		counter := make(map[string]int)
@@ -98,7 +99,7 @@ func TestNewFromMap(t *testing.T) {
 			}
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Len(t, counter, 3)
 		require.Equal(t, counter["name"], 1)
 		require.Equal(t, counter["age"], 1)
@@ -107,15 +108,15 @@ func TestNewFromMap(t *testing.T) {
 
 	t.Run("GetByField", func(t *testing.T) {
 		v, err := doc.GetByField("name")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewTextValue("foo"), v)
 
 		v, err = doc.GetByField("age")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(10), v)
 
 		v, err = doc.GetByField("nilField")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewNullValue(), v)
 
 		_, err = doc.GetByField("bar")
@@ -126,9 +127,9 @@ func TestNewFromMap(t *testing.T) {
 
 		// test NewFromMap rejects invalid types
 		_, err = document.NewFromMap(8)
-		require.Error(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map")
+		assert.Errorf(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map")
 		_, err = document.NewFromMap(map[int]float64{2: 4.3})
-		require.Error(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map with a string key type")
+		assert.Errorf(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map with a string key type")
 	})
 }
 

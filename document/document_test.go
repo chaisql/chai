@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +17,7 @@ var _ types.Document = new(document.FieldBuffer)
 
 func parsePath(t testing.TB, p string) document.Path {
 	path, err := parser.ParsePath(p)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	return path
 }
 
@@ -39,7 +40,7 @@ func TestFieldBuffer(t *testing.T) {
 			i++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
@@ -64,7 +65,7 @@ func TestFieldBuffer(t *testing.T) {
 		buf2.Add("c", types.NewBoolValue(true))
 
 		err := buf1.ScanDocument(&buf2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		var buf document.FieldBuffer
 		buf.Add("a", types.NewIntegerValue(10))
@@ -77,7 +78,7 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("GetByField", func(t *testing.T) {
 		v, err := buf.GetByField("a")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(10), v)
 
 		v, err = buf.GetByField("not existing")
@@ -127,18 +128,18 @@ func TestFieldBuffer(t *testing.T) {
 
 				d := document.NewFromJSON([]byte(tt.data))
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				p, err := parser.ParsePath(tt.path)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = fb.Set(p, tt.value)
 				if tt.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 					return
 				}
 
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				data, err := document.MarshalJSON(&fb)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, tt.want, string(data))
 			})
 		}
@@ -164,17 +165,17 @@ func TestFieldBuffer(t *testing.T) {
 			t.Run(test.document, func(t *testing.T) {
 				var buf document.FieldBuffer
 				err := json.Unmarshal([]byte(test.document), &buf)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				path := parsePath(t, test.deletePath)
 
 				err = buf.Delete(path)
 				if test.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 				} else {
-					require.NoError(t, err)
+					assert.NoError(t, err)
 					got, err := json.Marshal(&buf)
-					require.NoError(t, err)
+					assert.NoError(t, err)
 					require.JSONEq(t, test.expected, string(got))
 				}
 			})
@@ -187,12 +188,12 @@ func TestFieldBuffer(t *testing.T) {
 		buf.Add("b", types.NewTextValue("hello"))
 
 		err := buf.Replace("a", types.NewBoolValue(true))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		v, err := buf.GetByField("a")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewBoolValue(true), v)
 		err = buf.Replace("d", types.NewIntegerValue(11))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Apply", func(t *testing.T) {
@@ -204,7 +205,7 @@ func TestFieldBuffer(t *testing.T) {
 
 		buf := document.NewFieldBuffer()
 		err := buf.Copy(d)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = buf.Apply(func(p document.Path, v types.Value) (types.Value, error) {
 			if v.Type() == types.ArrayValue || v.Type() == types.DocumentValue {
@@ -213,10 +214,10 @@ func TestFieldBuffer(t *testing.T) {
 
 			return types.NewIntegerValue(1), nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		got, err := json.Marshal(buf)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.JSONEq(t, `{"a": 1, "c": [1, 1], "f": {"g": 1}}`, string(got))
 	})
 
@@ -264,9 +265,9 @@ func TestFieldBuffer(t *testing.T) {
 
 				err := json.Unmarshal([]byte(test.data), &buf)
 				if test.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 				} else {
-					require.NoError(t, err)
+					assert.NoError(t, err)
 					require.Equal(t, *test.expected, buf)
 				}
 			})
@@ -360,7 +361,7 @@ func TestNewFromStruct(t *testing.T) {
 
 	t.Run("Iterate", func(t *testing.T) {
 		doc, err := document.NewFromStruct(u)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		var counter int
 
@@ -429,71 +430,71 @@ func TestNewFromStruct(t *testing.T) {
 
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 27, counter)
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
 		doc, err := document.NewFromStruct(u)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := doc.GetByField("a")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, u.A, v.V().([]byte))
 		v, err = doc.GetByField("b")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, u.B, v.V().(string))
 		v, err = doc.GetByField("c")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, u.C, v.V().(bool))
 		v, err = doc.GetByField("la-reponse-d")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.D, v.V().(int64))
 		v, err = doc.GetByField("e")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.E, v.V().(int64))
 		v, err = doc.GetByField("f")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.F, v.V().(int64))
 		v, err = doc.GetByField("g")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.G, v.V().(int64))
 		v, err = doc.GetByField("h")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.H, v.V().(int64))
 		v, err = doc.GetByField("i")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.I, v.V().(int64))
 		v, err = doc.GetByField("j")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.J, v.V().(int64))
 		v, err = doc.GetByField("k")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.K, v.V().(int64))
 		v, err = doc.GetByField("l")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.L, v.V().(int64))
 		v, err = doc.GetByField("m")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, u.M, v.V().(int64))
 		v, err = doc.GetByField("n")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, u.N, v.V().(float64))
 
 		v, err = doc.GetByField("o")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		d, ok := v.V().(types.Document)
 		require.True(t, ok)
 		v, err = d.GetByField("ig")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, 0, v.V().(int64))
 
 		v, err = doc.GetByField("ig")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, 100, v.V().(int64))
 
 		v, err = doc.GetByField("t")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		a, ok := v.V().(types.Array)
 		require.True(t, ok)
 		var count int
@@ -502,20 +503,20 @@ func TestNewFromStruct(t *testing.T) {
 			require.EqualValues(t, i+1, v.V().(int64))
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 3, count)
 		_, err = a.GetByIndex(10)
 		require.Equal(t, err, document.ErrFieldNotFound)
 		v, err = a.GetByIndex(1)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.EqualValues(t, 2, v.V().(int64))
 
 		v, err = doc.GetByField("bb")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		var timeStr string
-		require.NoError(t, document.ScanValue(v, &timeStr))
+		assert.NoError(t, document.ScanValue(v, &timeStr))
 		parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, u.BB, parsedTime)
 	})
 
@@ -525,16 +526,16 @@ func TestNewFromStruct(t *testing.T) {
 		}
 
 		d, err := document.NewFromStruct(new(s))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		_, err = d.GetByField("a")
 		require.Equal(t, document.ErrFieldNotFound, err)
 
 		a := 10
 		ss := s{A: &a}
 		d, err = document.NewFromStruct(&ss)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		v, err := d.GetByField("a")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(10), v)
 	})
 }
@@ -609,16 +610,16 @@ func TestPath(t *testing.T) {
 			var buf document.FieldBuffer
 
 			err := json.Unmarshal([]byte(test.data), &buf)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			p, err := parser.ParsePath(test.path)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			v, err := p.GetValueFromDocument(&buf)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				res, err := document.ValueToJSON(v)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.JSONEq(t, test.result, string(res))
 			}
 		})
@@ -660,9 +661,9 @@ func TestJSONDocument(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			data, err := json.Marshal(test.d)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }

@@ -9,14 +9,14 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/enginetest"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
 		ng, err := boltengine.NewEngine(filepath.Join(dir, "test.db"), 0o600, nil)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		return ng, cleanup
 	}
 }
@@ -33,9 +33,9 @@ func BenchmarkBoltEngineTableScan(b *testing.B) {
 	enginetest.BenchmarkStoreScan(b, builder(b))
 }
 
-func tempDir(t require.TestingT) (string, func()) {
+func tempDir(t testing.TB) (string, func()) {
 	dir, err := ioutil.TempDir("", "genji")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return dir, func() {
 		os.RemoveAll(dir)

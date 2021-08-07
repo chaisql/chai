@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/catalog"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func newTestDB(t testing.TB) (*database.Database, func()) {
@@ -18,7 +18,7 @@ func newTestDB(t testing.TB) (*database.Database, func()) {
 		Codec:   msgpack.NewCodec(),
 		Catalog: catalog.New(),
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return db, func() {
 		db.Close()
@@ -31,7 +31,7 @@ func newTestTx(t testing.TB) (*database.Database, *database.Transaction, func())
 	db, cleanup := newTestDB(t)
 
 	tx, err := db.Begin(true)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return db, tx, func() {
 		tx.Rollback()
