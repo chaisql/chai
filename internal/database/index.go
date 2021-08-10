@@ -111,7 +111,7 @@ func (idx *Index) Set(vs []types.Value, k []byte) error {
 			return err
 		}
 		if ok {
-			return ErrIndexDuplicateValue
+			return errors.New(ErrIndexDuplicateValue)
 		}
 	}
 
@@ -341,7 +341,7 @@ func (idx *Index) Truncate() error {
 // See IndexValueEncoder for details about how the value themselves are encoded.
 func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 	if vb.Len() > idx.Arity() {
-		return nil, ErrIndexWrongArity
+		return nil, errors.New(ErrIndexWrongArity)
 	}
 
 	var buf bytes.Buffer

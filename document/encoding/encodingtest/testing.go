@@ -128,7 +128,7 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.Equal(t, types.NewTextValue("john"), v)
 
 	v, err = d.GetByField("d")
-	require.Equal(t, document.ErrFieldNotFound, err)
+	assert.ErrorIs(t, err, document.ErrFieldNotFound)
 }
 
 func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
@@ -163,8 +163,8 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 	assert.NoError(t, err)
 	require.Equal(t, types.NewTextValue("john"), v)
 
-	v, err = a.GetByIndex(1000)
-	require.Equal(t, document.ErrValueNotFound, err)
+	_, err = a.GetByIndex(1000)
+	assert.ErrorIs(t, err, document.ErrValueNotFound)
 }
 
 func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {

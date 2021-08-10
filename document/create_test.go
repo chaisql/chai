@@ -71,8 +71,8 @@ func TestNewFromJSON(t *testing.T) {
 		assert.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(1000), v)
 
-		v, err = d.GetByField("b")
-		require.Equal(t, document.ErrFieldNotFound, err)
+		_, err = d.GetByField("b")
+		assert.ErrorIs(t, err, document.ErrFieldNotFound)
 	})
 }
 

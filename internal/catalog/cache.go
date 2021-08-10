@@ -5,6 +5,7 @@ import (
 
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -113,7 +114,7 @@ func (c *catalogCache) Add(tx *database.Transaction, o Relation) error {
 	// if name is provided, ensure it's not duplicated
 	if name != "" {
 		if c.objectExists(name) {
-			return errs.AlreadyExistsError{Name: name}
+			return errors.New(errs.AlreadyExistsError{Name: name})
 		}
 	} else {
 		name = o.GenerateBaseName()

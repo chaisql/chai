@@ -26,7 +26,7 @@ func TestAlterTable(t *testing.T) {
 
 	// Renaming the table to the same name should fail.
 	err = db.Exec("ALTER TABLE foo RENAME TO foo")
-	require.Equal(t, err, errs.AlreadyExistsError{Name: "foo"})
+	assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "foo"})
 
 	err = db.Exec("ALTER TABLE foo RENAME TO bar")
 	assert.NoError(t, err)
@@ -34,7 +34,7 @@ func TestAlterTable(t *testing.T) {
 	// Selecting from the old name should fail.
 	err = db.Exec("SELECT * FROM foo")
 	if !errors.Is(err, errs.NotFoundError{}) {
-		require.Equal(t, err, errs.NotFoundError{Name: "foo"})
+		assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 	}
 
 	d, err := db.QueryDocument("SELECT * FROM bar")

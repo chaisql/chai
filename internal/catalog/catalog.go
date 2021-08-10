@@ -62,7 +62,7 @@ func (c *Catalog) Load(tx *database.Transaction) error {
 		},
 	})
 	if err != nil {
-		if _, ok := err.(errs.AlreadyExistsError); !ok {
+		if !errs.IsAlreadyExistsError(err) {
 			return err
 		}
 	}
@@ -208,7 +208,7 @@ func (c *Catalog) CreateTable(tx *database.Transaction, tableName string, info *
 		return err
 	}
 	if err == nil {
-		return errs.AlreadyExistsError{Name: tableName}
+		return errors.New(errs.AlreadyExistsError{Name: tableName})
 	}
 
 	// replace user-defined constraints by inferred list of constraints
@@ -444,7 +444,7 @@ func (c *Catalog) RenameTable(tx *database.Transaction, oldName, newName string)
 	// Delete the old table info.
 	err := c.CatalogTable.Delete(tx, oldName)
 	if errors.Is(err, errs.ErrDocumentNotFound) {
-		return errs.NotFoundError{Name: oldName}
+		return errors.New(errs.NotFoundError{Name: oldName})
 	}
 	if err != nil {
 		return err

@@ -84,7 +84,8 @@ func TestIndexSet(t *testing.T) {
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10)), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 
 	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
@@ -93,7 +94,8 @@ func TestIndexSet(t *testing.T) {
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10)), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 
 	t.Run("Unique: true, Type: (integer, integer) Duplicate,", func(t *testing.T) {
@@ -103,7 +105,8 @@ func TestIndexSet(t *testing.T) {
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key")))
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(11)), []byte("key")))
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 
 	t.Run("Unique: true, Type: (integer, text) Duplicate,", func(t *testing.T) {
@@ -112,7 +115,8 @@ func TestIndexSet(t *testing.T) {
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key")))
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewTextValue("foo")), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 }
 

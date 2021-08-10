@@ -602,7 +602,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again, should fail
 		_, err = tb.Insert(doc)
-		require.Equal(t, errs.ErrDuplicateDocument, err)
+		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
 	})
 
 	t.Run("Should run the onConflict function if the pk is duplicated", func(t *testing.T) {

@@ -77,7 +77,7 @@ func (op *ExprsOperator) Iterate(in *environment.Environment, fn func(out *envir
 			return err
 		}
 		if v.Type() != types.DocumentValue {
-			return ErrInvalidResult
+			return errors.New(ErrInvalidResult)
 		}
 
 		newEnv.SetDocument(v.V().(types.Document))
@@ -254,10 +254,10 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 				}
 				cmp := bytes.Compare(key, encEnd)
 				if !it.Reverse && cmp > 0 {
-					return ErrStreamClosed
+					return errors.New(ErrStreamClosed)
 				}
 				if it.Reverse && cmp < 0 {
-					return ErrStreamClosed
+					return errors.New(ErrStreamClosed)
 				}
 				return nil
 			}
@@ -393,10 +393,10 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 
 				cmp := bytes.Compare(val, encEnd)
 				if !it.Reverse && cmp > 0 {
-					return ErrStreamClosed
+					return errors.New(ErrStreamClosed)
 				}
 				if it.Reverse && cmp < 0 {
-					return ErrStreamClosed
+					return errors.New(ErrStreamClosed)
 				}
 				return nil
 			}

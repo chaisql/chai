@@ -71,12 +71,12 @@ func TestDocString(t *testing.T) {
 
 	t.Run("NOK illegal input", func(t *testing.T) {
 		_, err := doc.DocString("😀")
-		require.Equal(t, doc.ErrInvalid, err)
+		assert.ErrorIs(t, err, doc.ErrInvalid)
 	})
 
 	t.Run("NOK empty input", func(t *testing.T) {
 		_, err := doc.DocString("")
-		require.Equal(t, doc.ErrInvalid, err)
+		assert.ErrorIs(t, err, doc.ErrInvalid)
 	})
 
 	t.Run("NOK no doc found", func(t *testing.T) {

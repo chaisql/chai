@@ -71,7 +71,7 @@ func TestCatalogTable(t *testing.T) {
 			// Getting a table that doesn't exist should fail.
 			_, err = catalog.GetTable(tx, "unknown")
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "unknown"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "unknown"})
 			}
 
 			return nil
@@ -95,13 +95,13 @@ func TestCatalogTable(t *testing.T) {
 			// Getting a table that has been dropped should fail.
 			_, err = catalog.GetTable(tx, "test")
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "test"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			// Dropping a table that doesn't exist should fail.
 			err = catalog.DropTable(tx, "test")
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "test"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			return errDontCommit
@@ -142,7 +142,7 @@ func TestCatalogTable(t *testing.T) {
 			// Getting the old table should return an error.
 			_, err = catalog.GetTable(tx, "foo")
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "foo"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 			}
 
 			tb, err := catalog.GetTable(tx, "zoo")
@@ -163,7 +163,7 @@ func TestCatalogTable(t *testing.T) {
 			// Renaming a non existing table should return an error
 			err = catalog.RenameTable(tx, "foo", "")
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "foo"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 			}
 
 			return errDontCommit
@@ -208,7 +208,7 @@ func TestCatalogTable(t *testing.T) {
 			// Renaming a non existing table should return an error
 			err = catalog.AddFieldConstraint(tx, "bar", fieldToAdd)
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "bar"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "bar"})
 			}
 
 			// Adding a existing field should return an error
@@ -242,7 +242,7 @@ func TestCatalogCreateTable(t *testing.T) {
 
 			// Creating a table that already exists should fail.
 			err = catalog.CreateTable(tx, "test", nil)
-			require.Equal(t, err, errs.AlreadyExistsError{Name: "test"})
+			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
 
 			return errDontCommit
 		})
@@ -375,7 +375,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
-			require.Equal(t, errs.AlreadyExistsError{Name: "idxFoo"}, err)
+			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "idxFoo"})
 			return nil
 		})
 	})
@@ -388,7 +388,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			if !errors.Is(err, errs.NotFoundError{}) {
-				require.Equal(t, err, errs.NotFoundError{Name: "test"})
+				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			return nil
@@ -471,7 +471,7 @@ func TestTxDropIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction, catalog *catalog.Catalog) error {
 			err := catalog.DropIndex(tx, "idxFoo")
-			require.Equal(t, errs.NotFoundError{Name: "idxFoo"}, err)
+			assert.ErrorIs(t, err, errs.NotFoundError{Name: "idxFoo"})
 			return nil
 		})
 	})
@@ -523,7 +523,7 @@ func TestCatalogReIndex(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction, catalog *catalog.Catalog) error {
 			err := catalog.ReIndex(tx, "foo")
-			require.Equal(t, errs.NotFoundError{Name: "foo"}, err)
+			assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 			return nil
 		})
 	})
@@ -851,7 +851,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 
 		update(t, db, func(tx *database.Transaction, catalog *catalog.Catalog) error {
 			err := catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})
-			require.Equal(t, errs.AlreadyExistsError{Name: "test"}, err)
+			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
 			return nil
 		})
 	})

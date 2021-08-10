@@ -97,7 +97,7 @@ func (op *MapOperator) Iterate(in *environment.Environment, f func(out *environm
 		}
 
 		if v.Type() != types.DocumentValue {
-			return ErrInvalidResult
+			return errors.New(ErrInvalidResult)
 		}
 
 		newEnv.SetDocument(v.V().(types.Document))
@@ -162,7 +162,7 @@ func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environ
 			return f(out)
 		}
 
-		return ErrStreamClosed
+		return errors.New(ErrStreamClosed)
 	})
 }
 
