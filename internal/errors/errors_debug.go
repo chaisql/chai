@@ -1,5 +1,8 @@
 // +build debug
 
+// Package errors provides a simple API to create and compare errors.
+// It captures the stacktrace when an error is created or wrapped, which can be then be inspected for debugging purposes.
+// This package, compiled with the "debug" build tag is only meant to ease development and should not be used otherwise.
 package errors
 
 import (
@@ -9,6 +12,10 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
+// New takes either a string, an existing error and returns a wrapped error that allows to inspect the stacktrace at the moment
+// of its creation. If the error is nil, it returns nil, enabling to wrap functions that returns an error directly.
+// If a string is passed, a new error is created based on that string.
+// If any other type is passed, it will panic.
 func New(e interface{}) error {
 	if e == nil {
 		// This enables to not have to write conditional and just wrap the return expression
@@ -25,10 +32,14 @@ func New(e interface{}) error {
 	return err
 }
 
+// Errorf creates an error that includes the stracktrace, out of a string. If %w is used to format an error, it will
+// only wrap it by concatenation, the wrapped error won't be accessible directly and
+// thus cannot be accessed through the Is or As functions from the standard error package.
 func Errorf(format string, a ...interface{}) error {
 	return errorf(format, a...)
 }
 
+// Is performs a value comparison between err and the target, unwrapping them if necessary.
 func Is(err, target error) bool {
 	if err == target {
 		return true
@@ -46,6 +57,7 @@ func Is(err, target error) bool {
 	return false
 }
 
+// Unwrap returns the underlying error, or the error itself if err is not an *errors.Error.
 func Unwrap(err error) error {
 	if err == nil {
 		return nil
@@ -81,7 +93,7 @@ func _new(e interface{}) *Error {
 
 // wrap makes an Error from the given value. If that value is already an
 // error then it will be used directly, if not, it will be passed to
-// fmt.Errorf("%v"). The skip parameter indicates how far up the stack
+// stringutil.Errorf("%v"). The skip parameter indicates how far up the stack
 // to start the stacktrace. 0 is from the current call, 1 from its caller, etc.
 func wrap(e interface{}, skip int) *Error {
 	if e == nil {
@@ -104,9 +116,6 @@ func wrap(e interface{}, skip int) *Error {
 	}
 }
 
-// Errorf creates a new error with the given message. You can use it
-// as a drop-in replacement for fmt.Errorf() to provide descriptive
-// errors in return values.
 func errorf(format string, a ...interface{}) *Error {
 	return wrap(stringutil.Errorf(format, a...), 1)
 }

@@ -27,7 +27,6 @@ type StackFrame struct {
 
 // NewStackFrame popoulates a stack frame object from the program counter.
 func NewStackFrame(pc uintptr) (frame StackFrame) {
-
 	frame = StackFrame{ProgramCounter: pc}
 	if frame.Func() == nil {
 		return
@@ -53,12 +52,10 @@ func (frame *StackFrame) Func() *runtime.Func {
 // in runtime/debug.Stack()
 func (frame *StackFrame) String() string {
 	str := stringutil.Sprintf("%s:%d (0x%x)\n", frame.File, frame.LineNumber, frame.ProgramCounter)
-
 	source, err := frame.SourceLine()
 	if err != nil {
 		return str
 	}
-
 	return str + stringutil.Sprintf("\t%s.%s: %s\n", frame.Package, frame.Name, source)
 }
 
@@ -85,7 +82,6 @@ func (frame *StackFrame) SourceLine() (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", New(err)
 	}
-
 	return "???", nil
 }
 
@@ -109,7 +105,6 @@ func packageAndName(fn *runtime.Func) (string, string) {
 		pkg += name[:period]
 		name = name[period+1:]
 	}
-
 	name = strings.Replace(name, "·", ".", -1)
 	return pkg, name
 }

@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+// Error wraps any error with a stacktrace, speeding up the development process.
+// Such errors are only returned when the error package is compiled with the "debug" build tag.
 type Error struct {
 	Err    error
 	stack  []uintptr
@@ -16,11 +18,12 @@ func (err *Error) Error() string {
 	return err.Err.Error()
 }
 
-// Return the wrapped error (implements api for As function).
+// Return the underlying error.
 func (err *Error) Unwrap() error {
 	return err.Err
 }
 
+// Is returns true if err equals to the target or the error wrapped by the target.
 func (err *Error) Is(target error) bool {
 	if err == target {
 		return true
@@ -52,12 +55,6 @@ func (err *Error) StackFrames() []StackFrame {
 		}
 	}
 	return err.frames
-}
-
-// Callers satisfies the bugsnag ErrorWithCallerS() interface
-// so that the stack can be read out.
-func (err *Error) Callers() []uintptr {
-	return err.stack
 }
 
 // ErrorStack returns a string that contains both the
