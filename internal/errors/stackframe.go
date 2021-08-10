@@ -3,10 +3,11 @@ package errors
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // A StackFrame contains all necessary information about to generate a line
@@ -51,14 +52,14 @@ func (frame *StackFrame) Func() *runtime.Func {
 // String returns the stackframe formatted in the same way as go does
 // in runtime/debug.Stack()
 func (frame *StackFrame) String() string {
-	str := fmt.Sprintf("%s:%d (0x%x)\n", frame.File, frame.LineNumber, frame.ProgramCounter)
+	str := stringutil.Sprintf("%s:%d (0x%x)\n", frame.File, frame.LineNumber, frame.ProgramCounter)
 
 	source, err := frame.SourceLine()
 	if err != nil {
 		return str
 	}
 
-	return str + fmt.Sprintf("\t%s.%s: %s\n", frame.Package, frame.Name, source)
+	return str + stringutil.Sprintf("\t%s.%s: %s\n", frame.Package, frame.Name, source)
 }
 
 // SourceLine gets the line of code (from File and Line) of the original source if possible.
