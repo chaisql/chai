@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bytes"
+	"context"
 	"strconv"
 	"strings"
 
@@ -321,9 +322,6 @@ func (it *IndexScanOperator) String() string {
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
-
 	index, err := in.GetCatalog().GetIndex(in.GetTx(), it.IndexName)
 	if err != nil {
 		return err
@@ -333,6 +331,13 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 	if err != nil {
 		return err
 	}
+
+	return it.iterateOverIndex(in, table, index, fn)
+}
+
+func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table *database.Table, index *database.Index, fn func(out *environment.Environment) error) error {
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
 
 	ranges, err := it.Ranges.EncodeBuffer(index, table, in)
 	if err != nil || len(ranges) != len(it.Ranges) {
@@ -418,4 +423,114 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 	}
 
 	return nil
+}
+
+// A TransientIndexScanOperator creates an index in a temporary engine
+// and iterates over it.
+type TransientIndexScanOperator struct {
+	*IndexScanOperator
+	// Name of the table to index
+	TableName string
+
+	// Paths to index
+	Paths []document.Path
+}
+
+// TransientIndexScan creates an index for the given table and list of paths in a temporary engineand iterates over it.
+func TransientIndexScan(tableName string, paths []document.Path, ranges ...IndexRange) *TransientIndexScanOperator {
+	return &TransientIndexScanOperator{TableName: tableName, Paths: paths, IndexScanOperator: IndexScan("", ranges...)}
+}
+
+// TransientIndexScanReverse creates an index for the given table and list of paths in a temporary engine
+// and iterates over it reverse order.
+func TransientIndexScanReverse(tableName string, paths []document.Path, ranges ...IndexRange) *TransientIndexScanOperator {
+	return &TransientIndexScanOperator{TableName: tableName, Paths: paths, IndexScanOperator: IndexScanReverse("", ranges...)}
+}
+
+// Iterate over the documents of the table. Each document is stored in the environment
+// that is passed to the fn function, using SetCurrentValue.
+func (it *TransientIndexScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	// get the table to index
+	table, err := in.GetCatalog().GetTable(in.GetTx(), it.TableName)
+	if err != nil {
+		return err
+	}
+
+	// create a temporary database
+	db := in.GetDB()
+	tdb, cleanup, err := db.NewTransientDB(context.Background())
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	// create a write transaction that will be rolled back when the stream is over
+	ttx, err := tdb.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer ttx.Rollback()
+
+	// to create an index we need to create a table first,
+	// even if the table will remain empty
+	// TODO: make the catalog more flexible and accept
+	// creating an index without checking if the table exists.
+	err = tdb.Catalog.CreateTable(ttx, it.TableName, table.Info)
+	if err != nil {
+		return err
+	}
+
+	// Create an index with no name.
+	// The catalog will generate a name and set it to
+	// the idxInfo IndexName field
+	idxInfo := &database.IndexInfo{
+		TableName: it.TableName,
+		Paths:     it.Paths,
+	}
+	err = tdb.Catalog.CreateIndex(ttx, idxInfo)
+	if err != nil {
+		return err
+	}
+	idx, err := tdb.Catalog.GetIndex(ttx, idxInfo.IndexName)
+	if err != nil {
+		return err
+	}
+
+	// build the index from the original table to the transient db index
+	err = tdb.Catalog.BuildIndex(ttx, idx, table)
+	if err != nil {
+		return err
+	}
+
+	return it.IndexScanOperator.iterateOverIndex(in, table, idx, fn)
+}
+
+func (it *TransientIndexScanOperator) String() string {
+	var s strings.Builder
+
+	s.WriteString("transientIndexScan")
+	if it.Reverse {
+		s.WriteString("Reverse")
+	}
+
+	s.WriteRune('(')
+
+	s.WriteString(strconv.Quote(it.TableName))
+	s.WriteString(", [")
+	for i, p := range it.Paths {
+		if i > 0 {
+			s.WriteString(", ")
+		}
+		s.WriteString(p.String())
+	}
+	s.WriteRune(']')
+
+	if len(it.Ranges) > 0 {
+		s.WriteString(", ")
+		s.WriteString(it.Ranges.String())
+	}
+
+	s.WriteString(")")
+
+	return s.String()
 }

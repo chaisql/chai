@@ -262,7 +262,7 @@ OUTER:
 		return err
 	}
 
-	err = c.buildIndex(tx, idx, tb)
+	err = c.BuildIndex(tx, idx, tb)
 	return err
 }
 
@@ -432,10 +432,10 @@ func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
 		return err
 	}
 
-	return c.buildIndex(tx, idx, tb)
+	return c.BuildIndex(tx, idx, tb)
 }
 
-func (c *Catalog) buildIndex(tx *Transaction, idx *Index, table *Table) error {
+func (c *Catalog) BuildIndex(tx *Transaction, idx *Index, table *Table) error {
 	return table.Iterate(func(d types.Document) error {
 		var err error
 		values := make([]types.Value, len(idx.Info.Paths))

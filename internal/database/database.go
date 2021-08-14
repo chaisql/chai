@@ -30,6 +30,9 @@ type Database struct {
 
 	// This controls concurrency on read-only and read/write transactions.
 	txmu *sync.RWMutex
+
+	// Pool of reusable transient engines to use for temporary indices.
+	TransientEnginePool *TransientEnginePool
 }
 
 type Options struct {
@@ -57,6 +60,9 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 		Codec:   opts.Codec,
 		Catalog: NewCatalog(),
 		txmu:    &sync.RWMutex{},
+		TransientEnginePool: &TransientEnginePool{
+			ng: ng,
+		},
 	}
 
 	tx, err := db.Begin(true)
@@ -76,6 +82,26 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 
 	return &db, nil
+}
+
+// NewTransientDB creates a temporary database to be used for creating temporary indices.
+func (db *Database) NewTransientDB(ctx context.Context) (*Database, func() error, error) {
+	ng, err := db.TransientEnginePool.Get(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tdb, err := New(ctx, ng, Options{Codec: db.Codec})
+	if err != nil {
+		_ = ng.Close()
+		_ = db.TransientEnginePool.Release(context.Background(), ng)
+		return nil, nil, err
+	}
+
+	return tdb, func() error {
+		_ = tdb.Close()
+		return db.TransientEnginePool.Release(context.Background(), ng)
+	}, nil
 }
 
 // Close the database.

@@ -13,11 +13,11 @@ import (
 
 var optimizerRules = []func(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error){
 	SplitANDConditionRule,
+	PrecalculateExprRule,
 	RemoveUnnecessaryProjection,
 	RemoveUnnecessaryDistinctNodeRule,
 	RemoveUnnecessaryFilterNodesRule,
 	SelectIndex,
-	PrecalculateExprRule,
 }
 
 // Optimize takes a tree, applies a list of optimization rules

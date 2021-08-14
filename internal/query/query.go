@@ -82,6 +82,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		}
 
 		res, err = stmt.Run(&statement.Context{
+			DB:      context.DB,
 			Tx:      q.tx,
 			Catalog: context.DB.Catalog,
 			Params:  context.Params,
@@ -173,6 +174,7 @@ func (q Query) Prepare(context *Context) error {
 		}
 
 		err = p.Prepare(&statement.Context{
+			DB:      context.DB,
 			Tx:      tx,
 			Catalog: context.DB.Catalog,
 		})

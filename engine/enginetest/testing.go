@@ -60,6 +60,22 @@ func TestEngine(t *testing.T, builder Builder) {
 
 		require.NoError(t, ng.Close())
 	})
+
+	t.Run("Drop", func(t *testing.T) {
+		ng, cleanup := builder()
+		defer cleanup()
+
+		// drop should fail if the engine is not transient
+		err := ng.Drop(context.Background())
+		require.Error(t, err)
+		require.NoError(t, ng.Close())
+
+		tng, err := ng.NewTransientEngine(context.Background())
+		require.NoError(t, err)
+
+		err = tng.Drop(context.Background())
+		require.NoError(t, err)
+	})
 }
 
 // TestTransactionCommitRollback runs a list of tests to verify Commit and Rollback

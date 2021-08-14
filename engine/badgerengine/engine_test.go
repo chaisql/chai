@@ -1,6 +1,7 @@
 package badgerengine_test
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,6 +28,26 @@ func builder(t testing.TB) func() (engine.Engine, func()) {
 
 func TestBadgerEngine(t *testing.T) {
 	enginetest.TestSuite(t, builder(t))
+}
+
+func TestTransient(t *testing.T) {
+	var ng badgerengine.Engine
+
+	tng, err := ng.NewTransientEngine(context.Background())
+	require.NoError(t, err)
+
+	dir := tng.(*badgerengine.Engine).DB.Opts().Dir
+
+	tx, err := tng.Begin(context.Background(), engine.TxOptions{Writable: true})
+	require.NoError(t, err)
+	err = tx.Rollback()
+	require.NoError(t, err)
+
+	err = tng.Drop(context.Background())
+	require.NoError(t, err)
+
+	_, err = os.Stat(dir)
+	require.True(t, os.IsNotExist(err))
 }
 
 func BenchmarkBadgerEngineStorePut(b *testing.B) {

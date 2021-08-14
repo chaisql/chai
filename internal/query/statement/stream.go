@@ -57,6 +57,7 @@ type StreamStmtIterator struct {
 
 func (s *StreamStmtIterator) Iterate(fn func(d types.Document) error) error {
 	var env environment.Environment
+	env.DB = s.Context.DB
 	env.Tx = s.Context.Tx
 	env.Catalog = s.Context.Catalog
 	env.SetParams(s.Context.Params)

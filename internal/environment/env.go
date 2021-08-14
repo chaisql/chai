@@ -22,6 +22,7 @@ type Environment struct {
 	Params  []Param
 	Vars    *document.FieldBuffer
 	Doc     types.Document
+	DB      *database.Database
 	Catalog *database.Catalog
 	Tx      *database.Transaction
 
@@ -126,6 +127,18 @@ func (e *Environment) GetTx() *database.Transaction {
 
 	if outer := e.GetOuter(); outer != nil {
 		return outer.GetTx()
+	}
+
+	return nil
+}
+
+func (e *Environment) GetDB() *database.Database {
+	if e.DB != nil {
+		return e.DB
+	}
+
+	if outer := e.GetOuter(); outer != nil {
+		return outer.GetDB()
 	}
 
 	return nil

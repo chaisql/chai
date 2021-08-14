@@ -212,7 +212,7 @@ func (i *indexSelector) isFilterIndexable(f *stream.FilterOperator) *filterNode 
 }
 
 func (i *indexSelector) associatePkWithNodes(tb *database.TableInfo, nodes filterNodes) *candidate {
-	// TODO: add support for pk()
+	// TODO: add support for the pk() function
 	pk := tb.FieldConstraints.GetPrimaryKey()
 
 	if pk == nil {

@@ -1,6 +1,7 @@
 package boltengine_test
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -40,4 +41,24 @@ func tempDir(t require.TestingT) (string, func()) {
 	return dir, func() {
 		os.RemoveAll(dir)
 	}
+}
+
+func TestTransient(t *testing.T) {
+	var ng boltengine.Engine
+
+	tng, err := ng.NewTransientEngine(context.Background())
+	require.NoError(t, err)
+
+	path := tng.(*boltengine.Engine).DB.Path()
+
+	tx, err := tng.Begin(context.Background(), engine.TxOptions{Writable: true})
+	require.NoError(t, err)
+	err = tx.Rollback()
+	require.NoError(t, err)
+
+	err = tng.Drop(context.Background())
+	require.NoError(t, err)
+
+	_, err = os.Stat(path)
+	require.True(t, os.IsNotExist(err))
 }

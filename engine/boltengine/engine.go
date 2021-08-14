@@ -4,7 +4,12 @@ package boltengine
 import (
 	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
+	"math/rand"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/genjidb/genji/engine"
 	bolt "go.etcd.io/bbolt"
@@ -18,6 +23,8 @@ const (
 // Engine represents a BoltDB engine. Each store is stored in a dedicated bucket.
 type Engine struct {
 	DB *bolt.DB
+
+	transient bool
 }
 
 // NewEngine creates a BoltDB engine. It takes the same argument as Bolt's Open function.
@@ -50,6 +57,33 @@ func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Trans
 		tx:       tx,
 		writable: opts.Writable,
 	}, nil
+}
+
+func (e *Engine) NewTransientEngine(ctx context.Context) (engine.Engine, error) {
+	// build engine with fast options
+	ng, err := NewEngine(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d.db", time.Now().UnixNano()+rand.Int63())), 0600, &bolt.Options{
+		NoFreelistSync: true,
+		FreelistType:   bolt.FreelistMapType,
+		NoSync:         true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ng.transient = true
+	return ng, nil
+}
+
+func (e *Engine) Drop(ctx context.Context) error {
+	if !e.transient {
+		return errors.New("cannot drop persistent engine")
+	}
+
+	p := e.DB.Path()
+
+	_ = e.Close()
+
+	return os.Remove(p)
 }
 
 // Close the engine and underlying Bolt database.

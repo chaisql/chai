@@ -17,8 +17,9 @@ const btreeDegree = 12
 // Engine is a simple memory engine implementation that stores data in
 // an in-memory Btree. It is not thread safe.
 type Engine struct {
-	Closed bool
-	stores map[string]*btree.BTree
+	Closed    bool
+	stores    map[string]*btree.BTree
+	transient bool
 }
 
 // NewEngine creates an in-memory engine.
@@ -41,6 +42,20 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 	}
 
 	return &transaction{ctx: ctx, ng: ng, writable: opts.Writable}, nil
+}
+
+func (ng *Engine) NewTransientEngine(ctx context.Context) (engine.Engine, error) {
+	e := NewEngine()
+	e.transient = true
+	return e, nil
+}
+
+func (ng *Engine) Drop(ctx context.Context) error {
+	if !ng.transient {
+		return errors.New("cannot drop persistent engine")
+	}
+
+	return nil
 }
 
 // Close the engine.
