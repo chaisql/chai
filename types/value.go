@@ -1,5 +1,7 @@
 package types
 
+import "github.com/genjidb/genji/internal/errors"
+
 // A Value stores encoded data alongside its type.
 type value struct {
 	tp ValueType
@@ -125,21 +127,21 @@ func IsZeroValue(v Value) (bool, error) {
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
 		// it means that the array is empty.
 		_, err := v.V().(Array).GetByIndex(0)
-		if err == ErrValueNotFound {
+		if errors.Is(err, ErrValueNotFound) {
 			return true, nil
 		}
 		return false, err
 	case DocumentValue:
 		err := v.V().(Document).Iterate(func(_ string, _ Value) error {
 			// We return an error in the first iteration to stop it.
-			return errStop
+			return errors.Wrap(errStop)
 		})
 		if err == nil {
 			// If err is nil, it means that we didn't iterate,
 			// thus the document is empty.
 			return true, nil
 		}
-		if err == errStop {
+		if errors.Is(err, errStop) {
 			// If err is errStop, it means that we iterate
 			// at least once, thus the document is not empty.
 			return false, nil

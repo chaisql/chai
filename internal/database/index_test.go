@@ -3,7 +3,6 @@ package database_test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -12,7 +11,9 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +28,7 @@ func getIndex(t testing.TB, unique bool, types ...types.ValueType) (*database.In
 	tx, err := ng.Begin(context.Background(), engine.TxOptions{
 		Writable: true,
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	idx := database.NewIndex(tx, "foo", &database.IndexInfo{Unique: unique, Types: types})
 
@@ -43,37 +44,37 @@ func TestIndexSet(t *testing.T) {
 		t.Run(text+"Set nil key falls (arity=1)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
-			require.Error(t, idx.Set(values(types.NewBoolValue(true)), nil))
+			assert.Error(t, idx.Set(values(types.NewBoolValue(true)), nil))
 		})
 
 		t.Run(text+"Set value and key succeeds (arity=1)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
-			require.NoError(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
+			assert.NoError(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set two values and key succeeds (arity=2)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique, types.AnyType, types.AnyType)
 			defer cleanup()
-			require.NoError(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
+			assert.NoError(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set one value fails (arity=1)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique, types.AnyType, types.AnyType)
 			defer cleanup()
-			require.Error(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
+			assert.Error(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set two values fails (arity=1)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique, types.AnyType)
 			defer cleanup()
-			require.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
+			assert.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set three values fails (arity=2)", func(t *testing.T) {
 			idx, cleanup := getIndex(t, unique, types.AnyType, types.AnyType)
 			defer cleanup()
-			require.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
+			assert.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
 		})
 	}
 
@@ -81,37 +82,41 @@ func TestIndexSet(t *testing.T) {
 		idx, cleanup := getIndex(t, true)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10)), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 
 	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
 		idx, cleanup := getIndex(t, true, types.IntegerValue)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10)), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 
 	t.Run("Unique: true, Type: (integer, integer) Duplicate,", func(t *testing.T) {
 		idx, cleanup := getIndex(t, true, types.IntegerValue, types.IntegerValue)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(11)), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(11)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 
 	t.Run("Unique: true, Type: (integer, text) Duplicate,", func(t *testing.T) {
 		idx, cleanup := getIndex(t, true, types.IntegerValue, types.TextValue)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewTextValue("foo")), []byte("key")))
-		require.Equal(t, database.ErrIndexDuplicateValue, idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewTextValue("foo")), []byte("key")))
+		err := idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key"))
+		assert.ErrorIs(t, err, database.ErrIndexDuplicateValue)
 	})
 }
 
@@ -120,11 +125,11 @@ func TestIndexDelete(t *testing.T) {
 		idx, cleanup := getIndex(t, false)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewDoubleValue(10)), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("other-key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("yet-another-key")))
-		require.NoError(t, idx.Set(values(types.NewTextValue("hello")), []byte("yet-another-different-key")))
-		require.NoError(t, idx.Delete(values(types.NewDoubleValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewDoubleValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("other-key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("yet-another-key")))
+		assert.NoError(t, idx.Set(values(types.NewTextValue("hello")), []byte("yet-another-different-key")))
+		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(10)), []byte("key")))
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
@@ -142,7 +147,7 @@ func TestIndexDelete(t *testing.T) {
 			i++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
@@ -150,11 +155,11 @@ func TestIndexDelete(t *testing.T) {
 		idx, cleanup := getIndex(t, false, types.AnyType, types.AnyType)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("other-key")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("yet-another-key")))
-		require.NoError(t, idx.Set(values(types.NewTextValue("hello"), types.NewTextValue("hello")), []byte("yet-another-different-key")))
-		require.NoError(t, idx.Delete(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("other-key")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("yet-another-key")))
+		assert.NoError(t, idx.Set(values(types.NewTextValue("hello"), types.NewTextValue("hello")), []byte("yet-another-different-key")))
+		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
 
 		pivot := values(types.NewIntegerValue(10), types.NewIntegerValue(10))
 		i := 0
@@ -180,7 +185,7 @@ func TestIndexDelete(t *testing.T) {
 			i++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
@@ -188,10 +193,10 @@ func TestIndexDelete(t *testing.T) {
 		idx, cleanup := getIndex(t, true)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key1")))
-		require.NoError(t, idx.Set(values(types.NewDoubleValue(11)), []byte("key2")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(12)), []byte("key3")))
-		require.NoError(t, idx.Delete(values(types.NewDoubleValue(11)), []byte("key2")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key1")))
+		assert.NoError(t, idx.Set(values(types.NewDoubleValue(11)), []byte("key2")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(12)), []byte("key3")))
+		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(11)), []byte("key2")))
 
 		i := 0
 		err := idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.IntegerValue)), func(v, k []byte) error {
@@ -209,7 +214,7 @@ func TestIndexDelete(t *testing.T) {
 			i++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
@@ -217,10 +222,10 @@ func TestIndexDelete(t *testing.T) {
 		idx, cleanup := getIndex(t, true, types.AnyType, types.AnyType)
 		defer cleanup()
 
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key1")))
-		require.NoError(t, idx.Set(values(types.NewDoubleValue(11), types.NewDoubleValue(11)), []byte("key2")))
-		require.NoError(t, idx.Set(values(types.NewIntegerValue(12), types.NewIntegerValue(12)), []byte("key3")))
-		require.NoError(t, idx.Delete(values(types.NewDoubleValue(11), types.NewDoubleValue(11)), []byte("key2")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key1")))
+		assert.NoError(t, idx.Set(values(types.NewDoubleValue(11), types.NewDoubleValue(11)), []byte("key2")))
+		assert.NoError(t, idx.Set(values(types.NewIntegerValue(12), types.NewIntegerValue(12)), []byte("key3")))
+		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(11), types.NewDoubleValue(11)), []byte("key2")))
 
 		i := 0
 		// this will break until the [v, int] case is supported
@@ -249,7 +254,7 @@ func TestIndexDelete(t *testing.T) {
 			i++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
@@ -260,7 +265,7 @@ func TestIndexDelete(t *testing.T) {
 			idx, cleanup := getIndex(t, unique)
 			defer cleanup()
 
-			require.Error(t, idx.Delete(values(types.NewTextValue("foo")), []byte("foo")))
+			assert.Error(t, idx.Delete(values(types.NewTextValue("foo")), []byte("foo")))
 		})
 	}
 }
@@ -269,16 +274,16 @@ func TestIndexExists(t *testing.T) {
 	idx, cleanup := getIndex(t, false, types.DoubleValue, types.IntegerValue)
 	defer cleanup()
 
-	require.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(11)), []byte("key1")))
-	require.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(12)), []byte("key2")))
+	assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(11)), []byte("key1")))
+	assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(12)), []byte("key2")))
 
 	ok, key, err := idx.Exists(values(types.NewDoubleValue(10), types.NewIntegerValue(11)))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, []byte("key1"), key)
 
 	ok, _, err = idx.Exists(values(types.NewDoubleValue(11), types.NewIntegerValue(11)))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	require.False(t, ok)
 }
 
@@ -288,7 +293,7 @@ func requireEqualBinary(t *testing.T, expected types.Value, actual []byte) {
 
 	var buf bytes.Buffer
 	err := types.NewValueEncoder(&buf).Encode(expected)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	data := buf.Bytes()
 	require.Equal(t, data, actual)
@@ -299,7 +304,7 @@ func requireIdxEncodedEq(t *testing.T, vs ...types.Value) func([]byte) {
 
 	var buf bytes.Buffer
 	err := types.NewValueEncoder(&buf).Encode(types.NewArrayValue(document.NewValueBuffer(vs...)))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return func(actual []byte) {
 		t.Helper()
@@ -321,7 +326,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				i++
 				return errors.New("should not iterate")
 			})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, 0, i)
 		})
 
@@ -963,11 +968,11 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					defer cleanup()
 
 					for i := 0; i < total; i++ {
-						require.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
+						assert.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
 						if test.noise != nil {
 							v := test.noise(i)
 							if v != nil {
-								require.NoError(t, idx.Set(test.noise(i), []byte{'a' + byte(i)}))
+								assert.NoError(t, idx.Set(test.noise(i), []byte{'a' + byte(i)}))
 							}
 						}
 					}
@@ -991,7 +996,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						require.Panics(t, func() { _ = fn() })
 					} else {
 						err := fn()
-						require.NoError(t, err)
+						assert.NoError(t, err)
 						require.Equal(t, test.expectedCount, count)
 					}
 				})
@@ -1013,7 +1018,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				i++
 				return errors.New("should not iterate")
 			})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, 0, i)
 		})
 
@@ -1692,11 +1697,11 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					defer cleanup()
 
 					for i := 0; i < total; i++ {
-						require.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
+						assert.NoError(t, idx.Set(test.val(i), []byte{'a' + byte(i)}))
 						if test.noise != nil {
 							v := test.noise(i)
 							if v != nil {
-								require.NoError(t, idx.Set(test.noise(i), []byte{'a' + byte(i)}))
+								assert.NoError(t, idx.Set(test.noise(i), []byte{'a' + byte(i)}))
 							}
 						}
 					}
@@ -1724,7 +1729,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						})
 					} else {
 						err := fn()
-						require.NoError(t, err)
+						assert.NoError(t, err)
 						require.Equal(t, test.expectedCount, count)
 					}
 				})

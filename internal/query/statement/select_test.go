@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -109,11 +110,11 @@ func TestSelectStmt(t *testing.T) {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				db, err := genji.Open(":memory:")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer db.Close()
 
 				err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				if withIndexes {
 					err = db.Exec(`
 						CREATE INDEX idx_color ON test (color);
@@ -122,29 +123,29 @@ func TestSelectStmt(t *testing.T) {
 						CREATE INDEX idx_height ON test (height);
 						CREATE INDEX idx_weight ON test (weight);
 					`)
-					require.NoError(t, err)
+					assert.NoError(t, err)
 				}
 
 				err = db.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = db.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = db.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				st, err := db.Query(test.query, test.params...)
 				defer st.Close()
 
 				if test.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 					return
 				}
 
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				var buf bytes.Buffer
 				err = testutil.IteratorToJSONArray(&buf, st)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
 		}
@@ -154,56 +155,56 @@ func TestSelectStmt(t *testing.T) {
 
 	t.Run("with primary key only", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		st, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer st.Close()
 
 		var buf bytes.Buffer
 		err = testutil.IteratorToJSONArray(&buf, st)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
 	})
 
 	t.Run("with documents", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test VALUES {a: {b: 1}}, {a: 1}, {a: [1, 2, [8,9]]}`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		call := func(q string, res ...string) {
 			st, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer st.Close()
 
 			var i int
 			err = st.Iterate(func(d types.Document) error {
 				data, err := document.MarshalJSON(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.JSONEq(t, res[i], string(data))
 				i++
 				return nil
 			})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		call("SELECT *, a.b FROM test WHERE a = {b: 1}", `{"a": {"b":1}, "a.b": 1}`)
@@ -214,88 +215,88 @@ func TestSelectStmt(t *testing.T) {
 
 	t.Run("table not found", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("SELECT * FROM foo")
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test; CREATE INDEX idx_foo ON test(foo);")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo) VALUES (1), ('hello'), (2), (true)`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		st, err := db.Query("SELECT * FROM test ORDER BY foo")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer st.Close()
 
 		var buf bytes.Buffer
 		err = testutil.IteratorToJSONArray(&buf, st)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
 
 	// https://github.com/genjidb/genji/issues/208
 	t.Run("group by with arrays", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test; INSERT INTO test (a) VALUES ([1, 2, 3]);")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err := db.QueryDocument("SELECT MAX(a) from test GROUP BY a")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		enc, err := json.Marshal(d)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		require.JSONEq(t, `{"MAX(a)": [1, 2, 3]}`, string(enc))
 	})
 
 	t.Run("empty table with aggregators", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test;")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err := db.QueryDocument("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		enc, err := json.Marshal(d)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		require.JSONEq(t, `{"MAX(a)": null, "MIN(b)": null, "COUNT(*)": 0, "SUM(id)": null}`, string(enc))
 	})
 
 	t.Run("array number comparison with no constraints", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES ([1,2,3]), ([4, 5, 6]);
 		`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		check := func() {
 			t.Helper()
 
 			d, err := db.QueryDocument("SELECT * FROM test WHERE a = [1,2,3];")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			enc, err := json.Marshal(d)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			require.JSONEq(t, `{"a": [1, 2, 3]}`, string(enc))
 		}
@@ -303,14 +304,14 @@ func TestSelectStmt(t *testing.T) {
 		check()
 
 		err = db.Exec("CREATE INDEX idx_test_a ON test(a);")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		check()
 	})
 
 	t.Run("using sequences in SELECT must open read-write transaction instead of read-only", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`
@@ -318,22 +319,22 @@ func TestSelectStmt(t *testing.T) {
 			INSERT INTO test (a) VALUES (1);
 			CREATE SEQUENCE seq;
 		`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// normal query
 		d, err := db.QueryDocument("SELECT a, NEXT VALUE FOR seq FROM test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		var a, seq int
 		err = document.Scan(d, &a, &seq)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, 1, seq)
 
 		// query with no table
 		d, err = db.QueryDocument("SELECT NEXT VALUE FOR seq")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = document.Scan(d, &seq)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, seq)
 	})
 }
@@ -363,26 +364,26 @@ func TestDistinct(t *testing.T) {
 
 		t.Run(typ.name, func(t *testing.T) {
 			db, err := genji.Open(":memory:")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer db.Close()
 
 			tx, err := db.Begin(true)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer tx.Rollback()
 
 			err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", doc DOCUMENT, nullable " + typ.name + ");")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			err = tx.Exec("CREATE UNIQUE INDEX test_doc_index ON test(doc);")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			for i := 0; i < total; i++ {
 				unique, nonunique := typ.generateValue(i, notUnique)
 				err = tx.Exec(`INSERT INTO test VALUES {a: ?, b: ?, doc: {a: ?, b: ?}, nullable: null}`, unique, nonunique, unique, nonunique)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 			err = tx.Commit()
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			tests := []struct {
 				name          string
@@ -401,7 +402,7 @@ func TestDistinct(t *testing.T) {
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
 					q, err := db.Query(test.query)
-					require.NoError(t, err)
+					assert.NoError(t, err)
 					defer q.Close()
 
 					var i int
@@ -409,7 +410,7 @@ func TestDistinct(t *testing.T) {
 						i++
 						return nil
 					})
-					require.NoError(t, err)
+					assert.NoError(t, err)
 					require.Equal(t, test.expectedCount, i)
 				})
 			}

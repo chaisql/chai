@@ -3,9 +3,9 @@ package memoryengine
 import (
 	"bytes"
 	"context"
-	"errors"
 
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/google/btree"
 )
 
@@ -50,7 +50,7 @@ func (s *storeTx) Put(k, v []byte) error {
 	}
 
 	if !s.tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	if len(k) == 0 {
@@ -101,14 +101,14 @@ func (s *storeTx) Get(k []byte) ([]byte, error) {
 	it := s.tr.Get(&item{k: k})
 
 	if it == nil {
-		return nil, engine.ErrKeyNotFound
+		return nil, errors.Wrap(engine.ErrKeyNotFound)
 	}
 
 	i := it.(*item)
 	// don't return items that have been deleted during
 	// this transaction.
 	if i.deleted {
-		return nil, engine.ErrKeyNotFound
+		return nil, errors.Wrap(engine.ErrKeyNotFound)
 	}
 
 	return it.(*item).v, nil
@@ -128,19 +128,19 @@ func (s *storeTx) Delete(k []byte) error {
 	}
 
 	if !s.tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	it := s.tr.Get(&item{k: k})
 	if it == nil {
-		return engine.ErrKeyNotFound
+		return errors.Wrap(engine.ErrKeyNotFound)
 	}
 
 	i := it.(*item)
 	// items that have been deleted during
 	// this transaction must be ignored.
 	if i.deleted {
-		return engine.ErrKeyNotFound
+		return errors.Wrap(engine.ErrKeyNotFound)
 	}
 
 	// set the deleted flag to true.
@@ -176,7 +176,7 @@ func (s *storeTx) Truncate() error {
 	}
 
 	if !s.tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	old := s.tr

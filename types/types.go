@@ -1,7 +1,7 @@
 package types
 
 import (
-	"errors"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 var (

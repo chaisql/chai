@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
@@ -19,7 +20,7 @@ func MakeValue(t testing.TB, v interface{}) types.Value {
 	t.Helper()
 
 	vv, err := document.NewValue(v)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	return vv
 }
 
@@ -43,7 +44,7 @@ func MakeDocument(t testing.TB, jsonDoc string) types.Document {
 	var fb document.FieldBuffer
 
 	err := fb.UnmarshalJSON([]byte(jsonDoc))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return &fb
 }
@@ -63,7 +64,7 @@ func MakeArray(t testing.TB, jsonArray string) types.Array {
 	var vb document.ValueBuffer
 
 	err := vb.UnmarshalJSON([]byte(jsonArray))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return &vb
 }
@@ -74,7 +75,7 @@ func MakeValueBuffer(t testing.TB, jsonArray string) *document.ValueBuffer {
 	var vb document.ValueBuffer
 
 	err := vb.UnmarshalJSON([]byte(jsonArray))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return &vb
 }
@@ -98,14 +99,14 @@ func Dump(t testing.TB, v interface{}) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(v)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func RequireDocJSONEq(t testing.TB, d types.Document, expected string) {
 	t.Helper()
 
 	data, err := json.Marshal(d)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
 }
 
@@ -145,7 +146,7 @@ func RequireDocEqual(t testing.TB, d1, d2 types.Document) {
 	l := types.NewDocumentValue(d1)
 	r := types.NewDocumentValue(d2)
 	ok, err := types.IsEqual(l, r)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	if !ok {
 		t.Fatal(cmp.Diff(transformDoc(d1), transformDoc(d2)))
 	}

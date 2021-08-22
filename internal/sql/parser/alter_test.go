@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -30,10 +31,10 @@ func TestParserAlterTable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})
@@ -79,10 +80,10 @@ func TestParserAlterTableAddField(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})

@@ -3,10 +3,10 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -111,7 +111,7 @@ func (idx *Index) Set(vs []types.Value, pk []byte) error {
 			return err
 		}
 		if ok {
-			return ErrIndexDuplicateValue
+			return errors.Wrap(ErrIndexDuplicateValue)
 		}
 	}
 
@@ -135,7 +135,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, []byte, error) {
 
 	st, err := idx.tx.GetStore(idx.Info.StoreName)
 	if err != nil {
-		if err == engine.ErrStoreNotFound {
+		if errors.Is(err, engine.ErrStoreNotFound) {
 			return false, nil, nil
 		}
 
@@ -193,7 +193,7 @@ func (idx *Index) Delete(vs []types.Value, k []byte) error {
 
 		return nil
 	})
-	if err == errStop {
+	if errors.Is(err, errStop) {
 		return nil
 	}
 	if err != nil {
@@ -291,7 +291,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 	}
 
 	st, err := idx.tx.GetStore(idx.Info.StoreName)
-	if err != nil && err != engine.ErrStoreNotFound {
+	if err != nil && !errors.Is(err, engine.ErrStoreNotFound) {
 		return err
 	}
 	if st == nil {
@@ -306,7 +306,7 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 // Truncate deletes all the index data.
 func (idx *Index) Truncate() error {
 	err := idx.tx.DropStore(idx.Info.StoreName)
-	if err != nil && err != engine.ErrStoreNotFound {
+	if err != nil && !errors.Is(err, engine.ErrStoreNotFound) {
 		return err
 	}
 
@@ -325,7 +325,7 @@ func (idx *Index) Truncate() error {
 // See IndexValueEncoder for details about how the value themselves are encoded.
 func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 	if vb.Len() > idx.Arity() {
-		return nil, ErrIndexWrongArity
+		return nil, errors.Wrap(ErrIndexWrongArity)
 	}
 
 	var buf bytes.Buffer
@@ -344,7 +344,7 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 		return st, nil
 	}
 
-	if err != engine.ErrStoreNotFound {
+	if !errors.Is(err, engine.ErrStoreNotFound) {
 		return nil, err
 	}
 

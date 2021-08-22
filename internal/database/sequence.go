@@ -1,11 +1,11 @@
 package database
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )

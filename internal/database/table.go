@@ -3,12 +3,12 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -201,7 +201,7 @@ func (t *Table) Delete(key []byte) error {
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
 			if err != nil {
-				if err == document.ErrFieldNotFound {
+				if errors.Is(err, document.ErrFieldNotFound) {
 					v = types.NewNullValue()
 				} else {
 					return err
@@ -294,7 +294,7 @@ func (t *Table) replace(key []byte, d types.Document) error {
 
 		err = idx.Set(vs, key)
 		if err != nil {
-			if err == ErrIndexDuplicateValue {
+			if errors.Is(err, ErrIndexDuplicateValue) {
 				return errs.ErrDuplicateDocument
 			}
 
@@ -528,8 +528,8 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 func (t *Table) GetDocument(key []byte) (types.Document, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return nil, errs.ErrDocumentNotFound
+		if errors.Is(err, engine.ErrKeyNotFound) {
+			return nil, errors.Wrap(errs.ErrDocumentNotFound)
 		}
 		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
 	}
@@ -550,7 +550,7 @@ func (t *Table) GetDocument(key []byte) (types.Document, error) {
 func (t *Table) generateKey(info *TableInfo, d types.Document) ([]byte, error) {
 	if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValueFromDocument(d)
-		if err == document.ErrFieldNotFound {
+		if errors.Is(err, document.ErrFieldNotFound) {
 			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)
 		}
 		if err != nil {

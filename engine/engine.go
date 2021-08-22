@@ -3,7 +3,8 @@ package engine
 
 import (
 	"context"
-	"errors"
+
+	"github.com/genjidb/genji/internal/errors"
 )
 
 // Common errors returned by the engine implementations.

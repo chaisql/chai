@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/engine/enginetest"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func builder(t testing.TB) func() (engine.Engine, func()) {
 		opts.Logger = nil
 
 		ng, err := badgerengine.NewEngine(opts)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		return ng, cleanup
 	}
 }
@@ -34,17 +35,17 @@ func TestTransient(t *testing.T) {
 	var ng badgerengine.Engine
 
 	tng, err := ng.NewTransientEngine(context.Background())
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	dir := tng.(*badgerengine.Engine).DB.Opts().Dir
 
 	tx, err := tng.Begin(context.Background(), engine.TxOptions{Writable: true})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	err = tx.Rollback()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = tng.Drop(context.Background())
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = os.Stat(dir)
 	require.True(t, os.IsNotExist(err))
@@ -58,9 +59,9 @@ func BenchmarkBadgerEngineTableScan(b *testing.B) {
 	enginetest.BenchmarkStoreScan(b, builder(b))
 }
 
-func tempDir(t require.TestingT) (string, func()) {
+func tempDir(t testing.TB) (string, func()) {
 	dir, err := ioutil.TempDir("", "genji")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return dir, func() {
 		os.RemoveAll(dir)

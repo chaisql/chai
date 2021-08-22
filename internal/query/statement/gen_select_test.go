@@ -9,7 +9,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func TestGenSelect(t *testing.T) {
@@ -20,13 +20,13 @@ func TestGenSelect(t *testing.T) {
 CREATE TABLE foo;
 `
 		err := db.Exec(q)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 
 	// --------------------------------------------------------------------------
 	t.Run("simple projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -36,7 +36,7 @@ CREATE TABLE foo;
 SELECT 1;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"1": 1}
@@ -49,7 +49,7 @@ SELECT 1;
 	// --------------------------------------------------------------------------
 	t.Run("complex expression", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -59,7 +59,7 @@ SELECT 1;
 SELECT 1 + 1 * 2 / 4;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"1 + 1 * 2 / 4": 1}
@@ -72,7 +72,7 @@ SELECT 1 + 1 * 2 / 4;
 	// --------------------------------------------------------------------------
 	t.Run("with spaces", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -82,7 +82,7 @@ SELECT 1 + 1 * 2 / 4;
 SELECT     1  + 1 *      2 /                    4;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"1 + 1 * 2 / 4": 1}
@@ -95,7 +95,7 @@ SELECT     1  + 1 *      2 /                    4;
 	// --------------------------------------------------------------------------
 	t.Run("escaping, double quotes", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -105,7 +105,7 @@ SELECT     1  + 1 *      2 /                    4;
 SELECT '"A"';
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"'\"A\"'": "\"A\""}
@@ -118,7 +118,7 @@ SELECT '"A"';
 	// --------------------------------------------------------------------------
 	t.Run("escaping, single quotes", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -128,7 +128,7 @@ SELECT '"A"';
 SELECT "'A'";
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"'\\'A\\''": "'A'"}
@@ -141,7 +141,7 @@ SELECT "'A'";
 	// --------------------------------------------------------------------------
 	t.Run("aliases", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -151,7 +151,7 @@ SELECT "'A'";
 SELECT 1 AS A;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"A": 1}
@@ -164,7 +164,7 @@ SELECT 1 AS A;
 	// --------------------------------------------------------------------------
 	t.Run("aliases with cast", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -174,7 +174,7 @@ SELECT 1 AS A;
 SELECT CAST(1 AS DOUBLE) AS A;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"A": 1.0}

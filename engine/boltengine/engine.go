@@ -4,7 +4,6 @@ package boltengine
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -31,7 +31,7 @@ type Engine struct {
 func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, error) {
 	db, err := bolt.Open(path, mode, opts)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err)
 	}
 
 	return &Engine{
@@ -43,13 +43,13 @@ func NewEngine(path string, mode os.FileMode, opts *bolt.Options) (*Engine, erro
 func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, errors.Wrap(ctx.Err())
 	default:
 	}
 
 	tx, err := e.DB.Begin(opts.Writable)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err)
 	}
 
 	return &Transaction{
@@ -104,16 +104,16 @@ type Transaction struct {
 // Rollback the transaction. Can be used safely after commit.
 func (t *Transaction) Rollback() error {
 	err := t.tx.Rollback()
-	if err == bolt.ErrTxClosed {
-		return engine.ErrTransactionDiscarded
+	if errors.Is(err, bolt.ErrTxClosed) {
+		return errors.Wrap(engine.ErrTransactionDiscarded)
 	}
 	if err != nil {
-		return err
+		return errors.Wrap(err)
 	}
 
 	select {
 	case <-t.ctx.Done():
-		return t.ctx.Err()
+		return errors.Wrap(t.ctx.Err())
 	default:
 	}
 
@@ -125,7 +125,7 @@ func (t *Transaction) Commit() error {
 	select {
 	case <-t.ctx.Done():
 		_ = t.Rollback()
-		return t.ctx.Err()
+		return errors.Wrap(t.ctx.Err())
 	default:
 	}
 
@@ -133,28 +133,28 @@ func (t *Transaction) Commit() error {
 	if t.cleanupBin {
 		err := t.cleanupBinBucket()
 		if err != nil {
-			return err
+			return errors.Wrap(err)
 		}
 	}
 
 	err := t.tx.Commit()
-	if err == bolt.ErrTxClosed {
-		return engine.ErrTransactionDiscarded
+	if errors.Is(err, bolt.ErrTxClosed) {
+		return errors.Wrap(engine.ErrTransactionDiscarded)
 	}
-	return err
+	return errors.Wrap(err)
 }
 
 // GetStore returns a store by name. The store uses a Bolt bucket.
 func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 	select {
 	case <-t.ctx.Done():
-		return nil, t.ctx.Err()
+		return nil, errors.Wrap(t.ctx.Err())
 	default:
 	}
 
 	b := t.tx.Bucket(name)
 	if b == nil {
-		return nil, engine.ErrStoreNotFound
+		return nil, errors.Wrap(engine.ErrStoreNotFound)
 	}
 
 	return &Store{
@@ -171,47 +171,47 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 func (t *Transaction) CreateStore(name []byte) error {
 	select {
 	case <-t.ctx.Done():
-		return t.ctx.Err()
+		return errors.Wrap(t.ctx.Err())
 	default:
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	_, err := t.tx.CreateBucket(name)
-	if err == bolt.ErrBucketExists {
-		return engine.ErrStoreAlreadyExists
+	if errors.Is(err, bolt.ErrBucketExists) {
+		return errors.Wrap(engine.ErrStoreAlreadyExists)
 	}
 
-	return err
+	return errors.Wrap(err)
 }
 
 // DropStore deletes the underlying bucket.
 func (t *Transaction) DropStore(name []byte) error {
 	select {
 	case <-t.ctx.Done():
-		return t.ctx.Err()
+		return errors.Wrap(t.ctx.Err())
 	default:
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	err := t.tx.DeleteBucket(name)
-	if err == bolt.ErrBucketNotFound {
-		return engine.ErrStoreNotFound
+	if errors.Is(err, bolt.ErrBucketNotFound) {
+		return errors.Wrap(engine.ErrStoreNotFound)
 	}
 
-	return err
+	return errors.Wrap(err)
 }
 
 func (t *Transaction) markForDeletion(bucketName, key []byte) error {
 	// create the bin bucket
 	bb, err := t.tx.CreateBucketIfNotExists([]byte(binBucket))
 	if err != nil {
-		return err
+		return errors.Wrap(err)
 	}
 
 	// store the key in the bin bucket.
@@ -220,7 +220,7 @@ func (t *Transaction) markForDeletion(bucketName, key []byte) error {
 	n := binary.PutUvarint(buf[:], uint64(len(bucketName)))
 	err = bb.Put(append(bucketName, key...), buf[:n])
 	if err != nil {
-		return err
+		return errors.Wrap(err)
 	}
 
 	// tell the transaction to cleanup on commit
@@ -252,11 +252,11 @@ func (t *Transaction) cleanupBinBucket() error {
 		if b.Get(key) == nil {
 			err := b.Delete(key)
 			if err != nil {
-				return err
+				return errors.Wrap(err)
 			}
 		}
 	}
 
 	// we can now drop the bin bucket
-	return t.tx.DeleteBucket([]byte(binBucket))
+	return errors.Wrap(t.tx.DeleteBucket([]byte(binBucket)))
 }

@@ -3,13 +3,13 @@
 package document
 
 import (
-	"errors"
 	"math"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )

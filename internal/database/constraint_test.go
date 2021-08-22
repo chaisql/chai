@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -158,9 +159,9 @@ func TestFieldConstraintsInfer(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := test.got.Infer()
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.want, got)
 			}
 		})
@@ -249,9 +250,9 @@ func TestFieldConstraintsAdd(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.got.Add(&test.add)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.want, test.got)
 			}
 		})
@@ -320,9 +321,9 @@ func TestFieldConstraintsConvert(t *testing.T) {
 		t.Run(fmt.Sprintf("%s / %v to %v", test.path, test.in, test.want), func(t *testing.T) {
 			got, err := test.constraints.ConvertValueAtPath(test.path, test.in, database.CastConversion)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.want, got)
 			}
 		})

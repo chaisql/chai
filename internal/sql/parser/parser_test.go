@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func TestParserMultiStatement(t *testing.T) {
@@ -32,7 +33,7 @@ func TestParserMultiStatement(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.EqualValues(t, test.expected, q.Statements)
 		})
 	}

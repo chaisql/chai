@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -30,6 +31,6 @@ func TestStream(t *testing.T) {
 		count++
 		return nil
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	require.Equal(t, int64(1), count)
 }
