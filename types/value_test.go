@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +63,7 @@ func TestNewValue(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v, err := document.NewValue(test.value)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected, v.V())
 		})
 	}

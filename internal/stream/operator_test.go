@@ -9,10 +9,12 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -56,9 +58,9 @@ func TestMap(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -112,9 +114,9 @@ func TestFilter(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 			}
 		})
@@ -154,12 +156,12 @@ func TestTake(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				if err == stream.ErrStreamClosed {
+				if errors.Is(err, stream.ErrStreamClosed) {
 					err = nil
 				}
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.output, count)
 			}
 		})
@@ -199,9 +201,9 @@ func TestSkip(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.output, count)
 			}
 		})
@@ -258,9 +260,9 @@ func TestGroupBy(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -340,9 +342,9 @@ func TestSort(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.want, got)
 			}
 		})
@@ -393,9 +395,9 @@ func TestTableInsert(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -429,14 +431,14 @@ func TestTableReplace(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
 
 			tb, err := db.Catalog.GetTable(tx, "test")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			for i, doc := range test.docsInTable {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 				kk, err := doc.GetByField("a")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				k, err := tb.EncodeValue(kk)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				test.in[i].(*document.FieldBuffer).EncodedKey = k
 			}
 
@@ -452,18 +454,18 @@ func TestTableReplace(t *testing.T) {
 				require.True(t, ok)
 
 				got, err := json.Marshal(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				want, err := json.Marshal(test.expected[i])
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.JSONEq(t, string(want), string(got))
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
@@ -475,7 +477,7 @@ func TestTableReplace(t *testing.T) {
 				got = append(got, fb)
 				return nil
 			})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			test.expected.RequireEqual(t, got)
 		})
 	}
@@ -517,12 +519,12 @@ func TestTableDelete(t *testing.T) {
 			env.Catalog = db.Catalog
 
 			tb, err := db.Catalog.GetTable(tx, "test")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			kk, err := test.in.GetByField("a")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			k, err := tb.EncodeValue(kk)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			test.in.(*document.FieldBuffer).EncodedKey = k
 
 			s := stream.New(stream.Documents(test.in)).Pipe(stream.TableDelete("test"))
@@ -533,9 +535,9 @@ func TestTableDelete(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
@@ -548,7 +550,7 @@ func TestTableDelete(t *testing.T) {
 				got = append(got, fb)
 				return nil
 			})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			test.expected.RequireEqual(t, got)
 		})
 	}
@@ -590,14 +592,14 @@ func TestDistinct(t *testing.T) {
 				require.True(t, ok)
 				var fb document.FieldBuffer
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				got = append(got, &fb)
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				test.want.RequireEqual(t, got)
 			}
 		})
@@ -634,7 +636,7 @@ func TestSet(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.e.String(), func(t *testing.T) {
 			p, err := parser.ParsePath(test.path)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			s := stream.New(stream.Documents(test.in...)).Pipe(stream.Set(p, test.e))
 			i := 0
 			err = s.Iterate(nil, func(out *environment.Environment) error {
@@ -644,9 +646,9 @@ func TestSet(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -681,9 +683,9 @@ func TestUnset(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -730,9 +732,9 @@ func TestIterRename(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

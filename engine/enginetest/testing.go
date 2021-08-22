@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +59,7 @@ func TestEngine(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 
-		require.NoError(t, ng.Close())
+		assert.NoError(t, ng.Close())
 	})
 
 	t.Run("Drop", func(t *testing.T) {
@@ -84,32 +85,32 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 	ng, cleanup := builder()
 	defer cleanup()
 	defer func() {
-		require.NoError(t, ng.Close())
+		assert.NoError(t, ng.Close())
 	}()
 
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.Commit()
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Commit after rollback should fail", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.Rollback()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.Commit()
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Commit after context canceled should fail", func(t *testing.T) {
@@ -117,70 +118,70 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		tx, err := ng.Begin(ctx, engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
-		require.NoError(t, tx.CreateStore([]byte("test")))
+		assert.NoError(t, tx.CreateStore([]byte("test")))
 		st, err := tx.GetStore([]byte("test"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = st.Put([]byte("a"), []byte("b"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 
 		err = tx.Commit()
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		// ensure data has not been persisted
 		tx, err = ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		_, err = tx.GetStore([]byte("test"))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Rollback after commit should return ErrTransactionDiscarded", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.Commit()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.Rollback()
-		require.Equal(t, engine.ErrTransactionDiscarded, err)
+		assert.ErrorIs(t, err, engine.ErrTransactionDiscarded)
 	})
 
 	t.Run("Commit after commit should return ErrTransactionDiscarded", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.Commit()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.Commit()
-		require.Equal(t, engine.ErrTransactionDiscarded, err)
+		assert.ErrorIs(t, err, engine.ErrTransactionDiscarded)
 	})
 
 	t.Run("Rollback after rollback should should return ErrTransactionDiscarded", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.Rollback()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.Rollback()
-		require.Equal(t, engine.ErrTransactionDiscarded, err)
+		assert.ErrorIs(t, err, engine.ErrTransactionDiscarded)
 	})
 
 	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {
@@ -188,37 +189,37 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 		tx, err := ng.Begin(ctx, engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 
 		err = tx.Rollback()
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// create store for testing store methods
 		err = tx.CreateStore([]byte("store1"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.Commit()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// create a new read-only transaction
 		tx, err = ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		// fetch the store and the index
 		st, err := tx.GetStore([]byte("store1"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tests := []struct {
 			name string
@@ -237,7 +238,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				var err error
 				test.fn(&err)
 
-				require.Equal(t, test.err, err)
+				assert.ErrorIs(t, err, test.err)
 			})
 		}
 	})
@@ -267,12 +268,12 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				func(tx engine.Transaction) error { return tx.CreateStore([]byte("store")) },
 				func(tx engine.Transaction, err *error) {
 					st, er := tx.GetStore([]byte("store"))
-					require.NoError(t, er)
-					require.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
+					assert.NoError(t, er)
+					assert.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
 				},
 				func(tx engine.Transaction, err *error) {
 					st, er := tx.GetStore([]byte("store"))
-					require.NoError(t, er)
+					assert.NoError(t, er)
 					_, *err = st.Get([]byte("foo"))
 				},
 			},
@@ -283,7 +284,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				ng, cleanup := builder()
 				defer cleanup()
 				defer func() {
-					require.NoError(t, ng.Close())
+					assert.NoError(t, ng.Close())
 				}()
 
 				if test.initFn != nil {
@@ -291,36 +292,36 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 						tx, err := ng.Begin(context.Background(), engine.TxOptions{
 							Writable: true,
 						})
-						require.NoError(t, err)
+						assert.NoError(t, err)
 						defer tx.Rollback()
 
 						err = test.initFn(tx)
-						require.NoError(t, err)
+						assert.NoError(t, err)
 						err = tx.Commit()
-						require.NoError(t, err)
+						assert.NoError(t, err)
 					}()
 				}
 
 				tx, err := ng.Begin(context.Background(), engine.TxOptions{
 					Writable: true,
 				})
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer tx.Rollback()
 
 				test.writeFn(tx, &err)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				err = tx.Rollback()
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				tx, err = ng.Begin(context.Background(), engine.TxOptions{
 					Writable: true,
 				})
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer tx.Rollback()
 
 				test.readFn(tx, &err)
-				require.Error(t, err)
+				assert.Error(t, err)
 			})
 		}
 
@@ -328,7 +329,7 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 			ng, cleanup := builder()
 			defer cleanup()
 			defer func() {
-				require.NoError(t, ng.Close())
+				assert.NoError(t, ng.Close())
 			}()
 
 			t.Run(test.name+"/commit", func(t *testing.T) {
@@ -337,36 +338,36 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 						tx, err := ng.Begin(context.Background(), engine.TxOptions{
 							Writable: true,
 						})
-						require.NoError(t, err)
+						assert.NoError(t, err)
 						defer tx.Rollback()
 
 						err = test.initFn(tx)
-						require.NoError(t, err)
+						assert.NoError(t, err)
 						err = tx.Commit()
-						require.NoError(t, err)
+						assert.NoError(t, err)
 					}()
 				}
 
 				tx, err := ng.Begin(context.Background(), engine.TxOptions{
 					Writable: true,
 				})
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer tx.Rollback()
 
 				test.writeFn(tx, &err)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				err = tx.Commit()
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				tx, err = ng.Begin(context.Background(), engine.TxOptions{
 					Writable: true,
 				})
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer tx.Rollback()
 
 				test.readFn(tx, &err)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			})
 		}
 	})
@@ -389,20 +390,20 @@ func TestTransactionCommitRollback(t *testing.T, builder Builder) {
 				ng, cleanup := builder()
 				defer cleanup()
 				defer func() {
-					require.NoError(t, ng.Close())
+					assert.NoError(t, ng.Close())
 				}()
 
 				tx, err := ng.Begin(context.Background(), engine.TxOptions{
 					Writable: true,
 				})
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer tx.Rollback()
 
 				test.writeFn(tx, &err)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				test.readFn(tx, &err)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			})
 		}
 	})
@@ -414,20 +415,20 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CreateStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		st, err := tx.GetStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.NotNil(t, st)
 	})
 
@@ -435,38 +436,38 @@ func TestTransactionCreateStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CreateStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = tx.CreateStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreAlreadyExists, err)
+		assert.ErrorIs(t, err, engine.ErrStoreAlreadyExists)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		tx, err := ng.Begin(ctx, engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		cancel()
 		err = tx.CreateStore([]byte("store"))
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -476,83 +477,83 @@ func TestTransactionGetStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: false,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		_, err = tx.GetStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrStoreNotFound)
 	})
 
 	t.Run("Should return the right store", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		// create two stores
 		err = tx.CreateStore([]byte("storea"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.CreateStore([]byte("storeb"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// fetch first store
 		sta, err := tx.GetStore([]byte("storea"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// fetch second store
 		stb, err := tx.GetStore([]byte("storeb"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// insert data in first store
 		err = sta.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// use sta to fetch data and verify if it's present
 		v, err := sta.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, v, []byte("FOO"))
 
 		// use stb to fetch data and verify it's not present
 		_, err = stb.Get([]byte("foo"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		tx, err := ng.Begin(ctx, engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		// create two stores
 		err = tx.CreateStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 
 		_, err = tx.GetStore([]byte("store"))
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -562,64 +563,64 @@ func TestTransactionDropStore(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CreateStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = tx.DropStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		_, err = tx.GetStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrStoreNotFound)
 	})
 
 	t.Run("Should fail if store not found", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.DropStore([]byte("store"))
-		require.Equal(t, engine.ErrStoreNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrStoreNotFound)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		tx, err := ng.Begin(ctx, engine.TxOptions{
 			Writable: true,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		// create two stores
 		err = tx.CreateStore([]byte("store"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 
 		err = tx.DropStore([]byte("store"))
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -632,15 +633,15 @@ func storeBuilderWithContext(ctx context.Context, t testing.TB, builder Builder)
 	tx, err := ng.Begin(ctx, engine.TxOptions{
 		Writable: true,
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	err = tx.CreateStore([]byte("test"))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	st, err := tx.GetStore([]byte("test"))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	return st, func() {
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 		defer tx.Rollback()
 	}
@@ -660,7 +661,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			for it.Seek(nil); it.Valid(); it.Next() {
 				i++
 			}
-			require.NoError(t, it.Err())
+			assert.NoError(t, it.Err())
 			require.Zero(t, i)
 		}
 		t.Run("Reverse: false", func(t *testing.T) {
@@ -680,7 +681,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		for i := 1; i <= 10; i++ {
 			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		it := st.Iterator(engine.IteratorOptions{})
@@ -692,7 +693,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		for it.Seek(nil); it.Valid(); it.Next() {
 			i++
 		}
-		require.Equal(t, context.Canceled, it.Err())
+		assert.ErrorIs(t, it.Err(), context.Canceled)
 		require.Zero(t, i)
 	})
 
@@ -702,7 +703,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		for i := 1; i <= 10; i++ {
 			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		var i uint8 = 1
@@ -719,7 +720,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i++
 			count++
 		}
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 
 		require.Equal(t, count, 10)
 	})
@@ -730,7 +731,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		for i := 1; i <= 10; i++ {
 			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		var i uint8 = 10
@@ -747,7 +748,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i--
 			count++
 		}
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 		require.Equal(t, 10, count)
 	})
 
@@ -757,7 +758,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		for i := 1; i <= 10; i++ {
 			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		var i uint8 = 4
@@ -774,7 +775,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i++
 			count++
 		}
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 		require.Equal(t, 7, count)
 	})
 
@@ -784,7 +785,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		for i := 1; i <= 10; i++ {
 			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		var i uint8 = 4
@@ -801,7 +802,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			i--
 			count++
 		}
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 		require.Equal(t, 4, count)
 	})
 
@@ -810,10 +811,10 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte{1}, []byte{1})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = st.Put([]byte{3}, []byte{3})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		called := false
 		it := st.Iterator(engine.IteratorOptions{})
@@ -827,7 +828,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{3}, v)
 			called = true
 		}
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 
 		require.True(t, called)
 	})
@@ -837,10 +838,10 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte{1}, []byte{1})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = st.Put([]byte{3}, []byte{3})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		called := false
 		it := st.Iterator(engine.IteratorOptions{Reverse: true})
@@ -854,7 +855,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{1}, v)
 			called = true
 		}
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 		require.True(t, called)
 	})
 
@@ -864,14 +865,14 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		k := []byte{0xFF, 0xFF, 0xFF, 0xFF}
 		err := st.Put(k, []byte{1})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		it := st.Iterator(engine.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		it.Seek(nil)
 
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 		require.True(t, it.Valid())
 		require.Equal(t, it.Item().Key(), k)
 	})
@@ -882,7 +883,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 
 		for i := 0; i < 50; i++ {
 			err := st.Put([]byte{byte(i)}, []byte{byte(i)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 
 		i := 0
@@ -893,7 +894,7 @@ func TestStoreIterator(t *testing.T, builder Builder) {
 			require.Equal(t, []byte{byte(i)}, it.Item().Key())
 
 			err := st.Delete([]byte{byte(i)})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			i++
 		}
 	})
@@ -906,10 +907,10 @@ func TestStorePut(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 	})
 
@@ -918,13 +919,13 @@ func TestStorePut(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = st.Put([]byte("foo"), []byte("BAR"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
 	})
 
@@ -933,10 +934,10 @@ func TestStorePut(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put(nil, []byte("FOO"))
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		err = st.Put([]byte(""), []byte("BAR"))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Should fail when value is nil or empty", func(t *testing.T) {
@@ -944,10 +945,10 @@ func TestStorePut(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), nil)
-		require.Error(t, err)
+		assert.Error(t, err)
 
 		err = st.Put([]byte("foo"), []byte(""))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -959,7 +960,7 @@ func TestStorePut(t *testing.T, builder Builder) {
 
 		cancel()
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -970,7 +971,7 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		r, err := st.Get([]byte("id"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 		require.Nil(t, r)
 	})
 
@@ -979,16 +980,16 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = st.Put([]byte("bar"), []byte("BAR"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 
 		v, err = st.Get([]byte("bar"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("BAR"), v)
 	})
 
@@ -1000,11 +1001,11 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 		_, err = st.Get([]byte("foo"))
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -1015,7 +1016,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Delete([]byte("id"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
@@ -1023,25 +1024,25 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = st.Put([]byte("bar"), []byte("BAR"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 
 		// delete the key
 		err = st.Delete([]byte("bar"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// try again, should fail
 		err = st.Delete([]byte("bar"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 
 		// make sure it didn't also delete the other one
 		v, err = st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
@@ -1060,42 +1061,42 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		tx, err := ng.Begin(context.Background(), engine.TxOptions{Writable: true})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		st, err := tx.GetStore([]byte("test"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		// delete the key
 		err = st.Delete([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		_, err = st.Get([]byte("foo"))
-		require.Equal(t, engine.ErrKeyNotFound, err)
+		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 
 		err = st.Put([]byte("foo"), []byte("bar"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err := st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("bar"), v)
 
 		// commit and reopen a transaction
 		err = tx.Commit()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		tx, err = ng.Begin(context.Background(), engine.TxOptions{Writable: false})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		st, err = tx.GetStore([]byte("test"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		v, err = st.Get([]byte("foo"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, []byte("bar"), v)
 	})
 
@@ -1107,11 +1108,11 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 		err = st.Delete([]byte("foo"))
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -1122,7 +1123,7 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Truncate()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Should truncate the store", func(t *testing.T) {
@@ -1130,17 +1131,17 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = st.Put([]byte("bar"), []byte("BAR"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = st.Truncate()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		it := st.Iterator(engine.IteratorOptions{})
 		defer it.Close()
 		it.Seek(nil)
-		require.NoError(t, it.Err())
+		assert.NoError(t, it.Err())
 		require.False(t, it.Valid())
 	})
 
@@ -1152,11 +1153,11 @@ func TestStoreTruncate(t *testing.T, builder Builder) {
 		defer cleanup()
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cancel()
 		err = st.Truncate()
-		require.Equal(t, context.Canceled, err)
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -1166,38 +1167,38 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err := db.QueryDocument(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT COUNT(*) FROM test;
 		`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		var count int
 		err = document.Scan(d, &count)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 4, count)
 
 		t.Run("ORDER BY", func(t *testing.T) {
 			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer st.Close()
 
 			var i int
 			err = st.Iterate(func(d types.Document) error {
 				var a int
 				err := document.Scan(d, &a)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, 4-i, a)
 				i++
 				return nil
 			})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	})
 
@@ -1205,28 +1206,28 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("UPDATE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		st, err := db.Query(`
 				CREATE TABLE test;
@@ -1234,11 +1235,11 @@ func TestQueries(t *testing.T, builder Builder) {
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
 			`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
 		err = testutil.IteratorToJSONArray(&buf, st)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 	})
 
@@ -1246,32 +1247,32 @@ func TestQueries(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Exec("CREATE TABLE test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			for i := 1; i < 200; i++ {
 				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		d, err := db.QueryDocument(`
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;
 		`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		var count int
 		err = document.Scan(d, &count)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 2, count)
 	})
 }
@@ -1282,11 +1283,11 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			d, err := tx.QueryDocument(`
@@ -1294,46 +1295,46 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT COUNT(*) FROM test;
 			`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			var count int
 			err = document.Scan(d, &count)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, 4, count)
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("INSERT", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			err = tx.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("UPDATE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			st, err := tx.Query(`
@@ -1342,26 +1343,26 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
 			`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
 			err = testutil.IteratorToJSONArray(&buf, st)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("DELETE", func(t *testing.T) {
 		ng, cleanup := builder()
 		defer cleanup()
 		defer func() {
-			require.NoError(t, ng.Close())
+			assert.NoError(t, ng.Close())
 		}()
 
 		db, err := genji.New(context.Background(), ng)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
 			d, err := tx.QueryDocument(`
@@ -1370,13 +1371,13 @@ func TestQueriesSameTransaction(t *testing.T, builder Builder) {
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;
 		`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			var count int
 			document.Scan(d, &count)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, 2, count)
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }

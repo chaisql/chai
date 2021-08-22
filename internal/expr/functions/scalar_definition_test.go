@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -46,15 +47,15 @@ func TestScalarFunctionDef(t *testing.T) {
 
 		t.Run("OK", func(t *testing.T) {
 			fexpr, err := def.Function(expr1, expr2, expr3)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			v, err := fexpr.Eval(env)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, types.NewIntegerValue(1+2+3), v)
 		})
 
 		t.Run("NOK", func(t *testing.T) {
 			_, err := def.Function(expr1, expr2)
-			require.Error(t, err)
+			assert.Error(t, err)
 		})
 	})
 }

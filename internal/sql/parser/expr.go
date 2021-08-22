@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -229,16 +230,16 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		return fs, nil
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
-			return nil, &ParseError{Message: "missing param name"}
+			return nil, errors.Wrap(&ParseError{Message: "missing param name"})
 		}
 		if p.orderedParams > 0 {
-			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
+			return nil, errors.Wrap(&ParseError{Message: "cannot mix positional arguments with named arguments"})
 		}
 		p.namedParams++
 		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
-			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
+			return nil, errors.Wrap(&ParseError{Message: "cannot mix positional arguments with named arguments"})
 		}
 		p.orderedParams++
 		return expr.PositionalParam(p.orderedParams), nil
@@ -258,14 +259,14 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 	case scanner.NUMBER:
 		v, err := strconv.ParseFloat(lit, 64)
 		if err != nil {
-			return nil, &ParseError{Message: "unable to parse number", Pos: pos}
+			return nil, errors.Wrap(&ParseError{Message: "unable to parse number", Pos: pos})
 		}
 		return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
 	case scanner.ADD, scanner.SUB:
 		sign := tok
 		tok, pos, lit = p.Scan()
 		if tok != scanner.NUMBER && tok != scanner.INTEGER {
-			return nil, &ParseError{Message: "syntax error", Pos: pos}
+			return nil, errors.Wrap(&ParseError{Message: "syntax error", Pos: pos})
 		}
 		if sign == scanner.SUB {
 			lit = "-" + lit
@@ -278,7 +279,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {
 				return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
 			}
-			return nil, &ParseError{Message: "unable to parse integer", Pos: pos}
+			return nil, errors.Wrap(&ParseError{Message: "unable to parse integer", Pos: pos})
 		}
 		return expr.LiteralValue{Value: types.NewIntegerValue(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
@@ -400,16 +401,16 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 	switch tok {
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
-			return nil, &ParseError{Message: "missing param name"}
+			return nil, errors.Wrap(&ParseError{Message: "missing param name"})
 		}
 		if p.orderedParams > 0 {
-			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
+			return nil, errors.Wrap(&ParseError{Message: "cannot mix positional arguments with named arguments"})
 		}
 		p.namedParams++
 		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
 		if p.namedParams > 0 {
-			return nil, &ParseError{Message: "cannot mix positional arguments with named arguments"}
+			return nil, errors.Wrap(&ParseError{Message: "cannot mix positional arguments with named arguments"})
 		}
 		p.orderedParams++
 		return expr.PositionalParam(p.orderedParams), nil

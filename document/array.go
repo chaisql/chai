@@ -1,10 +1,10 @@
 package document
 
 import (
-	"errors"
 	"sort"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 )
 
@@ -47,7 +47,7 @@ func ArrayContains(a types.Array, v types.Value) (bool, error) {
 		return nil
 	})
 
-	if err != nil && err != errStop {
+	if err != nil && !errors.Is(err, errStop) {
 		return false, err
 	}
 

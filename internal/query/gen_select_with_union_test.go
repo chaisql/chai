@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,13 +26,13 @@ INSERT INTO bar (a,b) VALUES (3.0, 3.0), (4.0, 4.0);
 INSERT INTO baz (x,y) VALUES ("a", "a"), ("b", "b");
 `
 		err := db.Exec(q)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 
 	// --------------------------------------------------------------------------
 	t.Run("basic union all", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -43,7 +44,7 @@ UNION ALL
 SELECT * FROM bar;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 { "a": 1.0, "b": 1.0}
@@ -59,7 +60,7 @@ SELECT * FROM bar;
 	// --------------------------------------------------------------------------
 	t.Run("basic union all with diff fields", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -71,7 +72,7 @@ UNION ALL
 SELECT * FROM baz;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 { "a": 1.0, "b": 1.0}
@@ -87,7 +88,7 @@ SELECT * FROM baz;
 	// --------------------------------------------------------------------------
 	t.Run("union all with conditions", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -99,7 +100,7 @@ UNION ALL
 SELECT * FROM baz WHERE x != "b";
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 { "a": 2.0, "b": 2.0}
@@ -113,7 +114,7 @@ SELECT * FROM baz WHERE x != "b";
 	// --------------------------------------------------------------------------
 	t.Run("self union all", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -125,7 +126,7 @@ UNION ALL
 SELECT * FROM foo WHERE a <= 1;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 { "a": 2.0, "b": 2.0}
@@ -139,7 +140,7 @@ SELECT * FROM foo WHERE a <= 1;
 	// --------------------------------------------------------------------------
 	t.Run("multiple unions all", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -152,7 +153,7 @@ SELECT * FROM bar
 UNION ALL SELECT * FROM baz;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 { "a": 1.0, "b": 1.0}
@@ -170,7 +171,7 @@ UNION ALL SELECT * FROM baz;
 	// --------------------------------------------------------------------------
 	t.Run("basic union", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)

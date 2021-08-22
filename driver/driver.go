@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"errors"
 	"io"
 	"runtime"
 	"sync"
@@ -12,6 +11,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 )
 
@@ -309,7 +309,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 		}
 	})
 
-	if err == errStop || err == nil {
+	if errors.Is(err, errStop) || err == nil {
 		return
 	}
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/boltengine"
 	"github.com/genjidb/genji/engine/enginetest"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +18,7 @@ func builder(t testing.TB) func() (engine.Engine, func()) {
 	return func() (engine.Engine, func()) {
 		dir, cleanup := tempDir(t)
 		ng, err := boltengine.NewEngine(filepath.Join(dir, "test.db"), 0o600, nil)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		return ng, cleanup
 	}
 }
@@ -34,9 +35,9 @@ func BenchmarkBoltEngineTableScan(b *testing.B) {
 	enginetest.BenchmarkStoreScan(b, builder(b))
 }
 
-func tempDir(t require.TestingT) (string, func()) {
+func tempDir(t testing.TB) (string, func()) {
 	dir, err := ioutil.TempDir("", "genji")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return dir, func() {
 		os.RemoveAll(dir)
@@ -47,17 +48,17 @@ func TestTransient(t *testing.T) {
 	var ng boltengine.Engine
 
 	tng, err := ng.NewTransientEngine(context.Background())
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	path := tng.(*boltengine.Engine).DB.Path()
 
 	tx, err := tng.Begin(context.Background(), engine.TxOptions{Writable: true})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	err = tx.Rollback()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = tng.Drop(context.Background())
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = os.Stat(path)
 	require.True(t, os.IsNotExist(err))

@@ -10,6 +10,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,13 +23,13 @@ CREATE TABLE foo (a int);
 CREATE TABLE bar;
 `
 		err := db.Exec(q)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 
 	// --------------------------------------------------------------------------
 	t.Run("insert something", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -39,7 +40,7 @@ INSERT INTO foo (a) VALUES (1);
 SELECT * FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -54,7 +55,7 @@ SELECT * FROM foo;
 SELECT a, b FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -70,7 +71,7 @@ SELECT a, b FROM foo;
 SELECT z FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"z": null}
@@ -83,7 +84,7 @@ SELECT z FROM foo;
 	// --------------------------------------------------------------------------
 	t.Run("something else", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -94,7 +95,7 @@ INSERT INTO foo (c) VALUES (3);
 SELECT * FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"c": 3}
@@ -116,7 +117,7 @@ SELECTARRRR z FROM foo;
 INVALID;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})

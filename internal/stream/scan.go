@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
@@ -77,7 +78,7 @@ func (op *ExprsOperator) Iterate(in *environment.Environment, fn func(out *envir
 			return err
 		}
 		if v.Type() != types.DocumentValue {
-			return ErrInvalidResult
+			return errors.Wrap(ErrInvalidResult)
 		}
 
 		newEnv.SetDocument(v.V().(types.Document))
@@ -254,10 +255,10 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 				}
 				cmp := bytes.Compare(key, encEnd)
 				if !it.Reverse && cmp > 0 {
-					return ErrStreamClosed
+					return errors.Wrap(ErrStreamClosed)
 				}
 				if it.Reverse && cmp < 0 {
-					return ErrStreamClosed
+					return errors.Wrap(ErrStreamClosed)
 				}
 				return nil
 			}
@@ -265,7 +266,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 			newEnv.SetDocument(d)
 			return fn(&newEnv)
 		})
-		if err == ErrStreamClosed {
+		if errors.Is(err, ErrStreamClosed) {
 			err = nil
 		}
 		if err != nil {
@@ -397,10 +398,10 @@ func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table
 
 				cmp := bytes.Compare(val, encEnd)
 				if !it.Reverse && cmp > 0 {
-					return ErrStreamClosed
+					return errors.Wrap(ErrStreamClosed)
 				}
 				if it.Reverse && cmp < 0 {
-					return ErrStreamClosed
+					return errors.Wrap(ErrStreamClosed)
 				}
 				return nil
 			}
@@ -414,7 +415,7 @@ func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table
 			return fn(&newEnv)
 		})
 
-		if err == ErrStreamClosed {
+		if errors.Is(err, ErrStreamClosed) {
 			err = nil
 		}
 		if err != nil {

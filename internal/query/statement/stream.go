@@ -2,6 +2,7 @@ package statement
 
 import (
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/planner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/types"
@@ -72,7 +73,7 @@ func (s *StreamStmtIterator) Iterate(fn func(d types.Document) error) error {
 
 		return fn(env.Doc)
 	})
-	if err == stream.ErrStreamClosed {
+	if errors.Is(err, stream.ErrStreamClosed) {
 		err = nil
 	}
 	return err

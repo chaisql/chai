@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,21 +44,21 @@ func TestReIndex(t *testing.T) {
 			c := db.Catalog
 			for _, idxName := range c.ListIndexes("") {
 				idx, err := c.GetIndex(tx, idxName)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = idx.Truncate()
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			for _, idxName := range db.Catalog.ListIndexes("") {
 				idx, err := db.Catalog.GetIndex(tx, idxName)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				shouldBeIndexed := false
 				for _, name := range test.expectReIndexed {
@@ -72,7 +73,7 @@ func TestReIndex(t *testing.T) {
 					i++
 					return nil
 				})
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				if shouldBeIndexed {
 					require.Equal(t, 2, i)
 				} else {
@@ -80,7 +81,7 @@ func TestReIndex(t *testing.T) {
 				}
 			}
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }

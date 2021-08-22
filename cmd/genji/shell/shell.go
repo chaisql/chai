@@ -3,7 +3,6 @@ package shell
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -17,6 +16,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/types"
 	"go.uber.org/multierr"
@@ -159,13 +159,13 @@ func Run(ctx context.Context, opts *Options) error {
 		defer cancel()
 
 		err := sh.runPrompt(ctx, promptExecCh)
-		if err != nil && err != errExitCtrlD {
+		if err != nil && !errors.Is(err, errExitCtrlD) {
 			fmt.Fprintln(os.Stderr, err.Error())
 		}
 	}()
 
 	err = g.Wait()
-	if err == errExitCommand || err == errExitSignal || err == context.Canceled {
+	if errors.Is(err, errExitCommand) || errors.Is(err, errExitSignal) || errors.Is(err, context.Canceled) {
 		return nil
 	}
 
@@ -208,12 +208,12 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 			// if this is because of a user interruption
 			// or a termination signal.
 			// If it's the latter, it will be detected by the Select statement.
-			if err == context.Canceled {
+			if errors.Is(err, context.Canceled) {
 				// Print a newline for cleanliness
 				fmt.Println()
 				continue
 			}
-			if err == errExitCommand {
+			if errors.Is(err, errExitCommand) {
 				return err
 			}
 			if err != nil {
@@ -504,7 +504,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 
 func (sh *Shell) runQuery(ctx context.Context, q string) error {
 	err := dbutil.ExecSQL(ctx, sh.db, strings.NewReader(q), os.Stdout)
-	if err == context.Canceled {
+	if errors.Is(err, context.Canceled) {
 		return errors.New("interrupted")
 	}
 

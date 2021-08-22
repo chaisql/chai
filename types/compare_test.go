@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +14,7 @@ import (
 func jsonToInteger(t testing.TB, x string) types.Value {
 	var i int64
 	err := json.Unmarshal([]byte(x), &i)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return types.NewIntegerValue(i)
 }
@@ -21,7 +22,7 @@ func jsonToInteger(t testing.TB, x string) types.Value {
 func jsonToDouble(t testing.TB, x string) types.Value {
 	var f float64
 	err := json.Unmarshal([]byte(x), &f)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return types.NewDoubleValue(f)
 }
@@ -29,7 +30,7 @@ func jsonToDouble(t testing.TB, x string) types.Value {
 func jsonToBoolean(t testing.TB, x string) types.Value {
 	var b bool
 	err := json.Unmarshal([]byte(x), &b)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return types.NewBoolValue(b)
 }
@@ -45,7 +46,7 @@ func toBlob(t testing.TB, x string) types.Value {
 func jsonToArray(t testing.TB, x string) types.Value {
 	var vb document.ValueBuffer
 	err := json.Unmarshal([]byte(x), &vb)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return types.NewArrayValue(&vb)
 }
@@ -53,7 +54,7 @@ func jsonToArray(t testing.TB, x string) types.Value {
 func jsonToDocument(t testing.TB, x string) types.Value {
 	var fb document.FieldBuffer
 	err := json.Unmarshal([]byte(x), &fb)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return types.NewDocumentValue(fb)
 }
@@ -246,7 +247,7 @@ func TestCompare(t *testing.T) {
 			case "<=":
 				ok, err = types.IsLesserThanOrEqual(a, b)
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.ok, ok)
 		})
 	}

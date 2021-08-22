@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -49,12 +50,12 @@ func testExpr(t testing.TB, exprStr string, env *environment.Environment, want t
 	t.Helper()
 
 	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	res, err := e.Eval(env)
 	if fails {
-		require.Error(t, err)
+		assert.Error(t, err)
 	} else {
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, want, res)
 	}
 }
@@ -81,7 +82,7 @@ func TestString(t *testing.T) {
 	testFn := func(s string, want string) {
 		t.Helper()
 		e, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, want, fmt.Sprintf("%v", e))
 	}
 

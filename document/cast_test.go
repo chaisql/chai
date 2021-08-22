@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -35,9 +36,9 @@ func TestCastAs(t *testing.T) {
 
 				got, err := CastAs(test.v, targetType)
 				if test.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 				} else {
-					require.NoError(t, err)
+					assert.NoError(t, err)
 					require.Equal(t, test.want, got)
 				}
 			})

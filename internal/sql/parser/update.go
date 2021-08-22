@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
@@ -60,7 +61,7 @@ func (p *Parser) parseSetClause() ([]statement.UpdateSetPair, error) {
 		// Scan the identifier for the path name.
 		path, err := p.parsePath()
 		if err != nil {
-			pErr := err.(*ParseError)
+			pErr := errors.Unwrap(err).(*ParseError)
 			pErr.Expected = []string{"path"}
 			return nil, pErr
 		}

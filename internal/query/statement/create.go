@@ -46,7 +46,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 
 	err := ctx.Catalog.CreateTable(ctx.Tx, stmt.Info.TableName, &stmt.Info)
 	if stmt.IfNotExists {
-		if _, ok := err.(errs.AlreadyExistsError); ok {
+		if errs.IsAlreadyExistsError(err) {
 			return res, nil
 		}
 	}
@@ -91,7 +91,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 
 	err := ctx.Catalog.CreateIndex(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
-		if _, ok := err.(errs.AlreadyExistsError); ok {
+		if errs.IsAlreadyExistsError(err) {
 			return res, nil
 		}
 	}
@@ -121,7 +121,7 @@ func (stmt *CreateSequenceStmt) Run(ctx *Context) (Result, error) {
 
 	err := ctx.Catalog.CreateSequence(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
-		if _, ok := err.(errs.AlreadyExistsError); ok {
+		if errs.IsAlreadyExistsError(err) {
 			return res, nil
 		}
 	}

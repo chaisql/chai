@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
@@ -108,7 +109,7 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
 		got = append(got, &val)
 		return nil
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	// Working with simple structs rather than providing an equality function to go-cmp
 	// allows to get much better diffs, which only show where the difference is rater than

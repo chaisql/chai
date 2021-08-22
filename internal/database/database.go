@@ -3,11 +3,11 @@ package database
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 const (

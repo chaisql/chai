@@ -2,7 +2,6 @@ package database
 
 import (
 	"encoding/binary"
-	"errors"
 	"math"
 	"sort"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -57,7 +57,7 @@ func (c *Catalog) Init(tx *Transaction, codec encoding.Codec) error {
 		},
 	})
 	if err != nil {
-		if _, ok := err.(errs.AlreadyExistsError); !ok {
+		if !errs.IsAlreadyExistsError(err) {
 			return err
 		}
 	}
@@ -129,7 +129,7 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		return err
 	}
 	if err == nil {
-		return errs.AlreadyExistsError{Name: tableName}
+		return errors.Wrap(errs.AlreadyExistsError{Name: tableName})
 	}
 
 	// replace user-defined constraints by inferred list of constraints
@@ -364,8 +364,8 @@ func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc Field
 func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 	// Delete the old table info.
 	err := c.CatalogTable.Delete(tx, oldName)
-	if err == errs.ErrDocumentNotFound {
-		return errs.NotFoundError{Name: oldName}
+	if errors.Is(err, errs.ErrDocumentNotFound) {
+		return errors.Wrap(errs.NotFoundError{Name: oldName})
 	}
 	if err != nil {
 		return err
@@ -441,7 +441,7 @@ func (c *Catalog) BuildIndex(tx *Transaction, idx *Index, table *Table) error {
 		values := make([]types.Value, len(idx.Info.Paths))
 		for i, path := range idx.Info.Paths {
 			values[i], err = path.GetValueFromDocument(d)
-			if err == document.ErrFieldNotFound {
+			if errors.Is(err, document.ErrFieldNotFound) {
 				return nil
 			}
 			if err != nil {
@@ -634,7 +634,7 @@ func (c *catalogCache) Add(tx *Transaction, o Relation) error {
 	// if name is provided, ensure it's not duplicated
 	if name != "" {
 		if c.objectExists(name) {
-			return errs.AlreadyExistsError{Name: name}
+			return errors.Wrap(errs.AlreadyExistsError{Name: name})
 		}
 	} else {
 		name = o.GenerateBaseName()
@@ -657,7 +657,7 @@ func (c *catalogCache) Replace(tx *Transaction, o Relation) error {
 
 	old, ok := m[o.Name()]
 	if !ok {
-		return errs.NotFoundError{Name: o.Name()}
+		return errors.Wrap(errs.NotFoundError{Name: o.Name()})
 	}
 
 	m[o.Name()] = o
@@ -674,7 +674,7 @@ func (c *catalogCache) Delete(tx *Transaction, tp, name string) (Relation, error
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errs.NotFoundError{Name: name}
+		return nil, errors.Wrap(errs.NotFoundError{Name: name})
 	}
 
 	delete(m, name)
@@ -691,7 +691,7 @@ func (c *catalogCache) Get(tp, name string) (Relation, error) {
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errs.NotFoundError{Name: name}
+		return nil, errors.Wrap(errs.NotFoundError{Name: name})
 	}
 
 	return o, nil
@@ -783,7 +783,7 @@ func newCatalogStore() *CatalogStore {
 func (s *CatalogStore) Init(tx *Transaction, ctg *Catalog) error {
 	s.Catalog = ctg
 	_, err := tx.Tx.GetStore([]byte(TableName))
-	if err == engine.ErrStoreNotFound {
+	if errors.Is(err, engine.ErrStoreNotFound) {
 		err = tx.Tx.CreateStore([]byte(TableName))
 	}
 
@@ -815,8 +815,8 @@ func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 	tb := s.Table(tx)
 
 	_, err := tb.Insert(relationToDocument(r))
-	if err == errs.ErrDuplicateDocument {
-		return errs.AlreadyExistsError{Name: r.Name()}
+	if errors.Is(err, errs.ErrDuplicateDocument) {
+		return errors.Wrap(errs.AlreadyExistsError{Name: r.Name()})
 	}
 
 	return err

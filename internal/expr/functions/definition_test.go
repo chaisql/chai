@@ -6,13 +6,14 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDefinitions(t *testing.T) {
 	packages := functions.DefaultPackages()
 	def, err := packages.GetFunc("", "count")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	t.Run("String()", func(t *testing.T) {
 		require.Equal(t, "count(arg1)", def.String())
@@ -20,7 +21,7 @@ func TestDefinitions(t *testing.T) {
 
 	t.Run("Function()", func(t *testing.T) {
 		fexpr, err := def.Function(expr.Path(document.NewPath("a")))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.NotNil(t, fexpr)
 	})
 
@@ -34,25 +35,25 @@ func TestPackages(t *testing.T) {
 
 	t.Run("OK GetFunc()", func(t *testing.T) {
 		def, err := table.GetFunc("math", "floor")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, "floor", def.Name())
 		def, err = table.GetFunc("", "count")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, "count", def.Name())
 	})
 
 	t.Run("NOK GetFunc() missing func", func(t *testing.T) {
 		def, err := table.GetFunc("math", "foobar")
-		require.Error(t, err)
+		assert.Error(t, err)
 		require.Nil(t, def)
 		def, err = table.GetFunc("", "foobar")
-		require.Error(t, err)
+		assert.Error(t, err)
 		require.Nil(t, def)
 	})
 
 	t.Run("NOK GetFunc() missing package", func(t *testing.T) {
 		def, err := table.GetFunc("foobar", "foobar")
-		require.Error(t, err)
+		assert.Error(t, err)
 		require.Nil(t, def)
 	})
 }

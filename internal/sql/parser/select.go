@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -144,7 +145,7 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	// Parse table name
 	ident, err := p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
 		return ident, true, pErr
 	}

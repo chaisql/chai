@@ -59,10 +59,7 @@ func Unwrap(err error) error {
 	return err
 }
 
-// Wrap turns any error into an *errors.Error that also embeds the stacktrace.
-// If the error is already wrapped, it will refresh its captured stacktrace,
-// which is useful when the original context in which it was created has
-// no meaning for the user.
+// TODO
 func Wrap(e error) error {
 	if e == nil {
 		return nil
@@ -89,7 +86,7 @@ func wrap(e interface{}, skip int) *Error {
 	var err error
 	switch e := e.(type) {
 	case *Error:
-		err = e
+		return e
 	case error:
 		err = e
 	default:

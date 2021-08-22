@@ -10,6 +10,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,13 +26,13 @@ CREATE INDEX idx_b ON test_idx (b);
 CREATE INDEX idx_c ON test_idx (c);
 `
 		err := db.Exec(q)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 
 	// --------------------------------------------------------------------------
 	t.Run("values, no columns", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -41,7 +42,7 @@ CREATE INDEX idx_c ON test_idx (c);
 INSERT INTO test VALUES ("a", 'b', 'c');
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -49,7 +50,7 @@ INSERT INTO test VALUES ("a", 'b', 'c');
 	// --------------------------------------------------------------------------
 	t.Run("values, with columns", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -60,7 +61,7 @@ INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c');
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -78,7 +79,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("values, ident", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -97,7 +98,7 @@ INSERT INTO test (a) VALUES (a);
 	// --------------------------------------------------------------------------
 	t.Run("values, ident string", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -116,7 +117,7 @@ INSERT INTO test (a) VALUES (` + "`" + `a` + "`" + `);
 	// --------------------------------------------------------------------------
 	t.Run("values, fields ident string", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -127,7 +128,7 @@ INSERT INTO test (a, ` + "`" + `foo bar` + "`" + `) VALUES ('c', 'd');
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -144,7 +145,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("values, list", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -155,7 +156,7 @@ INSERT INTO test (a, b, c) VALUES ("a", 'b', [1, 2, 3]);
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -173,7 +174,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("values, document", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -184,7 +185,7 @@ INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -205,7 +206,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("document", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -216,7 +217,7 @@ INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1};
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -234,7 +235,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("document, list", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -245,7 +246,7 @@ INSERT INTO test VALUES {a: [1, 2, 3]};
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -265,7 +266,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("document, strings", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -283,7 +284,7 @@ SELECT pk(), * FROM test;
 */
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 		})
 
@@ -292,7 +293,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("document, double quotes", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -303,7 +304,7 @@ INSERT INTO test VALUES {"a": "b"};
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -319,7 +320,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("document, references to other field", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -330,7 +331,7 @@ INSERT INTO test VALUES {a: 400, b: a * 4};
 SELECT pk(), * FROM test;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"pk()":1,"a":400.0,"b":1600.0}
@@ -343,7 +344,7 @@ SELECT pk(), * FROM test;
 	// --------------------------------------------------------------------------
 	t.Run("index, values, no columns", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -353,7 +354,7 @@ SELECT pk(), * FROM test;
 INSERT INTO test_idx VALUES ("a", 'b', 'c');
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -361,7 +362,7 @@ INSERT INTO test_idx VALUES ("a", 'b', 'c');
 	// --------------------------------------------------------------------------
 	t.Run("index, values, with columns", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -372,7 +373,7 @@ INSERT INTO test_idx (a, b, c) VALUES ('a', 'b', 'c');
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -390,7 +391,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, values, ident", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -409,7 +410,7 @@ INSERT INTO test_idx (a) VALUES (a);
 	// --------------------------------------------------------------------------
 	t.Run("index, values, ident string", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -428,7 +429,7 @@ INSERT INTO test_idx (a) VALUES (` + "`" + `a` + "`" + `);
 	// --------------------------------------------------------------------------
 	t.Run("index, values, fields ident string", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -439,7 +440,7 @@ INSERT INTO test_idx (a, ` + "`" + `foo bar` + "`" + `) VALUES ('c', 'd');
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -456,7 +457,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, values, list", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -467,7 +468,7 @@ INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', [1, 2, 3]);
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -485,7 +486,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, values, document", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -496,7 +497,7 @@ INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -517,7 +518,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, document", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -528,7 +529,7 @@ INSERT INTO test_idx VALUES {a: 'a', b: 2.3, c: 1 = 1};
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -546,7 +547,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, document, list", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -557,7 +558,7 @@ INSERT INTO test_idx VALUES {a: [1, 2, 3]};
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -577,7 +578,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, document, strings", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -595,7 +596,7 @@ SELECT pk(), * FROM test_idx;
 */
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 		})
 
@@ -604,7 +605,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, document, double quotes", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -615,7 +616,7 @@ INSERT INTO test_idx VALUES {"a": "b"};
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -631,7 +632,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("index, document, references to other field", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -642,7 +643,7 @@ INSERT INTO test_idx VALUES {a: 400, b: a * 4};
 SELECT pk(), * FROM test_idx;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"pk()":1,"a":400.0,"b":1600.0}
@@ -655,7 +656,7 @@ SELECT pk(), * FROM test_idx;
 	// --------------------------------------------------------------------------
 	t.Run("read-only tables", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -674,7 +675,7 @@ INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
 	// --------------------------------------------------------------------------
 	t.Run("insert with primary keys", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -685,7 +686,7 @@ CREATE TABLE testpk (foo INTEGER PRIMARY KEY);
 INSERT INTO testpk (bar) VALUES (1);
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 		t.Run(`INSERT INTO testpk (bar, foo) VALUES (1, 2);`, func(t *testing.T) {
@@ -703,7 +704,7 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 	// --------------------------------------------------------------------------
 	t.Run("insert with shadowing", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -713,7 +714,7 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 INSERT INTO test (` + "`" + `pk()` + "`" + `, ` + "`" + `key` + "`" + `) VALUES (1, 2);
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 		})
 
@@ -722,7 +723,7 @@ INSERT INTO test (` + "`" + `pk()` + "`" + `, ` + "`" + `key` + "`" + `) VALUES 
 	// --------------------------------------------------------------------------
 	t.Run("insert with types constraints", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -743,7 +744,7 @@ t: "text", a: [1, "foo", true], d: {"foo": "bar"}
 SELECT * FROM test_tc;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -771,7 +772,7 @@ SELECT * FROM test_tc;
 	// --------------------------------------------------------------------------
 	t.Run("insert with inferred constraints", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -782,7 +783,7 @@ CREATE TABLE test_ic(a INTEGER, s.b TEXT);
 INSERT INTO test_ic VALUES {s: 1};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -790,7 +791,7 @@ INSERT INTO test_ic VALUES {s: 1};
 	// --------------------------------------------------------------------------
 	t.Run("insert with on conflict do nothing", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -806,7 +807,7 @@ INSERT INTO test_oc (a, b) VALUES (2, 2) ON CONFLICT DO NOTHING;
 SELECT * FROM test_oc;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -828,7 +829,7 @@ SELECT * FROM test_oc;
 	// --------------------------------------------------------------------------
 	t.Run("insert with on conflict do replace, pk", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -841,7 +842,7 @@ INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
 SELECT * FROM test_oc;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -858,7 +859,7 @@ SELECT * FROM test_oc;
 	// --------------------------------------------------------------------------
 	t.Run("insert with on conflict do replace, unique", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -871,7 +872,7 @@ INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
 SELECT * FROM test_oc;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {
@@ -888,7 +889,7 @@ SELECT * FROM test_oc;
 	// --------------------------------------------------------------------------
 	t.Run("insert with on conflict do replace, not null", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -899,7 +900,7 @@ CREATE TABLE test_oc(a INTEGER NOT NULL);
 INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -907,7 +908,7 @@ INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 	// --------------------------------------------------------------------------
 	t.Run("insert with NEXT VALUE FOR", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -921,7 +922,7 @@ INSERT INTO test_oc (a) VALUES (NEXT VALUE FOR test_seq), (NEXT VALUE FOR test_s
 SELECT * FROM test_oc;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {

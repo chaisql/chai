@@ -3,10 +3,10 @@ package scanner
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io"
 	"strings"
 
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -268,9 +268,9 @@ func (s *scanner) scanString() (tok Token, pos Pos, lit string) {
 
 	lit, err := scanString(s.r)
 
-	if err == errBadString {
+	if errors.Is(err, errBadString) {
 		return BADSTRING, pos, lit
-	} else if err == errBadEscape {
+	} else if errors.Is(err, errBadEscape) {
 		_, pos = s.r.curr()
 		return BADESCAPE, pos, lit
 	}
@@ -288,7 +288,7 @@ func (s *scanner) ScanRegex() (tok Token, pos Pos, lit string) {
 
 	b, err := scanDelimited(s.r, start, end, escapes, true)
 
-	if err == errBadEscape {
+	if errors.Is(err, errBadEscape) {
 		_, pos = s.r.curr()
 		return BADESCAPE, pos, ""
 	} else if err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
@@ -71,7 +72,7 @@ func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 			}
 
 			v, err = d.GetByField(field)
-			if err == document.ErrFieldNotFound {
+			if errors.Is(err, document.ErrFieldNotFound) {
 				continue
 			}
 			return

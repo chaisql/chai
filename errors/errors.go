@@ -1,8 +1,7 @@
 package errors
 
 import (
-	"errors"
-
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -26,8 +25,14 @@ func (a AlreadyExistsError) Error() string {
 }
 
 func IsAlreadyExistsError(err error) bool {
-	_, ok := err.(AlreadyExistsError)
-	return ok
+	switch e := err.(type) {
+	case *errors.Error:
+		return IsAlreadyExistsError(e.Err)
+	case AlreadyExistsError, *AlreadyExistsError:
+		return true
+	default:
+		return false
+	}
 }
 
 // NotFoundError is returned when the requested table, index or sequence
@@ -41,6 +46,12 @@ func (a NotFoundError) Error() string {
 }
 
 func IsNotFoundError(err error) bool {
-	_, ok := err.(NotFoundError)
-	return ok
+	switch e := err.(type) {
+	case *errors.Error:
+		return IsNotFoundError(e.Err)
+	case NotFoundError, *NotFoundError:
+		return true
+	default:
+		return false
+	}
 }
