@@ -564,18 +564,33 @@ LOOP:
 				FieldName: lit,
 			})
 		case scanner.LSBRACKET:
-			// scan the next token for an integer
+			// the next token can be either an integer or a quoted string
+			// if it's an integer, we have an array index
+			// if it's a quoted string, we have a field name
 			tok, pos, lit := p.Scan()
-			if tok != scanner.INTEGER || lit[0] == '-' {
-				return nil, newParseError(lit, []string{"array index"}, pos)
+			switch tok {
+			case scanner.INTEGER:
+				// is the number negative?
+				if lit[0] == '-' {
+					return nil, newParseError(lit, []string{"integer"}, pos)
+				}
+				// is the number too big?
+				if len(lit) > 10 {
+					return nil, newParseError(lit, []string{"integer"}, pos)
+				}
+				// parse the integer
+				i, err := strconv.ParseInt(lit, 10, 64)
+				if err != nil {
+					return nil, newParseError(lit, []string{"integer"}, pos)
+				}
+				path = append(path, document.PathFragment{
+					ArrayIndex: int(i),
+				})
+			case scanner.STRING:
+				path = append(path, document.PathFragment{
+					FieldName: lit,
+				})
 			}
-			idx, err := strconv.Atoi(lit)
-			if err != nil {
-				return nil, newParseError(lit, []string{"integer"}, pos)
-			}
-			path = append(path, document.PathFragment{
-				ArrayIndex: idx,
-			})
 			// scan the next token for a closing left bracket
 			if err := p.parseTokens(scanner.RSBRACKET); err != nil {
 				return nil, err

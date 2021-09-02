@@ -205,15 +205,25 @@ func TestParsePath(t *testing.T) {
 			document.PathFragment{ArrayIndex: 1},
 			document.PathFragment{ArrayIndex: 2},
 		}, false},
+		{"multiple fragments with brackets", `a["b"][100].c[1][2]`, document.Path{
+			document.PathFragment{FieldName: "a"},
+			document.PathFragment{FieldName: "b"},
+			document.PathFragment{ArrayIndex: 100},
+			document.PathFragment{FieldName: "c"},
+			document.PathFragment{ArrayIndex: 1},
+			document.PathFragment{ArrayIndex: 2},
+		}, false},
 		{"with quotes", "`some ident`.` with`[5].`  \"quotes`", document.Path{
 			document.PathFragment{FieldName: "some ident"},
 			document.PathFragment{FieldName: " with"},
 			document.PathFragment{ArrayIndex: 5},
 			document.PathFragment{FieldName: "  \"quotes"},
 		}, false},
+
 		{"negative index", `a.b[-100].c`, nil, true},
 		{"with spaces", `a.  b[100].  c`, nil, true},
 		{"starting with array", `[10].a`, nil, true},
+		{"starting with brackets", `['a']`, nil, true},
 	}
 
 	for _, test := range tests {
