@@ -35,33 +35,34 @@ func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) erro
 
 func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string, error) {
 	var listName []string
-	err := db.View(func(tx *genji.Tx) error {
-		q := "SELECT sql FROM __genji_catalog WHERE type = 'index'"
-		if tableName != "" {
-			q += " AND table_name = ?"
-		}
-		res, err := tx.Query(q, tableName)
+	q := "SELECT sql FROM __genji_catalog WHERE type = 'index'"
+	if tableName != "" {
+		q += " AND table_name = ?"
+	}
+	res, err := db.Query(q, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	err = res.Iterate(func(d types.Document) error {
+		var query string
+		err = document.Scan(d, &query)
 		if err != nil {
 			return err
 		}
-		defer res.Close()
 
-		return res.Iterate(func(d types.Document) error {
-			var query string
-			err = document.Scan(d, &query)
-			if err != nil {
-				return err
-			}
+		q, err := parser.ParseQuery(query)
+		if err != nil {
+			return err
+		}
 
-			q, err := parser.ParseQuery(query)
-			if err != nil {
-				return err
-			}
-
-			listName = append(listName, q.Statements[0].(*statement.CreateIndexStmt).Info.IndexName)
-			return nil
-		})
+		listName = append(listName, q.Statements[0].(*statement.CreateIndexStmt).Info.IndexName)
+		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return listName, err
 }

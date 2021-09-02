@@ -142,16 +142,11 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {
-		err := db.View(func(tx *genji.Tx) error {
-			_, err := tx.QueryDocument("SELECT 1 FROM __genji_catalog WHERE table_name = ? LIMIT 1", tableName)
-			if err != nil {
-				if errors.Is(err, errs.ErrDocumentNotFound) {
-					return fmt.Errorf("%w: %q", errs.NotFoundError{Name: tableName}, tableName)
-				}
-			}
-			return err
-		})
+		_, err := db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE table_name = ? LIMIT 1", tableName)
 		if err != nil {
+			if errors.Is(err, errs.ErrDocumentNotFound) {
+				return fmt.Errorf("%w: %q", errs.NotFoundError{Name: tableName}, tableName)
+			}
 			return err
 		}
 	}
