@@ -229,3 +229,11 @@ func (s *Sequence) Release(tx *Transaction, catalog *Catalog) error {
 	s.Cached = s.Info.Cache
 	return nil
 }
+
+func (s *Sequence) Clone() *Sequence {
+	return &Sequence{
+		Info:         s.Info.Clone(),
+		CurrentValue: s.CurrentValue,
+		Cached:       s.Cached,
+	}
+}

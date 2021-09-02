@@ -412,6 +412,34 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 		}
 	}
 
+	for _, seqName := range c.ListSequences() {
+		seq, err := c.GetSequence(seqName)
+		if err != nil {
+			return err
+		}
+		if seq.Info.Owner.TableName != oldName {
+			continue
+		}
+
+		_, err = c.Cache.Delete(tx, RelationSequenceType, seqName)
+		if err != nil {
+			return err
+		}
+		clone := seq.Clone()
+
+		clone.Info.Owner.TableName = newName
+
+		err = c.Cache.Add(tx, clone)
+		if err != nil {
+			return err
+		}
+
+		err = c.CatalogTable.Replace(tx, seqName, clone)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

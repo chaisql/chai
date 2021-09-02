@@ -3,6 +3,7 @@ package database_test
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/genjidb/genji"
@@ -126,6 +127,19 @@ func TestCatalogTable(t *testing.T) {
 			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "city")}, IndexName: "idx_city", TableName: "foo", Unique: true})
 			assert.NoError(t, err)
 
+			seq := database.SequenceInfo{
+				Name:        "seq_foo",
+				IncrementBy: 1,
+				Min:         1, Max: math.MaxInt64,
+				Start: 1,
+				Cache: 64,
+				Owner: database.Owner{
+					TableName: "foo",
+				},
+			}
+			err = catalog.CreateSequence(tx, &seq)
+			assert.NoError(t, err)
+
 			return nil
 		})
 
@@ -155,6 +169,11 @@ func TestCatalogTable(t *testing.T) {
 				assert.NoError(t, err)
 				require.Equal(t, "zoo", idx.Info.TableName)
 			}
+
+			// Check that the sequences have been updated as well.
+			seq, err := catalog.GetSequence("seq_foo")
+			assert.NoError(t, err)
+			require.Equal(t, "zoo", seq.Info.Owner.TableName)
 
 			// Renaming a non existing table should return an error
 			err = catalog.RenameTable(tx, "foo", "")
