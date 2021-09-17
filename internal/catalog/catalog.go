@@ -70,6 +70,26 @@ func (c *Catalog) Load(tx *database.Transaction) error {
 	return nil
 }
 
+func (c *Catalog) addTypeToIndex(ti database.TableInfo, info database.IndexInfo) database.IndexInfo {
+OUTER:
+	for _, path := range info.Paths {
+		for _, fc := range ti.FieldConstraints {
+			if fc.Path.IsEqual(path) {
+				// a constraint may or may not enforce a type
+				if fc.Type != 0 {
+					info.Types = append(info.Types, types.ValueType(fc.Type))
+				}
+
+				continue OUTER
+			}
+		}
+
+		// no type was inferred for that path, add it to the index as untyped
+		info.Types = append(info.Types, types.ValueType(0))
+	}
+	return info
+}
+
 func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 	tables, indexes, sequences, err := c.CatalogTable.Load(tx)
 	if err != nil {
@@ -87,6 +107,15 @@ func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 		}
 	}
 
+	indices := make([]database.IndexInfo, 0, len(indexes))
+	for _, info := range indexes {
+		for _, ti := range tables {
+			if ti.TableName == info.TableName {
+				indices = append(indices, c.addTypeToIndex(ti, info))
+				break
+			}
+		}
+	}
 	// add the __genji_catalog table to the list of tables
 	// so that it can be queried
 	ti := c.CatalogTable.Info.Clone()
@@ -95,7 +124,7 @@ func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 	tables = append(tables, *ti)
 
 	// load tables and indexes first
-	c.Cache.load(tables, indexes, nil)
+	c.Cache.load(tables, indices, nil)
 
 	if len(sequences) > 0 {
 		var seqList []database.Sequence
