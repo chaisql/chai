@@ -70,7 +70,7 @@ func (c *Catalog) Load(tx *database.Transaction) error {
 	return nil
 }
 
-func (c *Catalog) addTypeToIndex(ti database.TableInfo, info database.IndexInfo) database.IndexInfo {
+func (c *Catalog) addTypesToIndex(ti database.TableInfo, info *database.IndexInfo) {
 OUTER:
 	for _, path := range info.Paths {
 		for _, fc := range ti.FieldConstraints {
@@ -87,7 +87,6 @@ OUTER:
 		// no type was inferred for that path, add it to the index as untyped
 		info.Types = append(info.Types, types.ValueType(0))
 	}
-	return info
 }
 
 func (c *Catalog) loadCatalog(tx *database.Transaction) error {
@@ -108,11 +107,10 @@ func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 	}
 
 	// add types to indices
-	indices := make([]database.IndexInfo, 0, len(indexes))
-	for _, info := range indexes {
+	for i := range indexes {
 		for _, ti := range tables {
-			if ti.TableName == info.TableName {
-				indices = append(indices, c.addTypeToIndex(ti, info))
+			if ti.TableName == indexes[i].TableName {
+				c.addTypesToIndex(ti, &indexes[i])
 				break
 			}
 		}
@@ -125,7 +123,7 @@ func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 	tables = append(tables, *ti)
 
 	// load tables and indexes first
-	c.Cache.load(tables, indices, nil)
+	c.Cache.load(tables, indexes, nil)
 
 	if len(sequences) > 0 {
 		var seqList []database.Sequence
@@ -327,22 +325,7 @@ func (c *Catalog) CreateIndex(tx *database.Transaction, info *database.IndexInfo
 	// if the given info contained existing types, they are overriden.
 	info.Types = nil
 
-OUTER:
-	for _, path := range info.Paths {
-		for _, fc := range ti.FieldConstraints {
-			if fc.Path.IsEqual(path) {
-				// a constraint may or may not enforce a type
-				if fc.Type != 0 {
-					info.Types = append(info.Types, types.ValueType(fc.Type))
-				}
-
-				continue OUTER
-			}
-		}
-
-		// no type was inferred for that path, add it to the index as untyped
-		info.Types = append(info.Types, types.ValueType(0))
-	}
+	c.addTypesToIndex(*ti, info)
 
 	if info.StoreName == nil {
 		info.StoreName, err = c.generateStoreName(tx)
