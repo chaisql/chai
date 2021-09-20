@@ -107,6 +107,7 @@ func (c *Catalog) loadCatalog(tx *database.Transaction) error {
 		}
 	}
 
+	// add types to indices
 	indices := make([]database.IndexInfo, 0, len(indexes))
 	for _, info := range indexes {
 		for _, ti := range tables {
